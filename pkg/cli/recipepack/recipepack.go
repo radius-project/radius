@@ -101,14 +101,14 @@ func EnsureDefaultResourceGroup(ctx context.Context, createOrUpdate ResourceGrou
 // the default scope. If it doesn't exist (404), it creates it with all core
 // resource type recipes. Returns the full resource ID.
 func GetOrCreateDefaultRecipePack(ctx context.Context, client *corerpv20250801.RecipePacksClient) (string, error) {
-	_, err := client.Get(ctx, DefaultRecipePackResourceName, nil)
+	_, err := client.Get(ctx, DefaultResourceGroupScope, DefaultRecipePackResourceName, nil)
 	if err != nil {
 		if !clients.Is404Error(err) {
 			return "", fmt.Errorf("failed to get default recipe pack from default scope: %w", err)
 		}
 		// Not found — create the default recipe pack with all core types.
 		resource := NewDefaultRecipePackResource()
-		_, err = client.CreateOrUpdate(ctx, DefaultRecipePackResourceName, resource, nil)
+		_, err = client.CreateOrUpdate(ctx, DefaultResourceGroupScope, DefaultRecipePackResourceName, resource, nil)
 		if err != nil {
 			return "", fmt.Errorf("failed to create default recipe pack: %w", err)
 		}

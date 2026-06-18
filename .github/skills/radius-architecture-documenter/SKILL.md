@@ -1,12 +1,21 @@
 ---
-name: architecture-documenter
-description: 'Document application architectures with Mermaid diagrams. Use for: generating architecture overviews, component diagrams, sequence diagrams from code, explaining complex Go codebases, answering architecture questions, suggesting architectural improvements, producing entity-relationship diagrams, and distilling code into human-readable descriptions.'
+name: radius-architecture-documenter
+description: 'Document application architectures with Mermaid diagrams. Use for: generating architecture overviews, component diagrams, sequence diagrams from code, explaining complex Go codebases, answering architecture questions, suggesting architectural improvements, producing entity-relationship diagrams, and distilling code into human-readable descriptions. For step-by-step contributor how-to docs, use radius-author-doc.'
 argument-hint: 'Describe what part of the architecture to document or ask an architecture question'
 ---
 
 # Architecture Documenter
 
 Expert skill for analyzing codebases, documenting application architectures, and generating accurate Mermaid diagrams grounded in actual source code.
+
+## Which doc skill?
+
+| You want to…                                                         | Use                                                                              |
+|----------------------------------------------------------------------|----------------------------------------------------------------------------------|
+| **Create** a new contributing doc                                    | [radius-author-doc](../radius-author-doc/SKILL.md)                               |
+| **Fix** an existing doc that drifted from code                       | [radius-update-doc](../radius-update-doc/SKILL.md)                               |
+| **Find** missing or stale docs, or assess a code change's doc impact | [radius-contributing-docs-updater](../radius-contributing-docs-updater/SKILL.md) |
+| **Diagram** a subsystem / write an architecture doc                  | **this skill**                                                                   |
 
 ## When to Use
 
@@ -31,14 +40,14 @@ Expert skill for analyzing codebases, documenting application architectures, and
 
 Determine what the user wants documented:
 
-| Request Type | Output |
-|---|---|
-| "How does X work?" | Prose explanation + optional diagram |
-| "Show me the architecture of X" | Component diagram + brief description |
-| "Show me the flow when X happens" | Sequence diagram + step-by-step narrative |
-| "What are the relationships between X, Y, Z?" | Entity-relationship / component diagram |
-| "How could X be improved?" | Current-state diagram + improvement suggestions |
-| "Give me an overview" | High-level system diagram + component summary |
+| Request Type                                  | Output                                          |
+|-----------------------------------------------|-------------------------------------------------|
+| "How does X work?"                            | Prose explanation + optional diagram            |
+| "Show me the architecture of X"               | Component diagram + brief description           |
+| "Show me the flow when X happens"             | Sequence diagram + step-by-step narrative       |
+| "What are the relationships between X, Y, Z?" | Entity-relationship / component diagram         |
+| "How could X be improved?"                    | Current-state diagram + improvement suggestions |
+| "Give me an overview"                         | High-level system diagram + component summary   |
 
 ### Step 2: Gather Context from Code
 
@@ -62,14 +71,14 @@ This is the most critical step. **Do not generate diagrams from memory or assump
 
 Choose the appropriate Mermaid diagram type based on the request. See [Mermaid Diagram Reference](./references/mermaid-patterns.md) for templates.
 
-| Situation | Diagram Type |
-|---|---|
-| System / subsystem overview | `graph TD` (top-down flowchart) |
-| Request/response flow | `sequenceDiagram` |
-| Entity relationships | `classDiagram` or `erDiagram` |
-| State transitions | `stateDiagram-v2` |
-| Component dependencies | `graph LR` (left-right flowchart) |
-| Deployment topology | `graph TD` with subgraphs |
+| Situation                   | Diagram Type                      |
+|-----------------------------|-----------------------------------|
+| System / subsystem overview | `graph TD` (top-down flowchart)   |
+| Request/response flow       | `sequenceDiagram`                 |
+| Entity relationships        | `classDiagram` or `erDiagram`     |
+| State transitions           | `stateDiagram-v2`                 |
+| Component dependencies      | `graph LR` (left-right flowchart) |
+| Deployment topology         | `graph TD` with subgraphs         |
 
 #### Diagram Quality Checklist
 
@@ -112,22 +121,22 @@ This skill is tailored for the Radius project. Key architectural knowledge:
 
 ### High-Level Components
 
-| Component | Location | Purpose |
-|---|---|---|
-| UCP (Universal Control Plane) | `pkg/ucp/`, `cmd/ucpd/` | Core control plane, resource routing, proxy |
+| Component                           | Location                              | Purpose                                                                                        |
+|-------------------------------------|---------------------------------------|------------------------------------------------------------------------------------------------|
+| UCP (Universal Control Plane)       | `pkg/ucp/`, `cmd/ucpd/`               | Core control plane, resource routing, proxy                                                    |
 | Applications RP (Applications.Core) | `pkg/corerp/`, `cmd/applications-rp/` | Resource provider for core Radius resources (environments, applications, containers, gateways) |
-| Dynamic RP | `pkg/dynamicrp/`, `cmd/dynamic-rp/` | Resource provider for user-defined resource types that have no dedicated RP implementation |
-| Dapr RP | `pkg/daprrp/` | Resource provider for Dapr portable resources (state stores, pub/sub, secret stores) |
-| Datastores RP | `pkg/datastoresrp/` | Resource provider for datastore portable resources (MongoDB, Redis, SQL) |
-| Messaging RP | `pkg/messagingrp/` | Resource provider for messaging portable resources (RabbitMQ) |
-| Portable Resources (shared) | `pkg/portableresources/` | Shared backend, handlers, processors, and renderers used by Dapr/Datastores/Messaging RPs |
-| Controller | `pkg/controller/`, `cmd/controller/` | Kubernetes controller for deployment reconciliation |
-| CLI (rad) | `pkg/cli/`, `cmd/rad/` | Command-line interface |
-| ARM RPC Framework | `pkg/armrpc/` | Shared framework for building ARM-compatible resource providers |
-| Recipes Engine | `pkg/recipes/` | Recipe execution engine for provisioning infrastructure via Terraform and Bicep |
-| SDK | `pkg/sdk/` | Client SDK for connecting to and interacting with the Radius control plane |
-| Shared Components | `pkg/components/` | Shared infrastructure: database, message queue, secrets, metrics, tracing |
-| RP Commons | `pkg/rp/` | Shared packages used by corerp and the portable resource providers |
+| Dynamic RP                          | `pkg/dynamicrp/`, `cmd/dynamic-rp/`   | Resource provider for user-defined resource types that have no dedicated RP implementation     |
+| Dapr RP                             | `pkg/daprrp/`                         | Resource provider for Dapr portable resources (state stores, pub/sub, secret stores)           |
+| Datastores RP                       | `pkg/datastoresrp/`                   | Resource provider for datastore portable resources (MongoDB, Redis, SQL)                       |
+| Messaging RP                        | `pkg/messagingrp/`                    | Resource provider for messaging portable resources (RabbitMQ)                                  |
+| Portable Resources (shared)         | `pkg/portableresources/`              | Shared backend, handlers, processors, and renderers used by Dapr/Datastores/Messaging RPs      |
+| Controller                          | `pkg/controller/`, `cmd/controller/`  | Kubernetes controller for deployment reconciliation                                            |
+| CLI (rad)                           | `pkg/cli/`, `cmd/rad/`                | Command-line interface                                                                         |
+| ARM RPC Framework                   | `pkg/armrpc/`                         | Shared framework for building ARM-compatible resource providers                                |
+| Recipes Engine                      | `pkg/recipes/`                        | Recipe execution engine for provisioning infrastructure via Terraform and Bicep                |
+| SDK                                 | `pkg/sdk/`                            | Client SDK for connecting to and interacting with the Radius control plane                     |
+| Shared Components                   | `pkg/components/`                     | Shared infrastructure: database, message queue, secrets, metrics, tracing                      |
+| RP Commons                          | `pkg/rp/`                             | Shared packages used by corerp and the portable resource providers                             |
 
 ### Common Patterns
 

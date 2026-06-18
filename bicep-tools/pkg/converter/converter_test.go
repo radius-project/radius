@@ -231,6 +231,140 @@ func TestAddResourceTypeForAPIVersion(t *testing.T) {
 	}
 }
 
+// TestAddResourceTypeForAPIVersion_HoistsPropertiesAsReadOnlyAliases verifies that
+// the children of `properties` are hoisted onto the resource body as ReadOnly flat
+// aliases (mirroring x-ms-client-flatten), that envelope properties are not
+// overwritten by a colliding child, and that the nested `properties` object is
+// preserved for authoring.
+func TestAddResourceTypeForAPIVersion_HoistsPropertiesAsReadOnlyAliases(t *testing.T) {
+	provider := &manifest.ResourceProvider{
+		Namespace: "Applications.Test",
+		Types: map[string]manifest.ResourceType{
+			"testResources": {
+				APIVersions: map[string]manifest.APIVersion{
+					"2021-01-01": {
+						Schema: manifest.Schema{
+							Type:     "object",
+							Required: []string{"image"},
+							Properties: map[string]manifest.Schema{
+								"image":       {Type: "string"},
+								"application": {Type: "string"},
+								// Collides with the standard envelope "name" property.
+								"name": {Type: "string"},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	resourceType := provider.Types["testResources"]
+	apiVersion := resourceType.APIVersions["2021-01-01"]
+	typeFactory := factory.NewTypeFactory()
+
+	if _, err := addResourceTypeForAPIVersion(
+		provider,
+		"testResources",
+		&resourceType,
+		"2021-01-01",
+		&apiVersion,
+		typeFactory,
+	); err != nil {
+		t.Fatalf("Expected no error, got: %v", err)
+	}
+
+	allTypes := typeFactory.GetTypes()
+
+	var resource *types.ResourceType
+	for _, typ := range allTypes {
+		if rt, ok := typ.(*types.ResourceType); ok {
+			resource = rt
+			break
+		}
+	}
+	if resource == nil {
+		t.Fatal("Expected to find a ResourceType in the factory")
+	}
+
+	bodyRef, ok := resource.Body.(types.TypeReference)
+	if !ok {
+		t.Fatal("Expected body to be a TypeReference")
+	}
+	bodyType, ok := allTypes[bodyRef.Ref].(*types.ObjectType)
+	if !ok {
+		t.Fatal("Expected body to be an ObjectType")
+	}
+
+	// Resolve the nested properties object so we can compare hoisted aliases
+	// against the original child type references.
+	propsRef, ok := bodyType.Properties["properties"].Type.(types.TypeReference)
+	if !ok {
+		t.Fatal("Expected properties property to be a TypeReference")
+	}
+	propsType, ok := allTypes[propsRef.Ref].(*types.ObjectType)
+	if !ok {
+		t.Fatal("Expected properties to be an ObjectType")
+	}
+
+	// Non-colliding children are hoisted as ReadOnly aliases referencing the same
+	// type as the nested property.
+	for _, childName := range []string{"image", "application"} {
+		alias, exists := bodyType.Properties[childName]
+		if !exists {
+			t.Errorf("Expected flat alias %q on the resource body", childName)
+			continue
+		}
+		if alias.Flags != types.TypePropertyFlagsReadOnly {
+			t.Errorf("Expected alias %q to be ReadOnly only, got flags %d", childName, alias.Flags)
+		}
+		if alias.Type != propsType.Properties[childName].Type {
+			t.Errorf("Expected alias %q to reuse the nested property type reference", childName)
+		}
+	}
+
+	// The nested properties object is preserved with all children intact.
+	for _, childName := range []string{"image", "application", "name"} {
+		if _, exists := propsType.Properties[childName]; !exists {
+			t.Errorf("Expected nested properties to retain child %q", childName)
+		}
+	}
+
+	// The colliding "name" child must not overwrite the envelope name property,
+	// which is Required and an Identifier.
+	nameProp := bodyType.Properties["name"]
+	if nameProp.Flags&types.TypePropertyFlagsRequired == 0 ||
+		nameProp.Flags&types.TypePropertyFlagsIdentifier == 0 {
+		t.Errorf("Expected envelope 'name' to remain Required|Identifier, got flags %d", nameProp.Flags)
+	}
+}
+
+func TestHoistPropertiesAliases_ReturnsErrorForUnresolvableReference(t *testing.T) {
+	typeFactory := factory.NewTypeFactory()
+	bodyType := typeFactory.CreateObjectType("Body", nil, nil, nil)
+
+	// A reference index that was never registered must surface as an error rather
+	// than being silently swallowed, which would otherwise yield partially
+	// flattened output with no signal.
+	err := hoistPropertiesAliases(types.TypeReference{Ref: 9999}, bodyType, typeFactory)
+	if err == nil {
+		t.Fatal("Expected an error for an unresolvable properties reference, got nil")
+	}
+}
+
+func TestHoistPropertiesAliases_ReturnsErrorForNonLocalReference(t *testing.T) {
+	typeFactory := factory.NewTypeFactory()
+	bodyType := typeFactory.CreateObjectType("Body", nil, nil, nil)
+
+	// addSchemaType always produces a same-file types.TypeReference, so any other
+	// ITypeReference (e.g. a cross-file reference) signals an internal
+	// inconsistency and must fail fast rather than silently skip flattening.
+	err := hoistPropertiesAliases(types.CrossFileTypeReference{Ref: 0, RelativePath: "other.json"}, bodyType, typeFactory)
+	if err == nil {
+		t.Fatal("Expected an error for a non-local properties reference, got nil")
+	}
+}
+
 func TestAddSchemaType_String(t *testing.T) {
 	schema := &manifest.Schema{Type: "string"}
 	typeFactory := factory.NewTypeFactory()

@@ -228,7 +228,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run creates a new Radius.Core environment with the default recipe pack
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {
-		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
@@ -247,7 +247,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Create the default recipe pack in the default resource group.
 	// The default pack lives in the default scope regardless of the current workspace scope.
 	if r.DefaultScopeClientFactory == nil {
-		defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+		defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
@@ -289,7 +289,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
-	_, err = envClient.CreateOrUpdate(ctx, r.EnvironmentName, *resource, nil)
+	_, err = envClient.CreateOrUpdate(ctx, r.Workspace.Scope, r.EnvironmentName, *resource, nil)
 	if err != nil {
 		return err
 	}

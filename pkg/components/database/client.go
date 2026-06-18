@@ -31,7 +31,7 @@ var jsonPropertyPattern = "[a-zA-Z$_][a-zA-Z0-9$_]*"
 // - Multople properties separated by a '.'
 var fieldRegex = regexp.MustCompile(fmt.Sprintf(`^(%s)(\.%s)*$`, jsonPropertyPattern, jsonPropertyPattern))
 
-//go:generate mockgen -typed -destination=./mock_client.go -package=database -self_package github.com/radius-project/radius/pkg/components/database github.com/radius-project/radius/pkg/components/database Client
+//go:generate go tool mockgen -typed -destination=./mock_client.go -package=database -self_package github.com/radius-project/radius/pkg/components/database github.com/radius-project/radius/pkg/components/database Client
 
 // Client is the interface for persisting and querying resource data.
 //

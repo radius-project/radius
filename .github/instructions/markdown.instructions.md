@@ -14,7 +14,7 @@ Do not restate or duplicate lint rules here — change the configuration instead
 - **Rules:** `markdownlint-cli2`, configured by [`.github/linters/.markdownlint-cli2.yaml`](../linters/.markdownlint-cli2.yaml), which extends [`.github/linters/.markdownlint.yml`](../linters/.markdownlint.yml).
 - **Tables:** formatted by `markdown-table-formatter`.
 
-Both tools are installed as dev dependencies in the root `package.json`. See the `markdown-lint` skill for how to run them.
+Both tools are installed as dev dependencies in the root `package.json`. See the `radius-markdown-lint` skill for how to run them.
 
 ## Conventions not enforced by tooling
 
@@ -22,4 +22,4 @@ Both tools are installed as dev dependencies in the root `package.json`. See the
 
 ## Before committing
 
-Run the Markdown linters (see the `markdown-lint` skill) on the files you changed and fix any reported issues.
+Run the Markdown linters (see the `radius-markdown-lint` skill) on the files you changed and fix any reported issues.

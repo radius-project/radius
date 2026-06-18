@@ -68,9 +68,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:   "deploy [file]",
 		Short: "Deploy a template",
 		Long: `Deploy a Bicep or ARM template
-	
+
 The deploy command compiles a Bicep or ARM template and deploys it to your default environment (unless otherwise specified).
-	
+
 You can combine Radius types as as well as other types that are available in Bicep such as Azure resources. See
 the Radius documentation for information about describing your application and resources with Bicep.
 
@@ -84,7 +84,7 @@ When passing multiple parameters in a single file, use the format described here
 
 	https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/parameter-files
 
-You can specify parameters using multiple sources. Parameters can be overridden based on the 
+You can specify parameters using multiple sources. Parameters can be overridden based on the
 order they are provided. Parameters appearing later in the argument list will override those defined earlier.
 `,
 		Example: `
@@ -312,10 +312,10 @@ func (r *Runner) Run(ctx context.Context) error {
 				}
 			} else {
 				client := r.RadiusCoreClientFactory.NewApplicationsClient()
-				_, err := client.Get(ctx, r.ApplicationName, nil)
+				_, err := client.Get(ctx, r.Workspace.Scope, r.ApplicationName, nil)
 				if err != nil {
 					if clients.Is404Error(err) {
-						_, err = client.CreateOrUpdate(ctx, r.ApplicationName, v20250801preview.ApplicationResource{
+						_, err = client.CreateOrUpdate(ctx, r.Workspace.Scope, r.ApplicationName, v20250801preview.ApplicationResource{
 							Location: to.Ptr(v1.LocationGlobal),
 							Properties: &v20250801preview.ApplicationProperties{
 								Environment: &r.Providers.Radius.EnvironmentID,
@@ -499,7 +499,7 @@ func (r *Runner) getApplicationsCoreEnvironment(ctx context.Context, id string) 
 // getRadiusCoreEnvironment retrieves environment using Radius Core client and returns as Applications.Core format
 func (r *Runner) getRadiusCoreEnvironment(ctx context.Context, name string) (*v20250801preview.EnvironmentResource, error) {
 	if r.RadiusCoreClientFactory == nil {
-		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return nil, err
 		}
@@ -507,7 +507,7 @@ func (r *Runner) getRadiusCoreEnvironment(ctx context.Context, name string) (*v2
 	}
 
 	environmentClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
-	env, err := environmentClient.Get(ctx, name, nil)
+	env, err := environmentClient.Get(ctx, r.Workspace.Scope, name, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -718,7 +718,7 @@ func (r *Runner) setupRecipePackForEnvironment(ctx context.Context, envResource 
 
 	// Initialize the default scope client factory so we can access default recipe packs.
 	if r.DefaultScopeClientFactory == nil {
-		defaultFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+		defaultFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
