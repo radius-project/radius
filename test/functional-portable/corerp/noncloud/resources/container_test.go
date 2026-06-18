@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -68,32 +69,30 @@ func Test_Container(t *testing.T) {
 func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
 	template := "testdata/corerp-resources-container-two-containers-dns.bicep"
 	name := "corerp-resources-container-two-containers-dns"
-	appNamespace := "corerp-resources-container-two-containers-dns"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "containerad",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 					{
 						Name: "containeraf",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					appNamespace: {
+					name: {
 						validation.NewK8sPodForResource(name, "containerad"),
 						validation.NewK8sPodForResource(name, "containeraf"),
 						validation.NewK8sServiceForResource(name, "containeraf"),
@@ -103,36 +102,39 @@ func Test_ContainerDNSSD_TwoContainersDNS(t *testing.T) {
 		},
 	})
 
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, name)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+
 	test.Test(t)
 }
 
-func Test_ContainerDNSSD_OptionalPortScheme(t *testing.T) {
-	template := "testdata/corerp-resources-container-optional-port-scheme.bicep"
-	name := "corerp-resources-container-optional-port-scheme"
-	appNamespace := "corerp-resources-container-optional-port-scheme"
+func Test_Container_PortExposure(t *testing.T) {
+	template := "testdata/corerp-resources-container-port-exposure.bicep"
+	name := "corerp-resources-container-port-exposure"
+	appNamespace := "corerp-resources-container-port-exposure"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "containerqy",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 					{
 						Name: "containerqu",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 					{
 						Name: "containerqi",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -152,26 +154,29 @@ func Test_ContainerDNSSD_OptionalPortScheme(t *testing.T) {
 		},
 	})
 
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+
 	test.Test(t)
 }
 
 func Test_ContainerReadinessLiveness(t *testing.T) {
 	template := "testdata/corerp-resources-container-liveness-readiness.bicep"
 	name := "corerp-resources-container-live-ready"
-	appNamespace := "corerp-resources-container-live-ready-app"
+	appNamespace := "corerp-resources-container-live-ready"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "ctnr-live-ready",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -186,26 +191,29 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 		},
 	})
 
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+
 	test.Test(t)
 }
 
 func Test_ContainerManualScale(t *testing.T) {
 	template := "testdata/corerp-azure-container-manualscale.bicep"
 	name := "corerp-resources-container-manualscale"
-	appNamespace := "corerp-resources-container-manualscale-app"
+	appNamespace := "corerp-resources-container-manualscale"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "ctnr-manualscale",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -217,8 +225,25 @@ func Test_ContainerManualScale(t *testing.T) {
 					},
 				},
 			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				label := fmt.Sprintf("radapp.io/application=%s", name)
+				require.Eventually(t, func() bool {
+					pods, err := test.Options.K8sClient.CoreV1().Pods(appNamespace).List(ctx, metav1.ListOptions{
+						LabelSelector: label,
+					})
+					if err != nil {
+						return false
+					}
+					return len(pods.Items) == 3
+				}, 2*time.Minute, 5*time.Second, "expected 3 replicas for manually scaled container")
+				t.Logf("validated 3 replicas for %s", name)
+			},
 		},
 	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
 
 	test.Test(t)
 }
@@ -226,20 +251,19 @@ func Test_ContainerManualScale(t *testing.T) {
 func Test_ContainerWithCommandAndArgs(t *testing.T) {
 	container := "testdata/corerp-resources-container-cmd-args.bicep"
 	name := "corerp-resources-container-cmd-args"
-	appNamespace := "corerp-resources-container-cmd-args-app"
+	appNamespace := "corerp-resources-container-cmd-args"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(container),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "ctnr-cmd-args",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -271,53 +295,65 @@ func Test_ContainerWithCommandAndArgs(t *testing.T) {
 		},
 	})
 
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(container, fmt.Sprintf("environment=%s", previewEnvID))
+
 	test.Test(t)
 }
 
 func Test_Container_FailDueToNonExistentImage(t *testing.T) {
 	template := "testdata/corerp-resources-container-nonexistent-container-image.bicep"
 	name := "corerp-resources-container-badimage"
-	appNamespace := "corerp-resources-container-badimage-app"
-
-	// We might see either of these states depending on the timing.
-	validate := step.ValidateAnyDetails("DeploymentFailed", []step.DeploymentErrorDetail{
-		{
-			Code: "ResourceDeploymentFailure",
-			Details: []step.DeploymentErrorDetail{
-				{
-					Code:            "Internal",
-					MessageContains: "ErrImagePull",
-				},
-			},
-		},
-		{
-			Code: "ResourceDeploymentFailure",
-			Details: []step.DeploymentErrorDetail{
-				{
-					Code:            "Internal",
-					MessageContains: "ImagePullBackOff",
-				},
-			},
-		},
-	})
+	appNamespace := "corerp-resources-container-badimage"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor:                               step.NewDeployErrorExecutor(template, validate, "magpieimage=non-existent-image"),
-			SkipKubernetesOutputResourceValidation: true,
-			SkipObjectValidation:                   true,
+			// The recipe-driven Radius.Compute/containers type provisions the Kubernetes
+			// Deployment successfully even when the image cannot be pulled, so the deployment
+			// itself succeeds. Skip object validation (the pod never becomes ready) and instead
+			// assert the image-pull failure in PostStepVerify.
+			SkipObjectValidation: true,
 			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{},
-			},
-			K8sObjects: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-cntr-badimage"),
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.CoreApplicationsResource,
+					},
+					{
+						Name: "ctnr-ctnr-badimage",
+						Type: validation.ComputeContainersResource,
+						App:  name,
 					},
 				},
 			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				label := fmt.Sprintf("radapp.io/application=%s", name)
+				require.Eventually(t, func() bool {
+					pods, err := test.Options.K8sClient.CoreV1().Pods(appNamespace).List(ctx, metav1.ListOptions{
+						LabelSelector: label,
+					})
+					if err != nil || len(pods.Items) == 0 {
+						return false
+					}
+					for _, pod := range pods.Items {
+						for _, cs := range pod.Status.ContainerStatuses {
+							if cs.State.Waiting != nil &&
+								(cs.State.Waiting.Reason == "ImagePullBackOff" || cs.State.Waiting.Reason == "ErrImagePull") {
+								t.Logf("validated pod %s container %s in state %s", pod.Name, cs.Name, cs.State.Waiting.Reason)
+								return true
+							}
+						}
+					}
+					return false
+				}, 2*time.Minute, 5*time.Second, "expected pod to report ImagePullBackOff or ErrImagePull")
+			},
 		},
 	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, "magpieimage=non-existent-image", fmt.Sprintf("environment=%s", previewEnvID))
 
 	test.Test(t)
 }
@@ -325,34 +361,58 @@ func Test_Container_FailDueToNonExistentImage(t *testing.T) {
 func Test_Container_FailDueToBadHealthProbe(t *testing.T) {
 	template := "testdata/corerp-resources-container-bad-healthprobe.bicep"
 	name := "corerp-resources-container-bad-healthprobe"
-	appNamespace := "corerp-resources-container-bad-healthprobe-app"
-	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
-		Code: "ResourceDeploymentFailure",
-		Details: []step.DeploymentErrorDetail{
-			{
-				Code:            "Internal",
-				MessageContains: "CrashLoopBackOff",
+	appNamespace := "corerp-resources-container-bad-healthprobe"
+
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			// The recipe-driven Radius.Compute/containers type provisions the Kubernetes
+			// Deployment successfully even when the health probes never pass, so the deployment
+			// itself succeeds. Skip object validation (the pod never becomes ready) and instead
+			// assert the failing liveness probe drives the container into CrashLoopBackOff.
+			SkipObjectValidation: true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.CoreApplicationsResource,
+					},
+					{
+						Name: "ctnr-bad-healthprobe",
+						Type: validation.ComputeContainersResource,
+						App:  name,
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				label := fmt.Sprintf("radapp.io/application=%s", name)
+				require.Eventually(t, func() bool {
+					pods, err := test.Options.K8sClient.CoreV1().Pods(appNamespace).List(ctx, metav1.ListOptions{
+						LabelSelector: label,
+					})
+					if err != nil || len(pods.Items) == 0 {
+						return false
+					}
+					for _, pod := range pods.Items {
+						for _, cs := range pod.Status.ContainerStatuses {
+							if cs.State.Waiting != nil && cs.State.Waiting.Reason == "CrashLoopBackOff" {
+								t.Logf("validated pod %s container %s in state CrashLoopBackOff", pod.Name, cs.Name)
+								return true
+							}
+							if cs.RestartCount > 0 {
+								t.Logf("validated pod %s container %s restarted %d times", pod.Name, cs.Name, cs.RestartCount)
+								return true
+							}
+						}
+					}
+					return false
+				}, 3*time.Minute, 5*time.Second, "expected container to enter CrashLoopBackOff due to failing health probe")
 			},
 		},
 	})
 
-	test := rp.NewRPTest(t, name, []rp.TestStep{
-		{
-			Executor:                               step.NewDeployErrorExecutor(template, validate, testutil.GetMagpieImage()),
-			SkipKubernetesOutputResourceValidation: true,
-			SkipObjectValidation:                   true,
-			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{},
-			},
-			K8sObjects: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					appNamespace: {
-						validation.NewK8sPodForResource(name, "ctnr-cntr-bad-healthprobe"),
-					},
-				},
-			},
-		},
-	})
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
 
 	test.Test(t)
 }
@@ -364,11 +424,23 @@ func Test_Container_Secrets(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(template, testutil.GetMagpieImage()),
-			SkipKubernetesOutputResourceValidation: true,
-			SkipObjectValidation:                   true,
 			RPResources: &validation.RPResourceSet{
-				Resources: []validation.RPResource{},
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.CoreApplicationsResource,
+					},
+					{
+						Name: "cntr-cntr-secrets",
+						Type: validation.ComputeContainersResource,
+						App:  name,
+					},
+					{
+						Name: "saltysecret",
+						Type: validation.SecuritySecretsResource,
+						App:  name,
+					},
+				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
@@ -379,6 +451,10 @@ func Test_Container_Secrets(t *testing.T) {
 			},
 		},
 	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
 
 	test.Test(t)
 }

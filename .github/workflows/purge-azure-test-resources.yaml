@@ -51,17 +51,19 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - name: Find old test resource groups
+        env:
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
         run: |
           echo "## Test resource group list" >> $GITHUB_STEP_SUMMARY
 
           # Create the file to store the resource group list
-          touch ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+          touch "${AZURE_RG_DELETE_LIST_FILE}"
 
-          az account set -s ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          az account set -s "${AZURE_SUBSCRIPTIONID_TESTS}"
           resource_groups=$(az group list --query "[].{Name:name, creationTime:tags.creationTime}" -o tsv)
 
           current_time=$(date +%s)
-          hours_ago=$((current_time - ${{ env.VALID_RESOURCE_WINDOW }}))
+          hours_ago=$((current_time - VALID_RESOURCE_WINDOW))
           while IFS=$'\t' read -r name creation_time; do
             if [[ ! "$name" =~ ^"samplestest-" ]] && [[ ! "$name" =~ ^"radtest-" ]] && [[ ! "$name" =~ ^"tfrg" ]]; then
               continue
@@ -69,14 +71,14 @@ jobs:
 
             if [ "$creation_time" = "None" ]; then
               echo " * :wastebasket: $name - old resource"  >> $GITHUB_STEP_SUMMARY
-              echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+              echo "$name" >> "${AZURE_RG_DELETE_LIST_FILE}"
               continue
             fi
 
             # Check if the resource group was created more than 6 hours ago
             if [ "$creation_time" -lt "$hours_ago" ]; then
               echo " * :wastebasket: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
-              echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+              echo "$name" >> "${AZURE_RG_DELETE_LIST_FILE}"
             else
               echo " * :white_check_mark: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
             fi
@@ -85,7 +87,7 @@ jobs:
       - name: Delete Azure resource groups
         run: |
           echo "## Deleting resource group list" >> $GITHUB_STEP_SUMMARY
-          cat ${{ env.AZURE_RG_DELETE_LIST_FILE}} | while read line
+          cat "${AZURE_RG_DELETE_LIST_FILE}" | while read line
           do
               echo " * $line" >> $GITHUB_STEP_SUMMARY
               az group delete --resource-group $line --yes --verbose --no-wait
@@ -126,12 +128,13 @@ jobs:
     needs: [purge_azure_resources, purge_bicep_types]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    permissions: {}
+    permissions:
+      issues: write # Required to create an issue when the scheduled run fails
     if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
     steps:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github-token: ${{ github.token }}
           script: |
             github.rest.issues.create({
               ...context.repo,

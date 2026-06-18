@@ -527,6 +527,70 @@ tests:
           value: alpine:3.23.4
         template: dynamic-rp/deployment.yaml
 
+  - it: should render append-root-ca init container on dynamic-rp when cert is set and both terraform and buildkit are disabled
+    set:
+      dynamicrp.image: dynamic-rp
+      rp.image: applications-rp
+      global.terraform.enabled: false
+      dynamicrp.buildkit.enabled: false
+      global.appendRootCA.cert: |
+        -----BEGIN CERT-----
+        FAKECERTDATA
+        -----END CERT-----
+    asserts:
+      # initContainers MUST be emitted even though terraform and buildkit
+      # are both off, because the dynamic-rp container mounts ssl-certs
+      # whenever appendRootCA.cert is set. Without this init container,
+      # the runtime mounts an empty emptyDir over /etc/ssl/certs and TLS
+      # breaks. Regression test for the latent bug where append-root-ca
+      # was gated on global.terraform.enabled.
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: append-root-ca
+        template: dynamic-rp/deployment.yaml
+      - lengthEqual:
+          path: spec.template.spec.initContainers
+          count: 1
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: ssl-certs
+            mountPath: /etc/ssl/certs
+            readOnly: true
+        template: dynamic-rp/deployment.yaml
+
+  - it: should render append-root-ca before buildkit init containers when both are enabled and terraform is disabled
+    set:
+      dynamicrp.image: dynamic-rp
+      rp.image: applications-rp
+      global.terraform.enabled: false
+      dynamicrp.buildkit.enabled: true
+      global.appendRootCA.cert: |
+        -----BEGIN CERT-----
+        FAKECERTDATA
+        -----END CERT-----
+    asserts:
+      # append-root-ca must run before the BuildKit init containers so the
+      # ssl-certs emptyDir is populated before any container that consumes
+      # the trust store (including buildctl, which talks to registries).
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: append-root-ca
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[1].name
+          value: buildkit-volumes-init
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[2].name
+          value: buildctl-init
+        template: dynamic-rp/deployment.yaml
+      - lengthEqual:
+          path: spec.template.spec.initContainers
+          count: 3
+        template: dynamic-rp/deployment.yaml
+
   - it: should allow overriding the terraform init image
     set:
       dynamicrp.image: dynamic-rp
@@ -1443,3 +1507,69 @@ tests:
       # - If secret missing: generates new versioned key store (version 1)
       # This ensures upgrades never accidentally replace the key store
       # CronJob handles automatic rotation, not Helm upgrades
+
+  # ─────────────────────────────────────────────────────────────────
+  # BuildKit sidecar shape: when opted in via dynamicrp.buildkit.enabled,
+  # the dynamic-rp Pod gains a buildctl-init init container, a buildkitd
+  # container, and the dynamic-rp container has BUILDKIT_HOST wired to
+  # loopback TCP. By default (opt-out) the sidecar is absent.
+  - it: should provision buildkit sidecar when opted in
+    set:
+      dynamicrp.image: dynamic-rp
+      rp.image: applications-rp
+      dynamicrp.buildkit.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: buildctl-init
+          any: true
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers
+          content:
+            name: buildkitd
+          any: true
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: BUILDKIT_HOST
+            value: tcp://127.0.0.1:1234
+        template: dynamic-rp/deployment.yaml
+
+  - it: should omit buildkit sidecar by default
+    set:
+      dynamicrp.image: dynamic-rp
+      rp.image: applications-rp
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers
+          content:
+            name: buildkitd
+          any: true
+        template: dynamic-rp/deployment.yaml
+
+  # Regression: buildctl-init must still be rendered when global
+  # terraform pre-download is disabled but buildkit is enabled.
+  # Otherwise the dynamic-rp container has BUILDKIT_HOST wired but
+  # no buildctl on PATH, and recipes silently fail.
+  - it: should render buildctl-init when terraform is disabled but buildkit is enabled
+    set:
+      dynamicrp.image: dynamic-rp
+      rp.image: applications-rp
+      global.terraform.enabled: false
+      dynamicrp.buildkit.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: buildctl-init
+          any: true
+        template: dynamic-rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.initContainers
+          content:
+            name: terraform-init
+          any: true
+        template: dynamic-rp/deployment.yaml

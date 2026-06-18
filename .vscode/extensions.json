@@ -1,7 +1,8 @@
 {
-  "recommendations": [
-    "ms-azuretools.vscode-bicep",
-    "golang.go",
-    "GitHub.vscode-pull-request-github"
-  ]
+    "recommendations": [
+        "ms-azuretools.vscode-bicep",
+        "golang.go",
+        "GitHub.vscode-pull-request-github",
+        "DavidAnson.vscode-markdownlint"
+    ]
 }
