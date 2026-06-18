@@ -1,5 +1,5 @@
 ---
-name: markdown-lint
+name: radius-markdown-lint
 description: 'Lint and format Markdown files using markdownlint-cli2 and markdown-table-formatter. Use when checking or fixing Markdown formatting, table alignment, or markdownlint rule violations after editing .md files.'
 argument-hint: 'Optional: the path(s) or glob of Markdown files to lint — or leave blank to lint files you changed'
 user-invocable: true

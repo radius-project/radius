@@ -217,9 +217,28 @@ type Interface interface {
 type Impl struct {
 	// HelmClient is the Helm client used to interact with the Kubernetes cluster.
 	Helm HelmClient
+
+	configureDefaultContourGateway func(ctx context.Context, kubeContext string) error
+	removeDefaultContourGateway    func(ctx context.Context, kubeContext string) error
 }
 
 var _ Interface = &Impl{}
+
+func (i *Impl) configureContourGateway(ctx context.Context, kubeContext string) error {
+	configure := i.configureDefaultContourGateway
+	if configure == nil {
+		configure = ensureDefaultContourGateway
+	}
+	return configure(ctx, kubeContext)
+}
+
+func (i *Impl) removeContourGateway(ctx context.Context, kubeContext string) error {
+	remove := i.removeDefaultContourGateway
+	if remove == nil {
+		remove = deleteDefaultContourGateway
+	}
+	return remove(ctx, kubeContext)
+}
 
 // InstallRadius installs Radius and its dependencies (Contour) on the cluster using the provided options.
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) error {
@@ -258,6 +277,11 @@ func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to apply Contour Helm chart, err: %w", err)
 	}
 
+	output.LogInfo("Configuring Radius Contour Gateway...")
+	if err := i.configureContourGateway(ctx, kubeContext); err != nil {
+		return fmt.Errorf("failed to configure Radius Contour Gateway, err: %w", err)
+	}
+
 	return nil
 }
 
@@ -268,8 +292,13 @@ func (i *Impl) UninstallRadius(ctx context.Context, clusterOptions ClusterOption
 		return err
 	}
 
+	output.LogInfo("Deleting Radius Contour Gateway...")
+	if err := i.removeContourGateway(ctx, kubeContext); err != nil {
+		return fmt.Errorf("failed to delete Radius Contour Gateway, err: %w", err)
+	}
+
 	// Uninstall Contour
-	if err := i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Radius.Namespace, kubeContext); err != nil {
+	if err := i.uninstallHelmRelease("Contour", contourReleaseName, clusterOptions.Contour.Namespace, kubeContext); err != nil {
 		return err
 	}
 
@@ -395,6 +424,11 @@ func (i *Impl) UpgradeRadius(ctx context.Context, clusterOptions ClusterOptions,
 		return fmt.Errorf("failed to upgrade Contour, err: %w", err)
 	}
 	output.LogInfo("Contour upgrade complete")
+
+	output.LogInfo("Configuring Radius Contour Gateway...")
+	if err := i.configureContourGateway(ctx, kubeContext); err != nil {
+		return fmt.Errorf("failed to configure Radius Contour Gateway, err: %w", err)
+	}
 
 	return nil
 }
