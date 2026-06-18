@@ -76,7 +76,17 @@
     "name": "httpgw",
     "outputResources": [],
     "properties": {
-      "application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp"
+      "application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
+      "routes": [
+        {
+          "path": "/",
+          "destination": "http://frontend:8080"
+        },
+        {
+          "path": "/backendapi",
+          "destination": "http://backendapp:8080"
+        }
+      ]
     },
     "provisioningState": "Succeeded",
     "type": "Applications.Core/gateways"
