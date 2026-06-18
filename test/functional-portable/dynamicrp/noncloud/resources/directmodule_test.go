@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -67,7 +68,7 @@ func Test_DirectModule_Terraform(t *testing.T) {
 						Name: appNamespace,
 					},
 				}, metav1.CreateOptions{})
-				if err != nil && !strings.Contains(err.Error(), "already exists") {
+				if err != nil && !apierrors.IsAlreadyExists(err) {
 					require.NoError(t, err)
 				}
 			}),
@@ -135,15 +136,19 @@ func Test_DirectModule_Terraform(t *testing.T) {
 				for _, deploy := range deployments.Items {
 					t.Logf("  Deployment: %s", deploy.Name)
 				}
-
-				// Clean up the namespace after verification.
-				err = test.Options.K8sClient.CoreV1().Namespaces().Delete(ctx, appNamespace, metav1.DeleteOptions{})
-				if err != nil {
-					t.Logf("Warning: Failed to delete namespace %s: %v", appNamespace, err)
-				}
 			},
 		},
 	})
+
+	// Delete the namespace created in the first step. This runs in the test-level
+	// PostDeleteVerify, which executes after the RP cleanup phase (Terraform destroy), so the
+	// namespace is not torn down while an in-flight destroy still needs it.
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+		err := ct.Options.K8sClient.CoreV1().Namespaces().Delete(ctx, appNamespace, metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			t.Logf("Warning: Failed to delete namespace %s: %v", appNamespace, err)
+		}
+	}
 
 	test.Test(t)
 }

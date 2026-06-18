@@ -408,6 +408,13 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		if err = tfConfig.AddMappedOutputs(options.EnvRecipe.Name, options.EnvRecipe.Outputs, loadedModule.OutputSensitivity); err != nil {
 			return "", err
 		}
+	} else {
+		// Direct module without a mapping: re-export every module output so they are present in
+		// the Terraform state and pass through unchanged (mirrors prepareRecipeResponse). Terraform
+		// does not expose child module outputs as root outputs unless they are re-declared here.
+		if err = tfConfig.AddAllOutputs(options.EnvRecipe.Name, loadedModule.OutputSensitivity); err != nil {
+			return "", err
+		}
 	}
 
 	// Add more configurations here.

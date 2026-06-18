@@ -777,6 +777,65 @@ func Test_AddMappedOutputs(t *testing.T) {
 	}
 }
 
+func Test_AddAllOutputs(t *testing.T) {
+	envRecipe, resourceRecipe := getTestInputs()
+
+	tests := []struct {
+		desc           string
+		moduleName     string
+		sensitivity    map[string]bool
+		expectedOutput map[string]any
+		expectedErr    bool
+	}{
+		{
+			desc:       "re-exports every module output preserving sensitivity",
+			moduleName: testRecipeName,
+			sensitivity: map[string]bool{
+				"endpoint": false,
+				"secret":   true,
+			},
+			expectedOutput: map[string]any{
+				"endpoint": map[string]any{
+					"value":     "${module." + testRecipeName + ".endpoint}",
+					"sensitive": false,
+				},
+				"secret": map[string]any{
+					"value":     "${module." + testRecipeName + ".secret}",
+					"sensitive": true,
+				},
+			},
+		},
+		{
+			desc:           "no module outputs is a no-op",
+			moduleName:     testRecipeName,
+			sensitivity:    map[string]bool{},
+			expectedOutput: nil,
+		},
+		{
+			desc:        "empty module name returns error",
+			moduleName:  "",
+			sensitivity: map[string]bool{"endpoint": false},
+			expectedErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe)
+			require.NoError(t, err)
+
+			err = tfconfig.AddAllOutputs(tc.moduleName, tc.sensitivity)
+			if tc.expectedErr {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedOutput, tfconfig.Output)
+		})
+	}
+}
+
 func Test_updateModuleWithProviderAliases(t *testing.T) {
 	tests := []struct {
 		name               string

@@ -18,7 +18,8 @@ package util
 
 // ApplyOutputsMapping maps module output names to resource property names using the provided outputs map.
 // Keys in outputsMap are resource property names, values are module output names.
-// When outputsMap is nil or empty, all values and secrets pass through unchanged.
+// When outputsMap is nil or empty, the original values and secrets are returned (nil maps are
+// normalized to empty maps so callers always receive non-nil maps).
 func ApplyOutputsMapping(values map[string]any, secrets map[string]any, outputsMap map[string]string) (map[string]any, map[string]any) {
 	if len(outputsMap) == 0 {
 		if values == nil {
