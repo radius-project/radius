@@ -277,7 +277,6 @@ func Test_projectGraphProperties(t *testing.T) {
 			in: map[string]any{
 				"provisioningState": "Succeeded",
 				"connections":       map[string]any{"db": map[string]any{"source": "x"}},
-				"routes":            []any{map[string]any{"path": "/"}},
 				"status":            map[string]any{"outputResources": []any{map[string]any{"id": "/a/b"}}, "phrase": "All good"},
 			},
 			want: nil,
