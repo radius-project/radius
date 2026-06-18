@@ -296,6 +296,25 @@ func Test_projectGraphProperties(t *testing.T) {
 				"image":       "magpie:latest",
 			},
 		},
+		{
+			name: "preserves routes alongside other fields",
+			in: map[string]any{
+				"provisioningState": "Succeeded",
+				"connections":       map[string]any{"db": map[string]any{"source": "x"}},
+				"routes": []any{map[string]any{
+					"path":        "/api",
+					"destination": "http://backend:8080",
+				}},
+				"hostname": "example.com",
+			},
+			want: map[string]any{
+				"routes": []any{map[string]any{
+					"path":        "/api",
+					"destination": "http://backend:8080",
+				}},
+				"hostname": "example.com",
+			},
+		},
 	}
 
 	for _, tt := range tests {

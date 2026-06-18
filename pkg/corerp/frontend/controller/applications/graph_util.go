@@ -453,14 +453,13 @@ func applicationGraphResourceFromID(id string) *corerpv20231001preview.Applicati
 var existingKeys = map[string]struct{}{
 	"provisioningState": {},
 	"connections":       {},
-	"routes":            {},
 	"status":            {},
 }
 
 // getResourceTypeSpecificProperties returns a deduplicated copy of a resource's properties
 // suitable for inclusion in ApplicationGraphResource.Properties. It drops top-level keys
 // already represented as first-class fields on the graph resource (provisioningState,
-// connections, routes, status) and returns nil when the projected map would be empty so
+// connections, status) and returns nil when the projected map would be empty so
 // callers can leave the optional Properties field unset.
 func getResourceTypeSpecificProperties(properties map[string]any) map[string]any {
 	if len(properties) == 0 {
