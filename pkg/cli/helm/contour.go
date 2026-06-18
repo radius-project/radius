@@ -73,10 +73,11 @@ func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kub
 }
 
 // buildContourValues builds a fresh user-values map for the Contour Helm chart based on
-// the supplied ContourChartOptions. When HostNetwork is enabled, it returns overrides to
-// enable host networking on the Envoy pod and remaps the LoadBalancer service ports to
-// 8080/8443 so they don't conflict with Envoy. The returned map contains ONLY the
-// overrides; it does not mutate the chart's default values.
+// the supplied ContourChartOptions. It always sets the gateway configuration and Gateway API
+// CRD management. When HostNetwork is enabled, it also returns overrides to enable host
+// networking on the Envoy pod and remaps the LoadBalancer service ports to 8080/8443 so
+// they don't conflict with Envoy. The returned map contains ONLY the overrides; it does
+// not mutate the chart's default values.
 //
 // References:
 //
@@ -84,6 +85,21 @@ func prepareContourChart(helmAction HelmAction, options ContourChartOptions, kub
 //	https://github.com/projectcontour/helm-charts/blob/81304159bb794a6d5ec874d1f29c696f63cff6ad/charts/contour/values.yaml#L962
 func buildContourValues(options ContourChartOptions) (map[string]any, error) {
 	values := map[string]any{}
+
+	// Configure gateway reference for the default Contour gateway.
+	values["configInline"] = map[string]any{
+		"gateway": map[string]any{
+			"gatewayRef": map[string]any{
+				"name":      DefaultContourGatewayName,
+				"namespace": DefaultContourGatewayNamespace,
+			},
+		},
+	}
+
+	// Enable Gateway API CRD management.
+	values["gatewayAPI"] = map[string]any{
+		"manageCRDs": true,
+	}
 
 	if options.HostNetwork {
 		values["envoy"] = map[string]any{
@@ -103,68 +119,6 @@ func buildContourValues(options ContourChartOptions) (map[string]any, error) {
 					"https": 8443,
 				},
 			},
-// addContourValues adds values to the helm chart to enable host networking for the Envoy pod, and sets the default
-// LoadBalancer service ports to 8080 and 8443 so that they don't conflict with Envoy while using Host Networking. It
-// returns an error if any of the nodes in the chart values are not found.
-func addContourValues(helmChart *chart.Chart, options ContourChartOptions) error {
-	if helmChart.Values == nil {
-		helmChart.Values = map[string]any{}
-	}
-
-	configInlineNode, ok := helmChart.Values["configInline"].(map[string]any)
-	if !ok || configInlineNode == nil {
-		configInlineNode = map[string]any{}
-		helmChart.Values["configInline"] = configInlineNode
-	}
-
-	gatewayNode, ok := configInlineNode["gateway"].(map[string]any)
-	if !ok || gatewayNode == nil {
-		gatewayNode = map[string]any{}
-		configInlineNode["gateway"] = gatewayNode
-	}
-
-	gatewayNode["gatewayRef"] = map[string]any{
-		"name":      DefaultContourGatewayName,
-		"namespace": DefaultContourGatewayNamespace,
-	}
-
-	gatewayAPINode, ok := helmChart.Values["gatewayAPI"].(map[string]any)
-	if !ok || gatewayAPINode == nil {
-		gatewayAPINode = map[string]any{}
-		helmChart.Values["gatewayAPI"] = gatewayAPINode
-	}
-
-	gatewayAPINode["manageCRDs"] = true
-
-	if options.HostNetwork {
-		// https://projectcontour.io/docs/main/deploy-options/#host-networking
-		// https://github.com/projectcontour/helm-charts/blob/81304159bb794a6d5ec874d1f29c696f63cff6ad/charts/contour/values.yaml#L962
-		envoyNode, ok := helmChart.Values["envoy"].(map[string]any)
-		if !ok || envoyNode == nil {
-			return fmt.Errorf("envoy node not found in chart values")
-		}
-
-		envoyNode["hostNetwork"] = true
-		envoyNode["dnsPolicy"] = "ClusterFirstWithHostNet"
-
-		containerPortsNode, ok := envoyNode["containerPorts"].(map[string]any)
-		if !ok || containerPortsNode == nil {
-			return fmt.Errorf("envoy.containerPorts node not found in chart values")
-		}
-
-		// Sets the container ports for the Envoy pod. These need to be set to 80 and
-		// 443 to allow Envoy to access the host network.
-		containerPortsNode["http"] = 80
-		containerPortsNode["https"] = 443
-
-		serviceNode, ok := envoyNode["service"].(map[string]any)
-		if !ok || serviceNode == nil {
-			return fmt.Errorf("envoy.service node not found in chart values")
-		}
-
-		servicePortsNode, ok := serviceNode["ports"].(map[string]any)
-		if !ok || servicePortsNode == nil {
-			return fmt.Errorf("envoy.service.ports node not found in chart values")
 		}
 	}
 

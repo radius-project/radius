@@ -18,7 +18,6 @@ package helm
 
 import (
 	"errors"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -28,91 +27,41 @@ import (
 )
 
 func TestBuildContourValues_HostNetworkEnabled(t *testing.T) {
-	"github.com/stretchr/testify/require"
-	"helm.sh/helm/v3/pkg/chart"
-)
-
-func TestAddContourValues_HostNetworkEnabled(t *testing.T) {
-	// Arrange
-	chartVals := map[string]any{
-		"envoy": map[string]any{
-			"hostNetwork":    false,
-			"dnsPolicy":      "",
-			"containerPorts": map[string]any{},
-			"service": map[string]any{
-				"ports": map[string]any{},
-			},
-		},
-		"configInline": map[string]any{},
-		"gatewayAPI":   map[string]any{},
-	}
-	testChart := &chart.Chart{Values: chartVals}
-	opts := ContourChartOptions{HostNetwork: true}
-
 	// Act
 	values, err := buildContourValues(ContourChartOptions{HostNetwork: true})
-	if err != nil {
-		t.Fatalf("buildContourValues returned error: %v", err)
-	}
+	require.NoError(t, err)
 
-	// Assert
-	envoy := requireMap(t, testChart.Values, "envoy")
-
-	if hostNetwork := envoy["hostNetwork"]; hostNetwork != true {
-		t.Errorf("expected hostNetwork=true, got %v", hostNetwork)
-	}
-	if dnsPolicy := envoy["dnsPolicy"]; dnsPolicy != "ClusterFirstWithHostNet" {
-		t.Errorf("expected dnsPolicy=ClusterFirstWithHostNet, got %v", dnsPolicy)
-	}
+	// Assert - envoy host network overrides
+	envoy := requireMap(t, values, "envoy")
+	assert.Equal(t, true, envoy["hostNetwork"])
+	assert.Equal(t, "ClusterFirstWithHostNet", envoy["dnsPolicy"])
 
 	containerPorts := requireMap(t, envoy, "containerPorts")
-	wantContainer := map[string]any{"http": 80, "https": 443}
-	if !reflect.DeepEqual(containerPorts, wantContainer) {
-		t.Errorf("containerPorts mismatch.\nexpected: %v\ngot:      %v", wantContainer, containerPorts)
-	}
+	assert.Equal(t, 80, containerPorts["http"])
+	assert.Equal(t, 443, containerPorts["https"])
 
 	service := requireMap(t, envoy, "service")
 	servicePorts := requireMap(t, service, "ports")
-	wantService := map[string]any{"http": 8080, "https": 8443}
-	if !reflect.DeepEqual(servicePorts, wantService) {
-		t.Errorf("service ports mismatch.\nexpected: %v\ngot:      %v", wantService, servicePorts)
-	}
+	assert.Equal(t, 8080, servicePorts["http"])
+	assert.Equal(t, 8443, servicePorts["https"])
 
-	assertDefaultGatewayRef(t, testChart.Values)
-	assertGatewayAPIManageCRDs(t, testChart.Values)
+	// Assert - gateway config is always set
+	assertDefaultGatewayRef(t, values)
+	assertGatewayAPIManageCRDs(t, values)
 }
 
-func TestBuildContourValues_HostNetworkDisabled_ReturnsEmpty(t *testing.T) {
+func TestBuildContourValues_HostNetworkDisabled(t *testing.T) {
 	// Act
 	values, err := buildContourValues(ContourChartOptions{HostNetwork: false})
-	if err != nil {
-		t.Fatalf("buildContourValues returned error: %v", err)
-	}
-func TestAddContourValues_HostNetworkDisabled_ConfiguresDefaultGatewayRef(t *testing.T) {
-	// Arrange
-	original := map[string]any{
-		"envoy": map[string]any{
-			"containerPorts": map[string]any{"http": 3000, "https": 3443},
-			"service": map[string]any{
-				"ports": map[string]any{"http": 3000, "https": 3443},
-			},
-		},
-		"configInline": map[string]any{},
-		"gatewayAPI":   map[string]any{},
-	}
-	testChart := &chart.Chart{Values: cloneMap(original)}
-	expectedEnvoy := map[string]any{
-		"containerPorts": map[string]any{"http": 3000, "https": 3443},
-		"service": map[string]any{
-			"ports": map[string]any{"http": 3000, "https": 3443},
-		},
-	}
-	opts := ContourChartOptions{HostNetwork: false}
+	require.NoError(t, err)
 
-	// Assert – no overrides should be returned so the chart's defaults are used as-is.
-	if len(values) != 0 {
-		t.Errorf("expected empty values map when HostNetwork is false, got: %v", values)
-	}
+	// Assert - no envoy overrides
+	_, hasEnvoy := values["envoy"]
+	assert.False(t, hasEnvoy, "expected no envoy key when HostNetwork is false")
+
+	// Assert - gateway config is always set
+	assertDefaultGatewayRef(t, values)
+	assertGatewayAPIManageCRDs(t, values)
 }
 
 func Test_prepareContourChart_LoadChartError(t *testing.T) {
@@ -133,63 +82,6 @@ func Test_prepareContourChart_LoadChartError(t *testing.T) {
 	_, _, _, err := prepareContourChart(helmAction, options, "")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load Helm chart")
-	// Assert - host network chart values should be unchanged.
-	if !reflect.DeepEqual(testChart.Values["envoy"], expectedEnvoy) {
-		t.Errorf("expected envoy chart values to remain unchanged when HostNetwork is false")
-	}
-
-	assertDefaultGatewayRef(t, testChart.Values)
-	assertGatewayAPIManageCRDs(t, testChart.Values)
-}
-
-func TestAddContourValues_MergesGatewayConfig(t *testing.T) {
-	// Arrange
-	testChart := &chart.Chart{
-		Values: map[string]any{
-			"envoy": map[string]any{
-				"containerPorts": map[string]any{},
-				"service": map[string]any{
-					"ports": map[string]any{},
-				},
-			},
-			"configInline": map[string]any{
-				"gateway": map[string]any{
-					"controllerName": "projectcontour.io/gateway-controller",
-				},
-			},
-			"gatewayAPI": map[string]any{},
-		},
-	}
-	opts := ContourChartOptions{HostNetwork: false}
-
-	// Act
-	err := addContourValues(testChart, opts)
-
-	// Assert
-	require.NoError(t, err)
-	configInline := requireMap(t, testChart.Values, "configInline")
-	gateway := requireMap(t, configInline, "gateway")
-	require.Equal(t, "projectcontour.io/gateway-controller", gateway["controllerName"])
-	assertDefaultGatewayRef(t, testChart.Values)
-	assertGatewayAPIManageCRDs(t, testChart.Values)
-}
-
-func TestAddContourValues_HostNetworkEnabled_ReturnsErrorForInvalidEnvoyNode(t *testing.T) {
-	// Arrange
-	testChart := &chart.Chart{
-		Values: map[string]any{
-			"envoy":        "invalid",
-			"configInline": map[string]any{},
-			"gatewayAPI":   map[string]any{},
-		},
-	}
-	opts := ContourChartOptions{HostNetwork: true}
-
-	// Act
-	err := addContourValues(testChart, opts)
-
-	// Assert
-	require.ErrorContains(t, err, "envoy node not found in chart values")
 }
 
 func Test_prepareContourChart_DoesNotMutateChartValues(t *testing.T) {
@@ -222,6 +114,10 @@ func Test_prepareContourChart_DoesNotMutateChartValues(t *testing.T) {
 	envoy, ok := values["envoy"].(map[string]any)
 	require.True(t, ok)
 	assert.Equal(t, true, envoy["hostNetwork"])
+
+	// Verify that user values contain gateway config
+	assertDefaultGatewayRef(t, values)
+	assertGatewayAPIManageCRDs(t, values)
 
 	// Verify that helmChart.Values remains unchanged
 	chartEnvoy, ok := helmChart.Values["envoy"].(map[string]any)
