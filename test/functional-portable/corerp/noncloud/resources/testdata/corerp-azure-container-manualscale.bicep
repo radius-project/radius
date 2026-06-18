@@ -1,4 +1,3 @@
-
 extension radius
 
 @description('Specifies the location for resources.')
@@ -13,26 +12,23 @@ param port int = 3000
 @description('Specifies the environment for resources.')
 param environment string
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'corerp-resources-container-manualscale'
   location: location
   properties: {
     environment: environment
-    extensions: [
-      {
-          kind: 'kubernetesNamespace'
-          namespace: 'corerp-resources-container-manualscale-app'
-      }
-    ]
   }
 }
 
-resource container 'Applications.Core/containers@2023-10-01-preview' = {
+resource container 'Radius.Compute/containers@2025-08-01-preview' = {
   name: 'ctnr-manualscale'
   location: location
   properties: {
-      application: app.id
-      container: {
+    application: app.id
+    environment: environment
+    replicas: 3
+    containers: {
+      ctnrmanualscale: {
         image: magpieimage
         ports: {
           web: {
@@ -40,11 +36,6 @@ resource container 'Applications.Core/containers@2023-10-01-preview' = {
           }
         }
       }
-      extensions: [
-        {
-         kind: 'manualScaling'
-         replicas:3 
-        }   
-      ]
     }
   }
+}

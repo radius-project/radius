@@ -1,0 +1,243 @@
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+# This workflow provisions the development environment for the GitHub Copilot
+# coding agent (Cloud Agent). It is a self-contained, full setup: it installs
+# every language runtime and tool the agent needs to build, generate, lint, and
+# test Radius without relying on the dev container or its post-create script.
+#
+# The steps below intentionally mirror the tooling installed by the contributor
+# dev container (.devcontainer/) and by the CI workflows (build.yaml and
+# functional-test-noncloud.yaml). Language and tool versions are read from the
+# repo's version files (go.mod, .node-version, .python-version,
+# .golangci-lint-version, .terraform-version) so a version bump flows here
+# automatically; other tool versions are pinned inline in each step below to
+# match the CI workflows. Versions are NOT declared in a workflow-level `env:`
+# block because the Copilot coding agent replays these steps in a harness that
+# does not provide that context.
+name: copilot-setup-steps
+
+on:
+  workflow_dispatch:
+  # Run on changes to the setup so it can be validated before the agent uses it.
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+      - .node-version
+      - .python-version
+      - .golangci-lint-version
+      - .terraform-version
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+      - .node-version
+      - .python-version
+      - .golangci-lint-version
+      - .terraform-version
+
+permissions: {}
+
+# NOTE: Tool versions are pinned inline in each step below rather than in a
+# workflow-level `env:` block. When the Copilot coding agent provisions its
+# environment, it only honors a fixed allow-list of `copilot-setup-steps` job
+# settings (`steps`, `permissions`, `runs-on`, `services`, `snapshot`,
+# `timeout-minutes`); anything else -- including a job/workflow-level `env:`
+# block -- is ignored. As a result `${{ env.X }}` and env vars inherited from
+# such a block resolve to empty when the agent runs these steps.
+# See: https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment
+# Versions read from repo version files (go.mod, .node-version, .python-version,
+# .golangci-lint-version, .terraform-version) still work because the steps read
+# the files directly.
+
+jobs:
+  # The job MUST be named `copilot-setup-steps` for the Copilot coding agent to
+  # discover and run it. See
+  # https://docs.github.com/en/copilot/how-tos/use-copilot-agents/cloud-agent/customize-the-agent-environment
+  copilot-setup-steps:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      # Required so the setup steps can check out the repository.
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          persist-credentials: false
+
+      - name: Configure git safe directory
+        run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+
+      - name: Setup Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .node-version
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version-file: .python-version
+
+      - name: Setup Helm
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+        with:
+          version: v3.19.4
+
+      - name: Install kubectl
+        run: |
+          KUBECTL_VER="v1.30.0"
+          KUBECTL_LINUX_AMD64_SHA256="7c3807c0f5c1b30110a2ff1e55da1d112a6d0096201f1beb81b269f582b5d1c5"
+          curl -fsSLo ./kubectl "https://dl.k8s.io/release/${KUBECTL_VER}/bin/linux/amd64/kubectl"
+          echo "${KUBECTL_LINUX_AMD64_SHA256}  ./kubectl" | sha256sum -c -
+          chmod +x ./kubectl
+          sudo mv ./kubectl /usr/local/bin/kubectl
+          kubectl version --client
+
+      - name: Install pnpm and TypeSpec tooling
+        # `make generate-tsp-installed` enables corepack with the pinned pnpm
+        # version and installs the TypeSpec toolchain in the typespec/ workspace,
+        # warming the cache for the TypeSpec -> OpenAPI -> Go generation pipeline.
+        run: make generate-tsp-installed
+
+      - name: Configure pnpm global bin directory
+        # pnpm requires its global bin directory to exist and be on PATH before
+        # installing global packages. Pin the bin dir to PNPM_HOME (otherwise it
+        # defaults to ${PNPM_HOME}/bin, which would not be on PATH) and persist
+        # both via GITHUB_ENV and GITHUB_PATH so subsequent steps inherit them.
+        run: |
+          PNPM_HOME="${RUNNER_TEMP}/pnpm"
+          mkdir -p "${PNPM_HOME}"
+          pnpm config set global-bin-dir "${PNPM_HOME}"
+          echo "PNPM_HOME=${PNPM_HOME}" >> "${GITHUB_ENV}"
+          echo "${PNPM_HOME}" >> "${GITHUB_PATH}"
+
+      - name: Install cspell
+        # Spell-check tooling used by `make spellcheck`, which requires `cspell`
+        # on PATH (provided by the pnpm global bin directory configured above).
+        run: |
+          pnpm add -g cspell
+          cspell --version
+
+      - name: Install golangci-lint
+        # Version is read from .golangci-lint-version, the source of truth shared
+        # with the dev container and CI.
+        run: |
+          GOLANGCI_LINT_VERSION="$(tr -d '\r\n[:space:]' < .golangci-lint-version)"
+          if [[ -z "${GOLANGCI_LINT_VERSION}" ]]; then
+            echo "Error: .golangci-lint-version is empty" >&2
+            exit 1
+          fi
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
+            | sh -s -- -b "$(go env GOPATH)/bin" "${GOLANGCI_LINT_VERSION}"
+
+      - name: Install Go tools
+        # controller-gen and mockgen are used by `make generate`; gotestsum is
+        # used by `make test` to produce test reports; dlv (Delve) is used by the
+        # process-debugging workflow (make debug-*).
+        run: |
+          GOTESTSUM_VER="1.13.0"
+          DLV_VER="v1.26.3"
+          go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
+          go install "github.com/go-delve/delve/cmd/dlv@${DLV_VER}"
+
+      - name: Install yq
+        # Required by Bicep type generation to parse YAML defaults.
+        run: |
+          YQ_VERSION="v4.44.3"
+          YQ_LINUX_AMD64_SHA256="a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7"
+          mkdir -p "${RUNNER_TEMP}/bin"
+          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
+          echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
+          chmod +x "${RUNNER_TEMP}/bin/yq"
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+
+      - name: Install KinD
+        # Lets the agent create a local Kubernetes cluster for integration and
+        # functional tests.
+        run: |
+          KIND_VER="v0.29.0"
+          curl -fsSLo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VER}/kind-linux-amd64"
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+          kind --version
+
+      - name: Install k3d
+        # Used by the local debug environment (make debug-start) to create a
+        # lightweight Kubernetes cluster.
+        run: |
+          K3D_VER="v5.6.0"
+          curl -fsSL https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG="${K3D_VER}" bash
+          k3d version
+
+      - name: Install stern
+        # Multi-pod log tailing for debugging Kubernetes output across the
+        # radius-system components.
+        run: |
+          STERN_VER="1.32.0"
+          curl -fsSLo "${RUNNER_TEMP}/stern.tar.gz" "https://github.com/stern/stern/releases/download/v${STERN_VER}/stern_${STERN_VER}_linux_amd64.tar.gz"
+          tar -xzf "${RUNNER_TEMP}/stern.tar.gz" -C "${RUNNER_TEMP}" stern
+          chmod +x "${RUNNER_TEMP}/stern"
+          sudo mv "${RUNNER_TEMP}/stern" /usr/local/bin/stern
+          stern --version
+
+      - name: Install Dapr CLI
+        run: |
+          DAPR_CLI_VER="1.15.1"
+          wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - \
+            | /bin/bash -s "${DAPR_CLI_VER}"
+          dapr --version
+
+      - name: Install Terraform
+        # Version is read from .terraform-version, the source of truth also
+        # compiled into the rad binary and used by the recipe engine.
+        run: |
+          TERRAFORM_VERSION="$(tr -d '\r\n[:space:]' < .terraform-version)"
+          if [[ -z "${TERRAFORM_VERSION}" ]]; then
+            echo "Error: .terraform-version is empty" >&2
+            exit 1
+          fi
+          curl -fsSLo "${RUNNER_TEMP}/terraform.zip" "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          unzip -o "${RUNNER_TEMP}/terraform.zip" -d "${RUNNER_TEMP}/terraform-bin"
+          sudo mv "${RUNNER_TEMP}/terraform-bin/terraform" /usr/local/bin/terraform
+          terraform version
+
+      - name: Install Bicep CLI
+        # Required by Bicep type publishing (make publish-bicep-extension) and
+        # rad bicep flows. Pinned to v0.42.1: v0.40+ rejects br:localhost
+        # registries used by the local functional tests.
+        run: |
+          BICEP_VER="v0.42.1"
+          curl -fsSLo ./bicep "https://github.com/Azure/bicep/releases/download/${BICEP_VER}/bicep-linux-x64"
+          chmod +x ./bicep
+          sudo mv ./bicep /usr/local/bin/bicep
+          bicep --version
+
+      - name: Install PostgreSQL client
+        # psql is used by the debug environment to verify control-plane database
+        # connectivity.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client
+          psql --version

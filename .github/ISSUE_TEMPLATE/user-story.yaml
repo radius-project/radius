@@ -1,0 +1,91 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-issue-forms.json
+---
+name: User Story
+description: Define a user story for Radius
+title: "<USER STORY TITLE>"
+labels: [user-story]
+body:
+  - type: textarea
+    attributes:
+      label: User Story
+      description: |
+        User story in the standard format.
+      placeholder: |
+        **As a** [persona], **I can** [capability] **so that** [benefit/outcome].
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Priority
+      description: |
+        Select the priority level.
+          p0: Critical functionality, blocks adoption
+          p1: Core functionality, required for user adoption but not on the critical path
+          p2: Important functionality, fast-follow features that enhance the experience but are not blockers
+          p3: Nice to have functionality, could ship later or not at all
+      options:
+        - p0
+        - p1
+        - p2
+        - p3
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Category
+      description: The feature area this story belongs to (e.g., Getting Started, Deploying, Environments).
+    validations:
+      required: false
+  - type: input
+    attributes:
+      label: Related Design Note
+      description: Link to a related design note in eng/design-notes/.
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Context
+      description: Why does this story matter? What user challenge does it address?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Desired User Experience
+      description: |
+        Step-by-step walkthrough of the user interaction from start to finish.
+        Write in third person: "The developer opens the panel, clicks..., sees..."
+      placeholder: |
+        1. The developer ...
+        2. The developer ...
+        3. The developer ...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Acceptance Criteria
+      description: Testable conditions that must be true for this story to be complete.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Dependencies
+      description: Other stories, services, or components that must exist before or alongside this work.
+      placeholder: |
+        - Depends on #XX
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Implementation Notes
+      description: Technical considerations, API contracts, or architecture decisions specific to this story.
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Open Questions
+      description: Unresolved decisions or assumptions that need validation before or during implementation.
+    validations:
+      required: false

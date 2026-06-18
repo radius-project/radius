@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/helm"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -40,6 +41,14 @@ const (
 	// DefaultResourceGroupScope is the full scope path for the default resource group.
 	// default recipe pack that Radius provides always live in this scope.
 	DefaultResourceGroupScope = "/planes/radius/local/resourceGroups/" + DefaultResourceGroupName
+
+	// DefaultRoutesGatewayName is the name of the Gateway installed by the default
+	// Radius-managed Contour installation.
+	DefaultRoutesGatewayName = helm.DefaultContourGatewayName
+
+	// DefaultRoutesGatewayNamespace is the namespace of the Gateway installed by
+	// the default Radius-managed Contour installation.
+	DefaultRoutesGatewayNamespace = helm.DefaultContourGatewayNamespace
 )
 
 // ResourceGroupCreator is a function that creates or updates a Radius resource group.
@@ -56,6 +65,7 @@ func NewDefaultRecipePackResource() corerpv20250801.RecipePackResource {
 		recipes[def.ResourceType] = &corerpv20250801.RecipeDefinition{
 			RecipeKind:     &bicepKind,
 			RecipeLocation: to.Ptr(def.RecipeLocation),
+			Parameters:     def.Parameters,
 		}
 	}
 	return corerpv20250801.RecipePackResource{
@@ -112,6 +122,8 @@ type CoreTypesRecipeInfo struct {
 	ResourceType string
 	// RecipeLocation is the OCI registry location for the recipe.
 	RecipeLocation string
+	// Parameters is the optional parameter bag passed to the recipe.
+	Parameters map[string]any
 }
 
 // GetCoreTypesRecipeInfo returns recipe information for all core types.
@@ -135,6 +147,10 @@ func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 		{
 			ResourceType:   "Radius.Compute/routes",
 			RecipeLocation: "ghcr.io/radius-project/kube-recipes/routes:" + tag,
+			Parameters: map[string]any{
+				"gatewayName":      DefaultRoutesGatewayName,
+				"gatewayNamespace": DefaultRoutesGatewayNamespace,
+			},
 		},
 		{
 			ResourceType:   "Radius.Security/secrets",

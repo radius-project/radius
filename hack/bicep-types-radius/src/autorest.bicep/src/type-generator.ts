@@ -114,6 +114,21 @@ export function generateTypes(
       );
     }
 
+    // Precompute the full set of sibling names so flatten collision checks
+    // catch both already-emitted siblings (e.g. the standardized envelope
+    // props) and siblings still pending later in the loop. Without this,
+    // a flattened child colliding with a *later* sibling would slip through.
+    const resourceSiblingNames = new Set<string>(
+      Object.keys(resourceProperties)
+    );
+    for (const { propertyName } of getObjectTypeProperties(
+      putSchema,
+      getSchema,
+      true
+    )) {
+      resourceSiblingNames.add(propertyName);
+    }
+
     for (const {
       propertyName,
       putProperty,
@@ -121,6 +136,25 @@ export function generateTypes(
     } of getObjectTypeProperties(putSchema, getSchema, true)) {
       if (resourceProperties[propertyName]) {
         continue;
+      }
+
+      const flatten = isFlattenSafe(putProperty, getProperty);
+      if (flatten.flagged) {
+        if (flatten.safe) {
+          // Hoist flattened children as ReadOnly aliases, then fall through to
+          // also emit the original wrapper property so authoring still works.
+          expandFlattenedInto(
+            resourceProperties,
+            flatten.putChild,
+            flatten.getChild,
+            resourceSiblingNames,
+            propertyName
+          );
+        } else if (flatten.reason) {
+          logWarning(
+            `Ignoring x-ms-client-flatten on '${propertyName}' of resource ${fullyQualifiedType}: ${flatten.reason}. Falling back to nested representation.`
+          );
+        }
       }
 
       const propertyDefinition = parseType(
@@ -401,6 +435,139 @@ export function generateTypes(
       const getProperty = getProperties[propertyName] as Property | undefined;
 
       yield { propertyName, putProperty, getProperty };
+    }
+  }
+
+  function isFlattenSafe(
+    putProp: Property | undefined,
+    getProp: Property | undefined
+  ): {
+    flagged: boolean;
+    safe: boolean;
+    putChild?: ObjectSchema;
+    getChild?: ObjectSchema;
+    reason?: string;
+  } {
+    const putFlagged = putProp?.extensions?.["x-ms-client-flatten"] === true;
+    const getFlagged = getProp?.extensions?.["x-ms-client-flatten"] === true;
+    const flagged = putFlagged || getFlagged;
+    if (!flagged) {
+      return { flagged: false, safe: false };
+    }
+
+    const check = (
+      s: Schema | undefined
+    ): { ok: boolean; obj?: ObjectSchema; reason?: string } => {
+      if (!s) {
+        return { ok: true };
+      }
+      if (!(s instanceof ObjectSchema)) {
+        return {
+          ok: false,
+          reason: `child schema is not an object (type=${s.type})`
+        };
+      }
+      if (s.discriminator) {
+        return {
+          ok: false,
+          reason: `child schema '${getSerializedName(s)}' has a discriminator`
+        };
+      }
+      return { ok: true, obj: s };
+    };
+
+    const putCheck = check(putProp?.schema);
+    if (!putCheck.ok) {
+      return { flagged, safe: false, reason: putCheck.reason };
+    }
+    const getCheck = check(getProp?.schema);
+    if (!getCheck.ok) {
+      return { flagged, safe: false, reason: getCheck.reason };
+    }
+
+    return {
+      flagged,
+      safe: true,
+      putChild: putCheck.obj,
+      getChild: getCheck.obj
+    };
+  }
+
+  function flagsForFlattenedChild(
+    childFlags: ObjectTypePropertyFlags
+  ): ObjectTypePropertyFlags {
+    // Flattened children are emitted as ReadOnly *output projections* of the
+    // underlying `properties` payload. The original `properties` field is kept
+    // as the writable authoring envelope (so existing templates continue to
+    // compile and the RP wire format is unchanged). Hoisted children are only
+    // useful for reading back from deployed resources, e.g.
+    //   output image string = mycontainer.container.image
+    //
+    // Required/Identifier/DeployTimeConstant on the wrapper property do not
+    // describe the children, so do not propagate them. WriteOnly is masked off
+    // explicitly: a PUT-only child would otherwise be emitted as
+    // ReadOnly | WriteOnly, which is a contradictory combination — the flat
+    // alias is unambiguously a read-side surface.
+    return (
+      ObjectTypePropertyFlags.ReadOnly |
+      (childFlags &
+        ~(ObjectTypePropertyFlags.Required | ObjectTypePropertyFlags.WriteOnly))
+    );
+  }
+
+  function expandFlattenedInto(
+    target: Dictionary<ObjectTypeProperty>,
+    putChild: ObjectSchema | undefined,
+    getChild: ObjectSchema | undefined,
+    siblingNames: Set<string>,
+    parentSerializedName: string
+  ): void {
+    const candidates: Array<{
+      name: string;
+      putProp?: Property;
+      getProp?: Property;
+    }> = [];
+    for (const {
+      propertyName,
+      putProperty,
+      getProperty
+    } of getObjectTypeProperties(putChild, getChild, true)) {
+      candidates.push({
+        name: propertyName,
+        putProp: putProperty,
+        getProp: getProperty
+      });
+    }
+
+    // Collision check uses the precomputed sibling-name set rather than
+    // `target` because expansion happens mid-loop in the nested path: a child
+    // that collides with a sibling emitted *later* would not yet be present in
+    // `target`. The set includes every sibling, present or pending, and is
+    // updated below as we hoist children so a subsequent flattened wrapper
+    // cannot silently overwrite an already-hoisted alias.
+    for (const c of candidates) {
+      if (siblingNames.has(c.name)) {
+        logWarning(
+          `Cannot flatten property '${parentSerializedName}': child property '${c.name}' collides with an existing property on the parent. Falling back to nested representation.`
+        );
+        return;
+      }
+    }
+
+    for (const c of candidates) {
+      const propType = parseType(c.putProp?.schema, c.getProp?.schema);
+      if (!propType) {
+        continue;
+      }
+      const description = (c.putProp?.schema ?? c.getProp?.schema)?.language
+        .default?.description;
+      const childFlags = parsePropertyFlags(c.putProp, c.getProp);
+      target[c.name] = createObjectProperty(
+        propType,
+        flagsForFlattenedChild(childFlags),
+        description
+      );
+      siblingNames.add(c.name);
     }
   }
 
@@ -696,11 +863,42 @@ export function generateTypes(
       namedDefinitions[definitionName] = definition;
     }
 
+    // Precompute the full sibling-name set so flatten collision checks see
+    // siblings that have not been emitted yet (otherwise a child colliding
+    // with a later sibling would slip through).
+    const definitionSiblingNames = new Set<string>();
+    for (const { propertyName } of getObjectTypeProperties(
+      putSchema,
+      getSchema,
+      includeBaseProperties
+    )) {
+      definitionSiblingNames.add(propertyName);
+    }
+
     for (const {
       propertyName,
       putProperty,
       getProperty
     } of getObjectTypeProperties(putSchema, getSchema, includeBaseProperties)) {
+      const flatten = isFlattenSafe(putProperty, getProperty);
+      if (flatten.flagged) {
+        if (flatten.safe) {
+          // Hoist flattened children as ReadOnly aliases, then fall through to
+          // also emit the original wrapper property so authoring still works.
+          expandFlattenedInto(
+            definitionProperties,
+            flatten.putChild,
+            flatten.getChild,
+            definitionSiblingNames,
+            propertyName
+          );
+        } else if (flatten.reason) {
+          logWarning(
+            `Ignoring x-ms-client-flatten on '${propertyName}' of '${definitionName}': ${flatten.reason}. Falling back to nested representation.`
+          );
+        }
+      }
+
       const propertyDefinition = parseType(
         putProperty?.schema,
         getProperty?.schema

@@ -25,7 +25,9 @@ import (
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -37,7 +39,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/setup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -232,20 +233,31 @@ func (r *Runner) Run(ctx context.Context) error {
 	progressChan <- progress
 
 	if r.Options.Application.Scaffold {
-		client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-		if err != nil {
-			return err
+		// Initialize the Radius.Core client factory if not already set
+		if r.RadiusCoreClientFactory == nil {
+			clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+			if err != nil {
+				return clierrors.MessageWithCause(err, "Failed to initialize Radius Core client.")
+			}
+			r.RadiusCoreClientFactory = clientFactory
 		}
 
-		// Initialize the application resource if it's not found.
-		err = client.CreateApplicationIfNotFound(ctx, r.Options.Application.Name, &corerp.ApplicationResource{
-			Location: to.Ptr(v1.LocationGlobal),
-			Properties: &corerp.ApplicationProperties{
-				Environment: &r.Workspace.Environment,
-			},
-		})
-		if err != nil {
-			return err
+		// Create the Radius.Core application resource if it's not found.
+		appClient := r.RadiusCoreClientFactory.NewApplicationsClient()
+		_, err := appClient.Get(ctx, r.Options.Application.Name, nil)
+		if clients.Is404Error(err) {
+			// Application does not exist, create it.
+			_, err = appClient.CreateOrUpdate(ctx, r.Options.Application.Name, corerpv20250801.ApplicationResource{
+				Location: to.Ptr(v1.LocationGlobal),
+				Properties: &corerpv20250801.ApplicationProperties{
+					Environment: &r.Workspace.Environment,
+				},
+			}, nil)
+			if err != nil {
+				return clierrors.MessageWithCause(err, "Failed to create application.")
+			}
+		} else if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to check for existing application.")
 		}
 
 		// Scaffold application files in the current directory
@@ -254,7 +266,7 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		err = setup.ScaffoldApplication(wd)
+		err = setup.ScaffoldApplication(wd, setup.PreviewAppBicepTemplate)
 		if err != nil {
 			return err
 		}

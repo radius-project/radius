@@ -95,12 +95,12 @@ jobs:
 
       - name: Run Helm linter
         run: |
-          helm lint ${{ env.HELM_CHARTS_DIR }}
+          helm lint "${HELM_CHARTS_DIR}"
 
       - name: Run Helm unit tests
         run: |
           helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2 || true
-          cd ${{ env.HELM_CHARTS_DIR }} && helm unittest .
+          cd "${HELM_CHARTS_DIR}" && helm unittest .
 
       - name: Run TypeSpec format check
         run: make tsp-format-check

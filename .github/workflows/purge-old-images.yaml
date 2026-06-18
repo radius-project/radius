@@ -22,13 +22,29 @@ jobs:
     timeout-minutes: 45
     permissions: {}
     steps:
+      # GitHub Container Registry package APIs are only accessible to classic
+      # personal access tokens (and the built-in GITHUB_TOKEN). GitHub App
+      # installation tokens cannot list or delete org packages — the list
+      # endpoint returns "400 Invalid argument" and deletes are rejected. See
+      # https://github.com/snok/container-retention-policy/issues/94 (GitHub
+      # Support confirmation). The wildcard image-names below also requires the
+      # list-packages endpoint, so a classic PAT is required here.
+      #
+      # secrets.GH_RAD_CI_BOT_PAT must be a classic PAT with the following scopes:
+      #   - read:packages   (list package versions)
+      #   - delete:packages (delete old package versions)
       - name: Delete 'dev' containers older than a week
         uses: snok/container-retention-policy@d3bdcf5ce9b05f685154e4a16c39233b245e3d53 # v3.1.0
         with:
-          account: radius-project
+          account: ${{ github.repository_owner }}
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           image-names: dev/*
           image-tags: pr-*
+          # Only delete the pr-* tagged image indexes. GHCR cascade-removes their
+          # untagged child manifests automatically, so we avoid issuing thousands
+          # of redundant deletes for already-removed children (which otherwise log
+          # as "404 Package not found" errors).
+          tag-selection: tagged
           cut-off: 1w
 
   create_issue_on_failure:
@@ -37,11 +53,12 @@ jobs:
     needs: [purge_ghcr_dev]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    permissions: {}
+    permissions:
+      issues: write # Required to create an issue when the scheduled run fails
     steps:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github-token: ${{ github.token }}
           script: |
             github.rest.issues.create({
               ...context.repo,
