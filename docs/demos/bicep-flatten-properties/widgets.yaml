@@ -1,0 +1,18 @@
+namespace: MyCompany.Test
+types:
+  widgets:
+    apiVersions:
+      '2025-01-01-preview':
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: "A message string property"
+            count:
+              type: integer
+              description: "An integer count property"
+            enabled:
+              type: boolean
+              description: "A boolean enabled property"
+        capabilities: ['Recipes']
