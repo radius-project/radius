@@ -2,7 +2,7 @@
 
 We welcome and encourage users to contribute to the Radius open-source project in various ways. By joining our community, you can make a meaningful impact and help shape the future of this project. Here are some ways you can get involved:
 
-* Learn how: Browse our guides for how to [install repository prerequisites](./contributing-code/contributing-code-prerequisites/), [build the code](./contributing-code/contributing-code-building/), [understand the code](./contributing-code/contributing-code-organization/), [write code for the project](./contributing-code/contributing-code-writing/), [run control plane locally](./contributing-code/contributing-code-control-plane/running-controlplane-locally.md), and [run tests](./contributing-code/contributing-code-tests/). This is essential knowledge for working with the repository.
+* Learn how: Browse our guides for how to [install repository prerequisites](./contributing-code/contributing-code-prerequisites/), [build the code](./contributing-code/contributing-code-building/), [understand the code](./contributing-code/contributing-code-organization/), [write code for the project](./contributing-code/contributing-code-writing/), [run control plane locally](./contributing-code/contributing-code-debugging/radius-os-processes-debugging.md), and [run tests](./contributing-code/contributing-code-tests/). This is essential knowledge for working with the repository.
 
 * Tackle small tasks: Start by addressing small issues or tasks labeled as ["good first issues"](https://github.com/radius-project/radius/issues?q=is:issue+is:open+label:%22good+first+issue%22) This allows you to familiarize yourself with the project and make valuable contributions without a steep learning curve.
 
