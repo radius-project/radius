@@ -1,25 +1,10 @@
 # Your first commit: Development tools
 
-<!--
-    Note: some of this content is synchronized with the prerequisites guide for simplicity. Keep these in sync!
--->
+This tutorial uses Visual Studio Code with the Go extension. Editor choice and the Go tooling install are covered in the canonical prerequisites guide:
 
-## Editor
+- **[Repository Prerequisites — Editors](../contributing-code-prerequisites/README.md#editors)**
 
-This guide covers basic development tasks for Go in Visual Studio Code (VS Code). The experience with VS Code is high-quality and approachable for newcomers.
-
-Alternatively, you can choose whichever editor you are most comfortable for working on Go code. Feel free to skip this section if you want to make another choice.
-
-## Installation
-
-- [Visual Studio Code](https://code.visualstudio.com/)
-- [Go extension](https://marketplace.visualstudio.com/items?itemName=golang.go)
-
-> 📝 **Tip** - If your are using Dev Containers, the Go extension is already installed for you. You find more details on these options in the [Repository Prerequisites](../contributing-code-prerequisites/README.md).
-
-Install both of these and then follow the steps in the *Quick Start* for the Go extension.
-
-The extension will walk you through an automated install of some additional tools that match your installed version of Go.
+Install [VS Code](https://code.visualstudio.com/) and the [Go extension](https://marketplace.visualstudio.com/items?itemName=golang.go) from there, then follow the Go extension's *Quick Start* to install the additional Go tools. If you are using [Codespaces](../contributing-code-prerequisites/README.md#github-codespaces) or the [VS Code dev container](../contributing-code-prerequisites/README.md#vs-code-and-dev-container), the Go extension is already installed for you.
 
 ## Test it out
 
@@ -27,9 +12,7 @@ At this point you should be able to open any of the Go files in the repo and see
 
 ## Launching VS Code
 
-The best way to launch VS Code for Go is to do *File* -> *Open Folder* on the repository.
-
-You can easily do this from the command shell with `code .`, which opens the current directory as a folder in VS Code.
+The best way to launch VS Code for Go is to do *File* → *Open Folder* on the repository. You can do this from the command shell with `code .`, which opens the current directory as a folder in VS Code.
 
 ## Next step
 
