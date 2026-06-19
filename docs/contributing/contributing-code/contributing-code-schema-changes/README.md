@@ -1,96 +1,123 @@
 # Contributing schema changes
 
-This page will explain the process to make a change to Radius' REST API (eg: adding a new property, or adding a new resource type).The Radius Application model and API are defined via a OpenAPI specification. Instead of manually defining each OpenAPI spec, [TypeSpec](https://microsoft.github.io/typespec/) is used to generate the OpenAPI JSON files. You should read and follow these steps to make REST API changes.
+## Purpose
 
-## Step 1: Update TypeSpec and generate Bicep types and API client
+This guide explains how to make a change to the Radius REST API — for example adding a property to an existing resource or adding a new resource type. The Radius application model and API are defined in [TypeSpec](https://typespec.io/) under [`typespec/`](../../../../typespec/); the build pipeline compiles that TypeSpec into OpenAPI (Swagger) specs under [`swagger/`](../../../../swagger/) and into Go API client code under `pkg/`. This is the **TypeSpec → Swagger → Go** pipeline. Follow it whenever you touch the API surface so the spec, the generated clients, and the Bicep types stay in sync. It is for contributors changing the API; it does not cover resource-provider business logic beyond the generated types.
 
-In order to update or create a new schema follow these steps:
+## Prerequisites
 
-1. Create or update the applicable TypeSpec files (named after resource type) within the `typespec` directory in the root of the Radius repo.
-1. Run `tsp format --check "**/*.tsp"` in the typespec folder to make sure that the format of added or updated files are good.
-1. You can run `tsp format **/*.tsp` to apply the formatting of TypeSpec compiler.
-1. Run `make generate` to generate the OpenAPI spec and API clients:
+- The standard build prerequisites from [contributing-code-prerequisites](../contributing-code-prerequisites/README.md): Go, Node.js, and `pnpm` (enabled through `corepack`). The TypeSpec compiler (`tsp`) and emitters are installed into [`typespec/`](../../../../typespec/) on first use by the `make generate` targets, so no global install is needed.
+- A working clone of the repo where you can run `make` targets. `make generate` runs the `tsp` toolchain and `go generate` (mocks), so a working Go and Node toolchain is required.
+- Familiarity with the namespace you are changing. Each API namespace has its own folder under [`typespec/`](../../../../typespec/) (for example `typespec/Applications.Core`, `typespec/Radius.Core`, `typespec/UCP`).
 
-    ```bash
-    make generate
-    ```
+## Steps
 
-    This will generate the OpenAPI spec and API client for all namespaces and run mockgen to generate mocks.
-    <details>
-    <summary>Alternately, if you would like to manually generate the OpenAPI spec and API client, follow these steps:</summary>
+### 1. Update the TypeSpec definitions
 
-    1. Run the following command from a namespace folder (e.g. `typespec/Applications.Core`) to generate the OpenAPI spec with the newly added changes
+1. Create or update the applicable `.tsp` files (named after the resource type) inside the namespace folder under [`typespec/`](../../../../typespec/), for example `typespec/Applications.Core`.
+2. Check the formatting of your TypeSpec:
 
-        ```bash
-        npx tsp compile .
-        ```
+   ```bash
+   make tsp-format-check
+   ```
 
-    1. Generate the Go client code with the [TypeSpec Go emitter](https://github.com/Azure/typespec-azure). For example, to generate the `Applications.Core` resources run:
+   This runs `pnpm -C typespec exec tsp format --check "**/*.tsp"`. To apply the formatter instead of just checking, run `pnpm -C typespec exec tsp format "**/*.tsp"` from the repo root.
 
-        ```bash
-        cd typespec/Applications.Core && npx tsp compile . --emit=@azure-tools/typespec-go
-        ```
+### 2. Generate the OpenAPI specs and Go clients
 
-        The emitter configuration lives in each namespace's `tspconfig.yaml` (under the `@azure-tools/typespec-go` options block). The generated files are written to a temporary `.tsp-go-tmp` folder and copied into the matching `pkg/<NAMESPACE>/api/<version>/` directory; the per-namespace `make generate-rad-<namespace>-client` targets automate this copy-and-format step.
-    </details>
-1. Add any necessary changes to the Radius resource provider to support the newly added types.
-1. Add any necessary tests, as needed.
-1. Open a pull request in the Radius repo.
+Run the umbrella target from the repo root:
 
-## Step 2: Update docs and samples
+```bash
+make generate
+```
 
-Visit the [docs](https://github.com/radius-project/docs/) and [samples](https://github.com/radius-project/samples/) repository and open PRs with the changes to the resource(s). Some checks will fail until you begin merging PRs below.
+`make generate` runs the full pipeline: it deletes stale generated code, compiles every namespace's TypeSpec to its OpenAPI spec (`make generate-openapi-spec`), runs the TypeSpec Go emitter for each namespace's client, runs `go generate ./...` (mockgen), generates the Bicep extensibility types, and generates the CRDs. The two halves of the pipeline are:
 
-## Step 3: Merge pull requests in order
+- **TypeSpec → Swagger.** The [`@azure-tools/typespec-autorest`](https://github.com/Azure/typespec-azure) emitter writes each namespace's OpenAPI document to `swagger/specification/<service>/resource-manager/<service-name>/<status>/<version>/openapi.json`. The output directory is set per namespace by the `emitter-output-dir` option in that namespace's `tspconfig.yaml` (for example `typespec/Applications.Core/tspconfig.yaml` emits to `swagger/specification/applications`).
+- **TypeSpec → Go.** The [`@azure-tools/typespec-go`](https://github.com/Azure/typespec-azure) emitter writes generated client code to a temporary `.tsp-go-tmp` folder, which the per-namespace `make generate-rad-<namespace>-client` targets copy into the matching `pkg/<namespace>/api/<version>/` directory and run `go fmt` over. Generated files are prefixed `zz_generated_`.
 
-⚠️ Make sure you have PRs open and ready to merge within the radius, docs, and samples repositories. Do not proceed until all the PRs are ready and approved.
+#### Alternative: generate a single namespace manually
 
-1. **Samples Repository**: Merging the PR in samples repo may not be straightforward, as we currently have a cyclic dependency between samples and radius repositories (_i.e "Test Quickstarts" task in samples pipeline run would fail as it runs on the main branch of Radius which doesn't have the latest changes as Radius PR is blocked on the samples PR for bicep files update._) You need to have a repo admin force merge the samples PR.
-2. **Radius Repository**: After the PR from the samples repositories are merged, re-run the checks to make sure there are no failures to merge the Radius PR.
-3. **Docs Repository**: Rerun any failed checks and merge the PR from docs repo with updated Bicep files changes.
+You normally only need `make generate`. To regenerate one namespace by hand, run these from the repo root. Generation depends on the `tsp` toolchain being installed; running `make generate` once (or `make generate-tsp-installed`) installs it.
 
-# Testing schema changes locally
+1. Compile the OpenAPI spec for one namespace:
 
-If you would like to test that your schema changes are compilable in a Bicep template, you can do so by publishing them to a file system using the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/).
+   ```bash
+   cd typespec/Applications.Core && pnpm exec tsp compile .
+   ```
 
-## Step 1: Download the Bicep CLI
+2. Generate the Go client for that namespace with the TypeSpec Go emitter:
 
-1. Follow the steps in the Bicep [documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) to download Bicep.
+   ```bash
+   cd typespec/Applications.Core && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
+   ```
 
-Note: Alternatively, if you already have the Radius CLI installed, you can choose to use the Bicep binary that is installed as part of Radius. The Bicep binary gets downloaded to `./.rad/bin/bicep`. You can use this file path instead.
+   The emitter configuration lives in each namespace's `tspconfig.yaml` (under the `@azure-tools/typespec-go` options block). The generated files land in `.tsp-go-tmp` and must be copied into the matching `pkg/<namespace>/api/<version>/` directory; the per-namespace `make generate-rad-<namespace>-client` targets (for example `make generate-rad-corerp-client`) automate that copy-and-format step, so prefer them over copying by hand.
 
-## Step 2: Create a file directory
+### 3. Wire up and test the change
 
-1. Create a file directory in your location of choice. Keep the directory path handy for the next steps.
+1. Add any changes to the Radius resource provider needed to support the new or updated types.
+2. Add or update tests as needed.
+3. Open a pull request in the Radius repo. (See the local-testing and merge-order steps below before you expect all checks to pass.)
 
-## Step 3: Upload the new schema types to the file directory
+### 4. (Optional) Test the schema change locally with Bicep
 
-1. Run `make generate` to generate the OpenAPI spec and API clients:
+To confirm your schema compiles in a Bicep template, publish the generated Bicep types to a local target and point `bicepconfig.json` at them.
 
-    ```bash
-    make generate
-    ```
+1. Install the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install). If you already have the Radius CLI installed, you can use the Bicep binary it downloads to `./.rad/bin/bicep` instead.
+2. Generate the Bicep types (already done if you ran `make generate`):
 
-1. `cd` into the `hack/bicep-types-radius/generated` folder
-1. Run `bicep publish-provider <file> --target <ref>` to upload the schema changes to your file system. The file uploaded will be the `index.json` file as it contains all references to the types schema. The `<file-name>` can be named as desired, but we recommend using an archive (i.e. `.zip`, `.tgz`, etc). This will make it easier to view the files that get uploaded if needed.
+   ```bash
+   make generate-bicep-types
+   ```
 
-    ```bash
-    bicep publish-extension index.json --target <directory-path>/<file-name>
-    ```
+   This writes the type files under `hack/bicep-types-radius/generated/` and rebuilds the unified index at `hack/bicep-types-radius/generated/index.json`.
+3. Publish the unified `radius` extension to a target of your choice (a local file path or an OCI registry):
 
-## Step 4: Update the `bicepconfig.json` to use your newly published types
+   ```bash
+   make publish-bicep-extension BICEP_PUBLISH_TARGET=<target>
+   ```
 
-1. Update the `bicepconfig.json` file in the root folder to reference your new published types.
+   `<target>` is either a local path (for example `./bin/radius-types.tgz`) or an OCI reference (for example `br:biceptypes.azurecr.io/radius:latest`). The target requires the `bicep` CLI on your `PATH`.
+4. Update the root `bicepconfig.json` to reference your published extension:
 
-    ```json
-    {
-        "extensions": {
-            "radius": "<file-path>",
-            "aws": "br:biceptypes.azurecr.io/aws:latest"
-        }
-    }
-    ```
+   ```json
+   {
+       "extensions": {
+           "radius": "<target>",
+           "aws": "br:biceptypes.azurecr.io/aws:latest"
+       }
+   }
+   ```
 
-1. Once Bicep restores the new extensions, you should be able to use the new schema changes in your Bicep templates.
+   Once Bicep restores the new extension, your schema changes are available in Bicep templates.
 
-Note: You can also choose to publish the types to an OCI registry. The `--target` field will be your OCI registry endpoint when running the `bicep publish-extension` command. Make sure to update the `radius` extension field with your OCI registry endpoint in the `bicepconfig.json`.
+### 5. Update docs and samples, then merge in order
+
+1. Open PRs in the [docs](https://github.com/radius-project/docs/) and [samples](https://github.com/radius-project/samples/) repositories with the corresponding resource changes. Some checks fail until the PRs below start merging.
+2. Merge in this order once all three PRs (radius, docs, samples) are ready and approved:
+   1. **Samples** — because of a cyclic dependency between samples and radius (the "Test Quickstarts" task in the samples pipeline runs against the `main` branch of radius, which does not yet contain your changes), a repo admin must force-merge the samples PR.
+   2. **Radius** — after the samples PR merges, re-run the radius PR checks and merge.
+   3. **Docs** — re-run any failed checks and merge the docs PR with the updated Bicep files.
+
+## Verification
+
+- `make tsp-format-check` reports `OK` with no formatting diffs.
+- After `make generate`, the regenerated OpenAPI spec for your namespace under `swagger/specification/.../openapi.json` reflects your change.
+- The regenerated `zz_generated_*.go` files under `pkg/<namespace>/api/<version>/` reflect your change.
+- The repo still builds and tests pass:
+
+  ```bash
+  make build
+  make test
+  ```
+
+- `git status` shows the generated spec, client, and Bicep type files changed alongside your `.tsp` edits — generated output must be committed, not left out of the PR.
+
+## Troubleshooting
+
+- **`tsp` or `pnpm` not found.** `make generate` installs the TypeSpec toolchain into `typespec/` via `corepack`. Ensure Node.js is installed and on your `PATH`, then re-run `make generate` (or `make generate-tsp-installed`). See [contributing-code-prerequisites](../contributing-code-prerequisites/README.md).
+- **`make tsp-format-check` fails.** Run `pnpm -C typespec exec tsp format "**/*.tsp"` to apply the formatter, then re-run the check.
+- **Generated files keep reappearing as changes.** Generated `zz_generated_*.go` and `openapi.json` files are committed artifacts. Run `make generate`, then commit the regenerated output so it matches your TypeSpec.
+- **`make publish-bicep-extension` errors that the index does not exist.** Run `make generate-bicep-types` first; the target publishes `hack/bicep-types-radius/generated/index.json`, which that command creates.
+- **`make publish-bicep-extension` cannot find `bicep`.** Install the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) and ensure it is on your `PATH`, or use the binary at `./.rad/bin/bicep` from a Radius CLI install.
