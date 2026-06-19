@@ -213,7 +213,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			nil,
 			nil,
 			nil,
-			&mapstructure.Error{Errors: []string{"'type' expected type 'string', got unconvertible type 'int', value: '3'"}},
+			nil,
 		},
 		{
 			"recipe-err",
@@ -474,11 +474,21 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			require.NoError(t, err)
 
 			res, err := genCtrl.Run(context.Background(), req)
-			if tt.expectedErr != nil {
+			switch {
+			case tt.conversionFailure:
+				require.False(t, stillPassing)
+				// go-viper/mapstructure/v2 reports decode failures as typed errors
+				// wrapped via errors.Join, so assert on the typed error with errors.As
+				// rather than a brittle message string: the "type" field received the
+				// int 3, which is not convertible to a string.
+				var unconvertibleErr *mapstructure.UnconvertibleTypeError
+				require.ErrorAs(t, err, &unconvertibleErr)
+				require.Equal(t, 3, unconvertibleErr.Value)
+			case tt.expectedErr != nil:
 				require.False(t, stillPassing)
 				require.Error(t, err)
 				require.Equal(t, tt.expectedErr, err)
-			} else {
+			default:
 				require.True(t, stillPassing)
 				require.NoError(t, err)
 				require.Equal(t, ctrl.Result{}, res)
