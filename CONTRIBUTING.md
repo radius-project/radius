@@ -8,7 +8,7 @@ Radius is in an early phase of development right now. We welcome feedback in the
 
 There are many ways to get involved and make a meaningful impact on the Radius project:
 
-- **Learn the codebase.** The full contributor documentation — prerequisites, building, testing, debugging, schema changes, design documents, and more — lives in the [contributor docs index](./docs/contributing/README.md).
+- **Learn the codebase.** Browse the [contributor documentation](./docs/contributing/) for guides on prerequisites, building, testing, debugging, schema changes, design documents, and more.
 - **Tackle small tasks.** Start with a ["good first issue"](https://github.com/radius-project/radius/issues?q=is:issue+is:open+label:%22good+first+issue%22) to familiarize yourself with the project without a steep learning curve.
 - **Take on bigger projects.** Issues that are groomed and ready to be picked up are labeled ["triaged"](https://github.com/radius-project/radius/issues?q=is%3Aissue+is%3Aopen+label%3Atriaged).
 - **Contribute to designs.** Larger features need a design review before implementation; design proposals are created in the [design-notes repository](https://github.com/radius-project/design-notes).
@@ -19,7 +19,7 @@ There are many ways to get involved and make a meaningful impact on the Radius p
 - **Improve documentation.** Enhance the [Radius documentation](https://github.com/radius-project/docs) by updating content, adding guides, or adding examples.
 - **Spread the word.** Share your experiences through blog posts, talks, or social media, and star the project on GitHub!
 
-For the full contributor documentation, see the **[contributor docs index](./docs/contributing/README.md)**.
+For all contributor guides and conventions, see the **[contributor documentation](./docs/contributing/)**.
 
 ## Current status
 
