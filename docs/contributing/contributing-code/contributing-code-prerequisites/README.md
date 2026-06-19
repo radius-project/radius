@@ -84,7 +84,8 @@ Install these for the most common tasks. We expect all contributors to have all 
 - [golangci-lint](https://golangci-lint.run/welcome/install/#local-installation)
 - [jq](https://jqlang.github.io/jq/download/)
 - Make (see [Install Make](#install-make))
-- [Docker](https://docs.docker.com/engine/install/) — required to build the containers
+
+[Docker](https://docs.docker.com/engine/install/) is not needed for `make build` or `make lint`, but you do need it to build the container images or to run the [VS Code dev container](#vs-code-and-dev-container). Install it if your task involves either.
 
 #### Install Make
 
@@ -130,9 +131,12 @@ Optional tools the team recommends for debugging Kubernetes:
 
 #### Install code-generation tools
 
-`make generate` updates the OpenAPI specs and the generated Go client/server code, along with generated mocks and Kubernetes API types. If `make generate` fails, you are probably missing the TypeSpec toolchain. Install it from the repository root:
+`make generate` updates the OpenAPI specs and the generated Go client/server code, along with generated mocks and Kubernetes API types. If `make generate` fails, you are probably missing the TypeSpec toolchain.
+
+The toolchain is driven by `pnpm`, which Radius provisions through [Corepack](https://nodejs.org/api/corepack.html) (bundled with Node.js) so everyone uses the version pinned in `package.json`. Enable it once, then install the toolchain from the repository root:
 
 ```bash
+corepack enable pnpm
 pnpm -C typespec install
 ```
 

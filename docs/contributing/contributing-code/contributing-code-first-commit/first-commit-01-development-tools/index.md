@@ -2,9 +2,9 @@
 
 This tutorial uses Visual Studio Code with the Go extension. Editor choice and the Go tooling install are covered in the canonical prerequisites guide:
 
-- **[Repository Prerequisites — Editors](../contributing-code-prerequisites/README.md#editors)**
+- **[Repository Prerequisites — Editors](../../contributing-code-prerequisites/README.md#editors)**
 
-Install [VS Code](https://code.visualstudio.com/) and the [Go extension](https://marketplace.visualstudio.com/items?itemName=golang.go) from there, then follow the Go extension's *Quick Start* to install the additional Go tools. If you are using [Codespaces](../contributing-code-prerequisites/README.md#github-codespaces) or the [VS Code dev container](../contributing-code-prerequisites/README.md#vs-code-and-dev-container), the Go extension is already installed for you.
+Install [VS Code](https://code.visualstudio.com/) and the [Go extension](https://marketplace.visualstudio.com/items?itemName=golang.go) from there, then follow the Go extension's *Quick Start* to install the additional Go tools. If you are using [Codespaces](../../contributing-code-prerequisites/README.md#github-codespaces) or the [VS Code dev container](../../contributing-code-prerequisites/README.md#vs-code-and-dev-container), the Go extension is already installed for you.
 
 ## Test it out
 
