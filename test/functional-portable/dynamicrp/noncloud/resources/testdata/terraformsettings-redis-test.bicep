@@ -13,7 +13,7 @@ param redisCacheName string = 'tf-redis-cache'
 @description('Name of the Radius Application.')
 param appName string
 
-resource tfConfig 'Radius.Core/terraformConfigs@2025-08-01-preview' = {
+resource tfConfig 'Radius.Core/terraformSettings@2025-08-01-preview' = {
   name: 'test-terraform-config'
   location: 'global'
   properties: {
@@ -49,7 +49,7 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
         namespace: 'tfconfig-redis-ns'
       }
     }
-    terraformConfig: tfConfig.id
+    terraformSettings: tfConfig.id
   }
 }
 

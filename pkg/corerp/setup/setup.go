@@ -27,7 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
 	app_v20250801_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications/v20250801preview"
-	bc_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/bicepconfigs"
+	bc_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/bicepsettings"
 	ctr_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments"
 	env_v20250801_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/environments/v20250801preview"
@@ -304,22 +304,22 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 		},
 	})
 
-	_ = ns.AddResource("terraformConfigs", &builder.ResourceOption[*datamodel.TerraformConfig, datamodel.TerraformConfig]{
-		RequestConverter:  converter.TerraformConfigDataModelFromVersioned,
-		ResponseConverter: converter.TerraformConfigDataModelToVersioned,
+	_ = ns.AddResource("terraformSettings", &builder.ResourceOption[*datamodel.TerraformSettings, datamodel.TerraformSettings]{
+		RequestConverter:  converter.TerraformSettingsDataModelFromVersioned,
+		ResponseConverter: converter.TerraformSettingsDataModelToVersioned,
 	})
 
-	_ = ns.AddResource("bicepConfigs", &builder.ResourceOption[*datamodel.BicepConfig, datamodel.BicepConfig]{
-		RequestConverter:  converter.BicepConfigDataModelFromVersioned,
-		ResponseConverter: converter.BicepConfigDataModelToVersioned,
+	_ = ns.AddResource("bicepSettings", &builder.ResourceOption[*datamodel.BicepSettings, datamodel.BicepSettings]{
+		RequestConverter:  converter.BicepSettingsDataModelFromVersioned,
+		ResponseConverter: converter.BicepSettingsDataModelToVersioned,
 
-		Put: builder.Operation[datamodel.BicepConfig]{
-			UpdateFilters: []apictrl.UpdateFilter[datamodel.BicepConfig]{
+		Put: builder.Operation[datamodel.BicepSettings]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.BicepSettings]{
 				bc_ctrl.ValidateRequest,
 			},
 		},
-		Patch: builder.Operation[datamodel.BicepConfig]{
-			UpdateFilters: []apictrl.UpdateFilter[datamodel.BicepConfig]{
+		Patch: builder.Operation[datamodel.BicepSettings]{
+			UpdateFilters: []apictrl.UpdateFilter[datamodel.BicepSettings]{
 				bc_ctrl.ValidateRequest,
 			},
 		},

@@ -807,7 +807,7 @@
   },
   {
     "$type": "StringLiteralType",
-    "value": "Radius.Core/bicepConfigs"
+    "value": "Radius.Core/bicepSettings"
   },
   {
     "$type": "StringLiteralType",
@@ -896,7 +896,7 @@
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "The ID of an Applications.Core/SecretStore resource containing username and password for BasicAuth. Required when authenticationMethod is 'BasicAuth'."
+        "description": "The ID of a secret resource containing username and password for BasicAuth. Supported types: Radius.Security/secrets (recommended) or Applications.Core/secretStores. Required when authenticationMethod is 'BasicAuth'."
       },
       "azureWiClientId": {
         "type": {
@@ -957,7 +957,7 @@
   },
   {
     "$type": "ObjectType",
-    "name": "BicepConfigProperties",
+    "name": "BicepSettingsProperties",
     "properties": {
       "provisioningState": {
         "type": {
@@ -1067,7 +1067,7 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Radius.Core/bicepConfigs",
+    "name": "Radius.Core/bicepSettings",
     "properties": {
       "id": {
         "type": {
@@ -1150,7 +1150,7 @@
   },
   {
     "$type": "ResourceType",
-    "name": "Radius.Core/bicepConfigs@2025-08-01-preview",
+    "name": "Radius.Core/bicepSettings@2025-08-01-preview",
     "body": {
       "$ref": "#/98"
     },
@@ -1368,19 +1368,19 @@
         "flags": 0,
         "description": "Cloud provider configuration for the environment."
       },
-      "terraformConfig": {
+      "terraformSettings": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "Resource ID of a Radius.Core/terraformConfigs resource providing Terraform recipe settings."
+        "description": "Resource ID of a Radius.Core/terraformSettings resource providing Terraform recipe settings."
       },
-      "bicepConfig": {
+      "bicepSettings": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "Resource ID of a Radius.Core/bicepConfigs resource providing Bicep recipe settings."
+        "description": "Resource ID of a Radius.Core/bicepSettings resource providing Bicep recipe settings."
       },
       "simulated": {
         "type": {
@@ -1542,19 +1542,19 @@
         "flags": 2,
         "description": "Cloud provider configuration for the environment."
       },
-      "terraformConfig": {
+      "terraformSettings": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 2,
-        "description": "Resource ID of a Radius.Core/terraformConfigs resource providing Terraform recipe settings."
+        "description": "Resource ID of a Radius.Core/terraformSettings resource providing Terraform recipe settings."
       },
-      "bicepConfig": {
+      "bicepSettings": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 2,
-        "description": "Resource ID of a Radius.Core/bicepConfigs resource providing Bicep recipe settings."
+        "description": "Resource ID of a Radius.Core/bicepSettings resource providing Bicep recipe settings."
       },
       "simulated": {
         "type": {
@@ -1967,7 +1967,7 @@
   },
   {
     "$type": "StringLiteralType",
-    "value": "Radius.Core/terraformConfigs"
+    "value": "Radius.Core/terraformSettings"
   },
   {
     "$type": "StringLiteralType",
@@ -2160,7 +2160,7 @@
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret named 'token'."
+        "description": "The ID of a secret resource containing the authentication token. Supported types: Radius.Security/secrets (recommended) or Applications.Core/secretStores. The secret must have a key named 'token'."
       }
     }
   },
@@ -2182,7 +2182,7 @@
   },
   {
     "$type": "ObjectType",
-    "name": "TerraformConfigProperties",
+    "name": "TerraformSettingsProperties",
     "properties": {
       "provisioningState": {
         "type": {
@@ -2299,7 +2299,7 @@
   },
   {
     "$type": "ObjectType",
-    "name": "Radius.Core/terraformConfigs",
+    "name": "Radius.Core/terraformSettings",
     "properties": {
       "id": {
         "type": {
@@ -2389,7 +2389,7 @@
   },
   {
     "$type": "ResourceType",
-    "name": "Radius.Core/terraformConfigs@2025-08-01-preview",
+    "name": "Radius.Core/terraformSettings@2025-08-01-preview",
     "body": {
       "$ref": "#/204"
     },

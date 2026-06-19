@@ -24,11 +24,11 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
-// BicepConfigDataModelToVersioned converts the BicepConfig datamodel to versioned model.
-func BicepConfigDataModelToVersioned(model *datamodel.BicepConfig, version string) (v1.VersionedModelInterface, error) {
+// TerraformSettingsDataModelToVersioned converts the TerraformSettings datamodel to versioned model.
+func TerraformSettingsDataModelToVersioned(model *datamodel.TerraformSettings, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20250801preview.Version:
-		versioned := &v20250801preview.BicepConfigResource{}
+		versioned := &v20250801preview.TerraformSettingsResource{}
 		if err := versioned.ConvertFrom(model); err != nil {
 			return nil, err
 		}
@@ -39,11 +39,11 @@ func BicepConfigDataModelToVersioned(model *datamodel.BicepConfig, version strin
 	}
 }
 
-// BicepConfigDataModelFromVersioned converts versioned BicepConfig model to the datamodel.
-func BicepConfigDataModelFromVersioned(content []byte, version string) (*datamodel.BicepConfig, error) {
+// TerraformSettingsDataModelFromVersioned converts versioned TerraformSettings model to the datamodel.
+func TerraformSettingsDataModelFromVersioned(content []byte, version string) (*datamodel.TerraformSettings, error) {
 	switch version {
 	case v20250801preview.Version:
-		am := &v20250801preview.BicepConfigResource{}
+		am := &v20250801preview.TerraformSettingsResource{}
 		if err := json.Unmarshal(content, am); err != nil {
 			return nil, err
 		}
@@ -51,7 +51,7 @@ func BicepConfigDataModelFromVersioned(content []byte, version string) (*datamod
 		if err != nil {
 			return nil, err
 		}
-		return dm.(*datamodel.BicepConfig), nil
+		return dm.(*datamodel.TerraformSettings), nil
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion

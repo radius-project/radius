@@ -18,48 +18,48 @@ import (
 	"slices"
 )
 
-// TerraformConfigsServer is a fake server for instances of the v20250801preview.TerraformConfigsClient type.
-type TerraformConfigsServer struct {
-	// CreateOrUpdate is the fake for method TerraformConfigsClient.CreateOrUpdate
+// TerraformSettingsServer is a fake server for instances of the v20250801preview.TerraformSettingsClient type.
+type TerraformSettingsServer struct {
+	// CreateOrUpdate is the fake for method TerraformSettingsClient.CreateOrUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusCreated
-	CreateOrUpdate func(ctx context.Context, rootScope string, terraformConfigName string, resource v20250801preview.TerraformConfigResource, options *v20250801preview.TerraformConfigsClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.TerraformConfigsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
+	CreateOrUpdate func(ctx context.Context, rootScope string, terraformSettingsName string, resource v20250801preview.TerraformSettingsResource, options *v20250801preview.TerraformSettingsClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.TerraformSettingsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
 
-	// Delete is the fake for method TerraformConfigsClient.Delete
+	// Delete is the fake for method TerraformSettingsClient.Delete
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusNoContent
-	Delete func(ctx context.Context, rootScope string, terraformConfigName string, options *v20250801preview.TerraformConfigsClientDeleteOptions) (resp azfake.Responder[v20250801preview.TerraformConfigsClientDeleteResponse], errResp azfake.ErrorResponder)
+	Delete func(ctx context.Context, rootScope string, terraformSettingsName string, options *v20250801preview.TerraformSettingsClientDeleteOptions) (resp azfake.Responder[v20250801preview.TerraformSettingsClientDeleteResponse], errResp azfake.ErrorResponder)
 
-	// Get is the fake for method TerraformConfigsClient.Get
+	// Get is the fake for method TerraformSettingsClient.Get
 	// HTTP status codes to indicate success: http.StatusOK
-	Get func(ctx context.Context, rootScope string, terraformConfigName string, options *v20250801preview.TerraformConfigsClientGetOptions) (resp azfake.Responder[v20250801preview.TerraformConfigsClientGetResponse], errResp azfake.ErrorResponder)
+	Get func(ctx context.Context, rootScope string, terraformSettingsName string, options *v20250801preview.TerraformSettingsClientGetOptions) (resp azfake.Responder[v20250801preview.TerraformSettingsClientGetResponse], errResp azfake.ErrorResponder)
 
-	// NewListByScopePager is the fake for method TerraformConfigsClient.NewListByScopePager
+	// NewListByScopePager is the fake for method TerraformSettingsClient.NewListByScopePager
 	// HTTP status codes to indicate success: http.StatusOK
-	NewListByScopePager func(rootScope string, options *v20250801preview.TerraformConfigsClientListByScopeOptions) (resp azfake.PagerResponder[v20250801preview.TerraformConfigsClientListByScopeResponse])
+	NewListByScopePager func(rootScope string, options *v20250801preview.TerraformSettingsClientListByScopeOptions) (resp azfake.PagerResponder[v20250801preview.TerraformSettingsClientListByScopeResponse])
 
-	// Update is the fake for method TerraformConfigsClient.Update
+	// Update is the fake for method TerraformSettingsClient.Update
 	// HTTP status codes to indicate success: http.StatusOK
-	Update func(ctx context.Context, rootScope string, terraformConfigName string, properties v20250801preview.TerraformConfigResource, options *v20250801preview.TerraformConfigsClientUpdateOptions) (resp azfake.Responder[v20250801preview.TerraformConfigsClientUpdateResponse], errResp azfake.ErrorResponder)
+	Update func(ctx context.Context, rootScope string, terraformSettingsName string, properties v20250801preview.TerraformSettingsResource, options *v20250801preview.TerraformSettingsClientUpdateOptions) (resp azfake.Responder[v20250801preview.TerraformSettingsClientUpdateResponse], errResp azfake.ErrorResponder)
 }
 
-// NewTerraformConfigsServerTransport creates a new instance of TerraformConfigsServerTransport with the provided implementation.
-// The returned TerraformConfigsServerTransport instance is connected to an instance of v20250801preview.TerraformConfigsClient via the
+// NewTerraformSettingsServerTransport creates a new instance of TerraformSettingsServerTransport with the provided implementation.
+// The returned TerraformSettingsServerTransport instance is connected to an instance of v20250801preview.TerraformSettingsClient via the
 // azcore.ClientOptions.Transporter field in the client's constructor parameters.
-func NewTerraformConfigsServerTransport(srv *TerraformConfigsServer) *TerraformConfigsServerTransport {
-	return &TerraformConfigsServerTransport{
+func NewTerraformSettingsServerTransport(srv *TerraformSettingsServer) *TerraformSettingsServerTransport {
+	return &TerraformSettingsServerTransport{
 		srv:                 srv,
-		newListByScopePager: newTracker[azfake.PagerResponder[v20250801preview.TerraformConfigsClientListByScopeResponse]](),
+		newListByScopePager: newTracker[azfake.PagerResponder[v20250801preview.TerraformSettingsClientListByScopeResponse]](),
 	}
 }
 
-// TerraformConfigsServerTransport connects instances of v20250801preview.TerraformConfigsClient to instances of TerraformConfigsServer.
-// Don't use this type directly, use NewTerraformConfigsServerTransport instead.
-type TerraformConfigsServerTransport struct {
-	srv                 *TerraformConfigsServer
-	newListByScopePager *tracker[azfake.PagerResponder[v20250801preview.TerraformConfigsClientListByScopeResponse]]
+// TerraformSettingsServerTransport connects instances of v20250801preview.TerraformSettingsClient to instances of TerraformSettingsServer.
+// Don't use this type directly, use NewTerraformSettingsServerTransport instead.
+type TerraformSettingsServerTransport struct {
+	srv                 *TerraformSettingsServer
+	newListByScopePager *tracker[azfake.PagerResponder[v20250801preview.TerraformSettingsClientListByScopeResponse]]
 }
 
-// Do implements the policy.Transporter interface for TerraformConfigsServerTransport.
-func (t *TerraformConfigsServerTransport) Do(req *http.Request) (*http.Response, error) {
+// Do implements the policy.Transporter interface for TerraformSettingsServerTransport.
+func (t *TerraformSettingsServerTransport) Do(req *http.Request) (*http.Response, error) {
 	rawMethod := req.Context().Value(runtime.CtxAPINameKey{})
 	method, ok := rawMethod.(string)
 	if !ok {
@@ -69,25 +69,25 @@ func (t *TerraformConfigsServerTransport) Do(req *http.Request) (*http.Response,
 	return t.dispatchToMethodFake(req, method)
 }
 
-func (t *TerraformConfigsServerTransport) dispatchToMethodFake(req *http.Request, method string) (*http.Response, error) {
+func (t *TerraformSettingsServerTransport) dispatchToMethodFake(req *http.Request, method string) (*http.Response, error) {
 	resultChan := make(chan result, 1)
 	go func() {
 		var intercepted bool
 		var res result
-		if terraformConfigsServerTransportInterceptor != nil {
-			res.resp, res.err, intercepted = terraformConfigsServerTransportInterceptor.Do(req)
+		if terraformSettingsServerTransportInterceptor != nil {
+			res.resp, res.err, intercepted = terraformSettingsServerTransportInterceptor.Do(req)
 		}
 		if !intercepted {
 			switch method {
-			case "TerraformConfigsClient.CreateOrUpdate":
+			case "TerraformSettingsClient.CreateOrUpdate":
 				res.resp, res.err = t.dispatchCreateOrUpdate(req)
-			case "TerraformConfigsClient.Delete":
+			case "TerraformSettingsClient.Delete":
 				res.resp, res.err = t.dispatchDelete(req)
-			case "TerraformConfigsClient.Get":
+			case "TerraformSettingsClient.Get":
 				res.resp, res.err = t.dispatchGet(req)
-			case "TerraformConfigsClient.NewListByScopePager":
+			case "TerraformSettingsClient.NewListByScopePager":
 				res.resp, res.err = t.dispatchNewListByScopePager(req)
-			case "TerraformConfigsClient.Update":
+			case "TerraformSettingsClient.Update":
 				res.resp, res.err = t.dispatchUpdate(req)
 			default:
 				res.err = fmt.Errorf("unhandled API %s", method)
@@ -105,17 +105,17 @@ func (t *TerraformConfigsServerTransport) dispatchToMethodFake(req *http.Request
 	}
 }
 
-func (t *TerraformConfigsServerTransport) dispatchCreateOrUpdate(req *http.Request) (*http.Response, error) {
+func (t *TerraformSettingsServerTransport) dispatchCreateOrUpdate(req *http.Request) (*http.Response, error) {
 	if t.srv.CreateOrUpdate == nil {
 		return nil, &nonRetriableError{errors.New("fake for method CreateOrUpdate not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformConfigs/(?P<terraformConfigName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	body, err := server.UnmarshalRequestAsJSON[v20250801preview.TerraformConfigResource](req)
+	body, err := server.UnmarshalRequestAsJSON[v20250801preview.TerraformSettingsResource](req)
 	if err != nil {
 		return nil, err
 	}
@@ -123,11 +123,11 @@ func (t *TerraformConfigsServerTransport) dispatchCreateOrUpdate(req *http.Reque
 	if err != nil {
 		return nil, err
 	}
-	terraformConfigNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformConfigName")])
+	terraformSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingsName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := t.srv.CreateOrUpdate(req.Context(), rootScopeParam, terraformConfigNameParam, body, nil)
+	respr, errRespr := t.srv.CreateOrUpdate(req.Context(), rootScopeParam, terraformSettingsNameParam, body, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -135,18 +135,18 @@ func (t *TerraformConfigsServerTransport) dispatchCreateOrUpdate(req *http.Reque
 	if !slices.Contains([]int{http.StatusOK, http.StatusCreated}, respContent.HTTPStatus) {
 		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK, http.StatusCreated", respContent.HTTPStatus)}
 	}
-	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).TerraformConfigResource, req)
+	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).TerraformSettingsResource, req)
 	if err != nil {
 		return nil, err
 	}
 	return resp, nil
 }
 
-func (t *TerraformConfigsServerTransport) dispatchDelete(req *http.Request) (*http.Response, error) {
+func (t *TerraformSettingsServerTransport) dispatchDelete(req *http.Request) (*http.Response, error) {
 	if t.srv.Delete == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Delete not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformConfigs/(?P<terraformConfigName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -156,11 +156,11 @@ func (t *TerraformConfigsServerTransport) dispatchDelete(req *http.Request) (*ht
 	if err != nil {
 		return nil, err
 	}
-	terraformConfigNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformConfigName")])
+	terraformSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingsName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := t.srv.Delete(req.Context(), rootScopeParam, terraformConfigNameParam, nil)
+	respr, errRespr := t.srv.Delete(req.Context(), rootScopeParam, terraformSettingsNameParam, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -175,11 +175,11 @@ func (t *TerraformConfigsServerTransport) dispatchDelete(req *http.Request) (*ht
 	return resp, nil
 }
 
-func (t *TerraformConfigsServerTransport) dispatchGet(req *http.Request) (*http.Response, error) {
+func (t *TerraformSettingsServerTransport) dispatchGet(req *http.Request) (*http.Response, error) {
 	if t.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformConfigs/(?P<terraformConfigName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -189,11 +189,11 @@ func (t *TerraformConfigsServerTransport) dispatchGet(req *http.Request) (*http.
 	if err != nil {
 		return nil, err
 	}
-	terraformConfigNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformConfigName")])
+	terraformSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingsName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := t.srv.Get(req.Context(), rootScopeParam, terraformConfigNameParam, nil)
+	respr, errRespr := t.srv.Get(req.Context(), rootScopeParam, terraformSettingsNameParam, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -201,20 +201,20 @@ func (t *TerraformConfigsServerTransport) dispatchGet(req *http.Request) (*http.
 	if !slices.Contains([]int{http.StatusOK}, respContent.HTTPStatus) {
 		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK", respContent.HTTPStatus)}
 	}
-	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).TerraformConfigResource, req)
+	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).TerraformSettingsResource, req)
 	if err != nil {
 		return nil, err
 	}
 	return resp, nil
 }
 
-func (t *TerraformConfigsServerTransport) dispatchNewListByScopePager(req *http.Request) (*http.Response, error) {
+func (t *TerraformSettingsServerTransport) dispatchNewListByScopePager(req *http.Request) (*http.Response, error) {
 	if t.srv.NewListByScopePager == nil {
 		return nil, &nonRetriableError{errors.New("fake for method NewListByScopePager not implemented")}
 	}
 	newListByScopePager := t.newListByScopePager.get(req)
 	if newListByScopePager == nil {
-		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformConfigs`
+		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 2 {
@@ -227,7 +227,7 @@ func (t *TerraformConfigsServerTransport) dispatchNewListByScopePager(req *http.
 		resp := t.srv.NewListByScopePager(rootScopeParam, nil)
 		newListByScopePager = &resp
 		t.newListByScopePager.add(req, newListByScopePager)
-		server.PagerResponderInjectNextLinks(newListByScopePager, req, func(page *v20250801preview.TerraformConfigsClientListByScopeResponse, createLink func() string) {
+		server.PagerResponderInjectNextLinks(newListByScopePager, req, func(page *v20250801preview.TerraformSettingsClientListByScopeResponse, createLink func() string) {
 			page.NextLink = to.Ptr(createLink())
 		})
 	}
@@ -245,17 +245,17 @@ func (t *TerraformConfigsServerTransport) dispatchNewListByScopePager(req *http.
 	return resp, nil
 }
 
-func (t *TerraformConfigsServerTransport) dispatchUpdate(req *http.Request) (*http.Response, error) {
+func (t *TerraformSettingsServerTransport) dispatchUpdate(req *http.Request) (*http.Response, error) {
 	if t.srv.Update == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Update not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformConfigs/(?P<terraformConfigName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	body, err := server.UnmarshalRequestAsJSON[v20250801preview.TerraformConfigResource](req)
+	body, err := server.UnmarshalRequestAsJSON[v20250801preview.TerraformSettingsResource](req)
 	if err != nil {
 		return nil, err
 	}
@@ -263,11 +263,11 @@ func (t *TerraformConfigsServerTransport) dispatchUpdate(req *http.Request) (*ht
 	if err != nil {
 		return nil, err
 	}
-	terraformConfigNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformConfigName")])
+	terraformSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingsName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := t.srv.Update(req.Context(), rootScopeParam, terraformConfigNameParam, body, nil)
+	respr, errRespr := t.srv.Update(req.Context(), rootScopeParam, terraformSettingsNameParam, body, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -275,15 +275,15 @@ func (t *TerraformConfigsServerTransport) dispatchUpdate(req *http.Request) (*ht
 	if !slices.Contains([]int{http.StatusOK}, respContent.HTTPStatus) {
 		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK", respContent.HTTPStatus)}
 	}
-	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).TerraformConfigResource, req)
+	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).TerraformSettingsResource, req)
 	if err != nil {
 		return nil, err
 	}
 	return resp, nil
 }
 
-// set this to conditionally intercept incoming requests to TerraformConfigsServerTransport
-var terraformConfigsServerTransportInterceptor interface {
+// set this to conditionally intercept incoming requests to TerraformSettingsServerTransport
+var terraformSettingsServerTransportInterceptor interface {
 	// Do returns true if the server transport should use the returned response/error
 	Do(*http.Request) (*http.Response, error, bool)
 }

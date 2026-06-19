@@ -22,9 +22,9 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned BicepConfig resource to version-agnostic datamodel.
-func (src *BicepConfigResource) ConvertTo() (v1.DataModelInterface, error) {
-	converted := &datamodel.BicepConfig{
+// ConvertTo converts from the versioned BicepSettings resource to version-agnostic datamodel.
+func (src *BicepSettingsResource) ConvertTo() (v1.DataModelInterface, error) {
+	converted := &datamodel.BicepSettings{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
 				ID:       to.String(src.ID),
@@ -39,7 +39,7 @@ func (src *BicepConfigResource) ConvertTo() (v1.DataModelInterface, error) {
 				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
-		Properties: datamodel.BicepConfigResourceProperties{},
+		Properties: datamodel.BicepSettingsResourceProperties{},
 	}
 
 	if len(src.Properties.RegistryAuthentications) > 0 {
@@ -59,9 +59,9 @@ func (src *BicepConfigResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned BicepConfig resource.
-func (dst *BicepConfigResource) ConvertFrom(src v1.DataModelInterface) error {
-	bc, ok := src.(*datamodel.BicepConfig)
+// ConvertFrom converts from version-agnostic datamodel to the versioned BicepSettings resource.
+func (dst *BicepSettingsResource) ConvertFrom(src v1.DataModelInterface) error {
+	bc, ok := src.(*datamodel.BicepSettings)
 	if !ok {
 		return v1.ErrInvalidModelConversion
 	}
@@ -72,7 +72,7 @@ func (dst *BicepConfigResource) ConvertFrom(src v1.DataModelInterface) error {
 	dst.SystemData = fromSystemDataModel(&bc.SystemData)
 	dst.Location = &bc.Location
 	dst.Tags = *to.StringMapPtr(bc.Tags)
-	dst.Properties = &BicepConfigProperties{
+	dst.Properties = &BicepSettingsProperties{
 		ProvisioningState: fromProvisioningStateDataModel(bc.InternalMetadata.AsyncProvisioningState),
 	}
 

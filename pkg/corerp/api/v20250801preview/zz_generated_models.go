@@ -136,8 +136,28 @@ func (a *AzureContainerInstanceCompute) GetEnvironmentCompute() *EnvironmentComp
 	}
 }
 
-// BicepConfigProperties - Bicep configuration properties.
-type BicepConfigProperties struct {
+// BicepRegistryAuthentication - Authentication configuration for a single private Bicep registry. When `authenticationMethod`
+// is `BasicAuth`, `basicAuthSecretId` is required; the controller rejects configs that omit it.
+type BicepRegistryAuthentication struct {
+	// The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa.
+	AuthenticationMethod *BicepAuthenticationMethod
+
+	// AWS IAM Role ARN for IRSA authentication. Required when authenticationMethod is 'AwsIrsa'.
+	AwsIamRoleArn *string
+
+	// Azure Workload Identity client ID. Required when authenticationMethod is 'AzureWI'.
+	AzureWiClientID *string
+
+	// Azure Workload Identity tenant ID. Required when authenticationMethod is 'AzureWI'.
+	AzureWiTenantID *string
+
+	// The ID of a secret resource containing username and password for BasicAuth. Supported types: Radius.Security/secrets (recommended)
+	// or Applications.Core/secretStores. Required when authenticationMethod is 'BasicAuth'.
+	BasicAuthSecretID *string
+}
+
+// BicepSettingsProperties - Bicep configuration properties.
+type BicepSettingsProperties struct {
 	// Authentication configuration for private Bicep registries, keyed by registry hostname (e.g. 'corp.acr.io'). The Bicep driver
 	// looks up credentials by the host parsed from the recipe template path.
 	RegistryAuthentications map[string]*BicepRegistryAuthentication
@@ -149,13 +169,13 @@ type BicepConfigProperties struct {
 	ReferencedBy []*string
 }
 
-// BicepConfigResource - The Bicep configuration resource, providing reusable Bicep recipe settings for environments.
-type BicepConfigResource struct {
+// BicepSettingsResource - The Bicep configuration resource, providing reusable Bicep recipe settings for environments.
+type BicepSettingsResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
 
 	// REQUIRED; The resource-specific properties for this resource.
-	Properties *BicepConfigProperties
+	Properties *BicepSettingsProperties
 
 	// Resource tags.
 	Tags map[string]*string
@@ -173,33 +193,13 @@ type BicepConfigResource struct {
 	Type *string
 }
 
-// BicepConfigResourceListResult - The response of a BicepConfigResource list operation.
-type BicepConfigResourceListResult struct {
-	// REQUIRED; The BicepConfigResource items on this page
-	Value []*BicepConfigResource
+// BicepSettingsResourceListResult - The response of a BicepSettingsResource list operation.
+type BicepSettingsResourceListResult struct {
+	// REQUIRED; The BicepSettingsResource items on this page
+	Value []*BicepSettingsResource
 
 	// The link to the next page of items
 	NextLink *string
-}
-
-// BicepRegistryAuthentication - Authentication configuration for a single private Bicep registry. When `authenticationMethod`
-// is `BasicAuth`, `basicAuthSecretId` is required; the controller rejects configs that omit it.
-type BicepRegistryAuthentication struct {
-	// The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa.
-	AuthenticationMethod *BicepAuthenticationMethod
-
-	// AWS IAM Role ARN for IRSA authentication. Required when authenticationMethod is 'AwsIrsa'.
-	AwsIamRoleArn *string
-
-	// Azure Workload Identity client ID. Required when authenticationMethod is 'AzureWI'.
-	AzureWiClientID *string
-
-	// Azure Workload Identity tenant ID. Required when authenticationMethod is 'AzureWI'.
-	AzureWiTenantID *string
-
-	// The ID of an Applications.Core/SecretStore resource containing username and password for BasicAuth. Required when authenticationMethod
-	// is 'BasicAuth'.
-	BasicAuthSecretID *string
 }
 
 // EnvironmentCompute - Represents backing compute resource
@@ -219,8 +219,8 @@ func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { retur
 
 // EnvironmentProperties - Environment properties
 type EnvironmentProperties struct {
-	// Resource ID of a Radius.Core/bicepConfigs resource providing Bicep recipe settings.
-	BicepConfig *string
+	// Resource ID of a Radius.Core/bicepSettings resource providing Bicep recipe settings.
+	BicepSettings *string
 
 	// Cloud provider configuration for the environment.
 	Providers *Providers
@@ -234,8 +234,8 @@ type EnvironmentProperties struct {
 	// Simulated environment.
 	Simulated *bool
 
-	// Resource ID of a Radius.Core/terraformConfigs resource providing Terraform recipe settings.
-	TerraformConfig *string
+	// Resource ID of a Radius.Core/terraformSettings resource providing Terraform recipe settings.
+	TerraformSettings *string
 
 	// READ-ONLY; The status of the asynchronous operation.
 	ProvisioningState *ProvisioningState
@@ -533,58 +533,10 @@ type SystemData struct {
 	LastModifiedByType *CreatedByType
 }
 
-// TerraformConfigProperties - Terraform configuration properties.
-type TerraformConfigProperties struct {
-	// Environment variables injected during Terraform recipe execution.
-	Env map[string]*string
-
-	// Terraform CLI configuration file settings. Maps directly to the Terraform CLI configuration file (.terraformrc).
-	Terraformrc *TerraformrcConfig
-
-	// READ-ONLY; The status of the asynchronous operation.
-	ProvisioningState *ProvisioningState
-
-	// READ-ONLY; Environments that reference this Terraform configuration.
-	ReferencedBy []*string
-}
-
-// TerraformConfigResource - The Terraform configuration resource, providing reusable Terraform recipe settings for environments.
-type TerraformConfigResource struct {
-	// REQUIRED; The geo-location where the resource lives
-	Location *string
-
-	// REQUIRED; The resource-specific properties for this resource.
-	Properties *TerraformConfigProperties
-
-	// Resource tags.
-	Tags map[string]*string
-
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
-	ID *string
-
-	// READ-ONLY; The name of the resource
-	Name *string
-
-	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
-	SystemData *SystemData
-
-	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
-	Type *string
-}
-
-// TerraformConfigResourceListResult - The response of a TerraformConfigResource list operation.
-type TerraformConfigResourceListResult struct {
-	// REQUIRED; The TerraformConfigResource items on this page
-	Value []*TerraformConfigResource
-
-	// The link to the next page of items
-	NextLink *string
-}
-
 // TerraformCredentialConfig - Credential configuration for a Terraform registry or module source host.
 type TerraformCredentialConfig struct {
-	// The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret
-	// named 'token'.
+	// The ID of a secret resource containing the authentication token. Supported types: Radius.Security/secrets (recommended)
+	// or Applications.Core/secretStores. The secret must have a key named 'token'.
 	Secret *string
 }
 
@@ -616,6 +568,54 @@ type TerraformProviderMirror struct {
 
 	// The URL of the provider mirror.
 	URL *string
+}
+
+// TerraformSettingsProperties - Terraform configuration properties.
+type TerraformSettingsProperties struct {
+	// Environment variables injected during Terraform recipe execution.
+	Env map[string]*string
+
+	// Terraform CLI configuration file settings. Maps directly to the Terraform CLI configuration file (.terraformrc).
+	Terraformrc *TerraformrcConfig
+
+	// READ-ONLY; The status of the asynchronous operation.
+	ProvisioningState *ProvisioningState
+
+	// READ-ONLY; Environments that reference this Terraform configuration.
+	ReferencedBy []*string
+}
+
+// TerraformSettingsResource - The Terraform configuration resource, providing reusable Terraform recipe settings for environments.
+type TerraformSettingsResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string
+
+	// REQUIRED; The resource-specific properties for this resource.
+	Properties *TerraformSettingsProperties
+
+	// Resource tags.
+	Tags map[string]*string
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string
+
+	// READ-ONLY; The name of the resource
+	Name *string
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string
+}
+
+// TerraformSettingsResourceListResult - The response of a TerraformSettingsResource list operation.
+type TerraformSettingsResourceListResult struct {
+	// REQUIRED; The TerraformSettingsResource items on this page
+	Value []*TerraformSettingsResource
+
+	// The link to the next page of items
+	NextLink *string
 }
 
 // TerraformrcConfig - Terraform CLI configuration file (.terraformrc) settings. See https://developer.hashicorp.com/terraform/cli/config

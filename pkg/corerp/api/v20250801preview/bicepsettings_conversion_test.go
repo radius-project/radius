@@ -26,26 +26,26 @@ import (
 )
 
 const (
-	bicepConfigID       = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/bicepConfigs/bc"
-	bicepConfigName     = "bc"
-	bicepConfigType     = "Radius.Core/bicepConfigs"
-	bicepConfigLocation = "global"
+	bicepSettingsID       = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/bicepSettings/bc"
+	bicepSettingsName     = "bc"
+	bicepSettingsType     = "Radius.Core/bicepSettings"
+	bicepSettingsLocation = "global"
 )
 
-func TestBicepConfig_ConvertTo_EmptyRegistryAuthentications(t *testing.T) {
-	src := newVersionedBicepConfig(nil)
+func TestBicepSettings_ConvertTo_EmptyRegistryAuthentications(t *testing.T) {
+	src := newVersionedBicepSettings(nil)
 
 	dm, err := src.ConvertTo()
 	require.NoError(t, err)
 
-	bc, ok := dm.(*datamodel.BicepConfig)
+	bc, ok := dm.(*datamodel.BicepSettings)
 	require.True(t, ok)
-	require.Equal(t, bicepConfigID, bc.ID)
+	require.Equal(t, bicepSettingsID, bc.ID)
 	require.Empty(t, bc.Properties.RegistryAuthentications)
 }
 
-func TestBicepConfig_ConvertTo_BasicAuth(t *testing.T) {
-	src := newVersionedBicepConfig(map[string]*BicepRegistryAuthentication{
+func TestBicepSettings_ConvertTo_BasicAuth(t *testing.T) {
+	src := newVersionedBicepSettings(map[string]*BicepRegistryAuthentication{
 		"corp.acr.io": {
 			AuthenticationMethod: to.Ptr(BicepAuthenticationMethodBasicAuth),
 			BasicAuthSecretID:    to.Ptr("/planes/radius/local/.../secret"),
@@ -54,7 +54,7 @@ func TestBicepConfig_ConvertTo_BasicAuth(t *testing.T) {
 
 	dm, err := src.ConvertTo()
 	require.NoError(t, err)
-	bc := dm.(*datamodel.BicepConfig)
+	bc := dm.(*datamodel.BicepSettings)
 
 	require.Len(t, bc.Properties.RegistryAuthentications, 1)
 	auth := bc.Properties.RegistryAuthentications["corp.acr.io"]
@@ -65,8 +65,8 @@ func TestBicepConfig_ConvertTo_BasicAuth(t *testing.T) {
 	require.Empty(t, auth.AwsIamRoleArn)
 }
 
-func TestBicepConfig_ConvertTo_AzureWI(t *testing.T) {
-	src := newVersionedBicepConfig(map[string]*BicepRegistryAuthentication{
+func TestBicepSettings_ConvertTo_AzureWI(t *testing.T) {
+	src := newVersionedBicepSettings(map[string]*BicepRegistryAuthentication{
 		"corp.acr.io": {
 			AuthenticationMethod: to.Ptr(BicepAuthenticationMethodAzureWI),
 			AzureWiClientID:      to.Ptr("client-id"),
@@ -76,7 +76,7 @@ func TestBicepConfig_ConvertTo_AzureWI(t *testing.T) {
 
 	dm, err := src.ConvertTo()
 	require.NoError(t, err)
-	bc := dm.(*datamodel.BicepConfig)
+	bc := dm.(*datamodel.BicepSettings)
 
 	auth := bc.Properties.RegistryAuthentications["corp.acr.io"]
 	require.Equal(t, "AzureWI", auth.AuthenticationMethod)
@@ -85,8 +85,8 @@ func TestBicepConfig_ConvertTo_AzureWI(t *testing.T) {
 	require.Empty(t, auth.BasicAuthSecretId)
 }
 
-func TestBicepConfig_ConvertTo_AwsIrsa(t *testing.T) {
-	src := newVersionedBicepConfig(map[string]*BicepRegistryAuthentication{
+func TestBicepSettings_ConvertTo_AwsIrsa(t *testing.T) {
+	src := newVersionedBicepSettings(map[string]*BicepRegistryAuthentication{
 		"corp.ecr.aws": {
 			AuthenticationMethod: to.Ptr(BicepAuthenticationMethodAwsIrsa),
 			AwsIamRoleArn:        to.Ptr("arn:aws:iam::123:role/MyRole"),
@@ -95,7 +95,7 @@ func TestBicepConfig_ConvertTo_AwsIrsa(t *testing.T) {
 
 	dm, err := src.ConvertTo()
 	require.NoError(t, err)
-	bc := dm.(*datamodel.BicepConfig)
+	bc := dm.(*datamodel.BicepSettings)
 
 	auth := bc.Properties.RegistryAuthentications["corp.ecr.aws"]
 	require.Equal(t, "AwsIrsa", auth.AuthenticationMethod)
@@ -103,8 +103,8 @@ func TestBicepConfig_ConvertTo_AwsIrsa(t *testing.T) {
 	require.Empty(t, auth.BasicAuthSecretId)
 }
 
-func TestBicepConfig_ConvertTo_NilEntrySkipped(t *testing.T) {
-	src := newVersionedBicepConfig(map[string]*BicepRegistryAuthentication{
+func TestBicepSettings_ConvertTo_NilEntrySkipped(t *testing.T) {
+	src := newVersionedBicepSettings(map[string]*BicepRegistryAuthentication{
 		"corp.acr.io": {
 			AuthenticationMethod: to.Ptr(BicepAuthenticationMethodBasicAuth),
 			BasicAuthSecretID:    to.Ptr("/planes/.../s1"),
@@ -114,22 +114,22 @@ func TestBicepConfig_ConvertTo_NilEntrySkipped(t *testing.T) {
 
 	dm, err := src.ConvertTo()
 	require.NoError(t, err)
-	bc := dm.(*datamodel.BicepConfig)
+	bc := dm.(*datamodel.BicepSettings)
 
 	require.Len(t, bc.Properties.RegistryAuthentications, 1)
 	_, has := bc.Properties.RegistryAuthentications["corp.acr.io"]
 	require.True(t, has)
 }
 
-func TestBicepConfig_ConvertFrom_Wrong_Type(t *testing.T) {
-	dst := &BicepConfigResource{}
+func TestBicepSettings_ConvertFrom_Wrong_Type(t *testing.T) {
+	dst := &BicepSettingsResource{}
 	err := dst.ConvertFrom(&datamodel.Environment{})
 	require.Error(t, err)
 	require.Equal(t, v1.ErrInvalidModelConversion, err)
 }
 
-func TestBicepConfig_RoundTrip_Identity(t *testing.T) {
-	original := newVersionedBicepConfig(map[string]*BicepRegistryAuthentication{
+func TestBicepSettings_RoundTrip_Identity(t *testing.T) {
+	original := newVersionedBicepSettings(map[string]*BicepRegistryAuthentication{
 		"basic.acr.io": {
 			AuthenticationMethod: to.Ptr(BicepAuthenticationMethodBasicAuth),
 			BasicAuthSecretID:    to.Ptr("/planes/.../basic-secret"),
@@ -148,7 +148,7 @@ func TestBicepConfig_RoundTrip_Identity(t *testing.T) {
 	dm, err := original.ConvertTo()
 	require.NoError(t, err)
 
-	roundTripped := &BicepConfigResource{}
+	roundTripped := &BicepSettingsResource{}
 	require.NoError(t, roundTripped.ConvertFrom(dm))
 
 	require.Len(t, roundTripped.Properties.RegistryAuthentications, 3)
@@ -175,19 +175,19 @@ func TestBicepConfig_RoundTrip_Identity(t *testing.T) {
 	require.Nil(t, aws.AzureWiTenantID)
 }
 
-// TestBicepConfig_ConvertFrom_TwoEntriesAreDistinct guards against pointer
+// TestBicepSettings_ConvertFrom_TwoEntriesAreDistinct guards against pointer
 // aliasing in fromBicepRegistryAuthDataModel. Iterating a map yields the same
 // loop variable address; if the converter takes the address of that variable
 // instead of a fresh copy, all entries end up sharing the same backing
 // storage and one host's secret leaks into the other.
-func TestBicepConfig_ConvertFrom_TwoEntriesAreDistinct(t *testing.T) {
-	dm := &datamodel.BicepConfig{
+func TestBicepSettings_ConvertFrom_TwoEntriesAreDistinct(t *testing.T) {
+	dm := &datamodel.BicepSettings{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID: bicepConfigID, Name: bicepConfigName, Type: bicepConfigType, Location: bicepConfigLocation,
+				ID: bicepSettingsID, Name: bicepSettingsName, Type: bicepSettingsType, Location: bicepSettingsLocation,
 			},
 		},
-		Properties: datamodel.BicepConfigResourceProperties{
+		Properties: datamodel.BicepSettingsResourceProperties{
 			RegistryAuthentications: map[string]datamodel.BicepRegistryAuthentication{
 				"hostA": {
 					AuthenticationMethod: "BasicAuth",
@@ -201,7 +201,7 @@ func TestBicepConfig_ConvertFrom_TwoEntriesAreDistinct(t *testing.T) {
 		},
 	}
 
-	versioned := &BicepConfigResource{}
+	versioned := &BicepSettingsResource{}
 	require.NoError(t, versioned.ConvertFrom(dm))
 
 	hostA := versioned.Properties.RegistryAuthentications["hostA"]
@@ -214,15 +214,15 @@ func TestBicepConfig_ConvertFrom_TwoEntriesAreDistinct(t *testing.T) {
 	require.NotSame(t, hostA.AuthenticationMethod, hostB.AuthenticationMethod)
 }
 
-// newVersionedBicepConfig builds a BicepConfigResource with the required
+// newVersionedBicepSettings builds a BicepSettingsResource with the required
 // tracked-resource fields populated and the supplied registry auth map.
-func newVersionedBicepConfig(auths map[string]*BicepRegistryAuthentication) *BicepConfigResource {
-	return &BicepConfigResource{
-		ID:       to.Ptr(bicepConfigID),
-		Name:     to.Ptr(bicepConfigName),
-		Type:     to.Ptr(bicepConfigType),
-		Location: to.Ptr(bicepConfigLocation),
-		Properties: &BicepConfigProperties{
+func newVersionedBicepSettings(auths map[string]*BicepRegistryAuthentication) *BicepSettingsResource {
+	return &BicepSettingsResource{
+		ID:       to.Ptr(bicepSettingsID),
+		Name:     to.Ptr(bicepSettingsName),
+		Type:     to.Ptr(bicepSettingsType),
+		Location: to.Ptr(bicepSettingsLocation),
+		Properties: &BicepSettingsProperties{
 			ProvisioningState:       to.Ptr(ProvisioningStateSucceeded),
 			RegistryAuthentications: auths,
 		},
