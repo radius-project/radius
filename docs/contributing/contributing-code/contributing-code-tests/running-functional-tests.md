@@ -34,7 +34,7 @@ The tests live under `./test/functional-portable`. They use product functionalit
 Run:
 
 ```sh
-.{workspace}/radius/test/executeFunctionalTest.sh <resourcegroup_name>
+./test/executeFunctionalTest.sh <resourcegroup_name>
 ```
 
 When you run locally with this configuration, the tests use your locally selected Radius Environment and your local copy of `rad`. `executeFunctionalTest.sh` creates the Azure resources, exports the values used by the tests, and runs:
@@ -98,12 +98,12 @@ VS Code starts a child process when you use a `run test`/`debug test` Codelens a
 
 ### How the tests run in CI
 
-These tests run automatically for every PR in the `functional-tests.yml` GitHub workflow. We do not run them for commits to `main` or for tags, since a failure could block the build. For each PR, CI:
+These tests run automatically for every PR via the `functional-test-noncloud.yaml` and `functional-test-cloud.yaml` GitHub workflows. We do not run them for commits to `main` or for tags, since a failure could block the build. For each PR, CI:
 
 - Builds Radius and publishes the test assets.
 - For each group of tests: creates a Kubernetes cluster, installs the build, runs the tests, and deletes any cloud resources that were created.
 
-A separate scheduled job (`purge-test-resources.yaml`) deletes cloud resources left behind when a run is cancelled or times out.
+Separate scheduled jobs (`purge-azure-test-resources.yaml` and `purge-aws-test-resources.yaml`) delete cloud resources left behind when a run is cancelled or times out.
 
 ## Verification
 
