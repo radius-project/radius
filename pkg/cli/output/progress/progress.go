@@ -74,7 +74,15 @@ func (l *interactiveListener) Run() {
 		tea.WithInput(strings.NewReader("")),
 		tea.WithoutSignalHandler(),
 	)
-	_, _ = program.Run()
+	if _, err := program.Run(); err != nil {
+		// Bubble Tea failed to start or exited before the channel was closed.
+		// The model is no longer reading from progressChan, so drain it here to
+		// keep producers (deploy/delete) from blocking until it is closed.
+		fmt.Fprintf(os.Stderr, "Warning: progress display stopped: %v\n", err)
+		for range l.progressChan {
+			// Drain remaining updates so writers do not block.
+		}
+	}
 }
 
 // progressMsg carries a single resource progress update into the Bubble Tea loop.
