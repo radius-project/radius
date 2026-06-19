@@ -34,7 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/config"
 	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/scheme"

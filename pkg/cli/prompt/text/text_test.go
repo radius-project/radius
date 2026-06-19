@@ -22,9 +22,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/acarl005/stripansi"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/stretchr/testify/require"
 )
@@ -94,7 +94,7 @@ func Test_E2E(t *testing.T) {
 	}
 
 	normalizeOutput := func(bts []byte) string {
-		return stripansi.Strip(strings.ReplaceAll(string(bts), "\r\n", "\n"))
+		return ansi.Strip(strings.ReplaceAll(string(bts), "\r\n", "\n"))
 	}
 
 	waitForContains := func(t *testing.T, reader io.Reader, target string) string {

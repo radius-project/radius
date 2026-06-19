@@ -33,7 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 const (
