@@ -37,7 +37,7 @@ import (
 // registers the userTypeAlpha resource type, deploys the given template, and verifies that
 // the recipe-configured container port is present. The template, application name, namespace,
 // and the recipe pack and environment resource names vary between callers.
-func runRecipePacksDeploymentTest(t *testing.T, template, appName, appNamespace, recipePackResourceName, environmentResourceName string) {
+func runRecipePacksDeploymentTest(t *testing.T, template, appName, appNamespace, recipePackResourceName, environmentResourceName, deployedResourceName string) {
 	parentResourceTypeName := "Test.Resources/userTypeAlpha"
 	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
 	filepath := "testdata/testresourcetypes.yaml"
@@ -102,7 +102,7 @@ func runRecipePacksDeploymentTest(t *testing.T, template, appName, appNamespace,
 						App:  appName,
 					},
 					{
-						Name: "rrtresource",
+						Name: deployedResourceName,
 						Type: "test.resources/usertypealpha",
 						App:  appName,
 					},
@@ -171,6 +171,7 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 		"recipepacks-ns",
 		"test-recipe-pack",
 		"recipepacks-test-env",
+		"rrtresource-default",
 	)
 }
 
@@ -189,6 +190,7 @@ func Test_RecipePacks_ByName_Deployment(t *testing.T) {
 		"recipepacks-byname-ns",
 		"test-recipe-pack-byname",
 		"recipepacks-byname-env",
+		"rrtresource-byname",
 	)
 }
 
