@@ -30,19 +30,19 @@ The purpose of the triage team is to review issues as they come in. The team is 
 
 As a member of the triage team you are responsible for keeping the issue repository up to date with only actionable items. This includes:
 
-- **Issue Triage**: categorizing and prioritizing issues based on their severity, impact and relevance to the project.  
-  
+- **Issue Triage**: categorizing and prioritizing issues based on their severity, impact and relevance to the project.
+
   At least once a month, a deep triage session will occur where you will review all issues older than 6 months to determine if they are still relevant, have the needed information to make progress and/or should be reprioritized based on new information. You will review existing labels and update them where appropriate. Any issue without a clear justification for being kept in the queue will be closed with notes in the issue as to why the decision was made. During a normal triage session, you will review all issues that are not assigned to a feature team and/or in the backlog.
 
-- **Issue Verification**: reproducing reported bugs to determine if the issue is valid and how soon it must be fixed  
+- **Issue Verification**: reproducing reported bugs to determine if the issue is valid and how soon it must be fixed
 
    If a bug cannot be reproduced, we will either close it with an explanation of the steps attempted to reproduce or tag it with `needs more info` to get more detail on repro steps and kept in the triage queue. If a bug can be reproduced but we decide the fix is too risky, we will update the description to include details that impacted the decision and the issue will be closed.
 
-- **Issue Management**: assigning labels and tags to issues, verifying issue priority, determining feature team assignment and appropriate target milestone or backlog  
-  
+- **Issue Management**: assigning labels and tags to issues, verifying issue priority, determining feature team assignment and appropriate target milestone or backlog
+
   Each new issue will be categorized and tagged. If the issue has the level of detail required to make a triage decision, we will either deny and close or approve and assign to the appropriate feature team and move it to the backlog. If more information is needed, we will tag it with `needs more info` and keep it in the triage queue.
-- **Communication and collaboration**: engaging with users, contributors, and maintainers, you act as a bridge between them and the development team to resolve issues.  
-  
+- **Communication and collaboration**: engaging with users, contributors, and maintainers, you act as a bridge between them and the development team to resolve issues.
+
   You respond to the user with comments on their issue, asking clarifying questions to understand the issue. You collaborate with other members and users of Radius to find solutions. You gather feedback from users, identify common challenges and discuss potential improvements with the development team. Doing this effectively bridges the gap between users and developers leading to a better experience for all users.
 
 ### Responsibilities of user
