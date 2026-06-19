@@ -163,6 +163,29 @@ func Test_wirePreviewSubcommand(t *testing.T) {
 		require.True(t, previewCalled, "preview runner should have been called")
 	})
 
+	t.Run("uses --preview=false to override RADIUS_PREVIEW=true", func(t *testing.T) {
+		legacyCalled := false
+		previewCalled := false
+
+		legacyCmd := &cobra.Command{
+			Use:  "test",
+			RunE: func(cmd *cobra.Command, args []string) error { legacyCalled = true; return nil },
+		}
+		previewCmd := &cobra.Command{
+			Use:  "test",
+			RunE: func(cmd *cobra.Command, args []string) error { previewCalled = true; return nil },
+		}
+
+		wirePreviewSubcommand(legacyCmd, previewCmd)
+
+		t.Setenv("RADIUS_PREVIEW", "true")
+		legacyCmd.SetArgs([]string{"--preview=false"})
+		err := legacyCmd.Execute()
+		require.NoError(t, err)
+		require.True(t, legacyCalled, "legacy runner should have been called")
+		require.False(t, previewCalled, "preview runner should not have been called")
+	})
+
 	t.Run("routes to legacy runner when RADIUS_PREVIEW is not true", func(t *testing.T) {
 		legacyCalled := false
 		previewCalled := false
