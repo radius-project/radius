@@ -8,6 +8,7 @@
 ---
 version: 2
 
+
 updates:
   - package-ecosystem: github-actions
     directories:
@@ -21,7 +22,7 @@ updates:
       prefix: ci
       include: scope
     groups:
-      all:
+      github-actions:
         applies-to: version-updates
         patterns:
           - "*"
@@ -43,7 +44,7 @@ updates:
       prefix: chore
       include: scope
     groups:
-      all:
+      go-deps:
         applies-to: version-updates
         patterns:
           - "*"
@@ -51,6 +52,8 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
+    ignore:
+      - dependency-name: "github.com/charmbracelet/x/exp/*"
 
   - package-ecosystem: npm
     directories:
@@ -66,7 +69,7 @@ updates:
       prefix: chore
       include: scope
     groups:
-      all:
+      javascript-deps:
         applies-to: version-updates
         patterns:
           - "*"
@@ -85,7 +88,7 @@ updates:
       prefix: chore
       include: scope
     groups:
-      all:
+      devcontainers:
         applies-to: version-updates
         patterns:
           - "*"
