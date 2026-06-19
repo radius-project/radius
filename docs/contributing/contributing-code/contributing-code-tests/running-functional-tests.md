@@ -77,7 +77,7 @@ If you need to debug cleanup issues, re-run with RADIUS_TEST_FAST_CLEANUP=false
 
 1. Place `rad` on your path
 2. Make sure `bicep` is downloaded (`rad bicep download`)
-3. Make sure your [local dev environment is setup](../contributing-code-debugging/radius-os-processes-debugging.md)
+3. Make sure your [local dev environment is set up](../contributing-code-debugging/radius-os-processes-debugging.md)
 4. Log into your Github account and [Generate PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
 5. Log-in to the container registry of your Github organization.
 

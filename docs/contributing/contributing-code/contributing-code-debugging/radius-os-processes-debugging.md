@@ -2,27 +2,15 @@
 
 ## Purpose
 
-This guide is the single authoritative workflow for running and debugging the Radius
-control plane locally. It runs each Radius component (UCP, Controller, Applications RP,
-Dynamic RP) as an OS process under the [Delve](https://github.com/go-delve/delve)
-debugger so you can set breakpoints, inspect variables, and step through code in
-real time. Automation in [`build/debug.mk`](../../../../build/debug.mk) and
-[`.vscode/launch.json`](../../../../.vscode/launch.json) builds the components,
-provisions a disposable [k3d](https://k3d.io) cluster, initializes the database, and
-attaches the debugger with one command or one click.
+This guide is the single authoritative workflow for running and debugging the Radius control plane locally. It runs each Radius component (UCP, Controller, Applications RP, Dynamic RP) as an OS process under the [Delve](https://github.com/go-delve/delve) debugger so you can set breakpoints, inspect variables, and step through code in real time. Automation in [`build/debug.mk`](../../../../build/debug.mk) and [`.vscode/launch.json`](../../../../.vscode/launch.json) builds the components, provisions a disposable [k3d](https://k3d.io) cluster, initializes the database, and attaches the debugger with one command or one click.
 
-This is intended for contributors who are changing control-plane code and want a fast
-edit → debug → re-run loop. The debug environment uses its own k3d cluster and database,
-so it never shares state with an installed copy of Radius.
+This is intended for contributors who are changing control-plane code and want a fast edit → debug → re-run loop. The debug environment uses its own k3d cluster and database, so it never shares state with an installed copy of Radius.
 
 ## Prerequisites
 
-Set up the base development environment first by following
-[Repository Prerequisites](../contributing-code-prerequisites/README.md). On Windows,
-run everything from a [WSL](https://learn.microsoft.com/windows/wsl/install) shell.
+Set up the base development environment first by following [Repository Prerequisites](../contributing-code-prerequisites/README.md). On Windows, run everything from a [WSL](https://learn.microsoft.com/windows/wsl/install) shell.
 
-In addition to the base environment, debugging requires these tools. `make debug-start`
-runs `make debug-check-prereqs` and fails early if any are missing:
+In addition to the base environment, debugging requires these tools. `make debug-start` runs `make debug-check-prereqs` and fails early if any are missing:
 
 - **Go 1.26+** — `go version` (the module targets the version pinned in [`go.mod`](../../../../go.mod))
 - **Delve** — `dlv version`
@@ -76,11 +64,9 @@ docker run --name radius-postgres \
   -p 5432:5432 -d postgres:15
 ```
 
-**Option 2: existing local PostgreSQL** — the automation also detects a Homebrew or
-system PostgreSQL listening on `localhost:5432`.
+**Option 2: existing local PostgreSQL** — the automation also detects a Homebrew or system PostgreSQL listening on `localhost:5432`.
 
-You do not need to create databases by hand. `make debug-start` is idempotent and
-creates the `applications_rp` and `ucp` users and databases on first run.
+You do not need to create databases by hand. `make debug-start` is idempotent and creates the `applications_rp` and `ucp` users and databases on first run.
 
 ## Steps
 
@@ -112,8 +98,7 @@ Open the source file you want to debug and click in the gutter to add breakpoint
 
 ### 3. Attach the debugger
 
-Components are already running under `dlv`; you attach VS Code to a running process
-rather than launching it.
+Components are already running under `dlv`; you attach VS Code to a running process rather than launching it.
 
 1. Open the Run and Debug panel.
 2. Select an attach configuration:
@@ -126,16 +111,14 @@ rather than launching it.
 
 ### 4. Exercise the code with `drad`
 
-Use the `./drad` wrapper (not your installed `rad`) so commands target the local
-debug endpoints. Breakpoints trigger when the corresponding code runs:
+Use the `./drad` wrapper (not your installed `rad`) so commands target the local debug endpoints. Breakpoints trigger when the corresponding code runs:
 
 ```bash
 ./drad env list
 ./drad app deploy my-app.bicep
 ```
 
-Detach the debugger with the disconnect button or `Shift+F5` when you are done. The
-components keep running, so you can re-attach at any time without restarting them.
+Detach the debugger with the disconnect button or `Shift+F5` when you are done. The components keep running, so you can re-attach at any time without restarting them.
 
 ### 5. Debug the `rad` CLI itself
 
@@ -159,8 +142,7 @@ make debug-start
 # 4. Re-attach the debugger (Run and Debug → attach configuration → F5)
 ```
 
-For a faster loop while iterating on a single component, rebuild just that component
-and restart, instead of rebuilding everything:
+For a faster loop while iterating on a single component, rebuild just that component and restart, instead of rebuilding everything:
 
 ```bash
 make debug-build-dynamic-rp   # or debug-build-ucpd, debug-build-applications-rp, debug-build-controller, debug-build-rad
@@ -173,10 +155,7 @@ make debug-stop
 # OR VS Code: Run and Debug → "Stop Control Plane" → F5
 ```
 
-`debug-stop` is destructive: it stops every component, **destroys the `radius-debug`
-k3d cluster**, removes the log directory, and deletes the `./drad` symlink. Run it when
-you are finished — not between debugger sessions. To pause debugging while leaving the
-components up, detach with `Shift+F5` (step 4) instead.
+`debug-stop` is destructive: it stops every component, **destroys the `radius-debug` k3d cluster**, removes the log directory, and deletes the `./drad` symlink. Run it when you are finished — not between debugger sessions. To pause debugging while leaving the components up, detach with `Shift+F5` (step 4) instead.
 
 ### Endpoints and ports
 
@@ -184,14 +163,13 @@ After `make debug-start`, the services are reachable locally:
 
 | Component         | Local endpoint                  | dlv attach port |
 |-------------------|---------------------------------|-----------------|
-| UCP               | `http://localhost:9000`         | 40001           |
+| UCP               | `http://localhost:9000/healthz` | 40001           |
 | Controller        | `http://localhost:7073/healthz` | 40002           |
 | Applications RP   | `http://localhost:8080/healthz` | 40003           |
 | Dynamic RP        | `http://localhost:8082/healthz` | 40004           |
 | Deployment Engine | `http://localhost:5017`         | n/a             |
 
-The Deployment Engine runs inside the k3d cluster, so you attach to it through the
-cluster rather than a local Delve port.
+The Deployment Engine runs inside the k3d cluster, so you attach to it through the cluster rather than a local Delve port.
 
 ### Useful Make commands
 
@@ -301,8 +279,7 @@ make debug-start
 
 ### Debugger won't attach
 
-"Failed to attach to dlv" usually means the component isn't running or the port is
-blocked:
+"Failed to attach to dlv" usually means the component isn't running or the port is blocked:
 
 1. Verify the component is running: `make debug-status`.
 2. Check the debug port is listening: `lsof -i :40001`.
