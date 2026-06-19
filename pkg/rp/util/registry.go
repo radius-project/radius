@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 
 	"github.com/distribution/reference"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -124,8 +125,13 @@ func getBytes(ctx context.Context, repo *remote.Repository, layerDigest string) 
 	return pulledBlob, nil
 }
 
-// parsePath parses a path in the form of registry/repository:tag
+// parsePath parses a path in the form of registry/repository:tag. Recipe template
+// paths may include an http(s):// scheme even though OCI references do not, so a
+// leading scheme is stripped before normalizing (matching the previous parser).
 func parsePath(path string) (repository string, tag string, err error) {
+	path = strings.TrimPrefix(path, "https://")
+	path = strings.TrimPrefix(path, "http://")
+
 	named, err := reference.ParseNormalizedNamed(path)
 	if err != nil {
 		return "", "", err
