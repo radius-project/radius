@@ -531,7 +531,7 @@ func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
 		if err != nil {
 			return err
 		}
-		if !usePreview {
+		if !c.Flags().Changed("preview") {
 			usePreview = strings.EqualFold(os.Getenv("RADIUS_PREVIEW"), "true")
 		}
 		if usePreview {
