@@ -21,8 +21,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strings"
 
-	dockerParser "github.com/novln/docker-parser"
+	"github.com/distribution/reference"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/recipes"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
@@ -124,16 +125,30 @@ func getBytes(ctx context.Context, repo *remote.Repository, layerDigest string) 
 	return pulledBlob, nil
 }
 
-// parsePath parses a path in the form of registry/repository:tag
+// parsePath parses a path in the form of registry/repository:tag. Recipe template
+// paths may include an http(s):// scheme even though OCI references do not, so a
+// leading scheme is stripped before normalizing (matching the previous parser).
+// A tag is required: TagNameOnly defaults a name-only reference to ":latest", but
+// a digest reference such as repo@sha256:... carries no tag, which the registry is
+// resolved by, so it is rejected here with a descriptive error rather than failing
+// later at resolution time.
 func parsePath(path string) (repository string, tag string, err error) {
-	reference, err := dockerParser.Parse(path)
+	path = strings.TrimPrefix(path, "https://")
+	path = strings.TrimPrefix(path, "http://")
+
+	named, err := reference.ParseNormalizedNamed(path)
 	if err != nil {
 		return "", "", err
 	}
 
-	repository = reference.Repository()
-	tag = reference.Tag()
-	return
+	named = reference.TagNameOnly(named)
+	tagged, ok := named.(reference.Tagged)
+	if !ok {
+		return "", "", fmt.Errorf("%q does not include a tag; a tagged reference such as repository:tag is required (digest references are not supported)", path)
+	}
+	repository = named.Name()
+	tag = tagged.Tag()
+	return repository, tag, nil
 }
 
 // GetRegistrySecrets retrieves secret data based on the recipe configuration and template path.
