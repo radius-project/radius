@@ -178,7 +178,7 @@ See the configuration files in `cmd/<service>/*.yaml` for examples of configurat
 
 ## Environment Variables
 
-> **Note:** This section documents legacy environment variables that have not been migrated to the [configuration file](#config-file-schema). They are read directly from the process environment rather than from a service's `yaml` config. Long-term we plan to move these into the configuration file and remove this section.
+> **Note:** This section documents environment variables that the control-plane services read directly from the process environment. Some are the only way to configure their behavior (for example the ARM authentication settings); others — notably the logging variables — override the equivalent keys in the [configuration file](#config-file-schema) (`logging.json` / `logging.level`) when set. Long-term we plan to consolidate the remaining env-only settings into the configuration file.
 
 The Radius control-plane services support a number of different settings that will configure their behavior.
 

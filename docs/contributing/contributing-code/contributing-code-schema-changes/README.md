@@ -31,9 +31,9 @@ Run the umbrella target from the repo root:
 make generate
 ```
 
-`make generate` runs the full pipeline: it deletes stale generated code, compiles every namespace's TypeSpec to its OpenAPI spec (`make generate-openapi-spec`), runs the TypeSpec Go emitter for each namespace's client, runs `go generate ./...` (mockgen), generates the Bicep extensibility types, and generates the CRDs. The two halves of the pipeline are:
+`make generate` runs the full pipeline: it deletes stale generated code, compiles the resource-provider namespaces' TypeSpec to OpenAPI specs (`make generate-openapi-spec` — `UCP`, `Applications.Core`, `Applications.Dapr`, `Applications.Messaging`, `Applications.Datastores`, and `Radius.Core`), runs the TypeSpec Go emitter to produce each namespace's Go client, runs `go generate ./...` (mockgen), generates the Bicep extensibility types, and generates the CRDs. (Not every TypeSpec project emits OpenAPI — for example `typespec/GenericResource` produces only the generic CLI Go client via `make generate-genericcliclient`.) The two halves of the pipeline are:
 
-- **TypeSpec → Swagger.** The [`@azure-tools/typespec-autorest`](https://github.com/Azure/typespec-azure) emitter writes each namespace's OpenAPI document to `swagger/specification/<service>/resource-manager/<service-name>/<status>/<version>/openapi.json`. The output directory is set per namespace by the `emitter-output-dir` option in that namespace's `tspconfig.yaml` (for example `typespec/Applications.Core/tspconfig.yaml` emits to `swagger/specification/applications`).
+- **TypeSpec → Swagger.** The [`@azure-tools/typespec-autorest`](https://github.com/Azure/typespec-azure) emitter writes each API namespace's OpenAPI document to `swagger/specification/<service>/resource-manager/<service-name>/<status>/<version>/openapi.json`. The output directory is set per namespace by the `emitter-output-dir` option in that namespace's `tspconfig.yaml` (for example `typespec/Applications.Core/tspconfig.yaml` emits to `swagger/specification/applications`).
 - **TypeSpec → Go.** The [`@azure-tools/typespec-go`](https://github.com/Azure/typespec-azure) emitter writes generated client code to a temporary `.tsp-go-tmp` folder, which the per-namespace `make generate-rad-<namespace>-client` targets copy into the matching `pkg/<namespace>/api/<version>/` directory and run `go fmt` over. Generated files are prefixed `zz_generated_`.
 
 #### Alternative: generate a single namespace manually
@@ -64,7 +64,7 @@ You normally only need `make generate`. To regenerate one namespace by hand, run
 
 To confirm your schema compiles in a Bicep template, publish the generated Bicep types to a local target and point `bicepconfig.json` at them.
 
-1. Install the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install). If you already have the Radius CLI installed, you can use the Bicep binary it downloads to `./.rad/bin/bicep` instead.
+1. Install the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install). If you already have the Radius CLI installed, you can use the Bicep binary it downloads to `~/.rad/bin/bicep` instead.
 2. Generate the Bicep types (already done if you ran `make generate`):
 
    ```bash
@@ -120,4 +120,4 @@ To confirm your schema compiles in a Bicep template, publish the generated Bicep
 - **`make tsp-format-check` fails.** Run `pnpm -C typespec exec tsp format "**/*.tsp"` to apply the formatter, then re-run the check.
 - **Generated files keep reappearing as changes.** Generated `zz_generated_*.go` and `openapi.json` files are committed artifacts. Run `make generate`, then commit the regenerated output so it matches your TypeSpec.
 - **`make publish-bicep-extension` errors that the index does not exist.** Run `make generate-bicep-types` first; the target publishes `hack/bicep-types-radius/generated/index.json`, which that command creates.
-- **`make publish-bicep-extension` cannot find `bicep`.** Install the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) and ensure it is on your `PATH`, or use the binary at `./.rad/bin/bicep` from a Radius CLI install.
+- **`make publish-bicep-extension` cannot find `bicep`.** Install the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) and ensure it is on your `PATH`, or use the binary at `~/.rad/bin/bicep` from a Radius CLI install.
