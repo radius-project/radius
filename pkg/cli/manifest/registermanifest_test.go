@@ -1090,12 +1090,12 @@ func TestCreateLocationResource(t *testing.T) {
 			address:      "",
 			resourceTypes: map[string]*v20231001preview.LocationResourceType{
 				"testResource": {
-					APIVersions: map[string]map[string]any{
+					APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
 						"2023-01-01": {},
 					},
 				},
 				"anotherResource": {
-					APIVersions: map[string]map[string]any{
+					APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
 						"2023-01-01": {},
 						"2023-06-01": {},
 					},
@@ -1313,12 +1313,12 @@ func createLocationClientFactoryWithResourceTypes() (*v20231001preview.ClientFac
 					Properties: &v20231001preview.LocationProperties{
 						ResourceTypes: map[string]*v20231001preview.LocationResourceType{
 							"testResource": {
-								APIVersions: map[string]map[string]any{
+								APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
 									"2023-01-01": {},
 								},
 							},
 							"anotherResource": {
-								APIVersions: map[string]map[string]any{
+								APIVersions: map[string]*v20231001preview.LocationResourceTypeAPIVersion{
 									"2023-01-01": {},
 									"2023-06-01": {},
 								},

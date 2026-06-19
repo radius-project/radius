@@ -61,7 +61,7 @@ var (
 								DefaultAPIVersion: new(version),
 							},
 						},
-						Locations: map[string]map[string]any{
+						Locations: map[string]*ucp.ResourceProviderSummaryLocation{
 							"east": {},
 						},
 					},
@@ -75,7 +75,7 @@ var (
 								DefaultAPIVersion: new(version),
 							},
 						},
-						Locations: map[string]map[string]any{
+						Locations: map[string]*ucp.ResourceProviderSummaryLocation{
 							"east": {},
 						},
 					},
@@ -96,7 +96,7 @@ var (
 								DefaultAPIVersion: new(version),
 							},
 						},
-						Locations: map[string]map[string]any{
+						Locations: map[string]*ucp.ResourceProviderSummaryLocation{
 							"east": {},
 						},
 					},
@@ -110,7 +110,7 @@ var (
 								DefaultAPIVersion: new(version),
 							},
 						},
-						Locations: map[string]map[string]any{
+						Locations: map[string]*ucp.ResourceProviderSummaryLocation{
 							"east": {},
 						},
 					},
@@ -124,7 +124,7 @@ var (
 								DefaultAPIVersion: new("2025-08-01-preview"),
 							},
 						},
-						Locations: map[string]map[string]any{
+						Locations: map[string]*ucp.ResourceProviderSummaryLocation{
 							"east": {},
 						},
 					},
@@ -397,7 +397,7 @@ func Test_Resource(t *testing.T) {
 					},
 				},
 			},
-			Locations: map[string]map[string]any{
+			Locations: map[string]*ucp.ResourceProviderSummaryLocation{
 				"east": {},
 			},
 		}
@@ -451,7 +451,7 @@ func Test_Resource(t *testing.T) {
 					},
 				},
 			},
-			Locations: map[string]map[string]any{
+			Locations: map[string]*ucp.ResourceProviderSummaryLocation{
 				"east": {},
 			},
 		}
@@ -488,7 +488,7 @@ func Test_Resource(t *testing.T) {
 					},
 				},
 			},
-			Locations: map[string]map[string]any{
+			Locations: map[string]*ucp.ResourceProviderSummaryLocation{
 				"east": {},
 			},
 		}
@@ -608,7 +608,7 @@ func Test_Resource(t *testing.T) {
 					},
 				},
 			},
-			Locations: map[string]map[string]any{
+			Locations: map[string]*ucp.ResourceProviderSummaryLocation{
 				"east": {},
 			},
 		}
@@ -655,7 +655,7 @@ func Test_Resource(t *testing.T) {
 					},
 				},
 			},
-			Locations: map[string]map[string]any{
+			Locations: map[string]*ucp.ResourceProviderSummaryLocation{
 				"east": {},
 			},
 		}
@@ -2393,7 +2393,7 @@ func Test_ResourceProvider(t *testing.T) {
 					DefaultAPIVersion: new(version),
 				},
 			},
-			Locations: map[string]map[string]any{
+			Locations: map[string]*ucp.ResourceProviderSummaryLocation{
 				"east": {},
 			},
 		}

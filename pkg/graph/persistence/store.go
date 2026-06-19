@@ -58,7 +58,7 @@ type SaveOptions struct {
 //
 // Implementations must be safe for concurrent use by multiple goroutines.
 //
-//go:generate mockgen -typed -destination=./mock_store.go -package=persistence -self_package github.com/radius-project/radius/pkg/graph/persistence github.com/radius-project/radius/pkg/graph/persistence Store
+//go:generate go tool mockgen -typed -destination=./mock_store.go -package=persistence -self_package github.com/radius-project/radius/pkg/graph/persistence github.com/radius-project/radius/pkg/graph/persistence Store
 type Store interface {
 	// Save persists graph under key. Implementations should be idempotent
 	// for identical (key, graph) pairs.

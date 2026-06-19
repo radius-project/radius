@@ -24,7 +24,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/acarl005/stripansi"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/aws"
@@ -213,7 +213,7 @@ func Execute() error {
 		// Remove any ANSI escape sequences from the error text. We may be displaying untrusted
 		// data in an error message for an "unhandled" error. This will prevent the error text
 		// from potentially corrupting the terminal.
-		errText = stripansi.Strip(errText)
+		errText = ansi.Strip(errText)
 
 		fmt.Println("Error:", errText)
 		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())

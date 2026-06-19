@@ -22,6 +22,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/output/progress"
 )
 
 // DeployWithProgress runs a deployment and displays progress to the user. This is intended to be used
@@ -41,7 +42,7 @@ func DeployWithProgress(ctx context.Context, options Options) (clients.Deploymen
 
 	// Watch for progress while we're deploying.
 	progressChan := make(chan clients.ResourceProgress, 1)
-	listener := NewProgressListener(progressChan)
+	listener := progress.NewListener(progressChan)
 	wg := &sync.WaitGroup{}
 	wg.Go(func() {
 		listener.Run()

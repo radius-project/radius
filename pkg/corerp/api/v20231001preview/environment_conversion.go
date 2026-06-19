@@ -561,7 +561,7 @@ func toRecipeConfigEnvDatamodel(config *RecipeConfigProperties) datamodel.Enviro
 	}
 
 	additionalProperties := map[string]string{}
-	for k, v := range config.Env {
+	for k, v := range config.Env.AdditionalProperties {
 		additionalProperties[k] = to.String(v)
 	}
 
@@ -570,11 +570,13 @@ func toRecipeConfigEnvDatamodel(config *RecipeConfigProperties) datamodel.Enviro
 	}
 }
 
-func fromRecipeConfigEnvDatamodel(config datamodel.RecipeConfigProperties) map[string]*string {
+func fromRecipeConfigEnvDatamodel(config datamodel.RecipeConfigProperties) *EnvironmentVariables {
 	env := map[string]*string{}
 	for k, v := range config.Env.AdditionalProperties {
 		env[k] = new(v)
 	}
 
-	return env
+	return &EnvironmentVariables{
+		AdditionalProperties: env,
+	}
 }

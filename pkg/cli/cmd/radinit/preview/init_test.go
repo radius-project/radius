@@ -875,6 +875,7 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 			return corerpfake.ApplicationsServer{
 				Get: func(
 					ctx context.Context,
+					rootScope string,
 					applicationName string,
 					options *corerpv20250801.ApplicationsClientGetOptions,
 				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
@@ -886,6 +887,7 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 				},
 				CreateOrUpdate: func(
 					ctx context.Context,
+					rootScope string,
 					applicationName string,
 					resource corerpv20250801.ApplicationResource,
 					options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,
@@ -927,6 +929,7 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 			return corerpfake.ApplicationsServer{
 				Get: func(
 					ctx context.Context,
+					rootScope string,
 					applicationName string,
 					options *corerpv20250801.ApplicationsClientGetOptions,
 				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
@@ -941,6 +944,7 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 				},
 				CreateOrUpdate: func(
 					ctx context.Context,
+					rootScope string,
 					applicationName string,
 					resource corerpv20250801.ApplicationResource,
 					options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,
@@ -972,6 +976,7 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 			return corerpfake.ApplicationsServer{
 				Get: func(
 					ctx context.Context,
+					rootScope string,
 					applicationName string,
 					options *corerpv20250801.ApplicationsClientGetOptions,
 				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
@@ -982,6 +987,7 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 				},
 				CreateOrUpdate: func(
 					ctx context.Context,
+					rootScope string,
 					applicationName string,
 					resource corerpv20250801.ApplicationResource,
 					options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,
@@ -1011,6 +1017,7 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 			return corerpfake.ApplicationsServer{
 				Get: func(
 					ctx context.Context,
+					rootScope string,
 					applicationName string,
 					options *corerpv20250801.ApplicationsClientGetOptions,
 				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
@@ -1021,6 +1028,7 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 				},
 				CreateOrUpdate: func(
 					ctx context.Context,
+					rootScope string,
 					applicationName string,
 					resource corerpv20250801.ApplicationResource,
 					options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,

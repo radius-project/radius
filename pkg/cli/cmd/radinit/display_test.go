@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/acarl005/stripansi"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/exp/teatest"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +39,7 @@ func Test_summaryModel(t *testing.T) {
 	waitForRender := func(t *testing.T, reader io.Reader) string {
 		normalized := ""
 		teatest.WaitFor(t, reader, func(bts []byte) bool {
-			normalized = stripansi.Strip(strings.ReplaceAll(string(bts), "\r\n", "\n"))
+			normalized = ansi.Strip(strings.ReplaceAll(string(bts), "\r\n", "\n"))
 			return strings.Contains(normalized, strings.Trim(common.SummaryFooter, "\n"))
 		}, teatest.WithDuration(waitTimeout))
 

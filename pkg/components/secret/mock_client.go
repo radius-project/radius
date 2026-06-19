@@ -20,6 +20,7 @@ import (
 type MockClient struct {
 	ctrl     *gomock.Controller
 	recorder *MockClientMockRecorder
+	isgomock struct{}
 }
 
 // MockClientMockRecorder is the mock recorder for MockClient.
@@ -40,17 +41,17 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockClient) Delete(arg0 context.Context, arg1 string) error {
+func (m *MockClient) Delete(ctx context.Context, name string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
+	ret := m.ctrl.Call(m, "Delete", ctx, name)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Delete indicates an expected call of Delete.
-func (mr *MockClientMockRecorder) Delete(arg0, arg1 any) *MockClientDeleteCall {
+func (mr *MockClientMockRecorder) Delete(ctx, name any) *MockClientDeleteCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockClient)(nil).Delete), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockClient)(nil).Delete), ctx, name)
 	return &MockClientDeleteCall{Call: call}
 }
 
@@ -78,18 +79,18 @@ func (c *MockClientDeleteCall) DoAndReturn(f func(context.Context, string) error
 }
 
 // Get mocks base method.
-func (m *MockClient) Get(arg0 context.Context, arg1 string) ([]byte, error) {
+func (m *MockClient) Get(ctx context.Context, name string) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Get", arg0, arg1)
+	ret := m.ctrl.Call(m, "Get", ctx, name)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Get indicates an expected call of Get.
-func (mr *MockClientMockRecorder) Get(arg0, arg1 any) *MockClientGetCall {
+func (mr *MockClientMockRecorder) Get(ctx, name any) *MockClientGetCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockClient)(nil).Get), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockClient)(nil).Get), ctx, name)
 	return &MockClientGetCall{Call: call}
 }
 
@@ -117,17 +118,17 @@ func (c *MockClientGetCall) DoAndReturn(f func(context.Context, string) ([]byte,
 }
 
 // Save mocks base method.
-func (m *MockClient) Save(arg0 context.Context, arg1 string, arg2 []byte) error {
+func (m *MockClient) Save(ctx context.Context, name string, value []byte) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Save", ctx, name, value)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Save indicates an expected call of Save.
-func (mr *MockClientMockRecorder) Save(arg0, arg1, arg2 any) *MockClientSaveCall {
+func (mr *MockClientMockRecorder) Save(ctx, name, value any) *MockClientSaveCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockClient)(nil).Save), arg0, arg1, arg2)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockClient)(nil).Save), ctx, name, value)
 	return &MockClientSaveCall{Call: call}
 }
 

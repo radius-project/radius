@@ -98,10 +98,10 @@ func Test_ApplicationGraph(t *testing.T) {
 				require.IsType(t, client, &clients.UCPApplicationsManagementClient{})
 
 				appManagementClient := client.(*clients.UCPApplicationsManagementClient)
-				appGraphClient, err := v20231001preview.NewApplicationsClient(appManagementClient.RootScope, &aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
+				appGraphClient, err := v20231001preview.NewApplicationsClient(&aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
 				require.NoError(t, err)
 
-				res, err := appGraphClient.GetGraph(ctx, "corerp-application-simple1", map[string]any{}, nil)
+				res, err := appGraphClient.GetGraph(ctx, appManagementClient.RootScope, "corerp-application-simple1", v20231001preview.GetGraphRequest{}, nil)
 				require.NoError(t, err)
 
 				// assert that the graph is as expected

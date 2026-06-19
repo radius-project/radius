@@ -20,6 +20,7 @@ import (
 type MockKeyProvider struct {
 	ctrl     *gomock.Controller
 	recorder *MockKeyProviderMockRecorder
+	isgomock struct{}
 }
 
 // MockKeyProviderMockRecorder is the mock recorder for MockKeyProvider.
@@ -40,9 +41,9 @@ func (m *MockKeyProvider) EXPECT() *MockKeyProviderMockRecorder {
 }
 
 // GetCurrentKey mocks base method.
-func (m *MockKeyProvider) GetCurrentKey(arg0 context.Context) ([]byte, int, error) {
+func (m *MockKeyProvider) GetCurrentKey(ctx context.Context) ([]byte, int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCurrentKey", arg0)
+	ret := m.ctrl.Call(m, "GetCurrentKey", ctx)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(int)
 	ret2, _ := ret[2].(error)
@@ -50,9 +51,9 @@ func (m *MockKeyProvider) GetCurrentKey(arg0 context.Context) ([]byte, int, erro
 }
 
 // GetCurrentKey indicates an expected call of GetCurrentKey.
-func (mr *MockKeyProviderMockRecorder) GetCurrentKey(arg0 any) *MockKeyProviderGetCurrentKeyCall {
+func (mr *MockKeyProviderMockRecorder) GetCurrentKey(ctx any) *MockKeyProviderGetCurrentKeyCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentKey", reflect.TypeOf((*MockKeyProvider)(nil).GetCurrentKey), arg0)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCurrentKey", reflect.TypeOf((*MockKeyProvider)(nil).GetCurrentKey), ctx)
 	return &MockKeyProviderGetCurrentKeyCall{Call: call}
 }
 
@@ -62,8 +63,8 @@ type MockKeyProviderGetCurrentKeyCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockKeyProviderGetCurrentKeyCall) Return(arg0 []byte, arg1 int, arg2 error) *MockKeyProviderGetCurrentKeyCall {
-	c.Call = c.Call.Return(arg0, arg1, arg2)
+func (c *MockKeyProviderGetCurrentKeyCall) Return(key []byte, version int, err error) *MockKeyProviderGetCurrentKeyCall {
+	c.Call = c.Call.Return(key, version, err)
 	return c
 }
 
@@ -80,18 +81,18 @@ func (c *MockKeyProviderGetCurrentKeyCall) DoAndReturn(f func(context.Context) (
 }
 
 // GetKeyByVersion mocks base method.
-func (m *MockKeyProvider) GetKeyByVersion(arg0 context.Context, arg1 int) ([]byte, error) {
+func (m *MockKeyProvider) GetKeyByVersion(ctx context.Context, version int) ([]byte, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetKeyByVersion", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetKeyByVersion", ctx, version)
 	ret0, _ := ret[0].([]byte)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetKeyByVersion indicates an expected call of GetKeyByVersion.
-func (mr *MockKeyProviderMockRecorder) GetKeyByVersion(arg0, arg1 any) *MockKeyProviderGetKeyByVersionCall {
+func (mr *MockKeyProviderMockRecorder) GetKeyByVersion(ctx, version any) *MockKeyProviderGetKeyByVersionCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKeyByVersion", reflect.TypeOf((*MockKeyProvider)(nil).GetKeyByVersion), arg0, arg1)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKeyByVersion", reflect.TypeOf((*MockKeyProvider)(nil).GetKeyByVersion), ctx, version)
 	return &MockKeyProviderGetKeyByVersionCall{Call: call}
 }
 

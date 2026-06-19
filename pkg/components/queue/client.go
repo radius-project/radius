@@ -41,7 +41,7 @@ var (
 	ErrEmptyMessage = errors.New("message must not be nil or message is empty")
 )
 
-//go:generate mockgen -typed -destination=./mock_client.go -package=queue -self_package github.com/radius-project/radius/pkg/components/queue github.com/radius-project/radius/pkg/components/queue Client
+//go:generate go tool mockgen -typed -destination=./mock_client.go -package=queue -self_package github.com/radius-project/radius/pkg/components/queue github.com/radius-project/radius/pkg/components/queue Client
 
 // Client is an interface to implement queue operations.
 type Client interface {

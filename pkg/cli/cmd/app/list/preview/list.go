@@ -94,7 +94,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run executes the preview list command logic.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {
-		factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
@@ -102,7 +102,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	client := r.RadiusCoreClientFactory.NewApplicationsClient()
-	pager := client.NewListByScopePager(&corerpv20250801.ApplicationsClientListByScopeOptions{})
+	pager := client.NewListByScopePager(r.Workspace.Scope, &corerpv20250801.ApplicationsClientListByScopeOptions{})
 
 	var applications []*corerpv20250801.ApplicationResource
 	for pager.More() {

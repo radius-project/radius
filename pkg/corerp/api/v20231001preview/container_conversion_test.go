@@ -259,7 +259,7 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 								},
 							},
 							"hostNetwork": true,
-						}, versioned.Properties.Runtimes.Kubernetes.Pod)
+						}, versioned.Properties.Runtimes.Kubernetes.Pod.AdditionalProperties)
 					} else {
 						require.NotEmpty(t, *versioned.Properties.Runtimes.Aci.GatewayID)
 						require.Equal(t, r.Properties.Runtimes.ACI.GatewayID, *versioned.Properties.Runtimes.Aci.GatewayID)

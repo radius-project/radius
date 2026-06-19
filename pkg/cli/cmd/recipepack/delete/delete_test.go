@@ -120,7 +120,7 @@ func Test_Run(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, func() corerpfake.EnvironmentsServer {
 			return corerpfake.EnvironmentsServer{
 				Get: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientGetResponse{
@@ -134,7 +134,7 @@ func Test_Run(t *testing.T) {
 					return
 				},
 				CreateOrUpdate: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					resource v20250801preview.EnvironmentResource,
 					_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
@@ -224,7 +224,7 @@ func Test_Run(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, func() corerpfake.EnvironmentsServer {
 			return corerpfake.EnvironmentsServer{
 				Get: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					errResp.SetResponseError(404, "Not Found")
@@ -341,7 +341,7 @@ func Test_Run(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, func() corerpfake.EnvironmentsServer {
 			return corerpfake.EnvironmentsServer{
 				Get: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					errResp.SetError(fmt.Errorf("internal server error"))
@@ -385,7 +385,7 @@ func Test_Run(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, func() corerpfake.EnvironmentsServer {
 			return corerpfake.EnvironmentsServer{
 				Get: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientGetResponse{
@@ -399,7 +399,7 @@ func Test_Run(t *testing.T) {
 					return
 				},
 				CreateOrUpdate: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					resource v20250801preview.EnvironmentResource,
 					_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
@@ -486,7 +486,7 @@ func Test_Run(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, func() corerpfake.EnvironmentsServer {
 			return corerpfake.EnvironmentsServer{
 				Get: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientGetResponse{
@@ -500,7 +500,7 @@ func Test_Run(t *testing.T) {
 					return
 				},
 				CreateOrUpdate: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					resource v20250801preview.EnvironmentResource,
 					_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
@@ -564,7 +564,7 @@ func Test_Run(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, func() corerpfake.EnvironmentsServer {
 			return corerpfake.EnvironmentsServer{
 				Get: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientGetResponse{
@@ -581,7 +581,7 @@ func Test_Run(t *testing.T) {
 					return
 				},
 				CreateOrUpdate: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					resource v20250801preview.EnvironmentResource,
 					_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {

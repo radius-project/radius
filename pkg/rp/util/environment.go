@@ -34,12 +34,12 @@ func FetchEnvironment(ctx context.Context, environmentID string, ucpOptions *arm
 		return nil, err
 	}
 
-	client, err := v20231001preview.NewEnvironmentsClient(envID.RootScope(), &aztoken.AnonymousCredential{}, ucpOptions)
+	client, err := v20231001preview.NewEnvironmentsClient(&aztoken.AnonymousCredential{}, ucpOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := client.Get(ctx, envID.Name(), nil)
+	response, err := client.Get(ctx, envID.RootScope(), envID.Name(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -55,12 +55,12 @@ func FetchEnvironmentV20250801(ctx context.Context, environmentID string, ucpOpt
 		return nil, err
 	}
 
-	client, err := v20250801preview.NewEnvironmentsClient(envID.RootScope(), &aztoken.AnonymousCredential{}, ucpOptions)
+	client, err := v20250801preview.NewEnvironmentsClient(&aztoken.AnonymousCredential{}, ucpOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := client.Get(ctx, envID.Name(), nil)
+	response, err := client.Get(ctx, envID.RootScope(), envID.Name(), nil)
 	if err != nil {
 		return nil, err
 	}
