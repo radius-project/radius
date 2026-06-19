@@ -106,8 +106,7 @@ func ValidateResourceGroup(ctx context.Context, client database.Client, id resou
 // ValidateResourceType performs semantic validation of a proxy request against registered
 // resource types.
 //
-// Returns NotFoundError if the resource type does not exist.
-// Returns InvalidError if the request cannot be routed due to an invalid configuration.
+// Returns InvalidError if the resource type does not exist or if the request cannot be routed due to an invalid configuration.
 func ValidateResourceType(ctx context.Context, client database.Client, id resources.ID, locationName string, apiVersion string) (*url.URL, error) {
 	// The strategy is to:
 	// - Look up the resource type and validate that it exists .. then
