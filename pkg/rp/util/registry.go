@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"net/url"
 
-	dockerParser "github.com/novln/docker-parser"
+	"github.com/distribution/reference"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/recipes"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
@@ -126,13 +126,16 @@ func getBytes(ctx context.Context, repo *remote.Repository, layerDigest string) 
 
 // parsePath parses a path in the form of registry/repository:tag
 func parsePath(path string) (repository string, tag string, err error) {
-	reference, err := dockerParser.Parse(path)
+	named, err := reference.ParseNormalizedNamed(path)
 	if err != nil {
 		return "", "", err
 	}
 
-	repository = reference.Repository()
-	tag = reference.Tag()
+	named = reference.TagNameOnly(named)
+	repository = named.Name()
+	if tagged, ok := named.(reference.Tagged); ok {
+		tag = tagged.Tag()
+	}
 	return
 }
 

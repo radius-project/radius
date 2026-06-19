@@ -24,7 +24,8 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/dimchansky/utfbom"
+	"golang.org/x/text/encoding/unicode"
+	"golang.org/x/text/transform"
 )
 
 // Profile represents a Profile from the Azure CLI
@@ -87,7 +88,7 @@ func LoadProfile(path string) (result Profile, err error) {
 		err = fmt.Errorf("failed to open file (%s) while loading token: %v", path, err)
 		return
 	}
-	reader := utfbom.SkipOnly(bytes.NewReader(contents))
+	reader := transform.NewReader(bytes.NewReader(contents), unicode.BOMOverride(unicode.UTF8.NewDecoder()))
 
 	dec := json.NewDecoder(reader)
 	if err = dec.Decode(&result); err != nil {
