@@ -20,10 +20,10 @@ Run `make` (or `make help`) at any time to see every target and its description.
 
 ## Test it out
 
-Run the binary that was just built — copy the path from the build output:
+Run the binary that was just built — copy the path printed in the build output (it depends on your OS and architecture):
 
 ```sh
-./dist/darwin_amd64/release/rad
+./dist/<GOOS>_<GOARCH>/release/rad
 ```
 
 You should see the `rad` CLI help text listing its top-level commands. If you got this far, your build works.
