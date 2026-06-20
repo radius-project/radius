@@ -20,8 +20,8 @@ import (
 	"context"
 	"fmt"
 
+	"charm.land/bubbles/v2/textinput"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
-	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/output"
