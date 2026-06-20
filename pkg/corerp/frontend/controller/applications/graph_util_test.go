@@ -261,7 +261,7 @@ func Test_getAPIVersionForResourceType_Validation(t *testing.T) {
 	}
 }
 
-func Test_projectGraphProperties(t *testing.T) {
+func Test_getResourceTypeSpecificProperties(t *testing.T) {
 	tests := []struct {
 		name string
 		in   map[string]any

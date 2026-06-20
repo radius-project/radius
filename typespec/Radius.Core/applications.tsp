@@ -6,7 +6,7 @@ you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
-    
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -110,7 +110,7 @@ model ApplicationGraphResource {
   @doc("Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify resources as added, removed, modified, or unchanged across graphs. Format: 'sha256:{hex}'.")
   diffHash?: string;
 
-  @doc("Resource-type-specific properties of the resource as returned by its resource provider, with secrets redacted. The shape of this map varies by `type` (e.g. a `Radius.Compute/containers` resource exposes different keys than `Radius.Datastores/redisCaches` or any user-defined resource type) and matches the `properties` returned by that resource's GET response. Fields already represented elsewhere in this model (id, type, name, provisioningState, status.outputResources, connections, routes) are omitted. Use `diffHash` rather than a byte-wise compare of this map to detect change.")
+  @doc("Resource-type-specific properties of the resource as returned by its resource provider, with secrets redacted. The shape of this map varies by `type` (e.g. a `Radius.Compute/containers` resource exposes different keys than `Radius.Datastores/redisCaches` or any user-defined resource type) and matches the `properties` returned by that resource's GET response. Top-level keys already surfaced as first-class fields on this model (`provisioningState`, `connections`) are omitted. The whole `status` object is also omitted because it may contain computed values that include secrets (for example, connection strings); the redundant `status.outputResources` list is surfaced via the dedicated `outputResources` field instead. Use `diffHash` rather than a byte-wise compare of this map to detect change.")
   properties?: Record<unknown>;
 }
 
