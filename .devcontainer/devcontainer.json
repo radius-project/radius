@@ -9,7 +9,7 @@
     //Programming languages
     "ghcr.io/devcontainers/features/go:1": {},
     "ghcr.io/guiyomh/features/gotestsum:0.1.1": {},
-    "ghcr.io/devcontainers/features/node:2": {
+    "ghcr.io/devcontainers/features/node:": {
       "version": "24"
     },
     "ghcr.io/devcontainers/features/python:1": {},
@@ -18,7 +18,7 @@
       "minikube": "none",
       "helm": "3.19.4"
     },
-    "ghcr.io/devcontainers/features/docker-in-docker:3.0.1": {
+    "ghcr.io/devcontainers/features/docker-in-docker:3.1.0": {
       "version": "latest",
       "moby": true
     },

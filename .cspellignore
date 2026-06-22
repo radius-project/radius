@@ -39,6 +39,7 @@ Bitbucket
 Bitnami
 Bitnami's
 Bugfix
+Buildah
 CDN
 CEL
 CLI's
@@ -83,7 +84,9 @@ Contoso
 ControlPlaneHealthCheck
 CoreRP
 CreateOrUpdate
+createorupdateazurecredential
 CreateOrUpdateEnvironment
+createorupdateresource
 CustomConfigValidationCheck
 Cytoscape
 DCO
@@ -205,6 +208,7 @@ InvalidTemplate
 JetStream
 KRM
 KV
+Kaniko
 Karishma
 KeyObjectProperties
 KeyVault
@@ -417,6 +421,8 @@ TypeScript
 TypeSpec
 UCP's
 UCPCredential
+ucpcredentialprovider
+ucpcredentials
 UDP
 UDPRoute
 UDTs
@@ -521,11 +527,14 @@ bicepConfig
 bicepconfig
 bicepparams
 bikeshedding
+binfmt
 bool
 booleans
 breakpoint
 brooke
 bubbletea
+buildctl
+buildkitd
 buildx
 caBundle
 camelCased
@@ -792,6 +801,7 @@ kubebuilder
 kubeconf
 kubeconfig
 kubectl
+kubelet
 kubeproxy
 kubernetes
 kubernetesMetadata

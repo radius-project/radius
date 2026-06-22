@@ -214,6 +214,7 @@ func Test_Run(t *testing.T) {
 			return fake.ApplicationsServer{
 				Get: func(
 					ctx context.Context,
+					rootScope string,
 					applicationName string,
 					options *corerpv20250801.ApplicationsClientGetOptions,
 				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {

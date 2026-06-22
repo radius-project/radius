@@ -20,13 +20,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	tea "charm.land/bubbletea/v2"
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2_types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -48,6 +52,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	corerpfake "github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
@@ -769,6 +774,283 @@ func Test_Validate(t *testing.T) {
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
+}
+
+// newScaffoldTestRunner creates a Runner configured for application scaffold tests.
+// The appServerFactory parameter controls the fake ApplicationsServer behavior. When
+// expectCompletion is true the runner is expected to reach the end of Run (so the
+// EditWorkspaces step is expected to be called); set it to false for error-path tests
+// where Run returns before persisting the workspace.
+func newScaffoldTestRunner(t *testing.T, expectCompletion bool, appServerFactory func() corerpfake.ApplicationsServer) (*Runner, string) {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+
+	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
+	configFileInterface.EXPECT().
+		ConfigFromContext(context.Background()).
+		Return(nil).
+		Times(1)
+
+	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+	appManagementClient.EXPECT().
+		CreateOrUpdateResourceGroup(context.Background(), "local", "default", gomock.Any()).
+		Return(nil).
+		Times(2)
+
+	rootScope := "/planes/radius/local/resourceGroups/default"
+	radiusCoreClientFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(rootScope, nil, nil, appServerFactory)
+	require.NoError(t, err)
+
+	credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
+
+	if expectCompletion {
+		configFileInterface.EXPECT().
+			EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
+			Return(nil).
+			Times(1)
+	}
+
+	helmInterface := helm.NewMockInterface(ctrl)
+	helmInterface.EXPECT().
+		InstallRadius(context.Background(), gomock.Any(), "kind-kind").
+		Return(nil).
+		Times(1)
+
+	prompter := prompt.NewMockInterface(ctrl)
+	setProgressHandler(prompter)
+
+	workspace := &workspaces.Workspace{
+		Name:        "default",
+		Scope:       "/planes/radius/local/resourceGroups/default",
+		Environment: "/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/default",
+	}
+
+	options := initOptions{
+		Cluster: clusterOptions{
+			Install: true,
+			Context: "kind-kind",
+		},
+		Environment: environmentOptions{
+			Create:    true,
+			Name:      "default",
+			Namespace: "defaultNamespace",
+		},
+		Application: applicationOptions{
+			Scaffold: true,
+			Name:     "test-app",
+		},
+	}
+
+	runner := &Runner{
+		ConnectionFactory: &connections.MockFactory{
+			ApplicationsManagementClient: appManagementClient,
+			CredentialManagementClient:   credentialManagementClient,
+		},
+		ConfigFileInterface:       configFileInterface,
+		ConfigHolder:              &framework.ConfigHolder{ConfigFilePath: "filePath"},
+		HelmInterface:             helmInterface,
+		Output:                    &output.MockOutput{},
+		Prompter:                  prompter,
+		RadiusCoreClientFactory:   radiusCoreClientFactory,
+		DefaultScopeClientFactory: radiusCoreClientFactory,
+		Options:                   &options,
+		Workspace:                 workspace,
+	}
+
+	tempDir := t.TempDir()
+	originalDir, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.Chdir(originalDir) })
+	err = os.Chdir(tempDir)
+	require.NoError(t, err)
+
+	return runner, tempDir
+}
+
+func Test_Run_WithApplicationScaffold(t *testing.T) {
+	t.Run("creates Radius.Core application when not found", func(t *testing.T) {
+		var getCalled, createCalled int
+
+		runner, tempDir := newScaffoldTestRunner(t, true, func() corerpfake.ApplicationsServer {
+			return corerpfake.ApplicationsServer{
+				Get: func(
+					ctx context.Context,
+					rootScope string,
+					applicationName string,
+					options *corerpv20250801.ApplicationsClientGetOptions,
+				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
+					getCalled++
+					assert.Equal(t, "test-app", applicationName)
+					errResp.SetError(fmt.Errorf("application not found"))
+					errResp.SetResponseError(404, "Not Found")
+					return
+				},
+				CreateOrUpdate: func(
+					ctx context.Context,
+					rootScope string,
+					applicationName string,
+					resource corerpv20250801.ApplicationResource,
+					options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[corerpv20250801.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					createCalled++
+					assert.Equal(t, "test-app", applicationName)
+					assert.Equal(t, v1.LocationGlobal, *resource.Location)
+					assert.Equal(t, "/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/default", *resource.Properties.Environment)
+					result := corerpv20250801.ApplicationsClientCreateOrUpdateResponse{
+						ApplicationResource: corerpv20250801.ApplicationResource{
+							Name:       to.Ptr(applicationName),
+							Location:   resource.Location,
+							Properties: resource.Properties,
+						},
+					}
+					resp.SetResponse(http.StatusOK, result, nil)
+					return
+				},
+			}
+		})
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		assert.Equal(t, 1, getCalled, "Get should be called once")
+		assert.Equal(t, 1, createCalled, "CreateOrUpdate should be called once")
+
+		_, err = os.Stat(filepath.Join(tempDir, "app.bicep"))
+		require.NoError(t, err, "app.bicep should be created")
+
+		_, err = os.Stat(filepath.Join(tempDir, "bicepconfig.json"))
+		require.NoError(t, err, "bicepconfig.json should be created")
+	})
+
+	t.Run("skips creation when application already exists", func(t *testing.T) {
+		var getCalled, createCalled int
+
+		runner, tempDir := newScaffoldTestRunner(t, true, func() corerpfake.ApplicationsServer {
+			return corerpfake.ApplicationsServer{
+				Get: func(
+					ctx context.Context,
+					rootScope string,
+					applicationName string,
+					options *corerpv20250801.ApplicationsClientGetOptions,
+				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
+					getCalled++
+					result := corerpv20250801.ApplicationsClientGetResponse{
+						ApplicationResource: corerpv20250801.ApplicationResource{
+							Name: to.Ptr(applicationName),
+						},
+					}
+					resp.SetResponse(http.StatusOK, result, nil)
+					return
+				},
+				CreateOrUpdate: func(
+					ctx context.Context,
+					rootScope string,
+					applicationName string,
+					resource corerpv20250801.ApplicationResource,
+					options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[corerpv20250801.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					createCalled++
+					t.Error("CreateOrUpdate should not be called when application already exists")
+					return
+				},
+			}
+		})
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		assert.Equal(t, 1, getCalled, "Get should be called once")
+		assert.Equal(t, 0, createCalled, "CreateOrUpdate should not be called")
+
+		_, err = os.Stat(filepath.Join(tempDir, "app.bicep"))
+		require.NoError(t, err, "app.bicep should be created")
+
+		_, err = os.Stat(filepath.Join(tempDir, "bicepconfig.json"))
+		require.NoError(t, err, "bicepconfig.json should be created")
+	})
+
+	t.Run("returns error when Get fails with a non-404 error", func(t *testing.T) {
+		var getCalled, createCalled int
+
+		runner, tempDir := newScaffoldTestRunner(t, false, func() corerpfake.ApplicationsServer {
+			return corerpfake.ApplicationsServer{
+				Get: func(
+					ctx context.Context,
+					rootScope string,
+					applicationName string,
+					options *corerpv20250801.ApplicationsClientGetOptions,
+				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
+					getCalled++
+					errResp.SetError(fmt.Errorf("internal server error"))
+					errResp.SetResponseError(http.StatusInternalServerError, "Internal Server Error")
+					return
+				},
+				CreateOrUpdate: func(
+					ctx context.Context,
+					rootScope string,
+					applicationName string,
+					resource corerpv20250801.ApplicationResource,
+					options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[corerpv20250801.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					createCalled++
+					t.Error("CreateOrUpdate should not be called when Get fails with a non-404 error")
+					return
+				},
+			}
+		})
+
+		err := runner.Run(context.Background())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Failed to check for existing application.")
+
+		assert.Equal(t, 1, getCalled, "Get should be called once")
+		assert.Equal(t, 0, createCalled, "CreateOrUpdate should not be called")
+
+		_, err = os.Stat(filepath.Join(tempDir, "app.bicep"))
+		require.True(t, os.IsNotExist(err), "app.bicep should not be created when application check fails")
+	})
+
+	t.Run("returns error when CreateOrUpdate fails", func(t *testing.T) {
+		var getCalled, createCalled int
+
+		runner, tempDir := newScaffoldTestRunner(t, false, func() corerpfake.ApplicationsServer {
+			return corerpfake.ApplicationsServer{
+				Get: func(
+					ctx context.Context,
+					rootScope string,
+					applicationName string,
+					options *corerpv20250801.ApplicationsClientGetOptions,
+				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
+					getCalled++
+					errResp.SetError(fmt.Errorf("application not found"))
+					errResp.SetResponseError(http.StatusNotFound, "Not Found")
+					return
+				},
+				CreateOrUpdate: func(
+					ctx context.Context,
+					rootScope string,
+					applicationName string,
+					resource corerpv20250801.ApplicationResource,
+					options *corerpv20250801.ApplicationsClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[corerpv20250801.ApplicationsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					createCalled++
+					errResp.SetError(fmt.Errorf("internal server error"))
+					errResp.SetResponseError(http.StatusInternalServerError, "Internal Server Error")
+					return
+				},
+			}
+		})
+
+		err := runner.Run(context.Background())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Failed to create application.")
+
+		assert.Equal(t, 1, getCalled, "Get should be called once")
+		assert.Equal(t, 1, createCalled, "CreateOrUpdate should be called once")
+
+		_, err = os.Stat(filepath.Join(tempDir, "app.bicep"))
+		require.True(t, os.IsNotExist(err), "app.bicep should not be created when application creation fails")
+	})
 }
 
 func Test_Run_InstallAndCreateEnvironment(t *testing.T) {

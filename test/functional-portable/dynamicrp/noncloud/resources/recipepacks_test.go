@@ -32,28 +32,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Test_RecipePacks_Deployment tests the deployment and functionality of Radius.Core/recipePacks resources.
-// This test validates that recipe packs can be created with user-defined type recipes, associated with environments,
-// and used to deploy resources with their configured recipes via the new Radius.Core/environments resource.
-//
-// The test consists of the following steps:
-// 1. Create Kubernetes namespace since we expect this to be created by Ops
-// 2. Resource Type Registration:
-//   - Registers user-defined resource type "Test.Resources/userTypeAlpha"
-//   - Verifies the registration by checking if the resource type is listed in the CLI output
-//
-// 3. Resource Deployment:
-//   - Deploys a Bicep template that creates a recipe pack with userTypeAlpha recipe
-//   - Creates a Radius.Core/environments resource that references the recipe pack
-//   - Deploys RRT resources that use the recipe from the pack
-//
-// 4. Validation:
-//   - Validates that the recipe pack and environment are created successfully
-//   - Confirms that RRT resources are deployed using the recipes from the pack
-func Test_RecipePacks_Deployment(t *testing.T) {
-	template := "testdata/recipepacks-test.bicep"
-	appName := "recipepacks-test-app"
-	appNamespace := "recipepacks-ns"
+// runRecipePacksDeploymentTest runs the shared recipe pack deployment flow used by the
+// full-resource-ID and by-name reference tests. It creates the application namespace,
+// registers the userTypeAlpha resource type, deploys the given template, and verifies that
+// the recipe-configured container port is present. The template, application name, namespace,
+// and the recipe pack and environment resource names vary between callers.
+func runRecipePacksDeploymentTest(t *testing.T, template, appName, appNamespace, recipePackResourceName, environmentResourceName, rrtResourceName string) {
 	parentResourceTypeName := "Test.Resources/userTypeAlpha"
 	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
 	filepath := "testdata/testresourcetypes.yaml"
@@ -97,7 +81,7 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 			},
 		},
 		{
-			// The third step is to deploy a bicep file using a recipe pack for the resource type registered.
+			// The third step deploys the bicep template whose environment references the recipe pack.
 			Executor:                               step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   false,
@@ -105,11 +89,11 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "test-recipe-pack",
+						Name: recipePackResourceName,
 						Type: "radius.core/recipepacks",
 					},
 					{
-						Name: "recipepacks-test-env",
+						Name: environmentResourceName,
 						Type: "radius.core/environments",
 					},
 					{
@@ -118,7 +102,7 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 						App:  appName,
 					},
 					{
-						Name: "rrtresource",
+						Name: rrtResourceName,
 						Type: "test.resources/usertypealpha",
 						App:  appName,
 					},
@@ -160,6 +144,54 @@ func Test_RecipePacks_Deployment(t *testing.T) {
 	})
 
 	test.Test(t)
+}
+
+// Test_RecipePacks_Deployment tests the deployment and functionality of Radius.Core/recipePacks resources.
+// This test validates that recipe packs can be created with user-defined type recipes, associated with environments,
+// and used to deploy resources with their configured recipes via the new Radius.Core/environments resource.
+//
+// The test consists of the following steps:
+// 1. Create Kubernetes namespace since we expect this to be created by Ops
+// 2. Resource Type Registration:
+//   - Registers user-defined resource type "Test.Resources/userTypeAlpha"
+//   - Verifies the registration by checking if the resource type is listed in the CLI output
+//
+// 3. Resource Deployment:
+//   - Deploys a Bicep template that creates a recipe pack with userTypeAlpha recipe
+//   - Creates a Radius.Core/environments resource that references the recipe pack
+//   - Deploys RRT resources that use the recipe from the pack
+//
+// 4. Validation:
+//   - Validates that the recipe pack and environment are created successfully
+//   - Confirms that RRT resources are deployed using the recipes from the pack
+func Test_RecipePacks_Deployment(t *testing.T) {
+	runRecipePacksDeploymentTest(t,
+		"testdata/recipepacks-test.bicep",
+		"recipepacks-test-app",
+		"recipepacks-ns",
+		"test-recipe-pack",
+		"recipepacks-test-env",
+		"rrtresource-deployment",
+	)
+}
+
+// Test_RecipePacks_ByName_Deployment tests that an environment can reference a recipe pack
+// by its bare name (instead of a full resource ID). The server resolves the name against the
+// environment's own plane and resource group and stores the canonical resource ID, so the
+// recipe is resolved and the resource is deployed exactly as it would be with a full ID.
+//
+// The bare name is a compile-time constant in Bicep and therefore creates no implicit
+// dependency edge, so the template uses an explicit dependsOn to guarantee the pack is
+// deployed before the environment that references it.
+func Test_RecipePacks_ByName_Deployment(t *testing.T) {
+	runRecipePacksDeploymentTest(t,
+		"testdata/recipepacks-test-by-name.bicep",
+		"recipepacks-byname-app",
+		"recipepacks-byname-ns",
+		"test-recipe-pack-byname",
+		"recipepacks-byname-env",
+		"rrtresource-byname",
+	)
 }
 
 // Test_RecipePacks_NoProvider_Failure tests that deployment fails when Radius.Core/environments

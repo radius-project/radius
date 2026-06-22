@@ -32,12 +32,12 @@ func FetchTerraformConfig(ctx context.Context, resourceID string, ucpOptions *ar
 		return nil, err
 	}
 
-	client, err := v20250801preview.NewTerraformConfigsClient(id.RootScope(), &aztoken.AnonymousCredential{}, ucpOptions)
+	client, err := v20250801preview.NewTerraformConfigsClient(&aztoken.AnonymousCredential{}, ucpOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := client.Get(ctx, id.Name(), nil)
+	response, err := client.Get(ctx, id.RootScope(), id.Name(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -52,12 +52,12 @@ func FetchBicepConfig(ctx context.Context, resourceID string, ucpOptions *arm.Cl
 		return nil, err
 	}
 
-	client, err := v20250801preview.NewBicepConfigsClient(id.RootScope(), &aztoken.AnonymousCredential{}, ucpOptions)
+	client, err := v20250801preview.NewBicepConfigsClient(&aztoken.AnonymousCredential{}, ucpOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := client.Get(ctx, id.Name(), nil)
+	response, err := client.Get(ctx, id.RootScope(), id.Name(), nil)
 	if err != nil {
 		return nil, err
 	}

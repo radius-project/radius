@@ -1219,6 +1219,46 @@
           "$ref": "#/121"
         }
       },
+      "application": {
+        "description": "(Required) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/0"
+        }
+      },
+      "autoScaling": {
+        "flags": 2,
+        "type": {
+          "$ref": "#/13"
+        }
+      },
+      "connections": {
+        "description": "(Optional) Map of resources this container is dependent upon. `db: { source: db.id } for example.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/17"
+        }
+      },
+      "containers": {
+        "flags": 2,
+        "type": {
+          "$ref": "#/91"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/92"
+        }
+      },
+      "extensions": {
+        "description": "(Optional) Properties for additional functionality. daprSidecar is the only available option.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/97"
+        }
+      },
       "id": {
         "description": "The resource id.",
         "flags": 2,
@@ -1240,6 +1280,13 @@
           "$ref": "#/119"
         }
       },
+      "platformOptions": {
+        "description": "(Optional) If enabled by the platform engineer, properties to be passed to the Recipe for the specified platform.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/99"
+        }
+      },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
@@ -1247,11 +1294,32 @@
           "$ref": "#/118"
         }
       },
+      "replicas": {
+        "description": "(Optional) The minimum number of replicas for the set of containers.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/100"
+        }
+      },
+      "restartPolicy": {
+        "description": "(Optional) Defines how a containers behave when they terminate. `Always` will restart containers regardless of their exit status. `OnFailure` will restart containers if they return a non-zero exit code.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/104"
+        }
+      },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
           "$ref": "#/122"
+        }
+      },
+      "volumes": {
+        "description": "(Optional) List of volumes that can be mounted by a container.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/117"
         }
       }
     }
@@ -1355,11 +1423,32 @@
     "$type": "ObjectType",
     "name": "Radius.Compute/persistentVolumes@2025-08-01-preview",
     "properties": {
+      "allowedAccessModes": {
+        "description": "(Optional) The access modes which are permitted to be requested by a Container. Assumed to be all modes if not specified.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/129"
+        }
+      },
       "apiVersion": {
         "description": "The API version.",
         "flags": 10,
         "type": {
           "$ref": "#/136"
+        }
+      },
+      "application": {
+        "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/130"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/131"
         }
       },
       "id": {
@@ -1388,6 +1477,13 @@
         "flags": 1,
         "type": {
           "$ref": "#/133"
+        }
+      },
+      "sizeInGib": {
+        "description": "(Required) The size of the volume in gibibytes. `1` represents 1024 MiB.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/132"
         }
       },
       "type": {
@@ -1838,11 +1934,46 @@
           "$ref": "#/189"
         }
       },
+      "application": {
+        "description": "(Required) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/141"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/142"
+        }
+      },
+      "hostnames": {
+        "description": "(Optional) Use only when kind is HTTP or TLS. When HTTP, match against the HTTP Host header. When using TLS, match against the SNI attribute of TLS ClientHello message. Hostname may be preceded by a * wildcard.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/144"
+        }
+      },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
           "$ref": "#/191"
+        }
+      },
+      "kind": {
+        "description": "(Optional) The type of rule. If not specified, `HTTPRoute` is assumed. `HTTPRoute` provides L7 ingress with support for matching based on the hostname and HTTP header. `TCPRoute` provides L4 ingress with no support for matching (all traffic is forwarded to the Container). `TLSRoute` provides L4 ingress with the ability to match based on Server Name Indication (SNI) which is equivalent to hostname in TLS. `UDPRoute` is similar to TCPRoutes but uses UDP.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/149"
+        }
+      },
+      "listener": {
+        "description": "(Read Only) The Gateway Listener the route is assigned to.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/158"
         }
       },
       "location": {
@@ -1864,6 +1995,13 @@
         "flags": 1,
         "type": {
           "$ref": "#/186"
+        }
+      },
+      "rules": {
+        "description": "(Required) Rules define semantics for matching a network connection request based on conditions and forwarding the request to a Container.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/185"
         }
       },
       "type": {

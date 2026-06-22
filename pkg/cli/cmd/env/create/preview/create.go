@@ -39,6 +39,10 @@ import (
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
 
+// defaultKubernetesNamespace is used when the user does not specify a namespace.
+// Recipes that deploy Kubernetes resources require one to target.
+const defaultKubernetesNamespace = "default"
+
 // NewCommand creates a new Cobra command and a Runner object to handle the `rad env create` command,
 // and adds flags for environment name, workspace, resource group, Kubernetes namespace, and cloud provider configuration.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -193,13 +197,21 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Validate Kubernetes namespace. Accept either --kubernetes-namespace or the
-	// legacy --namespace alias (the two are mutually exclusive).
+	// Kubernetes namespace: accept either --kubernetes-namespace or the legacy
+	// --namespace alias (mutually exclusive). When neither is set, default to
+	// "default" only if no other provider was configured — containers may
+	// deploy as ACI (Azure) or otherwise target the configured provider, in
+	// which case adding a Kubernetes namespace would be incorrect.
 	k8sNamespace, set, err := commonflags.ResolveKubernetesNamespaceFlag(cmd)
 	if err != nil {
 		return err
 	}
-	if set {
+	shouldSetK8sNamespace := set
+	if !set && r.providers.Azure == nil && r.providers.Aws == nil {
+		k8sNamespace = defaultKubernetesNamespace
+		shouldSetK8sNamespace = true
+	}
+	if shouldSetK8sNamespace {
 		if err := prompt.ValidateKubernetesNamespace(k8sNamespace); err != nil {
 			return clierrors.Message("Invalid Kubernetes namespace %q: %s", k8sNamespace, err.Error())
 		}
@@ -216,7 +228,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run creates a new Radius.Core environment with the default recipe pack
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {
-		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
@@ -235,7 +247,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Create the default recipe pack in the default resource group.
 	// The default pack lives in the default scope regardless of the current workspace scope.
 	if r.DefaultScopeClientFactory == nil {
-		defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, recipepack.DefaultResourceGroupScope)
+		defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
@@ -277,7 +289,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
-	_, err = envClient.CreateOrUpdate(ctx, r.EnvironmentName, *resource, nil)
+	_, err = envClient.CreateOrUpdate(ctx, r.Workspace.Scope, r.EnvironmentName, *resource, nil)
 	if err != nil {
 		return err
 	}

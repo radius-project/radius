@@ -109,7 +109,7 @@ func Test_Run(t *testing.T) {
 			name: "empty list",
 			serverFactory: func() fake.ApplicationsServer {
 				return fake.ApplicationsServer{
-					NewListByScopePager: func(_ *corerpv20250801.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[corerpv20250801.ApplicationsClientListByScopeResponse]) {
+					NewListByScopePager: func(rootScope string, _ *corerpv20250801.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[corerpv20250801.ApplicationsClientListByScopeResponse]) {
 						resp.AddPage(http.StatusOK, corerpv20250801.ApplicationsClientListByScopeResponse{
 							ApplicationResourceListResult: corerpv20250801.ApplicationResourceListResult{
 								Value: []*corerpv20250801.ApplicationResource{},
@@ -131,7 +131,7 @@ func Test_Run(t *testing.T) {
 			name: "multi-page list",
 			serverFactory: func() fake.ApplicationsServer {
 				return fake.ApplicationsServer{
-					NewListByScopePager: func(_ *corerpv20250801.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[corerpv20250801.ApplicationsClientListByScopeResponse]) {
+					NewListByScopePager: func(rootScope string, _ *corerpv20250801.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[corerpv20250801.ApplicationsClientListByScopeResponse]) {
 						resp.AddPage(http.StatusOK, corerpv20250801.ApplicationsClientListByScopeResponse{
 							ApplicationResourceListResult: corerpv20250801.ApplicationResourceListResult{
 								Value: []*corerpv20250801.ApplicationResource{{Name: new("page1-a")}, {Name: new("page1-b")}},
@@ -162,7 +162,7 @@ func Test_Run(t *testing.T) {
 			name: "pager error surfaces",
 			serverFactory: func() fake.ApplicationsServer {
 				return fake.ApplicationsServer{
-					NewListByScopePager: func(_ *corerpv20250801.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[corerpv20250801.ApplicationsClientListByScopeResponse]) {
+					NewListByScopePager: func(rootScope string, _ *corerpv20250801.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[corerpv20250801.ApplicationsClientListByScopeResponse]) {
 						resp.AddResponseError(http.StatusInternalServerError, "InternalServerError")
 						return
 					},

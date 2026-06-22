@@ -3271,7 +3271,8 @@
         },
         "secrets": {
           "type": "object",
-          "description": "The secrets for referenced resource"
+          "description": "The secrets for referenced resource",
+          "additionalProperties": {}
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
@@ -4126,7 +4127,8 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass into the recipe at deployment"
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "additionalProperties": {}
         }
       },
       "required": [
@@ -4194,7 +4196,8 @@
         },
         "parameters": {
           "type": "object",
-          "description": "The key/value parameters to pass to the recipe template at deployment."
+          "description": "The key/value parameters to pass to the recipe template at deployment.",
+          "additionalProperties": {}
         },
         "plainHttp": {
           "type": "boolean",
@@ -4221,7 +4224,8 @@
         },
         "parameters": {
           "type": "object",
-          "description": "Key/value parameters to pass to the recipe template at deployment."
+          "description": "Key/value parameters to pass to the recipe template at deployment.",
+          "additionalProperties": {}
         }
       },
       "discriminator": "templateKind",

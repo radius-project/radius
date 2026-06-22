@@ -20,9 +20,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/compat"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -30,7 +31,7 @@ var (
 	titleStyle        = lipgloss.NewStyle().PaddingLeft(2)
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	helpStyle         = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#555555", Dark: "#AAAAAA"})
+	helpStyle         = lipgloss.NewStyle().Foreground(compat.AdaptiveColor{Light: lipgloss.Color("#555555"), Dark: lipgloss.Color("#AAAAAA")})
 )
 
 type item string
@@ -134,7 +135,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// setting the width and height of the list model as terminal dimensions changes.
 		// setting the height to 25% of the height of the terminal height.
 		m.List.SetSize(msg.Width, msg.Height-((3*msg.Height)/4))
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch keypress := msg.String(); keypress {
 		case "ctrl+c", "q":
 			m.Quitting = true
@@ -156,11 +157,11 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders the view after user selection.
-func (m ListModel) View() string {
+func (m ListModel) View() tea.View {
 	if m.Choice != "" {
 		// Hide output once the choice has been made
-		return ""
+		return tea.NewView("")
 	}
 
-	return m.Style.Render(ansi.Hardwrap(m.List.View(), m.width, true))
+	return tea.NewView(m.Style.Render(ansi.Hardwrap(m.List.View(), m.width, true)))
 }
