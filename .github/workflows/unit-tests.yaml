@@ -22,9 +22,6 @@ concurrency:
   group: ${{ format('{0}-{1}-{2}-{3}-{4}', github.workflow, github.event_name, github.event.pull_request.number || github.event.pull_request_target.number || github.ref, github.base_ref || null, github.head_ref || null) }}
   cancel-in-progress: true
 
-env:
-  GOTESTSUMVERSION: 1.13.0
-
 jobs:
   changes:
     name: Changes
@@ -75,7 +72,6 @@ jobs:
           GOTEST_OPTS: -race -coverprofile ./dist/unit_test/ut_coverage.out
         run: |
           mkdir -p ./dist/unit_test
-          go install "gotest.tools/gotestsum@v${GOTESTSUMVERSION}"
           make test
 
       - name: Run make test-validate-cli (CLI integration tests)
