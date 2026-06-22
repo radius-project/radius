@@ -1,5 +1,9 @@
 # Contributing to Radius code
 
+## Purpose
+
+This guide collects background and conventions for working on the Radius Go codebase: where to learn Go, how to get productive, our coding style and linting rules, and our error-handling expectations. It is reference material for anyone writing Go in this repository. For how to find your way around the tree, see the [code organization guide](./../contributing-code-organization/); for how to build and test your changes, see [building the repo](./../contributing-code-building/).
+
 This guide includes background and tips for working on the Radius Go codebase.
 
 ## Learning Go
@@ -36,9 +40,9 @@ We enforce coding style through using [gofmt](https://pkg.go.dev/cmd/gofmt).
 
 We stick to the usual philosophy of Go projects regarding styling, meaning that we prefer to avoid bikeshedding and debates about styling:
 
->  gofmt isn't anybody's preferred style, but it's adequate for everybody.
+> gofmt isn't anybody's preferred style, but it's adequate for everybody.
 
-If you're using a modern editor with Go support, chances are it is already integrated with `gofmt` and this will mostly be automatic. If there's any question about how to style a piece of code, following the style of the surrounding code is a safe bet. 
+If you're using a modern editor with Go support, chances are it is already integrated with `gofmt` and this will mostly be automatic. If there's any question about how to style a piece of code, following the style of the surrounding code is a safe bet.
 
 ---
 
@@ -61,7 +65,7 @@ The Google Go Style Guide has some [excellent guidance](https://google.github.io
 
 ### Suppressing errors
 
-Radius code **SHOULD NOT** suppress errors without a good reason. 
+Radius code **SHOULD NOT** suppress errors without a good reason.
 
 ```go
 // Bad: Don't do this
