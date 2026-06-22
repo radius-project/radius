@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	corerp_datamodel "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
@@ -265,7 +265,7 @@ func Test_createProviderConfig_hasProviders(t *testing.T) {
 func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 	d := &bicepDriver{}
 
-	resources := []*armresources.ResourceReference{
+	resources := []*armdeployments.ResourceReference{
 		{
 			ID: new("outputResourceId"),
 		},
@@ -322,7 +322,7 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 	d := &bicepDriver{}
 
-	resources := []*armresources.ResourceReference{
+	resources := []*armdeployments.ResourceReference{
 		{
 			ID: new("outputResourceId"),
 		},
@@ -359,7 +359,7 @@ func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 	d := &bicepDriver{}
 
-	resources := []*armresources.ResourceReference{
+	resources := []*armdeployments.ResourceReference{
 		{
 			ID: new("outputResourceId"),
 		},
