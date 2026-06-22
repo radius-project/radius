@@ -7,6 +7,8 @@ description: Create and verify a Radius deploy environment (AWS or Azure) for a 
 
 Create a GitHub Environment configured with the cloud credentials (variables + secrets) Radius needs to deploy applications. Supports AWS (OIDC via IAM Role) and Azure (OIDC via Workload Identity).
 
+This skill is a convenience wrapper over the prose walkthrough in [`docs/contributing/contributing-deploy-environments.md`](../../../docs/contributing/contributing-deploy-environments.md). Follow that doc directly when this skill is unavailable.
+
 ## When to use this skill
 
 - "Create a new Radius environment named X"
