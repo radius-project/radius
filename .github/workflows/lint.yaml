@@ -92,9 +92,7 @@ jobs:
           helm lint "${HELM_CHARTS_DIR}"
 
       - name: Run Helm unit tests
-        run: |
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2 || true
-          cd "${HELM_CHARTS_DIR}" && helm unittest .
+        run: make test-helm
 
       - name: Run TypeSpec format check
         run: make tsp-format-check
