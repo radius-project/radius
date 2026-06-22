@@ -109,7 +109,10 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(version string,
 	pullopts := []helm.PullOpt{
 		helm.WithConfig(config),
 		func(p *helm.Pull) {
-			p.Settings = &cli.EnvSettings{}
+			// Helm v4 requires a populated content cache (Settings.ContentCache) to download
+			// charts; an empty EnvSettings leaves it unset and Pull fails with
+			// "content cache must be set". cli.New() initializes the default cache/config paths.
+			p.Settings = cli.New()
 		},
 	}
 
