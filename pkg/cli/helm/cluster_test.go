@@ -28,7 +28,7 @@ import (
 	"go.uber.org/mock/gomock"
 	helm "helm.sh/helm/v4/pkg/action"
 	chart "helm.sh/helm/v4/pkg/chart/v2"
-	releaseresp "helm.sh/helm/v4/pkg/release"
+	"helm.sh/helm/v4/pkg/release"
 	releasecommon "helm.sh/helm/v4/pkg/release/common"
 	releasev1 "helm.sh/helm/v4/pkg/release/v1"
 	"helm.sh/helm/v4/pkg/storage/driver"
@@ -119,7 +119,7 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 	} {
 		mockHelmClient.EXPECT().
 			RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), c.releaseName, c.ns, true).
-			Return(&releaseresp.UninstallReleaseResponse{}, nil).
+			Return(&release.UninstallReleaseResponse{}, nil).
 			Times(1)
 	}
 
@@ -145,7 +145,7 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 	// Radius missing, other releases present.
 	mockHelmClient.EXPECT().
 		RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName, options.Radius.Namespace, true).
-		Return(&releaseresp.UninstallReleaseResponse{}, driver.ErrReleaseNotFound).
+		Return(&release.UninstallReleaseResponse{}, driver.ErrReleaseNotFound).
 		Times(1)
 
 	for _, c := range []struct {
@@ -156,7 +156,7 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 	} {
 		mockHelmClient.EXPECT().
 			RunHelmUninstall(gomock.AssignableToTypeOf(&helm.Configuration{}), c.releaseName, c.ns, true).
-			Return(&releaseresp.UninstallReleaseResponse{}, nil).
+			Return(&release.UninstallReleaseResponse{}, nil).
 			Times(1)
 	}
 
