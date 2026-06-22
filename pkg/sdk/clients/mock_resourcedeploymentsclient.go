@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
 	"github.com/google/uuid"
 )
 
@@ -67,9 +67,9 @@ func (rdc *MockResourceDeploymentsClient) CreateOrUpdate(ctx context.Context, pa
 	defer rdc.lock.Unlock()
 
 	value := ClientCreateOrUpdateResponse{
-		DeploymentExtended: armresources.DeploymentExtended{
+		DeploymentExtended: armdeployments.DeploymentExtended{
 			ID:         &resourceID,
-			Properties: &armresources.DeploymentPropertiesExtended{},
+			Properties: &armdeployments.DeploymentPropertiesExtended{},
 		},
 	}
 	state := &OperationState{
@@ -113,9 +113,9 @@ func (rdc *MockResourceDeploymentsClient) Delete(ctx context.Context, resourceID
 		Kind:       http.MethodDelete,
 		ResourceID: resourceID,
 		Value: ClientDeleteResponse{
-			DeploymentExtended: armresources.DeploymentExtended{
+			DeploymentExtended: armdeployments.DeploymentExtended{
 				ID:         &resourceID,
-				Properties: &armresources.DeploymentPropertiesExtended{},
+				Properties: &armdeployments.DeploymentPropertiesExtended{},
 			},
 		},
 	}

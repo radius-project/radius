@@ -22,9 +22,9 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/charmbracelet/x/exp/teatest"
+	"github.com/charmbracelet/x/exp/teatest/v2"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,7 +46,7 @@ func Test_summaryModel(t *testing.T) {
 		return normalized
 	}
 
-	resultTest := func(t *testing.T, expected common.SummaryResult, key tea.KeyType) {
+	resultTest := func(t *testing.T, expected common.SummaryResult, key tea.KeyPressMsg) {
 		options := initOptions{}
 		model := &common.SummaryModel{
 			Options: toDisplayOptions(&options),
@@ -56,9 +56,7 @@ func Test_summaryModel(t *testing.T) {
 		waitForRender(t, tm.Output())
 
 		// Press the given key
-		tm.Send(tea.KeyMsg{
-			Type: key,
-		})
+		tm.Send(key)
 
 		if err := tm.Quit(); err != nil {
 			t.Fatal(err)
@@ -72,15 +70,15 @@ func Test_summaryModel(t *testing.T) {
 	}
 
 	t.Run("Result: Confirm", func(t *testing.T) {
-		resultTest(t, common.ResultConfirmed, tea.KeyEnter)
+		resultTest(t, common.ResultConfirmed, tea.KeyPressMsg{Code: tea.KeyEnter})
 	})
 
 	t.Run("Result: Cancel", func(t *testing.T) {
-		resultTest(t, common.ResultCanceled, tea.KeyEscape)
+		resultTest(t, common.ResultCanceled, tea.KeyPressMsg{Code: tea.KeyEsc})
 	})
 
 	t.Run("Result: Quit", func(t *testing.T) {
-		resultTest(t, common.ResultQuit, tea.KeyCtrlC)
+		resultTest(t, common.ResultQuit, tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 	})
 
 	viewTest := func(t *testing.T, options initOptions, expected string) {
@@ -93,9 +91,7 @@ func Test_summaryModel(t *testing.T) {
 		assert.Equal(t, expected, output)
 
 		// Press ENTER
-		tm.Send(tea.KeyMsg{
-			Type: tea.KeyEnter,
-		})
+		tm.Send(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 		if err := tm.Quit(); err != nil {
 			t.Fatal(err)
@@ -127,7 +123,7 @@ func Test_summaryModel(t *testing.T) {
 			"🌏 Use existing environment test-environment\n" +
 			"📋 Update local configuration\n" +
 			"\n" +
-			"(press enter to confirm or esc to restart)\n\r"
+			"(press enter to confirm or esc to restart)"
 
 		viewTest(t, options, expected)
 	})
@@ -152,11 +148,11 @@ func Test_summaryModel(t *testing.T) {
 			"\n" +
 			"🔧 Install Radius test-version\n" +
 			"   - Kubernetes cluster: test-context\n" +
-			"   - Kubernetes namespace: \n" +
+			"   - Kubernetes namespace:\n" +
 			"🌏 Use existing environment test-environment\n" +
 			"📋 Update local configuration\n" +
 			"\n" +
-			"(press enter to confirm or esc to restart)\n\r"
+			"(press enter to confirm or esc to restart)"
 
 		viewTest(t, options, expected)
 	})

@@ -22,10 +22,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/charmbracelet/x/exp/teatest"
+	"github.com/charmbracelet/x/exp/teatest/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -82,7 +82,7 @@ func Test_E2E(t *testing.T) {
 		"\n" +
 		"> " + testPlaceholder + "\n" +
 		"\n" +
-		"(ctrl+c to quit)\r"
+		"(ctrl+c to quit)"
 
 	setup := func(t *testing.T) *teatest.TestModel {
 		options := TextModelOptions{
@@ -122,9 +122,7 @@ func Test_E2E(t *testing.T) {
 
 	t.Run("confirm default", func(t *testing.T) {
 		tm := setup(t)
-		tm.Send(tea.KeyMsg{
-			Type: tea.KeyEnter,
-		})
+		tm.Send(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 		if err := tm.Quit(); err != nil {
 			t.Fatal(err)
@@ -145,9 +143,7 @@ func Test_E2E(t *testing.T) {
 		const userInputText = "abcd"
 		tm := setup(t)
 		tm.Type(userInputText)
-		tm.Send(tea.KeyMsg{
-			Type: tea.KeyEnter,
-		})
+		tm.Send(tea.KeyPressMsg{Code: tea.KeyEnter})
 
 		if err := tm.Quit(); err != nil {
 			t.Fatal(err)
@@ -166,9 +162,7 @@ func Test_E2E(t *testing.T) {
 
 	t.Run("cancel", func(t *testing.T) {
 		tm := setup(t)
-		tm.Send(tea.KeyMsg{
-			Type: tea.KeyCtrlC,
-		})
+		tm.Send(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
 
 		// Give the model a moment to process the Ctrl+C before quitting
 		time.Sleep(10 * time.Millisecond)

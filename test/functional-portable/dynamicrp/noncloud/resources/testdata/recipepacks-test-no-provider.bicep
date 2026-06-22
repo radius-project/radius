@@ -45,7 +45,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 resource rrtresource 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
-  name: 'rrtresource-no-provider'
+  name: 'rrtresource-noprovider'
   properties: {
     environment: env.id
     application: app.id

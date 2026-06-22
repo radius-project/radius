@@ -39,9 +39,9 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
       recipepack.name
     ]
     providers: {
-     kubernetes: {
+      kubernetes: {
         namespace: 'recipepacks-byname-ns'
-     }
+      }
     }
     recipeParameters: {
       'Test.Resources/userTypeAlpha': {

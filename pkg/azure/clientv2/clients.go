@@ -24,10 +24,11 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	armauthorization "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
 	armservicebus "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/servicebus/armservicebus/v2"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage/v4"
 )
 
 var defaultClientOptions = &arm.ClientOptions{
@@ -136,13 +137,13 @@ func NewServiceBusNamespacesClient(subscriptionID string, options *Options) (*ar
 }
 
 // // NewDeploymentsClient creates a new DeploymentsClient which can be used to manage Azure deployments.
-func NewDeploymentsClient(subscriptionID string, options *Options) (*armresources.DeploymentsClient, error) {
-	return armresources.NewDeploymentsClient(subscriptionID, options.Cred, defaultClientOptions)
+func NewDeploymentsClient(subscriptionID string, options *Options) (*armdeployments.DeploymentsClient, error) {
+	return armdeployments.NewDeploymentsClient(subscriptionID, options.Cred, defaultClientOptions)
 }
 
 // NewDeploymentOperationsClient creates a new ARM deployment operations client for managing deployment operations.
-func NewDeploymentOperationsClient(subscriptionID string, options *Options) (*armresources.DeploymentOperationsClient, error) {
-	return armresources.NewDeploymentOperationsClient(subscriptionID, options.Cred, defaultClientOptions)
+func NewDeploymentOperationsClient(subscriptionID string, options *Options) (*armdeployments.DeploymentOperationsClient, error) {
+	return armdeployments.NewDeploymentOperationsClient(subscriptionID, options.Cred, defaultClientOptions)
 }
 
 // NewResourceGroupsClient creates a new ARM Resource Groups Client with the given subscription ID and options.

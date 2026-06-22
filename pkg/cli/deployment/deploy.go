@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -119,7 +119,7 @@ func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name st
 				Template:       options.Template,
 				Parameters:     options.Parameters,
 				ProviderConfig: providerConfig,
-				Mode:           armresources.DeploymentModeIncremental,
+				Mode:           armdeployments.DeploymentModeIncremental,
 			},
 		},
 		resourceId,
@@ -160,7 +160,7 @@ func (dc *ResourceDeploymentClient) GetProviderConfigs(options clients.Deploymen
 	return providerConfig
 }
 
-func (dc *ResourceDeploymentClient) createSummary(deployment *armresources.DeploymentExtended) (clients.DeploymentResult, error) {
+func (dc *ResourceDeploymentClient) createSummary(deployment *armdeployments.DeploymentExtended) (clients.DeploymentResult, error) {
 	if deployment.Properties == nil || deployment.Properties.OutputResources == nil {
 		return clients.DeploymentResult{}, nil
 	}
@@ -277,7 +277,7 @@ func (dc *ResourceDeploymentClient) monitorProgress(ctx context.Context, name st
 	return nil
 }
 
-func (dc *ResourceDeploymentClient) listOperations(ctx context.Context, name string) ([]*armresources.DeploymentOperation, error) {
+func (dc *ResourceDeploymentClient) listOperations(ctx context.Context, name string) ([]*armdeployments.DeploymentOperation, error) {
 	var resourceId string
 
 	// No providers section, hence all segments are part of scopes
