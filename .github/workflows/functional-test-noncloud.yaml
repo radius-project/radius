@@ -51,7 +51,7 @@ env:
   YQ_VERSION: v4.44.3
   YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
   # Helm version
-  HELM_VER: v3.19.4
+  HELM_VER: v4.2.2
   # KinD cluster version
   KIND_VER: v0.29.0
   # Kubectl version
