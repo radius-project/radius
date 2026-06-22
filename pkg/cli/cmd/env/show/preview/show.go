@@ -188,11 +188,25 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		for resourceType, recipe := range pack.RecipePackResource.Properties.Recipes {
+			if recipe == nil {
+				continue
+			}
+
+			kind := "unknown"
+			if recipe.Kind != nil {
+				kind = string(*recipe.Kind)
+			}
+
+			source := ""
+			if recipe.Source != nil {
+				source = *recipe.Source
+			}
+
 			envRecipes = append(envRecipes, EnvRecipes{
 				RecipePack:   ID.Name(),
 				ResourceType: resourceType,
-				Kind:         string(*recipe.Kind),
-				Source:       *recipe.Source,
+				Kind:         kind,
+				Source:       source,
 			})
 		}
 	}
