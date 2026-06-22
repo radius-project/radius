@@ -59,12 +59,12 @@ func TestRecipePackConvertVersionedToDataModel(t *testing.T) {
 
 	container := recipePack.Properties.Recipes["Applications.Core/containers"]
 	require.NotNil(t, container)
-	require.Equal(t, "Bicep", container.Kind)
+	require.Equal(t, "bicep", container.Kind)
 	require.Equal(t, "br:ghcr.io/radius-project/recipes/kubernetes-container:latest", container.Source)
 
 	stateStore := recipePack.Properties.Recipes["Applications.Dapr/stateStores"]
 	require.NotNil(t, stateStore)
-	require.Equal(t, "Terraform", stateStore.Kind)
+	require.Equal(t, "terraform", stateStore.Kind)
 	require.Equal(t, "oci://ghcr.io/radius-project/recipes/terraform/redis:latest", stateStore.Source)
 }
 
@@ -95,7 +95,7 @@ func TestRecipePackConvertDataModelToVersioned(t *testing.T) {
 	stateStore := versionedResource.Properties.Recipes["Applications.Dapr/stateStores"]
 	require.NotNil(t, stateStore)
 	require.NotNil(t, stateStore.Kind)
-	require.Equal(t, RecipeKind("Terraform"), *stateStore.Kind)
+	require.Equal(t, RecipeKind("terraform"), *stateStore.Kind)
 	require.Equal(t, "oci://ghcr.io/radius-project/recipes/terraform/redis:latest", *stateStore.Source)
 
 	container := versionedResource.Properties.Recipes["Applications.Core/containers"]
