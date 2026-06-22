@@ -1,6 +1,6 @@
 {{- if .Values.networkPolicies.enabled }}
 {{- if not .Values.networkPolicies.controlPlaneCIDRs }}
-{{- fail "networkPolicies.enabled=true requires networkPolicies.controlPlaneCIDRs to be set to the cluster's node/control-plane CIDR(s) so the Kubernetes API server can reach UCP and the controller on :9443. Set controlPlaneCIDRs, or set networkPolicies.enabled=false to install without these policies." }}
+{{- fail "networkPolicies.enabled=true requires networkPolicies.controlPlaneCIDRs to be set to the cluster's node/control-plane CIDR(s) so the Kubernetes API server can reach UCP and the controller on :9443. Set networkPolicies.controlPlaneCIDRs, or set networkPolicies.enabled=false to install without these policies." }}
 {{- end }}
 # Optional ingress lockdown for the Radius control-plane namespace.
 #

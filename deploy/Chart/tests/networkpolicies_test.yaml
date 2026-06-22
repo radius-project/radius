@@ -15,7 +15,7 @@ tests:
       networkPolicies.enabled: true
     asserts:
       - failedTemplate:
-          errorMessage: "networkPolicies.enabled=true requires networkPolicies.controlPlaneCIDRs to be set to the cluster's node/control-plane CIDR(s) so the Kubernetes API server can reach UCP and the controller on :9443. Set controlPlaneCIDRs, or set networkPolicies.enabled=false to install without these policies."
+          errorMessage: "networkPolicies.enabled=true requires networkPolicies.controlPlaneCIDRs to be set to the cluster's node/control-plane CIDR(s) so the Kubernetes API server can reach UCP and the controller on :9443. Set networkPolicies.controlPlaneCIDRs, or set networkPolicies.enabled=false to install without these policies."
 
   - it: renders default-deny and allow-internal as the first two policies when enabled
     set:
