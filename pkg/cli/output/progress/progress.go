@@ -26,8 +26,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -181,7 +181,7 @@ func (m *model) apply(update clients.ResourceProgress) {
 
 // View renders every tracked resource on its own line, replacing the spinner
 // with a final-state token once the resource reaches a terminal status.
-func (m *model) View() string {
+func (m *model) View() tea.View {
 	var b strings.Builder
 	for _, e := range m.entries {
 		token := m.spinner.View()
@@ -190,5 +190,5 @@ func (m *model) View() string {
 		}
 		fmt.Fprintf(&b, e.format+"\n", token)
 	}
-	return b.String()
+	return tea.NewView(b.String())
 }
