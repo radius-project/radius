@@ -24,15 +24,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	containerderrors "github.com/containerd/containerd/remotes/errors"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
-	helm "helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/storage/driver"
+	helm "helm.sh/helm/v4/pkg/action"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/registry"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
 const (
@@ -262,7 +262,7 @@ func (helmAction *HelmActionImpl) GetPreviousReleaseVersion(kubeContext, release
 	// We iterate from the end (newest) to find the last stable release
 	for i := len(releases) - 1; i >= 0; i-- {
 		rel := releases[i]
-		if rel.Info != nil && (rel.Info.Status == release.StatusDeployed || rel.Info.Status == release.StatusSuperseded) {
+		if rel.Info != nil && (rel.Info.Status == releasecommon.StatusDeployed || rel.Info.Status == releasecommon.StatusSuperseded) {
 			if rel.Chart != nil && rel.Chart.Metadata != nil {
 				version := rel.Chart.Metadata.AppVersion
 
@@ -286,14 +286,10 @@ func initHelmConfig(flags *genericclioptions.ConfigFlags) (*helm.Configuration, 
 		flags.Context = nil
 	}
 
-	builder := strings.Builder{}
 	hc := helm.Configuration{}
 	// helmDriver is "secret" to make the backend storage driver
 	// use kubernetes secrets.
-	err := hc.Init(flags, *flags.Namespace, helmDriverSecret, func(format string, v ...any) {
-		builder.WriteString(fmt.Sprintf(format, v...))
-		builder.WriteRune('\n')
-	})
+	err := hc.Init(flags, *flags.Namespace, helmDriverSecret)
 
 	return &hc, err
 }
@@ -327,10 +323,12 @@ func locateChartFile(dirPath string) (string, error) {
 
 // isHelmGHCR403Error is a helper function to determine if an error is a specific helm error
 // (403 unauthorized when downloading a helm chart from ghcr.io) from a chain of errors.
+// Helm v4 performs OCI registry operations via oras-go, which surfaces HTTP failures as
+// *errcode.ErrorResponse.
 func isHelmGHCR403Error(err error) bool {
-	var errUnexpectedStatus containerderrors.ErrUnexpectedStatus
-	if errors.As(err, &errUnexpectedStatus) {
-		if errUnexpectedStatus.StatusCode == http.StatusForbidden && strings.Contains(errUnexpectedStatus.RequestURL, "ghcr.io") {
+	var respErr *errcode.ErrorResponse
+	if errors.As(err, &respErr) {
+		if respErr.StatusCode == http.StatusForbidden && respErr.URL != nil && strings.Contains(respErr.URL.Host, "ghcr.io") {
 			return true
 		}
 	}

@@ -13,9 +13,10 @@ import (
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
-	action "helm.sh/helm/v3/pkg/action"
-	chart "helm.sh/helm/v3/pkg/chart"
-	release "helm.sh/helm/v3/pkg/release"
+	action "helm.sh/helm/v4/pkg/action"
+	v2 "helm.sh/helm/v4/pkg/chart/v2"
+	release "helm.sh/helm/v4/pkg/release"
+	v1 "helm.sh/helm/v4/pkg/release/v1"
 )
 
 // MockHelmClient is a mock of HelmClient interface.
@@ -43,10 +44,10 @@ func (m *MockHelmClient) EXPECT() *MockHelmClientMockRecorder {
 }
 
 // LoadChart mocks base method.
-func (m *MockHelmClient) LoadChart(chartPath string) (*chart.Chart, error) {
+func (m *MockHelmClient) LoadChart(chartPath string) (*v2.Chart, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "LoadChart", chartPath)
-	ret0, _ := ret[0].(*chart.Chart)
+	ret0, _ := ret[0].(*v2.Chart)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -64,28 +65,28 @@ type MockHelmClientLoadChartCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockHelmClientLoadChartCall) Return(arg0 *chart.Chart, arg1 error) *MockHelmClientLoadChartCall {
+func (c *MockHelmClientLoadChartCall) Return(arg0 *v2.Chart, arg1 error) *MockHelmClientLoadChartCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHelmClientLoadChartCall) Do(f func(string) (*chart.Chart, error)) *MockHelmClientLoadChartCall {
+func (c *MockHelmClientLoadChartCall) Do(f func(string) (*v2.Chart, error)) *MockHelmClientLoadChartCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHelmClientLoadChartCall) DoAndReturn(f func(string) (*chart.Chart, error)) *MockHelmClientLoadChartCall {
+func (c *MockHelmClientLoadChartCall) DoAndReturn(f func(string) (*v2.Chart, error)) *MockHelmClientLoadChartCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // RunHelmGet mocks base method.
-func (m *MockHelmClient) RunHelmGet(helmConf *action.Configuration, releaseName string) (*release.Release, error) {
+func (m *MockHelmClient) RunHelmGet(helmConf *action.Configuration, releaseName string) (*v1.Release, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RunHelmGet", helmConf, releaseName)
-	ret0, _ := ret[0].(*release.Release)
+	ret0, _ := ret[0].(*v1.Release)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -103,28 +104,28 @@ type MockHelmClientRunHelmGetCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockHelmClientRunHelmGetCall) Return(arg0 *release.Release, arg1 error) *MockHelmClientRunHelmGetCall {
+func (c *MockHelmClientRunHelmGetCall) Return(arg0 *v1.Release, arg1 error) *MockHelmClientRunHelmGetCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHelmClientRunHelmGetCall) Do(f func(*action.Configuration, string) (*release.Release, error)) *MockHelmClientRunHelmGetCall {
+func (c *MockHelmClientRunHelmGetCall) Do(f func(*action.Configuration, string) (*v1.Release, error)) *MockHelmClientRunHelmGetCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHelmClientRunHelmGetCall) DoAndReturn(f func(*action.Configuration, string) (*release.Release, error)) *MockHelmClientRunHelmGetCall {
+func (c *MockHelmClientRunHelmGetCall) DoAndReturn(f func(*action.Configuration, string) (*v1.Release, error)) *MockHelmClientRunHelmGetCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // RunHelmHistory mocks base method.
-func (m *MockHelmClient) RunHelmHistory(helmConf *action.Configuration, releaseName string) ([]*release.Release, error) {
+func (m *MockHelmClient) RunHelmHistory(helmConf *action.Configuration, releaseName string) ([]*v1.Release, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RunHelmHistory", helmConf, releaseName)
-	ret0, _ := ret[0].([]*release.Release)
+	ret0, _ := ret[0].([]*v1.Release)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -142,28 +143,28 @@ type MockHelmClientRunHelmHistoryCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockHelmClientRunHelmHistoryCall) Return(arg0 []*release.Release, arg1 error) *MockHelmClientRunHelmHistoryCall {
+func (c *MockHelmClientRunHelmHistoryCall) Return(arg0 []*v1.Release, arg1 error) *MockHelmClientRunHelmHistoryCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHelmClientRunHelmHistoryCall) Do(f func(*action.Configuration, string) ([]*release.Release, error)) *MockHelmClientRunHelmHistoryCall {
+func (c *MockHelmClientRunHelmHistoryCall) Do(f func(*action.Configuration, string) ([]*v1.Release, error)) *MockHelmClientRunHelmHistoryCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHelmClientRunHelmHistoryCall) DoAndReturn(f func(*action.Configuration, string) ([]*release.Release, error)) *MockHelmClientRunHelmHistoryCall {
+func (c *MockHelmClientRunHelmHistoryCall) DoAndReturn(f func(*action.Configuration, string) ([]*v1.Release, error)) *MockHelmClientRunHelmHistoryCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // RunHelmInstall mocks base method.
-func (m *MockHelmClient) RunHelmInstall(helmConf *action.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool) (*release.Release, error) {
+func (m *MockHelmClient) RunHelmInstall(helmConf *action.Configuration, helmChart *v2.Chart, vals map[string]any, releaseName, namespace string, wait bool) (*v1.Release, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RunHelmInstall", helmConf, helmChart, vals, releaseName, namespace, wait)
-	ret0, _ := ret[0].(*release.Release)
+	ret0, _ := ret[0].(*v1.Release)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -181,28 +182,28 @@ type MockHelmClientRunHelmInstallCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockHelmClientRunHelmInstallCall) Return(arg0 *release.Release, arg1 error) *MockHelmClientRunHelmInstallCall {
+func (c *MockHelmClientRunHelmInstallCall) Return(arg0 *v1.Release, arg1 error) *MockHelmClientRunHelmInstallCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHelmClientRunHelmInstallCall) Do(f func(*action.Configuration, *chart.Chart, map[string]any, string, string, bool) (*release.Release, error)) *MockHelmClientRunHelmInstallCall {
+func (c *MockHelmClientRunHelmInstallCall) Do(f func(*action.Configuration, *v2.Chart, map[string]any, string, string, bool) (*v1.Release, error)) *MockHelmClientRunHelmInstallCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHelmClientRunHelmInstallCall) DoAndReturn(f func(*action.Configuration, *chart.Chart, map[string]any, string, string, bool) (*release.Release, error)) *MockHelmClientRunHelmInstallCall {
+func (c *MockHelmClientRunHelmInstallCall) DoAndReturn(f func(*action.Configuration, *v2.Chart, map[string]any, string, string, bool) (*v1.Release, error)) *MockHelmClientRunHelmInstallCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
 
 // RunHelmList mocks base method.
-func (m *MockHelmClient) RunHelmList(helmConf *action.Configuration, releaseName string) ([]*release.Release, error) {
+func (m *MockHelmClient) RunHelmList(helmConf *action.Configuration, releaseName string) ([]*v1.Release, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RunHelmList", helmConf, releaseName)
-	ret0, _ := ret[0].([]*release.Release)
+	ret0, _ := ret[0].([]*v1.Release)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -220,19 +221,19 @@ type MockHelmClientRunHelmListCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockHelmClientRunHelmListCall) Return(arg0 []*release.Release, arg1 error) *MockHelmClientRunHelmListCall {
+func (c *MockHelmClientRunHelmListCall) Return(arg0 []*v1.Release, arg1 error) *MockHelmClientRunHelmListCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHelmClientRunHelmListCall) Do(f func(*action.Configuration, string) ([]*release.Release, error)) *MockHelmClientRunHelmListCall {
+func (c *MockHelmClientRunHelmListCall) Do(f func(*action.Configuration, string) ([]*v1.Release, error)) *MockHelmClientRunHelmListCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHelmClientRunHelmListCall) DoAndReturn(f func(*action.Configuration, string) ([]*release.Release, error)) *MockHelmClientRunHelmListCall {
+func (c *MockHelmClientRunHelmListCall) DoAndReturn(f func(*action.Configuration, string) ([]*v1.Release, error)) *MockHelmClientRunHelmListCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
@@ -354,10 +355,10 @@ func (c *MockHelmClientRunHelmUninstallCall) DoAndReturn(f func(*action.Configur
 }
 
 // RunHelmUpgrade mocks base method.
-func (m *MockHelmClient) RunHelmUpgrade(helmConf *action.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait, reuseValues bool) (*release.Release, error) {
+func (m *MockHelmClient) RunHelmUpgrade(helmConf *action.Configuration, helmChart *v2.Chart, vals map[string]any, releaseName, namespace string, wait, reuseValues bool) (*v1.Release, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RunHelmUpgrade", helmConf, helmChart, vals, releaseName, namespace, wait, reuseValues)
-	ret0, _ := ret[0].(*release.Release)
+	ret0, _ := ret[0].(*v1.Release)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -375,19 +376,19 @@ type MockHelmClientRunHelmUpgradeCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockHelmClientRunHelmUpgradeCall) Return(arg0 *release.Release, arg1 error) *MockHelmClientRunHelmUpgradeCall {
+func (c *MockHelmClientRunHelmUpgradeCall) Return(arg0 *v1.Release, arg1 error) *MockHelmClientRunHelmUpgradeCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockHelmClientRunHelmUpgradeCall) Do(f func(*action.Configuration, *chart.Chart, map[string]any, string, string, bool, bool) (*release.Release, error)) *MockHelmClientRunHelmUpgradeCall {
+func (c *MockHelmClientRunHelmUpgradeCall) Do(f func(*action.Configuration, *v2.Chart, map[string]any, string, string, bool, bool) (*v1.Release, error)) *MockHelmClientRunHelmUpgradeCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockHelmClientRunHelmUpgradeCall) DoAndReturn(f func(*action.Configuration, *chart.Chart, map[string]any, string, string, bool, bool) (*release.Release, error)) *MockHelmClientRunHelmUpgradeCall {
+func (c *MockHelmClientRunHelmUpgradeCall) DoAndReturn(f func(*action.Configuration, *v2.Chart, map[string]any, string, string, bool, bool) (*v1.Release, error)) *MockHelmClientRunHelmUpgradeCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
