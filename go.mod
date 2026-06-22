@@ -36,7 +36,6 @@ require (
 	github.com/aws/smithy-go v1.27.2
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20260615092313-b57e5e6d29bb
-	github.com/containerd/containerd v1.7.32
 	github.com/distribution/reference v0.6.0
 	github.com/fatih/color v1.19.0
 	github.com/fluxcd/pkg/apis/meta v1.30.0
@@ -102,7 +101,7 @@ require (
 	golang.org/x/exp v0.0.0-20260611194520-c48552f49976
 	golang.org/x/sync v0.21.0
 	golang.org/x/text v0.38.0
-	helm.sh/helm/v3 v3.21.1
+	helm.sh/helm/v4 v4.2.2
 	k8s.io/api v0.36.2
 	k8s.io/apiextensions-apiserver v0.36.2
 	k8s.io/apimachinery v0.36.2
@@ -155,18 +154,18 @@ require (
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
-	github.com/containerd/errdefs v0.3.0 // indirect
-	github.com/containerd/log v0.1.0 // indirect
-	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/dylibso/observe-sdk/go v0.0.0-20240819160327-2d926c5d788a // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/evanphx/json-patch v5.9.11+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20210407135951-1de76d718b3f // indirect
+	github.com/extism/go-sdk v1.7.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/fluxcd/cli-utils v1.2.1 // indirect
 	github.com/fluxcd/pkg/apis/acl v0.10.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
@@ -206,6 +205,7 @@ require (
 	github.com/hashicorp/hcl v1.0.1-vault-5 // indirect
 	github.com/hashicorp/hcl/v2 v2.21.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
+	github.com/ianlancetaylor/demangle v0.0.0-20240805132620-81f5be970eca // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
@@ -260,11 +260,12 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
-	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
+	github.com/tetratelabs/wabin v0.0.0-20230304001439-f6f874872834 // indirect
+	github.com/tetratelabs/wazero v1.12.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
@@ -277,6 +278,13 @@ require (
 	github.com/zclconf/go-cty v1.18.1 // indirect
 	github.com/zeebo/blake3 v0.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.19.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.43.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.43.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdoutlog v0.19.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.43.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.43.0 // indirect
+	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	golang.org/x/mod v0.37.0 // indirect
@@ -288,7 +296,6 @@ require (
 	golang.org/x/tools v0.46.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260406210006-6f92a3bedf2d // indirect
-	google.golang.org/grpc v1.80.0 // indirect
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
