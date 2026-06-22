@@ -161,13 +161,13 @@ make debug-stop
 
 After `make debug-start`, the services are reachable locally:
 
-| Component         | Local endpoint                  | dlv attach port |
-|-------------------|---------------------------------|-----------------|
-| UCP               | `http://localhost:9000/healthz` | 40001           |
-| Controller        | `http://localhost:7073/healthz` | 40002           |
-| Applications RP   | `http://localhost:8080/healthz` | 40003           |
-| Dynamic RP        | `http://localhost:8082/healthz` | 40004           |
-| Deployment Engine | `http://localhost:5017`         | n/a             |
+| Component         | Local endpoint                                    | dlv attach port |
+|-------------------|---------------------------------------------------|-----------------|
+| UCP               | `http://localhost:9000/apis/api.ucp.dev/v1alpha3` | 40001           |
+| Controller        | `http://localhost:7073/healthz`                   | 40002           |
+| Applications RP   | `http://localhost:8080/healthz`                   | 40003           |
+| Dynamic RP        | `http://localhost:8082/healthz`                   | 40004           |
+| Deployment Engine | `http://localhost:5017`                           | n/a             |
 
 The Deployment Engine runs inside the k3d cluster, so you attach to it through the cluster rather than a local Delve port.
 
@@ -202,7 +202,7 @@ The environment is ready when all of the following succeed:
 - The control-plane health endpoints respond:
 
   ```bash
-  curl -s http://localhost:9000/healthz   # UCP
+  curl -s http://localhost:9000/apis/api.ucp.dev/v1alpha3   # UCP
   curl -s http://localhost:7073/healthz   # Controller
   curl -s http://localhost:8080/healthz   # Applications RP
   curl -s http://localhost:8082/healthz   # Dynamic RP
