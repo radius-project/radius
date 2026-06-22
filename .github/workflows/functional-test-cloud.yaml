@@ -49,8 +49,6 @@ permissions: {}
 
 env:
   GOPROXY: https://proxy.golang.org
-  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUM_VER: 1.13.0
   # yq version
   YQ_VERSION: v4.44.3
   YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
@@ -372,7 +370,6 @@ jobs:
             |**Unique ID** | ${{ env.UNIQUE_ID }} |
             |**Image tag** | ${{ env.REL_VERSION }} |
 
-            * gotestsum ${{ env.GOTESTSUM_VER }}
             * KinD: ${{ env.KIND_VER }}
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
@@ -806,10 +803,6 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
           rad bicep download
           rad version
-
-      - name: Install gotestsum (test reporting tool)
-        run: |
-          go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
 
       - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: failure() && env.PR_NUMBER != ''
