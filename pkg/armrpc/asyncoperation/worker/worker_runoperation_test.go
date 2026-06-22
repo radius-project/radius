@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -35,7 +36,6 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
 	"go.uber.org/mock/gomock"
 )
 
@@ -280,17 +280,17 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	}
 
 	// register test controller.
-	cnt := atomic.NewInt32(0)
-	maxConcurrency := atomic.NewInt32(0)
+	cnt := &atomic.Int32{}
+	maxConcurrency := &atomic.Int32{}
 	testCtrl := &testAsyncController{
 		BaseController: ctrl.NewBaseAsyncController(opts),
 		fn: func(ctx context.Context) (ctrl.Result, error) {
-			cnt.Inc()
+			cnt.Add(1)
 			if maxConcurrency.Load() < cnt.Load() {
 				maxConcurrency.Store(cnt.Load())
 			}
 			time.Sleep(100 * time.Millisecond)
-			cnt.Dec()
+			cnt.Add(-1)
 			return ctrl.Result{}, nil
 		},
 	}

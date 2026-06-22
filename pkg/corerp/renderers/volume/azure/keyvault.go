@@ -27,7 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 
 	azcsi "github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider/types"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 const (
