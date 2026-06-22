@@ -421,8 +421,7 @@ type RecipeDefinition struct {
 	Parameters map[string]any
 
 	// Connect to the source using HTTP (not HTTPS). This should be used when the source is known not to support HTTPS, for example
-	// in a locally hosted registry for Bicep recipes. Defaults to false (use
-	// HTTPS/TLS)
+	// in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)
 	PlainHTTP *bool
 }
 
