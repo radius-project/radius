@@ -215,6 +215,54 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system \
 
 Valid log levels are: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `OFF`. Default is `ERROR`.
 
+### Network Policies
+
+Radius can optionally install Kubernetes `NetworkPolicy` resources that lock down
+ingress to the control-plane namespace (`radius-system`). They are **disabled by
+default** and gated behind `networkPolicies.enabled`.
+
+When enabled, two policies are always applied:
+
+- `radius-default-deny-ingress` — denies all ingress to `radius-system` pods.
+- `radius-allow-internal` — re-permits east-west traffic between Radius
+  components (intra-namespace), matched by the immutable
+  `kubernetes.io/metadata.name` namespace label.
+
+Only ingress is restricted; egress is left open so UCP can reach the Kubernetes
+API server and pods can resolve DNS.
+
+> **Enforcement requires a CNI that implements NetworkPolicy** (e.g. Calico,
+> Cilium, Antrea). On CNIs that do not (e.g. kindnet, flannel, the default EKS
+> VPC CNI) these objects are accepted by the API server but silently **not**
+> enforced.
+
+#### Allowing the Kubernetes control plane
+
+The kube-apiserver (APIService aggregation to UCP and admission webhooks to the
+controller) and the kubelet (liveness/readiness probes) reach the control plane
+over the host network, so this traffic arrives with the **node's** IP rather than
+a pod IP and cannot be matched by a namespace/pod selector. Supply your cluster's
+node subnet(s) via `networkPolicies.controlPlaneCIDRs` so a third policy
+(`radius-allow-control-plane`) admits it. If left empty, API aggregation,
+webhooks, and health probes may be blocked by the default-deny policy on
+enforcing CNIs.
+
+```console
+# Find the node subnet, e.g. on most clusters:
+kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}'
+
+helm upgrade --wait --install radius deploy/Chart -n radius-system \
+  --set networkPolicies.enabled=true \
+  --set 'networkPolicies.controlPlaneCIDRs={10.0.0.0/16}'
+```
+
+```console
+# With the rad CLI
+rad install kubernetes \
+  --set networkPolicies.enabled=true \
+  --set 'networkPolicies.controlPlaneCIDRs={10.0.0.0/16}'
+```
+
 ## Verify the installation
 
 Verify that the controller is running in the radius-system namespace:

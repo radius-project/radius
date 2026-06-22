@@ -215,6 +215,30 @@ bicep:
   # Default tag uses Chart AppVersion.
   # tag: latest
 
+# Optional Kubernetes NetworkPolicies that lock down ingress to the Radius
+# control-plane namespace (radius-system). Disabled by default.
+#
+# Enforcement requires a CNI that implements NetworkPolicy (e.g. Calico, Cilium,
+# Antrea). On CNIs that do not (e.g. kindnet, flannel, the default EKS VPC CNI)
+# these objects are accepted by the API server but silently NOT enforced, so
+# enabling this has no effect until such a CNI is in place.
+networkPolicies:
+  # Enable the bundled NetworkPolicies. When true, a default-deny ingress policy
+  # plus an allow policy for Radius-internal (intra-namespace) traffic are
+  # applied to radius-system. Egress is left unrestricted.
+  enabled: false
+  # Source CIDRs the Kubernetes control plane and kubelet use to reach the Radius
+  # control plane. This traffic is host-network, so it arrives with the NODE's IP
+  # rather than a pod IP and cannot be matched by a namespace/pod selector:
+  #   - kube-apiserver -> ucp:9443        (APIService aggregation for api.ucp.dev)
+  #   - kube-apiserver -> controller:9443 (admission webhooks)
+  #   - kubelet        -> liveness/readiness probes on every component
+  # Set this to your cluster's node subnet(s). If left empty, the control-plane
+  # allow policy is NOT rendered and API aggregation, admission webhooks, and
+  # health probes may be blocked by the default-deny policy on enforcing CNIs.
+  # Example: ["10.0.0.0/16"]
+  controlPlaneCIDRs: []
+
 preupgrade:
   # Enable pre-upgrade preflight checks
   enabled: false

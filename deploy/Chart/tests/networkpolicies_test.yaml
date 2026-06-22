@@ -1,0 +1,71 @@
+suite: test network policies
+templates:
+  - networkpolicies.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: renders no NetworkPolicies by default (opt-in feature)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders default-deny and allow-internal when enabled without CIDRs
+    set:
+      networkPolicies.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: kind
+          value: NetworkPolicy
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: radius-default-deny-ingress
+        documentIndex: 0
+      - equal:
+          path: metadata.namespace
+          value: radius-system
+        documentIndex: 0
+      - isEmpty:
+          path: spec.podSelector
+        documentIndex: 0
+      - contains:
+          path: spec.policyTypes
+          content: Ingress
+        documentIndex: 0
+      # default-deny has no ingress rules (deny all)
+      - notExists:
+          path: spec.ingress
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: radius-allow-internal
+        documentIndex: 1
+      - equal:
+          path: spec.ingress[0].from[0].namespaceSelector.matchLabels["kubernetes.io/metadata.name"]
+          value: radius-system
+        documentIndex: 1
+
+  - it: renders the control-plane allow policy with one ipBlock per CIDR
+    set:
+      networkPolicies.enabled: true
+      networkPolicies.controlPlaneCIDRs:
+        - 172.18.0.0/16
+        - 10.0.0.0/16
+    asserts:
+      - hasDocuments:
+          count: 3
+      - equal:
+          path: metadata.name
+          value: radius-allow-control-plane
+        documentIndex: 2
+      - equal:
+          path: spec.ingress[0].from[0].ipBlock.cidr
+          value: 172.18.0.0/16
+        documentIndex: 2
+      - equal:
+          path: spec.ingress[0].from[1].ipBlock.cidr
+          value: 10.0.0.0/16
+        documentIndex: 2
