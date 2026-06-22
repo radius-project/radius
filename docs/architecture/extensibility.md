@@ -240,8 +240,8 @@ properties:
 properties:
   recipes:
     Radius.Data/redisCaches:
-      recipeKind: bicep
-      recipeLocation: ghcr.io/.../redis:1.0.0
+      kind: bicep
+      source: ghcr.io/.../redis:1.0.0
       plainHttp: false
       parameters: { ... }
 ```
@@ -400,8 +400,8 @@ The engine
    `EnvironmentDefinition` whose `Driver` field is the `TemplateKind` string.
    For `Radius.Core` environments, this fetches the referenced recipe packs,
    finds the definition keyed by the resource type, applies matching
-   environment-level recipe parameter overrides, and maps `RecipeKind` /
-   `RecipeLocation` into the same `EnvironmentDefinition` shape.
+   environment-level recipe parameter overrides, and maps `Kind` /
+   `Source` into the same `EnvironmentDefinition` shape.
 4. Selects the driver from the engine's `Drivers` map keyed by
    `EnvironmentDefinition.Driver`
    (see
@@ -480,7 +480,7 @@ up before the Radius resource record is removed.
 - Dynamic resources default to recipe name `default` when `properties.recipe`
   is omitted.
 - The driver lookup key is the recipe's `templateKind` for
-  `Applications.Core` recipes and the mapped `recipeKind` for
+  `Applications.Core` recipes and the mapped `kind` for
   `Radius.Core` recipe packs. Adding a new driver means registering it in the
   engine's `Drivers` map.
 - Dynamic recipe output only becomes user-visible resource properties when
@@ -500,7 +500,7 @@ up before the Radius resource record is removed.
   recipe through the environment recipe map or a recipe pack used by tests.
 - Adding a new recipe driver: implement `recipes/driver.Driver`, register it
   in [controllerconfig/config.go](../../pkg/recipes/controllerconfig/config.go),
-  and pick a stable driver key used by `templateKind` or `recipeKind`.
+  and pick a stable driver key used by `templateKind` or `kind`.
 - Adding a new capability that changes the deployment path: extend
   `DynamicResourceController.selectController` and add the corresponding
   controller under

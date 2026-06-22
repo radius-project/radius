@@ -68,10 +68,10 @@ rad env show my-env --group my-env
 }
 
 type EnvRecipes struct {
-	RecipePack     string
-	ResourceType   string
-	RecipeKind     string
-	RecipeLocation string
+	RecipePack   string
+	ResourceType string
+	Kind         string
+	Source       string
 }
 
 // Runner is the runner implementation for the `rad env show` preview command.
@@ -188,11 +188,25 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		for resourceType, recipe := range pack.RecipePackResource.Properties.Recipes {
+			if recipe == nil {
+				continue
+			}
+
+			kind := "unknown"
+			if recipe.Kind != nil {
+				kind = string(*recipe.Kind)
+			}
+
+			source := ""
+			if recipe.Source != nil {
+				source = *recipe.Source
+			}
+
 			envRecipes = append(envRecipes, EnvRecipes{
-				RecipePack:     ID.Name(),
-				ResourceType:   resourceType,
-				RecipeKind:     string(*recipe.RecipeKind),
-				RecipeLocation: *recipe.RecipeLocation,
+				RecipePack:   ID.Name(),
+				ResourceType: resourceType,
+				Kind:         kind,
+				Source:       source,
 			})
 		}
 	}
