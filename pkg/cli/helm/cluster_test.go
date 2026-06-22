@@ -668,8 +668,8 @@ func Test_Helm_RollbackRadius_Success(t *testing.T) {
 
 	// Mock history with multiple versions
 	history := []*releasev1.Release{
-		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: "superseded"}},
-		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: "deployed"}},
+		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
 
 	mockHelmClient.EXPECT().
@@ -697,9 +697,8 @@ func Test_Helm_RollbackRadius_NoOlderVersion(t *testing.T) {
 
 	// Mock history with only one version
 	history := []*releasev1.Release{
-		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: "deployed"}},
+		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
-
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 		Return(history, nil).
@@ -721,10 +720,9 @@ func Test_Helm_RollbackRadius_SameVersionSkipped(t *testing.T) {
 
 	// Mock history with same versions (no semantic rollback available)
 	history := []*releasev1.Release{
-		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: "superseded"}},
-		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: "deployed"}},
+		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
-
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 		Return(history, nil).
@@ -766,12 +764,11 @@ func Test_Helm_RollbackRadiusToRevision_Success(t *testing.T) {
 
 	// Mock history containing the target revision
 	history := []*releasev1.Release{
-		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: "superseded"}},
-		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: "superseded"}},
-		{Version: 3, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: "superseded"}},
-		{Version: 4, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: "deployed"}},
+		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 3, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 4, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
-
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 		Return(history, nil).
@@ -798,10 +795,9 @@ func Test_Helm_RollbackRadiusToRevision_RevisionNotFound(t *testing.T) {
 
 	// Mock history without the target revision
 	history := []*releasev1.Release{
-		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: "superseded"}},
-		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: "deployed"}},
+		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
-
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 		Return(history, nil).

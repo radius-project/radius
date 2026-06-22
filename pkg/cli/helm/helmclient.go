@@ -114,7 +114,7 @@ func (client *HelmClientImpl) RunHelmInstall(helmConf *helm.Configuration, helmC
 }
 
 // RunHelmUpgrade upgrades an existing Helm release with a new chart version or configuration.
-// It recreates pods to ensure the new configuration is applied and optionally waits for the deployment to be ready.
+// It optionally waits for the deployment to be ready.
 // See https://helm.sh/docs/helm/helm_upgrade/#options for details on --reset-then-reuse-values behavior.
 func (client *HelmClientImpl) RunHelmUpgrade(helmConf *helm.Configuration, helmChart *chart.Chart, vals map[string]any, releaseName, namespace string, wait bool, reuseValues bool) (*releasev1.Release, error) {
 	upgradeClient := helm.NewUpgrade(helmConf)
