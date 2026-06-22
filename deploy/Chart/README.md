@@ -221,12 +221,15 @@ Radius can optionally install Kubernetes `NetworkPolicy` resources that lock dow
 ingress to the control-plane namespace (`radius-system`). They are **disabled by
 default** and gated behind `networkPolicies.enabled`.
 
-When enabled, two policies are always applied:
+When enabled, three policies are applied:
 
 - `radius-default-deny-ingress` — denies all ingress to `radius-system` pods.
 - `radius-allow-internal` — re-permits east-west traffic between Radius
   components (intra-namespace), matched by the immutable
   `kubernetes.io/metadata.name` namespace label.
+- `radius-allow-control-plane` — allows the Kubernetes API server to reach UCP
+  (APIService aggregation) and the controller (admission webhook) on port `9443`,
+  from the CIDRs in `networkPolicies.controlPlaneCIDRs`.
 
 Only ingress is restricted; egress is left open so UCP can reach the Kubernetes
 API server and pods can resolve DNS.
@@ -236,21 +239,26 @@ API server and pods can resolve DNS.
 > VPC CNI) these objects are accepted by the API server but silently **not**
 > enforced.
 
-#### Allowing the Kubernetes control plane
+#### Setting `controlPlaneCIDRs`
 
-The kube-apiserver (APIService aggregation to UCP and admission webhooks to the
-controller) and the kubelet (liveness/readiness probes) reach the control plane
-over the host network, so this traffic arrives with the **node's** IP rather than
-a pod IP and cannot be matched by a namespace/pod selector. Supply your cluster's
-node subnet(s) via `networkPolicies.controlPlaneCIDRs` so a third policy
-(`radius-allow-control-plane`) admits it. If left empty, API aggregation,
-webhooks, and health probes may be blocked by the default-deny policy on
-enforcing CNIs.
+The kube-apiserver reaches UCP (APIService aggregation) and the controller
+(admission webhook) over the host network, so this traffic arrives with the
+**node's** IP rather than a pod IP and cannot be matched by a namespace/pod
+selector. You must supply the source CIDR(s) via
+`networkPolicies.controlPlaneCIDRs` — **this is required when
+`networkPolicies.enabled=true`; Helm rendering fails if it is empty** — otherwise
+the default-deny policy would block API aggregation and webhooks and break the
+control plane.
+
+Use your cluster's node/control-plane subnet(s), **not** individual node IPs
+(a `/32` would exclude other control-plane addresses):
+
+- **Managed clusters (AKS/EKS/GKE):** the node pool's VPC/subnet CIDR(s).
+- **kubeadm / on-prem:** the node network CIDR.
+- **KinD:** the Docker network subnet, e.g.
+  `docker network inspect kind -f '{{range .IPAM.Config}}{{.Subnet}} {{end}}'`.
 
 ```console
-# Find the node subnet, e.g. on most clusters:
-kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}'
-
 helm upgrade --wait --install radius deploy/Chart -n radius-system \
   --set networkPolicies.enabled=true \
   --set 'networkPolicies.controlPlaneCIDRs={10.0.0.0/16}'

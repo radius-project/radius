@@ -223,19 +223,23 @@ bicep:
 # these objects are accepted by the API server but silently NOT enforced, so
 # enabling this has no effect until such a CNI is in place.
 networkPolicies:
-  # Enable the bundled NetworkPolicies. When true, a default-deny ingress policy
-  # plus an allow policy for Radius-internal (intra-namespace) traffic are
-  # applied to radius-system. Egress is left unrestricted.
+  # Enable the bundled NetworkPolicies. When true, three ingress policies are
+  # applied to radius-system: a default-deny, an allow for Radius-internal
+  # (intra-namespace) traffic, and an allow for the Kubernetes API server (see
+  # controlPlaneCIDRs). Egress is left unrestricted.
+  # NOTE: when enabled, controlPlaneCIDRs is REQUIRED -- Helm rendering fails if it
+  # is empty -- so the API server can still reach the control plane.
   enabled: false
-  # Source CIDRs the Kubernetes control plane and kubelet use to reach the Radius
-  # control plane. This traffic is host-network, so it arrives with the NODE's IP
-  # rather than a pod IP and cannot be matched by a namespace/pod selector:
+  # Source CIDRs the Kubernetes API server uses to reach the Radius control plane.
+  # This traffic is host-network, so it arrives with the NODE's IP rather than a
+  # pod IP and cannot be matched by a namespace/pod selector:
   #   - kube-apiserver -> ucp:9443        (APIService aggregation for api.ucp.dev)
-  #   - kube-apiserver -> controller:9443 (admission webhooks)
-  #   - kubelet        -> liveness/readiness probes on every component
-  # Set this to your cluster's node subnet(s). If left empty, the control-plane
-  # allow policy is NOT rendered and API aggregation, admission webhooks, and
-  # health probes may be blocked by the default-deny policy on enforcing CNIs.
+  #   - kube-apiserver -> controller:9443 (recipe admission webhook)
+  # The allow policy is scoped to port 9443 (the only host-network destination).
+  # Set this to your cluster's node/control-plane source CIDR(s) -- e.g. the VPC or
+  # subnet CIDR on a managed cluster, or the Docker network subnet for KinD. This
+  # is REQUIRED when enabled (rendering fails if empty); without it the default-deny
+  # policy would block API aggregation and webhooks and break the control plane.
   # Example: ["10.0.0.0/16"]
   controlPlaneCIDRs: []
 
