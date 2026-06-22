@@ -59,6 +59,15 @@ const (
 	// the source Kubernetes deployment resource.
 	EventContainerOwnershipMismatch = "ContainerOwnershipMismatch"
 
+	// EventDeploymentResourceDeleteSkipped is emitted when the controller skips deleting the
+	// resource referenced by a DeploymentResource because the object is not a controller-owned
+	// child of a DeploymentTemplate whose deployment scope covers Spec.Id.
+	EventDeploymentResourceDeleteSkipped = "DeploymentResourceDeleteSkipped"
+
+	// deploymentTemplateKind is the Kind of the DeploymentTemplate CRD, used when checking the
+	// controller owner reference on a DeploymentResource.
+	deploymentTemplateKind = "DeploymentTemplate"
+
 	applicationsCoreContainersResourceType = "Applications.Core/containers"
 
 	// RecipeFinalizer is the name of the finalizer added to Recipes.

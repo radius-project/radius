@@ -438,7 +438,7 @@ func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
 	// The dependencies (DeploymentResource resources) should be created.
 	dependencyName := types.NamespacedName{Namespace: namespacedName.Namespace, Name: "deploymenttemplate-withresources-env"}
 	dependencyStatus := waitForDeploymentResourceStateReady(t, k8sClient, dependencyName)
-	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-withresources-env", dependencyStatus.Id)
+	require.Equal(t, "/planes/radius/local/resourceGroups/deploymenttemplate-withresources/providers/Applications.Core/environments/deploymenttemplate-withresources-env", dependencyStatus.Id)
 
 	// Verify that the DeploymentTemplate desired state contains the expected properties.
 	expectedDeploymentTemplateSpec := &radappiov1alpha3.DeploymentTemplate{
