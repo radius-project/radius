@@ -136,6 +136,10 @@ func Test_DirectModule_Terraform(t *testing.T) {
 				for _, deploy := range deployments.Items {
 					t.Logf("  Deployment: %s", deploy.Name)
 				}
+
+				// Verify the module's plain outputs (host, port) were mapped onto the
+				// resource's properties via the recipe `outputs` field.
+				verifyDirectModuleMappedOutputs(ctx, t, test, "directmodule-tf-resource")
 			},
 		},
 	})
@@ -151,4 +155,152 @@ func Test_DirectModule_Terraform(t *testing.T) {
 	}
 
 	test.Test(t)
+}
+
+// Test_DirectModule_Bicep tests deployment of a direct (non-wrapped) Bicep module via
+// recipe packs. The module under test
+// (test/testrecipes/test-bicep-recipes/directmodule-kubernetes.bicep) has no `context`
+// parameter and no structured `result` output, so it exercises the direct-module code path
+// for the Bicep driver. This is the Bicep analogue of Test_DirectModule_Terraform and is the
+// closest CI-runnable proxy for direct Bicep modules such as Azure Verified Modules: it runs
+// the same ARM deployment engine used by wrapped Bicep recipes, differing only in parameter
+// resolution and output mapping.
+//
+// This validates:
+//   - {{context.resource.name}} and {{context.runtime.kubernetes.namespace}} expression resolution
+//     through the Bicep driver and ARM parameter wrapping
+//   - outputs mapping from module output names to resource property names
+//   - Bicep module download from an OCI registry and deployment via the ARM deployment engine
+//
+// Steps:
+//  1. Create the Kubernetes namespace (expected to be created by Ops).
+//  2. Register the user-defined resource type "Test.Resources/userTypeAlpha".
+//  3. Deploy a Bicep template with a direct-module recipe pack (outputs mapping + expression params).
+//  4. Verify Kubernetes deployments are created in the target namespace and the mapped outputs
+//     landed on the resource's properties.
+func Test_DirectModule_Bicep(t *testing.T) {
+	template := "testdata/directmodule-bicep-test.bicep"
+	appName := "directmodule-bicep-app"
+	appNamespace := "directmodule-bicep-ns"
+	parentResourceTypeName := "Test.Resources/userTypeAlpha"
+	parentResourceTypeParam := strings.Split(parentResourceTypeName, "/")[1]
+	filepath := "testdata/testresourcetypes.yaml"
+	options := rp.NewRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	test := rp.NewRPTest(t, appName, []rp.TestStep{
+		{
+			// Create the Kubernetes namespace the recipe deploys into.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := options.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: appNamespace,
+					},
+				}, metav1.CreateOptions{})
+				if err != nil && !apierrors.IsAlreadyExists(err) {
+					require.NoError(t, err)
+				}
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				_, err := test.Options.K8sClient.CoreV1().Namespaces().Get(ctx, appNamespace, metav1.GetOptions{})
+				require.NoError(t, err, "Namespace should be created")
+			},
+		},
+		{
+			// Register the user-defined resource type using the CLI.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				_, err := cli.ResourceTypeCreate(ctx, parentResourceTypeParam, filepath)
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				output, err := cli.RunCommand(ctx, []string{"resource-type", "show", parentResourceTypeName, "--output", "json"})
+				require.NoError(t, err)
+				require.Contains(t, output, parentResourceTypeName)
+			},
+		},
+		{
+			// Deploy the direct-module recipe pack and the resource that uses it.
+			Executor:                               step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion(), "appName="+appName),
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   false,
+			SkipKubernetesOutputResourceValidation: true,
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: "directmodule-bicep-recipe-pack",
+						Type: "radius.core/recipepacks",
+					},
+					{
+						Name: "directmodule-bicep-env",
+						Type: "radius.core/environments",
+					},
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+						App:  appName,
+					},
+					{
+						Name: "directmodule-bicep-resource",
+						Type: "test.resources/usertypealpha",
+						App:  appName,
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				// Verify that the Bicep module created Kubernetes deployments in the target
+				// namespace. The direct module resolves {{context.runtime.kubernetes.namespace}}
+				// to the namespace configured in the environment's providers, proving expression
+				// resolution and module execution end-to-end.
+				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, metav1.ListOptions{})
+				require.NoError(t, err)
+				require.NotEmpty(t, deployments.Items, "Expected Bicep module to create deployments in namespace %s", appNamespace)
+
+				t.Logf("Found %d deployments in namespace %s", len(deployments.Items), appNamespace)
+				for _, deploy := range deployments.Items {
+					t.Logf("  Deployment: %s", deploy.Name)
+				}
+
+				// Verify the module's plain outputs (host, port) were mapped onto the
+				// resource's properties via the recipe `outputs` field.
+				verifyDirectModuleMappedOutputs(ctx, t, test, "directmodule-bicep-resource")
+			},
+		},
+	})
+
+	// Delete the namespace created in the first step. This runs in the test-level
+	// PostDeleteVerify, which executes after the RP cleanup phase, so the namespace is not
+	// torn down while an in-flight delete still needs it.
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+		err := ct.Options.K8sClient.CoreV1().Namespaces().Delete(ctx, appNamespace, metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			t.Logf("Warning: Failed to delete namespace %s: %v", appNamespace, err)
+		}
+	}
+
+	test.Test(t)
+}
+
+// verifyDirectModuleMappedOutputs asserts that a direct module's plain outputs were mapped
+// onto the resource's properties via the recipe `outputs` field. Both direct Kubernetes
+// modules under test expose a `host` output (the in-cluster service DNS name) and a `port`
+// output (the exposed container port, as a string).
+func verifyDirectModuleMappedOutputs(ctx context.Context, t *testing.T, ct rp.RPTest, resourceName string) {
+	t.Helper()
+
+	resource, err := ct.Options.ManagementClient.GetResource(ctx, "Test.Resources/userTypeAlpha", resourceName)
+	require.NoError(t, err)
+	require.NotNil(t, resource.Properties, "resource should have properties populated from mapped outputs")
+
+	host, ok := resource.Properties["host"].(string)
+	require.True(t, ok, "mapped output 'host' should be present on resource properties as a string")
+	require.Contains(t, host, resourceName, "mapped 'host' output should contain the resource name")
+	require.Contains(t, host, ".svc.cluster.local", "mapped 'host' output should be the in-cluster service DNS name")
+
+	require.Equal(t, "6379", resource.Properties["port"], "mapped output 'port' should be set on resource property 'port'")
 }
