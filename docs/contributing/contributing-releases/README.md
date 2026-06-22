@@ -2,6 +2,10 @@
 
 # How to create and publish a Radius release
 
+## Purpose
+
+This document is the maintainers' reference for cutting and publishing a Radius release across the `radius-project/radius`, `radius-project/docs`, `radius-project/samples`, and `azure-octo/deployment-engine` repositories. It covers release candidates, final releases, and patch releases, and the branching, tagging, and validation steps each requires. It is intended for project maintainers with release responsibility, not day-to-day contributors.
+
 ## Prerequisites
 
 Before starting a release, ensure you have:
@@ -19,13 +23,13 @@ Before starting a release, ensure you have:
 
 ## Terminology
 
-| Term | Description | Example |
-| ------ | ------------- | --------- |
-| **RC release** | A release candidate for internal validation before public release. Create additional RCs if validation fails. | `v0.56.0-rc1`, `v0.56.0-rc2` |
-| **Final release** | A public release, built from the last validated RC. | `v0.56.0` |
-| **Patch release** | A bug-fix release for an existing final release. | `v0.56.1` |
-| **Release channel** | A `<major>.<minor>` pair that groups all releases for a version. | `0.56` |
-| **Release branch** | A branch in the format `release/<channel>` that holds release code. | `release/0.56` |
+| Term                | Description                                                                                                   | Example                      |
+|---------------------|---------------------------------------------------------------------------------------------------------------|------------------------------|
+| **RC release**      | A release candidate for internal validation before public release. Create additional RCs if validation fails. | `v0.56.0-rc1`, `v0.56.0-rc2` |
+| **Final release**   | A public release, built from the last validated RC.                                                           | `v0.56.0`                    |
+| **Patch release**   | A bug-fix release for an existing final release.                                                              | `v0.56.1`                    |
+| **Release channel** | A `<major>.<minor>` pair that groups all releases for a version.                                              | `0.56`                       |
+| **Release branch**  | A branch in the format `release/<channel>` that holds release code.                                           | `release/0.56`               |
 
 ## How releases work
 
@@ -52,7 +56,7 @@ Two GitHub Actions workflows drive the release process. **No one manually create
    - Skips tag/branch creation if the release branch already exists **and** the trigger was a push to `main` (this prevents duplicate work when `versions.yaml` is merged to `main` and later cherry-picked to the release branch)
 
    > **Note**: The workflow always checks out and reads `versions.yaml` from `main`, even when triggered by a push to a `release/*` branch. This means the version must be merged into `main` before the cherry-pick to the release branch triggers tag creation.
-
+   >
    > **Important**:
    >
    > - Add the new release version at the top of the `supported` list in `versions.yaml`.
@@ -75,23 +79,23 @@ Merge versions.yaml change (to main or release/* branch)
 
 #### When does tag creation happen?
 
-| Scenario | Trigger | What happens |
-| --- | --- | --- |
-| **First RC** | `versions.yaml` merged to `main` | `release.yaml` creates the release branch from `main` and pushes the RC tag |
-| **Subsequent RC** | `versions.yaml` cherry-picked to `release/*` | `release.yaml` runs on the release branch and pushes the new RC tag |
-| **Final release** | Version bump cherry-picked to `release/*` | `release.yaml` runs on the release branch and pushes the final tag |
-| **Patch release** | `versions.yaml` cherry-picked to `release/*` | `release.yaml` runs on the release branch and pushes the patch tag |
+| Scenario          | Trigger                                      | What happens                                                                |
+|-------------------|----------------------------------------------|-----------------------------------------------------------------------------|
+| **First RC**      | `versions.yaml` merged to `main`             | `release.yaml` creates the release branch from `main` and pushes the RC tag |
+| **Subsequent RC** | `versions.yaml` cherry-picked to `release/*` | `release.yaml` runs on the release branch and pushes the new RC tag         |
+| **Final release** | Version bump cherry-picked to `release/*`    | `release.yaml` runs on the release branch and pushes the final tag          |
+| **Patch release** | `versions.yaml` cherry-picked to `release/*` | `release.yaml` runs on the release branch and pushes the patch tag          |
 
 ### Cherry-pick workflow
 
 All release types follow the same pattern: changes merge to `main` first, then cherry-pick to the release branch (`release/<channel>`). The release branch is what gets tagged and built.
 
-| Release type | What to cherry-pick to the release branch |
-| --- | --- |
-| **First RC** | Nothing — the release branch is created automatically from `main` |
-| **Subsequent RC** | `versions.yaml` update + any additional bug fixes |
-| **Final release** | A single commit with the version bump and release notes |
-| **Patch release** | Bug-fix commits + `versions.yaml` update + patch release notes |
+| Release type      | What to cherry-pick to the release branch                         |
+|-------------------|-------------------------------------------------------------------|
+| **First RC**      | Nothing — the release branch is created automatically from `main` |
+| **Subsequent RC** | `versions.yaml` update + any additional bug fixes                 |
+| **Final release** | A single commit with the version bump and release notes           |
+| **Patch release** | Bug-fix commits + `versions.yaml` update + patch release notes    |
 
 > Always use `git cherry-pick -x` to preserve traceability.
 >

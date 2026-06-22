@@ -1,57 +1,32 @@
-# Contributing Pull Requests
+# Contributing pull requests
 
-## What to work on
+## Purpose
 
-We welcome small pull request contributions from anyone (docs improvements, bug fixes, minor features.) as long as they follow a few guidelines:
+This guide explains how to open a pull request against [`radius-project/radius`](https://github.com/radius-project/radius): what to work on, how to prepare and submit your change, and what to expect during review. It is for anyone — first-time or returning contributors, human or agent — who wants a change merged into Radius. For a guided, end-to-end walkthrough of your first change, start with the [first commit guide](../contributing-code/contributing-code-first-commit/); this page is the authoritative reference for the pull-request process itself.
 
-- For very minor changes like correcting a typo feel free to just send a pull request without any ceremony. Otherwise ...
-- Please start by [choosing an existing issue](https://github.com/radius-project/radius/issues), or [opening an issue](https://github.com/radius-project/radius/issues/new/choose) to work on.
-- The maintainers will respond to your issue, please work with the maintainers to ensure that what you're doing is in scope for the project before writing any code.
-- If you have any doubt whether a contribution would be valuable, feel free to ask.
+## Prerequisites
 
-We the maintainers have discretion over what features and pull requests we accept. Please understand that we are responsible for the long-term support and maintenance of Radius, and so we sometimes need to make hard decisions to limit the scope. For another perspective on this, we really like this [article](https://www.igvita.com/2011/12/19/dont-push-your-pull-requests/).
+Before opening a pull request, make sure you have:
 
-## Sending a pull request
+- **Agreement on scope.** For anything beyond a trivial fix (like a typo), [choose an existing issue](https://github.com/radius-project/radius/issues) or [open a new one](https://github.com/radius-project/radius/issues/new/choose) and work with the maintainers to confirm the change is in scope *before* writing code. The maintainers have discretion over what they accept — see [this article](https://www.igvita.com/2011/12/19/dont-push-your-pull-requests/) for why. If you have any doubt whether a contribution is valuable, ask first.
+- **A fork of the repository.** Submit pull requests from a forked repo against the `main` branch (the default) unless otherwise instructed.
+- **A working local build.** Run the basic validations (`make build test lint`) successfully before you submit. See [building the repo](../contributing-code/contributing-code-building/) for setup.
 
-> 💡 If you're new to Go or new to open source, our [first commit guide](./../contributing-code/contributing-code-first-commit/) can walk you through the process of making code changes and submitting a pull request.
+## Steps
 
-Please submit pull requests using a forked repo and open pull requests against the `main` branch (the default) unless otherwise instructed.
+### 1. Make your change and validate it locally
 
-When opening a pull request, the form will be pre-populated with our template. Please fill out the template to provide structure to your PR message. If you've already written a good commit message (see below) it will be easy to use with our template.
+Work on your fork and run the basic validations before submitting:
 
-A pull request will need to pass the following checkpoints to be accepted:
+```bash
+make build test lint
+```
 
-- Initial review: a maintainer will review your summary and make sure an appropriate issue is linked
-- Testing: automated tests will run against your changes
-- Contributor PR checklist: the PR meets the [checklist requirements](https://github.com/radius-project/radius/blob/main/.github/pull_request_template.md#contributor-checklist).
-- Code review: you will get feedback from a maintainer or other contributors in the form of comments
+This builds the repo, runs the unit tests, and runs the linters. If you get stuck, you can open the pull request anyway and ask for help in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814).
 
-We expect that contributors have run basic validations (`make build test lint`) before sending a pull request. See [building the repo](../contributing-code/contributing-code-building/) for more information. If you get stuck during this step feel free to open the pull request anyway and ask for help in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814).
+### 2. Write a good commit message
 
-## Filling out the pull request template
-
-Our pull request template will ask you to choose one of three options from a list when submitting the pull request. Telling us what type of change the pull request contains will help us author the release notes and informs reviewers about what to look for in your pull request.
-
-The following tips should help you decide which option to choose:
-
-- Does this change fix a bug in Radius? We define a bug as a case where Radius does not work as advertised, or where a crash or some other kind of internal failure occurs. If you said Yes, then choose the first option (Bugfix).
-- Does this change introduce new features or behaviors? Does this change modify an existing feature of Radius in a way that's visible to users? If you said Yes, choose the second option (Feature).
-- If neither of the two previous options sounds right, and there's no user-visible change in your pull request then choose the third option (Task).
-
-We use Task as a catch-all for changes that have no direct user-visible impact. In practice many changes are Tasks, and we don't include them in the release notes. This includes minor refactors, code/style cleanup, test improvements, correcting misspellings in comments, changes to build processes, etc.
-
-## Tips
-
-Keep reading for some tips about how to get your pull requests accepted!
-
-## How to get help with a pull request
-
-- Notify the Radius Core team by commenting with `@radius-project/radius-core-team` on your pull-request.
-- Post on Discord in the [#Forum channel](https://discord.gg/GJHN7kQrMh) to start a conversation.
-
-## Writing a good commit message
-
-We value good commit messages that are descriptive and meaningful at a glance. A good format to follow is like the following:
+We value commit messages that are descriptive and meaningful at a glance. A good format to follow is:
 
 ```txt
 <short description>
@@ -66,58 +41,32 @@ Fixes: #<issue>
 - (optional) additional follow up work that should be done (with links)
 ```
 
-We **squash** pull-requests as part of the merge process, which means that intermediate commits will have their messages appended. We prefer to have a single commit in the git history for each PR.
+We **squash** pull requests as part of the merge process, so intermediate commit messages are appended. We prefer a single commit in the git history for each PR.
 
-## Signing your commits
+### 3. Sign your commits
 
-See [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide.
+The Developer Certificate of Origin (DCO) check requires every commit to be signed off. See [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide for how to do this.
 
-## Automated tests
+### 4. Open the pull request and fill out the template
 
-Our GitHub Actions workflows will run against your pull request to validate the changes. This will run the unit tests, integration tests, and functional tests.
+Open the pull request from your fork against `main`. The form is pre-populated with our [template](https://github.com/radius-project/radius/blob/main/.github/pull_request_template.md). Fill it out to give your PR structure — a good commit message (step 2) makes this easy.
 
-Ideally everything works the first time, but you may not be so lucky! Our automation will add comments to your pull request that helps explain what's happening. This will include links to logs where you can diagnose what's happening.
+The template asks you to choose one of three change types. This helps us author the release notes and tells reviewers what to look for:
 
-The functional tests workflow requires an approval to run by one of our approvers who will be automatically notified when the PR is submitted. Our approvers will scan the PR and will approve the test run if everything in the PR looks acceptable to run tests. Once the test run is approved, you should see the functional tests start running for your PR.
+- **Bugfix** — the change fixes a case where Radius does not work as advertised, crashes, or fails internally.
+- **Feature** — the change introduces new behavior or modifies an existing feature in a user-visible way.
+- **Task** — a catch-all for changes with no direct user-visible impact (minor refactors, code/style cleanup, test improvements, comment fixes, build changes). Tasks are not included in the release notes.
 
-If you get stuck with a failure you can't understand, feel free to ask the maintainers for help.
-
-### CodeQL security analysis
-
-We run [CodeQL](https://codeql.github.com/) as part of the pull-request process for security analysis. If the CodeQL analysis finds a security issue it will be reported as part of the PR checks. CodeQL is not currently required to pass for a PR to be merged, as it may be triggered by other alerts within the repo.
-
-If CodeQL fails due to your changes, please work with the maintainers to resolve the issue.
-
-### Spell checking
-
-The PR check workflow runs a spell checker ([cspell](https://cspell.org/)) using a [custom dictionary](https://github.com/radius-project/radius/blob/main/.cspellignore) file. If the spell check fails look at the [workflow output](https://github.com/radius-project/radius/actions/workflows/spellcheck.yaml) for which words are misspelled. Add words to the dictionary file if they are spelled correctly but cspell doesn't know them.
-
-If you install cspell locally you can run the spell check on your machine with this command (from the root folder of the repo):
-
-```bash
-make spellcheck
-```
-
-Note: cspell requires [Node.js](https://nodejs.org/). Install it globally with `npm install -g cspell`.
-
-## Code review
-
-The maintainers or other contributors will add comments to your pull request giving feedback, asking questions, and making suggestions. Please respond to these comments to either continue the discussion or explain whether or not you plan to address the feedback. Ultimately, accepting a pull request is at the maintainer's discretion.
-
-### Being proactive
-
-It can be helpful for you to comment on your own PR to point out relevant locations, decisions, opportunities for feedback, and tricky parts. This will help reviewers focus their attention as well as save them time.
-
-### Optional: self-review with the `radius-code-review` skill
+### 5. (Optional) Self-review with the `radius-code-review` skill
 
 If you use GitHub Copilot, you can run the [`radius-code-review`](../../../.github/skills/radius-code-review/SKILL.md) skill against your own pull request to generate an initial AI-assisted review *before* asking maintainers to look at it. This can help you catch obvious issues, missing tests, or unclear comments while you still own the change.
 
-**Prerequisites**
+Prerequisites for the skill:
 
 - Authenticated [`gh` CLI](https://cli.github.com/) and [`jq`](https://jqlang.org/) installed locally.
 - One of: the [GitHub Copilot app](https://github.com/features/copilot), [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-cli), or VS Code with the [GitHub Copilot Chat](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat) extension (with prompt files enabled — see VS Code's [prompt files docs](https://code.visualstudio.com/docs/copilot/copilot-customization#_prompt-files-experimental)).
 
-**Suggested workflow**
+Suggested workflow:
 
 1. Push your branch and open the pull request.
 2. Run the skill against your PR using one of:
@@ -130,18 +79,40 @@ If you use GitHub Copilot, you can run the [`radius-code-review`](../../../.gith
 
 See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md#optional-ai-assisted-review-with-the-radius-code-review-skill) for the reviewer perspective on this skill.
 
-### Resolving Feedback
+### 6. Respond to review feedback
 
-You can "resolve" comments on your pull request when you've addressed the feedback: either through discussion or through making a code change. As the contributor of the pull-request feel free to mark comments as resolved when you feel like you've done a reasonable job addressing the feedback.
+The maintainers or other contributors will add comments giving feedback, asking questions, and making suggestions. Respond to each comment to continue the discussion or explain whether you plan to address it. Accepting a pull request is ultimately at the maintainer's discretion.
 
-If you are the code reviewer, it's your responsibility to follow up (politely) if you feel your feedback has not been addressed adequately.
+- **Be proactive.** Comment on your own PR to point out relevant locations, decisions, opportunities for feedback, and tricky parts. This focuses reviewers' attention and saves them time.
+- **Resolve feedback.** Mark comments as resolved once you've addressed them through discussion or a code change. If you are the reviewer, follow up (politely) if you feel your feedback hasn't been addressed adequately.
+- **Anyone can participate.** We welcome any contributor or community member to engage with any pull request. Make suggestions and ask relevant questions; if a question is for your own learning, make it clear that it is "non-blocking." See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md) for full guidance.
 
-### Participating in code review
+## Verification
 
-We welcome **any contributor or community member** to engage with **any pull request** on our repository. Feel free to make suggestions for improvements and ask questions that are relevant. If you're asking questions for your learning, please make it clear that your questions are "non-blocking" for the pull request.
+A pull request must pass these checkpoints to be accepted:
 
-See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md) for guidance on code reviewing.
+- **Initial review** — a maintainer reviews your summary and confirms an appropriate issue is linked.
+- **Automated tests** — GitHub Actions workflows run unit, integration, and functional tests against your changes. Automation adds comments with links to logs so you can diagnose failures.
+- **Contributor checklist** — the PR meets the [checklist requirements](https://github.com/radius-project/radius/blob/main/.github/pull_request_template.md#contributor-checklist).
+- **Code review** — you receive and address feedback from a maintainer or other contributors.
 
-## Inactive Pull Requests
+The functional-tests workflow requires approval to run. One of our approvers is automatically notified when you submit the PR; once they approve the run, the functional tests start.
 
-Pull requests that have been inactive for 90 days will be marked with a stale label. They will automatically be closed after a subsequent 7 days of inactivity. This timeframe may be adjusted in the future based on project needs.
+### How to get help with a pull request
+
+- Notify the Radius Core team by commenting `@radius-project/radius-core-team` on your pull request.
+- Post on Discord in the [#Forum channel](https://discord.gg/GJHN7kQrMh) to start a conversation.
+
+## Troubleshooting
+
+- **A functional-test run hasn't started.** The functional-tests workflow requires an approver to approve the run. Approvers are notified automatically when you submit; if a run hasn't started, wait for approval or ask the maintainers.
+- **CodeQL reports a security issue.** We run [CodeQL](https://codeql.github.com/) for security analysis on every PR. It is not currently required to pass for a PR to be merged, as it may be triggered by other alerts in the repo. If CodeQL fails due to your changes, work with the maintainers to resolve it.
+- **The spell check fails.** The PR check workflow runs [cspell](https://cspell.org/) with a [custom dictionary](https://github.com/radius-project/radius/blob/main/.cspellignore). Check the [workflow output](https://github.com/radius-project/radius/actions/workflows/spellcheck.yaml) for the flagged words and add correctly spelled words to `.cspellignore`. Run it locally from the repo root with:
+
+  ```bash
+  make spellcheck
+  ```
+
+  cspell requires [Node.js](https://nodejs.org/); install it globally with `npm install -g cspell`.
+- **A CI failure you can't understand.** Our automation adds comments with links to logs. If you're still stuck, ask the maintainers for help.
+- **Your PR was marked stale.** Pull requests inactive for 90 days are marked with a stale label and closed after a further 7 days of inactivity. This timeframe may be adjusted in the future based on project needs. Comment or push an update to keep your PR active.
