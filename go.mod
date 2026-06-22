@@ -36,7 +36,7 @@ require (
 	github.com/aws/smithy-go v1.27.2
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20260615092313-b57e5e6d29bb
-	github.com/containerd/containerd v1.7.32
+	github.com/containerd/containerd v1.7.33
 	github.com/distribution/reference v0.6.0
 	github.com/fatih/color v1.19.0
 	github.com/fluxcd/pkg/apis/meta v1.30.0
