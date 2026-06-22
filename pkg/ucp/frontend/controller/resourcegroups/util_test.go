@@ -265,6 +265,26 @@ func Test_ValidateDownstream(t *testing.T) {
 		require.Nil(t, downstreamURL)
 	})
 
+	t.Run("resource type not registered", func(t *testing.T) {
+		resourceGroup := &datamodel.ResourceGroup{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: id.RootScope(),
+				},
+			},
+		}
+
+		databaseClient := setup(t)
+		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
+		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(nil, &database.ErrNotFound{}).Times(1)
+
+		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		require.Error(t, err)
+		require.Equal(t, &InvalidError{Message: "resource type \"System.TestRP/testResources\" is not registered. register the resource type before deploying resources of this type"}, err)
+		require.Nil(t, downstreamURL)
+	})
+
 	t.Run("location error", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
 			BaseResource: v1.BaseResource{
@@ -324,7 +344,7 @@ func Test_ValidateDownstream(t *testing.T) {
 
 		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
-		require.Equal(t, &InvalidError{Message: "resource type \"System.TestRP/testResources\" not supported by location \"east\""}, err)
+		require.Equal(t, &InvalidError{Message: "resource type \"System.TestRP/testResources\" is not registered. register the resource type before deploying resources of this type"}, err)
 		require.Nil(t, downstreamURL)
 	})
 
