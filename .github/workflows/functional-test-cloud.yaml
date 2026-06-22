@@ -994,6 +994,12 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
+          # Initiate resource deletion without blocking on completion (matches the
+          # non-cloud suite). Test assertions for deploy/create still run in full;
+          # only the synchronous teardown wait is skipped, and the per-run resource
+          # group is force-deleted afterward. This removes the slow Test_ACI teardown
+          # (~9 min) from the critical path without reducing validation scope.
+          RADIUS_TEST_FAST_CLEANUP: true
           MATRIX_NAME: ${{ matrix.name }}
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
 
