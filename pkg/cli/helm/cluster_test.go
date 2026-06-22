@@ -26,11 +26,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	helm "helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/storage/driver"
-	helmtime "helm.sh/helm/v3/pkg/time"
+	helm "helm.sh/helm/v4/pkg/action"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/release"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage/driver"
 )
 
 func Test_Helm_InstallRadius(t *testing.T) {
@@ -51,7 +52,7 @@ func Test_Helm_InstallRadius(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
+			pull := helm.NewPull(pullopts...)
 			// Simulate downloading the chart to the temp dir
 			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: radius\nversion: 0.1.0"), 0644)
 			require.NoError(t, err)
@@ -60,18 +61,18 @@ func Test_Helm_InstallRadius(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmPull(gomock.Any(), options.Contour.ReleaseName).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
+			pull := helm.NewPull(pullopts...)
 			// Simulate downloading the chart to the temp dir
 			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: contour\nversion: 0.1.0"), 0644)
 			require.NoError(t, err)
 			return "Pulled", nil
 		}).Times(1)
 
-	radiusRelease := &release.Release{
+	radiusRelease := &releasev1.Release{
 		Name:  options.Radius.ReleaseName,
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
 	}
-	contourRelease := &release.Release{
+	contourRelease := &releasev1.Release{
 		Name:  options.Contour.ReleaseName,
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
 	}
@@ -175,8 +176,8 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	options := NewDefaultClusterOptions()
 
 	// Helper to create a dummy release with the given version.
-	newRel := func(name, ver string) *release.Release {
-		return &release.Release{
+	newRel := func(name, ver string) *releasev1.Release {
+		return &releasev1.Release{
 			Name:  name,
 			Chart: &chart.Chart{Metadata: &chart.Metadata{Version: ver, AppVersion: ver}},
 		}
@@ -185,7 +186,7 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	// Radius is installed, Contour not installed.
 	radiusRelease := newRel(options.Radius.ReleaseName, "0.1.0")
 	// Set the release status to deployed for the history check
-	radiusRelease.Info = &release.Info{Status: release.StatusDeployed}
+	radiusRelease.Info = &releasev1.Info{Status: releasecommon.StatusDeployed}
 
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
@@ -193,7 +194,7 @@ func Test_Helm_CheckRadiusInstall(t *testing.T) {
 	// Mock the history call that happens when Radius is installed
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return([]*release.Release{radiusRelease}, nil).Times(1)
+		Return([]*releasev1.Release{radiusRelease}, nil).Times(1)
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(nil, driver.ErrReleaseNotFound).Times(1)
@@ -262,11 +263,11 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 	options := NewDefaultClusterOptions()
 
 	// Helper to create a dummy release with the given version.
-	newRel := func(name, ver string) *release.Release {
-		return &release.Release{
+	newRel := func(name, ver string) *releasev1.Release {
+		return &releasev1.Release{
 			Name:  name,
 			Chart: &chart.Chart{Metadata: &chart.Metadata{Version: ver, AppVersion: ver}},
-			Info:  &release.Info{Status: release.StatusDeployed},
+			Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
 		}
 	}
 
@@ -274,7 +275,7 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
+			pull := helm.NewPull(pullopts...)
 			// Simulate downloading the chart to the temp dir
 			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: radius\nversion: 0.1.0"), 0644)
 			require.NoError(t, err)
@@ -295,7 +296,7 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 		Return(radiusRelease, nil).Times(1)
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return([]*release.Release{radiusRelease}, nil).Times(1)
+		Return([]*releasev1.Release{radiusRelease}, nil).Times(1)
 
 	contourRelease := newRel(options.Contour.ReleaseName, "0.1.0")
 	mockHelmClient.EXPECT().
@@ -306,7 +307,7 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmPull(gomock.Any(), options.Contour.ReleaseName).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
+			pull := helm.NewPull(pullopts...)
 			// Simulate downloading the chart to the temp dir
 			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: contour\nversion: 0.1.0"), 0644)
 			require.NoError(t, err)
@@ -338,11 +339,11 @@ func Test_Helm_UpgradeRadius_ContourNotInstalled(t *testing.T) {
 	options := NewDefaultClusterOptions()
 
 	// Helper to create a dummy release with the given version.
-	newRel := func(name, ver string) *release.Release {
-		return &release.Release{
+	newRel := func(name, ver string) *releasev1.Release {
+		return &releasev1.Release{
 			Name:  name,
 			Chart: &chart.Chart{Metadata: &chart.Metadata{Version: ver, AppVersion: ver}},
-			Info:  &release.Info{Status: release.StatusDeployed},
+			Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
 		}
 	}
 
@@ -350,7 +351,7 @@ func Test_Helm_UpgradeRadius_ContourNotInstalled(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
+			pull := helm.NewPull(pullopts...)
 			// Simulate downloading the chart to the temp dir
 			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: radius\nversion: 0.1.0"), 0644)
 			require.NoError(t, err)
@@ -371,7 +372,7 @@ func Test_Helm_UpgradeRadius_ContourNotInstalled(t *testing.T) {
 		Return(radiusRelease, nil).Times(1)
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return([]*release.Release{radiusRelease}, nil).Times(1)
+		Return([]*releasev1.Release{radiusRelease}, nil).Times(1)
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(nil, driver.ErrReleaseNotFound).Times(1)
@@ -451,7 +452,7 @@ func Test_Helm_UpgradeRadius_RadiusUpgradeError(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
+			pull := helm.NewPull(pullopts...)
 			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: radius\nversion: 0.1.0"), 0644)
 			require.NoError(t, err)
 			return "Pulled", nil
@@ -483,11 +484,11 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
-	newRel := func(name, ver string) *release.Release {
-		return &release.Release{
+	newRel := func(name, ver string) *releasev1.Release {
+		return &releasev1.Release{
 			Name:  name,
 			Chart: &chart.Chart{Metadata: &chart.Metadata{Version: ver, AppVersion: ver}},
-			Info:  &release.Info{Status: release.StatusDeployed},
+			Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
 		}
 	}
 
@@ -495,7 +496,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
+			pull := helm.NewPull(pullopts...)
 			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: radius\nversion: 0.1.0"), 0644)
 			require.NoError(t, err)
 			return "Pulled", nil
@@ -517,7 +518,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 		Return(radiusRelease, nil).Times(1)
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return([]*release.Release{radiusRelease}, nil).Times(1)
+		Return([]*releasev1.Release{radiusRelease}, nil).Times(1)
 
 	contourRelease := newRel(options.Contour.ReleaseName, "0.1.0")
 	mockHelmClient.EXPECT().
@@ -528,7 +529,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmPull(gomock.Any(), options.Contour.ReleaseName).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
+			pull := helm.NewPull(pullopts...)
 			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: contour\nversion: 0.1.0"), 0644)
 			require.NoError(t, err)
 			return "Pulled", nil
@@ -560,11 +561,11 @@ func Test_Helm_UpgradeRadius_CheckInstallError(t *testing.T) {
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
-	newRel := func(name, ver string) *release.Release {
-		return &release.Release{
+	newRel := func(name, ver string) *releasev1.Release {
+		return &releasev1.Release{
 			Name:  name,
 			Chart: &chart.Chart{Metadata: &chart.Metadata{Version: ver, AppVersion: ver}},
-			Info:  &release.Info{Status: release.StatusDeployed},
+			Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
 		}
 	}
 
@@ -572,7 +573,7 @@ func Test_Helm_UpgradeRadius_CheckInstallError(t *testing.T) {
 	mockHelmClient.EXPECT().
 		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
+			pull := helm.NewPull(pullopts...)
 			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: radius\nversion: 0.1.0"), 0644)
 			require.NoError(t, err)
 			return "Pulled", nil
@@ -614,18 +615,18 @@ func Test_Helm_UpgradeRadius_ResetValues(t *testing.T) {
 	options := NewDefaultClusterOptions()
 	options.ResetValues = true
 
-	newRel := func(name, ver string) *release.Release {
-		return &release.Release{
+	newRel := func(name, ver string) *releasev1.Release {
+		return &releasev1.Release{
 			Name:  name,
 			Chart: &chart.Chart{Metadata: &chart.Metadata{Version: ver, AppVersion: ver}},
-			Info:  &release.Info{Status: release.StatusDeployed},
+			Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
 		}
 	}
 
 	mockHelmClient.EXPECT().
 		RunHelmPull(gomock.Any(), fmt.Sprintf("%s/%s", options.Radius.ChartRepo, options.Radius.ReleaseName)).
 		DoAndReturn(func(pullopts []helm.PullOpt, chartRef string) (string, error) {
-			pull := helm.NewPullWithOpts(pullopts...)
+			pull := helm.NewPull(pullopts...)
 			err := os.WriteFile(filepath.Join(pull.DestDir, "Chart.yaml"), []byte("name: radius\nversion: 0.1.0"), 0644)
 			require.NoError(t, err)
 			return "Pulled", nil
@@ -647,7 +648,7 @@ func Test_Helm_UpgradeRadius_ResetValues(t *testing.T) {
 		Return(radiusRelease, nil).Times(1)
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return([]*release.Release{radiusRelease}, nil).Times(1)
+		Return([]*releasev1.Release{radiusRelease}, nil).Times(1)
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(nil, driver.ErrReleaseNotFound).Times(1)
@@ -666,9 +667,9 @@ func Test_Helm_RollbackRadius_Success(t *testing.T) {
 	kubeContext := "test-context"
 
 	// Mock history with multiple versions
-	history := []*release.Release{
-		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &release.Info{Status: "superseded"}},
-		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &release.Info{Status: "deployed"}},
+	history := []*releasev1.Release{
+		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
 
 	mockHelmClient.EXPECT().
@@ -695,10 +696,9 @@ func Test_Helm_RollbackRadius_NoOlderVersion(t *testing.T) {
 	kubeContext := "test-context"
 
 	// Mock history with only one version
-	history := []*release.Release{
-		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &release.Info{Status: "deployed"}},
+	history := []*releasev1.Release{
+		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
-
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 		Return(history, nil).
@@ -719,11 +719,10 @@ func Test_Helm_RollbackRadius_SameVersionSkipped(t *testing.T) {
 	kubeContext := "test-context"
 
 	// Mock history with same versions (no semantic rollback available)
-	history := []*release.Release{
-		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &release.Info{Status: "superseded"}},
-		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &release.Info{Status: "deployed"}},
+	history := []*releasev1.Release{
+		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
-
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 		Return(history, nil).
@@ -764,13 +763,12 @@ func Test_Helm_RollbackRadiusToRevision_Success(t *testing.T) {
 	targetRevision := 3
 
 	// Mock history containing the target revision
-	history := []*release.Release{
-		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &release.Info{Status: "superseded"}},
-		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &release.Info{Status: "superseded"}},
-		{Version: 3, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &release.Info{Status: "superseded"}},
-		{Version: 4, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &release.Info{Status: "deployed"}},
+	history := []*releasev1.Release{
+		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 3, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 4, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
-
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 		Return(history, nil).
@@ -796,11 +794,10 @@ func Test_Helm_RollbackRadiusToRevision_RevisionNotFound(t *testing.T) {
 	targetRevision := 999
 
 	// Mock history without the target revision
-	history := []*release.Release{
-		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &release.Info{Status: "superseded"}},
-		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &release.Info{Status: "deployed"}},
+	history := []*releasev1.Release{
+		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusSuperseded}},
+		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: releasecommon.StatusDeployed}},
 	}
-
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
 		Return(history, nil).
@@ -822,9 +819,9 @@ func Test_Helm_RollbackRadiusToRevision_RollbackError(t *testing.T) {
 	targetRevision := 1
 
 	// Mock history containing the target revision
-	history := []*release.Release{
-		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &release.Info{Status: "superseded"}},
-		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &release.Info{Status: "deployed"}},
+	history := []*releasev1.Release{
+		{Version: 1, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}}, Info: &releasev1.Info{Status: "superseded"}},
+		{Version: 2, Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}}, Info: &releasev1.Info{Status: "deployed"}},
 	}
 
 	mockHelmClient.EXPECT().
@@ -852,24 +849,24 @@ func Test_Helm_GetRadiusRevisions_Success(t *testing.T) {
 	kubeContext := "test-context"
 
 	// Mock history with multiple versions
-	history := []*release.Release{
+	history := []*releasev1.Release{
 		{
 			Version: 1,
 			Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}},
-			Info: &release.Info{
-				Status:        release.StatusSuperseded,
-				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)},
-				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)},
+			Info: &releasev1.Info{
+				Status:        releasecommon.StatusSuperseded,
+				FirstDeployed: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
+				LastDeployed:  time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
 				Description:   "Install complete",
 			},
 		},
 		{
 			Version: 2,
 			Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}},
-			Info: &release.Info{
-				Status:        release.StatusDeployed,
-				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)},
-				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 2, 14, 30, 0, 0, time.UTC)},
+			Info: &releasev1.Info{
+				Status:        releasecommon.StatusDeployed,
+				FirstDeployed: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
+				LastDeployed:  time.Date(2023, 1, 2, 14, 30, 0, 0, time.UTC),
 				Description:   "Upgrade complete",
 			},
 		},
@@ -908,7 +905,7 @@ func Test_Helm_GetRadiusRevisions_NoRevisions(t *testing.T) {
 	kubeContext := "test-context"
 
 	// Mock empty history
-	history := []*release.Release{}
+	history := []*releasev1.Release{}
 
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), "radius").
@@ -951,44 +948,44 @@ func Test_Helm_GetRadiusRevisions_MultipleUpgradesWithDifferentTimestamps(t *tes
 	// Mock history simulating multiple upgrades and rollbacks across different days
 	// This test validates that each revision shows its own LastDeployed timestamp,
 	// not the FirstDeployed timestamp which would be the same for all revisions
-	history := []*release.Release{
+	history := []*releasev1.Release{
 		{
 			Version: 1,
 			Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}},
-			Info: &release.Info{
-				Status:        release.StatusSuperseded,
-				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC)},
-				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC)},
+			Info: &releasev1.Info{
+				Status:        releasecommon.StatusSuperseded,
+				FirstDeployed: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC),
+				LastDeployed:  time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC),
 				Description:   "Install complete",
 			},
 		},
 		{
 			Version: 2,
 			Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: "0.46.0"}},
-			Info: &release.Info{
-				Status:        release.StatusSuperseded,
-				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC)},
-				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 2, 15, 30, 0, 0, time.UTC)},
+			Info: &releasev1.Info{
+				Status:        releasecommon.StatusSuperseded,
+				FirstDeployed: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC),
+				LastDeployed:  time.Date(2023, 1, 2, 15, 30, 0, 0, time.UTC),
 				Description:   "Upgrade complete",
 			},
 		},
 		{
 			Version: 3,
 			Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: "0.45.0"}},
-			Info: &release.Info{
-				Status:        release.StatusSuperseded,
-				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC)},
-				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 3, 9, 15, 0, 0, time.UTC)},
+			Info: &releasev1.Info{
+				Status:        releasecommon.StatusSuperseded,
+				FirstDeployed: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC),
+				LastDeployed:  time.Date(2023, 1, 3, 9, 15, 0, 0, time.UTC),
 				Description:   "Rollback to 1",
 			},
 		},
 		{
 			Version: 4,
 			Chart:   &chart.Chart{Metadata: &chart.Metadata{Version: "0.47.0"}},
-			Info: &release.Info{
-				Status:        release.StatusDeployed,
-				FirstDeployed: helmtime.Time{Time: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC)},
-				LastDeployed:  helmtime.Time{Time: time.Date(2023, 1, 4, 11, 45, 0, 0, time.UTC)},
+			Info: &releasev1.Info{
+				Status:        releasecommon.StatusDeployed,
+				FirstDeployed: time.Date(2023, 1, 1, 10, 0, 0, 0, time.UTC),
+				LastDeployed:  time.Date(2023, 1, 4, 11, 45, 0, 0, time.UTC),
 				Description:   "Upgrade complete",
 			},
 		},
@@ -1036,8 +1033,8 @@ func Test_Helm_CheckRadiusInstall_UsesAppVersion(t *testing.T) {
 	options := NewDefaultClusterOptions()
 
 	// Helper to create a dummy release with both chart version and app version.
-	newRelWithAppVersion := func(name, chartVer, appVer string) *release.Release {
-		return &release.Release{
+	newRelWithAppVersion := func(name, chartVer, appVer string) *releasev1.Release {
+		return &releasev1.Release{
 			Name:  name,
 			Chart: &chart.Chart{Metadata: &chart.Metadata{Version: chartVer, AppVersion: appVer}},
 		}
@@ -1046,7 +1043,7 @@ func Test_Helm_CheckRadiusInstall_UsesAppVersion(t *testing.T) {
 	// Create release with both chart version and app version
 	radiusRelease := newRelWithAppVersion(options.Radius.ReleaseName, "1.0.0", "v0.43.0")
 	// Set the release status to deployed for the history check
-	radiusRelease.Info = &release.Info{Status: release.StatusDeployed}
+	radiusRelease.Info = &releasev1.Info{Status: releasecommon.StatusDeployed}
 
 	// Radius is installed with AppVersion, Contour not installed.
 	mockHelmClient.EXPECT().
@@ -1055,7 +1052,7 @@ func Test_Helm_CheckRadiusInstall_UsesAppVersion(t *testing.T) {
 	// Mock the history call that happens when Radius is installed
 	mockHelmClient.EXPECT().
 		RunHelmHistory(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Radius.ReleaseName).
-		Return([]*release.Release{radiusRelease}, nil).Times(1)
+		Return([]*releasev1.Release{radiusRelease}, nil).Times(1)
 	mockHelmClient.EXPECT().
 		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), options.Contour.ReleaseName).
 		Return(nil, driver.ErrReleaseNotFound).Times(1)

@@ -52,8 +52,6 @@ updates:
         applies-to: security-updates
         patterns:
           - "*"
-    ignore:
-      - dependency-name: "github.com/charmbracelet/x/exp/*"
 
   - package-ecosystem: npm
     directories:
