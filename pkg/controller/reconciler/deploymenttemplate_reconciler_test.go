@@ -427,7 +427,7 @@ func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.OutputResources = []*armdeployments.ResourceReference{
-			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-withresources-env")},
+			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-withresources/providers/Applications.Core/environments/deploymenttemplate-withresources-env")},
 		}
 		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armdeployments.DeploymentExtended{Properties: resource.Properties}}
 	})

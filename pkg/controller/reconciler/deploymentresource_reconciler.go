@@ -215,9 +215,12 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 		return ctrl.Result{}, err
 	}
 	if !eligible {
-		logger.Info("Skipping delete: resource is not within an owning DeploymentTemplate's scope.", "resourceId", deploymentResource.Spec.Id)
+		// deleteIsEligible can return false for several reasons (no controller owner, owner not
+		// found, UID mismatch, unresolvable scope, or Spec.Id outside scope); the specific reason is
+		// logged within deleteIsEligible. Keep this message general so it is not misleading.
+		logger.Info("Skipping delete: DeploymentResource is not an eligible controller-owned child of a DeploymentTemplate within its scope.", "resourceId", deploymentResource.Spec.Id)
 		r.EventRecorder.Event(deploymentResource, corev1.EventTypeNormal, EventDeploymentResourceDeleteSkipped,
-			fmt.Sprintf("Skipping delete of %q: it is not within the owning DeploymentTemplate's deployment scope", deploymentResource.Spec.Id))
+			fmt.Sprintf("Skipping delete of %q: it is not an eligible controller-owned child of a DeploymentTemplate within the matching deployment scope", deploymentResource.Spec.Id))
 
 		// Nothing to delete in UCP. Remove the finalizer so the object is not wedged in
 		// Terminating; the controller never provisioned the referenced resource.
@@ -362,7 +365,11 @@ func (r *DeploymentResourceReconciler) deleteIsEligible(ctx context.Context, dep
 
 	scope, err := ParseDeploymentScopeFromProviderConfig(owner.Spec.ProviderConfig)
 	if err != nil {
-		return false, fmt.Errorf("failed to determine deployment scope from owning DeploymentTemplate: %w", err)
+		// The scope cannot be determined from the owning DeploymentTemplate's ProviderConfig, so
+		// eligibility cannot be confirmed. Skip the delete instead of returning an error: returning an
+		// error here would requeue forever and leave the DeploymentResource wedged with its finalizer.
+		logger.Info("Unable to determine deployment scope from owning DeploymentTemplate; skipping delete.", "owner", ownerRef.Name, "error", err.Error())
+		return false, nil
 	}
 
 	within, err := resourceWithinScope(deploymentResource.Spec.Id, scope)
