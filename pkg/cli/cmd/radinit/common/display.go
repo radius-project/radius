@@ -22,9 +22,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/spinner"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/spinner"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/compat"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/radius-project/radius/pkg/cli/aws"
 	"github.com/radius-project/radius/pkg/cli/azure"
@@ -65,7 +66,7 @@ var (
 		FPS:    time.Second / 4,
 	}
 
-	foregroundBrightStyle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "#111111", Dark: "#EEEEEE"}).Bold(true)
+	foregroundBrightStyle = lipgloss.NewStyle().Foreground(compat.AdaptiveColor{Light: lipgloss.Color("#111111"), Dark: lipgloss.Color("#EEEEEE")}).Bold(true)
 )
 
 // DisplayOptions is the data model rendered by the summary and progress views.
@@ -208,18 +209,17 @@ func (m *SummaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-	case tea.KeyMsg:
-		if msg.Type == tea.KeyCtrlC {
+	case tea.KeyPressMsg:
+		switch msg.String() {
+		case "ctrl+c":
 			copy := *m
 			copy.Result = ResultQuit
 			return &copy, tea.Quit
-		}
-		if msg.Type == tea.KeyEsc {
+		case "esc":
 			copy := *m
 			copy.Result = ResultCanceled
 			return &copy, tea.Quit
-		}
-		if msg.Type == tea.KeyEnter {
+		case "enter":
 			copy := *m
 			copy.Result = ResultConfirmed
 			return &copy, tea.Quit
@@ -230,9 +230,9 @@ func (m *SummaryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View implements tea.Model. It renders the summary of selected options.
-func (m *SummaryModel) View() string {
+func (m *SummaryModel) View() tea.View {
 	if m.Result != "" {
-		return ""
+		return tea.NewView("")
 	}
 
 	options := m.Options
@@ -264,7 +264,7 @@ func (m *SummaryModel) View() string {
 
 	message.WriteString(SummaryFooter)
 
-	return m.style.Render(ansi.Hardwrap(message.String(), m.width, true))
+	return tea.NewView(m.style.Render(ansi.Hardwrap(message.String(), m.width, true)))
 }
 
 var _ tea.Model = &ProgressModel{}
@@ -326,7 +326,7 @@ func (m *ProgressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View implements tea.Model. It renders the progress of the initialization steps.
-func (m *ProgressModel) View() string {
+func (m *ProgressModel) View() tea.View {
 	options := m.Options
 
 	message := &strings.Builder{}
@@ -357,7 +357,7 @@ func (m *ProgressModel) View() string {
 		message.WriteString(ProgressCompleteFooter)
 	}
 
-	return m.style.Render(ansi.Hardwrap(message.String(), m.width, true))
+	return tea.NewView(m.style.Render(ansi.Hardwrap(message.String(), m.width, true)))
 }
 
 func (m *ProgressModel) isComplete() bool {

@@ -215,6 +215,7 @@ func Test_Run_RecipeSortOrder(t *testing.T) {
 		return fake.EnvironmentsServer{
 			Get: func(
 				ctx context.Context,
+				rootScope string,
 				environmentName string,
 				options *corerpv20250801.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[corerpv20250801.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
@@ -238,7 +239,7 @@ func Test_Run_RecipeSortOrder(t *testing.T) {
 	// Create recipe pack server with recipes in non-alphabetical order
 	recipePackServer := func() fake.RecipePacksServer {
 		return fake.RecipePacksServer{
-			Get: func(ctx context.Context, recipePackName string, options *corerpv20250801.RecipePacksClientGetOptions) (resp azfake.Responder[corerpv20250801.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
+			Get: func(ctx context.Context, rootScope string, recipePackName string, options *corerpv20250801.RecipePacksClientGetOptions) (resp azfake.Responder[corerpv20250801.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
 				var recipes map[string]*corerpv20250801.RecipeDefinition
 				if recipePackName == "pack-a" {
 					recipes = map[string]*corerpv20250801.RecipeDefinition{

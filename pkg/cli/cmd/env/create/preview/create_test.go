@@ -451,6 +451,7 @@ func Test_Run(t *testing.T) {
 			return corerpfake.EnvironmentsServer{
 				Get: func(
 					ctx context.Context,
+					rootScope string,
 					environmentName string,
 					options *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
@@ -459,6 +460,7 @@ func Test_Run(t *testing.T) {
 				},
 				CreateOrUpdate: func(
 					ctx context.Context,
+					rootScope string,
 					environmentName string,
 					resource v20250801preview.EnvironmentResource,
 					options *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,

@@ -38,6 +38,16 @@ func Test_PathParserErr(t *testing.T) {
 	require.Equal(t, "", tag)
 }
 
+func Test_PathParserDigestErr(t *testing.T) {
+	// A digest reference carries no tag, so it must be rejected at parse time
+	// rather than failing later when the registry is resolved by tag.
+	repository, tag, err := parsePath("ghcr.io/radius-project/recipes/test@sha256:1234567890123456789012345678901234567890123456789012345678901234")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "a tagged reference such as repository:tag is required")
+	require.Equal(t, "", repository)
+	require.Equal(t, "", tag)
+}
+
 func Test_GetRegistrySecrets(t *testing.T) {
 	testset := []struct {
 		definition   recipes.Configuration

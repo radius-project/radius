@@ -2,6 +2,8 @@
 
 Radius is in an early phase of development right now. We welcome feedback in the form of issues that comes from usage and is aligned with the current scope and goals of the project.
 
+> **Using an AI agent?** Start with [AGENTS.md](./AGENTS.md), the single entry point that orients GitHub Copilot, Claude Code, and other agents working in this repository.
+
 ## Table of contents
 
 You can find our full **contributor documentation** including instructions at the following links:
@@ -33,7 +35,7 @@ The Radius project follows the [Developer Certificate of Origin](https://develop
 
 Contributors sign-off that they adhere to these requirements by adding a Signed-off-by line to commit messages.
 
-```
+```text
 This is my commit message
 
 Signed-off-by: Random J Developer <random@developer.example.org>
@@ -41,8 +43,8 @@ Signed-off-by: Random J Developer <random@developer.example.org>
 
 Git even has a -s command line option to append this automatically to your commit message:
 
-```
-$ git commit -s -m 'This is my commit message'
+```text
+git commit -s -m 'This is my commit message'
 ```
 
 Visual Studio Code has a setting, `git.alwaysSignOff` to automatically add a Signed-off-by line to commit messages. Search for "sign-off" in VS Code settings to find it and enable it.

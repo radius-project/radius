@@ -40,7 +40,7 @@ var (
 	ErrBadEnvID               = errors.New("could not parse environment ID")
 )
 
-//go:generate mockgen -typed -destination=./mock_config_loader.go -package=configloader -self_package github.com/radius-project/radius/pkg/recipes/configloader github.com/radius-project/radius/pkg/recipes/configloader ConfigurationLoader
+//go:generate go tool mockgen -typed -destination=./mock_config_loader.go -package=configloader -self_package github.com/radius-project/radius/pkg/recipes/configloader github.com/radius-project/radius/pkg/recipes/configloader ConfigurationLoader
 
 var _ ConfigurationLoader = (*environmentLoader)(nil)
 

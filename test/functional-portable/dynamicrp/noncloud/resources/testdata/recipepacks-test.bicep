@@ -41,9 +41,9 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
       recipepack.id
     ]
     providers: {
-     kubernetes: {
+      kubernetes: {
         namespace: 'recipepacks-ns'
-     }
+      }
     }
     recipeParameters: {
       'Test.Resources/userTypeAlpha': {
@@ -62,7 +62,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 resource rrtresource 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
-  name: 'rrtresource'
+  name: 'rrtresource-deployment'
   properties: {
     environment: env.id
     application: app.id

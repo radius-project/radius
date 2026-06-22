@@ -25,7 +25,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
 	"github.com/go-logr/logr"
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2/registry/remote"
@@ -149,7 +149,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		ctx,
 		clients.Deployment{
 			Properties: &clients.DeploymentProperties{
-				Mode:           armresources.DeploymentModeIncremental,
+				Mode:           armdeployments.DeploymentModeIncremental,
 				ProviderConfig: &providerConfig,
 				Parameters:     parameters,
 				Template:       recipeData,
@@ -373,7 +373,7 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 
 // prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
 // resources created by the template.
-func (d *bicepDriver) prepareRecipeResponse(templatePath string, outputs any, resources []*armresources.ResourceReference) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) prepareRecipeResponse(templatePath string, outputs any, resources []*armdeployments.ResourceReference) (*recipes.RecipeOutput, error) {
 	// We populate the recipe response from the 'result' output (if set)
 	// and the resources created by the template.
 	//

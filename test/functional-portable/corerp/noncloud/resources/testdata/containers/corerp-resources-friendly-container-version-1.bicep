@@ -3,7 +3,7 @@ extension radius
 param magpieimage string
 param environment string
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'corerp-resources-container-versioning'
   location: 'global'
   properties: {
@@ -11,61 +11,40 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-resource webapp 'Applications.Core/containers@2023-10-01-preview' = {
+resource webapp 'Radius.Compute/containers@2025-08-01-preview' = {
   name: 'friendly-ctnr'
   location: 'global'
   properties: {
     application: app.id
-    container: {
-      image: magpieimage
-      env: {
-        DBCONNECTION: {
-          value: redis.listSecrets().connectionString
+    environment: environment
+    containers: {
+      friendlyctnr: {
+        image: magpieimage
+        env: {
+          DB_PASSWORD: {
+            valueFrom: {
+              secretKeyRef: {
+                secretName: friendlysecret.name
+                key: 'DB_PASSWORD'
+              }
+            }
+          }
         }
-      }
-      readinessProbe: {
-        kind: 'httpGet'
-        containerPort: 3000
-        path: '/healthz'
-      }
-    }
-    connections: {
-      redis: {
-        source: redis.id
       }
     }
   }
 }
 
-resource redisContainer 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'friendly-rds-ctnr'
-  location: 'global'
-  properties: {
-    application: app.id
-    container: {
-      image: 'ghcr.io/radius-project/mirror/redis:6.2'
-      ports: {
-        redis: {
-          containerPort: 6379
-        }
-      }
-    }
-    connections: {}
-  }
-}
-
-resource redis 'Applications.Datastores/redisCaches@2023-10-01-preview' = {
-  name: 'friendly-rds-rds'
+resource friendlysecret 'Radius.Security/secrets@2025-08-01-preview' = {
+  name: 'friendly-secret'
   location: 'global'
   properties: {
     environment: environment
     application: app.id
-    resourceProvisioning: 'manual'
-    host: 'friendly-rds-ctnr'
-    port: 6379
-    secrets: {
-      connectionString: 'friendly-rds-ctnr:6379'
-      password: ''
+    data: {
+      DB_PASSWORD: {
+        value: 'password'
+      }
     }
   }
 }

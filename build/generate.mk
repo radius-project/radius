@@ -25,7 +25,7 @@ endif
 
 # generate-rad-corerp-client-2025-08-01-preview is a new target, which will replace generate-rad-corerp-client in future, once all resources of Radius.Core are ready and Applications.Core is deprecated.
 .PHONY: generate
-generate: generate-cleanup generate-genericcliclient generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
+generate: generate-cleanup generate-rad-corerp-client generate-rad-corerp-client-2025-08-01-preview generate-rad-datastoresrp-client generate-rad-messagingrp-client generate-rad-daprrp-client generate-rad-ucp-client generate-genericcliclient generate-go generate-bicep-types generate-ucp-crd generate-controller ## Generates all targets.
 
 .PHONY: generate-tsp-installed
 generate-tsp-installed: generate-pnpm-installed
@@ -52,12 +52,12 @@ tsp-format-check: generate-tsp-installed ## Checks TypeSpec format
 .PHONY: generate-openapi-spec
 generate-openapi-spec: # Generates all Radius OpenAPI specs from TypeSpec.
 	@echo  "Generating openapi specs from typespec models."
-	cd typespec/UCP && npx$(CMD_EXT) tsp compile .
-	cd typespec/Applications.Core && npx$(CMD_EXT) tsp compile .
-	cd typespec/Applications.Dapr && npx$(CMD_EXT) tsp compile .
-	cd typespec/Applications.Messaging && npx$(CMD_EXT) tsp compile .
-	cd typespec/Applications.Datastores && npx$(CMD_EXT) tsp compile .
-	cd typespec/Radius.Core && npx$(CMD_EXT) tsp compile .
+	cd typespec/UCP && pnpm exec tsp compile .
+	cd typespec/Applications.Core && pnpm exec tsp compile .
+	cd typespec/Applications.Dapr && pnpm exec tsp compile .
+	cd typespec/Applications.Messaging && pnpm exec tsp compile .
+	cd typespec/Applications.Datastores && pnpm exec tsp compile .
+	cd typespec/Radius.Core && pnpm exec tsp compile .
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -65,23 +65,17 @@ generate-node-installed:
 	@which node > /dev/null || { echo "node is a required dependency"; exit 1; }
 	@echo "$(ARROW) OK"
 
-.PHONY: generate-controller-gen-installed
-generate-controller-gen-installed:
-	@echo "$(ARROW) Detecting controller-gen..."
-	@which controller-gen > /dev/null || { echo "run 'go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0'"; exit 1; }
-	@echo "$(ARROW) OK"
-
 .PHONY: generate-ucp-crd
-generate-ucp-crd: generate-controller-gen-installed ## Generates the CRDs for UCP APIServer store.
+generate-ucp-crd: ## Generates the CRDs for UCP APIServer store.
 	@echo "$(ARROW) Generating CRDs for ucp.dev..."
-	controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/...
-	controller-gen crd paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
+	go tool controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/...
+	go tool controller-gen crd paths=./pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
 
 .PHONY: generate-controller
-generate-controller: generate-controller-gen-installed ## Generates the CRDs for the Radius controller.
+generate-controller: ## Generates the CRDs for the Radius controller.
 	@echo "$(ARROW) Generating CRDs for radapp.io..."
-	controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/controller/api/...
-	controller-gen crd paths=./pkg/controller/api/... output:crd:dir=./deploy/Chart/crds/radius
+	go tool controller-gen object:headerFile=./boilerplate.go.txt paths=./pkg/controller/api/...
+	go tool controller-gen crd paths=./pkg/controller/api/... output:crd:dir=./deploy/Chart/crds/radius
 
 .PHONY: generate-cleanup
 generate-cleanup: ## Deletes all generated code.
@@ -89,54 +83,84 @@ generate-cleanup: ## Deletes all generated code.
 	find . -type f -name 'zz_*.go' ! -name 'zz_*.deepcopy.go' -delete
 	@echo "$(ARROW) Done."
 
-.PHONY: generate-genericcliclient
-generate-genericcliclient: generate-tsp-installed
-	@echo "$(ARROW) Generating 'pkg/cli/clients_new/generated'"
-	pnpm -C typespec exec autorest ../pkg/cli/clients_new/README.md --tag=2023-10-01-preview && rm pkg/cli/clients_new/generated/go.mod && go fmt ./pkg/cli/clients_new/generated/...
-	@echo "$(ARROW) Done."
-
 .PHONY: generate-rad-corerp-client
-generate-rad-corerp-client: generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK (Autorest).
+generate-rad-corerp-client: generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/corerp/api/v20231001preview'"
-	pnpm -C typespec exec autorest ../pkg/corerp/api/README.md --tag=core-2023-10-01-preview && rm pkg/corerp/api/v20231001preview/go.mod && go fmt ./pkg/corerp/api/v20231001preview/...
+	cd typespec/Applications.Core && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
+	rm -f pkg/corerp/api/v20231001preview/zz_generated_*.go
+	cp typespec/Applications.Core/.tsp-go-tmp/zz_generated_*.go pkg/corerp/api/v20231001preview/
+	rm -rf typespec/Applications.Core/.tsp-go-tmp
+	go fmt ./pkg/corerp/api/v20231001preview/...
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-corerp-client-2025-08-01-preview
-generate-rad-corerp-client-2025-08-01-preview: generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK for 2025-08-01-preview (Autorest).
+generate-rad-corerp-client-2025-08-01-preview: generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK for 2025-08-01-preview (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/corerp/api/v20250801preview'"
-	pnpm -C typespec exec autorest ../pkg/corerp/api/README.md --tag=core-2025-08-01-preview && rm pkg/corerp/api/v20250801preview/go.mod && go fmt ./pkg/corerp/api/v20250801preview/...
+	cd typespec/Radius.Core && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
+	rm -f pkg/corerp/api/v20250801preview/zz_generated_*.go
+	rm -f pkg/corerp/api/v20250801preview/fake/zz_generated_*.go
+	cp typespec/Radius.Core/.tsp-go-tmp/zz_generated_*.go pkg/corerp/api/v20250801preview/
+	cp typespec/Radius.Core/.tsp-go-tmp/fake/zz_generated_*.go pkg/corerp/api/v20250801preview/fake/
+	rm -rf typespec/Radius.Core/.tsp-go-tmp
+	go fmt ./pkg/corerp/api/v20250801preview/...
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-datastoresrp-client
-generate-rad-datastoresrp-client: generate-tsp-installed generate-openapi-spec ## Generates the datastoresrp client SDK (Autorest).
+generate-rad-datastoresrp-client: generate-tsp-installed generate-openapi-spec ## Generates the datastoresrp client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/datastoresrp/api/v20231001preview'"
-	pnpm -C typespec exec autorest ../pkg/datastoresrp/api/README.md --tag=datastores-2023-10-01-preview && rm pkg/datastoresrp/api/v20231001preview/go.mod && go fmt ./pkg/datastoresrp/api/v20231001preview/...
+	cd typespec/Applications.Datastores && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
+	rm -f pkg/datastoresrp/api/v20231001preview/zz_generated_*.go
+	cp typespec/Applications.Datastores/.tsp-go-tmp/zz_generated_*.go pkg/datastoresrp/api/v20231001preview/
+	rm -rf typespec/Applications.Datastores/.tsp-go-tmp
+	go fmt ./pkg/datastoresrp/api/v20231001preview/...
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-messagingrp-client
-generate-rad-messagingrp-client: generate-tsp-installed generate-openapi-spec ## Generates the messagingrp client SDK (Autorest).
+generate-rad-messagingrp-client: generate-tsp-installed generate-openapi-spec ## Generates the messagingrp client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/messagingrp/api/v20231001preview'"
-	pnpm -C typespec exec autorest ../pkg/messagingrp/api/README.md --tag=messaging-2023-10-01-preview && rm pkg/messagingrp/api/v20231001preview/go.mod && go fmt ./pkg/messagingrp/api/v20231001preview/...
+	cd typespec/Applications.Messaging && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
+	rm -f pkg/messagingrp/api/v20231001preview/zz_generated_*.go
+	cp typespec/Applications.Messaging/.tsp-go-tmp/zz_generated_*.go pkg/messagingrp/api/v20231001preview/
+	rm -rf typespec/Applications.Messaging/.tsp-go-tmp
+	go fmt ./pkg/messagingrp/api/v20231001preview/...
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-daprrp-client
-generate-rad-daprrp-client: generate-tsp-installed generate-openapi-spec ## Generates the daprrp client SDK (Autorest).
+generate-rad-daprrp-client: generate-tsp-installed generate-openapi-spec ## Generates the daprrp client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/daprrp/api/v20231001preview'"
-	pnpm -C typespec exec autorest ../pkg/daprrp/api/README.md --tag=dapr-2023-10-01-preview && rm pkg/daprrp/api/v20231001preview/go.mod && go fmt ./pkg/daprrp/api/v20231001preview/...
+	cd typespec/Applications.Dapr && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
+	rm -f pkg/daprrp/api/v20231001preview/zz_generated_*.go
+	cp typespec/Applications.Dapr/.tsp-go-tmp/zz_generated_*.go pkg/daprrp/api/v20231001preview/
+	rm -rf typespec/Applications.Dapr/.tsp-go-tmp
+	go fmt ./pkg/daprrp/api/v20231001preview/...
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-ucp-client
-generate-rad-ucp-client: generate-tsp-installed test-ucp-spec-examples ## Generates the UCP client SDK (Autorest).
-	pnpm -C typespec exec autorest ../pkg/ucp/api/README.md --tag=ucp-2023-10-01-preview && rm pkg/ucp/api/v20231001preview/go.mod && go fmt ./pkg/ucp/api/v20231001preview/...
+generate-rad-ucp-client: generate-tsp-installed test-ucp-spec-examples ## Generates the UCP client SDK (TypeSpec Go emitter).
+	@echo "$(ARROW) Generating 'pkg/ucp/api/v20231001preview'"
+	cd typespec/UCP && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
+	rm -f pkg/ucp/api/v20231001preview/zz_generated_*.go
+	rm -f pkg/ucp/api/v20231001preview/fake/zz_generated_*.go
+	cp typespec/UCP/.tsp-go-tmp/zz_generated_*.go pkg/ucp/api/v20231001preview/
+	cp typespec/UCP/.tsp-go-tmp/fake/zz_generated_*.go pkg/ucp/api/v20231001preview/fake/
+	rm -rf typespec/UCP/.tsp-go-tmp
+	go fmt ./pkg/ucp/api/v20231001preview/...
+	@echo "$(ARROW) Done."
 
-.PHONY: generate-mockgen-installed
-generate-mockgen-installed:
-	@echo "$(ARROW) Detecting mockgen..."
-	@which mockgen > /dev/null || { echo "run 'go install go.uber.org/mock/mockgen@v0.4.0' to install mockgen"; exit 1; }
-	@echo "$(ARROW) OK"
+.PHONY: generate-genericcliclient
+generate-genericcliclient: generate-tsp-installed ## Generates the generic CLI client SDK (TypeSpec Go emitter).
+	@echo "$(ARROW) Generating 'pkg/cli/clients_new/generated'"
+	cd typespec/GenericResource && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
+	rm -f pkg/cli/clients_new/generated/zz_generated_*.go
+	rm -f pkg/cli/clients_new/generated/fake/zz_generated_*.go
+	cp typespec/GenericResource/.tsp-go-tmp/zz_generated_*.go pkg/cli/clients_new/generated/
+	cp typespec/GenericResource/.tsp-go-tmp/fake/zz_generated_*.go pkg/cli/clients_new/generated/fake/
+	rm -rf typespec/GenericResource/.tsp-go-tmp
+	go fmt ./pkg/cli/clients_new/generated/...
+	@echo "$(ARROW) Done."
 
 .PHONY: generate-go
-generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mocks).
+generate-go: ## Generates go with 'go generate' (Mocks).
 	@echo "$(ARROW) Running go generate..."
 	go generate -v ./...
 
@@ -218,13 +242,11 @@ publish-bicep-extension: ## Publish the unified `radius` Bicep extension to BICE
 	@echo "$(ARROW) Publishing Bicep extension index $(BICEP_PUBLISH_INDEX) -> $(BICEP_PUBLISH_TARGET)"
 	bicep publish-extension "$(BICEP_PUBLISH_INDEX)" --target "$(BICEP_PUBLISH_TARGET)" --force
 
-
-.PHONY: generate-containerinstance-client
-generate-containerinstance-client: generate-tsp-installed  ## Generates the Container Instances SDK (Autorest).
-	pnpm -C typespec exec autorest \
-		../pkg/sdk/aci-specification/containerinstance/resource-manager/readme.md \
-		--go \
-		--tag=package-preview-2024-11
+# NOTE: The Azure Container Instances SDK in pkg/sdk/v20241101preview is now
+# maintained by hand. It targets the 2024-11-01-preview NGroups/CGProfile APIs
+# which are not published in github.com/Azure/azure-sdk-for-go and have no
+# TypeSpec source, so there is no code-generation step for it anymore. Apply any
+# API changes directly to the Go sources under pkg/sdk/v20241101preview.
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))/..
