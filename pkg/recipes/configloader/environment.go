@@ -398,6 +398,16 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 		// Convert recipes map
 		for recipePackResourceType, definition := range recipePackResource.Properties.Recipes {
 			if strings.EqualFold(recipePackResourceType, resourceType) {
+				if definition == nil {
+					return nil, fmt.Errorf("recipe for resource type %q in recipe pack %q is missing its definition", resourceType, recipePackID)
+				}
+				if definition.Kind == nil {
+					return nil, fmt.Errorf("recipe for resource type %q in recipe pack %q is missing the required \"kind\" field", resourceType, recipePackID)
+				}
+				if definition.Source == nil {
+					return nil, fmt.Errorf("recipe for resource type %q in recipe pack %q is missing the required \"source\" field", resourceType, recipePackID)
+				}
+
 				var plainHTTP bool
 				if definition.PlainHTTP != nil {
 					plainHTTP = *definition.PlainHTTP
