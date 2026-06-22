@@ -11,6 +11,7 @@ AWSCredentialProvider
 AcquireLock
 Amidst
 AnonymousCredential
+Antrea
 ApiVersionName
 AppCore
 AppGraph
@@ -797,6 +798,7 @@ jwt
 keyspace
 keyvault
 kube
+kubeadm
 kubebuilder
 kubeconf
 kubeconfig
