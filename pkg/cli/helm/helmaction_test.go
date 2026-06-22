@@ -20,16 +20,18 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 
-	containerderrors "github.com/containerd/containerd/remotes/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	helm "helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/storage/driver"
+	helm "helm.sh/helm/v4/pkg/action"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	releasev1 "helm.sh/helm/v4/pkg/release/v1"
+	"helm.sh/helm/v4/pkg/storage/driver"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
 func Test_isHelmGHCR403Error(t *testing.T) {
@@ -44,19 +46,19 @@ func Test_isHelmGHCR403Error(t *testing.T) {
 	result = isHelmGHCR403Error(err)
 	assert.False(t, result)
 
-	err = fmt.Errorf("%w: wrapped error", containerderrors.ErrUnexpectedStatus{})
+	err = fmt.Errorf("%w: wrapped error", &errcode.ErrorResponse{})
 	result = isHelmGHCR403Error(err)
 	assert.False(t, result)
 
-	err = fmt.Errorf("%w: wrapped error", containerderrors.ErrUnexpectedStatus{StatusCode: http.StatusForbidden, RequestURL: "ghcr.io/myregistry"})
+	err = fmt.Errorf("%w: wrapped error", &errcode.ErrorResponse{StatusCode: http.StatusForbidden, URL: &url.URL{Host: "ghcr.io", Path: "/myregistry"}})
 	result = isHelmGHCR403Error(err)
 	assert.True(t, result)
 
-	err = containerderrors.ErrUnexpectedStatus{StatusCode: http.StatusForbidden, RequestURL: "ghcr.io/myregistry"}
+	err = &errcode.ErrorResponse{StatusCode: http.StatusForbidden, URL: &url.URL{Host: "ghcr.io", Path: "/myregistry"}}
 	result = isHelmGHCR403Error(err)
 	assert.True(t, result)
 
-	err = containerderrors.ErrUnexpectedStatus{StatusCode: http.StatusUnauthorized, RequestURL: "ghcr.io/myregistry"}
+	err = &errcode.ErrorResponse{StatusCode: http.StatusUnauthorized, URL: &url.URL{Host: "ghcr.io", Path: "/myregistry"}}
 	result = isHelmGHCR403Error(err)
 	assert.False(t, result)
 }
@@ -100,9 +102,9 @@ func Test_prepareRadiusChart_DoesNotMutateChartValues(t *testing.T) {
 
 	helmChart := &chart.Chart{
 		Values: map[string]any{
-		"global": map[string]any{
-			"existing": "untouched",
-		},
+			"global": map[string]any{
+				"existing": "untouched",
+			},
 		},
 	}
 	mockHelmClient := NewMockHelmClient(ctrl)
@@ -284,10 +286,10 @@ func Test_ApplyHelmChart_ReinstallPath(t *testing.T) {
 	helmChart := &chart.Chart{}
 	vals := map[string]any{"key": "value"}
 
-	existingRelease := &release.Release{
+	existingRelease := &releasev1.Release{
 		Name:  "myrelease",
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
-		Info:  &release.Info{Status: release.StatusDeployed},
+		Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
 	}
 
 	// QueryRelease: already installed
@@ -320,10 +322,10 @@ func Test_ApplyHelmChart_ReinstallError(t *testing.T) {
 	helmChart := &chart.Chart{}
 	vals := map[string]any{"key": "value"}
 
-	existingRelease := &release.Release{
+	existingRelease := &releasev1.Release{
 		Name:  "myrelease",
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
-		Info:  &release.Info{Status: release.StatusDeployed},
+		Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
 	}
 
 	// QueryRelease: already installed
@@ -357,10 +359,10 @@ func Test_ApplyHelmChart_AlreadyInstalled_NoReinstall(t *testing.T) {
 	helmChart := &chart.Chart{}
 	vals := map[string]any{"key": "value"}
 
-	existingRelease := &release.Release{
+	existingRelease := &releasev1.Release{
 		Name:  "myrelease",
 		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
-		Info:  &release.Info{Status: release.StatusDeployed},
+		Info:  &releasev1.Info{Status: releasecommon.StatusDeployed},
 	}
 
 	// QueryRelease: already installed

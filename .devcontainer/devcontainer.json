@@ -16,7 +16,7 @@
     //Container and K8s
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
       "minikube": "none",
-      "helm": "3.19.4"
+      "helm": "4.2.2"
     },
     "ghcr.io/devcontainers/features/docker-in-docker:3.1.0": {
       "version": "latest",

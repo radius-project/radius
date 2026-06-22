@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 
-	"helm.sh/helm/v3/pkg/storage/driver"
+	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/Masterminds/semver/v3"

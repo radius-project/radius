@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/strvals"
+	helm "helm.sh/helm/v4/pkg/action"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/strvals"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -44,7 +44,7 @@ type RadiusChartOptions struct {
 // intentionally separate from helmChart.Values so that Helm's release storage records
 // only the user overrides (and so that upgrades can correctly merge with previously
 // stored user values via ResetThenReuseValues).
-func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeContext string) (*chart.Chart, *action.Configuration, map[string]any, error) {
+func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeContext string) (*chart.Chart, *helm.Configuration, map[string]any, error) {
 	var helmChart *chart.Chart
 
 	flags := genericclioptions.ConfigFlags{
