@@ -25,7 +25,11 @@ import (
 	containerderrors "github.com/containerd/containerd/remotes/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
+	helm "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 func Test_isHelmGHCR403Error(t *testing.T) {
@@ -57,9 +61,7 @@ func Test_isHelmGHCR403Error(t *testing.T) {
 	assert.False(t, result)
 }
 
-func Test_addArgsFromCLI(t *testing.T) {
-	var helmChart chart.Chart
-	helmChart.Values = map[string]any{}
+func Test_parseUserValuesFromCLI(t *testing.T) {
 	options := &RadiusChartOptions{
 		ChartOptions: ChartOptions{
 			SetArgs:     []string{"global.zipkin.url=url,global.prometheus.path=path"},
@@ -67,10 +69,8 @@ func Test_addArgsFromCLI(t *testing.T) {
 		},
 	}
 
-	err := addArgsFromCLI(&helmChart, options)
+	values, err := parseUserValuesFromCLI(options)
 	require.NoError(t, err)
-
-	values := helmChart.Values
 
 	_, ok := values["global"]
 	assert.True(t, ok)
@@ -94,19 +94,127 @@ func Test_addArgsFromCLI(t *testing.T) {
 	assert.Equal(t, prometheus["path"], "path")
 }
 
+func Test_prepareRadiusChart_DoesNotMutateChartValues(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	helmChart := &chart.Chart{
+		Values: map[string]any{
+		"global": map[string]any{
+			"existing": "untouched",
+		},
+		},
+	}
+	mockHelmClient := NewMockHelmClient(ctrl)
+	mockHelmClient.EXPECT().LoadChart("test-chart").Return(helmChart, nil).Times(1)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	options := &RadiusChartOptions{
+		ChartOptions: ChartOptions{
+			Namespace: "radius-system",
+			ChartPath: "test-chart",
+			SetArgs:   []string{"global.zipkin.url=url"},
+		},
+	}
+
+	_, _, values, err := prepareRadiusChart(helmAction, *options, "")
+	require.NoError(t, err)
+
+	global, ok := values["global"].(map[string]any)
+	require.True(t, ok)
+	zipkin, ok := global["zipkin"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "url", zipkin["url"])
+
+	chartGlobal, ok := helmChart.Values["global"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "untouched", chartGlobal["existing"])
+	_, hasZipkin := chartGlobal["zipkin"]
+	assert.False(t, hasZipkin, "prepareRadiusChart must not mutate helmChart.Values")
+}
+
+func Test_parseUserValuesFromCLI_InvalidSetArg(t *testing.T) {
+	options := &RadiusChartOptions{
+		ChartOptions: ChartOptions{
+			SetArgs: []string{"invalid_no_equals"},
+		},
+	}
+
+	_, err := parseUserValuesFromCLI(options)
+	require.Error(t, err)
+}
+
+func Test_parseUserValuesFromCLI_InvalidSetFileArg(t *testing.T) {
+	options := &RadiusChartOptions{
+		ChartOptions: ChartOptions{
+			SetFileArgs: []string{"key=./testdata/nonexistent-file.txt"},
+		},
+	}
+
+	_, err := parseUserValuesFromCLI(options)
+	require.Error(t, err)
+}
+
+func Test_parseUserValuesFromCLI_EmptyArgs(t *testing.T) {
+	options := &RadiusChartOptions{
+		ChartOptions: ChartOptions{},
+	}
+
+	values, err := parseUserValuesFromCLI(options)
+	require.NoError(t, err)
+	assert.Empty(t, values)
+}
+
+func Test_prepareRadiusChart_LoadChartError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	mockHelmClient.EXPECT().LoadChart("bad-chart").Return(nil, errors.New("chart not found")).Times(1)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	options := &RadiusChartOptions{
+		ChartOptions: ChartOptions{
+			Namespace: "radius-system",
+			ChartPath: "bad-chart",
+		},
+	}
+
+	_, _, _, err := prepareRadiusChart(helmAction, *options, "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to load Helm chart")
+}
+
+func Test_prepareRadiusChart_ParseValuesError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	mockHelmClient.EXPECT().LoadChart("test-chart").Return(&chart.Chart{}, nil).Times(1)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	options := &RadiusChartOptions{
+		ChartOptions: ChartOptions{
+			Namespace: "radius-system",
+			ChartPath: "test-chart",
+			SetArgs:   []string{"invalid_no_equals"},
+		},
+	}
+
+	_, _, _, err := prepareRadiusChart(helmAction, *options, "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to parse Radius values")
+}
+
 func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
-	var helmChart chart.Chart
-	helmChart.Values = map[string]any{}
 	options := &RadiusChartOptions{
 		ChartOptions: ChartOptions{
 			SetArgs: []string{"rp.image=ghcr.io/radius-project/applications-rp,rp.tag=latest", "global.zipkin.url=url,global.prometheus.path=path"},
 		},
 	}
 
-	err := addArgsFromCLI(&helmChart, options)
+	values, err := parseUserValuesFromCLI(options)
 	require.NoError(t, err)
-
-	values := helmChart.Values
 
 	// validate image, tag for rp should have been overridden with latest
 	o := values["rp"].(map[string]any)
@@ -133,4 +241,163 @@ func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
 	_, ok = prometheus["path"]
 	assert.True(t, ok)
 	assert.Equal(t, prometheus["path"], "path")
+}
+
+func Test_ApplyHelmChart_InstallError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{"key": "value"}
+
+	// QueryRelease: not installed
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(nil, driver.ErrReleaseNotFound).Times(1)
+
+	// Install returns an error
+	mockHelmClient.EXPECT().
+		RunHelmInstall(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true).
+		Return(nil, errors.New("install failed")).Times(1)
+
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+		Wait:        true,
+	}, vals)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to run Helm install")
+}
+
+func Test_ApplyHelmChart_ReinstallPath(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{"key": "value"}
+
+	existingRelease := &release.Release{
+		Name:  "myrelease",
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+		Info:  &release.Info{Status: release.StatusDeployed},
+	}
+
+	// QueryRelease: already installed
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(existingRelease, nil).Times(1)
+
+	// Reinstall triggers upgrade with reuseValues=true
+	mockHelmClient.EXPECT().
+		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true).
+		Return(existingRelease, nil).Times(1)
+
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+		Wait:        true,
+		Reinstall:   true,
+	}, vals)
+	require.NoError(t, err)
+}
+
+func Test_ApplyHelmChart_ReinstallError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{"key": "value"}
+
+	existingRelease := &release.Release{
+		Name:  "myrelease",
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+		Info:  &release.Info{Status: release.StatusDeployed},
+	}
+
+	// QueryRelease: already installed
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(existingRelease, nil).Times(1)
+
+	// Reinstall triggers upgrade but fails
+	mockHelmClient.EXPECT().
+		RunHelmUpgrade(gomock.AssignableToTypeOf(&helm.Configuration{}), helmChart, vals, "myrelease", "myns", true, true).
+		Return(nil, errors.New("upgrade failed")).Times(1)
+
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+		Wait:        true,
+		Reinstall:   true,
+	}, vals)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to run Helm upgrade")
+}
+
+func Test_ApplyHelmChart_AlreadyInstalled_NoReinstall(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{"key": "value"}
+
+	existingRelease := &release.Release{
+		Name:  "myrelease",
+		Chart: &chart.Chart{Metadata: &chart.Metadata{Version: "0.1.0"}},
+		Info:  &release.Info{Status: release.StatusDeployed},
+	}
+
+	// QueryRelease: already installed
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(existingRelease, nil).Times(1)
+
+	// No install or upgrade should be called
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+		Wait:        true,
+		Reinstall:   false,
+	}, vals)
+	require.NoError(t, err)
+}
+
+func Test_ApplyHelmChart_QueryReleaseError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockHelmClient := NewMockHelmClient(ctrl)
+	helmAction := NewHelmAction(mockHelmClient)
+
+	helmConf := &helm.Configuration{}
+	helmChart := &chart.Chart{}
+	vals := map[string]any{}
+
+	// QueryRelease returns an error (not ErrReleaseNotFound)
+	mockHelmClient.EXPECT().
+		RunHelmGet(gomock.AssignableToTypeOf(&helm.Configuration{}), "myrelease").
+		Return(nil, errors.New("connection refused")).Times(1)
+
+	err := helmAction.ApplyHelmChart("", helmChart, helmConf, ChartOptions{
+		ReleaseName: "myrelease",
+		Namespace:   "myns",
+	}, vals)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to query Helm release")
 }

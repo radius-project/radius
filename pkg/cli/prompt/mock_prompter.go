@@ -12,7 +12,7 @@ package prompt
 import (
 	reflect "reflect"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	gomock "go.uber.org/mock/gomock"
 )
 
