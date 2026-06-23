@@ -53,7 +53,7 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
   }
 }
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'recipepacks-test-app'
   location: 'global'
   properties: {
