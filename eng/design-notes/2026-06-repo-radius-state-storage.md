@@ -208,6 +208,16 @@ work beyond v1 scope.
      state and succeed without errors or orphaned cloud resources. This is the path that exposes
      Gap 1.
 
+> **Test dependency — cluster lifecycle and deploy.** `rad startup` / `rad shutdown` are
+> deliberately kind-agnostic: they back up and restore state but do **not** create clusters or
+> install Radius. The end-to-end lifecycle test therefore depends on the separate Repo Radius
+> workflow code (in flight) that creates the ephemeral cluster, installs Radius, and runs the
+> deploy. Until that lands, the functional test (`test/functional-portable/statestore`) drives the
+> cluster install/uninstall itself and is gated behind the `RADIUS_STATE_E2E` environment
+> variable so it does not run in the normal suite. Once the shared cluster-create + deploy
+> workflow is merged, the test's install/uninstall helpers should be re-pointed at that code
+> rather than duplicating it.
+
 ## Security
 
 * State (PostgreSQL dumps and Terraform Secrets, which may contain secret values) is pushed to a
