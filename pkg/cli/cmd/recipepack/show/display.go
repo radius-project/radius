@@ -47,18 +47,18 @@ func (r *Runner) display(recipePack v20250801preview.RecipePackResource) error {
 		}
 
 		kind := "unknown"
-		if definition.RecipeKind != nil {
-			kind = string(*definition.RecipeKind)
+		if definition.Kind != nil {
+			kind = string(*definition.Kind)
 		}
 
-		location := ""
-		if definition.RecipeLocation != nil {
-			location = *definition.RecipeLocation
+		source := ""
+		if definition.Source != nil {
+			source = *definition.Source
 		}
 
 		r.Output.LogInfo("%s", resourceType)
 		r.Output.LogInfo("   Kind: %s", kind)
-		r.Output.LogInfo("   Location: %s", location)
+		r.Output.LogInfo("   Source: %s", source)
 
 		if len(definition.Parameters) > 0 {
 			formatted, err := formatRecipeParameters(definition.Parameters)

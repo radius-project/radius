@@ -35,7 +35,7 @@ import (
 // Because these interfaces are non-exported, they MUST be defined in their own file
 // and we MUST use -source on mockgen to generate mocks for them.
 
-//go:generate mockgen -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient,resourceProviderClient,resourceTypeClient,apiVersonClient,locationClient,recipePackResourceClient,radiusCoreEnvironmentResourceClient
+//go:generate go tool mockgen -typed -source=./management_mocks.go -destination=./mock_management_wrapped_clients.go -package=clients -self_package github.com/radius-project/radius/pkg/cli/clients github.com/radius-project/radius/pkg/cli/clients genericResourceClient,applicationResourceClient,environmentResourceClient,resourceGroupClient,resourceProviderClient,resourceTypeClient,apiVersonClient,locationClient,recipePackResourceClient,radiusCoreEnvironmentResourceClient
 
 // genericResourceClient is an interface for mocking the generated SDK client for any resource.
 type genericResourceClient interface {
@@ -52,7 +52,7 @@ type applicationResourceClient interface {
 	Get(ctx context.Context, applicationName string, options *corerpv20231001.ApplicationsClientGetOptions) (corerpv20231001.ApplicationsClientGetResponse, error)
 	NewListByScopePager(options *corerpv20231001.ApplicationsClientListByScopeOptions) *runtime.Pager[corerpv20231001.ApplicationsClientListByScopeResponse]
 
-	GetGraph(ctx context.Context, applicationName string, body map[string]any, options *corerpv20231001.ApplicationsClientGetGraphOptions) (corerpv20231001.ApplicationsClientGetGraphResponse, error)
+	GetGraph(ctx context.Context, applicationName string, body corerpv20231001.GetGraphRequest, options *corerpv20231001.ApplicationsClientGetGraphOptions) (corerpv20231001.ApplicationsClientGetGraphResponse, error)
 }
 
 // environmentResourceClient is an interface for mocking the generated SDK client for environment resources.

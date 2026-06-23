@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	helm "helm.sh/helm/v3/pkg/action"
+	helm "helm.sh/helm/v4/pkg/action"
 )
 
 func TestHelmClientImpl_RunHelmHistory(t *testing.T) {

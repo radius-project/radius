@@ -1993,17 +1993,17 @@
       "type": "object",
       "description": "Recipe definition for a specific resource type",
       "properties": {
-        "recipeKind": {
+        "kind": {
           "$ref": "#/definitions/RecipeKind",
           "description": "The type of recipe (e.g., Terraform, Bicep)"
         },
         "plainHttp": {
           "type": "boolean",
-          "description": "Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)"
+          "description": "Connect to the source using HTTP (not HTTPS). This should be used when the source is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)"
         },
-        "recipeLocation": {
+        "source": {
           "type": "string",
-          "description": "URL path to the recipe"
+          "description": "The source of the recipe. For Bicep recipes this is the OCI registry reference. For Terraform recipes this is the module source."
         },
         "parameters": {
           "type": "object",
@@ -2019,8 +2019,8 @@
         }
       },
       "required": [
-        "recipeKind",
-        "recipeLocation"
+        "kind",
+        "source"
       ]
     },
     "RecipeKind": {

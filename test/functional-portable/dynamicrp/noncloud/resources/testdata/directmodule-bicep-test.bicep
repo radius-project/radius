@@ -10,7 +10,7 @@ param version string
 @description('Name of the Radius Application.')
 param appName string
 
-// This recipe pack points recipeLocation directly at a standard (non-wrapped) Bicep
+// This recipe pack points source directly at a standard (non-wrapped) Bicep
 // module (test/testrecipes/test-bicep-recipes/directmodule-kubernetes.bicep) that has
 // NO `context` parameter and NO structured `result` output. Radius resolves the
 // parameter expressions ({{context.*}}), deploys the module via the ARM deployment
@@ -22,8 +22,8 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   properties: {
     recipes: {
       'Test.Resources/userTypeAlpha': {
-        recipeKind: 'bicep'
-        recipeLocation: '${registry}/test/testrecipes/test-bicep-recipes/directmodule-kubernetes:${version}'
+        kind: 'bicep'
+        source: '${registry}/test/testrecipes/test-bicep-recipes/directmodule-kubernetes:${version}'
         parameters: {
           name: '{{context.resource.name}}'
           namespace: '{{context.runtime.kubernetes.namespace}}'

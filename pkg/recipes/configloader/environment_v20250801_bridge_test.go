@@ -72,7 +72,7 @@ func minimalEnv(tfRef, bcRef string) *v20250801.EnvironmentResource {
 
 func TestGetConfigurationV20250801_TerraformCredentialsAndEnvAndProviderInstallation(t *testing.T) {
 	tfSrv := fake.TerraformConfigsServer{
-		Get: func(ctx context.Context, name string, opts *v20250801.TerraformConfigsClientGetOptions) (resp azfake.Responder[v20250801.TerraformConfigsClientGetResponse], errResp azfake.ErrorResponder) {
+		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.TerraformConfigsClientGetOptions) (resp azfake.Responder[v20250801.TerraformConfigsClientGetResponse], errResp azfake.ErrorResponder) {
 			require.Equal(t, tfConfigName, name)
 			resp.SetResponse(http.StatusOK, v20250801.TerraformConfigsClientGetResponse{
 				TerraformConfigResource: v20250801.TerraformConfigResource{
@@ -132,7 +132,7 @@ func TestGetConfigurationV20250801_TerraformCredentialsAndEnvAndProviderInstalla
 
 func TestGetConfigurationV20250801_BicepBasicAuthMapped(t *testing.T) {
 	bcSrv := fake.BicepConfigsServer{
-		Get: func(ctx context.Context, name string, opts *v20250801.BicepConfigsClientGetOptions) (resp azfake.Responder[v20250801.BicepConfigsClientGetResponse], errResp azfake.ErrorResponder) {
+		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepConfigsClientGetOptions) (resp azfake.Responder[v20250801.BicepConfigsClientGetResponse], errResp azfake.ErrorResponder) {
 			require.Equal(t, bcConfigName, name)
 			method := v20250801.BicepAuthenticationMethodBasicAuth
 			resp.SetResponse(http.StatusOK, v20250801.BicepConfigsClientGetResponse{
@@ -173,7 +173,7 @@ func TestGetConfigurationV20250801_BicepEntriesWithoutBasicAuthSecretAreSkipped(
 	// RecipeConfig.Bicep.Authentication. Only entries with a non-empty
 	// BasicAuthSecretId survive the bridge.
 	bcSrv := fake.BicepConfigsServer{
-		Get: func(ctx context.Context, name string, opts *v20250801.BicepConfigsClientGetOptions) (resp azfake.Responder[v20250801.BicepConfigsClientGetResponse], errResp azfake.ErrorResponder) {
+		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepConfigsClientGetOptions) (resp azfake.Responder[v20250801.BicepConfigsClientGetResponse], errResp azfake.ErrorResponder) {
 			basic := v20250801.BicepAuthenticationMethodBasicAuth
 			azure := v20250801.BicepAuthenticationMethodAzureWI
 			aws := v20250801.BicepAuthenticationMethodAwsIrsa
@@ -227,7 +227,7 @@ func TestGetConfigurationV20250801_BicepAllEntriesSkipped_LeavesAuthNil(t *testi
 	// When every entry lacks BasicAuthSecretId the bridge must not synthesize an
 	// empty Authentication map (the legacy code only sets Bicep when authMap > 0).
 	bcSrv := fake.BicepConfigsServer{
-		Get: func(ctx context.Context, name string, opts *v20250801.BicepConfigsClientGetOptions) (resp azfake.Responder[v20250801.BicepConfigsClientGetResponse], errResp azfake.ErrorResponder) {
+		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepConfigsClientGetOptions) (resp azfake.Responder[v20250801.BicepConfigsClientGetResponse], errResp azfake.ErrorResponder) {
 			azure := v20250801.BicepAuthenticationMethodAzureWI
 			resp.SetResponse(http.StatusOK, v20250801.BicepConfigsClientGetResponse{
 				BicepConfigResource: v20250801.BicepConfigResource{
@@ -263,7 +263,7 @@ func TestGetConfigurationV20250801_BicepAllEntriesSkipped_LeavesAuthNil(t *testi
 
 func TestGetConfigurationV20250801_TerraformFetchError_IsWrapped(t *testing.T) {
 	tfSrv := fake.TerraformConfigsServer{
-		Get: func(ctx context.Context, name string, opts *v20250801.TerraformConfigsClientGetOptions) (resp azfake.Responder[v20250801.TerraformConfigsClientGetResponse], errResp azfake.ErrorResponder) {
+		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.TerraformConfigsClientGetOptions) (resp azfake.Responder[v20250801.TerraformConfigsClientGetResponse], errResp azfake.ErrorResponder) {
 			errResp.SetError(errors.New("network unreachable"))
 			return
 		},
@@ -282,7 +282,7 @@ func TestGetConfigurationV20250801_TerraformFetchError_IsWrapped(t *testing.T) {
 
 func TestGetConfigurationV20250801_BicepFetchError_IsWrapped(t *testing.T) {
 	bcSrv := fake.BicepConfigsServer{
-		Get: func(ctx context.Context, name string, opts *v20250801.BicepConfigsClientGetOptions) (resp azfake.Responder[v20250801.BicepConfigsClientGetResponse], errResp azfake.ErrorResponder) {
+		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepConfigsClientGetOptions) (resp azfake.Responder[v20250801.BicepConfigsClientGetResponse], errResp azfake.ErrorResponder) {
 			errResp.SetError(fmt.Errorf("bicepConfig not reachable"))
 			return
 		},

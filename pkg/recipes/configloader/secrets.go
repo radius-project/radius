@@ -53,13 +53,13 @@ func (e *secretsLoader) LoadSecrets(ctx context.Context, secretStoreKeysFilter m
 			return nil, err
 		}
 
-		client, err := v20231001preview.NewSecretStoresClient(secretStoreResourceID.RootScope(), &aztoken.AnonymousCredential{}, e.ArmClientOptions)
+		client, err := v20231001preview.NewSecretStoresClient(&aztoken.AnonymousCredential{}, e.ArmClientOptions)
 		if err != nil {
 			return nil, err
 		}
 
 		// Retrieve the secrets from the secret store.
-		secrets, err := client.ListSecrets(ctx, secretStoreResourceID.Name(), map[string]any{}, nil)
+		secrets, err := client.ListSecrets(ctx, secretStoreResourceID.RootScope(), secretStoreResourceID.Name(), v20231001preview.ListSecretsRequest{}, nil)
 		if err != nil {
 			return nil, err
 		}

@@ -84,7 +84,9 @@ Contoso
 ControlPlaneHealthCheck
 CoreRP
 CreateOrUpdate
+createorupdateazurecredential
 CreateOrUpdateEnvironment
+createorupdateresource
 CustomConfigValidationCheck
 Cytoscape
 DCO
@@ -419,6 +421,8 @@ TypeScript
 TypeSpec
 UCP's
 UCPCredential
+ucpcredentialprovider
+ucpcredentials
 UDP
 UDPRoute
 UDTs

@@ -11,7 +11,7 @@ param moduleServer string
 @description('Name of the Radius Application.')
 param appName string
 
-// This recipe pack points recipeLocation directly at a standard Terraform module
+// This recipe pack points source directly at a standard Terraform module
 // (test/testrecipes/test-terraform-recipes/direct-kubernetes) that has NO `context`
 // input variable and NO structured `result` output. Radius resolves the parameter
 // expressions ({{context.*}}), executes the module, and maps the module's plain
@@ -22,8 +22,8 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   properties: {
     recipes: {
       'Test.Resources/userTypeAlpha': {
-        recipeKind: 'terraform'
-        recipeLocation: '${moduleServer}/direct-kubernetes.zip//modules'
+        kind: 'terraform'
+        source: '${moduleServer}/direct-kubernetes.zip//modules'
         parameters: {
           name: '{{context.resource.name}}'
           namespace: '{{context.runtime.kubernetes.namespace}}'

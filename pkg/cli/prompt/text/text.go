@@ -19,9 +19,10 @@ package text
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2/compat"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -81,7 +82,7 @@ func NewTextModel(prompt string, options TextModelOptions) Model {
 
 	return Model{
 		Style:     lipgloss.NewStyle(), // No border or padding by default
-		ErrStyle:  lipgloss.NewStyle().Width(80).Foreground(lipgloss.AdaptiveColor{Light: "#666666", Dark: "#999999"}),
+		ErrStyle:  lipgloss.NewStyle().Width(80).Foreground(compat.AdaptiveColor{Light: lipgloss.Color("#666666"), Dark: lipgloss.Color("#999999")}),
 		options:   options,
 		prompt:    prompt,
 		textInput: ti,
@@ -104,9 +105,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
-	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter:
+		// bubbles v2's textinput renders the placeholder within its configured
+		// width (an unset width collapses the placeholder to a single cursor
+		// cell). Size it to the available width — the terminal minus the prompt
+		// and the trailing cursor cell — so the full placeholder is shown.
+		m.textInput.SetWidth(max(0, msg.Width-lipgloss.Width(m.textInput.Prompt)-1))
+	case tea.KeyPressMsg:
+		switch msg.String() {
+		case "enter":
 			// Block submit on invalid values.
 			if m.textInput.Err != nil {
 				return m, nil
@@ -114,7 +120,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.valueEntered = true
 			return m, tea.Quit
-		case tea.KeyCtrlC:
+		case "ctrl+c":
 			m.Quitting = true
 			return m, tea.Quit
 		}
@@ -134,10 +140,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View renders a view with user selected value.
-func (m Model) View() string {
+func (m Model) View() tea.View {
 	if m.valueEntered {
 		// Hide all of the input when complete.
-		return ""
+		return tea.NewView("")
 	}
 
 	// Renders output like:
@@ -160,7 +166,7 @@ func (m Model) View() string {
 		view.WriteString(m.ErrStyle.Render(m.textInput.Err.Error()))
 	}
 
-	return m.Style.Render(ansi.Hardwrap(view.String(), m.width, true))
+	return tea.NewView(m.Style.Render(ansi.Hardwrap(view.String(), m.width, true)))
 }
 
 // GetValue returns the input from the user, or the default value if the user did not enter anything.

@@ -1581,7 +1581,7 @@
     "$type": "ObjectType",
     "name": "RecipeDefinition",
     "properties": {
-      "recipeKind": {
+      "kind": {
         "type": {
           "$ref": "#/138"
         },
@@ -1593,14 +1593,14 @@
           "$ref": "#/29"
         },
         "flags": 0,
-        "description": "Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)"
+        "description": "Connect to the source using HTTP (not HTTPS). This should be used when the source is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)"
       },
-      "recipeLocation": {
+      "source": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "URL path to the recipe"
+        "description": "The source of the recipe. For Bicep recipes this is the OCI registry reference. For Terraform recipes this is the module source."
       },
       "parameters": {
         "type": {

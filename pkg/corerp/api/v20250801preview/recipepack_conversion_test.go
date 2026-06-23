@@ -55,15 +55,22 @@ func TestRecipePackConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, Version, recipePack.InternalMetadata.CreatedAPIVersion)
 	require.Equal(t, Version, recipePack.InternalMetadata.UpdatedAPIVersion)
 
-	// Validate the outputs mapping is converted onto the datamodel recipe definition.
-	stateStore := recipePack.Properties.Recipes["Applications.Dapr/stateStores"]
-	require.NotNil(t, stateStore)
-	require.Equal(t, map[string]string{"host": "redis_host", "port": "redis_port"}, stateStore.Outputs)
+	// Validate recipe definitions, including the renamed kind/source fields and the outputs mapping.
+	require.Len(t, recipePack.Properties.Recipes, 2)
 
-	// A recipe without an outputs mapping should leave Outputs unset.
 	container := recipePack.Properties.Recipes["Applications.Core/containers"]
 	require.NotNil(t, container)
+	require.Equal(t, "bicep", container.Kind)
+	require.Equal(t, "br:ghcr.io/radius-project/recipes/kubernetes-container:latest", container.Source)
+	// A recipe without an outputs mapping should leave Outputs unset.
 	require.Nil(t, container.Outputs)
+
+	stateStore := recipePack.Properties.Recipes["Applications.Dapr/stateStores"]
+	require.NotNil(t, stateStore)
+	require.Equal(t, "terraform", stateStore.Kind)
+	require.Equal(t, "oci://ghcr.io/radius-project/recipes/terraform/redis:latest", stateStore.Source)
+	// The outputs mapping is converted onto the datamodel recipe definition.
+	require.Equal(t, map[string]string{"host": "redis_host", "port": "redis_port"}, stateStore.Outputs)
 }
 
 func TestRecipePackConvertDataModelToVersioned(t *testing.T) {
@@ -87,14 +94,20 @@ func TestRecipePackConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, dataModel.Location, *versionedResource.Location)
 	require.NotNil(t, versionedResource.Properties)
 
-	// Validate the outputs mapping is converted onto the versioned recipe definition.
+	// Validate recipe definitions round-trip, including the renamed kind/source fields and the outputs mapping.
+	require.Len(t, versionedResource.Properties.Recipes, 2)
+
 	stateStore := versionedResource.Properties.Recipes["Applications.Dapr/stateStores"]
 	require.NotNil(t, stateStore)
+	require.NotNil(t, stateStore.Kind)
+	require.Equal(t, RecipeKind("terraform"), *stateStore.Kind)
+	require.Equal(t, "oci://ghcr.io/radius-project/recipes/terraform/redis:latest", *stateStore.Source)
+	// The outputs mapping is converted onto the versioned recipe definition.
 	require.Equal(t, map[string]*string{"host": to.Ptr("redis_host"), "port": to.Ptr("redis_port")}, stateStore.Outputs)
 
-	// A recipe without an outputs mapping should leave Outputs unset.
 	container := versionedResource.Properties.Recipes["Applications.Core/containers"]
 	require.NotNil(t, container)
+	// A recipe without an outputs mapping should leave Outputs unset.
 	require.Nil(t, container.Outputs)
 }
 

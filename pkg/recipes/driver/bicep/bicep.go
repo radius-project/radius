@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
 	"github.com/go-logr/logr"
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2/registry/remote"
@@ -162,7 +162,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		ctx,
 		clients.Deployment{
 			Properties: &clients.DeploymentProperties{
-				Mode:           armresources.DeploymentModeIncremental,
+				Mode:           armdeployments.DeploymentModeIncremental,
 				ProviderConfig: &providerConfig,
 				Parameters:     parameters,
 				Template:       recipeData,
@@ -400,7 +400,7 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 //
 // The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
 // collection. For us this mostly means Kubernetes resources - the user has to be explicit.
-func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefinition, outputs any, resources []*armresources.ResourceReference) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefinition, outputs any, resources []*armdeployments.ResourceReference) (*recipes.RecipeOutput, error) {
 	recipeResponse := &recipes.RecipeOutput{}
 	out, ok := outputs.(map[string]any)
 	if ok && len(out) > 0 {

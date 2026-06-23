@@ -47,7 +47,7 @@ func Test_ResourceProviderSummary_Lifecycle(t *testing.T) {
 	// List should now contain a resource provider.
 	expected := v20231001preview.ResourceProviderSummary{
 		Name:          new(resourceProviderNamespace),
-		Locations:     map[string]map[string]any{},
+		Locations:     map[string]*v20231001preview.ResourceProviderSummaryLocation{},
 		ResourceTypes: map[string]*v20231001preview.ResourceProviderSummaryResourceType{},
 	}
 	response = server.MakeRequest(http.MethodGet, resourceProviderSummaryCollectionURL, nil)
@@ -77,7 +77,7 @@ func Test_ResourceProviderSummary_Lifecycle(t *testing.T) {
 	response.EqualsValue(200, expected)
 
 	createLocation(server)
-	expected.Locations["east"] = map[string]any{}
+	expected.Locations["east"] = &v20231001preview.ResourceProviderSummaryLocation{}
 
 	response = server.MakeRequest(http.MethodGet, resourceProviderSummaryURL, nil)
 	response.EqualsValue(200, expected)
