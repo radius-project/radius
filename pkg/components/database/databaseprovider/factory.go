@@ -20,6 +20,7 @@ import (
 	context "context"
 	"errors"
 	"fmt"
+	"os"
 	"regexp"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -84,19 +85,25 @@ func initInMemoryClient(ctx context.Context, opt Options) (store.Client, error) 
 	return inmemory.NewClient(), nil
 }
 
+// envVarPattern matches ${VAR_NAME} references for expansion against environment variables.
+var envVarPattern = regexp.MustCompile(`\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}`)
+
+// expandEnvURL replaces ${VAR} references in the connection URL with the values of the
+// corresponding environment variables. References to unset variables expand to an empty string.
+func expandEnvURL(url string) string {
+	return envVarPattern.ReplaceAllStringFunc(url, func(match string) string {
+		varName := envVarPattern.FindStringSubmatch(match)[1]
+		return os.Getenv(varName)
+	})
+}
+
 // initPostgreSQLClient creates a new PostgreSQL store client.
 func initPostgreSQLClient(ctx context.Context, opt Options) (store.Client, error) {
 	if opt.PostgreSQL.URL == "" {
 		return nil, errors.New("failed to initialize PostgreSQL client: URL is required")
 	}
 
-	url := opt.PostgreSQL.URL
-	regex := regexp.MustCompile(`$\{([a-zA-Z_]+)\}`)
-	matches := regex.FindSubmatch([]byte(opt.PostgreSQL.URL))
-	if len(matches) > 1 {
-		// Extract the captured expression.
-		url = string(matches[1])
-	}
+	url := expandEnvURL(opt.PostgreSQL.URL)
 
 	pool, err := pgxpool.New(ctx, url)
 	if err != nil {

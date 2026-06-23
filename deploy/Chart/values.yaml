@@ -156,7 +156,7 @@ database:
   enabled: false # Enable the Postgres database install
   postgres_user: "radius"
   image: mirror/postgres
-  tag: latest
+  tag: 16-alpine
   storageClassName: "" # set to the storage class name if required, the empty string will pickup the default storage class.
   # Minimum resource requirements, may need to revisit and scale.
   storageSize: "1Gi"

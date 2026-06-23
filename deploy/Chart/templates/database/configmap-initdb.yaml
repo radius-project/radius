@@ -1,0 +1,49 @@
+{{- if .Values.database.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: database-initdb
+  namespace: {{ .Release.Namespace }}
+  labels:
+    control-plane: database
+    app.kubernetes.io/name: database
+    app.kubernetes.io/part-of: radius
+data:
+  init-db.sh: |
+    #!/bin/bash
+    set -e
+
+    RESOURCE_PROVIDERS=("ucp" "applications_rp" "dynamic_rp")
+
+    for RESOURCE_PROVIDER in "${RESOURCE_PROVIDERS[@]}"; do
+        echo "Creating database and user for $RESOURCE_PROVIDER"
+        psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+            DO \$\$
+            BEGIN
+                IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '$RESOURCE_PROVIDER') THEN
+                    CREATE USER $RESOURCE_PROVIDER WITH PASSWORD '$POSTGRES_PASSWORD';
+                END IF;
+            END
+            \$\$;
+            SELECT 'CREATE DATABASE $RESOURCE_PROVIDER OWNER $RESOURCE_PROVIDER' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$RESOURCE_PROVIDER')\gexec
+            GRANT ALL PRIVILEGES ON DATABASE $RESOURCE_PROVIDER TO $RESOURCE_PROVIDER;
+    EOSQL
+    done
+
+    for RESOURCE_PROVIDER in "${RESOURCE_PROVIDERS[@]}"; do
+        echo "Creating tables in database $RESOURCE_PROVIDER"
+        psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$RESOURCE_PROVIDER" <<-'EOSQL'
+            CREATE TABLE IF NOT EXISTS resources (
+                id TEXT PRIMARY KEY NOT NULL,
+                original_id TEXT NOT NULL,
+                resource_type TEXT NOT NULL,
+                root_scope TEXT NOT NULL,
+                routing_scope TEXT NOT NULL,
+                etag TEXT NOT NULL,
+                created_at TIMESTAMP(6) WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                resource_data JSONB NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
+    EOSQL
+    done
+{{- end }}
