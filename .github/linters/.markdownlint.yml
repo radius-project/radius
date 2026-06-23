@@ -1,4 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/DavidAnson/markdownlint/refs/heads/main/schema/markdownlint-config-schema-strict.json
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
 ---
 # Markdownlint YAML configuration
 # Default source: https://github.com/DavidAnson/markdownlint/blob/main/schema/.markdownlint.yaml
