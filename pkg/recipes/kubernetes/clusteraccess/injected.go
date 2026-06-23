@@ -38,10 +38,11 @@ const TargetKubeconfigEnvVar = kubeutil.TargetKubeconfigEnvVar
 // the path in RADIUS_TARGET_KUBECONFIG. Radius does not create or own this
 // kubeconfig; it is supplied (and refreshed) out-of-band by the workflow.
 //
-// getenv and loadConfig are fields so tests can substitute them.
+// getenv, loadConfig, and statFile are fields so tests can substitute them.
 type injectedKubeconfigStrategy struct {
 	getenv     func(string) string
 	loadConfig func(path string) (*rest.Config, error)
+	statFile   func(path string) (os.FileInfo, error)
 }
 
 var _ clusterStrategy = (*injectedKubeconfigStrategy)(nil)
@@ -54,6 +55,7 @@ func newInjectedKubeconfigStrategy() *injectedKubeconfigStrategy {
 		loadConfig: func(path string) (*rest.Config, error) {
 			return clientcmd.BuildConfigFromFlags("", path)
 		},
+		statFile: os.Stat,
 	}
 }
 
@@ -79,7 +81,14 @@ func (s *injectedKubeconfigStrategy) restConfig(_ context.Context, _ *recipes.Co
 // kubeconfigSource returns the path from RADIUS_TARGET_KUBECONFIG so a
 // kubeconfig-path consumer (the Terraform kubernetes provider) targets the same
 // injected kubeconfig without Radius copying its bearer token into generated
-// configuration.
+// configuration. It validates that the path is readable and fails loudly (naming
+// the env var and path) rather than deferring a less actionable error to
+// Terraform when the injected kubeconfig is missing or unreadable.
 func (s *injectedKubeconfigStrategy) kubeconfigSource(_ context.Context, _ *recipes.Configuration) (KubeconfigSource, error) {
-	return KubeconfigSource{Path: s.getenv(TargetKubeconfigEnvVar)}, nil
+	path := s.getenv(TargetKubeconfigEnvVar)
+	if _, err := s.statFile(path); err != nil {
+		return KubeconfigSource{}, fmt.Errorf("failed to read target kubeconfig from %s=%q: %w", TargetKubeconfigEnvVar, path, err)
+	}
+
+	return KubeconfigSource{Path: path}, nil
 }

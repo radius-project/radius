@@ -47,7 +47,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-resource webapp 'Applications.Core/extenders@2023-10-01-preview' = {
+resource redisExtender 'Applications.Core/extenders@2023-10-01-preview' = {
   name: resourceName
   properties: {
     application: app.id

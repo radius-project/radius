@@ -19,6 +19,7 @@ package clusteraccess
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/recipes"
@@ -155,7 +156,8 @@ func Test_ResolveKubeconfigSource_PrefersInjectedKubeconfig(t *testing.T) {
 	r := &resolver{
 		strategies: []clusterStrategy{
 			&injectedKubeconfigStrategy{
-				getenv: func(string) string { return "/path/to/kubeconfig" },
+				getenv:   func(string) string { return "/path/to/kubeconfig" },
+				statFile: func(string) (os.FileInfo, error) { return nil, nil },
 			},
 			&localStrategy{
 				inClusterConfig: func() (*rest.Config, error) {
@@ -187,11 +189,26 @@ func Test_ResolveKubeconfigSource_FallsBackToLocal(t *testing.T) {
 }
 
 func Test_InjectedKubeconfigStrategy_KubeconfigSourceReturnsEnvPath(t *testing.T) {
-	s := &injectedKubeconfigStrategy{getenv: func(string) string { return "/etc/radius/target-kubeconfig/config" }}
+	s := &injectedKubeconfigStrategy{
+		getenv:   func(string) string { return "/etc/radius/target-kubeconfig/config" },
+		statFile: func(string) (os.FileInfo, error) { return nil, nil },
+	}
 
 	got, err := s.kubeconfigSource(context.Background(), &recipes.Configuration{})
 	require.NoError(t, err)
 	require.Equal(t, KubeconfigSource{Path: "/etc/radius/target-kubeconfig/config"}, got)
+}
+
+func Test_InjectedKubeconfigStrategy_KubeconfigSourceErrorsWhenPathUnreadable(t *testing.T) {
+	s := &injectedKubeconfigStrategy{
+		getenv:   func(string) string { return "/missing/kubeconfig" },
+		statFile: func(string) (os.FileInfo, error) { return nil, errors.New("no such file") },
+	}
+
+	_, err := s.kubeconfigSource(context.Background(), &recipes.Configuration{})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), TargetKubeconfigEnvVar)
+	require.Contains(t, err.Error(), "/missing/kubeconfig")
 }
 
 func Test_LocalStrategy_KubeconfigSourceInClusterReturnsEmptyPath(t *testing.T) {

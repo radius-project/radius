@@ -33,6 +33,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	k8s "k8s.io/client-go/kubernetes"
@@ -79,8 +80,9 @@ func requireExternalCluster(t *testing.T) externalClusterClients {
 
 // requireNoPodsForResource asserts that the control-plane cluster has no pods
 // carrying the selector labels for the given application and resource. It is the
-// negative half of the multi-cluster assertion: a recipe-provisioned workload
-// must land on the external cluster and must NOT appear on the control plane.
+// negative half of the multi-cluster assertion: a workload must land on the
+// external cluster and must NOT appear on the control plane. A missing namespace
+// on the control plane satisfies the assertion (no namespace implies no pods).
 func requireNoPodsForResource(ctx context.Context, t *testing.T, clientset *k8s.Clientset, namespace, application, resourceName string) {
 	t.Helper()
 
@@ -89,8 +91,27 @@ func requireNoPodsForResource(ctx context.Context, t *testing.T, clientset *k8s.
 	})
 
 	pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
+	if apierrors.IsNotFound(err) {
+		return
+	}
 	require.NoError(t, err, "failed to list pods on control-plane cluster")
 	require.Emptyf(t, pods.Items,
 		"expected no pods for %s/%s on the control-plane cluster (namespace %s); the workload must land only on the external cluster",
 		application, resourceName, namespace)
+}
+
+// requireNoServicesInNamespace asserts that the control-plane cluster has no
+// Services in the given namespace. A missing namespace satisfies the assertion
+// (no namespace implies no Services).
+func requireNoServicesInNamespace(ctx context.Context, t *testing.T, clientset *k8s.Clientset, namespace string) {
+	t.Helper()
+
+	svcs, err := clientset.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	if apierrors.IsNotFound(err) {
+		return
+	}
+	require.NoError(t, err, "failed to list services on control-plane cluster")
+	require.Emptyf(t, svcs.Items,
+		"expected no services in namespace %s on the control-plane cluster; the workload must land on the external cluster",
+		namespace)
 }

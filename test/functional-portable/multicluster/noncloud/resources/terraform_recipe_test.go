@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/radius-project/radius/test/functional-portable/corerp"
 	"github.com/radius-project/radius/test/rp"
@@ -102,11 +101,7 @@ func Test_MultiCluster_TerraformRecipe(t *testing.T) {
 				})
 
 				// The Redis service must NOT exist on the control-plane cluster.
-				svcs, err := test.Options.K8sClient.CoreV1().Services(appName).List(ctx, metav1.ListOptions{})
-				require.NoError(t, err)
-				require.Emptyf(t, svcs.Items,
-					"expected no services in namespace %s on the control-plane cluster; the workload must land on the external cluster",
-					appName)
+				requireNoServicesInNamespace(ctx, t, test.Options.K8sClient, appName)
 			},
 		},
 	})
