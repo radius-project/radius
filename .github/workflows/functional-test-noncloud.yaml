@@ -356,17 +356,30 @@ jobs:
           ./kind create cluster --name external
 
           # Two kubeconfigs are derived from the same external cluster:
-          # 1. An "internal" kubeconfig whose API server address is the cluster's
-          #    docker-network hostname, reachable from pods running inside the
-          #    control-plane cluster (both clusters share the "kind" docker network).
-          #    This is what the Radius pods consume via RADIUS_TARGET_KUBECONFIG.
+          # 1. An "internal" kubeconfig reachable from pods running inside the
+          #    control-plane cluster. Pods cannot resolve the docker container name
+          #    (`kind get kubeconfig --internal` uses external-control-plane:6443,
+          #    which only docker DNS resolves), so point it at the external control
+          #    plane's IP on the shared "kind" docker network — reachable from pods
+          #    via the node — and skip TLS verification since the API server cert may
+          #    not cover that IP. This is what the Radius pods consume via
+          #    RADIUS_TARGET_KUBECONFIG.
           # 2. A "host" kubeconfig (127.0.0.1:<port>) reachable from the runner, used
           #    by the test process to assert resources landed on the external cluster.
           mkdir -p "${RUNNER_TEMP}/external-cluster"
           INTERNAL_KUBECONFIG="${RUNNER_TEMP}/external-cluster/internal.kubeconfig"
           HOST_KUBECONFIG="${RUNNER_TEMP}/external-cluster/host.kubeconfig"
-          ./kind get kubeconfig --name external --internal > "${INTERNAL_KUBECONFIG}"
           ./kind get kubeconfig --name external > "${HOST_KUBECONFIG}"
+
+          EXTERNAL_IP="$(docker inspect -f '{{(index .NetworkSettings.Networks "kind").IPAddress}}' external-control-plane)"
+          if [ -z "${EXTERNAL_IP}" ]; then
+            echo "Could not determine external-control-plane IP on the kind network"
+            exit 1
+          fi
+          cp "${HOST_KUBECONFIG}" "${INTERNAL_KUBECONFIG}"
+          kubectl --kubeconfig "${INTERNAL_KUBECONFIG}" config set "clusters.kind-external.server" "https://${EXTERNAL_IP}:6443"
+          kubectl --kubeconfig "${INTERNAL_KUBECONFIG}" config unset "clusters.kind-external.certificate-authority-data"
+          kubectl --kubeconfig "${INTERNAL_KUBECONFIG}" config set "clusters.kind-external.insecure-skip-tls-verify" "true"
 
           # Restore kubectl context to the control-plane cluster; `kind create`
           # switched it to the external cluster.
