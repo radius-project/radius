@@ -37,22 +37,14 @@ ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.30.*
 ENV_SETUP=go tool setup-envtest
 
-# Use gotestsum if available, otherwise use go test. We want to enable testing with just 'make test'
-# without external dependencies, but want to use gotestsum in our CI pipelines for the improved
-# reporting.
+# gotestsum is managed as a Go tool (the 'tool' directive in go.mod) and is invoked via
+# 'go tool gotestsum'. It is a drop-in replacement for 'go test' that provides nicer formatted
+# output and can also generate JUnit XML reports.
 #
 # See: https://github.com/gotestyourself/gotestsum
-#
-# Gotestsum is a drop-in replacement for go test, but it provides a much nicer formatted output
-# and it can also generate JUnit XML reports.
-ifeq (, $(shell which gotestsum))
-GOTEST_TOOL ?= go test
-else
-# Use these options by default but allow an override via env-var
 GOTEST_OPTS ?=
 # We need the double dash here to separate the 'gotestsum' options from the 'go test' options
-GOTEST_TOOL ?= gotestsum $(GOTESTSUM_OPTS) --
-endif
+GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
 test: test-get-envtools test-helm ## Runs unit tests, excluding kubernetes controller tests
@@ -168,7 +160,7 @@ test-validate-bicep: ## Validates that all .bicep files compile cleanly
 .PHONY: test-helm
 test-helm: ## Runs Helm chart unit tests
 	@echo "$(ARROW) Installing helm-unittest plugin if not already installed..."
-	@helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2
+	@helm plugin list | grep -q unittest || helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.1.1 --verify=false
 	@echo "$(ARROW) Running Helm unit tests..."
 	cd deploy/Chart && helm unittest .
 

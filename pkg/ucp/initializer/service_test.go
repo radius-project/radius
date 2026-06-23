@@ -365,9 +365,13 @@ types:
 		additionalProperties, ok := recipesProperty["additionalProperties"].(map[string]any)
 		require.True(t, ok)
 		recipeDefinitionProperties := requireSchemaProperties(t, additionalProperties)
-		recipeKindProperty := requireSchemaProperty(t, recipeDefinitionProperties, "recipeKind")
-		assert.NotContains(t, recipeKindProperty, "$ref")
-		assert.Equal(t, "string", recipeKindProperty["type"])
+		kindProperty := requireSchemaProperty(t, recipeDefinitionProperties, "kind")
+		assert.NotContains(t, kindProperty, "$ref")
+		assert.Equal(t, "string", kindProperty["type"])
+
+		sourceProperty := requireSchemaProperty(t, recipeDefinitionProperties, "source")
+		assert.NotContains(t, sourceProperty, "$ref")
+		assert.Equal(t, "string", sourceProperty["type"])
 
 		terraformConfigs := summaryModel.Properties.ResourceTypes["terraformConfigs"]
 		terraformConfigSchema := terraformConfigs.APIVersions["2025-08-01-preview"].Schema

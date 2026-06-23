@@ -53,6 +53,9 @@ func buildTestInputs() (recipes.Configuration, recipes.ResourceMetadata, recipes
 			Azure: datamodel.ProvidersAzure{
 				Scope: "scope",
 			},
+			AWS: datamodel.ProvidersAWS{
+				Scope: "/planes/aws/aws/accounts/179022619019/regions/us-east-2",
+			},
 		},
 	}
 
@@ -493,12 +496,14 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 							{
 								Resources: []*tfjson.StateResource{
 									{
+										Type:         "aws_subnet",
 										ProviderName: "registry.terraform.io/hashicorp/aws",
 										AttributeValues: map[string]any{
 											"arn": "arn:aws:ec2:us-east-2:179022619019:subnet/subnet-0ddfaa93733f98002",
 										},
 									},
 									{
+										Type:         "aws_subnet",
 										ProviderName: "registry.terraform.io/hashicorp/aws",
 										AttributeValues: map[string]any{
 											"arn": "arn:aws:ec2:us-east-2:179022619019:Subnet/Subnet-0ddfaa93733f98002",
@@ -571,6 +576,8 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 				},
 				Resources: []string{"outputResourceId1",
 					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/AWS.ec2/subnet/subnet-0ddfaa93733f98002",
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_subnet/subnet-0ddfaa93733f98002",
+					"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_subnet/Subnet-0ddfaa93733f98002",
 					"/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/vhiremath-dev/providers/Microsoft.DocumentDB/databaseAccounts/tf-test-cosmos",
 					"/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/test-redis",
 					"/planes/kubernetes/local/namespaces/default/providers/core/ServiceAccount/test-service-account",
@@ -612,6 +619,105 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 			},
 			expectedResponse: &recipes.RecipeOutput{},
 			expectedErr:      errors.New("\"arn:aws:ec2:us-east-2:179022619019\" is not a valid ARN"),
+		},
+		{
+			desc: "AWS S3 bucket ARN uses Terraform AWS output resource identity",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_s3_bucket",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"id":  "my-bucket",
+									"arn": "arn:aws:s3:::my-bucket",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/global/providers/Terraform.AWS/aws_s3_bucket/my-bucket"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "AWS resource name prefers Terraform ID",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_ecs_task_definition",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"id":  "orders:42",
+									"arn": "arn:aws:ecs:us-east-2:179022619019:task-definition/orders:42",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "AWS resource name preserves colon in ARN path fallback",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								Type:         "aws_ecs_task_definition",
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"arn": "arn:aws:ecs:us-east-2:179022619019:task-definition/orders:42",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Resources: []string{"/planes/aws/aws/accounts/179022619019/regions/us-east-2/providers/Terraform.AWS/aws_ecs_task_definition/orders:42"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "AWS resource missing Terraform type returns actionable error",
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					RootModule: &tfjson.StateModule{
+						Resources: []*tfjson.StateResource{
+							{
+								ProviderName: "registry.terraform.io/hashicorp/aws",
+								AttributeValues: map[string]any{
+									"arn": "arn:aws:s3:::my-bucket",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{},
+			expectedErr:      errors.New("terraform AWS resource type is empty for ARN \"arn:aws:s3:::my-bucket\""),
 		},
 		{
 			desc: "kubernetes manifest type with no apiVersion information",
@@ -763,6 +869,13 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 
 	opts := driver.ExecuteOptions{
 		BaseOptions: driver.BaseOptions{
+			Configuration: recipes.Configuration{
+				Providers: datamodel.Providers{
+					AWS: datamodel.ProvidersAWS{
+						Scope: "/planes/aws/aws/accounts/179022619019/regions/us-east-2",
+					},
+				},
+			},
 			Definition: recipes.EnvironmentDefinition{
 				Name:            "mongo-azure",
 				Driver:          recipes.TemplateKindTerraform,
@@ -776,7 +889,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			recipeResponse, err := d.prepareRecipeResponse(context.Background(), opts.BaseOptions.Definition, tt.state)
+			recipeResponse, err := d.prepareRecipeResponse(context.Background(), opts.BaseOptions.Definition, opts.Configuration, tt.state)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})

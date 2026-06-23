@@ -25,10 +25,12 @@ package resource_test
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -91,6 +93,64 @@ func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
 		corerp.TestSecretDeletion(t, ctx, test, appName, envName, resourceID, secretNamespace, secretPrefix)
 	}
 
+	test.RunSerial = true
+	test.Test(t)
+}
+
+func Test_TerraformRecipe_AWSS3Bucket(t *testing.T) {
+	awsAccountID := os.Getenv("AWS_ACCOUNT_ID")
+	awsRegion := os.Getenv("AWS_REGION")
+	require.NotEmpty(t, awsAccountID, "This test needs the env variable AWS_ACCOUNT_ID to be set")
+	require.NotEmpty(t, awsRegion, "This test needs the env variable AWS_REGION to be set")
+
+	template := "testdata/corerp-resources-terraform-aws-s3.bicep"
+	name := "corerp-resources-terraform-aws-s3"
+	appName := "corerp-resources-terraform-aws-s3-app"
+	envName := "corerp-resources-terraform-aws-s3-env"
+	bucketName := "radiusfunctionaltest-" + uuid.NewString()
+	creationTimestamp := testutil.GetCreationTimestamp()
+	expectedOutputResourceID := fmt.Sprintf(
+		"/planes/aws/aws/accounts/%s/regions/global/providers/Terraform.AWS/aws_s3_bucket/%s",
+		awsAccountID,
+		bucketName,
+	)
+
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(
+				template,
+				testutil.GetTerraformRecipeModuleServerURL(),
+				testutil.GetAWSAccountId(),
+				testutil.GetAWSRegion(),
+				"bucketName="+bucketName,
+				"creationTimestamp="+creationTimestamp,
+			),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: envName,
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: appName,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: name,
+						Type: validation.ExtendersResource,
+						App:  appName,
+						OutputResources: []validation.OutputResourceResponse{
+							{ID: expectedOutputResourceID},
+						},
+					},
+				},
+			},
+			SkipObjectValidation: true,
+		},
+	})
+
+	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAWS}
+	test.RunSerial = true
 	test.Test(t)
 }
 

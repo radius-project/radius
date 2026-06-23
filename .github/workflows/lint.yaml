@@ -24,6 +24,11 @@ on:
     branches:
       - main
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected.
+  merge_group:
+    branches:
+      - main
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
@@ -85,16 +90,14 @@ jobs:
       - name: Install helm
         uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
-          version: v3.19.4
+          version: v4.2.2
 
       - name: Run Helm linter
         run: |
           helm lint "${HELM_CHARTS_DIR}"
 
       - name: Run Helm unit tests
-        run: |
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2 || true
-          cd "${HELM_CHARTS_DIR}" && helm unittest .
+        run: make test-helm
 
       - name: Run TypeSpec format check
         run: make tsp-format-check
