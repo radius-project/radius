@@ -85,13 +85,25 @@ The prototype's `Push` treated a failed `git push` as a non-fatal warning. That 
 for advisory sentinel files but means a failed **state backup** push is silent data loss. The
 durability requirement is that a backup either succeeds or fails the command loudly.
 
-### Gap 4 — The deploy lock was advisory, not a real mutex
-
-The prototype's `.deploy-lock` was read from the local worktree and then pushed, so two runners
-could both observe "no lock" and both proceed. A correct lock must use an atomic
-compare-and-swap.
-
 ## Design decisions
+
+### Decision 0 — `rad startup` / `rad shutdown` are workspace-kind-agnostic
+
+The prototype introduced a dedicated `github` workspace kind and folded state restore into
+`rad init --kind github`. **There is no `github` workspace kind in this design.** State backup and
+restore are exposed as two ordinary commands — `rad shutdown` and `rad startup` — that operate on
+the current workspace's Kubernetes context like any other command. They do not create or delete
+clusters and do not install Radius; cluster lifecycle and `rad install` are orthogonal and remain
+the caller's responsibility (the CI workflow, or a test harness).
+
+This keeps the commands usable in any context — local development, CI, or a self-hosted
+install — and makes them directly testable: a test can install Radius, deploy, `rad shutdown`,
+destroy the cluster, recreate and reinstall, `rad startup`, and deploy again.
+
+* `rad shutdown` — back up all durable Radius state (PostgreSQL databases + Terraform state
+  Secrets) for the workspace's context to the configured state location.
+* `rad startup` — restore all durable Radius state from the configured state location into the
+  workspace's context, after the control plane is running.
 
 ### Decision 1 — Storage backend: git orphan branch for v1, OCI/GHCR deferred to v2
 
@@ -142,23 +154,19 @@ every state Secret, rather than by name. This automatically captures the additio
 state. The Lease resources the backend uses for locking are intentionally **not** backed up; they
 are ephemeral and irrelevant across runs.
 
-This mirrors the existing PostgreSQL backup flow exactly (same worktree, same commit/push, same
-semaphore) and is the minimal change that closes Gap 1.
+This mirrors the PostgreSQL backup flow exactly (same state directory, same commit/push) and is
+the minimal change that closes Gap 1.
 
 A v2 alternative — switching the Terraform backend from `kubernetes` to the `pg` backend pointed
 at the same PostgreSQL instance, so a single `pg_dump` captures both stores — is recorded below.
 It is deferred because it requires backend credential injection and per-recipe state isolation
 work beyond v1 scope.
 
-### Decision 4 — Durability and locking hardening
+### Decision 4 — Durability hardening
 
-* The **final state-backup push must fail the command** on error (Gap 3). Advisory sentinel
-  pushes remain best-effort.
-* The deploy lock uses git's own compare-and-swap: acquisition commits the lock file and pushes;
-  a non-fast-forward **push rejection is a failed acquisition** (Gap 4). On rejection, fetch and
-  apply the existing `RunID`/`RunAttempt` takeover logic for same-run retries. The lock is keyed
-  by **GitHub Environment name** so deploys to different environments do not serialize against
-  each other.
+* The **state-backup push must fail the command** on error when a remote is configured (Gap 3).
+  When no remote is configured (local development, tests), the commit on the orphan branch is the
+  durable store and the absence of a remote is not an error.
 * A small checksum manifest accompanies the dumps so a corrupt restore **fails closed** rather
   than silently starting from an empty state.
 
@@ -171,26 +179,39 @@ work beyond v1 scope.
   and Terraform state collapse into a single dump and a single restore.
 * **Client-side envelope encryption** (age/sops) of state artifacts before they leave the cluster,
   since both PostgreSQL data and Terraform state can contain secrets.
+* **Concurrency control**: a real mutex (for example an OCI tag compare-and-swap, or a git
+  push-rejection lock) to serialize concurrent deploys to the same shared state. The product spec
+  lists this as an open question; it is not required for the single-writer lifecycle delivered
+  here.
 
 ## Delivery plan
 
 | PR | Contents | Closes |
 |----|----------|--------|
-| PR 1 | PostgreSQL enablement fixes: Dynamic RP `database.enabled` conditional, init-db configmap, `POSTGRES_DB` value, `factory.go` env-var substitution, Helm chart tests | Gap 2 |
-| PR 2 | Terraform-state Secret backup/restore wired into the existing state-worktree flow | Gap 1 |
-| PR 3 | Durability hardening: loud backup-push failure, push-rejection CAS lock, checksum manifest | Gaps 3, 4 |
+| PR 1 | PostgreSQL enablement fixes: RP `database.enabled` conditionals, init-db configmap, `POSTGRES_DB` value, `factory.go` env-var substitution, Helm chart tests | Gap 2 |
+| PR 2 | Terraform-state Secret backup/restore (`pkg/cli/tfstate`) | Gap 1 |
+| PR 3 | `pkg/cli/pgbackup` + `pkg/cli/gitstate` (orphan-branch state directory with loud push), the kind-agnostic `rad startup` / `rad shutdown` commands, and the end-to-end functional test | Gap 3, Decision 0 |
 
 ## Test plan
 
 * **Unit**: Helm chart conditional rendering (PR 1); Terraform-state export/import round-trip with
-  a fake Kubernetes client (PR 2); push-failure and lock-contention paths (PR 3).
-* **Functional**: an end-to-end lifecycle that deploys a **Terraform-backed** resource, shuts
-  down, restarts, and deploys an **update** to the same resource — the path that exposes Gap 1.
+  a fake Kubernetes client (PR 2); state-directory commit/push behaviour (PR 3).
+* **Functional**: an end-to-end lifecycle that exercises every state path:
+  1. Install Radius with `database.enabled=true` on a cluster.
+  2. `rad deploy` a **Terraform-backed** resource (creates control-plane state + a Terraform
+     state Secret).
+  3. `rad shutdown` (back up both stores).
+  4. Destroy the control-plane state (delete the cluster, or uninstall) to simulate ephemeral
+     teardown.
+  5. Recreate the control plane and `rad startup` (restore both stores).
+  6. `rad deploy` an **update** to the same resource — must plan from the restored Terraform
+     state and succeed without errors or orphaned cloud resources. This is the path that exposes
+     Gap 1.
 
 ## Security
 
 * State (PostgreSQL dumps and Terraform Secrets, which may contain secret values) is pushed to a
   branch in the repository. For v1 the repository **must be private**; this constraint is removed
   in v2 by the encrypted OCI backend.
-* Git credentials use the GitHub Actions token; pushing the state branch requires
-  `contents: write`.
+* Git credentials use the ambient git configuration of the checkout (in CI, the token provided by
+  the checkout step); pushing the state branch requires write access to the repository.
