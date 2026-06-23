@@ -743,21 +743,26 @@ code and is deferred.
 - **Regression:** with `RADIUS_TARGET_KUBECONFIG` unset and no external cluster
   configured, deployment is identical to today.
 
-> **Underlying coverage gap (not introduced by this design).** The new
-> `Radius.*` resource types (`Radius.Compute/*`, `Radius.Security/*`,
-> `Radius.Data/*`) have **no Terraform recipe functional coverage** anywhere in
-> the repo — single- or multi-cluster. All new-type functional tests use
-> **Bicep** recipes (or direct rendering); Terraform recipe coverage exists only
-> for the legacy `Applications.Core/*` and custom UDT types. Consequently the
-> Tier 1 multi-cluster Terraform leg (`Test_MultiCluster_TerraformRecipe`)
-> exercises the legacy `Applications.Core/extenders` type, and the new-type leg
-> (`Test_MultiCluster_BicepContainer`) exercises Bicep only — so the
-> intersection "new type × Terraform recipe" is untested in *any* topology. The
-> deployment-target namespace validation (Change 6) is recipe-kind-agnostic, so
-> it is covered through the Bicep new-type leg, but end-to-end new-type Terraform
-> behavior is not. This gap is pre-existing in the base type's test suite, not
-> something multi-cluster v1 regresses; it should be revisited once the base
-> `Radius.*` types gain Terraform functional tests.
+> **Coverage note (pre-existing scope, not a regression).** New-type Terraform
+> recipe behavior *is* exercised, but in the
+> [`resource-types-contrib`](https://github.com/radius-project/resource-types-contrib)
+> repo, not this one: its `validate-resource-types.yaml` workflow runs a
+> `recipe: [bicep, terraform]` matrix on every PR, registers a Terraform recipe
+> pack, and deploys the new `Radius.Compute/containers`,
+> `Radius.Compute/persistentVolumes`, and `Radius.Security/secrets`
+> (`@2025-08-01-preview`) types against a single **k3d** cluster. Within *this*
+> repo's functional suite the new `Radius.*` types are covered by **Bicep**
+> recipes (or direct rendering) only; the Tier 1 multi-cluster Terraform leg
+> (`Test_MultiCluster_TerraformRecipe`) exercises the legacy
+> `Applications.Core/extenders` type, and the new-type leg
+> (`Test_MultiCluster_BicepContainer`) exercises Bicep. So the specific
+> untested intersection is **multi-cluster × new type × Terraform recipe** —
+> `resource-types-contrib` proves the new-type Terraform recipes themselves, but
+> only single-cluster, and this repo proves multi-cluster routing for Terraform
+> only on the legacy type. The deployment-target namespace validation (Change 6)
+> is recipe-kind-agnostic and is covered through the Bicep new-type leg. Closing
+> the intersection is best done once the base `Radius.*` types gain Terraform
+> functional tests in this repo.
 
 Testing challenges: Tier 2 needs reachable EKS and AKS clusters and an RBAC
 mapping for the test principal on each. That provisioning is net-new and not
