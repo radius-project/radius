@@ -25,6 +25,11 @@ on:
     branches:
       - main
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected.
+  merge_group:
+    branches:
+      - main
 
 env:
   # Local Docker registry name
