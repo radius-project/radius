@@ -73,3 +73,11 @@ func (s *injectedKubeconfigStrategy) restConfig(_ context.Context, _ *recipes.Co
 
 	return config, nil
 }
+
+// kubeconfigSource returns the path from RADIUS_TARGET_KUBECONFIG so a
+// kubeconfig-path consumer (the Terraform kubernetes provider) targets the same
+// injected kubeconfig without Radius copying its bearer token into generated
+// configuration.
+func (s *injectedKubeconfigStrategy) kubeconfigSource(_ context.Context, _ *recipes.Configuration) (KubeconfigSource, error) {
+	return KubeconfigSource{Path: s.getenv(TargetKubeconfigEnvVar)}, nil
+}

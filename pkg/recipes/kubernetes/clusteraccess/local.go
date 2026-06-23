@@ -70,3 +70,21 @@ func (s *localStrategy) restConfig(_ context.Context, _ *recipes.Configuration) 
 
 	return nil, err
 }
+
+// kubeconfigSource describes the control-plane cluster as a kubeconfig path:
+// an empty Path (use the in-cluster config) when running in-cluster, or the
+// local kubeconfig file when not. This is the single home for the in-cluster /
+// local-kubeconfig decision the Terraform provider builder previously
+// duplicated.
+func (s *localStrategy) kubeconfigSource(_ context.Context, _ *recipes.Configuration) (KubeconfigSource, error) {
+	_, err := s.inClusterConfig()
+	if err == nil {
+		return KubeconfigSource{}, nil
+	}
+
+	if errors.Is(err, rest.ErrNotInCluster) {
+		return KubeconfigSource{Path: clientcmd.RecommendedHomeFile}, nil
+	}
+
+	return KubeconfigSource{}, err
+}

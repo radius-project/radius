@@ -30,7 +30,7 @@ func TestKubernetesProvider_BuildConfig(t *testing.T) {
 		"config_path": clientcmd.RecommendedHomeFile,
 	}
 
-	p := &kubernetesProvider{}
+	p := newKubernetesProvider(clusteraccess.NewResolver())
 	config, err := p.BuildConfig(testcontext.New(t), nil)
 	require.NoError(t, err)
 	require.Equal(t, expectedConfig, config)
@@ -40,7 +40,7 @@ func TestKubernetesProvider_BuildConfig_Error(t *testing.T) {
 	t.Setenv("KUBERNETES_SERVICE_HOST", "testvalue")
 	t.Setenv("KUBERNETES_SERVICE_PORT", "1111")
 
-	p := &kubernetesProvider{}
+	p := newKubernetesProvider(clusteraccess.NewResolver())
 	config, err := p.BuildConfig(testcontext.New(t), nil)
 	require.Error(t, err)
 	require.Nil(t, config)
@@ -57,7 +57,7 @@ func TestKubernetesProvider_BuildConfig_InjectedTargetKubeconfig(t *testing.T) {
 		"config_path": "/etc/radius/target-kubeconfig/config",
 	}
 
-	p := &kubernetesProvider{}
+	p := newKubernetesProvider(clusteraccess.NewResolver())
 	config, err := p.BuildConfig(testcontext.New(t), nil)
 	require.NoError(t, err)
 	require.Equal(t, expectedConfig, config)

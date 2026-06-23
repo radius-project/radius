@@ -24,6 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 func Test_Resolve_PrefersInjectedKubeconfig(t *testing.T) {
@@ -148,4 +149,77 @@ func Test_InjectedKubeconfigStrategy_ErrorsWhenKubeconfigUnreadable(t *testing.T
 	require.Error(t, err)
 	require.Contains(t, err.Error(), TargetKubeconfigEnvVar)
 	require.Contains(t, err.Error(), "/missing/kubeconfig")
+}
+
+func Test_ResolveKubeconfigSource_PrefersInjectedKubeconfig(t *testing.T) {
+	r := &resolver{
+		strategies: []clusterStrategy{
+			&injectedKubeconfigStrategy{
+				getenv: func(string) string { return "/path/to/kubeconfig" },
+			},
+			&localStrategy{
+				inClusterConfig: func() (*rest.Config, error) {
+					t.Fatal("localStrategy should not be consulted when an injected kubeconfig is set")
+					return nil, nil
+				},
+			},
+		},
+	}
+
+	got, err := r.ResolveKubeconfigSource(context.Background(), &recipes.Configuration{})
+	require.NoError(t, err)
+	require.Equal(t, KubeconfigSource{Path: "/path/to/kubeconfig"}, got)
+}
+
+func Test_ResolveKubeconfigSource_FallsBackToLocal(t *testing.T) {
+	r := &resolver{
+		strategies: []clusterStrategy{
+			&injectedKubeconfigStrategy{getenv: func(string) string { return "" }},
+			&localStrategy{
+				inClusterConfig: func() (*rest.Config, error) { return nil, rest.ErrNotInCluster },
+			},
+		},
+	}
+
+	got, err := r.ResolveKubeconfigSource(context.Background(), &recipes.Configuration{})
+	require.NoError(t, err)
+	require.Equal(t, KubeconfigSource{Path: clientcmd.RecommendedHomeFile}, got)
+}
+
+func Test_InjectedKubeconfigStrategy_KubeconfigSourceReturnsEnvPath(t *testing.T) {
+	s := &injectedKubeconfigStrategy{getenv: func(string) string { return "/etc/radius/target-kubeconfig/config" }}
+
+	got, err := s.kubeconfigSource(context.Background(), &recipes.Configuration{})
+	require.NoError(t, err)
+	require.Equal(t, KubeconfigSource{Path: "/etc/radius/target-kubeconfig/config"}, got)
+}
+
+func Test_LocalStrategy_KubeconfigSourceInClusterReturnsEmptyPath(t *testing.T) {
+	s := &localStrategy{
+		inClusterConfig: func() (*rest.Config, error) { return &rest.Config{}, nil },
+	}
+
+	got, err := s.kubeconfigSource(context.Background(), &recipes.Configuration{})
+	require.NoError(t, err)
+	require.Equal(t, KubeconfigSource{}, got)
+}
+
+func Test_LocalStrategy_KubeconfigSourceNotInClusterReturnsLocalKubeconfig(t *testing.T) {
+	s := &localStrategy{
+		inClusterConfig: func() (*rest.Config, error) { return nil, rest.ErrNotInCluster },
+	}
+
+	got, err := s.kubeconfigSource(context.Background(), &recipes.Configuration{})
+	require.NoError(t, err)
+	require.Equal(t, KubeconfigSource{Path: clientcmd.RecommendedHomeFile}, got)
+}
+
+func Test_LocalStrategy_KubeconfigSourcePropagatesUnexpectedError(t *testing.T) {
+	sentinel := errors.New("boom")
+	s := &localStrategy{
+		inClusterConfig: func() (*rest.Config, error) { return nil, sentinel },
+	}
+
+	_, err := s.kubeconfigSource(context.Background(), &recipes.Configuration{})
+	require.ErrorIs(t, err, sentinel)
 }
