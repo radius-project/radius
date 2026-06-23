@@ -147,6 +147,11 @@ type RPTest struct {
 	// Useful when unique resource names are used and cluster cleanup handles orphaned resources.
 	// This dramatically reduces test execution time by avoiding deletion timeouts.
 	FastCleanup bool
+
+	// RunSerial prevents the test from being marked parallel.
+	// Use this only when the test relies on shared external state that cannot
+	// safely handle concurrent operations, such as Terraform state locking.
+	RunSerial bool
 }
 
 type TestOptions struct {
@@ -392,8 +397,12 @@ func (ct RPTest) Test(t *testing.T) {
 	// This runs each application deployment step as a nested test, with the cleanup as part of the surrounding test.
 	// This way we can catch deletion failures and report them as test failures.
 
-	// Each of our tests are isolated, so they can run in parallel.
-	t.Parallel()
+	// Each of our tests should be isolated and can run in parallel by default.
+	// Some external systems, such as Terraform backends, use shared locks and
+	// need opt-in serialization to avoid cross-test contention.
+	if !ct.RunSerial {
+		t.Parallel()
+	}
 
 	logPrefix := os.Getenv(ContainerLogPathEnvVar)
 	if logPrefix == "" {

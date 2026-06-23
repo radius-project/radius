@@ -93,6 +93,7 @@ func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
 		corerp.TestSecretDeletion(t, ctx, test, appName, envName, resourceID, secretNamespace, secretPrefix)
 	}
 
+	test.RunSerial = true
 	test.Test(t)
 }
 
@@ -149,6 +150,7 @@ func Test_TerraformRecipe_AWSS3Bucket(t *testing.T) {
 	})
 
 	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAWS}
+	test.RunSerial = true
 	test.Test(t)
 }
 
