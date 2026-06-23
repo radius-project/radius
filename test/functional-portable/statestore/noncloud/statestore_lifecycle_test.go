@@ -26,6 +26,12 @@ limitations under the License.
 // The test is destructive (it uninstalls and reinstalls Radius on the target cluster) and requires
 // a real cluster plus the Terraform recipe module server, so it does not run as part of the normal
 // functional suite. It is skipped unless RADIUS_STATE_E2E is set to a truthy value.
+//
+// Test dependency: rad startup/shutdown do not create clusters or install Radius. This test
+// currently drives the cluster install/uninstall itself (installRadius/uninstallRadius below). It
+// is expected to depend on the separate Repo Radius workflow code (in flight) that creates the
+// ephemeral cluster, installs Radius, and runs the deploy. Once that lands, re-point the helpers
+// at the shared workflow code instead of duplicating the install/uninstall steps here.
 package statestore
 
 import (
