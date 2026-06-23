@@ -4,9 +4,9 @@ name: Process Test Results
 description: |
   Processes a batch of test results including creating a github artifact and annotating the Pull Request (if applicable).
 
-  This requires using 'gotestum' to run tests, which our makefile can do automatically. Install 'gotestsum' using:
-
-    go install gotest.tools/gotestsum@v1.10.0
+  This requires using 'gotestsum' to run tests, which our makefile does automatically. 'gotestsum' is
+  managed as a Go tool dependency (the 'tool' directive in go.mod) and is invoked via 'go tool gotestsum',
+  so no separate install is needed.
 
   You will also need to set the path for the results file using an environment variable. This would output the jUnit
   test results format which is what we require.

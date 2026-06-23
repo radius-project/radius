@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/strvals"
+	helm "helm.sh/helm/v4/pkg/action"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/strvals"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
@@ -39,8 +39,12 @@ type RadiusChartOptions struct {
 	ChartOptions
 }
 
-// prepareRadiusChart prepares the Helm chart for Radius.
-func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeContext string) (*chart.Chart, *action.Configuration, error) {
+// prepareRadiusChart prepares the Helm chart for Radius and returns the user-supplied
+// values parsed from the CLI --set / --set-file flags. The returned values map is
+// intentionally separate from helmChart.Values so that Helm's release storage records
+// only the user overrides (and so that upgrades can correctly merge with previously
+// stored user values via ResetThenReuseValues).
+func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeContext string) (*chart.Chart, *helm.Configuration, map[string]any, error) {
 	var helmChart *chart.Chart
 
 	flags := genericclioptions.ConfigFlags{
@@ -50,7 +54,7 @@ func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeC
 
 	helmConf, err := initHelmConfig(&flags)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get Helm config, err: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to get Helm config, err: %w", err)
 	}
 
 	if options.ChartPath == "" {
@@ -59,26 +63,29 @@ func prepareRadiusChart(helmAction HelmAction, options RadiusChartOptions, kubeC
 		helmChart, err = helmAction.LoadChart(options.ChartPath)
 	}
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to load Helm chart, err: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to load Helm chart, err: %w", err)
 	}
 
-	err = addArgsFromCLI(helmChart, &options)
+	userValues, err := parseUserValuesFromCLI(&options)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to add Radius values, err: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to parse Radius values, err: %w", err)
 	}
 
-	return helmChart, helmConf, nil
+	return helmChart, helmConf, userValues, nil
 }
 
-// addArgsFromCLI parses the --set arguments in order and adds them to the Helm chart values
-func addArgsFromCLI(helmChart *chart.Chart, options *RadiusChartOptions) error {
-	values := helmChart.Values
+// parseUserValuesFromCLI parses the --set and --set-file arguments in order (last one wins)
+// and returns a fresh map[string]any containing only the user-supplied overrides. It does
+// NOT mutate any chart values. This map is intended to be passed as the `vals` argument
+// to Helm install/upgrade so that Helm records it as the user-supplied value tree on
+// the release.
+func parseUserValuesFromCLI(options *RadiusChartOptions) (map[string]any, error) {
+	values := map[string]any{}
 
 	// Parse --set arguments in order so that the last one wins.
 	for _, arg := range options.SetArgs {
-		err := strvals.ParseInto(arg, values)
-		if err != nil {
-			return err
+		if err := strvals.ParseInto(arg, values); err != nil {
+			return nil, err
 		}
 	}
 
@@ -92,11 +99,10 @@ func addArgsFromCLI(helmChart *chart.Chart, options *RadiusChartOptions) error {
 			return string(data), err
 		}
 
-		err := strvals.ParseIntoFile(arg, values, reader)
-		if err != nil {
-			return err
+		if err := strvals.ParseIntoFile(arg, values, reader); err != nil {
+			return nil, err
 		}
 	}
 
-	return nil
+	return values, nil
 }

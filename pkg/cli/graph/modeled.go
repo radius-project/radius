@@ -225,8 +225,8 @@ func rewriteSymbolicConnections(properties map[string]any, symbols map[string]sy
 // the classic codegen uses a separate "apiVersion" field; the modeled
 // graph stores only the bare type.
 func stripAPIVersion(t string) string {
-	if i := strings.IndexByte(t, '@'); i >= 0 {
-		return t[:i]
+	if before, _, ok := strings.Cut(t, "@"); ok {
+		return before
 	}
 	return t
 }

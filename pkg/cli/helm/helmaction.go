@@ -24,15 +24,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	containerderrors "github.com/containerd/containerd/remotes/errors"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
-	helm "helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/chart"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/registry"
-	"helm.sh/helm/v3/pkg/release"
-	"helm.sh/helm/v3/pkg/storage/driver"
+	helm "helm.sh/helm/v4/pkg/action"
+	chart "helm.sh/helm/v4/pkg/chart/v2"
+	"helm.sh/helm/v4/pkg/cli"
+	"helm.sh/helm/v4/pkg/registry"
+	releasecommon "helm.sh/helm/v4/pkg/release/common"
+	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"oras.land/oras-go/v2/registry/remote/errcode"
 )
 
 const (
@@ -80,7 +80,8 @@ type HelmAction interface {
 	HelmChartFromContainerRegistry(version string, config *helm.Configuration, repoUrl string, releaseName string) (*chart.Chart, error)
 
 	// ApplyHelmChart checks if a Helm chart is already installed, and if not, installs it or upgrades it if the "Reinstall" option is set.
-	ApplyHelmChart(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions) error
+	// The vals map carries the user-supplied overrides to apply on top of the chart's defaults.
+	ApplyHelmChart(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, vals map[string]any) error
 
 	// QueryRelease checks to see if a release is deployed to a namespace for a given kubecontext.
 	// Returns a bool indicating if the release is deployed, the version of the release, and an error if one occurs.
@@ -108,7 +109,10 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(version string,
 	pullopts := []helm.PullOpt{
 		helm.WithConfig(config),
 		func(p *helm.Pull) {
-			p.Settings = &cli.EnvSettings{}
+			// Helm v4 requires a populated content cache (Settings.ContentCache) to download
+			// charts; an empty EnvSettings leaves it unset and Pull fails with
+			// "content cache must be set". cli.New() initializes the default cache/config paths.
+			p.Settings = cli.New()
 		},
 	}
 
@@ -186,19 +190,22 @@ func (helmAction *HelmActionImpl) HelmChartFromContainerRegistry(version string,
 	return helmAction.LoadChart(chartPath)
 }
 
-func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions) error {
+func (helmAction *HelmActionImpl) ApplyHelmChart(kubeContext string, helmChart *chart.Chart, helmConf *helm.Configuration, options ChartOptions, vals map[string]any) error {
 	chartInstalled, _, err := helmAction.QueryRelease(kubeContext, options.ReleaseName, options.Namespace)
 	if err != nil {
 		return fmt.Errorf("failed to query Helm release, err: %w", err)
 	}
 
 	if !chartInstalled {
-		_, err = helmAction.HelmClient.RunHelmInstall(helmConf, helmChart, options.ReleaseName, options.Namespace, options.Wait)
+		_, err = helmAction.HelmClient.RunHelmInstall(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait)
 		if err != nil {
 			return fmt.Errorf("failed to run Helm install, err: %w", err)
 		}
 	} else if options.Reinstall {
-		_, err = helmAction.HelmClient.RunHelmUpgrade(helmConf, helmChart, options.ReleaseName, options.Namespace, options.Wait)
+		// Reinstall path is used during `rad install kubernetes --reinstall`. Preserve the
+		// previously-stored user values by default (ResetThenReuseValues) so that re-runs
+		// don't silently revert non-default settings.
+		_, err = helmAction.HelmClient.RunHelmUpgrade(helmConf, helmChart, vals, options.ReleaseName, options.Namespace, options.Wait, true)
 		if err != nil {
 			return fmt.Errorf("failed to run Helm upgrade, err: %w", err)
 		}
@@ -258,7 +265,7 @@ func (helmAction *HelmActionImpl) GetPreviousReleaseVersion(kubeContext, release
 	// We iterate from the end (newest) to find the last stable release
 	for i := len(releases) - 1; i >= 0; i-- {
 		rel := releases[i]
-		if rel.Info != nil && (rel.Info.Status == release.StatusDeployed || rel.Info.Status == release.StatusSuperseded) {
+		if rel.Info != nil && (rel.Info.Status == releasecommon.StatusDeployed || rel.Info.Status == releasecommon.StatusSuperseded) {
 			if rel.Chart != nil && rel.Chart.Metadata != nil {
 				version := rel.Chart.Metadata.AppVersion
 
@@ -282,14 +289,10 @@ func initHelmConfig(flags *genericclioptions.ConfigFlags) (*helm.Configuration, 
 		flags.Context = nil
 	}
 
-	builder := strings.Builder{}
 	hc := helm.Configuration{}
 	// helmDriver is "secret" to make the backend storage driver
 	// use kubernetes secrets.
-	err := hc.Init(flags, *flags.Namespace, helmDriverSecret, func(format string, v ...any) {
-		builder.WriteString(fmt.Sprintf(format, v...))
-		builder.WriteRune('\n')
-	})
+	err := hc.Init(flags, *flags.Namespace, helmDriverSecret)
 
 	return &hc, err
 }
@@ -323,10 +326,12 @@ func locateChartFile(dirPath string) (string, error) {
 
 // isHelmGHCR403Error is a helper function to determine if an error is a specific helm error
 // (403 unauthorized when downloading a helm chart from ghcr.io) from a chain of errors.
+// Helm v4 performs OCI registry operations via oras-go, which surfaces HTTP failures as
+// *errcode.ErrorResponse.
 func isHelmGHCR403Error(err error) bool {
-	var errUnexpectedStatus containerderrors.ErrUnexpectedStatus
-	if errors.As(err, &errUnexpectedStatus) {
-		if errUnexpectedStatus.StatusCode == http.StatusForbidden && strings.Contains(errUnexpectedStatus.RequestURL, "ghcr.io") {
+	var respErr *errcode.ErrorResponse
+	if errors.As(err, &respErr) {
+		if respErr.StatusCode == http.StatusForbidden && respErr.URL != nil && strings.Contains(respErr.URL.Host, "ghcr.io") {
 			return true
 		}
 	}
