@@ -719,17 +719,19 @@ code and is deferred.
   is unset, target clients when set, error on an unreadable kubeconfig).
 - **Tier 1 \u2014 functional, every PR, fork-safe (the acceptance gate for v1 Radius
   code):** stand up a **second in-runner cluster** (k3d/KinD) as the external
-  workload cluster alongside the control-plane cluster, write its kubeconfig to a
-  `target-kubeconfig` secret, and mount it + set `RADIUS_TARGET_KUBECONFIG` on
+  workload cluster alongside the control-plane cluster, write its kubeconfig to
+  a `target-kubeconfig` secret, and mount it + set `RADIUS_TARGET_KUBECONFIG` on
   `applications-rp`, `dynamic-rp`, and `bicep-de` via the Helm chart values
-  (`global.targetCluster.enabled`). Deploy three things and assert each lands on
-  the **external** cluster and is **absent** on the control-plane cluster:
-  (a) a Bicep recipe resource (Deployment Engine path), (b) a Terraform recipe
-  resource (resolver path), and (c) a directly-rendered
-  `Applications.Core/containers` (or `Radius.Compute/containers`) resource (the
-  async-worker direct path, Change 5). This exercises the complete
-  injected-kubeconfig contract for all three deployment paths with no cloud
-  dependency, so it runs on every PR (including forks) in
+  (`global.targetCluster.enabled`). Deploy and assert each lands on the
+  **external** cluster and is **absent** on the control-plane cluster:
+  (a) a Bicep recipe resource (Deployment Engine path,
+  `Test_MultiCluster_BicepContainer`), (b) a Terraform recipe resource (resolver
+  path) on both the legacy type (`Test_MultiCluster_TerraformRecipe`) and the new
+  `Radius.Compute/containers` type (`Test_MultiCluster_TerraformContainer`), and
+  (c) a directly-rendered `Applications.Core/containers` resource (the
+  async-worker direct path, Change 5, `Test_MultiCluster_LegacyContainer`). This
+  exercises the complete injected-kubeconfig contract for all deployment paths
+  with no cloud dependency, so it runs on every PR (including forks) in
   `functional-test-noncloud.yaml`.
 - **Tier 2 — real EKS/AKS, gated/scheduled (validates the workflow, deferred):**
   all four `{Bicep, Terraform} × {EKS, AKS}` legs in `functional-test-cloud.yaml`
@@ -743,26 +745,21 @@ code and is deferred.
 - **Regression:** with `RADIUS_TARGET_KUBECONFIG` unset and no external cluster
   configured, deployment is identical to today.
 
-> **Coverage note (pre-existing scope, not a regression).** New-type Terraform
-> recipe behavior *is* exercised, but in the
-> [`resource-types-contrib`](https://github.com/radius-project/resource-types-contrib)
-> repo, not this one: its `validate-resource-types.yaml` workflow runs a
-> `recipe: [bicep, terraform]` matrix on every PR, registers a Terraform recipe
-> pack, and deploys the new `Radius.Compute/containers`,
-> `Radius.Compute/persistentVolumes`, and `Radius.Security/secrets`
-> (`@2025-08-01-preview`) types against a single **k3d** cluster. Within *this*
-> repo's functional suite the new `Radius.*` types are covered by **Bicep**
-> recipes (or direct rendering) only; the Tier 1 multi-cluster Terraform leg
-> (`Test_MultiCluster_TerraformRecipe`) exercises the legacy
-> `Applications.Core/extenders` type, and the new-type leg
-> (`Test_MultiCluster_BicepContainer`) exercises Bicep. So the specific
-> untested intersection is **multi-cluster × new type × Terraform recipe** —
-> `resource-types-contrib` proves the new-type Terraform recipes themselves, but
-> only single-cluster, and this repo proves multi-cluster routing for Terraform
-> only on the legacy type. The deployment-target namespace validation (Change 6)
-> is recipe-kind-agnostic and is covered through the Bicep new-type leg. Closing
-> the intersection is best done once the base `Radius.*` types gain Terraform
-> functional tests in this repo.
+> **New-type Terraform coverage.** The new `Radius.Compute/containers` type is
+> exercised on **both** recipe engines, single- and multi-cluster. The Bicep legs
+> are `Test_Container` (single-cluster) and `Test_MultiCluster_BicepContainer`
+> (multi-cluster). The Terraform legs are `Test_TerraformContainer`
+> (single-cluster) and `Test_MultiCluster_TerraformContainer` (multi-cluster);
+> both register a custom recipe pack whose `Radius.Compute/containers` recipe is
+> a Terraform module served by the in-cluster test module server, mirroring the
+> legacy `Test_MultiCluster_TerraformRecipe` pattern. The single-cluster
+> `Test_TerraformContainer` is the base test the multi-cluster leg mirrors; it
+> also fills a pre-existing gap (this repo previously had no new-type Terraform
+> functional test — only `resource-types-contrib`'s
+> `validate-resource-types.yaml` exercised new-type Terraform recipes, and only
+> single-cluster on k3d). The
+> deployment-target namespace validation (Change 6) is recipe-kind-agnostic and is
+> now covered on both engines.
 
 Testing challenges: Tier 2 needs reachable EKS and AKS clusters and an RBAC
 mapping for the test principal on each. That provisioning is net-new and not

@@ -395,8 +395,9 @@ jobs:
           # retag to the in-cluster name and load that, matching the pod's image
           # reference exactly. The container recipe sets no imagePullPolicy and the
           # tag is not `latest`, so kubelet defaults to IfNotPresent and uses the
-          # preloaded image. This covers both magpie-using legs (Bicep and legacy
-          # container); the Terraform leg's Redis image is public.
+          # preloaded image. This covers every magpie-using leg (Bicep container,
+          # legacy container, and Terraform container); the Terraform Redis leg's
+          # image is public.
           MAGPIE_HOST_IMAGE="${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/magpiego:${REL_VERSION}"
           MAGPIE_CLUSTER_IMAGE="${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/magpiego:${REL_VERSION}"
           docker tag "${MAGPIE_HOST_IMAGE}" "${MAGPIE_CLUSTER_IMAGE}"
