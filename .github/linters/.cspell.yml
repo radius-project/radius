@@ -113,7 +113,7 @@ allowCompoundWords: true
 # Paths that should not be spell-checked: vendored theme/modules, generated
 # Hugo output, dependency folders and the shared dictionary itself.
 # Patterns use the `**/` prefix because cspell resolves ignorePaths relative
-# to the config file location (.github/configs/). Entries that do not exist in
+# to the config file location (.github/linters/). Entries that do not exist in
 # a given repository are simply no-ops, so this superset is safe to share.
 ignorePaths:
   - "**/node_modules/**"
