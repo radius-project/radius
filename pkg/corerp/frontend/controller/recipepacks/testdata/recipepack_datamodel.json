@@ -14,16 +14,16 @@
   "properties": {
     "recipes": {
       "Applications.Core/extenders": {
-        "recipeKind": "bicep",
-        "recipeLocation": "ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"
+        "kind": "bicep",
+        "source": "ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"
       },
       "Radius.Resources/postgreSQL": {
-        "recipeKind": "bicep",
-        "recipeLocation": "ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"
+        "kind": "bicep",
+        "source": "ghcr.io/radius-project/recipes/local-dev/extender-postgresql:0.50.0"
       },
       "Applications.Datastores/redisCaches": {
-        "recipeKind": "bicep",
-        "recipeLocation": "https://github.com/example/recipes/redis-cache.bicep",
+        "kind": "bicep",
+        "source": "https://github.com/example/recipes/redis-cache.bicep",
         "parameters": {
           "tier": "basic"
         }
