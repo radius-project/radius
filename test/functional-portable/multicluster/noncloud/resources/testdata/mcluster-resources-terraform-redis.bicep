@@ -1,0 +1,62 @@
+extension radius
+
+@description('The URL of the server hosting test Terraform modules.')
+param moduleServer string
+
+@description('Name of the Redis Cache resource.')
+param redisCacheName string
+
+@description('Name of the Radius Application.')
+param appName string
+
+@description('Name of the Radius Environment.')
+param envName string = 'mcluster-resources-terraform-redis-env'
+
+@description('Name of the extender resource.')
+param resourceName string = 'mcluster-resources-terraform-redis'
+
+resource env 'Applications.Core/environments@2023-10-01-preview' = {
+  name: envName
+  properties: {
+    compute: {
+      kind: 'kubernetes'
+      resourceId: 'self'
+      namespace: envName
+    }
+    recipes: {
+      'Applications.Core/extenders': {
+        default: {
+          templateKind: 'terraform'
+          templatePath: '${moduleServer}/kubernetes-redis.zip//modules'
+        }
+      }
+    }
+  }
+}
+
+resource app 'Applications.Core/applications@2023-10-01-preview' = {
+  name: appName
+  properties: {
+    environment: env.id
+    extensions: [
+      {
+        kind: 'kubernetesNamespace'
+        namespace: appName
+      }
+    ]
+  }
+}
+
+resource webapp 'Applications.Core/extenders@2023-10-01-preview' = {
+  name: resourceName
+  properties: {
+    application: app.id
+    environment: env.id
+    recipe: {
+      name: 'default'
+      parameters: {
+        redis_cache_name: redisCacheName
+      }
+    }
+  }
+}
