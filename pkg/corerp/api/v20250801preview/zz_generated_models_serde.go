@@ -998,6 +998,7 @@ func (p *ProvidersKubernetes) UnmarshalJSON(data []byte) error {
 func (r RecipeDefinition) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "kind", r.Kind)
+	populate(objectMap, "outputs", r.Outputs)
 	populate(objectMap, "parameters", r.Parameters)
 	populate(objectMap, "plainHttp", r.PlainHTTP)
 	populate(objectMap, "source", r.Source)
@@ -1015,6 +1016,9 @@ func (r *RecipeDefinition) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "kind":
 			err = unpopulate(val, "Kind", &r.Kind)
+			delete(rawMsg, key)
+		case "outputs":
+			err = unpopulate(val, "Outputs", &r.Outputs)
 			delete(rawMsg, key)
 		case "parameters":
 			err = unpopulate(val, "Parameters", &r.Parameters)

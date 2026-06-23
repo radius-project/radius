@@ -32,10 +32,12 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
+	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
@@ -374,9 +376,47 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		if err = tfConfig.AddRecipeContext(ctx, options.EnvRecipe.Name, recipectx); err != nil {
 			return "", err
 		}
+	} else {
+		// Direct module path: the module does not declare a recipe context variable, so instead of
+		// injecting context we resolve {{context.*}} expressions embedded in the recipe parameters.
+		logger.Info("Direct module detected, resolving parameter expressions")
+
+		recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
+		if err != nil {
+			return "", err
+		}
+
+		if options.ResourceRecipe != nil {
+			recipectx.Resource.Connections = options.ResourceRecipe.ConnectedResourcesProperties
+		}
+
+		// Merge environment-level and resource-level parameters (resource parameters take precedence),
+		// then resolve any {{context.*}} expressions against the recipe context.
+		var resourceParams map[string]any
+		if options.ResourceRecipe != nil {
+			resourceParams = options.ResourceRecipe.Parameters
+		}
+		mergedParams := recipes_util.ShallowMergeParameters(options.EnvRecipe.Parameters, resourceParams)
+		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipectx)
+		if resolvedParams != nil {
+			tfConfig.Module[options.EnvRecipe.Name].SetParams(config.RecipeParams(resolvedParams))
+		}
 	}
 	if loadedModule.ResultOutputExists {
 		if err = tfConfig.AddOutputs(options.EnvRecipe.Name); err != nil {
+			return "", err
+		}
+	} else if len(options.EnvRecipe.Outputs) > 0 {
+		// Direct module with an outputs mapping: generate an output block for each referenced
+		// module output so the values are available in the Terraform state for output mapping.
+		if err = tfConfig.AddMappedOutputs(options.EnvRecipe.Name, options.EnvRecipe.Outputs, loadedModule.OutputSensitivity); err != nil {
+			return "", err
+		}
+	} else {
+		// Direct module without a mapping: re-export every module output so they are present in
+		// the Terraform state and pass through unchanged (mirrors prepareRecipeResponse). Terraform
+		// does not expose child module outputs as root outputs unless they are re-declared here.
+		if err = tfConfig.AddAllOutputs(options.EnvRecipe.Name, loadedModule.OutputSensitivity); err != nil {
 			return "", err
 		}
 	}

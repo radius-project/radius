@@ -296,3 +296,74 @@ func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
 
 	return nil
 }
+
+// AddMappedOutputs generates an output block for each module output referenced by the outputs
+// mapping. This is used for direct modules that do not produce a wrapped "result" output but
+// declare individual outputs that should be mapped to resource properties.
+//
+// Each generated output is marked sensitive according to the module's own output declaration
+// (sensitivity), because Terraform requires a re-exported sensitive value to be marked sensitive.
+// Preserving the per-output sensitivity keeps the Values/Secrets split intact when the state is read back.
+// This function only updates config in memory, Save() must be called to persist the updated config.
+func (cfg *TerraformConfig) AddMappedOutputs(localModuleName string, outputsMap map[string]string, sensitivity map[string]bool) error {
+	if localModuleName == "" {
+		return errors.New("module name cannot be empty")
+	}
+	if len(outputsMap) == 0 {
+		return nil
+	}
+
+	// Validate before mutating cfg.Output so a bad mapping does not leave behind partial output
+	// blocks. An empty module output name would otherwise generate an invalid Terraform output keyed
+	// by "" with a malformed "${module.<name>.}" reference.
+	for propertyName, moduleOutputName := range outputsMap {
+		if moduleOutputName == "" {
+			return fmt.Errorf("invalid outputs mapping: module output name for property %q cannot be empty", propertyName)
+		}
+	}
+
+	if cfg.Output == nil {
+		cfg.Output = make(map[string]any, len(outputsMap))
+	}
+	// Multiple resource properties may map to the same module output; keying the generated
+	// output block by the module output name naturally de-duplicates those references.
+	for _, moduleOutputName := range outputsMap {
+		cfg.Output[moduleOutputName] = map[string]any{
+			"value":     "${module." + localModuleName + "." + moduleOutputName + "}",
+			"sensitive": sensitivity[moduleOutputName],
+		}
+	}
+
+	return nil
+}
+
+// AddAllOutputs generates an output block for every module output. This is used for direct
+// modules that neither produce a wrapped "result" output nor declare an outputs mapping, so
+// that all module outputs are re-exported as root outputs and pass through unchanged. Terraform
+// does not expose child module outputs as root outputs unless they are explicitly re-declared,
+// so without this the passthrough behavior in prepareRecipeResponse would have no outputs to read.
+//
+// Each generated output is marked sensitive according to the module's own output declaration,
+// because Terraform requires a re-exported sensitive value to be marked sensitive. The sensitivity
+// map is keyed by module output name and contains every output the module declares.
+// This function only updates config in memory, Save() must be called to persist the updated config.
+func (cfg *TerraformConfig) AddAllOutputs(localModuleName string, sensitivity map[string]bool) error {
+	if localModuleName == "" {
+		return errors.New("module name cannot be empty")
+	}
+	if len(sensitivity) == 0 {
+		return nil
+	}
+
+	if cfg.Output == nil {
+		cfg.Output = make(map[string]any, len(sensitivity))
+	}
+	for outputName, sensitive := range sensitivity {
+		cfg.Output[outputName] = map[string]any{
+			"value":     "${module." + localModuleName + "." + outputName + "}",
+			"sensitive": sensitive,
+		}
+	}
+
+	return nil
+}
