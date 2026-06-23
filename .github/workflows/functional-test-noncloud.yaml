@@ -41,6 +41,11 @@ on:
       - main
       - features/*
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected.
+  merge_group:
+    branches:
+      - main
 
 permissions: {}
 
@@ -196,16 +201,19 @@ jobs:
             echo "CHECKOUT_REF=refs/heads/main"
           } >> "${GITHUB_ENV}"
 
-      - name: Set up checkout target (pull_request)
-        if: github.event_name == 'pull_request'
+      - name: Set up checkout target (pull_request or merge_group)
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           {
             echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
             echo "CHECKOUT_REF=${GITHUB_REF}"
-            echo "PR_NUMBER=${PR_NUMBER}"
           } >> "${GITHUB_ENV}"
+          # There is no pull request associated with a merge_group event.
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            echo "PR_NUMBER=${PR_NUMBER}" >> "${GITHUB_ENV}"
+          fi
 
       - name: Set up checkout target (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'

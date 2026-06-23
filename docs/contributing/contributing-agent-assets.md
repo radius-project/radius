@@ -89,7 +89,7 @@ These deterministic checks run on every PR. Some are enforced today; the remaind
 - Markdown link check passes over `AGENTS.md`, [CONTRIBUTING.md](../../CONTRIBUTING.md), `docs/contributing/`, and [docs/architecture/](../architecture/).
 - [docs/architecture/README.md](../architecture/README.md) lists every `*.md` sibling.
 - `docs/contributing/README.md` capability index: every row links to exactly one primary backing doc and every linked path resolves (the index itself is added in Phase 3 of the plan).
-- Spellcheck (`cspell`) passes (see [.github/configs/.cspell.yml](../../.github/configs/.cspell.yml)).
+- Spellcheck (`cspell`) passes (see [.github/linters/.cspell.yml](../../.github/linters/.cspell.yml)).
 
 Docs drift is **not** a blocking gate. It is handled as advisory guidance by the docs-drift code-review instructions and by a scheduled weekly drift workflow.
 
