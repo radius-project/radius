@@ -24,4 +24,4 @@ spellcheck: ## Runs spellcheck on the repository.
 		echo "cspell is required for spellcheck. Install it with 'npm install -g cspell', then try again."; \
 		exit 1; \
 	}
-	@cspell lint --config ./.github/configs/.cspell.yml --no-progress --dot "**/*.md"
+	@cspell lint --config ./.github/linters/.cspell.yml --no-progress --dot "**/*.md"
