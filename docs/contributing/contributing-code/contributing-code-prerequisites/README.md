@@ -157,9 +157,7 @@ Radius includes integration with [Dapr](https://docs.dapr.io/). To use work on t
 
 #### Test summaries
 
-The default `go test` output can be hard to read when you have many tests. We recommend `gotestsum` as a tool to solve this. Our `make test` command will automatically use `gotestsum` if it is available.
-
-- [gotestsum](https://github.com/gotestyourself/gotestsum#install)
+The default `go test` output can be hard to read when you have many tests. Our `make test` command uses [`gotestsum`](https://github.com/gotestyourself/gotestsum) for nicer formatted output and JUnit XML reports. `gotestsum` is managed as a Go tool dependency (the `tool` directive in `go.mod`) and is invoked via `go tool gotestsum`, so no separate installation is needed.
 
 ## Testing required tools
 
@@ -181,11 +179,9 @@ Enter the following commands to install all of the required tools.
 
 ```bash
 pnpm -C typespec install
-go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
-go install go.uber.org/mock/mockgen@v0.4.0
 ```
 
-> **Note:** `autorest` and `oav` are installed as devDependencies in `typespec/package.json` and are invoked via `pnpm -C typespec exec`. No global installation is needed.
+> **Note:** `mockgen` and `controller-gen` are managed as Go tool dependencies (the `tool` directives in `go.mod`) and are invoked via `go tool mockgen` and `go tool controller-gen`, so they do not require a separate `go install`. `autorest` and `oav` are installed as devDependencies in `typespec/package.json` and are invoked via `pnpm -C typespec exec`. No global installation is needed.
 
 ## Updating the dev container lockfile
 

@@ -31,7 +31,7 @@ import (
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 func resolveDependencies(ctx context.Context, radius RadiusClient, scope string, environmentName string, applicationName string) (resourceGroupID string, environmentID string, applicationID string, err error) {

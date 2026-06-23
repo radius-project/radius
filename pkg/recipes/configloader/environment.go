@@ -40,7 +40,7 @@ var (
 	ErrBadEnvID               = errors.New("could not parse environment ID")
 )
 
-//go:generate mockgen -typed -destination=./mock_config_loader.go -package=configloader -self_package github.com/radius-project/radius/pkg/recipes/configloader github.com/radius-project/radius/pkg/recipes/configloader ConfigurationLoader
+//go:generate go tool mockgen -typed -destination=./mock_config_loader.go -package=configloader -self_package github.com/radius-project/radius/pkg/recipes/configloader github.com/radius-project/radius/pkg/recipes/configloader ConfigurationLoader
 
 var _ ConfigurationLoader = (*environmentLoader)(nil)
 
@@ -365,10 +365,10 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 		// We will remove this field from EnvironmentDefinition once we deprecate Applications.Core.
 		definition := &recipes.EnvironmentDefinition{
 			Name:         "default",
-			Driver:       recipeDefinition.RecipeKind,
+			Driver:       recipeDefinition.Kind,
 			ResourceType: resource.Type(),
 			Parameters:   parameters,
-			TemplatePath: recipeDefinition.RecipeLocation,
+			TemplatePath: recipeDefinition.Source,
 			PlainHTTP:    recipeDefinition.PlainHTTP,
 		}
 		return definition, nil
@@ -398,15 +398,25 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 		// Convert recipes map
 		for recipePackResourceType, definition := range recipePackResource.Properties.Recipes {
 			if strings.EqualFold(recipePackResourceType, resourceType) {
+				if definition == nil {
+					return nil, fmt.Errorf("recipe for resource type %q in recipe pack %q is missing its definition", resourceType, recipePackID)
+				}
+				if definition.Kind == nil {
+					return nil, fmt.Errorf("recipe for resource type %q in recipe pack %q is missing the required \"kind\" field", resourceType, recipePackID)
+				}
+				if definition.Source == nil {
+					return nil, fmt.Errorf("recipe for resource type %q in recipe pack %q is missing the required \"source\" field", resourceType, recipePackID)
+				}
+
 				var plainHTTP bool
 				if definition.PlainHTTP != nil {
 					plainHTTP = *definition.PlainHTTP
 				}
 				return &recipes.RecipeDefinition{
-					RecipeKind:     string(*definition.RecipeKind),
-					RecipeLocation: string(*definition.RecipeLocation),
-					Parameters:     definition.Parameters,
-					PlainHTTP:      plainHTTP,
+					Kind:       string(*definition.Kind),
+					Source:     string(*definition.Source),
+					Parameters: definition.Parameters,
+					PlainHTTP:  plainHTTP,
 				}, nil
 			}
 		}

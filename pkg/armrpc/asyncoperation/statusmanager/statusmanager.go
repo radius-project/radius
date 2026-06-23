@@ -49,7 +49,7 @@ type QueueOperationOptions struct {
 	RetryAfter time.Duration
 }
 
-//go:generate mockgen -typed -destination=./mock_statusmanager.go -package=statusmanager -self_package github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager StatusManager
+//go:generate go tool mockgen -typed -destination=./mock_statusmanager.go -package=statusmanager -self_package github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager StatusManager
 
 // StatusManager is an interface to manage async operation status.
 type StatusManager interface {

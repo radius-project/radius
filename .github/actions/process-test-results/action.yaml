@@ -4,9 +4,9 @@ name: Process Test Results
 description: |
   Processes a batch of test results including creating a github artifact and annotating the Pull Request (if applicable).
 
-  This requires using 'gotestum' to run tests, which our makefile can do automatically. Install 'gotestsum' using:
-
-    go install gotest.tools/gotestsum@v1.10.0
+  This requires using 'gotestsum' to run tests, which our makefile does automatically. 'gotestsum' is
+  managed as a Go tool dependency (the 'tool' directive in go.mod) and is invoked via 'go tool gotestsum',
+  so no separate install is needed.
 
   You will also need to set the path for the results file using an environment variable. This would output the jUnit
   test results format which is what we require.
@@ -71,7 +71,7 @@ runs:
         done
 
     - name: Create ${{ inputs.test_group_name }} Result Report
-      uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040 # v2.23.0
+      uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
       if: always()
       with:
         check_name: ${{ inputs.test_group_name }}

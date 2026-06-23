@@ -32,6 +32,11 @@ on:
       - main
       - features/*
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected.
+  merge_group:
+    branches:
+      - main
 
 permissions: {}
 
@@ -41,9 +46,6 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUMVERSION: 1.13.0
-
   # GitHub Actor for pushing images to GHCR
   GHCR_ACTOR: rad-ci-bot
 
@@ -329,7 +331,7 @@ jobs:
       - name: Install helm
         uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
-          version: v3.19.4
+          version: v4.2.2
 
       - name: Setup Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0

@@ -19,13 +19,15 @@ package preflight
 import (
 	"context"
 	"fmt"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"maps"
 
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/helm"
-	"helm.sh/helm/v3/pkg/strvals"
+	"helm.sh/helm/v4/pkg/strvals"
 )
 
 const (
@@ -196,7 +198,15 @@ func (c *CustomConfigValidationCheck) validateAgainstChart() []string {
 	}
 
 	for _, param := range c.setFileParams {
-		if err := strvals.ParseIntoFile(param, testValues, reader); err != nil {
+		// On Windows, --set-file paths contain backslashes, which strvals interprets as
+		// escape characters and strips, corrupting the path. Normalize to forward slashes
+		// (mirrors parseUserValuesFromCLI in pkg/cli/helm/radius.go) so the path survives parsing.
+		parseParam := param
+		if runtime.GOOS == "windows" {
+			parseParam = filepath.ToSlash(param)
+		}
+
+		if err := strvals.ParseIntoFile(parseParam, testValues, reader); err != nil {
 			issues = append(issues, fmt.Sprintf("--set-file parameter '%s' failed chart validation: %v", param, err))
 		}
 	}

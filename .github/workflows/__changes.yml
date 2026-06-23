@@ -20,11 +20,13 @@ on:
           test/**/*.md
           test/*.md
           *.md
+          .cspellignore
           versions.yaml
           !docs/release-notes/v*.md
           .codecov.yml
           .devcontainer/**
           .github/configs/**
+          .github/linters/**
           .github/dependabot.yml
           .github/ISSUE_TEMPLATE/**
           .github/release.yml

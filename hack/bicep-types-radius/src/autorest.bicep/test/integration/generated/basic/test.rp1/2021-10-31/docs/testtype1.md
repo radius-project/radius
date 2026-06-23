@@ -5,10 +5,12 @@
 | Property | Type | Description |
 |----------|------|-------------|
 | **apiVersion** | '2021-10-31' | The resource api version <br />_(ReadOnly, DeployTimeConstant)_ |
+| **basicString** | string | Description for a basic string property. <br />_(ReadOnly)_ |
 | **id** | string | The resource id <br />_(ReadOnly, DeployTimeConstant)_ |
 | **location** | string | The geo-location where the resource lives |
 | **name** | string | The resource name <br />_(Required, DeployTimeConstant, Identifier)_ |
 | **properties** | [TestType1Properties](#testtype1properties) |  |
+| **stringEnum** | 'Bar' | 'Foo' | Description for a basic enum property. <br />_(ReadOnly)_ |
 | **systemData** | [SystemData](#systemdata) | Metadata pertaining to creation and last modification of the resource. <br />_(ReadOnly)_ |
 | **tags** | [TrackedResourceTags](#trackedresourcetags) | Resource tags. |
 | **type** | 'Test.Rp1/testType1' | The resource type <br />_(ReadOnly, DeployTimeConstant)_ |

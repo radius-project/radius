@@ -24,7 +24,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/acarl005/stripansi"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/aws"
@@ -213,7 +213,7 @@ func Execute() error {
 		// Remove any ANSI escape sequences from the error text. We may be displaying untrusted
 		// data in an error message for an "unhandled" error. This will prevent the error text
 		// from potentially corrupting the terminal.
-		errText = stripansi.Strip(errText)
+		errText = ansi.Strip(errText)
 
 		fmt.Println("Error:", errText)
 		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
@@ -518,8 +518,10 @@ func getRootSpanName() string {
 }
 
 // wirePreviewSubcommand adds a --preview flag and routes RunE to the preview command when set.
+// The preview behavior can also be activated by setting the RADIUS_PREVIEW environment variable to "true" (case-insensitive).
+// The --preview flag takes precedence over the environment variable.
 func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
-	cmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation")
+	cmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation (can also be set via RADIUS_PREVIEW=true)")
 
 	legacyRun := cmd.RunE
 	previewRun := previewCmd.RunE
@@ -528,6 +530,9 @@ func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
 		usePreview, err := c.Flags().GetBool("preview")
 		if err != nil {
 			return err
+		}
+		if !c.Flags().Changed("preview") {
+			usePreview = strings.EqualFold(os.Getenv("RADIUS_PREVIEW"), "true")
 		}
 		if usePreview {
 			return previewRun(c, args)

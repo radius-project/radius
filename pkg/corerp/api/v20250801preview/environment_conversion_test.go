@@ -38,9 +38,11 @@ func TestEnvironmentConvertVersionedToDataModel(t *testing.T) {
 			RecipePacks: []*string{
 				new("/planes/radius/local/providers/Radius.Core/recipePacks/azure-aci-pack"),
 			},
-			RecipeParameters: map[string]map[string]any{
+			RecipeParameters: map[string]*RecipeParameterValue{
 				"Radius.Compute/containers": {
-					"allowPlatformOptions": false,
+					AdditionalProperties: map[string]any{
+						"allowPlatformOptions": false,
+					},
 				},
 			},
 			Providers: &Providers{
@@ -131,5 +133,5 @@ func TestEnvironmentConvertDataModelToVersioned(t *testing.T) {
 	require.Len(t, versionedResource.Properties.RecipeParameters, 1)
 	containerParams, ok := versionedResource.Properties.RecipeParameters["Radius.Compute/containers"]
 	require.True(t, ok)
-	require.Equal(t, true, containerParams["allowPlatformOptions"])
+	require.Equal(t, true, containerParams.AdditionalProperties["allowPlatformOptions"])
 }

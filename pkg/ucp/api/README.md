@@ -4,30 +4,33 @@ This directory includes API version specific models from open api specs. The mod
 
 ## Generate new models
 
+The versioned models in this directory are generated from the TypeSpec definitions in the
+[`typespec`](../../../typespec/) directory using the [TypeSpec Go emitter](https://github.com/Azure/typespec-azure)
+(`@azure-tools/typespec-go`). AutoRest is no longer used to generate these models (see
+[radius-project/radius#11425](https://github.com/radius-project/radius/issues/11425)).
+
 ### Prerequisites
 
 1. Install [NodeJS](https://nodejs.org/)
-2. Install [AutoRest](http://aka.ms/autorest)
-
-    ```shell
-    npm install -g autorest@3.7.2
-    ```
 
 ### Add new api-version
 
-1. Add api version tags and openapi file below in this README.md
-2. Run autorest.
+1. Create or update the applicable TypeSpec files under the matching project in the [`typespec`](../../../typespec/) directory.
+2. Generate the models and client by running:
 
-    ```shell
-    autorest README.md --tag=ucp-2023-10-01-preview
+    ```bash
+    make generate-rad-ucp-client
     ```
 
+    (or `make generate` to regenerate every namespace).
 3. Create or modify the corresponding datamodels in [datamodel](../datamodel/)
 4. Add the converter between versioned model and datamodel in [converter](../datamodel/converter/)
 
 ---
 
 ## Configuration
+
+> **Note:** The AutoRest configuration below is retained for historical reference only and no longer drives code generation.
 
 The following are the settings for this using this API with AutoRest.
 
