@@ -29,7 +29,7 @@
     "makefile.configureOnOpen": false,
     "typespec.tsp-server.path": "${workspaceFolder}/typespec/node_modules/@typespec/compiler",
     "cSpell.import": [
-        "./.github/linters/.cspell.yml"
+        "./.github/configs/.cspell.yml"
     ],
     "chat.promptFilesRecommendations": {
         "speckit.constitution": true,
