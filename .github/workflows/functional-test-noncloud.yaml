@@ -342,6 +342,51 @@ jobs:
           registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
           registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
 
+      - name: Set up external target cluster (multi-cluster)
+        if: matrix.name == 'multicluster-noncloud'
+        run: |
+          set -euo pipefail
+
+          # Create a second in-runner KinD cluster to act as the external workload
+          # cluster. The Radius control plane stays on the first ("kind") cluster;
+          # application resources must land on this "external" cluster. This runs
+          # before "Install Radius" so the control plane can be installed with the
+          # target-cluster mount enabled (avoiding a post-install helm upgrade,
+          # which conflicts with the field manager rad install uses).
+          ./kind create cluster --name external
+
+          # Two kubeconfigs are derived from the same external cluster:
+          # 1. An "internal" kubeconfig whose API server address is the cluster's
+          #    docker-network hostname, reachable from pods running inside the
+          #    control-plane cluster (both clusters share the "kind" docker network).
+          #    This is what the Radius pods consume via RADIUS_TARGET_KUBECONFIG.
+          # 2. A "host" kubeconfig (127.0.0.1:<port>) reachable from the runner, used
+          #    by the test process to assert resources landed on the external cluster.
+          mkdir -p "${RUNNER_TEMP}/external-cluster"
+          INTERNAL_KUBECONFIG="${RUNNER_TEMP}/external-cluster/internal.kubeconfig"
+          HOST_KUBECONFIG="${RUNNER_TEMP}/external-cluster/host.kubeconfig"
+          ./kind get kubeconfig --name external --internal > "${INTERNAL_KUBECONFIG}"
+          ./kind get kubeconfig --name external > "${HOST_KUBECONFIG}"
+
+          # Restore kubectl context to the control-plane cluster; `kind create`
+          # switched it to the external cluster.
+          kubectl config use-context kind-kind
+
+          # Pre-create the radius-system namespace and the target-kubeconfig secret
+          # so the secret exists before the Radius pods start (the deployments mount
+          # it when global.targetCluster.enabled=true).
+          kubectl create namespace radius-system --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic target-kubeconfig \
+            --namespace radius-system \
+            --from-file=kubeconfig="${INTERNAL_KUBECONFIG}"
+
+          # Tell the Install Radius step to enable the target-cluster mount, and
+          # expose the host kubeconfig path to the test process.
+          {
+            echo "TARGET_CLUSTER_INSTALL_ARGS=--set global.targetCluster.enabled=true"
+            echo "RADIUS_TEST_EXTERNAL_KUBECONFIG=${HOST_KUBECONFIG}"
+          } >> "${GITHUB_ENV}"
+
       - name: Install Radius
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -374,6 +419,11 @@ jobs:
           if [ "${USE_CERT_FILE}" = "true" ]; then
             RAD_COMMAND="$RAD_COMMAND --set-file global.rootCA.cert=$TEMP_CERT_DIR/certs/${LOCAL_REGISTRY_SERVER}/client.crt"
           fi
+
+          # For the multi-cluster leg, enable the external target-cluster mount at
+          # install time (set by the "Set up external target cluster" step). Empty
+          # for all other legs.
+          RAD_COMMAND="$RAD_COMMAND ${TARGET_CLUSTER_INSTALL_ARGS:-}"
 
           echo "*** Installing Radius to Kubernetes ***"
           eval $RAD_COMMAND
@@ -434,52 +484,6 @@ jobs:
         env:
           USE_CERT_FILE: "true"
           TEMP_CERT_DIR: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
-
-      - name: Set up external target cluster (multi-cluster)
-        if: matrix.name == 'multicluster-noncloud'
-        run: |
-          set -euo pipefail
-          export PATH=$GITHUB_WORKSPACE/bin:$PATH
-
-          # Create a second in-runner KinD cluster to act as the external workload
-          # cluster. The Radius control plane stays on the first ("kind") cluster;
-          # application resources must land on this "external" cluster.
-          ./kind create cluster --name external
-
-          # Two kubeconfigs are needed for the same external cluster:
-          # 1. An "internal" kubeconfig whose API server address is the cluster's
-          #    docker-network hostname, reachable from pods running inside the
-          #    control-plane cluster (both clusters share the "kind" docker network).
-          #    This is what the Radius pods consume via RADIUS_TARGET_KUBECONFIG.
-          # 2. A "host" kubeconfig (127.0.0.1:<port>) reachable from the runner, used
-          #    by the test process to assert resources landed on the external cluster.
-          mkdir -p "${RUNNER_TEMP}/external-cluster"
-          INTERNAL_KUBECONFIG="${RUNNER_TEMP}/external-cluster/internal.kubeconfig"
-          HOST_KUBECONFIG="${RUNNER_TEMP}/external-cluster/host.kubeconfig"
-          ./kind get kubeconfig --name external --internal > "${INTERNAL_KUBECONFIG}"
-          ./kind get kubeconfig --name external > "${HOST_KUBECONFIG}"
-
-          # Restore kubectl context to the control-plane cluster; `kind create`
-          # switched it to the external cluster.
-          kubectl config use-context kind-kind
-
-          # Mount the internal kubeconfig into the recipe/deploy pods as a Secret.
-          kubectl create secret generic target-kubeconfig \
-            --namespace radius-system \
-            --from-file=kubeconfig="${INTERNAL_KUBECONFIG}"
-
-          # Enable the target-cluster mount on applications-rp, dynamic-rp, and
-          # bicep-de so they deploy application resources to the external cluster.
-          helm upgrade radius "${RADIUS_CHART_LOCATION}" \
-            --namespace radius-system \
-            --reuse-values \
-            --set global.targetCluster.enabled=true
-          kubectl rollout status deployment/applications-rp -n radius-system --timeout=300s
-          kubectl rollout status deployment/dynamic-rp -n radius-system --timeout=300s
-          kubectl rollout status deployment/bicep-de -n radius-system --timeout=300s
-
-          # Expose the host kubeconfig path to the test process.
-          echo "RADIUS_TEST_EXTERNAL_KUBECONFIG=${HOST_KUBECONFIG}" >> "${GITHUB_ENV}"
 
       - name: Install Flux CLI and Source Controller
         if: matrix.name == 'kubernetes-noncloud'
