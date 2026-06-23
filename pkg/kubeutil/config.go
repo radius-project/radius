@@ -195,3 +195,30 @@ func DeploymentTargetRuntimeClient(controlPlane runtimeclient.Client) (runtimecl
 
 	return NewRuntimeClient(targetConfig)
 }
+
+// TargetClusterDefaultNamespace returns the namespace that application resources
+// should default to on the deployment-target cluster when the environment does
+// not specify one. When RADIUS_TARGET_KUBECONFIG is set, it is the namespace
+// pinned by that kubeconfig's current context (an operator may scope the target
+// credential to a namespace); otherwise, or when the context pins no namespace or
+// the kubeconfig cannot be read, it falls back to "default", which exists on every
+// Kubernetes cluster.
+func TargetClusterDefaultNamespace() string {
+	const fallback = "default"
+
+	targetKubeconfigPath := os.Getenv(TargetKubeconfigEnvVar)
+	if targetKubeconfigPath == "" {
+		return fallback
+	}
+
+	cfg, err := LoadConfigFile(targetKubeconfigPath)
+	if err != nil {
+		return fallback
+	}
+
+	if kubeContext, ok := cfg.Contexts[cfg.CurrentContext]; ok && kubeContext != nil && kubeContext.Namespace != "" {
+		return kubeContext.Namespace
+	}
+
+	return fallback
+}

@@ -32,6 +32,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
+	k8sclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -59,6 +61,12 @@ const (
 	APIVersion             = "2023-10-01-preview"
 	TestNamespace          = "kind-radius"
 	AWSDeletionRetryLimit  = 5
+
+	// externalKubeconfigEnvVar points at the kubeconfig of the external (workload)
+	// cluster in multi-cluster runs. It mirrors the RADIUS_TARGET_KUBECONFIG
+	// contract Radius honors, but is consumed by the test harness to provision the
+	// application namespace on, and assert resources land on, the external cluster.
+	externalKubeconfigEnvVar = "RADIUS_TEST_EXTERNAL_KUBECONFIG"
 
 	// Used to check required features
 	daprComponentCRD         = "components.dapr.io"
@@ -313,7 +321,12 @@ func K8sSecretResource(namespace, name, secretType string, kv ...any) unstructur
 // CreateInitialResources creates a namespace and creates initial resources from the InitialResources field of the
 // RPTest struct. It returns an error if either of these operations fail.
 func (ct RPTest) CreateInitialResources(ctx context.Context) error {
-	if err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name); err != nil {
+	nsClient, err := ct.deploymentTargetK8sClient()
+	if err != nil {
+		return fmt.Errorf("failed to build deployment-target Kubernetes client: %w", err)
+	}
+
+	if err := kubernetes.EnsureNamespace(ctx, nsClient, ct.Name); err != nil {
 		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
 	}
 
@@ -327,6 +340,28 @@ func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// deploymentTargetK8sClient returns the Kubernetes client for the cluster that an
+// application's resources deploy to. In multi-cluster runs the test sets
+// RADIUS_TEST_EXTERNAL_KUBECONFIG to the external (workload) cluster's kubeconfig;
+// this mirrors the RADIUS_TARGET_KUBECONFIG contract Radius itself honors, so the
+// harness provisions the application namespace on the same cluster Radius deploys
+// to and the control-plane cluster is not populated with per-application
+// namespaces. When the variable is unset (single-cluster runs) the control-plane
+// client is returned unchanged.
+func (ct RPTest) deploymentTargetK8sClient() (k8sclient.Interface, error) {
+	kubeconfigPath := os.Getenv(externalKubeconfigEnvVar)
+	if kubeconfigPath == "" {
+		return ct.Options.K8sClient, nil
+	}
+
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load external kubeconfig from %s=%q: %w", externalKubeconfigEnvVar, kubeconfigPath, err)
+	}
+
+	return k8sclient.NewForConfig(config)
 }
 
 // Method CleanUpExtensionResources deletes all resources in the given slice of unstructured objects.
