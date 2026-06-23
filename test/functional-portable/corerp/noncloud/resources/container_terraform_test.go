@@ -47,14 +47,6 @@ func Test_TerraformContainer(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "corerp-resources-container-tf-pack",
-						Type: "radius.core/recipepacks",
-					},
-					{
-						Name: "corerp-resources-container-tf-env",
-						Type: validation.CoreEnvironmentsResource,
-					},
-					{
 						Name: name,
 						Type: validation.CoreApplicationsResource,
 					},

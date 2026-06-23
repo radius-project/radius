@@ -58,14 +58,6 @@ func Test_MultiCluster_TerraformContainer(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "mcluster-resources-container-tf-pack",
-						Type: "radius.core/recipepacks",
-					},
-					{
-						Name: "mcluster-resources-container-tf-env",
-						Type: validation.CoreEnvironmentsResource,
-					},
-					{
 						Name: name,
 						Type: validation.CoreApplicationsResource,
 					},
