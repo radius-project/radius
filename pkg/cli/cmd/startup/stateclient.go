@@ -19,9 +19,28 @@ package startup
 import (
 	"context"
 
+	"github.com/radius-project/radius/pkg/cli/controlplane"
 	"github.com/radius-project/radius/pkg/cli/pgbackup"
 	"github.com/radius-project/radius/pkg/cli/tfstate"
 )
+
+// ControlPlaneScaler scales the database-backed control-plane deployments to zero and back, so
+// state can be restored while no resource provider holds a live PostgreSQL connection.
+type ControlPlaneScaler interface {
+	// ScaleDown scales the control-plane deployments to zero and returns their previous replica
+	// counts so they can be restored by ScaleUp.
+	ScaleDown(ctx context.Context) (map[string]int32, error)
+
+	// ScaleUp restores the deployments to the replica counts captured by ScaleDown and waits until
+	// they are available again.
+	ScaleUp(ctx context.Context, saved map[string]int32) error
+}
+
+// newScalerForContext is the production factory for a ControlPlaneScaler. It is a package variable
+// so tests can replace it without a cluster.
+var newScalerForContext = func(kubeContext, namespace string) (ControlPlaneScaler, error) {
+	return controlplane.NewScalerForContext(kubeContext, namespace)
+}
 
 // StateRestoreClient restores the durable Radius state for a Kubernetes context. It wraps the
 // pgbackup and tfstate packages so the command can be unit tested without a cluster.

@@ -173,6 +173,33 @@ work beyond v1 scope.
 * *(Future work)* A checksum manifest accompanying the dumps so a corrupt restore **fails closed**
   rather than silently starting from an empty state. This is not implemented in this delivery.
 
+### Decision 5 — Quiesce the control plane around the restore
+
+`rad startup` runs *after* `rad install`, so the control-plane pods (`ucp`, `applications-rp`,
+`dynamic-rp`) are already running and connected to PostgreSQL when state is restored. Restoring a
+`pg_dump` that uses `DROP TABLE` / `CREATE TABLE` underneath those live connections has two
+problems:
+
+1. **Stale prepared statements.** The providers open `pgx` connection pools at startup, and pgx's
+   default `QueryExecModeCacheStatement` caches prepared statements per connection. Dropping and
+   recreating the `resources` table changes its OID, so an already-open pooled connection's cached
+   statement can fail with `cached plan must not change result type` (SQLSTATE `0A000`) or
+   `relation does not exist`.
+2. **A write race.** The UCP initializer populates the fresh database with resource-provider
+   manifests at boot; restoring on top of a live system races those writes.
+
+`rad startup` therefore **scales the three database-backed deployments to zero, restores, then
+scales them back to their previous replica counts** (`pkg/cli/controlplane`). This makes the
+restore atomic with respect to its consumers and means the providers establish brand-new pools —
+with no stale prepared statements — against the restored schema. The deployment engine and
+dashboard do not connect to PostgreSQL directly and are left running. Components are always scaled
+back up, including on a failed restore, and a deployment whose previous replica count was zero is
+restored to one rather than left scaled down.
+
+A lighter alternative — restoring data-only with `TRUNCATE` instead of `--clean` to keep table
+OIDs stable — was considered. It avoids the prepared-statement hazard but not the write race, so
+the scale-to-zero approach was chosen as the one that addresses both.
+
 ## v2 direction (not in this delivery)
 
 * **OCI/GHCR backend**: a pluggable storage backend that pushes an encrypted, content-addressed

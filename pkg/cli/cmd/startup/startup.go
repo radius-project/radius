@@ -85,6 +85,9 @@ type Runner struct {
 
 	// openWorktree opens (or creates) the state worktree. Overridable in tests.
 	openWorktree func(ctx context.Context) (worktreeHandle, error)
+
+	// newScaler builds the control-plane scaler for a context/namespace. Overridable in tests.
+	newScaler func(kubeContext, namespace string) (ControlPlaneScaler, error)
 }
 
 // NewRunner creates a new Runner for the `rad startup` command.
@@ -95,6 +98,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		StateClient:  NewStateRestoreClient(),
 	}
 	r.openWorktree = defaultOpenWorktree
+	r.newScaler = newScalerForContext
 	return r
 }
 
@@ -126,6 +130,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 // Run restores the control-plane and Terraform state from the state branch.
+//
+// The database-backed control-plane deployments are scaled to zero before the restore and back up
+// afterward. Restoring a pg_dump underneath live resource-provider connections would invalidate
+// their cached prepared statements and race their writes; quiescing them makes the restore atomic
+// with respect to its consumers without a separate restart step.
 func (r *Runner) Run(ctx context.Context) error {
 	kubeContext, ok := r.Workspace.KubernetesContext()
 	if !ok {
@@ -137,6 +146,28 @@ func (r *Runner) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to open state worktree: %w", err)
 	}
 	defer wt.remove(ctx)
+
+	scaler, err := r.newScaler(kubeContext, pgbackup.DefaultNamespace)
+	if err != nil {
+		return fmt.Errorf("failed to initialise control-plane scaler: %w", err)
+	}
+
+	r.Output.LogInfo("Scaling down control-plane components...")
+	saved, err := scaler.ScaleDown(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to scale down the control plane: %w", err)
+	}
+
+	// Ensure the control plane is brought back up even if a restore step fails.
+	scaledBackUp := false
+	defer func() {
+		if scaledBackUp {
+			return
+		}
+		if upErr := scaler.ScaleUp(ctx, saved); upErr != nil {
+			r.Output.LogInfo("Warning: failed to scale the control plane back up: %v", upErr)
+		}
+	}()
 
 	r.Output.LogInfo("Waiting for control-plane database to be ready...")
 	if err := r.StateClient.WaitForDatabaseReady(ctx, kubeContext, pgbackup.DefaultNamespace); err != nil {
@@ -152,6 +183,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err := r.StateClient.RestoreTerraform(ctx, kubeContext, pgbackup.DefaultNamespace, wt.path); err != nil {
 		return fmt.Errorf("failed to restore Terraform state: %w", err)
 	}
+
+	r.Output.LogInfo("Scaling control-plane components back up...")
+	if err := scaler.ScaleUp(ctx, saved); err != nil {
+		return fmt.Errorf("failed to scale the control plane back up: %w", err)
+	}
+	scaledBackUp = true
 
 	r.Output.LogInfo("State restored successfully.")
 	return nil
