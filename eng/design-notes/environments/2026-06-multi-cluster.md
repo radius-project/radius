@@ -196,56 +196,72 @@ both call `rest.InClusterConfig()` directly. There is no point at which an
 environment can say "deploy somewhere else."
 
 This design inserts a **cluster access resolver** between the environment
-configuration and the recipe engines. The data flow becomes:
+configuration and the **Terraform** recipe engine, and relies on the
+**Deployment Engine** reading the same injected kubeconfig for the **Bicep**
+engine. The data flow becomes:
 
 1. The recipe engine loads the environment configuration (already carries
-   `datamodel.Providers`; this design adds the external-cluster fields).
-2. Before executing a recipe, the engine asks the resolver for Kubernetes access
-   for that environment.
-3. The resolver selects a strategy:
-   - **`RADIUS_TARGET_KUBECONFIG` set (v1, injected kubeconfig)** → loads the
-     mounted kubeconfig and returns its `*rest.Config`. This is what the Repo
-     Radius `deploy` workflow drives today.
-   - **No external cluster configured** → returns the existing in-cluster /
-     local-kubeconfig `*rest.Config` (today's behavior, unchanged).
+   `datamodel.Providers`; v2 adds the external-cluster fields).
+2. **Terraform path:** when building the Terraform `kubernetes` *provider*
+   config, `dynamic-rp` asks the resolver where to deploy. The resolver selects a
+   strategy:
+   - **`RADIUS_TARGET_KUBECONFIG` set (v1, injected kubeconfig)** → returns a
+     `KubeconfigSource` pointing at the mounted kubeconfig path, which the
+     provider emits as `config_path`. The Terraform kubernetes provider reads
+     that path natively.
+   - **No external cluster configured** → returns the in-cluster config (empty
+     path) or the local kubeconfig path when not in-cluster (today's behavior,
+     unchanged).
    - **`aws.eksClusterName` / `azure.aksClusterName` set (v2, cloud-derived)** →
-     uses the registered cloud credential to derive a `*rest.Config` in-process
+     derives access in-process from the registered cloud credential
      (EKS `DescribeCluster` + STS presign; AKS `ListClusterUserCredentials` +
      Entra token). Not shipped in v1.
-4. The engine wraps the returned `*rest.Config` in a per-execution
-   `KubernetesClientProvider` and passes it to the Bicep and Terraform drivers.
-   The drivers and Terraform provider/backend builders consume that config
-   instead of calling `rest.InClusterConfig()` themselves.
+3. **Bicep path:** the recipe runs in the **Deployment Engine**, which reads
+   `RADIUS_TARGET_KUBECONFIG` *itself* and feeds the mounted kubeconfig to the
+   Bicep `extension kubernetes` provider
+   ([deployment-engine#599](https://github.com/radius-project/deployment-engine/pull/599),
+   merged to DE `main`). Radius RP code does **not** render or forward a
+   kubeconfig for Bicep; nothing crosses the wire.
 
-For the Terraform kubernetes provider, the prototype already works by setting
-`KUBE_CONFIG_PATH` on `dynamic-rp`, which the provider reads natively. The v1
-resolver formalizes the equivalent for the Bicep/applications-rp path via
-`RADIUS_TARGET_KUBECONFIG`. The Terraform state backend continues to use the
+The two engines therefore honor the **same** mounted-kubeconfig contract through
+**different** components — the resolver inside `dynamic-rp` for Terraform, and the
+Deployment Engine for Bicep. The Terraform state backend continues to use the
 **control-plane** cluster (the Kubernetes secret backend stays local); only the
 Terraform Kubernetes *provider* targets the external cluster.
+
+> **Separation of concerns (v1).** Radius's only responsibility is to **honor a
+> mounted kubeconfig file**. It never performs cloud OIDC, never mints a token,
+> and never sees cluster identity — it consumes an opaque kubeconfig. Producing
+> that kubeconfig (GitHub OIDC → `assume-role` → `aws eks get-token` /
+> `az aks get-credentials` → mount the secret → restart the RP/DE pods) is the
+> **workflow's** responsibility. There is no in-flight token rotation: the
+> workflow restarts the pods with a fresh token immediately before each deploy,
+> so the token's validity window starts at deploy time. This boundary is what
+> lets v1 ship as pure "read a file" behavior in Radius while the cloud-specific
+> credential machinery lives entirely outside it (and, in v2, moves in-process
+> behind the resolver).
 
 ### Architecture Diagram
 
 ```mermaid
 flowchart TD
-    WF["Repo Radius deploy workflow<br/>(aws eks get-token / az aks get-credentials)"] -->|"mounts kubeconfig secret +<br/>RADIUS_TARGET_KUBECONFIG / KUBE_CONFIG_PATH"| Pods["applications-rp / dynamic-rp pods"]
+    WF["Workflow<br/>(GitHub OIDC → aws eks get-token / az aks get-credentials)"] -->|"mounts kubeconfig secret +<br/>RADIUS_TARGET_KUBECONFIG / KUBE_CONFIG_PATH;<br/>restarts pods (fresh token)"| Pods["dynamic-rp + bicep-de pods"]
 
-    Pods --> Engine["Recipe Engine"]
-    Engine -->|"resolve(envConfig)"| Resolver["ClusterAccessResolver"]
+    Pods --> TFRP["dynamic-rp (Terraform)"]
+    Pods --> DE["bicep-de (Deployment Engine)"]
 
-    Resolver -->|"v1: RADIUS_TARGET_KUBECONFIG set"| Inj["injectedKubeconfigStrategy<br/>(load mounted kubeconfig)"]
+    TFRP -->|"kubernetes provider BuildConfig"| Resolver["ClusterAccessResolver"]
+    Resolver -->|"v1: RADIUS_TARGET_KUBECONFIG set"| Inj["injectedKubeconfigStrategy<br/>(KubeconfigSource path)"]
     Resolver -->|"no external cluster"| Local["localStrategy<br/>in-cluster / local kubeconfig"]
     Resolver -.->|"v2: eksClusterName / aksClusterName"| Cloud["eksStrategy / aksStrategy<br/>(in-process cloud-derived)"]
 
-    Inj --> Cfg["*rest.Config (per execution)"]
-    Local --> Cfg
-    Cloud -.-> Cfg
+    Inj --> CP["config_path (external)"]
+    Local --> CP2["config_path / in-cluster"]
+    CP --> TFExt[(External EKS/AKS)]
 
-    Cfg --> KCP["per-execution KubernetesClientProvider"]
-    KCP --> Bicep["Bicep driver / Deployment Engine"]
-    KCP --> TF["Terraform driver<br/>(kubernetes provider only)"]
+    DE -->|"reads RADIUS_TARGET_KUBECONFIG<br/>file directly (DE #599)"| DEExt[(External EKS/AKS)]
 
-    TF -. "state backend stays local" .-> Local
+    TFRP -. "state backend stays local" .-> Local
 ```
 
 ### Detailed Design
@@ -258,20 +274,22 @@ same seam.
 #### Change 1 (v1) — Honor an injected kubeconfig
 
 Make recipe execution honor `RADIUS_TARGET_KUBECONFIG`, a path to a kubeconfig
-the Repo Radius workflow mounts into `applications-rp` (and that `dynamic-rp`
-already consumes for Terraform via `KUBE_CONFIG_PATH`). When set, recipe
-execution targets the cluster in that kubeconfig; when unset, behavior is
-unchanged.
+the workflow mounts into the recipe-executing pods. For Terraform this is
+`dynamic-rp` (also `KUBE_CONFIG_PATH` historically); for Bicep it is the
+Deployment Engine pod. When set, recipe execution targets the cluster in that
+kubeconfig; when unset, behavior is unchanged.
 
 This is the v1 seam. It requires no environment-resource API change and no cloud
 credential handling inside Radius — the workflow has already produced the
-kubeconfig. The resolver's `injectedKubeconfigStrategy` (Change 3) implements it.
+kubeconfig. The Terraform side is implemented by the resolver's
+`injectedKubeconfigStrategy` (Change 3); the Bicep side is implemented in the
+Deployment Engine
+([deployment-engine#599](https://github.com/radius-project/deployment-engine/pull/599)).
 
-> **Why an env var, not the env resource, in v1:** the prototype identifies the
-> target cluster outside Radius (GitHub `RADIUS_K8S_CLUSTER`) and delivers it as a
-> mounted kubeconfig. Honoring the env var is the smallest change that makes the
-> merged workflow work, and it is consistent with the feature spec's deferred
-> `kubernetes.secretName` direction.
+> **Why an env var, not the env resource, in v1:** the target cluster is
+> identified outside Radius and delivered as a mounted kubeconfig. Honoring the
+> env var is the smallest change that makes the workflow work, and it is
+> consistent with the feature spec's deferred `kubernetes.secretName` direction.
 
 #### Change 2 (v2) — Data model and API surface for named clusters
 
@@ -312,20 +330,31 @@ Each rejection names the missing or conflicting field.
 
 #### Change 3 (v1) — Cluster access resolver (the new seam)
 
-Introduce a new package, proposed `pkg/recipes/kubernetes/clusteraccess` (name
-open), exposing one interface:
+Introduce a new package, `pkg/recipes/kubernetes/clusteraccess`, exposing one
+interface with two views of the same per-execution decision — an in-memory
+`*rest.Config` (for clients that need one) and a `KubeconfigSource` path (for
+consumers that read a kubeconfig file natively, such as the Terraform kubernetes
+provider):
 
 ```go
-// ClusterAccessResolver returns an in-memory *rest.Config for the Kubernetes
-// cluster a recipe execution targets. The returned config and any embedded
+// ClusterAccessResolver returns the Kubernetes cluster a recipe execution
+// targets and how to authenticate to it. The returned config and any embedded
 // credentials are scoped to a single recipe execution and must not be persisted.
 type ClusterAccessResolver interface {
     // Resolve returns a *rest.Config for the cluster targeted by this execution.
-    // When nothing names an external cluster, it returns the control-plane
-    // (in-cluster / local kubeconfig) config.
     Resolve(ctx context.Context, envConfig *recipes.Configuration) (*rest.Config, error)
+
+    // ResolveKubeconfigSource returns a kubeconfig path (or the in-cluster
+    // config) for consumers that read a kubeconfig file directly.
+    ResolveKubeconfigSource(ctx context.Context, envConfig *recipes.Configuration) (KubeconfigSource, error)
 }
 ```
+
+A `KubeconfigSource` with an empty `Path` means "use the in-cluster config." The
+path-based view is preferred for the Terraform provider because it keeps the
+bearer token in the file the workflow already mounted (rather than copying it
+into generated `.tf.json`) and preserves exec-plugin / client-certificate
+kubeconfigs a `*rest.Config` round-trip would lose.
 
 Internally the resolver dispatches to a small `clusterStrategy` per target type:
 
@@ -335,21 +364,23 @@ type clusterStrategy interface {
     appliesTo(envConfig *recipes.Configuration) bool
     // restConfig builds an in-memory *rest.Config for the target cluster.
     restConfig(ctx context.Context, envConfig *recipes.Configuration) (*rest.Config, error)
+    // kubeconfigSource describes the target cluster as a kubeconfig path.
+    kubeconfigSource(ctx context.Context, envConfig *recipes.Configuration) (KubeconfigSource, error)
 }
 ```
 
 Strategy precedence (first match wins):
 
 - **`injectedKubeconfigStrategy` (v1)** — selected when `RADIUS_TARGET_KUBECONFIG`
-  is set. Loads the mounted kubeconfig and returns its `*rest.Config`. This is the
-  strategy the Repo Radius `deploy` workflow exercises. It does no cloud calls and
-  holds no long-lived credential — the kubeconfig is supplied (and refreshed)
-  by the workflow.
+  is set. Returns a `KubeconfigSource` pointing at the mounted kubeconfig (and,
+  for `Resolve`, loads its `*rest.Config`). It does no cloud calls and holds no
+  long-lived credential — the kubeconfig is supplied (and refreshed) by the
+  workflow.
 - **`localStrategy` (v1)** — the default. Wraps today's logic:
   `rest.InClusterConfig()`, falling back to the local kubeconfig when not
-  in-cluster. Selected when nothing names an external cluster. This is a refactor
-  of the logic currently duplicated in the Terraform provider/backend builders
-  into one place.
+  in-cluster. Selected when nothing names an external cluster. This is the single
+  home for the in-cluster/local-file decision the Terraform provider builder
+  previously duplicated.
 - **`eksStrategy` / `aksStrategy` (v2)** — selected when `aws.eksClusterName` /
   `azure.aksClusterName` is set. Obtains the registered cloud credential from UCP
   (`pkg/ucp/credentials`) and derives a `*rest.Config` in-process:
@@ -380,34 +411,36 @@ returns a fully-formed `*rest.Config`; it does not construct clients itself.
 
 #### Change 4 (v1) — Recipe engine integration
 
-Both engines must consume the resolver output rather than assuming in-cluster
-config.
+Both engines honor the injected kubeconfig, through different components.
 
-- **Terraform** — `NewTerraformDriver`
-  ([`pkg/recipes/driver/terraform/terraform.go`](../../../pkg/recipes/driver/terraform/terraform.go))
-  receives a `KubernetesClientProvider` today. Change the execution path so that,
-  per recipe execution, the engine calls the resolver and builds a
-  per-execution `KubernetesClientProvider` from the returned `*rest.Config`. The
-  Kubernetes *provider* config builder
+- **Terraform (implemented in this PR)** — the Terraform `kubernetes` *provider*
+  config builder
   ([`config/providers/kubernetes.go`](../../../pkg/recipes/terraform/config/providers/kubernetes.go))
-  stops calling `rest.InClusterConfig()` and instead emits provider config
-  derived from the resolved `*rest.Config`. Note the prototype already drives this
-  path today by setting `KUBE_CONFIG_PATH` on `dynamic-rp`, which the Terraform
-  kubernetes provider reads natively; the resolver makes that behavior explicit
-  and unifies it with the Bicep path. The Kubernetes *backend* builder
+  delegates to `ClusterAccessResolver.ResolveKubeconfigSource` instead of reading
+  the env var and calling `rest.InClusterConfig()` itself. When the resolver
+  returns a non-empty path (the injected kubeconfig, or the local kubeconfig when
+  out-of-cluster) the builder emits `config_path`; an empty path means the
+  in-cluster config, so no extra config is emitted. The resolver is constructed
+  inside the provider builder (`newKubernetesProvider(clusteraccess.NewResolver())`),
+  which already runs per recipe execution in `generateConfig`; this keeps the
+  change local — no `NewTerraformDriver` / executor / app-wiring changes, and the
+  executor's existing `KubernetesClientProvider` keeps serving the state backend.
+  The Kubernetes *backend* builder
   ([`config/backends/kubernetes.go`](../../../pkg/recipes/terraform/config/backends/kubernetes.go))
   is **unchanged** — state stays on the control-plane cluster.
-- **Bicep** — the Bicep recipe is executed by the Deployment Engine, which uses
-  the Bicep `extension kubernetes` provider with a `kubeConfig` parameter (empty
-  string today, meaning in-cluster). The engine renders a kubeconfig from the
-  resolved `*rest.Config` and passes it through the recipe context so the Bicep
-  Kubernetes extension targets the external cluster. The Deployment Engine itself
-  is **not** modified to consult the resolver; its own cluster-admin
-  ServiceAccount continues to serve in-cluster recipes, and external targeting is
-  expressed entirely through the rendered `kubeConfig` the engine supplies. In
-  v1 the rendered kubeconfig carries the token from the injected kubeconfig (the
-  workflow refreshes it before deploy); in v2 it carries the in-process
-  EKS/AKS token. Either way the DE image needs no `aws`/`kubelogin` binary.
+- **Bicep (implemented in the Deployment Engine, not in this repo)** — the Bicep
+  recipe is executed by the Deployment Engine, which uses the Bicep
+  `extension kubernetes` provider with a `kubeConfig` parameter. As of
+  [deployment-engine#599](https://github.com/radius-project/deployment-engine/pull/599)
+  (merged to DE `main`), the DE reads `RADIUS_TARGET_KUBECONFIG` itself in
+  `GetEncodedKubeConfigAsync`: when the env var points at a mounted kubeconfig
+  file it base64-encodes that file for the extension; otherwise it falls back to
+  the in-cluster service-account kubeconfig, then the local kubeconfig. Radius RP
+  code does **not** render or forward a kubeconfig for Bicep, and the deployment
+  request carries no kubeconfig — nothing crosses the wire. This makes the Bicep
+  path symmetric with Terraform (each component reads the same mounted file) and
+  requires no Radius Go change, no `ProviderConfig.Kubernetes` field, and no
+  recipe-context change. The DE image needs no `aws`/`kubelogin` binary.
 
 #### Change 5 — Direct resource management stays local
 
@@ -450,22 +483,22 @@ additive rather than breaking:
 
 - v1 leaves cluster identity and credential acquisition outside Radius (in the
   workflow), so the polished feature-spec UX waits for v2.
-- The Bicep path requires rendering and passing a kubeconfig through the
-  Deployment Engine via the recipe context. This avoids modifying the DE's
-  cluster-admin ServiceAccount model, but couples external targeting to whatever
-  the DE forwards into the `extension kubernetes` provider.
+- External targeting for Bicep depends on the Deployment Engine honoring
+  `RADIUS_TARGET_KUBECONFIG` (DE #599). The contract is split across two repos
+  (Radius RP for Terraform, the DE for Bicep), so both must mount the same secret
+  and set the same env var for the two engines to behave identically.
 - v2 adds a per-execution cloud credential acquisition (EKS `DescribeCluster` +
   STS presign; AKS `ListClusterUserCredentials` + Entra token) on the hot path;
   the feature spec flags measuring this latency as an assumption to test.
 
 #### Proposed Option
 
-Ship **v1** (Changes 1, 3, 4, 5): honor `RADIUS_TARGET_KUBECONFIG` via the
-resolver's `injectedKubeconfigStrategy`, refactor the duplicated in-cluster logic
-into `localStrategy`, and route both recipe engines through the resolver.
-`localStrategy` lands first as a pure refactor (no behavior change, fully unit
-testable). Then deliver **v2** (Changes 2, 2b, plus `eksStrategy` / `aksStrategy`)
-for the feature spec's named-cluster UX.
+Ship **v1** (Changes 1, 3, 4, 5): honor `RADIUS_TARGET_KUBECONFIG` — for
+Terraform via the resolver's `injectedKubeconfigStrategy` (with the duplicated
+in-cluster logic refactored into `localStrategy`), and for Bicep via the
+Deployment Engine reading the file directly (DE #599). Then deliver **v2**
+(Changes 2, 2b, plus `eksStrategy` / `aksStrategy`) for the feature spec's
+named-cluster UX.
 
 ### API design
 
@@ -491,12 +524,13 @@ and Azure credentials from within the `eksStrategy` / `aksStrategy`.
 
 #### Bicep / Deployment Engine
 
-Render a kubeconfig from the resolved `*rest.Config` and pass it via the recipe
-context to the Bicep `extension kubernetes` provider for recipe execution against
-the external cluster. In v1 the token comes from the injected kubeconfig (the
-workflow refreshes it before deploy); in v2 it is the in-process EKS/AKS token.
-The DE's own ServiceAccount and in-cluster behavior are unchanged. Scope: recipe
-execution only.
+No Radius RP change. The Deployment Engine reads `RADIUS_TARGET_KUBECONFIG`
+itself and feeds the mounted kubeconfig to the Bicep `extension kubernetes`
+provider
+([deployment-engine#599](https://github.com/radius-project/deployment-engine/pull/599),
+merged to DE `main`), falling back to in-cluster then local kubeconfig. The
+kubeconfig never crosses the wire from Radius. The DE's own ServiceAccount and
+in-cluster behavior are unchanged. Scope: recipe execution only.
 
 #### Core RP
 
@@ -505,10 +539,10 @@ Unchanged — direct resource management stays on the control-plane cluster.
 #### Portable Resources / Recipes RP
 
 - New `clusteraccess` package (resolver + strategies).
-- Recipe engine calls the resolver and builds a per-execution
-  `KubernetesClientProvider`.
-- Terraform Kubernetes provider config builder consumes the resolved config;
-  backend builder unchanged.
+- The Terraform Kubernetes provider config builder consumes the resolved
+  `KubeconfigSource` (emitting `config_path`); the resolver is constructed inside
+  the builder, which runs per recipe execution. Backend builder unchanged.
+- No Bicep RP change — the Deployment Engine honors the injected kubeconfig.
 
 ### Error Handling
 
@@ -581,39 +615,51 @@ notes so the (non-deterministic) failure mode is diagnosable in the field.
 
 ## Test plan
 
+Testing is tiered to match the **separation of concerns**: Tier 1 validates the
+only behavior v1 adds to **Radius code** (honoring a mounted kubeconfig); Tier 2
+validates the **workflow's** cloud-OIDC kubeconfig minting, which is not Radius
+code and is deferred.
+
 - **Unit:** resolver strategy selection (injected-kubeconfig / local / v2
-  EKS / AKS), validation rules, and `*rest.Config` assembly with mocked clients.
-  `localStrategy` and `injectedKubeconfigStrategy` are fully unit testable;
-  `localStrategy` refactor is covered by existing recipe-engine unit tests plus
-  new table tests.
-- **Integration:** Terraform provider config generation from a resolved
-  `*rest.Config` (including the injected-kubeconfig path); backend config remains
-  pointed at the control-plane cluster.
-- **End-to-end (the verify/deploy workflows themselves):** the primary v1
-  validation is the Repo Radius `verify` and `deploy` workflows from
-  [`github-extension`](https://github.com/radius-project/github-extension)
-  running green against a build of this branch. They spin up an ephemeral k3d
-  control-plane cluster, authenticate to AWS/Azure via OIDC, build and inject the
-  target-cluster kubeconfig, and run `rad deploy` to a real EKS and a real AKS
-  cluster for both Bicep and Terraform recipes. Success is verified with
-  `kubectl` against each external cluster. This is exactly the path Radius v1
-  must honor, so keeping these workflows green is the acceptance gate.
+  EKS / AKS), `KubeconfigSource` path selection, validation rules, and
+  `*rest.Config` assembly with mocked clients. `localStrategy` and
+  `injectedKubeconfigStrategy` are fully unit testable. (Implemented for v1:
+  `pkg/recipes/kubernetes/clusteraccess` and the Terraform provider builder.)
+- **Tier 1 \u2014 functional, every PR, fork-safe (the acceptance gate for v1 Radius
+  code):** stand up a **second in-runner cluster** (k3d/KinD) as the external
+  workload cluster alongside the control-plane cluster, write its kubeconfig to a
+  `target-kubeconfig` secret, and mount it + set `RADIUS_TARGET_KUBECONFIG`
+  (and `KUBE_CONFIG_PATH`) on `dynamic-rp` and `bicep-de` via the Helm chart
+  values. Deploy a Bicep recipe and a Terraform recipe that each create a
+  Kubernetes resource, then assert the resource exists on the **external**
+  cluster and is **absent** on the control-plane cluster. This exercises the
+  complete injected-kubeconfig contract for both engines with no cloud
+  dependency, so it runs on every PR (including forks) in
+  `functional-test-noncloud.yaml`.
+- **Tier 2 — real EKS/AKS, gated/scheduled (validates the workflow, deferred):**
+  all four `{Bicep, Terraform} × {EKS, AKS}` legs in `functional-test-cloud.yaml`
+  under a gated GitHub environment: authenticate via GitHub OIDC, mint the
+  target-cluster kubeconfig (`aws eks get-token` / `az aks get-credentials`),
+  mount it, and deploy to a real EKS and a real AKS cluster. This validates the
+  **workflow's** credential machinery, not Radius code, so it ships only after
+  Tier 1 is green and only if the team agrees it is worth the cost. It is blocked
+  on net-new external-cluster provisioning (no current owner) and is expected to
+  be superseded by the future ephemeral-control-plane + rad-CLI workflow.
 - **Regression:** with `RADIUS_TARGET_KUBECONFIG` unset and no external cluster
   configured, deployment is identical to today.
 
-Testing challenges: the workflows need reachable EKS and AKS clusters and an RBAC
-mapping for the test principal on each. Provisioning of those workload clusters
-and the federated permissions for the test principal is provided by the OIDC
-workflow work (owned by Shruthi); this design consumes them rather than
-provisioning them. The control-plane cluster is ephemeral (k3d on the runner) and
-only the workload clusters are external/pre-provisioned.
+Testing challenges: Tier 2 needs reachable EKS and AKS clusters and an RBAC
+mapping for the test principal on each. That provisioning is net-new and not
+owned by this design; Tier 1 avoids the dependency entirely by using a second
+in-runner cluster.
 
 ## Security
 
 - **v1 credential handling:** Radius does not acquire or store external-cluster
-  credentials. The Repo Radius workflow builds the kubeconfig and mounts it as a
-  Kubernetes secret in `radius-system`; Radius reads it via
-  `RADIUS_TARGET_KUBECONFIG` and holds it only in memory for the execution. The
+  credentials. The workflow builds the kubeconfig and mounts it as a Kubernetes
+  secret in `radius-system`; Radius reads it via `RADIUS_TARGET_KUBECONFIG`
+  (the Terraform `kubernetes` provider via `config_path`, and the Deployment
+  Engine reading the file for Bicep) and holds it only for the execution. The
   secret's lifecycle (creation, refresh, RBAC) is the workflow's responsibility.
 - **v2 credential handling:** external-cluster credentials are acquired on demand
   from the already-registered UCP cloud credential, held only in memory for one
@@ -652,16 +698,19 @@ only the workload clusters are external/pre-provisioned.
 
 ### v1 (delivered together on this branch; required for the Repo Radius verify/deploy workflows)
 
-1. **Resolver seam + `localStrategy` (Change 3, refactor):** introduce the
-   `ClusterAccessResolver` / `clusterStrategy` interfaces, move the duplicated
-   in-cluster logic into `localStrategy`, route both recipe engines through the
-   resolver. No behavior change; covered by existing + new unit tests.
-2. **`injectedKubeconfigStrategy` (Changes 1, 4):** honor
-   `RADIUS_TARGET_KUBECONFIG` on the applications-rp/Bicep path and unify the
-   Terraform `KUBE_CONFIG_PATH` path through the resolver.
-3. **Keep the `verify`/`deploy` workflows green** against this branch as the
-   acceptance gate. Depends on the OIDC workflow work (owned by Shruthi) for the
-   EKS/AKS workload clusters and federated permissions.
+1. **Resolver seam + `localStrategy` (Change 3):** introduce the
+   `ClusterAccessResolver` / `clusterStrategy` interfaces and the
+   `KubeconfigSource` view, moving the duplicated in-cluster logic into
+   `localStrategy`. Covered by unit tests. (Done.)
+2. **`injectedKubeconfigStrategy` (Changes 1, 4):** for Terraform, route the
+   `kubernetes` provider builder through the resolver so it honors
+   `RADIUS_TARGET_KUBECONFIG` (emitting `config_path`). For Bicep, the Deployment
+   Engine honors the same env var directly (DE #599) — no Radius RP change. (Done.)
+3. **Tier 1 functional test + Helm wiring:** add Helm values that mount the
+   `target-kubeconfig` secret and set `RADIUS_TARGET_KUBECONFIG` /
+   `KUBE_CONFIG_PATH` on `dynamic-rp` and `bicep-de`, and a two-cluster
+   functional test leg that deploys to a second in-runner cluster. This is the v1
+   acceptance gate and runs on every PR.
 
 ### v2 (feature-spec named-cluster UX)
 
@@ -681,9 +730,11 @@ into the design above:
   (`RADIUS_TARGET_KUBECONFIG`) that the Repo Radius `verify`/`deploy` workflows
   use; the cloud-derived `eksClusterName` / `aksClusterName` strategies are v2.
   See [Divergence from the feature spec](#divergence-from-the-feature-spec).
-- **Bicep external targeting (resolved):** the engine renders a kubeconfig and
-  passes it via recipe context to the `extension kubernetes` provider; the
-  Deployment Engine is not modified to consult the resolver. See
+- **Bicep external targeting (resolved):** the Deployment Engine reads
+  `RADIUS_TARGET_KUBECONFIG` itself and feeds the mounted kubeconfig to the
+  `extension kubernetes` provider
+  ([deployment-engine#599](https://github.com/radius-project/deployment-engine/pull/599));
+  no kubeconfig crosses the wire and no Radius RP code is involved. See
   [Change 4](#change-4-v1--recipe-engine-integration).
 - **EKS token (resolved):** v1 relies on the workflow's pre-deploy refresh; v2
   builds the token in-process via STS presign with no exec-plugin binary
@@ -697,19 +748,16 @@ into the design above:
 There are no remaining blocking open questions. The implementation-time items
 previously listed have been resolved:
 
-- **Per-execution client provider placement (resolved):** the resolver is called
-  in the recipe driver's per-execution entrypoint, where the environment
-  configuration is already in scope — the Terraform driver's `Execute`
-  ([`pkg/recipes/driver/terraform/terraform.go`](../../../pkg/recipes/driver/terraform/terraform.go))
-  / executor `Deploy`
-  ([`pkg/recipes/terraform/execute.go`](../../../pkg/recipes/terraform/execute.go))
-  both receive `opts.Configuration` (`EnvConfig`). Today the executor holds a
-  `KubernetesClientProvider` as a construction-time field; this design moves
-  Kubernetes-access resolution to per-execution: `Execute`/`Deploy` calls the
-  resolver with the env config and builds a per-execution
-  `KubernetesClientProvider` from the returned `*rest.Config`, discarded when the
-  execution completes. The construction-time field is replaced by an injected
-  `ClusterAccessResolver`.
+- **Per-execution resolver placement (resolved):** for Terraform, the resolver is
+  constructed and consulted inside the `kubernetes` provider config builder
+  ([`config/providers/kubernetes.go`](../../../pkg/recipes/terraform/config/providers/kubernetes.go)),
+  which already runs per recipe execution during `generateConfig`. This keeps the
+  change local — the `kubernetes` provider asks the resolver for a
+  `KubeconfigSource` and emits `config_path` — with no `NewTerraformDriver` /
+  executor / app-wiring changes. The executor's existing
+  `KubernetesClientProvider` continues to serve the Terraform state backend on the
+  control-plane cluster. For Bicep there is no Radius-side placement question: the
+  Deployment Engine reads the env var itself.
 - **In-process EKS presign shape (resolved):** reuse the AWS SDK rather than
   reimplement. `github.com/aws/aws-sdk-go-v2` and
   `github.com/aws/aws-sdk-go-v2/service/sts` are already direct dependencies; the
