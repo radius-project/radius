@@ -105,6 +105,12 @@ shape the technical design.
 
 - Redirect Bicep and Terraform recipe execution at an external Kubernetes
   cluster, with identical user-visible behavior across the two recipe engines.
+- Deploy the **whole application** — including directly-rendered
+  `Applications.Core/*` output resources (containers, gateways, volumes) — to the
+  external cluster, so Repo Radius applications run entirely on the target
+  cluster while the control plane runs on the ephemeral runner cluster. (This is a
+  deliberate deviation from the external-kubernetes feature spec's non-goal; see
+  [Change 5](#change-5--direct-resource-management-also-targets-the-external-cluster).)
 - **v1: honor an injected kubeconfig** (`RADIUS_TARGET_KUBECONFIG` /
   `KUBE_CONFIG_PATH`) so the Repo Radius `verify`/`deploy` workflows work against
   Radius `main` without carrying Radius-specific shims.
@@ -125,8 +131,6 @@ Inherited from the feature spec where noted; see
   workflow does this on the runner in v1; the in-process strategies are v2.
 - **v1:** the `aws.eksClusterName` / `azure.aksClusterName` environment fields.
   Deferred to v2.
-- Redirecting direct (non-recipe) resource management. `Applications.Core/*`
-  resource providers continue to target the control-plane cluster.
 - Auto-creating namespaces on the external cluster (the workflow does this).
 - A `kubernetes` credential type or `rad credential register kubernetes`.
 - Multiple registered credentials per cloud, or cross-region/cross-account
@@ -196,9 +200,10 @@ both call `rest.InClusterConfig()` directly. There is no point at which an
 environment can say "deploy somewhere else."
 
 This design inserts a **cluster access resolver** between the environment
-configuration and the **Terraform** recipe engine, and relies on the
-**Deployment Engine** reading the same injected kubeconfig for the **Bicep**
-engine. The data flow becomes:
+configuration and the **Terraform** recipe engine, relies on the **Deployment
+Engine** reading the same injected kubeconfig for the **Bicep** engine, and has
+the **`applications-rp` async worker** apply directly-rendered output resources
+with that same kubeconfig. The data flow becomes:
 
 1. The recipe engine loads the environment configuration (already carries
    `datamodel.Providers`; v2 adds the external-cluster fields).
@@ -222,12 +227,18 @@ engine. The data flow becomes:
    ([deployment-engine#599](https://github.com/radius-project/deployment-engine/pull/599),
    merged to DE `main`). Radius RP code does **not** render or forward a
    kubeconfig for Bicep; nothing crosses the wire.
+4. **Direct-resource path:** for resources whose Kubernetes output is rendered
+   directly by `applications-rp` (containers, gateways, volumes), the async
+   worker applies those resources with a deployment-target client set built from
+   `RADIUS_TARGET_KUBECONFIG` (Change 5), so the whole application lands on the
+   external cluster. Radius's own bookkeeping client stays on the control plane.
 
-The two engines therefore honor the **same** mounted-kubeconfig contract through
-**different** components — the resolver inside `dynamic-rp` for Terraform, and the
-Deployment Engine for Bicep. The Terraform state backend continues to use the
-**control-plane** cluster (the Kubernetes secret backend stays local); only the
-Terraform Kubernetes *provider* targets the external cluster.
+All three paths honor the **same** mounted-kubeconfig contract through
+**different** components — the resolver inside `dynamic-rp` for Terraform, the
+Deployment Engine for Bicep, and the async worker in `applications-rp` for direct
+resources. The Terraform state backend continues to use the **control-plane**
+cluster (the Kubernetes secret backend stays local); only the Terraform
+Kubernetes *provider* targets the external cluster.
 
 > **Separation of concerns (v1).** Radius's only responsibility is to **honor a
 > mounted kubeconfig file**. It never performs cloud OIDC, never mints a token,
@@ -245,10 +256,14 @@ Terraform Kubernetes *provider* targets the external cluster.
 
 ```mermaid
 flowchart TD
-    WF["Workflow<br/>(GitHub OIDC → aws eks get-token / az aks get-credentials)"] -->|"mounts kubeconfig secret +<br/>RADIUS_TARGET_KUBECONFIG / KUBE_CONFIG_PATH;<br/>restarts pods (fresh token)"| Pods["dynamic-rp + bicep-de pods"]
+    WF["Workflow<br/>(GitHub OIDC → aws eks get-token / az aks get-credentials)"] -->|"mounts kubeconfig secret +<br/>RADIUS_TARGET_KUBECONFIG;<br/>restarts pods (fresh token)"| Pods["applications-rp + dynamic-rp + bicep-de pods"]
 
+    Pods --> ARP["applications-rp (direct resources)"]
     Pods --> TFRP["dynamic-rp (Terraform)"]
     Pods --> DE["bicep-de (Deployment Engine)"]
+
+    ARP -->|"async worker: RADIUS_TARGET_KUBECONFIG set"| Direct["deployment-target clients<br/>(target kubeconfig)"]
+    Direct --> DirectExt[(External EKS/AKS)]
 
     TFRP -->|"kubernetes provider BuildConfig"| Resolver["ClusterAccessResolver"]
     Resolver -->|"v1: RADIUS_TARGET_KUBECONFIG set"| Inj["injectedKubeconfigStrategy<br/>(KubeconfigSource path)"]
@@ -261,6 +276,7 @@ flowchart TD
 
     DE -->|"reads RADIUS_TARGET_KUBECONFIG<br/>file directly (DE #599)"| DEExt[(External EKS/AKS)]
 
+    ARP -. "Radius bookkeeping client stays local" .-> Local
     TFRP -. "state backend stays local" .-> Local
 ```
 
@@ -442,11 +458,57 @@ Both engines honor the injected kubeconfig, through different components.
   requires no Radius Go change, no `ProviderConfig.Kubernetes` field, and no
   recipe-context change. The DE image needs no `aws`/`kubelogin` binary.
 
-#### Change 5 — Direct resource management stays local
+#### Change 5 — Direct resource management also targets the external cluster
 
-No change to `Applications.Core/*` resource providers. They continue to use the
-control-plane `KubernetesClientProvider`. Only the recipe execution path consults
-the resolver. This keeps the blast radius of the change to the recipe engines.
+`Applications.Core/*` (and the new `Radius.Compute/*`) resources whose Kubernetes
+output is rendered directly by `applications-rp` — most notably containers,
+gateways, and volumes — are also deployed to the external cluster when
+`RADIUS_TARGET_KUBECONFIG` is set, so the **whole application** lands on the
+target cluster rather than only its recipe-provisioned dependencies.
+
+The `applications-rp` async worker
+([`pkg/server/asyncworker.go`](../../../pkg/server/asyncworker.go)) builds a
+**deployment-target** set of Kubernetes clients: the control-plane clients by
+default, or clients for the cluster named by `RADIUS_TARGET_KUBECONFIG` when it
+is set. The deployment processor and application model use those target clients
+to apply rendered output resources, while Radius's own bookkeeping client
+(`ctrl.Options.KubeClient`) stays on the control-plane cluster. The target
+kubeconfig is read fresh at worker startup from the mounted file; Radius does not
+persist it. `kubeutil.NewClientConfigForTargetCluster` loads the file with the
+server QPS/Burst defaults, reusing the same env-var contract the recipe engines
+honor.
+
+> **Deviation from the feature spec (intentional).** The
+> [external-kubernetes feature spec](2026-05-external-kubernetes.md#non-goals-out-of-scope)
+> lists "direct (non-recipe) resource management on external clusters" as a
+> non-goal, stating that `Applications.Core/*` resources "continue to operate
+> against the cluster Radius is installed on; only recipe execution is
+> redirected." This technical design **deviates** from that non-goal because the
+> [Repo Radius](#terms-and-definitions) topology runs the control plane on an
+> **ephemeral** k3d cluster that is destroyed after each workflow run — so any
+> directly-rendered workload left on the control plane would simply vanish.
+> Honoring the same `RADIUS_TARGET_KUBECONFIG` contract for direct resources is
+> what makes Repo Radius deploy a *complete* application. The deviation is clean
+> and sustainable because it reuses the **single env-var seam** (no new API, no
+> new credential, no per-resource-type branching) and is **off by default**: when
+> `RADIUS_TARGET_KUBECONFIG` is unset, `applications-rp` uses the control-plane
+> clients exactly as before. The feature spec's non-goal should be amended to
+> reflect this; see [Repo Radius spec alignment](#repo-radius-spec-alignment).
+
+#### Repo Radius spec alignment
+
+The [Repo Radius feature spec](https://github.com/radius-project/radius)
+(Investment 1, "Deployment to external AKS and EKS cluster") requires the whole
+application — including directly-rendered `Applications.Core/*` resources — to
+deploy to the developer's target cluster while the control plane runs on the
+ephemeral runner cluster. Change 5 satisfies that requirement. Because this
+contradicts the external-kubernetes spec's narrower non-goal, the two product
+specs must be reconciled: the external-kubernetes non-goal ("direct resource
+management stays local") is superseded by the Repo Radius requirement, and direct
+resource redirection becomes a **goal** of multi-cluster v1. This is a documented
+product-scope change, escalated for the spec owners to ratify; the implementation
+ships behind the same opt-in contract so it is inert for installations that do
+not set `RADIUS_TARGET_KUBECONFIG`.
 
 #### Forward compatibility: v2 cloud-derived strategies and generic clusters
 
@@ -534,7 +596,11 @@ in-cluster behavior are unchanged. Scope: recipe execution only.
 
 #### Core RP
 
-Unchanged — direct resource management stays on the control-plane cluster.
+When `RADIUS_TARGET_KUBECONFIG` is set, the `applications-rp` async worker
+deploys directly-rendered output resources to the external cluster via a
+per-startup deployment-target client set (Change 5); Radius's own bookkeeping
+client stays on the control-plane cluster. When the env var is unset, behavior is
+unchanged.
 
 #### Portable Resources / Recipes RP
 
@@ -625,15 +691,21 @@ code and is deferred.
   `*rest.Config` assembly with mocked clients. `localStrategy` and
   `injectedKubeconfigStrategy` are fully unit testable. (Implemented for v1:
   `pkg/recipes/kubernetes/clusteraccess` and the Terraform provider builder.)
+  The `applications-rp` async worker's deployment-target client selection is
+  unit-tested in `pkg/server/asyncworker_test.go` (control-plane when the env var
+  is unset, target clients when set, error on an unreadable kubeconfig).
 - **Tier 1 \u2014 functional, every PR, fork-safe (the acceptance gate for v1 Radius
   code):** stand up a **second in-runner cluster** (k3d/KinD) as the external
   workload cluster alongside the control-plane cluster, write its kubeconfig to a
-  `target-kubeconfig` secret, and mount it + set `RADIUS_TARGET_KUBECONFIG`
-  (and `KUBE_CONFIG_PATH`) on `dynamic-rp` and `bicep-de` via the Helm chart
-  values. Deploy a Bicep recipe and a Terraform recipe that each create a
-  Kubernetes resource, then assert the resource exists on the **external**
-  cluster and is **absent** on the control-plane cluster. This exercises the
-  complete injected-kubeconfig contract for both engines with no cloud
+  `target-kubeconfig` secret, and mount it + set `RADIUS_TARGET_KUBECONFIG` on
+  `applications-rp`, `dynamic-rp`, and `bicep-de` via the Helm chart values
+  (`global.targetCluster.enabled`). Deploy three things and assert each lands on
+  the **external** cluster and is **absent** on the control-plane cluster:
+  (a) a Bicep recipe resource (Deployment Engine path), (b) a Terraform recipe
+  resource (resolver path), and (c) a directly-rendered
+  `Applications.Core/containers` (or `Radius.Compute/containers`) resource (the
+  async-worker direct path, Change 5). This exercises the complete
+  injected-kubeconfig contract for all three deployment paths with no cloud
   dependency, so it runs on every PR (including forks) in
   `functional-test-noncloud.yaml`.
 - **Tier 2 — real EKS/AKS, gated/scheduled (validates the workflow, deferred):**
@@ -658,9 +730,11 @@ in-runner cluster.
 - **v1 credential handling:** Radius does not acquire or store external-cluster
   credentials. The workflow builds the kubeconfig and mounts it as a Kubernetes
   secret in `radius-system`; Radius reads it via `RADIUS_TARGET_KUBECONFIG`
-  (the Terraform `kubernetes` provider via `config_path`, and the Deployment
-  Engine reading the file for Bicep) and holds it only for the execution. The
-  secret's lifecycle (creation, refresh, RBAC) is the workflow's responsibility.
+  (the Terraform `kubernetes` provider via `config_path`, the Deployment Engine
+  reading the file for Bicep, and the `applications-rp` async worker building
+  deployment-target clients for directly-rendered resources) and holds it only
+  for the execution. The secret's lifecycle (creation, refresh, RBAC) is the
+  workflow's responsibility.
 - **v2 credential handling:** external-cluster credentials are acquired on demand
   from the already-registered UCP cloud credential, held only in memory for one
   recipe execution, and never written to disk or persisted in the data store.
@@ -706,11 +780,16 @@ in-runner cluster.
    `kubernetes` provider builder through the resolver so it honors
    `RADIUS_TARGET_KUBECONFIG` (emitting `config_path`). For Bicep, the Deployment
    Engine honors the same env var directly (DE #599) — no Radius RP change. (Done.)
-3. **Tier 1 functional test + Helm wiring:** add Helm values that mount the
-   `target-kubeconfig` secret and set `RADIUS_TARGET_KUBECONFIG` /
-   `KUBE_CONFIG_PATH` on `dynamic-rp` and `bicep-de`, and a two-cluster
-   functional test leg that deploys to a second in-runner cluster. This is the v1
-   acceptance gate and runs on every PR.
+3. **Direct-resource redirect (Change 5):** the `applications-rp` async worker
+   builds deployment-target clients from `RADIUS_TARGET_KUBECONFIG` so
+   directly-rendered output resources (containers, gateways, volumes) land on the
+   external cluster too. Covered by unit tests. (Done.)
+4. **Tier 1 functional test + Helm wiring:** add Helm values
+   (`global.targetCluster.enabled`) that mount the `target-kubeconfig` secret and
+   set `RADIUS_TARGET_KUBECONFIG` on `applications-rp`, `dynamic-rp`, and
+   `bicep-de`, and a two-cluster functional test leg that deploys to a second
+   in-runner cluster (Bicep recipe, Terraform recipe, and a directly-rendered
+   container). This is the v1 acceptance gate and runs on every PR.
 
 ### v2 (feature-spec named-cluster UX)
 
