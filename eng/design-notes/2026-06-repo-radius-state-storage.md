@@ -136,6 +136,12 @@ the `radius-system` namespace into the same state worktree as the PostgreSQL dum
 pushed in the same atomic operation. On startup, after the cluster is ready and **before any
 deploy**, the Secrets are restored into the namespace.
 
+Secrets are selected by the `tfstate=true` label that the Terraform Kubernetes backend applies to
+every state Secret, rather than by name. This automatically captures the additional
+`tfstate-{workspace}-{suffix}-{index}` Secrets that the backend creates when chunking large
+state. The Lease resources the backend uses for locking are intentionally **not** backed up; they
+are ephemeral and irrelevant across runs.
+
 This mirrors the existing PostgreSQL backup flow exactly (same worktree, same commit/push, same
 semaphore) and is the minimal change that closes Gap 1.
 
