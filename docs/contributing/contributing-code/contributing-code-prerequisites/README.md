@@ -157,9 +157,7 @@ Radius includes integration with [Dapr](https://docs.dapr.io/). To use work on t
 
 #### Test summaries
 
-The default `go test` output can be hard to read when you have many tests. We recommend `gotestsum` as a tool to solve this. Our `make test` command will automatically use `gotestsum` if it is available.
-
-- [gotestsum](https://github.com/gotestyourself/gotestsum#install)
+The default `go test` output can be hard to read when you have many tests. Our `make test` command uses [`gotestsum`](https://github.com/gotestyourself/gotestsum) for nicer formatted output and JUnit XML reports. `gotestsum` is managed as a Go tool dependency (the `tool` directive in `go.mod`) and is invoked via `go tool gotestsum`, so no separate installation is needed.
 
 ## Testing required tools
 

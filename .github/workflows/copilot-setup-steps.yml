@@ -103,7 +103,7 @@ jobs:
       - name: Setup Helm
         uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
-          version: v3.19.4
+          version: v4.2.2
 
       - name: Install kubectl
         run: |
@@ -153,13 +153,12 @@ jobs:
             | sh -s -- -b "$(go env GOPATH)/bin" "${GOLANGCI_LINT_VERSION}"
 
       - name: Install Go tools
-        # controller-gen and mockgen are used by `make generate`; gotestsum is
-        # used by `make test` to produce test reports; dlv (Delve) is used by the
-        # process-debugging workflow (make debug-*).
+        # controller-gen, mockgen, and gotestsum are managed as Go tool dependencies
+        # (the 'tool' directives in go.mod) and run via `go tool`, so they need no
+        # separate install. dlv (Delve) is used by the process-debugging workflow
+        # (make debug-*).
         run: |
-          GOTESTSUM_VER="1.13.0"
           DLV_VER="v1.26.3"
-          go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
           go install "github.com/go-delve/delve/cmd/dlv@${DLV_VER}"
 
       - name: Install yq
