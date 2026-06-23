@@ -385,6 +385,23 @@ jobs:
           # switched it to the external cluster.
           kubectl config use-context kind-kind
 
+          # Preload the magpie workload image into the external cluster. The
+          # external cluster is a plain KinD cluster with no local-registry mirror
+          # or CA trust, so it cannot pull `radius-registry:5000/...` images. The
+          # image was already built into the runner's docker daemon by the
+          # "Build and Push container images" step, but tagged with the host-facing
+          # registry name (LOCAL_REGISTRY_SERVER=localhost), whereas pods reference
+          # the in-cluster registry name (LOCAL_REGISTRY_NAME=radius-registry). So
+          # retag to the in-cluster name and load that, matching the pod's image
+          # reference exactly. The container recipe sets no imagePullPolicy and the
+          # tag is not `latest`, so kubelet defaults to IfNotPresent and uses the
+          # preloaded image. This covers both magpie-using legs (Bicep and legacy
+          # container); the Terraform leg's Redis image is public.
+          MAGPIE_HOST_IMAGE="${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/magpiego:${REL_VERSION}"
+          MAGPIE_CLUSTER_IMAGE="${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/magpiego:${REL_VERSION}"
+          docker tag "${MAGPIE_HOST_IMAGE}" "${MAGPIE_CLUSTER_IMAGE}"
+          ./kind load docker-image "${MAGPIE_CLUSTER_IMAGE}" --name external
+
           # Pre-create the radius-system namespace and the target-kubeconfig secret
           # so the secret exists before the Radius pods start (the deployments mount
           # it when global.targetCluster.enabled=true).
