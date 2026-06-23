@@ -167,8 +167,11 @@ work beyond v1 scope.
 * The **state-backup push must fail the command** on error when a remote is configured (Gap 3).
   When no remote is configured (local development, tests), the commit on the orphan branch is the
   durable store and the absence of a remote is not an error.
-* A small checksum manifest accompanies the dumps so a corrupt restore **fails closed** rather
-  than silently starting from an empty state.
+* When the state branch exists on the remote, opening the worktree fetches it and treats a fetch
+  failure as fatal, so a transient network or credential error cannot silently restore stale or
+  empty state.
+* *(Future work)* A checksum manifest accompanying the dumps so a corrupt restore **fails closed**
+  rather than silently starting from an empty state. This is not implemented in this delivery.
 
 ## v2 direction (not in this delivery)
 
@@ -195,7 +198,7 @@ work beyond v1 scope.
 ## Test plan
 
 * **Unit**: Helm chart conditional rendering (PR 1); Terraform-state export/import round-trip with
-  a fake Kubernetes client (PR 2); state-directory commit/push behaviour (PR 3).
+  a fake Kubernetes client (PR 2); state-directory commit/push behavior (PR 3).
 * **Functional**: an end-to-end lifecycle that exercises every state path:
   1. Install Radius with `database.enabled=true` on a cluster.
   2. `rad deploy` a **Terraform-backed** resource (creates control-plane state + a Terraform

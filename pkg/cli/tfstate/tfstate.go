@@ -226,6 +226,5 @@ func sanitize(secret *corev1.Secret) *corev1.Secret {
 	cleaned.DeletionTimestamp = nil
 	cleaned.ManagedFields = nil
 	cleaned.OwnerReferences = nil
-	cleaned.SelfLink = ""
 	return cleaned
 }

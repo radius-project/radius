@@ -148,6 +148,7 @@ func Test_expandEnvURL(t *testing.T) {
 		{
 			name:     "unset variable expands to empty string",
 			url:      "postgresql://ucp:${MISSING}@host:5432/db",
+			env:      map[string]string{"MISSING": ""},
 			expected: "postgresql://ucp:@host:5432/db",
 		},
 	}

@@ -87,10 +87,13 @@ func OpenOrCreate(ctx context.Context, branchName string) (*StateWorktree, error
 		return nil, fmt.Errorf("failed to determine git repo root: %w", err)
 	}
 
-	// Pull the latest remote state if a remote with this branch exists, so the worktree reflects
-	// the most recent backup from another machine.
-	if hasRemote(ctx, root) {
-		_ = gitExecIn(ctx, root, "fetch", remoteName, branchName)
+	// If the state branch exists on the remote, fetching it must succeed. Silently falling back
+	// to an empty local branch here would make a later restore use stale or empty state, so a
+	// fetch failure (network, credentials) is fatal when the remote is known to hold the branch.
+	if hasRemote(ctx, root) && remoteHasBranch(ctx, root, branchName) {
+		if err := gitExecIn(ctx, root, "fetch", remoteName, branchName); err != nil {
+			return nil, fmt.Errorf("failed to fetch state branch %q from %q: %w", branchName, remoteName, err)
+		}
 	}
 
 	if !branchExists(ctx, root, branchName) {
@@ -133,7 +136,7 @@ func (w *StateWorktree) CommitAndPush(ctx context.Context, message string) error
 	if err := gitExecIn(ctx, w.Path, "add", "-A"); err != nil {
 		return fmt.Errorf("failed to stage state files: %w", err)
 	}
-	if err := gitExecIn(ctx, w.Path, "commit", "-m", message, "--allow-empty"); err != nil {
+	if err := gitExecIn(ctx, w.Path, commitArgs(ctx, w.Path, message)...); err != nil {
 		return fmt.Errorf("failed to commit state: %w", err)
 	}
 
@@ -169,6 +172,35 @@ func remoteBranchExists(ctx context.Context, root, branchName string) bool {
 	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--verify", remoteName+"/"+branchName)
 	cmd.Dir = root
 	return cmd.Run() == nil
+}
+
+// remoteHasBranch queries the remote directly (without relying on a prior fetch) to report
+// whether branchName exists on it. This distinguishes "the branch exists remotely but we could
+// not fetch it" (an error) from "the branch does not exist remotely yet" (a normal first run).
+func remoteHasBranch(ctx context.Context, root, branchName string) bool {
+	cmd := exec.CommandContext(ctx, "git", "ls-remote", "--exit-code", "--heads", remoteName, branchName)
+	cmd.Dir = root
+	return cmd.Run() == nil
+}
+
+// commitArgs builds the git arguments for committing the worktree, injecting a fallback identity
+// when the repository has no user.name/user.email configured. Fresh CI environments frequently
+// lack a git identity, which would otherwise make the commit (and therefore rad shutdown) fail
+// even though the backup itself succeeded.
+func commitArgs(ctx context.Context, dir, message string) []string {
+	var args []string
+	if !gitIdentityConfigured(ctx, dir) {
+		args = append(args, "-c", "user.name=Radius", "-c", "user.email=radius@radapp.io")
+	}
+	return append(args, "commit", "-m", message, "--allow-empty")
+}
+
+// gitIdentityConfigured reports whether user.email is set for the repository at dir.
+func gitIdentityConfigured(ctx context.Context, dir string) bool {
+	cmd := exec.CommandContext(ctx, "git", "config", "user.email")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	return err == nil && strings.TrimSpace(string(out)) != ""
 }
 
 // hasRemote reports whether a remote named origin is configured.
