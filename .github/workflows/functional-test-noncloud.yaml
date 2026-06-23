@@ -542,12 +542,18 @@ jobs:
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
-        # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
-        if: failure() && github.repository == vars.RADIUS_REPOSITORY
+        # Run on success and failure so a passing "Re-run failed jobs" refreshes the
+        # "Functional Tests - <name>" check published by EnricoMi. Gating this on
+        # failure() left that check stuck red after a green re-run, because the step
+        # was skipped and the previous attempt's failed check was never updated.
+        # comment_mode: failures keeps PR comments limited to actual failures, and
+        # the failure artifacts are still uploaded for post-mortem.
+        if: always() && github.repository == vars.RADIUS_REPOSITORY
         with:
           test_group_name: Functional Tests - ${{ matrix.name }}
           artifact_name: functional_test_results_${{ matrix.name }}
           result_directory: dist/functional_test/
+          comment_mode: failures
 
       - name: Collect detailed Radius logs and events
         id: radius-logs-events

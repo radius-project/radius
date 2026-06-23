@@ -1017,12 +1017,18 @@ jobs:
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
-        # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
-        if: failure() && github.repository == vars.RADIUS_REPOSITORY
+        # Run on success and failure so a passing "Re-run failed jobs" refreshes the
+        # "Functional Tests - <name>" check published by EnricoMi. Gating this on
+        # failure() left that check stuck red after a green re-run, because the step
+        # was skipped and the previous attempt's failed check was never updated.
+        # comment_mode: failures keeps PR comments limited to actual failures, and
+        # the failure artifacts are still uploaded for post-mortem.
+        if: always() && github.repository == vars.RADIUS_REPOSITORY
         with:
           test_group_name: Functional Tests - ${{ matrix.name }}
           artifact_name: functional_test_results_${{ matrix.name }}
           result_directory: dist/functional_test/
+          comment_mode: failures
 
       - name: Collect Pod details
         if: always()
@@ -1128,7 +1134,6 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      checks: read
     env:
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
     steps:
@@ -1140,28 +1145,30 @@ jobs:
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           permission-checks: write
 
-      - name: Get tests job status
+      - name: Aggregate functional test status
         id: get_test_status
-        env:
-          GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
         run: |
-          # from: https://github.com/orgs/community/discussions/26526#discussioncomment-3252209
-          ALL_JOBS_STATUS=$(curl -X GET -s -u "admin:${GH_TOKEN}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" | jq ".jobs[] | {job_status: .conclusion}")
-          echo "All jobs status: $ALL_JOBS_STATUS"
+          # Derive the overall status from the needs context instead of querying the
+          # Actions API. `tests` is a matrix job, so needs.tests.result already collapses
+          # all legs (success only if every leg passed). A docs-only run skips build+tests
+          # with setup successful, which yields success and matches the skip-tests job.
+          # failure takes precedence over cancelled.
+          echo "setup=${SETUP_RESULT} build=${BUILD_RESULT} tests=${TESTS_RESULT}"
           TEST_STATUS="success"
-          for job_status in $(echo "$ALL_JOBS_STATUS" | jq -r '.[]'); do
-            echo "Job Status: $job_status"
-            if [[ "$job_status" == "failure" ]]; then
-              echo "Found failed test. Setting test status to failure"
+          for result in "${SETUP_RESULT}" "${BUILD_RESULT}" "${TESTS_RESULT}"; do
+            if [[ "${result}" == "failure" ]]; then
               TEST_STATUS="failure"
               break
-            elif [[ "$job_status" == "cancelled" ]]; then
-              echo "Found cancelled test. Setting test status to cancelled"
+            elif [[ "${result}" == "cancelled" ]]; then
               TEST_STATUS="cancelled"
             fi
           done
-          echo "Test Status: $TEST_STATUS"
-          echo "test_status=$TEST_STATUS" >> $GITHUB_OUTPUT
+          echo "Functional Test Run status: ${TEST_STATUS}"
+          echo "test_status=${TEST_STATUS}" >> "${GITHUB_OUTPUT}"
+        env:
+          SETUP_RESULT: ${{ needs.setup.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          TESTS_RESULT: ${{ needs.tests.result }}
 
       - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: always()
