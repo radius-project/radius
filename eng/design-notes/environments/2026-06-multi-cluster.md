@@ -510,6 +510,29 @@ product-scope change, escalated for the spec owners to ratify; the implementatio
 ships behind the same opt-in contract so it is inert for installations that do
 not set `RADIUS_TARGET_KUBECONFIG`.
 
+#### Change 6 — Namespace existence is validated on the deployment-target cluster
+
+The new `Radius.Core/environments` type **does not create** the application
+namespace; its contract is that the namespace must **pre-exist**, and
+`createorupdateenvironment` validates this and rejects the request with a
+`BadRequest` when the namespace is missing
+([`pkg/corerp/frontend/controller/environments/v20250801preview/createorupdateenvironment.go`](../../../pkg/corerp/frontend/controller/environments/v20250801preview/createorupdateenvironment.go)).
+This differs from legacy `Applications.Core/applications`, which creates an
+application-scoped namespace server-side via `CreateAppScopedNamespace`.
+
+In multi-cluster mode the namespace that matters is the one on the **external**
+cluster the recipe deploys into, not the control-plane cluster Radius runs on. So
+the existence check resolves its client through
+`kubeutil.DeploymentTargetRuntimeClient` — the control-plane client by default,
+or a client for the cluster named by `RADIUS_TARGET_KUBECONFIG` when set — and an
+unset environment namespace defaults to the deployment-target cluster's namespace
+(`kubeutil.TargetClusterDefaultNamespace`: the namespace pinned by the injected
+kubeconfig's current context, falling back to `default`). Behavior is unchanged
+in single-cluster mode. This keeps validation honest (a namespace pre-created on
+the target is accepted; one created only on the control plane is not) without
+introducing any namespace-creation step, preserving the new type's pre-exist
+contract.
+
 #### Forward compatibility: v2 cloud-derived strategies and generic clusters
 
 The single `ClusterAccessResolver` seam is what makes the later directions
@@ -719,6 +742,22 @@ code and is deferred.
   be superseded by the future ephemeral-control-plane + rad-CLI workflow.
 - **Regression:** with `RADIUS_TARGET_KUBECONFIG` unset and no external cluster
   configured, deployment is identical to today.
+
+> **Underlying coverage gap (not introduced by this design).** The new
+> `Radius.*` resource types (`Radius.Compute/*`, `Radius.Security/*`,
+> `Radius.Data/*`) have **no Terraform recipe functional coverage** anywhere in
+> the repo — single- or multi-cluster. All new-type functional tests use
+> **Bicep** recipes (or direct rendering); Terraform recipe coverage exists only
+> for the legacy `Applications.Core/*` and custom UDT types. Consequently the
+> Tier 1 multi-cluster Terraform leg (`Test_MultiCluster_TerraformRecipe`)
+> exercises the legacy `Applications.Core/extenders` type, and the new-type leg
+> (`Test_MultiCluster_BicepContainer`) exercises Bicep only — so the
+> intersection "new type × Terraform recipe" is untested in *any* topology. The
+> deployment-target namespace validation (Change 6) is recipe-kind-agnostic, so
+> it is covered through the Bicep new-type leg, but end-to-end new-type Terraform
+> behavior is not. This gap is pre-existing in the base type's test suite, not
+> something multi-cluster v1 regresses; it should be revisited once the base
+> `Radius.*` types gain Terraform functional tests.
 
 Testing challenges: Tier 2 needs reachable EKS and AKS clusters and an RBAC
 mapping for the test principal on each. That provisioning is net-new and not
