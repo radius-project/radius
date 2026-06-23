@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/recipes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -29,8 +30,9 @@ import (
 // TargetKubeconfigEnvVar is the environment variable that points at a kubeconfig
 // for an external target cluster. The Repo Radius deploy workflow mounts a
 // kubeconfig into the Radius RP pods and sets this variable; honoring it is the
-// v1 multi-cluster contract that Radius owns.
-const TargetKubeconfigEnvVar = "RADIUS_TARGET_KUBECONFIG"
+// v1 multi-cluster contract that Radius owns. It is defined canonically in
+// kubeutil so the recipe path and the direct-resource path share one source.
+const TargetKubeconfigEnvVar = kubeutil.TargetKubeconfigEnvVar
 
 // injectedKubeconfigStrategy resolves the cluster described by the kubeconfig at
 // the path in RADIUS_TARGET_KUBECONFIG. Radius does not create or own this

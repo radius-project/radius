@@ -37,6 +37,14 @@ const (
 	DefaultCLIQPS float32 = 50.0
 	// DefaultCLIBurst is the default number of queries k8sclient handles concurrently for CLI.
 	DefaultCLIBurst int = 100
+
+	// TargetKubeconfigEnvVar is the environment variable that points at a kubeconfig
+	// file for an external target cluster. When set, Radius deploys application
+	// resources (both recipe-provisioned and directly-rendered output resources) to
+	// that cluster instead of the control-plane cluster it runs on. This is the
+	// multi-cluster v1 contract; the kubeconfig is supplied (and refreshed) out of
+	// band by the workflow that mounts it.
+	TargetKubeconfigEnvVar = "RADIUS_TARGET_KUBECONFIG"
 )
 
 // ConfigOptions is custom options to configure kubernetes client config.
@@ -152,4 +160,16 @@ func NewClientConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
 	}
 
 	return merged, nil
+}
+
+// NewClientConfigForTargetCluster builds a Kubernetes client config from the
+// kubeconfig file at kubeconfigPath, using its current context and the server
+// QPS/Burst defaults. It is used to target an external cluster (for example an
+// AKS or EKS cluster) when the Radius control plane runs on a separate cluster.
+func NewClientConfigForTargetCluster(kubeconfigPath string) (*rest.Config, error) {
+	return NewClientConfigFromLocal(&ConfigOptions{
+		ConfigFilePath: kubeconfigPath,
+		QPS:            DefaultServerQPS,
+		Burst:          DefaultServerBurst,
+	})
 }

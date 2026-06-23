@@ -86,11 +86,12 @@ global:
   # environment variables and behavior is unchanged.
   #
   # When enabled, a Secret named `secretName` (in the release namespace) holding a
-  # kubeconfig under key `secretKey` is mounted into the dynamic-rp and
-  # deployment-engine pods, and RADIUS_TARGET_KUBECONFIG points at the mounted
-  # file. The Terraform kubernetes provider (via the cluster access resolver) and
-  # the Deployment Engine Bicep extension both honor that kubeconfig; the
-  # Terraform state backend continues to use the control-plane cluster. The
+  # kubeconfig under key `secretKey` is mounted into the applications-rp,
+  # dynamic-rp, and deployment-engine pods, and RADIUS_TARGET_KUBECONFIG points at
+  # the mounted file. Application resources then deploy to that cluster:
+  # directly-rendered output resources (applications-rp), Terraform recipes (via
+  # the cluster access resolver), and Bicep recipes (via the Deployment Engine).
+  # The Terraform state backend continues to use the control-plane cluster. The
   # Secret's lifecycle (creation, refresh, RBAC) is owned outside the chart, for
   # example a CI workflow that mints and refreshes the kubeconfig.
   targetCluster:

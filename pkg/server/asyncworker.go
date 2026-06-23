@@ -19,6 +19,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"os"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
@@ -30,6 +31,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/backend/deployment"
 	"github.com/radius-project/radius/pkg/corerp/model"
 	"github.com/radius-project/radius/pkg/kubeutil"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 // AsyncWorker is a service to run AsyncRequestProcessWorker.
@@ -99,7 +101,18 @@ func (w *AsyncWorker) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize kubernetes clients: %w", err)
 	}
 
-	appModel, err := model.NewApplicationModel(w.options.Arm, k8s.RuntimeClient, k8s.ClientSet, k8s.DiscoveryClient, k8s.DynamicClient)
+	// deployTarget holds the Kubernetes clients used to apply application output
+	// resources (Deployments, Services, Secrets, etc.). By default this is the
+	// control-plane cluster Radius runs on. When RADIUS_TARGET_KUBECONFIG is set,
+	// output resources are applied to the external cluster named by that
+	// kubeconfig, so the whole application lands on the target cluster while
+	// Radius's own bookkeeping (KubeClient below) stays on the control plane.
+	deployTarget, err := w.deploymentTargetClients(ctx, k8s)
+	if err != nil {
+		return err
+	}
+
+	appModel, err := model.NewApplicationModel(w.options.Arm, deployTarget.RuntimeClient, deployTarget.ClientSet, deployTarget.DiscoveryClient, deployTarget.DynamicClient)
 	if err != nil {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
@@ -114,7 +127,7 @@ func (w *AsyncWorker) Run(ctx context.Context) error {
 			DatabaseClient: w.DatabaseClient,
 			KubeClient:     k8s.RuntimeClient,
 			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return deployment.NewDeploymentProcessor(appModel, w.DatabaseClient, k8s.RuntimeClient, k8s.ClientSet)
+				return deployment.NewDeploymentProcessor(appModel, w.DatabaseClient, deployTarget.RuntimeClient, deployTarget.ClientSet)
 			},
 		}
 
@@ -125,4 +138,33 @@ func (w *AsyncWorker) Run(ctx context.Context) error {
 	}
 
 	return w.Start(ctx)
+}
+
+// deploymentTargetClients returns the Kubernetes clients that application output
+// resources should be deployed with. It returns the control-plane clients
+// unchanged unless RADIUS_TARGET_KUBECONFIG is set, in which case it builds
+// clients for the external cluster named by that kubeconfig. The injected
+// kubeconfig is owned and refreshed out of band (by the workflow that mounts it);
+// Radius reads it fresh on startup and never persists it.
+func (w *AsyncWorker) deploymentTargetClients(ctx context.Context, controlPlane *kubeutil.Clients) (*kubeutil.Clients, error) {
+	targetKubeconfigPath := os.Getenv(kubeutil.TargetKubeconfigEnvVar)
+	if targetKubeconfigPath == "" {
+		return controlPlane, nil
+	}
+
+	logger := ucplog.FromContextOrDiscard(ctx)
+	logger.Info("Deploying application output resources to external target cluster",
+		"kubeconfig", targetKubeconfigPath, "envVar", kubeutil.TargetKubeconfigEnvVar)
+
+	targetConfig, err := kubeutil.NewClientConfigForTargetCluster(targetKubeconfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load target kubeconfig from %s=%q: %w", kubeutil.TargetKubeconfigEnvVar, targetKubeconfigPath, err)
+	}
+
+	targetClients, err := kubeutil.NewClients(targetConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize target cluster kubernetes clients: %w", err)
+	}
+
+	return targetClients, nil
 }
