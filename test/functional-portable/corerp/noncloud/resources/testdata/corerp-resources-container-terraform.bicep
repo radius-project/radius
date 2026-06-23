@@ -21,8 +21,8 @@ resource recipePack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   properties: {
     recipes: {
       'Radius.Compute/containers': {
-        recipeKind: 'terraform'
-        recipeLocation: '${moduleServer}/kubernetes-container.zip//modules'
+        kind: 'terraform'
+        source: '${moduleServer}/kubernetes-container.zip//modules'
       }
     }
   }
