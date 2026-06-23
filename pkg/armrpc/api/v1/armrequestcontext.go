@@ -203,7 +203,9 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 	// the URL so the resource id used for storage, scope, and downstream routing matches the request
 	// path.
 	if refererUri != "" && err == nil {
-		urlPath := strings.TrimPrefix(r.URL.Path, pathBase)
+		// Strip the URL's own path base before comparing: a proxied request can carry a routing
+		// prefix on the URL that the Referer does not, and that prefix is not a resource difference.
+		urlPath := strings.TrimPrefix(r.URL.Path, ParsePathBase(r.URL.Path))
 		if urlID, urlErr := resources.ParseByMethod(urlPath, r.Method); urlErr == nil && !strings.EqualFold(rID.String(), urlID.String()) {
 			log.Info("Referer header refers to a different resource than the request URL; using the request URL.",
 				"refererResourceID", rID.String(), "urlResourceID", urlID.String())

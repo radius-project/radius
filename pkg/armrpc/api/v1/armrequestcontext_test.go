@@ -111,6 +111,15 @@ func TestFromARMRequest_PrefersURLWhenRefererResourceDiffers(t *testing.T) {
 			referer:    "http://localhost/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/env0",
 			expectedID: "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
 		},
+		{
+			// A proxied request can carry a routing prefix on the URL (e.g. a downstream id) that the
+			// Referer does not. That prefix is a path base, not a different resource, so the Referer is
+			// kept.
+			desc:       "url routing prefix is not treated as a different resource",
+			urlPath:    "/b6b3f382-f600-4bd1-8f4f-ec50c5460b6c/planes/radius/local/resourcegroups/group-a/providers/Applications.Core/environments/env0",
+			referer:    "http://localhost/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/env0",
+			expectedID: "/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/env0",
+		},
 	}
 
 	for _, tt := range cases {
