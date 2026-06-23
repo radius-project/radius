@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -172,4 +173,25 @@ func NewClientConfigForTargetCluster(kubeconfigPath string) (*rest.Config, error
 		QPS:            DefaultServerQPS,
 		Burst:          DefaultServerBurst,
 	})
+}
+
+// DeploymentTargetRuntimeClient returns the controller-runtime client that
+// application resources (including the application namespace) should be created
+// with. It returns controlPlane unchanged unless RADIUS_TARGET_KUBECONFIG is set,
+// in which case it builds a runtime client for the external cluster named by that
+// kubeconfig. This keeps application namespaces on the same cluster the
+// application's resources deploy to, so in multi-cluster mode the control-plane
+// cluster is not populated with per-application namespaces.
+func DeploymentTargetRuntimeClient(controlPlane runtimeclient.Client) (runtimeclient.Client, error) {
+	targetKubeconfigPath := os.Getenv(TargetKubeconfigEnvVar)
+	if targetKubeconfigPath == "" {
+		return controlPlane, nil
+	}
+
+	targetConfig, err := NewClientConfigForTargetCluster(targetKubeconfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load target kubeconfig from %s=%q: %w", TargetKubeconfigEnvVar, targetKubeconfigPath, err)
+	}
+
+	return NewRuntimeClient(targetConfig)
 }

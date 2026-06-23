@@ -124,7 +124,11 @@ Usage (pass the root context):
 - name: target-kubeconfig
   secret:
     secretName: {{ .Values.global.targetCluster.secretName }}
-    defaultMode: 0400
+    # World-readable (0444) so the non-root RP/DE containers can read the mounted
+    # kubeconfig. Secret files are owned by root, so 0400 (root-only) would be
+    # unreadable to a non-root process; the secret is already isolated to the pod,
+    # so 0444 does not widen the real security boundary.
+    defaultMode: 0444
 {{- end -}}
 {{- end -}}
 
