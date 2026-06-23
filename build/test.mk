@@ -148,6 +148,15 @@ test-functional-datastoresrp-noncloud: ## Runs Datastores RP functional tests th
 test-functional-dynamicrp-noncloud: ## Runs Dynamic RP functional tests that do not require cloud resources
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/dynamicrp/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
+.PHONY: test-functional-multicluster-noncloud
+test-functional-multicluster-noncloud: ## Runs multi-cluster functional tests that deploy recipes to an external Kubernetes cluster
+	# Requires a second (external) cluster: Radius installed with
+	# global.targetCluster.enabled=true and the RADIUS_TEST_EXTERNAL_KUBECONFIG
+	# env var pointing at the external cluster's kubeconfig so the test can assert
+	# recipe-created resources land there. Not part of test-functional-all-noncloud
+	# because of that extra setup.
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/multicluster/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
+
 .PHONY: test-functional-upgrade
 test-functional-upgrade: test-functional-upgrade-noncloud ## Runs all Upgrade functional tests
 
