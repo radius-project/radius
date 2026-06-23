@@ -18,7 +18,6 @@ package resource_test
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -167,42 +166,24 @@ func normalizeLocation(location string) string {
 	return strings.ToLower(strings.ReplaceAll(location, " ", ""))
 }
 
-// isTransientAzureError returns true if the error is a known transient Azure error
-// that may succeed on retry.
-//
-// rad surfaces the deployment root cause inside nested ARM error `details[].message`
-// fields, while CLIError.Error() only returns the top-level code and message
-// (e.g. "DeploymentFailed"). We therefore flatten the entire error response so the
-// match also covers nested causes such as the ACI container group quota error.
+// transientAzureErrorMarkers are substrings that identify transient Azure
+// deployment failures that may succeed on retry.
+var transientAzureErrorMarkers = []string{
+	// Managed identity propagation delay after environment identity creation.
+	"ManagedServiceIdentityNotFound",
+	// The regional ACI 'StandardCores' quota is shared across the subscription
+	// and is frequently exhausted by concurrent CI runs and in-progress async
+	// resource group cleanups. It drains on its own, so retrying after a short
+	// delay typically succeeds.
+	"ContainerGroupQuotaReached",
+}
+
+// isTransientAzureError returns true if the error is a known transient Azure
+// error that may succeed on retry. It delegates to step.ErrorContainsAny, which
+// flattens the nested ARM error details rad surfaces inside a CLIError so the
+// match covers causes such as the ACI container group quota error.
 func isTransientAzureError(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	transientErrors := []string{
-		// Managed identity propagation delay after environment identity creation.
-		"ManagedServiceIdentityNotFound",
-		// The regional ACI 'StandardCores' quota is shared across the subscription
-		// and is frequently exhausted by concurrent CI runs and in-progress async
-		// resource group cleanups. It drains on its own, so retrying after a short
-		// delay typically succeeds.
-		"ContainerGroupQuotaReached",
-	}
-
-	haystack := err.Error()
-	if cliErr, ok := errors.AsType[*radcli.CLIError](err); ok {
-		if encoded, marshalErr := json.Marshal(cliErr.ErrorResponse); marshalErr == nil {
-			haystack += " " + string(encoded)
-		}
-	}
-
-	for _, te := range transientErrors {
-		if strings.Contains(haystack, te) {
-			return true
-		}
-	}
-
-	return false
+	return step.ErrorContainsAny(err, transientAzureErrorMarkers...)
 }
 
 func Test_isTransientAzureError(t *testing.T) {
