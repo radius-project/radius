@@ -54,6 +54,7 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 					},
 				},
 				ResultOutputExists: false,
+				OutputSensitivity:  map[string]bool{},
 				Parameters:         map[string]any{},
 			},
 		},
@@ -72,6 +73,7 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 					},
 				},
 				ResultOutputExists: false,
+				OutputSensitivity:  map[string]bool{},
 				Parameters:         map[string]any{},
 			},
 		},
@@ -91,6 +93,7 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 					},
 				},
 				ResultOutputExists: true,
+				OutputSensitivity:  map[string]bool{"result": false},
 				Parameters: map[string]any{
 					"context": map[string]any{
 						"name":         "context",
@@ -133,6 +136,7 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 					},
 				},
 				ResultOutputExists: false,
+				OutputSensitivity:  map[string]bool{},
 				Parameters:         map[string]any{},
 			},
 		},

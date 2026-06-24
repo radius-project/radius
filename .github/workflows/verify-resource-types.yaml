@@ -45,12 +45,19 @@ on:
       # Trigger when the default list, the copied manifests, the dependency
       # version (go.mod/go.sum), or the sync logic (Makefile, resource-types.mk)
       # changes.
-      - 'go.mod'
-      - 'go.sum'
-      - 'deploy/manifest/defaults.yaml'
-      - 'deploy/manifest/built-in-providers/**'
-      - 'Makefile'
-      - 'build/resource-types.mk'
+      - "go.mod"
+      - "go.sum"
+      - "deploy/manifest/defaults.yaml"
+      - "deploy/manifest/built-in-providers/**"
+      - "Makefile"
+      - "build/resource-types.mk"
+  # The merge_group event does not support path filters. This check is cheap
+  # (sync + git diff), so it simply runs on every queued group rather than
+  # adding change-detection. Scoped to main only so the release branch flow is
+  # never affected.
+  merge_group:
+    branches:
+      - main
 
 permissions: {}
 
@@ -66,6 +73,7 @@ jobs:
   verify-resource-types:
     name: Verify resource type copies are in sync
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:

@@ -44,6 +44,13 @@ on:
       - main
       - features/*
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected. In the
+  # merge queue the code already lives in the base repo (trusted context), so
+  # the check-trust / approval-gate jobs are skipped and setup proceeds.
+  merge_group:
+    branches:
+      - main
 
 permissions: {}
 
@@ -118,6 +125,7 @@ jobs:
           client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          repositories: radius
           permission-members: read
 
       - name: Determine trust level
@@ -244,6 +252,17 @@ jobs:
           {
             echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
             echo "CHECKOUT_REF=refs/heads/${INPUT_BRANCH}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Set up checkout target (merge_group)
+        if: github.event_name == 'merge_group'
+        run: |
+          # GITHUB_SHA is the merge queue's combined commit (base + queued PRs).
+          # Using it as the checkout ref and the status-check sha ensures the
+          # required check is reported on the commit the merge queue validates.
+          {
+            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
+            echo "CHECKOUT_REF=${GITHUB_SHA}"
           } >> "${GITHUB_ENV}"
 
       - name: Checkout
@@ -1007,6 +1026,10 @@ jobs:
 
       - name: Collect Pod details
         if: always()
+        # Diagnostic-only snapshot of cluster-wide pod state for post-mortem. A
+        # `kubectl describe pods -A` can race pod teardown and return a transient
+        # NotFound, so never let it fail the job.
+        continue-on-error: true
         env:
           MATRIX_NAME: ${{ matrix.name }}
         run: |
