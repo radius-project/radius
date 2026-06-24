@@ -1162,13 +1162,18 @@ jobs:
           echo "Releasing ACI quota by deleting:"
           echo "${aci_ids}"
           # nGroups (container scale sets) back the quota-holding container groups, so
-          # delete them first; then delete the remaining ACI resources (profiles).
+          # delete them first (in parallel) and wait, then delete the remaining ACI
+          # resources (profiles). Parallelizing keeps the synchronous teardown short
+          # while preserving the nGroups-before-profiles order (nGroups reference the
+          # profiles).
           for id in $(echo "${aci_ids}" | grep -i '/nGroups/' || true); do
-            az resource delete --subscription "${sub}" --ids "${id}" --api-version "${aci_api_version}" --verbose || true
+            az resource delete --subscription "${sub}" --ids "${id}" --api-version "${aci_api_version}" --verbose || true &
           done
+          wait
           for id in $(echo "${aci_ids}" | grep -iv '/nGroups/' || true); do
-            az resource delete --subscription "${sub}" --ids "${id}" --api-version "${aci_api_version}" --verbose || true
+            az resource delete --subscription "${sub}" --ids "${id}" --api-version "${aci_api_version}" --verbose || true &
           done
+          wait
 
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         if: always()
