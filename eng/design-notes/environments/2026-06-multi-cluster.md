@@ -752,17 +752,16 @@ code and is deferred.
 > The Terraform engine is covered in multi-cluster only on the legacy
 > `Applications.Core/extenders` type (`Test_MultiCluster_TerraformRecipe`), and
 > the routing seam is recipe-kind-agnostic, so legacy Terraform coverage already
-> proves Terraform → external-cluster placement. New-type Terraform **recipes**
-> are independently validated single-cluster in `resource-types-contrib`'s
-> `validate-resource-types.yaml` (a `recipe: [bicep, terraform]` matrix on k3d).
-> The remaining untested intersection — **multi-cluster × new core type ×
-> Terraform recipe pack** — is intentionally deferred: standing up a parallel set
-> of Terraform recipe packs for the new core types is a larger, separate effort
-> that should not block this change. It is tracked in
-> [radius-project/radius#12224](https://github.com/radius-project/radius/issues/12224),
-> which will add an out-of-band workflow covering all-Terraform recipe packs. The
-> deployment-target namespace validation (Change 6) is recipe-kind-agnostic and is
-> covered through the Bicep new-type leg.
+> proves Terraform → external-cluster placement. The broader goal — exercising
+> **all `Radius.*` core types on both recipe engines** — is intentionally
+> deferred: the intended approach is to run the functional suite twice, once with
+> the default **Bicep** recipe pack and once with a default **Terraform** recipe
+> pack registered, rather than hand-writing per-type, per-engine tests. Standing
+> up the Terraform default recipe packs and the dual-pass CI wiring is a larger,
+> separate effort that should not block this change. It is tracked in
+> [radius-project/radius#12224](https://github.com/radius-project/radius/issues/12224).
+> The deployment-target namespace validation (Change 6) is recipe-kind-agnostic
+> and is covered through the Bicep new-type leg.
 
 Testing challenges: Tier 2 needs reachable EKS and AKS clusters and an RBAC
 mapping for the test principal on each. That provisioning is net-new and not
