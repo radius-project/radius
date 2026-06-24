@@ -896,6 +896,155 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 	}
 }
 
+func Test_Terraform_PrepareRecipeResponse_DirectModule(t *testing.T) {
+	d := &terraformDriver{}
+	tests := []struct {
+		desc             string
+		definition       recipes.EnvironmentDefinition
+		state            *tfjson.State
+		expectedResponse *recipes.RecipeOutput
+		expectedErr      error
+	}{
+		{
+			desc: "direct module with outputs mapping",
+			definition: recipes.EnvironmentDefinition{
+				Name:            "postgres",
+				Driver:          recipes.TemplateKindTerraform,
+				TemplatePath:    "ballj/postgresql/kubernetes",
+				ResourceType:    "Applications.Datastores/sqlDatabases",
+				TemplateVersion: "1.0",
+				Outputs:         map[string]string{"host": "hostname", "port": "port_number"},
+			},
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						"hostname":    {Value: "pg.example.com"},
+						"port_number": {Value: json.Number("5432")},
+						"extra":       {Value: "ignored"},
+					},
+					RootModule: &tfjson.StateModule{},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Values:  map[string]any{"host": "pg.example.com", "port": json.Number("5432")},
+				Secrets: map[string]any{},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "ballj/postgresql/kubernetes",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "direct module without outputs mapping - pass through all",
+			definition: recipes.EnvironmentDefinition{
+				Name:            "postgres",
+				Driver:          recipes.TemplateKindTerraform,
+				TemplatePath:    "ballj/postgresql/kubernetes",
+				ResourceType:    "Applications.Datastores/sqlDatabases",
+				TemplateVersion: "1.0",
+			},
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						"hostname": {Value: "pg.example.com"},
+						"password": {Value: "secret123", Sensitive: true},
+					},
+					RootModule: &tfjson.StateModule{},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Values:  map[string]any{"hostname": "pg.example.com"},
+				Secrets: map[string]any{"password": "secret123"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "ballj/postgresql/kubernetes",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "module with result output and no outputs mapping - wrapped behavior",
+			definition: recipes.EnvironmentDefinition{
+				Name:            "mongo-azure",
+				Driver:          recipes.TemplateKindTerraform,
+				TemplatePath:    "radiusdev.azurecr.io/recipes/mongo:1.0",
+				ResourceType:    "Applications.Datastores/mongoDatabases",
+				TemplateVersion: "1.0",
+			},
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"values": map[string]any{
+									"host": "mongohost",
+								},
+								"secrets": map[string]any{
+									"connectionString": "mongodb://...",
+								},
+								"resources": []any{"resource1"},
+							},
+						},
+					},
+					RootModule: &tfjson.StateModule{},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Values:    map[string]any{"host": "mongohost"},
+				Secrets:   map[string]any{"connectionString": "mongodb://..."},
+				Resources: []string{"resource1"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "radiusdev.azurecr.io/recipes/mongo:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
+			desc: "module with both result and outputs mapping - outputs wins",
+			definition: recipes.EnvironmentDefinition{
+				Name:            "postgres",
+				Driver:          recipes.TemplateKindTerraform,
+				TemplatePath:    "mymodule/postgres:1.0",
+				ResourceType:    "Applications.Datastores/sqlDatabases",
+				TemplateVersion: "1.0",
+				Outputs:         map[string]string{"host": "hostname"},
+			},
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						recipes.ResultPropertyName: {
+							Value: map[string]any{
+								"values": map[string]any{"host": "from-result"},
+							},
+						},
+						"hostname": {Value: "from-flat-output"},
+					},
+					RootModule: &tfjson.StateModule{},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Values:  map[string]any{"host": "from-flat-output"},
+				Secrets: map[string]any{},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "mymodule/postgres:1.0",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			recipeResponse, err := d.prepareRecipeResponse(context.Background(), tt.definition, recipes.Configuration{}, tt.state)
+			require.Equal(t, tt.expectedErr, err)
+			require.Equal(t, tt.expectedResponse, recipeResponse)
+		})
+	}
+}
+
 func Test_FindSecretIDs(t *testing.T) {
 	ctx := context.TODO()
 	definition := recipes.EnvironmentDefinition{TemplatePath: "git::https://dev.azure.com/project/module"}
