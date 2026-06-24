@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
+---
+name: Issue Metrics
+
+on:
+  schedule:
+    # Weekly summary - Mondays at 07:00 UTC
+    - cron: 0 7 * * 1
+    # Monthly summary - 1st of the month at 07:00 UTC
+    - cron: 0 7 1 * *
+  workflow_dispatch:
+    inputs:
+      report_type:
+        description: Reporting window to generate
+        type: choice
+        default: weekly
+        options:
+          - weekly
+          - monthly
+
+permissions: {}
+
+jobs:
+  issue-metrics:
+    uses: radius-project/.github/.github/workflows/__issue-metrics.yml@main
+    permissions:
+      issues: read
+      pull-requests: read
+    with:
+      report-type: ${{ (github.event_name == 'workflow_dispatch' && inputs.report_type) || (github.event.schedule == '0 8 1 * *' && 'monthly') || 'weekly' }}
