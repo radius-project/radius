@@ -8,7 +8,7 @@ Every Radius resource type a contributor authors must today restate the same fou
 
 This design declares those four common properties in a single repo-owned base resource manifest. The CLI (`rad resource-type create`) and the Bicep extension generator (`bicep-tools`) merge the base into every resource type schema before validation and Bicep-type emission, so an author writes only their type-specific properties.
 
-> **Issue Reference:** [adding code reference property to all RRT](https://github.com/radius-project/radius/issues/12114)
+> **Issue References:** #12233, [adding code reference property to all RRT](https://github.com/radius-project/radius/issues/12114)
 
 ## Terms and definitions
 
@@ -87,14 +87,30 @@ Plus two small additions for `codeReference`: `pkg/resourceutil/utils.go::BasicP
 ### The base manifest
 
 ```yaml
-type: object
-properties:
-  application:   { type: string,  description: "Resource ID of the Radius.Core/applications this resource belongs to." }
-  environment:   { type: string,  description: "Resource ID of the Radius.Core/environments this resource deploys into." }
-  connections:   { type: object,  additionalProperties: { type: object }, description: "Map of connection name to source resource ID." }
-  codeReference: { type: string,  description: "Optional URI pointing back to authoring source." }
-required:
-  - environment
+application:
+     type: string
+     description: "Resource ID of the Radius.Core/applications this resource belongs to."
+   environment:
+     type: string
+     description: "Resource ID of the Radius.Core/environments this resource deploys into."
+   connections:
+     type: object
+     description: "Map of connection name to connection data."
+     additionalProperties:
+       type: object
+       properties:
+         source:
+           type: string
+           description: "Resource ID of the source resource for this connection."
+       required: [source]
+   codeReference:
+     type: string
+     description: "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27 "
+   icon:
+     type: string
+     description: "Optional URI pointing to the icon that represents this resource type in app graph"
+ required:
+   - environment
 ```
 
 `environment` is the only required entry; the others are optional unless a per-type `required:` adds them. The set excludes `status` and `recipe` (still reserved) and is frozen.
@@ -105,7 +121,7 @@ Both approaches produce an identical effective schema and differ only in UX, alo
 
 Advantages of Approach B
 - **Authoring.** B requires nothing extra — every type inherits automatically. A requires a per-type `allOf: [{ $ref: "radius:base" }]` opt-in, which is boilerplate the author can forget, silently shipping a type without the base properties.
-- **Schema surface.** B adds no keyword to schema. A introduces the $ref and inheritance to schema, but only with a specific URI. If an author uses the same `ref` keyword to bring in another schema, we are not supporting that yet.
+- **Schema surface.** B adds no keyword to schema. A introduces the $ref and inheritance to schema, but only with a specific URI. If an author uses the same `$ref` keyword to bring in another schema, we are not supporting that yet.
 
 Disadvantage of Approach B
 - **Legibility.** B's inheritance is invisible in the per-type YAML, so on-disk YAML and runtime schema diverge (raw-YAML tooling sees less than runtime). A makes inheritance explicit, keeping YAML and runtime in sync.
@@ -130,8 +146,8 @@ Disadvantage of Approach B
 
 **Validator** `pkg/schema/validator.go`
 - still requires every schema to declare `environment`; because `Apply()` runs first, the rule passes for every type automatically.
-- The validator should additionally flag a per-type schema that redeclares a common property with a conflicting shape. However, it could be OK to add a base resource property such as `application` to "required" section. In this case, the mergers should mark the property as required.
--
+- The validator should additionally flag a per-type schema that redeclares a common property with a conflicting shape. However, it could be OK to add a base resource property such as `application` to the `required:` section. In this case, the mergers should mark the property as required.
+
 
 
 | Component | Change | File(s) |
@@ -185,8 +201,7 @@ No new metrics or traces. `Apply()` failures surface through the existing schema
 
 ## Open Questions
 
-If user defines one of the base property, in the schema, how should validation handle that, if the definition is the same as what we support?
-
+If user defines one of the base property, in the schema, how should validation handle that, if the definition is the same as what we support? [resolved and added details to validation section]
 
 ## Alternatives considered
 
