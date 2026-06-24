@@ -43,7 +43,7 @@ Use these five sections in order:
 | **Verification** | How the contributor confirms success. |
 | **Troubleshooting** | Common failures and their fixes. |
 
-**Annotated example**: [contributing-code/contributing-code-debugging/radius-os-processes-debugging.md](./contributing-code/contributing-code-debugging/radius-os-processes-debugging.md) opens with an **Overview** (its Purpose), lists concrete **Prerequisites** (a cluster, tools, credentials), walks an ordered **Debugging Workflow** (its Steps), and closes with a **Troubleshooting** section. When you adapt it, keep verification explicit — state the exact command output or UI state that confirms success.
+**Annotated example**: [contributing-code/contributing-code-debugging/radius-os-processes-debugging.md](./contributing-code/contributing-code-debugging/radius-os-processes-debugging.md) opens with a **Purpose** (who it's for and why), lists concrete **Prerequisites** (a base dev environment, tools, a database), walks ordered **Steps** (start, set breakpoints, attach, iterate, stop), states explicit **Verification** (the exact commands and UI state that confirm success), and closes with **Troubleshooting**. When you adapt it, keep verification explicit — state the exact command output or UI state that confirms success.
 
 ### 4. Write an architecture doc in the standard format
 
