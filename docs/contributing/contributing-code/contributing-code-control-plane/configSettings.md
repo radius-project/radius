@@ -178,11 +178,7 @@ See the configuration files in `cmd/<service>/*.yaml` for examples of configurat
 
 ## Environment Variables
 
-> 🚧🚧🚧 Under Construction 🚧🚧🚧
->
-> This section documents legacy environment variables that we have not yet migrated to the configuration file.
->
-> Long-term we plan to remove these environment variables and delete this section.
+> **Note:** This section documents environment variables that the control-plane services read directly from the process environment. Some are the only way to configure their behavior (for example the ARM authentication settings); others — notably the logging variables — override the equivalent keys in the [configuration file](#config-file-schema) (`logging.json` / `logging.level`) when set. Long-term we plan to consolidate the remaining env-only settings into the configuration file.
 
 The Radius control-plane services support a number of different settings that will configure their behavior.
 
@@ -199,7 +195,6 @@ Enum values are compared *case-insensitively*.
 
 | Environment variable           | Required / (default value) | Type    | Description                                                                                                                                  |
 | ------------------------------ | -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| PORT                           | **yes**                    | int     | Configures the HTTP listening port of the RP. Must be a valid port number.                                                                   |
 | SKIP_ARM                       | no (false)                 | boolean | Optionally skip connecting to ARM. This means that Azure resources will not be supported.                                                    |
 | ARM_AUTH_METHOD                | no (auto)                  | string  | Configures explicitly which type of credentials the RP will use for ARM (UCPCredential,Managed,ServicePrincipal,Cli). By default the RP will autodetect the credential type |
 | AZURE_CLIENT_ID                | no                         | string  | Configures the client id of a service principal for ARM authentication.                                                                      |
@@ -223,8 +218,6 @@ Our detection logic mirrors what the newer Azure Go SDKs do. Since we require th
 
 ### Kubernetes
 
-Authentication with Kubernetes can be disabled totally by setting `SKIP_K8S=true`. This will disable Kubernetes features like creation and management of containers/pods and ingresses.
-
 The RP connects to Kubernetes using two different strategies to find the identity and credentials in order or priority:
 
 - Using in-cluster credentials (if present)
@@ -235,7 +228,7 @@ The RP connects to Kubernetes using two different strategies to find the identit
 Radius Resource Provider uses the zap logger as the log sink and logr as the interface.
 
 #### Configuring Radius Log Profile
-Radius Log Profile can be set using the environment variable RADIUS_LOG_PROFILE. The allowed values are `production` and `development`. This setting controls the output log encoding format, default log level and other related zap logger settings.
+Radius Log Profile can be set using the environment variable `RADIUS_LOGGING_JSON`. The allowed values are `production` and `development` (default `development`). This setting controls the output log encoding format, default log level and other related zap logger settings.
 
 #### Configuring Radius Log Level
-Radius Log Level can be set using the environment variable RADIUS_LOG_LEVEL. The allowed values are `normal` or `verbose`. If this environment variable is not set, the default log level is determined by the log profile configured above.
+Radius Log Level can be set using the environment variable `RADIUS_LOGGING_LEVEL`. The allowed values are `INFO`, `DEBUG`, `WARN`, and `ERROR` (compared case-insensitively). If this environment variable is not set, the default log level is determined by the log profile configured above.
