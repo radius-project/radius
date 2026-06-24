@@ -1,0 +1,88 @@
+{{- if .Values.networkPolicies.enabled }}
+{{- if not .Values.networkPolicies.controlPlaneCIDRs }}
+{{- fail "networkPolicies.enabled=true requires networkPolicies.controlPlaneCIDRs to be set to the cluster's node/control-plane CIDR(s) so the Kubernetes API server can reach UCP and the controller on :9443. Set networkPolicies.controlPlaneCIDRs, or set networkPolicies.enabled=false to install without these policies." }}
+{{- end }}
+# Optional ingress lockdown for the Radius control-plane namespace.
+#
+# NetworkPolicy is additive / allow-only: once a pod is selected by any policy,
+# all ingress to it is denied unless another policy explicitly allows it. The
+# three policies below turn radius-system from "any pod in the cluster can reach
+# the control plane" into "deny by default, allow only Radius-internal and the
+# Kubernetes control plane".
+#
+# Enforcement requires a CNI that implements NetworkPolicy (Calico, Cilium,
+# Antrea, ...). On CNIs that do not (kindnet, flannel, default EKS VPC CNI)
+# these objects are accepted by the API server but silently NOT enforced.
+#
+# Only ingress is restricted; egress is intentionally left open so UCP can reach
+# the Kubernetes API server (it stores state there) and all pods can resolve DNS.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: radius-default-deny-ingress
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/part-of: radius
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# Re-permit east-west traffic between Radius components (UCP <-> applications-rp
+# / dynamic-rp / controller / deployment-engine / dashboard / database) that the
+# default-deny above would otherwise block. The source is matched by namespace
+# using the immutable kubernetes.io/metadata.name label that Kubernetes adds to
+# every namespace automatically (NamespaceDefaultLabelName, GA since 1.21), so
+# no manual labeling is required. Pods in any other namespace stay blocked.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: radius-allow-internal
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    app.kubernetes.io/part-of: radius
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: "{{ .Release.Namespace }}"
+{{- with .Values.networkPolicies.controlPlaneCIDRs }}
+---
+# Allow ingress from the Kubernetes API server. It reaches the control plane over
+# the host network, so this traffic arrives at the destination pod with the NODE's
+# IP rather than a pod IP and cannot be matched by a pod/namespace selector:
+#   - kube-apiserver -> ucp:9443        (APIService aggregation for api.ucp.dev)
+#   - kube-apiserver -> controller:9443 (recipe admission webhook)
+# Both arrive on container port 9443, so the rule is scoped to that port to limit
+# what host-network sources in these CIDRs can reach. (The chart's only kubelet
+# probes are exec probes on dynamic-rp; they run via the container runtime and do
+# not traverse the network, so they need no allowance here.)
+# Without this policy the default-deny above blocks API aggregation and webhooks
+# and breaks the control plane. The CIDRs are cluster-specific (typically the node
+# subnet) and come from networkPolicies.controlPlaneCIDRs.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: radius-allow-control-plane
+  namespace: "{{ $.Release.Namespace }}"
+  labels:
+    app.kubernetes.io/part-of: radius
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        {{- range . }}
+        - ipBlock:
+            cidr: {{ . | quote }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: 9443
+{{- end }}
+{{- end }}

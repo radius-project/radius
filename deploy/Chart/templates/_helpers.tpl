@@ -103,3 +103,46 @@ Priority for tag (handled by caller):
   ghcr.io/radius-project/{{ .image }}:{{ .tag }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Render the external target-cluster kubeconfig volume for recipe-executing pods.
+
+When global.targetCluster.enabled is true, recipe execution (the Terraform
+kubernetes provider in dynamic-rp and the Bicep extension via the Deployment
+Engine) targets the external cluster described by a mounted kubeconfig instead of
+the control-plane cluster. The Secret holding the kubeconfig is owned outside the
+chart (for example a CI workflow that mints and refreshes it). When disabled,
+nothing is rendered and behavior is unchanged.
+
+Usage (pass the root context):
+  {{- include "radius.targetCluster.volume" . | nindent 8 }}
+  {{- include "radius.targetCluster.volumeMount" . | nindent 8 }}
+  {{- include "radius.targetCluster.env" . | nindent 8 }}
+*/}}
+{{- define "radius.targetCluster.volume" -}}
+{{- if .Values.global.targetCluster.enabled -}}
+- name: target-kubeconfig
+  secret:
+    secretName: {{ .Values.global.targetCluster.secretName }}
+    # World-readable (0444) so the non-root RP/DE containers can read the mounted
+    # kubeconfig. Secret files are owned by root, so 0400 (root-only) would be
+    # unreadable to a non-root process; the secret is already isolated to the pod,
+    # so 0444 does not widen the real security boundary.
+    defaultMode: 0444
+{{- end -}}
+{{- end -}}
+
+{{- define "radius.targetCluster.volumeMount" -}}
+{{- if .Values.global.targetCluster.enabled -}}
+- name: target-kubeconfig
+  mountPath: {{ .Values.global.targetCluster.mountPath }}
+  readOnly: true
+{{- end -}}
+{{- end -}}
+
+{{- define "radius.targetCluster.env" -}}
+{{- if .Values.global.targetCluster.enabled -}}
+- name: RADIUS_TARGET_KUBECONFIG
+  value: "{{ .Values.global.targetCluster.mountPath }}/{{ .Values.global.targetCluster.secretKey }}"
+{{- end -}}
+{{- end -}}

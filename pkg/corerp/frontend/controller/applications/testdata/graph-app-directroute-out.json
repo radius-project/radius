@@ -9,6 +9,9 @@
     "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/frontend",
     "name": "frontend",
     "outputResources": [],
+    "properties": {
+      "application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp"
+    },
     "provisioningState": "Succeeded",
     "type": "Applications.Core/containers"
   },
@@ -22,6 +25,17 @@
     "id": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/backendapp",
     "name": "backendapp",
     "outputResources": [],
+    "properties": {
+      "application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/Applications/myapp",
+      "container": {
+        "ports": {
+          "web": {
+            "port": 8080,
+            "protocol": "TCP"
+          }
+        }
+      }
+    },
     "provisioningState": "Succeeded",
     "type": "Applications.Core/containers"
   }

@@ -260,3 +260,67 @@ func Test_getAPIVersionForResourceType_Validation(t *testing.T) {
 		})
 	}
 }
+
+func Test_getResourceTypeSpecificProperties(t *testing.T) {
+	tests := []struct {
+		name string
+		in   map[string]any
+		want map[string]any
+	}{
+		{
+			name: "nil in nil out",
+			in:   nil,
+			want: nil,
+		},
+		{
+			name: "drops only-captured fields and returns nil",
+			in: map[string]any{
+				"provisioningState": "Succeeded",
+				"connections":       map[string]any{"db": map[string]any{"source": "x"}},
+				"status":            map[string]any{"outputResources": []any{map[string]any{"id": "/a/b"}}, "phrase": "All good"},
+			},
+			want: nil,
+		},
+		{
+			name: "drops status entirely while keeping other fields",
+			in: map[string]any{
+				"status": map[string]any{
+					"outputResources": []any{map[string]any{"id": "/a/b"}},
+					"phrase":          "All good",
+				},
+				"application": "/planes/radius/local/.../applications/myapp",
+				"image":       "magpie:latest",
+			},
+			want: map[string]any{
+				"application": "/planes/radius/local/.../applications/myapp",
+				"image":       "magpie:latest",
+			},
+		},
+		{
+			name: "preserves routes alongside other fields",
+			in: map[string]any{
+				"provisioningState": "Succeeded",
+				"connections":       map[string]any{"db": map[string]any{"source": "x"}},
+				"routes": []any{map[string]any{
+					"path":        "/api",
+					"destination": "http://backend:8080",
+				}},
+				"hostname": "example.com",
+			},
+			want: map[string]any{
+				"routes": []any{map[string]any{
+					"path":        "/api",
+					"destination": "http://backend:8080",
+				}},
+				"hostname": "example.com",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := getResourceTypeSpecificProperties(tt.in)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}

@@ -39,7 +39,11 @@ jobs:
     name: Clean up unused Azure resources
     if: github.repository == 'radius-project/radius'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    # Deleting ACI nGroups synchronously before each resource group (see the delete
+    # step) is slower than the previous fire-and-forget 'az group delete --no-wait',
+    # so allow more time to work through a backlog. The purge is idempotent and runs
+    # twice a day, so any groups not reached in one run are handled by the next.
+    timeout-minutes: 30
     permissions:
       id-token: write
     steps:
@@ -86,12 +90,47 @@ jobs:
 
       - name: Delete Azure resource groups
         run: |
-          echo "## Deleting resource group list" >> $GITHUB_STEP_SUMMARY
-          cat "${AZURE_RG_DELETE_LIST_FILE}" | while read line
-          do
-              echo " * $line" >> $GITHUB_STEP_SUMMARY
-              az group delete --resource-group $line --yes --verbose --no-wait
-          done
+          echo "## Deleting resource group list" >> "$GITHUB_STEP_SUMMARY"
+
+          # Azure Container Instances 'nGroups' (container scale sets) are delegated
+          # into the resource group's VNet subnet. A plain 'az group delete' deletes
+          # resources in parallel and cannot remove the subnet while the nGroups still
+          # reference it, so the whole resource group delete silently fails (--no-wait)
+          # and leaves an empty-looking group behind whose only resource is the nGroups.
+          # Delete the Container Instances resources first (nGroups before profiles) so
+          # the resource group delete can then succeed.
+          # Radius creates the ACI nGroups/containerGroupProfiles with this API version
+          # (pkg/sdk/v20241101preview). A plain delete lets ARM pick the provider's
+          # latest advertised version (e.g. 2026-06-01-preview), which the RP rejects
+          # ("api-version not supported"), leaving the nGroups - and therefore the
+          # whole resource group - undeletable. Delete them with the explicit version.
+          aci_api_version="2024-11-01-preview"
+          delete_rg() {
+            line="$1"
+            aci_ids=$(az resource list --resource-group "$line" \
+              --query "[?starts_with(type, 'Microsoft.ContainerInstance/')].id" \
+              --output tsv 2>/dev/null || true)
+            for id in $(echo "$aci_ids" | grep -i '/nGroups/' || true); do
+              echo "deleting $id"
+              az resource delete --ids "$id" --api-version "${aci_api_version}" || true
+            done
+            for id in $(echo "$aci_ids" | grep -iv '/nGroups/' || true); do
+              echo "deleting $id"
+              az resource delete --ids "$id" --api-version "${aci_api_version}" || true
+            done
+            az group delete --resource-group "$line" --yes --verbose --no-wait || true
+          }
+
+          # Delete resource groups in parallel (capped) so a large backlog still fits
+          # the job timeout.
+          max_parallel=10
+          while read -r line; do
+              [ -z "$line" ] && continue
+              echo " * $line" >> "$GITHUB_STEP_SUMMARY"
+              delete_rg "$line" &
+              while [ "$(jobs -r | wc -l)" -ge "${max_parallel}" ]; do wait -n; done
+          done < "${AZURE_RG_DELETE_LIST_FILE}"
+          wait
 
   purge_bicep_types:
     runs-on: ubuntu-24.04
