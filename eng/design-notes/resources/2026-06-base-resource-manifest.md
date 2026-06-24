@@ -89,8 +89,8 @@ Plus two small additions for `codeReference`: `pkg/resourceutil/utils.go::BasicP
 ```yaml
 type: object
 properties:
-  application:   { type: string,  description: "Resource ID of the Applications.Core/applications this resource belongs to." }
-  environment:   { type: string,  description: "Resource ID of the Applications.Core/environments this resource deploys into." }
+  application:   { type: string,  description: "Resource ID of the Radius.Core/applications this resource belongs to." }
+  environment:   { type: string,  description: "Resource ID of the Radius.Core/environments this resource deploys into." }
   connections:   { type: object,  additionalProperties: { type: object }, description: "Map of connection name to source resource ID." }
   codeReference: { type: string,  description: "Optional URI pointing back to authoring source." }
 required:
@@ -128,7 +128,10 @@ Disadvantage of Approach B
 
 **`bicep-tools` parallel merger.** `applyBaseResource(schema *manifest.Schema)` replicates the semantics in the standalone module (kept separate so the Bicep extension input doesn't pull in the full Radius dependency tree). Notably, **`bicep-tools/pkg/manifest/manifest.go` needs no new fields** — a win over Approach A, which had to extend `Schema` with `AllOf` / `Ref`. A sync test (`TestApplyBaseResource_PropertiesMatchCanonicalYAML`) asserts the duplicated Go literal matches `base.yaml` (both properties and `required:`), failing CI on any drift. The emitter (`bicep-tools/pkg/converter/converter.go`) calls it once per `(provider, type, apiVersion)` before building the `<Type>Properties` Bicep type.
 
-**Validator — unchanged.** `pkg/schema/validator.go` still requires every schema to declare `environment`; because `Apply()` runs first, the rule passes for every type automatically. The validator should additionally flag a per-type schema that redeclares a common property with a conflicting shape.
+**Validator** `pkg/schema/validator.go`
+- still requires every schema to declare `environment`; because `Apply()` runs first, the rule passes for every type automatically.
+- The validator should additionally flag a per-type schema that redeclares a common property with a conflicting shape. However, it could be OK to add a base resource property such as `application` to "required" section. In this case, the mergers should mark the property as required.
+-
 
 
 | Component | Change | File(s) |
