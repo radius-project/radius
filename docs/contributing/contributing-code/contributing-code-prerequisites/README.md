@@ -1,191 +1,173 @@
 # Repository Prerequisites
 
-This page lists the prerequisites for working with the repository. In general, you have three options to get your development setup up and running:
+## Purpose
 
-<!-- - Remotely using GitHub Codespaces -->
-- Using Visual Studio Code and dev containers
-- Locally by installing all prerequisites on your machine
+This guide sets up a development environment for contributing to Radius. It is the single source of truth for prerequisites and dev-environment setup, for anyone — human or agent — making a code change to `radius-project/radius`. It covers the three supported setup paths (GitHub Codespaces, a VS Code dev container, or a local install), the tools each contributor needs, and how to confirm the setup works. The basic prerequisites are enough for most tasks; some tasks require the additional tools listed below.
 
-We will walk you through the options in the following sections.
+> 📝 **Tip** — We recommend dev containers (GitHub Codespaces or VS Code) as the most convenient way to get started: every required tool is preinstalled.
 
-> 📝 **Tip** - We recommend the usage of dev containers in Visual Studio Code as they are the most convenient way to get started.
+## Prerequisites
 
-Depending on the task you need to perform, you may need to install more tools, but basic prerequisites should be sufficient for most contributors to get started.
+- A supported operating system: macOS, Linux, or Windows with [WSL](https://docs.microsoft.com/windows/wsl/install).
+- A GitHub account and a clone (or fork) of the repository.
+- For either container-based option, a way to run Linux containers — [Docker](https://docs.docker.com/engine/install/) locally, or a Codespace in the cloud.
 
-## Operating system
+On macOS and Linux, a package manager makes installing and updating the local tools below much easier — for example [Homebrew](https://brew.sh/) on macOS, or your distribution's package manager on Linux.
 
-We support developing on macOS, Linux and Windows with [WSL](https://docs.microsoft.com/windows/wsl/install).
+## Steps
 
-## Asking for help
+Choose one of the three setup options. GitHub Codespaces and the VS Code dev container preinstall every tool; a local install gives you full control over your machine.
 
-If you get stuck with any development setup option, please ask for help in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814).
+### GitHub Codespaces
 
-## Development environment - setup options
+The fastest way to get started is a pre-built GitHub Codespace, which builds the [dev container](#vs-code-and-dev-container) in the cloud.
 
-The following sections describe the aforementioned alternatives of development setups in more detail. We recommend use of _dev containers_ in VS Code as they are the most convenient way to get started.
+1. Press this button:
 
-<!-- ### GitHub Codespaces
+   [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=340522752&skip_quickstart=true&machine=basicLinux32gb&devcontainer_path=.devcontainer%2Fdevcontainer.json&geo=UsWest)
 
-The easiest way to get started is using our pre-built GitHub Codespace.
+2. Wait for the Codespace to finish building. When it does, you have a fully configured environment and are ready to contribute. 😎
 
-The steps to execute are:
-
-1. Press this button
-
-   [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=340522752&skip_quickstart=true&machine=basicLinux32gb&devcontainer_path=.devcontainer%2Fcontributor%2Fdevcontainer.json&geo=UsWest)
-
-1. There is no second step - you are ready to contribute 😎
-
-> **Note** - When using GitHub Codespaces cost can occur on your side after you have used up the monthly included storage and core hours for your account. You find more details [here](https://docs.github.com/en/billing/managing-billing-for-github-codespaces/about-billing-for-github-codespaces). -->
+> 📝 **Note** — GitHub Codespaces can incur cost once you exceed the monthly included storage and core hours for your account. See [About billing for GitHub Codespaces](https://docs.github.com/en/billing/managing-billing-for-github-codespaces/about-billing-for-github-codespaces) for details.
 
 ### VS Code and Dev Container
 
-To use the dev container you must have the following tools installed and running locally:
+To run the dev container locally you need the following tools installed and running:
 
 - [Visual Studio Code](https://code.visualstudio.com/)
-- [Dev Container Extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+- [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
 - [Docker](https://docs.docker.com/engine/install/)
 
-> 📝 **Tip** - If you are new to _dev containers_ you find more information about developing inside a container [here](https://code.visualstudio.com/docs/devcontainers/containers) and a comprehensive tutorial [here](https://code.visualstudio.com/docs/devcontainers/tutorial).
+> 📝 **Tip** — New to dev containers? See the [Developing inside a Container](https://code.visualstudio.com/docs/devcontainers/containers) overview and the [tutorial](https://code.visualstudio.com/docs/devcontainers/tutorial).
 
-To get the dev container up and running
+To start the dev container:
 
-1. If not already done, clone your fork of the Project Radius repository to your local file system and open the folder with VS Code. The best way to do so is either to launch VS Code and open the folder via the _File_ -> _Open Folder_ menu or to start VS Code from the command shell with `code .`, which opens the current directory as a folder in VS Code.
+1. If you have not already, clone your fork and open the folder in VS Code — either via `File` → `Open Folder`, or by running `code .` from the repository root.
 
-1. Click the "X"-like button in VS Code to open a remote window
+1. Open a remote window by clicking the Remote ("><") button in the bottom-left corner of VS Code.
 
    ![Button for opening remote window command palette](img/vscode-devcontainer-open-remote-button.png)
 
-1. Select the option "Reopen in Container" in the command palette
+1. Select **Reopen in Container** from the command palette.
 
    ![Remote window command palette](img/vscode-cmd-palette-container.png)
 
-The dev container will be started automatically.
+The dev container starts automatically.
 
 ![Dev container startup process](img/vscode-devcontainer-opening-process.png)
 
-When doing this the first time this might take a bit as all dependencies need to be downloaded and installed in your container - so grab a cup of ☕ and enjoy the work done by the container.
+The first build can take a while because all dependencies are downloaded and installed in the container — so grab a cup of ☕. Once it is running you can start contributing; skip ahead to [Verification](#verification).
 
-Once the container is up and running you can start with your contribution.
+### Local installation
 
-## Basic Prerequisites
+If you prefer to install everything on your own machine, install the tools in this section.
 
-Contributing to Radius requires several tools to get started. This section lists them grouped by their context
+> 📝 **Tip** — With either container option ([Codespaces](#github-codespaces) or the [VS Code dev container](#vs-code-and-dev-container)), all of these tools are already installed for you.
 
-> 📝 **Tip** - If your are using [VS Code and Dev Container](#vs-code-and-dev-container), all these tools are already in place and available out-of-the-box.
+#### Editors
 
-<!--
-    Note: some of this content is synchronized with the first-commit guide for simplicity. Keep these in sync!
--->
-
-### Editors
-
-You can choose whichever editor you are most comfortable for working on Go code. If you don't have a code editor set up for Go, we recommend VS Code. The experience with VS Code is high-quality and approachable for newcomers.
-
-Alternatively, you can choose whichever editor you are most comfortable for working on Go code. Feel free to skip this section if you want to make another choice.
+You can use whichever editor you are most comfortable with for Go. If you don't already have one set up for Go, we recommend VS Code — the experience is high-quality and approachable for newcomers.
 
 - [Visual Studio Code](https://code.visualstudio.com/)
 - [Go extension](https://marketplace.visualstudio.com/items?itemName=golang.go)
 
-Install both of these and then follow the steps in the _Quick Start_ for the Go extension.
+Install both, then follow the *Quick Start* for the Go extension. It walks you through an automated install of additional tools that match your installed version of Go.
 
-The extension will walk you through an automated install of some additional tools that match your installed version of Go.
+#### Core dependencies
 
-### Local installation
-
-This is the list of core dependencies to install for the most common tasks. In general we expect all contributors to have all of these tools present:
+Install these for the most common tasks. We expect all contributors to have all of them:
 
 - [Git](https://git-scm.com/downloads)
 - [Go](https://golang.org/doc/install)
 - [Node.js](https://nodejs.org/en/)
 - [Python](https://www.python.org/downloads/)
-- [Golangci-lint](https://golangci-lint.run/welcome/install/#local-installation)
+- [golangci-lint](https://golangci-lint.run/welcome/install/#local-installation)
 - [jq](https://jqlang.github.io/jq/download/)
-- Make
+- Make (see [Install Make](#install-make))
 
-For `make` we advice the following installation steps depending on you OS.
+[Docker](https://docs.docker.com/engine/install/) is not needed for `make build` or `make lint`, but you do need it to build the container images or to run the [VS Code dev container](#vs-code-and-dev-container). Install it if your task involves either.
 
-#### Linux
+#### Install Make
 
-Install the `build-essential` package:
+Install `make` based on your OS.
+
+**Linux** — install the `build-essential` package:
 
 ```bash
 sudo apt-get install build-essential
 ```
 
-#### Mac
-
-Using Xcode:
+**macOS** — using Xcode:
 
 ```bash
 xcode-select --install
 ```
 
-Using Homebrew:
+or using Homebrew:
 
 ```bash
 brew install make
 ```
 
-To build our containers, you also need [Docker](https://docs.docker.com/engine/install/).
+#### Additional tools
 
-### Additional tools
+Install these only when your task needs them.
 
-The following tools are required depending on the task at hand.
-
-#### Kubernetes
-
-The easiest way to run Radius is on Kubernetes. To do this you will need the ability to create a Kubernetes cluster as well as to install `kubectl` to control that cluster, you probably also want Helm to install things in your cluster. There are many ways to create a Kubernetes cluster that you can use for development and testing. If you don't have a preference we recommend `kind`.
+**Kubernetes.** The easiest way to run Radius is on Kubernetes. You need the ability to create a cluster, plus `kubectl` to control it and Helm to install into it. There are many ways to create a development cluster; if you don't have a preference, we recommend `kind`.
 
 - [Install kubectl](https://kubernetes.io/docs/tasks/tools/#kubectl)
 - [Install Helm](https://helm.sh/docs/intro/install/)
-- [Install Kind](https://kubernetes.io/docs/tasks/tools/#kind)
+- [Install kind](https://kubernetes.io/docs/tasks/tools/#kind)
 
-#### Troubleshooting kubernetes
-
-You might want tools that can help debug Kubernetes problems and understand what's going on in the cluster. Here are some recommendations from the team:
+Optional tools the team recommends for debugging Kubernetes:
 
 - [Lens (UI for Kubernetes)](https://k8slens.dev/)
 - [VS Code Kubernetes Tools](https://marketplace.visualstudio.com/items?itemName=ms-kubernetes-tools.vscode-kubernetes-tools)
 - [Stern (console logging tool)](https://github.com/stern/stern#installation)
 
-#### Dapr
+**Dapr.** Radius integrates with [Dapr](https://docs.dapr.io/). To work on these features, install the [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/).
 
-Radius includes integration with [Dapr](https://docs.dapr.io/). To use work on these features, you'll need to install the Dapr CLI.
+**Test summaries.** The default `go test` output can be hard to read when you have many tests. `make test` automatically uses [gotestsum](https://github.com/gotestyourself/gotestsum#install) if it is installed.
 
-- [Dapr](https://docs.dapr.io/getting-started/install-dapr-cli/)
+#### Install code-generation tools
 
-#### Test summaries
+`make generate` updates the OpenAPI specs and the generated Go client/server code, along with generated mocks and Kubernetes API types. If `make generate` fails, you are probably missing the TypeSpec toolchain.
 
-The default `go test` output can be hard to read when you have many tests. We recommend `gotestsum` as a tool to solve this. Our `make test` command will automatically use `gotestsum` if it is available.
+The toolchain is driven by `pnpm`, which Radius provisions through [Corepack](https://nodejs.org/api/corepack.html) (bundled with Node.js) so everyone uses the version pinned in `package.json`. Enable it once, then install the toolchain from the repository root:
 
-- [gotestsum](https://github.com/gotestyourself/gotestsum#install)
+```bash
+corepack enable pnpm
+pnpm -C typespec install
+```
 
-## Testing required tools
+> 📝 **Note** — `mockgen` and `controller-gen` are managed as Go tool dependencies (the `tool` directives in [go.mod](../../../../go.mod)) and are invoked via `go tool mockgen` and `go tool controller-gen`, so they do not require a separate `go install`. `autorest` and `oav` are devDependencies in [typespec/package.json](../../../../typespec/package.json) and are invoked via `pnpm -C typespec exec`. No global installation is needed.
 
-Independent of the setup option you have chosen, you can now test your tooling. If not already done, navigate to the cloned project in your command shell and build the main outputs using `make`:
+## Verification
+
+Whichever option you chose, verify the toolchain by building and linting from the repository root:
 
 ```bash
 make build && make lint
 ```
 
-Running these steps will run our build and lint steps and verify that the tools are installed correctly. If you get stuck or suspect something is not working in these instructions please [open an issue](https://github.com/radius-project/radius/issues/new/choose).
+A successful run builds the binaries and reports no lint errors, confirming the core tools are installed correctly.
 
-## Code generation
-
-Our code generation targets are used to update generated OpenAPI specs and generated Go code based on those OpenAPI specs. Additionally, some Go code is generated mocks or Kubernetes API types.
-
-If you were trying to run `make generate` and ran into an error, then one of the below is likely missing.
-
-Enter the following commands to install all of the required tools.
+If you installed the code-generation toolchain, verify it as well:
 
 ```bash
-pnpm -C typespec install
+make generate
 ```
 
-> **Note:** `mockgen` and `controller-gen` are managed as Go tool dependencies (the `tool` directives in `go.mod`) and are invoked via `go tool mockgen` and `go tool controller-gen`, so they do not require a separate `go install`. `autorest` and `oav` are installed as devDependencies in `typespec/package.json` and are invoked via `pnpm -C typespec exec`. No global installation is needed.
+This regenerates the API clients and server code with no errors.
 
-## Updating the dev container lockfile
+## Troubleshooting
+
+- **`make build` or `make lint` fails on a missing tool.** Re-check the [core dependencies](#core-dependencies) — a container-based setup installs them all for you.
+- **`make generate` fails.** Install the TypeSpec toolchain with `pnpm -C typespec install` (see [Install code-generation tools](#install-code-generation-tools)).
+- **The dev container won't build or open.** Confirm Docker is installed and running, then retry **Reopen in Container**. For background, see the [VS Code dev containers docs](https://code.visualstudio.com/docs/devcontainers/containers).
+- **Still stuck?** Ask for help in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814), or [open an issue](https://github.com/radius-project/radius/issues/new/choose).
+
+## Maintenance: updating the dev container lockfile
 
 The repository includes a `devcontainer-lock.json` file alongside the `devcontainer.json` in the `.devcontainer/` directory. This lockfile pins each dev container feature to an exact version and records its SHA-256 integrity hash, similar to how `package-lock.json` works for npm. It ensures that every contributor gets the same feature versions when building the dev container, and detects if a published feature artifact has been tampered with after the hash was first recorded.
 
