@@ -105,10 +105,7 @@ application:
        required: [source]
    codeReference:
      type: string
-     description: "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27 "
-   icon:
-     type: string
-     description: "Optional URI pointing to the icon that represents this resource type in app graph"
+     description: "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27"
  required:
    - environment
 ```
