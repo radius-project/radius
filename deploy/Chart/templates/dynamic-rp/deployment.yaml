@@ -237,6 +237,7 @@ spec:
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}
         {{- end}}
+        {{- include "radius.targetCluster.env" . | nindent 8 }}
         ports:
         - containerPort: 5443
           name: dynamic-rp
@@ -280,6 +281,7 @@ spec:
           mountPath: /etc/ssl/certs
           readOnly: true
         {{- end }}
+        {{- include "radius.targetCluster.volumeMount" . | nindent 8 }}
         {{- if .Values.dynamicrp.resources }}
         resources:{{ toYaml .Values.dynamicrp.resources | nindent 10 }}
         {{- end }}
@@ -381,3 +383,4 @@ spec:
         - name: ssl-certs
           emptyDir: {}
         {{- end }}
+        {{- include "radius.targetCluster.volume" . | nindent 8 }}

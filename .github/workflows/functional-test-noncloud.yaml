@@ -163,6 +163,7 @@ jobs:
     permissions:
       contents: read # Required for listing the commits
       checks: write # Required for creating a check run
+      pull-requests: write # Required for posting a PR comment
     strategy:
       # Keep matrix legs independent. With fail-fast: true, a single failing
       # (often flaky) leg cancels all in-progress siblings. GitHub's
@@ -179,6 +180,7 @@ jobs:
             daprrp-noncloud,
             kubernetes-noncloud,
             msgrp-noncloud,
+            multicluster-noncloud,
             samples-noncloud,
             ucp-noncloud,
             datastoresrp-noncloud,
@@ -343,6 +345,81 @@ jobs:
           registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
           registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
 
+      - name: Set up external target cluster (multi-cluster)
+        if: matrix.name == 'multicluster-noncloud'
+        run: |
+          set -euo pipefail
+
+          # Create a second in-runner KinD cluster to act as the external workload
+          # cluster. The Radius control plane stays on the first ("kind") cluster;
+          # application resources must land on this "external" cluster. This runs
+          # before "Install Radius" so the control plane can be installed with the
+          # target-cluster mount enabled (avoiding a post-install helm upgrade,
+          # which conflicts with the field manager rad install uses).
+          ./kind create cluster --name external
+
+          # Two kubeconfigs are derived from the same external cluster:
+          # 1. An "internal" kubeconfig reachable from pods running inside the
+          #    control-plane cluster. Pods cannot resolve the docker container name
+          #    (`kind get kubeconfig --internal` uses external-control-plane:6443,
+          #    which only docker DNS resolves), so point it at the external control
+          #    plane's IP on the shared "kind" docker network — reachable from pods
+          #    via the node — and skip TLS verification since the API server cert may
+          #    not cover that IP. This is what the Radius pods consume via
+          #    RADIUS_TARGET_KUBECONFIG.
+          # 2. A "host" kubeconfig (127.0.0.1:<port>) reachable from the runner, used
+          #    by the test process to assert resources landed on the external cluster.
+          mkdir -p "${RUNNER_TEMP}/external-cluster"
+          INTERNAL_KUBECONFIG="${RUNNER_TEMP}/external-cluster/internal.kubeconfig"
+          HOST_KUBECONFIG="${RUNNER_TEMP}/external-cluster/host.kubeconfig"
+          ./kind get kubeconfig --name external > "${HOST_KUBECONFIG}"
+
+          EXTERNAL_IP="$(docker inspect -f '{{(index .NetworkSettings.Networks "kind").IPAddress}}' external-control-plane)"
+          if [ -z "${EXTERNAL_IP}" ]; then
+            echo "Could not determine external-control-plane IP on the kind network"
+            exit 1
+          fi
+          cp "${HOST_KUBECONFIG}" "${INTERNAL_KUBECONFIG}"
+          kubectl --kubeconfig "${INTERNAL_KUBECONFIG}" config set "clusters.kind-external.server" "https://${EXTERNAL_IP}:6443"
+          kubectl --kubeconfig "${INTERNAL_KUBECONFIG}" config unset "clusters.kind-external.certificate-authority-data"
+          kubectl --kubeconfig "${INTERNAL_KUBECONFIG}" config set "clusters.kind-external.insecure-skip-tls-verify" "true"
+
+          # Restore kubectl context to the control-plane cluster; `kind create`
+          # switched it to the external cluster.
+          kubectl config use-context kind-kind
+
+          # Preload the magpie workload image into the external cluster. The
+          # external cluster is a plain KinD cluster with no local-registry mirror
+          # or CA trust, so it cannot pull `radius-registry:5000/...` images. The
+          # image was already built into the runner's docker daemon by the
+          # "Build and Push container images" step, but tagged with the host-facing
+          # registry name (LOCAL_REGISTRY_SERVER=localhost), whereas pods reference
+          # the in-cluster registry name (LOCAL_REGISTRY_NAME=radius-registry). So
+          # retag to the in-cluster name and load that, matching the pod's image
+          # reference exactly. The container recipe sets no imagePullPolicy and the
+          # tag is not `latest`, so kubelet defaults to IfNotPresent and uses the
+          # preloaded image. This covers the magpie-using legs (Bicep container and
+          # legacy container); the Terraform Redis leg's image is public.
+          MAGPIE_HOST_IMAGE="${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/magpiego:${REL_VERSION}"
+          MAGPIE_CLUSTER_IMAGE="${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/magpiego:${REL_VERSION}"
+          docker tag "${MAGPIE_HOST_IMAGE}" "${MAGPIE_CLUSTER_IMAGE}"
+          ./kind load docker-image "${MAGPIE_CLUSTER_IMAGE}" --name external
+
+          # Pre-create the radius-system namespace and the target-kubeconfig secret
+          # so the secret exists before the Radius pods start (the deployments mount
+          # it when global.targetCluster.enabled=true).
+          kubectl create namespace radius-system --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic target-kubeconfig \
+            --namespace radius-system \
+            --from-file=kubeconfig="${INTERNAL_KUBECONFIG}"
+
+          # Tell the Install Radius step to enable the target-cluster mount, and
+          # expose the host kubeconfig path to the test process.
+          {
+            echo "TARGET_CLUSTER_INSTALL_ARGS=--set global.targetCluster.enabled=true"
+            echo "RADIUS_TEST_EXTERNAL_KUBECONFIG=${HOST_KUBECONFIG}"
+          } >> "${GITHUB_ENV}"
+
       - name: Install Radius
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -375,6 +452,11 @@ jobs:
           if [ "${USE_CERT_FILE}" = "true" ]; then
             RAD_COMMAND="$RAD_COMMAND --set-file global.rootCA.cert=$TEMP_CERT_DIR/certs/${LOCAL_REGISTRY_SERVER}/client.crt"
           fi
+
+          # For the multi-cluster leg, enable the external target-cluster mount at
+          # install time (set by the "Set up external target cluster" step). Empty
+          # for all other legs.
+          RAD_COMMAND="$RAD_COMMAND ${TARGET_CLUSTER_INSTALL_ARGS:-}"
 
           echo "*** Installing Radius to Kubernetes ***"
           eval $RAD_COMMAND
@@ -542,12 +624,18 @@ jobs:
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
-        # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
-        if: failure() && github.repository == vars.RADIUS_REPOSITORY
+        # Run on success and failure so a passing "Re-run failed jobs" refreshes the
+        # "Functional Tests - <name>" check published by EnricoMi. Gating this on
+        # failure() left that check stuck red after a green re-run, because the step
+        # was skipped and the previous attempt's failed check was never updated.
+        # comment_mode: failures keeps PR comments limited to actual failures, and
+        # the failure artifacts are still uploaded for post-mortem.
+        if: always() && github.repository == vars.RADIUS_REPOSITORY
         with:
           test_group_name: Functional Tests - ${{ matrix.name }}
           artifact_name: functional_test_results_${{ matrix.name }}
           result_directory: dist/functional_test/
+          comment_mode: failures
 
       - name: Collect detailed Radius logs and events
         id: radius-logs-events
