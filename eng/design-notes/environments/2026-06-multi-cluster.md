@@ -726,13 +726,14 @@ code and is deferred.
   **external** cluster and is **absent** on the control-plane cluster:
   (a) a Bicep recipe resource (Deployment Engine path,
   `Test_MultiCluster_BicepContainer`), (b) a Terraform recipe resource (resolver
-  path) on both the legacy type (`Test_MultiCluster_TerraformRecipe`) and the new
-  `Radius.Compute/containers` type (`Test_MultiCluster_TerraformContainer`), and
-  (c) a directly-rendered `Applications.Core/containers` resource (the
-  async-worker direct path, Change 5, `Test_MultiCluster_LegacyContainer`). This
-  exercises the complete injected-kubeconfig contract for all deployment paths
-  with no cloud dependency, so it runs on every PR (including forks) in
-  `functional-test-noncloud.yaml`.
+  path) on the legacy `Applications.Core/extenders` type
+  (`Test_MultiCluster_TerraformRecipe`), and (c) a directly-rendered
+  `Applications.Core/containers` resource (the async-worker direct path, Change
+  5, `Test_MultiCluster_LegacyContainer`). The new `Radius.Compute/containers`
+  type is exercised against the **installed default (Bicep) recipe pack** only;
+  see the coverage note below. This exercises the complete injected-kubeconfig
+  contract for all deployment paths with no cloud dependency, so it runs on every
+  PR (including forks) in `functional-test-noncloud.yaml`.
 - **Tier 2 — real EKS/AKS, gated/scheduled (validates the workflow, deferred):**
   all four `{Bicep, Terraform} × {EKS, AKS}` legs in `functional-test-cloud.yaml`
   under a gated GitHub environment: authenticate via GitHub OIDC, mint the
@@ -745,21 +746,23 @@ code and is deferred.
 - **Regression:** with `RADIUS_TARGET_KUBECONFIG` unset and no external cluster
   configured, deployment is identical to today.
 
-> **New-type Terraform coverage.** The new `Radius.Compute/containers` type is
-> exercised on **both** recipe engines, single- and multi-cluster. The Bicep legs
-> are `Test_Container` (single-cluster) and `Test_MultiCluster_BicepContainer`
-> (multi-cluster). The Terraform legs are `Test_TerraformContainer`
-> (single-cluster) and `Test_MultiCluster_TerraformContainer` (multi-cluster);
-> both register a custom recipe pack whose `Radius.Compute/containers` recipe is
-> a Terraform module served by the in-cluster test module server, mirroring the
-> legacy `Test_MultiCluster_TerraformRecipe` pattern. The single-cluster
-> `Test_TerraformContainer` is the base test the multi-cluster leg mirrors; it
-> also fills a pre-existing gap (this repo previously had no new-type Terraform
-> functional test — only `resource-types-contrib`'s
-> `validate-resource-types.yaml` exercised new-type Terraform recipes, and only
-> single-cluster on k3d). The
+> **New-type Terraform coverage (deliberately out of scope here).** Multi-cluster
+> Tier 1 exercises the new `Radius.Compute/containers` type only on the
+> **installed default (Bicep) recipe pack** (`Test_MultiCluster_BicepContainer`).
+> The Terraform engine is covered in multi-cluster only on the legacy
+> `Applications.Core/extenders` type (`Test_MultiCluster_TerraformRecipe`), and
+> the routing seam is recipe-kind-agnostic, so legacy Terraform coverage already
+> proves Terraform → external-cluster placement. New-type Terraform **recipes**
+> are independently validated single-cluster in `resource-types-contrib`'s
+> `validate-resource-types.yaml` (a `recipe: [bicep, terraform]` matrix on k3d).
+> The remaining untested intersection — **multi-cluster × new core type ×
+> Terraform recipe pack** — is intentionally deferred: standing up a parallel set
+> of Terraform recipe packs for the new core types is a larger, separate effort
+> that should not block this change. It is tracked in
+> [radius-project/radius#12224](https://github.com/radius-project/radius/issues/12224),
+> which will add an out-of-band workflow covering all-Terraform recipe packs. The
 > deployment-target namespace validation (Change 6) is recipe-kind-agnostic and is
-> now covered on both engines.
+> covered through the Bicep new-type leg.
 
 Testing challenges: Tier 2 needs reachable EKS and AKS clusters and an RBAC
 mapping for the test principal on each. That provisioning is net-new and not
