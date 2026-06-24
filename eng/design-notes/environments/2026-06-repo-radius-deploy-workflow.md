@@ -46,11 +46,12 @@ workflow:
 | State storage    | `rad startup` / `rad shutdown` + `database.enabled=true` chart wiring                     | [#12214](https://github.com/radius-project/radius/pull/12214) |
 | Workflow (this)  | The orchestration that installs Radius, restores state, runs commands, and persists state | this design                                                   |
 
-The prototype that proved the end-to-end flow lives as a generated string
-(`DEPLOY_WORKFLOW`) in the [`github-extension`](https://github.com/radius-project/github-extension)
-repo. `github-extension` never merges into Radius, so the contract it depends on must have a
-reviewed home here. This design ports that prototype and adapts it to the merged building blocks
-above.
+An earlier proof of concept validated this end-to-end flow but kept the workflow
+as a generated string outside Radius, where the contract it depends on had no
+reviewed home and no stability guarantee. Bringing the workflow in-tree gives that
+contract a canonical, reviewed home and removes any reliance on an external
+project. This design lands the workflow here and adapts it to the merged building
+blocks above.
 
 ## The dispatch contract (stable; frontends depend on it)
 
@@ -133,7 +134,8 @@ the `target-kubeconfig` Secret in `radius-system`. Installing the chart with
 directs recipe execution **and** directly-rendered output resources at that cluster; the Terraform
 kubernetes provider follows the same kubeconfig through the cluster access resolver. The Secret's
 lifecycle (creation, EKS-token refresh, RBAC) is the workflow's responsibility, not the chart's.
-This is the multi-cluster v1 seam; `KUBE_CONFIG_PATH` from the prototype is no longer needed —
+This is the multi-cluster v1 seam; the separate `KUBE_CONFIG_PATH` variable used by
+the earlier proof of concept is no longer needed —
 the single env var now drives both Bicep and Terraform.
 
 ### Cloud credentials — provider-native
@@ -219,12 +221,12 @@ rather than duplicating them.
 
 ## Alternatives considered
 
-- **Keep the workflow only in `github-extension`.** Rejected: the contract Radius owns
+- **Keep the workflow outside Radius.** Rejected: the contract Radius owns
   (`RADIUS_TARGET_KUBECONFIG`, `rad startup`/`rad shutdown`, the dispatch inputs) would live only
-  in a prototype string in a separate repo, with no review or stability guarantee for the
+  in a generated string in a separate project, with no review or stability guarantee for the
   frontends that depend on it.
-- **Register AWS credentials with `rad credential register` (as the prototype did).** Replaced by
-  environment-variable injection per the feature spec (Shruthi's change aligning AWS with
+- **Register AWS credentials with `rad credential register`.** Replaced by
+  environment-variable injection per the feature spec (aligning AWS with
   Terraform's model); it removes a control-plane round-trip and keeps credentials out of Radius
   state.
 - **Inject Azure credentials as env vars like AWS.** Not possible: the merged Azure code paths
