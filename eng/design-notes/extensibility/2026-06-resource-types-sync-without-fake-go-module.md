@@ -350,20 +350,10 @@ defaultRegistration:
   - Radius.Security/secrets
 ```
 
-**Hybrid (recommended shape if this is pursued).** Keep one repository-wide `source.ref` as the default and let an `overrides` block pin only the namespaces that need to diverge. The common case stays a single pin; divergence is opt-in and self-documenting.
-
-```yaml
-source:
-  repo: github.com/radius-project/resource-types-contrib
-  ref: v0.56.0            # default for every namespace
-  overrides:
-    Radius.Data: v0.42.1   # this namespace only, pinned independently
-```
-
 ###### Advantages
 
 - **Independent cadence.** A fix in one namespace ships without re-vendoring the others.
-- **Smaller, clearer bumps.** Each PR moves one namespace; the diff and the `ref`/`overrides` change name the namespace explicitly.
+- **Smaller, clearer bumps.** Each PR moves one namespace; the diff and the `ref` change name the namespace explicitly.
 - **Matches upstream ownership.** Aligns with per-namespace release ownership if `resource-types-contrib` adopts it.
 
 ###### Disadvantages
@@ -375,62 +365,9 @@ source:
 
 ###### Recommendation
 
-Keep the **repository-wide pin for Phase A** (this design): it is simplest, and a single linear upstream history makes per-namespace SHAs low-value. Revisit **per-namespace (hybrid) pinning in Phase B**, gated on `resource-types-contrib` publishing per-namespace versioned artifacts. The copy/prune/drift skeleton and `RegisterDirectory` are unaffected either way; only the `sources`/`overrides` shape in `defaults.yaml` and the ref-grouping in the sync recipe change.
+Keep the **repository-wide pin for Phase A** (this design): it is simplest, and a single linear upstream history makes per-namespace SHAs low-value. Revisit **per-namespace pinning in Phase B**, gated on `resource-types-contrib` publishing per-namespace versioned artifacts. The copy/prune/drift skeleton and `RegisterDirectory` are unaffected either way.
 
-> **Open question - per-type pinning within a namespace.** The namespace is the finest unit proposed here, but the same mechanism can be pushed one level deeper: pin each individual _type_ rather than its namespace - for example by attaching a `ref` to each `defaultRegistration` entry, or a namespace default plus per-type `overrides` (`Radius.Compute/containers: v1.4.0`). It maximizes independence - a single type can be hotfixed without touching its siblings - but only pays off if upstream publishes per-type versioned artifacts (tags like `Radius.Compute/containers/v1.4.0`), turns one pin into one-per-type (potentially dozens), has no natural ownership boundary (ownership tracks the namespace directory, not the individual file), and widens the in-namespace consistency risk for types that share schemas and conventions. Recommended stance: treat the **namespace as the finest practical unit** and revisit per-type pinning only if upstream adopts independent per-type release ownership.
-
-##### Makefile changes
-
-The two-target split is preserved so the mental model carries over: `sync-resource-types` is deterministic (uses the pinned `ref`, no network mutation of the pin) and is what CI runs; `update-resource-types` resolves the latest upstream revision, writes it into `source.ref`, then calls `sync-resource-types`.
-
-```make
-RESOURCE_TYPES_REPO := https://github.com/radius-project/resource-types-contrib.git
-DEFAULTS_YAML       := deploy/manifest/defaults.yaml
-
-.PHONY: sync-resource-types
-sync-resource-types: ## Copy manifests for the pinned ref in defaults.yaml
- @command -v yq  >/dev/null 2>&1 || { echo "ERROR: yq required";  exit 1; }
- @command -v git >/dev/null 2>&1 || { echo "ERROR: git required"; exit 1; }
- @REF=$$(yq '.source.ref'  $(DEFAULTS_YAML)) && \
- REPO=$$(yq '.source.repo' $(DEFAULTS_YAML)) && \
- TMP=$$(mktemp -d) && trap 'rm -rf "$$TMP"' EXIT && \
- git -C "$$TMP" init -q && \
- git -C "$$TMP" remote add origin "https://$$REPO.git" && \
- git -C "$$TMP" fetch -q --depth 1 --filter=blob:none origin "$$REF" && \
- git -C "$$TMP" checkout -q FETCH_HEAD && \
- for entry in $$(yq '.defaultRegistration[]' $(DEFAULTS_YAML)); do \
-   rel=$$(echo "$$entry" | sed 's/^Radius\.//'); \
-   type=$$(echo "$$rel" | cut -d/ -f2); \
-   src="$$TMP/$$rel/$$type.yaml"; \
-   [ -f "$$src" ] || { echo "ERROR: not found: $$src (entry '$$entry')"; exit 1; }; \
-   for d in $(MANIFEST_DEST_DIRS); do cp "$$src" "$$d/$$type.yaml"; done; \
-   echo "  Copied $$entry"; \
- done
- @# prune stale managed files (unchanged from today's logic)
-
-.PHONY: update-resource-types
-update-resource-types: ## Bump source.ref to latest upstream, then sync
- @LATEST=$$(git ls-remote $(RESOURCE_TYPES_REPO) HEAD | cut -f1) && \
- yq -i ".source.ref = \"$$LATEST\"" $(DEFAULTS_YAML)
- $(MAKE) sync-resource-types
-```
-
-The stale-file pruning logic and the `MANUAL_CORE_MANIFESTS` allow-list carry over unchanged. The `go get … && go mod tidy` lines are removed.
-
-In Phase B, only the fetch lines (the `git init`/`fetch`/`checkout` block) change: Option 4 replaces them with `curl -fsSL <asset-url> -o bundle.tgz && sha256sum -c` then `tar -xzf`; Option 5 replaces them with `oras pull <repo>:<tag>@<digest>` plus `cosign verify`. The copy, prune, and drift logic are identical across all transports.
-
-##### CI drift workflow changes
-
-[`verify-resource-types.yaml`](../../../.github/workflows/verify-resource-types.yaml) keeps its structure (run `sync-resource-types`, then `git diff --exit-code`). The changes are:
-
-- **Remove** the `Set up Go` step - no Go is needed.
-- **Keep** the `yq` install; `git` is already present on runners.
-- **Update path filters:** drop `go.mod`/`go.sum`; keep `deploy/manifest/defaults.yaml`, `deploy/manifest/built-in-providers/**`, `Makefile`, and `build/resource-types.mk`.
-
-##### Removing the fake module
-
-- **In `resource-types-contrib`:** delete `go.mod` and `doc.go` (added in their PR #158). The repo returns to being a pure manifests/recipes repo.
-- **In `radius`:** remove the `require github.com/radius-project/resource-types-contrib …` line from `go.mod`, run `go mod tidy` to drop it from `go.sum`, and delete `pkg/resourcetypescontrib/import.go`.
+> **Open question: per-type pinning within a namespace.** The namespace is the finest unit proposed here, but the same mechanism can be pushed one level deeper: pin each individual _type_ rather than its namespace - for example by attaching a per-type `ref` to each `defaultRegistration` entry (`Radius.Compute/containers: v1.4.0`). It maximizes independence - a single type can be hotfixed without touching its siblings - but only pays off if upstream publishes per-type versioned artifacts (tags like `Radius.Compute/containers/v1.4.0`), turns one pin into one-per-type (potentially dozens), has no natural ownership boundary (ownership tracks the namespace directory, not the individual file), and widens the in-namespace consistency risk for types that share schemas and conventions. Recommended stance: treat the **namespace as the finest practical unit** and revisit per-type pinning only if upstream adopts independent per-type release ownership.
 
 ### How this folds into the GoReleaser release lifecycle
 
@@ -493,7 +430,7 @@ Concretely, two separate workflows: (1) a minimal `resource-types-contrib` relea
 3. **End-state transport:** GitHub Release asset (Option 4 - lighter, idiomatic GoReleaser) vs OCI artifact (Option 5 - registry + cosign). The Release asset is recommended as the default end state, with OCI as an opt-in upgrade.
 4. **Phase B timing:** gate strictly behind `resource-types-contrib` adopting tagged releases, or stand up a minimal manifest-bundle release workflow sooner.
 5. **Signing scope:** cosign keyless (OIDC) vs keyed, aligned with whatever the GoReleaser supply-chain work standardizes on.
-6. **Versioning granularity:** one repository-wide pin (recommended for Phase A) vs per-namespace pins via the hybrid `source.ref` + `overrides` variant, gated on `resource-types-contrib` publishing per-namespace versioned artifacts in Phase B - and, finer still, optional per-type pinning within a namespace (left as a future option, see the note under [Pin granularity](#pin-granularity-repository-wide-vs-per-namespace-versioning)).
+6. **Versioning granularity:** one repository-wide pin (recommended for Phase A) vs per-namespace pins, gated on `resource-types-contrib` publishing per-namespace versioned artifacts in Phase B - and, finer still, optional per-type pinning within a namespace (left as a future option, see the note under [Pin granularity](#pin-granularity-repository-wide-vs-per-namespace-versioning)).
 
 ## Alternatives considered
 
