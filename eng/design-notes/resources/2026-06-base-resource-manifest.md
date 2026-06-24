@@ -6,13 +6,7 @@
 
 Today every Radius resource type a contributor authors must copy the same four "Radius-aware" schema properties — `application`, `environment`, `connections`, and (newly) `codeReference` — into its manifest YAML. This is rote duplication that authors get wrong and it leaks Radius framework concerns into every per-type schema.
 
-This design introduces a single repo-owned **base resource manifest** that declares those four common properties once. The CLI validator (`rad resource-type create`) and the Bicep extension generator (`bicep-tools`) **implicitly merge** the base into every per-type schema before validation and Bicep-type emission, using per-type-wins precedence. The author writes only their type-specific properties — no opt-in keyword, no new vocabulary, no `$ref` to remember.
-
-**The existing schema validator is unchanged.** The base manifest declares `environment` in its `required:` array, so after the merge every type has `environment` in its effective `required:` list. The existing "every schema must declare `environment`" rule continues to pass for every type automatically. This is a pure ergonomics win at authoring time and a no-op at the runtime layer.
-
-`codeReference` is introduced as a new recognized common property in this feature. Its v1 wire shape is a single optional string treated as a URI (e.g. a Git URL with commit SHA and line range). A richer structured shape is an additive future change.
-
-> **Note on direction.** An earlier iteration of this design proposed an author-visible opt-in via `allOf: [{ $ref: "radius:base" }]` ("Approach A"). After implementing that approach end-to-end and building a working alternative POC of implicit injection on branch [`poc/210-base-resource-manifest-implicit-injection`](https://github.com/radius-project/radius/tree/poc/210-base-resource-manifest-implicit-injection), the feature owner reversed the OQ-001 decision to favour implicit injection ("Approach B") **for now**. The full side-by-side comparison — including the trade-offs that make the explicit-keyword design worth keeping as a credible fallback — lives in [Alternatives considered](#alternatives-considered) below.
+This design introduces a single  base resource manifest that declares those four common properties once. The CLI (`rad resource-type create`) and the Bicep extension generator (`bicep-tools`) implicitly merge the base into every RRT schema before validation and Bicep-type emission. The author writes only their type-specific properties.
 
 ## Terms and definitions
 
@@ -22,40 +16,31 @@ This design introduces a single repo-owned **base resource manifest** that decla
 | **Common Radius property** | A property whose presence, name, and runtime semantics are defined by Radius itself rather than by the resource-type author. Today: `application`, `environment`, `connections`, `codeReference`. |
 | **Type-specific property** | Anything else an author declares under `properties:` in their per-type YAML. |
 | **Reserved property name** | A property name authors are forbidden to use (today: `status`, `recipe`). Unchanged by this feature. |
-| **Implicit injection** | The mechanism by which the four base properties are merged into every per-type schema by the validator and the Bicep generator. There is no author-visible keyword — the merge happens unconditionally just before the schema is consumed downstream. |
-| **Effective schema** | The schema that downstream consumers (validator, Bicep generator, runtime adapters) see after `Apply()` has implicitly merged the base into the author's schema. The on-disk YAML is the **author's schema**; the effective schema is its post-merge form. |
-| **Approach A / Approach B** | Two design options considered for how the base is contributed. A: author-visible opt-in via `allOf: [{ $ref: "radius:base" }]` (alternative, see [Alternatives considered](#alternatives-considered)). B: implicit injection with no author-visible keyword (chosen, this design). |
 
 ## Objectives
 
-> **Issue Reference:** specs/210-base-resource-manifest/spec.md
+> **Issue Reference:** [adding code reference property to all RRT](https://github.com/radius-project/radius/issues/12114)
+
 
 ### Goals
 
-- Let a resource-type author register a type whose YAML declares **none** of the four common properties and still get a fully-functional Radius type at deployment time.
-- Preserve `environment` as a required property for every registered type by carrying it into the effective schema's `required:` array from the base.
-- Keep the author's manifest YAML free of Radius framework boilerplate — no opt-in keyword, no new URI scheme, no JSON-Pointer rules. The author writes only what is type-specific.
-- Introduce `codeReference` as a first-class recognized common property with a stable v1 wire format (optional string).
-- Ship the base manifest as a single embedded resource — no extra CLI flags, no extra file paths, no network round-trips.
-- Keep the change small, isolated, and non-breaking: one new package (`pkg/schema/baseresource/`), one new file in `bicep-tools/pkg/converter/`, three small call-site additions. **No change to the existing schema validator's rules.**
+- Let a resource-type author register a type whose YAML declares none of the common properties and still get a fully-functional Radius type at deployment time.
 
 ### Non goals
 
 - **No change to the existing schema validator.** The today-rules (including "every schema must declare `environment`") stay exactly as they are. The base manifest works *with* them, not against them.
-- **No polished per-type override workflow.** The mechanism that makes per-type declarations win (FR-004) is present, but command-time conflict diagnostics, override-shape validation, and supporting documentation for a "override one of the four" workflow are deferred to a follow-on feature.
 - **No opt-out keyword.** Implicit injection applies to every per-type schema. A future need for a "raw" type that intentionally has none of the four properties would require a separate spec to introduce an opt-out mechanism.
-- **No user-authored base manifests.** Implicit injection is wired to the single embedded `radius:base`. Letting authors register their own base manifests is out of scope.
-- **Base manifest is frozen.** The set of properties in the base is locked at the four named in this design. Promoting any additional property to common status requires a separate spec — not silent evolution of this base.
+- **Base manifest is frozen.** The set of properties in the base is locked. Adding any additional property to common status requires a code change.
 
 ### User scenarios
 
-#### User story 1 — Author a new resource type without restating Radius boilerplate (P1)
+#### User story 1 — Author a new resource type without restating Radius boilerplate
 
-A platform engineer publishes `MyOrg.Examples/widgets`. Today they have to copy `application`, `environment`, and `connections` into the type's YAML and remember to mark `environment` required. After this feature they write only widget-specific properties (`size`, `color`, `replicaCount`). `rad resource-type create` succeeds — the base is implicitly merged in, contributing the four common properties and marking `environment` required automatically. A consumer can then write a Bicep resource of type `MyOrg.Examples/widgets` and set `environment`, `application`, `connections`, and `codeReference` exactly as they would on any other Radius resource.
+A platform engineer publishes `Radius.Data/progres`. Today they have to copy `application`, `environment`, and `connections` into the type's YAML and remember to mark `environment` required. After this feature they write only widget-specific properties (`size`, `replicaCount` etc). `rad resource-type create` succeeds — the base is implicitly merged in, contributing the four common properties and marking `environment` required automatically. A consumer can then write a Bicep resource of type `Radius.Data/progres` and set `environment`, `application`, `connections`, and `codeReference` exactly as they would on any other Radius resource.
 
-#### Deferred — per-type override workflow
+#### User story 2 - Radius wants to ensure every RRT has a property called environment which is required, and another optional property called coderefernce.
 
-An author overriding exactly one common property on a specific type (e.g. constraining `connections` to a closed set of named keys) is not a prototype goal. FR-004 keeps the underlying mechanism in place; the deferred work is the polished CLI diagnostics and docs around it.
+A platform engineer `Radius.Data/mydb`. Today, they add `environment` and `coderefernce` as properties and mark `environment` as optional, based on extensibility documentation. With this feature, we add coderefrence as a standard optional property.  Duplication of magic schema by the operators is not neccessary to have tehir type support properties that Radius has special meaning for.
 
 ## User Experience
 
@@ -108,6 +93,8 @@ resource w 'MyOrg.Examples/widgets@2026-06-01-preview' = {
 
 `application`, `environment`, `connections`, and `codeReference` are all available even though the YAML never mentioned them — they came from the base, contributed by implicit injection.
 
+[Alternate option](#alternatives-considered) exposes the base properties through a "ref" in the yaml schema.
+
 ## Design
 
 ### High Level Design
@@ -115,86 +102,41 @@ resource w 'MyOrg.Examples/widgets@2026-06-01-preview' = {
 The design has three moving pieces:
 
 1. **`pkg/schema/baseresource/base.yaml`** — the single source of truth. A small YAML file declaring the four common properties, their shapes, and a `required: [environment]` entry. Embedded into Go binaries with `go:embed`.
-2. **`pkg/schema/baseresource.Apply(schema)`** — the canonical merger. For each of the four base property names, if the per-type schema does not already declare it, `Apply` copies the base shape in. It then unions the base's `required:` entries into the per-type `required:` list (deduplicated). There is **no `allOf` walk, no `$ref` parsing, no URI scheme**. The schema validator (`pkg/cli/manifest/validation.go`) calls `Apply` on every per-type schema before validation.
-3. **`bicep-tools/pkg/converter/baseresource.go::applyBaseResource(schema)`** — a parallel merger in the standalone `bicep-tools` module. The `bicep-tools` module is intentionally independent of the main Go module, so the base properties are duplicated here as a small Go literal and a sync test asserts the two lists agree.
+2. **`pkg/schema/baseresource.Apply(schema)`** — For each of the base property names, `Apply` copies the base shape in. It then unions the base's `required:` entries into the per-type `required:` list (deduplicated). There is **no `allOf` walk, no `$ref` parsing, no URI scheme**. The schema validator (`pkg/cli/manifest/validation.go`) calls `Apply` on every per-type schema before validation. Validation calls out an attempt to change these properties, for instance, yaml adding a conflicting schema for connections.
+3. **`bicep-tools/pkg/converter/baseresource.go::applyBaseResource(schema)`** — a parallel merger in the standalone `bicep-tools` module. This takes care of the published bicep types.
 
-The existing schema validator in `pkg/schema/validator.go` is **unchanged**. Because `Apply()` runs before validation and inserts `environment` into every schema's `properties` map (and into `required:`), the existing "every schema must declare `environment`" rule continues to pass for every type — type authors no longer need to declare `environment` themselves, the merger does it for them.
+The existing schema validator in `pkg/schema/validator.go` changes to validate conflicts.
 
-Two small additions complete the wiring:
+Two small additions complete the wiring for codereferences as a base property:
 
 - `pkg/resourceutil/utils.go::BasicProperties` adds `codeReference` so the runtime's generic property extraction recognizes it as a common property (not as a type-specific property to be passed along verbatim).
 - `pkg/dynamicrp/datamodel/dynamicresource.go` adds a `CodeReference()` accessor that mirrors `ApplicationID()` / `EnvironmentID()` so dynamic-rp callers can read the value out of the resource's `properties` map without re-implementing the key lookup.
-
-### Architecture Diagram
-
-```mermaid
-flowchart TD
-    subgraph Author["Author's machine"]
-        YAML["widget.yaml<br/>schema.properties: { size, color }<br/>(no allOf, no $ref)"]
-        CLI["rad resource-type create"]
-    end
-
-    subgraph SchemaPkg["pkg/schema/baseresource (main module)"]
-        BaseYAML["base.yaml (embedded)"]
-        Apply["Apply(schema)<br/>implicit merge of 4 base props<br/>+ union of required"]
-    end
-
-    subgraph BicepTools["bicep-tools/pkg/converter (standalone module)"]
-        BicepApply["applyBaseResource(schema)<br/>parallel merger"]
-        BicepGen["Bicep type emitter"]
-    end
-
-    subgraph ControlPlane["Radius control plane"]
-        Validator["pkg/schema/validator.go<br/>(unchanged — existing rules satisfied<br/>by post-Apply effective schema)"]
-        DynRP["dynamic-rp adapters<br/>CodeReference() accessor"]
-        Util["pkg/resourceutil/utils.go<br/>BasicProperties += codeReference"]
-    end
-
-    YAML --> CLI
-    CLI -->|"validation.go calls Apply on every schema"| Apply
-    Apply --> BaseYAML
-    Apply --> Validator
-    Validator -->|registers type| ControlPlane
-
-    YAML -.bicep generator path.-> BicepGen
-    BicepGen --> BicepApply
-
-    DynRP <-->|reads properties| Util
-
-    classDef new fill:#e1f5e1,stroke:#2e7d32
-    class BaseYAML,Apply,BicepApply new
-```
-
-### Detailed Design
 
 #### Why implicit injection (Approach B)
 
 Two approaches were considered:
 
-- **Approach B (chosen)** — implicit injection. The validator and Bicep generator merge the four base properties into every per-type schema unconditionally. No author-visible keyword.
-- **Approach A (alternative, [see below](#alternatives-considered))** — author-visible opt-in via `allOf: [{ $ref: "radius:base" }]`. The relationship between a type and the base is visible in the YAML.
-
-##### Advantages of Approach B
-
-- **Zero boilerplate for authors.** A new resource type ships with its type-specific schema only; nobody has to remember or look up an opt-in keyword.
-- **No new vocabulary in the contributor docs.** No custom `radius:` URI scheme to teach, no JSON-Pointer-vs-whole-schema rule, no `allOf` placement guidance. The base manifest is a Radius implementation detail rather than a user-facing API.
-- **No "forgot the opt-in" footgun.** It is impossible to author a type that meant to inherit the four properties but silently shipped without them.
-- **Smaller framework surface in `bicep-tools`.** `manifest.Schema` does not need `AllOf` / `Ref` fields, keeping the standalone Go module's surface area lean.
-- **No error path to design.** Approach A had to specify what happens when an author writes `radius:base/something` or `radius:other`; implicit injection has no such input to validate.
-- **Uniform behavior at the runtime layer.** Every registered type has `environment` in its effective `required:` array — there is no "opt-in type" vs "non-opt-in type" branch in the rest of the system.
-
-##### Disadvantages of Approach B
-
-- **Inheritance is invisible in YAML.** A reader of a per-type manifest cannot tell, from the YAML alone, which properties are author-defined and which come from Radius. Reading the YAML in isolation produces a different mental model than running the validator.
-- **No clean opt-out.** Implicit injection has no opt-out keyword in this design. A future need to author a "raw" type that intentionally has none of the four properties would require a separate spec to introduce an opt-out mechanism, which would defeat the simplicity argument that motivated B.
-- **Couples Radius framework concerns into every schema invisibly.** A type author who has never heard of `codeReference` gets it injected anyway. Static-analysis tooling that consumes per-type manifests directly (IDE plugins, doc generators, third-party validators) will see one schema in the YAML and a different schema at runtime.
-- **Validator drift risk.** The non-breaking property of this design relies on `base.yaml`'s `required: [environment]` line silently satisfying the validator's env-required rule for every type. If someone removes that line from `base.yaml` thinking it's documentation, the validator rule fails on every registered type at once.
+| Aspect | Approach B (chosen): implicit injection | Approach A (alternative): explicit `allOf` + `$ref` |
+|---|---|---|
+| Core mechanism | Validator and Bicep generator merge the four base properties into every per-type schema unconditionally. No author-visible keyword. | Author opts in per type using `allOf: [{ $ref: "radius:base" }]`; merger resolves only for opted-in schemas. |
+| Authoring boilerplate | Lowest. Author writes only type-specific properties. | Higher. Author must add and remember the opt-in stanza per schema. |
+| Contributor doc complexity | Lower. No new URI scheme, pointer semantics, or `allOf` placement guidance to teach. | Higher. Needs guidance for `radius:` URI usage and composition rules. |
+| Footguns during authoring | Lower. No "forgot the opt-in" failure mode. | Higher. Missing opt-in can silently skip base-property inheritance. |
+| `bicep-tools` surface area | Smaller. `manifest.Schema` can remain unchanged (no `AllOf` / `Ref` fields). | Larger. Parser/manifest structs need to carry `allOf` and `$ref` fields. |
+| Error handling surface | Smaller. No `$ref` input means no URI-grammar error path to validate. | Larger. Must define behavior for invalid or unsupported `radius:` references. |
+| Runtime behavior consistency | Uniform. Every registered type gets `environment` in effective `required:` without a separate branch. | Conditional. Runtime behavior depends on whether each type opted in. |
+| YAML legibility for readers | Weaker. Inheritance is invisible in per-type YAML. | Stronger. Inheritance is explicit and visible in YAML. |
+| Opt-out flexibility | Weaker in this design. No clean opt-out path today; would need a future opt-out mechanism. | Stronger. Not opting in is the natural "raw type" path. |
+| Tooling parity (YAML vs runtime schema) | Weaker. Tooling that reads raw YAML can see a different schema than runtime. | Stronger. Raw YAML more directly reflects runtime-effective structure. |
+| Validator drift risk | Higher coupling. Relies on `base.yaml` `required: [environment]` staying intact for all types. | Lower coupling. Explicit opt-in keeps the dependency visible and scoped. |
 
 ##### Proposed option
 
-**Approach B — implicit injection, for now.** OQ-001 in the spec was initially resolved to Approach A on 2026-06-19 and then reversed in favour of Approach B on 2026-06-23 after the explicit-keyword authoring experience and the implicit-injection POC were both available for direct comparison. Approach A is preserved as the documented alternative — the working code lives on branch [`210-base-resource-manifest`](https://github.com/radius-project/radius/tree/210-base-resource-manifest) and can be the starting point for a follow-on if any of the [revisit signals](#alternatives-considered) materialize.
+Approach B — implicit injection
 
-#### The base manifest itself
+### Detailed Design
+
+#### The base manifest
 
 ```yaml
 type: object
@@ -207,14 +149,19 @@ required:
   - environment
 ```
 
-Notes:
+#### API design
 
-- The base lists `environment` in `required:`. After `Apply()` unions the base `required:` into the per-type schema's `required:`, every registered type has `environment` required automatically — matching today's contract without any validator change.
-- `application`, `connections`, and `codeReference` are **not** in the base `required:` array; they remain optional unless a per-type `required:` adds them.
-- The base does **not** include `status` or `recipe`. Those remain reserved-and-forbidden and the base manifest must not introduce a new collision class (FR-008).
-- The set is **frozen**. Future Radius releases MUST NOT add, remove, rename, or retype a property in this file. Adding a new common property requires a separate spec.
+No HTTP API changes.
 
-#### The merger (canonical implementation in `pkg/schema/baseresource/loader.go`)
+#### CLI Design
+
+No new flags, no new commands.
+
+#### Implementation Details
+
+##### Schema implementation
+
+`pkg/schema/baseresource/loader.go`
 
 `Apply(schema *openapi3.Schema) error` does exactly the following:
 
@@ -227,7 +174,7 @@ That is the whole algorithm. There is no `allOf` walk, no `$ref` parsing, no URI
 
 The merger is **purely lexical**. No network. No UCP round-trip. No file I/O at runtime (the YAML is embedded). Caching is a single `sync.Once`; per-call work is a small map merge.
 
-#### The `bicep-tools` parallel implementation
+##### The `bicep-tools` parallel implementation
 
 `bicep-tools/pkg/converter/baseresource.go` implements `applyBaseResource(schema *manifest.Schema)` with the same semantics. It exists because `bicep-tools` is a standalone Go module (a deliberate split — it ships as the input to a Bicep extension and must not pull in the full Radius dependency tree).
 
@@ -237,11 +184,9 @@ To prevent drift, the base properties are duplicated as a Go literal in `baseres
 
 The Bicep emitter ([bicep-tools/pkg/converter/converter.go](bicep-tools/pkg/converter/converter.go)) calls `applyBaseResource` once per `(provider, type, apiVersion)` triple, just before building the `<Type>Properties` Bicep type. After the merge, the emitter sees a schema with all four properties present and produces a Bicep type definition where consumers can set them as ordinary fields.
 
-#### The schema validator (unchanged)
+##### The schema validator
 
-[pkg/schema/validator.go](pkg/schema/validator.go) contains a hardcoded check that every schema's `properties` map declares `environment`. **This rule is intentionally left in place.** Because `Apply()` runs before validation and implicitly merges `environment` into every schema's `properties` map (and `required:` list), the rule passes automatically for every registered type. Authors no longer have to declare `environment` themselves — the merger does it for them.
-
-This is the key property of the design: the feature is purely additive at the validator layer. No rule is changed, no test is inverted, and the existing env-required guarantee continues to be enforced for every registered type.
+[pkg/schema/validator.go](pkg/schema/validator.go) contains a hardcoded check that every schema's `properties` map declares `environment`. This rule is intentionally left in place. Because `Apply()` runs before validation and implicitly merges `environment` into every schema's `properties` map (and `required:` list), the rule passes automatically for every registered type. There should be checks for conflicts, if user adds a base property to schema that has a different definiton.
 
 #### Property-bag changes (`pkg/resourceutil/utils.go`)
 
@@ -250,33 +195,6 @@ This is the key property of the design: the feature is purely additive at the va
 #### Runtime accessor (`pkg/dynamicrp/datamodel/dynamicresource.go`)
 
 Adds a `CodeReference() string` method on `dynamicResourceBasicPropertiesAdapter` that mirrors `ApplicationID()` / `EnvironmentID()`. It reads `properties["codeReference"]`, type-asserts to string, and returns the empty string for any failure path. Intentionally **not** part of the `v1.BasicResourcePropertiesAdapter` interface yet — static resource types (MongoDB, Redis, …) do not expose `codeReference`. Callers that want it must type-assert to the dynamic adapter explicitly. This keeps the interface stable for now; promoting `CodeReference()` to the interface is a follow-on once static types adopt the property.
-
-### API design
-
-No HTTP API changes. The contracts that change are:
-
-- **The resource-type manifest YAML** is unchanged in shape — there is no new keyword. Authors who previously declared `application`, `environment`, `connections`, or `codeReference` in their per-type schema may delete those declarations; the merger fills them in.
-- **The base manifest's wire shape** is documented in [`specs/210-base-resource-manifest/contracts/base-manifest.schema.yaml`](specs/210-base-resource-manifest/contracts/base-manifest.schema.yaml). This is the frozen contract Radius commits to.
-- **The schema validator's contract is unchanged.** All existing rules (including "every schema must declare `environment`") continue to be enforced; every registered type satisfies them through the post-`Apply()` effective schema.
-
-No Go-package public-API additions other than the new `pkg/schema/baseresource` package (`Apply`, `PropertyNames`).
-
-### CLI Design
-
-No new flags, no new commands. `rad resource-type create -f <file>.yaml` continues to be the only authoring command — the base manifest is embedded in the CLI binary.
-
-### Implementation Details
-
-| Component | What changes | File(s) |
-|---|---|---|
-| Schema base manifest (NEW) | New package `pkg/schema/baseresource` with embedded `base.yaml` (including `required: [environment]`), `Apply()` doing unconditional injection + required union, `PropertyNames()`. | [pkg/schema/baseresource/base.yaml](pkg/schema/baseresource/base.yaml), [pkg/schema/baseresource/loader.go](pkg/schema/baseresource/loader.go), [pkg/schema/baseresource/loader_test.go](pkg/schema/baseresource/loader_test.go) |
-| Schema validator | **Unchanged.** All existing rules stay in place. | [pkg/schema/validator.go](pkg/schema/validator.go) |
-| CLI manifest validator | Calls `baseresource.Apply()` on every per-type schema before per-schema validation. | [pkg/cli/manifest/validation.go](pkg/cli/manifest/validation.go), [pkg/cli/manifest/validation_test.go](pkg/cli/manifest/validation_test.go) |
-| Generic property util | `BasicProperties` adds `codeReference`. | [pkg/resourceutil/utils.go](pkg/resourceutil/utils.go) |
-| Dynamic-rp runtime adapter | New `CodeReference()` accessor. | [pkg/dynamicrp/datamodel/dynamicresource.go](pkg/dynamicrp/datamodel/dynamicresource.go), [pkg/dynamicrp/datamodel/dynamicresource_test.go](pkg/dynamicrp/datamodel/dynamicresource_test.go) |
-| `bicep-tools` Schema struct | **Unchanged.** No new fields needed (this is a B-over-A win). | [bicep-tools/pkg/manifest/manifest.go](bicep-tools/pkg/manifest/manifest.go) |
-| `bicep-tools` converter | Adds parallel `applyBaseResource()`; called from `addResourceTypeForAPIVersion` on every schema. | [bicep-tools/pkg/converter/baseresource.go](bicep-tools/pkg/converter/baseresource.go), [bicep-tools/pkg/converter/converter.go](bicep-tools/pkg/converter/converter.go) |
-| Contributor doc (NEW) | How-to with worked example showing the bare-minimum manifest YAML. | [docs/contributing/contributing-code/contributing-code-base-resource-manifest/README.md](docs/contributing/contributing-code/contributing-code-base-resource-manifest/README.md) |
 
 #### Core RP
 
