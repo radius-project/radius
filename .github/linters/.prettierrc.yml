@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://www.schemastore.org/prettierrc.json
+# ------------------------------------------------------------------------------
+# This file is synced from the radius-project/.github repository.
+# DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+# Source: https://github.com/radius-project/.github
+# ------------------------------------------------------------------------------
+---
+arrowParens: always
+bracketSpacing: true
+endOfLine: lf
+htmlWhitespaceSensitivity: css
+insertPragma: false # consider true
+singleAttributePerLine: false
+bracketSameLine: false
+jsxSingleQuote: true
+printWidth: 120
+proseWrap: preserve
+quoteProps: as-needed
+requirePragma: false # consider true
+semi: true
+singleQuote: true
+tabWidth: 2
+trailingComma: none
+useTabs: false
+vueIndentScriptAndStyle: true
+embeddedLanguageFormatting: auto
+experimentalTernaries: true
+experimentalOperatorPosition: end
+# multilineArraysWrapThreshold: 1
+# plugins:
+#   - prettier-plugin-toml
+#   - prettier-plugin-multiline-arrays
+
+# Language-specific overrides
+overrides:
+  - files: "*.md"
+    options:
+      proseWrap: preserve
+  - files: "*.yml"
+    options:
+      singleQuote: false
+  - files: "*.yaml"
+    options:
+      singleQuote: false

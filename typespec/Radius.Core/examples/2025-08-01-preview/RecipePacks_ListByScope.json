@@ -21,8 +21,8 @@
               ],
               "recipes": {
                 "Applications.Core/containers": {
-                  "recipeKind": "bicep",
-                  "recipeLocation": "ghcr.io/myregistry/bicep/recipes/myrecipe:v1.0"
+                  "kind": "bicep",
+                  "source": "ghcr.io/myregistry/bicep/recipes/myrecipe:v1.0"
                 }
               }
             }
@@ -37,8 +37,8 @@
               "referencedBy": [],
               "recipes": {
                 "Applications.Core/containers": {
-                  "recipeKind": "bicep",
-                  "recipeLocation": "ghcr.io/myregistry/bicep/recipes/myrecipe:v1.0"
+                  "kind": "bicep",
+                  "source": "ghcr.io/myregistry/bicep/recipes/myrecipe:v1.0"
                 }
               }
             }

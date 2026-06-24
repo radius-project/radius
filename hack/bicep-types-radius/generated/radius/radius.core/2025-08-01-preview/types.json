@@ -1475,21 +1475,21 @@
       },
       "recipes": {
         "type": {
-          "$ref": "#/140"
+          "$ref": "#/141"
         },
         "flags": 2,
         "description": "Map of resource types to their recipe configurations"
       },
       "properties": {
         "type": {
-          "$ref": "#/141"
+          "$ref": "#/142"
         },
         "flags": 1,
         "description": "Recipe Pack properties"
       },
       "tags": {
         "type": {
-          "$ref": "#/153"
+          "$ref": "#/154"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1581,7 +1581,7 @@
     "$type": "ObjectType",
     "name": "RecipeDefinition",
     "properties": {
-      "recipeKind": {
+      "kind": {
         "type": {
           "$ref": "#/138"
         },
@@ -1593,14 +1593,14 @@
           "$ref": "#/29"
         },
         "flags": 0,
-        "description": "Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)"
+        "description": "Connect to the source using HTTP (not HTTPS). This should be used when the source is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)"
       },
-      "recipeLocation": {
+      "source": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "URL path to the recipe"
+        "description": "The source of the recipe. For Bicep recipes this is the OCI registry reference. For Terraform recipes this is the module source."
       },
       "parameters": {
         "type": {
@@ -1608,6 +1608,13 @@
         },
         "flags": 0,
         "description": "Parameters to pass to the recipe"
+      },
+      "outputs": {
+        "type": {
+          "$ref": "#/140"
+        },
+        "flags": 0,
+        "description": "Map of resource type property names to module output names. Used for recipes that point directly at a Bicep or Terraform module to map the module's outputs onto the resource's properties."
       }
     }
   },
@@ -1640,6 +1647,14 @@
   },
   {
     "$type": "ObjectType",
+    "name": "RecipeDefinitionOutputs",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
     "name": "RecipePackPropertiesRecipes",
     "properties": {},
     "additionalProperties": {
@@ -1652,21 +1667,21 @@
     "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/150"
+          "$ref": "#/151"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/151"
+          "$ref": "#/152"
         },
         "flags": 2,
         "description": "List of environment IDs that reference this recipe pack"
       },
       "recipes": {
         "type": {
-          "$ref": "#/152"
+          "$ref": "#/153"
         },
         "flags": 1,
         "description": "Map of resource types to their recipe configurations"
@@ -1709,9 +1724,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/142"
-      },
-      {
         "$ref": "#/143"
       },
       {
@@ -1731,6 +1743,9 @@
       },
       {
         "$ref": "#/149"
+      },
+      {
+        "$ref": "#/150"
       }
     ]
   },
@@ -1794,56 +1809,56 @@
       },
       "type": {
         "type": {
-          "$ref": "#/155"
+          "$ref": "#/156"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/156"
+          "$ref": "#/157"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/166"
+          "$ref": "#/167"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/167"
+          "$ref": "#/168"
         },
         "flags": 2,
         "description": "Environments that reference this Terraform configuration."
       },
       "terraformrc": {
         "type": {
-          "$ref": "#/168"
+          "$ref": "#/169"
         },
         "flags": 2,
         "description": "Terraform CLI configuration file (.terraformrc) settings. See https://developer.hashicorp.com/terraform/cli/config for details."
       },
       "env": {
         "type": {
-          "$ref": "#/178"
+          "$ref": "#/179"
         },
         "flags": 2,
         "description": "Environment variables injected during Terraform recipe execution."
       },
       "properties": {
         "type": {
-          "$ref": "#/179"
+          "$ref": "#/180"
         },
         "flags": 1,
         "description": "Terraform configuration properties."
       },
       "tags": {
         "type": {
-          "$ref": "#/191"
+          "$ref": "#/192"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1900,9 +1915,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/158"
-      },
-      {
         "$ref": "#/159"
       },
       {
@@ -1922,6 +1934,9 @@
       },
       {
         "$ref": "#/165"
+      },
+      {
+        "$ref": "#/166"
       }
     ]
   },
@@ -1937,14 +1952,14 @@
     "properties": {
       "providerInstallation": {
         "type": {
-          "$ref": "#/169"
+          "$ref": "#/170"
         },
         "flags": 0,
         "description": "Provider installation configuration for Terraform CLI."
       },
       "credentials": {
         "type": {
-          "$ref": "#/177"
+          "$ref": "#/178"
         },
         "flags": 0,
         "description": "Credentials for authenticating to private Terraform registries (HTTP-based, e.g. app.terraform.io). Map of registry hostname to credential configuration. Rendered as native `credentials \"hostname\" {}` blocks in the generated .terraformrc. Note: this is for Terraform CLI registry auth (HTTP), not for Git-based module sources; Git auth is a separate mechanism."
@@ -1957,14 +1972,14 @@
     "properties": {
       "networkMirror": {
         "type": {
-          "$ref": "#/170"
+          "$ref": "#/171"
         },
         "flags": 0,
         "description": "Network mirror configuration for Terraform providers."
       },
       "direct": {
         "type": {
-          "$ref": "#/173"
+          "$ref": "#/174"
         },
         "flags": 0,
         "description": "Direct provider installation configuration."
@@ -1984,14 +1999,14 @@
       },
       "include": {
         "type": {
-          "$ref": "#/171"
+          "$ref": "#/172"
         },
         "flags": 0,
         "description": "Provider address patterns to include from this mirror."
       },
       "exclude": {
         "type": {
-          "$ref": "#/172"
+          "$ref": "#/173"
         },
         "flags": 0,
         "description": "Provider address patterns to exclude from this mirror."
@@ -2016,14 +2031,14 @@
     "properties": {
       "include": {
         "type": {
-          "$ref": "#/174"
+          "$ref": "#/175"
         },
         "flags": 0,
         "description": "Provider address patterns to include for direct installation."
       },
       "exclude": {
         "type": {
-          "$ref": "#/175"
+          "$ref": "#/176"
         },
         "flags": 0,
         "description": "Provider address patterns to exclude from direct installation."
@@ -2060,7 +2075,7 @@
     "name": "TerraformrcConfigCredentials",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/176"
+      "$ref": "#/177"
     }
   },
   {
@@ -2077,28 +2092,28 @@
     "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/188"
+          "$ref": "#/189"
         },
         "flags": 2,
         "description": "Provisioning state of the resource at the time the operation was called"
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/189"
+          "$ref": "#/190"
         },
         "flags": 2,
         "description": "Environments that reference this Terraform configuration."
       },
       "terraformrc": {
         "type": {
-          "$ref": "#/168"
+          "$ref": "#/169"
         },
         "flags": 0,
         "description": "Terraform CLI configuration file (.terraformrc) settings. See https://developer.hashicorp.com/terraform/cli/config for details."
       },
       "env": {
         "type": {
-          "$ref": "#/190"
+          "$ref": "#/191"
         },
         "flags": 0,
         "description": "Environment variables injected during Terraform recipe execution."
@@ -2141,9 +2156,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/180"
-      },
-      {
         "$ref": "#/181"
       },
       {
@@ -2163,6 +2175,9 @@
       },
       {
         "$ref": "#/187"
+      },
+      {
+        "$ref": "#/188"
       }
     ]
   },
@@ -2192,7 +2207,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/terraformConfigs@2025-08-01-preview",
     "body": {
-      "$ref": "#/157"
+      "$ref": "#/158"
     },
     "readableScopes": 0,
     "writableScopes": 0,

@@ -57,12 +57,58 @@ type DeployExecutor struct {
 	ShouldRetry func(error) bool
 }
 
+// Default retry behavior applied by NewDeployExecutor for transient container
+// image pull failures. Functional tests pull images from shared registries (for
+// example the ghcr.io/radius-project/* images), which occasionally fail to pull
+// due to registry or network blips in CI. Callers can override these defaults
+// with WithRetry.
+const (
+	defaultImagePullMaxRetries = 2
+	defaultImagePullRetryDelay = 30 * time.Second
+)
+
+// transientImagePullErrorMarkers are substrings that indicate a container image
+// pull failed for a transient reason (a registry or network blip) rather than a
+// permanent one (for example a nonexistent image or an authentication failure).
+// The kubelet automatically retries pulls that surface these states, so
+// re-running the deployment after a short delay typically succeeds.
+var transientImagePullErrorMarkers = []string{
+	// kubelet pull states. These are reported while the kubelet is still
+	// retrying the pull with backoff and usually clear on their own once the
+	// registry becomes reachable again.
+	"ErrImagePull",
+	"ImagePullBackOff",
+	// containerd surfaces this when a manifest or layer download from the
+	// registry fails partway through, commonly because the registry timed out.
+	"failed to pull and unpack image",
+	// The underlying HTTP error when a registry such as ghcr.io does not respond
+	// to a manifest or blob request in time.
+	"timeout awaiting response headers",
+}
+
+// IsTransientImagePullError reports whether err was caused by a transient
+// container image pull failure that is likely to succeed on retry. It is the
+// default ShouldRetry predicate for DeployExecutor (see NewDeployExecutor), used
+// by tests that pull images from a shared registry (for example the
+// ghcr.io/radius-project/mirror images), which occasionally fail to pull due to
+// registry or network blips in CI.
+func IsTransientImagePullError(err error) bool {
+	return ErrorContainsAny(err, transientImagePullErrorMarkers...)
+}
+
 // NewDeployExecutor creates a new DeployExecutor instance with the given template and parameters.
+//
+// By default the executor retries a deployment that fails with a transient
+// container image pull error (see IsTransientImagePullError). Use WithRetry to
+// override the retry count, delay, and predicate.
 func NewDeployExecutor(template string, parameters ...string) *DeployExecutor {
 	return &DeployExecutor{
 		Description: fmt.Sprintf("deploy %s", template),
 		Template:    template,
 		Parameters:  parameters,
+		MaxRetries:  defaultImagePullMaxRetries,
+		RetryDelay:  defaultImagePullRetryDelay,
+		ShouldRetry: IsTransientImagePullError,
 	}
 }
 
@@ -78,7 +124,8 @@ func (d *DeployExecutor) WithEnvironment(environment string) *DeployExecutor {
 	return d
 }
 
-// WithRetry configures retry behavior for transient deployment failures.
+// WithRetry configures retry behavior for transient deployment failures,
+// replacing the default transient image pull retry set by NewDeployExecutor.
 // maxRetries is the number of additional attempts after the first failure.
 // delay is the wait time between attempts. shouldRetry determines whether
 // a given error is eligible for retry.

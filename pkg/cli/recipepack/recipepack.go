@@ -63,9 +63,9 @@ func NewDefaultRecipePackResource() corerpv20250801.RecipePackResource {
 	recipes := make(map[string]*corerpv20250801.RecipeDefinition)
 	for _, def := range GetCoreTypesRecipeInfo() {
 		recipes[def.ResourceType] = &corerpv20250801.RecipeDefinition{
-			RecipeKind:     &bicepKind,
-			RecipeLocation: to.Ptr(def.RecipeLocation),
-			Parameters:     def.Parameters,
+			Kind:       &bicepKind,
+			Source:     to.Ptr(def.Source),
+			Parameters: def.Parameters,
 		}
 	}
 	return corerpv20250801.RecipePackResource{
@@ -120,8 +120,8 @@ func GetOrCreateDefaultRecipePack(ctx context.Context, client *corerpv20250801.R
 type CoreTypesRecipeInfo struct {
 	// ResourceType is the full resource type (e.g., "Radius.Compute/containers").
 	ResourceType string
-	// RecipeLocation is the OCI registry location for the recipe.
-	RecipeLocation string
+	// Source is the OCI registry location for the recipe.
+	Source string
 	// Parameters is the optional parameter bag passed to the recipe.
 	Parameters map[string]any
 }
@@ -137,28 +137,28 @@ func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 	}
 	return []CoreTypesRecipeInfo{
 		{
-			ResourceType:   "Radius.Compute/containers",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/containers:" + tag,
+			ResourceType: "Radius.Compute/containers",
+			Source:       "ghcr.io/radius-project/kube-recipes/containers:" + tag,
 		},
 		{
-			ResourceType:   "Radius.Compute/persistentVolumes",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + tag,
+			ResourceType: "Radius.Compute/persistentVolumes",
+			Source:       "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + tag,
 		},
 		{
-			ResourceType:   "Radius.Compute/routes",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/routes:" + tag,
+			ResourceType: "Radius.Compute/routes",
+			Source:       "ghcr.io/radius-project/kube-recipes/routes:" + tag,
 			Parameters: map[string]any{
 				"gatewayName":      DefaultRoutesGatewayName,
 				"gatewayNamespace": DefaultRoutesGatewayNamespace,
 			},
 		},
 		{
-			ResourceType:   "Radius.Security/secrets",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/secrets:" + tag,
+			ResourceType: "Radius.Security/secrets",
+			Source:       "ghcr.io/radius-project/kube-recipes/secrets:" + tag,
 		},
 		{
-			ResourceType:   "Radius.Data/mySqlDatabases",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + tag,
+			ResourceType: "Radius.Data/mySqlDatabases",
+			Source:       "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + tag,
 		},
 	}
 }

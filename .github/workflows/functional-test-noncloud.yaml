@@ -41,17 +41,20 @@ on:
       - main
       - features/*
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected.
+  merge_group:
+    branches:
+      - main
 
 permissions: {}
 
 env:
-  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUM_VER: 1.13.0
   # yq version
   YQ_VERSION: v4.44.3
   YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
   # Helm version
-  HELM_VER: v3.19.4
+  HELM_VER: v4.2.2
   # KinD cluster version
   KIND_VER: v0.29.0
   # Kubectl version
@@ -198,16 +201,19 @@ jobs:
             echo "CHECKOUT_REF=refs/heads/main"
           } >> "${GITHUB_ENV}"
 
-      - name: Set up checkout target (pull_request)
-        if: github.event_name == 'pull_request'
+      - name: Set up checkout target (pull_request or merge_group)
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           {
             echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
             echo "CHECKOUT_REF=${GITHUB_REF}"
-            echo "PR_NUMBER=${PR_NUMBER}"
           } >> "${GITHUB_ENV}"
+          # There is no pull request associated with a merge_group event.
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            echo "PR_NUMBER=${PR_NUMBER}" >> "${GITHUB_ENV}"
+          fi
 
       - name: Set up checkout target (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
@@ -239,10 +245,6 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
           cache: true
-
-      - name: Install gotestsum (test reporting tool)
-        run: |
-          go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
 
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
@@ -577,6 +579,10 @@ jobs:
 
       - name: Collect Pod details
         if: always()
+        # Diagnostic-only snapshot of cluster-wide pod state for post-mortem. A
+        # `kubectl describe pods -A` can race pod teardown and return a transient
+        # NotFound, so never let it fail the job.
+        continue-on-error: true
         env:
           MATRIX_NAME: ${{ matrix.name }}
         run: |

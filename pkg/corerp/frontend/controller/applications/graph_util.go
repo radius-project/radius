@@ -317,6 +317,7 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 
 		applicationGraphResource.Connections = connections
 		applicationGraphResource.OutputResources = outputResourcesFromAPIData(resource)
+		applicationGraphResource.Properties = getResourceTypeSpecificProperties(resource.Properties)
 
 		applicationGraphResourcesByID[*resource.ID] = *applicationGraphResource
 	}
@@ -444,6 +445,56 @@ func applicationGraphResourceFromID(id string) *corerpv20231001preview.Applicati
 		Type:              new(application.Type()),
 		ProvisioningState: to.Ptr(string(v1.ProvisioningStateSucceeded)),
 	}
+}
+
+// existingKeys lists top-level property keys that are dropped from the
+// projected Properties bag before it is returned by
+// getResourceTypeSpecificProperties.
+//
+//   - "provisioningState" and "connections" are surfaced as first-class
+//     fields on ApplicationGraphResource and are dropped purely to avoid
+//     duplication.
+//   - "status" is dropped entirely for sensitivity. Although the graph's
+//     OutputResources field already surfaces status.outputResources, the rest
+//     of status may contain computed values that include secrets (for example
+//     connection strings), so we exclude the whole subtree rather than just
+//     the outputResources key.
+var existingKeys = map[string]struct{}{
+	"provisioningState": {},
+	"connections":       {},
+	"status":            {},
+}
+
+// getResourceTypeSpecificProperties returns a deduplicated copy of a resource's properties
+// suitable for inclusion in ApplicationGraphResource.Properties. It drops the
+// top-level keys listed in existingKeys and returns nil when the projected map
+// would be empty so callers can leave the optional Properties field unset.
+//
+// This function does not perform secret redaction itself; it relies on the
+// upstream LIST handlers to have already redacted secrets from the input
+// properties. For user-defined types served by dynamic-rp this is done by
+// ListResourcesWithRedaction. For the core-RP resources that flow through the
+// application graph today (containers, gateways, environments, applications)
+// secrets are not inlined in the LIST response body — they are exposed via
+// dedicated /listSecrets endpoints — so the documented "secrets redacted"
+// contract holds.
+func getResourceTypeSpecificProperties(properties map[string]any) map[string]any {
+	if len(properties) == 0 {
+		return nil
+	}
+
+	propertyBag := make(map[string]any, len(properties))
+	for k, v := range properties {
+		if _, drop := existingKeys[k]; drop {
+			continue
+		}
+		propertyBag[k] = v
+	}
+
+	if len(propertyBag) == 0 {
+		return nil
+	}
+	return propertyBag
 }
 
 // outputResourceEntryFromID creates a outputResourceEntry from a resource ID.
