@@ -51,9 +51,6 @@ permissions: {}
 env:
   GOPROXY: https://proxy.golang.org
 
-  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUM_VER: 1.13.0
-
   # Container registry for storing Bicep recipe artifacts
   BICEP_RECIPE_REGISTRY: ${{ vars.FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY || 'ghcr.io/radius-project/dev' }}
   # bicep-types ACR url for pulling latest Radius Bicep types (AWS)
@@ -266,10 +263,6 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
-      - name: Install gotestsum (test reporting tool)
-        run: |
-          go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
-
       - name: Manage Radius control plane installation
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -431,6 +424,10 @@ jobs:
 
       - name: Collect Pod details
         if: always()
+        # Diagnostic-only snapshot of cluster-wide pod state for post-mortem. A
+        # `kubectl describe pods -A` can race pod teardown and return a transient
+        # NotFound, so never let it fail the job.
+        continue-on-error: true
         run: |
           POD_STATE_LOG_FILENAME="${RADIUS_CONTAINER_LOG_BASE}/all-tests-pod-states.log"
           mkdir -p $(dirname $POD_STATE_LOG_FILENAME)

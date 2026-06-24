@@ -14,8 +14,8 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   properties: {
     recipes: {
       'Test.Resources/userTypeAlpha': {
-        recipeKind: 'bicep'
-        recipeLocation: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'
+        kind: 'bicep'
+        source: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'
         parameters: {
           port: port
         }
@@ -45,7 +45,7 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
 }
 
 resource rrtresource 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
-  name: 'rrtresource'
+  name: 'rrtresource-noprovider'
   properties: {
     environment: env.id
     application: app.id

@@ -50,6 +50,15 @@ type ApplicationGraphResource struct {
 	// Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify
 	// resources as added, removed, modified, or unchanged across graphs. Format: 'sha256:{hex}'.
 	DiffHash *string
+
+	// Resource-type-specific properties of the resource as returned by its resource provider. The shape of this map varies by
+	// `type` (e.g. a `Radius.Compute/containers` resource exposes different keys than `Radius.Datastores/redisCaches` or any
+	// user-defined resource type) and matches the `properties` returned by that resource's GET response. Top-level keys already
+	// surfaced as first-class fields on this model (`provisioningState`, `connections`) are omitted. The whole `status` object
+	// is also omitted because it may contain computed values that include sensitive data (for example, connection strings); the
+	// redundant `status.outputResources` list is surfaced via the dedicated `outputResources` field instead. Use `diffHash` rather
+	// than a byte-wise compare of this map to detect change.
+	Properties map[string]any
 }
 
 // ApplicationGraphResponse - Describes the application architecture and its dependencies.
@@ -411,16 +420,21 @@ type ProvidersKubernetes struct {
 // RecipeDefinition - Recipe definition for a specific resource type
 type RecipeDefinition struct {
 	// REQUIRED; The type of recipe (e.g., Terraform, Bicep)
-	RecipeKind *RecipeKind
+	Kind *RecipeKind
 
-	// REQUIRED; URL path to the recipe
-	RecipeLocation *string
+	// REQUIRED; The source of the recipe. For Bicep recipes this is the OCI registry reference. For Terraform recipes this is
+	// the module source.
+	Source *string
+
+	// Map of resource type property names to module output names. Used for recipes that point directly at a Bicep or Terraform
+	// module to map the module's outputs onto the resource's properties.
+	Outputs map[string]*string
 
 	// Parameters to pass to the recipe
 	Parameters map[string]any
 
-	// Connect to the location using HTTP (not HTTPS). This should be used when the location is known not to support HTTPS, for
-	// example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)
+	// Connect to the source using HTTP (not HTTPS). This should be used when the source is known not to support HTTPS, for example
+	// in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)
 	PlainHTTP *bool
 }
 

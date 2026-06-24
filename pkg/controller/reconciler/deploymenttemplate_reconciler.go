@@ -32,7 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -515,7 +515,7 @@ func (r *DeploymentTemplateReconciler) startPutOperationIfNeeded(ctx context.Con
 				Template:       template,
 				Parameters:     specParameters,
 				ProviderConfig: providerConfig,
-				Mode:           armresources.DeploymentModeIncremental,
+				Mode:           armdeployments.DeploymentModeIncremental,
 			},
 		},
 		resourceID,

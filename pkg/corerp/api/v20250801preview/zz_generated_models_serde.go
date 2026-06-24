@@ -86,6 +86,7 @@ func (a ApplicationGraphResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "id", a.ID)
 	populate(objectMap, "name", a.Name)
 	populate(objectMap, "outputResources", a.OutputResources)
+	populate(objectMap, "properties", a.Properties)
 	populate(objectMap, "provisioningState", a.ProvisioningState)
 	populate(objectMap, "type", a.Type)
 	return json.Marshal(objectMap)
@@ -114,6 +115,9 @@ func (a *ApplicationGraphResource) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "outputResources":
 			err = unpopulate(val, "OutputResources", &a.OutputResources)
+			delete(rawMsg, key)
+		case "properties":
+			err = unpopulate(val, "Properties", &a.Properties)
 			delete(rawMsg, key)
 		case "provisioningState":
 			err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
@@ -997,10 +1001,11 @@ func (p *ProvidersKubernetes) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type RecipeDefinition.
 func (r RecipeDefinition) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
+	populate(objectMap, "kind", r.Kind)
+	populate(objectMap, "outputs", r.Outputs)
 	populate(objectMap, "parameters", r.Parameters)
 	populate(objectMap, "plainHttp", r.PlainHTTP)
-	populate(objectMap, "recipeKind", r.RecipeKind)
-	populate(objectMap, "recipeLocation", r.RecipeLocation)
+	populate(objectMap, "source", r.Source)
 	return json.Marshal(objectMap)
 }
 
@@ -1013,17 +1018,20 @@ func (r *RecipeDefinition) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "kind":
+			err = unpopulate(val, "Kind", &r.Kind)
+			delete(rawMsg, key)
+		case "outputs":
+			err = unpopulate(val, "Outputs", &r.Outputs)
+			delete(rawMsg, key)
 		case "parameters":
 			err = unpopulate(val, "Parameters", &r.Parameters)
 			delete(rawMsg, key)
 		case "plainHttp":
 			err = unpopulate(val, "PlainHTTP", &r.PlainHTTP)
 			delete(rawMsg, key)
-		case "recipeKind":
-			err = unpopulate(val, "RecipeKind", &r.RecipeKind)
-			delete(rawMsg, key)
-		case "recipeLocation":
-			err = unpopulate(val, "RecipeLocation", &r.RecipeLocation)
+		case "source":
+			err = unpopulate(val, "Source", &r.Source)
 			delete(rawMsg, key)
 		}
 		if err != nil {

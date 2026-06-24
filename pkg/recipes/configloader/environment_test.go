@@ -708,3 +708,100 @@ func Test_reconcileRecipeParameters(t *testing.T) {
 		})
 	}
 }
+
+func Test_parseTerraformModuleSource(t *testing.T) {
+	tests := []struct {
+		name            string
+		location        string
+		expectedSource  string
+		expectedVersion string
+	}{
+		{
+			name:            "public registry module with version",
+			location:        "terraform-aws-modules/rds/aws:6.1.0",
+			expectedSource:  "terraform-aws-modules/rds/aws",
+			expectedVersion: "6.1.0",
+		},
+		{
+			name:            "private registry module with host and version",
+			location:        "app.terraform.io/example-corp/k8s-cluster/azurerm:1.0.0",
+			expectedSource:  "app.terraform.io/example-corp/k8s-cluster/azurerm",
+			expectedVersion: "1.0.0",
+		},
+		{
+			name:            "private registry module with host port and version",
+			location:        "my.registry.com:8443/myteam/securemodule/aws:1.0.0",
+			expectedSource:  "my.registry.com:8443/myteam/securemodule/aws",
+			expectedVersion: "1.0.0",
+		},
+		{
+			name:            "private registry module with host port and no version is unchanged",
+			location:        "my.registry.com:8443/myteam/securemodule/aws",
+			expectedSource:  "my.registry.com:8443/myteam/securemodule/aws",
+			expectedVersion: "",
+		},
+		{
+			name:            "registry module with submodule path and version",
+			location:        "terraform-aws-modules/rds/aws//modules/db_instance:6.1.0",
+			expectedSource:  "terraform-aws-modules/rds/aws//modules/db_instance",
+			expectedVersion: "6.1.0",
+		},
+		{
+			name:            "registry module without version is unchanged",
+			location:        "terraform-aws-modules/rds/aws",
+			expectedSource:  "terraform-aws-modules/rds/aws",
+			expectedVersion: "",
+		},
+		{
+			name:            "http archive source is left untouched",
+			location:        "http://localhost:8999/kubernetes-redis.zip//modules",
+			expectedSource:  "http://localhost:8999/kubernetes-redis.zip//modules",
+			expectedVersion: "",
+		},
+		{
+			name:            "git ssh source with user component is left untouched",
+			location:        "git::ssh://git@github.com/org/repo.git",
+			expectedSource:  "git::ssh://git@github.com/org/repo.git",
+			expectedVersion: "",
+		},
+		{
+			name:            "git https source with ref is left untouched",
+			location:        "git::https://github.com/org/repo.git?ref=v1.2.3",
+			expectedSource:  "git::https://github.com/org/repo.git?ref=v1.2.3",
+			expectedVersion: "",
+		},
+		{
+			name:            "scp-style git host colon before final slash is not treated as version",
+			location:        "git@github.com:org/repo",
+			expectedSource:  "git@github.com:org/repo",
+			expectedVersion: "",
+		},
+		{
+			name:            "shorthand without slash is not treated as version",
+			location:        "git@host:repo",
+			expectedSource:  "git@host:repo",
+			expectedVersion: "",
+		},
+		{
+			name:            "trailing colon with empty version is unchanged",
+			location:        "terraform-aws-modules/rds/aws:",
+			expectedSource:  "terraform-aws-modules/rds/aws:",
+			expectedVersion: "",
+		},
+		{
+			name:            "local relative path is unchanged",
+			location:        "./modules/redis",
+			expectedSource:  "./modules/redis",
+			expectedVersion: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			source, version := parseTerraformModuleSource(tt.location)
+			require.Equal(t, tt.expectedSource, source)
+			require.Equal(t, tt.expectedVersion, version)
+		})
+	}
+}

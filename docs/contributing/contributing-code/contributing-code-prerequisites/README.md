@@ -127,7 +127,7 @@ Optional tools the team recommends for debugging Kubernetes:
 
 **Dapr.** Radius integrates with [Dapr](https://docs.dapr.io/). To work on these features, install the [Dapr CLI](https://docs.dapr.io/getting-started/install-dapr-cli/).
 
-**Test summaries.** The default `go test` output can be hard to read when you have many tests. `make test` automatically uses [gotestsum](https://github.com/gotestyourself/gotestsum#install) if it is installed.
+**Test summaries.** The default `go test` output can be hard to read when you have many tests. `make test` uses [gotestsum](https://github.com/gotestyourself/gotestsum) for nicer formatted output and JUnit XML reports. `gotestsum` is managed as a Go tool dependency (the `tool` directive in [go.mod](../../../../go.mod)) and is invoked via `go tool gotestsum`, so no separate installation is needed.
 
 #### Install code-generation tools
 

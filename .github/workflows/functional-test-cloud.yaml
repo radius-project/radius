@@ -44,18 +44,23 @@ on:
       - main
       - features/*
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected. In the
+  # merge queue the code already lives in the base repo (trusted context), so
+  # the check-trust / approval-gate jobs are skipped and setup proceeds.
+  merge_group:
+    branches:
+      - main
 
 permissions: {}
 
 env:
   GOPROXY: https://proxy.golang.org
-  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUM_VER: 1.13.0
   # yq version
   YQ_VERSION: v4.44.3
   YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
   # Helm version
-  HELM_VER: v3.19.4
+  HELM_VER: v4.2.2
   # KinD cluster version
   KIND_VER: v0.29.0
   # Kubectl version
@@ -120,6 +125,7 @@ jobs:
           client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          repositories: radius
           permission-members: read
 
       - name: Determine trust level
@@ -248,6 +254,17 @@ jobs:
             echo "CHECKOUT_REF=refs/heads/${INPUT_BRANCH}"
           } >> "${GITHUB_ENV}"
 
+      - name: Set up checkout target (merge_group)
+        if: github.event_name == 'merge_group'
+        run: |
+          # GITHUB_SHA is the merge queue's combined commit (base + queued PRs).
+          # Using it as the checkout ref and the status-check sha ensures the
+          # required check is reported on the commit the merge queue validates.
+          {
+            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
+            echo "CHECKOUT_REF=${GITHUB_SHA}"
+          } >> "${GITHUB_ENV}"
+
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -372,7 +389,6 @@ jobs:
             |**Unique ID** | ${{ env.UNIQUE_ID }} |
             |**Image tag** | ${{ env.REL_VERSION }} |
 
-            * gotestsum ${{ env.GOTESTSUM_VER }}
             * KinD: ${{ env.KIND_VER }}
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
@@ -807,10 +823,6 @@ jobs:
           rad bicep download
           rad version
 
-      - name: Install gotestsum (test reporting tool)
-        run: |
-          go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
-
       - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: failure() && env.PR_NUMBER != ''
         continue-on-error: true
@@ -994,6 +1006,12 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
+          # Initiate resource deletion without blocking on completion (matches the
+          # non-cloud suite). Test assertions for deploy/create still run in full;
+          # only the synchronous teardown wait is skipped, and the per-run resource
+          # group is force-deleted afterward. This removes the slow Test_ACI teardown
+          # (~9 min) from the critical path without reducing validation scope.
+          RADIUS_TEST_FAST_CLEANUP: true
           MATRIX_NAME: ${{ matrix.name }}
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
 
@@ -1008,6 +1026,10 @@ jobs:
 
       - name: Collect Pod details
         if: always()
+        # Diagnostic-only snapshot of cluster-wide pod state for post-mortem. A
+        # `kubectl describe pods -A` can race pod teardown and return a transient
+        # NotFound, so never let it fail the job.
+        continue-on-error: true
         env:
           MATRIX_NAME: ${{ matrix.name }}
         run: |

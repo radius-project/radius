@@ -13,6 +13,10 @@ on:
       - reopened
       - synchronize
       - ready_for_review
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # The required check is the always-run `check-codeql` (CodeQL) aggregator job.
+  merge_group:
+    branches: [main]
   schedule:
     # Runs at 05:15, only on Friday
     - cron: 15 5 * * 5

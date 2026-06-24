@@ -50,11 +50,6 @@
       "resolved": "ghcr.io/eitsupi/devcontainer-features/jq-likes@sha256:6a8b044f9f424097ec6d212167836b26994a76a556cbcb202084be79fe8032bd",
       "integrity": "sha256:6a8b044f9f424097ec6d212167836b26994a76a556cbcb202084be79fe8032bd"
     },
-    "ghcr.io/guiyomh/features/gotestsum:0.1.1": {
-      "version": "0.1.1",
-      "resolved": "ghcr.io/guiyomh/features/gotestsum@sha256:cf4d3881a2fe8c429edb20dd4d173c2488faebaf9f0c46939fe734ef186ce239",
-      "integrity": "sha256:cf4d3881a2fe8c429edb20dd4d173c2488faebaf9f0c46939fe734ef186ce239"
-    },
     "ghcr.io/mpriscella/features/kind:1": {
       "version": "1.0.1",
       "resolved": "ghcr.io/mpriscella/features/kind@sha256:103487a6bd74424f2285b6f9594f0a8bbb31d0544eb3563b64e40bc303e0d83e",
