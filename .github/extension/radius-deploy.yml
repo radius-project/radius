@@ -1,0 +1,477 @@
+# This workflow is a Repo Radius template. Radius writes a copy of it into a
+# user's repository at .github/workflows/radius-deploy.yml and dispatches it
+# there; it is not run from radius-project/radius directly. See
+# .github/extension/README.md for the contract this file honors.
+#
+# It stands up an ephemeral k3d cluster for the Radius control plane, restores
+# durable state with `rad startup`, connects recipe execution to the user's
+# target cluster (EKS/AKS) via the chart's `global.targetCluster` seam, runs the
+# caller-supplied Radius commands, then backs state up again with `rad shutdown`
+# before tearing the control plane down.
+name: Radius - Deploy Application
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'GitHub Environment name'
+        required: true
+        default: 'dev'
+      radius_commands:
+        # A single rad CLI command string, or a JSON-encoded array of command
+        # strings run in order. The `rad` prefix is omitted from each command
+        # (e.g. `deploy app.bicep` or `["deploy app.bicep", "app graph"]`).
+        description: 'rad CLI command string, or JSON array of command strings, with the `rad` prefix omitted.'
+        required: true
+
+permissions:
+  id-token: write # required for cloud OIDC
+  contents: write # `rad shutdown` pushes the radius-state orphan branch
+  packages: write # container-image recipes push to GHCR
+
+env:
+  ENVIRONMENT: ${{ inputs.environment || 'dev' }}
+  RADIUS_NAMESPACE: ${{ vars.RADIUS_K8S_NAMESPACE || 'default' }}
+  RADIUS_IMAGE_REGISTRY: ${{ vars.RADIUS_IMAGE_REGISTRY || 'ghcr.io/radius-project' }}
+  RADIUS_IMAGE_TAG: ${{ vars.RADIUS_IMAGE_TAG || 'latest' }}
+  RESOURCE_TYPES_CONTRIB_REPO: https://github.com/radius-project/resource-types-contrib.git
+  RESOURCE_TYPES_CONTRIB_REF: ${{ vars.RESOURCE_TYPES_CONTRIB_REF || 'main' }}
+  # Where the chart's targetCluster seam expects the kubeconfig secret/key.
+  TARGET_KUBECONFIG_SECRET: target-kubeconfig
+  TARGET_KUBECONFIG_KEY: kubeconfig
+  TARGET_KUBECONFIG_PATH: /home/runner/.kube/target-cluster
+
+jobs:
+  deploy:
+    name: Deploy with Radius
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
+    steps:
+      - name: Checkout
+        # persist-credentials is intentionally left at its default (true): the
+        # `rad shutdown` step pushes the radius-state orphan branch back to this
+        # repository using the checkout's token.
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Validate provider configuration
+        run: |
+          set -euo pipefail
+          if [ -n "${{ vars.AZURE_CLIENT_ID }}" ] && [ -n "${{ vars.AWS_IAM_ROLE_ARN }}" ]; then
+            echo "Both AZURE_CLIENT_ID and AWS_IAM_ROLE_ARN are set. Configure only one provider per GitHub Environment." >&2
+            exit 1
+          fi
+
+      - name: Azure Login (OIDC)
+        if: ${{ vars.AZURE_CLIENT_ID != '' }}
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Configure AWS Credentials (OIDC)
+        if: ${{ vars.AWS_IAM_ROLE_ARN != '' }}
+        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
+        with:
+          role-to-assume: ${{ vars.AWS_IAM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Build target cluster kubeconfig
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$TARGET_KUBECONFIG_PATH")"
+
+          if [ -n "${{ vars.AZURE_CLIENT_ID }}" ] && [ -n "${{ vars.RADIUS_K8S_CLUSTER }}" ]; then
+            az aks get-credentials \
+              --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+              --name "${{ vars.RADIUS_K8S_CLUSTER }}" \
+              --subscription "${{ vars.AZURE_SUBSCRIPTION_ID }}" \
+              --file "$TARGET_KUBECONFIG_PATH"
+          elif [ -n "${{ vars.AWS_IAM_ROLE_ARN }}" ] && [ -n "${{ vars.RADIUS_K8S_CLUSTER }}" ]; then
+            CLUSTER="${{ vars.RADIUS_K8S_CLUSTER }}"
+            REGION="${{ vars.AWS_REGION }}"
+            ROLE_ARN="${{ vars.AWS_IAM_ROLE_ARN }}"
+
+            # Ensure the OIDC role can reach the EKS cluster. Idempotent.
+            echo "Ensuring EKS access entry for $ROLE_ARN..."
+            aws eks create-access-entry --cluster-name "$CLUSTER" --principal-arn "$ROLE_ARN" \
+              --type STANDARD --region "$REGION" 2>/dev/null || echo "Access entry already exists"
+            aws eks associate-access-policy --cluster-name "$CLUSTER" --principal-arn "$ROLE_ARN" \
+              --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
+              --access-scope type=cluster --region "$REGION" 2>/dev/null || echo "Access policy already associated"
+
+            # The RP/DE containers have no aws CLI, so write a static bearer-token
+            # kubeconfig rather than an exec-based one.
+            ENDPOINT=$(aws eks describe-cluster --name "$CLUSTER" --region "$REGION" --query 'cluster.endpoint' --output text)
+            CA_DATA=$(aws eks describe-cluster --name "$CLUSTER" --region "$REGION" --query 'cluster.certificateAuthority.data' --output text)
+            TOKEN=$(aws eks get-token --cluster-name "$CLUSTER" --region "$REGION" --output json | jq -r '.status.token')
+            printf 'apiVersion: v1\nclusters:\n- cluster:\n    certificate-authority-data: %s\n    server: %s\n  name: eks\ncontexts:\n- context:\n    cluster: eks\n    user: eks-user\n  name: eks\ncurrent-context: eks\nkind: Config\nusers:\n- name: eks-user\n  user:\n    token: %s\n' "$CA_DATA" "$ENDPOINT" "$TOKEN" > "$TARGET_KUBECONFIG_PATH"
+            kubectl --kubeconfig "$TARGET_KUBECONFIG_PATH" cluster-info || echo "WARNING: could not reach EKS cluster"
+          else
+            echo "No target cluster configured; resources will deploy to the control-plane cluster."
+          fi
+
+      - name: Install k3d
+        run: curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+
+      - name: Create ephemeral Radius control plane cluster
+        run: |
+          set -euo pipefail
+          k3d cluster create radius-cp \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            --volume "${{ github.workspace }}/:/app/demo" \
+            --wait
+          kubectl wait --for=condition=Ready node --all --timeout=120s
+
+      - name: Install Radius CLI
+        run: |
+          set -euo pipefail
+          wget -q "https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh" -O - | /bin/bash
+          rad version
+
+      - name: Create target kubeconfig secret
+        # The chart's targetCluster seam mounts this secret into applications-rp,
+        # dynamic-rp, and bicep-de, so it must exist before `rad install`.
+        if: ${{ hashFiles('/home/runner/.kube/target-cluster') != '' }}
+        run: |
+          set -euo pipefail
+          kubectl create namespace radius-system --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic "$TARGET_KUBECONFIG_SECRET" \
+            --namespace radius-system \
+            --from-file="$TARGET_KUBECONFIG_KEY=$TARGET_KUBECONFIG_PATH" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Install Radius on control plane
+        run: |
+          set -euo pipefail
+          TARGET_FLAGS=""
+          if [ -f "$TARGET_KUBECONFIG_PATH" ]; then
+            TARGET_FLAGS="--set global.targetCluster.enabled=true"
+          fi
+          # Azure auth uses Workload Identity: the chart adds the
+          # `azure.workload.identity/use` label to the RP/DE pods. On this k3d
+          # cluster there is no WI admission webhook, so the workflow projects the
+          # federated token and sets the AZURE_* env vars itself (see below).
+          if [ -n "${{ vars.AZURE_CLIENT_ID }}" ]; then
+            TARGET_FLAGS="$TARGET_FLAGS --set global.azureWorkloadIdentity.enabled=true"
+          fi
+          # database.enabled=true gives rad startup/shutdown a PostgreSQL store to
+          # back up and restore.
+          rad install kubernetes \
+            --set rp.publicEndpointOverride=localhost \
+            --set global.imageRegistry=${RADIUS_IMAGE_REGISTRY} \
+            --set global.imageTag=${RADIUS_IMAGE_TAG} \
+            --set database.enabled=true \
+            $TARGET_FLAGS
+          kubectl wait --for=condition=Available deployment --all -n radius-system --timeout=300s
+
+      - name: Enable container image builds in dynamic-rp
+        # Mounts the Docker socket, source tree, and a GHCR auth config into
+        # dynamic-rp so Terraform's docker provider can build and push images.
+        run: |
+          set -euo pipefail
+          kubectl patch deployment dynamic-rp -n radius-system --type=json -p='[
+            {"op": "add", "path": "/spec/template/spec/volumes/-",
+             "value": {"name": "docker-sock", "hostPath": {"path": "/var/run/docker.sock", "type": "Socket"}}},
+            {"op": "add", "path": "/spec/template/spec/volumes/-",
+             "value": {"name": "docker-bin", "emptyDir": {}}},
+            {"op": "add", "path": "/spec/template/spec/volumes/-",
+             "value": {"name": "app-source", "hostPath": {"path": "/app/demo", "type": "Directory"}}},
+            {"op": "add", "path": "/spec/template/spec/containers/0/volumeMounts/-",
+             "value": {"name": "docker-sock", "mountPath": "/var/run/docker.sock"}},
+            {"op": "add", "path": "/spec/template/spec/containers/0/volumeMounts/-",
+             "value": {"name": "docker-bin", "mountPath": "/usr/local/bin/docker", "subPath": "docker"}},
+            {"op": "add", "path": "/spec/template/spec/containers/0/volumeMounts/-",
+             "value": {"name": "app-source", "mountPath": "/app/demo", "readOnly": true}},
+            {"op": "replace", "path": "/spec/template/spec/containers/0/securityContext",
+             "value": {"allowPrivilegeEscalation": false, "runAsUser": 0}},
+            {"op": "add", "path": "/spec/template/spec/initContainers/-",
+             "value": {
+               "name": "install-docker-cli",
+               "image": "docker:cli",
+               "command": ["cp", "/usr/local/bin/docker", "/out/docker"],
+               "volumeMounts": [{"name": "docker-bin", "mountPath": "/out"}]
+             }}
+          ]'
+          kubectl rollout status deployment/dynamic-rp -n radius-system --timeout=120s
+
+          # Provide GHCR auth so the docker provider can push images.
+          DOCKER_AUTH=$(echo -n "${{ github.actor }}:${{ secrets.GHCR_PAT || secrets.GITHUB_TOKEN }}" | base64 -w0)
+          DOCKER_CONFIG_JSON=$(printf '{"auths":{"ghcr.io":{"auth":"%s"}}}' "$DOCKER_AUTH")
+          kubectl create secret generic docker-config -n radius-system \
+            --from-literal=config.json="$DOCKER_CONFIG_JSON" --dry-run=client -o yaml | kubectl apply -f -
+          kubectl patch deployment dynamic-rp -n radius-system --type=json -p='[
+            {"op": "add", "path": "/spec/template/spec/volumes/-",
+             "value": {"name": "docker-config-secret", "secret": {"secretName": "docker-config"}}},
+            {"op": "add", "path": "/spec/template/spec/volumes/-",
+             "value": {"name": "docker-config", "emptyDir": {}}},
+            {"op": "add", "path": "/spec/template/spec/containers/0/volumeMounts/-",
+             "value": {"name": "docker-config", "mountPath": "/root/.docker"}},
+            {"op": "add", "path": "/spec/template/spec/containers/0/env/-",
+             "value": {"name": "DOCKER_CONFIG", "value": "/root/.docker"}},
+            {"op": "add", "path": "/spec/template/spec/initContainers/-",
+             "value": {
+               "name": "copy-docker-config",
+               "image": "busybox:latest",
+               "command": ["sh", "-c", "cp /secret/config.json /docker-config/config.json"],
+               "volumeMounts": [
+                 {"name": "docker-config-secret", "mountPath": "/secret", "readOnly": true},
+                 {"name": "docker-config", "mountPath": "/docker-config"}
+               ]
+             }}
+          ]'
+          kubectl rollout status deployment/dynamic-rp -n radius-system --timeout=120s
+          kubectl wait --for=condition=Ready pod -n radius-system -l app.kubernetes.io/name=dynamic-rp --timeout=120s
+
+      - name: Configure Radius workspace
+        run: rad workspace create kubernetes default --force
+
+      - name: Restore Radius state
+        # Restores control-plane PostgreSQL + Terraform recipe state saved by a
+        # previous run's `rad shutdown`. Tolerant of an empty/first run.
+        run: rad startup --workspace default
+
+      - name: Configure Radius environment
+        run: |
+          set -euo pipefail
+          # Ensure the target namespace exists on the workload cluster.
+          if [ -f "$TARGET_KUBECONFIG_PATH" ]; then
+            kubectl --kubeconfig "$TARGET_KUBECONFIG_PATH" get namespace "$RADIUS_NAMESPACE" 2>/dev/null || \
+              kubectl --kubeconfig "$TARGET_KUBECONFIG_PATH" create namespace "$RADIUS_NAMESPACE"
+          fi
+          rad group create default
+          rad group switch default
+          rad env create "$ENVIRONMENT" --namespace "$RADIUS_NAMESPACE"
+          rad env switch "$ENVIRONMENT"
+
+      - name: Set environment cloud scope
+        # Credentials themselves are NOT registered with `rad credential register`.
+        # Repo Radius follows Terraform's model: the OIDC session credentials are
+        # injected into the RP/DE pods as environment variables (next step), and
+        # the cloud SDKs in those pods pick them up. `rad env update` only records
+        # the deployment *scope* (where resources land), not credentials.
+        run: |
+          set -euo pipefail
+          if [ -n "${{ vars.AZURE_CLIENT_ID }}" ]; then
+            rad env update "$ENVIRONMENT" \
+              --azure-subscription-id "${{ vars.AZURE_SUBSCRIPTION_ID }}" \
+              --azure-resource-group "${{ vars.AZURE_RESOURCE_GROUP }}"
+          elif [ -n "${{ vars.AWS_IAM_ROLE_ARN }}" ]; then
+            rad env update "$ENVIRONMENT" \
+              --aws-region "${{ vars.AWS_REGION }}" \
+              --aws-account-id "${{ vars.AWS_ACCOUNT_ID }}"
+          fi
+
+      - name: Configure cloud credentials for Radius pods
+        # AWS and Azure use different, provider-native credential models:
+        #
+        #   AWS  - the runner's OIDC session credentials are injected into the
+        #          applications-rp, dynamic-rp, and bicep-de pods as environment
+        #          variables. The AWS SDKs and Terraform AWS provider read them
+        #          directly. No credential is registered with Radius.
+        #
+        #   Azure - uses Workload Identity. The ClientID/TenantID are registered
+        #          as a Radius credential (the Terraform azurerm provider fetches
+        #          them from UCP), and the GitHub Actions OIDC JWT is projected
+        #          into the pods as the federated token file the Azure SDKs
+        #          exchange for an ~1h AAD token. NOTE: that GitHub OIDC JWT is
+        #          short-lived; a run whose Azure work outlives the first token
+        #          exchange window may fail. Refreshing it is a planned fast
+        #          follow and intentionally out of scope here.
+        run: |
+          set -euo pipefail
+
+          if [ -n "${{ vars.AWS_IAM_ROLE_ARN }}" ]; then
+            ENV_PATCH=$(jq -nc --arg ak "$AWS_ACCESS_KEY_ID" --arg sk "$AWS_SECRET_ACCESS_KEY" \
+              --arg st "${AWS_SESSION_TOKEN:-}" --arg rg "${{ vars.AWS_REGION }}" '
+              [
+                {name:"AWS_ACCESS_KEY_ID",     value:$ak},
+                {name:"AWS_SECRET_ACCESS_KEY", value:$sk},
+                {name:"AWS_SESSION_TOKEN",     value:$st},
+                {name:"AWS_REGION",            value:$rg}
+              ]')
+            PATCH=$(jq -nc --argjson env "$ENV_PATCH" '
+              [ $env[] | {op:"add", path:"/spec/template/spec/containers/0/env/-", value:.} ]')
+            for d in applications-rp dynamic-rp bicep-de; do
+              kubectl patch deployment "$d" -n radius-system --type=json -p="$PATCH"
+            done
+
+          elif [ -n "${{ vars.AZURE_CLIENT_ID }}" ]; then
+            # Register the Workload Identity credential so the Terraform azurerm
+            # provider can fetch the client/tenant IDs from UCP.
+            rad credential register azure wi \
+              --client-id "${{ vars.AZURE_CLIENT_ID }}" \
+              --tenant-id "${{ vars.AZURE_TENANT_ID }}"
+
+            # Mint the GitHub Actions OIDC JWT for the Entra token-exchange
+            # audience. This is the federated token the Azure SDKs present to
+            # Entra; the app registration's federated credential trusts GitHub's
+            # issuer + this environment's subject.
+            FEDERATED_TOKEN=$(curl -sSf \
+              -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | jq -r '.value')
+
+            # Project the token as a Secret mounted at the well-known Azure
+            # Workload Identity path. A Secret *volume* is kept in sync by the
+            # kubelet, so all three pods (including bicep-de) see it without a
+            # restart.
+            kubectl create secret generic azure-identity-token -n radius-system \
+              --from-literal=azure-identity-token="$FEDERATED_TOKEN" \
+              --dry-run=client -o yaml | kubectl apply -f -
+
+            ENV_PATCH=$(jq -nc \
+              --arg ci "${{ vars.AZURE_CLIENT_ID }}" --arg ti "${{ vars.AZURE_TENANT_ID }}" '
+              [
+                {name:"AZURE_CLIENT_ID",          value:$ci},
+                {name:"AZURE_TENANT_ID",          value:$ti},
+                {name:"AZURE_FEDERATED_TOKEN_FILE", value:"/var/run/secrets/azure/tokens/azure-identity-token"},
+                {name:"AZURE_AUTHORITY_HOST",     value:"https://login.microsoftonline.com/"}
+              ]')
+            PATCH=$(jq -nc --argjson env "$ENV_PATCH" '
+              [ {op:"add", path:"/spec/template/spec/volumes/-",
+                 value:{name:"azure-identity-token", secret:{secretName:"azure-identity-token"}}},
+                {op:"add", path:"/spec/template/spec/containers/0/volumeMounts/-",
+                 value:{name:"azure-identity-token", mountPath:"/var/run/secrets/azure/tokens", readOnly:true}} ]
+              + [ $env[] | {op:"add", path:"/spec/template/spec/containers/0/env/-", value:.} ]')
+            for d in applications-rp dynamic-rp bicep-de; do
+              kubectl patch deployment "$d" -n radius-system --type=json -p="$PATCH"
+            done
+
+          else
+            echo "No cloud provider configured; skipping credential configuration."
+            exit 0
+          fi
+
+          for d in applications-rp dynamic-rp bicep-de; do
+            kubectl rollout status "deployment/$d" -n radius-system --timeout=300s
+          done
+
+
+      - name: Register resource types and recipes
+        run: |
+          set -euo pipefail
+          REPO="$RESOURCE_TYPES_CONTRIB_REPO"
+          REF="$RESOURCE_TYPES_CONTRIB_REF"
+          git clone --depth 1 --branch "$REF" "$REPO" /tmp/resource-types-contrib
+
+          for TYPE_YAML in \
+            Compute/containerImages/containerImages.yaml \
+            Data/mySqlDatabases/mySqlDatabases.yaml; do
+            if [ -f "/tmp/resource-types-contrib/$TYPE_YAML" ]; then
+              echo "Registering $TYPE_YAML..."
+              rad resource-type create -f "/tmp/resource-types-contrib/$TYPE_YAML" || \
+                (echo "Retrying after 5s..." && sleep 5 && rad resource-type create -f "/tmp/resource-types-contrib/$TYPE_YAML")
+            fi
+          done
+
+          register_recipe() {
+            local rtype="$1" path="$2"; shift 2
+            rad recipe register default \
+              --environment "$ENVIRONMENT" \
+              --resource-type "$rtype" \
+              --template-kind terraform \
+              --template-path "git::$REPO//$path?ref=$REF" "$@"
+          }
+          register_recipe Radius.Compute/containerImages    Compute/containerImages/recipes/kubernetes/terraform
+          register_recipe Radius.Compute/containers         Compute/containers/recipes/kubernetes/terraform
+          register_recipe Radius.Compute/persistentVolumes  Compute/persistentVolumes/recipes/kubernetes/terraform
+          register_recipe Radius.Compute/routes             Compute/routes/recipes/kubernetes/terraform
+          register_recipe Radius.Data/postgreSqlDatabases   Data/postgreSqlDatabases/recipes/kubernetes/terraform
+          register_recipe Radius.Security/secrets           Security/secrets/recipes/kubernetes/terraform
+          if [ -n "${{ vars.RADIUS_VPC_ID }}" ]; then
+            register_recipe Radius.Data/mySqlDatabases Data/mySqlDatabases/recipes/aws/terraform \
+              --parameters vpcId="${{ vars.RADIUS_VPC_ID }}" \
+              --parameters "subnetIds=${{ vars.RADIUS_SUBNET_IDS }}"
+          fi
+
+      - name: Refresh EKS token before running commands
+        # EKS tokens are short-lived; refresh the mounted kubeconfig right before
+        # running commands so the RPs authenticate with a fresh token.
+        if: ${{ vars.AWS_IAM_ROLE_ARN != '' && vars.RADIUS_K8S_CLUSTER != '' }}
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ vars.RADIUS_K8S_CLUSTER }}"
+          REGION="${{ vars.AWS_REGION }}"
+          ENDPOINT=$(aws eks describe-cluster --name "$CLUSTER" --region "$REGION" --query 'cluster.endpoint' --output text)
+          CA_DATA=$(aws eks describe-cluster --name "$CLUSTER" --region "$REGION" --query 'cluster.certificateAuthority.data' --output text)
+          TOKEN=$(aws eks get-token --cluster-name "$CLUSTER" --region "$REGION" --output json | jq -r '.status.token')
+          printf 'apiVersion: v1\nclusters:\n- cluster:\n    certificate-authority-data: %s\n    server: %s\n  name: eks\ncontexts:\n- context:\n    cluster: eks\n    user: eks-user\n  name: eks\ncurrent-context: eks\nkind: Config\nusers:\n- name: eks-user\n  user:\n    token: %s\n' "$CA_DATA" "$ENDPOINT" "$TOKEN" > "$TARGET_KUBECONFIG_PATH"
+          kubectl create secret generic "$TARGET_KUBECONFIG_SECRET" \
+            --namespace radius-system \
+            --from-file="$TARGET_KUBECONFIG_KEY=$TARGET_KUBECONFIG_PATH" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          for d in applications-rp dynamic-rp bicep-de; do
+            kubectl rollout restart "deployment/$d" -n radius-system
+            kubectl rollout status "deployment/$d" -n radius-system --timeout=300s
+          done
+
+      - name: Run Radius commands
+        env:
+          # Pass caller input through the environment to avoid command injection.
+          RADIUS_COMMANDS: ${{ inputs.radius_commands }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/radius-output
+
+          # radius_commands is either a single command string or a JSON array of
+          # command strings; the `rad` prefix is omitted from each. Normalize to a
+          # bash array.
+          if printf '%s' "$RADIUS_COMMANDS" | jq -e 'type == "array"' >/dev/null 2>&1; then
+            mapfile -t COMMANDS < <(printf '%s' "$RADIUS_COMMANDS" | jq -r '.[]')
+          else
+            COMMANDS=("$RADIUS_COMMANDS")
+          fi
+
+          i=0
+          for cmd in "${COMMANDS[@]}"; do
+            i=$((i + 1))
+            [ -z "${cmd//[[:space:]]/}" ] && continue
+            OUT="/tmp/radius-output/$(printf '%02d' "$i")-output.txt"
+            echo "::group::rad $cmd"
+            # Each command's combined output is captured as an artifact so the
+            # frontend can read results incrementally. Stop on first failure.
+            if ! rad $cmd 2>&1 | tee "$OUT"; then
+              echo "::endgroup::"
+              echo "Command failed: rad $cmd" >&2
+              exit 1
+            fi
+            echo "::endgroup::"
+          done
+          echo "✅ Radius commands complete."
+
+      - name: Upload command output
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: radius-output
+          path: /tmp/radius-output/
+          retention-days: 1
+
+      - name: Back up Radius state
+        # Persist control-plane + Terraform state to the radius-state branch so the
+        # next run's `rad startup` can restore it. Runs even on deploy failure to
+        # avoid losing partially-applied state.
+        if: always()
+        run: rad shutdown --workspace default
+
+      - name: Collect Radius logs
+        if: failure()
+        run: |
+          mkdir -p /tmp/radius-logs
+          for deploy in applications-rp dynamic-rp bicep-de controller ucpd; do
+            kubectl logs -n radius-system -l app.kubernetes.io/name=$deploy --tail=200 >> /tmp/radius-logs/$deploy.log 2>&1 || true
+          done
+          kubectl get pods -n radius-system -o wide >> /tmp/radius-logs/pods.txt 2>&1 || true
+          kubectl get events -n radius-system --sort-by=.lastTimestamp >> /tmp/radius-logs/events.txt 2>&1 || true
+
+      - name: Upload Radius logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: radius-logs
+          path: /tmp/radius-logs/
+          retention-days: 3
+
+      - name: Cleanup control plane cluster
+        if: always()
+        run: k3d cluster delete radius-cp || true
