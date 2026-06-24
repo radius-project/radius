@@ -475,12 +475,12 @@ Concretely, two separate workflows: (1) a minimal `resource-types-contrib` relea
 
 - **No runtime change.** `RegisterDirectory`, the `built-in-providers/` layout, and the manual `radius_core.yaml`/`microsoft_resources.yaml` files are untouched.
 - **No default-set change.** `defaultRegistration` is unchanged; only a `source` block is added.
-- **Contributor workflow change.** Bumping the default set no longer involves `go get`; it is a `source.ref` edit plus `make update-resource-types`. Documented in the release process and the contrib README (which currently instructs `make update-resource-types`).
+- **Contributor workflow change.** Bumping the default set no longer involves `go get`; it is a `source.ref` edit plus `make update-resource-types`. This will be documented in the release process and the contrib README (see PR 3 below).
 - **One-time cleanup.** Removing the module from `go.mod`/`go.sum` and deleting `import.go` is a mechanical, reviewable change.
 
 ## Development plan
 
-1. **PR 1 (radius):** add the `source` block to `defaults.yaml`; rewrite `build/resource-types.mk` to fetch by pinned ref (Option 2); update `verify-resource-types.yaml` (drop Go setup and `go.mod`/`go.sum` path filters); remove the `require` line and run `go mod tidy`; delete `pkg/resourcetypescontrib/import.go`. Verify drift CI and startup tests pass.
+1. **PR 1 (radius):** add the `source` block to `defaults.yaml`; rewrite `build/resource-types.mk` to fetch by pinned ref (Option 3); update `verify-resource-types.yaml` (drop Go setup and `go.mod`/`go.sum` path filters); remove the `require` line and run `go mod tidy`; delete `pkg/resourcetypescontrib/import.go`. Verify drift CI and startup tests pass.
 2. **PR 2 (resource-types-contrib):** delete `go.mod` and `doc.go`.
 3. **PR 3 (radius):** update the release process doc and the contrib README to describe the ref-based bump.
 4. **Phase B (contrib release workflow + radius coordination):** add a minimal release workflow in `resource-types-contrib` (not GoReleaser) that, on tag, attaches the manifest bundle as a GitHub Release asset + `checksums.txt` (Option 4); switch the Radius fetch step to download-and-verify the asset; record `tag` + `sha256` in `defaults.yaml`, bumped by the radius post-release coordination step. Optionally harden to a signed OCI artifact (Option 5: `oras pull … @digest` + `cosign verify`/SBOM). Sequenced with the radius core repo's GoReleaser work.
