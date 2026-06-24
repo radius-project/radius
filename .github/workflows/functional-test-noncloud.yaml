@@ -163,6 +163,7 @@ jobs:
     permissions:
       contents: read # Required for listing the commits
       checks: write # Required for creating a check run
+      pull-requests: write # Required for posting a PR comment
     strategy:
       # Keep matrix legs independent. With fail-fast: true, a single failing
       # (often flaky) leg cancels all in-progress siblings. GitHub's
