@@ -1,0 +1,88 @@
+suite: test network policies
+templates:
+  - networkpolicies.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: renders no NetworkPolicies by default (opt-in feature)
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: fails to render when enabled without controlPlaneCIDRs
+    set:
+      networkPolicies.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "networkPolicies.enabled=true requires networkPolicies.controlPlaneCIDRs to be set to the cluster's node/control-plane CIDR(s) so the Kubernetes API server can reach UCP and the controller on :9443. Set networkPolicies.controlPlaneCIDRs, or set networkPolicies.enabled=false to install without these policies."
+
+  - it: renders default-deny and allow-internal as the first two policies when enabled
+    set:
+      networkPolicies.enabled: true
+      networkPolicies.controlPlaneCIDRs:
+        - 172.18.0.0/16
+    asserts:
+      - hasDocuments:
+          count: 3
+      - equal:
+          path: kind
+          value: NetworkPolicy
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: radius-default-deny-ingress
+        documentIndex: 0
+      - equal:
+          path: metadata.namespace
+          value: radius-system
+        documentIndex: 0
+      - isEmpty:
+          path: spec.podSelector
+        documentIndex: 0
+      - contains:
+          path: spec.policyTypes
+          content: Ingress
+        documentIndex: 0
+      # default-deny has no ingress rules (deny all)
+      - notExists:
+          path: spec.ingress
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: radius-allow-internal
+        documentIndex: 1
+      - equal:
+          path: spec.ingress[0].from[0].namespaceSelector.matchLabels["kubernetes.io/metadata.name"]
+          value: radius-system
+        documentIndex: 1
+
+  - it: renders the control-plane allow policy scoped to port 9443 with one ipBlock per CIDR
+    set:
+      networkPolicies.enabled: true
+      networkPolicies.controlPlaneCIDRs:
+        - 172.18.0.0/16
+        - 10.0.0.0/16
+    asserts:
+      - hasDocuments:
+          count: 3
+      - equal:
+          path: metadata.name
+          value: radius-allow-control-plane
+        documentIndex: 2
+      - equal:
+          path: spec.ingress[0].from[0].ipBlock.cidr
+          value: 172.18.0.0/16
+        documentIndex: 2
+      - equal:
+          path: spec.ingress[0].from[1].ipBlock.cidr
+          value: 10.0.0.0/16
+        documentIndex: 2
+      - equal:
+          path: spec.ingress[0].ports[0].port
+          value: 9443
+        documentIndex: 2
+      - equal:
+          path: spec.ingress[0].ports[0].protocol
+          value: TCP
+        documentIndex: 2
