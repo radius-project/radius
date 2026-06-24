@@ -120,10 +120,11 @@ func TestGetClient_UnsupportedProvider(t *testing.T) {
 
 func Test_expandEnvURL(t *testing.T) {
 	tests := []struct {
-		name     string
-		url      string
-		env      map[string]string
-		expected string
+		name      string
+		url       string
+		env       map[string]string
+		expected  string
+		expectErr bool
 	}{
 		{
 			name:     "no substitution",
@@ -146,10 +147,15 @@ func Test_expandEnvURL(t *testing.T) {
 			expected: "postgresql://ucp:p@ss@host:5432/db",
 		},
 		{
-			name:     "unset variable expands to empty string",
-			url:      "postgresql://ucp:${MISSING}@host:5432/db",
-			env:      map[string]string{"MISSING": ""},
+			name:     "empty-but-set variable expands to empty string",
+			url:      "postgresql://ucp:${EMPTY_VAR}@host:5432/db",
+			env:      map[string]string{"EMPTY_VAR": ""},
 			expected: "postgresql://ucp:@host:5432/db",
+		},
+		{
+			name:      "unset variable fails fast",
+			url:       "postgresql://ucp:${DEFINITELY_NOT_SET_VAR}@host:5432/db",
+			expectErr: true,
 		},
 	}
 
@@ -158,7 +164,13 @@ func Test_expandEnvURL(t *testing.T) {
 			for k, v := range tt.env {
 				t.Setenv(k, v)
 			}
-			require.Equal(t, tt.expected, expandEnvURL(tt.url))
+			got, err := expandEnvURL(tt.url)
+			if tt.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, got)
 		})
 	}
 }

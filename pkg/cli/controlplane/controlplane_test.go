@@ -133,8 +133,8 @@ func Test_replicasOf_DefaultsToOne(t *testing.T) {
 	require.Equal(t, int32(1), replicasOf(&appsv1.Deployment{}), "nil replicas defaults to 1")
 
 	zero := int32(0)
-	require.Equal(t, int32(1), replicasOf(&appsv1.Deployment{Spec: appsv1.DeploymentSpec{Replicas: &zero}}),
-		"already-zero replicas should restore to 1, never 0")
+	require.Equal(t, int32(0), replicasOf(&appsv1.Deployment{Spec: appsv1.DeploymentSpec{Replicas: &zero}}),
+		"an explicit zero is preserved, not coerced to 1")
 
 	three := int32(3)
 	require.Equal(t, int32(3), replicasOf(&appsv1.Deployment{Spec: appsv1.DeploymentSpec{Replicas: &three}}))

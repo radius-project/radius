@@ -165,13 +165,11 @@ func (s *Scaler) waitForReplicas(ctx context.Context, name string, cond func(*ap
 	})
 }
 
-// replicasOf returns the configured replica count of a deployment, defaulting to 1 when unset
-// (the Kubernetes default) so a deployment is never accidentally restored to zero replicas.
+// replicasOf returns the configured replica count of a deployment, defaulting to 1 (the
+// Kubernetes default) only when Spec.Replicas is unset. An explicit replica count, including an
+// intentional 0, is preserved so ScaleUp faithfully restores the prior state.
 func replicasOf(deployment *appsv1.Deployment) int32 {
 	if deployment.Spec.Replicas == nil {
-		return 1
-	}
-	if *deployment.Spec.Replicas == 0 {
 		return 1
 	}
 	return *deployment.Spec.Replicas

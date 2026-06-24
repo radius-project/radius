@@ -21,10 +21,52 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
+
+func Test_CommandValidation(t *testing.T) {
+	radcli.SharedCommandValidation(t, NewCommand)
+}
+
+func Test_Validate(t *testing.T) {
+	nonKubernetesConfig := radcli.LoadConfig(t, `
+workspaces:
+  default: github-workspace
+  items:
+    github-workspace:
+      connection:
+        kind: notkubernetes
+      environment: /planes/radius/local/resourceGroups/test/providers/Applications.Core/environments/test
+      scope: /planes/radius/local/resourceGroups/test
+`)
+
+	testcases := []radcli.ValidateInput{
+		{
+			Name:          "startup with a kubernetes workspace is valid",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder:  framework.ConfigHolder{ConfigFilePath: "/weird/path", Config: radcli.LoadConfigWithWorkspace(t)},
+		},
+		{
+			Name:          "startup with a non-kubernetes workspace is invalid",
+			Input:         []string{},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{ConfigFilePath: "/weird/path", Config: nonKubernetesConfig},
+		},
+		{
+			Name:          "startup does not accept positional args",
+			Input:         []string{"unexpected"},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{ConfigFilePath: "/weird/path", Config: radcli.LoadConfigWithWorkspace(t)},
+		},
+	}
+
+	radcli.SharedValidateValidation(t, NewCommand, testcases)
+}
 
 // fakeStateRestoreClient records calls and returns canned errors.
 type fakeStateRestoreClient struct {

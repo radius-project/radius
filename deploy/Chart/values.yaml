@@ -197,7 +197,9 @@ dashboard:
 database:
   enabled: false # Enable the Postgres database install
   postgres_user: "radius"
-  image: mirror/postgres
+  # Pulled directly from Docker Hub: the registry mirror does not publish a pinned
+  # postgres tag, only ':latest'. Using the upstream image keeps the version deterministic.
+  image: docker.io/library/postgres
   tag: 16-alpine
   storageClassName: "" # set to the storage class name if required, the empty string will pickup the default storage class.
   # Minimum resource requirements, may need to revisit and scale.

@@ -79,6 +79,31 @@ tests:
           value: database-initdb
         template: database/configmap-initdb.yaml
 
+  - it: should grant the per-RP users privileges on the resources table
+    set:
+      database.enabled: true
+    asserts:
+      # Guards against the "permission denied for table resources" startup crash: the table is
+      # created by the superuser, so the per-RP user must be granted access.
+      - matchRegex:
+          path: data["init-db.sh"]
+          pattern: 'GRANT ALL PRIVILEGES ON TABLE resources TO "\$RESOURCE_PROVIDER"'
+        template: database/configmap-initdb.yaml
+      - matchRegex:
+          path: data["init-db.sh"]
+          pattern: 'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO "\$RESOURCE_PROVIDER"'
+        template: database/configmap-initdb.yaml
+
+  - it: should use a pullable postgres image reference
+    set:
+      database.enabled: true
+    asserts:
+      # Guards against pointing at a registry-mirror tag that does not exist (ImagePullBackOff).
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: "docker.io/library/postgres:16-alpine"
+        template: database/statefulset.yaml
+
   - it: should mount the initdb scripts into the database statefulset
     set:
       database.enabled: true

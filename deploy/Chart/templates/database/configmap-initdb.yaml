@@ -32,7 +32,7 @@ data:
 
     for RESOURCE_PROVIDER in "${RESOURCE_PROVIDERS[@]}"; do
         echo "Creating tables in database $RESOURCE_PROVIDER"
-        psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$RESOURCE_PROVIDER" <<-'EOSQL'
+        psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$RESOURCE_PROVIDER" <<-EOSQL
             CREATE TABLE IF NOT EXISTS resources (
                 id TEXT PRIMARY KEY NOT NULL,
                 original_id TEXT NOT NULL,
@@ -44,6 +44,10 @@ data:
                 resource_data JSONB NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_resource_query ON resources (resource_type, root_scope);
+            -- The table is created by the superuser, so grant the per-RP user the privileges it
+            -- needs to read and write its own data (matches build/scripts/start-radius.sh).
+            GRANT ALL PRIVILEGES ON TABLE resources TO "$RESOURCE_PROVIDER";
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO "$RESOURCE_PROVIDER";
     EOSQL
     done
 {{- end }}

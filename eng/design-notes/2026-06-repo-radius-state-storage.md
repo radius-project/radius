@@ -193,8 +193,8 @@ scales them back to their previous replica counts** (`pkg/cli/controlplane`). Th
 restore atomic with respect to its consumers and means the providers establish brand-new pools —
 with no stale prepared statements — against the restored schema. The deployment engine and
 dashboard do not connect to PostgreSQL directly and are left running. Components are always scaled
-back up, including on a failed restore, and a deployment whose previous replica count was zero is
-restored to one rather than left scaled down.
+back up, including on a failed restore; the previous replica count is captured before scale-down
+and restored faithfully (an unset count defaults to one, the Kubernetes default).
 
 A lighter alternative — restoring data-only with `TRUNCATE` instead of `--clean` to keep table
 OIDs stable — was considered. It avoids the prepared-statement hazard but not the write race, so
