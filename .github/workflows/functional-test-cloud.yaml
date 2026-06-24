@@ -54,6 +54,17 @@ on:
 
 permissions: {}
 
+# Reduce self-contention on the shared Azure ACI 'StandardCores' quota (the
+# bottleneck behind Test_ACI's ContainerGroupQuotaReached flakes): serialize cloud
+# functional-test runs per pull request so a single PR pushing rapid commits does
+# not run several ACI-provisioning runs at once. Keyed by PR number because under
+# pull_request_target github.ref is the base ref, which would otherwise collapse
+# every PR into one group and cancel unrelated runs. cancel-in-progress is limited
+# to pull_request_target so the merge queue and scheduled runs are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+
 env:
   GOPROXY: https://proxy.golang.org
   # yq version
@@ -613,6 +624,7 @@ jobs:
       contents: read # Required for listing the commits
       checks: write # Required for publishing test results
       packages: read # Required for pulling images from ghcr.io inside KinD
+      pull-requests: write # Required for posting a PR comment
     env:
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
@@ -1017,15 +1029,25 @@ jobs:
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
-        # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
-        if: failure() && github.repository == vars.RADIUS_REPOSITORY
+        # Run on success and failure so a passing "Re-run failed jobs" refreshes the
+        # "Functional Tests - <name>" check published by EnricoMi. Gating this on
+        # failure() left that check stuck red after a green re-run, because the step
+        # was skipped and the previous attempt's failed check was never updated.
+        # comment_mode: failures keeps PR comments limited to actual failures, and
+        # the failure artifacts are still uploaded for post-mortem.
+        if: always() && github.repository == vars.RADIUS_REPOSITORY
         with:
           test_group_name: Functional Tests - ${{ matrix.name }}
           artifact_name: functional_test_results_${{ matrix.name }}
           result_directory: dist/functional_test/
+          comment_mode: failures
 
       - name: Collect Pod details
         if: always()
+        # Diagnostic-only snapshot of cluster-wide pod state for post-mortem. A
+        # `kubectl describe pods -A` can race pod teardown and return a transient
+        # NotFound, so never let it fail the job.
+        continue-on-error: true
         env:
           MATRIX_NAME: ${{ matrix.name }}
         run: |
@@ -1102,6 +1124,57 @@ jobs:
           message: |
             :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
 
+      - name: Release ACI quota before async resource group delete
+        if: always()
+        env:
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+        run: |
+          # The regional Azure Container Instances 'StandardCores' quota is shared
+          # across all concurrent cloud functional-test runs and is the bottleneck
+          # behind Test_ACI (deploys fail with ContainerGroupQuotaReached). The
+          # resource group is deleted with --no-wait below because the full delete is
+          # slow for gateways/VNets (see #12044), so its ACI resources would otherwise
+          # linger for minutes and keep holding quota that other runs need. Delete the
+          # ACI resources synchronously here to release the quota promptly. Best-effort:
+          # the resource group delete and the purge workflow still clean up the rest.
+          set -uo pipefail
+          sub="${AZURE_SUBSCRIPTIONID_TESTS}"
+          rg="${AZURE_TEST_RESOURCE_GROUP}"
+          # Radius creates the ACI nGroups/containerGroupProfiles with this API version
+          # (pkg/sdk/v20241101preview). Delete with it explicitly: a plain delete lets
+          # ARM pick the provider's latest advertised version (e.g. 2026-06-01-preview),
+          # which the RP rejects ("api-version not supported"), leaving the nGroups -
+          # and therefore the whole resource group - undeletable.
+          aci_api_version="2024-11-01-preview"
+          if ! az group show --subscription "${sub}" --name "${rg}" >/dev/null 2>&1; then
+            echo "Resource group ${rg} not found; nothing to release."
+            exit 0
+          fi
+          aci_ids=$(az resource list \
+            --subscription "${sub}" \
+            --resource-group "${rg}" \
+            --query "[?starts_with(type, 'Microsoft.ContainerInstance/')].id" \
+            --output tsv 2>/dev/null || true)
+          if [ -z "${aci_ids}" ]; then
+            echo "No Azure Container Instances resources in ${rg}."
+            exit 0
+          fi
+          echo "Releasing ACI quota by deleting:"
+          echo "${aci_ids}"
+          # nGroups (container scale sets) back the quota-holding container groups, so
+          # delete them first (in parallel) and wait, then delete the remaining ACI
+          # resources (profiles). Parallelizing keeps the synchronous teardown short
+          # while preserving the nGroups-before-profiles order (nGroups reference the
+          # profiles).
+          for id in $(echo "${aci_ids}" | grep -i '/nGroups/' || true); do
+            az resource delete --subscription "${sub}" --ids "${id}" --api-version "${aci_api_version}" --verbose || true &
+          done
+          wait
+          for id in $(echo "${aci_ids}" | grep -iv '/nGroups/' || true); do
+            az resource delete --subscription "${sub}" --ids "${id}" --api-version "${aci_api_version}" --verbose || true &
+          done
+          wait
+
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         if: always()
         env:
@@ -1124,7 +1197,6 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      checks: read
     env:
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
     steps:
@@ -1136,28 +1208,30 @@ jobs:
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           permission-checks: write
 
-      - name: Get tests job status
+      - name: Aggregate functional test status
         id: get_test_status
-        env:
-          GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
         run: |
-          # from: https://github.com/orgs/community/discussions/26526#discussioncomment-3252209
-          ALL_JOBS_STATUS=$(curl -X GET -s -u "admin:${GH_TOKEN}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" | jq ".jobs[] | {job_status: .conclusion}")
-          echo "All jobs status: $ALL_JOBS_STATUS"
+          # Derive the overall status from the needs context instead of querying the
+          # Actions API. `tests` is a matrix job, so needs.tests.result already collapses
+          # all legs (success only if every leg passed). A docs-only run skips build+tests
+          # with setup successful, which yields success and matches the skip-tests job.
+          # failure takes precedence over cancelled.
+          echo "setup=${SETUP_RESULT} build=${BUILD_RESULT} tests=${TESTS_RESULT}"
           TEST_STATUS="success"
-          for job_status in $(echo "$ALL_JOBS_STATUS" | jq -r '.[]'); do
-            echo "Job Status: $job_status"
-            if [[ "$job_status" == "failure" ]]; then
-              echo "Found failed test. Setting test status to failure"
+          for result in "${SETUP_RESULT}" "${BUILD_RESULT}" "${TESTS_RESULT}"; do
+            if [[ "${result}" == "failure" ]]; then
               TEST_STATUS="failure"
               break
-            elif [[ "$job_status" == "cancelled" ]]; then
-              echo "Found cancelled test. Setting test status to cancelled"
+            elif [[ "${result}" == "cancelled" ]]; then
               TEST_STATUS="cancelled"
             fi
           done
-          echo "Test Status: $TEST_STATUS"
-          echo "test_status=$TEST_STATUS" >> $GITHUB_OUTPUT
+          echo "Functional Test Run status: ${TEST_STATUS}"
+          echo "test_status=${TEST_STATUS}" >> "${GITHUB_OUTPUT}"
+        env:
+          SETUP_RESULT: ${{ needs.setup.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          TESTS_RESULT: ${{ needs.tests.result }}
 
       - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: always()

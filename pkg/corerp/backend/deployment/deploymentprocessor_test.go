@@ -1127,3 +1127,21 @@ func Test_fetchSecrets(t *testing.T) {
 		require.Equal(t, secret, secretValues[pr_renderers.ConnectionStringValue])
 	})
 }
+
+func Test_FailedDeploymentProcessor_AllMethodsReturnError(t *testing.T) {
+	sentinel := errors.New("target cluster unavailable")
+	p := NewFailedDeploymentProcessor(sentinel)
+	ctx := context.Background()
+
+	_, err := p.Render(ctx, resources.ID{}, nil)
+	require.ErrorIs(t, err, sentinel)
+
+	_, err = p.Deploy(ctx, resources.ID{}, renderers.RendererOutput{})
+	require.ErrorIs(t, err, sentinel)
+
+	err = p.Delete(ctx, resources.ID{}, nil)
+	require.ErrorIs(t, err, sentinel)
+
+	_, err = p.FetchSecrets(ctx, ResourceData{})
+	require.ErrorIs(t, err, sentinel)
+}

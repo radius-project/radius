@@ -25,6 +25,13 @@ inputs:
   result_directory:
     description: Directory containing result XML files. These should be in jUnit format. See the description of the action.
     required: true
+  comment_mode:
+    description: |
+      When the EnricoMi action posts a pull request comment. Defaults to "always" to preserve
+      existing behavior. Use "failures" to comment only when tests fail, or "off" to disable
+      comments. See publish-unit-test-result-action docs for the full list of values.
+    required: false
+    default: always
 runs:
   using: composite
   steps:
@@ -75,6 +82,7 @@ runs:
       if: always()
       with:
         check_name: ${{ inputs.test_group_name }}
+        comment_mode: ${{ inputs.comment_mode }}
         files: |
           ${{ inputs.result_directory }}/processed/*.xml
 

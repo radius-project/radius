@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/corerp/frontend/controller/util"
+	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -74,6 +75,17 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
 	if newResource.Properties.Providers != nil && newResource.Properties.Providers.Kubernetes != nil {
 		namespace := newResource.Properties.Providers.Kubernetes.Namespace
+
+		// Default to the deployment-target cluster's namespace when the environment
+		// does not specify one. In multi-cluster mode this is the namespace pinned by
+		// the injected target kubeconfig (falling back to "default"); in single-cluster
+		// mode it is "default". Persisting it here ensures recipes deploy into a real
+		// namespace rather than the empty string.
+		if namespace == "" {
+			namespace = kubeutil.TargetClusterDefaultNamespace()
+			newResource.Properties.Providers.Kubernetes.Namespace = namespace
+		}
+
 		result, err := util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "properties.providers.kubernetes.namespace", namespace, e.DatabaseClient())
 		if err != nil {
 			return nil, err
@@ -92,8 +104,17 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 			}
 		}
 
+		// Validate the namespace exists on the cluster the application's resources
+		// will deploy to. In multi-cluster mode that is the external cluster named by
+		// RADIUS_TARGET_KUBECONFIG, not the control-plane cluster Radius runs on, so
+		// the check must run against the deployment-target cluster.
+		namespaceClient, err := kubeutil.DeploymentTargetRuntimeClient(e.Options().KubeClient)
+		if err != nil {
+			return nil, err
+		}
+
 		ns := &corev1.Namespace{}
-		err = e.Options().KubeClient.Get(ctx, client.ObjectKey{Name: namespace}, ns)
+		err = namespaceClient.Get(ctx, client.ObjectKey{Name: namespace}, ns)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return rest.NewBadRequestResponse(fmt.Sprintf("Namespace '%s' does not exist in the Kubernetes cluster. Please create it before proceeding.", namespace)), nil

@@ -22,6 +22,7 @@ import (
 	reflect "reflect"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -36,6 +37,7 @@ import (
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/util"
@@ -126,7 +128,18 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	// get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
 	isContextParameterDefined := hasContextParameter(recipeData)
-	parameters := createRecipeParameters(opts.Recipe.Parameters, opts.Definition.Parameters, isContextParameterDefined, recipeContext)
+
+	var parameters map[string]any
+	if isContextParameterDefined {
+		// Wrapped recipe — use the existing context injection flow.
+		parameters = createRecipeParameters(opts.Recipe.Parameters, opts.Definition.Parameters, true, recipeContext)
+	} else {
+		// Direct module — resolve {{context.*}} expressions, merge parameters, and wrap as ARM parameters.
+		// Resource (developer) parameters take precedence over environment (operator) parameters.
+		mergedParams := recipes_util.ShallowMergeParameters(opts.Definition.Parameters, opts.Recipe.Parameters)
+		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipeContext)
+		parameters = wrapARMParameters(resolvedParams)
+	}
 
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
 	deploymentID, err := createDeploymentID(recipeContext.Resource.ID, deploymentName)
@@ -168,7 +181,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition.TemplatePath, resp.Properties.Outputs, resp.Properties.OutputResources)
+	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
@@ -371,34 +384,55 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 	return config
 }
 
-// prepareRecipeResponse populates the recipe response from parsing the deployment output 'result' object and the
+// prepareRecipeResponse populates the recipe response from the deployment outputs and the
 // resources created by the template.
-func (d *bicepDriver) prepareRecipeResponse(templatePath string, outputs any, resources []*armdeployments.ResourceReference) (*recipes.RecipeOutput, error) {
-	// We populate the recipe response from the 'result' output (if set)
-	// and the resources created by the template.
-	//
-	// Note that there are two ways a resource can be returned:
-	// - Implicitly when it is created in the template (it will be in 'resources').
-	// - Explicitly as part of the 'result' output.
-	//
-	// The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
-	// collection. For us this mostly means Kubernetes resources - the user has to be explicit.
+//
+// Output resolution precedence (direct module support):
+//   - If an `outputs` mapping is configured on the definition, it takes precedence: all ARM
+//     deployment outputs are collected flat and then renamed via the mapping.
+//   - Otherwise, if the deployment produced a `result` output, the module is treated as a
+//     wrapped recipe (existing behavior).
+//   - Otherwise, all ARM deployment outputs pass through unchanged.
+//
+// Note that there are two ways a resource can be returned:
+//   - Implicitly when it is created in the template (it will be in 'resources').
+//   - Explicitly as part of the 'result' output.
+//
+// The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
+// collection. For us this mostly means Kubernetes resources - the user has to be explicit.
+func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefinition, outputs any, resources []*armdeployments.ResourceReference) (*recipes.RecipeOutput, error) {
 	recipeResponse := &recipes.RecipeOutput{}
 	out, ok := outputs.(map[string]any)
-	if ok {
-		if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {
-			if resultValue, ok := result["value"].(map[string]any); ok {
-				err := recipeResponse.PrepareRecipeResponse(resultValue)
-				if err != nil {
-					return &recipes.RecipeOutput{}, err
+	if ok && len(out) > 0 {
+		hasOutputsMapping := len(definition.Outputs) > 0
+		_, hasResultOutput := out[recipes.ResultPropertyName]
+
+		switch {
+		case hasOutputsMapping:
+			// Direct module with an outputs mapping — collect all ARM outputs flat (splitting
+			// secure-typed outputs into secrets), then apply the mapping.
+			values, secrets := collectARMOutputs(out)
+			recipeResponse.Values, recipeResponse.Secrets = recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs)
+		case hasResultOutput:
+			// Wrapped recipe — use the existing 'result' output parsing.
+			if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {
+				if resultValue, ok := result["value"].(map[string]any); ok {
+					err := recipeResponse.PrepareRecipeResponse(resultValue)
+					if err != nil {
+						return &recipes.RecipeOutput{}, err
+					}
 				}
 			}
+		default:
+			// Direct module without a mapping — pass through all ARM outputs unchanged, routing
+			// secure-typed outputs to Secrets so they are not exposed as plain values.
+			recipeResponse.Values, recipeResponse.Secrets = collectARMOutputs(out)
 		}
 	}
 
 	recipeResponse.Status = &rpv1.RecipeStatus{
 		TemplateKind: recipes.TemplateKindBicep,
-		TemplatePath: templatePath,
+		TemplatePath: definition.TemplatePath,
 	}
 
 	// process the 'resources' created by the template
@@ -407,6 +441,65 @@ func (d *bicepDriver) prepareRecipeResponse(templatePath string, outputs any, re
 	}
 
 	return recipeResponse, nil
+}
+
+// collectARMOutputs splits ARM deployment outputs into non-sensitive values and sensitive secrets
+// based on each output's declared ARM type. Outputs typed securestring/secureobject are routed to
+// secrets so that secure Bicep module outputs are not exposed as plain values, mirroring the
+// Terraform driver which preserves per-output sensitivity.
+// ARM outputs have the shape: {"outputName": {"type": "...", "value": ...}, ...}.
+func collectARMOutputs(outputs map[string]any) (map[string]any, map[string]any) {
+	values := make(map[string]any)
+	secrets := make(map[string]any)
+	for name, raw := range outputs {
+		outputMap, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		val, ok := outputMap["value"]
+		if !ok {
+			continue
+		}
+		if isSecureARMOutputType(outputMap["type"]) {
+			secrets[name] = val
+		} else {
+			values[name] = val
+		}
+	}
+	return values, secrets
+}
+
+// isSecureARMOutputType reports whether an ARM output's declared type marks it as sensitive
+// (securestring or secureobject). The comparison is case-insensitive because ARM may return the
+// type with different casing than the compiled template.
+func isSecureARMOutputType(outputType any) bool {
+	typeStr, ok := outputType.(string)
+	if !ok {
+		return false
+	}
+	switch strings.ToLower(typeStr) {
+	case "securestring", "secureobject":
+		return true
+	default:
+		return false
+	}
+}
+
+// wrapARMParameters wraps raw parameter values into the ARM parameter format: {"key": {"value": val}}.
+func wrapARMParameters(params map[string]any) map[string]any {
+	wrapped := make(map[string]any, len(params))
+	for k, v := range params {
+		// Skip nil values so we don't emit an explicit ARM "value": null, which can
+		// override a module parameter's default or fail ARM type validation. This
+		// mirrors the Terraform driver's SetParams behavior.
+		if v == nil {
+			continue
+		}
+		wrapped[k] = map[string]any{
+			"value": v,
+		}
+	}
+	return wrapped
 }
 
 // getGCOutputResources [GC stands for Garbage Collection] compares two slices of resource ids and
