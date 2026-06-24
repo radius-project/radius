@@ -147,6 +147,24 @@ func Test_InspectTFModuleConfig(t *testing.T) {
 			errExact: true,
 		},
 		{
+			name:       "module name outside module root",
+			workingDir: "testdata",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "../test-submodule",
+				TemplatePath: "test-submodule",
+			},
+			err: "module path \"../test-submodule\" must be local",
+		},
+		{
+			name:       "submodule path outside module root",
+			workingDir: "testdata",
+			recipe: &recipes.EnvironmentDefinition{
+				Name:         "test-submodule",
+				TemplatePath: "test-submodule//../missing-submodule",
+			},
+			err: "module path \"../missing-submodule\" must be local",
+		},
+		{
 			name: "module directory without Terraform configuration",
 			recipe: &recipes.EnvironmentDefinition{
 				Name:         "test-module-no-config",

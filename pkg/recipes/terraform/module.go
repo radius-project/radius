@@ -104,7 +104,19 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 	//
 	// If the template path is for a submodule, we'll add the submodule path to the module directory.
 	_, subModule := getter.SourceDirSubdir(recipe.TemplatePath)
-	moduleDir := filepath.Join(workingDir, moduleRootDir, recipe.Name, subModule)
+	moduleName := filepath.Clean(recipe.Name)
+	if moduleName == "." || !filepath.IsLocal(moduleName) {
+		return nil, fmt.Errorf("error loading the module: module path %q must be local", recipe.Name)
+	}
+
+	subModule = filepath.Clean(subModule)
+	if subModule == "." {
+		subModule = ""
+	} else if !filepath.IsLocal(subModule) {
+		return nil, fmt.Errorf("error loading the module: module path %q must be local", subModule)
+	}
+
+	moduleDir := filepath.Join(workingDir, moduleRootDir, moduleName, subModule)
 	hasConfig, err := hasTerraformConfigFiles(moduleDir)
 	if err != nil {
 		return nil, fmt.Errorf("error loading the module: %w", err)
@@ -116,6 +128,9 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 	mod, diags := tfconfig.LoadModule(moduleDir)
 	if diags.HasErrors() {
 		return nil, fmt.Errorf("error loading the module: %w", diags.Err())
+	}
+	if mod == nil {
+		return nil, fmt.Errorf("error loading the module: module inspection returned no module")
 	}
 
 	// Check that the module has a recipe context variable.
