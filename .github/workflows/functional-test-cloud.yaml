@@ -1140,6 +1140,12 @@ jobs:
           set -uo pipefail
           sub="${AZURE_SUBSCRIPTIONID_TESTS}"
           rg="${AZURE_TEST_RESOURCE_GROUP}"
+          # Radius creates the ACI nGroups/containerGroupProfiles with this API version
+          # (pkg/sdk/v20241101preview). Delete with it explicitly: a plain delete lets
+          # ARM pick the provider's latest advertised version (e.g. 2026-06-01-preview),
+          # which the RP rejects ("api-version not supported"), leaving the nGroups -
+          # and therefore the whole resource group - undeletable.
+          aci_api_version="2024-11-01-preview"
           if ! az group show --subscription "${sub}" --name "${rg}" >/dev/null 2>&1; then
             echo "Resource group ${rg} not found; nothing to release."
             exit 0
@@ -1158,10 +1164,10 @@ jobs:
           # nGroups (container scale sets) back the quota-holding container groups, so
           # delete them first; then delete the remaining ACI resources (profiles).
           for id in $(echo "${aci_ids}" | grep -i '/nGroups/' || true); do
-            az resource delete --subscription "${sub}" --ids "${id}" --verbose || true
+            az resource delete --subscription "${sub}" --ids "${id}" --api-version "${aci_api_version}" --verbose || true
           done
           for id in $(echo "${aci_ids}" | grep -iv '/nGroups/' || true); do
-            az resource delete --subscription "${sub}" --ids "${id}" --verbose || true
+            az resource delete --subscription "${sub}" --ids "${id}" --api-version "${aci_api_version}" --verbose || true
           done
 
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
