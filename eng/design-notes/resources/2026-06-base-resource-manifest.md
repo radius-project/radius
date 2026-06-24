@@ -4,7 +4,7 @@
 
 ## Overview
 
-Every Radius resource type a contributor authors must today restate the same four "Radius-aware" schema properties — `application`, `environment`, `connections`, and (newly) `codeReference` — in its manifest YAML. This is rote duplication authors get wrong, and it leaks Radius framework concerns into every per-type schema.
+Every Radius resource type a contributor authors must today restate the same four "Radius-aware" schema properties — `application`, `environment`, `connections`, and (newly) `codeReference` — in its manifest YAML. This is rote duplication authors get wrong, and it leaks Radius framework concerns into every RRT schema.
 
 This design declares those four common properties in a single repo-owned base resource manifest. The CLI (`rad resource-type create`) and the Bicep extension generator (`bicep-tools`) merge the base into every resource type schema before validation and Bicep-type emission, so an author writes only their type-specific properties.
 
@@ -23,11 +23,10 @@ This design declares those four common properties in a single repo-owned base re
 ### Goals
 
 - Let an author register a type whose YAML declares none of the common properties and still get a fully-functional Radius type at deploy time.
-- Add `codeReference` as a standard optional property on every type without each author restating it.
+- Introduce `codeReference` as a standard optional property on every type without each author restating it.
 
 ### Non goals
 
-- **No change to the existing schema validator.** Today's rules (including "every schema must declare `environment`") stay as-is; the base works *with* them.
 - **No opt-out keyword.** Injection applies to every type; a future "raw" type with none of the four properties would need a separate spec.
 
 
@@ -102,11 +101,15 @@ required:
 
 ### Why implicit injection (Approach B)
 
-Both approaches produce an **identical effective schema** and differ only in UX, along three axes:
+Both approaches produce an identical effective schema and differ only in UX, along three axes:
 
+Advantages of Approach B
 - **Authoring.** B requires nothing extra — every type inherits automatically. A requires a per-type `allOf: [{ $ref: "radius:base" }]` opt-in, which is boilerplate the author can forget, silently shipping a type without the base properties.
-- **Legibility.** B's inheritance is invisible in the per-type YAML, so on-disk YAML and runtime schema diverge (raw-YAML tooling sees less than runtime). A makes inheritance explicit, keeping YAML and runtime in sync.
 - **Schema surface.** B adds no keyword to schema. A introduces the $ref and inheritance to schema, but only with a specific URI. If an author uses the same `ref` keyword to bring in another schema, we are not supporting that yet.
+
+Disadvantage of Approach B
+- **Legibility.** B's inheritance is invisible in the per-type YAML, so on-disk YAML and runtime schema diverge (raw-YAML tooling sees less than runtime). A makes inheritance explicit, keeping YAML and runtime in sync.
+
 
 #### Decision
 
@@ -160,9 +163,7 @@ No new attack surface. The base is embedded at build time (`go:embed`) and canno
 
 ## Compatibility
 
-**No breaking change** — purely additive at the validator and runtime layers. In-tree and already-registered out-of-tree types are unaffected (per-type-wins preserves their existing declarations). New registrations may now omit the common properties. Worth a release note: a per-type manifest that previously had to declare `environment` may now omit it (purely permissive).
-
-Documentation deliverable: `docs/contributing/contributing-code/contributing-code-base-resource-manifest/README.md` — author how-to with the bare-minimum manifest YAML.
+Our tests/documents have to be updated to remove the Radius-special properties.
 
 ## Monitoring and Logging
 
@@ -188,6 +189,7 @@ If user defines one of the base property, in the schema, how should validation h
 
 **Approach A — explicit opt-in via `allOf: [{ $ref: "radius:base" }]`.** The schema author adds an explicit `allOf` line referencing the reserved `radius:base` URI; the validator and Bicep generator resolve it, merge the four properties (per-type-wins), union `required:`, and strip the marker. Implemented end-to-end on branch [`210-base-resource-manifest`](https://github.com/radius-project/radius/tree/210-base-resource-manifest). The full B-vs-A comparison is in [Why implicit injection](#why-implicit-injection-approach-b). Rejected for v1 because the keyword adds authoring boilerplate, new vocabulary, a `$ref` error path, and a "forgot the opt-in" footgun — for an identical effective schema. It remains the documented fallback; revisit it if any of these signals appear:
 
+- Radius schema supports "ref"
 - Reviewers repeatedly ask where `environment` / `codeReference` come from because the YAML doesn't say.
 - Authors ship types meant to be non-app/env-aware but get the properties injected anyway.
 - IDE schema tooling or generated docs mislead because on-disk YAML and runtime schema disagree.
