@@ -1026,6 +1026,10 @@ jobs:
 
       - name: Collect Pod details
         if: always()
+        # Diagnostic-only snapshot of cluster-wide pod state for post-mortem. A
+        # `kubectl describe pods -A` can race pod teardown and return a transient
+        # NotFound, so never let it fail the job.
+        continue-on-error: true
         env:
           MATRIX_NAME: ${{ matrix.name }}
         run: |
