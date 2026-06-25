@@ -333,7 +333,7 @@ jobs:
           # before "Install Radius" so the control plane can be installed with the
           # target-cluster mount enabled (avoiding a post-install helm upgrade,
           # which conflicts with the field manager rad install uses).
-          ./kind create cluster --name external
+          kind create cluster --name external
 
           # Two kubeconfigs are derived from the same external cluster:
           # 1. An "internal" kubeconfig reachable from pods running inside the
@@ -349,7 +349,7 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/external-cluster"
           INTERNAL_KUBECONFIG="${RUNNER_TEMP}/external-cluster/internal.kubeconfig"
           HOST_KUBECONFIG="${RUNNER_TEMP}/external-cluster/host.kubeconfig"
-          ./kind get kubeconfig --name external > "${HOST_KUBECONFIG}"
+          kind get kubeconfig --name external > "${HOST_KUBECONFIG}"
 
           EXTERNAL_IP="$(docker inspect -f '{{(index .NetworkSettings.Networks "kind").IPAddress}}' external-control-plane)"
           if [ -z "${EXTERNAL_IP}" ]; then
@@ -380,7 +380,7 @@ jobs:
           MAGPIE_HOST_IMAGE="${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/magpiego:${REL_VERSION}"
           MAGPIE_CLUSTER_IMAGE="${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/magpiego:${REL_VERSION}"
           docker tag "${MAGPIE_HOST_IMAGE}" "${MAGPIE_CLUSTER_IMAGE}"
-          ./kind load docker-image "${MAGPIE_CLUSTER_IMAGE}" --name external
+          kind load docker-image "${MAGPIE_CLUSTER_IMAGE}" --name external
 
           # Pre-create the radius-system namespace and the target-kubeconfig secret
           # so the secret exists before the Radius pods start (the deployments mount
