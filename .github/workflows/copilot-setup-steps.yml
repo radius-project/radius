@@ -42,6 +42,7 @@ on:
       - .python-version
       - .terraform-version
       - build/tools.mk
+      - build/scripts/install-*.sh
   pull_request:
     paths:
       - .github/workflows/copilot-setup-steps.yml
@@ -49,6 +50,7 @@ on:
       - .python-version
       - .terraform-version
       - build/tools.mk
+      - build/scripts/install-*.sh
 
 permissions: {}
 
