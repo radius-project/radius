@@ -215,8 +215,11 @@ jobs:
     name: Setup
     needs: [authorize]
     # Gate on the single authorize decision; the schedule guard keeps scheduled
-    # runs limited to the canonical repository.
-    if: needs.authorize.result == 'success' && (github.event_name != 'schedule' || github.repository == vars.RADIUS_REPOSITORY)
+    # runs limited to the canonical repository. always() is required so the skip
+    # that propagates from the intentionally-skipped approval-gate on trusted
+    # (same-repo) PRs does not also skip setup; the explicit authorize check still
+    # enforces the gate.
+    if: always() && needs.authorize.result == 'success' && (github.event_name != 'schedule' || github.repository == vars.RADIUS_REPOSITORY)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -355,8 +358,9 @@ jobs:
   build:
     name: Build Radius for test
     needs: [setup, changes]
-    # Skip if only docs/markdown changed
-    if: always() && needs.changes.outputs.only_changed != 'true'
+    # Require setup to have produced REL_VERSION/CHECKOUT_REF (otherwise the image
+    # tag would be empty); also skip if only docs/markdown changed.
+    if: always() && needs.setup.result == 'success' && needs.changes.outputs.only_changed != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
