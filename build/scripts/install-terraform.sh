@@ -73,10 +73,14 @@ detect_arch() {
 # Resolve the latest stable version from the HashiCorp checkpoint API, whose JSON
 # response contains '"current_version":"<version>"'.
 resolve_latest_version() {
-    local body
+    local body version
     body="$(tf_curl -fsSL "${CHECKPOINT_URL}")" \
         || fail "could not resolve the latest Terraform version"
-    printf '%s\n' "$body" | grep -o '"current_version":"[^"]*"' | head -n1 | cut -d'"' -f4
+
+    version="$(printf '%s\n' "$body" | grep -o '"current_version":"[^"]*"' | head -n1 | cut -d'"' -f4 || true)"
+    [ -n "$version" ] || fail "could not parse the latest Terraform version from the checkpoint response"
+
+    printf '%s\n' "$version"
 }
 
 # Print the SHA-256 of the zip, read from the release's own published
