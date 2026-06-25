@@ -24,10 +24,6 @@ on:
 
 permissions: {}
 
-env:
-  YQ_VERSION: v4.44.3
-  YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
-
 jobs:
   changes:
     name: Changes
@@ -53,7 +49,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout radius repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: radius-project/radius
           path: radius
@@ -76,7 +72,7 @@ jobs:
           fi
 
       - name: Checkout docs repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: radius-project/docs
           path: docs
@@ -98,18 +94,13 @@ jobs:
 
       - name: Install yq
         # Required by make generate-bicep-types-contrib to parse defaults.yaml.
-        run: |
-          mkdir -p "${RUNNER_TEMP}/bin"
-          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
-          echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
-          chmod +x "${RUNNER_TEMP}/bin/yq"
-          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+        run: make install-yq
+        working-directory: radius
 
       # Generate Bicep docs
       - name: Generate Bicep docs
-        run: |
-          cd radius
-          make generate
+        run: make generate
+        working-directory: radius
 
       # Generate resource reference docs
       - name: Generate resource reference docs

@@ -18,7 +18,6 @@
 #
 # See: https://github.com/dessant/label-actions for documentation.
 
-
 # Creation labels
 ---
 bug:
@@ -49,7 +48,6 @@ maintenance:
 
     _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
 
-
 # Processing labels
 
 needs-more-information:
@@ -78,7 +76,7 @@ important:
 
     _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
 
-'good first issue':
+"good first issue":
   comment: |
     This issue is a great one to pickup for new contributors. It should only require small changes and not assume a deep knowledge of the Radius architecture.
 

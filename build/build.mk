@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -92,7 +92,7 @@ endef
 # $(2): the ARCH
 # $(3): the binary name for the target
 # $(4): the binary main directory
-# 
+#
 # Note: testrp and magpiego have their own modules.
 # That is why we need to change the directory to the binary main directory as we do on line 101.
 # Otherwise we get the following error:
@@ -167,7 +167,8 @@ define generateBicepBuildTarget
 build-bicep-$(1)-$(2):
 	$(eval BINS_OUT_DIR_$(1)_$(2) := $(OUT_DIR)/$(1)_$(2)/$(BUILDTYPE_DIR))
 	@echo "$(ARROW) Building bicep container on $(1)/$(2) to $(BINS_OUT_DIR_$(1)_$(2))/bicep"
-	./build/install-bicep.sh $(REL_CHANNEL) $(BINS_OUT_DIR_$(1)_$(2))/bicep $(2)
+	BICEP_VERSION="$$(BICEP_VERSION)" BICEP_CHECKSUM_LINUX_AMD64="$$(BICEP_CHECKSUM_LINUX_AMD64)" BICEP_CHECKSUM_LINUX_ARM64="$$(BICEP_CHECKSUM_LINUX_ARM64)" BICEP_OS=linux BICEP_ARCH=$(2) bash build/scripts/install-bicep.sh $(BINS_OUT_DIR_$(1)_$(2))/bicep
+	./build/scripts/generate-bicepconfig.sh $(REL_CHANNEL) $(BINS_OUT_DIR_$(1)_$(2))/bicep
 endef
 
 # Generate bicep build targets for each combination of OS and ARCH

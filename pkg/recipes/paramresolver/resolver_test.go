@@ -371,14 +371,65 @@ func Test_TernaryExpressions(t *testing.T) {
 			},
 		},
 		{
-			name: "nested/chained ternary left as-is (out of scope)",
+			name: "chained ternary - first branch matches",
 			params: map[string]any{
-				// This doesn't match ternary pattern because quotes contain nested ternary
+				"sku": `{{context.environment.name == "my-env" ? "Premium" : context.environment.name == "staging" ? "Standard" : "Basic"}}`,
+			},
+			ctx: testContext(),
+			expected: map[string]any{
+				"sku": "Premium",
+			},
+		},
+		{
+			name: "chained ternary - middle branch matches",
+			params: map[string]any{
+				"sku": `{{context.environment.name == "prod" ? "Premium" : context.environment.name == "my-env" ? "Standard" : "Basic"}}`,
+			},
+			ctx: testContext(),
+			expected: map[string]any{
+				"sku": "Standard",
+			},
+		},
+		{
+			name: "chained ternary - default branch matches",
+			params: map[string]any{
+				"sku": `{{context.environment.name == "prod" ? "Premium" : context.environment.name == "staging" ? "Standard" : "Basic"}}`,
+			},
+			ctx: testContext(),
+			expected: map[string]any{
+				"sku": "Basic",
+			},
+		},
+		{
+			name: "nested ternary in true arm",
+			params: map[string]any{
+				"value": `{{context.environment.name == "my-env" ? context.resource.name == "my-resource" ? "match" : "nomatch" : "other"}}`,
+			},
+			ctx: testContext(),
+			expected: map[string]any{
+				"value": "match",
+			},
+		},
+		{
+			name: "chained ternary with unresolvable condition on chosen branch left as-is",
+			params: map[string]any{
+				"value": `{{context.environment.name == "prod" ? "Premium" : context.unknown.path == "x" ? "Standard" : "Basic"}}`,
+			},
+			ctx: testContext(),
+			expected: map[string]any{
+				"value": `{{context.environment.name == "prod" ? "Premium" : context.unknown.path == "x" ? "Standard" : "Basic"}}`,
+			},
+		},
+		{
+			name: "brace-wrapped nested ternary left as-is (outer scanner stops at first brace)",
+			params: map[string]any{
+				// The inner arm wraps a ternary in its own {{...}}; the outer expressionPattern
+				// stops at the first "}", capturing a malformed fragment that is left unchanged.
+				// Real chained ternaries use no inner braces (see cases above).
 				"value": `{{context.environment.name == "a" ? "{{context.resource.name == "b" ? "c" : "d"}}" : "e"}}`,
 			},
 			ctx: testContext(),
 			expected: map[string]any{
-				// Inner braces break the outer regex match — left as-is
 				"value": `{{context.environment.name == "a" ? "{{context.resource.name == "b" ? "c" : "d"}}" : "e"}}`,
 			},
 		},
