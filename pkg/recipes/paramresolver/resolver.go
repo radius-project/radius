@@ -35,50 +35,100 @@ var singleExpressionPattern = regexp.MustCompile(`^\s*\{\{([^}]+)\}\}\s*$`)
 // conditionPattern matches a single ternary condition of the form: <context path> == "value".
 var conditionPattern = regexp.MustCompile(`^\s*(.+?)\s*==\s*"([^"]*)"\s*$`)
 
+// ResolvedParameters holds resolved recipe parameters together with metadata identifying which
+// parameters resolved from secret material, so drivers can route those values through secure channels
+// (ARM @secure parameters / Terraform sensitive variables).
+type ResolvedParameters struct {
+	// Values holds the resolved parameter values.
+	Values map[string]any
+	// SecureKeys is the set of top-level parameter names whose value resolved from a secret expression.
+	SecureKeys map[string]bool
+}
+
 // ResolveParameterExpressions resolves {{context.*}} template expressions in recipe parameters.
 // It traverses the parameter map recursively and replaces expressions with values from the
 // recipe context. Unrecognized expressions are left unchanged so that misconfigurations surface
 // as IaC engine errors rather than being silently masked.
-func ResolveParameterExpressions(params map[string]any, ctx *recipecontext.Context) map[string]any {
+//
+// Secret expressions (context.resource.connections.<name>.secrets.<key>) are resolved from a separate
+// secret lookup and may only be used as the entire value of a parameter; interpolating a secret into a
+// surrounding string returns an error so partial cleartext cannot leak into a non-secure value. Each
+// parameter whose value resolves from a secret is reported in SecureKeys.
+func ResolveParameterExpressions(params map[string]any, ctx *recipecontext.Context) (ResolvedParameters, error) {
 	if params == nil {
-		return nil
+		return ResolvedParameters{}, nil
 	}
 
 	lookup := buildContextLookup(ctx)
 	typedLookup := buildTypedContextLookup(ctx)
+	secretLookup := buildSecretLookup(ctx)
+
 	result := make(map[string]any, len(params))
+	secureKeys := map[string]bool{}
 	for k, v := range params {
-		result[k] = resolveValue(v, lookup, typedLookup)
+		resolved, secure, err := resolveValue(v, lookup, typedLookup, secretLookup)
+		if err != nil {
+			return ResolvedParameters{}, fmt.Errorf("failed to resolve parameter %q: %w", k, err)
+		}
+		result[k] = resolved
+		if secure {
+			secureKeys[k] = true
+		}
 	}
-	return result
+	return ResolvedParameters{Values: result, SecureKeys: secureKeys}, nil
 }
 
-// resolveValue resolves template expressions in a single value. It handles strings, maps, and slices recursively.
-func resolveValue(v any, lookup map[string]string, typedLookup map[string]any) any {
+// resolveValue resolves template expressions in a single value. It handles strings, maps, and slices
+// recursively. The returned secure flag reports whether the value (or any nested value) resolved from a
+// secret expression, so the caller can tag the top-level parameter for secure routing.
+func resolveValue(v any, lookup map[string]string, typedLookup map[string]any, secretLookup map[string]string) (any, bool, error) {
 	switch val := v.(type) {
 	case string:
+		// A secret may only be referenced as the entire value of a parameter. When the whole string is a
+		// single {{...secrets...}} expression, inject the secret value and tag the parameter secure.
+		if m := singleExpressionPattern.FindStringSubmatch(val); m != nil {
+			if secret, ok := secretLookup[strings.TrimSpace(m[1])]; ok {
+				return secret, true, nil
+			}
+		}
 		// When the entire value is a single {{...}} expression that maps to a typed context value,
 		// preserve the original scalar type so typed module parameters (int, bool, object) are passed
 		// through correctly instead of being coerced to a string. Interpolated strings and ternary
 		// expressions fall back to string resolution below.
 		if typed, ok := resolveTypedExpression(val, typedLookup); ok {
-			return typed
+			return typed, false, nil
 		}
-		return resolveString(val, lookup)
+		resolved, err := resolveString(val, lookup, secretLookup)
+		if err != nil {
+			return nil, false, err
+		}
+		return resolved, false, nil
 	case map[string]any:
 		resolved := make(map[string]any, len(val))
+		secure := false
 		for k, inner := range val {
-			resolved[k] = resolveValue(inner, lookup, typedLookup)
+			r, s, err := resolveValue(inner, lookup, typedLookup, secretLookup)
+			if err != nil {
+				return nil, false, err
+			}
+			resolved[k] = r
+			secure = secure || s
 		}
-		return resolved
+		return resolved, secure, nil
 	case []any:
 		resolved := make([]any, len(val))
+		secure := false
 		for i, inner := range val {
-			resolved[i] = resolveValue(inner, lookup, typedLookup)
+			r, s, err := resolveValue(inner, lookup, typedLookup, secretLookup)
+			if err != nil {
+				return nil, false, err
+			}
+			resolved[i] = r
+			secure = secure || s
 		}
-		return resolved
+		return resolved, secure, nil
 	default:
-		return v
+		return v, false, nil
 	}
 }
 
@@ -97,11 +147,23 @@ func resolveTypedExpression(s string, typedLookup map[string]any) (any, bool) {
 	return val, ok
 }
 
-// resolveString replaces all {{...}} expressions in a string with their resolved values.
-func resolveString(s string, lookup map[string]string) string {
-	return expressionPattern.ReplaceAllStringFunc(s, func(match string) string {
+// resolveString replaces all {{...}} expressions in a string with their resolved values. It returns an
+// error if a secret expression is used in interpolation (i.e. embedded in surrounding text), because the
+// whole-value secret case is handled by the caller and any secret reaching this path would leak partial
+// cleartext into a non-secure value.
+func resolveString(s string, lookup map[string]string, secretLookup map[string]string) (string, error) {
+	var resolveErr error
+	out := expressionPattern.ReplaceAllStringFunc(s, func(match string) string {
 		// Strip the surrounding {{ and }}.
 		inner := match[2 : len(match)-2]
+		key := strings.TrimSpace(inner)
+
+		// A secret reaching the interpolation path is embedded in surrounding text (the whole-value
+		// case is handled in resolveValue). Reject it so partial cleartext cannot leak.
+		if _, isSecret := secretLookup[key]; isSecret {
+			resolveErr = fmt.Errorf("secret expression %q may only be used as the entire parameter value, not interpolated into a string", key)
+			return match
+		}
 
 		// Try ternary evaluation first.
 		if result, ok := evaluateTernary(inner, lookup); ok {
@@ -109,7 +171,6 @@ func resolveString(s string, lookup map[string]string) string {
 		}
 
 		// Simple context path lookup.
-		key := strings.TrimSpace(inner)
 		if val, ok := lookup[key]; ok {
 			return val
 		}
@@ -117,6 +178,10 @@ func resolveString(s string, lookup map[string]string) string {
 		// Unrecognized expression — leave unchanged.
 		return match
 	})
+	if resolveErr != nil {
+		return "", resolveErr
+	}
+	return out, nil
 }
 
 // evaluateTernary evaluates a ternary expression of the form:
@@ -305,4 +370,23 @@ func buildTypedContextLookup(ctx *recipecontext.Context) map[string]any {
 	}
 
 	return typed
+}
+
+// buildSecretLookup builds a flat key-value map of secret material exposed by secret-typed connected
+// resources. Keys use the path context.resource.connections.<name>.secrets.<key>. This lookup is kept
+// separate from the non-secret context lookup so secret values can only be resolved through the
+// whole-value secret path and are tagged for secure routing, never resolved as ordinary string values.
+func buildSecretLookup(ctx *recipecontext.Context) map[string]string {
+	secrets := map[string]string{}
+	if ctx == nil {
+		return secrets
+	}
+
+	for connName, conn := range ctx.Resource.Connections {
+		for key, val := range conn.Secrets {
+			secrets[fmt.Sprintf("context.resource.connections.%s.secrets.%s", connName, key)] = val
+		}
+	}
+
+	return secrets
 }

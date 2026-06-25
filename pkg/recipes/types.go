@@ -34,6 +34,11 @@ type ConnectedResource struct {
 	Type string `json:"type"`
 	// Properties represents the resource properties
 	Properties map[string]any `json:"properties,omitempty"`
+	// Secrets holds resolved secret material for secret-typed connected resources, keyed by secret key.
+	// It is populated only from the secret store (never from Properties) and is tagged json:"-" so it is
+	// never serialized into the recipe context, logs, or IaC state. Recipe authors reference it via the
+	// context.resource.connections.<name>.secrets.<key> expression path.
+	Secrets map[string]string `json:"-"`
 }
 
 // Configuration represents runtime and cloud provider configuration, which is used by the driver while deploying recipes.

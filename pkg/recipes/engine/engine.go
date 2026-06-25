@@ -19,6 +19,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/radius-project/radius/pkg/components/metrics"
@@ -95,6 +96,10 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// Enrich secret-typed connections with their secret material so recipe parameter expressions
+	// (context.resource.connections.<name>.secrets.<key>) can resolve developer-authored secrets.
+	e.enrichConnectionSecrets(ctx, &recipe)
 
 	res, err := driver.Execute(ctx, recipedriver.ExecuteOptions{
 		BaseOptions: recipedriver.BaseOptions{
@@ -246,4 +251,47 @@ func (e *engine) getRecipeConfigSecrets(ctx context.Context, driver recipedriver
 	}
 
 	return secretData, nil
+}
+
+// secretConnectionTypes is the set of connected-resource types whose values are sourced from the secret
+// store rather than from non-secret properties.
+var secretConnectionTypes = map[string]bool{
+	"applications.core/secretstores": true,
+	"radius.security/secrets":        true,
+}
+
+// isSecretConnectionType reports whether a connected resource's type is a secret-typed resource.
+func isSecretConnectionType(resourceType string) bool {
+	return secretConnectionTypes[strings.ToLower(resourceType)]
+}
+
+// enrichConnectionSecrets loads secret material for secret-typed connected resources through the secret
+// store and stores it on each connection's tainted Secrets field, so the parameter resolver can inject
+// developer-authored secrets into module parameters. Enrichment is best-effort: if the secrets loader is
+// unavailable or a secret cannot be loaded, the connection is left without secret data and any recipe
+// expression that references it is left unresolved (consistent with other unresolved expressions) rather
+// than failing the deployment.
+func (e *engine) enrichConnectionSecrets(ctx context.Context, recipe *recipes.ResourceMetadata) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	if e.options.SecretsLoader == nil || recipe == nil {
+		return
+	}
+
+	for name, conn := range recipe.ConnectedResourcesProperties {
+		if conn.ID == "" || !isSecretConnectionType(conn.Type) {
+			continue
+		}
+
+		// A nil keys filter loads all secret keys for the secret store.
+		loaded, err := e.options.SecretsLoader.LoadSecrets(ctx, map[string][]string{conn.ID: nil})
+		if err != nil {
+			logger.Info(fmt.Sprintf("skipping secret enrichment for connection %q: %s", name, err.Error()))
+			continue
+		}
+
+		if data, ok := loaded[conn.ID]; ok {
+			conn.Secrets = data.Data
+			recipe.ConnectedResourcesProperties[name] = conn
+		}
+	}
 }

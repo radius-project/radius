@@ -1214,3 +1214,73 @@ func Test_Engine_Delete_With_Secrets_Success(t *testing.T) {
 	})
 	require.NoError(t, err)
 }
+
+func Test_enrichConnectionSecrets(t *testing.T) {
+	const (
+		secretStoreID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/secretStores/db-credentials"
+		dbID          = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/sqlDatabases/db"
+	)
+
+	newRecipe := func() *recipes.ResourceMetadata {
+		return &recipes.ResourceMetadata{
+			ConnectedResourcesProperties: map[string]recipes.ConnectedResource{
+				"credentials": {
+					ID:   secretStoreID,
+					Name: "db-credentials",
+					Type: "Applications.Core/secretStores",
+				},
+				"database": {
+					ID:   dbID,
+					Name: "db",
+					Type: "Applications.Datastores/sqlDatabases",
+				},
+			},
+		}
+	}
+
+	t.Run("populates secrets for secret-typed connections only", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		secretsLoader := configloader.NewMockSecretsLoader(ctrl)
+		ctx := testcontext.New(t)
+		e := engine{options: Options{SecretsLoader: secretsLoader}}
+		recipe := newRecipe()
+
+		secretsLoader.EXPECT().
+			LoadSecrets(ctx, map[string][]string{secretStoreID: nil}).
+			Times(1).
+			Return(map[string]recipes.SecretData{
+				secretStoreID: {Type: "generic", Data: map[string]string{"username": "admin", "password": "s3cr3t"}},
+			}, nil)
+
+		e.enrichConnectionSecrets(ctx, recipe)
+
+		require.Equal(t, map[string]string{"username": "admin", "password": "s3cr3t"}, recipe.ConnectedResourcesProperties["credentials"].Secrets)
+		require.Nil(t, recipe.ConnectedResourcesProperties["database"].Secrets)
+	})
+
+	t.Run("load error is non-fatal and leaves connection without secrets", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		secretsLoader := configloader.NewMockSecretsLoader(ctrl)
+		ctx := testcontext.New(t)
+		e := engine{options: Options{SecretsLoader: secretsLoader}}
+		recipe := newRecipe()
+
+		secretsLoader.EXPECT().
+			LoadSecrets(ctx, map[string][]string{secretStoreID: nil}).
+			Times(1).
+			Return(nil, errors.New("secret store not found"))
+
+		e.enrichConnectionSecrets(ctx, recipe)
+
+		require.Nil(t, recipe.ConnectedResourcesProperties["credentials"].Secrets)
+	})
+
+	t.Run("nil secrets loader is a no-op", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		e := engine{options: Options{}}
+		recipe := newRecipe()
+
+		require.NotPanics(t, func() { e.enrichConnectionSecrets(ctx, recipe) })
+		require.Nil(t, recipe.ConnectedResourcesProperties["credentials"].Secrets)
+	})
+}

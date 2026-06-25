@@ -46,6 +46,10 @@ func testContext() *recipecontext.Context {
 					Properties: map[string]any{
 						"connectionString": "postgres://myhost:5432/mydb",
 					},
+					Secrets: map[string]string{
+						"username": "admin",
+						"password": "s3cr3t-p@ss",
+					},
 				},
 			},
 		},
@@ -303,11 +307,12 @@ func Test_ResolveParameterExpressions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ResolveParameterExpressions(tt.params, tt.ctx)
+			result, err := ResolveParameterExpressions(tt.params, tt.ctx)
+			require.NoError(t, err)
 			if tt.expected == nil {
-				assert.Nil(t, result)
+				assert.Nil(t, result.Values)
 			} else {
-				require.Equal(t, tt.expected, result)
+				require.Equal(t, tt.expected, result.Values)
 			}
 		})
 	}
@@ -437,8 +442,108 @@ func Test_TernaryExpressions(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ResolveParameterExpressions(tt.params, tt.ctx)
-			require.Equal(t, tt.expected, result)
+			result, err := ResolveParameterExpressions(tt.params, tt.ctx)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, result.Values)
+		})
+	}
+}
+
+func Test_SecretExpressions(t *testing.T) {
+	tests := []struct {
+		name               string
+		params             map[string]any
+		expectedValues     map[string]any
+		expectedSecureKeys map[string]bool
+		expectErr          bool
+		errContains        string
+	}{
+		{
+			name: "whole-value secret resolves and is tagged secure",
+			params: map[string]any{
+				"administratorLogin":         "{{context.resource.connections.db.secrets.username}}",
+				"administratorLoginPassword": "{{context.resource.connections.db.secrets.password}}",
+				"sku":                        "Standard",
+			},
+			expectedValues: map[string]any{
+				"administratorLogin":         "admin",
+				"administratorLoginPassword": "s3cr3t-p@ss",
+				"sku":                        "Standard",
+			},
+			expectedSecureKeys: map[string]bool{
+				"administratorLogin":         true,
+				"administratorLoginPassword": true,
+			},
+		},
+		{
+			name: "whole-value secret with surrounding whitespace resolves",
+			params: map[string]any{
+				"password": "  {{ context.resource.connections.db.secrets.password }}  ",
+			},
+			expectedValues: map[string]any{
+				"password": "s3cr3t-p@ss",
+			},
+			expectedSecureKeys: map[string]bool{"password": true},
+		},
+		{
+			name: "secret nested in object value tags the top-level parameter secure",
+			params: map[string]any{
+				"config": map[string]any{
+					"user": "{{context.resource.connections.db.secrets.username}}",
+					"host": "{{context.resource.properties.host}}",
+				},
+			},
+			expectedValues: map[string]any{
+				"config": map[string]any{
+					"user": "admin",
+					"host": "myhost.example.com",
+				},
+			},
+			expectedSecureKeys: map[string]bool{"config": true},
+		},
+		{
+			name: "non-secret parameters are not tagged secure",
+			params: map[string]any{
+				"host": "{{context.resource.properties.host}}",
+				"name": "{{context.resource.name}}",
+			},
+			expectedValues: map[string]any{
+				"host": "myhost.example.com",
+				"name": "my-resource",
+			},
+			expectedSecureKeys: map[string]bool{},
+		},
+		{
+			name: "secret interpolated into a surrounding string is rejected",
+			params: map[string]any{
+				"connectionString": "user=admin;password={{context.resource.connections.db.secrets.password}};",
+			},
+			expectErr:   true,
+			errContains: "may only be used as the entire parameter value",
+		},
+		{
+			name: "reference to a missing secret key is left unchanged",
+			params: map[string]any{
+				"token": "{{context.resource.connections.db.secrets.missing}}",
+			},
+			expectedValues: map[string]any{
+				"token": "{{context.resource.connections.db.secrets.missing}}",
+			},
+			expectedSecureKeys: map[string]bool{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := ResolveParameterExpressions(tt.params, testContext())
+			if tt.expectErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tt.errContains)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedValues, result.Values)
+			require.Equal(t, tt.expectedSecureKeys, result.SecureKeys)
 		})
 	}
 }
