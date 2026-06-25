@@ -91,6 +91,7 @@ func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
 		corerp.TestSecretDeletion(t, ctx, test, appName, envName, resourceID, secretNamespace, secretPrefix)
 	}
 
+	test.RunSerial = true
 	test.Test(t)
 }
 

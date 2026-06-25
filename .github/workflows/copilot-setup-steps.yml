@@ -76,7 +76,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -103,7 +103,7 @@ jobs:
       - name: Setup Helm
         uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
-          version: v3.19.4
+          version: v4.2.2
 
       - name: Install kubectl
         run: |
@@ -153,25 +153,17 @@ jobs:
             | sh -s -- -b "$(go env GOPATH)/bin" "${GOLANGCI_LINT_VERSION}"
 
       - name: Install Go tools
-        # controller-gen and mockgen are used by `make generate`; gotestsum is
-        # used by `make test` to produce test reports; dlv (Delve) is used by the
-        # process-debugging workflow (make debug-*).
+        # controller-gen, mockgen, and gotestsum are managed as Go tool dependencies
+        # (the 'tool' directives in go.mod) and run via `go tool`, so they need no
+        # separate install. dlv (Delve) is used by the process-debugging workflow
+        # (make debug-*).
         run: |
-          GOTESTSUM_VER="1.13.0"
           DLV_VER="v1.26.3"
-          go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
           go install "github.com/go-delve/delve/cmd/dlv@${DLV_VER}"
 
       - name: Install yq
         # Required by Bicep type generation to parse YAML defaults.
-        run: |
-          YQ_VERSION="v4.44.3"
-          YQ_LINUX_AMD64_SHA256="a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7"
-          mkdir -p "${RUNNER_TEMP}/bin"
-          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
-          echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
-          chmod +x "${RUNNER_TEMP}/bin/yq"
-          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+        run: make install-yq
 
       - name: Install KinD
         # Lets the agent create a local Kubernetes cluster for integration and
@@ -225,14 +217,8 @@ jobs:
 
       - name: Install Bicep CLI
         # Required by Bicep type publishing (make publish-bicep-extension) and
-        # rad bicep flows. Pinned to v0.42.1: v0.40+ rejects br:localhost
-        # registries used by the local functional tests.
-        run: |
-          BICEP_VER="v0.42.1"
-          curl -fsSLo ./bicep "https://github.com/Azure/bicep/releases/download/${BICEP_VER}/bicep-linux-x64"
-          chmod +x ./bicep
-          sudo mv ./bicep /usr/local/bin/bicep
-          bicep --version
+        # rad bicep flows. Pinned version + checksum live in build/tools.mk.
+        run: make install-bicep
 
       - name: Install PostgreSQL client
         # psql is used by the debug environment to verify control-plane database

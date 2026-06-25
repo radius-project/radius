@@ -1,0 +1,257 @@
+# Repo Radius — State Storage (Technical Design)
+
+* **Author**: Sylvain Niles (@sylvainsf)
+* **Status**: Draft
+* **Feature spec**: Repo Radius (Zach Casper) — [PR #12078](https://github.com/radius-project/radius/pull/12078)
+* **Related issues**: [#8096 External data store for Radius](https://github.com/radius-project/radius/issues/8096), [#8398 Postgres DB initialization](https://github.com/radius-project/radius/issues/8398)
+* **Supersedes prototype**: [PR #11457](https://github.com/radius-project/radius/pull/11457) (closed unmerged)
+
+## Scope
+
+This document covers **Investment 2 of the Repo Radius feature spec: externalization of the
+Radius data store** — and *only* the state-storage aspects of it. It addresses how Radius
+control-plane state and Terraform recipe state survive across ephemeral GitHub Actions runs.
+
+Explicitly **out of scope** for this document:
+
+* Application graph storage / serialization (a separate workstream owns the serialized graph format).
+* The Repo Radius workflow contract, OIDC/cloud credential integration, and external-cluster deployment (Investments 1, 3, 4).
+* Replacing the persistent control-plane deployment model.
+
+## Problem
+
+Repo Radius runs the Radius control plane on an **ephemeral k3d cluster** inside a GitHub
+Actions runner. The cluster — and everything stored in it — is destroyed when the workflow
+ends. For Radius to be usable across runs, all durable state must be exported before teardown
+and restored on the next run.
+
+"Durable state" in the current control plane is **two physically separate stores**:
+
+| State | Where it lives today | Survives teardown without action? |
+|-------|----------------------|-----------------------------------|
+| Control-plane resource data + deployment history | PostgreSQL — three logical databases (`ucp`, `applications_rp`, `dynamic_rp`) behind [`database.Client`](../../pkg/components/database/client.go) | No |
+| Terraform recipe state | Kubernetes `Secret` objects named `tfstate-default-<sha1>` in the `radius-system` namespace, written by the [`kubernetes` Terraform backend](../../pkg/recipes/terraform/config/backends/kubernetes.go) | No |
+
+## Gaps in the prototype / demo
+
+The prototype ([PR #11457](https://github.com/radius-project/radius/pull/11457), branch
+`filesystem-state`) demonstrated state persistence by dumping the three PostgreSQL databases to
+a git orphan branch and restoring them on startup. Reviewing it against the requirements above
+surfaced the following gaps. This design addresses them.
+
+### Gap 1 — Terraform state is never persisted
+
+The prototype's backup covers only the three PostgreSQL databases. **Terraform state is stored
+in Kubernetes Secrets, not in PostgreSQL**, so it is destroyed on every shutdown and never
+restored.
+
+**Why the demo still worked:** the demo exercised paths that do not depend on Terraform state
+surviving:
+
+* **Bicep recipes have no local state.** The Deployment Engine reconciles declaratively against
+  ARM/cloud, which is idempotent. Restoring PostgreSQL is sufficient.
+* **First-time Terraform deploys** start from an empty backend and succeed; the cluster is alive
+  for the whole run, so state exists *within* a run.
+
+The gap only manifests on a **second deploy of the same Terraform-backed resource across two
+runs** (feature-spec Scenario 4, "update a deployed application"). After a PostgreSQL restore,
+Radius believes the resource exists, but the fresh cluster's Terraform backend is empty. The
+next `terraform apply` plans from scratch, producing "already exists" errors for
+stable-named resources or **orphaned duplicate** cloud resources for generated-named ones.
+
+This is the primary capability gap closed by this design.
+
+### Gap 2 — PostgreSQL was not actually usable for all RPs
+
+Independent of Repo Radius, enabling `database.enabled=true` in the Helm chart did not produce a
+working PostgreSQL-backed control plane:
+
+* The UCP, Applications RP, and Dynamic RP configmaps/deployments were **hardcoded to the
+  `apiserver` provider** with no `database.enabled` conditional, so no resource provider used
+  PostgreSQL even when requested.
+* The `POSTGRES_DB` secret value was the literal string `"POSTGRES_DB"`.
+* No init-db scripts ran, so the per-RP databases, users, and tables were never created.
+* The `databaseProvider` URL env-var substitution in
+  [`factory.go`](../../pkg/components/database/databaseprovider/factory.go) had a regex bug that
+  replaced the entire URL with the first captured variable name instead of expanding `${VAR}`.
+
+These are pre-existing defects on the path that [#8398](https://github.com/radius-project/radius/issues/8398)
+("Postgres DB initialization") already chose to fix via an init-db configmap. This design
+includes those fixes as a prerequisite.
+
+### Gap 3 — Backup push failures were silent
+
+The prototype's `Push` treated a failed `git push` as a non-fatal warning. That is acceptable
+for advisory sentinel files but means a failed **state backup** push is silent data loss. The
+durability requirement is that a backup either succeeds or fails the command loudly.
+
+## Design decisions
+
+### Decision 0 — `rad startup` / `rad shutdown` are workspace-kind-agnostic
+
+The prototype introduced a dedicated `github` workspace kind and folded state restore into
+`rad init --kind github`. **There is no `github` workspace kind in this design.** State backup and
+restore are exposed as two ordinary commands — `rad shutdown` and `rad startup` — that operate on
+the current workspace's Kubernetes context like any other command. They do not create or delete
+clusters and do not install Radius; cluster lifecycle and `rad install` are orthogonal and remain
+the caller's responsibility (the CI workflow, or a test harness).
+
+This keeps the commands usable in any context — local development, CI, or a self-hosted
+install — and makes them directly testable: a test can install Radius, deploy, `rad shutdown`,
+destroy the cluster, recreate and reinstall, `rad startup`, and deploy again.
+
+* `rad shutdown` — back up all durable Radius state (PostgreSQL databases + Terraform state
+  Secrets) for the workspace's context to the configured state location.
+* `rad startup` — restore all durable Radius state from the configured state location into the
+  workspace's context, after the control plane is running.
+
+### Decision 1 — Storage backend: git orphan branch for v1, OCI/GHCR deferred to v2
+
+State is persisted to a **git orphan branch** (`radius-state`) in the same repository, as in the
+prototype.
+
+The feature spec raises OCI/GHCR as an alternative with better security and size properties. We
+evaluated leading with OCI for v1 and rejected it:
+
+* **Speed**: backup payloads are small (PostgreSQL dumps of control-plane metadata are
+  hundreds of KB). At that size both `git push` and `oras push` are dominated by TLS + auth
+  round-trips, not payload, so there is no meaningful speed advantage.
+* **Simplicity**: the orphan-branch implementation already exists and ran in the demo. OCI
+  requires new push/pull plumbing, a tag compare-and-swap lock, and an artifact media-type
+  decision — strictly more code to ship first.
+
+OCI/GHCR's genuine advantages are **security** (separate registry RBAC versus repository-read
+exposure of the orphan branch) and **bounded storage growth** (content-addressed layers versus
+unbounded git history). Both are real but neither is a v1 blocker. They are recorded as the
+**v2 direction** below.
+
+### Decision 2 — Control-plane state: physical `pg_dump`, not logical export
+
+Control-plane state is captured with physical `pg_dump` / `psql` against the in-cluster
+PostgreSQL, as in the prototype.
+
+A logical export through `database.Client` was considered (it would be storage-engine
+independent and could feed an offline graph reader). It is rejected because:
+
+* Radius control-plane state is a graph of linked key/value records with ETags and
+  cross-references. A logical re-`Save` mints new ETags and forces a dependency-ordered restore —
+  strictly more fragile than a physical dump that preserves rows, ETags, and timestamps exactly.
+* Its main upside, offline graph readability, is **out of scope** here and owned by a separate
+  serialized-format workstream.
+* The control plane has a fixed, known set of resource providers; we are not adding new RPs, so
+  the fixed database list (`ucp`, `applications_rp`, `dynamic_rp`) is acceptable.
+
+### Decision 3 — Terraform state: back up the backend Secrets alongside the PostgreSQL dumps
+
+For v1, Terraform state is persisted by exporting the `tfstate-default-*` Kubernetes Secrets from
+the `radius-system` namespace into the same state worktree as the PostgreSQL dumps, committed and
+pushed in the same atomic operation. On startup, after the cluster is ready and **before any
+deploy**, the Secrets are restored into the namespace.
+
+Secrets are selected by the `tfstate=true` label that the Terraform Kubernetes backend applies to
+every state Secret, rather than by name. This automatically captures the additional
+`tfstate-{workspace}-{suffix}-{index}` Secrets that the backend creates when chunking large
+state. The Lease resources the backend uses for locking are intentionally **not** backed up; they
+are ephemeral and irrelevant across runs.
+
+This mirrors the PostgreSQL backup flow exactly (same state directory, same commit/push) and is
+the minimal change that closes Gap 1.
+
+A v2 alternative — switching the Terraform backend from `kubernetes` to the `pg` backend pointed
+at the same PostgreSQL instance, so a single `pg_dump` captures both stores — is recorded below.
+It is deferred because it requires backend credential injection and per-recipe state isolation
+work beyond v1 scope.
+
+### Decision 4 — Durability hardening
+
+* The **state-backup push must fail the command** on error when a remote is configured (Gap 3).
+  When no remote is configured (local development, tests), the commit on the orphan branch is the
+  durable store and the absence of a remote is not an error.
+* When the state branch exists on the remote, opening the worktree fetches it and treats a fetch
+  failure as fatal, so a transient network or credential error cannot silently restore stale or
+  empty state.
+* *(Future work)* A checksum manifest accompanying the dumps so a corrupt restore **fails closed**
+  rather than silently starting from an empty state. This is not implemented in this delivery.
+
+### Decision 5 — Quiesce the control plane around the restore
+
+`rad startup` runs *after* `rad install`, so the control-plane pods (`ucp`, `applications-rp`,
+`dynamic-rp`) are already running and connected to PostgreSQL when state is restored. Restoring a
+`pg_dump` that uses `DROP TABLE` / `CREATE TABLE` underneath those live connections has two
+problems:
+
+1. **Stale prepared statements.** The providers open `pgx` connection pools at startup, and pgx's
+   default `QueryExecModeCacheStatement` caches prepared statements per connection. Dropping and
+   recreating the `resources` table changes its OID, so an already-open pooled connection's cached
+   statement can fail with `cached plan must not change result type` (SQLSTATE `0A000`) or
+   `relation does not exist`.
+2. **A write race.** The UCP initializer populates the fresh database with resource-provider
+   manifests at boot; restoring on top of a live system races those writes.
+
+`rad startup` therefore **scales the three database-backed deployments to zero, restores, then
+scales them back to their previous replica counts** (`pkg/cli/controlplane`). This makes the
+restore atomic with respect to its consumers and means the providers establish brand-new pools —
+with no stale prepared statements — against the restored schema. The deployment engine and
+dashboard do not connect to PostgreSQL directly and are left running. Components are always scaled
+back up, including on a failed restore; the previous replica count is captured before scale-down
+and restored faithfully (an unset count defaults to one, the Kubernetes default).
+
+A lighter alternative — restoring data-only with `TRUNCATE` instead of `--clean` to keep table
+OIDs stable — was considered. It avoids the prepared-statement hazard but not the write race, so
+the scale-to-zero approach was chosen as the one that addresses both.
+
+## v2 direction (not in this delivery)
+
+* **OCI/GHCR backend**: a pluggable storage backend that pushes an encrypted, content-addressed
+  state artifact to a private GHCR repo, with a tag compare-and-swap lock. Resolves the
+  orphan-branch security exposure and unbounded git-history growth.
+* **Unified Terraform backend on PostgreSQL**: move the Terraform backend to `pg` so control-plane
+  and Terraform state collapse into a single dump and a single restore.
+* **Client-side envelope encryption** (age/sops) of state artifacts before they leave the cluster,
+  since both PostgreSQL data and Terraform state can contain secrets.
+* **Concurrency control**: a real mutex (for example an OCI tag compare-and-swap, or a git
+  push-rejection lock) to serialize concurrent deploys to the same shared state. The product spec
+  lists this as an open question; it is not required for the single-writer lifecycle delivered
+  here.
+
+## Delivery plan
+
+| PR | Contents | Closes |
+|----|----------|--------|
+| PR 1 | PostgreSQL enablement fixes: RP `database.enabled` conditionals, init-db configmap, `POSTGRES_DB` value, `factory.go` env-var substitution, Helm chart tests | Gap 2 |
+| PR 2 | Terraform-state Secret backup/restore (`pkg/cli/tfstate`) | Gap 1 |
+| PR 3 | `pkg/cli/pgbackup` + `pkg/cli/gitstate` (orphan-branch state directory with loud push), the kind-agnostic `rad startup` / `rad shutdown` commands, and the end-to-end functional test | Gap 3, Decision 0 |
+
+## Test plan
+
+* **Unit**: Helm chart conditional rendering (PR 1); Terraform-state export/import round-trip with
+  a fake Kubernetes client (PR 2); state-directory commit/push behavior (PR 3).
+* **Functional**: an end-to-end lifecycle that exercises every state path:
+  1. Install Radius with `database.enabled=true` on a cluster.
+  2. `rad deploy` a **Terraform-backed** resource (creates control-plane state + a Terraform
+     state Secret).
+  3. `rad shutdown` (back up both stores).
+  4. Destroy the control-plane state (delete the cluster, or uninstall) to simulate ephemeral
+     teardown.
+  5. Recreate the control plane and `rad startup` (restore both stores).
+  6. `rad deploy` an **update** to the same resource — must plan from the restored Terraform
+     state and succeed without errors or orphaned cloud resources. This is the path that exposes
+     Gap 1.
+
+> **Test dependency — cluster lifecycle and deploy.** `rad startup` / `rad shutdown` are
+> deliberately kind-agnostic: they back up and restore state but do **not** create clusters or
+> install Radius. The end-to-end lifecycle test therefore depends on the separate Repo Radius
+> workflow code (in flight) that creates the ephemeral cluster, installs Radius, and runs the
+> deploy. Until that lands, the functional test (`test/functional-portable/statestore`) drives the
+> cluster install/uninstall itself and is gated behind the `RADIUS_STATE_E2E` environment
+> variable so it does not run in the normal suite. Once the shared cluster-create + deploy
+> workflow is merged, the test's install/uninstall helpers should be re-pointed at that code
+> rather than duplicating it.
+
+## Security
+
+* State (PostgreSQL dumps and Terraform Secrets, which may contain secret values) is pushed to a
+  branch in the repository. For v1 the repository **must be private**; this constraint is removed
+  in v2 by the encrypted OCI backend.
+* Git credentials use the ambient git configuration of the checkout (in CI, the token provided by
+  the checkout step); pushing the state branch requires write access to the repository.

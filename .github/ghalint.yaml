@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/suzuki-shunsuke/ghalint/main/json-schema/ghalint.json
+---
+# ghalint configuration: https://github.com/suzuki-shunsuke/ghalint
+#
+# Each exclude below is a deliberate, reviewed exception. Prefer fixing the
+# workflow over adding an exclude here.
+excludes:
+  # release.yaml checks out several repositories with a token and intentionally
+  # persists those credentials to create tags/branches as part of the release
+  # process. The release workflow is intentionally left unmodified.
+  - policy_name: checkout_persist_credentials_should_be_false
+    workflow_file_path: .github/workflows/release.yaml
+    job_name: release
+
+  # contrib-update-resource-types.yaml force-pushes the bot PR branch using a
+  # scoped GitHub App token (contents/pull-requests write on radius only), so
+  # the checkout must persist those credentials to run `git push`.
+  - policy_name: checkout_persist_credentials_should_be_false
+    workflow_file_path: .github/workflows/contrib-update-resource-types.yaml
+    job_name: open-update-pr
+
+  # The actions below are first-party reusable workflows synced from
+  # radius-project/.github and pinned to @main by that sync automation. The
+  # calling workflow files are marked "DO NOT EDIT MANUALLY"; the ref is
+  # managed upstream.
+  - policy_name: action_ref_should_be_full_length_commit_sha
+    action_name: radius-project/.github/.github/workflows/__dependabot-manager.yml
+  - policy_name: action_ref_should_be_full_length_commit_sha
+    action_name: radius-project/.github/.github/workflows/__dependency-review.yml
+  - policy_name: action_ref_should_be_full_length_commit_sha
+    action_name: radius-project/.github/.github/workflows/__spellcheck.yml

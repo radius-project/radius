@@ -118,6 +118,63 @@ func TestGetClient_UnsupportedProvider(t *testing.T) {
 	require.Equal(t, "unsupported database provider: unsupported", err.Error())
 }
 
+func Test_expandEnvURL(t *testing.T) {
+	tests := []struct {
+		name      string
+		url       string
+		env       map[string]string
+		expected  string
+		expectErr bool
+	}{
+		{
+			name:     "no substitution",
+			url:      "postgresql://user:pass@host:5432/db",
+			expected: "postgresql://user:pass@host:5432/db",
+		},
+		{
+			name:     "single variable is expanded in place",
+			url:      "postgresql://ucp:${POSTGRES_PASSWORD}@database:5432/ucp",
+			env:      map[string]string{"POSTGRES_PASSWORD": "s3cret"},
+			expected: "postgresql://ucp:s3cret@database:5432/ucp",
+		},
+		{
+			name: "multiple variables are all expanded",
+			url:  "postgresql://${PGUSER}:${PGPASS}@host:5432/db",
+			env: map[string]string{
+				"PGUSER": "ucp",
+				"PGPASS": "p@ss",
+			},
+			expected: "postgresql://ucp:p@ss@host:5432/db",
+		},
+		{
+			name:     "empty-but-set variable expands to empty string",
+			url:      "postgresql://ucp:${EMPTY_VAR}@host:5432/db",
+			env:      map[string]string{"EMPTY_VAR": ""},
+			expected: "postgresql://ucp:@host:5432/db",
+		},
+		{
+			name:      "unset variable fails fast",
+			url:       "postgresql://ucp:${DEFINITELY_NOT_SET_VAR}@host:5432/db",
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for k, v := range tt.env {
+				t.Setenv(k, v)
+			}
+			got, err := expandEnvURL(tt.url)
+			if tt.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, got)
+		})
+	}
+}
+
 func TestInitialize(t *testing.T) {
 	options := Options{Provider: TypeInMemory}
 	provider := FromOptions(options)

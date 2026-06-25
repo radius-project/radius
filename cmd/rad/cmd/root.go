@@ -86,6 +86,8 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/rollback"
 	rollback_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/rollback/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/cmd/run"
+	cmd_shutdown "github.com/radius-project/radius/pkg/cli/cmd/shutdown"
+	cmd_startup "github.com/radius-project/radius/pkg/cli/cmd/startup"
 	"github.com/radius-project/radius/pkg/cli/cmd/uninstall"
 	uninstall_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/uninstall/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/cmd/upgrade"
@@ -361,6 +363,12 @@ func initSubCommands() {
 	wirePreviewSubcommand(initCmd, previewInitCmd)
 	RootCmd.AddCommand(initCmd)
 
+	startupCmd, _ := cmd_startup.NewCommand(framework)
+	RootCmd.AddCommand(startupCmd)
+
+	shutdownCmd, _ := cmd_shutdown.NewCommand(framework)
+	RootCmd.AddCommand(shutdownCmd)
+
 	envCreateCmd, _ := env_create.NewCommand(framework)
 	previewCreateCmd, _ := env_create_preview.NewCommand(framework)
 	wirePreviewSubcommand(envCreateCmd, previewCreateCmd)
@@ -518,8 +526,10 @@ func getRootSpanName() string {
 }
 
 // wirePreviewSubcommand adds a --preview flag and routes RunE to the preview command when set.
+// The preview behavior can also be activated by setting the RADIUS_PREVIEW environment variable to "true" (case-insensitive).
+// The --preview flag takes precedence over the environment variable.
 func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
-	cmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation")
+	cmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation (can also be set via RADIUS_PREVIEW=true)")
 
 	legacyRun := cmd.RunE
 	previewRun := previewCmd.RunE
@@ -528,6 +538,9 @@ func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
 		usePreview, err := c.Flags().GetBool("preview")
 		if err != nil {
 			return err
+		}
+		if !c.Flags().Changed("preview") {
+			usePreview = strings.EqualFold(os.Getenv("RADIUS_PREVIEW"), "true")
 		}
 		if usePreview {
 			return previewRun(c, args)

@@ -44,18 +44,31 @@ on:
       - main
       - features/*
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected. In the
+  # merge queue the code already lives in the base repo (trusted context), so
+  # the check-trust / approval-gate jobs are skipped and setup proceeds.
+  merge_group:
+    branches:
+      - main
 
 permissions: {}
 
+# Reduce self-contention on the shared Azure ACI 'StandardCores' quota (the
+# bottleneck behind Test_ACI's ContainerGroupQuotaReached flakes): serialize cloud
+# functional-test runs per pull request so a single PR pushing rapid commits does
+# not run several ACI-provisioning runs at once. Keyed by PR number because under
+# pull_request_target github.ref is the base ref, which would otherwise collapse
+# every PR into one group and cancel unrelated runs. cancel-in-progress is limited
+# to pull_request_target so the merge queue and scheduled runs are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+
 env:
   GOPROXY: https://proxy.golang.org
-  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUM_VER: 1.13.0
-  # yq version
-  YQ_VERSION: v4.44.3
-  YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
   # Helm version
-  HELM_VER: v3.19.4
+  HELM_VER: v4.2.2
   # KinD cluster version
   KIND_VER: v0.29.0
   # Kubectl version
@@ -120,6 +133,7 @@ jobs:
           client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
+          repositories: radius
           permission-members: read
 
       - name: Determine trust level
@@ -164,20 +178,45 @@ jobs:
       - name: Approved
         run: echo "Tests approved to run"
 
+  # Single authorization decision for the whole run. Centralizes the trust +
+  # approval gate so every downstream job keys off one result
+  # (needs.authorize.result == 'success') instead of repeating the boolean.
+  #
+  # Runs unless the whole run was cancelled, then fails — blocking the run — when:
+  #   - check-trust did not pass (fail-safe if the trust check itself errored), or
+  #   - approval-gate did not pass (an external contributor's approval was
+  #     rejected/'cancelled' or failed).
+  # 'skipped' is allowed: check-trust and approval-gate are skipped for trusted
+  # authors and for non-PR events (schedule, repository_dispatch, merge_group).
+  authorize:
+    name: Authorize
+    needs: [check-trust, approval-gate]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    if: ${{ !cancelled() }}
+    steps:
+      - name: Evaluate trust and approval
+        env:
+          CHECK_TRUST_RESULT: ${{ needs.check-trust.result }}
+          APPROVAL_GATE_RESULT: ${{ needs.approval-gate.result }}
+        run: |
+          if [ "${CHECK_TRUST_RESULT}" != "success" ] && [ "${CHECK_TRUST_RESULT}" != "skipped" ]; then
+            echo "::error::Blocked — trust check did not pass (result=${CHECK_TRUST_RESULT})."
+            exit 1
+          fi
+          if [ "${APPROVAL_GATE_RESULT}" != "success" ] && [ "${APPROVAL_GATE_RESULT}" != "skipped" ]; then
+            echo "::error::Blocked — approval was not granted (result=${APPROVAL_GATE_RESULT})."
+            exit 1
+          fi
+          echo "Authorized to proceed."
+
   setup:
     name: Setup
-    needs: [check-trust, approval-gate]
-    # Run for all events. For PRs:
-    #   - check-trust determines if the author is external
-    #   - approval-gate runs only for external contributors and requires manual approval
-    #   - If check-trust or approval-gate are skipped (non-PR events), setup proceeds
-    # For pull_request_target, require approval-gate to be 'success' or 'skipped' — block
-    # on 'cancelled' (rejected approval) to prevent running PR code with secrets.
-    if: |
-      !cancelled() &&
-      (needs.check-trust.result == 'success' || needs.check-trust.result == 'skipped') &&
-      (needs.approval-gate.result == 'success' || needs.approval-gate.result == 'skipped') &&
-      (github.event_name != 'schedule' || github.repository == vars.RADIUS_REPOSITORY)
+    needs: [authorize]
+    # Gate on the single authorize decision; the schedule guard keeps scheduled
+    # runs limited to the canonical repository.
+    if: needs.authorize.result == 'success' && (github.event_name != 'schedule' || github.repository == vars.RADIUS_REPOSITORY)
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -248,8 +287,19 @@ jobs:
             echo "CHECKOUT_REF=refs/heads/${INPUT_BRANCH}"
           } >> "${GITHUB_ENV}"
 
+      - name: Set up checkout target (merge_group)
+        if: github.event_name == 'merge_group'
+        run: |
+          # GITHUB_SHA is the merge queue's combined commit (base + queued PRs).
+          # Using it as the checkout ref and the status-check sha ensures the
+          # required check is reported on the commit the merge queue validates.
+          {
+            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
+            echo "CHECKOUT_REF=${GITHUB_SHA}"
+          } >> "${GITHUB_ENV}"
+
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -336,7 +386,7 @@ jobs:
           permission-pull-requests: write
 
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
@@ -372,7 +422,6 @@ jobs:
             |**Unique ID** | ${{ env.UNIQUE_ID }} |
             |**Image tag** | ${{ env.REL_VERSION }} |
 
-            * gotestsum ${{ env.GOTESTSUM_VER }}
             * KinD: ${{ env.KIND_VER }}
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
@@ -461,12 +510,7 @@ jobs:
 
       - name: Install yq
         # Required by make generate-bicep-types-contrib to parse defaults.yaml.
-        run: |
-          mkdir -p "${RUNNER_TEMP}/bin"
-          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
-          echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
-          chmod +x "${RUNNER_TEMP}/bin/yq"
-          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+        run: make install-yq
 
       - name: Generate Bicep extensibility types from OpenAPI specs
         env:
@@ -474,12 +518,10 @@ jobs:
         run: |
           make generate-bicep-types VERSION="${BICEP_TYPES_VERSION}"
 
-      - name: Setup and verify bicep CLI
-        run: |
-          curl -Lo bicep https://github.com/Azure/bicep/releases/latest/download/bicep-linux-x64
-          chmod +x ./bicep
-          sudo mv ./bicep /usr/local/bin/bicep
-          bicep --version
+      - name: Install bicep CLI
+        # Pinned version + checksum live in build/tools.mk (previously installed
+        # the unpinned 'latest', which could pull v0.43+).
+        run: make install-bicep
 
       - name: Login to Azure (for private test bicep-types ACR)
         uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
@@ -597,6 +639,7 @@ jobs:
       contents: read # Required for listing the commits
       checks: write # Required for publishing test results
       packages: read # Required for pulling images from ghcr.io inside KinD
+      pull-requests: write # Required for posting a PR comment
     env:
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
@@ -643,14 +686,14 @@ jobs:
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Checkout Radius repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: ${{ env.CHECKOUT_REPO }}
           ref: ${{ env.CHECKOUT_REF }}
           persist-credentials: false
 
       - name: Checkout Samples repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         if: matrix.name == 'samples'
         with:
           repository: radius-project/samples
@@ -806,10 +849,6 @@ jobs:
           which rad || { echo "cannot find rad"; exit 1; }
           rad bicep download
           rad version
-
-      - name: Install gotestsum (test reporting tool)
-        run: |
-          go install "gotest.tools/gotestsum@v${GOTESTSUM_VER}"
 
       - uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         if: failure() && env.PR_NUMBER != ''
@@ -994,20 +1033,36 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
+          # Initiate resource deletion without blocking on completion (matches the
+          # non-cloud suite). Test assertions for deploy/create still run in full;
+          # only the synchronous teardown wait is skipped, and the per-run resource
+          # group is force-deleted afterward. This removes the slow Test_ACI teardown
+          # (~9 min) from the critical path without reducing validation scope.
+          RADIUS_TEST_FAST_CLEANUP: true
           MATRIX_NAME: ${{ matrix.name }}
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
-        # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
-        if: failure() && github.repository == vars.RADIUS_REPOSITORY
+        # Run on success and failure so a passing "Re-run failed jobs" refreshes the
+        # "Functional Tests - <name>" check published by EnricoMi. Gating this on
+        # failure() left that check stuck red after a green re-run, because the step
+        # was skipped and the previous attempt's failed check was never updated.
+        # comment_mode: failures keeps PR comments limited to actual failures, and
+        # the failure artifacts are still uploaded for post-mortem.
+        if: always() && github.repository == vars.RADIUS_REPOSITORY
         with:
           test_group_name: Functional Tests - ${{ matrix.name }}
           artifact_name: functional_test_results_${{ matrix.name }}
           result_directory: dist/functional_test/
+          comment_mode: failures
 
       - name: Collect Pod details
         if: always()
+        # Diagnostic-only snapshot of cluster-wide pod state for post-mortem. A
+        # `kubectl describe pods -A` can race pod teardown and return a transient
+        # NotFound, so never let it fail the job.
+        continue-on-error: true
         env:
           MATRIX_NAME: ${{ matrix.name }}
         run: |
@@ -1084,6 +1139,57 @@ jobs:
           message: |
             :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
 
+      - name: Release ACI quota before async resource group delete
+        if: always()
+        env:
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+        run: |
+          # The regional Azure Container Instances 'StandardCores' quota is shared
+          # across all concurrent cloud functional-test runs and is the bottleneck
+          # behind Test_ACI (deploys fail with ContainerGroupQuotaReached). The
+          # resource group is deleted with --no-wait below because the full delete is
+          # slow for gateways/VNets (see #12044), so its ACI resources would otherwise
+          # linger for minutes and keep holding quota that other runs need. Delete the
+          # ACI resources synchronously here to release the quota promptly. Best-effort:
+          # the resource group delete and the purge workflow still clean up the rest.
+          set -uo pipefail
+          sub="${AZURE_SUBSCRIPTIONID_TESTS}"
+          rg="${AZURE_TEST_RESOURCE_GROUP}"
+          # Radius creates the ACI nGroups/containerGroupProfiles with this API version
+          # (pkg/sdk/v20241101preview). Delete with it explicitly: a plain delete lets
+          # ARM pick the provider's latest advertised version (e.g. 2026-06-01-preview),
+          # which the RP rejects ("api-version not supported"), leaving the nGroups -
+          # and therefore the whole resource group - undeletable.
+          aci_api_version="2024-11-01-preview"
+          if ! az group show --subscription "${sub}" --name "${rg}" >/dev/null 2>&1; then
+            echo "Resource group ${rg} not found; nothing to release."
+            exit 0
+          fi
+          aci_ids=$(az resource list \
+            --subscription "${sub}" \
+            --resource-group "${rg}" \
+            --query "[?starts_with(type, 'Microsoft.ContainerInstance/')].id" \
+            --output tsv 2>/dev/null || true)
+          if [ -z "${aci_ids}" ]; then
+            echo "No Azure Container Instances resources in ${rg}."
+            exit 0
+          fi
+          echo "Releasing ACI quota by deleting:"
+          echo "${aci_ids}"
+          # nGroups (container scale sets) back the quota-holding container groups, so
+          # delete them first (in parallel) and wait, then delete the remaining ACI
+          # resources (profiles). Parallelizing keeps the synchronous teardown short
+          # while preserving the nGroups-before-profiles order (nGroups reference the
+          # profiles).
+          for id in $(echo "${aci_ids}" | grep -i '/nGroups/' || true); do
+            az resource delete --subscription "${sub}" --ids "${id}" --api-version "${aci_api_version}" --verbose || true &
+          done
+          wait
+          for id in $(echo "${aci_ids}" | grep -iv '/nGroups/' || true); do
+            az resource delete --subscription "${sub}" --ids "${id}" --api-version "${aci_api_version}" --verbose || true &
+          done
+          wait
+
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         if: always()
         env:
@@ -1106,7 +1212,6 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-      checks: read
     env:
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
     steps:
@@ -1118,28 +1223,30 @@ jobs:
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           permission-checks: write
 
-      - name: Get tests job status
+      - name: Aggregate functional test status
         id: get_test_status
-        env:
-          GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
         run: |
-          # from: https://github.com/orgs/community/discussions/26526#discussioncomment-3252209
-          ALL_JOBS_STATUS=$(curl -X GET -s -u "admin:${GH_TOKEN}" "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" | jq ".jobs[] | {job_status: .conclusion}")
-          echo "All jobs status: $ALL_JOBS_STATUS"
+          # Derive the overall status from the needs context instead of querying the
+          # Actions API. `tests` is a matrix job, so needs.tests.result already collapses
+          # all legs (success only if every leg passed). A docs-only run skips build+tests
+          # with setup successful, which yields success and matches the skip-tests job.
+          # failure takes precedence over cancelled.
+          echo "setup=${SETUP_RESULT} build=${BUILD_RESULT} tests=${TESTS_RESULT}"
           TEST_STATUS="success"
-          for job_status in $(echo "$ALL_JOBS_STATUS" | jq -r '.[]'); do
-            echo "Job Status: $job_status"
-            if [[ "$job_status" == "failure" ]]; then
-              echo "Found failed test. Setting test status to failure"
+          for result in "${SETUP_RESULT}" "${BUILD_RESULT}" "${TESTS_RESULT}"; do
+            if [[ "${result}" == "failure" ]]; then
               TEST_STATUS="failure"
               break
-            elif [[ "$job_status" == "cancelled" ]]; then
-              echo "Found cancelled test. Setting test status to cancelled"
+            elif [[ "${result}" == "cancelled" ]]; then
               TEST_STATUS="cancelled"
             fi
           done
-          echo "Test Status: $TEST_STATUS"
-          echo "test_status=$TEST_STATUS" >> $GITHUB_OUTPUT
+          echo "Functional Test Run status: ${TEST_STATUS}"
+          echo "test_status=${TEST_STATUS}" >> "${GITHUB_OUTPUT}"
+        env:
+          SETUP_RESULT: ${{ needs.setup.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          TESTS_RESULT: ${{ needs.tests.result }}
 
       - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: always()

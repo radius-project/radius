@@ -94,12 +94,16 @@ func toRecipesDataModel(recipes map[string]*RecipeDefinition) map[string]*datamo
 	result := make(map[string]*datamodel.RecipeDefinition)
 	for key, recipe := range recipes {
 		if recipe != nil {
-			result[key] = &datamodel.RecipeDefinition{
-				RecipeKind:     toRecipeKindDataModel(recipe.RecipeKind),
-				RecipeLocation: to.String(recipe.RecipeLocation),
-				Parameters:     recipe.Parameters,
-				PlainHTTP:      to.Bool(recipe.PlainHTTP),
+			definition := &datamodel.RecipeDefinition{
+				Kind:       toRecipeKindDataModel(recipe.Kind),
+				Source:     to.String(recipe.Source),
+				Parameters: recipe.Parameters,
+				PlainHTTP:  to.Bool(recipe.PlainHTTP),
 			}
+			if recipe.Outputs != nil {
+				definition.Outputs = to.StringMap(recipe.Outputs)
+			}
+			result[key] = definition
 		}
 	}
 	return result
@@ -113,12 +117,16 @@ func fromRecipesDataModel(recipes map[string]*datamodel.RecipeDefinition) map[st
 	result := make(map[string]*RecipeDefinition)
 	for key, recipe := range recipes {
 		if recipe != nil {
-			result[key] = &RecipeDefinition{
-				RecipeKind:     fromRecipeKindDataModel(recipe.RecipeKind),
-				RecipeLocation: new(recipe.RecipeLocation),
-				Parameters:     recipe.Parameters,
-				PlainHTTP:      new(recipe.PlainHTTP),
+			definition := &RecipeDefinition{
+				Kind:       fromRecipeKindDataModel(recipe.Kind),
+				Source:     new(recipe.Source),
+				Parameters: recipe.Parameters,
+				PlainHTTP:  new(recipe.PlainHTTP),
 			}
+			if recipe.Outputs != nil {
+				definition.Outputs = *to.StringMapPtr(recipe.Outputs)
+			}
+			result[key] = definition
 		}
 	}
 	return result

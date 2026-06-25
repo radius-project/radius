@@ -24,6 +24,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/kubernetes/clusteraccess"
 	"github.com/radius-project/radius/pkg/sdk"
 )
 
@@ -44,7 +45,7 @@ func GetUCPConfiguredTerraformProviders(ucpConn sdk.Connection, secretProvider *
 	return map[string]Provider{
 		AWSProviderName:        NewAWSProvider(ucpConn, secretProvider),
 		AzureProviderName:      NewAzureProvider(ucpConn, secretProvider),
-		KubernetesProviderName: &kubernetesProvider{},
+		KubernetesProviderName: newKubernetesProvider(clusteraccess.NewResolver()),
 	}
 }
 

@@ -4,9 +4,9 @@ name: Process Test Results
 description: |
   Processes a batch of test results including creating a github artifact and annotating the Pull Request (if applicable).
 
-  This requires using 'gotestum' to run tests, which our makefile can do automatically. Install 'gotestsum' using:
-
-    go install gotest.tools/gotestsum@v1.10.0
+  This requires using 'gotestsum' to run tests, which our makefile does automatically. 'gotestsum' is
+  managed as a Go tool dependency (the 'tool' directive in go.mod) and is invoked via 'go tool gotestsum',
+  so no separate install is needed.
 
   You will also need to set the path for the results file using an environment variable. This would output the jUnit
   test results format which is what we require.
@@ -25,6 +25,13 @@ inputs:
   result_directory:
     description: Directory containing result XML files. These should be in jUnit format. See the description of the action.
     required: true
+  comment_mode:
+    description: |
+      When the EnricoMi action posts a pull request comment. Defaults to "always" to preserve
+      existing behavior. Use "failures" to comment only when tests fail, or "off" to disable
+      comments. See publish-unit-test-result-action docs for the full list of values.
+    required: false
+    default: always
 runs:
   using: composite
   steps:
@@ -75,6 +82,7 @@ runs:
       if: always()
       with:
         check_name: ${{ inputs.test_group_name }}
+        comment_mode: ${{ inputs.comment_mode }}
         files: |
           ${{ inputs.result_directory }}/processed/*.xml
 

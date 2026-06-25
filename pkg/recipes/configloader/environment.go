@@ -31,6 +31,7 @@ import (
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/kube"
 	"github.com/radius-project/radius/pkg/rp/util"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
@@ -361,20 +362,78 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 		// Reconcile parameters from recipe pack and environment-level recipe parameters
 		parameters := reconcileRecipeParameters(recipeDefinition.Parameters, envDatamodel.Properties.RecipeParameters, resource.Type())
 
+		// Recipe packs don't carry a separate version field, so for Terraform recipes the module
+		// version is encoded in the recipe location using the "<source>:<version>" convention
+		// (e.g. "terraform-aws-modules/rds/aws:6.1.0"), mirroring how Bicep/OCI recipes embed the
+		// version in the image tag (see https://github.com/radius-project/radius/issues/12086).
+		// Registry modules require the version as a separate Terraform "version" argument, so we
+		// split it out here.
+		templatePath := recipeDefinition.Source
+		templateVersion := ""
+		if strings.EqualFold(recipeDefinition.Kind, recipes.TemplateKindTerraform) {
+			templatePath, templateVersion = parseTerraformModuleSource(recipeDefinition.Source)
+		}
+
 		// TODO: For now, we can set "Name" to default as recipe packs don't have named recipes.
 		// We will remove this field from EnvironmentDefinition once we deprecate Applications.Core.
 		definition := &recipes.EnvironmentDefinition{
-			Name:         "default",
-			Driver:       recipeDefinition.RecipeKind,
-			ResourceType: resource.Type(),
-			Parameters:   parameters,
-			TemplatePath: recipeDefinition.RecipeLocation,
-			PlainHTTP:    recipeDefinition.PlainHTTP,
+			Name:            "default",
+			Driver:          recipeDefinition.Kind,
+			ResourceType:    resource.Type(),
+			Parameters:      parameters,
+			TemplatePath:    templatePath,
+			TemplateVersion: templateVersion,
+			PlainHTTP:       recipeDefinition.PlainHTTP,
+			Outputs:         recipeDefinition.Outputs,
 		}
 		return definition, nil
 	}
 
 	return nil, fmt.Errorf("could not find any recipe pack for %q in environment %q", resource.Type(), recipe.EnvironmentID)
+}
+
+// parseTerraformModuleSource splits a Terraform module reference of the form "<source>:<version>"
+// into its source and version components, implementing the Radius convention for pinning Terraform
+// registry modules (https://github.com/radius-project/radius/issues/12086). This mirrors the way
+// Bicep/OCI recipes embed the version in the image tag (e.g. "ghcr.io/org/recipe:1.0.0"). Terraform
+// registry addresses (e.g. "terraform-aws-modules/rds/aws") are not URLs and require the version to be
+// supplied as a separate "version" argument rather than embedded in the source, so RecipePacks encode
+// it as a ":<version>" suffix. For example "terraform-aws-modules/rds/aws:6.1.0" yields source
+// "terraform-aws-modules/rds/aws" and version "6.1.0".
+//
+// The ":<version>" suffix is only recognized for registry-style addresses: the source must contain at
+// least one "/", must not contain a "://" scheme (so HTTP, Git, and OCI URLs are left untouched), and
+// the ":" must appear in the final path segment (after the last "/"), so a registry "host:port" such as
+// "my.registry.com:8443/ns/name/aws" is not mistaken for a version. References without a recognized
+// suffix are returned unchanged with an empty version.
+func parseTerraformModuleSource(location string) (source string, version string) {
+	if strings.Contains(location, "://") {
+		return location, ""
+	}
+
+	// Registry-style addresses always contain at least one "/" (namespace/name/provider). Without a
+	// slash there is nothing resembling a registry address, so leave shorthand forms such as the
+	// SCP-style "git@host:repo" untouched rather than mistaking the colon for a version suffix.
+	if !strings.Contains(location, "/") {
+		return location, ""
+	}
+
+	// Only a colon in the final path segment denotes a version; a colon before the last "/" belongs to
+	// a registry "host:port" (e.g. "my.registry.com:8443/...") or an SCP-style "git@host:org/repo" address.
+	lastSlash := strings.LastIndex(location, "/")
+	rel := strings.IndexByte(location[lastSlash+1:], ':')
+	if rel < 0 {
+		return location, ""
+	}
+	colon := lastSlash + 1 + rel
+
+	candidateSource := location[:colon]
+	candidateVersion := location[colon+1:]
+	if candidateSource == "" || candidateVersion == "" {
+		return location, ""
+	}
+
+	return candidateSource, candidateVersion
 }
 
 // fetchRecipeDefinition fetches recipe pack resources from the given recipe pack IDs and returns
@@ -398,15 +457,26 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 		// Convert recipes map
 		for recipePackResourceType, definition := range recipePackResource.Properties.Recipes {
 			if strings.EqualFold(recipePackResourceType, resourceType) {
+				if definition == nil {
+					return nil, fmt.Errorf("recipe for resource type %q in recipe pack %q is missing its definition", resourceType, recipePackID)
+				}
+				if definition.Kind == nil {
+					return nil, fmt.Errorf("recipe for resource type %q in recipe pack %q is missing the required \"kind\" field", resourceType, recipePackID)
+				}
+				if definition.Source == nil {
+					return nil, fmt.Errorf("recipe for resource type %q in recipe pack %q is missing the required \"source\" field", resourceType, recipePackID)
+				}
+
 				var plainHTTP bool
 				if definition.PlainHTTP != nil {
 					plainHTTP = *definition.PlainHTTP
 				}
 				return &recipes.RecipeDefinition{
-					RecipeKind:     string(*definition.RecipeKind),
-					RecipeLocation: string(*definition.RecipeLocation),
-					Parameters:     definition.Parameters,
-					PlainHTTP:      plainHTTP,
+					Kind:       string(*definition.Kind),
+					Source:     string(*definition.Source),
+					Parameters: definition.Parameters,
+					PlainHTTP:  plainHTTP,
+					Outputs:    to.StringMap(definition.Outputs),
 				}, nil
 			}
 		}
