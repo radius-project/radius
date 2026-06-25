@@ -352,11 +352,6 @@ jobs:
   build:
     name: Build Radius for test
     needs: [setup, changes]
-    # Require setup to have succeeded, and skip if only docs/markdown changed.
-    # Without the setup-success guard, always() runs this job even when setup is
-    # skipped, leaving REL_VERSION/CHECKOUT_REF empty -- which checks out the base
-    # branch and produces an invalid empty image tag (`ghcr.io/.../ucpd:`).
-    if: always() && needs.setup.result == 'success' && needs.changes.outputs.only_changed != 'true'
     # Require setup to have produced REL_VERSION/CHECKOUT_REF (otherwise the image
     # tag would be empty); also skip if only docs/markdown changed.
     if: always() && needs.setup.result == 'success' && needs.changes.outputs.only_changed != 'true'
