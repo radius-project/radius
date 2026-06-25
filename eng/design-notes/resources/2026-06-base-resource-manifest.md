@@ -79,8 +79,8 @@ The [alternative approach](#alternatives-considered) instead makes the author op
 Three moving pieces:
 
 1. **`pkg/schema/baseresource/base.yaml`** — the single source of truth: a small YAML declaring the four common properties, their shapes, and `required: [environment]`. Embedded with `go:embed`.
-2. **`pkg/schema/baseresource.Apply(schema)`** — the canonical merger. For each base property absent from the per-type schema, it copies the base shape in, then unions the base `required:` into the per-type `required:`. No `allOf` walk, no `$ref`, no URI scheme. The CLI validator (`pkg/cli/manifest/validation.go`) calls it on every schema before validation.
-3. **`bicep-tools/pkg/converter/baseresource.go::applyBaseResource(schema)`** — a parallel merger in the standalone `bicep-tools` module, for the published Bicep types.
+2. **`pkg/schema/baseresource.BaseManifest`** — the in-memory, immutable parsed base. It is loaded **once at service/command initialization** via `Load()` (or `MustLoad()`), held for the process lifetime, and never changes afterward. Its `Apply(schema)` method is the canonical merger: for each base property absent from the per-type schema it copies the base shape in, then unions the base `required:` into the per-type `required:`. No `allOf` walk, no `$ref`, no URI scheme. The manifest layer (`pkg/cli/manifest`) owns one instance and merges inside `ValidateManifest` — the single chokepoint every registration path flows through (the `rad resource-type create` command **and** the UCP initializer service at startup).
+3. **`bicep-tools/pkg/converter/baseresource.go`** — a parallel `BaseManifest`/merger in the standalone `bicep-tools` module, loaded once at converter init, for the published Bicep types.
 
 Plus two small additions for `codeReference`: `pkg/resourceutil/utils.go::BasicProperties` learns the new name so the runtime treats it as framework-owned, and `pkg/dynamicrp/datamodel/dynamicresource.go` gains a `CodeReference()` accessor mirroring `ApplicationID()` / `EnvironmentID()`.
 
@@ -130,28 +130,29 @@ Disadvantage of Approach B
 
 ### Key implementation details
 
-**Merger — `pkg/schema/baseresource/loader.go`.** `Apply(schema *openapi3.Schema) error`:
+**Merger — `pkg/schema/baseresource/loader.go`.** The embedded base is parsed once into an immutable `BaseManifest` via `Load() (*BaseManifest, error)` (or `MustLoad()` for package-level init); callers hold that value for the process lifetime. `(*BaseManifest).Apply(schema map[string]any) error` then:
 
 1. Nil schema → no-op.
-2. Load the embedded base YAML once (`sync.Once`).
-3. For each base property absent from `schema.properties`, copy it in (per-type-wins precedence — an author's own `environment` keeps its shape).
-4. Union the base `required:` into the schema's `required:` (deduplicated) — this keeps `environment` mandatory without changing the validator.
+2. For each base property absent from `schema["properties"]`, copy it in (per-type-wins precedence — an author's own `environment` keeps its shape).
+3. Union the base `required:` into the schema's `required:` (deduplicated) — this keeps `environment` mandatory without changing the validator.
 
-`Apply()` is purely lexical (no network, no UCP, no runtime file I/O) and idempotent.
+`Apply` operates on the raw decoded `map[string]any` (the same shape the manifest decoder produces and that registration ships to UCP), so a single merge covers both validation and registration. It is purely lexical (no network, no UCP, no runtime file I/O) and idempotent. There is no per-call loading or locking: the parse happens once at init.
+
+**Where the merge runs.** `pkg/cli/manifest` loads one `BaseManifest` at init and calls `Apply` on every `apiVersion.Schema` inside `ValidateManifest`, before `validateManifestSchemas`. Because that schema map is the same object registration sends to UCP, the merged properties reach both the validator and the control plane.
 
 **`bicep-tools` parallel merger.** `applyBaseResource(schema *manifest.Schema)` replicates the semantics in the standalone module (kept separate so the Bicep extension input doesn't pull in the full Radius dependency tree). Notably, **`bicep-tools/pkg/manifest/manifest.go` needs no new fields** — a win over Approach A, which had to extend `Schema` with `AllOf` / `Ref`. A sync test (`TestApplyBaseResource_PropertiesMatchCanonicalYAML`) asserts the duplicated Go literal matches `base.yaml` (both properties and `required:`), failing CI on any drift. The emitter (`bicep-tools/pkg/converter/converter.go`) calls it once per `(provider, type, apiVersion)` before building the `<Type>Properties` Bicep type.
 
 **Validator** `pkg/schema/validator.go`
 - still requires every schema to declare `environment`; because `Apply()` runs first, the rule passes for every type automatically.
-- The validator should additionally flag a per-type schema that redeclares a common property with a conflicting shape. However, it could be OK to add a base resource property such as `application` to the `required:` section. In this case, the mergers should mark the property as required.
+- The validator should additionally flag a per-type schema that redeclares a common property. However, it could be OK to add a base resource property such as `application` to the `required:` section. In this case, the mergers should mark the property as required.
 
 
 
 | Component | Change | File(s) |
 |---|---|---|
-| Schema base manifest (NEW) | `base.yaml` + `Apply()` + `PropertyNames()` | `pkg/schema/baseresource/{base.yaml,loader.go,loader_test.go}` |
+| Schema base manifest (NEW) | `base.yaml` + `Load`/`MustLoad` + `Apply()` + `PropertyNames()`/`RequiredNames()` | `pkg/schema/baseresource/{base.yaml,loader.go,loader_test.go}` |
 | Schema validator | Unchanged; add conflict check | `pkg/schema/validator.go` |
-| CLI manifest validator | Calls `Apply()` per schema | `pkg/cli/manifest/validation.go` |
+| CLI manifest validator | Loads one `BaseManifest` at init; calls `Apply()` per schema in `ValidateManifest` | `pkg/cli/manifest/{registermanifest.go,validation.go}` |
 | Generic property util | `BasicProperties` += `codeReference` | `pkg/resourceutil/utils.go` |
 | Dynamic-rp adapter | New `CodeReference()` accessor | `pkg/dynamicrp/datamodel/dynamicresource.go` |
 | `bicep-tools` converter | Parallel `applyBaseResource()` + sync test (`manifest.go` unchanged) | `bicep-tools/pkg/converter/{baseresource.go,converter.go}` |
