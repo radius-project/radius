@@ -67,12 +67,6 @@ concurrency:
 
 env:
   GOPROXY: https://proxy.golang.org
-  # Helm version
-  HELM_VER: v4.2.2
-  # KinD cluster version
-  KIND_VER: v0.29.0
-  # Kubectl version
-  KUBECTL_VER: v1.25.0
   # Azure Keyvault CSI driver chart version
   AZURE_KEYVAULT_CSI_DRIVER_VER: 1.4.2
   # Azure workload identity webhook chart version
@@ -426,7 +420,6 @@ jobs:
             |**Unique ID** | ${{ env.UNIQUE_ID }} |
             |**Image tag** | ${{ env.REL_VERSION }} |
 
-            * KinD: ${{ env.KIND_VER }}
             * Dapr: ${{ env.DAPR_VER }}
             * Azure KeyVault CSI driver: ${{ env.AZURE_KEYVAULT_CSI_DRIVER_VER }}
             * Azure Workload identity webhook: ${{ env.AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER }}
@@ -758,9 +751,9 @@ jobs:
           RESOURCE_GROUP: ${{ env.AZURE_TEST_RESOURCE_GROUP }}
           AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
-      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-        with:
-          version: ${{ env.HELM_VER }}
+      - name: Install helm
+        # Version pinned in build/tools.mk (HELM_VERSION).
+        run: make install-helm
 
       # The role-to-assume is the role that the github action will assume to execute aws commands and
       # construct cloud control client in test code.
@@ -771,6 +764,11 @@ jobs:
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Install KinD
+        # Installs the version pinned in build/tools.mk (KIND_VERSION) and adds
+        # the install dir to the job PATH for the cluster-create step below.
+        run: make install-kind
+
       # create kind cluster with OIDC provider.
       - name: Create KinD cluster
         env:
@@ -778,9 +776,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-
-          curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${KIND_VER}/kind-linux-amd64"
-          chmod +x ./kind
 
           # Parse and validate Azure workload identity values from secret JSON.
           OIDC_JSON="${FUNCTEST_AZURE_OIDC_JSON}"
@@ -803,7 +798,7 @@ jobs:
           openssl pkey -pubin -in sa.pub -noout >/dev/null
           openssl pkey -in sa.key -check -noout >/dev/null
 
-          cat <<EOF | ./kind create cluster --name radius --config=-
+          cat <<EOF | kind create cluster --name radius --config=-
           kind: Cluster
           apiVersion: kind.x-k8s.io/v1alpha4
           nodes:
