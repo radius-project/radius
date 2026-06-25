@@ -55,9 +55,6 @@ env:
   # Local file path to the release binaries.
   RELEASE_PATH: ./release
 
-  # ORAS (OCI Registry As Storage) CLI version
-  ORAS_VERSION: 1.1.0
-
   # URL to get source code for building the image
   IMAGE_SRC: https://github.com/radius-project/radius
 
@@ -158,10 +155,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3 # v2.0.0
+      - name: Install oras
         if: needs.changes.outputs.only_changed != 'true'
-        with:
-          version: ${{ env.ORAS_VERSION }}
+        # Version pinned in build/tools.mk (ORAS_VERSION).
+        run: make install-oras
 
       - name: Push latest rad cli binary to GHCR (unix-like)
         if: github.ref == 'refs/heads/main' && matrix.target_os != 'windows' && needs.changes.outputs.only_changed != 'true'
@@ -329,9 +326,8 @@ jobs:
           persist-credentials: false
 
       - name: Install helm
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-        with:
-          version: v4.2.2
+        # Version pinned in build/tools.mk (HELM_VERSION).
+        run: make install-helm
 
       - name: Setup Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0

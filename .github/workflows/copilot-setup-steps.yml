@@ -100,20 +100,13 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Setup Helm
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-        with:
-          version: v4.2.2
+      - name: Install helm
+        # Version pinned in build/tools.mk (HELM_VERSION).
+        run: make install-helm
 
       - name: Install kubectl
-        run: |
-          KUBECTL_VER="v1.30.0"
-          KUBECTL_LINUX_AMD64_SHA256="7c3807c0f5c1b30110a2ff1e55da1d112a6d0096201f1beb81b269f582b5d1c5"
-          curl -fsSLo ./kubectl "https://dl.k8s.io/release/${KUBECTL_VER}/bin/linux/amd64/kubectl"
-          echo "${KUBECTL_LINUX_AMD64_SHA256}  ./kubectl" | sha256sum -c -
-          chmod +x ./kubectl
-          sudo mv ./kubectl /usr/local/bin/kubectl
-          kubectl version --client
+        # Version pinned in build/tools.mk (KUBECTL_VERSION).
+        run: make install-kubectl
 
       - name: Install pnpm and TypeSpec tooling
         # `make generate-tsp-installed` enables corepack with the pinned pnpm
@@ -167,13 +160,8 @@ jobs:
 
       - name: Install KinD
         # Lets the agent create a local Kubernetes cluster for integration and
-        # functional tests.
-        run: |
-          KIND_VER="v0.29.0"
-          curl -fsSLo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VER}/kind-linux-amd64"
-          chmod +x ./kind
-          sudo mv ./kind /usr/local/bin/kind
-          kind --version
+        # functional tests. Version pinned in build/tools.mk (KIND_VERSION).
+        run: make install-kind
 
       - name: Install k3d
         # Used by the local debug environment (make debug-start) to create a
@@ -195,11 +183,8 @@ jobs:
           stern --version
 
       - name: Install Dapr CLI
-        run: |
-          DAPR_CLI_VER="1.15.1"
-          wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - \
-            | /bin/bash -s "${DAPR_CLI_VER}"
-          dapr --version
+        # Version pinned in build/tools.mk (DAPR_VERSION).
+        run: make install-dapr
 
       - name: Install Terraform
         # Version is read from .terraform-version, the source of truth also
