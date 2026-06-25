@@ -38,7 +38,7 @@ import (
 const (
 	radiusNamespace   = "radius-system"
 	preUpgradeJobName = "pre-upgrade"
-	helmTimeout       = "3m"
+	helmTimeout       = "5m"
 
 	relativeChartPath = "../../../deploy/Chart"
 
@@ -48,6 +48,12 @@ const (
 	jobPollInterval          = 1 * time.Second
 	jobPollAttempts          = 15
 
+	// controlPlaneTimeout is the maximum time to wait for the control plane API
+	// to become available after Helm install/upgrade completes. This needs to be
+	// generous because the UCP aggregated APIService may briefly return 503 while
+	// pods are rolling.
+	controlPlaneTimeout = 4 * time.Minute
+
 	// cleanupTimeout is the maximum time to wait for Radius pods to terminate
 	// after uninstalling the Helm release.
 	cleanupTimeout = 2 * time.Minute
@@ -56,9 +62,13 @@ const (
 	// a Kubernetes client for cleanup polling.
 	cleanupFallbackWait = 10 * time.Second
 
-	// apiServiceDeregistrationWait is the time to wait for Kubernetes aggregated
-	// API service deregistration after Radius pods are terminated.
-	apiServiceDeregistrationWait = 3 * time.Second
+	// apiServiceDeregistrationTimeout is the maximum time to wait for the
+	// Kubernetes aggregated API service to deregister after Radius pods terminate.
+	apiServiceDeregistrationTimeout = 30 * time.Second
+
+	// apiServiceDeregistrationInterval is the polling interval for checking
+	// API service deregistration.
+	apiServiceDeregistrationInterval = 2 * time.Second
 
 	// radiusPodSelector selects only pods belonging to the Radius Helm release.
 	// Contour is deployed as a separate Helm release in the same namespace and
@@ -144,16 +154,24 @@ func testPreflightDisabled(t *testing.T) {
 	_ = helmUpgrade(ctx, image, tag, helmValues)
 
 	t.Log("Verifying no preflight job was created")
-	// Brief wait to allow any unexpected job creation to surface
-	time.Sleep(5 * time.Second)
-	_, err = options.K8sClient.BatchV1().Jobs(radiusNamespace).Get(ctx, preUpgradeJobName, metav1.GetOptions{})
-	switch {
-	case apierrors.IsNotFound(err):
-		t.Log("Preflight job correctly not created when disabled")
-	case err == nil:
-		t.Error("Expected preflight job to not exist when disabled, but it was found")
-	default:
+	// Poll several times to confirm no job was created. The helm upgrade --wait
+	// flag ensures the upgrade is fully complete before returning, so if a job
+	// was going to be created it would exist by now. We poll briefly to be safe.
+	for i := range jobPollAttempts {
+		_, err = options.K8sClient.BatchV1().Jobs(radiusNamespace).Get(ctx, preUpgradeJobName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			if i == jobPollAttempts-1 {
+				t.Log("Preflight job correctly not created when disabled")
+			}
+			time.Sleep(jobPollInterval)
+			continue
+		}
+		if err == nil {
+			t.Error("Expected preflight job to not exist when disabled, but it was found")
+			break
+		}
 		t.Errorf("Unexpected error checking for preflight job: %v", err)
+		break
 	}
 
 	helmUninstall(t, ctx)
@@ -219,6 +237,8 @@ func runCommand(ctx context.Context, args []string) error {
 }
 
 // waitForControlPlane polls until the Radius control plane API is reachable.
+// It treats transient errors (including 503 from the aggregated APIService) as
+// retryable and keeps polling until the timeout expires.
 func waitForControlPlane(t *testing.T, ctx context.Context) rp.RPTestOptions {
 	t.Helper()
 	var options rp.RPTestOptions
@@ -233,7 +253,7 @@ func waitForControlPlane(t *testing.T, ctx context.Context) rp.RPTestOptions {
 			options = rp.NewRPTestOptions(t)
 		}()
 		return options.ManagementClient != nil
-	}, 2*time.Minute, controlPlanePollInterval, "Control plane did not become available within timeout")
+	}, controlPlaneTimeout, controlPlanePollInterval, "Control plane did not become available within timeout")
 	return options
 }
 
@@ -285,8 +305,27 @@ func cleanupAndWait(t *testing.T, ctx context.Context) {
 		return false
 	}, cleanupTimeout, cleanupPollInterval, "Radius pods in %s did not terminate within timeout", radiusNamespace)
 
-	// Wait for Kubernetes aggregated API service deregistration
-	time.Sleep(apiServiceDeregistrationWait)
+	// Poll until the aggregated API service is fully deregistered. After pods
+	// terminate, the APIService may still briefly return 503 to the API server.
+	// We verify deregistration by confirming the Radius API group is no longer
+	// served (returns 404 or connection refused rather than 503).
+	t.Log("Waiting for aggregated API service deregistration...")
+	require.Eventually(t, func() bool {
+		// Use server-side discovery to check if the Radius API group is still registered.
+		// A 503 means the APIService is registered but the backend is gone (not yet deregistered).
+		_, resources, err := k8sClient.Discovery().ServerGroupsAndResources()
+		if err != nil {
+			// Partial results are common during deregistration; check what we got.
+			t.Logf("Discovery returned partial results (expected during deregistration): %v", err)
+		}
+		for _, resourceList := range resources {
+			if resourceList != nil && resourceList.GroupVersion == "api.ucp.dev/v1alpha3" {
+				t.Log("Radius aggregated API service still registered, waiting...")
+				return false
+			}
+		}
+		return true
+	}, apiServiceDeregistrationTimeout, apiServiceDeregistrationInterval, "Aggregated API service did not deregister within timeout")
 }
 
 // findPreflightJob polls for the pre-upgrade job, returning it if found within the timeout.
