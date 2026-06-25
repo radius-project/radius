@@ -55,7 +55,9 @@ const (
 	resourceGroup = "kind-radius"
 
 	// relativeChartPath points at the in-repo Helm chart so the test installs the build under test.
-	relativeChartPath = "../../../deploy/Chart"
+	// The path is relative to this test package directory
+	// (test/functional-portable/statestore/noncloud), which is four levels below the repo root.
+	relativeChartPath = "../../../../deploy/Chart"
 
 	// redisRecipeTemplate is the Terraform recipe fixture shared with the corerp recipe tests.
 	redisRecipeTemplate = "../../corerp/noncloud/resources/testdata/corerp-resources-terraform-redis.bicep"
