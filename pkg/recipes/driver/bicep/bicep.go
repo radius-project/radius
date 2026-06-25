@@ -125,6 +125,9 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	//update the recipe context with connected resources properties
 	recipeContext.Resource.Connections = opts.Recipe.ConnectedResourcesProperties
 
+	// update the recipe context with secret material referenced through x-radius-secret-reference properties
+	recipeContext.Resource.Secrets = opts.Recipe.Secrets
+
 	// get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
 	isContextParameterDefined := hasContextParameter(recipeData)
