@@ -393,8 +393,8 @@ func resourceName(id resources.ID) string {
 
 // legacyResourceName computes the Kubernetes object name using the legacy SHA-1 hash.
 //
-// Deprecated: SHA-1 is retained only to locate resources written by older versions of Radius during
-// the migration to SHA-256. Use resourceName for new values. See
+// SHA-1 is retained only to locate resources written by older versions of Radius during the
+// migration to SHA-256. Use resourceName for new values. See
 // https://github.com/radius-project/radius/issues/8084.
 func legacyResourceName(id resources.ID) string {
 	return makeResourceName(id, hashutil.LegacyHex([]byte(strings.ToLower(id.String()))))

@@ -31,9 +31,9 @@ import (
 
 // LegacyHex returns the SHA-1 hash of data encoded as a lowercase hexadecimal string.
 //
-// Deprecated: SHA-1 is cryptographically broken and is retained only so that Radius
-// can recognize values written by older versions during the migration to SHA-256.
-// Use Hex for all new values. Do not use LegacyHex to produce new values.
+// SHA-1 is cryptographically broken and is retained only so that Radius can recognize
+// values written by older versions during the migration to SHA-256. Use Hex for all new
+// values; do not use LegacyHex to produce new values.
 func LegacyHex(data []byte) string {
 	sum := sha1.Sum(data)
 	return hex.EncodeToString(sum[:])

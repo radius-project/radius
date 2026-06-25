@@ -46,8 +46,8 @@ func NameFor(id resources.ID) string {
 
 // LegacyNameFor computes the tracked resource name using the legacy SHA-1 hash.
 //
-// Deprecated: SHA-1 is retained only to locate tracked resource entries written by older versions of
-// Radius during the migration to SHA-256. Use NameFor for new values. See
+// SHA-1 is retained only to locate tracked resource entries written by older versions of Radius
+// during the migration to SHA-256. Use NameFor for new values. See
 // https://github.com/radius-project/radius/issues/8084.
 func LegacyNameFor(id resources.ID) string {
 	if id.IsEmpty() {
@@ -92,8 +92,8 @@ func IDFor(id resources.ID) resources.ID {
 
 // LegacyIDFor computes the resource ID of a tracked resource entry using the legacy SHA-1 name.
 //
-// Deprecated: used only to locate tracked resource entries written by older versions of Radius
-// during the migration to SHA-256. See https://github.com/radius-project/radius/issues/8084.
+// Used only to locate tracked resource entries written by older versions of Radius during the
+// migration to SHA-256. See https://github.com/radius-project/radius/issues/8084.
 func LegacyIDFor(id resources.ID) resources.ID {
 	if id.IsEmpty() {
 		return resources.ID{}

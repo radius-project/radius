@@ -149,8 +149,8 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 
 // generateLegacySecretSuffix returns the legacy SHA-1 based secret suffix.
 //
-// Deprecated: SHA-1 is retained only to locate Terraform state secrets created by older versions of
-// Radius during the migration to SHA-256. Use generateSecretSuffix for new values. See
+// SHA-1 is retained only to locate Terraform state secrets created by older versions of Radius
+// during the migration to SHA-256. Use generateSecretSuffix for new values. See
 // https://github.com/radius-project/radius/issues/8084.
 func generateLegacySecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, error) {
 	input, err := secretSuffixInput(resourceRecipe)
