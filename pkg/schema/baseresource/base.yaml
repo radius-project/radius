@@ -21,6 +21,9 @@ properties:
         source:
           type: string
           description: "Resource ID of the source resource for this connection."
+        disableDefaultEnvVars:
+          type: boolean
+          description: "Disables the automatic injection of environment variables from the connected resource's properties."
       required:
         - source
   codeReference:

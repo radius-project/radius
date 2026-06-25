@@ -35,6 +35,10 @@ var baseResourceProperties = map[string]manifest.Schema{
 					Type:        "string",
 					Description: ptr("Resource ID of the source resource for this connection."),
 				},
+				"disableDefaultEnvVars": {
+					Type:        "boolean",
+					Description: ptr("Disables the automatic injection of environment variables from the connected resource's properties."),
+				},
 			},
 			Required: []string{"source"},
 		},
