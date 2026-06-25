@@ -176,8 +176,6 @@ generate-go: ## Generates go with 'go generate' (Mocks).
 #
 # Per-type manifest files live under deploy/manifest/built-in-providers/self-hosted/
 # as individual YAML files (e.g. containers.yaml, routes.yaml).
-YQ_VERSION ?= v4.44.3
-
 DEFAULTS_YAML := deploy/manifest/defaults.yaml
 BICEP_TYPES_CONTRIB_API_VERSION ?= 2025-08-01-preview
 BICEP_TYPES_OUTPUT_BASE := hack/bicep-types-radius/generated/radius
@@ -200,7 +198,7 @@ generate-bicep-types-core: generate-node-installed generate-pnpm-installed ## Ge
 .PHONY: generate-yq-installed
 generate-yq-installed:
 	@echo "$(ARROW) Detecting yq..."
-	@which yq > /dev/null || { echo "run 'go install github.com/mikefarah/yq/v4@$(YQ_VERSION)' to install yq, then ensure ~/go/bin is on your PATH"; exit 1; }
+	@which yq > /dev/null || { echo "yq not found. Run 'make install-yq' to install the pinned version into a user-owned bin dir."; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-bicep-types-contrib

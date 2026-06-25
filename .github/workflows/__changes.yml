@@ -5,6 +5,12 @@ name: Changes
 on:
   workflow_call:
     inputs:
+      # The default list enumerates paths that can NEVER affect the outcome of
+      # the heavy CI workflows that consume this one (build, unit-tests, lint,
+      # validate-bicep, functional tests, reference-docs). When ONLY these paths
+      # change, `only_changed` is `true` and those workflows are skipped. Only
+      # add a pattern here if a change to it cannot break compilation, tests,
+      # linting, bicep validation, functional tests, or generated reference docs.
       files:
         description: File patterns to detect changes
         required: false
@@ -14,17 +20,24 @@ on:
           .github/*.md
           docs/**/*.md
           docs/*.md
+          docs/**/*.png
+          docs/**/*.svg
           eng/design-notes/**/*.md
           eng/design-notes/**/*.png
+          eng/design-notes/**/*.svg
           specs/**/*.md
           test/**/*.md
           test/*.md
           *.md
+          LICENSE
+          .gitignore
           .cspellignore
           versions.yaml
           !docs/release-notes/v*.md
           .codecov.yml
           .devcontainer/**
+          grafana/**
+          .github/CODEOWNERS
           .github/configs/**
           .github/linters/**
           .github/dependabot.yml
@@ -32,9 +45,16 @@ on:
           .github/release.yml
           .github/runners/**
           .github/triage-bot/**
+          .github/workflows/c9k-failure-report.yml
+          .github/workflows/c9k-nightly.yml
           .github/workflows/close-stale-prs.yml
+          .github/workflows/contrib-update-resource-types.yaml
+          .github/workflows/dependabot-manager.yml
           .github/workflows/devcontainer-feature-release.yaml
           .github/workflows/devcontainer-feature-test.yaml
+          .github/workflows/issue-metrics.yml
+          .github/workflows/long-running-azure.yaml
+          .github/workflows/nightly-rad-CLI-tests.yaml
           .github/workflows/publish-*.yaml
           .github/workflows/purge-*.yaml
           .github/workflows/radius-bot.yaml
