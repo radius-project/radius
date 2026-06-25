@@ -92,13 +92,12 @@ jobs:
       - name: Run TypeSpec format check
         run: make tsp-format-check
 
+      - name: Install golangci-lint
+        # Pinned version + checksums live in build/tools.mk (GOLANGCI_LINT_VERSION).
+        run: make install-golangci-lint
+
       - name: Run linter
-        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
-        with:
-          version-file: .golangci-lint-version
-          args: --timeout=10m
-          skip-cache: true
-          install-mode: binary
+        run: golangci-lint run --timeout=10m
 
       - name: Run make generate
         run: make generate
