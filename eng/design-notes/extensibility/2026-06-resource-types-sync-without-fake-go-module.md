@@ -8,7 +8,7 @@ Radius ships a set of default resource type manifests (for example `Radius.Compu
 
 That model is sound. The problem is the **transport** it uses to fetch a pinned snapshot of upstream files: it turns `resource-types-contrib` into a **Go module** (a `go.mod` plus a placeholder `doc.go`) solely so Go's module cache can be used as a versioned file downloader, adds it to Radius's `go.mod`, and keeps it from being garbage-collected by `go mod tidy` with a blank import in `pkg/resourcetypescontrib/import.go`. The repository has no Go in it; the module exists only to game Go tooling. This is the "fake Go module" the rest of this document proposes to remove.
 
-This design keeps everything good about the 2026-04 model - Radius-side ownership of the default set, full YAML diff visibility in Radius PRs, version pinning, and CI drift detection - and replaces only the fetch transport with a mechanism that pins and downloads files directly from the upstream repository. It proposes a pragmatic first phase (pin-by-git-ref fetch) that can be implemented today, and a strategic end state (a versioned GitHub Release asset, optionally hardened with a signed OCI artifact) that aligns with the radius core repo's [GoReleaser release-lifecycle refactor](https://github.com/radius-project/design-notes/blob/main/tools/2026-03-goreleaser-release-lifecycle.md). GoReleaser is adopted by the radius core repo only; `resource-types-contrib` keeps its own minimal release workflow. The two phases share the same on-disk skeleton, so moving from one to the other changes a single fetch step and nothing else.
+This design keeps everything good about the 2026-04 model - Radius-side ownership of the default set, full YAML diff visibility in Radius PRs, version pinning, and CI drift detection - and replaces only the fetch transport with a mechanism that pins and downloads files directly from the upstream repository. It proposes a pragmatic first phase (pin-by-git-ref fetch) that can be implemented today, and a strategic end state (a versioned GitHub Release asset, optionally hardened with a signed OCI artifact) that aligns with the radius core repo's [GoReleaser release-lifecycle refactor](https://github.com/radius-project/design-notes/blob/main/tools/2026-03-goreleaser-release-lifecycle.md). GoReleaser is adopted by the radius core repo only; `resource-types-contrib` keeps its own minimal release workflow. The two phases share the same on-disk skeleton, so moving from one to the other changes a single fetch step and nothing else. From the start the pin is bumped by a Dependabot-like bot that opens a reviewable PR - tracking the moving `main`/`edge`/`latest` channel now and release tags once upstream publishes them - so automated sync is part of Phase A, not a later add-on.
 
 ## Terms and definitions
 
@@ -35,6 +35,7 @@ This design shares the goals of the [2026-04 automated default registration desi
 3. **Pin to an immutable, auditable revision** of upstream (commit SHA, tag, or OCI digest) with a readable record of what version is in use.
 4. **Align with the radius GoReleaser refactor.** The mechanism must require no Go-module machinery and must model the manifest bundle as a non-Go release artifact that a thin, tag-driven workflow in `resource-types-contrib` can publish and that a small coordination PR on the radius side can bump - the shape the GoReleaser note prescribes for non-Go assets. GoReleaser itself runs only in the radius core repo, not in `resource-types-contrib`.
 5. **Keep the on-disk skeleton stable across phases**, so the transport can evolve (git ref → OCI digest) without touching `defaults.yaml` semantics, the copy/prune logic, the drift check, or `RegisterDirectory`.
+6. **Automate the bump as a reviewable PR from the start.** A Dependabot-like bot opens a PR that bumps `source.ref` and re-syncs - tracking the moving `main`/`edge`/`latest` channel continuously and release tags at release time - so `latest`/`edge` builds never silently lag upstream and every bump is auditable with a full YAML diff.
 
 ### Non goals
 
@@ -76,6 +77,8 @@ Done. Review and commit the updated files.
 
 The Radius PR diff shows the actual YAML changes inline (the visibility property the 2026-04 design intentionally chose), plus a one-line `source.ref` change - instead of an opaque `go.mod` pseudo-version bump.
 
+In practice this command is usually run **by the sync bot, not by hand**: when `resource-types-contrib` updates, [`contrib-update-resource-types.yaml`](../../../.github/workflows/contrib-update-resource-types.yaml) opens a `bot/update-resource-types` PR that runs it and pushes the result, so the same one-line `source.ref` change and inline YAML diff arrive as a reviewable PR with CI already running. The manual command remains the fallback and the release-time path.
+
 ## Design
 
 ### High Level Design
@@ -84,8 +87,9 @@ The model keeps a fixed **skeleton** and makes the **transport** swappable:
 
 - **Skeleton (unchanged across phases):** `defaults.yaml` declares the default set and records the upstream pin → `make sync-resource-types` copies the selected manifests into `built-in-providers/{dev,self-hosted}/` and prunes stale managed files → the copies are committed → a CI drift check re-runs the copy and fails on any diff → `RegisterDirectory` loads the committed files at startup.
 - **Transport (the only thing that changes):** how `sync-resource-types` obtains the pinned snapshot of upstream files. Today: the Go module cache. Phase A: a pinned git ref fetched directly. Phase B: a versioned GitHub Release asset verified by checksum (optionally a signed OCI artifact pulled by digest).
+- **Bump (automated from the start):** a Dependabot-like bot opens a reviewable PR that advances `source.ref` to the next revision on its channel - the moving `main`/`edge`/`latest` HEAD now, release tags later - and re-runs the copy. The bump is never silent: it lands as a PR with the full YAML diff, the drift check, and CI.
 
-Because the pin is a plain string in `defaults.yaml` and the copy/prune/drift logic is transport-agnostic, swapping transports is a localized change to one Make recipe.
+Because the pin is a plain string in `defaults.yaml` and the copy/prune/drift logic is transport-agnostic, swapping transports is a localized change to one Make recipe. The bump mechanism is likewise transport-agnostic - the bot rewrites the same `source.ref` string regardless of how `sync` fetches it.
 
 ### Architecture Diagram
 
@@ -237,21 +241,22 @@ A hardening of Option 4: instead of (or alongside) a release asset, the contrib 
 - **New tooling on the sync path** (`oras`/`crane`, optionally `cosign`). Small, well-known binaries; still one more dependency than git.
 - **More moving parts than Phase A** for the same on-disk result, justified only once signing/SBOM are actually wanted.
 
-#### Option 6 - Automated cross-repo file-sync bot (complementary)
+#### Option 6 - Automated, Dependabot-like PR sync (adopted in Phase A)
 
-The org already runs a file-sync bot (`radius-files-sync[bot]`) that mirrors files across repos. A scheduled or release-triggered job opens a Radius PR that re-runs `sync-resource-types` against the latest upstream and updates `source.ref`.
+A bot opens (or refreshes) a Radius PR that runs `make update-resource-types` - resolving the upstream channel head and rewriting `source.ref` - so the pin is bumped continuously, not only by hand at release time. This already exists as [`contrib-update-resource-types.yaml`](../../../.github/workflows/contrib-update-resource-types.yaml): a `repository_dispatch` from `resource-types-contrib` on every push to its `main` opens a `bot/update-resource-types` PR. A GitHub App token makes that PR trigger CI (including the drift check) like a human PR. It tracks two channels - the moving `main`/`edge`/`latest` HEAD now, and release tags once upstream publishes them.
 
 ##### Advantages
 
-- **Removes manual bump toil**; the bump becomes a reviewable bot PR with full YAML diffs.
-- **Reuses an existing org capability.**
+- **Keeps `latest`/`edge` current.** Contrib `main` moves continuously; the bot keeps the lag to one reviewable PR instead of a silent gap closed only at release time.
+- **Removes manual bump toil** while preserving every review gate: the bump is a PR with the full YAML diff, the drift check, and CI.
+- **Reuses an existing capability** - the workflow is already in the repo.
 
 ##### Disadvantages
 
-- **Not a transport** - it automates _when_ `update-resource-types` runs, not _how_ files are fetched. It composes with Option 3, 4, or 5 rather than replacing them.
-- Cross-repo token/permission management.
+- **Not a transport** - it automates _when_ `update-resource-types` runs, not _how_ files are fetched. It composes with Option 3 (and later 4/5) rather than replacing them.
+- **Cross-repo token/permission management** (a scoped GitHub App), plus a `release: published` trigger still to be added for the release channel.
 
-Adopt later as automation on top of the chosen transport, mirroring the GoReleaser note's "open a PR to update `versions.yaml`" coordination step.
+Adopted in Phase A as the default bump mechanism - the hybrid of an immutable pin (Option 3) and automated PR sync - mirroring the GoReleaser note's "open a PR to update `versions.yaml`" coordination step.
 
 #### Option 7 - `go:embed`
 
@@ -301,7 +306,7 @@ Rejected - relocates the "fake module" problem rather than removing it.
 
 #### Proposed Option
 
-Adopt **Option 3 (pinned git-ref fetch) now** - it needs no upstream changes and removes the fake module immediately. Adopt **Option 4 (pinned GitHub Release asset) as the end state** - published by a minimal `resource-types-contrib` release workflow (not GoReleaser) and consumed on the radius side in line with the radius GoReleaser refactor - with **Option 5 (signed OCI artifact)** as an optional registry-and-signing upgrade. Phase B is sequenced with the radius core repo's GoReleaser work and the new contrib release workflow. Layer **Option 6 (sync bot)** on top once a transport is in place. This supersedes only the _transport_ of the [2026-04 design](2026-04-automated-default-resource-type-registration.md); its copy-based outcome (files committed in Radius, `defaults.yaml` in Radius, drift check) is preserved exactly.
+Adopt **Option 3 (pinned git-ref fetch) now** - it needs no upstream changes and removes the fake module immediately. Adopt **Option 4 (pinned GitHub Release asset) as the end state** - published by a minimal `resource-types-contrib` release workflow (not GoReleaser) and consumed on the radius side in line with the radius GoReleaser refactor - with **Option 5 (signed OCI artifact)** as an optional registry-and-signing upgrade. Phase B is sequenced with the radius core repo's GoReleaser work and the new contrib release workflow. Adopt **Option 6 (automated, Dependabot-like PR sync) in Phase A from the start** - the hybrid of an immutable pin plus a bot that proposes each bump as a PR - tracking the moving `main`/`edge`/`latest` channel now and release tags once they exist (see [Automated sync](#automated-sync-dependabot-like-and-channels)). This supersedes only the _transport_ of the [2026-04 design](2026-04-automated-default-resource-type-registration.md); its copy-based outcome (files committed in Radius, `defaults.yaml` in Radius, drift check) is preserved exactly.
 
 ##### `defaults.yaml` schema change
 
@@ -381,6 +386,23 @@ The [GoReleaser note](https://github.com/radius-project/design-notes/blob/main/t
 
 Concretely, two separate workflows: (1) a minimal `resource-types-contrib` release workflow (not GoReleaser) attaches the manifest bundle (release asset + `checksums.txt`, optionally an OCI artifact + signature) on tag; (2) the radius core repo's GoReleaser-driven post-release coordination bumps `deploy/manifest/defaults.yaml` `source.ref`/`sha256` via PR. Only step (2) touches the radius GoReleaser plan.
 
+### Automated sync (Dependabot-like) and channels
+
+The pin in `defaults.yaml` is bumped by an **automated, Dependabot-like job that opens a reviewable PR**, not only by hand at release time. This is part of Phase A from the start: the immutable-pin transport (Option 3) and the automated PR sync (Option 6) are adopted together as a **hybrid** - an immutable `source.ref` plus a bot that proposes the next ref as a PR carrying the full YAML diff, the drift check, and CI.
+
+The bot already exists as [`contrib-update-resource-types.yaml`](../../../.github/workflows/contrib-update-resource-types.yaml): a `repository_dispatch` from `resource-types-contrib` opens (or refreshes) a `bot/update-resource-types` PR that runs `make update-resource-types`, which resolves the channel head and rewrites `source.ref`. A scoped GitHub App token makes that PR trigger CI (including the drift check) exactly like a human PR.
+
+**Channels.** `source.ref` follows one of two upstream channels, both expressed as the same immutable pin:
+
+| Channel | `source.ref` points to | Trigger | Status |
+| --- | --- | --- | --- |
+| `main` / `edge` / `latest` | The upstream `main` HEAD, resolved to a commit SHA and recorded in the bump PR | `repository_dispatch` on every push to contrib `main` | In place (Phase A) |
+| release | An upstream release **tag** (and, in Phase B, the asset `sha256` / OCI digest) | Contrib `release: published` | Trigger to be added; tag verification in Phase B |
+
+The moving channel keeps Radius `latest`/`edge` builds current with contrib `main`; the release channel pins a stable upstream tag at Radius release time. The manual `make update-resource-types` in the [release guide](../../../docs/contributing/contributing-releases/README.md) is the human equivalent of the release-channel bump and remains the fallback. Both channels deliver the bump as a PR, so nothing is fetched at build or runtime without review.
+
+**Why automate from the start.** Manual-only bumps drift: contrib `main` moves, Radius `latest` silently lags, and the gap is closed only at release time. A continuous bot PR keeps the lag to a single reviewable diff, makes every bump auditable, and runs the same drift check and CI a human bump would - so the automation is strictly the human path with the toil removed, not a new trust surface.
+
 ### Error Handling
 
 | Scenario                                                  | Behavior                                                                            |
@@ -420,12 +442,12 @@ Concretely, two separate workflows: (1) a minimal `resource-types-contrib` relea
 1. **PR 1 (radius):** add the `source` block to `defaults.yaml`; rewrite `build/resource-types.mk` to fetch by pinned ref (Option 3); update `verify-resource-types.yaml` (drop Go setup and `go.mod`/`go.sum` path filters); remove the `require` line and run `go mod tidy`; delete `pkg/resourcetypescontrib/import.go`. Verify drift CI and startup tests pass.
 2. **PR 2 (resource-types-contrib):** delete `go.mod` and `doc.go`.
 3. **PR 3 (radius):** update the release process doc and the contrib README to describe the ref-based bump.
-4. **Phase B (contrib release workflow + radius coordination):** add a minimal release workflow in `resource-types-contrib` (not GoReleaser) that, on tag, attaches the manifest bundle as a GitHub Release asset + `checksums.txt` (Option 4); switch the Radius fetch step to download-and-verify the asset; record `tag` + `sha256` in `defaults.yaml`, bumped by the radius post-release coordination step. Optionally harden to a signed OCI artifact (Option 5: `oras pull … @digest` + `cosign verify`/SBOM). Sequenced with the radius core repo's GoReleaser work.
-5. **Automation (optional):** a release-triggered or scheduled bot PR that runs `update-resource-types` and bumps the pin (Option 4).
+4. **Automated sync (Phase A, partly in place):** the [`contrib-update-resource-types.yaml`](../../../.github/workflows/contrib-update-resource-types.yaml) bot already opens a PR bumping `source.ref` on every `resource-types-contrib` `main` update (the `main`/`edge`/`latest` channel). Add a `release: published` trigger so a contrib release also opens a bump PR (the release channel). Both run `make update-resource-types`, surface the full YAML diff, and gate on the drift check + CI.
+5. **Phase B (contrib release workflow + radius coordination):** add a minimal release workflow in `resource-types-contrib` (not GoReleaser) that, on tag, attaches the manifest bundle as a GitHub Release asset + `checksums.txt` (Option 4); switch the Radius fetch step to download-and-verify the asset; record `tag` + `sha256` in `defaults.yaml`, bumped by the radius post-release coordination step. Optionally harden to a signed OCI artifact (Option 5: `oras pull … @digest` + `cosign verify`/SBOM). Sequenced with the radius core repo's GoReleaser work.
 
 ## Open Questions
 
-1. **Pin granularity in Phase A:** commit SHA (immutable, less readable) vs a moving branch with a recorded SHA comment. SHA is recommended for reproducibility.
+1. **Channel default:** track the moving `main`/`edge`/`latest` channel (the bot resolves HEAD to a commit SHA on each PR, so the committed pin stays an immutable, reproducible SHA) vs pinning a release tag. Recommended: track `main` now and switch the release channel to tags once `resource-types-contrib` publishes them.
 2. **One file or two:** keep the pin in `defaults.yaml` (recommended) or split into `sources.yaml` (better if multiple sources ever appear).
 3. **End-state transport:** GitHub Release asset (Option 4 - lighter, idiomatic GoReleaser) vs OCI artifact (Option 5 - registry + cosign). The Release asset is recommended as the default end state, with OCI as an opt-in upgrade.
 4. **Phase B timing:** gate strictly behind `resource-types-contrib` adopting tagged releases, or stand up a minimal manifest-bundle release workflow sooner.
@@ -442,7 +464,7 @@ Concretely, two separate workflows: (1) a minimal `resource-types-contrib` relea
 | 3. Pinned git-ref fetch | **Phase A** | Removes all three smells; intrinsic integrity; reuses the existing skeleton; needs no upstream changes. |
 | 4. Pinned GitHub Release asset | **Phase B (end state)** | Standard release format (archive + `checksums.txt`) from a minimal contrib workflow; human-readable tag + checksum; tool-light (`curl`/`sha256sum`). |
 | 5. Versioned signed OCI artifact | Phase B upgrade | Adds registry distribution + cosign/SBOM over Option 4; needs `oras`/`cosign`. |
-| 6. Cross-repo sync bot | Complementary | Automates _when_ to bump, not _how_ to fetch; layer on top later. |
+| 6. Automated, Dependabot-like PR sync | **Phase A (automation)** | Bumps `source.ref` as a reviewable PR from the start - `main`/`edge`/`latest` channel now, releases later; already implemented as `contrib-update-resource-types.yaml`. |
 | 7. `go:embed` | Rejected | Still needs the fake module; no YAML-diff visibility. |
 | 8. Runtime / install-time fetch | Rejected | Violates the 2026-04 "no runtime fetching" non-goal; no PR-time visibility. |
 | 9. Foreign package registry (npm) | Rejected | Relocates the fake-module smell to another ecosystem. |
