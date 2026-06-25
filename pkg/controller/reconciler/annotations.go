@@ -17,13 +17,12 @@ limitations under the License.
 package reconciler
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/hashutil"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
 )
@@ -82,9 +81,21 @@ func (c *deploymentConfiguration) computeHash() (string, error) {
 		return "", err
 	}
 
-	sum := sha1.Sum(b)
-	hash := hex.EncodeToString(sum[:])
-	return hash, nil
+	return hashutil.Hex(b), nil
+}
+
+// matchesHash reports whether stored matches the current configuration hash.
+//
+// It accepts both the current SHA-256 hash and the legacy SHA-1 hash so that
+// upgrading Radius (which changes the hash algorithm) does not flag an otherwise
+// unchanged configuration as out-of-date and trigger an unnecessary update.
+func (c *deploymentConfiguration) matchesHash(stored string) bool {
+	b, err := json.Marshal(c)
+	if err != nil {
+		return false
+	}
+
+	return stored == hashutil.Hex(b) || stored == hashutil.LegacyHex(b)
 }
 
 type deploymentStatus struct {
@@ -234,12 +245,7 @@ func (annotations *deploymentAnnotations) IsUpToDate() bool {
 		return false
 	}
 
-	hash, err := annotations.Configuration.computeHash()
-	if err != nil {
-		return false // If the hash cannot be computed, we assume the configuration is outdated.
-	}
-
-	return hash == annotations.ConfigurationHash
+	return annotations.Configuration.matchesHash(annotations.ConfigurationHash)
 }
 
 // OperationInProgress returns true if there is an operation in progress for the given deployment.

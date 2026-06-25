@@ -17,16 +17,16 @@ limitations under the License.
 package etag
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
 )
 
-// New generates a unique string based on the SHA1 hash of the input data.
+// New generates a unique string based on the SHA-256 hash of the input data.
 func New(data []byte) string {
-	hash := sha1.Sum(data)
+	hash := sha256.Sum256(data)
 	return fmt.Sprintf("%d-%x", int(len(hash)), hash)
 }
 

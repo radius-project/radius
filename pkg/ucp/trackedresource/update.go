@@ -134,7 +134,7 @@ func (u *Updater) Update(ctx context.Context, downstream string, id resources.ID
 		ctx := logr.NewContext(ctx, logger)
 		logger.V(ucplog.LevelDebug).Info("beginning attempt")
 
-		err := u.run(ctx, id, trackingID, destination, apiVersion)
+		err := u.run(ctx, id, destination, apiVersion)
 		if errors.Is(err, &InProgressErr{}) && attempt == u.AttemptCount {
 			// Preserve the InprogressErr for the last attempt.
 			return err
@@ -151,12 +151,45 @@ func (u *Updater) Update(ctx context.Context, downstream string, id resources.ID
 	return fmt.Errorf("failed to update tracked resource after %d attempts", u.AttemptCount)
 }
 
-func (u *Updater) run(ctx context.Context, id resources.ID, trackingID resources.ID, destination *url.URL, apiVersion string) error {
+// ResolveTrackingEntry reads the tracking entry for id from the database, preferring the
+// current (SHA-256) tracking ID and falling back to the legacy (SHA-1) tracking ID written
+// by older versions of Radius.
+//
+// It returns the tracking ID to operate under (the current ID when the resource is not yet
+// tracked) and the existing stored object, if any. Existing entries continue to be maintained
+// under whichever ID they were created with until they are deleted; new entries are created
+// under the current ID. This keeps the SHA-1 -> SHA-256 migration non-breaking. See
+// https://github.com/radius-project/radius/issues/8084.
+func ResolveTrackingEntry(ctx context.Context, client database.Client, id resources.ID) (resources.ID, *database.Object, error) {
+	currentID := IDFor(id)
+	obj, err := client.Get(ctx, currentID.String())
+	if err == nil {
+		return currentID, obj, nil
+	} else if !errors.Is(err, &database.ErrNotFound{}) {
+		return currentID, nil, err
+	}
+
+	// No entry under the current ID; fall back to the legacy ID in case this resource was
+	// tracked by an older version of Radius.
+	legacyID := LegacyIDFor(id)
+	obj, err = client.Get(ctx, legacyID.String())
+	if err == nil {
+		return legacyID, obj, nil
+	} else if !errors.Is(err, &database.ErrNotFound{}) {
+		return currentID, nil, err
+	}
+
+	return currentID, nil, nil
+}
+
+func (u *Updater) run(ctx context.Context, id resources.ID, destination *url.URL, apiVersion string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
-	obj, err := u.DatabaseClient.Get(ctx, trackingID.String())
-	if errors.Is(err, &database.ErrNotFound{}) {
-		// This is fine. It might be a new resource.
-	} else if err != nil {
+
+	// Read the existing tracking entry, preferring the current (SHA-256) tracking ID and falling
+	// back to the legacy (SHA-1) tracking ID written by older versions of Radius. We operate under
+	// whichever ID the entry already exists so the migration is non-breaking.
+	trackingID, obj, err := ResolveTrackingEntry(ctx, u.DatabaseClient, id)
+	if err != nil {
 		return err
 	}
 

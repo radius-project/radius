@@ -124,7 +124,7 @@ func Test_DeploymentTemplateReconciler_ComputeHash(t *testing.T) {
 			deploymentTemplate: &radappiov1alpha3.DeploymentTemplate{
 				Spec: radappiov1alpha3.DeploymentTemplateSpec{},
 			},
-			expected: "bf21a9e8fbc5a3846fb05b4fa0859e0917b2202f",
+			expected: "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
 		},
 		{
 			name: "simple",
@@ -135,7 +135,7 @@ func Test_DeploymentTemplateReconciler_ComputeHash(t *testing.T) {
 					ProviderConfig: "{}",
 				},
 			},
-			expected: "47ee899e74561942ee36a02ffd80be955e251583",
+			expected: "950829dab3e33b280e2ef52a7484c51d19a51498a74aab1d7f4d2781d6e65953",
 		},
 		{
 			name: "complex",
@@ -146,7 +146,7 @@ func Test_DeploymentTemplateReconciler_ComputeHash(t *testing.T) {
 					ProviderConfig: `{"AWS":{"type":"aws","value":{"scope":"scope"}}}`,
 				},
 			},
-			expected: "5c83b7122697599db2a47f2d5f7e29f4b9e3c869",
+			expected: "ff16a7bcb2db8d7c1280eb761b376939dfc3856a74cfd77b986a1c0f25abf5dd",
 		},
 	}
 
@@ -167,6 +167,23 @@ func Test_DeploymentTemplateReconciler_IsUpToDate(t *testing.T) {
 	}{
 		{
 			name: "up-to-date",
+			deploymentTemplate: &radappiov1alpha3.DeploymentTemplate{
+				Spec: radappiov1alpha3.DeploymentTemplateSpec{
+					Template:       "{}",
+					Parameters:     map[string]string{},
+					ProviderConfig: "{}",
+				},
+				Status: radappiov1alpha3.DeploymentTemplateStatus{
+					StatusHash: "950829dab3e33b280e2ef52a7484c51d19a51498a74aab1d7f4d2781d6e65953",
+				},
+			},
+			expected: true,
+		},
+		{
+			// Verifies the SHA-1 -> SHA-256 migration is non-breaking: a StatusHash written
+			// by an older version of Radius (legacy SHA-1 of the "simple" spec) is still
+			// considered up-to-date, so upgrading does not trigger an unnecessary deployment.
+			name: "legacy-hash-up-to-date",
 			deploymentTemplate: &radappiov1alpha3.DeploymentTemplate{
 				Spec: radappiov1alpha3.DeploymentTemplateSpec{
 					Template:       "{}",
@@ -202,7 +219,7 @@ func Test_DeploymentTemplateReconciler_IsUpToDate(t *testing.T) {
 					ProviderConfig: `{"AWS":{"type":"aws","value":{"scope":"scope"}}}`,
 				},
 				Status: radappiov1alpha3.DeploymentTemplateStatus{
-					StatusHash: "5c83b7122697599db2a47f2d5f7e29f4b9e3c869",
+					StatusHash: "ff16a7bcb2db8d7c1280eb761b376939dfc3856a74cfd77b986a1c0f25abf5dd",
 				},
 			},
 			expected: true,
