@@ -52,9 +52,6 @@ func testContext() *recipecontext.Context {
 					},
 				},
 			},
-			Secrets: map[string]string{
-				"apiKey": "k3y-v@lue",
-			},
 		},
 		Application: recipecontext.ResourceInfo{
 			Name: "my-app",
@@ -533,26 +530,6 @@ func Test_SecretExpressions(t *testing.T) {
 				"token": "{{context.resource.connections.db.secrets.missing}}",
 			},
 			expectedSecureKeys: map[string]bool{},
-		},
-		{
-			name: "secret-reference secret resolves and is tagged secure",
-			params: map[string]any{
-				"apiKey": "{{context.resource.secrets.apiKey}}",
-				"sku":    "Standard",
-			},
-			expectedValues: map[string]any{
-				"apiKey": "k3y-v@lue",
-				"sku":    "Standard",
-			},
-			expectedSecureKeys: map[string]bool{"apiKey": true},
-		},
-		{
-			name: "secret-reference secret interpolated into a surrounding string is rejected",
-			params: map[string]any{
-				"header": "Bearer {{context.resource.secrets.apiKey}}",
-			},
-			expectErr:   true,
-			errContains: "may only be used as the entire parameter value",
 		},
 	}
 

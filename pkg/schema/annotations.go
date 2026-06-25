@@ -159,48 +159,7 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 	return paths
 }
 
-// ExtractSecretReferenceFieldPaths recursively walks the schema and returns paths to string fields marked
-// with the x-radius-secret-reference annotation. Each such field holds the name of a Radius.Security/secrets
-// resource. The prefix parameter builds up the path as we traverse nested objects. A marked field is treated
-// as a leaf: its nested properties (if any) are not traversed.
-func ExtractSecretReferenceFieldPaths(schema map[string]any, prefix string) []string {
-	var paths []string
-
-	properties, ok := schema["properties"].(map[string]any)
-	if !ok {
-		return paths
-	}
-
-	for fieldName, fieldSchema := range properties {
-		fieldSchemaMap, ok := fieldSchema.(map[string]any)
-		if !ok {
-			continue
-		}
-
-		// Build the full path for this field.
-		var fullPath string
-		if prefix == "" {
-			fullPath = fieldName
-		} else {
-			fullPath = prefix + "." + fieldName
-		}
-
-		// A field marked as a secret reference is treated as a leaf.
-		if isRef, ok := fieldSchemaMap[annotationRadiusSecretReference].(bool); ok && isRef {
-			paths = append(paths, fullPath)
-			continue
-		}
-
-		// Recursively check nested objects.
-		if nestedProps, ok := fieldSchemaMap["properties"].(map[string]any); ok {
-			nestedSchema := map[string]any{"properties": nestedProps}
-			paths = append(paths, ExtractSecretReferenceFieldPaths(nestedSchema, fullPath)...)
-		}
-	}
-
-	return paths
-}
-
+// FieldPathSegment represents a single segment in a field path.
 // A field path can contain field names, wildcards, and array indices.
 type FieldPathSegment struct {
 	Type  SegmentType

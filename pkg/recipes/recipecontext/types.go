@@ -62,12 +62,6 @@ type Resource struct {
 	// context.resource.connections.[connection-name].name
 	// context.resource.connections.[connection-name].type
 	Connections map[string]recipes.ConnectedResource `json:"connections,omitempty"`
-
-	// Secrets holds resolved secret material referenced by the resource through x-radius-secret-reference
-	// properties, keyed by secret key. It is tagged json:"-" so it is never serialized into the recipe
-	// context, logs, or IaC state. Recipe authors reference it via the context.resource.secrets.<key>
-	// expression path, and resolved values are routed to @secure()/sensitive module parameters.
-	Secrets map[string]string `json:"-"`
 }
 
 // ResourceInfo represents name and id of the resource

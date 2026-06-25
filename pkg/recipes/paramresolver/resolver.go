@@ -373,9 +373,8 @@ func buildTypedContextLookup(ctx *recipecontext.Context) map[string]any {
 }
 
 // buildSecretLookup builds a flat key-value map of secret material exposed by secret-typed connected
-// resources and by x-radius-secret-reference properties. Keys use the paths
-// context.resource.connections.<name>.secrets.<key> and context.resource.secrets.<key>. This lookup is
-// kept separate from the non-secret context lookup so secret values can only be resolved through the
+// resources. Keys use the path context.resource.connections.<name>.secrets.<key>. This lookup is kept
+// separate from the non-secret context lookup so secret values can only be resolved through the
 // whole-value secret path and are tagged for secure routing, never resolved as ordinary string values.
 func buildSecretLookup(ctx *recipecontext.Context) map[string]string {
 	secrets := map[string]string{}
@@ -387,10 +386,6 @@ func buildSecretLookup(ctx *recipecontext.Context) map[string]string {
 		for key, val := range conn.Secrets {
 			secrets[fmt.Sprintf("context.resource.connections.%s.secrets.%s", connName, key)] = val
 		}
-	}
-
-	for key, val := range ctx.Resource.Secrets {
-		secrets[fmt.Sprintf("context.resource.secrets.%s", key)] = val
 	}
 
 	return secrets

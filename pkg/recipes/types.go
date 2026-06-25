@@ -109,16 +109,6 @@ type ResourceMetadata struct {
 	// The key is connection name and the value contains the connected resource's metadata and properties.
 	// These are passed into the recipe context.
 	ConnectedResourcesProperties map[string]ConnectedResource
-	// SecretReferences maps a resource property path marked with x-radius-secret-reference (e.g. "secretName")
-	// to the fully qualified Radius.Security/secrets resource ID that the property's value names. It is
-	// populated by the resource controller from the resource's schema and properties, and consumed by the
-	// engine to load the referenced secret's data into Secrets.
-	SecretReferences map[string]string
-	// Secrets holds resolved secret material for secret-reference properties, keyed by secret key. It is
-	// populated only from the referenced secret's deployed material (never from Properties) and is tagged
-	// json:"-" so it is never serialized into the recipe context, logs, or IaC state. Recipe authors
-	// reference it via the context.resource.secrets.<key> expression path.
-	Secrets map[string]string `json:"-"`
 	// Parameters represents key/value pairs to pass into the recipe template. Overrides any parameters set by the environment.
 	Parameters map[string]any
 }

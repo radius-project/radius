@@ -40,12 +40,6 @@ const (
 // Constants for annotation names
 const (
 	annotationRadiusSensitive = "x-radius-sensitive"
-
-	// annotationRadiusSecretReference marks a string property whose value is the name of a
-	// Radius.Security/secrets resource. Radius resolves the referenced secret's data and exposes it
-	// to recipes through the context.resource.secrets.<key> expression path. Unlike x-radius-sensitive
-	// (which marks the secret value itself), this annotation marks a reference to a secret by name.
-	annotationRadiusSecretReference = "x-radius-secret-reference"
 )
 
 // joinPath concatenates two path segments with a dot separator for property path tracking.

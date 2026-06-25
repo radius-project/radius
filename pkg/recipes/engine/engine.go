@@ -101,14 +101,6 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 	// (context.resource.connections.<name>.secrets.<key>) can resolve developer-authored secrets.
 	e.enrichConnectionSecrets(ctx, &recipe)
 
-	// Enrich x-radius-secret-reference properties with their referenced secret material so recipe
-	// parameter expressions (context.resource.secrets.<key>) can resolve developer-authored secrets.
-	// Unlike connection enrichment, this is fail-closed: a referenced secret that cannot be loaded fails
-	// the deployment rather than passing an unresolved expression (a literal placeholder) to the module.
-	if err := e.enrichSecretReferences(ctx, &recipe); err != nil {
-		return nil, definition, recipes.NewRecipeError(recipes.RecipeConfigurationFailure, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
-	}
-
 	res, err := driver.Execute(ctx, recipedriver.ExecuteOptions{
 		BaseOptions: recipedriver.BaseOptions{
 			Configuration: *configuration,
@@ -302,53 +294,4 @@ func (e *engine) enrichConnectionSecrets(ctx context.Context, recipe *recipes.Re
 			recipe.ConnectedResourcesProperties[name] = conn
 		}
 	}
-}
-
-// enrichSecretReferences loads secret material for x-radius-secret-reference properties and stores it on
-// the recipe's tainted Secrets field, so the parameter resolver can inject developer-authored secrets into
-// module parameters via the context.resource.secrets.<key> expression path. Unlike enrichConnectionSecrets,
-// this is fail-closed: if a referenced secret cannot be loaded, an error is returned so the deployment fails
-// rather than passing an unresolved expression (and therefore a literal placeholder) to the module.
-func (e *engine) enrichSecretReferences(ctx context.Context, recipe *recipes.ResourceMetadata) error {
-	if recipe == nil || len(recipe.SecretReferences) == 0 {
-		return nil
-	}
-
-	if e.options.SecretsLoader == nil {
-		return fmt.Errorf("secrets loader is not configured; cannot resolve referenced secrets")
-	}
-
-	// Collect the distinct secret IDs referenced by the resource's properties.
-	secretIDs := map[string]bool{}
-	for _, secretID := range recipe.SecretReferences {
-		if secretID != "" {
-			secretIDs[secretID] = true
-		}
-	}
-	if len(secretIDs) == 0 {
-		return nil
-	}
-
-	if recipe.Secrets == nil {
-		recipe.Secrets = map[string]string{}
-	}
-
-	for secretID := range secretIDs {
-		// A nil keys filter loads all secret keys for the referenced secret.
-		loaded, err := e.options.SecretsLoader.LoadSecrets(ctx, map[string][]string{secretID: nil})
-		if err != nil {
-			return fmt.Errorf("failed to load referenced secret %q: %w", secretID, err)
-		}
-
-		data, ok := loaded[secretID]
-		if !ok {
-			return fmt.Errorf("referenced secret %q returned no data", secretID)
-		}
-
-		for key, val := range data.Data {
-			recipe.Secrets[key] = val
-		}
-	}
-
-	return nil
 }

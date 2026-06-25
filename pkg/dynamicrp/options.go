@@ -29,7 +29,6 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
-	"github.com/radius-project/radius/pkg/dynamicrp/secretsloader"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
@@ -120,12 +119,7 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 	}
 
 	options.Recipes.ConfigurationLoader = configloader.NewEnvironmentLoader(sdk.NewClientOptions(options.UCP))
-
-	// The dispatching loader reads Radius.Security/secrets resources from their backing Kubernetes Secret
-	// (cleartext is never persisted to the database), and delegates other secret store types to the
-	// default Applications.Core/secretStores loader.
-	storeLoader := configloader.NewSecretStoreLoader(sdk.NewClientOptions(options.UCP))
-	options.Recipes.SecretsLoader = secretsloader.NewDispatchingLoader(storeLoader, databaseClient, options.KubernetesProvider)
+	options.Recipes.SecretsLoader = configloader.NewSecretStoreLoader(sdk.NewClientOptions(options.UCP))
 
 	// If this is set to nil, then the service will use the default recipe drivers.
 	//

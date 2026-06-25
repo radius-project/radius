@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/go-logr/logr"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -37,13 +36,8 @@ import (
 	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	schemautil "github.com/radius-project/radius/pkg/schema"
-	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
-
-// secretReferenceResourceType is the resource type of a Radius.Security/secrets resource named by an
-// x-radius-secret-reference property.
-const secretReferenceResourceType = "Radius.Security/secrets"
 
 // CreateOrUpdateResource is the async operation controller to create or update portable resources.
 type CreateOrUpdateResource[P interface {
@@ -88,7 +82,6 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 
 	currentETag := storedResource.ETag
 	var recipeProperties map[string]any
-	var secretReferencePaths []string
 	redactionCompleted := false
 
 	// Attempt to decrypt and redact sensitive fields before recipe execution.
@@ -99,10 +92,6 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		if schemaErr != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to fetch schema for sensitive field detection: %w", schemaErr)
 		} else if schema != nil {
-			// Detect properties that reference a Radius.Security/secrets resource by name so the engine can
-			// resolve them into recipe context (context.resource.secrets.<key>).
-			secretReferencePaths = schemautil.ExtractSecretReferenceFieldPaths(schema, "")
-
 			sensitiveFieldPaths := schemautil.ExtractSensitiveFieldPaths(schema, "")
 			if len(sensitiveFieldPaths) > 0 {
 				logger.Info("Sensitive fields detected for resource", "resourceID", req.ResourceID, "paths", sensitiveFieldPaths)
@@ -182,7 +171,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	recipeDataModel, supportsRecipes := any(resource).(datamodel.RecipeDataModel)
 	var recipeOutput *recipes.RecipeOutput
 	if supportsRecipes && recipeDataModel.GetRecipe() != nil {
-		recipeOutput, err = c.executeRecipeIfNeeded(ctx, resource, recipeDataModel, previousOutputResources, config.Simulated, recipeProperties, secretReferencePaths)
+		recipeOutput, err = c.executeRecipeIfNeeded(ctx, resource, recipeDataModel, previousOutputResources, config.Simulated, recipeProperties)
 		if err != nil {
 			return c.handleRecipeError(ctx, err, recipeDataModel, req.ResourceID, currentETag, logger, redactionCompleted)
 		}
@@ -273,7 +262,7 @@ func (c *CreateOrUpdateResource[P, T]) copyOutputResources(resource P) []string 
 	return previousOutputResources
 }
 
-func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, resource P, recipeDataModel datamodel.RecipeDataModel, prevState []string, simulated bool, recipeProperties map[string]any, secretReferencePaths []string) (*recipes.RecipeOutput, error) {
+func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, resource P, recipeDataModel datamodel.RecipeDataModel, prevState []string, simulated bool, recipeProperties map[string]any) (*recipes.RecipeOutput, error) {
 	// Caller ensures recipeDataModel supports recipes and has a non-nil recipe
 	recipe := recipeDataModel.GetRecipe()
 
@@ -324,14 +313,6 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		ConnectedResourcesProperties: connectedResourcesMetadata,
 	}
 
-	// Resolve x-radius-secret-reference properties to Radius.Security/secrets resource IDs so the engine
-	// can load their secret material into the recipe context.
-	secretReferences, err := buildSecretReferences(resource.GetBaseResource().ID, resourceProperties, secretReferencePaths)
-	if err != nil {
-		return nil, err
-	}
-	metadata.SecretReferences = secretReferences
-
 	return c.engine.Execute(ctx, engine.ExecuteOptions{
 		BaseOptions: engine.BaseOptions{
 			Recipe: metadata,
@@ -343,60 +324,6 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 
 func getResourceAPIVersion[P rpv1.RadiusResourceModel](resource P) string {
 	return resource.GetBaseResource().InternalMetadata.UpdatedAPIVersion
-}
-
-// buildSecretReferences resolves x-radius-secret-reference property values (each the name of a
-// Radius.Security/secrets resource) to fully qualified resource IDs scoped to the consuming resource's
-// resource group. Unset reference properties are skipped; a malformed reference is an error so the
-// deployment fails closed rather than passing an unresolved value to the recipe.
-func buildSecretReferences(resourceID string, properties map[string]any, secretReferencePaths []string) (map[string]string, error) {
-	if len(secretReferencePaths) == 0 {
-		return nil, nil
-	}
-
-	parsed, err := resources.ParseResource(resourceID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse resource ID %q for secret reference resolution: %w", resourceID, err)
-	}
-
-	references := map[string]string{}
-	for _, path := range secretReferencePaths {
-		name, ok := stringValueAtPath(properties, path)
-		if !ok || name == "" {
-			// The reference property is optional and unset; nothing to resolve.
-			continue
-		}
-
-		secretID := fmt.Sprintf("%s/providers/%s/%s", parsed.RootScope(), secretReferenceResourceType, name)
-		if _, err := resources.ParseResource(secretID); err != nil {
-			return nil, fmt.Errorf("failed to construct secret resource ID for property %q with value %q: %w", path, name, err)
-		}
-		references[path] = secretID
-	}
-
-	if len(references) == 0 {
-		return nil, nil
-	}
-
-	return references, nil
-}
-
-// stringValueAtPath returns the string value at the given dot-separated path in a nested properties map.
-func stringValueAtPath(properties map[string]any, path string) (string, bool) {
-	var current any = properties
-	for _, segment := range strings.Split(path, ".") {
-		m, ok := current.(map[string]any)
-		if !ok {
-			return "", false
-		}
-		current, ok = m[segment]
-		if !ok {
-			return "", false
-		}
-	}
-
-	value, ok := current.(string)
-	return value, ok
 }
 
 func deepCopyProperties(source map[string]any) (map[string]any, error) {
