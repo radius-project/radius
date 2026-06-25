@@ -2,11 +2,11 @@ namespace: Radius.Compute
 types:
   persistentVolumes:
     description: |
-      The Radius.Compute/persistentVolumes Resource Type represents a persistent storage volume. A PersistentVolume can be referenced in the volumes property of a Container. 
+      The Radius.Compute/persistentVolumes Resource Type represents a persistent storage volume. A PersistentVolume can be referenced in the volumes property of a Container.
       To deploy, first add a PersistentVolume resource to the application definition Bicep file.
       ```
       extension radius
-      param environment string 
+      param environment string
 
       resource myApplication 'Radius.Core/applications@2025-08-01-preview' = { ... }
 
@@ -34,8 +34,8 @@ types:
                 {
                 volumeName: 'data'
                 mountPath: '/app/data'
-                } 
-              ] 
+                }
+              ]
             }
           }
           volumes: {
@@ -69,7 +69,7 @@ types:
               volumeMounts: [
                 {
                   volumeName: 'readOnlyData'
-                  mountPath: '/app/data' 
+                  mountPath: '/app/data'
                 }
               ]
             }
@@ -90,15 +90,9 @@ types:
 
     apiVersions:
       '2025-08-01-preview':
-        schema: 
+        schema:
           type: object
           properties:
-            environment:
-              type: string
-              description: (Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.
-            application:
-              type: string
-              description: (Optional) The Radius Application ID. `myApplication.id` for example.
             sizeInGib:
               type: integer
               description: (Required) The size of the volume in gibibytes. `1` represents 1024 MiB.

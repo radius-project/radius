@@ -62,7 +62,7 @@ types:
       }
       ```
 
-      The hostname is determined by the Recipe. 
+      The hostname is determined by the Recipe.
 
       Multiple rules can be included in Routes.
       ```
@@ -104,17 +104,11 @@ types:
 
     apiVersions:
       '2025-08-01-preview':
-        schema: 
+        schema:
           type: object
           properties:
-            environment:
-              type: string
-              description: (Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.
-            application:
-              type: string
-              description: (Required) The Radius Application ID. `myApplication.id` for example.
             kind:
-              type: string 
+              type: string
               enum: [HTTP, TCP, TLS, UDP]
               description: (Optional) The type of rule. If not specified, `HTTPRoute` is assumed. `HTTPRoute` provides L7 ingress with support for matching based on the hostname and HTTP header. `TCPRoute` provides L4 ingress with no support for matching (all traffic is forwarded to the Container). `TLSRoute` provides L4 ingress with the ability to match based on Server Name Indication (SNI) which is equivalent to hostname in TLS. `UDPRoute` is similar to TCPRoutes but uses UDP.
             hostnames:
@@ -130,7 +124,7 @@ types:
                 properties:
                   matches:
                     type: array
-                    description: (Required) Matches define conditions used for matching a request. 
+                    description: (Required) Matches define conditions used for matching a request.
                     items:
                       type: object
                       properties:
@@ -149,7 +143,7 @@ types:
                             required: [name, value]
                         httpMethod:
                           type: string
-                          description: (Optional) The HTTP method to match. Specify only when kind is HTTP. 
+                          description: (Optional) The HTTP method to match. Specify only when kind is HTTP.
                           enum: [GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH]
                         httpPath:
                           type: string
@@ -178,7 +172,7 @@ types:
                         description: (Required) The specific container to target within the Container resource.
                       containerPort:
                         type: integer
-                        description: (Required) The port to target from the container. 
+                        description: (Required) The port to target from the container.
                     required: [resourceId, containerName, containerPort]
                 required: [matches, destinationContainer]
             listener:

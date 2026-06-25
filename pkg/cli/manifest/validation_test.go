@@ -535,7 +535,7 @@ func TestApplyBaseResourceManifest(t *testing.T) {
 		require.Contains(t, schemaMap["required"], "environment")
 	})
 
-	t.Run("per-type property wins over base", func(t *testing.T) {
+	t.Run("rejects a schema that redeclares a base property", func(t *testing.T) {
 		provider := &ResourceProvider{
 			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
@@ -557,11 +557,35 @@ func TestApplyBaseResourceManifest(t *testing.T) {
 			},
 		}
 
+		err := applyBaseResourceManifest(provider)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "environment")
+		require.Contains(t, err.Error(), "must not be redeclared")
+	})
+
+	t.Run("allows a base property listed only under required", func(t *testing.T) {
+		provider := &ResourceProvider{
+			Namespace: "Test.Provider",
+			Types: map[string]*ResourceType{
+				"widgets": {
+					APIVersions: map[string]*ResourceTypeAPIVersion{
+						"2025-01-01": {
+							Schema: map[string]any{
+								"type":     "object",
+								"required": []any{"application"},
+							},
+						},
+					},
+				},
+			},
+		}
+
 		require.NoError(t, applyBaseResourceManifest(provider))
 
 		schemaMap := provider.Types["widgets"].APIVersions["2025-01-01"].Schema.(map[string]any)
-		env := schemaMap["properties"].(map[string]any)["environment"].(map[string]any)
-		require.Equal(t, "custom", env["description"])
+		require.Contains(t, schemaMap["properties"].(map[string]any), "application")
+		require.Contains(t, schemaMap["required"], "application")
+		require.Contains(t, schemaMap["required"], "environment")
 	})
 
 	t.Run("skips nil and non-object schemas", func(t *testing.T) {

@@ -90,6 +90,15 @@ func applyBaseResourceManifest(provider *ResourceProvider) error {
 				continue
 			}
 
+			// The base property names are reserved by Radius. A per-type schema
+			// must not redeclare them under "properties" (it may still list them
+			// under "required" to make them mandatory). Check the author's raw
+			// schema before Apply injects the base properties.
+			if conflicts := baseManifest.ConflictingProperties(schemaMap); len(conflicts) > 0 {
+				return fmt.Errorf("%s/%s@%s: schema declares reserved Radius properties %v that are provided automatically and must not be redeclared (you may list them under \"required\" to make them mandatory)",
+					provider.Namespace, resourceTypeName, apiVersion, conflicts)
+			}
+
 			if err := baseManifest.Apply(schemaMap); err != nil {
 				return fmt.Errorf("%s/%s@%s: %w", provider.Namespace, resourceTypeName, apiVersion, err)
 			}

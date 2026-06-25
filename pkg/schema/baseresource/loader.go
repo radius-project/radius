@@ -138,6 +138,36 @@ func (b *BaseManifest) Apply(schema map[string]any) error {
 	return nil
 }
 
+// ConflictingProperties returns the names of base (common) properties that the
+// given schema already declares under "properties", sorted. Because the base
+// manifest owns these property names, a per-type schema must not redeclare
+// them; callers use this to reject such schemas before merging.
+//
+// Listing a base property under "required" (without declaring it under
+// "properties") is allowed and is not reported here. A nil schema, or one
+// without a "properties" object, has no conflicts.
+//
+// ConflictingProperties must run on the author's raw schema before Apply: once
+// Apply has injected the base properties they are indistinguishable from a
+// redeclaration, so a post-merge check would report false positives.
+func (b *BaseManifest) ConflictingProperties(schema map[string]any) []string {
+	if schema == nil {
+		return nil
+	}
+	props, err := schemaProperties(schema)
+	if err != nil || len(props) == 0 {
+		return nil
+	}
+	var conflicts []string
+	for name := range b.properties {
+		if _, exists := props[name]; exists {
+			conflicts = append(conflicts, name)
+		}
+	}
+	sort.Strings(conflicts)
+	return conflicts
+}
+
 // PropertyNames returns the names of the common base properties, sorted.
 func (b *BaseManifest) PropertyNames() []string {
 	return sortedKeys(b.properties)

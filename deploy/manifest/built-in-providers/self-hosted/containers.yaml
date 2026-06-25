@@ -6,7 +6,7 @@ types:
 
       ```
       extension radius
-      param environment string 
+      param environment string
 
       resource myApplication 'Radius.Core/applications@2025-08-01-preview' = { ... }
 
@@ -24,7 +24,7 @@ types:
       }
       ```
 
-      By default, Containers deploys to Kubernetes. In this case, a Kubernetes Deployment named myContainer is deployed which includes a Pod named myContainer. Your Radius environment may deploy to other container platforms such as Azure Container Instances. 
+      By default, Containers deploys to Kubernetes. In this case, a Kubernetes Deployment named myContainer is deployed which includes a Pod named myContainer. Your Radius environment may deploy to other container platforms such as Azure Container Instances.
 
       To accept network connections, expose a port on the container.
 
@@ -47,9 +47,9 @@ types:
         }
       }
       ```
-      
+
       When a port is included, a Kubernetes Service named demo with the type ClusterIP is created.
-      
+
       To create a emphemeral emptyDir shared between two containers add a Containers.properties.volumes.
 
       ```
@@ -64,7 +64,7 @@ types:
               volumeMounts: [
                 {
                   volumeName: 'shared'
-                  mountPath: '/var/shared' 
+                  mountPath: '/var/shared'
                 }
               ]
             }
@@ -73,7 +73,7 @@ types:
               volumeMounts: [
                 {
                   volumeName: 'shared'
-                  mountPath: '/var/shared' 
+                  mountPath: '/var/shared'
                 }
               ]
             }
@@ -91,28 +91,9 @@ types:
 
     apiVersions:
       '2025-08-01-preview':
-        schema: 
+        schema:
           type: object
           properties:
-            environment:
-              type: string
-              description: (Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.
-            application:
-              type: string
-              description: (Required) The Radius Application ID. `myApplication.id` for example.
-            connections:
-              type: object
-              description: '(Optional) Map of resources this container is dependent upon. `db: { source: db.id } for example.'
-              additionalProperties:
-                type: object
-                properties:
-                  source:
-                    type: string
-                    description: (Required) The resource ID of the resource this container is dependent upon.
-                  disableDefaultEnvVars:
-                    type: boolean
-                    description: (Optional) Disables the automatic injection of environment variables from connected resource properties.
-                required: [source]
             containers:
               type: object
               additionalProperties:
@@ -136,7 +117,7 @@ types:
                       type: string
                   env:
                     type: object
-                    description: (Optional) Environment variables injected into the container. 
+                    description: (Optional) Environment variables injected into the container.
                     additionalProperties:
                       type: object
                       properties:
@@ -207,7 +188,7 @@ types:
                       properties:
                         volumeName:
                           type: string
-                          description: (Required) The name of the volume defined in Containers.properties.volumes. 
+                          description: (Required) The name of the volume defined in Containers.properties.volumes.
                         mountPath:
                           type: string
                           description: (Required) The path to mount the volume in the container file system.
@@ -218,7 +199,7 @@ types:
                     properties:
                       exec:
                         type: object
-                        description: (Optional) An exec probe runs a command within a container. If the command succeeds and returns 0 the probe is healthy. 
+                        description: (Optional) An exec probe runs a command within a container. If the command succeeds and returns 0 the probe is healthy.
                         properties:
                           command:
                             type: array
@@ -257,14 +238,14 @@ types:
                         properties:
                           port:
                             type: integer
-                            description: (Required) The TCP port to connect to. 
+                            description: (Required) The TCP port to connect to.
                         required: [port]
                       initialDelaySeconds:
                         type: integer
                         description: (Optional) Number of seconds after the container has started before probes are initiated.
                       terminationGracePeriodSeconds:
                         type: integer
-                        description: (Optional) Number of seconds the container needs to terminate gracefully upon probe failure. The grace period amount of time between when a container is sent a termination signal and the time when the processes are forcibly halted with a kill signal. 
+                        description: (Optional) Number of seconds the container needs to terminate gracefully upon probe failure. The grace period amount of time between when a container is sent a termination signal and the time when the processes are forcibly halted with a kill signal.
                       periodSeconds:
                         type: integer
                         description: (Optional) How often to perform the probe. Assumed to be 10 seconds if not specified.
@@ -274,7 +255,7 @@ types:
                       failureThreshold:
                         type: integer
                         description: (Optional) Minimum consecutive failures for the probe to be considered failed after having succeeded. Assumed to be 3 if not specified.
-                      successThreshold: 
+                      successThreshold:
                         type: integer
                         description: (Optional) Minimum consecutive successes for the probe to be considered successful after having failed. Assumed to be 1 if not specified.
                   livenessProbe:
@@ -284,7 +265,7 @@ types:
                     properties:
                       exec:
                         type: object
-                        description: (Optional) An exec probe runs a command within a container. If the command succeeds and returns 0 the probe is healthy. 
+                        description: (Optional) An exec probe runs a command within a container. If the command succeeds and returns 0 the probe is healthy.
                         properties:
                           command:
                             type: array
@@ -323,14 +304,14 @@ types:
                         properties:
                           port:
                             type: integer
-                            description: (Required) The TCP port to connect to. 
+                            description: (Required) The TCP port to connect to.
                         required: [port]
                       initialDelaySeconds:
                         type: integer
                         description: (Optional) Number of seconds after the container has started before probes are initiated.
                       terminationGracePeriodSeconds:
                         type: integer
-                        description: (Optional) Number of seconds the container needs to terminate gracefully upon probe failure. The grace period amount of time between when a container is sent a termination signal and the time when the processes are forcibly halted with a kill signal. 
+                        description: (Optional) Number of seconds the container needs to terminate gracefully upon probe failure. The grace period amount of time between when a container is sent a termination signal and the time when the processes are forcibly halted with a kill signal.
                       periodSeconds:
                         type: integer
                         description: (Optional) How often to perform the probe. Assumed to be 10 seconds if not specified.
@@ -340,13 +321,13 @@ types:
                       failureThreshold:
                         type: integer
                         description: (Optional) Minimum consecutive failures for the probe to be considered failed after having succeeded. Assumed to be 3 if not specified.
-                      successThreshold: 
+                      successThreshold:
                         type: integer
                         description: (Optional) Minimum consecutive successes for the probe to be considered successful after having failed. Assumed to be 1 if not specified.
                 required: [image]
             volumes:
               type: object
-              description: (Optional) List of volumes that can be mounted by a container. 
+              description: (Optional) List of volumes that can be mounted by a container.
               additionalProperties:
                 type: object
                 properties:
@@ -366,7 +347,7 @@ types:
                     description: (Optional) The Radius Secret resource name.
                   emptyDir:
                     type: object
-                    description: (Optional) An empty directory. 
+                    description: (Optional) An empty directory.
                     properties:
                       medium:
                         type: string
@@ -376,9 +357,9 @@ types:
               type: string
               enum: [Always, OnFailure, Never]
               description: (Optional) Defines how a containers behave when they terminate. `Always` will restart containers regardless of their exit status. `OnFailure` will restart containers if they return a non-zero exit code.
-            replicas: 
+            replicas:
               type: integer
-              description: (Optional) The minimum number of replicas for the set of containers. 
+              description: (Optional) The minimum number of replicas for the set of containers.
             autoScaling:
               type: object
               properties:
@@ -387,15 +368,15 @@ types:
                   description: (Optional) The maximum number of replicas for the autoscaler.
                 metrics:
                   type: array
-                  description: (Required) The metric to measure and target used to autoscale. 
+                  description: (Required) The metric to measure and target used to autoscale.
                   items:
                     type: object
                     properties:
                       kind:
                         type: string
                         enum: [cpu, memory, custom]
-                        description: (Required) The metric to measure. 
-                      customMetric: 
+                        description: (Required) The metric to measure.
+                      customMetric:
                         type: string
                         description: (Optional) The custom metric exposed by the application. Implementation specific. See platform engineer for further guidance.
                       target:
@@ -433,7 +414,7 @@ types:
             platformOptions:
               type: object
               description: (Optional) If enabled by the platform engineer, properties to be passed to the Recipe for the specified platform.
-              additionalProperties: 
+              additionalProperties:
                 type: any
                 description: (Required) Platform-specific properties.
           required: [environment, application, containers]

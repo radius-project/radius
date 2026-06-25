@@ -104,6 +104,32 @@ func TestApply_PerTypeWinsOnConflict(t *testing.T) {
 	require.Equal(t, custom, props["environment"], "author's declaration must not be overwritten")
 }
 
+func TestConflictingProperties(t *testing.T) {
+	b := mustLoad(t)
+
+	// No conflicts for nil, a bare schema, or type-specific properties.
+	require.Empty(t, b.ConflictingProperties(nil))
+	require.Empty(t, b.ConflictingProperties(map[string]any{"type": "object"}))
+	require.Empty(t, b.ConflictingProperties(map[string]any{
+		"properties": map[string]any{"size": map[string]any{"type": "string"}},
+	}))
+
+	// Declaring base properties under "properties" is reported, sorted.
+	conflicts := b.ConflictingProperties(map[string]any{
+		"properties": map[string]any{
+			"environment": map[string]any{"type": "string"},
+			"application": map[string]any{"type": "string"},
+			"size":        map[string]any{"type": "string"},
+		},
+	})
+	require.Equal(t, []string{"application", "environment"}, conflicts)
+
+	// Listing a base property only under "required" is not a conflict.
+	require.Empty(t, b.ConflictingProperties(map[string]any{
+		"required": []any{"application"},
+	}))
+}
+
 func TestApply_DoesNotDuplicateRequired(t *testing.T) {
 	schema := map[string]any{
 		"type":     "object",
