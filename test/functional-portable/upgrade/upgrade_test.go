@@ -157,22 +157,22 @@ func testPreflightDisabled(t *testing.T) {
 	// Poll several times to confirm no job was created. The helm upgrade --wait
 	// flag ensures the upgrade is fully complete before returning, so if a job
 	// was going to be created it would exist by now. We poll briefly to be safe.
-	for i := range jobPollAttempts {
+for i := range jobPollAttempts {
 		_, err = options.K8sClient.BatchV1().Jobs(radiusNamespace).Get(ctx, preUpgradeJobName, metav1.GetOptions{})
-		if apierrors.IsNotFound(err) {
-			if i == jobPollAttempts-1 {
-				t.Log("Preflight job correctly not created when disabled")
+		switch {
+		case apierrors.IsNotFound(err):
+			if i < jobPollAttempts-1 {
+				time.Sleep(jobPollInterval)
 			}
-			time.Sleep(jobPollInterval)
 			continue
-		}
-		if err == nil {
+		case err == nil:
 			t.Error("Expected preflight job to not exist when disabled, but it was found")
-			break
+			return
+		default:
+			t.Fatalf("Unexpected error checking for preflight job: %v", err)
 		}
-		t.Errorf("Unexpected error checking for preflight job: %v", err)
-		break
 	}
+	t.Log("Preflight job correctly not created when disabled")
 
 	helmUninstall(t, ctx)
 }
