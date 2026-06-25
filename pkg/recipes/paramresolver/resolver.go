@@ -32,8 +32,8 @@ var expressionPattern = regexp.MustCompile(`\{\{([^}]+)\}\}`)
 // whose entire value is a single expression so their original scalar type can be preserved.
 var singleExpressionPattern = regexp.MustCompile(`^\s*\{\{([^}]+)\}\}\s*$`)
 
-// ternaryPattern matches single-level ternary expressions: expr == "val" ? "trueResult" : "falseResult"
-var ternaryPattern = regexp.MustCompile(`^\s*(.+?)\s*==\s*"([^"]*)"\s*\?\s*"([^"]*)"\s*:\s*"([^"]*)"\s*$`)
+// conditionPattern matches a single ternary condition of the form: <context path> == "value".
+var conditionPattern = regexp.MustCompile(`^\s*(.+?)\s*==\s*"([^"]*)"\s*$`)
 
 // ResolveParameterExpressions resolves {{context.*}} template expressions in recipe parameters.
 // It traverses the parameter map recursively and replaces expressions with values from the
@@ -119,31 +119,109 @@ func resolveString(s string, lookup map[string]string) string {
 	})
 }
 
-// evaluateTernary evaluates a single-level ternary expression of the form:
-// expr == "val" ? "trueResult" : "falseResult"
-// It returns the resolved result and true if the expression is a valid ternary, or ("", false)
-// otherwise. If the condition path cannot be resolved, the entire ternary is left unchanged.
+// evaluateTernary evaluates a ternary expression of the form:
+//
+//	<context path> == "val" ? <arm> : <arm>
+//
+// where each arm is either a "string literal" or another (nested) ternary, so chained expressions
+// like `a == "S" ? "x" : a == "M" ? "y" : "z"` resolve correctly. It returns the resolved result and
+// true when inner is a structurally valid ternary, or ("", false) otherwise. If a condition path
+// along the chosen branch cannot be resolved, the entire expression is left unchanged.
+//
+// Limitations (by design): the only supported operator is ==, arms must be string literals or nested
+// ternaries (no context paths or typed results in arms), and unresolvable expressions are passed
+// through verbatim rather than failing.
 func evaluateTernary(inner string, lookup map[string]string) (string, bool) {
-	matches := ternaryPattern.FindStringSubmatch(inner)
-	if matches == nil {
+	value, matched, resolved := evalTernaryExpr(inner, lookup)
+	if !matched {
 		return "", false
 	}
-
-	conditionPath := strings.TrimSpace(matches[1])
-	expectedValue := matches[2]
-	trueResult := matches[3]
-	falseResult := matches[4]
-
-	conditionValue, ok := lookup[conditionPath]
-	if !ok {
+	if !resolved {
 		// Unresolvable condition — leave the entire expression unchanged.
 		return fmt.Sprintf("{{%s}}", inner), true
 	}
+	return value, true
+}
 
-	if conditionValue == expectedValue {
-		return trueResult, true
+// evalTernaryExpr recursively evaluates a ternary expression. matched reports whether expr is a
+// structurally valid ternary; resolved reports whether every condition along the chosen branch was
+// found in the lookup. When matched is true but resolved is false, the caller passes the original
+// expression through unchanged.
+func evalTernaryExpr(expr string, lookup map[string]string) (value string, matched bool, resolved bool) {
+	qIdx, colonIdx, ok := splitTopLevelTernary(expr)
+	if !ok {
+		return "", false, false
 	}
-	return falseResult, true
+
+	cm := conditionPattern.FindStringSubmatch(strings.TrimSpace(expr[:qIdx]))
+	if cm == nil {
+		return "", false, false
+	}
+	conditionPath := strings.TrimSpace(cm[1])
+	expectedValue := cm[2]
+
+	conditionValue, found := lookup[conditionPath]
+	if !found {
+		return "", true, false
+	}
+
+	arm := strings.TrimSpace(expr[colonIdx+1:])
+	if conditionValue == expectedValue {
+		arm = strings.TrimSpace(expr[qIdx+1 : colonIdx])
+	}
+	return evalTernaryArm(arm, lookup)
+}
+
+// evalTernaryArm evaluates a single ternary arm, which is either a nested ternary or a "string literal".
+func evalTernaryArm(arm string, lookup map[string]string) (value string, matched bool, resolved bool) {
+	if v, m, r := evalTernaryExpr(arm, lookup); m {
+		return v, true, r
+	}
+	if len(arm) >= 2 && strings.HasPrefix(arm, `"`) && strings.HasSuffix(arm, `"`) {
+		return arm[1 : len(arm)-1], true, true
+	}
+	// Unsupported arm (string-only limitation) — pass the expression through unchanged.
+	return "", true, false
+}
+
+// splitTopLevelTernary locates the top-level "?" and its matching ":" in a ternary expression,
+// scanning outside double-quoted string literals and tracking nested ternary depth so that chained
+// or nested ternaries split at the outermost level. It returns the byte indices of the "?" and ":"
+// and true when both are found.
+func splitTopLevelTernary(s string) (qIdx, colonIdx int, ok bool) {
+	qIdx, colonIdx = -1, -1
+	inQuote := false
+	depth := 0
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '"':
+			inQuote = !inQuote
+		case '?':
+			if inQuote {
+				continue
+			}
+			if depth == 0 && qIdx == -1 {
+				qIdx = i
+			}
+			depth++
+		case ':':
+			if inQuote {
+				continue
+			}
+			if depth == 0 {
+				// ":" with no open "?" — not a valid ternary structure.
+				return -1, -1, false
+			}
+			depth--
+			if depth == 0 && colonIdx == -1 {
+				colonIdx = i
+			}
+		}
+	}
+	if qIdx == -1 || colonIdx == -1 {
+		return -1, -1, false
+	}
+	return qIdx, colonIdx, true
 }
 
 // buildContextLookup builds a flat key-value map from the recipe context for expression resolution.

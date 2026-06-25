@@ -215,6 +215,62 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system \
 
 Valid log levels are: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `OFF`. Default is `ERROR`.
 
+### Network Policies
+
+Radius can optionally install Kubernetes `NetworkPolicy` resources that lock down
+ingress to the control-plane namespace (`radius-system`). They are **disabled by
+default** and gated behind `networkPolicies.enabled`.
+
+When enabled, three policies are applied:
+
+- `radius-default-deny-ingress` — denies all ingress to `radius-system` pods.
+- `radius-allow-internal` — re-permits east-west traffic between Radius
+  components (intra-namespace), matched by the immutable
+  `kubernetes.io/metadata.name` namespace label.
+- `radius-allow-control-plane` — allows the Kubernetes API server to reach UCP
+  (APIService aggregation) and the controller (admission webhook) on port `9443`,
+  from the CIDRs in `networkPolicies.controlPlaneCIDRs`.
+
+Only ingress is restricted; egress is left open so UCP can reach the Kubernetes
+API server and pods can resolve DNS.
+
+> **Enforcement requires a CNI that implements NetworkPolicy** (e.g. Calico,
+> Cilium, Antrea). On CNIs that do not (e.g. kindnet, flannel, the default EKS
+> VPC CNI) these objects are accepted by the API server but silently **not**
+> enforced.
+
+#### Setting `controlPlaneCIDRs`
+
+The kube-apiserver reaches UCP (APIService aggregation) and the controller
+(admission webhook) over the host network, so this traffic arrives with the
+**node's** IP rather than a pod IP and cannot be matched by a namespace/pod
+selector. You must supply the source CIDR(s) via
+`networkPolicies.controlPlaneCIDRs` — **this is required when
+`networkPolicies.enabled=true`; Helm rendering fails if it is empty** — otherwise
+the default-deny policy would block API aggregation and webhooks and break the
+control plane.
+
+Use your cluster's node/control-plane subnet(s), **not** individual node IPs
+(a `/32` would exclude other control-plane addresses):
+
+- **Managed clusters (AKS/EKS/GKE):** the node pool's VPC/subnet CIDR(s).
+- **kubeadm / on-prem:** the node network CIDR.
+- **KinD:** the Docker network subnet, e.g.
+  `docker network inspect kind -f '{{range .IPAM.Config}}{{.Subnet}} {{end}}'`.
+
+```console
+helm upgrade --wait --install radius deploy/Chart -n radius-system \
+  --set networkPolicies.enabled=true \
+  --set 'networkPolicies.controlPlaneCIDRs={10.0.0.0/16}'
+```
+
+```console
+# With the rad CLI
+rad install kubernetes \
+  --set networkPolicies.enabled=true \
+  --set 'networkPolicies.controlPlaneCIDRs={10.0.0.0/16}'
+```
+
 ## Verify the installation
 
 Verify that the controller is running in the radius-system namespace:

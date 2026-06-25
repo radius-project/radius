@@ -76,7 +76,7 @@ update-resource-types: ## Bump resource-types-contrib to latest and sync manifes
 .PHONY: sync-resource-types
 sync-resource-types: ## Copy manifest files listed in defaults.yaml from the pinned resource-types-contrib version
 	@# Verify required tools are available before making any changes.
-	@command -v yq >/dev/null 2>&1 || { echo "ERROR: yq is required but not found. Install via: go install github.com/mikefarah/yq/v4@latest"; exit 1; }
+	@command -v yq >/dev/null 2>&1 || { echo "ERROR: yq is required but not found. Install via: make install-yq"; exit 1; }
 	@command -v jq >/dev/null 2>&1 || { echo "ERROR: jq is required but not found. Install via: brew install jq (macOS) or apt-get install jq (Linux)"; exit 1; }
 	@echo "Syncing default resource types from resource-types-contrib..."
 	@# Resolve the module's local cache directory from the version pinned in

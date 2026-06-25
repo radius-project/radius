@@ -48,16 +48,16 @@ jobs:
       RELNOTE_FOUND: false
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
+      - name: Install yq
+        run: make install-yq
+
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d # v4.53.3
-        with:
-          # Get a comma-separated list of supported versions
-          cmd: yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//'
+        run: echo "result=$(yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//')" >> "$GITHUB_OUTPUT"
 
       - name: Determine desired release version
         id: get-version
@@ -178,14 +178,14 @@ jobs:
             dashboard
             bicep-types-aws
 
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: radius-project/radius
           ref: main
           persist-credentials: false
 
       - name: Checkout radius-project/radius@main
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: radius-project/radius
           ref: main
@@ -194,7 +194,7 @@ jobs:
           persist-credentials: true
 
       - name: Checkout radius-project/recipes@main
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: radius-project/recipes
           ref: main
@@ -203,7 +203,7 @@ jobs:
           persist-credentials: true
 
       - name: Checkout radius-project/dashboard@main
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: radius-project/dashboard
           ref: main
@@ -212,7 +212,7 @@ jobs:
           persist-credentials: true
 
       - name: Checkout radius-project/bicep-types-aws@main
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: radius-project/bicep-types-aws
           ref: main
@@ -237,12 +237,12 @@ jobs:
           GIT_USER_NAME: ${{ steps.bot-details.outputs.name }}
           GIT_USER_EMAIL: ${{ steps.bot-details.outputs.email }}
 
+      - name: Install yq
+        run: make install-yq
+
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d # v4.53.3
-        with:
-          # Get a comma-separated list of supported versions
-          cmd: yq '.supported[].version' ./radius/versions.yaml | tr '\n' ',' | sed 's/,$//'
+        run: echo "result=$(yq '.supported[].version' ./radius/versions.yaml | tr '\n' ',' | sed 's/,$//')" >> "$GITHUB_OUTPUT"
 
       - name: Determine desired release version
         id: get-version

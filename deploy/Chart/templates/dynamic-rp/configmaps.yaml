@@ -14,10 +14,16 @@ data:
       name: self-hosted
       roleLocation: "global"
     databaseProvider:
+    {{- if .Values.database.enabled }}
+      provider: "postgresql"
+      postgresql:
+        url: "postgresql://dynamic_rp:${POSTGRES_PASSWORD}@database.{{ .Release.Namespace }}:5432/dynamic_rp?sslmode=disable"
+    {{- else }}
       provider: "apiserver"
       apiserver:
         context: ""
         namespace: "radius-system"
+    {{- end }}
     queueProvider:
       provider: "apiserver"
       name: "dynamic-rp"

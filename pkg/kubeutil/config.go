@@ -25,6 +25,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/clientcmd/api"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -37,6 +38,14 @@ const (
 	DefaultCLIQPS float32 = 50.0
 	// DefaultCLIBurst is the default number of queries k8sclient handles concurrently for CLI.
 	DefaultCLIBurst int = 100
+
+	// TargetKubeconfigEnvVar is the environment variable that points at a kubeconfig
+	// file for an external target cluster. When set, Radius deploys application
+	// resources (both recipe-provisioned and directly-rendered output resources) to
+	// that cluster instead of the control-plane cluster it runs on. This is the
+	// multi-cluster v1 contract; the kubeconfig is supplied (and refreshed) out of
+	// band by the workflow that mounts it.
+	TargetKubeconfigEnvVar = "RADIUS_TARGET_KUBECONFIG"
 )
 
 // ConfigOptions is custom options to configure kubernetes client config.
@@ -152,4 +161,64 @@ func NewClientConfigFromLocal(options *ConfigOptions) (*rest.Config, error) {
 	}
 
 	return merged, nil
+}
+
+// NewClientConfigForTargetCluster builds a Kubernetes client config from the
+// kubeconfig file at kubeconfigPath, using its current context and the server
+// QPS/Burst defaults. It is used to target an external cluster (for example an
+// AKS or EKS cluster) when the Radius control plane runs on a separate cluster.
+func NewClientConfigForTargetCluster(kubeconfigPath string) (*rest.Config, error) {
+	return NewClientConfigFromLocal(&ConfigOptions{
+		ConfigFilePath: kubeconfigPath,
+		QPS:            DefaultServerQPS,
+		Burst:          DefaultServerBurst,
+	})
+}
+
+// DeploymentTargetRuntimeClient returns the controller-runtime client that
+// application resources (including the application namespace) should be created
+// with. It returns controlPlane unchanged unless RADIUS_TARGET_KUBECONFIG is set,
+// in which case it builds a runtime client for the external cluster named by that
+// kubeconfig. This keeps application namespaces on the same cluster the
+// application's resources deploy to, so in multi-cluster mode the control-plane
+// cluster is not populated with per-application namespaces.
+func DeploymentTargetRuntimeClient(controlPlane runtimeclient.Client) (runtimeclient.Client, error) {
+	targetKubeconfigPath := os.Getenv(TargetKubeconfigEnvVar)
+	if targetKubeconfigPath == "" {
+		return controlPlane, nil
+	}
+
+	targetConfig, err := NewClientConfigForTargetCluster(targetKubeconfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load target kubeconfig from %s=%q: %w", TargetKubeconfigEnvVar, targetKubeconfigPath, err)
+	}
+
+	return NewRuntimeClient(targetConfig)
+}
+
+// TargetClusterDefaultNamespace returns the namespace that application resources
+// should default to on the deployment-target cluster when the environment does
+// not specify one. When RADIUS_TARGET_KUBECONFIG is set, it is the namespace
+// pinned by that kubeconfig's current context (an operator may scope the target
+// credential to a namespace); otherwise, or when the context pins no namespace or
+// the kubeconfig cannot be read, it falls back to "default", which exists on every
+// Kubernetes cluster.
+func TargetClusterDefaultNamespace() string {
+	const fallback = "default"
+
+	targetKubeconfigPath := os.Getenv(TargetKubeconfigEnvVar)
+	if targetKubeconfigPath == "" {
+		return fallback
+	}
+
+	cfg, err := LoadConfigFile(targetKubeconfigPath)
+	if err != nil {
+		return fallback
+	}
+
+	if kubeContext, ok := cfg.Contexts[cfg.CurrentContext]; ok && kubeContext != nil && kubeContext.Namespace != "" {
+		return kubeContext.Namespace
+	}
+
+	return fallback
 }

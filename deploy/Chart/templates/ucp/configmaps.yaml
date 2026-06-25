@@ -18,10 +18,16 @@ data:
       pathBase: /apis/api.ucp.dev/v1alpha3
       tlsCertificateDirectory: /var/tls/cert
     databaseProvider:
+    {{- if .Values.database.enabled }}
+      provider: "postgresql"
+      postgresql:
+        url: "postgresql://ucp:${POSTGRES_PASSWORD}@database.{{ .Release.Namespace }}:5432/ucp?sslmode=disable"
+    {{- else }}
       provider: "apiserver"
       apiserver:
         context: ""
         namespace: "radius-system"
+    {{- end }}
 
     secretProvider:
       provider: kubernetes
