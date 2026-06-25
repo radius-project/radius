@@ -30,11 +30,12 @@ import (
 
 // Constants for reserved property names
 const (
-	reservedPropApplication = "application"
-	reservedPropEnvironment = "environment"
-	reservedPropStatus      = "status"
-	reservedPropRecipe      = "recipe"
-	reservedPropConnections = "connections"
+	reservedPropApplication   = "application"
+	reservedPropEnvironment   = "environment"
+	reservedPropStatus        = "status"
+	reservedPropRecipe        = "recipe"
+	reservedPropConnections   = "connections"
+	reservedPropCodeReference = "codeReference"
 )
 
 // Constants for annotation names
@@ -798,7 +799,7 @@ func (v *Validator) checkReservedProperties(schema *openapi3.Schema) error {
 		}
 
 		// Check specific property type constraints
-		if propName == reservedPropApplication || propName == reservedPropEnvironment {
+		if propName == reservedPropApplication || propName == reservedPropEnvironment || propName == reservedPropCodeReference {
 			if propRef.Value != nil {
 				if propRef.Value.Type == nil || !propRef.Value.Type.Is("string") {
 					err := NewConstraintError(propName, fmt.Sprintf("property '%s' must be a string", propName))

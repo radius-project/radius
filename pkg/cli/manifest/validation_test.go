@@ -495,3 +495,90 @@ func TestValidateManifestSchemas(t *testing.T) {
 		require.Len(t, validationErrors.Errors, 2)
 	})
 }
+
+func TestApplyBaseResourceManifest(t *testing.T) {
+	t.Run("nil provider", func(t *testing.T) {
+		require.NoError(t, applyBaseResourceManifest(nil))
+	})
+
+	t.Run("merges base properties into a bare schema", func(t *testing.T) {
+		provider := &ResourceProvider{
+			Namespace: "Test.Provider",
+			Types: map[string]*ResourceType{
+				"widgets": {
+					APIVersions: map[string]*ResourceTypeAPIVersion{
+						"2025-01-01": {
+							Schema: map[string]any{
+								"type": "object",
+								"properties": map[string]any{
+									"size": map[string]any{"type": "string"},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		require.NoError(t, applyBaseResourceManifest(provider))
+
+		schemaMap := provider.Types["widgets"].APIVersions["2025-01-01"].Schema.(map[string]any)
+		props := schemaMap["properties"].(map[string]any)
+		// Type-specific property preserved.
+		require.Contains(t, props, "size")
+		// Base properties injected.
+		require.Contains(t, props, "application")
+		require.Contains(t, props, "environment")
+		require.Contains(t, props, "connections")
+		require.Contains(t, props, "codeReference")
+		// Base required injected.
+		require.Contains(t, schemaMap["required"], "environment")
+	})
+
+	t.Run("per-type property wins over base", func(t *testing.T) {
+		provider := &ResourceProvider{
+			Namespace: "Test.Provider",
+			Types: map[string]*ResourceType{
+				"widgets": {
+					APIVersions: map[string]*ResourceTypeAPIVersion{
+						"2025-01-01": {
+							Schema: map[string]any{
+								"type": "object",
+								"properties": map[string]any{
+									"environment": map[string]any{
+										"type":        "string",
+										"description": "custom",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		require.NoError(t, applyBaseResourceManifest(provider))
+
+		schemaMap := provider.Types["widgets"].APIVersions["2025-01-01"].Schema.(map[string]any)
+		env := schemaMap["properties"].(map[string]any)["environment"].(map[string]any)
+		require.Equal(t, "custom", env["description"])
+	})
+
+	t.Run("skips nil and non-object schemas", func(t *testing.T) {
+		provider := &ResourceProvider{
+			Namespace: "Test.Provider",
+			Types: map[string]*ResourceType{
+				"widgets": {
+					APIVersions: map[string]*ResourceTypeAPIVersion{
+						"2025-01-01": {Schema: nil},
+						"2025-02-01": {Schema: "not-a-map"},
+					},
+				},
+			},
+		}
+
+		require.NoError(t, applyBaseResourceManifest(provider))
+		require.Nil(t, provider.Types["widgets"].APIVersions["2025-01-01"].Schema)
+		require.Equal(t, "not-a-map", provider.Types["widgets"].APIVersions["2025-02-01"].Schema)
+	})
+}
