@@ -6,7 +6,7 @@
 
 Radius uses hashing in several places to generate deterministic, unique values: resource identifiers (Kubernetes object names, tracked-resource names), Terraform recipe state-secret suffixes, ETags, and change-detection tokens for the Kubernetes controllers. Historically these used **SHA-1**. SHA-1 is cryptographically broken and is flagged by CodeQL (`go/weak-cryptographic-algorithm`), even though Radius only uses it for **non-cryptographic** uniqueness and change detection - never for security (see the [UCP threat model](./2024-11-ucp-component-threat-model.md#use-of-cryptography)).
 
-This document describes the staged migration from SHA-1 to **SHA-256**. The guiding constraint is that the migration must be **non-breaking and transparent to existing installations**: an upgrade must not lose data, must not trigger redeployments or pod restarts, and must require no customer action. The migration is delivered in three phases. Phases 1 and 2 (the backward-compatible compatibility layer) are complete; Phase 3 (removing SHA-1 entirely) is intentionally deferred to a future release after the compatibility layer has been broadly adopted.
+This document describes the staged migration from SHA-1 to **SHA-256**. The guiding constraint is that the migration must be **non-breaking and transparent to existing installations**: an upgrade must not lose data, must not trigger workload redeployment or pod restarts, and must require no customer action. The migration is delivered in three phases. Phases 1 and 2 (the backward-compatible compatibility layer) are complete; Phase 3 (removing SHA-1 entirely) is intentionally deferred to a future release after the compatibility layer has been broadly adopted.
 
 ## Terms and definitions
 
@@ -171,7 +171,7 @@ Read-fallback helpers return a not-found error only when neither the current nor
 - **Unit tests**: `pkg/hashutil` (NIST SHA-256 and SHA-1 vectors); updated expected values in the reconciler, tracked-resource, Terraform-backend, and datastore name tests; new legacy-value tests for each `Legacy*` helper.
 - **Behavioral tests**: dual-accept (a stored legacy hash is treated as up-to-date) and read-fallback (a pre-created legacy-keyed record is found, updated in place without duplication, and deleted).
 - **Integration / envtest**: the UCP `radius` integration suite (PUT, track, list, delete) and the `apiserverstore` envtest suite both pass with the migration in place.
-- **Phase 3 (future)**: the bulk re-key migration (path 3b) must add idempotency and resumability tests, plus a mixed-data test (some records under SHA-1, some under SHA-256).
+- **Phase 3 (future)**: the bulk re-key migration (path 3b) must add idempotency and resumable-migration tests, plus a mixed-data test (some records under SHA-1, some under SHA-256).
 
 ## Security
 
