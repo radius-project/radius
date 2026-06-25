@@ -313,18 +313,21 @@ func cleanupAndWait(t *testing.T, ctx context.Context) {
 	require.Eventually(t, func() bool {
 		// Use server-side discovery to check if the Radius API group is still registered.
 		// A 503 means the APIService is registered but the backend is gone (not yet deregistered).
-		_, resources, err := k8sClient.Discovery().ServerGroupsAndResources()
-		if err != nil {
-			// Partial results are common during deregistration; check what we got.
-			t.Logf("Discovery returned partial results (expected during deregistration): %v", err)
+		err := func() error {
+			// Query the specific group/version. During deregistration this will typically
+			// return 503 while the APIService is still registered, and 404 once it is gone.
+			_, err := k8sClient.Discovery().ServerResourcesForGroupVersion("api.ucp.dev/v1alpha3")
+			return err
+		}()
+		if err == nil {
+			t.Log("Radius aggregated API service still registered, waiting...")
+			return false
 		}
-		for _, resourceList := range resources {
-			if resourceList != nil && resourceList.GroupVersion == "api.ucp.dev/v1alpha3" {
-				t.Log("Radius aggregated API service still registered, waiting...")
-				return false
-			}
+		if apierrors.IsNotFound(err) {
+			return true
 		}
-		return true
+		t.Logf("Discovery for api.ucp.dev/v1alpha3 failed (expected during deregistration): %v", err)
+		return false
 	}, apiServiceDeregistrationTimeout, apiServiceDeregistrationInterval, "Aggregated API service did not deregister within timeout")
 }
 
