@@ -33,10 +33,15 @@ fail() {
     exit 1
 }
 
-# Temporary working directory for downloads, removed on exit.
+# Temporary working directory for downloads, removed on exit. Uses an explicit
+# 'if' (not '&&') so the function returns 0 when WORKDIR is unset; otherwise the
+# failing test would become the EXIT trap's status and abort an otherwise
+# successful run, e.g. the early return when the tool is already installed.
 WORKDIR=""
 cleanup() {
-    [ -n "${WORKDIR:-}" ] && rm -rf "${WORKDIR}"
+    if [ -n "${WORKDIR:-}" ] && [ -d "${WORKDIR}" ]; then
+        rm -rf "${WORKDIR}"
+    fi
 }
 
 # curl wrapper for GitHub requests: enforces HTTPS + TLS 1.2, sets a User-Agent,
