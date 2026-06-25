@@ -143,6 +143,12 @@ func addResourceTypeForAPIVersion(
 
 	qualifiedName := fmt.Sprintf("%s/%s@%s", provider.Namespace, resourceTypeName, apiVersionName)
 
+	// Merge the common base properties into the schema before building the Bicep
+	// properties type, mirroring the server-side merge in pkg/cli/manifest so the
+	// published Bicep types expose application, environment, connections, and
+	// codeReference even when the author omits them.
+	applyBaseResource(&apiVersion.Schema)
+
 	// Create the properties type from the schema
 	propertyTypeRef, err := addSchemaType(&apiVersion.Schema, resourceTypeName+"Properties", typeFactory)
 	if err != nil {
