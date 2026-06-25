@@ -54,17 +54,6 @@ on:
 
 permissions: {}
 
-# Reduce self-contention on the shared Azure ACI 'StandardCores' quota (the
-# bottleneck behind Test_ACI's ContainerGroupQuotaReached flakes): serialize cloud
-# functional-test runs per pull request so a single PR pushing rapid commits does
-# not run several ACI-provisioning runs at once. Keyed by PR number because under
-# pull_request_target github.ref is the base ref, which would otherwise collapse
-# every PR into one group and cancel unrelated runs. cancel-in-progress is limited
-# to pull_request_target so the merge queue and scheduled runs are never cancelled.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
-
 env:
   GOPROXY: https://proxy.golang.org
   # Azure Keyvault CSI driver chart version
