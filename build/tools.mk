@@ -107,11 +107,11 @@ install-kubectl: ## Install the pinned kubectl Kubernetes CLI into a user-owned 
 # read from the release's own '<asset>.sha256' file. Keep the checksums in sync
 # when bumping DAPR_VERSION. This pins the Dapr CLI only; the Dapr runtime and
 # dashboard versions used by `dapr init -k` are pinned in the workflows.
-DAPR_VERSION ?= v1.18.0
-DAPR_CHECKSUM_LINUX_AMD64 ?= 2a94739e0aa101289d88418225319562bc6800db273b3d9cf819a0efd1ea1bfe
-DAPR_CHECKSUM_LINUX_ARM64 ?= 99d93e1dde04225204e2feb33191a1df97c87bb7d88abd10d1523f29a88d35d2
-DAPR_CHECKSUM_DARWIN_AMD64 ?= 2a7b7f3e4dfa5f8408b183bf840ab518766d91c3338e540cf84e16b5eb561604
-DAPR_CHECKSUM_DARWIN_ARM64 ?= 7d564d6aa29a68caab53e9aa4bcb4aabd9da5829992f3c8c297df3095ef5678b
+DAPR_VERSION ?= v1.15.2
+DAPR_CHECKSUM_LINUX_AMD64 ?= 09328bc0e4353036b824c2ec9cf7cabf4d75b4fc00ca02d80ae3e4374ee27eda
+DAPR_CHECKSUM_LINUX_ARM64 ?= b49244701a191c1e843211383703be9f2cd086a1db259c9789672f7e4e82ad55
+DAPR_CHECKSUM_DARWIN_AMD64 ?= 42a36e667559aef0fb6357fbe8f0fdbf1a6d9ea0ba8484c32e90ea61ddf15ba0
+DAPR_CHECKSUM_DARWIN_ARM64 ?= 176f455ea1961cdb59ab0e9ec3e4900b877576a9a2178d3b4b2619bfe947643f
 
 .PHONY: install-dapr
 install-dapr: ## Install the pinned Dapr CLI into a user-owned bin dir (no sudo).
