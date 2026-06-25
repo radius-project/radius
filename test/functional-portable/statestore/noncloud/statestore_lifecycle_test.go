@@ -37,12 +37,13 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/functional-portable/corerp"
 	"github.com/radius-project/radius/test/radcli"
-	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/testutil"
 )
 
@@ -122,20 +123,36 @@ func uninstallRadius(ctx context.Context, t *testing.T, cli *radcli.CLI) {
 	waitForCleanTeardown(t, ctx)
 }
 
-// waitForControlPlane polls until the Radius control plane API is reachable, treating transient
-// errors (including 503 from the aggregated APIService while pods roll) as retryable.
-func waitForControlPlane(t *testing.T, _ context.Context) {
+// waitForControlPlane polls until every Radius control-plane deployment in radius-system reports
+// Available, treating transient API errors (including 503 from the aggregated APIService while
+// pods roll) as retryable. It is deliberately workspace-independent: it talks to Kubernetes
+// directly, so it can run immediately after install and before any rad workspace exists.
+func waitForControlPlane(t *testing.T, ctx context.Context) {
 	t.Helper()
+	k8s := test.NewTestOptions(t).K8sClient
 	require.Eventually(t, func() bool {
-		ready := false
-		func() {
-			// NewRPTestOptions calls require/panic internally on a not-yet-ready control plane;
-			// catch that and treat it as "retry".
-			defer func() { _ = recover() }()
-			opts := rp.NewRPTestOptions(t)
-			ready = opts.ManagementClient != nil
-		}()
-		return ready
+		deployments, err := k8s.AppsV1().Deployments(stateNamespace).List(ctx, metav1.ListOptions{LabelSelector: radiusPodSelector})
+		if err != nil {
+			t.Logf("waiting to list control-plane deployments: %v", err)
+			return false
+		}
+		if len(deployments.Items) == 0 {
+			return false
+		}
+		for _, d := range deployments.Items {
+			available := false
+			for _, c := range d.Status.Conditions {
+				if c.Type == appsv1.DeploymentAvailable && c.Status == corev1.ConditionTrue {
+					available = true
+					break
+				}
+			}
+			if !available {
+				t.Logf("waiting for deployment %s to become Available...", d.Name)
+				return false
+			}
+		}
+		return true
 	}, controlPlaneTimeout, controlPlanePollInterval, "control plane did not become available within timeout")
 }
 
