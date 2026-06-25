@@ -150,8 +150,7 @@ Disadvantage of Approach B
 
 | Component | Change | File(s) |
 |---|---|---|
-| Schema base manifest (NEW) | `base.yaml` + `Load`/`MustLoad` + `Apply()` + `PropertyNames()`/`RequiredNames()` | `pkg/schema/baseresource/{base.yaml,loader.go,loader_test.go}` |
-| Schema validator | Unchanged; add conflict check | `pkg/schema/validator.go` |
+| Schema base manifest (NEW) + validations | `base.yaml` + `Load`/`MustLoad` + `Apply()` + `PropertyNames()`/`RequiredNames()` | `pkg/schema/baseresource/{base.yaml,loader.go,loader_test.go}` |
 | CLI manifest validator | Loads one `BaseManifest` at init; calls `Apply()` per schema in `ValidateManifest` | `pkg/cli/manifest/{registermanifest.go,validation.go}` |
 | Generic property util | `BasicProperties` += `codeReference` | `pkg/resourceutil/utils.go` |
 | Dynamic-rp adapter | New `CodeReference()` accessor | `pkg/dynamicrp/datamodel/dynamicresource.go` |
