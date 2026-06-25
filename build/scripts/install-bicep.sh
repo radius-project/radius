@@ -6,9 +6,6 @@ set -euo pipefail
 # development; under GitHub Actions the install dir is added to the job PATH so
 # later steps can run bicep.
 #
-# This installs the upstream Azure/bicep CLI for running/validating Bicep. It is
-# NOT build/install-bicep.sh, which packages Bicep into the Radius container image.
-#
 # The pinned version and per-platform SHA-256 checksums are normally provided by
 # build/tools.mk through the environment. The script is generic, so when a value
 # is not supplied it is resolved at runtime:

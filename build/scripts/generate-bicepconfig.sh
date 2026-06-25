@@ -5,8 +5,8 @@
 # release channel. The Bicep CLI binary itself is installed separately by
 # build/scripts/install-bicep.sh, the single source of truth for that.
 #
-# Usage: ./install-bicep.sh <release-channel> <output-dir>
-# Example: ./install-bicep.sh edge ./output
+# Usage: ./gen-bicepconfig.sh <release-channel> <output-dir>
+# Example: ./gen-bicepconfig.sh edge ./output
 
 REL_CHANNEL=$1
 OUTPUT_DIR=$2
