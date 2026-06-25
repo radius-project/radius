@@ -57,7 +57,7 @@ jobs:
 
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        run: echo "::set-output name=result::$(yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//')"
+        run: echo "result=$(yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//')" >> "$GITHUB_OUTPUT"
 
       - name: Determine desired release version
         id: get-version
@@ -242,7 +242,7 @@ jobs:
 
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        run: echo "::set-output name=result::$(yq '.supported[].version' ./radius/versions.yaml | tr '\n' ',' | sed 's/,$//')"
+        run: echo "result=$(yq '.supported[].version' ./radius/versions.yaml | tr '\n' ',' | sed 's/,$//')" >> "$GITHUB_OUTPUT"
 
       - name: Determine desired release version
         id: get-version

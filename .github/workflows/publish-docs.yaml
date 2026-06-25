@@ -95,12 +95,12 @@ jobs:
       - name: Install yq
         # Required by make generate-bicep-types-contrib to parse defaults.yaml.
         run: make install-yq
+        working-directory: radius
 
       # Generate Bicep docs
       - name: Generate Bicep docs
-        run: |
-          cd radius
-          make generate
+        run: make generate
+        working-directory: radius
 
       # Generate resource reference docs
       - name: Generate resource reference docs
