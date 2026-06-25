@@ -1,44 +1,39 @@
 package converter
 
 import (
-	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 
 	"github.com/radius-project/radius/bicep-tools/pkg/manifest"
-	"go.yaml.in/yaml/v3"
 )
 
-// canonicalBaseYAMLPath is the repo-relative path from this package to the
-// canonical base resource manifest owned by the schema package.
-var canonicalBaseYAMLPath = filepath.Join("..", "..", "..", "pkg", "schema", "baseresource", "base.yaml")
-
-// TestApplyBaseResource_PropertiesMatchCanonicalYAML guards against drift between
-// the typed Go literal in baseresource.go and the canonical base.yaml. bicep-tools
-// keeps its own copy because it models schemas with manifest.Schema rather than
-// the map[string]any the schema package merges, so this test fails CI whenever
-// the two definitions diverge.
-func TestApplyBaseResource_PropertiesMatchCanonicalYAML(t *testing.T) {
-	data, err := os.ReadFile(canonicalBaseYAMLPath)
-	if err != nil {
-		t.Fatalf("failed to read canonical base manifest %s: %v", canonicalBaseYAMLPath, err)
+// TestBaseResource_DecodedFromCanonicalYAML verifies the base property set is
+// decoded from the canonical base manifest (pkg/schema/baseresource/base.yaml)
+// into bicep-tools' manifest.Schema model with the expected names, required
+// entries, and connections shape (including disableDefaultEnvVars). It guards
+// against base.yaml changes that fail to decode into manifest.Schema.
+func TestBaseResource_DecodedFromCanonicalYAML(t *testing.T) {
+	for _, name := range []string{"application", "environment", "connections", "codeReference"} {
+		if _, ok := baseResourceProperties[name]; !ok {
+			t.Errorf("expected base property %q to be decoded from base.yaml", name)
+		}
 	}
 
-	var doc struct {
-		Properties map[string]manifest.Schema `yaml:"properties"`
-		Required   []string                   `yaml:"required"`
-	}
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		t.Fatalf("failed to parse canonical base manifest: %v", err)
+	if !reflect.DeepEqual(baseResourceRequired, []string{"environment"}) {
+		t.Errorf("expected required [environment], got %v", baseResourceRequired)
 	}
 
-	if !reflect.DeepEqual(doc.Properties, baseResourceProperties) {
-		t.Errorf("baseResourceProperties drifted from base.yaml:\n  yaml:    %#v\n  literal: %#v", doc.Properties, baseResourceProperties)
+	connections := baseResourceProperties["connections"]
+	if connections.AdditionalProperties == nil {
+		t.Fatal("expected connections to declare additionalProperties")
 	}
-
-	if !reflect.DeepEqual(doc.Required, baseResourceRequired) {
-		t.Errorf("baseResourceRequired drifted from base.yaml:\n  yaml:    %#v\n  literal: %#v", doc.Required, baseResourceRequired)
+	for _, name := range []string{"source", "disableDefaultEnvVars"} {
+		if _, ok := connections.AdditionalProperties.Properties[name]; !ok {
+			t.Errorf("expected connections.additionalProperties to declare %q", name)
+		}
+	}
+	if !contains(connections.AdditionalProperties.Required, "source") {
+		t.Errorf("expected connections.additionalProperties.required to contain source, got %v", connections.AdditionalProperties.Required)
 	}
 }
 
@@ -123,4 +118,9 @@ func countOccurrences(values []string, target string) int {
 		}
 	}
 	return count
+}
+
+// ptr returns a pointer to v.
+func ptr[T any](v T) *T {
+	return &v
 }

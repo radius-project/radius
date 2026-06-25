@@ -88,6 +88,16 @@ func MustLoad() *BaseManifest {
 	return b
 }
 
+// RawManifest returns a copy of the embedded canonical base resource manifest
+// YAML. It lets other packages — for example bicep-tools, which models schemas
+// with its own types — decode the base property set from the same source of
+// truth instead of duplicating the definitions.
+func RawManifest() []byte {
+	out := make([]byte, len(baseYAML))
+	copy(out, baseYAML)
+	return out
+}
+
 // Apply merges the common base properties into the given resource type schema.
 //
 // For every base property absent from the schema it copies the base definition

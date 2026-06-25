@@ -1,57 +1,41 @@
 package converter
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/radius-project/radius/bicep-tools/pkg/manifest"
+	"github.com/radius-project/radius/pkg/schema/baseresource"
+
+	"go.yaml.in/yaml/v3"
 )
 
-// baseResourceProperties are the common "Radius-aware" properties that every
-// resource type schema inherits: application, environment, connections, and
-// codeReference.
+// baseResourceProperties and baseResourceRequired are the common "Radius-aware"
+// properties that every resource type schema inherits (application, environment,
+// connections, and codeReference) plus the subset that is mandatory.
 //
-// This is a hand-maintained copy of the canonical source of truth,
-// pkg/schema/baseresource/base.yaml. bicep-tools models schemas with its own
-// strongly typed manifest.Schema (rather than the map[string]any the schema
-// package merges), so the base set is duplicated here as a typed literal. The
-// sync test TestApplyBaseResource_PropertiesMatchCanonicalYAML fails CI if this
-// literal drifts from base.yaml.
-var baseResourceProperties = map[string]manifest.Schema{
-	"application": {
-		Type:        "string",
-		Description: ptr("Resource ID of the Radius.Core/applications this resource belongs to."),
-	},
-	"environment": {
-		Type:        "string",
-		Description: ptr("Resource ID of the Radius.Core/environments this resource deploys into."),
-	},
-	"connections": {
-		Type:        "object",
-		Description: ptr("Map of connection name to connection data."),
-		AdditionalProperties: &manifest.Schema{
-			Type: "object",
-			Properties: map[string]manifest.Schema{
-				"source": {
-					Type:        "string",
-					Description: ptr("Resource ID of the source resource for this connection."),
-				},
-				"disableDefaultEnvVars": {
-					Type:        "boolean",
-					Description: ptr("Disables the automatic injection of environment variables from the connected resource's properties."),
-				},
-			},
-			Required: []string{"source"},
-		},
-	},
-	"codeReference": {
-		Type:        "string",
-		Description: ptr("Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27"),
-	},
-}
+// They are decoded once, at package initialization, from the canonical
+// source of truth — pkg/schema/baseresource/base.yaml — into bicep-tools' own
+// strongly typed manifest.Schema model. Decoding the same bytes the schema
+// package embeds means the base set is never duplicated and cannot drift.
+var baseResourceProperties, baseResourceRequired = mustParseBaseResource()
 
-// baseResourceRequired lists the common properties that are mandatory on every
-// resource type. It mirrors the "required" section of base.yaml.
-var baseResourceRequired = []string{"environment"}
+// mustParseBaseResource decodes the embedded canonical base manifest into the
+// bicep-tools manifest.Schema model. The manifest is a build-time constant, so a
+// parse failure indicates a programming error and panics at startup.
+func mustParseBaseResource() (map[string]manifest.Schema, []string) {
+	var doc struct {
+		Properties map[string]manifest.Schema `yaml:"properties"`
+		Required   []string                   `yaml:"required"`
+	}
+	if err := yaml.Unmarshal(baseresource.RawManifest(), &doc); err != nil {
+		panic(fmt.Sprintf("bicep-tools: failed to parse base resource manifest: %v", err))
+	}
+	if len(doc.Properties) == 0 {
+		panic("bicep-tools: base resource manifest declares no properties")
+	}
+	return doc.Properties, doc.Required
+}
 
 // applyBaseResource merges the common base properties into the given schema in
 // place, mirroring (*baseresource.BaseManifest).Apply in the schema package: for
@@ -80,9 +64,4 @@ func applyBaseResource(schema *manifest.Schema) {
 			schema.Required = append(schema.Required, required)
 		}
 	}
-}
-
-// ptr returns a pointer to v.
-func ptr[T any](v T) *T {
-	return &v
 }
