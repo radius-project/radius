@@ -1102,3 +1102,81 @@ func TestCreateOrUpdateResource_Run_SensitiveMultipleFields(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ctrl.Result{}, res)
 }
+
+func Test_buildSecretReferences(t *testing.T) {
+	const resourceID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Test/testResources/my-resource"
+
+	t.Run("resolves a top-level reference to a sibling secret ID", func(t *testing.T) {
+		properties := map[string]any{"secretName": "db-secret"}
+
+		references, err := buildSecretReferences(resourceID, properties, []string{"secretName"})
+		require.NoError(t, err)
+		require.Equal(t, map[string]string{
+			"secretName": "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Security/secrets/db-secret",
+		}, references)
+	})
+
+	t.Run("resolves a nested reference", func(t *testing.T) {
+		properties := map[string]any{"config": map[string]any{"secretName": "db-secret"}}
+
+		references, err := buildSecretReferences(resourceID, properties, []string{"config.secretName"})
+		require.NoError(t, err)
+		require.Equal(t, map[string]string{
+			"config.secretName": "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Security/secrets/db-secret",
+		}, references)
+	})
+
+	t.Run("skips an unset reference", func(t *testing.T) {
+		references, err := buildSecretReferences(resourceID, map[string]any{}, []string{"secretName"})
+		require.NoError(t, err)
+		require.Nil(t, references)
+	})
+
+	t.Run("returns nil when there are no reference paths", func(t *testing.T) {
+		references, err := buildSecretReferences(resourceID, map[string]any{"secretName": "db-secret"}, nil)
+		require.NoError(t, err)
+		require.Nil(t, references)
+	})
+
+	t.Run("fails closed on an invalid resource ID", func(t *testing.T) {
+		_, err := buildSecretReferences("not-a-valid-id", map[string]any{"secretName": "db-secret"}, []string{"secretName"})
+		require.Error(t, err)
+	})
+}
+
+func Test_stringValueAtPath(t *testing.T) {
+	properties := map[string]any{
+		"secretName": "db-secret",
+		"config": map[string]any{
+			"secretName": "nested-secret",
+		},
+		"port": 5432,
+	}
+
+	t.Run("top-level string", func(t *testing.T) {
+		value, ok := stringValueAtPath(properties, "secretName")
+		require.True(t, ok)
+		require.Equal(t, "db-secret", value)
+	})
+
+	t.Run("nested string", func(t *testing.T) {
+		value, ok := stringValueAtPath(properties, "config.secretName")
+		require.True(t, ok)
+		require.Equal(t, "nested-secret", value)
+	})
+
+	t.Run("missing path", func(t *testing.T) {
+		_, ok := stringValueAtPath(properties, "missing")
+		require.False(t, ok)
+	})
+
+	t.Run("non-string value", func(t *testing.T) {
+		_, ok := stringValueAtPath(properties, "port")
+		require.False(t, ok)
+	})
+
+	t.Run("path through a non-map", func(t *testing.T) {
+		_, ok := stringValueAtPath(properties, "secretName.deeper")
+		require.False(t, ok)
+	})
+}
