@@ -269,7 +269,7 @@ jobs:
           kubectl rollout status deployment/bicep-de -n radius-system --timeout=300s
           echo "External deployment target configured."
 
-      - name: Configure Radius environment
+      - name: Configure Radius workspace
         run: |
           NAMESPACE="${{ vars.RADIUS_K8S_NAMESPACE || 'default' }}"
 
