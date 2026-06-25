@@ -34,7 +34,7 @@ install-yq: ## Install the pinned yq YAML processor into a user-owned bin dir (n
 		YQ_CHECKSUM_DARWIN_AMD64="$(YQ_CHECKSUM_DARWIN_AMD64)" \
 		YQ_CHECKSUM_DARWIN_ARM64="$(YQ_CHECKSUM_DARWIN_ARM64)" \
 		YQ_INSTALL_DIR="$(YQ_INSTALL_DIR)" \
-		bash build/scripts/install-yq.sh
+		./build/scripts/install-yq.sh
 
 # bicep CLI - pinned version and per-platform SHA-256 checksums consumed by
 # build/scripts/install-bicep.sh. Pinned to v0.42.1: v0.43+ rejects br:localhost
@@ -56,4 +56,4 @@ install-bicep: ## Install the pinned Bicep CLI into a user-owned bin dir (no sud
 		BICEP_CHECKSUM_DARWIN_AMD64="$(BICEP_CHECKSUM_DARWIN_AMD64)" \
 		BICEP_CHECKSUM_DARWIN_ARM64="$(BICEP_CHECKSUM_DARWIN_ARM64)" \
 		BICEP_INSTALL_DIR="$(BICEP_INSTALL_DIR)" \
-		bash build/scripts/install-bicep.sh
+		./build/scripts/install-bicep.sh
