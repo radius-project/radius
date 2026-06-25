@@ -23,21 +23,16 @@ limitations under the License.
 // proves that both the control-plane databases and the Terraform state Secrets survived the
 // teardown.
 //
-// The test is destructive (it uninstalls and reinstalls Radius on the target cluster) and requires
-// a real cluster plus the Terraform recipe module server, so it does not run as part of the normal
-// functional suite. It is skipped unless RADIUS_STATE_E2E is set to a truthy value.
-//
-// Test dependency: rad startup/shutdown do not create clusters or install Radius. This test
-// currently drives the cluster install/uninstall itself (installRadius/uninstallRadius below). It
-// is expected to depend on the separate Repo Radius workflow code (in flight) that creates the
-// ephemeral cluster, installs Radius, and runs the deploy. Once that lands, re-point the helpers
-// at the shared workflow code instead of duplicating the install/uninstall steps here.
+// The test is destructive: it uninstalls and reinstalls Radius (`--purge`) to simulate the
+// ephemeral control plane that Repo Radius runs on. Because of that it runs on its own dedicated
+// cluster in CI (the `statestore-noncloud` leg), never alongside other functional tests, and
+// drives its own install/uninstall instead of relying on the shared "Install Radius" CI step.
 package statestore
 
 import (
 	"context"
+	"fmt"
 	"os"
-	"strconv"
 	"testing"
 	"time"
 
@@ -47,6 +42,7 @@ import (
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/functional-portable/corerp"
 	"github.com/radius-project/radius/test/radcli"
+	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/testutil"
 )
 
@@ -54,40 +50,134 @@ const (
 	stateNamespace = "radius-system"
 	secretPrefix   = "tfstate-default-"
 
+	// resourceGroup is the Radius resource group the test deploys into. It must match the group
+	// segment of resourceID below so the Terraform state secret name resolves correctly.
+	resourceGroup = "kind-radius"
+
+	// relativeChartPath points at the in-repo Helm chart so the test installs the build under test.
+	relativeChartPath = "../../../deploy/Chart"
+
 	// redisRecipeTemplate is the Terraform recipe fixture shared with the corerp recipe tests.
 	redisRecipeTemplate = "../../corerp/noncloud/resources/testdata/corerp-resources-terraform-redis.bicep"
+
+	// controlPlaneTimeout is how long to wait for the control plane API to become available after an
+	// install. It is generous because the UCP aggregated APIService may briefly return 503 while the
+	// pods roll. (Lesson from the flaky upgrade test, PR #12245.)
+	controlPlaneTimeout      = 5 * time.Minute
+	controlPlanePollInterval = 5 * time.Second
+
+	// apiServiceDeregistrationTimeout bounds the wait for the Radius aggregated APIService to
+	// deregister after an uninstall. Reinstalling while `api.ucp.dev/v1alpha3` is still registered
+	// makes the API server return 503, which flakes the next install. (Lesson from PR #12245.)
+	apiServiceDeregistrationTimeout  = 60 * time.Second
+	apiServiceDeregistrationInterval = 2 * time.Second
+	radiusAPIGroupVersion            = "api.ucp.dev/v1alpha3"
+
+	// podTerminationTimeout bounds the wait for Radius pods to disappear after an uninstall.
+	podTerminationTimeout = 2 * time.Minute
+	podTerminationPoll    = 5 * time.Second
+	radiusPodSelector     = "app.kubernetes.io/part-of=radius"
 )
 
-// shouldRun reports whether the destructive lifecycle test has been opted into.
-func shouldRun(t *testing.T) {
-	t.Helper()
-	v, _ := strconv.ParseBool(os.Getenv("RADIUS_STATE_E2E"))
-	if !v {
-		t.Skip("set RADIUS_STATE_E2E=1 to run the destructive rad startup/shutdown lifecycle test")
-	}
-}
-
-// installRadius installs Radius with the PostgreSQL state backend enabled.
+// installRadius installs Radius with the PostgreSQL state backend enabled, using the images and
+// chart of the build under test. In CI the registry/tag come from DOCKER_REGISTRY/REL_VERSION and
+// the secure local registry's CA is supplied via RADIUS_REGISTRY_CERT_FILE; locally it falls back
+// to the public images.
 func installRadius(ctx context.Context, t *testing.T, cli *radcli.CLI) {
 	t.Helper()
-	out, err := cli.RunCommand(ctx, []string{"install", "kubernetes", "--set", "database.enabled=true"})
+	registry, tag := testutil.SetDefault()
+
+	args := []string{
+		"install", "kubernetes",
+		"--chart", relativeChartPath,
+		"--set", fmt.Sprintf("rp.image=%s/applications-rp,rp.tag=%s", registry, tag),
+		"--set", fmt.Sprintf("dynamicrp.image=%s/dynamic-rp,dynamicrp.tag=%s", registry, tag),
+		"--set", fmt.Sprintf("controller.image=%s/controller,controller.tag=%s", registry, tag),
+		"--set", fmt.Sprintf("ucp.image=%s/ucpd,ucp.tag=%s", registry, tag),
+		"--set", fmt.Sprintf("bicep.image=%s/bicep,bicep.tag=%s", registry, tag),
+		"--set", fmt.Sprintf("preupgrade.image=%s/pre-upgrade,preupgrade.tag=%s", registry, tag),
+		"--set", "database.enabled=true",
+	}
+	if deImage := os.Getenv("DE_IMAGE"); deImage != "" {
+		args = append(args, "--set", fmt.Sprintf("de.image=%s,de.tag=%s", deImage, os.Getenv("DE_TAG")))
+	}
+	if cert := os.Getenv("RADIUS_REGISTRY_CERT_FILE"); cert != "" {
+		args = append(args, "--set-file", "global.rootCA.cert="+cert)
+	}
+
+	out, err := cli.RunCommand(ctx, args)
 	require.NoErrorf(t, err, "rad install failed: %s", out)
+	waitForControlPlane(t, ctx)
 }
 
 // uninstallRadius removes Radius and its state so the next install starts from an empty control
-// plane, simulating an ephemeral teardown.
+// plane, simulating an ephemeral teardown. It then waits for the Radius pods to terminate and the
+// aggregated APIService to deregister so a subsequent install does not race the teardown.
 func uninstallRadius(ctx context.Context, t *testing.T, cli *radcli.CLI) {
 	t.Helper()
 	out, err := cli.RunCommand(ctx, []string{"uninstall", "kubernetes", "--purge"})
 	require.NoErrorf(t, err, "rad uninstall failed: %s", out)
+	waitForCleanTeardown(t, ctx)
+}
+
+// waitForControlPlane polls until the Radius control plane API is reachable, treating transient
+// errors (including 503 from the aggregated APIService while pods roll) as retryable.
+func waitForControlPlane(t *testing.T, _ context.Context) {
+	t.Helper()
+	require.Eventually(t, func() bool {
+		ready := false
+		func() {
+			// NewRPTestOptions calls require/panic internally on a not-yet-ready control plane;
+			// catch that and treat it as "retry".
+			defer func() { _ = recover() }()
+			opts := rp.NewRPTestOptions(t)
+			ready = opts.ManagementClient != nil
+		}()
+		return ready
+	}, controlPlaneTimeout, controlPlanePollInterval, "control plane did not become available within timeout")
+}
+
+// waitForCleanTeardown waits for Radius pods to terminate and the aggregated APIService to
+// deregister after an uninstall, so the next install does not race a half-torn-down control plane.
+func waitForCleanTeardown(t *testing.T, ctx context.Context) {
+	t.Helper()
+	k8s := test.NewTestOptions(t).K8sClient
+
+	require.Eventually(t, func() bool {
+		pods, err := k8s.CoreV1().Pods(stateNamespace).List(ctx, metav1.ListOptions{LabelSelector: radiusPodSelector})
+		if err != nil {
+			t.Logf("waiting to list pods: %v", err)
+			return false
+		}
+		if len(pods.Items) == 0 {
+			return true
+		}
+		t.Logf("waiting for %d Radius pod(s) to terminate...", len(pods.Items))
+		return false
+	}, podTerminationTimeout, podTerminationPoll, "Radius pods did not terminate within timeout")
+
+	// A 503 from the aggregated APIService means it is still registered but its backend is gone;
+	// poll discovery until the Radius API group is no longer served.
+	require.Eventually(t, func() bool {
+		_, resources, err := k8s.Discovery().ServerGroupsAndResources()
+		if err != nil {
+			// Partial results are expected mid-deregistration; inspect what we got.
+			t.Logf("discovery returned partial results (expected during deregistration): %v", err)
+		}
+		for _, rl := range resources {
+			if rl != nil && rl.GroupVersion == radiusAPIGroupVersion {
+				t.Log("Radius aggregated APIService still registered, waiting...")
+				return false
+			}
+		}
+		return true
+	}, apiServiceDeregistrationTimeout, apiServiceDeregistrationInterval, "aggregated APIService did not deregister within timeout")
 }
 
 // Test_StateStore_ShutdownStartup_TerraformCrossDeploy exercises every state path:
 // install, deploy a Terraform resource, shut down (backup), tear down, start up (restore), then
 // deploy an update to the same resource.
 func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
-	shouldRun(t)
-
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
@@ -98,7 +188,7 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	resourceName := "statestore-tf-redis"
 	redisCacheName := "statestore-redis"
 
-	resourceID := "/planes/radius/local/resourcegroups/kind-radius/providers/Applications.Core/extenders/" + resourceName
+	resourceID := "/planes/radius/local/resourcegroups/" + resourceGroup + "/providers/Applications.Core/extenders/" + resourceName
 	secretSuffix, err := corerp.GetSecretSuffix(resourceID, envName, appName)
 	require.NoError(t, err)
 	secretName := secretPrefix + secretSuffix
@@ -122,9 +212,18 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 		return getErr == nil
 	}
 
-	// 1. Fresh install with PostgreSQL state backend.
+	// 1. Fresh install with the PostgreSQL state backend.
 	installRadius(ctx, t, cli)
 	t.Cleanup(func() { uninstallRadius(context.Background(), t, cli) })
+
+	// Create the workspace and resource group the test deploys into (the shared CI "Install Radius"
+	// step is skipped for this leg, so the test owns this setup).
+	out, err := cli.RunCommand(ctx, []string{"workspace", "create", "kubernetes", "--force"})
+	require.NoErrorf(t, err, "rad workspace create failed: %s", out)
+	out, err = cli.RunCommand(ctx, []string{"group", "create", resourceGroup})
+	require.NoErrorf(t, err, "rad group create failed: %s", out)
+	out, err = cli.RunCommand(ctx, []string{"group", "switch", resourceGroup})
+	require.NoErrorf(t, err, "rad group switch failed: %s", out)
 
 	// 2. Deploy the Terraform-backed resource. This creates control-plane state and a Terraform
 	//    state Secret.
@@ -132,7 +231,7 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	require.True(t, secretExists(), "Terraform state secret should exist after the first deploy")
 
 	// 3. Back up all durable state.
-	out, err := cli.RunCommand(ctx, []string{"shutdown"})
+	out, err = cli.RunCommand(ctx, []string{"shutdown"})
 	require.NoErrorf(t, err, "rad shutdown failed: %s", out)
 
 	// 4. Tear the control plane down completely (ephemeral teardown).

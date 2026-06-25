@@ -181,6 +181,7 @@ jobs:
             kubernetes-noncloud,
             msgrp-noncloud,
             multicluster-noncloud,
+            statestore-noncloud,
             samples-noncloud,
             ucp-noncloud,
             datastoresrp-noncloud,
@@ -421,6 +422,10 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Install Radius
+        # The statestore leg drives its own install/uninstall/reinstall lifecycle
+        # inside the test (it must reinstall to simulate an ephemeral control
+        # plane), so the shared install is skipped for it.
+        if: matrix.name != 'statestore-noncloud'
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
@@ -611,7 +616,9 @@ jobs:
           make "test-functional-${MATRIX_NAME}"
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
-          TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
+          # The statestore leg installs/uninstalls/reinstalls Radius, so it needs
+          # far longer than the standard per-leg timeout.
+          TEST_TIMEOUT: ${{ matrix.name == 'statestore-noncloud' && '40m' || env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
@@ -621,6 +628,9 @@ jobs:
           RADIUS_TEST_FAST_CLEANUP: true
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
           MATRIX_NAME: ${{ matrix.name }}
+          # Used by the statestore leg's in-test `rad install` to trust the secure
+          # local registry; ignored by other legs.
+          RADIUS_REGISTRY_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
