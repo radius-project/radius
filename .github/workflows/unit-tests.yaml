@@ -24,7 +24,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: ${{ format('{0}-{1}-{2}-{3}-{4}', github.workflow, github.event_name, github.event.pull_request.number || github.event.pull_request_target.number || github.ref, github.base_ref || null, github.head_ref || null) }}
+  group: ${{ format('{0}-{1}-{2}-{3}-{4}', github.workflow, github.event_name, github.event.pull_request.number || github.ref, github.base_ref || null, github.head_ref || null) }}
   cancel-in-progress: true
 
 jobs:

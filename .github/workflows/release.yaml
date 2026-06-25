@@ -52,12 +52,12 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Install yq
+        run: make install-yq
+
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d # v4.53.3
-        with:
-          # Get a comma-separated list of supported versions
-          cmd: yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//'
+        run: echo "::set-output name=result::$(yq '.supported[].version' versions.yaml | tr '\n' ',' | sed 's/,$//')"
 
       - name: Determine desired release version
         id: get-version
@@ -237,12 +237,12 @@ jobs:
           GIT_USER_NAME: ${{ steps.bot-details.outputs.name }}
           GIT_USER_EMAIL: ${{ steps.bot-details.outputs.email }}
 
+      - name: Install yq
+        run: make install-yq
+
       - name: Get supported versions from versions.yaml
         id: get-supported-versions
-        uses: mikefarah/yq@1b9b4ac5187171d2e5e3129be0cfa827c7f9d53d # v4.53.3
-        with:
-          # Get a comma-separated list of supported versions
-          cmd: yq '.supported[].version' ./radius/versions.yaml | tr '\n' ',' | sed 's/,$//'
+        run: echo "::set-output name=result::$(yq '.supported[].version' ./radius/versions.yaml | tr '\n' ',' | sed 's/,$//')"
 
       - name: Determine desired release version
         id: get-version

@@ -1,16 +1,15 @@
 #!/bin/bash
 
-# This script installs the latest version of the Bicep CLI 
-# and creates a configuration file for Bicep with the specified release channel.
-# This is used to build the Bicep container image, and is called automatically
-# by the `make build-bicep` and `make docker-build-bicep` commands.
-
-# Usage: ./install-bicep.sh <release-channel> <output-dir> <arch>
-# Example: ./install-bicep.sh edge ./output amd64
+# Generates the versioned bicepconfig.json used by the Bicep container image,
+# pointing the Radius and AWS Bicep extensions at the registry tag for the given
+# release channel. The Bicep CLI binary itself is installed separately by
+# build/scripts/install-bicep.sh, the single source of truth for that.
+#
+# Usage: ./install-bicep.sh <release-channel> <output-dir>
+# Example: ./install-bicep.sh edge ./output
 
 REL_CHANNEL=$1
 OUTPUT_DIR=$2
-ARCH=$3
 
 if [ -z "$REL_CHANNEL" ]; then
   echo "Release channel is required. Please provide it as the first argument."
@@ -22,26 +21,14 @@ if [ -z "$OUTPUT_DIR" ]; then
   exit 1
 fi
 
-if [ -z "$ARCH" ]; then
-  echo "Architecture is required. Please provide it as the third argument."
-  exit 1
-fi
-
 # Radius Bicep types uses latest tag
 if [ "$REL_CHANNEL" = "edge" ]; then
   REL_CHANNEL="latest"
 fi
 
-# Check if curl is installed
-if ! command -v curl &> /dev/null
-then
-    echo "curl could not be found, please install it first."
-    exit 1
-fi
-
 # Create versioned bicepconfig.json
-mkdir -p "$OUTPUT_DIR"
-cat <<EOF > $OUTPUT_DIR/bicepconfig.json
+mkdir -p "${OUTPUT_DIR}"
+cat <<EOF > "${OUTPUT_DIR}/bicepconfig.json"
 {
   "extensions": {
     "radius": "br:biceptypes.azurecr.io/radius:${REL_CHANNEL}",
@@ -49,29 +36,3 @@ cat <<EOF > $OUTPUT_DIR/bicepconfig.json
   }
 }
 EOF
-
-# Bicep CLI uses x64 or arm64
-BICEP_ARCH="x64"
-if [ "$ARCH" = "arm64" ]; then
-  BICEP_ARCH="arm64"
-fi
-
-# Bicep CLI version. Pinned because Bicep v0.43+ tightened
-# ContainerRegistryClientFactory.ThrowIfRegistryNotTrusted to reject br:localhost:5000/... targets,
-# breaking publish-extension to local registries used by our CI and local dev workflows.
-BICEP_VER="v0.42.1"
-
-# Check if bicep binary already exists in the target location
-if [ -f "$OUTPUT_DIR/bicep" ]; then
-  echo "Bicep CLI already exists at $OUTPUT_DIR/bicep, skipping download."
-else
-  echo "Downloading Bicep CLI ${BICEP_VER}..."
-  if ! curl -Lo bicep "https://github.com/Azure/bicep/releases/download/${BICEP_VER}/bicep-linux-${BICEP_ARCH}"; then
-    echo "Failed to download Bicep CLI. Please check your internet connection or the URL."
-    exit 1
-  fi
-
-  chmod +x bicep
-  mv bicep "$OUTPUT_DIR"/bicep
-  echo "Bicep CLI installed successfully at $OUTPUT_DIR/bicep"
-fi
