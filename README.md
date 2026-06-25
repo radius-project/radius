@@ -1,18 +1,21 @@
 # Radius
 
-Radius is a cloud-native application platform that enables developers and the platform engineers that support them to collaborate on delivering and managing cloud-native applications that follow organizational best practices for cost, operations and security, by default. Radius is an open-source project that supports deploying applications across private cloud, Microsoft Azure, and Amazon Web Services, with more cloud providers to come. 
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/radius-project/radius/badge)](https://scorecard.dev/viewer/?uri=github.com/radius-project/radius) [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11971/badge)](https://www.bestpractices.dev/projects/11971)
+
+Radius is a cloud-native application platform that enables developers and the platform engineers that support them to collaborate on delivering and managing cloud-native applications that follow organizational best practices for cost, operations and security, by default. Radius is an open-source project that supports deploying applications across private cloud, Microsoft Azure, and Amazon Web Services, with more cloud providers to come.
 
 Radius is a [Cloud Native Computing Foundation (CNCF) sandbox project](https://www.cncf.io/sandbox-projects/).
 
 ## Overview
 
-The evolution of cloud computing has increased the speed of innovation for many companies, whether they are building 2 and 3-tier applications, or complex microservice-based applications. Cloud native technologies like Kubernetes have made it easier to build applications that can run anywhere. At the same time, many applications have become more complex, and managing them in the cloud increasingly difficult, as companies build cloud-native applications composed of interconnected services and deploy them to multiple public clouds and their private infrastructure. While Kubernetes is a key enabler, we see many organizations building abstractions over Kubernetes, usually focused on compute, to work around its limitations:  Kubernetes has no formal definition of an application, it mingles infrastructure and application concepts and it is overwhelmingly complex.  Developers also inevitably realize their applications require much more than Kubernetes, including support for dependencies like application programming interface (API) front ends, key/value stores, caches, and observability systems.  Amidst these challenges for developers, their corporate IT counterparts also must enforce an ever-growing matrix of corporate standards, compliance, and security requirements, while enabling rapid application innovation. 
+The evolution of cloud computing has increased the speed of innovation for many companies, whether they are building 2 and 3-tier applications, or complex microservice-based applications. Cloud native technologies like Kubernetes have made it easier to build applications that can run anywhere. At the same time, many applications have become more complex, and managing them in the cloud increasingly difficult, as companies build cloud-native applications composed of interconnected services and deploy them to multiple public clouds and their private infrastructure. While Kubernetes is a key enabler, we see many organizations building abstractions over Kubernetes, usually focused on compute, to work around its limitations:  Kubernetes has no formal definition of an application, it mingles infrastructure and application concepts and it is overwhelmingly complex.  Developers also inevitably realize their applications require much more than Kubernetes, including support for dependencies like application programming interface (API) front ends, key/value stores, caches, and observability systems.  Amidst these challenges for developers, their corporate IT counterparts also must enforce an ever-growing matrix of corporate standards, compliance, and security requirements, while enabling rapid application innovation.
 
 Radius was designed to address these distinct but related challenges that arise across development and operations as companies continue their journey to cloud.  Radius meets application teams where they are by supporting proven technologies like Kubernetes, existing infrastructure tools including Terraform and Bicep and by integrating with existing CI/CD systems like GitHub Actions. Radius supports multi-tier web-plus-data to complex microservice applications like eShop, a popular cloud reference application from Microsoft.
 
-Key features of the Radius platform include: 
+Key features of the Radius platform include:
+
 - *Team Collaboration*: Radius Applications and Environments allow developers to work with Operations on application definition and delivery.
-- *Infrastructure Recipes*: Swappable infrastructure that complies with organization best practices and IT policy be default.
+- *Infrastructure Recipes*: Swappable infrastructure that complies with organization best practices and IT policy by default.
 - *Application Graph*: Understand how services and infrastructure in an application are interconnected.
 - *Cloud Neutral*: Deploy across development, on-premises and cloud environments with a consistent experience.
 - *Incremental Adoption*: Integrate Radius into existing workflows and existing catalogs of Infrastructure-as-Code templates.
@@ -64,7 +67,6 @@ In addition, we have the below repositories.
 | [Recipes](https://github.com/radius-project/recipes) | This repo contains commonly used Recipe templates for Radius Environments.
 | [Website](https://github.com/radius-project/website) | This repository contains the source code for the Radius website.
 | [AWS Bicep Types](https://github.com/radius-project/bicep-types-aws) | This repository contains the tooling for Bicep support for AWS resource types.
-
 
 ## Security
 
