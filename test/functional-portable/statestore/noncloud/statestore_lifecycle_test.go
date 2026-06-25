@@ -33,6 +33,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"testing"
 	"time"
 
@@ -118,7 +119,7 @@ func installRadius(ctx context.Context, t *testing.T, cli *radcli.CLI) {
 // aggregated APIService to deregister so a subsequent install does not race the teardown.
 func uninstallRadius(ctx context.Context, t *testing.T, cli *radcli.CLI) {
 	t.Helper()
-	out, err := cli.RunCommand(ctx, []string{"uninstall", "kubernetes", "--purge"})
+	out, err := cli.RunCommand(ctx, []string{"uninstall", "kubernetes", "--purge", "--yes"})
 	require.NoErrorf(t, err, "rad uninstall failed: %s", out)
 	waitForCleanTeardown(t, ctx)
 }
@@ -193,6 +194,28 @@ func waitForCleanTeardown(t *testing.T, ctx context.Context) {
 	}, apiServiceDeregistrationTimeout, apiServiceDeregistrationInterval, "aggregated APIService did not deregister within timeout")
 }
 
+// newStateRepo creates a throwaway git repository with no remote for `rad shutdown` / `rad startup`
+// to persist state into. gitstate resolves the repo from the rad process's working directory and
+// pushes to `origin` when a remote exists; running from this remote-less repo exercises the
+// design's supported local/test case (commit-only, no push) instead of trying to push to the
+// checkout's GitHub origin, which has no credentials in CI.
+func newStateRepo(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	for _, args := range [][]string{
+		{"init"},
+		{"config", "user.email", "statestore-test@radapp.io"},
+		{"config", "user.name", "statestore-test"},
+		{"commit", "--allow-empty", "-m", "init"},
+	} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		require.NoErrorf(t, err, "git %v failed: %s", args, out)
+	}
+	return dir
+}
+
 // Test_StateStore_ShutdownStartup_TerraformCrossDeploy exercises every state path:
 // install, deploy a Terraform resource, shut down (backup), tear down, start up (restore), then
 // deploy an update to the same resource.
@@ -201,6 +224,12 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	defer cancel()
 
 	cli := radcli.NewCLI(t, "")
+
+	// shutdown/startup persist state into a remote-less git repo so the backup commits locally
+	// without trying to push to the checkout's GitHub origin (no credentials in CI). Both commands
+	// must use the same repo so the state committed by shutdown survives into startup.
+	stateCLI := radcli.NewCLI(t, "")
+	stateCLI.WorkingDirectory = newStateRepo(t)
 
 	appName := "statestore-tf-redis-app"
 	envName := "statestore-tf-redis-env"
@@ -250,7 +279,7 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	require.True(t, secretExists(), "Terraform state secret should exist after the first deploy")
 
 	// 3. Back up all durable state.
-	out, err = cli.RunCommand(ctx, []string{"shutdown"})
+	out, err = stateCLI.RunCommand(ctx, []string{"shutdown"})
 	require.NoErrorf(t, err, "rad shutdown failed: %s", out)
 
 	// 4. Tear the control plane down completely (ephemeral teardown).
@@ -261,7 +290,7 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	require.False(t, secretExists(), "Terraform state secret must be gone after reinstall (teardown was real)")
 
 	// 6. Restore the saved state.
-	out, err = cli.RunCommand(ctx, []string{"startup"})
+	out, err = stateCLI.RunCommand(ctx, []string{"startup"})
 	require.NoErrorf(t, err, "rad startup failed: %s", out)
 
 	// 7. Both stores must be restored: the Terraform state Secret is back, and the control-plane
