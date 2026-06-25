@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 set -euo pipefail
 
 # Installs the Bicep CLI into a user-owned directory (no sudo) for the current
