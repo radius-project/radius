@@ -141,7 +141,7 @@ jobs:
         run: |
           # Same-repo PRs are always trusted (requires write access to push branches)
           if [ "${HEAD_REPO}" = "${BASE_REPO}" ]; then
-            echo "Same-repo PR from ${PR_AUTHOR} — trusted"
+            echo "Same-repo PR from ${PR_AUTHOR} - trusted"
             echo "is-external=false" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
@@ -150,10 +150,10 @@ jobs:
           # Uses app token which can read org membership regardless of visibility settings.
           # gh api returns exit code 0 for 204 (member) and non-zero for 404/302 (not a member).
           if gh api "orgs/${ORG}/members/${PR_AUTHOR}" --silent 2>/dev/null; then
-            echo "Fork PR from org member ${PR_AUTHOR} — trusted"
+            echo "Fork PR from org member ${PR_AUTHOR} - trusted"
             echo "is-external=false" >> "${GITHUB_OUTPUT}"
           else
-            echo "Fork PR from ${PR_AUTHOR} — external"
+            echo "Fork PR from ${PR_AUTHOR} - external"
             echo "is-external=true" >> "${GITHUB_OUTPUT}"
           fi
 
@@ -176,7 +176,7 @@ jobs:
   # approval gate so every downstream job keys off one result
   # (needs.authorize.result == 'success') instead of repeating the boolean.
   #
-  # Runs unless the whole run was cancelled, then fails — blocking the run — when:
+  # Runs unless the whole run was cancelled, then fails - blocking the run - when:
   #   - check-trust did not pass (fail-safe if the trust check itself errored), or
   #   - approval-gate did not pass (an external contributor's approval was
   #     rejected/'cancelled' or failed).
@@ -196,11 +196,11 @@ jobs:
           APPROVAL_GATE_RESULT: ${{ needs.approval-gate.result }}
         run: |
           if [ "${CHECK_TRUST_RESULT}" != "success" ] && [ "${CHECK_TRUST_RESULT}" != "skipped" ]; then
-            echo "::error::Blocked — trust check did not pass (result=${CHECK_TRUST_RESULT})."
+            echo "::error::Blocked - trust check did not pass (result=${CHECK_TRUST_RESULT})."
             exit 1
           fi
           if [ "${APPROVAL_GATE_RESULT}" != "success" ] && [ "${APPROVAL_GATE_RESULT}" != "skipped" ]; then
-            echo "::error::Blocked — approval was not granted (result=${APPROVAL_GATE_RESULT})."
+            echo "::error::Blocked - approval was not granted (result=${APPROVAL_GATE_RESULT})."
             exit 1
           fi
           echo "Authorized to proceed."
