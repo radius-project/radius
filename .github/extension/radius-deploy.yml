@@ -14,6 +14,16 @@ on:
         description: 'Container image for the application'
         required: false
         default: ''
+      radius_commands:
+        # Optional override of the default `rad deploy`. A single rad CLI command
+        # string, or a JSON-encoded array of command strings run in order, with the
+        # `rad` prefix omitted (e.g. `deploy .radius/app.bicep` or
+        # `["deploy .radius/app.bicep", "app graph"]`). When empty, the workflow runs
+        # its default `rad deploy` of `.radius/app.bicep`. This is the Investment 3
+        # dispatch contract that lets a frontend drive arbitrary rad commands.
+        description: 'Optional rad CLI command string, or JSON array of command strings (rad prefix omitted). Overrides the default deploy.'
+        required: false
+        default: ''
 
 permissions:
   id-token: write
@@ -533,8 +543,11 @@ jobs:
           echo "✅ Registry credentials secret 'ghcr-registry-creds' created in namespace '$APP_NS'."
 
       - name: Deploy application
+        env:
+          # Pass caller input through the environment to avoid command injection.
+          RADIUS_COMMANDS: ${{ inputs.radius_commands }}
         run: |
-          echo "Deploying $APP_FILE to environment $ENVIRONMENT..."
+          mkdir -p /tmp/radius-output
 
           # Ensure the radiusCompute extension is imported for Radius.Compute/containerImages.
           # Without it, the Bicep compiler routes Radius.Compute types to Azure ARM instead of UCP.
@@ -545,19 +558,58 @@ jobs:
           echo "Bicep extensions in $APP_FILE:"
           grep '^extension ' "$APP_FILE" || true
 
-          DEPLOY_PARAMS=()
-          if [ -n "$APP_IMAGE" ]; then
-            DEPLOY_PARAMS+=(--parameters "image=$APP_IMAGE")
-          fi
-          # Pass the DB password via env var to avoid shell expansion/mangling
-          # of special characters (#, $, &, etc.) on the rad deploy command line.
+          # Make the DB password available to any command that references it.
           export RADIUS_DB_PASSWORD="${{ secrets.RADIUS_DB_PASSWORD }}"
-          if [ -n "$RADIUS_DB_PASSWORD" ]; then
-            DEPLOY_PARAMS+=(--parameters "password=$RADIUS_DB_PASSWORD")
+
+          if [ -n "${RADIUS_COMMANDS//[[:space:]]/}" ]; then
+            # Caller supplied commands: a single rad command string, or a JSON array
+            # of command strings, run in order with the `rad` prefix omitted. Each
+            # command's output is captured as an artifact for incremental polling;
+            # stop on the first failure.
+            if printf '%s' "$RADIUS_COMMANDS" | jq -e 'type == "array"' >/dev/null 2>&1; then
+              mapfile -t COMMANDS < <(printf '%s' "$RADIUS_COMMANDS" | jq -r '.[]')
+            else
+              COMMANDS=("$RADIUS_COMMANDS")
+            fi
+            i=0
+            for cmd in "${COMMANDS[@]}"; do
+              i=$((i + 1))
+              [ -z "${cmd//[[:space:]]/}" ] && continue
+              OUT="/tmp/radius-output/$(printf '%02d' "$i")-output.txt"
+              echo "::group::rad $cmd"
+              if ! rad $cmd 2>&1 | tee "$OUT"; then
+                echo "::endgroup::"
+                echo "Command failed: rad $cmd" >&2
+                exit 1
+              fi
+              echo "::endgroup::"
+            done
+            echo "✅ Radius commands complete."
+          else
+            # Default behavior: deploy the app bicep with the image (and optional
+            # password) parameters.
+            echo "Deploying $APP_FILE to environment $ENVIRONMENT..."
+            DEPLOY_PARAMS=()
+            if [ -n "$APP_IMAGE" ]; then
+              DEPLOY_PARAMS+=(--parameters "image=$APP_IMAGE")
+            fi
+            # Pass the DB password via env var to avoid shell expansion/mangling
+            # of special characters (#, $, &, etc.) on the rad deploy command line.
+            if [ -n "$RADIUS_DB_PASSWORD" ]; then
+              DEPLOY_PARAMS+=(--parameters "password=$RADIUS_DB_PASSWORD")
+            fi
+            rad deploy "$APP_FILE" --environment "$ENVIRONMENT" "${DEPLOY_PARAMS[@]}" 2>&1 | tee /tmp/radius-output/01-deploy.txt
+            echo ""
+            echo "✅ Deployment complete."
           fi
-          rad deploy "$APP_FILE" --environment "$ENVIRONMENT" "${DEPLOY_PARAMS[@]}"
-          echo ""
-          echo "✅ Deployment complete."
+
+      - name: Upload command output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: radius-output
+          path: /tmp/radius-output/
+          retention-days: 1
 
       - name: Persist Radius state (rad shutdown)
         if: always()
