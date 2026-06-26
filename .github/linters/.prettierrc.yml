@@ -13,12 +13,12 @@ insertPragma: false # consider true
 singleAttributePerLine: false
 bracketSameLine: false
 jsxSingleQuote: true
-printWidth: 120
+printWidth: 80 # consider 120
 proseWrap: preserve
 quoteProps: as-needed
 requirePragma: false # consider true
 semi: true
-singleQuote: true
+singleQuote: false # consider true
 tabWidth: 2
 trailingComma: none
 useTabs: false

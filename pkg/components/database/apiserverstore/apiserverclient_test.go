@@ -46,47 +46,47 @@ func Test_ResourceName_Normalize(t *testing.T) {
 		{
 			"ucp_resourcegroup_with_valid_characters",
 			"/planes/radius/local/resourceGroups/test-Group",
-			"scope.test-group.b8fcfb5d6a16e6f9cd10cd4c0377082bed734c6f",
+			"scope.test-group.67fbba5bd74b18ae00a6a91be9f43a55a48eee99",
 		},
 		{
 			"ucp_resourcegroup_with_underscore",
 			"/planes/radius/local/resourceGroups/test_group",
-			"scope.testx5fgroup.0fb96a9aa19f9c2e101405b80929ecc5cae090d0",
+			"scope.testx5fgroup.ba43ebf75323cc0f3db85cd03612c29526944768",
 		},
 		{
 			"ucp_resourcegroup_with_colon",
 			"/planes/radius/local/resourceGroups/test:group",
-			"scope.testx3agroup.a01f2550797ca2e5d80b6032f361dea167e6c1f5",
+			"scope.testx3agroup.34a1c433a894e07210075f068e81982855bb708a",
 		},
 		{
 			"ucp_resourcegroup_with_undercore_char_code",
 			"/planes/radius/local/resourceGroups/testx5fgroup",
-			"scope.testx5fgroup.38e1d2520da9c33fb1f82e7c697ebfb7ec28da2e",
+			"scope.testx5fgroup.ed102966e22c47a92f3c3b2fb31cb535b127a6fb",
 		},
 		{
 			"ucp_resourcegroup_with_long_resourcegroup_name",
 			"/planes/radius/local/resourceGroups/" + strings.Repeat("longResourceGroupName", 50),
-			"scope.longresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroup.77d9b26654021c6b2acc6434ea3da6bf6fd2ee63",
+			"scope.longresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroup.7934e91c6c33eda65102b1b07847cbb38e1c808f",
 		},
 		{
 			"ucp_id_with_underscore",
 			"/planes/radius/local/resourceGroups/test_group/providers/Applications.Core/environments/cool_test",
-			"resource.coolx5ftest.d42a57ad9f2f44521a1b0a63626fb9da20a31f45",
+			"resource.coolx5ftest.11c22a1c449df72a5983a3d59bd4f74dcade368f",
 		},
 		{
 			"ucp_id_with_dot",
 			"/planes/radius/local/resourceGroups/test_group/providers/Applications.Core/environments/cool.test",
-			"resource.coolx2etest.abdff8cc92a10c748a2f8907b0b187cff1f9de14",
+			"resource.coolx2etest.b31698511fc6c1925886f805e5320fe22b797610",
 		},
 		{
 			"ucp_id_with_hyphen",
 			"/planes/radius/local/resourceGroups/test_group/providers/Applications.Core/environments/cool-test",
-			"resource.cool-test.0424033ec7fe861358037a96b8510f168a459e5a",
+			"resource.cool-test.9fdd9424fe5520537d421b24ef5c9baa27d77af1",
 		},
 		{
 			"ucp_id_with_long_resource_name",
 			"/planes/radius/local/resourceGroups/test_group/providers/Applications.Core/environments/" + strings.Repeat("longResourceName", 50),
-			"resource.longresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourc.0d69e6d1293c114e5c6d1e905893b44d29f5ea71",
+			"resource.longresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourc.b8407bd19b9b40a6b5aadf286deea390389ea5b4",
 		},
 	}
 
@@ -161,6 +161,62 @@ func Test_APIServer_Client(t *testing.T) {
 		}
 
 		require.Equal(t, expected, resource.Labels)
+	})
+
+	t.Run("legacy_named_resource_is_found_updated_and_deleted", func(t *testing.T) {
+		clear(t)
+
+		// Simulate a resource written by an older version of Radius: the Kubernetes object is stored
+		// under the legacy (SHA-1) name. The SHA-256 migration must continue to find, update, and
+		// delete it without orphaning the existing data.
+		legacyName := legacyResourceName(shared.Resource1ID)
+		legacyObject := ucpv1alpha1.Resource{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      legacyName,
+				Namespace: ns,
+			},
+			Entries: []ucpv1alpha1.ResourceEntry{
+				{
+					ID:   shared.Resource1ID.String(),
+					ETag: etag.New(shared.MarshalOrPanic(shared.Data1)),
+					Data: &runtime.RawExtension{Raw: shared.MarshalOrPanic(shared.Data1)},
+				},
+			},
+		}
+		err := rc.Create(ctx, &legacyObject)
+		require.NoError(t, err)
+
+		// Get must find the resource via the legacy-name fallback.
+		got, err := client.Get(ctx, shared.Resource1ID.String())
+		require.NoError(t, err)
+		require.Equal(t, shared.Resource1ID.String(), got.ID)
+
+		// Save must update the existing legacy object in place rather than creating a new object under
+		// the current (SHA-256) name.
+		obj := database.Object{
+			Metadata: database.Metadata{ID: shared.Resource1ID.String()},
+			Data:     shared.Data2,
+		}
+		err = client.Save(ctx, &obj)
+		require.NoError(t, err)
+
+		// The current (SHA-256) named object must NOT exist - the data stays under the legacy name.
+		currentName := resourceName(shared.Resource1ID)
+		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: currentName}, &ucpv1alpha1.Resource{})
+		require.True(t, apierrors.IsNotFound(err), "save must not duplicate the resource under the current name")
+
+		updated := ucpv1alpha1.Resource{}
+		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: legacyName}, &updated)
+		require.NoError(t, err)
+		require.Len(t, updated.Entries, 1)
+		require.Equal(t, shared.Resource1ID.String(), updated.Entries[0].ID)
+
+		// Delete must remove the resource via the legacy-name fallback.
+		err = client.Delete(ctx, shared.Resource1ID.String())
+		require.NoError(t, err)
+
+		err = rc.Get(ctx, runtimeclient.ObjectKey{Namespace: ns, Name: legacyName}, &ucpv1alpha1.Resource{})
+		require.True(t, apierrors.IsNotFound(err))
 	})
 
 	t.Run("save_resource_and_validate_kubernetes_object_uppercase_name", func(t *testing.T) {
