@@ -38,6 +38,16 @@ import (
 )
 
 func Test_ACI(t *testing.T) {
+	// Disabled: this test dominates the corerp-cloud functional leg's wall-clock
+	// time. It provisions real Azure Container Instances (plus a VNet/NSG/ILB) and
+	// is wrapped in a 2x retry with 60s backoff to tolerate the subscription-shared
+	// 'StandardCores' ACI quota (ContainerGroupQuotaReached). When the quota is
+	// exhausted by concurrent CI runs the deploy is retried end-to-end, so a single
+	// run can take ~11-12 minutes (vs <1 minute for every other test in the leg) and
+	// roughly doubles the cloud workflow's total time. Re-enable once the ACI tests
+	// are isolated onto their own quota-aware lane. See #12044 and #12163.
+	t.Skip("Test_ACI is temporarily disabled: real ACI provisioning + quota retries dominate corerp-cloud CI time. See #12044, #12163.")
+
 	name := "aci-app"
 	containerResourceName := "frontend"
 	containerResourceName2 := "magpie"
