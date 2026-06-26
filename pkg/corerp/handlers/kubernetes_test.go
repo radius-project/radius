@@ -167,6 +167,11 @@ func TestPut_ContourHTTPProxyRouteChildSkipsWait(t *testing.T) {
 	}, props)
 	require.Equal(t, resources_kubernetes.IDFromParts(resources_kubernetes.PlaneNameTODO, contourv1.SchemeGroupVersion.Group, "HTTPProxy", "test-namespace", "route-proxy").String(), options.Resource.ID.String())
 	require.Equal(t, 0, waiter.calls)
+
+	applied := &unstructured.Unstructured{}
+	applied.SetGroupVersionKind(contourv1.SchemeGroupVersion.WithKind("HTTPProxy"))
+	err = handler.client.Get(ctx, client.ObjectKey{Name: "route-proxy", Namespace: "test-namespace"}, applied)
+	require.NoError(t, err)
 }
 
 func TestPut_ContourHTTPProxyRootWaits(t *testing.T) {
@@ -247,6 +252,12 @@ func TestPut_NonContourHTTPProxyBypassesWaiter(t *testing.T) {
 	}, props)
 	require.Equal(t, resources_kubernetes.IDFromParts(resources_kubernetes.PlaneNameTODO, "networking.example.com", "HTTPProxy", "test-namespace", "example-proxy").String(), options.Resource.ID.String())
 	require.Equal(t, 0, waiter.calls)
+
+	applied := &unstructured.Unstructured{}
+	applied.SetAPIVersion("networking.example.com/v1")
+	applied.SetKind("HTTPProxy")
+	err = handler.client.Get(ctx, client.ObjectKey{Name: "example-proxy", Namespace: "test-namespace"}, applied)
+	require.NoError(t, err)
 }
 
 func TestDelete(t *testing.T) {
