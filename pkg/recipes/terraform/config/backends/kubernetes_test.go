@@ -97,10 +97,12 @@ func Test_GenerateSecretSuffix(t *testing.T) {
 	hasher := sha256.New()
 	_, err := hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s-%s", envName, appName, resourceRecipe.ResourceID))))
 	require.NoError(t, err)
-	expSecret := fmt.Sprintf("%x", hasher.Sum(nil))
+	expSecret := fmt.Sprintf("%x", hasher.Sum(nil))[:secretSuffixLength]
 	secret, err := generateSecretSuffix(&resourceRecipe)
 	require.NoError(t, err)
 	require.Equal(t, expSecret, secret)
+	// The Terraform Kubernetes backend stores secret_suffix as a label value (max 63 chars).
+	require.LessOrEqual(t, len(secret), 63)
 }
 
 func Test_GenerateLegacySecretSuffix(t *testing.T) {
@@ -141,7 +143,7 @@ func Test_GenerateSecretSuffix_empty_appid(t *testing.T) {
 	hasher := sha256.New()
 	_, err := hasher.Write([]byte(strings.ToLower(fmt.Sprintf("%s-%s", envName, resourceRecipe.ResourceID))))
 	require.NoError(t, err)
-	expSecret := fmt.Sprintf("%x", hasher.Sum(nil))
+	expSecret := fmt.Sprintf("%x", hasher.Sum(nil))[:secretSuffixLength]
 	secret, err := generateSecretSuffix(&resourceRecipe)
 	require.NoError(t, err)
 	require.Equal(t, expSecret, secret)

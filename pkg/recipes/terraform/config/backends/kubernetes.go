@@ -136,6 +136,12 @@ func (p *kubernetesBackend) ValidateBackendExists(ctx context.Context, name stri
 	return true, nil
 }
 
+// secretSuffixLength is the number of hexadecimal characters of the hash used for the Terraform
+// state secret suffix. The Terraform Kubernetes backend stores secret_suffix as a Kubernetes label
+// value (limited to 63 characters), so the SHA-256 hash (64 hex characters) is truncated. 40
+// characters (160 bits) matches the legacy SHA-1 width and keeps ample collision resistance.
+const secretSuffixLength = 40
+
 // generateSecretSuffix returns a unique string from the resourceID, environmentID, and applicationID
 // which is used as key for kubernetes secret in defining terraform backend.
 func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, error) {
@@ -144,7 +150,7 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 		return "", err
 	}
 
-	return hashutil.Hex([]byte(input)), nil
+	return hashutil.Hex([]byte(input))[:secretSuffixLength], nil
 }
 
 // generateLegacySecretSuffix returns the legacy SHA-1 based secret suffix.
