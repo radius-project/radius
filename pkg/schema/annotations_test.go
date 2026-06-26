@@ -513,6 +513,91 @@ func TestExtractSecretReferenceFieldPaths(t *testing.T) {
 	})
 }
 
+func TestExtractSecretBindingPaths(t *testing.T) {
+	t.Run("top-level marked property", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"secrets": map[string]any{
+					"type":                        "array",
+					annotationRadiusSecretBinding: true,
+					"items":                       map[string]any{"type": "string"},
+				},
+				"host": map[string]any{
+					"type": "string",
+				},
+			},
+		}
+
+		require.Equal(t, []string{"secrets"}, ExtractSecretBindingPaths(schema, ""))
+	})
+
+	t.Run("nested marked property", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"config": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"secrets": map[string]any{
+							"type":                        "array",
+							annotationRadiusSecretBinding: true,
+							"items":                       map[string]any{"type": "string"},
+						},
+					},
+				},
+			},
+		}
+
+		require.Equal(t, []string{"config.secrets"}, ExtractSecretBindingPaths(schema, ""))
+	})
+
+	t.Run("marked property is treated as a leaf", func(t *testing.T) {
+		// A marked property is a leaf: the extractor must not descend into its sub-schema, even if that
+		// sub-schema contains another marked property.
+		schema := map[string]any{
+			"properties": map[string]any{
+				"secrets": map[string]any{
+					"type":                        "array",
+					annotationRadiusSecretBinding: true,
+					"properties": map[string]any{
+						"nested": map[string]any{
+							"type":                        "array",
+							annotationRadiusSecretBinding: true,
+						},
+					},
+				},
+			},
+		}
+
+		require.Equal(t, []string{"secrets"}, ExtractSecretBindingPaths(schema, ""))
+	})
+
+	t.Run("no marked properties", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"host": map[string]any{
+					"type": "string",
+				},
+			},
+		}
+
+		require.Empty(t, ExtractSecretBindingPaths(schema, ""))
+	})
+
+	t.Run("with prefix", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"secrets": map[string]any{
+					"type":                        "array",
+					annotationRadiusSecretBinding: true,
+					"items":                       map[string]any{"type": "string"},
+				},
+			},
+		}
+
+		require.Equal(t, []string{"parent.secrets"}, ExtractSecretBindingPaths(schema, "parent"))
+	})
+}
+
 func TestGetSensitiveFieldPaths(t *testing.T) {
 	ctx := context.Background()
 

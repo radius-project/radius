@@ -114,6 +114,11 @@ type ResourceMetadata struct {
 	// populated by the resource controller from the resource's schema and properties, and consumed by the
 	// engine to load the referenced secret's data into Secrets.
 	SecretReferences map[string]string
+	// SecretBindings lists the Radius.Security/secrets resource IDs declared by a resource's
+	// x-radius-secret-binding array property. It is populated by the resource controller from the resource's
+	// schema and properties, and consumed by the engine to load every key of each secret into Secrets under a
+	// "<secretName>.<key>" namespace for the context.resource.secrets.<secretName>.<key> expression path.
+	SecretBindings []string
 	// Secrets holds resolved secret material for secret-reference properties, keyed by secret key. It is
 	// populated only from the referenced secret's deployed material (never from Properties) and is tagged
 	// json:"-" so it is never serialized into the recipe context, logs, or IaC state. Recipe authors

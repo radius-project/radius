@@ -46,6 +46,15 @@ const (
 	// to recipes through the context.resource.secrets.<key> expression path. Unlike x-radius-sensitive
 	// (which marks the secret value itself), this annotation marks a reference to a secret by name.
 	annotationRadiusSecretReference = "x-radius-secret-reference"
+
+	// annotationRadiusSecretBinding marks an array property whose items are resource IDs of
+	// Radius.Security/secrets resources the resource depends on. Radius loads every key of each
+	// listed secret and exposes the values to recipes through the
+	// context.resource.secrets.<secretName>.<key> expression path, where <secretName> is the secret
+	// resource's name and <key> is a key within that secret's data. Unlike x-radius-secret-reference
+	// (a single secret named by a string property), this annotation binds a list of secrets by ID and
+	// namespaces their keys by the secret resource name.
+	annotationRadiusSecretBinding = "x-radius-secret-binding"
 )
 
 // joinPath concatenates two path segments with a dot separator for property path tracking.

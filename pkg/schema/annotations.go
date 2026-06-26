@@ -201,6 +201,50 @@ func ExtractSecretReferenceFieldPaths(schema map[string]any, prefix string) []st
 	return paths
 }
 
+// ExtractSecretBindingPaths recursively walks the schema and returns paths to properties marked with the
+// x-radius-secret-binding annotation. Each such property is a "secrets binding": an array of Radius.Security/secrets
+// resource IDs the resource depends on. The marked property is treated as a leaf: it is not traversed further,
+// because the concrete secret IDs are read from the resource's properties at deploy time and every key of each
+// secret is exposed to recipes under the context.resource.secrets.<secretName>.<key> path. The prefix parameter
+// builds up the path as we traverse nested objects.
+func ExtractSecretBindingPaths(schema map[string]any, prefix string) []string {
+	var paths []string
+
+	properties, ok := schema["properties"].(map[string]any)
+	if !ok {
+		return paths
+	}
+
+	for fieldName, fieldSchema := range properties {
+		fieldSchemaMap, ok := fieldSchema.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		// Build the full path for this field.
+		var fullPath string
+		if prefix == "" {
+			fullPath = fieldName
+		} else {
+			fullPath = prefix + "." + fieldName
+		}
+
+		// A field marked as a secrets array is treated as a leaf.
+		if isBinding, ok := fieldSchemaMap[annotationRadiusSecretBinding].(bool); ok && isBinding {
+			paths = append(paths, fullPath)
+			continue
+		}
+
+		// Recursively check nested objects.
+		if nestedProps, ok := fieldSchemaMap["properties"].(map[string]any); ok {
+			nestedSchema := map[string]any{"properties": nestedProps}
+			paths = append(paths, ExtractSecretBindingPaths(nestedSchema, fullPath)...)
+		}
+	}
+
+	return paths
+}
+
 // A field path can contain field names, wildcards, and array indices.
 type FieldPathSegment struct {
 	Type  SegmentType

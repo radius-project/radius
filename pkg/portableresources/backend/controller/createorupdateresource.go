@@ -89,6 +89,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	currentETag := storedResource.ETag
 	var recipeProperties map[string]any
 	var secretReferencePaths []string
+	var secretBindingPaths []string
 	redactionCompleted := false
 
 	// Attempt to decrypt and redact sensitive fields before recipe execution.
@@ -102,6 +103,10 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 			// Detect properties that reference a Radius.Security/secrets resource by name so the engine can
 			// resolve them into recipe context (context.resource.secrets.<key>).
 			secretReferencePaths = schemautil.ExtractSecretReferenceFieldPaths(schema, "")
+
+			// Detect secrets arrays (x-radius-secret-binding) so the engine can load each listed
+			// secret's keys into recipe context (context.resource.secrets.<secretName>.<key>).
+			secretBindingPaths = schemautil.ExtractSecretBindingPaths(schema, "")
 
 			sensitiveFieldPaths := schemautil.ExtractSensitiveFieldPaths(schema, "")
 			if len(sensitiveFieldPaths) > 0 {
@@ -182,7 +187,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	recipeDataModel, supportsRecipes := any(resource).(datamodel.RecipeDataModel)
 	var recipeOutput *recipes.RecipeOutput
 	if supportsRecipes && recipeDataModel.GetRecipe() != nil {
-		recipeOutput, err = c.executeRecipeIfNeeded(ctx, resource, recipeDataModel, previousOutputResources, config.Simulated, recipeProperties, secretReferencePaths)
+		recipeOutput, err = c.executeRecipeIfNeeded(ctx, resource, recipeDataModel, previousOutputResources, config.Simulated, recipeProperties, secretReferencePaths, secretBindingPaths)
 		if err != nil {
 			return c.handleRecipeError(ctx, err, recipeDataModel, req.ResourceID, currentETag, logger, redactionCompleted)
 		}
@@ -273,7 +278,7 @@ func (c *CreateOrUpdateResource[P, T]) copyOutputResources(resource P) []string 
 	return previousOutputResources
 }
 
-func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, resource P, recipeDataModel datamodel.RecipeDataModel, prevState []string, simulated bool, recipeProperties map[string]any, secretReferencePaths []string) (*recipes.RecipeOutput, error) {
+func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, resource P, recipeDataModel datamodel.RecipeDataModel, prevState []string, simulated bool, recipeProperties map[string]any, secretReferencePaths []string, secretBindingPaths []string) (*recipes.RecipeOutput, error) {
 	// Caller ensures recipeDataModel supports recipes and has a non-nil recipe
 	recipe := recipeDataModel.GetRecipe()
 
@@ -331,6 +336,14 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		return nil, err
 	}
 	metadata.SecretReferences = secretReferences
+
+	// Resolve the x-radius-secret-binding array property to the list of secret IDs it references so the engine
+	// can load each bound secret's keys into the recipe context.
+	secretBindings, err := buildSecretBindings(resourceProperties, secretBindingPaths)
+	if err != nil {
+		return nil, err
+	}
+	metadata.SecretBindings = secretBindings
 
 	return c.engine.Execute(ctx, engine.ExecuteOptions{
 		BaseOptions: engine.BaseOptions{
@@ -397,6 +410,66 @@ func stringValueAtPath(properties map[string]any, path string) (string, bool) {
 
 	value, ok := current.(string)
 	return value, ok
+}
+
+// buildSecretBindings resolves an x-radius-secret-binding array property into the list of Radius.Security/secrets
+// resource IDs it references. Each entry must be a non-empty string that parses as a resource ID; the engine
+// loads every key of each secret into the recipe's Secrets under a "<secretName>.<key>" namespace for the
+// context.resource.secrets.<secretName>.<key> expression path. An unset property is skipped; a malformed entry
+// (non-string, empty, or not a resource ID) is an error so the deployment fails closed rather than silently
+// dropping a secret the recipe expects.
+func buildSecretBindings(properties map[string]any, secretBindingPaths []string) ([]string, error) {
+	if len(secretBindingPaths) == 0 {
+		return nil, nil
+	}
+
+	var secretIDs []string
+	for _, path := range secretBindingPaths {
+		raw, ok := valueAtPath(properties, path)
+		if !ok || raw == nil {
+			// The property is optional and unset; nothing to resolve.
+			continue
+		}
+
+		entries, ok := raw.([]any)
+		if !ok {
+			return nil, fmt.Errorf("secret binding property %q must be an array of secret IDs", path)
+		}
+
+		for i, entry := range entries {
+			id, ok := entry.(string)
+			if !ok || id == "" {
+				return nil, fmt.Errorf("secret binding %q[%d] must be a non-empty secret ID string", path, i)
+			}
+			if _, err := resources.ParseResource(id); err != nil {
+				return nil, fmt.Errorf("secret binding %q[%d] has invalid secret ID %q: %w", path, i, id, err)
+			}
+			secretIDs = append(secretIDs, id)
+		}
+	}
+
+	if len(secretIDs) == 0 {
+		return nil, nil
+	}
+
+	return secretIDs, nil
+}
+
+// valueAtPath returns the value at the given dot-separated path in a nested properties map.
+func valueAtPath(properties map[string]any, path string) (any, bool) {
+	var current any = properties
+	for _, segment := range strings.Split(path, ".") {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		current, ok = m[segment]
+		if !ok {
+			return nil, false
+		}
+	}
+
+	return current, true
 }
 
 func deepCopyProperties(source map[string]any) (map[string]any, error) {

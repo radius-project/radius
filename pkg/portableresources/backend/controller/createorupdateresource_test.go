@@ -1144,6 +1144,85 @@ func Test_buildSecretReferences(t *testing.T) {
 	})
 }
 
+func Test_buildSecretBindings(t *testing.T) {
+	const secretID = "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Security/secrets/db-secret"
+	const tlsSecretID = "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Security/secrets/tls-secret"
+
+	t.Run("resolves an array of secret IDs", func(t *testing.T) {
+		properties := map[string]any{
+			"secrets": []any{secretID, tlsSecretID},
+		}
+
+		bindings, err := buildSecretBindings(properties, []string{"secrets"})
+		require.NoError(t, err)
+		require.Equal(t, []string{secretID, tlsSecretID}, bindings)
+	})
+
+	t.Run("resolves a nested array", func(t *testing.T) {
+		properties := map[string]any{
+			"config": map[string]any{
+				"secrets": []any{secretID},
+			},
+		}
+
+		bindings, err := buildSecretBindings(properties, []string{"config.secrets"})
+		require.NoError(t, err)
+		require.Equal(t, []string{secretID}, bindings)
+	})
+
+	t.Run("skips an unset property", func(t *testing.T) {
+		bindings, err := buildSecretBindings(map[string]any{}, []string{"secrets"})
+		require.NoError(t, err)
+		require.Nil(t, bindings)
+	})
+
+	t.Run("returns nil when there are no binding paths", func(t *testing.T) {
+		bindings, err := buildSecretBindings(map[string]any{"secrets": []any{secretID}}, nil)
+		require.NoError(t, err)
+		require.Nil(t, bindings)
+	})
+
+	t.Run("fails closed when the property is not an array", func(t *testing.T) {
+		properties := map[string]any{
+			"secrets": map[string]any{"username": secretID},
+		}
+
+		_, err := buildSecretBindings(properties, []string{"secrets"})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "must be an array of secret IDs")
+	})
+
+	t.Run("fails closed on a non-string entry", func(t *testing.T) {
+		properties := map[string]any{
+			"secrets": []any{secretID, 42},
+		}
+
+		_, err := buildSecretBindings(properties, []string{"secrets"})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "must be a non-empty secret ID string")
+	})
+
+	t.Run("fails closed on an empty entry", func(t *testing.T) {
+		properties := map[string]any{
+			"secrets": []any{""},
+		}
+
+		_, err := buildSecretBindings(properties, []string{"secrets"})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "must be a non-empty secret ID string")
+	})
+
+	t.Run("fails closed on an invalid secret ID", func(t *testing.T) {
+		properties := map[string]any{
+			"secrets": []any{"not-a-valid-id"},
+		}
+
+		_, err := buildSecretBindings(properties, []string{"secrets"})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid secret ID")
+	})
+}
+
 func Test_stringValueAtPath(t *testing.T) {
 	properties := map[string]any{
 		"secretName": "db-secret",
