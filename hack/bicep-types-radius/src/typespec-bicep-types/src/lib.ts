@@ -29,7 +29,7 @@ const BicepEmitterOptionsSchema: JSONSchemaType<BicepEmitterOptions> = {
   type: "object",
   additionalProperties: false,
   properties: {},
-  required: [],
+  required: []
 };
 
 /**
@@ -42,6 +42,6 @@ export const $lib = createTypeSpecLibrary({
   // here if it ever needs to surface emit-time warnings or errors.
   diagnostics: {},
   emitter: {
-    options: BicepEmitterOptionsSchema,
-  },
+    options: BicepEmitterOptionsSchema
+  }
 });

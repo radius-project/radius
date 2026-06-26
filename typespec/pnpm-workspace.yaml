@@ -1,0 +1,8 @@
+# Marks this directory as the pnpm workspace root so that `pnpm exec <tool>`
+# resolves binaries (such as the TypeSpec compiler `tsp`) from
+# typespec/node_modules when invoked from the per-service project
+# subdirectories - for example `cd typespec/UCP && pnpm exec tsp compile .` in
+# build/generate.mk. Without this marker pnpm walks up the tree and runs the
+# command in a recursive workspace context where `tsp` cannot be resolved.
+packages:
+  - "."

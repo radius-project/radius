@@ -18,7 +18,7 @@ import { describe, expect, it } from "vitest";
 import {
   ObjectTypePropertyFlags,
   TypeFactory,
-  writeTypesJson,
+  writeTypesJson
 } from "../src/bicep.js";
 import { getStandardizedResourceProperties } from "../src/standardized-props.js";
 
@@ -31,14 +31,14 @@ describe("getStandardizedResourceProperties", () => {
       factory,
       "Applications.Messaging/rabbitMQQueues",
       "2023-10-01-preview",
-      resourceName,
+      resourceName
     );
 
     expect(Object.keys(props)).toStrictEqual([
       "id",
       "name",
       "type",
-      "apiVersion",
+      "apiVersion"
     ]);
 
     // These literal flag values are the contract with the committed golden
@@ -46,7 +46,7 @@ describe("getStandardizedResourceProperties", () => {
     // ReadOnly | DeployTimeConstant = 2 | 8 = 10
     expect(props.id.flags).toBe(
       ObjectTypePropertyFlags.ReadOnly |
-        ObjectTypePropertyFlags.DeployTimeConstant,
+        ObjectTypePropertyFlags.DeployTimeConstant
     );
     expect(props.id.flags).toBe(10);
     // Required | DeployTimeConstant | Identifier = 1 | 8 | 16 = 25
@@ -65,7 +65,7 @@ describe("getStandardizedResourceProperties", () => {
       factory,
       "Applications.Messaging/rabbitMQQueues",
       "2023-10-01-preview",
-      resourceName,
+      resourceName
     );
     factory.addObjectType("Applications.Messaging/rabbitMQQueues", props);
 
@@ -73,11 +73,11 @@ describe("getStandardizedResourceProperties", () => {
     expect(Array.isArray(parsed)).toBe(true);
 
     const objectType = parsed.find(
-      (t: { $type: string }) => t.$type === "ObjectType",
+      (t: { $type: string }) => t.$type === "ObjectType"
     );
     expect(objectType.name).toBe("Applications.Messaging/rabbitMQQueues");
     expect(objectType.properties.apiVersion.description).toBe(
-      "The resource api version",
+      "The resource api version"
     );
   });
 });

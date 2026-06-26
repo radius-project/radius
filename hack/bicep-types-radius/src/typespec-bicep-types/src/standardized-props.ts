@@ -19,7 +19,7 @@ import {
   ObjectTypeProperty,
   ObjectTypePropertyFlags,
   TypeFactory,
-  TypeReference,
+  TypeReference
 } from "./bicep.js";
 
 /**
@@ -40,7 +40,7 @@ export function getStandardizedResourceProperties(
   factory: TypeFactory,
   fullyQualifiedType: string,
   apiVersion: string,
-  resourceName: TypeReference,
+  resourceName: TypeReference
 ): Record<string, ObjectTypeProperty> {
   const typeLiteral = factory.addStringLiteralType(fullyQualifiedType);
 
@@ -49,26 +49,26 @@ export function getStandardizedResourceProperties(
       factory.addStringType(),
       ObjectTypePropertyFlags.ReadOnly |
         ObjectTypePropertyFlags.DeployTimeConstant,
-      "The resource id",
+      "The resource id"
     ),
     name: createObjectProperty(
       resourceName,
       ObjectTypePropertyFlags.Required |
         ObjectTypePropertyFlags.DeployTimeConstant |
         ObjectTypePropertyFlags.Identifier,
-      "The resource name",
+      "The resource name"
     ),
     type: createObjectProperty(
       typeLiteral,
       ObjectTypePropertyFlags.ReadOnly |
         ObjectTypePropertyFlags.DeployTimeConstant,
-      "The resource type",
+      "The resource type"
     ),
     apiVersion: createObjectProperty(
       factory.addStringLiteralType(apiVersion),
       ObjectTypePropertyFlags.ReadOnly |
         ObjectTypePropertyFlags.DeployTimeConstant,
-      "The resource api version",
-    ),
+      "The resource api version"
+    )
   };
 }

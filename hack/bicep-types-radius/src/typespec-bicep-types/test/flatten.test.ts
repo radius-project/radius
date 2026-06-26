@@ -23,13 +23,13 @@ import {
   ObjectTypePropertyFlags,
   TypeBaseKind,
   TypeFactory,
-  TypeReference,
+  TypeReference
 } from "../src/bicep.js";
 import { translateModelProperties } from "../src/type-translator.js";
 
 /** Compiles a fixture (with `@typespec/openapi` available) and translates `Target`. */
 async function translateTarget(
-  code: string,
+  code: string
 ): Promise<Record<string, { flags: number; bicep: BicepType }>> {
   const host = await createTestHost({ libraries: [OpenAPITestLibrary] });
   host.addTypeSpecFile("main.tsp", code);
@@ -41,14 +41,14 @@ async function translateTarget(
     host.program,
     factory,
     target,
-    new Map<Type, TypeReference>(),
+    new Map<Type, TypeReference>()
   );
 
   const props: Record<string, { flags: number; bicep: BicepType }> = {};
   for (const [name, property] of Object.entries(translated)) {
     props[name] = {
       flags: property.flags,
-      bicep: factory.lookupType(property.type),
+      bicep: factory.lookupType(property.type)
     };
   }
   return props;

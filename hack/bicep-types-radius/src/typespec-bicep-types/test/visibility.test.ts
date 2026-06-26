@@ -21,7 +21,7 @@ import {
   ObjectType,
   ObjectTypePropertyFlags,
   TypeFactory,
-  TypeReference,
+  TypeReference
 } from "../src/bicep.js";
 import { translateModelProperties } from "../src/type-translator.js";
 
@@ -37,7 +37,7 @@ async function flagsFor(body: string): Promise<Record<string, number>> {
     runner.program,
     factory,
     target,
-    new Map<Type, TypeReference>(),
+    new Map<Type, TypeReference>()
   );
 
   const flags: Record<string, number> = {};
@@ -63,7 +63,7 @@ describe("property flags from @visibility", () => {
     expect(flags.readOnly).toBe(ObjectTypePropertyFlags.ReadOnly);
     // Visible for Create only and required -> WriteOnly | Required (4 | 1 = 5).
     expect(flags.createOnly).toBe(
-      ObjectTypePropertyFlags.WriteOnly | ObjectTypePropertyFlags.Required,
+      ObjectTypePropertyFlags.WriteOnly | ObjectTypePropertyFlags.Required
     );
     // Visible for both Read and Create -> read-write, required -> Required (1).
     expect(flags.readCreate).toBe(ObjectTypePropertyFlags.Required);
@@ -90,7 +90,7 @@ describe("top-level location exception", () => {
       target,
       new Map<Type, TypeReference>(),
       undefined,
-      true,
+      true
     );
 
     // A required top-level `location` is emitted without the Required flag.
@@ -100,7 +100,7 @@ describe("top-level location exception", () => {
     // A `location` nested inside another model is unaffected and stays Required.
     const nested = factory.lookupType(translated.nested.type) as ObjectType;
     expect(nested.properties.location.flags).toBe(
-      ObjectTypePropertyFlags.Required,
+      ObjectTypePropertyFlags.Required
     );
   });
 });

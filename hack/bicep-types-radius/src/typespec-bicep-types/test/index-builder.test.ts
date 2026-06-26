@@ -34,21 +34,21 @@ describe("buildTypeIndex", () => {
           name: "Test.Ns/foo@v1",
           body: { $ref: "#/0" },
           readableScopes: 0,
-          writableScopes: 0,
-        },
+          writableScopes: 0
+        }
       ];
       await writeFile(join(namespaceDir, "types.json"), JSON.stringify(types));
 
       await buildTypeIndex(baseDir, "1.0.0", () => {});
 
       const index = JSON.parse(
-        await readFile(join(baseDir, "index.json"), "utf8"),
+        await readFile(join(baseDir, "index.json"), "utf8")
       );
       // Resources are keyed by the full `Type@version` with a cross-file $ref
       // embedding the forward-slash relative path and the type index.
       expect(index.resources["Test.Ns/foo@v1"]).toBeDefined();
       expect(index.resources["Test.Ns/foo@v1"].$ref).toBe(
-        "test.ns/v1/types.json#/1",
+        "test.ns/v1/types.json#/1"
       );
 
       const indexMarkdown = await readFile(join(baseDir, "index.md"), "utf8");

@@ -22,7 +22,7 @@ import {
   writeIndexJson,
   writeIndexMarkdown,
   type TypeFile,
-  type TypeSettings,
+  type TypeSettings
 } from "./bicep.js";
 
 /**
@@ -38,14 +38,14 @@ import {
 export async function buildTypeIndex(
   baseDir: string,
   version: string,
-  log: (message: string) => void = (message) => console.log(message),
+  log: (message: string) => void = (message) => console.log(message)
 ): Promise<void> {
   // A single recursive `readdir` reports every entry with its file/directory
   // type, so no per-entry `stat` is needed. `buildIndex` sorts the merged
   // resources by key, so traversal order does not affect the output.
   const entries = await readdir(baseDir, {
     recursive: true,
-    withFileTypes: true,
+    withFileTypes: true
   });
   const typesPaths = entries
     .filter((entry) => entry.isFile() && entry.name === "types.json")
@@ -55,14 +55,14 @@ export async function buildTypeIndex(
     typesPaths.map(async (typePath) => ({
       // Normalize to forward slashes so the index is identical across platforms.
       relativePath: relative(baseDir, typePath).replaceAll("\\", "/"),
-      types: readTypesJson(await readFile(typePath, { encoding: "utf8" })),
-    })),
+      types: readTypesJson(await readFile(typePath, { encoding: "utf8" }))
+    }))
   );
 
   const index = buildIndex(typeFiles, log, {
     name: "Radius",
     version,
-    isSingleton: false,
+    isSingleton: false
   } as TypeSettings);
 
   await writeFile(resolve(baseDir, "index.json"), writeIndexJson(index));

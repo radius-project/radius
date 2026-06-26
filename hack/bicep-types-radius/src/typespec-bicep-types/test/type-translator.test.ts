@@ -26,13 +26,13 @@ import {
   TypeBaseKind,
   TypeFactory,
   TypeReference,
-  UnionType,
+  UnionType
 } from "../src/bicep.js";
 import { translateModelProperties } from "../src/type-translator.js";
 
 /** Compiles a single `@test model Target { ... }` and returns it plus the program. */
 async function compileTarget(
-  body: string,
+  body: string
 ): Promise<{ program: Program; target: Model }> {
   const host = await createTestHost();
   const runner = createTestWrapper(host);
@@ -54,7 +54,7 @@ async function translate(body: string): Promise<{
     program,
     factory,
     target,
-    new Map<Type, TypeReference>(),
+    new Map<Type, TypeReference>()
   );
   const props: Record<
     string,
@@ -64,7 +64,7 @@ async function translate(body: string): Promise<{
     props[name] = {
       flags: property.flags,
       description: property.description,
-      bicep: factory.lookupType(property.type),
+      bicep: factory.lookupType(property.type)
     };
   }
   return { factory, props };
@@ -73,7 +73,7 @@ async function translate(body: string): Promise<{
 describe("parseType", () => {
   it("maps scalars to the closest Bicep primitive", async () => {
     const { props } = await translate(
-      `@test model Target { s: string; i: int32; n: int64; f: float64; b: boolean; u: url; }`,
+      `@test model Target { s: string; i: int32; n: int64; f: float64; b: boolean; u: url; }`
     );
 
     expect(props.s.bicep.type).toBe(TypeBaseKind.StringType);
@@ -88,7 +88,7 @@ describe("parseType", () => {
 
   it("sets the Required flag from property optionality and carries @doc", async () => {
     const { props } = await translate(
-      `@test model Target { required: string; optional?: string; @doc("hi") documented: string; }`,
+      `@test model Target { required: string; optional?: string; @doc("hi") documented: string; }`
     );
 
     expect(props.required.flags).toBe(ObjectTypePropertyFlags.Required);
@@ -98,12 +98,12 @@ describe("parseType", () => {
 
   it("maps arrays and records", async () => {
     const { factory, props } = await translate(
-      `@test model Target { list: string[]; map: Record<int32>; }`,
+      `@test model Target { list: string[]; map: Record<int32>; }`
     );
 
     expect(props.list.bicep.type).toBe(TypeBaseKind.ArrayType);
     const itemType = factory.lookupType(
-      (props.list.bicep as ArrayType).itemType,
+      (props.list.bicep as ArrayType).itemType
     );
     expect(itemType.type).toBe(TypeBaseKind.StringType);
 
@@ -116,7 +116,7 @@ describe("parseType", () => {
   it("maps enums and literal unions to unions of string literals", async () => {
     const { factory, props } = await translate(
       `@test model Target { color: Color; choice: "a" | "b"; }
-       enum Color { red: "red", green: "green" }`,
+       enum Color { red: "red", green: "green" }`
     );
 
     expect(props.color.bicep.type).toBe(TypeBaseKind.UnionType);
@@ -135,28 +135,28 @@ describe("parseType", () => {
   it("closes extensible enums by dropping the open string arm", async () => {
     const { factory, props } = await translate(
       `@test model Target { kind: Kind; }
-       union Kind { a: "a", b: "b", string }`,
+       union Kind { a: "a", b: "b", string }`
     );
 
     // The union of string literals plus a bare \`string\` collapses to the closed
     // set of known values (matching how Bicep represents extensible enums).
     expect(props.kind.bicep.type).toBe(TypeBaseKind.UnionType);
     const elements = (props.kind.bicep as UnionType).elements.map((ref) =>
-      factory.lookupType(ref),
+      factory.lookupType(ref)
     );
     expect(
       elements.every(
-        (element) => element.type === TypeBaseKind.StringLiteralType,
-      ),
+        (element) => element.type === TypeBaseKind.StringLiteralType
+      )
     ).toBe(true);
     expect(
-      (elements as StringLiteralType[]).map((literal) => literal.value),
+      (elements as StringLiteralType[]).map((literal) => literal.value)
     ).toStrictEqual(["a", "b"]);
   });
 
   it("maps string literals", async () => {
     const { props } = await translate(
-      `@test model Target { fixed: "constant"; }`,
+      `@test model Target { fixed: "constant"; }`
     );
     expect(props.fixed.bicep.type).toBe(TypeBaseKind.StringLiteralType);
     expect((props.fixed.bicep as StringLiteralType).value).toBe("constant");
@@ -165,26 +165,26 @@ describe("parseType", () => {
   it("recurses into nested models", async () => {
     const { factory, props } = await translate(
       `@test model Target { child: Child; }
-       model Child { x: string; }`,
+       model Child { x: string; }`
     );
 
     expect(props.child.bicep.type).toBe(TypeBaseKind.ObjectType);
     const childProps = (props.child.bicep as ObjectType).properties;
     expect(factory.lookupType(childProps.x.type).type).toBe(
-      TypeBaseKind.StringType,
+      TypeBaseKind.StringType
     );
   });
 
   it("terminates on self-referential (cyclic) models", async () => {
     const { factory, props } = await translate(
-      `@test model Target { next?: Target; }`,
+      `@test model Target { next?: Target; }`
     );
 
     expect(props.next.bicep.type).toBe(TypeBaseKind.ObjectType);
     // The cache makes the cycle resolve back to a registered object type.
     const nextProps = (props.next.bicep as ObjectType).properties;
     expect(factory.lookupType(nextProps.next.type).type).toBe(
-      TypeBaseKind.ObjectType,
+      TypeBaseKind.ObjectType
     );
   });
 });

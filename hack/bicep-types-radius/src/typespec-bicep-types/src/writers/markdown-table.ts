@@ -29,24 +29,24 @@ import {
   TypeReference,
   UnionType,
   IntegerType,
-  StringType,
+  StringType
 } from "bicep-types";
 
 export function writeTableMarkdown(
   resourceTypes: ResourceType[],
-  types: BicepType[],
+  types: BicepType[]
 ) {
   let output = "";
 
   function getTypeName(
     types: BicepType[],
-    typeReference: TypeReference,
+    typeReference: TypeReference
   ): string {
     const type = types[typeReference.index];
     switch (type.type) {
       case TypeBaseKind.BuiltInType:
         return getBuiltInTypeKindLabel(
-          (type as BuiltInType).kind,
+          (type as BuiltInType).kind
         ).toLowerCase();
       case TypeBaseKind.ObjectType:
         return generateAnchorLink((type as ObjectType).name);
@@ -60,7 +60,7 @@ export function writeTableMarkdown(
       }
       case TypeBaseKind.UnionType: {
         const elements = (type as UnionType).elements.map((x) =>
-          getTypeName(types, x),
+          getTypeName(types, x)
         );
         return elements.sort().join(" | ");
       }
@@ -99,17 +99,18 @@ export function writeTableMarkdown(
   function writeTypeProperty(
     types: BicepType[],
     name: string,
-    property: ObjectTypeProperty,
+    property: ObjectTypeProperty
   ) {
-    const flagsString = property.flags
-      ? `${getObjectTypePropertyFlagsLabels(property.flags).join(", ")}`
+    const flagsString =
+      property.flags ?
+        `${getObjectTypePropertyFlagsLabels(property.flags).join(", ")}`
       : "";
     const descriptionString = property.description ? property.description : "";
     writeTableEntry(
       name,
       getTypeName(types, property.type),
       flagsString,
-      descriptionString,
+      descriptionString
     );
   }
 
@@ -122,7 +123,7 @@ export function writeTableMarkdown(
     name: string,
     type: string,
     flags: string,
-    description: string,
+    description: string
   ) {
     const flagString = flags ? `<br />_(${flags})_ ` : "";
     output += `| **${name}** | ${type} | ${description} ${flagString}|\n`;
@@ -148,11 +149,11 @@ export function writeTableMarkdown(
   function findTypesToWrite(
     types: BicepType[],
     typesToWrite: BicepType[],
-    typeReference: TypeReference,
+    typeReference: TypeReference
   ) {
     function processTypeLinks(
       typeReference: TypeReference,
-      skipParent: boolean,
+      skipParent: boolean
     ) {
       // this is needed to avoid circular type references causing stack overflows
       if (!typesToWrite.includes(types[typeReference.index])) {
@@ -191,7 +192,7 @@ export function writeTableMarkdown(
         for (const key of sortedKeys(discriminatedObjectType.baseProperties)) {
           processTypeLinks(
             discriminatedObjectType.baseProperties[key].type,
-            false,
+            false
           );
         }
 
@@ -214,7 +215,7 @@ export function writeTableMarkdown(
     types: BicepType[],
     type: BicepType,
     nesting: number,
-    includeHeader: boolean,
+    includeHeader: boolean
   ) {
     switch (type.type) {
       case TypeBaseKind.ResourceType: {
@@ -230,7 +231,7 @@ export function writeTableMarkdown(
         const resourceFunctionType = type as ResourceFunctionType;
         writeHeading(
           nesting,
-          `Function ${resourceFunctionType.name} (${resourceFunctionType.resourceType}@${resourceFunctionType.apiVersion})`,
+          `Function ${resourceFunctionType.name} (${resourceFunctionType.resourceType}@${resourceFunctionType.apiVersion})`
         );
         writeNewLine();
         writeBullet("Resource", resourceFunctionType.resourceType);
@@ -268,7 +269,7 @@ export function writeTableMarkdown(
           writeNewLine();
           writeBullet(
             "Additional Properties Type",
-            getTypeName(types, objectType.additionalProperties),
+            getTypeName(types, objectType.additionalProperties)
           );
         }
 
@@ -293,12 +294,12 @@ export function writeTableMarkdown(
         } else {
           writeTableHeading();
           for (const propertyName of sortedKeys(
-            discriminatedObjectType.baseProperties,
+            discriminatedObjectType.baseProperties
           )) {
             writeTypeProperty(
               types,
               propertyName,
-              discriminatedObjectType.baseProperties[propertyName],
+              discriminatedObjectType.baseProperties[propertyName]
             );
           }
         }
@@ -319,19 +320,19 @@ export function writeTableMarkdown(
   function generateMarkdown(types: BicepType[]) {
     const resourceFunctionTypes = orderBy(
       types.filter(
-        (t) => t.type === TypeBaseKind.ResourceFunctionType,
+        (t) => t.type === TypeBaseKind.ResourceFunctionType
       ) as ResourceFunctionType[],
-      (x) => x.name.split("@")[0].toLowerCase(),
+      (x) => x.name.split("@")[0].toLowerCase()
     );
     const filteredFunctionTypes = resourceFunctionTypes.filter((x) =>
       resourceTypes.some(
         (y) =>
-          x.resourceType.toLowerCase() === y.name.split("@")[0].toLowerCase(),
-      ),
+          x.resourceType.toLowerCase() === y.name.split("@")[0].toLowerCase()
+      )
     );
     const typesToWrite: BicepType[] = [
       ...resourceTypes,
-      ...filteredFunctionTypes,
+      ...filteredFunctionTypes
     ];
 
     for (const resourceType of resourceTypes) {
@@ -360,7 +361,7 @@ export function writeTableMarkdown(
 function getIntegerModifiers(type: IntegerType): string {
   return formatModifiers(
     type.minValue !== undefined ? `minValue: ${type.minValue}` : undefined,
-    type.maxValue !== undefined ? `maxValue: ${type.maxValue}` : undefined,
+    type.maxValue !== undefined ? `maxValue: ${type.maxValue}` : undefined
   );
 }
 
@@ -369,9 +370,9 @@ function getStringModifiers(type: StringType): string {
     type.sensitive ? "sensitive" : undefined,
     type.minLength !== undefined ? `minLength: ${type.minLength}` : undefined,
     type.maxLength !== undefined ? `maxLength: ${type.maxLength}` : undefined,
-    type.pattern !== undefined
-      ? `pattern: ${JSON.stringify(type.pattern)}`
-      : undefined,
+    type.pattern !== undefined ?
+      `pattern: ${JSON.stringify(type.pattern)}`
+    : undefined
   );
 }
 
@@ -385,6 +386,10 @@ function orderBy<T>(items: readonly T[], selector: (item: T) => string): T[] {
   return [...items].sort((a, b) => {
     const ka = selector(a);
     const kb = selector(b);
-    return ka < kb ? -1 : ka > kb ? 1 : 0;
+    return (
+      ka < kb ? -1
+      : ka > kb ? 1
+      : 0
+    );
   });
 }

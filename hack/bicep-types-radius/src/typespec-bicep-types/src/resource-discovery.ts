@@ -75,10 +75,10 @@ export function discoverResources(program: Program): DiscoveredResource[] {
     // operations.lists), which is exactly the set the AutoRest path surfaced as
     // resource functions.
     const actions: DiscoveredAction[] = Object.values(
-      resource.operations.actions,
+      resource.operations.actions
     ).map((operation) => ({
       name: operation.name,
-      httpOperation: operation.httpOperation,
+      httpOperation: operation.httpOperation
     }));
 
     discovered.push({
@@ -90,7 +90,7 @@ export function discoverResources(program: Program): DiscoveredResource[] {
       keyName: resource.keyName,
       readableScopes: scope,
       writableScopes: scope,
-      actions,
+      actions
     });
   }
 

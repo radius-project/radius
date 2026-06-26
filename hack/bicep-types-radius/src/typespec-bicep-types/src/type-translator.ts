@@ -23,7 +23,7 @@ import {
   type ModelProperty,
   type Program,
   type Scalar,
-  type Type,
+  type Type
 } from "@typespec/compiler";
 import { getExtensions } from "@typespec/openapi";
 import type { HttpOperation } from "@typespec/http";
@@ -36,12 +36,12 @@ import {
   ObjectTypePropertyFlags,
   ResourceTypeFunction,
   TypeFactory,
-  TypeReference,
+  TypeReference
 } from "./bicep.js";
 import { getStandardizedResourceProperties } from "./standardized-props.js";
 import type {
   DiscoveredAction,
-  DiscoveredResource,
+  DiscoveredResource
 } from "./resource-discovery.js";
 
 /** The standardized envelope keys, owned by {@link getStandardizedResourceProperties}. */
@@ -60,7 +60,7 @@ export function parseType(
   program: Program,
   factory: TypeFactory,
   type: Type,
-  cache: Map<Type, TypeReference>,
+  cache: Map<Type, TypeReference>
 ): TypeReference {
   const cached = cache.get(type);
   if (cached) {
@@ -82,22 +82,22 @@ export function parseType(
     case "Enum": {
       const elements = [...type.members.values()].map((member) => {
         const value = member.value ?? member.name;
-        return typeof value === "number"
-          ? factory.addIntegerType()
+        return typeof value === "number" ?
+            factory.addIntegerType()
           : factory.addStringLiteralType(String(value));
       });
       return factory.addUnionType(elements);
     }
     case "Union": {
       const variantTypes = [...type.variants.values()].map(
-        (variant) => variant.type,
+        (variant) => variant.type
       );
       // Extensible enums in TypeSpec are unions of string literals plus a bare
       // `string` (e.g. ARM's `createdByType`). Bicep represents these as the
       // closed set of known values, so drop the open `string` arm when string
       // literals are present - matching the AutoRest output.
       const hasStringLiteral = variantTypes.some(
-        (variant) => variant.kind === "String",
+        (variant) => variant.kind === "String"
       );
       const elements = variantTypes
         .filter((variant) => !(hasStringLiteral && isStringScalar(variant)))
@@ -105,8 +105,8 @@ export function parseType(
       return factory.addUnionType(elements);
     }
     case "Intrinsic":
-      return type.name === "null"
-        ? factory.addNullType()
+      return type.name === "null" ?
+          factory.addNullType()
         : factory.addAnyType();
     default:
       return factory.addAnyType();
@@ -126,7 +126,7 @@ export function translateModelProperties(
   model: Model,
   cache: Map<Type, TypeReference>,
   skipKeys?: Set<string>,
-  topLevel = false,
+  topLevel = false
 ): Record<string, ObjectTypeProperty> {
   return translateProperties(
     program,
@@ -134,7 +134,7 @@ export function translateModelProperties(
     collectProperties(model),
     cache,
     skipKeys,
-    topLevel,
+    topLevel
   );
 }
 
@@ -150,7 +150,7 @@ function translateProperties(
   effective: Map<string, ModelProperty>,
   cache: Map<Type, TypeReference>,
   skipKeys?: Set<string>,
-  topLevel = false,
+  topLevel = false
 ): Record<string, ObjectTypeProperty> {
   const properties: Record<string, ObjectTypeProperty> = {};
 
@@ -176,14 +176,14 @@ function translateProperties(
         property,
         properties,
         siblingNames,
-        cache,
+        cache
       );
     }
 
     properties[name] = createObjectProperty(
       parseType(program, factory, property.type, cache),
       topLevelPropertyFlags(program, property, name, topLevel),
-      getDoc(program, property),
+      getDoc(program, property)
     );
   }
 
@@ -213,7 +213,7 @@ export function buildResourceType(
   program: Program,
   factory: TypeFactory,
   resource: DiscoveredResource,
-  cache: Map<Type, TypeReference>,
+  cache: Map<Type, TypeReference>
 ): TypeReference {
   // The resource name is modeled as a plain string. Name-schema parsing for a
   // constant or constrained name segment is not ported (no Radius resource
@@ -224,7 +224,7 @@ export function buildResourceType(
     factory,
     resource.fullyQualifiedType,
     resource.apiVersion,
-    resourceName,
+    resourceName
   );
 
   Object.assign(
@@ -235,8 +235,8 @@ export function buildResourceType(
       resource.bodyModel,
       cache,
       ENVELOPE_KEYS,
-      true,
-    ),
+      true
+    )
   );
 
   const body = factory.addObjectType(resource.fullyQualifiedType, properties);
@@ -244,7 +244,7 @@ export function buildResourceType(
     program,
     factory,
     resource.actions,
-    cache,
+    cache
   );
 
   return factory.addResourceType(
@@ -252,7 +252,7 @@ export function buildResourceType(
     body,
     resource.readableScopes,
     resource.writableScopes,
-    functions,
+    functions
   );
 }
 
@@ -266,7 +266,7 @@ function buildResourceFunctions(
   program: Program,
   factory: TypeFactory,
   actions: DiscoveredAction[],
-  cache: Map<Type, TypeReference>,
+  cache: Map<Type, TypeReference>
 ): Record<string, ResourceTypeFunction> {
   const functions: Record<string, ResourceTypeFunction> = {};
 
@@ -281,12 +281,12 @@ function buildResourceFunctions(
       program,
       factory,
       action.httpOperation,
-      cache,
+      cache
     );
 
     functions[action.name] = {
       type: factory.addFunctionType(parameters, output),
-      description: action.name,
+      description: action.name
     };
   }
 
@@ -301,7 +301,7 @@ function buildFunctionParameters(
   program: Program,
   factory: TypeFactory,
   http: HttpOperation,
-  cache: Map<Type, TypeReference>,
+  cache: Map<Type, TypeReference>
 ): FunctionParameter[] {
   const body = http.parameters.body?.type;
   if (!body || body.kind !== "Model") {
@@ -313,7 +313,7 @@ function buildFunctionParameters(
     parameters.push({
       name,
       type: parseType(program, factory, property.type, cache),
-      description: getDoc(program, property),
+      description: getDoc(program, property)
     });
   }
   return parameters;
@@ -342,7 +342,7 @@ function parseModel(
   program: Program,
   factory: TypeFactory,
   model: Model,
-  cache: Map<Type, TypeReference>,
+  cache: Map<Type, TypeReference>
 ): TypeReference {
   const indexer = model.indexer;
   if (indexer) {
@@ -350,14 +350,14 @@ function parseModel(
     // "Record" indexed by `string`.
     if (indexer.key.name === "integer") {
       return factory.addArrayType(
-        parseType(program, factory, indexer.value, cache),
+        parseType(program, factory, indexer.value, cache)
       );
     }
     if (indexer.key.name === "string") {
       return factory.addObjectType(
         model.name || "object",
         {},
-        parseType(program, factory, indexer.value, cache),
+        parseType(program, factory, indexer.value, cache)
       );
     }
   }
@@ -371,7 +371,7 @@ function parseModel(
       factory,
       model,
       discriminator.propertyName,
-      cache,
+      cache
     );
   }
 
@@ -382,7 +382,7 @@ function parseModel(
     program,
     factory,
     model,
-    cache,
+    cache
   );
 
   // A model that `extends Record<T>` carries the string indexer on a base model
@@ -396,7 +396,7 @@ function parseModel(
       program,
       factory,
       recordValue,
-      cache,
+      cache
     );
   }
   return ref;
@@ -428,14 +428,14 @@ function parseDiscriminatedType(
   factory: TypeFactory,
   model: Model,
   discriminator: string,
-  cache: Map<Type, TypeReference>,
+  cache: Map<Type, TypeReference>
 ): TypeReference {
   // Pre-register an empty discriminated type to break cycles, then fill in place.
   const ref = factory.addDiscriminatedObjectType(
     model.name || "object",
     discriminator,
     {},
-    {},
+    {}
   );
   cache.set(model, ref);
   const discriminated = factory.lookupType(ref) as DiscriminatedObjectType;
@@ -445,7 +445,7 @@ function parseDiscriminatedType(
     factory,
     model,
     cache,
-    new Set([discriminator]),
+    new Set([discriminator])
   );
 
   const elements: Record<string, TypeReference> = {};
@@ -456,13 +456,13 @@ function parseDiscriminatedType(
     }
     elements[value] = factory.addObjectType(
       subtype.name || "object",
-      translateProperties(program, factory, subtype.properties, cache),
+      translateProperties(program, factory, subtype.properties, cache)
     );
   }
 
   // Sort elements by discriminator value to match the AutoRest output order.
   discriminated.elements = Object.fromEntries(
-    Object.entries(elements).sort(([a], [b]) => a.localeCompare(b)),
+    Object.entries(elements).sort(([a], [b]) => a.localeCompare(b))
   );
 
   return ref;
@@ -484,7 +484,7 @@ function collectDiscriminatedSubtypes(model: Model): Model[] {
 /** Reads a subtype's discriminator value (the string literal it assigns to the discriminator property). */
 function getDiscriminatorValue(
   subtype: Model,
-  discriminator: string,
+  discriminator: string
 ): string | undefined {
   const property = subtype.properties.get(discriminator);
   return property?.type.kind === "String" ? property.type.value : undefined;
@@ -557,7 +557,7 @@ function hoistFlattenedChildren(
   bag: ModelProperty,
   target: Record<string, ObjectTypeProperty>,
   siblingNames: Set<string>,
-  cache: Map<Type, TypeReference>,
+  cache: Map<Type, TypeReference>
 ): void {
   const child = bag.type;
   if (
@@ -581,7 +581,7 @@ function hoistFlattenedChildren(
     target[childName] = createObjectProperty(
       parseType(program, factory, childProperty.type, cache),
       flagsForFlattenedChild(childFlags),
-      getDoc(program, childProperty),
+      getDoc(program, childProperty)
     );
     siblingNames.add(childName);
   }
@@ -597,12 +597,12 @@ function hoistFlattenedChildren(
  */
 function propertyFlags(
   program: Program,
-  property: ModelProperty,
+  property: ModelProperty
 ): ObjectTypePropertyFlags {
   const visible = getVisibilityForClass(
     program,
     property,
-    getLifecycleVisibilityEnum(program),
+    getLifecycleVisibilityEnum(program)
   );
   const memberNames = new Set([...visible].map((member) => member.name));
 
@@ -638,7 +638,7 @@ function topLevelPropertyFlags(
   program: Program,
   property: ModelProperty,
   name: string,
-  topLevel: boolean,
+  topLevel: boolean
 ): ObjectTypePropertyFlags {
   const flags = propertyFlags(program, property);
   if (topLevel && name === "location") {
@@ -653,7 +653,7 @@ function topLevelPropertyFlags(
  * wrapper, not the alias) - matching the AutoRest extension.
  */
 function flagsForFlattenedChild(
-  childFlags: ObjectTypePropertyFlags,
+  childFlags: ObjectTypePropertyFlags
 ): ObjectTypePropertyFlags {
   return (
     ObjectTypePropertyFlags.ReadOnly |

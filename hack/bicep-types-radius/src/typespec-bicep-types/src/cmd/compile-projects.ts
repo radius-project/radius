@@ -55,7 +55,7 @@ const PROJECTS: ReadonlyArray<{ projectDir: string; outputBase: string }> = [
   { projectDir: "Applications.Dapr", outputBase: "applications" },
   { projectDir: "Applications.Datastores", outputBase: "applications" },
   { projectDir: "Applications.Messaging", outputBase: "applications" },
-  { projectDir: "Radius.Core", outputBase: "radius" },
+  { projectDir: "Radius.Core", outputBase: "radius" }
 ];
 
 function getArg(name: string, fallback: string): string {
@@ -72,7 +72,7 @@ const packageRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const typespecDir = resolve(process.cwd(), getArg("typespec-dir", "typespec"));
 const generatedDir = resolve(
   process.cwd(),
-  getArg("out-dir", "hack/bicep-types-radius/generated"),
+  getArg("out-dir", "hack/bicep-types-radius/generated")
 );
 const keepLink = process.argv.includes("--keep-link");
 
@@ -85,7 +85,7 @@ async function linkEmitter(): Promise<string[]> {
   const emitterDest = join(
     typespecDir,
     "node_modules",
-    ...EMITTER_NAME.split("/"),
+    ...EMITTER_NAME.split("/")
   );
   // `bicep-types` is a direct dependency, so pnpm always exposes it at the
   // package's own `node_modules/bicep-types` (its `exports` map hides
@@ -96,17 +96,17 @@ async function linkEmitter(): Promise<string[]> {
   await rm(emitterDest, { recursive: true, force: true });
   await mkdir(emitterDest, { recursive: true });
   await cp(join(packageRoot, "dist"), join(emitterDest, "dist"), {
-    recursive: true,
+    recursive: true
   });
   await cp(
     join(packageRoot, "package.json"),
-    join(emitterDest, "package.json"),
+    join(emitterDest, "package.json")
   );
 
   await rm(bicepTypesDest, { recursive: true, force: true });
   await cp(bicepTypesSrc, bicepTypesDest, {
     recursive: true,
-    dereference: true,
+    dereference: true
   });
 
   return [emitterDest, bicepTypesDest];
@@ -118,7 +118,7 @@ async function main(): Promise<void> {
     // Load the host workspace's compiler so the single shared instance the
     // emitter resolves is the same one driving compilation.
     const compilerPath = require.resolve("@typespec/compiler", {
-      paths: [typespecDir],
+      paths: [typespecDir]
     });
     const { NodeHost, compile } = (await import(
       pathToFileURL(compilerPath).href
@@ -132,7 +132,7 @@ async function main(): Promise<void> {
       const program = await compile(NodeHost, entry, {
         outputDir,
         emit: [EMITTER_NAME],
-        options: { [EMITTER_NAME]: { "emitter-output-dir": outputDir } },
+        options: { [EMITTER_NAME]: { "emitter-output-dir": outputDir } }
       });
 
       const errors = program.diagnostics.filter((d) => d.severity === "error");
@@ -153,7 +153,7 @@ async function main(): Promise<void> {
   } finally {
     if (!keepLink) {
       await Promise.all(
-        links.map((p) => rm(p, { recursive: true, force: true })),
+        links.map((p) => rm(p, { recursive: true, force: true }))
       );
     }
   }

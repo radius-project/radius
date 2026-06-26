@@ -29,7 +29,7 @@ export {
   writeMarkdown,
   buildIndex,
   writeIndexJson,
-  writeIndexMarkdown,
+  writeIndexMarkdown
 } from "bicep-types";
 
 export type {
@@ -45,13 +45,13 @@ export type {
   TypeFile,
   TypeIndex,
   TypeSettings,
-  UnionType,
+  UnionType
 } from "bicep-types";
 
 import type {
   ObjectTypeProperty,
   ObjectTypePropertyFlags,
-  TypeReference,
+  TypeReference
 } from "bicep-types";
 
 /**
@@ -62,7 +62,7 @@ import type {
 export function createObjectProperty(
   type: TypeReference,
   flags: ObjectTypePropertyFlags,
-  description?: string,
+  description?: string
 ): ObjectTypeProperty {
   return { type, flags, description };
 }

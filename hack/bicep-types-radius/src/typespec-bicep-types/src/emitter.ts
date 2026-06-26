@@ -20,7 +20,7 @@ import {
   TypeBaseKind,
   TypeFactory,
   writeMarkdown,
-  writeTypesJson,
+  writeTypesJson
 } from "./bicep.js";
 import { discoverResources, DiscoveredResource } from "./resource-discovery.js";
 import { buildResourceType, newTranslationCache } from "./type-translator.js";
@@ -42,7 +42,7 @@ import type { BicepEmitterOptions } from "./lib.js";
  * `eng/design-notes/tools/2026-06-autorest-bicep-to-typespec-emitter.md`.
  */
 export async function $onEmit(
-  context: EmitContext<BicepEmitterOptions>,
+  context: EmitContext<BicepEmitterOptions>
 ): Promise<void> {
   if (context.program.compilerOptions.noEmit) {
     return;
@@ -76,17 +76,17 @@ export async function $onEmit(
 
     await emitFile(context.program, {
       path: resolvePath(context.emitterOutputDir, outFolder, "types.json"),
-      content: writeTypesJson(factory.types),
+      content: writeTypesJson(factory.types)
     });
 
     await emitFile(context.program, {
       path: resolvePath(context.emitterOutputDir, outFolder, "types.md"),
-      content: writeMarkdown(factory.types, `${namespace} @ ${apiVersion}`),
+      content: writeMarkdown(factory.types, `${namespace} @ ${apiVersion}`)
     });
 
     // One reference doc per resource type under docs/<resource>.md.
     const resourceTypes = factory.types.filter(
-      (type) => type.type === TypeBaseKind.ResourceType,
+      (type) => type.type === TypeBaseKind.ResourceType
     ) as ResourceType[];
     for (const resourceType of resourceTypes) {
       const filename = resourceType.name
@@ -98,9 +98,9 @@ export async function $onEmit(
           context.emitterOutputDir,
           outFolder,
           "docs",
-          `${filename}.md`,
+          `${filename}.md`
         ),
-        content: writeTableMarkdown([resourceType], factory.types),
+        content: writeTableMarkdown([resourceType], factory.types)
       });
     }
   }
