@@ -6,22 +6,22 @@ export default async ({ github, core }) => {
     const remoteOwner = core.getInput("OWNER", { required: true });
     const remoteRepo = core.getInput("REPO", { required: true });
     const remoteWorkflowFile = core.getInput("WORKFLOW_FILE", {
-      required: true,
+      required: true
     });
     const dispatchStartedAt = core.getInput("DISPATCH_STARTED_AT", {
-      required: true,
+      required: true
     });
 
     const maxWaitSeconds = Number(core.getInput("MAX_WAIT_SECONDS") || "900"); // Default to 15 minutes
     const pollIntervalSeconds = Number(
-      core.getInput("POLL_INTERVAL_SECONDS") || "10",
+      core.getInput("POLL_INTERVAL_SECONDS") || "10"
     );
 
     /** @param {number} ms */
     const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     core.info(
-      `Waiting for remote workflow run in ${remoteOwner}/${remoteRepo}...`,
+      `Waiting for remote workflow run in ${remoteOwner}/${remoteRepo}...`
     );
 
     const findLatestRun = async () => {
@@ -30,7 +30,7 @@ export default async ({ github, core }) => {
         repo: remoteRepo,
         workflow_id: remoteWorkflowFile,
         event: "repository_dispatch",
-        per_page: 20,
+        per_page: 20
       });
 
       const candidateRuns = (response.data.workflow_runs || [])
@@ -39,8 +39,8 @@ export default async ({ github, core }) => {
         /** @param {any} left @param {any} right */
         .sort((left, right) => left.created_at.localeCompare(right.created_at));
 
-      return candidateRuns.length > 0
-        ? candidateRuns[candidateRuns.length - 1]
+      return candidateRuns.length > 0 ?
+          candidateRuns[candidateRuns.length - 1]
         : undefined;
     };
 
@@ -60,7 +60,7 @@ export default async ({ github, core }) => {
 
     if (!run) {
       core.setFailed(
-        `Timed out waiting for remote workflow run to start: https://github.com/${remoteOwner}/${remoteRepo}/actions/workflows/${remoteWorkflowFile}`,
+        `Timed out waiting for remote workflow run to start: https://github.com/${remoteOwner}/${remoteRepo}/actions/workflows/${remoteWorkflowFile}`
       );
       return;
     }
@@ -80,7 +80,7 @@ export default async ({ github, core }) => {
       const runResponse = await github.rest.actions.getWorkflowRun({
         owner: remoteOwner,
         repo: remoteRepo,
-        run_id: run.id,
+        run_id: run.id
       });
 
       const status = runResponse.data.status;
@@ -100,12 +100,12 @@ export default async ({ github, core }) => {
           owner: remoteOwner,
           repo: remoteRepo,
           run_id: run.id,
-          per_page: 100,
+          per_page: 100
         });
 
         const failedJobs = (jobsResponse.data.jobs || []).filter(
           /** @param {any} job */
-          (job) => job.conclusion !== "success",
+          (job) => job.conclusion !== "success"
         );
         const failedJobText = failedJobs
           /** @param {any} job */
@@ -122,7 +122,7 @@ export default async ({ github, core }) => {
           .join("\n");
 
         core.setFailed(
-          `Remote workflow failed with conclusion: ${conclusion}\nRemote workflow run: ${runUrl}${failedJobText ? `\nFailed jobs/steps:\n${failedJobText}` : ""}`,
+          `Remote workflow failed with conclusion: ${conclusion}\nRemote workflow run: ${runUrl}${failedJobText ? `\nFailed jobs/steps:\n${failedJobText}` : ""}`
         );
         return;
       }
@@ -133,7 +133,7 @@ export default async ({ github, core }) => {
     core.setOutput("run_id", String(run.id));
     core.setOutput("run_url", runUrl);
     core.setFailed(
-      `Timed out waiting for remote workflow completion: ${runUrl}`,
+      `Timed out waiting for remote workflow completion: ${runUrl}`
     );
   } catch (error) {
     core.setFailed(error instanceof Error ? error.message : String(error));

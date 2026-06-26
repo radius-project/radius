@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -21,11 +21,11 @@ format-check: generate-pnpm-installed ## Checks the formatting of JSON files.
 	@pnpm install --frozen-lockfile
 	@echo "$(ARROW) Checking for formatting issues using prettier..."
 	@echo ""
-	@pnpm exec prettier --check "*/**/*.{ts,js,mjs,json}"
+	@pnpm exec prettier --config ./.github/linters/.prettierrc.yml --check "*/**/*.{js,cjs,mjs,ts,tsx,jsx,json,jsonc}"
 
 .PHONY: format-write
 format-write: generate-pnpm-installed ## Updates the formatting of JSON files.
 	@pnpm install --frozen-lockfile
 	@echo "$(ARROW) Reformatting files using prettier..."
 	@echo ""
-	@pnpm exec prettier --write "*/**/*.{ts,js,mjs,json}"
+	@pnpm exec prettier --config ./.github/linters/.prettierrc.yml --write "*/**/*.{js,cjs,mjs,ts,tsx,jsx,json,jsonc}"

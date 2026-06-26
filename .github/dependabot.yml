@@ -8,7 +8,6 @@
 ---
 version: 2
 
-
 updates:
   - package-ecosystem: github-actions
     directories:
@@ -63,8 +62,7 @@ updates:
     directories:
       - "/"
       - "/typespec"
-      - "/hack/bicep-types-radius/src/autorest.bicep"
-      - "/hack/bicep-types-radius/src/generator"
+      - "/hack/bicep-types-radius/src/typespec-bicep-types"
     schedule:
       interval: weekly
     cooldown:

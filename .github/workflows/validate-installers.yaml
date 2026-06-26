@@ -116,7 +116,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3 # v2.0.0
+      - name: Install oras
+        # Version pinned in build/tools.mk (ORAS_VERSION).
+        run: make install-oras
 
       - name: Run installer test script
         run: deploy/test-install.sh

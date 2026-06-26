@@ -23,11 +23,11 @@
 #
 # The steps below intentionally mirror the tooling installed by the contributor
 # dev container (.devcontainer/) and by the CI workflows (build.yaml and
-# functional-test-noncloud.yaml). Language and tool versions are read from the
-# repo's version files (go.mod, .node-version, .python-version,
-# .golangci-lint-version, .terraform-version) so a version bump flows here
-# automatically; other tool versions are pinned inline in each step below to
-# match the CI workflows. Versions are NOT declared in a workflow-level `env:`
+# functional-test-noncloud.yaml). Language runtime versions are read from the
+# repo's version files (go.mod, .node-version, .python-version, .terraform-version)
+# so a version bump flows here automatically; CLI tool versions and checksums are
+# pinned in build/tools.mk and installed via the shared `make install-<tool>`
+# targets. Versions are NOT declared in a workflow-level `env:`
 # block because the Copilot coding agent replays these steps in a harness that
 # does not provide that context.
 name: copilot-setup-steps
@@ -40,15 +40,17 @@ on:
       - .github/workflows/copilot-setup-steps.yml
       - .node-version
       - .python-version
-      - .golangci-lint-version
       - .terraform-version
+      - build/tools.mk
+      - build/scripts/install-*.sh
   pull_request:
     paths:
       - .github/workflows/copilot-setup-steps.yml
       - .node-version
       - .python-version
-      - .golangci-lint-version
       - .terraform-version
+      - build/tools.mk
+      - build/scripts/install-*.sh
 
 permissions: {}
 
@@ -60,9 +62,9 @@ permissions: {}
 # block -- is ignored. As a result `${{ env.X }}` and env vars inherited from
 # such a block resolve to empty when the agent runs these steps.
 # See: https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment
-# Versions read from repo version files (go.mod, .node-version, .python-version,
-# .golangci-lint-version, .terraform-version) still work because the steps read
-# the files directly.
+# Language runtime versions read from repo version files (go.mod, .node-version,
+# .python-version, .terraform-version) still work because the steps read the files
+# directly; CLI tool versions come from build/tools.mk via `make install-<tool>`.
 
 jobs:
   # The job MUST be named `copilot-setup-steps` for the Copilot coding agent to
@@ -100,20 +102,13 @@ jobs:
         with:
           python-version-file: .python-version
 
-      - name: Setup Helm
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-        with:
-          version: v4.2.2
+      - name: Install helm
+        # Version pinned in build/tools.mk (HELM_VERSION).
+        run: make install-helm
 
       - name: Install kubectl
-        run: |
-          KUBECTL_VER="v1.30.0"
-          KUBECTL_LINUX_AMD64_SHA256="7c3807c0f5c1b30110a2ff1e55da1d112a6d0096201f1beb81b269f582b5d1c5"
-          curl -fsSLo ./kubectl "https://dl.k8s.io/release/${KUBECTL_VER}/bin/linux/amd64/kubectl"
-          echo "${KUBECTL_LINUX_AMD64_SHA256}  ./kubectl" | sha256sum -c -
-          chmod +x ./kubectl
-          sudo mv ./kubectl /usr/local/bin/kubectl
-          kubectl version --client
+        # Version pinned in build/tools.mk (KUBECTL_VERSION).
+        run: make install-kubectl
 
       - name: Install pnpm and TypeSpec tooling
         # `make generate-tsp-installed` enables corepack with the pinned pnpm
@@ -141,16 +136,8 @@ jobs:
           cspell --version
 
       - name: Install golangci-lint
-        # Version is read from .golangci-lint-version, the source of truth shared
-        # with the dev container and CI.
-        run: |
-          GOLANGCI_LINT_VERSION="$(tr -d '\r\n[:space:]' < .golangci-lint-version)"
-          if [[ -z "${GOLANGCI_LINT_VERSION}" ]]; then
-            echo "Error: .golangci-lint-version is empty" >&2
-            exit 1
-          fi
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh \
-            | sh -s -- -b "$(go env GOPATH)/bin" "${GOLANGCI_LINT_VERSION}"
+        # Pinned version + checksums live in build/tools.mk (GOLANGCI_LINT_VERSION).
+        run: make install-golangci-lint
 
       - name: Install Go tools
         # controller-gen, mockgen, and gotestsum are managed as Go tool dependencies
@@ -167,53 +154,27 @@ jobs:
 
       - name: Install KinD
         # Lets the agent create a local Kubernetes cluster for integration and
-        # functional tests.
-        run: |
-          KIND_VER="v0.29.0"
-          curl -fsSLo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VER}/kind-linux-amd64"
-          chmod +x ./kind
-          sudo mv ./kind /usr/local/bin/kind
-          kind --version
+        # functional tests. Version pinned in build/tools.mk (KIND_VERSION).
+        run: make install-kind
 
       - name: Install k3d
         # Used by the local debug environment (make debug-start) to create a
-        # lightweight Kubernetes cluster.
-        run: |
-          K3D_VER="v5.6.0"
-          curl -fsSL https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG="${K3D_VER}" bash
-          k3d version
+        # lightweight Kubernetes cluster. Version pinned in build/tools.mk (K3D_VERSION).
+        run: make install-k3d
 
       - name: Install stern
         # Multi-pod log tailing for debugging Kubernetes output across the
-        # radius-system components.
-        run: |
-          STERN_VER="1.32.0"
-          curl -fsSLo "${RUNNER_TEMP}/stern.tar.gz" "https://github.com/stern/stern/releases/download/v${STERN_VER}/stern_${STERN_VER}_linux_amd64.tar.gz"
-          tar -xzf "${RUNNER_TEMP}/stern.tar.gz" -C "${RUNNER_TEMP}" stern
-          chmod +x "${RUNNER_TEMP}/stern"
-          sudo mv "${RUNNER_TEMP}/stern" /usr/local/bin/stern
-          stern --version
+        # radius-system components. Version pinned in build/tools.mk (STERN_VERSION).
+        run: make install-stern
 
       - name: Install Dapr CLI
-        run: |
-          DAPR_CLI_VER="1.15.1"
-          wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - \
-            | /bin/bash -s "${DAPR_CLI_VER}"
-          dapr --version
+        # Version pinned in build/tools.mk (DAPR_VERSION).
+        run: make install-dapr
 
       - name: Install Terraform
-        # Version is read from .terraform-version, the source of truth also
-        # compiled into the rad binary and used by the recipe engine.
-        run: |
-          TERRAFORM_VERSION="$(tr -d '\r\n[:space:]' < .terraform-version)"
-          if [[ -z "${TERRAFORM_VERSION}" ]]; then
-            echo "Error: .terraform-version is empty" >&2
-            exit 1
-          fi
-          curl -fsSLo "${RUNNER_TEMP}/terraform.zip" "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
-          unzip -o "${RUNNER_TEMP}/terraform.zip" -d "${RUNNER_TEMP}/terraform-bin"
-          sudo mv "${RUNNER_TEMP}/terraform-bin/terraform" /usr/local/bin/terraform
-          terraform version
+        # Version defaults to .terraform-version (overridable via TERRAFORM_VERSION)
+        # and is compiled into the rad binary; checksums pinned in build/tools.mk.
+        run: make install-terraform
 
       - name: Install Bicep CLI
         # Required by Bicep type publishing (make publish-bicep-extension) and
