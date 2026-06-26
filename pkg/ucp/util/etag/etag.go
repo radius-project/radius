@@ -22,12 +22,13 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+
+	"github.com/radius-project/radius/pkg/hashutil"
 )
 
 // New generates a unique string based on the SHA-256 hash of the input data.
 func New(data []byte) string {
-	hash := sha256.Sum256(data)
-	return fmt.Sprintf("%d-%x", int(len(hash)), hash)
+	return fmt.Sprintf("%d-%s", sha256.Size, hashutil.Hex(data))
 }
 
 // NewFromRevision takes in an int64 and returns a hexadecimal string representation of it.

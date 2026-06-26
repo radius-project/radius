@@ -40,7 +40,7 @@ This document describes the staged migration from SHA-1 to **SHA-256**. The guid
 
 ### High Level Design
 
-A single foundation package, `pkg/hashutil`, centralizes hashing. `Hex(data) string` returns SHA-256 hex and is used for **all new values**. `LegacyHex(data) string` returns SHA-1 hex and lives in `pkg/hashutil/legacy.go`, which is the **only** file in the codebase that imports `crypto/sha1`. Deleting that file completes the migration (Phase 3).
+A single foundation package, `pkg/hashutil`, centralizes hashing. `Hex(data) string` returns SHA-256 hex and is used for **all new values**. `LegacyHex(data) string` returns SHA-1 hex and lives in `pkg/hashutil/legacy.go`, the single SHA-1 implementation behind `hashutil`. A few call sites outside `hashutil` still compute SHA-1 directly and are deferred to Phase 3 (the Kubernetes secret-hash annotation and the ACI gateway DNS prefix, covered under Detailed Design). Once those sites are migrated and all stored SHA-1 values have been re-keyed, deleting `legacy.go` completes the migration.
 
 Each SHA-1 call site is migrated using one of three patterns, chosen by how the hash is used:
 
@@ -59,7 +59,7 @@ flowchart TD
     E --> F
     D --> G[pkg/hashutil.LegacyHex]
     E --> G
-    G --> H[legacy.go: only crypto/sha1 import, delete in Phase 3]
+    G --> H[legacy.go: hashutil SHA-1 impl, delete in Phase 3]
 ```
 
 ### Detailed Design

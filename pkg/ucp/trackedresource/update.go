@@ -130,7 +130,7 @@ func (u *Updater) Update(ctx context.Context, downstream string, id resources.ID
 	logger = logger.WithValues("id", id, "trackingID", trackingID, "destination", destination.String())
 	logger.V(ucplog.LevelDebug).Info("updating tracked resource")
 	for attempt := 1; attempt <= u.AttemptCount; attempt++ {
-		logger.WithValues("attempt", attempt)
+		logger := logger.WithValues("attempt", attempt)
 		ctx := logr.NewContext(ctx, logger)
 		logger.V(ucplog.LevelDebug).Info("beginning attempt")
 
