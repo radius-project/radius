@@ -55,12 +55,12 @@ type BaseManifest struct {
 //
 // Callers should invoke Load once, at initialization, and hold the result.
 func Load() (*BaseManifest, error) {
-	var raw map[string]any
-	if err := yaml.Unmarshal(baseYAML, &raw); err != nil {
+	var schema map[string]any
+	if err := yaml.Unmarshal(baseYAML, &schema); err != nil {
 		return nil, fmt.Errorf("failed to parse embedded base resource manifest: %w", err)
 	}
 
-	props, err := toStringMap(raw["properties"])
+	props, err := toStringMap(schema["properties"])
 	if err != nil {
 		return nil, fmt.Errorf("base resource manifest has invalid \"properties\": %w", err)
 	}
@@ -68,7 +68,7 @@ func Load() (*BaseManifest, error) {
 		return nil, fmt.Errorf("base resource manifest declares no properties")
 	}
 
-	required, err := toStringSlice(raw["required"])
+	required, err := toStringSlice(schema["required"])
 	if err != nil {
 		return nil, fmt.Errorf("base resource manifest has invalid \"required\": %w", err)
 	}
