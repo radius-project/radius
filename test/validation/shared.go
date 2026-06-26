@@ -48,6 +48,7 @@ const (
 
 	// Radius.Compute resource types (new provider).
 	ComputeContainersResource = "radius.compute/containers"
+	ComputeRoutesResource     = "radius.compute/routes"
 
 	// Radius.Security resource types (new provider).
 	SecuritySecretsResource = "radius.security/secrets"
