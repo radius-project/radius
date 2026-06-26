@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -76,6 +77,61 @@ func TestFromARMRequest(t *testing.T) {
 			require.Equal(t, rid.Type(), serviceCtx.ResourceID.Type())
 			require.Equal(t, rid.Name(), serviceCtx.ResourceID.Name())
 			require.True(t, len(serviceCtx.OperationID) > 0)
+		})
+	}
+}
+
+func TestFromARMRequest_PrefersURLWhenRefererResourceDiffers(t *testing.T) {
+	// The Referer header lets Radius recover the original resource path when a request has been
+	// proxied or its URL path was case-normalized, so a well-formed Referer normally points at the
+	// same resource as the request URL (differing only by casing or path base). These cases cover
+	// that reconciliation: a matching Referer keeps the original casing, while a Referer that points
+	// at a different resource is ignored in favor of the request URL.
+	cases := []struct {
+		desc       string
+		urlPath    string
+		referer    string
+		expectedID string
+	}{
+		{
+			desc:       "referer omitted uses url",
+			urlPath:    "/planes/radius/local/resourcegroups/group-a/providers/Applications.Core/environments/env0",
+			referer:    "",
+			expectedID: "/planes/radius/local/resourcegroups/group-a/providers/Applications.Core/environments/env0",
+		},
+		{
+			desc:       "referer for same resource preserves original casing",
+			urlPath:    "/planes/radius/local/resourcegroups/group-a/providers/applications.core/environments/env0",
+			referer:    "http://localhost/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/Env0",
+			expectedID: "/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/Env0",
+		},
+		{
+			desc:       "referer for a different resource uses url",
+			urlPath:    "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
+			referer:    "http://localhost/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/env0",
+			expectedID: "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
+		},
+		{
+			// A proxied request can carry a routing prefix on the URL (e.g. a downstream id) that the
+			// Referer does not. That prefix is a path base, not a different resource, so the Referer is
+			// kept.
+			desc:       "url routing prefix is not treated as a different resource",
+			urlPath:    "/b6b3f382-f600-4bd1-8f4f-ec50c5460b6c/planes/radius/local/resourcegroups/group-a/providers/Applications.Core/environments/env0",
+			referer:    "http://localhost/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/env0",
+			expectedID: "/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/env0",
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.desc, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tt.urlPath, nil)
+			if tt.referer != "" {
+				req.Header.Set(RefererHeader, tt.referer)
+			}
+
+			serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedID, serviceCtx.ResourceID.String())
 		})
 	}
 }

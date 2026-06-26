@@ -152,6 +152,22 @@ func (rdc *MockResourceDeploymentsClient) GetResource(resourceID string) (*Clien
 	return resource, ok
 }
 
+// DeletedResourceIDs returns the resource IDs for which a Delete operation was started. It allows
+// tests to assert whether (or not) the controller issued a UCP delete for a given resource.
+func (rdc *MockResourceDeploymentsClient) DeletedResourceIDs() []string {
+	rdc.lock.Lock()
+	defer rdc.lock.Unlock()
+
+	ids := []string{}
+	for _, state := range rdc.operations {
+		if state.Kind == http.MethodDelete {
+			ids = append(ids, state.ResourceID)
+		}
+	}
+
+	return ids
+}
+
 type MockResourceDeploymentsClientPoller[T any] struct {
 	operationID string
 	mock        *MockResourceDeploymentsClient
