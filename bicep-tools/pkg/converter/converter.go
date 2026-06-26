@@ -30,6 +30,15 @@ type ConversionResult struct {
 func Convert(provider *manifest.ResourceProvider) (*ConversionResult, error) {
 	typeFactory := factory.NewTypeFactory()
 
+	// Load the common base resource properties once; they are merged into every
+	// API version's schema below so the generated Bicep types expose
+	// application, environment, connections, and codeReference even when the
+	// author omits them.
+	base, err := loadBaseResource()
+	if err != nil {
+		return nil, err
+	}
+
 	// Iterate resource types in sorted order
 	resourceTypeNames := sortedResourceTypeNames(provider.Types)
 	for _, resourceTypeName := range resourceTypeNames {
@@ -45,6 +54,7 @@ func Convert(provider *manifest.ResourceProvider) (*ConversionResult, error) {
 				apiVersionName,
 				&apiVersion,
 				typeFactory,
+				base,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to add resource type %s@%s: %w",
@@ -139,6 +149,7 @@ func addResourceTypeForAPIVersion(
 	apiVersionName string,
 	apiVersion *manifest.APIVersion,
 	typeFactory *factory.TypeFactory,
+	base *baseResource,
 ) (types.ITypeReference, error) {
 
 	qualifiedName := fmt.Sprintf("%s/%s@%s", provider.Namespace, resourceTypeName, apiVersionName)
@@ -147,7 +158,7 @@ func addResourceTypeForAPIVersion(
 	// properties type, mirroring the server-side merge in pkg/cli/manifest so the
 	// published Bicep types expose application, environment, connections, and
 	// codeReference even when the author omits them.
-	applyBaseResource(&apiVersion.Schema)
+	base.apply(&apiVersion.Schema)
 
 	// Create the properties type from the schema
 	propertyTypeRef, err := addSchemaType(&apiVersion.Schema, resourceTypeName+"Properties", typeFactory)

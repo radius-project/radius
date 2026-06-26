@@ -13,17 +13,22 @@ import (
 // entries, and connections shape (including disableDefaultEnvVars). It guards
 // against base.yaml changes that fail to decode into manifest.Schema.
 func TestBaseResource_DecodedFromCanonicalYAML(t *testing.T) {
+	base, err := loadBaseResource()
+	if err != nil {
+		t.Fatalf("loadBaseResource: %v", err)
+	}
+
 	for _, name := range []string{"application", "environment", "connections", "codeReference"} {
-		if _, ok := baseResourceProperties[name]; !ok {
+		if _, ok := base.properties[name]; !ok {
 			t.Errorf("expected base property %q to be decoded from base.yaml", name)
 		}
 	}
 
-	if !reflect.DeepEqual(baseResourceRequired, []string{"environment"}) {
-		t.Errorf("expected required [environment], got %v", baseResourceRequired)
+	if !reflect.DeepEqual(base.required, []string{"environment"}) {
+		t.Errorf("expected required [environment], got %v", base.required)
 	}
 
-	connections := baseResourceProperties["connections"]
+	connections := base.properties["connections"]
 	if connections.AdditionalProperties == nil {
 		t.Fatal("expected connections to declare additionalProperties")
 	}
@@ -40,6 +45,11 @@ func TestBaseResource_DecodedFromCanonicalYAML(t *testing.T) {
 // TestApplyBaseResource_MergesIntoBareSchema verifies the merger injects every
 // base property and the required entry into a schema that declares none.
 func TestApplyBaseResource_MergesIntoBareSchema(t *testing.T) {
+	base, err := loadBaseResource()
+	if err != nil {
+		t.Fatalf("loadBaseResource: %v", err)
+	}
+
 	schema := &manifest.Schema{
 		Type: "object",
 		Properties: map[string]manifest.Schema{
@@ -47,7 +57,7 @@ func TestApplyBaseResource_MergesIntoBareSchema(t *testing.T) {
 		},
 	}
 
-	applyBaseResource(schema)
+	base.apply(schema)
 
 	for _, name := range []string{"size", "application", "environment", "connections", "codeReference"} {
 		if _, ok := schema.Properties[name]; !ok {
@@ -63,6 +73,11 @@ func TestApplyBaseResource_MergesIntoBareSchema(t *testing.T) {
 // TestApplyBaseResource_PerTypeWins verifies an author's own declaration of a
 // base property is never overwritten by the merge.
 func TestApplyBaseResource_PerTypeWins(t *testing.T) {
+	base, err := loadBaseResource()
+	if err != nil {
+		t.Fatalf("loadBaseResource: %v", err)
+	}
+
 	custom := manifest.Schema{Type: "string", Description: ptr("custom")}
 	schema := &manifest.Schema{
 		Type: "object",
@@ -71,7 +86,7 @@ func TestApplyBaseResource_PerTypeWins(t *testing.T) {
 		},
 	}
 
-	applyBaseResource(schema)
+	base.apply(schema)
 
 	got := schema.Properties["environment"]
 	if got.Description == nil || *got.Description != "custom" {
@@ -82,11 +97,16 @@ func TestApplyBaseResource_PerTypeWins(t *testing.T) {
 // TestApplyBaseResource_Idempotent verifies applying the merge twice does not
 // duplicate the required entry or change the property set.
 func TestApplyBaseResource_Idempotent(t *testing.T) {
+	base, err := loadBaseResource()
+	if err != nil {
+		t.Fatalf("loadBaseResource: %v", err)
+	}
+
 	schema := &manifest.Schema{Type: "object"}
 
-	applyBaseResource(schema)
+	base.apply(schema)
 	first := len(schema.Properties)
-	applyBaseResource(schema)
+	base.apply(schema)
 
 	if len(schema.Properties) != first {
 		t.Errorf("expected stable property count, got %d then %d", first, len(schema.Properties))
@@ -98,7 +118,12 @@ func TestApplyBaseResource_Idempotent(t *testing.T) {
 
 // TestApplyBaseResource_NilSchema verifies a nil schema is a no-op.
 func TestApplyBaseResource_NilSchema(t *testing.T) {
-	applyBaseResource(nil)
+	base, err := loadBaseResource()
+	if err != nil {
+		t.Fatalf("loadBaseResource: %v", err)
+	}
+
+	base.apply(nil)
 }
 
 func contains(values []string, target string) bool {

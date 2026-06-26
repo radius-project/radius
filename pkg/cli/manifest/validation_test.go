@@ -605,4 +605,79 @@ func TestApplyBaseResourceManifest(t *testing.T) {
 		require.Nil(t, provider.Types["widgets"].APIVersions["2025-01-01"].Schema)
 		require.Equal(t, "not-a-map", provider.Types["widgets"].APIVersions["2025-02-01"].Schema)
 	})
+
+	t.Run("merges base properties across multiple types and api versions", func(t *testing.T) {
+		// Mirrors the bicep-tools TestConvert_MultipleTypesAndAPIVersions
+		// fixture: one type with one API version that lists base properties
+		// only under "required", and a second type with two API versions whose
+		// schemas declare nothing but a type-specific property. After Apply,
+		// every (type, apiVersion) pair must have all four base properties
+		// merged in, and "environment" must be in each required list.
+		provider := &ResourceProvider{
+			Namespace: "Demo.Examples",
+			Types: map[string]*ResourceType{
+				"widgets": {
+					Capabilities: []string{"ManualResourceProvisioning"},
+					APIVersions: map[string]*ResourceTypeAPIVersion{
+						"2026-06-01-preview": {
+							Schema: map[string]any{
+								"type": "object",
+								"properties": map[string]any{
+									"size":  map[string]any{"type": "integer", "description": "Widget size."},
+									"color": map[string]any{"type": "string", "description": "Widget color."},
+								},
+								"required": []any{"size", "application", "environment"},
+							},
+						},
+					},
+				},
+				"widgets1": {
+					Capabilities: []string{"ManualResourceProvisioning"},
+					APIVersions: map[string]*ResourceTypeAPIVersion{
+						"2026-06-01-preview": {
+							Schema: map[string]any{
+								"type": "object",
+								"properties": map[string]any{
+									"size": map[string]any{"type": "integer", "description": "Widget size."},
+								},
+							},
+						},
+						"2025-06-01-preview": {
+							Schema: map[string]any{
+								"type": "object",
+								"properties": map[string]any{
+									"size": map[string]any{"type": "integer", "description": "Widget size."},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		require.NoError(t, applyBaseResourceManifest(provider))
+
+		cases := []struct {
+			resourceType string
+			apiVersion   string
+			typeOwnProps []string
+		}{
+			{"widgets", "2026-06-01-preview", []string{"size", "color"}},
+			{"widgets1", "2026-06-01-preview", []string{"size"}},
+			{"widgets1", "2025-06-01-preview", []string{"size"}},
+		}
+
+		for _, c := range cases {
+			schemaMap := provider.Types[c.resourceType].APIVersions[c.apiVersion].Schema.(map[string]any)
+			props := schemaMap["properties"].(map[string]any)
+
+			for _, name := range c.typeOwnProps {
+				require.Contains(t, props, name, "%s@%s missing author property %q", c.resourceType, c.apiVersion, name)
+			}
+			for _, name := range []string{"application", "environment", "connections", "codeReference"} {
+				require.Contains(t, props, name, "%s@%s missing merged base property %q", c.resourceType, c.apiVersion, name)
+			}
+			require.Contains(t, schemaMap["required"], "environment", "%s@%s missing base required entry", c.resourceType, c.apiVersion)
+		}
+	})
 }
