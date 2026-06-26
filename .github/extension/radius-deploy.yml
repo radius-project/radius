@@ -17,11 +17,15 @@ on:
       radius_commands:
         # Optional override of the default `rad deploy`. A single rad CLI command
         # string, or a JSON-encoded array of command strings run in order, with the
-        # `rad` prefix omitted (e.g. `deploy .radius/app.bicep` or
-        # `["deploy .radius/app.bicep", "app graph"]`). When empty, the workflow runs
-        # its default `rad deploy` of `.radius/app.bicep`. This is the Investment 3
-        # dispatch contract that lets a frontend drive arbitrary rad commands.
-        description: 'Optional rad CLI command string, or JSON array of command strings (rad prefix omitted). Overrides the default deploy.'
+        # `rad` prefix omitted (e.g. `deploy .radius/app.bicep --environment dev` or
+        # `["deploy .radius/app.bicep --environment dev", "app graph"]`). Commands run
+        # verbatim, so the caller must include any flags a command needs — e.g.
+        # `--environment <name>` for `deploy`, and `--parameters` (image, password,
+        # etc.) the app expects. When empty, the workflow runs its default
+        # `rad deploy` of `.radius/app.bicep` with the image/password parameters
+        # wired up below. This is the Investment 3 dispatch contract that lets a
+        # frontend drive arbitrary rad commands.
+        description: 'Optional rad CLI command string, or JSON array of command strings (rad prefix omitted, run verbatim — include --environment and --parameters as needed). Overrides the default deploy.'
         required: false
         default: ''
 
@@ -547,6 +551,9 @@ jobs:
           # Pass caller input through the environment to avoid command injection.
           RADIUS_COMMANDS: ${{ inputs.radius_commands }}
         run: |
+          # pipefail so a failed `rad` whose output is piped through `tee` fails the
+          # step (otherwise the pipeline status is tee's, which is usually 0).
+          set -o pipefail
           mkdir -p /tmp/radius-output
 
           # Ensure the radiusCompute extension is imported for Radius.Compute/containerImages.
@@ -558,7 +565,12 @@ jobs:
           echo "Bicep extensions in $APP_FILE:"
           grep '^extension ' "$APP_FILE" || true
 
-          # Make the DB password available to any command that references it.
+          # Make the DB password available to commands that reference it. In the
+          # default-deploy path below it is passed as `--parameters password=...`.
+          # In the radius_commands path commands run verbatim, so a caller whose
+          # command needs the password must pass it themselves (it is exported here
+          # so the command can reference $RADIUS_DB_PASSWORD without re-fetching the
+          # secret).
           export RADIUS_DB_PASSWORD="${{ secrets.RADIUS_DB_PASSWORD }}"
 
           if [ -n "${RADIUS_COMMANDS//[[:space:]]/}" ]; then
@@ -574,7 +586,9 @@ jobs:
             i=0
             for cmd in "${COMMANDS[@]}"; do
               i=$((i + 1))
-              [ -z "${cmd//[[:space:]]/}" ] && continue
+              if [ -z "${cmd//[[:space:]]/}" ]; then
+                continue
+              fi
               OUT="/tmp/radius-output/$(printf '%02d' "$i")-output.txt"
               echo "::group::rad $cmd"
               if ! rad $cmd 2>&1 | tee "$OUT"; then
@@ -598,7 +612,10 @@ jobs:
             if [ -n "$RADIUS_DB_PASSWORD" ]; then
               DEPLOY_PARAMS+=(--parameters "password=$RADIUS_DB_PASSWORD")
             fi
-            rad deploy "$APP_FILE" --environment "$ENVIRONMENT" "${DEPLOY_PARAMS[@]}" 2>&1 | tee /tmp/radius-output/01-deploy.txt
+            if ! rad deploy "$APP_FILE" --environment "$ENVIRONMENT" "${DEPLOY_PARAMS[@]}" 2>&1 | tee /tmp/radius-output/01-deploy.txt; then
+              echo "Deployment failed" >&2
+              exit 1
+            fi
             echo ""
             echo "✅ Deployment complete."
           fi
