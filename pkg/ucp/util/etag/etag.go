@@ -17,17 +17,18 @@ limitations under the License.
 package etag
 
 import (
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
+
+	"github.com/radius-project/radius/pkg/hashutil"
 )
 
-// New generates a unique string based on the SHA1 hash of the input data.
+// New generates a unique string based on the SHA-256 hash of the input data.
 func New(data []byte) string {
-	hash := sha1.Sum(data)
-	return fmt.Sprintf("%d-%x", int(len(hash)), hash)
+	return fmt.Sprintf("%d-%s", sha256.Size, hashutil.Hex(data))
 }
 
 // NewFromRevision takes in an int64 and returns a hexadecimal string representation of it.
