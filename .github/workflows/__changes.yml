@@ -104,6 +104,7 @@ jobs:
           persist-credentials: false
           ref: ${{ inputs.ref }}
           repository: ${{ inputs.repository }}
+          allow-unsafe-pr-checkout: true
 
       - name: Filter
         id: filter
