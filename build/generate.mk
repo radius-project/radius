@@ -188,12 +188,11 @@ generate-bicep-types: ## Generate Bicep extensibility types
 	@$(MAKE) rebuild-bicep-types-index
 
 .PHONY: generate-bicep-types-core
-generate-bicep-types-core: generate-node-installed generate-pnpm-installed ## Generate Bicep extensibility types from OpenAPI specs.
-	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
-	@echo "$(ARROW) Build autorest.bicep..."
-	CI=true pnpm -C hack/bicep-types-radius/src/autorest.bicep install && pnpm -C hack/bicep-types-radius/src/autorest.bicep run build; \
-	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
-	CI=true pnpm -C hack/bicep-types-radius/src/generator install && pnpm -C hack/bicep-types-radius/src/generator run generate --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
+generate-bicep-types-core: generate-tsp-installed ## Generate Bicep extensibility types from TypeSpec.
+	@echo "$(ARROW) Generating Bicep extensibility types from TypeSpec..."
+	@echo "$(ARROW) Build the TypeSpec Bicep emitter..."
+	CI=true pnpm -C hack/bicep-types-radius/src/typespec-bicep-types install && pnpm -C hack/bicep-types-radius/src/typespec-bicep-types run build
+	node hack/bicep-types-radius/src/typespec-bicep-types/dist/src/cmd/compile-projects.js --typespec-dir typespec --out-dir hack/bicep-types-radius/generated
 
 .PHONY: generate-yq-installed
 generate-yq-installed:
@@ -213,7 +212,8 @@ generate-bicep-types-contrib: generate-yq-installed ## Generates Bicep types.jso
 .PHONY: rebuild-bicep-types-index
 rebuild-bicep-types-index:
 	@echo "$(ARROW) Rebuilding unified Bicep types index..."
-	CI=true pnpm -C hack/bicep-types-radius/src/generator run rebuild-index --release-version ${VERSION}
+	CI=true pnpm -C hack/bicep-types-radius/src/typespec-bicep-types install && pnpm -C hack/bicep-types-radius/src/typespec-bicep-types run build
+	node hack/bicep-types-radius/src/typespec-bicep-types/dist/src/cmd/rebuild-index.js --out-dir hack/bicep-types-radius/generated --release-version ${VERSION}
 
 # Publishing the unified `radius` Bicep extension. Runnable locally against any
 # OCI registry (e.g. a local Zot/CRane-backed registry, or biceptypes.azurecr.io
