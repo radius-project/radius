@@ -116,14 +116,32 @@ func TestApplyBaseResource_Idempotent(t *testing.T) {
 	}
 }
 
-// TestApplyBaseResource_NilSchema verifies a nil schema is a no-op.
-func TestApplyBaseResource_NilSchema(t *testing.T) {
+// TestApplyBaseResource_EmptySchema verifies that an author who declares no
+// type-specific properties (e.g. `schema: {}` or `schema: { type: object }`)
+// gets a resource whose effective schema is just the merged base properties.
+func TestApplyBaseResource_EmptySchema(t *testing.T) {
 	base, err := loadBaseResource()
 	if err != nil {
 		t.Fatalf("loadBaseResource: %v", err)
 	}
 
-	base.apply(nil)
+	schema := &manifest.Schema{Type: "object"}
+
+	base.apply(schema)
+
+	expected := []string{"application", "environment", "connections", "codeReference"}
+	if len(schema.Properties) != len(expected) {
+		t.Errorf("expected exactly %d merged base properties, got %d (%v)", len(expected), len(schema.Properties), schema.Properties)
+	}
+	for _, name := range expected {
+		if _, ok := schema.Properties[name]; !ok {
+			t.Errorf("expected merged base property %q to be present", name)
+		}
+	}
+
+	if !contains(schema.Required, "environment") {
+		t.Errorf("expected environment to be required after merge, got %v", schema.Required)
+	}
 }
 
 func contains(values []string, target string) bool {

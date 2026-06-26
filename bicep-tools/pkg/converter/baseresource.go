@@ -40,10 +40,12 @@ func loadBaseResource() (*baseResource, error) {
 }
 
 // apply merges the common base properties into the given schema in place.
+// schema must be non-nil; the converter never passes nil because every API
+// version's Schema is a value field, not a pointer. An author may legitimately
+// declare a schema with no properties of its own (e.g. `schema: {}` or just
+// `schema: { type: object }`), in which case the merged base properties become
+// the entire effective property set.
 func (b *baseResource) apply(schema *manifest.Schema) {
-	if schema == nil {
-		return
-	}
 	if schema.Properties == nil {
 		schema.Properties = map[string]manifest.Schema{}
 	}

@@ -588,6 +588,45 @@ func TestApplyBaseResourceManifest(t *testing.T) {
 		require.Contains(t, schemaMap["required"], "environment")
 	})
 
+	t.Run("merges base properties when author declares no properties", func(t *testing.T) {
+		// Two equally valid empty-schema shapes: an object with no properties
+		// block, and a totally empty schema mapping. Both should end up with
+		// just the four merged base properties and environment required.
+		cases := []struct {
+			name   string
+			schema map[string]any
+		}{
+			{"object with no properties block", map[string]any{"type": "object"}},
+			{"totally empty schema", map[string]any{}},
+		}
+
+		for _, c := range cases {
+			t.Run(c.name, func(t *testing.T) {
+				provider := &ResourceProvider{
+					Namespace: "Demo.Examples",
+					Types: map[string]*ResourceType{
+						"emptyWidget": {
+							APIVersions: map[string]*ResourceTypeAPIVersion{
+								"2026-06-01-preview": {Schema: c.schema},
+							},
+						},
+					},
+				}
+
+				require.NoError(t, applyBaseResourceManifest(provider))
+
+				schemaMap := provider.Types["emptyWidget"].APIVersions["2026-06-01-preview"].Schema.(map[string]any)
+				props, ok := schemaMap["properties"].(map[string]any)
+				require.True(t, ok, "expected properties block to be created during merge")
+				require.Len(t, props, 4, "expected exactly the four merged base properties, got %v", props)
+				for _, name := range []string{"application", "environment", "connections", "codeReference"} {
+					require.Contains(t, props, name)
+				}
+				require.Contains(t, schemaMap["required"], "environment")
+			})
+		}
+	})
+
 	t.Run("skips nil and non-object schemas", func(t *testing.T) {
 		provider := &ResourceProvider{
 			Namespace: "Test.Provider",
