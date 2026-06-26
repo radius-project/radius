@@ -67,6 +67,11 @@ func (handler *httpProxyWaiter) addEventHandler(ctx context.Context, informerFac
 func (handler *httpProxyWaiter) waitUntilReady(ctx context.Context, obj client.Object) error {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("httpProxyName", obj.GetName(), "namespace", obj.GetNamespace())
 
+	if isContourHTTPProxyRouteChild(obj) {
+		logger.Info(fmt.Sprintf("Not validating the deployment of route HTTP proxy for %s", obj.GetName()))
+		return nil
+	}
+
 	doneCh := make(chan error, 1)
 
 	ctx, cancel := context.WithTimeout(ctx, handler.httpProxyDeploymentTimeout)
@@ -134,8 +139,9 @@ func (handler *httpProxyWaiter) checkHTTPProxyStatus(ctx context.Context, dynami
 			logger.Info(fmt.Sprintf("Unable to convert http proxy: %s", err.Error()))
 			continue
 		}
+		p.SetGroupVersionKind(contourv1.SchemeGroupVersion.WithKind("HTTPProxy"))
 
-		if len(p.Spec.Includes) == 0 && len(p.Spec.Routes) > 0 {
+		if isContourHTTPProxyRouteChild(&p) {
 			// This is a route HTTP proxy. We will not validate deployment completion for it and return success here
 			logger.Info(fmt.Sprintf("Not validating the deployment of route HTTP proxy for %s", p.Name))
 			doneCh <- nil
@@ -168,4 +174,30 @@ func (handler *httpProxyWaiter) checkHTTPProxyStatus(ctx context.Context, dynami
 		}
 	}
 	return false
+}
+
+func isContourHTTPProxy(obj client.Object) bool {
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	return gvk.Group == contourv1.SchemeGroupVersion.Group && strings.EqualFold(gvk.Kind, "HTTPProxy")
+}
+
+func isContourHTTPProxyRouteChild(obj client.Object) bool {
+	if !isContourHTTPProxy(obj) {
+		return false
+	}
+
+	var proxy contourv1.HTTPProxy
+	switch p := obj.(type) {
+	case *contourv1.HTTPProxy:
+		proxy = *p
+	case *unstructured.Unstructured:
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(p.Object, &proxy)
+		if err != nil {
+			return false
+		}
+	default:
+		return false
+	}
+
+	return proxy.Spec.VirtualHost == nil && len(proxy.Spec.Includes) == 0 && len(proxy.Spec.Routes) > 0
 }

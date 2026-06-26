@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/radius-project/radius/pkg/resourcemodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
@@ -32,7 +33,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/dynamic/dynamicinformer"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func TestPut(t *testing.T) {
@@ -118,6 +123,130 @@ func TestPut(t *testing.T) {
 			require.Equal(t, tc.out, props)
 		})
 	}
+}
+
+func TestPut_ContourHTTPProxyRouteChildSkipsWait(t *testing.T) {
+	ctx := context.Background()
+	httpProxy := &contourv1.HTTPProxy{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: contourv1.SchemeGroupVersion.String(),
+			Kind:       "HTTPProxy",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "route-proxy",
+			Namespace: "test-namespace",
+		},
+		Spec: contourv1.HTTPProxySpec{
+			Routes: []contourv1.Route{
+				{
+					Services: []contourv1.Service{
+						{
+							Name: "app",
+							Port: 80,
+						},
+					},
+				},
+			},
+		},
+	}
+	options := newKubernetesPutOptions(httpProxy, resources_kubernetes.ResourceTypeContourHTTPProxy)
+	waiter := &recordingResourceWaiter{}
+	handler := kubernetesHandler{
+		client:          k8sutil.NewFakeKubeClient(nil),
+		httpProxyWaiter: waiter,
+	}
+
+	props, err := handler.Put(ctx, options)
+	require.NoError(t, err)
+
+	require.Equal(t, map[string]string{
+		KubernetesAPIVersionKey: contourv1.SchemeGroupVersion.String(),
+		KubernetesKindKey:       "HTTPProxy",
+		KubernetesNamespaceKey:  "test-namespace",
+		ResourceName:            "route-proxy",
+	}, props)
+	require.Equal(t, resources_kubernetes.IDFromParts(resources_kubernetes.PlaneNameTODO, contourv1.SchemeGroupVersion.Group, "HTTPProxy", "test-namespace", "route-proxy").String(), options.Resource.ID.String())
+	require.Equal(t, 0, waiter.calls)
+}
+
+func TestPut_ContourHTTPProxyRootWaits(t *testing.T) {
+	ctx := context.Background()
+	httpProxy := &contourv1.HTTPProxy{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: contourv1.SchemeGroupVersion.String(),
+			Kind:       "HTTPProxy",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "root-proxy",
+			Namespace: "test-namespace",
+		},
+		Spec: contourv1.HTTPProxySpec{
+			VirtualHost: &contourv1.VirtualHost{
+				Fqdn: "example.com",
+			},
+			Routes: []contourv1.Route{
+				{
+					Services: []contourv1.Service{
+						{
+							Name: "app",
+							Port: 80,
+						},
+					},
+				},
+			},
+		},
+	}
+	options := newKubernetesPutOptions(httpProxy, resources_kubernetes.ResourceTypeContourHTTPProxy)
+	waiter := &recordingResourceWaiter{}
+	handler := kubernetesHandler{
+		client:          k8sutil.NewFakeKubeClient(nil),
+		httpProxyWaiter: waiter,
+	}
+
+	props, err := handler.Put(ctx, options)
+	require.NoError(t, err)
+
+	require.Equal(t, map[string]string{
+		KubernetesAPIVersionKey: contourv1.SchemeGroupVersion.String(),
+		KubernetesKindKey:       "HTTPProxy",
+		KubernetesNamespaceKey:  "test-namespace",
+		ResourceName:            "root-proxy",
+	}, props)
+	require.Equal(t, resources_kubernetes.IDFromParts(resources_kubernetes.PlaneNameTODO, contourv1.SchemeGroupVersion.Group, "HTTPProxy", "test-namespace", "root-proxy").String(), options.Resource.ID.String())
+	require.Equal(t, 1, waiter.calls)
+	require.Equal(t, "root-proxy", waiter.lastObject.GetName())
+}
+
+func TestPut_NonContourHTTPProxyBypassesWaiter(t *testing.T) {
+	ctx := context.Background()
+	httpProxy := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "networking.example.com/v1",
+			"kind":       "HTTPProxy",
+			"metadata": map[string]any{
+				"name":      "example-proxy",
+				"namespace": "test-namespace",
+			},
+		},
+	}
+	options := newKubernetesPutOptions(httpProxy, "networking.example.com/HTTPProxy")
+	waiter := &recordingResourceWaiter{}
+	handler := kubernetesHandler{
+		client:          k8sutil.NewFakeKubeClient(nil),
+		httpProxyWaiter: waiter,
+	}
+
+	props, err := handler.Put(ctx, options)
+	require.NoError(t, err)
+
+	require.Equal(t, map[string]string{
+		KubernetesAPIVersionKey: "networking.example.com/v1",
+		KubernetesKindKey:       "HTTPProxy",
+		KubernetesNamespaceKey:  "test-namespace",
+		ResourceName:            "example-proxy",
+	}, props)
+	require.Equal(t, resources_kubernetes.IDFromParts(resources_kubernetes.PlaneNameTODO, "networking.example.com", "HTTPProxy", "test-namespace", "example-proxy").String(), options.Resource.ID.String())
+	require.Equal(t, 0, waiter.calls)
 }
 
 func TestDelete(t *testing.T) {
@@ -264,4 +393,36 @@ func TestConvertToUnstructured(t *testing.T) {
 			require.Equal(t, tc.out, actual)
 		})
 	}
+}
+
+func newKubernetesPutOptions(data runtime.Object, resourceType string) *PutOptions {
+	return &PutOptions{
+		Resource: &rpv1.OutputResource{
+			CreateResource: &rpv1.Resource{
+				ResourceType: resourcemodel.ResourceType{
+					Provider: resourcemodel.ProviderKubernetes,
+					Type:     resourceType,
+				},
+				Data: data,
+			},
+		},
+	}
+}
+
+type recordingResourceWaiter struct {
+	calls      int
+	lastObject client.Object
+	err        error
+}
+
+func (w *recordingResourceWaiter) addDynamicEventHandler(ctx context.Context, informerFactory dynamicinformer.DynamicSharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- error) {
+}
+
+func (w *recordingResourceWaiter) addEventHandler(ctx context.Context, informerFactory informers.SharedInformerFactory, informer cache.SharedIndexInformer, item client.Object, doneCh chan<- error) {
+}
+
+func (w *recordingResourceWaiter) waitUntilReady(ctx context.Context, item client.Object) error {
+	w.calls++
+	w.lastObject = item
+	return w.err
 }
