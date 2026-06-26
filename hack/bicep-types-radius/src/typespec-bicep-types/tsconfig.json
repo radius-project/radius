@@ -19,17 +19,8 @@
     "newLine": "LF",
     "outDir": "dist",
     "rootDir": ".",
-    "types": [
-      "node"
-    ]
+    "types": ["node"]
   },
-  "include": [
-    "src",
-    "test"
-  ],
-  "exclude": [
-    "dist",
-    "node_modules",
-    "**/*.d.ts"
-  ]
+  "include": ["src", "test"],
+  "exclude": ["dist", "node_modules", "**/*.d.ts"]
 }

@@ -66,8 +66,8 @@ function getArg(name: string, fallback: string): string {
 
 const require = createRequire(import.meta.url);
 
-// dist/src/cmd/compile-projects.js -> package root (up four segments).
-const packageRoot = resolve(fileURLToPath(import.meta.url), "../../../..");
+// dist/src/cmd/compile-projects.js -> package root.
+const packageRoot = fileURLToPath(new URL("../../..", import.meta.url));
 
 const typespecDir = resolve(process.cwd(), getArg("typespec-dir", "typespec"));
 const generatedDir = resolve(

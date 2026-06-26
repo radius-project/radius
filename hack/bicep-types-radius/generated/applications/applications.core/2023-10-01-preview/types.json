@@ -493,6 +493,9 @@
         "flags": 0,
         "description": "Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource."
       }
+    },
+    "additionalProperties": {
+      "$ref": "#/30"
     }
   },
   {
@@ -574,7 +577,10 @@
   {
     "$type": "ObjectType",
     "name": "EnvironmentVariables",
-    "properties": {}
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
   },
   {
     "$type": "ObjectType",
@@ -4471,6 +4477,9 @@
         "flags": 0,
         "description": "Specifies how the underlying service/resource is provisioned and managed."
       }
+    },
+    "additionalProperties": {
+      "$ref": "#/30"
     }
   },
   {
@@ -4683,7 +4692,10 @@
   {
     "$type": "ObjectType",
     "name": "ExtenderListSecretResponse",
-    "properties": {}
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/30"
+    }
   },
   {
     "$type": "FunctionType",

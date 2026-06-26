@@ -384,7 +384,37 @@ function parseModel(
     model,
     cache,
   );
+
+  // A model that `extends Record<T>` carries the string indexer on a base model
+  // rather than on `model.indexer` (the inline `Record<T>` / `is Record<T>` case
+  // handled above), so detect it here and emit Bicep `additionalProperties`.
+  // For example `ExtenderProperties extends Record<unknown>` must keep accepting
+  // arbitrary properties such as the `message` used by failure-test recipes.
+  const recordValue = inheritedRecordValue(model);
+  if (recordValue) {
+    objectType.additionalProperties = parseType(
+      program,
+      factory,
+      recordValue,
+      cache,
+    );
+  }
   return ref;
+}
+
+/**
+ * Walks the `baseModel` chain for a `string`-keyed indexer contributed by a
+ * `Record<T>` base (`extends Record<T>`), returning the value type to emit as
+ * Bicep `additionalProperties`. The model's own indexer is handled by the
+ * caller, so only base models are inspected here.
+ */
+function inheritedRecordValue(model: Model): Type | undefined {
+  for (let base = model.baseModel; base; base = base.baseModel) {
+    if (base.indexer && base.indexer.key.name === "string") {
+      return base.indexer.value;
+    }
+  }
+  return undefined;
 }
 
 /**
