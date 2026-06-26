@@ -69,6 +69,13 @@ func validateCapability(fl validator.FieldLevel) bool {
 // both operate on the effective (merged) schema. The same schema maps mutated
 // here are what RegisterType ships to UCP, so authors omit the base properties
 // and the control plane still receives them.
+//
+// Apply uses per-type-wins precedence: if an author redeclares a base property,
+// their declaration is preserved and the base value is not copied over it. This
+// keeps existing resource-types-contrib manifests (which currently redeclare
+// environment/application/connections explicitly) compatible without a
+// coordinated cross-repo release. New manifests can simply omit the base
+// properties and they will be injected.
 func applyBaseResourceManifest(provider *ResourceProvider) error {
 	if provider == nil {
 		return nil
@@ -88,15 +95,6 @@ func applyBaseResourceManifest(provider *ResourceProvider) error {
 			if !ok {
 				// Leave non-object schemas untouched; schema validation reports them.
 				continue
-			}
-
-			// The base property names are reserved by Radius. A per-type schema
-			// must not redeclare them under "properties" (it may still list them
-			// under "required" to make them mandatory). Check the author's raw
-			// schema before Apply injects the base properties.
-			if conflicts := baseManifest.ConflictingProperties(schemaMap); len(conflicts) > 0 {
-				return fmt.Errorf("%s/%s@%s: schema declares reserved Radius properties %v that are provided automatically and must not be redeclared (you may list them under \"required\" to make them mandatory)",
-					provider.Namespace, resourceTypeName, apiVersion, conflicts)
 			}
 
 			if err := baseManifest.Apply(schemaMap); err != nil {

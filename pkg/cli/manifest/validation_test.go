@@ -535,7 +535,17 @@ func TestApplyBaseResourceManifest(t *testing.T) {
 		require.Contains(t, schemaMap["required"], "environment")
 	})
 
-	t.Run("rejects a schema that redeclares a base property", func(t *testing.T) {
+	t.Run("preserves the author's declaration when a base property is redeclared", func(t *testing.T) {
+		// resource-types-contrib manifests currently redeclare base properties
+		// (environment, application, etc.) explicitly under "properties".
+		// Apply uses per-type-wins precedence so those manifests keep working
+		// without a coordinated cross-repo release: the author's declaration
+		// survives the merge unchanged, and the base value is not copied over
+		// it. Only properties the author omits are injected from the base.
+		custom := map[string]any{
+			"type":        "string",
+			"description": "author's own environment shape",
+		}
 		provider := &ResourceProvider{
 			Namespace: "Test.Provider",
 			Types: map[string]*ResourceType{
@@ -545,10 +555,7 @@ func TestApplyBaseResourceManifest(t *testing.T) {
 							Schema: map[string]any{
 								"type": "object",
 								"properties": map[string]any{
-									"environment": map[string]any{
-										"type":        "string",
-										"description": "custom",
-									},
+									"environment": custom,
 								},
 							},
 						},
@@ -557,10 +564,17 @@ func TestApplyBaseResourceManifest(t *testing.T) {
 			},
 		}
 
-		err := applyBaseResourceManifest(provider)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "environment")
-		require.Contains(t, err.Error(), "must not be redeclared")
+		require.NoError(t, applyBaseResourceManifest(provider))
+
+		schemaMap := provider.Types["widgets"].APIVersions["2025-01-01"].Schema.(map[string]any)
+		props := schemaMap["properties"].(map[string]any)
+		// Author's declaration survives the merge.
+		require.Equal(t, custom, props["environment"])
+		// Base properties the author did not declare are still injected.
+		require.Contains(t, props, "application")
+		require.Contains(t, props, "connections")
+		require.Contains(t, props, "codeReference")
+		require.Contains(t, schemaMap["required"], "environment")
 	})
 
 	t.Run("allows a base property listed only under required", func(t *testing.T) {
