@@ -4,99 +4,853 @@
   },
   {
     "$type": "StringLiteralType",
-    "value": "Applications.Core/applications"
+    "value": "Applications.Core/environments"
   },
   {
     "$type": "StringLiteralType",
     "value": "2023-10-01-preview"
   },
   {
+    "$type": "StringLiteralType",
+    "value": "Creating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/3"
+      },
+      {
+        "$ref": "#/4"
+      },
+      {
+        "$ref": "#/5"
+      },
+      {
+        "$ref": "#/6"
+      },
+      {
+        "$ref": "#/7"
+      },
+      {
+        "$ref": "#/8"
+      },
+      {
+        "$ref": "#/9"
+      },
+      {
+        "$ref": "#/10"
+      }
+    ]
+  },
+  {
+    "$type": "DiscriminatedObjectType",
+    "name": "EnvironmentCompute",
+    "discriminator": "kind",
+    "baseProperties": {
+      "resourceId": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The resource id of the compute resource for application environment."
+      },
+      "identity": {
+        "type": {
+          "$ref": "#/13"
+        },
+        "flags": 0,
+        "description": "Configuration for supported external identity providers"
+      }
+    },
+    "elements": {
+      "aci": {
+        "$ref": "#/24"
+      },
+      "kubernetes": {
+        "$ref": "#/22"
+      }
+    }
+  },
+  {
     "$type": "ObjectType",
-    "name": "Applications.Core/applications",
+    "name": "IdentitySettings",
     "properties": {
-      "id": {
+      "kind": {
+        "type": {
+          "$ref": "#/19"
+        },
+        "flags": 1,
+        "description": "kind of identity setting"
+      },
+      "oidcIssuer": {
         "type": {
           "$ref": "#/0"
         },
-        "flags": 10,
-        "description": "The resource id"
+        "flags": 0,
+        "description": "The URI for your compute platform's OIDC issuer"
       },
-      "name": {
+      "resource": {
         "type": {
           "$ref": "#/0"
         },
-        "flags": 25,
-        "description": "The resource name"
+        "flags": 0,
+        "description": "The resource ID of the provisioned identity"
       },
-      "type": {
+      "managedIdentity": {
         "type": {
-          "$ref": "#/1"
+          "$ref": "#/20"
         },
-        "flags": 10,
-        "description": "The resource type"
+        "flags": 0,
+        "description": "The list of user assigned managed identities"
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "undefined"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "azure.com.workload"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "userAssigned"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "systemAssigned"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "systemAssignedUserAssigned"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/14"
       },
-      "apiVersion": {
+      {
+        "$ref": "#/15"
+      },
+      {
+        "$ref": "#/16"
+      },
+      {
+        "$ref": "#/17"
+      },
+      {
+        "$ref": "#/18"
+      }
+    ]
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "kubernetes"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "KubernetesCompute",
+    "properties": {
+      "kind": {
         "type": {
-          "$ref": "#/2"
+          "$ref": "#/21"
         },
-        "flags": 10,
-        "description": "The resource api version"
+        "flags": 1,
+        "description": "The Kubernetes compute kind"
       },
-      "provisioningState": {
-        "type": {
-          "$ref": "#/12"
-        },
-        "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
-      },
-      "environment": {
+      "namespace": {
         "type": {
           "$ref": "#/0"
         },
-        "flags": 2,
-        "description": "Fully qualified resource ID for the environment that the application is linked to"
-      },
-      "extensions": {
+        "flags": 1,
+        "description": "The namespace to use for the environment."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "aci"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "AzureContainerInstanceCompute",
+    "properties": {
+      "kind": {
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/23"
         },
-        "flags": 2,
-        "description": "The application extension."
+        "flags": 1,
+        "description": "The Azure container instance compute kind"
       },
-      "status": {
+      "resourceGroup": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The resource group to use for the environment."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Providers",
+    "properties": {
+      "azure": {
+        "type": {
+          "$ref": "#/26"
+        },
+        "flags": 0,
+        "description": "The Azure cloud provider configuration."
+      },
+      "aws": {
+        "type": {
+          "$ref": "#/27"
+        },
+        "flags": 0,
+        "description": "The AWS cloud provider configuration."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ProvidersAzure",
+    "properties": {
+      "scope": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ProvidersAws",
+    "properties": {
+      "scope": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'."
+      }
+    }
+  },
+  {
+    "$type": "BooleanType"
+  },
+  {
+    "$type": "DiscriminatedObjectType",
+    "name": "RecipeProperties",
+    "discriminator": "templateKind",
+    "baseProperties": {
+      "templatePath": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported."
+      },
+      "parameters": {
         "type": {
           "$ref": "#/31"
         },
-        "flags": 2,
-        "description": "Status of a resource."
+        "flags": 0,
+        "description": "Key/value parameters to pass to the recipe template at deployment."
+      }
+    },
+    "elements": {
+      "bicep": {
+        "$ref": "#/33"
       },
-      "properties": {
+      "terraform": {
+        "$ref": "#/35"
+      }
+    }
+  },
+  {
+    "$type": "AnyType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/30"
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "bicep"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "BicepRecipeProperties",
+    "properties": {
+      "templateKind": {
+        "type": {
+          "$ref": "#/32"
+        },
+        "flags": 1,
+        "description": "The Bicep template kind."
+      },
+      "plainHttp": {
+        "type": {
+          "$ref": "#/28"
+        },
+        "flags": 0,
+        "description": "Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS)."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "terraform"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformRecipeProperties",
+    "properties": {
+      "templateKind": {
+        "type": {
+          "$ref": "#/34"
+        },
+        "flags": 1,
+        "description": "The Terraform template kind."
+      },
+      "templateVersion": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/29"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/36"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "RecipeConfigProperties",
+    "properties": {
+      "terraform": {
+        "type": {
+          "$ref": "#/39"
+        },
+        "flags": 0,
+        "description": "Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment."
+      },
+      "bicep": {
         "type": {
           "$ref": "#/49"
         },
-        "flags": 1,
-        "description": "Application properties"
+        "flags": 0,
+        "description": "Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment."
       },
-      "tags": {
+      "env": {
+        "type": {
+          "$ref": "#/52"
+        },
+        "flags": 0,
+        "description": "Environment variables injected during recipe execution for the recipes in the environment, currently supported for Terraform recipes."
+      },
+      "envSecrets": {
+        "type": {
+          "$ref": "#/53"
+        },
+        "flags": 0,
+        "description": "Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TerraformConfigProperties",
+    "properties": {
+      "authentication": {
+        "type": {
+          "$ref": "#/40"
+        },
+        "flags": 0,
+        "description": "Authentication information used to access private Terraform module sources. Supported module sources: Git."
+      },
+      "providers": {
+        "type": {
+          "$ref": "#/48"
+        },
+        "flags": 0,
+        "description": "Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs. For more information, please see: https://developer.hashicorp.com/terraform/language/providers/configuration."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "AuthConfig",
+    "properties": {
+      "git": {
+        "type": {
+          "$ref": "#/41"
+        },
+        "flags": 0,
+        "description": "Authentication information used to access private Terraform modules from Git repository sources."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "GitAuthConfig",
+    "properties": {
+      "pat": {
+        "type": {
+          "$ref": "#/43"
+        },
+        "flags": 0,
+        "description": "Personal Access Token (PAT) configuration used to authenticate to Git platforms."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "SecretConfig",
+    "properties": {
+      "secret": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret store must have a secret named 'pat', containing the PAT value. A secret named 'username' is optional, containing the username associated with the pat. By default no username is specified."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/42"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ProviderConfigProperties",
+    "properties": {
+      "secrets": {
+        "type": {
+          "$ref": "#/46"
+        },
+        "flags": 0,
+        "description": "Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "SecretReference",
+    "properties": {
+      "source": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution."
+      },
+      "key": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The key for the secret in the secret store."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/45"
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/44"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/47"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "BicepConfigProperties",
+    "properties": {
+      "authentication": {
+        "type": {
+          "$ref": "#/51"
+        },
+        "flags": 0,
+        "description": "Authentication information used to access private bicep registries, which is a map of registry hostname to secret config that contains credential information."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "RegistrySecretConfig",
+    "properties": {
+      "secret": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container registry.The keys in the secretstore depends on the type."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/50"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "EnvironmentVariables",
+    "properties": {}
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/45"
+    }
+  },
+  {
+    "$type": "DiscriminatedObjectType",
+    "name": "Extension",
+    "discriminator": "kind",
+    "baseProperties": {},
+    "elements": {
+      "aci": {
+        "$ref": "#/58"
+      },
+      "daprSidecar": {
+        "$ref": "#/70"
+      },
+      "kubernetesMetadata": {
+        "$ref": "#/62"
+      },
+      "kubernetesNamespace": {
+        "$ref": "#/56"
+      },
+      "manualScaling": {
+        "$ref": "#/65"
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "kubernetesNamespace"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "KubernetesNamespaceExtension",
+    "properties": {
+      "kind": {
+        "type": {
+          "$ref": "#/55"
+        },
+        "flags": 1,
+        "description": "The kind of the resource."
+      },
+      "namespace": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The namespace of the application environment."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "aci"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "AzureContainerInstanceExtension",
+    "properties": {
+      "kind": {
+        "type": {
+          "$ref": "#/57"
+        },
+        "flags": 1,
+        "description": "The kind of the resource."
+      },
+      "resourceGroup": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The resource group of the application environment."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "kubernetesMetadata"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "KubernetesMetadataExtension",
+    "properties": {
+      "kind": {
+        "type": {
+          "$ref": "#/59"
+        },
+        "flags": 1,
+        "description": "The kind of the resource."
+      },
+      "annotations": {
         "type": {
           "$ref": "#/60"
         },
         "flags": 0,
-        "description": "Resource tags."
+        "description": "Annotations to be applied to the Kubernetes resources output by the resource"
       },
-      "location": {
+      "labels": {
+        "type": {
+          "$ref": "#/61"
+        },
+        "flags": 0,
+        "description": "Labels to be applied to the Kubernetes resources output by the resource"
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "manualScaling"
+  },
+  {
+    "$type": "IntegerType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ManualScalingExtension",
+    "properties": {
+      "kind": {
+        "type": {
+          "$ref": "#/63"
+        },
+        "flags": 1,
+        "description": "Specifies the extension of the resource"
+      },
+      "replicas": {
+        "type": {
+          "$ref": "#/64"
+        },
+        "flags": 1,
+        "description": "Replica count."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "daprSidecar"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "http"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "grpc"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/67"
+      },
+      {
+        "$ref": "#/68"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "DaprSidecarExtension",
+    "properties": {
+      "kind": {
+        "type": {
+          "$ref": "#/66"
+        },
+        "flags": 1,
+        "description": "Specifies the extension of the resource"
+      },
+      "appPort": {
+        "type": {
+          "$ref": "#/64"
+        },
+        "flags": 0,
+        "description": "The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar. "
+      },
+      "appId": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The Dapr appId. Specifies the identifier used by Dapr for service invocation."
+      },
+      "config": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "The geo-location where the resource lives"
+        "description": "Specifies the Dapr configuration to use for the resource."
       },
-      "systemData": {
+      "protocol": {
         "type": {
-          "$ref": "#/61"
+          "$ref": "#/69"
+        },
+        "flags": 0,
+        "description": "Specifies the Dapr app-protocol to use for the resource."
+      }
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/54"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "EnvironmentProperties",
+    "properties": {
+      "provisioningState": {
+        "type": {
+          "$ref": "#/81"
         },
         "flags": 2,
-        "description": "Metadata pertaining to creation and last modification of the resource."
+        "description": "The status of the asynchronous operation."
+      },
+      "compute": {
+        "type": {
+          "$ref": "#/12"
+        },
+        "flags": 1,
+        "description": "The compute resource used by application environment."
+      },
+      "providers": {
+        "type": {
+          "$ref": "#/25"
+        },
+        "flags": 0,
+        "description": "Cloud providers configuration for the environment."
+      },
+      "simulated": {
+        "type": {
+          "$ref": "#/28"
+        },
+        "flags": 0,
+        "description": "Simulated environment."
+      },
+      "recipes": {
+        "type": {
+          "$ref": "#/83"
+        },
+        "flags": 0,
+        "description": "Specifies Recipes linked to the Environment."
+      },
+      "recipeConfig": {
+        "type": {
+          "$ref": "#/38"
+        },
+        "flags": 0,
+        "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
+      },
+      "extensions": {
+        "type": {
+          "$ref": "#/84"
+        },
+        "flags": 0,
+        "description": "The environment extension."
       }
     }
   },
@@ -136,244 +890,447 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/4"
+        "$ref": "#/73"
       },
       {
-        "$ref": "#/5"
+        "$ref": "#/74"
       },
       {
-        "$ref": "#/6"
+        "$ref": "#/75"
       },
       {
-        "$ref": "#/7"
+        "$ref": "#/76"
       },
       {
-        "$ref": "#/8"
+        "$ref": "#/77"
       },
       {
-        "$ref": "#/9"
+        "$ref": "#/78"
       },
       {
-        "$ref": "#/10"
+        "$ref": "#/79"
       },
       {
-        "$ref": "#/11"
+        "$ref": "#/80"
       }
     ]
   },
   {
-    "$type": "DiscriminatedObjectType",
-    "name": "Extension",
-    "discriminator": "kind",
-    "baseProperties": {},
-    "elements": {
-      "aci": {
-        "$ref": "#/14"
-      },
-      "daprSidecar": {
-        "$ref": "#/16"
-      },
-      "kubernetesMetadata": {
-        "$ref": "#/22"
-      },
-      "kubernetesNamespace": {
-        "$ref": "#/26"
-      },
-      "manualScaling": {
-        "$ref": "#/28"
-      }
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/29"
     }
   },
   {
     "$type": "ObjectType",
-    "name": "AzureContainerInstanceExtension",
-    "properties": {
-      "resourceGroup": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "The resource group of the application environment."
-      },
-      "kind": {
-        "type": {
-          "$ref": "#/15"
-        },
-        "flags": 1,
-        "description": "Discriminator property for Extension."
-      }
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/82"
     }
   },
   {
-    "$type": "StringLiteralType",
-    "value": "aci"
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/54"
+    }
   },
   {
     "$type": "ObjectType",
-    "name": "DaprSidecarExtension",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "SystemData",
     "properties": {
-      "appPort": {
-        "type": {
-          "$ref": "#/17"
-        },
-        "flags": 0,
-        "description": "The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar."
-      },
-      "appId": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "The Dapr appId. Specifies the identifier used by Dapr for service invocation."
-      },
-      "config": {
+      "createdBy": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "Specifies the Dapr configuration to use for the resource."
+        "description": "The identity that created the resource."
       },
-      "protocol": {
+      "createdByType": {
         "type": {
-          "$ref": "#/20"
+          "$ref": "#/91"
         },
         "flags": 0,
-        "description": "The Dapr sidecar extension protocol"
+        "description": "The type of identity that created the resource."
       },
-      "kind": {
+      "createdAt": {
         "type": {
-          "$ref": "#/21"
+          "$ref": "#/0"
         },
-        "flags": 1,
-        "description": "Discriminator property for Extension."
+        "flags": 0,
+        "description": "The timestamp of resource creation (UTC)."
+      },
+      "lastModifiedBy": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The identity that last modified the resource."
+      },
+      "lastModifiedByType": {
+        "type": {
+          "$ref": "#/96"
+        },
+        "flags": 0,
+        "description": "The type of identity that last modified the resource."
+      },
+      "lastModifiedAt": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The timestamp of resource last modification (UTC)"
       }
     }
   },
   {
-    "$type": "IntegerType"
+    "$type": "StringLiteralType",
+    "value": "User"
   },
   {
     "$type": "StringLiteralType",
-    "value": "http"
+    "value": "Application"
   },
   {
     "$type": "StringLiteralType",
-    "value": "grpc"
+    "value": "ManagedIdentity"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Key"
   },
   {
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/18"
+        "$ref": "#/87"
       },
       {
-        "$ref": "#/19"
+        "$ref": "#/88"
+      },
+      {
+        "$ref": "#/89"
+      },
+      {
+        "$ref": "#/90"
       }
     ]
   },
   {
     "$type": "StringLiteralType",
-    "value": "daprSidecar"
+    "value": "User"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Application"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "ManagedIdentity"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Key"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/92"
+      },
+      {
+        "$ref": "#/93"
+      },
+      {
+        "$ref": "#/94"
+      },
+      {
+        "$ref": "#/95"
+      }
+    ]
   },
   {
     "$type": "ObjectType",
-    "name": "KubernetesMetadataExtension",
+    "name": "Applications.Core/environments",
     "properties": {
-      "annotations": {
+      "id": {
         "type": {
-          "$ref": "#/23"
+          "$ref": "#/0"
         },
-        "flags": 0,
-        "description": "Annotations to be applied to the Kubernetes resources output by the resource"
+        "flags": 10,
+        "description": "The resource id"
       },
-      "labels": {
+      "name": {
         "type": {
-          "$ref": "#/24"
+          "$ref": "#/0"
         },
-        "flags": 0,
-        "description": "Labels to be applied to the Kubernetes resources output by the resource"
+        "flags": 25,
+        "description": "The resource name"
       },
-      "kind": {
+      "type": {
+        "type": {
+          "$ref": "#/1"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/2"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/11"
+        },
+        "flags": 2,
+        "description": "The status of the asynchronous operation."
+      },
+      "compute": {
+        "type": {
+          "$ref": "#/12"
+        },
+        "flags": 2,
+        "description": "The compute resource used by application environment."
+      },
+      "providers": {
         "type": {
           "$ref": "#/25"
         },
+        "flags": 2,
+        "description": "Cloud providers configuration for the environment."
+      },
+      "simulated": {
+        "type": {
+          "$ref": "#/28"
+        },
+        "flags": 2,
+        "description": "Simulated environment."
+      },
+      "recipes": {
+        "type": {
+          "$ref": "#/37"
+        },
+        "flags": 2,
+        "description": "Specifies Recipes linked to the Environment."
+      },
+      "recipeConfig": {
+        "type": {
+          "$ref": "#/38"
+        },
+        "flags": 2,
+        "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
+      },
+      "extensions": {
+        "type": {
+          "$ref": "#/71"
+        },
+        "flags": 2,
+        "description": "The environment extension."
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/72"
+        },
         "flags": 1,
-        "description": "Discriminator property for Extension."
+        "description": "The resource-specific properties for this resource."
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/85"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/86"
+        },
+        "flags": 2,
+        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
       }
     }
   },
   {
     "$type": "ObjectType",
-    "name": "KubernetesMetadataExtensionAnnotations",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/0"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "KubernetesMetadataExtensionLabels",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/0"
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "kubernetesMetadata"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "KubernetesNamespaceExtension",
+    "name": "RecipeGetMetadataResponse",
     "properties": {
-      "namespace": {
+      "templateKind": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "The namespace of the application environment."
+        "description": "The format of the template provided by the recipe. Allowed values: bicep, terraform."
       },
-      "kind": {
+      "templatePath": {
         "type": {
-          "$ref": "#/27"
+          "$ref": "#/0"
         },
         "flags": 1,
-        "description": "Discriminator property for Extension."
+        "description": "The path to the template provided by the recipe. Currently only link to Azure Container Registry is supported."
+      },
+      "templateVersion": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources."
+      },
+      "parameters": {
+        "type": {
+          "$ref": "#/99"
+        },
+        "flags": 1,
+        "description": "The key/value parameters to pass to the recipe template at deployment."
+      },
+      "plainHttp": {
+        "type": {
+          "$ref": "#/28"
+        },
+        "flags": 0,
+        "description": "Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS)."
       }
     }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "kubernetesNamespace"
   },
   {
     "$type": "ObjectType",
-    "name": "ManualScalingExtension",
-    "properties": {
-      "replicas": {
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/30"
+    }
+  },
+  {
+    "$type": "FunctionType",
+    "parameters": [
+      {
+        "name": "resourceType",
         "type": {
-          "$ref": "#/17"
+          "$ref": "#/0"
         },
-        "flags": 1,
-        "description": "Replica count."
+        "description": "Type of the resource this recipe can be consumed by. For example: 'Applications.Datastores/mongoDatabases'."
       },
-      "kind": {
+      {
+        "name": "name",
         "type": {
-          "$ref": "#/29"
+          "$ref": "#/0"
         },
-        "flags": 1,
-        "description": "Discriminator property for Extension."
+        "description": "The name of the recipe registered to the environment."
+      }
+    ],
+    "output": {
+      "$ref": "#/98"
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Applications.Core/environments@2023-10-01-preview",
+    "body": {
+      "$ref": "#/97"
+    },
+    "readableScopes": 0,
+    "writableScopes": 0,
+    "functions": {
+      "getMetadata": {
+        "type": {
+          "$ref": "#/100"
+        },
+        "description": "getMetadata"
       }
     }
   },
   {
     "$type": "StringLiteralType",
-    "value": "manualScaling"
+    "value": "Applications.Core/applications"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2023-10-01-preview"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Creating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/104"
+      },
+      {
+        "$ref": "#/105"
+      },
+      {
+        "$ref": "#/106"
+      },
+      {
+        "$ref": "#/107"
+      },
+      {
+        "$ref": "#/108"
+      },
+      {
+        "$ref": "#/109"
+      },
+      {
+        "$ref": "#/110"
+      },
+      {
+        "$ref": "#/111"
+      }
+    ]
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/13"
+      "$ref": "#/54"
     }
   },
   {
@@ -382,183 +1339,26 @@
     "properties": {
       "compute": {
         "type": {
-          "$ref": "#/32"
+          "$ref": "#/12"
         },
         "flags": 0,
-        "description": "Represents backing compute resource"
+        "description": "The compute resource associated with the resource."
       },
       "recipe": {
         "type": {
-          "$ref": "#/45"
+          "$ref": "#/115"
         },
         "flags": 2,
-        "description": "Recipe status at deployment time for a resource."
+        "description": "The recipe data at the time of deployment"
       },
       "outputResources": {
         "type": {
-          "$ref": "#/48"
+          "$ref": "#/117"
         },
         "flags": 0,
         "description": "Properties of an output resource"
       }
     }
-  },
-  {
-    "$type": "DiscriminatedObjectType",
-    "name": "EnvironmentCompute",
-    "discriminator": "kind",
-    "baseProperties": {
-      "resourceId": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The resource id of the compute resource for application environment."
-      },
-      "identity": {
-        "type": {
-          "$ref": "#/33"
-        },
-        "flags": 0,
-        "description": "IdentitySettings is the external identity setting."
-      }
-    },
-    "elements": {
-      "aci": {
-        "$ref": "#/41"
-      },
-      "kubernetes": {
-        "$ref": "#/43"
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "IdentitySettings",
-    "properties": {
-      "kind": {
-        "type": {
-          "$ref": "#/39"
-        },
-        "flags": 1,
-        "description": "IdentitySettingKind is the kind of supported external identity setting"
-      },
-      "oidcIssuer": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The URI for your compute platform's OIDC issuer"
-      },
-      "resource": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The resource ID of the provisioned identity"
-      },
-      "managedIdentity": {
-        "type": {
-          "$ref": "#/40"
-        },
-        "flags": 0,
-        "description": "The list of user assigned managed identities"
-      }
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "undefined"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "azure.com.workload"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "userAssigned"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "systemAssigned"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "systemAssignedUserAssigned"
-  },
-  {
-    "$type": "UnionType",
-    "elements": [
-      {
-        "$ref": "#/34"
-      },
-      {
-        "$ref": "#/35"
-      },
-      {
-        "$ref": "#/36"
-      },
-      {
-        "$ref": "#/37"
-      },
-      {
-        "$ref": "#/38"
-      }
-    ]
-  },
-  {
-    "$type": "ArrayType",
-    "itemType": {
-      "$ref": "#/0"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "AzureContainerInstanceCompute",
-    "properties": {
-      "resourceGroup": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The resource group to use for the environment."
-      },
-      "kind": {
-        "type": {
-          "$ref": "#/42"
-        },
-        "flags": 1,
-        "description": "Discriminator property for EnvironmentCompute."
-      }
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "aci"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "KubernetesCompute",
-    "properties": {
-      "namespace": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "The namespace to use for the environment."
-      },
-      "kind": {
-        "type": {
-          "$ref": "#/44"
-        },
-        "flags": 1,
-        "description": "Discriminator property for EnvironmentCompute."
-      }
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "kubernetes"
   },
   {
     "$type": "ObjectType",
@@ -607,7 +1407,7 @@
       },
       "radiusManaged": {
         "type": {
-          "$ref": "#/47"
+          "$ref": "#/28"
         },
         "flags": 0,
         "description": "Determines whether Radius manages the lifecycle of the underlying resource."
@@ -615,12 +1415,9 @@
     }
   },
   {
-    "$type": "BooleanType"
-  },
-  {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/46"
+      "$ref": "#/116"
     }
   },
   {
@@ -629,10 +1426,10 @@
     "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/58"
+          "$ref": "#/127"
         },
         "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
+        "description": "The status of the asynchronous operation."
       },
       "environment": {
         "type": {
@@ -643,14 +1440,14 @@
       },
       "extensions": {
         "type": {
-          "$ref": "#/59"
+          "$ref": "#/128"
         },
         "flags": 0,
         "description": "The application extension."
       },
       "status": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/114"
         },
         "flags": 2,
         "description": "Status of a resource."
@@ -693,40 +1490,40 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/50"
+        "$ref": "#/119"
       },
       {
-        "$ref": "#/51"
+        "$ref": "#/120"
       },
       {
-        "$ref": "#/52"
+        "$ref": "#/121"
       },
       {
-        "$ref": "#/53"
+        "$ref": "#/122"
       },
       {
-        "$ref": "#/54"
+        "$ref": "#/123"
       },
       {
-        "$ref": "#/55"
+        "$ref": "#/124"
       },
       {
-        "$ref": "#/56"
+        "$ref": "#/125"
       },
       {
-        "$ref": "#/57"
+        "$ref": "#/126"
       }
     ]
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/13"
+      "$ref": "#/54"
     }
   },
   {
     "$type": "ObjectType",
-    "name": "TrackedResourceTags",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
       "$ref": "#/0"
@@ -734,139 +1531,7 @@
   },
   {
     "$type": "ObjectType",
-    "name": "SystemData",
-    "properties": {
-      "createdBy": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The identity that created the resource."
-      },
-      "createdByType": {
-        "type": {
-          "$ref": "#/66"
-        },
-        "flags": 0,
-        "description": "The type of identity that created the resource."
-      },
-      "createdAt": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The timestamp of resource creation (UTC)."
-      },
-      "lastModifiedBy": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The identity that last modified the resource."
-      },
-      "lastModifiedByType": {
-        "type": {
-          "$ref": "#/71"
-        },
-        "flags": 0,
-        "description": "The type of identity that created the resource."
-      },
-      "lastModifiedAt": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The timestamp of resource last modification (UTC)"
-      }
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "User"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Application"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "ManagedIdentity"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Key"
-  },
-  {
-    "$type": "UnionType",
-    "elements": [
-      {
-        "$ref": "#/62"
-      },
-      {
-        "$ref": "#/63"
-      },
-      {
-        "$ref": "#/64"
-      },
-      {
-        "$ref": "#/65"
-      }
-    ]
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "User"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Application"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "ManagedIdentity"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Key"
-  },
-  {
-    "$type": "UnionType",
-    "elements": [
-      {
-        "$ref": "#/67"
-      },
-      {
-        "$ref": "#/68"
-      },
-      {
-        "$ref": "#/69"
-      },
-      {
-        "$ref": "#/70"
-      }
-    ]
-  },
-  {
-    "$type": "ResourceType",
-    "name": "Applications.Core/applications@2023-10-01-preview",
-    "body": {
-      "$ref": "#/3"
-    },
-    "readableScopes": 0,
-    "writableScopes": 0,
-    "functions": {}
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Applications.Core/containers"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "2023-10-01-preview"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "Applications.Core/containers",
+    "name": "Applications.Core/applications",
     "properties": {
       "id": {
         "type": {
@@ -884,17 +1549,24 @@
       },
       "type": {
         "type": {
-          "$ref": "#/73"
+          "$ref": "#/102"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/74"
+          "$ref": "#/103"
         },
         "flags": 10,
         "description": "The resource api version"
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/112"
+        },
+        "flags": 2,
+        "description": "The status of the asynchronous operation."
       },
       "environment": {
         "type": {
@@ -903,93 +1575,30 @@
         "flags": 2,
         "description": "Fully qualified resource ID for the environment that the application is linked to"
       },
-      "application": {
+      "extensions": {
         "type": {
-          "$ref": "#/0"
+          "$ref": "#/113"
         },
         "flags": 2,
-        "description": "Fully qualified resource ID for the application"
-      },
-      "provisioningState": {
-        "type": {
-          "$ref": "#/84"
-        },
-        "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
+        "description": "The application extension."
       },
       "status": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/114"
         },
         "flags": 2,
         "description": "Status of a resource."
       },
-      "container": {
-        "type": {
-          "$ref": "#/85"
-        },
-        "flags": 2,
-        "description": "Definition of a container"
-      },
-      "connections": {
-        "type": {
-          "$ref": "#/127"
-        },
-        "flags": 2,
-        "description": "Specifies a connection to another resource."
-      },
-      "identity": {
-        "type": {
-          "$ref": "#/33"
-        },
-        "flags": 2,
-        "description": "IdentitySettings is the external identity setting."
-      },
-      "extensions": {
-        "type": {
-          "$ref": "#/128"
-        },
-        "flags": 2,
-        "description": "Extensions spec of the resource"
-      },
-      "resourceProvisioning": {
-        "type": {
-          "$ref": "#/131"
-        },
-        "flags": 2,
-        "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'internal', where Radius manages the lifecycle of the resource internally, and 'manual', where a user manages the resource."
-      },
-      "resources": {
-        "type": {
-          "$ref": "#/133"
-        },
-        "flags": 2,
-        "description": "A collection of references to resources associated with the container"
-      },
-      "restartPolicy": {
-        "type": {
-          "$ref": "#/137"
-        },
-        "flags": 2,
-        "description": "Restart policy for the container"
-      },
-      "runtimes": {
-        "type": {
-          "$ref": "#/138"
-        },
-        "flags": 2,
-        "description": "The properties for runtime configuration"
-      },
       "properties": {
         "type": {
-          "$ref": "#/143"
+          "$ref": "#/118"
         },
         "flags": 1,
-        "description": "Container properties"
+        "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/163"
+          "$ref": "#/129"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1003,12 +1612,211 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/61"
+          "$ref": "#/86"
         },
         "flags": 2,
-        "description": "Metadata pertaining to creation and last modification of the resource."
+        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
       }
     }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ApplicationGraphResponse",
+    "properties": {
+      "resources": {
+        "type": {
+          "$ref": "#/141"
+        },
+        "flags": 1,
+        "description": "The resources in the application graph."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ApplicationGraphResource",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The resource ID."
+      },
+      "type": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The resource type."
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The resource name."
+      },
+      "outputResources": {
+        "type": {
+          "$ref": "#/134"
+        },
+        "flags": 1,
+        "description": "The resources that comprise this resource."
+      },
+      "connections": {
+        "type": {
+          "$ref": "#/139"
+        },
+        "flags": 1,
+        "description": "The connections between resources in the application graph."
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "provisioningState of this resource."
+      },
+      "diffHash": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify resources as added, removed, modified, or unchanged across graphs. Format: 'sha256:{hex}'."
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/140"
+        },
+        "flags": 0,
+        "description": "Resource-type-specific properties of the resource as returned by its resource provider. The shape of this map varies by `type` (e.g. an `Applications.Core/containers` resource exposes different keys than `Applications.Datastores/redisCaches` or any user-defined resource type) and matches the `properties` returned by that resource's GET response. Top-level keys already surfaced as first-class fields on this model (`provisioningState`, `connections`) are omitted. The whole `status` object is also omitted because it may contain computed values that include sensitive data (for example, connection strings); the redundant `status.outputResources` list is surfaced via the dedicated `outputResources` field instead. Use `diffHash` rather than a byte-wise compare of this map to detect change."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ApplicationGraphOutputResource",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The resource ID."
+      },
+      "type": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The resource type."
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The resource name."
+      }
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/133"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ApplicationGraphConnection",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The resource ID "
+      },
+      "direction": {
+        "type": {
+          "$ref": "#/138"
+        },
+        "flags": 1,
+        "description": "The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and 'Inbound' indicates indicates this connection specifies the ID of the source."
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Outbound"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Inbound"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/136"
+      },
+      {
+        "$ref": "#/137"
+      }
+    ]
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/135"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/30"
+    }
+  },
+  {
+    "$type": "ArrayType",
+    "itemType": {
+      "$ref": "#/132"
+    }
+  },
+  {
+    "$type": "FunctionType",
+    "parameters": [],
+    "output": {
+      "$ref": "#/131"
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Applications.Core/applications@2023-10-01-preview",
+    "body": {
+      "$ref": "#/130"
+    },
+    "readableScopes": 0,
+    "writableScopes": 0,
+    "functions": {
+      "getGraph": {
+        "type": {
+          "$ref": "#/142"
+        },
+        "description": "getGraph"
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Applications.Core/containers"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2023-10-01-preview"
   },
   {
     "$type": "StringLiteralType",
@@ -1046,28 +1854,28 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/76"
+        "$ref": "#/146"
       },
       {
-        "$ref": "#/77"
+        "$ref": "#/147"
       },
       {
-        "$ref": "#/78"
+        "$ref": "#/148"
       },
       {
-        "$ref": "#/79"
+        "$ref": "#/149"
       },
       {
-        "$ref": "#/80"
+        "$ref": "#/150"
       },
       {
-        "$ref": "#/81"
+        "$ref": "#/151"
       },
       {
-        "$ref": "#/82"
+        "$ref": "#/152"
       },
       {
-        "$ref": "#/83"
+        "$ref": "#/153"
       }
     ]
   },
@@ -1084,56 +1892,56 @@
       },
       "imagePullPolicy": {
         "type": {
-          "$ref": "#/89"
+          "$ref": "#/159"
         },
         "flags": 0,
-        "description": "The image pull policy for the container"
+        "description": "The pull policy for the container image"
       },
       "env": {
         "type": {
-          "$ref": "#/93"
+          "$ref": "#/162"
         },
         "flags": 0,
         "description": "environment"
       },
       "ports": {
         "type": {
-          "$ref": "#/98"
+          "$ref": "#/167"
         },
         "flags": 0,
         "description": "container ports"
       },
       "readinessProbe": {
         "type": {
-          "$ref": "#/99"
+          "$ref": "#/168"
         },
         "flags": 0,
-        "description": "Properties for readiness/liveness probe"
+        "description": "readiness probe properties"
       },
       "livenessProbe": {
         "type": {
-          "$ref": "#/99"
+          "$ref": "#/168"
         },
         "flags": 0,
-        "description": "Properties for readiness/liveness probe"
+        "description": "liveness probe properties"
       },
       "volumes": {
         "type": {
-          "$ref": "#/118"
+          "$ref": "#/187"
         },
         "flags": 0,
         "description": "container volumes"
       },
       "command": {
         "type": {
-          "$ref": "#/119"
+          "$ref": "#/188"
         },
         "flags": 0,
         "description": "Entrypoint array. Overrides the container image's ENTRYPOINT"
       },
       "args": {
         "type": {
-          "$ref": "#/120"
+          "$ref": "#/189"
         },
         "flags": 0,
         "description": "Arguments to the entrypoint. Overrides the container image's CMD"
@@ -1163,13 +1971,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/86"
+        "$ref": "#/156"
       },
       {
-        "$ref": "#/87"
+        "$ref": "#/157"
       },
       {
-        "$ref": "#/88"
+        "$ref": "#/158"
       }
     ]
   },
@@ -1186,7 +1994,7 @@
       },
       "valueFrom": {
         "type": {
-          "$ref": "#/91"
+          "$ref": "#/161"
         },
         "flags": 0,
         "description": "The reference to the variable"
@@ -1199,39 +2007,19 @@
     "properties": {
       "secretRef": {
         "type": {
-          "$ref": "#/92"
+          "$ref": "#/45"
         },
         "flags": 1,
-        "description": "This secret is used within a recipe. Secrets are encrypted, often have fine-grained access control, auditing and are recommended to be used to hold sensitive data."
+        "description": "The secret reference"
       }
     }
   },
   {
     "$type": "ObjectType",
-    "name": "SecretReference",
-    "properties": {
-      "source": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "The ID of an Applications.Core/SecretStore resource containing sensitive data required for recipe execution."
-      },
-      "key": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "The key for the secret in the secret store."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "ContainerEnv",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/90"
+      "$ref": "#/160"
     }
   },
   {
@@ -1240,17 +2028,17 @@
     "properties": {
       "containerPort": {
         "type": {
-          "$ref": "#/17"
+          "$ref": "#/64"
         },
         "flags": 1,
         "description": "The listening port number"
       },
       "protocol": {
         "type": {
-          "$ref": "#/97"
+          "$ref": "#/166"
         },
         "flags": 0,
-        "description": "The protocol in use by the port"
+        "description": "Protocol in use by the port"
       },
       "scheme": {
         "type": {
@@ -1261,7 +2049,7 @@
       },
       "port": {
         "type": {
-          "$ref": "#/17"
+          "$ref": "#/64"
         },
         "flags": 0,
         "description": "Specifies the port that will be exposed by this container. Must be set when value different from containerPort is desired"
@@ -1280,19 +2068,19 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/95"
+        "$ref": "#/164"
       },
       {
-        "$ref": "#/96"
+        "$ref": "#/165"
       }
     ]
   },
   {
     "$type": "ObjectType",
-    "name": "ContainerPorts",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/94"
+      "$ref": "#/163"
     }
   },
   {
@@ -1302,28 +2090,28 @@
     "baseProperties": {
       "initialDelaySeconds": {
         "type": {
-          "$ref": "#/17"
+          "$ref": "#/64"
         },
         "flags": 0,
         "description": "Initial delay in seconds before probing for readiness/liveness"
       },
       "failureThreshold": {
         "type": {
-          "$ref": "#/17"
+          "$ref": "#/64"
         },
         "flags": 0,
         "description": "Threshold number of times the probe fails after which a failure would be reported"
       },
       "periodSeconds": {
         "type": {
-          "$ref": "#/17"
+          "$ref": "#/64"
         },
         "flags": 0,
         "description": "Interval for the readiness/liveness probe in seconds"
       },
       "timeoutSeconds": {
         "type": {
-          "$ref": "#/17"
+          "$ref": "#/64"
         },
         "flags": 0,
         "description": "Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds"
@@ -1331,47 +2119,42 @@
     },
     "elements": {
       "exec": {
-        "$ref": "#/100"
+        "$ref": "#/175"
       },
       "httpGet": {
-        "$ref": "#/102"
+        "$ref": "#/171"
       },
       "tcp": {
-        "$ref": "#/105"
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "ExecHealthProbeProperties",
-    "properties": {
-      "command": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "Command to execute to probe readiness/liveness"
-      },
-      "kind": {
-        "type": {
-          "$ref": "#/101"
-        },
-        "flags": 1,
-        "description": "Discriminator property for HealthProbeProperties."
+        "$ref": "#/173"
       }
     }
   },
   {
     "$type": "StringLiteralType",
-    "value": "exec"
+    "value": "httpGet"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
   },
   {
     "$type": "ObjectType",
     "name": "HttpGetHealthProbeProperties",
     "properties": {
+      "kind": {
+        "type": {
+          "$ref": "#/169"
+        },
+        "flags": 1,
+        "description": "The HealthProbeProperties kind"
+      },
       "containerPort": {
         "type": {
-          "$ref": "#/17"
+          "$ref": "#/64"
         },
         "flags": 1,
         "description": "The listening port number"
@@ -1385,55 +2168,60 @@
       },
       "headers": {
         "type": {
-          "$ref": "#/103"
+          "$ref": "#/170"
         },
         "flags": 0,
         "description": "Custom HTTP headers to add to the get request"
-      },
-      "kind": {
-        "type": {
-          "$ref": "#/104"
-        },
-        "flags": 1,
-        "description": "Discriminator property for HealthProbeProperties."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "HttpGetHealthProbePropertiesHeaders",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/0"
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "httpGet"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "TcpHealthProbeProperties",
-    "properties": {
-      "containerPort": {
-        "type": {
-          "$ref": "#/17"
-        },
-        "flags": 1,
-        "description": "The listening port number"
-      },
-      "kind": {
-        "type": {
-          "$ref": "#/106"
-        },
-        "flags": 1,
-        "description": "Discriminator property for HealthProbeProperties."
       }
     }
   },
   {
     "$type": "StringLiteralType",
     "value": "tcp"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "TcpHealthProbeProperties",
+    "properties": {
+      "kind": {
+        "type": {
+          "$ref": "#/172"
+        },
+        "flags": 1,
+        "description": "The HealthProbeProperties kind"
+      },
+      "containerPort": {
+        "type": {
+          "$ref": "#/64"
+        },
+        "flags": 1,
+        "description": "The listening port number"
+      }
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "exec"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ExecHealthProbeProperties",
+    "properties": {
+      "kind": {
+        "type": {
+          "$ref": "#/174"
+        },
+        "flags": 1,
+        "description": "The HealthProbeProperties kind"
+      },
+      "command": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Command to execute to probe readiness/liveness"
+      }
+    }
   },
   {
     "$type": "DiscriminatedObjectType",
@@ -1450,32 +2238,16 @@
     },
     "elements": {
       "ephemeral": {
-        "$ref": "#/108"
+        "$ref": "#/181"
       },
       "persistent": {
-        "$ref": "#/113"
+        "$ref": "#/186"
       }
     }
   },
   {
-    "$type": "ObjectType",
-    "name": "EphemeralVolume",
-    "properties": {
-      "managedStore": {
-        "type": {
-          "$ref": "#/111"
-        },
-        "flags": 1,
-        "description": "The managed store for the ephemeral volume"
-      },
-      "kind": {
-        "type": {
-          "$ref": "#/112"
-        },
-        "flags": 1,
-        "description": "Discriminator property for Volume."
-      }
-    }
+    "$type": "StringLiteralType",
+    "value": "ephemeral"
   },
   {
     "$type": "StringLiteralType",
@@ -1489,43 +2261,36 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/109"
+        "$ref": "#/178"
       },
       {
-        "$ref": "#/110"
+        "$ref": "#/179"
       }
     ]
   },
   {
-    "$type": "StringLiteralType",
-    "value": "ephemeral"
-  },
-  {
     "$type": "ObjectType",
-    "name": "PersistentVolume",
+    "name": "EphemeralVolume",
     "properties": {
-      "permission": {
-        "type": {
-          "$ref": "#/116"
-        },
-        "flags": 0,
-        "description": "The persistent volume permission"
-      },
-      "source": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "The source of the volume"
-      },
       "kind": {
         "type": {
-          "$ref": "#/117"
+          "$ref": "#/177"
         },
         "flags": 1,
-        "description": "Discriminator property for Volume."
+        "description": "The Volume kind"
+      },
+      "managedStore": {
+        "type": {
+          "$ref": "#/180"
+        },
+        "flags": 1,
+        "description": "Backing store for the ephemeral volume"
       }
     }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "persistent"
   },
   {
     "$type": "StringLiteralType",
@@ -1539,23 +2304,46 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/114"
+        "$ref": "#/183"
       },
       {
-        "$ref": "#/115"
+        "$ref": "#/184"
       }
     ]
   },
   {
-    "$type": "StringLiteralType",
-    "value": "persistent"
+    "$type": "ObjectType",
+    "name": "PersistentVolume",
+    "properties": {
+      "kind": {
+        "type": {
+          "$ref": "#/182"
+        },
+        "flags": 1,
+        "description": "The Volume kind"
+      },
+      "permission": {
+        "type": {
+          "$ref": "#/185"
+        },
+        "flags": 0,
+        "description": "Container read/write access to the volume"
+      },
+      "source": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The source of the volume"
+      }
+    }
   },
   {
     "$type": "ObjectType",
-    "name": "ContainerVolumes",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/107"
+      "$ref": "#/176"
     }
   },
   {
@@ -1583,17 +2371,17 @@
       },
       "disableDefaultEnvVars": {
         "type": {
-          "$ref": "#/47"
+          "$ref": "#/28"
         },
         "flags": 0,
         "description": "default environment variable override"
       },
       "iam": {
         "type": {
-          "$ref": "#/122"
+          "$ref": "#/191"
         },
         "flags": 0,
-        "description": "IAM properties"
+        "description": "iam properties"
       }
     }
   },
@@ -1603,14 +2391,14 @@
     "properties": {
       "kind": {
         "type": {
-          "$ref": "#/125"
+          "$ref": "#/194"
         },
         "flags": 1,
         "description": "The kind of IAM provider to configure"
       },
       "roles": {
         "type": {
-          "$ref": "#/126"
+          "$ref": "#/195"
         },
         "flags": 0,
         "description": "RBAC permissions to be assigned on the source resource"
@@ -1629,10 +2417,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/123"
+        "$ref": "#/192"
       },
       {
-        "$ref": "#/124"
+        "$ref": "#/193"
       }
     ]
   },
@@ -1644,16 +2432,16 @@
   },
   {
     "$type": "ObjectType",
-    "name": "ContainerPropertiesConnections",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/121"
+      "$ref": "#/190"
     }
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/13"
+      "$ref": "#/54"
     }
   },
   {
@@ -1668,10 +2456,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/129"
+        "$ref": "#/198"
       },
       {
-        "$ref": "#/130"
+        "$ref": "#/199"
       }
     ]
   },
@@ -1691,7 +2479,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/132"
+      "$ref": "#/201"
     }
   },
   {
@@ -1710,13 +2498,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/134"
+        "$ref": "#/203"
       },
       {
-        "$ref": "#/135"
+        "$ref": "#/204"
       },
       {
-        "$ref": "#/136"
+        "$ref": "#/205"
       }
     ]
   },
@@ -1726,17 +2514,17 @@
     "properties": {
       "kubernetes": {
         "type": {
-          "$ref": "#/139"
+          "$ref": "#/208"
         },
         "flags": 0,
         "description": "The runtime configuration properties for Kubernetes"
       },
       "aci": {
         "type": {
-          "$ref": "#/142"
+          "$ref": "#/210"
         },
         "flags": 0,
-        "description": "The runtime configuration properties for Kubernetes"
+        "description": "The runtime configuration properties for ACI"
       }
     }
   },
@@ -1753,7 +2541,7 @@
       },
       "pod": {
         "type": {
-          "$ref": "#/141"
+          "$ref": "#/209"
         },
         "flags": 0,
         "description": "A strategic merge patch that will be applied to the PodSpec object when this container is being deployed."
@@ -1761,14 +2549,11 @@
     }
   },
   {
-    "$type": "AnyType"
-  },
-  {
     "$type": "ObjectType",
     "name": "KubernetesPodSpec",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/140"
+      "$ref": "#/30"
     }
   },
   {
@@ -1804,73 +2589,73 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/152"
+          "$ref": "#/220"
         },
         "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
+        "description": "The status of the asynchronous operation."
       },
       "status": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/114"
         },
         "flags": 2,
         "description": "Status of a resource."
       },
       "container": {
         "type": {
-          "$ref": "#/85"
+          "$ref": "#/155"
         },
         "flags": 1,
-        "description": "Definition of a container"
+        "description": "Definition of a container."
       },
       "connections": {
         "type": {
-          "$ref": "#/153"
+          "$ref": "#/221"
         },
         "flags": 0,
         "description": "Specifies a connection to another resource."
       },
       "identity": {
         "type": {
-          "$ref": "#/33"
+          "$ref": "#/13"
         },
         "flags": 0,
-        "description": "IdentitySettings is the external identity setting."
+        "description": "Configuration for supported external identity providers"
       },
       "extensions": {
         "type": {
-          "$ref": "#/154"
+          "$ref": "#/222"
         },
         "flags": 0,
         "description": "Extensions spec of the resource"
       },
       "resourceProvisioning": {
         "type": {
-          "$ref": "#/157"
+          "$ref": "#/225"
         },
         "flags": 0,
-        "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'internal', where Radius manages the lifecycle of the resource internally, and 'manual', where a user manages the resource."
+        "description": "Specifies how the underlying container resource is provisioned and managed."
       },
       "resources": {
         "type": {
-          "$ref": "#/158"
+          "$ref": "#/226"
         },
         "flags": 0,
         "description": "A collection of references to resources associated with the container"
       },
       "restartPolicy": {
         "type": {
-          "$ref": "#/162"
+          "$ref": "#/230"
         },
         "flags": 0,
-        "description": "Restart policy for the container"
+        "description": "The restart policy for the underlying container"
       },
       "runtimes": {
         "type": {
-          "$ref": "#/138"
+          "$ref": "#/207"
         },
         "flags": 0,
-        "description": "The properties for runtime configuration"
+        "description": "Specifies Runtime-specific functionality"
       }
     }
   },
@@ -1910,43 +2695,43 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/144"
+        "$ref": "#/212"
       },
       {
-        "$ref": "#/145"
+        "$ref": "#/213"
       },
       {
-        "$ref": "#/146"
+        "$ref": "#/214"
       },
       {
-        "$ref": "#/147"
+        "$ref": "#/215"
       },
       {
-        "$ref": "#/148"
+        "$ref": "#/216"
       },
       {
-        "$ref": "#/149"
+        "$ref": "#/217"
       },
       {
-        "$ref": "#/150"
+        "$ref": "#/218"
       },
       {
-        "$ref": "#/151"
+        "$ref": "#/219"
       }
     ]
   },
   {
     "$type": "ObjectType",
-    "name": "ContainerPropertiesConnections",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/121"
+      "$ref": "#/190"
     }
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/13"
+      "$ref": "#/54"
     }
   },
   {
@@ -1961,17 +2746,17 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/155"
+        "$ref": "#/223"
       },
       {
-        "$ref": "#/156"
+        "$ref": "#/224"
       }
     ]
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/132"
+      "$ref": "#/201"
     }
   },
   {
@@ -1990,882 +2775,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/159"
-      },
-      {
-        "$ref": "#/160"
-      },
-      {
-        "$ref": "#/161"
-      }
-    ]
-  },
-  {
-    "$type": "ObjectType",
-    "name": "TrackedResourceTags",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/0"
-    }
-  },
-  {
-    "$type": "ResourceType",
-    "name": "Applications.Core/containers@2023-10-01-preview",
-    "body": {
-      "$ref": "#/75"
-    },
-    "readableScopes": 0,
-    "writableScopes": 0,
-    "functions": {}
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Applications.Core/environments"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "2023-10-01-preview"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "Applications.Core/environments",
-    "properties": {
-      "id": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 10,
-        "description": "The resource id"
-      },
-      "name": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 25,
-        "description": "The resource name"
-      },
-      "type": {
-        "type": {
-          "$ref": "#/165"
-        },
-        "flags": 10,
-        "description": "The resource type"
-      },
-      "apiVersion": {
-        "type": {
-          "$ref": "#/166"
-        },
-        "flags": 10,
-        "description": "The resource api version"
-      },
-      "provisioningState": {
-        "type": {
-          "$ref": "#/176"
-        },
-        "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
-      },
-      "compute": {
-        "type": {
-          "$ref": "#/32"
-        },
-        "flags": 2,
-        "description": "Represents backing compute resource"
-      },
-      "providers": {
-        "type": {
-          "$ref": "#/177"
-        },
-        "flags": 2,
-        "description": "The Cloud providers configuration."
-      },
-      "simulated": {
-        "type": {
-          "$ref": "#/47"
-        },
-        "flags": 2,
-        "description": "Simulated environment."
-      },
-      "recipes": {
-        "type": {
-          "$ref": "#/187"
-        },
-        "flags": 2,
-        "description": "Specifies Recipes linked to the Environment."
-      },
-      "recipeConfig": {
-        "type": {
-          "$ref": "#/188"
-        },
-        "flags": 2,
-        "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
-      },
-      "extensions": {
-        "type": {
-          "$ref": "#/203"
-        },
-        "flags": 2,
-        "description": "The environment extension."
-      },
-      "properties": {
-        "type": {
-          "$ref": "#/204"
-        },
-        "flags": 1,
-        "description": "Environment properties"
-      },
-      "tags": {
-        "type": {
-          "$ref": "#/217"
-        },
-        "flags": 0,
-        "description": "Resource tags."
-      },
-      "location": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The geo-location where the resource lives"
-      },
-      "systemData": {
-        "type": {
-          "$ref": "#/61"
-        },
-        "flags": 2,
-        "description": "Metadata pertaining to creation and last modification of the resource."
-      }
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Creating"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Updating"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Deleting"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Accepted"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Provisioning"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Succeeded"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Failed"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Canceled"
-  },
-  {
-    "$type": "UnionType",
-    "elements": [
-      {
-        "$ref": "#/168"
-      },
-      {
-        "$ref": "#/169"
-      },
-      {
-        "$ref": "#/170"
-      },
-      {
-        "$ref": "#/171"
-      },
-      {
-        "$ref": "#/172"
-      },
-      {
-        "$ref": "#/173"
-      },
-      {
-        "$ref": "#/174"
-      },
-      {
-        "$ref": "#/175"
-      }
-    ]
-  },
-  {
-    "$type": "ObjectType",
-    "name": "Providers",
-    "properties": {
-      "azure": {
-        "type": {
-          "$ref": "#/178"
-        },
-        "flags": 0,
-        "description": "The Azure cloud provider definition."
-      },
-      "aws": {
-        "type": {
-          "$ref": "#/179"
-        },
-        "flags": 0,
-        "description": "The AWS cloud provider definition."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "ProvidersAzure",
-    "properties": {
-      "scope": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "ProvidersAws",
-    "properties": {
-      "scope": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "Target scope for AWS resources to be deployed into.  For example: '/planes/aws/aws/accounts/000000000000/regions/us-west-2'."
-      }
-    }
-  },
-  {
-    "$type": "DiscriminatedObjectType",
-    "name": "RecipeProperties",
-    "discriminator": "templateKind",
-    "baseProperties": {
-      "templatePath": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported."
-      },
-      "parameters": {
-        "type": {
-          "$ref": "#/181"
-        },
-        "flags": 0,
-        "description": "Key/value parameters to pass to the recipe template at deployment."
-      }
-    },
-    "elements": {
-      "bicep": {
-        "$ref": "#/182"
-      },
-      "terraform": {
-        "$ref": "#/184"
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "RecipePropertiesParameters",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/140"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "BicepRecipeProperties",
-    "properties": {
-      "plainHttp": {
-        "type": {
-          "$ref": "#/47"
-        },
-        "flags": 0,
-        "description": "Connect to the Bicep registry using HTTP (not-HTTPS). This should be used when the registry is known not to support HTTPS, for example in a locally-hosted registry. Defaults to false (use HTTPS/TLS)."
-      },
-      "templateKind": {
-        "type": {
-          "$ref": "#/183"
-        },
-        "flags": 1,
-        "description": "Discriminator property for RecipeProperties."
-      }
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "bicep"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "TerraformRecipeProperties",
-    "properties": {
-      "templateVersion": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "Version of the template to deploy. For Terraform recipes using a module registry this is required, but must be omitted for other module sources."
-      },
-      "templateKind": {
-        "type": {
-          "$ref": "#/185"
-        },
-        "flags": 1,
-        "description": "Discriminator property for RecipeProperties."
-      }
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "terraform"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "DictionaryOfRecipeProperties",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/180"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "EnvironmentPropertiesRecipes",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/186"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "RecipeConfigProperties",
-    "properties": {
-      "terraform": {
-        "type": {
-          "$ref": "#/189"
-        },
-        "flags": 0,
-        "description": "Configuration for Terraform Recipes. Controls how Terraform plans and applies templates as part of Recipe deployment."
-      },
-      "bicep": {
-        "type": {
-          "$ref": "#/198"
-        },
-        "flags": 0,
-        "description": "Configuration for Bicep Recipes. Controls how Bicep plans and applies templates as part of Recipe deployment."
-      },
-      "env": {
-        "type": {
-          "$ref": "#/201"
-        },
-        "flags": 0,
-        "description": "The environment variables injected during Terraform Recipe execution for the recipes in the environment."
-      },
-      "envSecrets": {
-        "type": {
-          "$ref": "#/202"
-        },
-        "flags": 0,
-        "description": "Environment variables containing sensitive information can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "TerraformConfigProperties",
-    "properties": {
-      "authentication": {
-        "type": {
-          "$ref": "#/190"
-        },
-        "flags": 0,
-        "description": "Authentication information used to access private Terraform module sources. Supported module sources: Git."
-      },
-      "providers": {
-        "type": {
-          "$ref": "#/197"
-        },
-        "flags": 0,
-        "description": "Configuration for Terraform Recipe Providers. Controls how Terraform interacts with cloud providers, SaaS providers, and other APIs. For more information, please see: https://developer.hashicorp.com/terraform/language/providers/configuration."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "AuthConfig",
-    "properties": {
-      "git": {
-        "type": {
-          "$ref": "#/191"
-        },
-        "flags": 0,
-        "description": "Authentication information used to access private Terraform modules from Git repository sources."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "GitAuthConfig",
-    "properties": {
-      "pat": {
-        "type": {
-          "$ref": "#/193"
-        },
-        "flags": 0,
-        "description": "Personal Access Token (PAT) configuration used to authenticate to Git platforms."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "SecretConfig",
-    "properties": {
-      "secret": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The ID of an Applications.Core/SecretStore resource containing the Git platform personal access token (PAT). The secret store must have a secret named 'pat', containing the PAT value. A secret named 'username' is optional, containing the username associated with the pat. By default no username is specified."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "GitAuthConfigPat",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/192"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "ProviderConfigProperties",
-    "properties": {
-      "secrets": {
-        "type": {
-          "$ref": "#/195"
-        },
-        "flags": 0,
-        "description": "Sensitive data in provider configuration can be stored as secrets. The secrets are stored in Applications.Core/SecretStores resource."
-      }
-    },
-    "additionalProperties": {
-      "$ref": "#/140"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "ProviderConfigPropertiesSecrets",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/92"
-    }
-  },
-  {
-    "$type": "ArrayType",
-    "itemType": {
-      "$ref": "#/194"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "TerraformConfigPropertiesProviders",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/196"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "BicepConfigProperties",
-    "properties": {
-      "authentication": {
-        "type": {
-          "$ref": "#/200"
-        },
-        "flags": 0,
-        "description": "Authentication information used to access private bicep registries, which is a map of registry hostname to secret config that contains credential information."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "RegistrySecretConfig",
-    "properties": {
-      "secret": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The ID of an Applications.Core/SecretStore resource containing credential information used to authenticate private container registry.The keys in the secretstore depends on the type."
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "BicepConfigPropertiesAuthentication",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/199"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "EnvironmentVariables",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/0"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "RecipeConfigPropertiesEnvSecrets",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/92"
-    }
-  },
-  {
-    "$type": "ArrayType",
-    "itemType": {
-      "$ref": "#/13"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "EnvironmentProperties",
-    "properties": {
-      "provisioningState": {
-        "type": {
-          "$ref": "#/213"
-        },
-        "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
-      },
-      "compute": {
-        "type": {
-          "$ref": "#/32"
-        },
-        "flags": 1,
-        "description": "Represents backing compute resource"
-      },
-      "providers": {
-        "type": {
-          "$ref": "#/177"
-        },
-        "flags": 0,
-        "description": "The Cloud providers configuration."
-      },
-      "simulated": {
-        "type": {
-          "$ref": "#/47"
-        },
-        "flags": 0,
-        "description": "Simulated environment."
-      },
-      "recipes": {
-        "type": {
-          "$ref": "#/215"
-        },
-        "flags": 0,
-        "description": "Specifies Recipes linked to the Environment."
-      },
-      "recipeConfig": {
-        "type": {
-          "$ref": "#/188"
-        },
-        "flags": 0,
-        "description": "Configuration for Recipes. Defines how each type of Recipe should be configured and run."
-      },
-      "extensions": {
-        "type": {
-          "$ref": "#/216"
-        },
-        "flags": 0,
-        "description": "The environment extension."
-      }
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Creating"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Updating"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Deleting"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Accepted"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Provisioning"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Succeeded"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Failed"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Canceled"
-  },
-  {
-    "$type": "UnionType",
-    "elements": [
-      {
-        "$ref": "#/205"
-      },
-      {
-        "$ref": "#/206"
-      },
-      {
-        "$ref": "#/207"
-      },
-      {
-        "$ref": "#/208"
-      },
-      {
-        "$ref": "#/209"
-      },
-      {
-        "$ref": "#/210"
-      },
-      {
-        "$ref": "#/211"
-      },
-      {
-        "$ref": "#/212"
-      }
-    ]
-  },
-  {
-    "$type": "ObjectType",
-    "name": "DictionaryOfRecipeProperties",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/180"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "EnvironmentPropertiesRecipes",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/214"
-    }
-  },
-  {
-    "$type": "ArrayType",
-    "itemType": {
-      "$ref": "#/13"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "TrackedResourceTags",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/0"
-    }
-  },
-  {
-    "$type": "ResourceType",
-    "name": "Applications.Core/environments@2023-10-01-preview",
-    "body": {
-      "$ref": "#/167"
-    },
-    "readableScopes": 0,
-    "writableScopes": 0,
-    "functions": {}
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Applications.Core/extenders"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "2023-10-01-preview"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "Applications.Core/extenders",
-    "properties": {
-      "id": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 10,
-        "description": "The resource id"
-      },
-      "name": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 25,
-        "description": "The resource name"
-      },
-      "type": {
-        "type": {
-          "$ref": "#/219"
-        },
-        "flags": 10,
-        "description": "The resource type"
-      },
-      "apiVersion": {
-        "type": {
-          "$ref": "#/220"
-        },
-        "flags": 10,
-        "description": "The resource api version"
-      },
-      "environment": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 2,
-        "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-      },
-      "application": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 2,
-        "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
-      },
-      "provisioningState": {
-        "type": {
-          "$ref": "#/230"
-        },
-        "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
-      },
-      "status": {
-        "type": {
-          "$ref": "#/31"
-        },
-        "flags": 2,
-        "description": "Status of a resource."
-      },
-      "secrets": {
-        "type": {
-          "$ref": "#/231"
-        },
-        "flags": 2,
-        "description": "The secrets for referenced resource"
-      },
-      "recipe": {
-        "type": {
-          "$ref": "#/232"
-        },
-        "flags": 2,
-        "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
-      },
-      "resourceProvisioning": {
-        "type": {
-          "$ref": "#/236"
-        },
-        "flags": 2,
-        "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
-      },
-      "properties": {
-        "type": {
-          "$ref": "#/237"
-        },
-        "flags": 1,
-        "description": "ExtenderResource portable resource properties"
-      },
-      "tags": {
-        "type": {
-          "$ref": "#/251"
-        },
-        "flags": 0,
-        "description": "Resource tags."
-      },
-      "location": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The geo-location where the resource lives"
-      },
-      "systemData": {
-        "type": {
-          "$ref": "#/61"
-        },
-        "flags": 2,
-        "description": "Metadata pertaining to creation and last modification of the resource."
-      }
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Creating"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Updating"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Deleting"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Accepted"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Provisioning"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Succeeded"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Failed"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Canceled"
-  },
-  {
-    "$type": "UnionType",
-    "elements": [
-      {
-        "$ref": "#/222"
-      },
-      {
-        "$ref": "#/223"
-      },
-      {
-        "$ref": "#/224"
-      },
-      {
-        "$ref": "#/225"
-      },
-      {
-        "$ref": "#/226"
-      },
-      {
         "$ref": "#/227"
       },
       {
@@ -2878,208 +2787,7 @@
   },
   {
     "$type": "ObjectType",
-    "name": "ExtenderPropertiesSecrets",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/140"
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "Recipe",
-    "properties": {
-      "name": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "The name of the recipe within the environment to use"
-      },
-      "parameters": {
-        "type": {
-          "$ref": "#/233"
-        },
-        "flags": 0,
-        "description": "Key/value parameters to pass into the recipe at deployment"
-      }
-    }
-  },
-  {
-    "$type": "ObjectType",
-    "name": "RecipeParameters",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/140"
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "recipe"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "manual"
-  },
-  {
-    "$type": "UnionType",
-    "elements": [
-      {
-        "$ref": "#/234"
-      },
-      {
-        "$ref": "#/235"
-      }
-    ]
-  },
-  {
-    "$type": "ObjectType",
-    "name": "ExtenderProperties",
-    "properties": {
-      "environment": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
-      },
-      "application": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
-      },
-      "provisioningState": {
-        "type": {
-          "$ref": "#/246"
-        },
-        "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
-      },
-      "status": {
-        "type": {
-          "$ref": "#/31"
-        },
-        "flags": 2,
-        "description": "Status of a resource."
-      },
-      "secrets": {
-        "type": {
-          "$ref": "#/247"
-        },
-        "flags": 0,
-        "description": "The secrets for referenced resource"
-      },
-      "recipe": {
-        "type": {
-          "$ref": "#/232"
-        },
-        "flags": 0,
-        "description": "The recipe used to automatically deploy underlying infrastructure for a portable resource"
-      },
-      "resourceProvisioning": {
-        "type": {
-          "$ref": "#/250"
-        },
-        "flags": 0,
-        "description": "Specifies how the underlying service/resource is provisioned and managed. Available values are 'recipe', where Radius manages the lifecycle of the resource through a Recipe, and 'manual', where a user manages the resource and provides the values."
-      }
-    },
-    "additionalProperties": {
-      "$ref": "#/140"
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Creating"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Updating"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Deleting"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Accepted"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Provisioning"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Succeeded"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Failed"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Canceled"
-  },
-  {
-    "$type": "UnionType",
-    "elements": [
-      {
-        "$ref": "#/238"
-      },
-      {
-        "$ref": "#/239"
-      },
-      {
-        "$ref": "#/240"
-      },
-      {
-        "$ref": "#/241"
-      },
-      {
-        "$ref": "#/242"
-      },
-      {
-        "$ref": "#/243"
-      },
-      {
-        "$ref": "#/244"
-      },
-      {
-        "$ref": "#/245"
-      }
-    ]
-  },
-  {
-    "$type": "ObjectType",
-    "name": "ExtenderPropertiesSecrets",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/140"
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "recipe"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "manual"
-  },
-  {
-    "$type": "UnionType",
-    "elements": [
-      {
-        "$ref": "#/248"
-      },
-      {
-        "$ref": "#/249"
-      }
-    ]
-  },
-  {
-    "$type": "ObjectType",
-    "name": "TrackedResourceTags",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
       "$ref": "#/0"
@@ -3087,47 +2795,7 @@
   },
   {
     "$type": "ObjectType",
-    "name": "ExtenderListSecretResponse",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/140"
-    }
-  },
-  {
-    "$type": "FunctionType",
-    "parameters": [],
-    "output": {
-      "$ref": "#/252"
-    }
-  },
-  {
-    "$type": "ResourceType",
-    "name": "Applications.Core/extenders@2023-10-01-preview",
-    "body": {
-      "$ref": "#/221"
-    },
-    "readableScopes": 0,
-    "writableScopes": 0,
-    "functions": {
-      "listSecrets": {
-        "type": {
-          "$ref": "#/253"
-        },
-        "description": "listSecrets"
-      }
-    }
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Applications.Core/gateways"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "2023-10-01-preview"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "Applications.Core/gateways",
+    "name": "Applications.Core/containers",
     "properties": {
       "id": {
         "type": {
@@ -3145,14 +2813,14 @@
       },
       "type": {
         "type": {
-          "$ref": "#/255"
+          "$ref": "#/144"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/256"
+          "$ref": "#/145"
         },
         "flags": 10,
         "description": "The resource api version"
@@ -3173,63 +2841,84 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/266"
+          "$ref": "#/154"
         },
         "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
+        "description": "The status of the asynchronous operation."
       },
       "status": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/114"
         },
         "flags": 2,
         "description": "Status of a resource."
       },
-      "internal": {
+      "container": {
         "type": {
-          "$ref": "#/47"
+          "$ref": "#/155"
         },
         "flags": 2,
-        "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet)."
+        "description": "Definition of a container."
       },
-      "hostname": {
+      "connections": {
         "type": {
-          "$ref": "#/267"
+          "$ref": "#/196"
         },
         "flags": 2,
-        "description": "Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io."
+        "description": "Specifies a connection to another resource."
       },
-      "routes": {
+      "identity": {
         "type": {
-          "$ref": "#/270"
+          "$ref": "#/13"
         },
         "flags": 2,
-        "description": "Routes attached to this Gateway"
+        "description": "Configuration for supported external identity providers"
       },
-      "tls": {
+      "extensions": {
         "type": {
-          "$ref": "#/271"
+          "$ref": "#/197"
         },
         "flags": 2,
-        "description": "TLS configuration definition for Gateway resource."
+        "description": "Extensions spec of the resource"
       },
-      "url": {
+      "resourceProvisioning": {
         "type": {
-          "$ref": "#/0"
+          "$ref": "#/200"
         },
         "flags": 2,
-        "description": "URL of the gateway resource. Readonly"
+        "description": "Specifies how the underlying container resource is provisioned and managed."
+      },
+      "resources": {
+        "type": {
+          "$ref": "#/202"
+        },
+        "flags": 2,
+        "description": "A collection of references to resources associated with the container"
+      },
+      "restartPolicy": {
+        "type": {
+          "$ref": "#/206"
+        },
+        "flags": 2,
+        "description": "The restart policy for the underlying container"
+      },
+      "runtimes": {
+        "type": {
+          "$ref": "#/207"
+        },
+        "flags": 2,
+        "description": "Specifies Runtime-specific functionality"
       },
       "properties": {
         "type": {
-          "$ref": "#/275"
+          "$ref": "#/211"
         },
         "flags": 1,
-        "description": "Gateway properties"
+        "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/286"
+          "$ref": "#/231"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -3243,12 +2932,30 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/61"
+          "$ref": "#/86"
         },
         "flags": 2,
-        "description": "Metadata pertaining to creation and last modification of the resource."
+        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
       }
     }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Applications.Core/containers@2023-10-01-preview",
+    "body": {
+      "$ref": "#/232"
+    },
+    "readableScopes": 0,
+    "writableScopes": 0,
+    "functions": {}
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Applications.Core/gateways"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2023-10-01-preview"
   },
   {
     "$type": "StringLiteralType",
@@ -3286,28 +2993,28 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/258"
+        "$ref": "#/236"
       },
       {
-        "$ref": "#/259"
+        "$ref": "#/237"
       },
       {
-        "$ref": "#/260"
+        "$ref": "#/238"
       },
       {
-        "$ref": "#/261"
+        "$ref": "#/239"
       },
       {
-        "$ref": "#/262"
+        "$ref": "#/240"
       },
       {
-        "$ref": "#/263"
+        "$ref": "#/241"
       },
       {
-        "$ref": "#/264"
+        "$ref": "#/242"
       },
       {
-        "$ref": "#/265"
+        "$ref": "#/243"
       }
     ]
   },
@@ -3358,17 +3065,17 @@
       },
       "enableWebsockets": {
         "type": {
-          "$ref": "#/47"
+          "$ref": "#/28"
         },
         "flags": 0,
         "description": "Enables websocket support for the route. Defaults to false."
       },
       "timeoutPolicy": {
         "type": {
-          "$ref": "#/269"
+          "$ref": "#/247"
         },
         "flags": 0,
-        "description": "Gateway route timeout policy"
+        "description": "The timeout policy for the route."
       }
     }
   },
@@ -3395,7 +3102,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/268"
+      "$ref": "#/246"
     }
   },
   {
@@ -3404,14 +3111,14 @@
     "properties": {
       "sslPassthrough": {
         "type": {
-          "$ref": "#/47"
+          "$ref": "#/28"
         },
         "flags": 0,
         "description": "If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption."
       },
       "minimumProtocolVersion": {
         "type": {
-          "$ref": "#/274"
+          "$ref": "#/252"
         },
         "flags": 0,
         "description": "TLS minimum protocol version (defaults to 1.2)."
@@ -3437,10 +3144,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/272"
+        "$ref": "#/250"
       },
       {
-        "$ref": "#/273"
+        "$ref": "#/251"
       }
     ]
   },
@@ -3464,45 +3171,45 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/284"
+          "$ref": "#/262"
         },
         "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
+        "description": "The status of the asynchronous operation."
       },
       "status": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/114"
         },
         "flags": 2,
         "description": "Status of a resource."
       },
       "internal": {
         "type": {
-          "$ref": "#/47"
+          "$ref": "#/28"
         },
         "flags": 0,
         "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet)."
       },
       "hostname": {
         "type": {
-          "$ref": "#/267"
+          "$ref": "#/245"
         },
         "flags": 0,
         "description": "Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io."
       },
       "routes": {
         "type": {
-          "$ref": "#/285"
+          "$ref": "#/263"
         },
         "flags": 1,
         "description": "Routes attached to this Gateway"
       },
       "tls": {
         "type": {
-          "$ref": "#/271"
+          "$ref": "#/249"
         },
         "flags": 0,
-        "description": "TLS configuration definition for Gateway resource."
+        "description": "TLS configuration for the Gateway."
       },
       "url": {
         "type": {
@@ -3549,66 +3256,48 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/276"
+        "$ref": "#/254"
       },
       {
-        "$ref": "#/277"
+        "$ref": "#/255"
       },
       {
-        "$ref": "#/278"
+        "$ref": "#/256"
       },
       {
-        "$ref": "#/279"
+        "$ref": "#/257"
       },
       {
-        "$ref": "#/280"
+        "$ref": "#/258"
       },
       {
-        "$ref": "#/281"
+        "$ref": "#/259"
       },
       {
-        "$ref": "#/282"
+        "$ref": "#/260"
       },
       {
-        "$ref": "#/283"
+        "$ref": "#/261"
       }
     ]
   },
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/268"
+      "$ref": "#/246"
     }
   },
   {
     "$type": "ObjectType",
-    "name": "TrackedResourceTags",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
       "$ref": "#/0"
     }
   },
   {
-    "$type": "ResourceType",
-    "name": "Applications.Core/gateways@2023-10-01-preview",
-    "body": {
-      "$ref": "#/257"
-    },
-    "readableScopes": 0,
-    "writableScopes": 0,
-    "functions": {}
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "Applications.Core/secretStores"
-  },
-  {
-    "$type": "StringLiteralType",
-    "value": "2023-10-01-preview"
-  },
-  {
     "$type": "ObjectType",
-    "name": "Applications.Core/secretStores",
+    "name": "Applications.Core/gateways",
     "properties": {
       "id": {
         "type": {
@@ -3626,28 +3315,91 @@
       },
       "type": {
         "type": {
-          "$ref": "#/288"
+          "$ref": "#/234"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/289"
+          "$ref": "#/235"
         },
         "flags": 10,
         "description": "The resource api version"
       },
+      "environment": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Fully qualified resource ID for the environment that the application is linked to"
+      },
+      "application": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Fully qualified resource ID for the application"
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/244"
+        },
+        "flags": 2,
+        "description": "The status of the asynchronous operation."
+      },
+      "status": {
+        "type": {
+          "$ref": "#/114"
+        },
+        "flags": 2,
+        "description": "Status of a resource."
+      },
+      "internal": {
+        "type": {
+          "$ref": "#/28"
+        },
+        "flags": 2,
+        "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet)."
+      },
+      "hostname": {
+        "type": {
+          "$ref": "#/245"
+        },
+        "flags": 2,
+        "description": "Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io."
+      },
+      "routes": {
+        "type": {
+          "$ref": "#/248"
+        },
+        "flags": 2,
+        "description": "Routes attached to this Gateway"
+      },
+      "tls": {
+        "type": {
+          "$ref": "#/249"
+        },
+        "flags": 2,
+        "description": "TLS configuration for the Gateway."
+      },
+      "url": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "URL of the gateway resource. Readonly"
+      },
       "properties": {
         "type": {
-          "$ref": "#/291"
+          "$ref": "#/253"
         },
         "flags": 1,
-        "description": "The properties of SecretStore"
+        "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/313"
+          "$ref": "#/264"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -3661,12 +3413,30 @@
       },
       "systemData": {
         "type": {
-          "$ref": "#/61"
+          "$ref": "#/86"
         },
         "flags": 2,
-        "description": "Metadata pertaining to creation and last modification of the resource."
+        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
       }
     }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Applications.Core/gateways@2023-10-01-preview",
+    "body": {
+      "$ref": "#/265"
+    },
+    "readableScopes": 0,
+    "writableScopes": 0,
+    "functions": {}
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Applications.Core/secretStores"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2023-10-01-preview"
   },
   {
     "$type": "ObjectType",
@@ -3688,28 +3458,28 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/300"
+          "$ref": "#/278"
         },
         "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
+        "description": "The status of the asynchronous operation."
       },
       "status": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/114"
         },
         "flags": 2,
         "description": "Status of a resource."
       },
       "type": {
         "type": {
-          "$ref": "#/306"
+          "$ref": "#/284"
         },
         "flags": 0,
-        "description": "The type of SecretStore data"
+        "description": "The type of secret store data"
       },
       "data": {
         "type": {
-          "$ref": "#/312"
+          "$ref": "#/290"
         },
         "flags": 1,
         "description": "An object to represent key-value type secrets"
@@ -3759,28 +3529,28 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/292"
+        "$ref": "#/270"
       },
       {
-        "$ref": "#/293"
+        "$ref": "#/271"
       },
       {
-        "$ref": "#/294"
+        "$ref": "#/272"
       },
       {
-        "$ref": "#/295"
+        "$ref": "#/273"
       },
       {
-        "$ref": "#/296"
+        "$ref": "#/274"
       },
       {
-        "$ref": "#/297"
+        "$ref": "#/275"
       },
       {
-        "$ref": "#/298"
+        "$ref": "#/276"
       },
       {
-        "$ref": "#/299"
+        "$ref": "#/277"
       }
     ]
   },
@@ -3808,19 +3578,19 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/301"
+        "$ref": "#/279"
       },
       {
-        "$ref": "#/302"
+        "$ref": "#/280"
       },
       {
-        "$ref": "#/303"
+        "$ref": "#/281"
       },
       {
-        "$ref": "#/304"
+        "$ref": "#/282"
       },
       {
-        "$ref": "#/305"
+        "$ref": "#/283"
       }
     ]
   },
@@ -3830,10 +3600,10 @@
     "properties": {
       "encoding": {
         "type": {
-          "$ref": "#/310"
+          "$ref": "#/288"
         },
         "flags": 0,
-        "description": "The type of SecretValue Encoding"
+        "description": "The encoding of value"
       },
       "value": {
         "type": {
@@ -3844,10 +3614,10 @@
       },
       "valueFrom": {
         "type": {
-          "$ref": "#/311"
+          "$ref": "#/289"
         },
         "flags": 0,
-        "description": "The Secret value source properties"
+        "description": "The referenced secret in properties.resource"
       }
     }
   },
@@ -3863,10 +3633,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/308"
+        "$ref": "#/286"
       },
       {
-        "$ref": "#/309"
+        "$ref": "#/287"
       }
     ]
   },
@@ -3892,18 +3662,80 @@
   },
   {
     "$type": "ObjectType",
-    "name": "SecretStorePropertiesData",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/307"
+      "$ref": "#/285"
     }
   },
   {
     "$type": "ObjectType",
-    "name": "TrackedResourceTags",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
       "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Applications.Core/secretStores",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/267"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/268"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/269"
+        },
+        "flags": 1,
+        "description": "The resource-specific properties for this resource."
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/291"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/86"
+        },
+        "flags": 2,
+        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
+      }
     }
   },
   {
@@ -3912,16 +3744,16 @@
     "properties": {
       "type": {
         "type": {
-          "$ref": "#/320"
+          "$ref": "#/299"
         },
-        "flags": 2,
-        "description": "The type of SecretStore data"
+        "flags": 1,
+        "description": "The type of secret store data"
       },
       "data": {
         "type": {
-          "$ref": "#/321"
+          "$ref": "#/300"
         },
-        "flags": 2,
+        "flags": 1,
         "description": "An object to represent key-value type secrets"
       }
     }
@@ -3950,49 +3782,49 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/315"
+        "$ref": "#/294"
       },
       {
-        "$ref": "#/316"
+        "$ref": "#/295"
       },
       {
-        "$ref": "#/317"
+        "$ref": "#/296"
       },
       {
-        "$ref": "#/318"
+        "$ref": "#/297"
       },
       {
-        "$ref": "#/319"
+        "$ref": "#/298"
       }
     ]
   },
   {
     "$type": "ObjectType",
-    "name": "SecretStoreListSecretsResultData",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/307"
+      "$ref": "#/285"
     }
   },
   {
     "$type": "FunctionType",
     "parameters": [],
     "output": {
-      "$ref": "#/314"
+      "$ref": "#/293"
     }
   },
   {
     "$type": "ResourceType",
     "name": "Applications.Core/secretStores@2023-10-01-preview",
     "body": {
-      "$ref": "#/290"
+      "$ref": "#/292"
     },
     "readableScopes": 0,
     "writableScopes": 0,
     "functions": {
       "listSecrets": {
         "type": {
-          "$ref": "#/322"
+          "$ref": "#/301"
         },
         "description": "listSecrets"
       }
@@ -4005,68 +3837,6 @@
   {
     "$type": "StringLiteralType",
     "value": "2023-10-01-preview"
-  },
-  {
-    "$type": "ObjectType",
-    "name": "Applications.Core/volumes",
-    "properties": {
-      "id": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 10,
-        "description": "The resource id"
-      },
-      "name": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 25,
-        "description": "The resource name"
-      },
-      "type": {
-        "type": {
-          "$ref": "#/324"
-        },
-        "flags": 10,
-        "description": "The resource type"
-      },
-      "apiVersion": {
-        "type": {
-          "$ref": "#/325"
-        },
-        "flags": 10,
-        "description": "The resource api version"
-      },
-      "properties": {
-        "type": {
-          "$ref": "#/327"
-        },
-        "flags": 1,
-        "description": "Volume properties"
-      },
-      "tags": {
-        "type": {
-          "$ref": "#/360"
-        },
-        "flags": 0,
-        "description": "Resource tags."
-      },
-      "location": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 0,
-        "description": "The geo-location where the resource lives"
-      },
-      "systemData": {
-        "type": {
-          "$ref": "#/61"
-        },
-        "flags": 2,
-        "description": "Metadata pertaining to creation and last modification of the resource."
-      }
-    }
   },
   {
     "$type": "DiscriminatedObjectType",
@@ -4089,14 +3859,14 @@
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/336"
+          "$ref": "#/314"
         },
         "flags": 2,
-        "description": "Provisioning state of the resource at the time the operation was called"
+        "description": "The status of the asynchronous operation."
       },
       "status": {
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/114"
         },
         "flags": 2,
         "description": "Status of a resource."
@@ -4144,71 +3914,34 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/328"
+        "$ref": "#/306"
       },
       {
-        "$ref": "#/329"
+        "$ref": "#/307"
       },
       {
-        "$ref": "#/330"
+        "$ref": "#/308"
       },
       {
-        "$ref": "#/331"
+        "$ref": "#/309"
       },
       {
-        "$ref": "#/332"
+        "$ref": "#/310"
       },
       {
-        "$ref": "#/333"
+        "$ref": "#/311"
       },
       {
-        "$ref": "#/334"
+        "$ref": "#/312"
       },
       {
-        "$ref": "#/335"
+        "$ref": "#/313"
       }
     ]
   },
   {
-    "$type": "ObjectType",
-    "name": "AzureKeyVaultVolumeProperties",
-    "properties": {
-      "certificates": {
-        "type": {
-          "$ref": "#/350"
-        },
-        "flags": 0,
-        "description": "The KeyVault certificates that this volume exposes"
-      },
-      "keys": {
-        "type": {
-          "$ref": "#/352"
-        },
-        "flags": 0,
-        "description": "The KeyVault keys that this volume exposes"
-      },
-      "resource": {
-        "type": {
-          "$ref": "#/0"
-        },
-        "flags": 1,
-        "description": "The ID of the keyvault to use for this volume resource"
-      },
-      "secrets": {
-        "type": {
-          "$ref": "#/358"
-        },
-        "flags": 0,
-        "description": "The KeyVault secrets that this volume exposes"
-      },
-      "kind": {
-        "type": {
-          "$ref": "#/359"
-        },
-        "flags": 1,
-        "description": "Discriminator property for VolumeProperties."
-      }
-    }
+    "$type": "StringLiteralType",
+    "value": "azure.com.keyvault"
   },
   {
     "$type": "ObjectType",
@@ -4223,17 +3956,17 @@
       },
       "encoding": {
         "type": {
-          "$ref": "#/342"
+          "$ref": "#/320"
         },
         "flags": 0,
         "description": "Encoding format. Default utf-8"
       },
       "format": {
         "type": {
-          "$ref": "#/345"
+          "$ref": "#/323"
         },
         "flags": 0,
-        "description": "Represents certificate formats"
+        "description": "Certificate format. Default pem"
       },
       "name": {
         "type": {
@@ -4244,10 +3977,10 @@
       },
       "certType": {
         "type": {
-          "$ref": "#/349"
+          "$ref": "#/327"
         },
         "flags": 0,
-        "description": "Represents certificate types"
+        "description": "Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate"
       },
       "version": {
         "type": {
@@ -4274,13 +4007,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/339"
+        "$ref": "#/317"
       },
       {
-        "$ref": "#/340"
+        "$ref": "#/318"
       },
       {
-        "$ref": "#/341"
+        "$ref": "#/319"
       }
     ]
   },
@@ -4296,10 +4029,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/343"
+        "$ref": "#/321"
       },
       {
-        "$ref": "#/344"
+        "$ref": "#/322"
       }
     ]
   },
@@ -4319,22 +4052,22 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/346"
+        "$ref": "#/324"
       },
       {
-        "$ref": "#/347"
+        "$ref": "#/325"
       },
       {
-        "$ref": "#/348"
+        "$ref": "#/326"
       }
     ]
   },
   {
     "$type": "ObjectType",
-    "name": "AzureKeyVaultVolumePropertiesCertificates",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/338"
+      "$ref": "#/316"
     }
   },
   {
@@ -4366,10 +4099,10 @@
   },
   {
     "$type": "ObjectType",
-    "name": "AzureKeyVaultVolumePropertiesKeys",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/351"
+      "$ref": "#/329"
     }
   },
   {
@@ -4385,7 +4118,7 @@
       },
       "encoding": {
         "type": {
-          "$ref": "#/357"
+          "$ref": "#/335"
         },
         "flags": 0,
         "description": "Encoding format. Default utf-8"
@@ -4422,8 +4155,261 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/354"
+        "$ref": "#/332"
       },
+      {
+        "$ref": "#/333"
+      },
+      {
+        "$ref": "#/334"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/331"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "AzureKeyVaultVolumeProperties",
+    "properties": {
+      "kind": {
+        "type": {
+          "$ref": "#/315"
+        },
+        "flags": 1,
+        "description": "The Azure Key Vault Volume kind"
+      },
+      "certificates": {
+        "type": {
+          "$ref": "#/328"
+        },
+        "flags": 0,
+        "description": "The KeyVault certificates that this volume exposes"
+      },
+      "keys": {
+        "type": {
+          "$ref": "#/330"
+        },
+        "flags": 0,
+        "description": "The KeyVault keys that this volume exposes"
+      },
+      "resource": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The ID of the keyvault to use for this volume resource"
+      },
+      "secrets": {
+        "type": {
+          "$ref": "#/336"
+        },
+        "flags": 0,
+        "description": "The KeyVault secrets that this volume exposes"
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Applications.Core/volumes",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/303"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/304"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/305"
+        },
+        "flags": 1,
+        "description": "The resource-specific properties for this resource."
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/338"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/86"
+        },
+        "flags": 2,
+        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
+      }
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "name": "Applications.Core/volumes@2023-10-01-preview",
+    "body": {
+      "$ref": "#/339"
+    },
+    "readableScopes": 0,
+    "writableScopes": 0,
+    "functions": {}
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Applications.Core/extenders"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2023-10-01-preview"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Creating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/343"
+      },
+      {
+        "$ref": "#/344"
+      },
+      {
+        "$ref": "#/345"
+      },
+      {
+        "$ref": "#/346"
+      },
+      {
+        "$ref": "#/347"
+      },
+      {
+        "$ref": "#/348"
+      },
+      {
+        "$ref": "#/349"
+      },
+      {
+        "$ref": "#/350"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/30"
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Recipe",
+    "properties": {
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "The name of the recipe within the environment to use"
+      },
+      "parameters": {
+        "type": {
+          "$ref": "#/354"
+        },
+        "flags": 0,
+        "description": "Key/value parameters to pass into the recipe at deployment"
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/30"
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "recipe"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "manual"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
       {
         "$ref": "#/355"
       },
@@ -4434,32 +4420,293 @@
   },
   {
     "$type": "ObjectType",
-    "name": "AzureKeyVaultVolumePropertiesSecrets",
-    "properties": {},
-    "additionalProperties": {
-      "$ref": "#/353"
+    "name": "ExtenderProperties",
+    "properties": {
+      "environment": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 1,
+        "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+      },
+      "application": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/367"
+        },
+        "flags": 2,
+        "description": "The status of the asynchronous operation."
+      },
+      "status": {
+        "type": {
+          "$ref": "#/114"
+        },
+        "flags": 2,
+        "description": "Status of a resource."
+      },
+      "secrets": {
+        "type": {
+          "$ref": "#/368"
+        },
+        "flags": 0,
+        "description": "The secrets for referenced resource"
+      },
+      "recipe": {
+        "type": {
+          "$ref": "#/353"
+        },
+        "flags": 0,
+        "description": "The recipe used to automatically deploy underlying infrastructure for the extender portable resource"
+      },
+      "resourceProvisioning": {
+        "type": {
+          "$ref": "#/371"
+        },
+        "flags": 0,
+        "description": "Specifies how the underlying service/resource is provisioned and managed."
+      }
     }
   },
   {
     "$type": "StringLiteralType",
-    "value": "azure.com.keyvault"
+    "value": "Creating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Updating"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Deleting"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Accepted"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Provisioning"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Succeeded"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Failed"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Canceled"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/359"
+      },
+      {
+        "$ref": "#/360"
+      },
+      {
+        "$ref": "#/361"
+      },
+      {
+        "$ref": "#/362"
+      },
+      {
+        "$ref": "#/363"
+      },
+      {
+        "$ref": "#/364"
+      },
+      {
+        "$ref": "#/365"
+      },
+      {
+        "$ref": "#/366"
+      }
+    ]
   },
   {
     "$type": "ObjectType",
-    "name": "TrackedResourceTags",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/30"
+    }
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "recipe"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "manual"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/369"
+      },
+      {
+        "$ref": "#/370"
+      }
+    ]
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Record",
     "properties": {},
     "additionalProperties": {
       "$ref": "#/0"
     }
   },
   {
+    "$type": "ObjectType",
+    "name": "Applications.Core/extenders",
+    "properties": {
+      "id": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 10,
+        "description": "The resource id"
+      },
+      "name": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 25,
+        "description": "The resource name"
+      },
+      "type": {
+        "type": {
+          "$ref": "#/341"
+        },
+        "flags": 10,
+        "description": "The resource type"
+      },
+      "apiVersion": {
+        "type": {
+          "$ref": "#/342"
+        },
+        "flags": 10,
+        "description": "The resource api version"
+      },
+      "environment": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Fully qualified resource ID for the environment that the portable resource is linked to"
+      },
+      "application": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 2,
+        "description": "Fully qualified resource ID for the application that the portable resource is consumed by (if applicable)"
+      },
+      "provisioningState": {
+        "type": {
+          "$ref": "#/351"
+        },
+        "flags": 2,
+        "description": "The status of the asynchronous operation."
+      },
+      "status": {
+        "type": {
+          "$ref": "#/114"
+        },
+        "flags": 2,
+        "description": "Status of a resource."
+      },
+      "secrets": {
+        "type": {
+          "$ref": "#/352"
+        },
+        "flags": 2,
+        "description": "The secrets for referenced resource"
+      },
+      "recipe": {
+        "type": {
+          "$ref": "#/353"
+        },
+        "flags": 2,
+        "description": "The recipe used to automatically deploy underlying infrastructure for the extender portable resource"
+      },
+      "resourceProvisioning": {
+        "type": {
+          "$ref": "#/357"
+        },
+        "flags": 2,
+        "description": "Specifies how the underlying service/resource is provisioned and managed."
+      },
+      "properties": {
+        "type": {
+          "$ref": "#/358"
+        },
+        "flags": 1,
+        "description": "The resource-specific properties for this resource."
+      },
+      "tags": {
+        "type": {
+          "$ref": "#/372"
+        },
+        "flags": 0,
+        "description": "Resource tags."
+      },
+      "location": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "The geo-location where the resource lives"
+      },
+      "systemData": {
+        "type": {
+          "$ref": "#/86"
+        },
+        "flags": 2,
+        "description": "Azure Resource Manager metadata containing createdBy and modifiedBy information."
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "name": "ExtenderListSecretResponse",
+    "properties": {}
+  },
+  {
+    "$type": "FunctionType",
+    "parameters": [],
+    "output": {
+      "$ref": "#/374"
+    }
+  },
+  {
     "$type": "ResourceType",
-    "name": "Applications.Core/volumes@2023-10-01-preview",
+    "name": "Applications.Core/extenders@2023-10-01-preview",
     "body": {
-      "$ref": "#/326"
+      "$ref": "#/373"
     },
     "readableScopes": 0,
     "writableScopes": 0,
-    "functions": {}
+    "functions": {
+      "listSecrets": {
+        "type": {
+          "$ref": "#/375"
+        },
+        "description": "listSecrets"
+      }
+    }
   }
 ]
