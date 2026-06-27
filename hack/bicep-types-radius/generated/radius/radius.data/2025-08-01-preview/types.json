@@ -6,6 +6,43 @@
     "$type": "StringType"
   },
   {
+    "$type": "BooleanType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "connectionsAdditionalProperties",
+    "properties": {
+      "disableDefaultEnvVars": {
+        "description": "Disables the automatic injection of environment variables from the connected resource's properties.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/2"
+        }
+      },
+      "source": {
+        "description": "Resource ID of the source resource for this connection.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/3"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "additionalProperties": {
+      "$ref": "#/4"
+    },
+    "name": "connections",
+    "properties": {}
+  },
+  {
+    "$type": "StringType"
+  },
+  {
     "$type": "StringType"
   },
   {
@@ -33,13 +70,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/6"
+        "$ref": "#/11"
       },
       {
-        "$ref": "#/7"
+        "$ref": "#/12"
       },
       {
-        "$ref": "#/8"
+        "$ref": "#/13"
       }
     ]
   },
@@ -54,46 +91,60 @@
           "$ref": "#/0"
         }
       },
+      "codeReference": {
+        "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
+        "flags": 0,
+        "type": {
+          "$ref": "#/1"
+        }
+      },
+      "connections": {
+        "description": "Map of connection name to connection data.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/5"
+        }
+      },
       "database": {
         "description": "(Optional) The name of the database. Defaults to `mysql_db` if not provided.",
         "flags": 0,
         "type": {
-          "$ref": "#/1"
+          "$ref": "#/6"
         }
       },
       "environment": {
         "description": "(Required) The Radius EnvironmentID. Typically set by the rad CLI. Typically value should be `environment`",
         "flags": 1,
         "type": {
-          "$ref": "#/2"
+          "$ref": "#/7"
         }
       },
       "host": {
         "description": "(Read-only) The host name used to connect to the database.",
         "flags": 2,
         "type": {
-          "$ref": "#/3"
+          "$ref": "#/8"
         }
       },
       "port": {
         "description": "(Read-only) The port number used to connect to the database.",
         "flags": 2,
         "type": {
-          "$ref": "#/4"
+          "$ref": "#/9"
         }
       },
       "secretName": {
         "description": "(Required) The name of the secret containing the database credentials.",
         "flags": 1,
         "type": {
-          "$ref": "#/5"
+          "$ref": "#/10"
         }
       },
       "version": {
         "description": "(Optional) The major MySQL server version in the X.Y format. Assumed to be 8.4 if not specified.",
         "flags": 0,
         "type": {
-          "$ref": "#/9"
+          "$ref": "#/14"
         }
       }
     }
@@ -123,7 +174,7 @@
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/13"
+          "$ref": "#/18"
         }
       },
       "application": {
@@ -133,81 +184,95 @@
           "$ref": "#/0"
         }
       },
+      "codeReference": {
+        "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
+        "flags": 2,
+        "type": {
+          "$ref": "#/1"
+        }
+      },
+      "connections": {
+        "description": "Map of connection name to connection data.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/5"
+        }
+      },
       "database": {
         "description": "(Optional) The name of the database. Defaults to `mysql_db` if not provided.",
         "flags": 2,
         "type": {
-          "$ref": "#/1"
+          "$ref": "#/6"
         }
       },
       "environment": {
         "description": "(Required) The Radius EnvironmentID. Typically set by the rad CLI. Typically value should be `environment`",
         "flags": 2,
         "type": {
-          "$ref": "#/2"
+          "$ref": "#/7"
         }
       },
       "host": {
         "description": "(Read-only) The host name used to connect to the database.",
         "flags": 2,
         "type": {
-          "$ref": "#/3"
+          "$ref": "#/8"
         }
       },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/15"
+          "$ref": "#/20"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/12"
+          "$ref": "#/17"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/11"
+          "$ref": "#/16"
         }
       },
       "port": {
         "description": "(Read-only) The port number used to connect to the database.",
         "flags": 2,
         "type": {
-          "$ref": "#/4"
+          "$ref": "#/9"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/10"
+          "$ref": "#/15"
         }
       },
       "secretName": {
         "description": "(Required) The name of the secret containing the database credentials.",
         "flags": 2,
         "type": {
-          "$ref": "#/5"
+          "$ref": "#/10"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/14"
+          "$ref": "#/19"
         }
       },
       "version": {
         "description": "(Optional) The major MySQL server version in the X.Y format. Assumed to be 8.4 if not specified.",
         "flags": 2,
         "type": {
-          "$ref": "#/9"
+          "$ref": "#/14"
         }
       }
     }
@@ -215,7 +280,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/16"
+      "$ref": "#/21"
     },
     "name": "Radius.Data/mySqlDatabases@2025-08-01-preview",
     "readableScopes": 0,
