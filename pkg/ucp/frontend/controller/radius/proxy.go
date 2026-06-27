@@ -253,7 +253,13 @@ func (p *ProxyController) UpdateTrackedResource(ctx context.Context, downstreamU
 func (p *ProxyController) EnqueueTrackedResourceUpdate(ctx context.Context, id resources.ID, apiVersion string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
-	trackingID := trackedresource.IDFor(id)
+	// Resolve the tracking ID, preferring an existing entry under the current (SHA-256) tracking
+	// ID and falling back to a legacy (SHA-1) entry written by older versions of Radius. This keeps
+	// the SHA-1 -> SHA-256 migration from orphaning existing tracked resources. See issue #8084.
+	trackingID, _, err := trackedresource.ResolveTrackingEntry(ctx, p.DatabaseClient(), id)
+	if err != nil {
+		return err
+	}
 
 	// Create a serviceCtx for the operation that we're going to process on the resource.
 	serviceCtx := *v1.ARMRequestContextFromContext(ctx)
@@ -320,7 +326,7 @@ retry:
 		return nil
 	}
 
-	err := p.StatusManager().QueueAsyncOperation(ctx, &serviceCtx, statusmanager.QueueOperationOptions{OperationTimeout: ProcessOperationTimeout, RetryAfter: ProcessOperationRetryAfter})
+	err = p.StatusManager().QueueAsyncOperation(ctx, &serviceCtx, statusmanager.QueueOperationOptions{OperationTimeout: ProcessOperationTimeout, RetryAfter: ProcessOperationRetryAfter})
 	if err != nil {
 		return err
 	}

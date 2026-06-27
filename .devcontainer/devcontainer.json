@@ -17,7 +17,7 @@
       "minikube": "none",
       "helm": "4.2.2"
     },
-    "ghcr.io/devcontainers/features/docker-in-docker:3.1.0": {
+    "ghcr.io/devcontainers/features/docker-in-docker:4.0.0": {
       "version": "latest",
       "moby": true
     },

@@ -1,36 +1,36 @@
 {
   "resources": {
+    "Applications.Core/environments@2023-10-01-preview": {
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/101"
+    },
     "Applications.Core/applications@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/72"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/143"
     },
     "Applications.Core/containers@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/164"
-    },
-    "Applications.Core/environments@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/218"
-    },
-    "Applications.Core/extenders@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/254"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/233"
     },
     "Applications.Core/gateways@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/287"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/266"
     },
     "Applications.Core/secretStores@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/323"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/302"
     },
     "Applications.Core/volumes@2023-10-01-preview": {
-      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/361"
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/340"
     },
-    "Applications.Dapr/configurationStores@2023-10-01-preview": {
-      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/56"
-    },
-    "Applications.Dapr/pubSubBrokers@2023-10-01-preview": {
-      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/76"
+    "Applications.Core/extenders@2023-10-01-preview": {
+      "$ref": "applications/applications.core/2023-10-01-preview/types.json#/376"
     },
     "Applications.Dapr/secretStores@2023-10-01-preview": {
-      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/95"
+      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/53"
     },
     "Applications.Dapr/stateStores@2023-10-01-preview": {
+      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/75"
+    },
+    "Applications.Dapr/pubSubBrokers@2023-10-01-preview": {
+      "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/95"
+    },
+    "Applications.Dapr/configurationStores@2023-10-01-preview": {
       "$ref": "applications/applications.dapr/2023-10-01-preview/types.json#/115"
     },
     "Applications.Datastores/mongoDatabases@2023-10-01-preview": {
@@ -55,19 +55,19 @@
       "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/193"
     },
     "Radius.Core/applications@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/53"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/66"
     },
     "Radius.Core/bicepConfigs@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/86"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/99"
     },
     "Radius.Core/environments@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/121"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/133"
     },
     "Radius.Core/recipePacks@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/155"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/167"
     },
     "Radius.Core/terraformConfigs@2025-08-01-preview": {
-      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/193"
+      "$ref": "radius/radius.core/2025-08-01-preview/types.json#/205"
     },
     "Radius.Data/mySqlDatabases@2025-08-01-preview": {
       "$ref": "radius/radius.data/2025-08-01-preview/types.json#/17"
