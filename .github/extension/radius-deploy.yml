@@ -14,18 +14,18 @@ on:
         description: 'Container image for the application'
         required: false
         default: ''
-      radius_commands:
-        # Optional override of the default `rad deploy`. A single rad CLI command
-        # string, or a JSON-encoded array of command strings run in order, with the
-        # `rad` prefix omitted (e.g. `deploy .radius/app.bicep --environment dev` or
-        # `["deploy .radius/app.bicep --environment dev", "app graph"]`). Commands run
-        # verbatim, so the caller must include any flags a command needs — e.g.
-        # `--environment <name>` for `deploy`, and `--parameters` (image, password,
-        # etc.) the app expects. When empty, the workflow runs its default
-        # `rad deploy` of `.radius/app.bicep` with the image/password parameters
-        # wired up below. This is the Investment 3 dispatch contract that lets a
-        # frontend drive arbitrary rad commands.
-        description: 'Optional rad CLI command string, or JSON array of command strings (rad prefix omitted, run verbatim — include --environment and --parameters as needed). Overrides the default deploy.'
+      rad_commands:
+        # The Repo Radius dispatch contract. A single rad CLI command string, or a
+        # JSON-encoded array of command strings run in order, with the `rad` prefix
+        # omitted (e.g. `deploy .radius/app.bicep --environment dev` or
+        # `["deploy .radius/app.bicep --environment dev", "app graph my-app -o json"]`).
+        # Commands run verbatim, so the caller must include any flags a command needs —
+        # e.g. `--environment <name>` for `deploy`, and `--parameters` (image, password,
+        # etc.) the app expects. Each command is validated against the allowed-command
+        # set before anything runs. When empty, the workflow runs its default
+        # `rad deploy` of `.radius/app.bicep` with the image/password parameters wired
+        # up below.
+        description: 'rad CLI command string, or JSON array of command strings (rad prefix omitted, run verbatim). Overrides the default deploy.'
         required: false
         default: ''
 
@@ -546,85 +546,153 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
           echo "✅ Registry credentials secret 'ghcr-registry-creds' created in namespace '$APP_NS'."
 
-      - name: Deploy application
+      - name: Run rad commands
         env:
           # Pass caller input through the environment to avoid command injection.
-          RADIUS_COMMANDS: ${{ inputs.radius_commands }}
+          RAD_COMMANDS: ${{ inputs.rad_commands }}
         run: |
-          # pipefail so a failed `rad` whose output is piped through `tee` fails the
-          # step (otherwise the pipeline status is tee's, which is usually 0).
+          # pipefail so a failed `rad` whose output is piped through `tee` is detected
+          # via PIPESTATUS rather than masked by tee's exit code.
           set -o pipefail
           mkdir -p /tmp/radius-output
+          RESULT_FILE=/tmp/radius-output/rad-commands-result.json
 
           # Ensure the radiusCompute extension is imported for Radius.Compute/containerImages.
           # Without it, the Bicep compiler routes Radius.Compute types to Azure ARM instead of UCP.
-          if ! grep -q 'extension radiusCompute' "$APP_FILE"; then
+          if ! grep -q 'extension radiusCompute' "$APP_FILE" 2>/dev/null; then
             echo "Injecting 'extension radiusCompute' into $APP_FILE"
-            sed -i '/^extension radius$/a extension radiusCompute' "$APP_FILE"
+            sed -i '/^extension radius$/a extension radiusCompute' "$APP_FILE" 2>/dev/null || true
           fi
-          echo "Bicep extensions in $APP_FILE:"
-          grep '^extension ' "$APP_FILE" || true
 
-          # Make the DB password available to commands that reference it. In the
-          # default-deploy path below it is passed as `--parameters password=...`.
-          # In the radius_commands path commands run verbatim, so a caller whose
-          # command needs the password must pass it themselves (it is exported here
-          # so the command can reference $RADIUS_DB_PASSWORD without re-fetching the
-          # secret).
+          # Aggregate result accumulators. The result is written by a trap on EXIT so
+          # the combined `rad-commands-result` artifact is complete even when a command
+          # fails and the step exits early.
+          COMMANDS_JSON='[]'
+          OVERALL_OUTCOME="succeeded"
+          OVERALL_EXIT=0
+          REQUESTED=0
+          RAN=0
+
+          write_result() {
+            jq -n \
+              --arg outcome "$OVERALL_OUTCOME" \
+              --argjson exitCode "$OVERALL_EXIT" \
+              --arg environment "$ENVIRONMENT" \
+              --argjson requested "$REQUESTED" \
+              --argjson ran "$RAN" \
+              --argjson commands "$COMMANDS_JSON" \
+              '{schemaVersion:"1.0", outcome:$outcome, exitCode:$exitCode, environment:$environment, commandsRequested:$requested, commandsRan:$ran, commands:$commands}' \
+              > "$RESULT_FILE"
+          }
+          trap write_result EXIT
+
+          # Allowed-command set. Each command's leading verb must be in this list, so
+          # commands that do not fit the ephemeral, per-run model — managing or
+          # upgrading a control plane, switching workspaces, or changing install state —
+          # cannot run. Validation happens before any command runs, so a disallowed
+          # command fails fast (exit 2) without deploying anything.
+          ALLOWED_VERBS="deploy app resource env recipe group credential resource-type version bicep"
+          is_allowed() {
+            local verb="${1%% *}"
+            case " $ALLOWED_VERBS " in *" $verb "*) return 0 ;; *) return 1 ;; esac
+          }
+
+          # Record one command's result into the combined artifact. Keeps live console
+          # output via tee while capturing it for the artifact.
+          record() {
+            local index="$1"; shift
+            local display="$1"; shift
+            local outfile code
+            outfile=$(mktemp)
+            echo "::group::rad $display"
+            "$@" 2>&1 | tee "$outfile"
+            code=${PIPESTATUS[0]}
+            echo "::endgroup::"
+            RAN=$((RAN + 1))
+            COMMANDS_JSON=$(jq \
+              --argjson index "$index" \
+              --arg cmd "$display" \
+              --argjson code "$code" \
+              --arg outcome "$([ "$code" -eq 0 ] && echo succeeded || echo failed)" \
+              --rawfile out "$outfile" \
+              '. + [{index:$index, command:$cmd, outcome:$outcome, exitCode:$code, output:$out}]' \
+              <<<"$COMMANDS_JSON")
+            rm -f "$outfile"
+            return "$code"
+          }
+
           export RADIUS_DB_PASSWORD="${{ secrets.RADIUS_DB_PASSWORD }}"
 
-          if [ -n "${RADIUS_COMMANDS//[[:space:]]/}" ]; then
-            # Caller supplied commands: a single rad command string, or a JSON array
-            # of command strings, run in order with the `rad` prefix omitted. Each
-            # command's output is captured as an artifact for incremental polling;
-            # stop on the first failure.
-            if printf '%s' "$RADIUS_COMMANDS" | jq -e 'type == "array"' >/dev/null 2>&1; then
-              mapfile -t COMMANDS < <(printf '%s' "$RADIUS_COMMANDS" | jq -r '.[]')
+          if [ -n "${RAD_COMMANDS//[[:space:]]/}" ]; then
+            # Caller-supplied commands: a single command string or a JSON array, run in
+            # order with the `rad` prefix omitted.
+            if printf '%s' "$RAD_COMMANDS" | jq -e 'type == "array"' >/dev/null 2>&1; then
+              mapfile -t COMMANDS < <(printf '%s' "$RAD_COMMANDS" | jq -r '.[]')
             else
-              COMMANDS=("$RADIUS_COMMANDS")
+              COMMANDS=("$RAD_COMMANDS")
             fi
-            i=0
+
+            # Drop blank entries and validate every command before running any of them.
+            CLEAN=()
             for cmd in "${COMMANDS[@]}"; do
-              i=$((i + 1))
-              if [ -z "${cmd//[[:space:]]/}" ]; then
-                continue
+              [ -z "${cmd//[[:space:]]/}" ] && continue
+              CLEAN+=("$cmd")
+            done
+            REQUESTED=${#CLEAN[@]}
+
+            for cmd in "${CLEAN[@]}"; do
+              if ! is_allowed "$cmd"; then
+                OVERALL_OUTCOME="disallowed_command"
+                OVERALL_EXIT=2
+                COMMANDS_JSON=$(jq --arg cmd "$cmd" \
+                  '. + [{command:$cmd, outcome:"disallowed", exitCode:2, errorMessage:"Command leading verb is not in the allowed-command set."}]' \
+                  <<<"$COMMANDS_JSON")
+                echo "Disallowed command: rad $cmd" >&2
+                exit 2
               fi
-              OUT="/tmp/radius-output/$(printf '%02d' "$i")-output.txt"
-              echo "::group::rad $cmd"
-              if ! rad $cmd 2>&1 | tee "$OUT"; then
-                echo "::endgroup::"
+            done
+
+            idx=0
+            for cmd in "${CLEAN[@]}"; do
+              # Intentional word-split: the command string carries its own args.
+              # shellcheck disable=SC2086
+              if ! record "$idx" "$cmd" rad $cmd; then
+                OVERALL_OUTCOME="command_failed"
+                OVERALL_EXIT=1
                 echo "Command failed: rad $cmd" >&2
                 exit 1
               fi
-              echo "::endgroup::"
+              idx=$((idx + 1))
             done
             echo "✅ Radius commands complete."
           else
-            # Default behavior: deploy the app bicep with the image (and optional
-            # password) parameters.
-            echo "Deploying $APP_FILE to environment $ENVIRONMENT..."
+            # Default behavior: deploy the app bicep. Build the parameters as an array
+            # so a password with special characters is not mangled by the shell.
+            REQUESTED=1
             DEPLOY_PARAMS=()
             if [ -n "$APP_IMAGE" ]; then
               DEPLOY_PARAMS+=(--parameters "image=$APP_IMAGE")
             fi
-            # Pass the DB password via env var to avoid shell expansion/mangling
-            # of special characters (#, $, &, etc.) on the rad deploy command line.
             if [ -n "$RADIUS_DB_PASSWORD" ]; then
               DEPLOY_PARAMS+=(--parameters "password=$RADIUS_DB_PASSWORD")
             fi
-            if ! rad deploy "$APP_FILE" --environment "$ENVIRONMENT" "${DEPLOY_PARAMS[@]}" 2>&1 | tee /tmp/radius-output/01-deploy.txt; then
+            # The recorded command string omits the password parameter so it is not
+            # written into the result artifact.
+            if ! record 0 "deploy $APP_FILE --environment $ENVIRONMENT" \
+                rad deploy "$APP_FILE" --environment "$ENVIRONMENT" "${DEPLOY_PARAMS[@]}"; then
+              OVERALL_OUTCOME="command_failed"
+              OVERALL_EXIT=1
               echo "Deployment failed" >&2
               exit 1
             fi
-            echo ""
             echo "✅ Deployment complete."
           fi
 
-      - name: Upload command output
+      - name: Upload command result
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: radius-output
+          name: rad-commands-result
           path: /tmp/radius-output/
           retention-days: 1
 
