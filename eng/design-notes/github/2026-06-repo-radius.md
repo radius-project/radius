@@ -28,7 +28,6 @@ Repo Radius is a rethinking of how to deliver Radius to developers. Repo Radius 
 * Customizing the recipe pack is deferred to a later date. The initial release uses the default AWS and Azure recipe pack that ships with Radius.
 * Creating mature, production-grade recipe packs for AWS and Azure. Repo Radius depends on the default recipe pack that ships with Radius; hardening and expanding that recipe pack is separate work outside the scope of Repo Radius.
 
-
 ## User profile and challenges
 
 ### User persona(s)
@@ -74,13 +73,9 @@ The developer asks to delete their application. Repo Radius loads the persisted 
 
 The developer asks to see the application graph for a deployed application including the resources it comprises, their IDs, and the connections between them. Repo Radius loads the persisted state and returns the JSON of the deployed application graph view without deploying or modifying any resources.
 
-### Scenario 7: Run a `rad` CLI command
+### Scenario 7: Use an updated version of Repo Radius
 
-The developer (or the frontend on their behalf) needs an operation that does not have a dedicated action, such as listing resources or showing application details. Repo Radius runs the requested `rad` CLI command against the persisted state and returns its output.
-
-### Scenario 8: Use an updated version of Repo Radius
-
-Repo Radius is published as a set of versioned GitHub Actions (e.g., `radius-project/deploy@v1`). The developer (or the frontend on their behalf) references a major version tag such as `@v1` to receive backward-compatible updates automatically, and moves to the next major tag for breaking changes (`@v1`, `@v2` is the standard GitHub Actions semantic versioning convention). Because there is no persistent control plane, the developer never performs a manual upgrade; the next deployment simply runs the referenced version.
+Repo Radius is published as a set of versioned GitHub Actions (e.g., `radius-project/run-rad-commands@v1`). The developer (or the frontend on their behalf) references a major version tag such as `@v1` to receive backward-compatible updates automatically, and moves to the next major tag for breaking changes (`@v1`, `@v2` is the standard GitHub Actions semantic versioning convention). Because there is no persistent control plane, the developer never performs a manual upgrade; the next deployment simply runs the referenced version.
 
 ## Key dependencies and risks
 
@@ -110,17 +105,14 @@ After Repo Radius is implemented, a frontend can offer developers a complete dep
 
 #### Step 1: Enable Repo Radius for the repository
 
-A workflow file in the repository's `.github/workflows/` directory is required for GitHub Actions to run; an action cannot be invoked without one. The frontend therefore writes one or more lightweight workflows to the repository on the user's behalf. These workflows are intentionally thin: they contain no Repo Radius logic and simply invoke the published Repo Radius GitHub Actions. All implementation detail lives within the published actions, so a committed workflow only needs to change when the repository adopts a new major version of an action (see Scenario 8).
+A workflow file in the repository's `.github/workflows/` directory is required for GitHub Actions to run; an action cannot be invoked without one. The frontend therefore writes the two lightweight workflows to the repository on the user's behalf: one to verify cloud authentication and one to run `rad` commands. These workflows are intentionally thin: they contain no Repo Radius logic and simply invoke the published Repo Radius GitHub Actions. All implementation detail lives within the published actions, so a committed workflow only needs to change when the repository adopts a new major version of an action (see Scenario 7).
 
 Repo Radius is published as the following GitHub Actions, each pinned to a matching major version (e.g., `@v1`):
 
 | Workflow | Action | Purpose |
 | --- | --- | --- |
 | `radius-verify-cloud-auth.yml` | `radius-project/verify-cloud-auth` | Verify that the GitHub Environment's OIDC configuration can authenticate to the cloud provider before attempting a deployment. |
-| `radius-deploy.yml` | `radius-project/deploy` | Deploy or update an application to the environment. |
-| `radius-destroy.yml` | `radius-project/destroy` | Delete an application and its associated cloud resources from the environment. |
-| `radius-app-graph.yml` | `radius-project/app-graph` | Retrieve the application graph, including the resources an application comprises and the connections between them. This is a read-only operation. |
-| `radius-run-rad-command.yml` | `radius-project/run-rad-command` | Execute arbitrary `rad` CLI commands. This is the general-purpose primitive for any operation that does not have a dedicated action. |
+| `radius-run-rad-commands.yml` | `radius-project/run-rad-commands` | Run one or more `rad` CLI commands against the environment. This single action performs every Radius operation (deploying, updating, deleting, and reading) by running the corresponding `rad` commands. |
 
 #### Step 2: Environment setup
 
@@ -195,27 +187,30 @@ The result artifact is uploaded under a well-known, stable artifact name (for ex
 
 ### Scenario 3-4: Deploy a new or updated application
 
-The frontend deploys an application by dispatching the `radius-deploy.yml` workflow (which invokes the `radius-project/deploy` action) for the target GitHub Environment. The workflow accepts the following inputs:
+The frontend deploys (or updates) an application by dispatching the `radius-run-rad-commands.yml` workflow (which invokes the `radius-project/run-rad-commands` action) for the target GitHub Environment. Deployment is expressed as a `rad deploy` command in the `rad_commands` input; an update uses the same command against the same environment, and Radius reconciles the change incrementally from the persisted state. The workflow accepts the following inputs:
 
-| Input | Required | Description |
-| --- | --- | --- |
-| `environment` | Yes | The GitHub Environment name to use as the Radius environment. |
-| `app_definition` | Yes | Path, relative to the repository root, to the application definition (for example, a Bicep file) to deploy. |
+| Input | Value |
+| --- | --- |
+| `environment` | The GitHub Environment name |
+| `rad_commands` | `['deploy .radius/app.bicep', 'app graph my-app -o json']` |
 
-Example dispatch:
+> [!IMPORTANT]
+> Repo Radius does not accept arbitrary `rad` invocations. Each entry in `rad_commands` is validated against an enum of allowed commands so that commands which are not applicable to the ephemeral, per-run model (for example, commands that manage or upgrade a persistent control plane, switch workspaces, or change installation state) cannot run, and so the contract stays narrow and reviewable. Validation happens before the control plane is created or any command runs, so a disallowed command errors out and fails fast without provisioning anything. The specific set of allowed commands is defined in the technical design. The enum is part of the stable contract and is versioned with the action; additional commands may be introduced in backward-compatible releases.
+
+Example dispatch. The frontend deploys the application with `rad deploy`, then captures the resulting application graph with `rad app graph`:
 
 ```json
-POST /repos/{owner}/{repo}/actions/workflows/radius-deploy.yml/dispatches
+POST /repos/{owner}/{repo}/actions/workflows/radius-run-rad-commands.yml/dispatches
 {
   "ref": "main",
   "inputs": {
     "environment": "production",
-    "app_definition": ".radius/app.bicep"
+    "rad_commands": "[\"deploy .radius/app.bicep\", \"app graph my-app -o json\"]"
   }
 }
 ```
 
-The `radius-deploy.yml` workflow contains only one action calling the `radius-project/deploy@v1` GitHub Action which is published to the GitHub Marketplace. The `radius-project/deploy` action performs the following:
+The `radius-run-rad-commands.yml` workflow contains only one action calling the `radius-project/run-rad-commands@v1` GitHub Action which is published to the GitHub Marketplace. The `radius-project/run-rad-commands` action performs the following:
 
 1. **Authenticate with cloud providers**. The workflow uses the GitHub Environment's OIDC variables to authenticate. For Azure, it calls `azure/login` with the client ID, tenant ID, and subscription ID. For AWS, it calls `aws-actions/configure-aws-credentials` with the IAM role ARN and region.
 
@@ -227,7 +222,7 @@ The `radius-deploy.yml` workflow contains only one action calling the `radius-pr
 
 1. **Register the default recipe pack**. The workflow registers the default AWS and Azure recipe pack that ships with Radius to the environment, so the application's resources resolve to recipes without the user having to author or register recipes themselves. Customizing the recipe pack is a future feature; the initial release uses the default recipe pack only.
 
-1. **Execute `rad deploy`**. The workflow runs `rad deploy "${{ inputs.app_definition }}"` then uploads the output as a workflow artifact. The workflow continues even if the deployment fails.
+1. **Execute the `rad` commands**. The workflow runs each command supplied in the `rad_commands` input, in order, prefixing each with `rad`, and captures each command's output. If a command fails, the action stops and does not run the remaining commands.
 
 1. **Persist the Radius data store**. The workflow writes the updated Radius data store back to the configured storage location so that subsequent workflow runs can resume from the current state.
 
@@ -235,74 +230,39 @@ The workflow reports one of the following outcomes:
 
 | Outcome | Meaning | Action Exit Code | Example artifact contents |
 | --- | --- | --- | --- |
-| Deployment succeeded | The deployment succeeded. | 0 | A JSON representation of the application graph similar to the output from `rad app graph -o json`. |
-| Deployment failed | One or more resources failed to deploy. | 1 | The output of `rad deploy` including the error message. |
+| All commands succeeded | Every command ran successfully. | 0 | The `rad-commands-result` artifact whose `commands` array has an entry per command, each with the command and its output (such as the `rad deploy` output and the JSON application graph). |
+| A command failed | A command did not complete successfully; remaining commands are not run. | 1 | The `rad-commands-result` artifact whose last entry is the failed command including its exit code and error output. Entries for commands that did not run are absent. |
+| Disallowed command | One or more commands are not in the allowed-command enum; the request is rejected and no command runs. | 2 | The `rad-commands-result` artifact identifying the disallowed command. |
 
 ### Scenario 5: Delete a deployed application
 
-The frontend deletes an application by dispatching the `radius-destroy.yml` workflow (which invokes the `radius-project/destroy` action) for the target GitHub Environment. The workflow accepts the following inputs:
+The frontend deletes an application by dispatching the same `radius-run-rad-commands.yml` workflow with a `rad app delete` command in the `rad_commands` input. The workflow accepts the same inputs as the deploy scenario:
 
-| Input | Required | Description |
-| --- | --- | --- |
-| `environment` | Yes | The GitHub Environment name to use as the Radius environment. |
-| `application` | Yes | Name of the application to delete. |
+| Input | Value |
+| --- | --- |
+| `environment` | The GitHub Environment name |
+| `rad_commands` | `['app delete my-app --yes']` |
 
-The `radius-destroy.yml` workflow contains only one action calling the `radius-project/destroy@v1` GitHub Action which is published to the GitHub Marketplace. The `radius-project/destroy` action follows the same stages as the `radius-project/deploy` action, except that instead of running `rad deploy` it runs `rad app delete "${{ inputs.application }}" --yes` to delete the application and its associated cloud resources. The updated data store is then persisted so the removal is reflected in subsequent runs.
-
-The workflow reports one of the following outcomes:
-
-| Outcome | Meaning | Action Exit Code | Example artifact contents |
-| --- | --- | --- | --- |
-| Deletion succeeded | The application and its associated cloud resources were deleted. | 0 | The output of `rad app delete` confirming the application was deleted. |
-| Deletion failed | One or more resources failed to delete. | 1 | The output of `rad app delete` including the error message. |
+The action follows the same stages as the deploy scenario, running `rad app delete "<application>" --yes` to delete the application and its associated cloud resources. The updated data store is then persisted so the removal is reflected in subsequent runs. The command's output is included in the single `rad-commands-result` artifact, and the workflow reports the same outcomes described in the deploy scenario.
 
 ### Scenario 6: Retrieve the application graph
 
-The frontend retrieves the application graph for a deployed application by dispatching the `radius-app-graph.yml` workflow (which invokes the `radius-project/app-graph` action) for the target GitHub Environment. This is a read-only operation: it loads the persisted state and returns the deployed application graph without provisioning, modifying, or deleting any resources. The workflow accepts the following inputs:
+The frontend retrieves the application graph for a deployed application by dispatching the same `radius-run-rad-commands.yml` workflow with a `rad app graph` command in the `rad_commands` input. This is a read-only operation: it loads the persisted state and returns the deployed application graph without provisioning, modifying, or deleting any resources, so the data store is unchanged.
 
-| Input | Required | Description |
-| --- | --- | --- |
-| `environment` | Yes | The GitHub Environment name to use as the Radius environment. |
-| `application` | Yes | Name of the application whose graph is retrieved. |
+| Input | Value |
+| --- | --- |
+| `environment` | The GitHub Environment name |
+| `rad_commands` | `['app graph my-app -o json']` |
 
-The `radius-app-graph.yml` workflow contains only one action calling the `radius-project/app-graph@v1` GitHub Action which is published to the GitHub Marketplace. The `radius-project/app-graph` action follows the same stages as the `radius-project/deploy` action, except that instead of running `rad deploy` it runs `rad app graph "${{ inputs.application }}" -o json` and uploads the result. Because the operation only reads data, nothing is created, modified, or deleted, and the data store is unchanged.
+The action runs `rad app graph "<application>" -o json` and writes the result to the single `rad-commands-result` artifact. The workflow reports the same outcomes described in the deploy scenario; on success, the artifact's single entry contains the JSON of the deployed application graph view.
 
-The workflow reports one of the following outcomes:
+### Scenario 7: Use an updated version of Repo Radius
 
-| Outcome | Meaning | Action Exit Code | Example artifact contents |
-| --- | --- | --- | --- |
-| Graph retrieved | The application graph was retrieved successfully. | 0 | The JSON of the deployed application graph view, as produced by `rad app graph -o json`. |
-| Retrieval failed | The application graph could not be retrieved (for example, the application does not exist). | 1 | The output of `rad app graph` including the error message. |
-
-### Scenario 7: Run a `rad` CLI command
-
-Unlike the deploy, destroy, and app-graph scenarios, which use purpose-built actions, this scenario uses `radius-project/run-rad-command`, the catch-all action that can run any `rad` CLI command. Any operation Radius supports but does not have a dedicated action for, such as `rad resource list` or `rad app show`, is performed through the `radius-project/run-rad-command` action.
-
-The frontend dispatches the `radius-run-rad-command.yml` workflow (which invokes the `radius-project/run-rad-command` action) for the target GitHub Environment. The workflow accepts the following inputs:
-
-| Input | Required | Description |
-| --- | --- | --- |
-| `environment` | Yes | The GitHub Environment name to use as the Radius environment. |
-| `rad_commands` | Yes | A single `rad` CLI command string or a JSON-encoded array of strings. Each string is a `rad` CLI command, run in order, with the `rad` prefix omitted (for example, `resource list -o json`). |
-
-The `radius-run-rad-command.yml` workflow contains only one action calling the `radius-project/run-rad-command@v1` GitHub Action which is published to the GitHub Marketplace. The `radius-project/run-rad-command` action follows the same stages as the `radius-project/deploy` action, except that instead of running `rad deploy` it runs each command supplied in the `rad_commands` input. When the commands only read data, nothing is created, modified, or deleted, and the data store is unchanged; commands that change state persist the data store as usual.
-
-Each command produces its own artifact, named by its zero-based position in the `rad_commands` array: `rad-command-0`, `rad-command-1`, and so on. The frontend correlates each artifact to the command at the same index. Commands run in order, and each command's artifact is uploaded as soon as that command completes, so the frontend can retrieve results incrementally while later commands are still running. If a command fails, the action stops and does not run the remaining commands; only the artifacts for the commands that ran are produced.
-
-The workflow reports one of the following outcomes. The overall workflow run concludes as success only if every command succeeded; if any command fails, the run concludes as failure.
-
-| Outcome | Meaning | Action Exit Code | Example artifact contents |
-| --- | --- | --- | --- |
-| Command succeeded | The command ran successfully. | 0 | Per command, an artifact named `rad-command-<index>` containing the command's output, such as the JSON resource list from `rad resource list -o json`. |
-| Command failed | A command did not complete successfully; remaining commands are not run. | 1 | The `rad-command-<index>` artifact for the failed command containing its output including the error message. |
-
-### Scenario 8: Use an updated version of Repo Radius
-
-The five Repo Radius actions are versioned independently and published to the GitHub Marketplace. The lightweight workflows committed to the user's repository reference each action by its major version tag (for example, `radius-project/deploy@v1`), so every dispatch automatically picks up the latest backward-compatible release of that major version without the user changing anything.
+The two Repo Radius actions are versioned independently and published to the GitHub Marketplace. The lightweight workflows committed to the user's repository reference each action by its major version tag (for example, `radius-project/run-rad-commands@v1`), so every dispatch automatically picks up the latest backward-compatible release of that major version without the user changing anything.
 
 The `@v1` actions are expected to be long-lasting. Bug fixes and backward-compatible enhancements ship as new `v1.x` releases under the same `@v1` tag, so the user receives them transparently on the next workflow run. Because there is no persistent control plane, there is nothing for the user to upgrade, monitor, or migrate between releases.
 
-When a change would break the established contract (for example, the workflow inputs, the result artifact names, or the JSON schema), a new major version of the affected action is published (`@v2`). The existing `@v1` action continues to work unchanged, so existing repositories are unaffected until they opt in. To adopt the new version, the frontend updates the workflow in the repository to reference the new major tag (for example, `radius-project/deploy@v2`). This is the only situation in which a committed workflow needs to change.
+When a change would break the established contract (for example, the workflow inputs, the allowed-command set, the result artifact names, or the JSON schema), a new major version of the affected action is published (`@v2`). The existing `@v1` action continues to work unchanged, so existing repositories are unaffected until they opt in. To adopt the new version, the frontend updates the workflow in the repository to reference the new major tag (for example, `radius-project/run-rad-commands@v2`). This is the only situation in which a committed workflow needs to change.
 
 ## Key investments
 
@@ -316,11 +276,11 @@ Move the Radius data store out of the in-cluster database so that state persists
 
 ### Investment 3: Repo Radius GitHub Actions with a stable contract
 
-Build and publish the five Repo Radius actions (`verify-cloud-auth`, `deploy`, `destroy`, `app-graph`, and `run-rad-command`), each versioned by major tag. Define and maintain a stable, well-documented contract: the action inputs, the workflow run conclusion signal, and result artifacts published under well-known names with a versioned JSON schema. This contract lets any frontend drive Repo Radius without coupling to its internals and must remain backward-compatible within a major version.
+Build and publish the two Repo Radius actions (`verify-cloud-auth` and `run-rad-commands`), each versioned by major tag. Define and maintain a stable, well-documented contract: the action inputs, the workflow run conclusion signal, and result artifacts published under well-known names with a versioned JSON schema. This contract lets any frontend drive Repo Radius without coupling to its internals and must remain backward-compatible within a major version.
 
 ### Investment 4: Lightweight workflows for each action
 
-Provide the thin, ready-to-commit workflow file that pairs with each action (`radius-verify-cloud-auth.yml`, `radius-deploy.yml`, `radius-destroy.yml`, `radius-app-graph.yml`, and `radius-run-rad-command.yml`). Each workflow declares its inputs and invokes only the corresponding action at its major version tag, with no Repo Radius logic of its own. The frontend writes these workflows into the user's repository so that GitHub Actions has a dispatchable entry point for each operation, and because the workflows contain no logic they only need to change when the referenced major version is updated.
+Provide the thin, ready-to-commit workflow file that pairs with each action (`radius-verify-cloud-auth.yml` and `radius-run-rad-commands.yml`). Each workflow declares its inputs and invokes only the corresponding action at its major version tag, with no Repo Radius logic of its own. The frontend writes these workflows into the user's repository so that GitHub Actions has a dispatchable entry point for each operation, and because the workflows contain no logic they only need to change when the referenced major version is updated.
 
 ### Investment 5: Fast ephemeral control plane startup
 
@@ -329,3 +289,23 @@ Provision the k3d cluster, install the `rad` CLI, and install Radius quickly eno
 ### Investment 6: Cloud credential integration via OIDC
 
 Integrate with GitHub's OIDC federation to provide short-lived AWS and Azure credentials to the Radius control plane without storing long-lived secrets. This includes the per-run authentication steps, injection of session credentials into the Radius pods for Terraform provider access, and the `verify-cloud-auth` preflight check that validates the environment's configuration before the first deployment.
+
+## Alternatives considered
+
+### Multiple operation-specific actions versus a single generic action
+
+We considered publishing a separate action for each operation (for example, `radius-deploy`, `radius-destroy`, `radius-app-graph`) instead of the single `run-rad-commands` action.
+
+* **Multiple operation-specific actions**. Each action exposes a narrow, strongly typed input surface (for example, `radius-deploy` takes an application path; `radius-destroy` takes an application name), so the contract is self-documenting and each action validates only the inputs relevant to it. The drawback is that every new operation requires a new action, a new workflow file committed to the repository, and a new major-version lifecycle to maintain. Composing several operations in one run (deploy, then read the graph) requires multiple workflow dispatches and multiple ephemeral control plane startups, multiplying the per-run startup cost that Investment 5 works to minimize.
+* **Single generic action (recommended)**. One action runs an ordered list of allowed `rad` commands. A single ephemeral control plane is created once per run and reused across all commands, so multi-step flows (deploy, then `app graph`) pay the startup cost once. Adding a new operation usually means allowing a new command in the enum rather than publishing a new action and workflow. The trade-off is a less strongly typed input surface, which is mitigated by validating every command against the allowed-command enum before anything runs.
+
+**Recommendation**: the single generic `run-rad-commands` action. It minimizes per-run startup cost for multi-step flows, keeps the committed workflow count small, and lets new operations ship as backward-compatible additions to the allowed-command enum rather than as new actions. It also reduces the surface area in the user's repository to a single, highly flexible workflow that can accommodate future functionality: only the published action (which lives outside the user's repository) needs to be updated with new allowed commands, so the user's repository does not need to change.
+
+### Per-command result artifacts versus a single combined artifact
+
+We considered uploading a separate result artifact per command instead of one combined `rad-commands-result` artifact.
+
+* **Per-command artifacts**. Each command's output is uploaded as its own artifact (for example, `rad-command-0`, `rad-command-1`), so the frontend can download a single command's output without retrieving the others. The drawback is that the artifact set varies with the number and order of commands, so the frontend must discover artifact names dynamically, correlating outputs back to the requested order is awkward, and a run produces many small artifacts.
+* **Single combined artifact (recommended)**. One `rad-commands-result` artifact contains a `commands` array with an entry per command, in input order, each with the command, exit code, and output. The artifact name is stable and known in advance, the ordering is explicit, and a single download yields the full result of the run.
+
+**Recommendation**: the single combined `rad-commands-result` artifact. A stable, well-known artifact name with an ordered `commands` array is simpler for the frontend to consume and keeps the versioned contract small.
