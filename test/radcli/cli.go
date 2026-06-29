@@ -149,6 +149,7 @@ type ShowOptions struct {
 	Workspace   string // The workspace name
 	Output      string // Output format (json, table, plain-text)
 	Application string // Application name (for resource show)
+	Preview     bool   // Use the preview API surface (--preview)
 }
 
 // DeleteOptions provides configuration for delete commands
@@ -193,6 +194,9 @@ func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string, opt
 		}
 		if opt.Output != "" {
 			args = append(args, "--output", opt.Output)
+		}
+		if opt.Preview {
+			args = append(args, "--preview")
 		}
 	}
 
@@ -335,14 +339,17 @@ func (cli *CLI) ResourceShow(ctx context.Context, resourceType string, resourceN
 	return cli.RunCommand(ctx, args)
 }
 
-// ResourceList runs the "resource list containers" command with the given application name and returns the output as a
-// string, returning an error if the command fails.
-func (cli *CLI) ResourceList(ctx context.Context, applicationName string) (string, error) {
+// ResourceList runs the "resource list <resourceType>" command and returns the output as a string,
+// returning an error if the command fails. When applicationName is non-empty the results are scoped
+// to that application via the "-a" flag.
+func (cli *CLI) ResourceList(ctx context.Context, resourceType string, applicationName string) (string, error) {
 	args := []string{
 		"resource",
 		"list",
-		"Applications.Core/containers",
-		"-a", applicationName,
+		resourceType,
+	}
+	if applicationName != "" {
+		args = append(args, "-a", applicationName)
 	}
 	return cli.RunCommand(ctx, args)
 }
@@ -429,28 +436,36 @@ func (cli *CLI) GroupShow(ctx context.Context, groupName string) (string, error)
 	return cli.RunCommand(ctx, args)
 }
 
-// ResourceLogs runs the CLI command to get the logs of a resource in an application.
-func (cli *CLI) ResourceLogs(ctx context.Context, applicationName string, resourceName string) (string, error) {
+// ResourceLogs runs the CLI command to get the logs of a resource in an application. When preview is
+// true the "--preview" flag is added so the command operates against the preview resource types.
+func (cli *CLI) ResourceLogs(ctx context.Context, resourceType string, applicationName string, resourceName string, preview bool) (string, error) {
 	args := []string{
 		"resource",
 		"logs",
 		"-a", applicationName,
-		"Applications.Core/containers",
+		resourceType,
 		resourceName,
+	}
+	if preview {
+		args = append(args, "--preview")
 	}
 	return cli.RunCommand(ctx, args)
 }
 
-// ResourceExpose runs a command to expose a resource from an application on a given port.
-func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, resourceName string, localPort int, remotePort int) (string, error) {
+// ResourceExpose runs a command to expose a resource from an application on a given port. When preview
+// is true the "--preview" flag is added so the command operates against the preview resource types.
+func (cli *CLI) ResourceExpose(ctx context.Context, resourceType string, applicationName string, resourceName string, localPort int, remotePort int, preview bool) (string, error) {
 	args := []string{
 		"resource",
 		"expose",
 		"-a", applicationName,
-		"Applications.Core/containers",
+		resourceType,
 		resourceName,
 		"--port", fmt.Sprintf("%d", localPort),
 		"--remote-port", fmt.Sprintf("%d", remotePort),
+	}
+	if preview {
+		args = append(args, "--preview")
 	}
 	return cli.RunCommand(ctx, args)
 }
