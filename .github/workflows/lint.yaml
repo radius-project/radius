@@ -24,14 +24,16 @@ on:
     branches:
       - main
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected.
+  merge_group:
+    branches:
+      - main
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
   group: lint-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
-
-env:
-  YQ_VERSION: v4.44.3
 
 permissions: {}
 
@@ -56,7 +58,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -72,43 +74,30 @@ jobs:
         with:
           node-version-file: .node-version
 
-      - name: Install mockgen
-        run: go install go.uber.org/mock/mockgen@v0.4.0
-
-      - name: Install controller-gen
-        run: go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.0
-
       - name: Install yq
         # Required by make generate-bicep-types-contrib to parse defaults.yaml.
-        run: |
-          mkdir -p "${RUNNER_TEMP}/bin"
-          GOBIN="${RUNNER_TEMP}/bin" go install github.com/mikefarah/yq/v4@${{ env.YQ_VERSION }}
-          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+        run: make install-yq
 
       - name: Install helm
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-        with:
-          version: v3.19.4
+        # Version pinned in build/tools.mk (HELM_VERSION).
+        run: make install-helm
 
       - name: Run Helm linter
         run: |
-          helm lint ${{ env.HELM_CHARTS_DIR }}
+          helm lint "${HELM_CHARTS_DIR}"
 
       - name: Run Helm unit tests
-        run: |
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.2 || true
-          cd ${{ env.HELM_CHARTS_DIR }} && helm unittest .
+        run: make test-helm
 
       - name: Run TypeSpec format check
         run: make tsp-format-check
 
+      - name: Install golangci-lint
+        # Pinned version + checksums live in build/tools.mk (GOLANGCI_LINT_VERSION).
+        run: make install-golangci-lint
+
       - name: Run linter
-        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
-        with:
-          version-file: .golangci-lint-version
-          args: --timeout=10m
-          skip-cache: true
-          install-mode: binary
+        run: golangci-lint run --timeout=10m
 
       - name: Run make generate
         run: make generate
@@ -135,7 +124,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 

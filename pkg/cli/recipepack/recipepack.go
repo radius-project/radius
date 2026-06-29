@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/helm"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -40,6 +41,14 @@ const (
 	// DefaultResourceGroupScope is the full scope path for the default resource group.
 	// default recipe pack that Radius provides always live in this scope.
 	DefaultResourceGroupScope = "/planes/radius/local/resourceGroups/" + DefaultResourceGroupName
+
+	// DefaultRoutesGatewayName is the name of the Gateway installed by the default
+	// Radius-managed Contour installation.
+	DefaultRoutesGatewayName = helm.DefaultContourGatewayName
+
+	// DefaultRoutesGatewayNamespace is the namespace of the Gateway installed by
+	// the default Radius-managed Contour installation.
+	DefaultRoutesGatewayNamespace = helm.DefaultContourGatewayNamespace
 )
 
 // ResourceGroupCreator is a function that creates or updates a Radius resource group.
@@ -54,8 +63,9 @@ func NewDefaultRecipePackResource() corerpv20250801.RecipePackResource {
 	recipes := make(map[string]*corerpv20250801.RecipeDefinition)
 	for _, def := range GetCoreTypesRecipeInfo() {
 		recipes[def.ResourceType] = &corerpv20250801.RecipeDefinition{
-			RecipeKind:     &bicepKind,
-			RecipeLocation: to.Ptr(def.RecipeLocation),
+			Kind:       &bicepKind,
+			Source:     to.Ptr(def.Source),
+			Parameters: def.Parameters,
 		}
 	}
 	return corerpv20250801.RecipePackResource{
@@ -91,14 +101,14 @@ func EnsureDefaultResourceGroup(ctx context.Context, createOrUpdate ResourceGrou
 // the default scope. If it doesn't exist (404), it creates it with all core
 // resource type recipes. Returns the full resource ID.
 func GetOrCreateDefaultRecipePack(ctx context.Context, client *corerpv20250801.RecipePacksClient) (string, error) {
-	_, err := client.Get(ctx, DefaultRecipePackResourceName, nil)
+	_, err := client.Get(ctx, DefaultResourceGroupScope, DefaultRecipePackResourceName, nil)
 	if err != nil {
 		if !clients.Is404Error(err) {
 			return "", fmt.Errorf("failed to get default recipe pack from default scope: %w", err)
 		}
 		// Not found — create the default recipe pack with all core types.
 		resource := NewDefaultRecipePackResource()
-		_, err = client.CreateOrUpdate(ctx, DefaultRecipePackResourceName, resource, nil)
+		_, err = client.CreateOrUpdate(ctx, DefaultResourceGroupScope, DefaultRecipePackResourceName, resource, nil)
 		if err != nil {
 			return "", fmt.Errorf("failed to create default recipe pack: %w", err)
 		}
@@ -110,38 +120,45 @@ func GetOrCreateDefaultRecipePack(ctx context.Context, client *corerpv20250801.R
 type CoreTypesRecipeInfo struct {
 	// ResourceType is the full resource type (e.g., "Radius.Compute/containers").
 	ResourceType string
-	// RecipeLocation is the OCI registry location for the recipe.
-	RecipeLocation string
+	// Source is the OCI registry location for the recipe.
+	Source string
+	// Parameters is the optional parameter bag passed to the recipe.
+	Parameters map[string]any
 }
 
 // GetCoreTypesRecipeInfo returns recipe information for all core types.
 // Each definition represents a recipe for one core resource type.
-// The OCI tag is set to the current Radius version channel (e.g., "0.40" or "edge").
+// The OCI tag is set to the full semver release version (e.g., "0.58.0") to match the
+// tags used by the recipes publishing pipeline. For edge/dev builds, "latest" is used.
 func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
-	tag := version.Channel()
+	tag := version.Release()
 	if version.IsEdgeChannel() {
 		tag = "latest"
 	}
 	return []CoreTypesRecipeInfo{
 		{
-			ResourceType:   "Radius.Compute/containers",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/containers:" + tag,
+			ResourceType: "Radius.Compute/containers",
+			Source:       "ghcr.io/radius-project/kube-recipes/containers:" + tag,
 		},
 		{
-			ResourceType:   "Radius.Compute/persistentVolumes",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + tag,
+			ResourceType: "Radius.Compute/persistentVolumes",
+			Source:       "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + tag,
 		},
 		{
-			ResourceType:   "Radius.Compute/routes",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/routes:" + tag,
+			ResourceType: "Radius.Compute/routes",
+			Source:       "ghcr.io/radius-project/kube-recipes/routes:" + tag,
+			Parameters: map[string]any{
+				"gatewayName":      DefaultRoutesGatewayName,
+				"gatewayNamespace": DefaultRoutesGatewayNamespace,
+			},
 		},
 		{
-			ResourceType:   "Radius.Security/secrets",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/secrets:" + tag,
+			ResourceType: "Radius.Security/secrets",
+			Source:       "ghcr.io/radius-project/kube-recipes/secrets:" + tag,
 		},
 		{
-			ResourceType:   "Radius.Data/mySqlDatabases",
-			RecipeLocation: "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + tag,
+			ResourceType: "Radius.Data/mySqlDatabases",
+			Source:       "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + tag,
 		},
 	}
 }

@@ -97,7 +97,7 @@ func Test_Location_DataModelToVersioned(t *testing.T) {
 					Address:           new("https://east.myrp.com"),
 					ResourceTypes: map[string]*LocationResourceType{
 						"testResources": {
-							APIVersions: map[string]map[string]any{
+							APIVersions: map[string]*LocationResourceTypeAPIVersion{
 								"2025-01-01": {},
 							},
 						},

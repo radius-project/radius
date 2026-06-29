@@ -20,12 +20,12 @@ export default async ({ context, core }) => {
       result = onlyChanged;
     } else if (baseSha) {
       core.info(
-        `Base SHA provided (PR-like context) - using filter result: ${onlyChanged}`,
+        `Base SHA provided (PR-like context) - using filter result: ${onlyChanged}`
       );
       result = onlyChanged;
     } else {
       core.info(
-        "Non-PR event without base SHA - skipping filter (all jobs will run)",
+        "Non-PR event without base SHA - skipping filter (all jobs will run)"
       );
       result = "false";
     }
@@ -33,9 +33,9 @@ export default async ({ context, core }) => {
     core.setOutput("only_changed", result);
   } catch (error) {
     const message =
-      error instanceof Error
-        ? error.message
-        : `Unexpected error: ${String(error)}`;
+      error instanceof Error ?
+        error.message
+      : `Unexpected error: ${String(error)}`;
     core.setFailed(message);
   }
 };

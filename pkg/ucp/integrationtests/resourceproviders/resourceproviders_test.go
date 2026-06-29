@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v3"
 )
 
 const (
@@ -166,6 +168,11 @@ func Test_ResourceProvider_RegisterManifests(t *testing.T) {
 // the code path used by resource type manifests copied from
 // resource-types-contrib, which omit location so that UCP routes requests via
 // DefaultDownstreamEndpoint (dynamic-rp).
+//
+// The test directory contains two manifest files (containers.yaml and
+// persistentVolumes.yaml) that share the same namespace (Radius.Compute).
+// This verifies that the initializer correctly merges types from multiple
+// files into the same resource provider and location.
 func Test_ResourceProvider_RegisterManifests_NoLocation(t *testing.T) {
 	server := testhost.Start(t, testhost.TestHostOptionFunc(func(options *ucp.Options) {
 		options.Config.Initialization.ManifestDirectory = "testdata/manifests-no-location"
@@ -176,7 +183,8 @@ func Test_ResourceProvider_RegisterManifests_NoLocation(t *testing.T) {
 
 	noLocationNamespace := "Radius.Compute"
 	noLocationResourceProviderURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + radiusAPIVersion
-	noLocationResourceTypeURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + "/resourcetypes/containers" + radiusAPIVersion
+	noLocationContainersURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + "/resourcetypes/containers" + radiusAPIVersion
+	noLocationPersistentVolumesURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + "/resourcetypes/persistentVolumes" + radiusAPIVersion
 	noLocationLocationURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + noLocationNamespace + "/locations/global" + radiusAPIVersion
 
 	require.EventuallyWithTf(t, func(collect *assert.CollectT) {
@@ -184,9 +192,13 @@ func Test_ResourceProvider_RegisterManifests_NoLocation(t *testing.T) {
 		response := server.MakeRequest(http.MethodGet, noLocationResourceProviderURL, nil)
 		assert.Equal(collect, 200, response.Raw.StatusCode, "resource provider Radius.Compute should be registered")
 
-		// Verify the resource type was registered.
-		response = server.MakeRequest(http.MethodGet, noLocationResourceTypeURL, nil)
+		// Verify both resource types from separate manifest files are registered
+		// under the same namespace.
+		response = server.MakeRequest(http.MethodGet, noLocationContainersURL, nil)
 		assert.Equal(collect, 200, response.Raw.StatusCode, "resource type Radius.Compute/containers should be registered")
+
+		response = server.MakeRequest(http.MethodGet, noLocationPersistentVolumesURL, nil)
+		assert.Equal(collect, 200, response.Raw.StatusCode, "resource type Radius.Compute/persistentVolumes should be registered")
 
 		// Verify the location was created with no address, so UCP uses
 		// DefaultDownstreamEndpoint for routing.
@@ -202,7 +214,91 @@ func Test_ResourceProvider_RegisterManifests_NoLocation(t *testing.T) {
 
 		props, _ := locationBody["properties"].(map[string]any)
 		assert.Nil(collect, props["address"], "location address should be absent for no-location manifests")
+
+		// Verify the location contains both resource types from the two manifest
+		// files. Without the namespace merge fix, the location would only contain
+		// the types from the last file processed (alphabetically).
+		resourceTypes, _ := props["resourceTypes"].(map[string]any)
+		if !assert.Contains(collect, resourceTypes, "containers", "location should contain containers type") {
+			return
+		}
+		if !assert.Contains(collect, resourceTypes, "persistentVolumes", "location should contain persistentVolumes type") {
+			return
+		}
 	}, registerManifestWaitDuration, registerManifestWaitInterval, "no-location manifest registration did not complete in time")
+}
+
+// Test_ResourceProvider_DefaultsRegistered verifies that all resource types
+// listed in deploy/manifest/defaults.yaml are registered after startup when
+// the initializer loads the real manifest files from built-in-providers/dev/.
+//
+// This catches regressions where:
+//   - A manifest file fails to load at startup
+//   - Multiple files sharing a namespace overwrite each other's types
+//   - A type is added to defaults.yaml but its manifest is missing or invalid
+func Test_ResourceProvider_DefaultsRegistered(t *testing.T) {
+	// Read defaults.yaml to get the list of expected resource types.
+	data, err := os.ReadFile("../../../../deploy/manifest/defaults.yaml")
+	require.NoError(t, err, "failed to read defaults.yaml")
+
+	var defaults struct {
+		DefaultRegistration []string `yaml:"defaultRegistration"`
+	}
+	require.NoError(t, yaml.Unmarshal(data, &defaults), "failed to parse defaults.yaml")
+	require.NotEmpty(t, defaults.DefaultRegistration, "defaults.yaml should list at least one resource type")
+
+	// Start the test host with the real manifest directory.
+	server := testhost.Start(t, testhost.TestHostOptionFunc(func(options *ucp.Options) {
+		options.Config.Initialization.ManifestDirectory = "../../../../deploy/manifest/built-in-providers/dev"
+	}))
+	defer server.Close()
+
+	createRadiusPlane(server)
+
+	// Build expected types grouped by namespace for location verification.
+	namespaceTypes := map[string][]string{}
+	for _, entry := range defaults.DefaultRegistration {
+		parts := strings.SplitN(entry, "/", 2)
+		require.Len(t, parts, 2, "invalid entry in defaults.yaml: %s", entry)
+		namespaceTypes[parts[0]] = append(namespaceTypes[parts[0]], parts[1])
+	}
+
+	require.EventuallyWithTf(t, func(collect *assert.CollectT) {
+		// Verify each resource type is queryable via the API.
+		for _, entry := range defaults.DefaultRegistration {
+			parts := strings.SplitN(entry, "/", 2)
+			namespace := parts[0]
+			typeName := parts[1]
+
+			typeURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + namespace + "/resourcetypes/" + typeName + radiusAPIVersion
+			response := server.MakeRequest(http.MethodGet, typeURL, nil)
+			if !assert.Equal(collect, 200, response.Raw.StatusCode, "resource type %s should be registered", entry) {
+				return
+			}
+		}
+
+		// Verify each namespace's location contains all of its types.
+		for namespace, types := range namespaceTypes {
+			locationURL := "/planes/radius/local/providers/System.Resources/resourceproviders/" + namespace + "/locations/global" + radiusAPIVersion
+			response := server.MakeRequest(http.MethodGet, locationURL, nil)
+			if !assert.Equal(collect, 200, response.Raw.StatusCode, "location for %s should exist", namespace) {
+				return
+			}
+
+			var body map[string]any
+			if !assert.NoError(collect, json.Unmarshal(response.Body.Bytes(), &body)) {
+				return
+			}
+
+			props, _ := body["properties"].(map[string]any)
+			resourceTypes, _ := props["resourceTypes"].(map[string]any)
+			for _, typeName := range types {
+				if !assert.Contains(collect, resourceTypes, typeName, "location for %s should contain type %s", namespace, typeName) {
+					return
+				}
+			}
+		}
+	}, registerManifestWaitDuration, registerManifestWaitInterval, "default resource type registration did not complete in time")
 }
 
 // removeSystemData removes the systemData property from the response body recursively.

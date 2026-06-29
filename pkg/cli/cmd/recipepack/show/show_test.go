@@ -88,8 +88,8 @@ func Test_Run(t *testing.T) {
 		Properties: &corerpv20250801preview.RecipePackProperties{
 			Recipes: map[string]*corerpv20250801preview.RecipeDefinition{
 				"Radius.Core/example": {
-					RecipeKind:     to.Ptr(corerpv20250801preview.RecipeKindTerraform),
-					RecipeLocation: new("https://github.com/radius-project/example"),
+					Kind:   to.Ptr(corerpv20250801preview.RecipeKindTerraform),
+					Source: new("https://github.com/radius-project/example"),
 					Parameters: map[string]any{
 						"foo": "bar",
 					},

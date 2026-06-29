@@ -51,7 +51,7 @@ import (
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-//go:generate mockgen -typed -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/radius-project/radius/pkg/corerp/backend/deployment github.com/radius-project/radius/pkg/corerp/backend/deployment DeploymentProcessor
+//go:generate go tool mockgen -typed -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/radius-project/radius/pkg/corerp/backend/deployment github.com/radius-project/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rpv1.DeploymentOutput, error)
@@ -62,6 +62,37 @@ type DeploymentProcessor interface {
 // NewDeploymentProcessor creates a new instance of the DeploymentProcessor struct with the given parameters.
 func NewDeploymentProcessor(appmodel model.ApplicationModel, databaseClient database.Client, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
 	return &deploymentProcessor{appmodel: appmodel, databaseClient: databaseClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
+}
+
+// NewFailedDeploymentProcessor returns a DeploymentProcessor whose operations all
+// fail with err. It is used when the deployment target (for example an external
+// cluster named by RADIUS_TARGET_KUBECONFIG) cannot be resolved, so the operation
+// fails loudly with the resolution error rather than silently deploying to the
+// wrong cluster.
+func NewFailedDeploymentProcessor(err error) DeploymentProcessor {
+	return &failedDeploymentProcessor{err: err}
+}
+
+var _ DeploymentProcessor = (*failedDeploymentProcessor)(nil)
+
+type failedDeploymentProcessor struct {
+	err error
+}
+
+func (f *failedDeploymentProcessor) Render(context.Context, resources.ID, v1.DataModelInterface) (renderers.RendererOutput, error) {
+	return renderers.RendererOutput{}, f.err
+}
+
+func (f *failedDeploymentProcessor) Deploy(context.Context, resources.ID, renderers.RendererOutput) (rpv1.DeploymentOutput, error) {
+	return rpv1.DeploymentOutput{}, f.err
+}
+
+func (f *failedDeploymentProcessor) Delete(context.Context, resources.ID, []rpv1.OutputResource) error {
+	return f.err
+}
+
+func (f *failedDeploymentProcessor) FetchSecrets(context.Context, ResourceData) (map[string]any, error) {
+	return nil, f.err
 }
 
 var _ DeploymentProcessor = (*deploymentProcessor)(nil)

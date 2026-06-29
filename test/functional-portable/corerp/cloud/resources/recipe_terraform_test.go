@@ -25,6 +25,7 @@ package resource_test
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 
@@ -52,7 +53,7 @@ func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName),
+			Executor: step.NewDeployExecutor(template, testutil.GetTerraformRecipeModuleServerURL(), "appName="+appName, "uniqueSeed="+os.Getenv("UNIQUE_ID")),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
@@ -90,6 +91,7 @@ func Test_TerraformRecipe_AzureResourceGroup(t *testing.T) {
 		corerp.TestSecretDeletion(t, ctx, test, appName, envName, resourceID, secretNamespace, secretPrefix)
 	}
 
+	test.RunSerial = true
 	test.Test(t)
 }
 

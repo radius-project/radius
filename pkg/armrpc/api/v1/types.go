@@ -148,7 +148,7 @@ const (
 	ProvisioningStateProvisioned  ProvisioningState = "Provisioned"
 	ProvisioningStateFailed       ProvisioningState = "Failed"
 	ProvisioningStateCanceled     ProvisioningState = "Canceled"
-	ProvisioningStateUndefined    ProvisioningState = "Undefined"
+	ProvisioningStateNotSpecified ProvisioningState = "NotSpecified"
 )
 
 // IsTerminal returns true if given Provisioning State is in a terminal state.

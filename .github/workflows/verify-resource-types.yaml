@@ -45,12 +45,19 @@ on:
       # Trigger when the default list, the copied manifests, the dependency
       # version (go.mod/go.sum), or the sync logic (Makefile, resource-types.mk)
       # changes.
-      - 'go.mod'
-      - 'go.sum'
-      - 'deploy/manifest/defaults.yaml'
-      - 'deploy/manifest/built-in-providers/**'
-      - 'Makefile'
-      - 'build/resource-types.mk'
+      - "go.mod"
+      - "go.sum"
+      - "deploy/manifest/defaults.yaml"
+      - "deploy/manifest/built-in-providers/**"
+      - "Makefile"
+      - "build/resource-types.mk"
+  # The merge_group event does not support path filters. This check is cheap
+  # (sync + git diff), so it simply runs on every queued group rather than
+  # adding change-detection. Scoped to main only so the release branch flow is
+  # never affected.
+  merge_group:
+    branches:
+      - main
 
 permissions: {}
 
@@ -62,10 +69,11 @@ jobs:
   verify-resource-types:
     name: Verify resource type copies are in sync
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -75,10 +83,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Install yq
-        run: |
-          mkdir -p "${RUNNER_TEMP}/bin"
-          GOBIN="${RUNNER_TEMP}/bin" go install github.com/mikefarah/yq/v4@v4.44.3
-          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+        run: make install-yq
 
       # Re-run the copy step (without bumping the version) to regenerate the
       # manifest files from the module version pinned in go.mod.

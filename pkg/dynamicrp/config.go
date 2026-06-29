@@ -29,7 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/trace/traceservice"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v3"
 )
 
 // Config defines the configuration for the DynamicRP server.

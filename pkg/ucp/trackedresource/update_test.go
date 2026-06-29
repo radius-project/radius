@@ -77,6 +77,10 @@ func Test_Update(t *testing.T) {
 			Get(gomock.Any(), IDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
 			Times(1)
+		databaseClient.EXPECT().
+			Get(gomock.Any(), LegacyIDFor(testID).String()).
+			Return(nil, &database.ErrNotFound{}).
+			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.
 		roundTripper.RespondWithJSON(t, http.StatusOK, resource)
@@ -119,6 +123,10 @@ func Test_Update(t *testing.T) {
 			Get(gomock.Any(), IDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
 			Times(1)
+		databaseClient.EXPECT().
+			Get(gomock.Any(), LegacyIDFor(testID).String()).
+			Return(nil, &database.ErrNotFound{}).
+			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.
 		roundTripper.RespondWithJSON(t, http.StatusOK, resource)
@@ -157,6 +165,10 @@ func Test_Update(t *testing.T) {
 			Get(gomock.Any(), IDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
 			Times(1)
+		databaseClient.EXPECT().
+			Get(gomock.Any(), LegacyIDFor(testID).String()).
+			Return(nil, &database.ErrNotFound{}).
+			Times(1)
 
 		// Mock a successful (non-terminal) response from the downstream API.
 		roundTripper.RespondWithJSON(t, http.StatusOK, resource)
@@ -178,6 +190,10 @@ func Test_Update(t *testing.T) {
 
 		databaseClient.EXPECT().
 			Get(gomock.Any(), IDFor(testID).String()).
+			Return(nil, &database.ErrNotFound{}).
+			Times(1)
+		databaseClient.EXPECT().
+			Get(gomock.Any(), LegacyIDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
 			Times(1)
 
@@ -230,6 +246,10 @@ func Test_run(t *testing.T) {
 			Get(gomock.Any(), IDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
 			Times(1)
+		databaseClient.EXPECT().
+			Get(gomock.Any(), LegacyIDFor(testID).String()).
+			Return(nil, &database.ErrNotFound{}).
+			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.
 		roundTripper.RespondWithJSON(t, http.StatusOK, resource)
@@ -247,7 +267,53 @@ func Test_run(t *testing.T) {
 			}).
 			Times(1)
 
-		err := updater.run(testcontext.New(t), testID, IDFor(testID), testURL, apiVersion)
+		err := updater.run(testcontext.New(t), testID, testURL, apiVersion)
+		require.NoError(t, err)
+	})
+
+	t.Run("successful update (legacy entry)", func(t *testing.T) {
+		updater, databaseClient, roundTripper := setupUpdater(t)
+
+		resource := map[string]any{
+			"id":         testID.String(),
+			"name":       testID.Name(),
+			"type":       testID.Type(),
+			"properties": map[string]any{},
+		}
+
+		etag := "some-etag"
+		dm := datamodel.GenericResourceFromID(testID, LegacyIDFor(testID))
+		dm.Properties.APIVersion = apiVersion
+
+		// No entry exists under the current (SHA-256) ID, but an entry written by an older
+		// version of Radius exists under the legacy (SHA-1) ID. We must find and update it in
+		// place rather than orphaning it under a new ID.
+		databaseClient.EXPECT().
+			Get(gomock.Any(), IDFor(testID).String()).
+			Return(nil, &database.ErrNotFound{}).
+			Times(1)
+		databaseClient.EXPECT().
+			Get(gomock.Any(), LegacyIDFor(testID).String()).
+			Return(&database.Object{Metadata: database.Metadata{ETag: etag}, Data: dm}, nil).
+			Times(1)
+
+		// Mock a successful (terminal) response from the downstream API.
+		roundTripper.RespondWithJSON(t, http.StatusOK, resource)
+
+		databaseClient.EXPECT().
+			Save(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, obj *database.Object, options ...database.SaveOptions) error {
+				require.Equal(t, LegacyIDFor(testID).String(), obj.ID)
+
+				dm := obj.Data.(*datamodel.GenericResource)
+				require.Equal(t, LegacyIDFor(testID).String(), dm.ID)
+				require.Equal(t, testID.String(), dm.Properties.ID)
+				require.Equal(t, apiVersion, dm.Properties.APIVersion)
+				return nil
+			}).
+			Times(1)
+
+		err := updater.run(testcontext.New(t), testID, testURL, apiVersion)
 		require.NoError(t, err)
 	})
 
@@ -286,7 +352,7 @@ func Test_run(t *testing.T) {
 			}).
 			Times(1)
 
-		err := updater.run(testcontext.New(t), testID, IDFor(testID), testURL, apiVersion)
+		err := updater.run(testcontext.New(t), testID, testURL, apiVersion)
 		require.NoError(t, err)
 	})
 
@@ -310,7 +376,7 @@ func Test_run(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		err := updater.run(testcontext.New(t), testID, IDFor(testID), testURL, apiVersion)
+		err := updater.run(testcontext.New(t), testID, testURL, apiVersion)
 		require.NoError(t, err)
 	})
 
@@ -330,11 +396,15 @@ func Test_run(t *testing.T) {
 			Get(gomock.Any(), IDFor(testID).String()).
 			Return(nil, &database.ErrNotFound{}).
 			Times(1)
+		databaseClient.EXPECT().
+			Get(gomock.Any(), LegacyIDFor(testID).String()).
+			Return(nil, &database.ErrNotFound{}).
+			Times(1)
 
 		// Mock a successful (terminal) response from the downstream API.
 		roundTripper.RespondWithJSON(t, http.StatusOK, resource)
 
-		err := updater.run(testcontext.New(t), testID, IDFor(testID), testURL, apiVersion)
+		err := updater.run(testcontext.New(t), testID, testURL, apiVersion)
 		require.Error(t, err)
 		require.ErrorIs(t, err, &InProgressErr{})
 	})

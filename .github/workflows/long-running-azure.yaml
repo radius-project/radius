@@ -51,9 +51,6 @@ permissions: {}
 env:
   GOPROXY: https://proxy.golang.org
 
-  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUM_VER: 1.13.0
-
   # Container registry for storing Bicep recipe artifacts
   BICEP_RECIPE_REGISTRY: ${{ vars.FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY || 'ghcr.io/radius-project/dev' }}
   # bicep-types ACR url for pulling latest Radius Bicep types (AWS)
@@ -68,9 +65,6 @@ env:
   RADIUS_CONTAINER_LOG_BASE: dist/container_logs
   # The region for AWS resources
   AWS_REGION: us-west-2
-
-  # The functional test GitHub app id
-  FUNCTIONAL_TEST_APP_ID: ${{ vars.FUNCTIONAL_TEST_APP_ID }}
 
   # The AKS cluster name
   AKS_CLUSTER_NAME: ${{ vars.LRT_AKS_CLUSTER_NAME }}
@@ -119,7 +113,7 @@ jobs:
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: get_installation_token
         with:
-          app-id: ${{ env.FUNCTIONAL_TEST_APP_ID }}
+          client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           # Note: revoke is set to false for this long-running workflow (>1hr)
           # GitHub App tokens automatically expire after 1 hour.
@@ -134,12 +128,12 @@ jobs:
           permission-contents: read
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
       - name: Checkout samples repo
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: radius-project/samples
           path: samples
@@ -180,7 +174,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -189,21 +183,24 @@ jobs:
       - name: Create azure resource group - ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
         env:
           AZURE_TEST_RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
         run: |
           current_time=$(date +%s)
           az group create \
-            --location ${{ env.AZURE_LOCATION }} \
+            --location "${AZURE_LOCATION}" \
             --name "${AZURE_TEST_RESOURCE_GROUP}" \
-            --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
+            --subscription "${AZURE_SUBSCRIPTIONID_TESTS}" \
             --tags creationTime=$current_time
           while [ "$(az group exists --name "${AZURE_TEST_RESOURCE_GROUP}")" = false ]; do sleep 2; done
 
       - name: Get kubeconf credential for AKS cluster
+        env:
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
         run: |
           az aks get-credentials \
-            --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
-            --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
-            --name ${{ env.AKS_CLUSTER_NAME }} --admin
+            --subscription "${AZURE_SUBSCRIPTIONID_TESTS}" \
+            --resource-group "${AKS_RESOURCE_GROUP}" \
+            --name "${AKS_CLUSTER_NAME}" --admin
 
       - name: Restore skip-delete-resources-list
         if: always()
@@ -234,11 +231,11 @@ jobs:
           rad version
 
       - name: Publish UDT types
-        run: |  
-          export PATH=$GITHUB_WORKSPACE/bin:$PATH  
-          which rad || { echo "cannot find rad"; exit 1; }  
-          rad bicep publish-extension -f "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml" --target "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" --force  
-        env:  
+        run: |
+          export PATH=$GITHUB_WORKSPACE/bin:$PATH
+          which rad || { echo "cannot find rad"; exit 1; }
+          rad bicep publish-extension -f "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml" --target "br:${TEST_BICEP_TYPES_REGISTRY}/testresources:latest" --force
+        env:
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Point dynamicrp testresources extension to test ACR
@@ -266,10 +263,6 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
-      - name: Install gotestsum (test reporting tool)
-        run: |
-          go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
-
       - name: Manage Radius control plane installation
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -284,6 +277,12 @@ jobs:
       - name: Configure Radius test workspace
         env:
           AZURE_TEST_RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          AZURE_SP_TESTS_APPID: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          AZURE_SP_TESTS_TENANTID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          FUNCTEST_AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          FUNCTEST_AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
+          FUNCTEST_AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
         run: |
           set -x
 
@@ -292,24 +291,24 @@ jobs:
 
           echo "*** Create workspace, group and environment for test ***"
           rad workspace create kubernetes --force
-          rad group create ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
-          rad group switch ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
+          rad group create "${RADIUS_TEST_ENVIRONMENT_NAME}"
+          rad group switch "${RADIUS_TEST_ENVIRONMENT_NAME}"
 
           # The functional test is designed to use default namespace. So you must create the environment for default namespace.
-          rad env create ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --namespace default
-          rad env switch ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }}
+          rad env create "${RADIUS_TEST_ENVIRONMENT_NAME}" --namespace default
+          rad env switch "${RADIUS_TEST_ENVIRONMENT_NAME}"
 
           echo "*** Configuring Azure provider ***"
-          rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --azure-subscription-id ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
+          rad env update "${RADIUS_TEST_ENVIRONMENT_NAME}" --azure-subscription-id "${AZURE_SUBSCRIPTIONID_TESTS}" \
             --azure-resource-group "${AZURE_TEST_RESOURCE_GROUP}"
           rad credential register azure wi \
-            --client-id ${{ secrets.AZURE_SP_TESTS_APPID }} \
-            --tenant-id ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+            --client-id "${AZURE_SP_TESTS_APPID}" \
+            --tenant-id "${AZURE_SP_TESTS_TENANTID}"
 
           echo "*** Configuring AWS provider ***"
-          rad env update ${{ env.RADIUS_TEST_ENVIRONMENT_NAME }} --aws-region ${{ env.AWS_REGION }} --aws-account-id ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
+          rad env update "${RADIUS_TEST_ENVIRONMENT_NAME}" --aws-region "${AWS_REGION}" --aws-account-id "${FUNCTEST_AWS_ACCOUNT_ID}"
           rad credential register aws access-key \
-            --access-key-id ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }} --secret-access-key ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
+            --access-key-id "${FUNCTEST_AWS_ACCESS_KEY_ID}" --secret-access-key "${FUNCTEST_AWS_SECRET_ACCESS_KEY}"
 
       - name: Log radius installation status (failure)
         if: failure()
@@ -345,18 +344,8 @@ jobs:
       - name: Get OIDC Issuer from AKS cluster
         id: get-oidc-issuer
         run: |
-          echo "FUNCTEST_OIDC_ISSUER=$(az aks show -n ${{ env.AKS_CLUSTER_NAME }} -g ${{ env.AKS_RESOURCE_GROUP }} --query "oidcIssuerProfile.issuerUrl" -otsv)" >> $GITHUB_OUTPUT
-
-      - name: Restore Bicep artifacts before running functional tests
-        # The exact files chosen to run the command can be changed, but we need 1 that uses the Radius extension, 1 that uses the AWS extension and 1 that uses UDT testresources
-        # so we can restore all Bicep artifacts before the tests start.
-        run: |
-          # Restore Radius Bicep types
-          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep" --force
-          # Restore AWS Bicep types
-          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep" --force
-        env:
-          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
+          oidc_issuer="$(az aks show -n "${AKS_CLUSTER_NAME}" -g "${AKS_RESOURCE_GROUP}" --query 'oidcIssuerProfile.issuerUrl' -o tsv)"
+          echo "FUNCTEST_OIDC_ISSUER=${oidc_issuer}" >> "${GITHUB_OUTPUT}"
 
       - name: Re-login to Azure before functional tests
         uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
@@ -364,6 +353,25 @@ jobs:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+
+      - name: Restore Bicep artifacts before running functional tests
+        # Pre-warm the local Bicep artifact cache so the long-running test step
+        # never has to authenticate to a private ACR after the WIF
+        # client-assertion expires. The exact files chosen to run the command
+        # can be changed, but we need 1 that uses the Radius extension, 1 that
+        # uses the AWS extension and 1 that uses UDT testresources so we can
+        # restore all Bicep artifacts before the tests start. This step must
+        # run after "Re-login to Azure" so the private TEST_BICEP_TYPES_REGISTRY
+        # restore has fresh credentials.
+        run: |
+          # Restore Radius Bicep types (public ACR)
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/corerp-azure-connection-database-service.bicep" --force
+          # Restore AWS Bicep types (public ACR)
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/corerp/cloud/resources/testdata/aws-s3-bucket.bicep" --force
+          # Restore UDT testresources Bicep types (private TEST_BICEP_TYPES_REGISTRY)
+          bicep restore "./${RELEASE_DIR}/test/functional-portable/dynamicrp/noncloud/resources/testdata/externalresource.bicep" --force
+        env:
+          RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
       - name: Run functional tests
         env:
@@ -385,6 +393,7 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ steps.gen-id.outputs.UNIQUE_ID }}
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
+          FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
         run: |
           set -euo pipefail
@@ -399,7 +408,7 @@ jobs:
           # AZURE_MSSQL_RESOURCE_ID
           # AZURE_MSSQL_USERNAME
           # AZURE_MSSQL_PASSWORD
-          PREPROVISIONED_JSON='${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}'
+          PREPROVISIONED_JSON="${FUNCTEST_PREPROVISIONED_RESOURCE_JSON}"
           if ! echo "${PREPROVISIONED_JSON}" | jq -e . >/dev/null; then
             echo "FUNCTEST_PREPROVISIONED_RESOURCE_JSON is not valid JSON."
             echo "Expected keys: AZURE_COSMOS_MONGODB_ACCOUNT_ID, AZURE_MSSQL_RESOURCE_ID, AZURE_MSSQL_USERNAME, AZURE_MSSQL_PASSWORD"
@@ -415,8 +424,12 @@ jobs:
 
       - name: Collect Pod details
         if: always()
+        # Diagnostic-only snapshot of cluster-wide pod state for post-mortem. A
+        # `kubectl describe pods -A` can race pod teardown and return a transient
+        # NotFound, so never let it fail the job.
+        continue-on-error: true
         run: |
-          POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/all-tests-pod-states.log'
+          POD_STATE_LOG_FILENAME="${RADIUS_CONTAINER_LOG_BASE}/all-tests-pod-states.log"
           mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
           {
             echo "kubectl get pods -A"
@@ -454,10 +467,11 @@ jobs:
         if: always()
         env:
           AZURE_TEST_RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
         run: |
           # if deletion fails, purge workflow will purge the resource group and its resources later.
           az group delete \
-            --subscription ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }} \
+            --subscription "${AZURE_SUBSCRIPTIONID_TESTS}" \
             --name "${AZURE_TEST_RESOURCE_GROUP}" \
             --yes --verbose --no-wait
 
@@ -487,11 +501,13 @@ jobs:
     needs: [tests]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      issues: write # Required to create an issue when the scheduled run fails
     steps:
       - name: Create failure issue for failing long running test run
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github-token: ${{ github.token }}
           script: |
             github.rest.issues.create({
               ...context.repo,

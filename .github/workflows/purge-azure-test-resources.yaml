@@ -39,7 +39,11 @@ jobs:
     name: Clean up unused Azure resources
     if: github.repository == 'radius-project/radius'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    # Deleting ACI nGroups synchronously before each resource group (see the delete
+    # step) is slower than the previous fire-and-forget 'az group delete --no-wait',
+    # so allow more time to work through a backlog. The purge is idempotent and runs
+    # twice a day, so any groups not reached in one run are handled by the next.
+    timeout-minutes: 30
     permissions:
       id-token: write
     steps:
@@ -51,32 +55,34 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - name: Find old test resource groups
+        env:
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
         run: |
           echo "## Test resource group list" >> $GITHUB_STEP_SUMMARY
 
           # Create the file to store the resource group list
-          touch ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+          touch "${AZURE_RG_DELETE_LIST_FILE}"
 
-          az account set -s ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          az account set -s "${AZURE_SUBSCRIPTIONID_TESTS}"
           resource_groups=$(az group list --query "[].{Name:name, creationTime:tags.creationTime}" -o tsv)
 
           current_time=$(date +%s)
-          hours_ago=$((current_time - ${{ env.VALID_RESOURCE_WINDOW }}))
+          hours_ago=$((current_time - VALID_RESOURCE_WINDOW))
           while IFS=$'\t' read -r name creation_time; do
-            if [[ ! "$name" =~ ^"samplestest-" ]] && [[ ! "$name" =~ ^"radtest-" ]]; then
+            if [[ ! "$name" =~ ^"samplestest-" ]] && [[ ! "$name" =~ ^"radtest-" ]] && [[ ! "$name" =~ ^"tfrg" ]]; then
               continue
             fi
 
             if [ "$creation_time" = "None" ]; then
               echo " * :wastebasket: $name - old resource"  >> $GITHUB_STEP_SUMMARY
-              echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+              echo "$name" >> "${AZURE_RG_DELETE_LIST_FILE}"
               continue
             fi
 
             # Check if the resource group was created more than 6 hours ago
             if [ "$creation_time" -lt "$hours_ago" ]; then
               echo " * :wastebasket: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
-              echo $name >> ${{ env.AZURE_RG_DELETE_LIST_FILE}}
+              echo "$name" >> "${AZURE_RG_DELETE_LIST_FILE}"
             else
               echo " * :white_check_mark: $name - creationTime: $creation_time"  >> $GITHUB_STEP_SUMMARY
             fi
@@ -84,12 +90,47 @@ jobs:
 
       - name: Delete Azure resource groups
         run: |
-          echo "## Deleting resource group list" >> $GITHUB_STEP_SUMMARY
-          cat ${{ env.AZURE_RG_DELETE_LIST_FILE}} | while read line
-          do
-              echo " * $line" >> $GITHUB_STEP_SUMMARY
-              az group delete --resource-group $line --yes --verbose --no-wait
-          done
+          echo "## Deleting resource group list" >> "$GITHUB_STEP_SUMMARY"
+
+          # Azure Container Instances 'nGroups' (container scale sets) are delegated
+          # into the resource group's VNet subnet. A plain 'az group delete' deletes
+          # resources in parallel and cannot remove the subnet while the nGroups still
+          # reference it, so the whole resource group delete silently fails (--no-wait)
+          # and leaves an empty-looking group behind whose only resource is the nGroups.
+          # Delete the Container Instances resources first (nGroups before profiles) so
+          # the resource group delete can then succeed.
+          # Radius creates the ACI nGroups/containerGroupProfiles with this API version
+          # (pkg/sdk/v20241101preview). A plain delete lets ARM pick the provider's
+          # latest advertised version (e.g. 2026-06-01-preview), which the RP rejects
+          # ("api-version not supported"), leaving the nGroups - and therefore the
+          # whole resource group - undeletable. Delete them with the explicit version.
+          aci_api_version="2024-11-01-preview"
+          delete_rg() {
+            line="$1"
+            aci_ids=$(az resource list --resource-group "$line" \
+              --query "[?starts_with(type, 'Microsoft.ContainerInstance/')].id" \
+              --output tsv 2>/dev/null || true)
+            for id in $(echo "$aci_ids" | grep -i '/nGroups/' || true); do
+              echo "deleting $id"
+              az resource delete --ids "$id" --api-version "${aci_api_version}" || true
+            done
+            for id in $(echo "$aci_ids" | grep -iv '/nGroups/' || true); do
+              echo "deleting $id"
+              az resource delete --ids "$id" --api-version "${aci_api_version}" || true
+            done
+            az group delete --resource-group "$line" --yes --verbose --no-wait || true
+          }
+
+          # Delete resource groups in parallel (capped) so a large backlog still fits
+          # the job timeout.
+          max_parallel=10
+          while read -r line; do
+              [ -z "$line" ] && continue
+              echo " * $line" >> "$GITHUB_STEP_SUMMARY"
+              delete_rg "$line" &
+              while [ "$(jobs -r | wc -l)" -ge "${max_parallel}" ]; do wait -n; done
+          done < "${AZURE_RG_DELETE_LIST_FILE}"
+          wait
 
   purge_bicep_types:
     runs-on: ubuntu-24.04
@@ -126,12 +167,13 @@ jobs:
     needs: [purge_azure_resources, purge_bicep_types]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    permissions: {}
+    permissions:
+      issues: write # Required to create an issue when the scheduled run fails
     if: ${{ failure() && github.event_name != 'workflow_dispatch' }}
     steps:
       - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github-token: ${{ github.token }}
           script: |
             github.rest.issues.create({
               ...context.repo,

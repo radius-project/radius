@@ -24,7 +24,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/acarl005/stripansi"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/radius-project/radius/pkg/azure/clientv2"
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/aws"
@@ -32,10 +32,15 @@ import (
 	"github.com/radius-project/radius/pkg/cli/bicep"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	app_delete "github.com/radius-project/radius/pkg/cli/cmd/app/delete"
+	app_delete_preview "github.com/radius-project/radius/pkg/cli/cmd/app/delete/preview"
 	app_graph "github.com/radius-project/radius/pkg/cli/cmd/app/graph"
+	app_graph_preview "github.com/radius-project/radius/pkg/cli/cmd/app/graph/preview"
 	app_list "github.com/radius-project/radius/pkg/cli/cmd/app/list"
+	app_list_preview "github.com/radius-project/radius/pkg/cli/cmd/app/list/preview"
 	app_show "github.com/radius-project/radius/pkg/cli/cmd/app/show"
+	app_show_preview "github.com/radius-project/radius/pkg/cli/cmd/app/show/preview"
 	app_status "github.com/radius-project/radius/pkg/cli/cmd/app/status"
+	app_status_preview "github.com/radius-project/radius/pkg/cli/cmd/app/status/preview"
 	bicep_generate_kubernetes_manifest "github.com/radius-project/radius/pkg/cli/cmd/bicep/generatekubernetesmanifest"
 	bicep_publish "github.com/radius-project/radius/pkg/cli/cmd/bicep/publish"
 	bicep_publishextension "github.com/radius-project/radius/pkg/cli/cmd/bicep/publishextension"
@@ -81,12 +86,15 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/rollback"
 	rollback_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/rollback/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/cmd/run"
+	cmd_shutdown "github.com/radius-project/radius/pkg/cli/cmd/shutdown"
+	cmd_startup "github.com/radius-project/radius/pkg/cli/cmd/startup"
 	"github.com/radius-project/radius/pkg/cli/cmd/uninstall"
 	uninstall_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/uninstall/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/cmd/upgrade"
 	upgrade_kubernetes "github.com/radius-project/radius/pkg/cli/cmd/upgrade/kubernetes"
 	version "github.com/radius-project/radius/pkg/cli/cmd/version"
 	workspace_create "github.com/radius-project/radius/pkg/cli/cmd/workspace/create"
+	workspace_create_preview "github.com/radius-project/radius/pkg/cli/cmd/workspace/create/preview"
 	workspace_delete "github.com/radius-project/radius/pkg/cli/cmd/workspace/delete"
 	workspace_list "github.com/radius-project/radius/pkg/cli/cmd/workspace/list"
 	workspace_show "github.com/radius-project/radius/pkg/cli/cmd/workspace/show"
@@ -102,6 +110,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/graph/persistence/git"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -206,7 +215,7 @@ func Execute() error {
 		// Remove any ANSI escape sequences from the error text. We may be displaying untrusted
 		// data in an error message for an "unhandled" error. This will prevent the error text
 		// from potentially corrupting the terminal.
-		errText = stripansi.Strip(errText)
+		errText = ansi.Strip(errText)
 
 		fmt.Println("Error:", errText)
 		fmt.Println("\nTraceId: ", span.SpanContext().TraceID().String())
@@ -248,6 +257,12 @@ func init() {
 }
 
 func initSubCommands() {
+	graphStore, err := git.NewStore(git.Options{})
+	if err != nil {
+		// graphStore is required only when we are in repo radius
+		// it can be nil otherwise.
+		graphStore = nil
+	}
 	framework := &framework.Impl{
 		Bicep: &bicep.Impl{
 			FileSystem: filesystem.OSFileSystem{},
@@ -271,6 +286,7 @@ func initSubCommands() {
 		NamespaceInterface: &namespace.Impl{},
 		AWSClient:          aws.NewClient(),
 		AzureClient:        azure.NewClient(),
+		GraphStore:         graphStore,
 	}
 
 	deployCmd, _ := cmd_deploy.NewCommand(framework)
@@ -347,6 +363,12 @@ func initSubCommands() {
 	wirePreviewSubcommand(initCmd, previewInitCmd)
 	RootCmd.AddCommand(initCmd)
 
+	startupCmd, _ := cmd_startup.NewCommand(framework)
+	RootCmd.AddCommand(startupCmd)
+
+	shutdownCmd, _ := cmd_shutdown.NewCommand(framework)
+	RootCmd.AddCommand(shutdownCmd)
+
 	envCreateCmd, _ := env_create.NewCommand(framework)
 	previewCreateCmd, _ := env_create_preview.NewCommand(framework)
 	wirePreviewSubcommand(envCreateCmd, previewCreateCmd)
@@ -385,6 +407,8 @@ func initSubCommands() {
 	envCmd.AddCommand(envUpdateCmd)
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
+	previewWorkspaceCreateCmd, _ := workspace_create_preview.NewCommand(framework)
+	wirePreviewSubcommand(workspaceCreateCmd, previewWorkspaceCreateCmd)
 	workspaceCmd.AddCommand(workspaceCreateCmd)
 
 	workspaceDeleteCmd, _ := workspace_delete.NewCommand(framework)
@@ -400,18 +424,28 @@ func initSubCommands() {
 	workspaceCmd.AddCommand(workspaceSwitchCmd)
 
 	appDeleteCmd, _ := app_delete.NewCommand(framework)
+	previewAppDeleteCmd, _ := app_delete_preview.NewCommand(framework)
+	wirePreviewSubcommand(appDeleteCmd, previewAppDeleteCmd)
 	applicationCmd.AddCommand(appDeleteCmd)
 
 	appListCmd, _ := app_list.NewCommand(framework)
+	previewAppListCmd, _ := app_list_preview.NewCommand(framework)
+	wirePreviewSubcommand(appListCmd, previewAppListCmd)
 	applicationCmd.AddCommand(appListCmd)
 
 	appShowCmd, _ := app_show.NewCommand(framework)
+	previewAppShowCmd, _ := app_show_preview.NewCommand(framework)
+	wirePreviewSubcommand(appShowCmd, previewAppShowCmd)
 	applicationCmd.AddCommand(appShowCmd)
 
 	appStatusCmd, _ := app_status.NewCommand(framework)
+	previewAppStatusCmd, _ := app_status_preview.NewCommand(framework)
+	wirePreviewSubcommand(appStatusCmd, previewAppStatusCmd)
 	applicationCmd.AddCommand(appStatusCmd)
 
 	appGraphCmd, _ := app_graph.NewCommand(framework)
+	previewAppGraphCmd, _ := app_graph_preview.NewCommand(framework)
+	wirePreviewSubcommand(appGraphCmd, previewAppGraphCmd)
 	applicationCmd.AddCommand(appGraphCmd)
 
 	envSwitchCmd, _ := env_switch.NewCommand(framework)
@@ -492,8 +526,10 @@ func getRootSpanName() string {
 }
 
 // wirePreviewSubcommand adds a --preview flag and routes RunE to the preview command when set.
+// The preview behavior can also be activated by setting the RADIUS_PREVIEW environment variable to "true" (case-insensitive).
+// The --preview flag takes precedence over the environment variable.
 func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
-	cmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation")
+	cmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation (can also be set via RADIUS_PREVIEW=true)")
 
 	legacyRun := cmd.RunE
 	previewRun := previewCmd.RunE
@@ -502,6 +538,9 @@ func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
 		usePreview, err := c.Flags().GetBool("preview")
 		if err != nil {
 			return err
+		}
+		if !c.Flags().Changed("preview") {
+			usePreview = strings.EqualFold(os.Getenv("RADIUS_PREVIEW"), "true")
 		}
 		if usePreview {
 			return previewRun(c, args)

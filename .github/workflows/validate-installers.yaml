@@ -25,6 +25,12 @@ on:
       - deploy/install.sh
       - deploy/test-install.sh
       - .github/workflows/validate-installers.yaml
+  # The merge_group event does not support path filters, so the installer tests
+  # are gated below on whether installer files changed in the queued PRs.
+  # Scoped to main only so the release branch flow is never affected.
+  merge_group:
+    branches:
+      - main
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
@@ -34,14 +40,62 @@ concurrency:
 permissions: {}
 
 jobs:
+  # The installer tests are expensive and rarely relevant. On pull_request the
+  # path filter already guarantees relevance. In the merge queue (merge_group)
+  # there are no path filters, so detect whether any installer file changed in
+  # the queued PRs and gate the installer jobs on the result. When nothing
+  # relevant changed they are skipped and their required checks report success.
+  changes:
+    name: Changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      installers: ${{ steps.set.outputs.installers }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Filter changed files
+        id: filter
+        if: github.event_name == 'merge_group'
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          base_sha: ${{ github.event.merge_group.base_sha }}
+          files_yaml: |
+            installers:
+              - deploy/install.ps1
+              - deploy/test-pwsh-install.ps1
+              - deploy/install.sh
+              - deploy/test-install.sh
+              - .github/workflows/validate-installers.yaml
+
+      - name: Set result
+        id: set
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INSTALLERS_CHANGED: ${{ steps.filter.outputs.installers_any_changed }}
+        run: |
+          # Outside the merge queue the path filter already matched, so always run.
+          if [ "${EVENT_NAME}" = "merge_group" ]; then
+            echo "installers=${INSTALLERS_CHANGED}" >> "${GITHUB_OUTPUT}"
+          else
+            echo "installers=true" >> "${GITHUB_OUTPUT}"
+          fi
+
   verify-powershell-installer:
     name: Validate PowerShell Installer
+    needs: changes
+    if: needs.changes.outputs.installers == 'true'
     runs-on: windows-2025
     timeout-minutes: 10
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -51,16 +105,20 @@ jobs:
 
   verify-bash-installer:
     name: Validate Bash Installer
+    needs: changes
+    if: needs.changes.outputs.installers == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
-      - uses: oras-project/setup-oras@38de303aac69abb66f3e6255b7198bff35f323e3 # v2.0.0
+      - name: Install oras
+        # Version pinned in build/tools.mk (ORAS_VERSION).
+        run: make install-oras
 
       - name: Run installer test script
         run: deploy/test-install.sh

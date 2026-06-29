@@ -33,7 +33,7 @@ jobs:
     permissions:
       contents: read # Required for actions/checkout
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -55,7 +55,7 @@ jobs:
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: get-token
         with:
-          app-id: ${{ secrets.RADIUS_PUBLISHER_BOT_APP_ID }}
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
           permission-metadata: read
           permission-actions: read
@@ -105,5 +105,6 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ steps.get-token.outputs.token }}
+          RUN_ID: ${{ steps.monitor-remote-workflow.outputs.run_id }}
         run: |
-          gh run view "${{ steps.monitor-remote-workflow.outputs.run_id }}" --repo azure-octo/radius-publisher --log-failed || true
+          gh run view "${RUN_ID}" --repo azure-octo/radius-publisher --log-failed || true

@@ -64,6 +64,7 @@ spec:
         - name: ssl-certs
           emptyDir: {}
         {{- end }}
+        {{- include "radius.targetCluster.volume" . | nindent 8 }}
       containers:
       - name: de
         image: {{ include "radius.image" (dict "image" .Values.de.image "tag" (.Values.de.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}
@@ -83,6 +84,7 @@ spec:
           mountPath: /etc/ssl/certs
           readOnly: true
         {{- end }}
+        {{- include "radius.targetCluster.volumeMount" . | nindent 8 }}
         env:
         - name: ASPNETCORE_ENVIRONMENT
           value: "Production"
@@ -100,6 +102,7 @@ spec:
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}
         {{- end}}
+        {{- include "radius.targetCluster.env" . | nindent 8 }}
         ports:
         - containerPort: 6443
           name: bicep-de-api

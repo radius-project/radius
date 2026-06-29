@@ -58,17 +58,17 @@ func TestRecipePackDataModelToVersioned(t *testing.T) {
 				Properties: datamodel.RecipePackProperties{
 					Recipes: map[string]*datamodel.RecipeDefinition{
 						"Applications.Core/containers": {
-							RecipeKind:     "bicep",
-							RecipeLocation: "br:myregistry.azurecr.io/recipes/container:1.0",
+							Kind:   "bicep",
+							Source: "br:myregistry.azurecr.io/recipes/container:1.0",
 							Parameters: map[string]any{
 								"param1": "value1",
 							},
 							PlainHTTP: false,
 						},
 						"Applications.Datastores/sqlDatabases": {
-							RecipeKind:     "terraform",
-							RecipeLocation: "https://github.com/radius-project/recipes.git//terraform/modules/sql",
-							PlainHTTP:      false,
+							Kind:      "terraform",
+							Source:    "https://github.com/radius-project/recipes.git//terraform/modules/sql",
+							PlainHTTP: false,
 						},
 					},
 					ReferencedBy: []string{
@@ -162,16 +162,16 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 					"properties": {
 						"recipes": {
 							"Applications.Core/containers": {
-								"recipeKind": "bicep",
-								"recipeLocation": "br:myregistry.azurecr.io/recipes/container:1.0",
+								"kind": "bicep",
+								"source": "br:myregistry.azurecr.io/recipes/container:1.0",
 								"parameters": {
 									"param1": "value1"
 								},
 								"plainHTTP": false
 							},
 							"Applications.Datastores/sqlDatabases": {
-								"recipeKind": "terraform",
-								"recipeLocation": "https://github.com/radius-project/recipes.git//terraform/modules/sql"
+								"kind": "terraform",
+								"source": "https://github.com/radius-project/recipes.git//terraform/modules/sql"
 							}
 						},
 						"referencedBy": [
@@ -203,17 +203,17 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 				Properties: datamodel.RecipePackProperties{
 					Recipes: map[string]*datamodel.RecipeDefinition{
 						"Applications.Core/containers": {
-							RecipeKind:     "bicep",
-							RecipeLocation: "br:myregistry.azurecr.io/recipes/container:1.0",
+							Kind:   "bicep",
+							Source: "br:myregistry.azurecr.io/recipes/container:1.0",
 							Parameters: map[string]any{
 								"param1": "value1",
 							},
 							PlainHTTP: false,
 						},
 						"Applications.Datastores/sqlDatabases": {
-							RecipeKind:     "terraform",
-							RecipeLocation: "https://github.com/radius-project/recipes.git//terraform/modules/sql",
-							PlainHTTP:      false,
+							Kind:      "terraform",
+							Source:    "https://github.com/radius-project/recipes.git//terraform/modules/sql",
+							PlainHTTP: false,
 						},
 					},
 					ReferencedBy: []string{
@@ -260,8 +260,8 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 					"properties": {
 						"recipes": {
 							"Applications.Core/containers": {
-								"recipeKind": "bicep",
-								"recipeLocation": "br:myregistry.azurecr.io/recipes/container:1.0"
+								"kind": "bicep",
+								"source": "br:myregistry.azurecr.io/recipes/container:1.0"
 							}
 						}
 					}
@@ -284,9 +284,9 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 				Properties: datamodel.RecipePackProperties{
 					Recipes: map[string]*datamodel.RecipeDefinition{
 						"Applications.Core/containers": {
-							RecipeKind:     "bicep",
-							RecipeLocation: "br:myregistry.azurecr.io/recipes/container:1.0",
-							PlainHTTP:      false, // Should default to false when not specified
+							Kind:      "bicep",
+							Source:    "br:myregistry.azurecr.io/recipes/container:1.0",
+							PlainHTTP: false, // Should default to false when not specified
 						},
 					},
 				},
@@ -302,8 +302,8 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 				"properties": {
 					"recipes": {
 						"Applications.Datastores/sqlDatabases": {
-							"recipeKind": "terraform",
-							"recipeLocation": "http://insecure-registry.example.com/recipes/sql",
+							"kind": "terraform",
+							"source": "http://insecure-registry.example.com/recipes/sql",
 							"plainHttp": true
 						}
 					}
@@ -327,9 +327,9 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 				Properties: datamodel.RecipePackProperties{
 					Recipes: map[string]*datamodel.RecipeDefinition{
 						"Applications.Datastores/sqlDatabases": {
-							RecipeKind:     "terraform",
-							RecipeLocation: "http://insecure-registry.example.com/recipes/sql",
-							PlainHTTP:      true, // Explicitly set to true
+							Kind:      "terraform",
+							Source:    "http://insecure-registry.example.com/recipes/sql",
+							PlainHTTP: true, // Explicitly set to true
 						},
 					},
 				},
@@ -386,8 +386,8 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 					for key, expectedRecipe := range tc.expected.Properties.Recipes {
 						actualRecipe, exists := result.Properties.Recipes[key]
 						require.True(t, exists, "Recipe %s should exist", key)
-						require.Equal(t, expectedRecipe.RecipeKind, actualRecipe.RecipeKind)
-						require.Equal(t, expectedRecipe.RecipeLocation, actualRecipe.RecipeLocation)
+						require.Equal(t, expectedRecipe.Kind, actualRecipe.Kind)
+						require.Equal(t, expectedRecipe.Source, actualRecipe.Source)
 
 						// Debug output for plainHTTP
 						t.Logf("Recipe %s - Expected PlainHTTP: %v, Actual PlainHTTP: %v", key, expectedRecipe.PlainHTTP, actualRecipe.PlainHTTP)
@@ -426,8 +426,8 @@ func TestRecipePackRoundTripConversion(t *testing.T) {
 		Properties: datamodel.RecipePackProperties{
 			Recipes: map[string]*datamodel.RecipeDefinition{
 				"Applications.Core/containers": {
-					RecipeKind:     "bicep",
-					RecipeLocation: "br:test.azurecr.io/recipes/container:latest",
+					Kind:   "bicep",
+					Source: "br:test.azurecr.io/recipes/container:latest",
 					Parameters: map[string]any{
 						"cpu":    "0.5",
 						"memory": "1Gi",
@@ -468,8 +468,8 @@ func TestRecipePackRoundTripConversion(t *testing.T) {
 	for key, originalRecipe := range originalDataModel.Properties.Recipes {
 		resultRecipe, exists := resultDataModel.Properties.Recipes[key]
 		require.True(t, exists, "Recipe %s should exist after round-trip", key)
-		require.Equal(t, originalRecipe.RecipeKind, resultRecipe.RecipeKind)
-		require.Equal(t, originalRecipe.RecipeLocation, resultRecipe.RecipeLocation)
+		require.Equal(t, originalRecipe.Kind, resultRecipe.Kind)
+		require.Equal(t, originalRecipe.Source, resultRecipe.Source)
 		require.Equal(t, originalRecipe.PlainHTTP, resultRecipe.PlainHTTP)
 		require.Equal(t, originalRecipe.Parameters, resultRecipe.Parameters)
 	}

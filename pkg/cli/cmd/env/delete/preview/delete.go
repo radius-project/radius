@@ -33,10 +33,8 @@ import (
 )
 
 const (
-	msgEnvironmentDeletedPreview    = "Environment deleted"
-	msgEnvironmentNotFoundPreview   = "Environment '%s' does not exist or has already been deleted."
-	msgDeletingEnvironmentPreview   = "Deleting environment %s...\n"
-	msgDeletingResourceCountPreview = "Deleting %d resource(s) in environment %s...\n"
+	msgEnvironmentDeletedPreview  = "Radius.Core/environments/%s deleted"
+	msgEnvironmentNotFoundPreview = "Radius.Core/environments/%s not found"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env delete --preview` command.
@@ -118,7 +116,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // Run executes the preview delete command logic.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {
-		factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace, r.Workspace.Scope)
+		factory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
 			return err
 		}
@@ -138,23 +136,19 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 		if !confirmed {
-			r.Output.LogInfo("Environment %q NOT deleted", r.EnvironmentName)
 			return nil
 		}
 	}
 
-	// Show progress messages (without resource count for preview, since we don't enumerate here)
-	r.Output.LogInfo(msgDeletingEnvironmentPreview, r.EnvironmentName)
-
 	client := r.RadiusCoreClientFactory.NewEnvironmentsClient()
-	_, err := client.Delete(ctx, r.EnvironmentName, &corerpv20250801.EnvironmentsClientDeleteOptions{})
+	_, err := client.Delete(ctx, r.Workspace.Scope, r.EnvironmentName, &corerpv20250801.EnvironmentsClientDeleteOptions{})
 	if err != nil {
 		// If this is a 404, treat as successful but with a different message
 		// We don't have the Is404Error helper wired to Radius.Core yet, so always surface the error.
 		return err
 	}
 
-	r.Output.LogInfo(msgEnvironmentDeletedPreview)
+	r.Output.LogInfo(msgEnvironmentDeletedPreview, r.EnvironmentName)
 
 	return nil
 }

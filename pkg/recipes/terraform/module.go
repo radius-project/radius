@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	getter "github.com/hashicorp/go-getter"
+	getter "github.com/hashicorp/go-getter/v2"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/components/metrics"
@@ -49,6 +49,11 @@ type moduleInspectResult struct {
 
 	// ResultOutputExists is true if the module contains an output named "result".
 	ResultOutputExists bool
+
+	// OutputSensitivity maps each module output name to whether it is declared sensitive.
+	// It is used to emit correct "sensitive" flags when generating output blocks for direct
+	// modules so that sensitive outputs are routed to the Secrets map.
+	OutputSensitivity map[string]bool
 
 	// The parameter variables defined by the recipe
 	Parameters map[string]any
@@ -94,7 +99,7 @@ func downloadAndInspect(ctx context.Context, tf *tfexec.Terraform, options Optio
 // It uses terraform-config-inspect to load the module from the directory. An error is returned if the module
 // could not be loaded.
 func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*moduleInspectResult, error) {
-	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: map[string]*config.RequiredProviderInfo{}, ResultOutputExists: false, Parameters: map[string]any{}}
+	result := &moduleInspectResult{ContextVarExists: false, RequiredProviders: map[string]*config.RequiredProviderInfo{}, ResultOutputExists: false, OutputSensitivity: map[string]bool{}, Parameters: map[string]any{}}
 
 	// Modules are downloaded in a subdirectory in the working directory.
 	// Name of the module specified in the configuration is used as subdirectory name.
@@ -138,9 +143,15 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 		result.RequiredProviders[k] = requiredprovider
 	}
 
-	// Check if an output named "result" is defined in the module.
+	// Check if an output named "result" is defined in the module, and capture the
+	// sensitivity of every output for direct module output mapping.
 	if _, ok := mod.Outputs[recipes.ResultPropertyName]; ok {
 		result.ResultOutputExists = true
+	}
+	for name, output := range mod.Outputs {
+		if output != nil {
+			result.OutputSensitivity[name] = output.Sensitive
+		}
 	}
 
 	// Extract the list of parameters.

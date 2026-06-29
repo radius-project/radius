@@ -64,14 +64,41 @@ global:
     enabled: true
     # Init image used to pre-download Terraform binaries.
     initImage: "alpine:3.23.4"
-    # URL for downloading Terraform binary
-    # Leave empty to automatically fetch the latest version from HashiCorp
-    # Or provide a complete direct download URL for custom sources
+    # Terraform version to pre-download. MUST match terraformVersion in
+    # pkg/recipes/terraform/version.go -- the runtime download fallback
+    # (pkg/recipes/terraform/install.go::downloadAndInstallTerraform)
+    # pins to that version, so the pre-mounted binary must match or
+    # recipes will see behavior differences between cold and warm starts.
+    version: "1.14.9"
+    # URL for downloading Terraform binary. Leave empty to download the
+    # version specified by `version` from releases.hashicorp.com. Provide
+    # a complete direct download URL to override (e.g., for air-gapped or
+    # custom builds); when set, `version` is ignored.
     downloadUrl: ""
     # Configure Terraform log level for terraform-exec execution
     # Valid values: TRACE, DEBUG, INFO, WARN, ERROR, OFF
     # Default: ERROR
     loglevel: "ERROR"
+
+  # Configure global.targetCluster to direct recipe execution at an external
+  # Kubernetes cluster instead of the control-plane cluster Radius runs on.
+  # Disabled by default; when disabled the chart renders no extra volumes or
+  # environment variables and behavior is unchanged.
+  #
+  # When enabled, a Secret named `secretName` (in the release namespace) holding a
+  # kubeconfig under key `secretKey` is mounted into the applications-rp,
+  # dynamic-rp, and deployment-engine pods, and RADIUS_TARGET_KUBECONFIG points at
+  # the mounted file. Application resources then deploy to that cluster:
+  # directly-rendered output resources (applications-rp), Terraform recipes (via
+  # the cluster access resolver), and Bicep recipes (via the Deployment Engine).
+  # The Terraform state backend continues to use the control-plane cluster. The
+  # Secret's lifecycle (creation, refresh, RBAC) is owned outside the chart, for
+  # example a CI workflow that mints and refreshes the kubeconfig.
+  targetCluster:
+    enabled: false
+    secretName: "target-kubeconfig"
+    secretKey: "kubeconfig"
+    mountPath: "/etc/radius/target-kubeconfig"
 
 controller:
   image: controller
@@ -85,8 +112,8 @@ controller:
 
 de:
   image: deployment-engine
-  # Pin Deployment Engine to the v0.56.0 image for the v0.57.1 patch release.
-  tag: 0.56
+  # Default tag uses Chart AppVersion.
+  # tag: latest
   resources:
     requests:
       # request memory is the average memory usage + 10% buffer.
@@ -122,6 +149,27 @@ dynamicrp:
     deleteRetryDelaySeconds: 60
   terraform:
     path: "/terraform"
+  # buildkit configures an in-Pod rootless BuildKit sidecar that
+  # backs the Radius.Compute/containerImages resource type. Opt-in:
+  # disabled by default. No host Docker socket; no privileged containers.
+  buildkit:
+    # Opt in to enable Radius.Compute/containerImages. When enabled,
+    # the dynamic-rp Pod gets a rootless BuildKit sidecar that requires
+    # PSA "privileged" on radius-system (the sidecar uses Unconfined
+    # seccomp + AppArmor, which PSA "baseline" and "restricted" forbid).
+    # Default install (this disabled) is PSA-baseline-compatible.
+    enabled: false
+    # Pinned rootless BuildKit image.
+    image: "moby/buildkit:v0.13.2-rootless"
+    # Default limits suit small/medium image builds; raise for large
+    # contexts or memory-heavy compilations.
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "512Mi"
+      limits:
+        cpu: "2000m"
+        memory: "4Gi"
 
 rp:
   image: applications-rp
@@ -141,6 +189,14 @@ rp:
     deleteRetryDelaySeconds: 60
   terraform:
     path: "/terraform"
+  security:
+    annotationProtection:
+      # Enable ValidatingAdmissionPolicy to protect radapp.io/status from user tampering.
+      # Keep disabled by default for compatibility with clusters that do not support
+      # admissionregistration.k8s.io/v1 ValidatingAdmissionPolicy.
+      enabled: false
+      # Service account allowed to modify protected annotations.
+      allowedServiceAccountName: "applications-rp"
 
 dashboard:
   enabled: true
@@ -161,8 +217,10 @@ dashboard:
 database:
   enabled: false # Enable the Postgres database install
   postgres_user: "radius"
-  image: mirror/postgres
-  tag: latest
+  # Pulled directly from Docker Hub: the registry mirror does not publish a pinned
+  # postgres tag, only ':latest'. Using the upstream image keeps the version deterministic.
+  image: docker.io/library/postgres
+  tag: 16-alpine
   storageClassName: "" # set to the storage class name if required, the empty string will pickup the default storage class.
   # Minimum resource requirements, may need to revisit and scale.
   storageSize: "1Gi"
@@ -178,6 +236,34 @@ bicep:
   image: bicep
   # Default tag uses Chart AppVersion.
   # tag: latest
+
+# Optional Kubernetes NetworkPolicies that lock down ingress to the Radius
+# control-plane namespace (radius-system). Disabled by default.
+#
+# Enforcement requires a CNI that implements NetworkPolicy (e.g. Calico, Cilium,
+# Antrea). On CNIs that do not (e.g. kindnet, flannel, the default EKS VPC CNI)
+# these objects are accepted by the API server but silently NOT enforced, so
+# enabling this has no effect until such a CNI is in place.
+networkPolicies:
+  # Enable the bundled NetworkPolicies. When true, three ingress policies are
+  # applied to radius-system: a default-deny, an allow for Radius-internal
+  # (intra-namespace) traffic, and an allow for the Kubernetes API server (see
+  # controlPlaneCIDRs). Egress is left unrestricted.
+  # NOTE: when enabled, controlPlaneCIDRs is REQUIRED -- Helm rendering fails if it
+  # is empty -- so the API server can still reach the control plane.
+  enabled: false
+  # Source CIDRs the Kubernetes API server uses to reach the Radius control plane.
+  # This traffic is host-network, so it arrives with the NODE's IP rather than a
+  # pod IP and cannot be matched by a namespace/pod selector:
+  #   - kube-apiserver -> ucp:9443        (APIService aggregation for api.ucp.dev)
+  #   - kube-apiserver -> controller:9443 (recipe admission webhook)
+  # The allow policy is scoped to port 9443 (the only host-network destination).
+  # Set this to your cluster's node/control-plane source CIDR(s) -- e.g. the VPC or
+  # subnet CIDR on a managed cluster, or the Docker network subnet for KinD. This
+  # is REQUIRED when enabled (rendering fails if empty); without it the default-deny
+  # policy would block API aggregation and webhooks and break the control plane.
+  # Example: ["10.0.0.0/16"]
+  controlPlaneCIDRs: []
 
 preupgrade:
   # Enable pre-upgrade preflight checks

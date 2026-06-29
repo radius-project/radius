@@ -41,22 +41,15 @@ on:
       - main
       - features/*
       - release/*
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # Scoped to main only so the release branch flow is never affected.
+  merge_group:
+    branches:
+      - main
 
 permissions: {}
 
 env:
-  # gotestsum version - see: https://github.com/gotestyourself/gotestsum
-  GOTESTSUM_VER: 1.13.0
-  # yq version
-  YQ_VERSION: v4.44.3
-  # Helm version
-  HELM_VER: v3.19.4
-  # KinD cluster version
-  KIND_VER: v0.29.0
-  # Kubectl version
-  KUBECTL_VER: v1.30.0
-  # Dapr CLI version
-  DAPR_CLI_VER: 1.15.1
   # Dapr runtime version
   DAPR_RUNTIME_VER: 1.15.4
   # Dapr dashboard version
@@ -91,9 +84,6 @@ env:
   GIT_HTTP_PASSWORD: not-a-secret-password
   # Kubernetes client QPS and Burst settings for high-concurrency CI environments
   RADIUS_QPS_AND_BURST: "800"
-  # Bicep CLI pinned: v0.40+ rejects br:localhost:5000/... (ThrowIfRegistryNotTrusted).
-  # Bump only after verifying localhost support or adding allowedUntrustedRegistries to bicepconfig.json.
-  BICEP_VER: v0.42.1
 
 jobs:
   changes:
@@ -148,8 +138,8 @@ jobs:
           # Set output variables to be used in the other jobs
           {
             echo "REL_VERSION=pr-${UNIQUE_ID}"
-            echo "DE_IMAGE=${{ env.DE_IMAGE }}"
-            echo "DE_TAG=${{ env.DE_TAG }}"
+            echo "DE_IMAGE=${DE_IMAGE}"
+            echo "DE_TAG=${DE_TAG}"
           } >> "${GITHUB_OUTPUT}"
 
   tests:
@@ -159,8 +149,14 @@ jobs:
     permissions:
       contents: read # Required for listing the commits
       checks: write # Required for creating a check run
+      pull-requests: write # Required for posting a PR comment
     strategy:
-      fail-fast: true
+      # Keep matrix legs independent. With fail-fast: true, a single failing
+      # (often flaky) leg cancels all in-progress siblings. GitHub's
+      # "Re-run failed jobs" reliably re-runs only failure-concluded jobs, so
+      # cancelled siblings can stay stale on the PR and the checks never fully
+      # update to green even after a successful re-run.
+      fail-fast: false
       matrix:
         os: [ubuntu-24.04]
         name:
@@ -170,6 +166,7 @@ jobs:
             daprrp-noncloud,
             kubernetes-noncloud,
             msgrp-noncloud,
+            multicluster-noncloud,
             samples-noncloud,
             ucp-noncloud,
             datastoresrp-noncloud,
@@ -188,34 +185,41 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'repository_dispatch'
         run: |
           {
-            echo "CHECKOUT_REPO=${{ github.repository }}"
+            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
             echo "CHECKOUT_REF=refs/heads/main"
           } >> "${GITHUB_ENV}"
 
-      - name: Set up checkout target (pull_request)
-        if: github.event_name == 'pull_request'
+      - name: Set up checkout target (pull_request or merge_group)
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           {
-            echo "CHECKOUT_REPO=${{ github.repository }}"
-            echo "CHECKOUT_REF=${{ github.ref }}"
-            echo "PR_NUMBER=${{ github.event.pull_request.number }}"
+            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
+            echo "CHECKOUT_REF=${GITHUB_REF}"
           } >> "${GITHUB_ENV}"
+          # There is no pull request associated with a merge_group event.
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            echo "PR_NUMBER=${PR_NUMBER}" >> "${GITHUB_ENV}"
+          fi
 
       - name: Set up checkout target (workflow_dispatch)
         if: github.event_name == 'workflow_dispatch'
+        env:
+          INPUT_BRANCH: ${{ github.event.inputs.branch }}
         run: |
           {
-            echo "CHECKOUT_REPO=${{ github.repository }}"
-            echo "CHECKOUT_REF=refs/heads/${{ github.event.inputs.branch }}"
+            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
+            echo "CHECKOUT_REF=refs/heads/${INPUT_BRANCH}"
           } >> "${GITHUB_ENV}"
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
       - name: Checkout samples repo
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         if: matrix.name == 'samples-noncloud'
         with:
           repository: radius-project/samples
@@ -230,10 +234,6 @@ jobs:
           cache-dependency-path: go.sum
           cache: true
 
-      - name: Install gotestsum (test reporting tool)
-        run: |
-          go install gotest.tools/gotestsum@v${{ env.GOTESTSUM_VER }}
-
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
@@ -241,14 +241,13 @@ jobs:
 
       - name: Install yq
         # Required by make generate-bicep-types-contrib to parse defaults.yaml.
-        run: |
-          mkdir -p "${RUNNER_TEMP}/bin"
-          GOBIN="${RUNNER_TEMP}/bin" go install github.com/mikefarah/yq/v4@${{ env.YQ_VERSION }}
-          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
+        run: make install-yq
 
       - name: Generate Bicep extensibility types from OpenAPI specs
+        env:
+          BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
         run: |
-          make generate-bicep-types VERSION=${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
+          make generate-bicep-types VERSION="${BICEP_TYPES_VERSION}"
 
       - name: Upload Radius Bicep types artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -266,29 +265,28 @@ jobs:
           registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
           registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
 
-      - name: Setup and verify bicep CLI
-        run: |
-          curl -Lo bicep "https://github.com/Azure/bicep/releases/download/${{ env.BICEP_VER }}/bicep-linux-x64"
-          chmod +x ./bicep
-          sudo mv ./bicep /usr/local/bin/bicep
-          bicep --version
+      - name: Install bicep CLI
+        # Pinned version + checksum live in build/tools.mk.
+        run: make install-bicep
 
       - name: Publish bicep types
+        env:
+          BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
         run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/radius:${BICEP_TYPES_VERSION}" --force
 
       - name: Generate test bicepconfig.json
         run: |
-          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+          if [[ "${REL_VERSION}" == "edge" ]]; then
             RADIUS_VERSION="latest"
           else
-            RADIUS_VERSION="${{ env.REL_VERSION }}"
+            RADIUS_VERSION="${REL_VERSION}"
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
             "extensions": {
-              "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
-              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest"
+              "radius": "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/radius:$RADIUS_VERSION",
+              "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest"
             }
           }
           EOF
@@ -310,20 +308,94 @@ jobs:
           rad bicep download
           rad version
 
-      - uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-        with:
-          version: ${{ env.HELM_VER }}
+      - name: Install helm
+        # Version pinned in build/tools.mk (HELM_VERSION).
+        run: make install-helm
 
       - name: Create a KinD cluster with a local registry
         uses: ./.github/actions/create-kind-cluster
         with:
           secure: "true"
           temp-cert-dir: ${{ steps.create-local-registry.outputs.temp-cert-dir }}
-          kind-version: ${{ env.KIND_VER }}
           with-local-registry: "true"
           registry-name: ${{ env.LOCAL_REGISTRY_NAME }}
           registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
           registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
+
+      - name: Set up external target cluster (multi-cluster)
+        if: matrix.name == 'multicluster-noncloud'
+        run: |
+          set -euo pipefail
+
+          # Create a second in-runner KinD cluster to act as the external workload
+          # cluster. The Radius control plane stays on the first ("kind") cluster;
+          # application resources must land on this "external" cluster. This runs
+          # before "Install Radius" so the control plane can be installed with the
+          # target-cluster mount enabled (avoiding a post-install helm upgrade,
+          # which conflicts with the field manager rad install uses).
+          kind create cluster --name external
+
+          # Two kubeconfigs are derived from the same external cluster:
+          # 1. An "internal" kubeconfig reachable from pods running inside the
+          #    control-plane cluster. Pods cannot resolve the docker container name
+          #    (`kind get kubeconfig --internal` uses external-control-plane:6443,
+          #    which only docker DNS resolves), so point it at the external control
+          #    plane's IP on the shared "kind" docker network — reachable from pods
+          #    via the node — and skip TLS verification since the API server cert may
+          #    not cover that IP. This is what the Radius pods consume via
+          #    RADIUS_TARGET_KUBECONFIG.
+          # 2. A "host" kubeconfig (127.0.0.1:<port>) reachable from the runner, used
+          #    by the test process to assert resources landed on the external cluster.
+          mkdir -p "${RUNNER_TEMP}/external-cluster"
+          INTERNAL_KUBECONFIG="${RUNNER_TEMP}/external-cluster/internal.kubeconfig"
+          HOST_KUBECONFIG="${RUNNER_TEMP}/external-cluster/host.kubeconfig"
+          kind get kubeconfig --name external > "${HOST_KUBECONFIG}"
+
+          EXTERNAL_IP="$(docker inspect -f '{{(index .NetworkSettings.Networks "kind").IPAddress}}' external-control-plane)"
+          if [ -z "${EXTERNAL_IP}" ]; then
+            echo "Could not determine external-control-plane IP on the kind network"
+            exit 1
+          fi
+          cp "${HOST_KUBECONFIG}" "${INTERNAL_KUBECONFIG}"
+          kubectl --kubeconfig "${INTERNAL_KUBECONFIG}" config set "clusters.kind-external.server" "https://${EXTERNAL_IP}:6443"
+          kubectl --kubeconfig "${INTERNAL_KUBECONFIG}" config unset "clusters.kind-external.certificate-authority-data"
+          kubectl --kubeconfig "${INTERNAL_KUBECONFIG}" config set "clusters.kind-external.insecure-skip-tls-verify" "true"
+
+          # Restore kubectl context to the control-plane cluster; `kind create`
+          # switched it to the external cluster.
+          kubectl config use-context kind-kind
+
+          # Preload the magpie workload image into the external cluster. The
+          # external cluster is a plain KinD cluster with no local-registry mirror
+          # or CA trust, so it cannot pull `radius-registry:5000/...` images. The
+          # image was already built into the runner's docker daemon by the
+          # "Build and Push container images" step, but tagged with the host-facing
+          # registry name (LOCAL_REGISTRY_SERVER=localhost), whereas pods reference
+          # the in-cluster registry name (LOCAL_REGISTRY_NAME=radius-registry). So
+          # retag to the in-cluster name and load that, matching the pod's image
+          # reference exactly. The container recipe sets no imagePullPolicy and the
+          # tag is not `latest`, so kubelet defaults to IfNotPresent and uses the
+          # preloaded image. This covers the magpie-using legs (Bicep container and
+          # legacy container); the Terraform Redis leg's image is public.
+          MAGPIE_HOST_IMAGE="${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/magpiego:${REL_VERSION}"
+          MAGPIE_CLUSTER_IMAGE="${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/magpiego:${REL_VERSION}"
+          docker tag "${MAGPIE_HOST_IMAGE}" "${MAGPIE_CLUSTER_IMAGE}"
+          kind load docker-image "${MAGPIE_CLUSTER_IMAGE}" --name external
+
+          # Pre-create the radius-system namespace and the target-kubeconfig secret
+          # so the secret exists before the Radius pods start (the deployments mount
+          # it when global.targetCluster.enabled=true).
+          kubectl create namespace radius-system --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic target-kubeconfig \
+            --namespace radius-system \
+            --from-file=kubeconfig="${INTERNAL_KUBECONFIG}"
+
+          # Tell the Install Radius step to enable the target-cluster mount, and
+          # expose the host kubeconfig path to the test process.
+          {
+            echo "TARGET_CLUSTER_INSTALL_ARGS=--set global.targetCluster.enabled=true"
+            echo "RADIUS_TEST_EXTERNAL_KUBECONFIG=${HOST_KUBECONFIG}"
+          } >> "${GITHUB_ENV}"
 
       - name: Install Radius
         run: |
@@ -345,18 +417,23 @@ jobs:
           fi
 
           RAD_COMMAND="rad install kubernetes \
-                 --chart ${{ env.RADIUS_CHART_LOCATION }} \
-                 --set rp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/applications-rp,rp.tag=${{ env.REL_VERSION }} \
-                 --set dynamicrp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/dynamic-rp,dynamicrp.tag=${{ env.REL_VERSION }} \
-                 --set controller.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/controller,controller.tag=${{ env.REL_VERSION }} \
-                 --set ucp.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/ucpd,ucp.tag=${{ env.REL_VERSION }} \
-                 --set bicep.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/bicep,bicep.tag=${{ env.REL_VERSION }} \
-                 --set preupgrade.image=${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}/pre-upgrade,preupgrade.tag=${{ env.REL_VERSION }} \
-                 --set de.image=${{ env.DE_IMAGE }},de.tag=${{ env.DE_TAG }}"
+                 --chart ${RADIUS_CHART_LOCATION} \
+                 --set rp.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/applications-rp,rp.tag=${REL_VERSION} \
+                 --set dynamicrp.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/dynamic-rp,dynamicrp.tag=${REL_VERSION} \
+                 --set controller.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/controller,controller.tag=${REL_VERSION} \
+                 --set ucp.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/ucpd,ucp.tag=${REL_VERSION} \
+                 --set bicep.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/bicep,bicep.tag=${REL_VERSION} \
+                 --set preupgrade.image=${LOCAL_REGISTRY_NAME}:${LOCAL_REGISTRY_PORT}/pre-upgrade,preupgrade.tag=${REL_VERSION} \
+                 --set de.image=${DE_IMAGE},de.tag=${DE_TAG}"
 
-          if [ "${{ env.USE_CERT_FILE }}" = "true" ]; then
-            RAD_COMMAND="$RAD_COMMAND --set-file global.rootCA.cert=$TEMP_CERT_DIR/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt"
+          if [ "${USE_CERT_FILE}" = "true" ]; then
+            RAD_COMMAND="$RAD_COMMAND --set-file global.rootCA.cert=$TEMP_CERT_DIR/certs/${LOCAL_REGISTRY_SERVER}/client.crt"
           fi
+
+          # For the multi-cluster leg, enable the external target-cluster mount at
+          # install time (set by the "Set up external target cluster" step). Empty
+          # for all other legs.
+          RAD_COMMAND="$RAD_COMMAND ${TARGET_CLUSTER_INSTALL_ARGS:-}"
 
           echo "*** Installing Radius to Kubernetes ***"
           eval $RAD_COMMAND
@@ -443,39 +520,46 @@ jobs:
 
           echo "Port forwarding established successfully"
 
-      - name: Install Dapr CLI and control plane
+      - name: Install Dapr CLI
         if: matrix.name == 'daprrp-noncloud'
-        run: |
-          wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash -s ${{ env.DAPR_CLI_VER }}
-          dapr init -k --wait --timeout 600 --runtime-version ${{ env.DAPR_RUNTIME_VER }} --dashboard-version ${{ env.DAPR_DASHBOARD_VER }}
+        # Version pinned in build/tools.mk (DAPR_VERSION).
+        run: make install-dapr
+
+      - name: Install Dapr control plane
+        if: matrix.name == 'daprrp-noncloud'
+        run: dapr init -k --wait --timeout 600 --runtime-version "${DAPR_RUNTIME_VER}" --dashboard-version "${DAPR_DASHBOARD_VER}"
 
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
 
       - name: Publish bicep types
+        env:
+          BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
         run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/radius:${BICEP_TYPES_VERSION}" --force
 
       - name: Publish UDT types
+        env:
+          BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
-          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/testresources:${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }} --force
+          rad bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/testresources:${BICEP_TYPES_VERSION}" --force
 
       - name: Generate test bicepconfig.json
         run: |
-          if [[ "${{ env.REL_VERSION }}" == "edge" ]]; then
+          if [[ "${REL_VERSION}" == "edge" ]]; then
             RADIUS_VERSION="latest"
           else
-            RADIUS_VERSION="${{ env.REL_VERSION }}"
+            RADIUS_VERSION="${REL_VERSION}"
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
             "extensions": {
-              "radius": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/radius:$RADIUS_VERSION",
-              "aws": "br:${{ env.BICEP_TYPES_REGISTRY }}/aws:latest",
-              "testresources": "br:${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}/testresources:$RADIUS_VERSION"
+              "radius": "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/radius:$RADIUS_VERSION",
+              "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest",
+              "testresources": "br:${LOCAL_REGISTRY_SERVER}:${LOCAL_REGISTRY_PORT}/testresources:$RADIUS_VERSION"
             }
           }
           EOF
@@ -504,7 +588,7 @@ jobs:
 
           which rad || { echo "cannot find rad"; exit 1; }
 
-          make test-functional-${{ matrix.name }}
+          make "test-functional-${MATRIX_NAME}"
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
@@ -516,32 +600,41 @@ jobs:
           GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
           RADIUS_TEST_FAST_CLEANUP: true
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
+          MATRIX_NAME: ${{ matrix.name }}
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results
-        # In case of failure, upload functional_test_results to artifacts so that they are not erased by subsequent runs.
-        if: failure() && github.repository == vars.RADIUS_REPOSITORY
+        # Run on success and failure so a passing "Re-run failed jobs" refreshes the
+        # "Functional Tests - <name>" check published by EnricoMi. Gating this on
+        # failure() left that check stuck red after a green re-run, because the step
+        # was skipped and the previous attempt's failed check was never updated.
+        # comment_mode: failures keeps PR comments limited to actual failures, and
+        # the failure artifacts are still uploaded for post-mortem.
+        if: always() && github.repository == vars.RADIUS_REPOSITORY
         with:
           test_group_name: Functional Tests - ${{ matrix.name }}
           artifact_name: functional_test_results_${{ matrix.name }}
           result_directory: dist/functional_test/
+          comment_mode: failures
 
       - name: Collect detailed Radius logs and events
         id: radius-logs-events
         if: always()
+        env:
+          MATRIX_NAME: ${{ matrix.name }}
         run: |
           # Create Radius logs directory
-          mkdir -p func-nc/radius-logs-events/${{ matrix.name }}
+          mkdir -p "func-nc/radius-logs-events/${MATRIX_NAME}"
 
           # Get pod logs and save to file
           namespace="radius-system"
           pod_names=($(kubectl get pods -n $namespace -o jsonpath='{.items[*].metadata.name}'))
           for pod_name in "${pod_names[@]}"; do
-            kubectl logs $pod_name -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt 2>&1 || echo "Failed to get logs for pod: $pod_name" > func-nc/radius-logs-events/${{ matrix.name }}/${pod_name}.txt
+            kubectl logs $pod_name -n $namespace > "func-nc/radius-logs-events/${MATRIX_NAME}/${pod_name}.txt" 2>&1 || echo "Failed to get logs for pod: $pod_name" > "func-nc/radius-logs-events/${MATRIX_NAME}/${pod_name}.txt"
           done
-          echo "Pod logs saved to func-nc/radius-logs-events/${{ matrix.name }}/"
+          echo "Pod logs saved to func-nc/radius-logs-events/${MATRIX_NAME}/"
           # Get kubernetes events and save to file
-          kubectl get events -n $namespace > func-nc/radius-logs-events/${{ matrix.name }}/events.txt
+          kubectl get events -n $namespace > "func-nc/radius-logs-events/${MATRIX_NAME}/events.txt"
 
       - name: Upload Pod logs for failed tests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -554,9 +647,15 @@ jobs:
 
       - name: Collect Pod details
         if: always()
+        # Diagnostic-only snapshot of cluster-wide pod state for post-mortem. A
+        # `kubectl describe pods -A` can race pod teardown and return a transient
+        # NotFound, so never let it fail the job.
+        continue-on-error: true
+        env:
+          MATRIX_NAME: ${{ matrix.name }}
         run: |
-          POD_STATE_LOG_FILENAME='${{ env.RADIUS_CONTAINER_LOG_BASE }}/${{ matrix.name }}-tests-pod-states.log'
-          mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
+          POD_STATE_LOG_FILENAME="${RADIUS_CONTAINER_LOG_BASE}/${MATRIX_NAME}-tests-pod-states.log"
+          mkdir -p "$(dirname "$POD_STATE_LOG_FILENAME")"
           {
             echo "kubectl get pods -A"
             kubectl get pods -A

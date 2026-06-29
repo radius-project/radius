@@ -38,11 +38,9 @@ import (
 )
 
 const (
-	deleteConfirmationMsg   = "Are you sure you want to delete recipe pack '%s'?"
-	msgDeletingRecipePack   = "Deleting recipe pack %s...\n"
-	msgRecipePackDeleted    = "Recipe pack %s deleted."
-	msgRecipePackNotFound   = "Recipe pack %s does not exist or has already been deleted."
-	msgRecipePackNotDeleted = "Recipe pack %q NOT deleted"
+	deleteConfirmationMsg = "Are you sure you want to delete recipe pack '%s'?"
+	msgRecipePackDeleted  = "Radius.Core/recipePacks/%s deleted"
+	msgRecipePackNotFound = "Radius.Core/recipePacks/%s not found"
 )
 
 // NewCommand creates a new Cobra command for deleting a recipe pack.
@@ -139,12 +137,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 
 		if !confirmed {
-			r.Output.LogInfo(msgRecipePackNotDeleted, r.RecipePackName)
 			return nil
 		}
 	}
-
-	r.Output.LogInfo(msgDeletingRecipePack, r.RecipePackName)
 
 	recipePack, err := client.GetRecipePack(ctx, r.RecipePackName)
 	if clients.Is404Error(err) {
@@ -175,7 +170,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		envClientFactory, ok := factoriesByScope[ID.RootScope()]
 		if !ok {
-			envClientFactory, err = utils.InitializeRadiusCoreClientFactory(ctx, r.Workspace, ID.RootScope())
+			envClientFactory, err = utils.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 			if err != nil {
 				return err
 			}
@@ -184,7 +179,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 		envClient := envClientFactory.NewEnvironmentsClient()
 
-		resp, err := envClient.Get(ctx, ID.Name(), &corerpv20250801.EnvironmentsClientGetOptions{})
+		resp, err := envClient.Get(ctx, ID.RootScope(), ID.Name(), &corerpv20250801.EnvironmentsClientGetOptions{})
 		if clients.Is404Error(err) {
 			continue
 		} else if err != nil {
@@ -205,7 +200,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 		res.Properties.RecipePacks = newRecipePacks
 
-		_, err = envClient.CreateOrUpdate(ctx, ID.Name(), res, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
+		_, err = envClient.CreateOrUpdate(ctx, ID.RootScope(), ID.Name(), res, &corerpv20250801.EnvironmentsClientCreateOrUpdateOptions{})
 		if err != nil {
 			return clierrors.MessageWithCause(err, "Failed to update environment %s.", *env)
 		}

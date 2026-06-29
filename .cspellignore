@@ -11,6 +11,7 @@ AWSCredentialProvider
 AcquireLock
 Amidst
 AnonymousCredential
+Antrea
 ApiVersionName
 AppCore
 AppGraph
@@ -39,6 +40,7 @@ Bitbucket
 Bitnami
 Bitnami's
 Bugfix
+Buildah
 CDN
 CEL
 CLI's
@@ -83,8 +85,11 @@ Contoso
 ControlPlaneHealthCheck
 CoreRP
 CreateOrUpdate
+createorupdateazurecredential
 CreateOrUpdateEnvironment
+createorupdateresource
 CustomConfigValidationCheck
+Cytoscape
 DCO
 DML
 DSL
@@ -204,6 +209,7 @@ InvalidTemplate
 JetStream
 KRM
 KV
+Kaniko
 Karishma
 KeyObjectProperties
 KeyVault
@@ -252,6 +258,7 @@ NFS
 NGroups
 NewInt
 NewServerOptionsFromEnvironment
+Niles
 Nithya
 NoSQL
 NoSchedule
@@ -296,6 +303,7 @@ ProvidersAws
 ProvidersAzure
 ProvidersKubernetes
 PubSubBroker
+Pulumi
 Qube
 RCs
 RDBMS
@@ -387,6 +395,7 @@ Statestores
 StaticCredential
 Subramanian
 Swappable
+Sylvain
 Sylvainsf
 Symlinked
 SystemData
@@ -415,6 +424,8 @@ TypeScript
 TypeSpec
 UCP's
 UCPCredential
+ucpcredentialprovider
+ucpcredentials
 UDP
 UDPRoute
 UDTs
@@ -519,11 +530,14 @@ bicepConfig
 bicepconfig
 bicepparams
 bikeshedding
+binfmt
 bool
 booleans
 breakpoint
 brooke
 bubbletea
+buildctl
+buildkitd
 buildx
 caBundle
 camelCased
@@ -786,10 +800,12 @@ jwt
 keyspace
 keyvault
 kube
+kubeadm
 kubebuilder
 kubeconf
 kubeconfig
 kubectl
+kubelet
 kubeproxy
 kubernetes
 kubernetesMetadata
@@ -1175,6 +1191,7 @@ testrp
 testsyncresources
 tf
 tfexec
+tfvars
 tgz
 th
 throughs

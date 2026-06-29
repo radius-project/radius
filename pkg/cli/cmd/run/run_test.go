@@ -39,6 +39,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	corerpfake "github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/testcontext"
 	appsv1 "k8s.io/api/apps/v1"
@@ -344,6 +345,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 		nonExistentEnvServer := corerpfake.EnvironmentsServer{
 			Get: func(
 				_ context.Context,
+				_ string,
 				_ string,
 				_ *v20250801preview.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
@@ -756,6 +758,152 @@ func Test_Run_NoDashboard(t *testing.T) {
 		},
 		output.LogOutput{
 			Format: "",
+		},
+	}
+	require.Equal(t, expected, outputSink.Writes)
+}
+
+// Test_Run_ExtensibleEnvironment verifies that `rad run` does not attempt to start log streaming or
+// port-forwarding when the deployment targets an environment configured using the extensible
+// Radius.Core/environments resource type. Instead, it surfaces a not-supported/deprecation warning and
+// completes successfully.
+func Test_Run_ExtensibleEnvironment(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	deployMock := deploy.NewMockInterface(ctrl)
+	deployMock.EXPECT().
+		DeployWithProgress(gomock.Any(), gomock.Any()).
+		Return(clients.DeploymentResult{}, nil).
+		Times(1)
+
+	// No port-forwarding or log streaming should be attempted for extensible compute runtimes.
+	portforwardMock := portforward.NewMockInterface(ctrl)
+	logstreamMock := logstream.NewMockInterface(ctrl)
+
+	workspace := &workspaces.Workspace{
+		Connection: map[string]any{
+			"kind":    "kubernetes",
+			"context": "kind-kind",
+		},
+		Name: "kind-kind",
+	}
+	outputSink := &output.MockOutput{}
+	providers := &clients.Providers{
+		Radius: &clients.RadiusProvider{},
+	}
+
+	// Build a minimal template that actually contains a Radius.Core/environments resource, then
+	// derive the inspection result from it (matching real CLI execution). recipePacks is
+	// pre-populated so that setupRecipePackForEnvironment is a no-op and no recipe-pack API calls
+	// are attempted during the deploy step.
+	template := map[string]any{
+		"resources": map[string]any{
+			"environment": map[string]any{
+				"type": "Radius.Core/environments@2025-08-01-preview",
+				"properties": map[string]any{
+					"properties": map[string]any{
+						"recipePacks": []any{"/planes/radius/local/resourceGroups/default/providers/Radius.Core/recipePacks/default"},
+					},
+				},
+			},
+		},
+	}
+
+	runner := &Runner{
+		Runner: deploycmd.Runner{
+			Deploy:                   deployMock,
+			Output:                   outputSink,
+			FilePath:                 "app.bicep",
+			ApplicationName:          "test-application",
+			Parameters:               map[string]map[string]any{},
+			Template:                 template,
+			Workspace:                workspace,
+			Providers:                providers,
+			TemplateInspectionResult: bicep.InspectTemplateResources(template),
+		},
+		Logstream:   logstreamMock,
+		Portforward: portforwardMock,
+	}
+
+	ctx := testcontext.New(t)
+	err := runner.Run(ctx)
+	require.NoError(t, err)
+
+	expected := []any{
+		output.LogOutput{
+			Format: "",
+		},
+		output.LogOutput{
+			Format: "%s",
+			Params: []any{extensibleComputeNotSupportedMessage},
+		},
+	}
+	require.Equal(t, expected, outputSink.Writes)
+}
+
+// Test_Run_ExtensibleEnvironment_PreExisting verifies that `rad run` surfaces the not-supported
+// warning and completes successfully when the deployment targets a pre-existing environment that is
+// backed by the extensible Radius.Core/environments resource type (resolved during validation).
+func Test_Run_ExtensibleEnvironment_PreExisting(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	deployMock := deploy.NewMockInterface(ctrl)
+	deployMock.EXPECT().
+		DeployWithProgress(gomock.Any(), gomock.Any()).
+		Return(clients.DeploymentResult{}, nil).
+		Times(1)
+
+	// No port-forwarding or log streaming should be attempted for extensible compute runtimes.
+	portforwardMock := portforward.NewMockInterface(ctrl)
+	logstreamMock := logstream.NewMockInterface(ctrl)
+
+	workspace := &workspaces.Workspace{
+		Connection: map[string]any{
+			"kind":    "kubernetes",
+			"context": "kind-kind",
+		},
+		Name: "kind-kind",
+	}
+	outputSink := &output.MockOutput{}
+	providers := &clients.Providers{
+		Radius: &clients.RadiusProvider{},
+	}
+	runner := &Runner{
+		Runner: deploycmd.Runner{
+			Deploy:          deployMock,
+			Output:          outputSink,
+			FilePath:        "app.bicep",
+			ApplicationName: "test-application",
+			Parameters:      map[string]map[string]any{},
+			Template:        map[string]any{},
+			Workspace:       workspace,
+			Providers:       providers,
+			// A pre-existing environment was resolved during validation and is backed by the
+			// extensible Radius.Core/environments resource type.
+			EnvResult: &deploycmd.EnvironmentCheckResult{
+				UseApplicationsCore: false,
+				RadiusCoreEnv: &v20250801preview.EnvironmentResource{
+					ID: to.Ptr("/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/test-env"),
+				},
+			},
+		},
+		Logstream:   logstreamMock,
+		Portforward: portforwardMock,
+	}
+
+	ctx := testcontext.New(t)
+	err := runner.Run(ctx)
+	require.NoError(t, err)
+
+	expected := []any{
+		output.LogOutput{
+			Format: "",
+		},
+		output.LogOutput{
+			Format: "%s",
+			Params: []any{extensibleComputeNotSupportedMessage},
 		},
 	}
 	require.Equal(t, expected, outputSink.Writes)

@@ -292,12 +292,12 @@ while [ $attempt -lt $max_attempts ]; do
       break
     fi
   fi
-  
+
   # Show progress every 10 seconds
   if [ $((attempt % 10)) -eq 0 ] && [ $attempt -gt 0 ]; then
     echo "  Still waiting for UCP initialization... (${attempt}s elapsed)"
   fi
-  
+
   sleep 2
   attempt=$((attempt + 1))
 done
@@ -354,6 +354,33 @@ if [ $attempt -eq $max_attempts ]; then
   print_warning "Applications RP health check failed, but continuing (check logs: $DEBUG_ROOT/logs/applications-rp.log)"
 else
   print_success "Applications RP started successfully"
+fi
+
+# Ensure radius-system/radius-encryption-key secret exists. dynamic-rp refuses to
+# start without it (pkg/dynamicrp/frontend/service.go createSensitiveDataHandler).
+# In a real install this is created by the Helm chart (deploy/Chart/templates/dynamic-rp/secret.yaml).
+# We create an equivalent secret in whatever cluster the current kube context points at
+# because dynamic-rp.yaml is configured with `kubernetes.kind: default` which uses that context.
+
+echo "Ensuring radius-system/radius-encryption-key secret exists..."
+if ! kubectl get namespace radius-system >/dev/null 2>&1; then
+  kubectl create namespace radius-system >/dev/null
+fi
+if ! kubectl -n radius-system get secret radius-encryption-key >/dev/null 2>&1; then
+  enc_now=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  if date -u -v+90d +"%Y-%m-%dT%H:%M:%SZ" >/dev/null 2>&1; then
+    enc_exp=$(date -u -v+90d +"%Y-%m-%dT%H:%M:%SZ")     # BSD/macOS date
+  else
+    enc_exp=$(date -u -d "+90 days" +"%Y-%m-%dT%H:%M:%SZ")  # GNU date
+  fi
+  enc_key=$(openssl rand -base64 32)
+  enc_json=$(printf '{"currentVersion":1,"keys":{"1":{"key":"%s","version":1,"createdAt":"%s","expiresAt":"%s"}}}' \
+    "$enc_key" "$enc_now" "$enc_exp")
+  kubectl -n radius-system create secret generic radius-encryption-key \
+    --from-literal=keys.json="$enc_json" >/dev/null
+  print_success "Created radius-encryption-key secret in radius-system namespace"
+else
+  print_info "radius-encryption-key secret already present"
 fi
 
 # Start Dynamic RP with dlv

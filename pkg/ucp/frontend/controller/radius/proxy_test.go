@@ -232,10 +232,11 @@ func Test_Run(t *testing.T) {
 			Get(gomock.Any(), locationResource.ID).
 			Return(&database.Object{Data: locationResource}, nil).Times(1)
 
-		// Tracking entry created
+		// Tracking entry created. The entry is read three times for a new resource: the current and
+		// legacy IDs during ResolveTrackingEntry, then once more in the enqueue retry loop.
 		databaseClient.EXPECT().
 			Get(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(nil, &database.ErrNotFound{}).Times(1)
+			Return(nil, &database.ErrNotFound{}).Times(3)
 		databaseClient.EXPECT().
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil).Times(1)
@@ -299,7 +300,7 @@ func Test_Run(t *testing.T) {
 		}
 		databaseClient.EXPECT().
 			Get(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(existingEntry, nil).Times(1)
+			Return(existingEntry, nil).Times(2)
 		databaseClient.EXPECT().
 			Save(gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(nil).Times(1)

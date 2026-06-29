@@ -19,6 +19,7 @@ package resource_test
 import (
 	"context"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/test/rp"
@@ -30,13 +31,11 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_Application(t *testing.T) {
 	template := "testdata/corerp-resources-application.bicep"
 	name := "corerp-resources-application"
-	appNamespace := "corerp-resources-application-app"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
@@ -45,16 +44,12 @@ func Test_Application(t *testing.T) {
 				Resources: []validation.RPResource{
 					{
 						Name: "corerp-resources-application-app",
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 				},
 			},
 			// Application should not render any K8s Objects directly
 			K8sObjects: &validation.K8sObjectSet{},
-			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				_, err := test.Options.K8sClient.CoreV1().Namespaces().Get(ctx, appNamespace, metav1.GetOptions{})
-				require.NoErrorf(t, err, "%s must be created", appNamespace)
-			},
 		},
 	})
 	test.Test(t)
@@ -104,10 +99,10 @@ func Test_ApplicationGraph(t *testing.T) {
 				require.IsType(t, client, &clients.UCPApplicationsManagementClient{})
 
 				appManagementClient := client.(*clients.UCPApplicationsManagementClient)
-				appGraphClient, err := v20231001preview.NewApplicationsClient(appManagementClient.RootScope, &aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
+				appGraphClient, err := v20231001preview.NewApplicationsClient(&aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
 				require.NoError(t, err)
 
-				res, err := appGraphClient.GetGraph(ctx, "corerp-application-simple1", map[string]any{}, nil)
+				res, err := appGraphClient.GetGraph(ctx, appManagementClient.RootScope, "corerp-application-simple1", v20231001preview.GetGraphRequest{}, nil)
 				require.NoError(t, err)
 
 				// assert that the graph is as expected
@@ -121,6 +116,49 @@ func Test_ApplicationGraph(t *testing.T) {
 				sort.Slice(expected, func(i, j int) bool {
 					return *expected[i].Name < *expected[j].Name
 				})
+
+				// Verify the resource-type-specific Properties bag. We assert
+				// the top-level keys and compare the value of `application`
+				// (a stable, deterministic string).
+				//
+				// We build a name -> *expected lookup so the Properties graft
+				// below is robust to differences in ordering or length between
+				// `res.Resources` and the fixture (otherwise an index-based
+				// graft would silently attach properties to the wrong element
+				// when ElementsMatch is used as the fallback assertion).
+				expectedByName := make(map[string]*v20231001preview.ApplicationGraphResource, len(expected))
+				for i := range expected {
+					expectedByName[*expected[i].Name] = expected[i]
+				}
+
+				for _, r := range res.Resources {
+					if *r.Type != "Applications.Core/containers" {
+						continue
+					}
+					require.NotNil(t, r.Properties, "%s: Properties should not be nil", *r.Name)
+
+					// The application that owns this container lives in the
+					// same resource group; derive its expected ID from the
+					// container's own ID so the assertion is independent of
+					// the resource group name used by the test environment.
+					expectedAppID := strings.Replace(
+						*r.ID,
+						"/containers/"+*r.Name,
+						"/applications/"+name,
+						1,
+					)
+					require.Equal(t, expectedAppID, r.Properties["application"], "%s: application property mismatch", *r.Name)
+					require.Contains(t, r.Properties, "container", "%s: missing container property", *r.Name)
+
+					// Graft the actual Properties onto the matching expected
+					// resource so the struct-level equality check below
+					// succeeds for the rest of the fields without having to
+					// encode the environment-specific property bag in the
+					// fixture.
+					if e, ok := expectedByName[*r.Name]; ok {
+						e.Properties = r.Properties
+					}
+				}
 
 				if len(res.Resources) != len(expected) {
 					require.ElementsMatch(t, expected, res.Resources)

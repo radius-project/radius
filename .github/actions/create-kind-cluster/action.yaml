@@ -12,10 +12,6 @@ inputs:
     description: The temporary directory where the certificates are stored
     required: false
     default: ""
-  kind-version:
-    description: The version of KinD to install
-    required: false
-    default: v0.29.0
   with-local-registry:
     description: Whether the KinD cluster should be created with a local registry configuration
     required: false
@@ -36,10 +32,10 @@ runs:
   using: composite
   steps:
     - name: Install KinD
+      # Installs the version pinned in build/tools.mk (KIND_VERSION) and adds the
+      # install dir to the job PATH, so the cluster-create steps below find kind.
       shell: bash
-      run: |
-        curl -sSLo "kind" "https://github.com/kubernetes-sigs/kind/releases/download/${{ inputs.kind-version }}/kind-linux-amd64"
-        chmod +x ./kind
+      run: make install-kind
 
     - name: Create a KinD cluster without a local registry
       if: ${{ inputs.with-local-registry == 'false' }}

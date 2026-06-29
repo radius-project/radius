@@ -1,4 +1,7 @@
 {{- $appversion := include "radius.versiontag" . }}
+{{- if ne .Values.dynamicrp.terraform.path "/terraform" }}
+{{- fail "dynamicrp.terraform.path must be \"/terraform\" -- the runtime configmap (deploy/Chart/templates/dynamic-rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching." }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -22,11 +25,18 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-      {{- if eq .Values.global.prometheus.enabled true }}
+      {{- if or (eq .Values.global.prometheus.enabled true) (and .Values.dynamicrp.buildkit.enabled (not (semverCompare ">=1.30-0" .Capabilities.KubeVersion.Version))) }}
       annotations:
+        {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
         prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
+        {{- end }}
+        {{- if and .Values.dynamicrp.buildkit.enabled (not (semverCompare ">=1.30-0" .Capabilities.KubeVersion.Version)) }}
+        # Pre-K8s 1.30 fallback: securityContext.appArmorProfile was added
+        # in v1.30. Older clusters use the (now deprecated) annotation.
+        container.apparmor.security.beta.kubernetes.io/buildkitd: unconfined
+        {{- end }}
       {{- end }}
     spec:
       serviceAccountName: dynamic-rp
@@ -34,11 +44,14 @@ spec:
       imagePullSecrets:
         {{- toYaml .Values.global.imagePullSecrets | nindent 6 }}
       {{- end }}
-      {{- if eq .Values.global.terraform.enabled true }}
-      # Init container to pre-download Terraform binary to a shared volume
-      # This avoids downloading Terraform at runtime and improves recipe execution performance
+      {{- if or (eq .Values.global.terraform.enabled true) .Values.dynamicrp.buildkit.enabled .Values.global.appendRootCA.cert }}
       initContainers:
       {{- if .Values.global.appendRootCA.cert }}
+      # Populate the shared ssl-certs emptyDir before any container that
+      # mounts it. The dynamic-rp container always mounts ssl-certs at
+      # /etc/ssl/certs when appendRootCA.cert is set, so this init must
+      # run regardless of whether Terraform or BuildKit are enabled --
+      # otherwise the runtime trust store is empty and TLS breaks.
       - name: append-root-ca
         image: "{{ .Values.rp.image }}:{{ .Values.rp.tag | default $appversion }}"
         command:
@@ -54,6 +67,9 @@ spec:
         - name: ssl-certs
           mountPath: /etc/radius-ssl/certs
       {{- end }}
+      {{- if eq .Values.global.terraform.enabled true }}
+      # Init container to pre-download Terraform binary to a shared volume
+      # This avoids downloading Terraform at runtime and improves recipe execution performance
       - name: terraform-init
         image: "{{ .Values.global.terraform.initImage }}"
         command:
@@ -86,17 +102,20 @@ spec:
           
           # Determine download URL
           TERRAFORM_URL="{{ .Values.global.terraform.downloadUrl }}"
-          
-          # If no custom URL provided, fetch latest version from HashiCorp API
+
+          # If no custom URL provided, build the URL from the pinned version.
+          # Version MUST match terraformVersion in
+          # pkg/recipes/terraform/version.go so the pre-mounted binary
+          # and the runtime download fallback agree -- otherwise recipes
+          # behave differently between cold and warm starts.
           if [[ -z "$TERRAFORM_URL" ]]; then
-            echo "Fetching latest Terraform version from HashiCorp API..."
-            LATEST_VERSION=$(wget -qO- "https://api.releases.hashicorp.com/v1/releases/terraform/latest" | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
-            if [[ -z "$LATEST_VERSION" ]]; then
-              echo "ERROR: Failed to fetch latest Terraform version from API"
+            TERRAFORM_VERSION="{{ .Values.global.terraform.version }}"
+            if [[ -z "$TERRAFORM_VERSION" ]]; then
+              echo "ERROR: global.terraform.version is empty and no global.terraform.downloadUrl is set"
               exit 2
             fi
-            echo "Latest Terraform version: $LATEST_VERSION"
-            TERRAFORM_URL="https://releases.hashicorp.com/terraform/${LATEST_VERSION}/terraform_${LATEST_VERSION}_linux_${TERRAFORM_ARCH}.zip"
+            echo "Pinned Terraform version: $TERRAFORM_VERSION"
+            TERRAFORM_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${TERRAFORM_ARCH}.zip"
           fi
           
           echo "Download URL: $TERRAFORM_URL"
@@ -116,10 +135,23 @@ spec:
           unzip terraform.zip || { echo "ERROR: Failed to extract terraform"; exit 5; }
           
           echo "Installing terraform binary..."
+          # Path/marker MUST match constants in
+          # pkg/recipes/terraform/install.go (defaultGlobalTerraformBinary,
+          # defaultGlobalMarkerFile). The runtime hard-codes
+          # /terraform/.terraform-global, so this path is hard-coded too --
+          # do NOT derive it from .Values.dynamicrp.terraform.path or
+          # overrides to that value will silently reintroduce the
+          # path-mismatch bug this fix addresses.
+          GLOBAL_DIR="/terraform/.terraform-global"
+          mkdir -p "$GLOBAL_DIR" || { echo "ERROR: Failed to create global terraform directory"; exit 6; }
+          cp terraform "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
+          chmod +x "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
+          touch "$GLOBAL_DIR/.terraform-ready" || { echo "ERROR: Failed to create terraform-ready marker"; exit 8; }
+
+          # Keep a copy at the legacy path and write the legacy marker so any
+          # tooling that still references {{ .Values.dynamicrp.terraform.path }}/terraform continues to work.
           cp terraform "{{ .Values.dynamicrp.terraform.path }}/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
           chmod +x "{{ .Values.dynamicrp.terraform.path }}/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
-          
-          # Create marker file to indicate pre-mounted binary is available
           echo "pre-mounted" > "{{ .Values.dynamicrp.terraform.path }}/.terraform-source"
           
           echo "Terraform binary successfully pre-downloaded and installed"
@@ -131,12 +163,63 @@ spec:
           runAsNonRoot: true
           runAsUser: 65532
       {{- end }}
+      {{- if .Values.dynamicrp.buildkit.enabled }}
+      # Stage buildctl out of the BuildKit image into a shared volume
+      # for the dynamic-rp container to exec from recipe local-exec
+      # blocks. buildkitd does not implement the Docker Engine API.
+      # Chown the BuildKit emptyDir volumes to the UIDs that need to write
+      # to them, replacing the previous Pod-level fsGroup. Pod-level fsGroup
+      # would also be applied to the radius-encryption-key Secret mount
+      # (chowning it to that group and ORing in group-read), which would
+      # let buildkitd in the same Pod read the encryption key. Scoping
+      # permissions per-volume here keeps the Secret least-privilege.
+      - name: buildkit-volumes-init
+        image: "{{ .Values.dynamicrp.buildkit.image }}"
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          # chmod BEFORE chown: after we transfer ownership we can no
+          # longer chmod (the container only has CAP_CHOWN, not CAP_FOWNER).
+          chmod 0755 /tools && chown 65532:65532 /tools
+          chmod 0700 /state && chown 1000:1000 /state
+        volumeMounts:
+        - name: buildctl-bin
+          mountPath: /tools
+        - name: buildkit-state
+          mountPath: /state
+        securityContext:
+          runAsUser: 0
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+            add: ["CHOWN"]
+      - name: buildctl-init
+        image: "{{ .Values.dynamicrp.buildkit.image }}"
+        command: ["/bin/sh", "-c", "cp /usr/bin/buildctl /tools/buildctl && chmod 0755 /tools/buildctl"]
+        volumeMounts:
+        - name: buildctl-bin
+          mountPath: /tools
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 65532
+      {{- end }}
+      {{- end }}
       containers:
       - name: dynamic-rp
         image: "{{ include "radius.image" (dict "image" .Values.dynamicrp.image "tag" (.Values.dynamicrp.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:
+        {{- if .Values.database.enabled }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: POSTGRES_PASSWORD
+        {{- end }}
         - name: SKIP_ARM
           value: 'false'
         - name: ARM_AUTH_METHOD
@@ -145,10 +228,16 @@ spec:
           value: 'self-hosted'
         - name: K8S_CLUSTER
           value: 'true'
+        {{- if .Values.dynamicrp.buildkit.enabled }}
+        # buildctl dials buildkitd over loopback TCP.
+        - name: BUILDKIT_HOST
+          value: "tcp://127.0.0.1:1234"
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}
         {{- end}}
+        {{- include "radius.targetCluster.env" . | nindent 8 }}
         ports:
         - containerPort: 5443
           name: dynamic-rp
@@ -172,6 +261,16 @@ spec:
         - name: encryption-secret
           mountPath: /var/secrets/encryption
           readOnly: true
+        {{- if .Values.dynamicrp.buildkit.enabled }}
+        # Mount the single buildctl file (copied by buildctl-init into
+        # the shared emptyDir) at a path already on the dynamic-rp
+        # image's PATH. Uses subPath so we mount the file alone instead
+        # of shadowing /usr/local/bin with an emptyDir.
+        - name: buildctl-bin
+          mountPath: /usr/local/bin/buildctl
+          subPath: buildctl
+          readOnly: true
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           mountPath: {{ .Values.global.rootCA.mountPath }}
@@ -182,9 +281,74 @@ spec:
           mountPath: /etc/ssl/certs
           readOnly: true
         {{- end }}
+        {{- include "radius.targetCluster.volumeMount" . | nindent 8 }}
         {{- if .Values.dynamicrp.resources }}
-        resources:{{ toYaml .Values.rp.resources | nindent 10 }}
+        resources:{{ toYaml .Values.dynamicrp.resources | nindent 10 }}
         {{- end }}
+      {{- if .Values.dynamicrp.buildkit.enabled }}
+      # Rootless BuildKit sidecar. Listens on Pod-local loopback TCP;
+      # the dynamic-rp container reaches it via BUILDKIT_HOST. No
+      # host Docker socket, no privileged containers.
+      #
+      # PSA notes (verified empirically on AKS / EKS / k3d):
+      #   - This pod runs cleanly in PSA mode "privileged" (the default
+      #     for unlabeled namespaces).
+      #   - PSA "baseline" rejects this pod because of the Unconfined
+      #     seccomp + AppArmor profiles below. Those profiles are
+      #     required by rootless BuildKit to set up its rootlesskit
+      #     user-namespace shim. Switching to the non-rootless image
+      #     and hostUsers: false makes admission pass baseline, but
+      #     BuildKit's per-step process sandbox still fails inside
+      #     image builds. There is no off-the-shelf BuildKit config
+      #     today that satisfies PSA baseline AND can build images;
+      #     this is an upstream gap in moby/buildkit's K8s user-namespace
+      #     support. See https://github.com/moby/buildkit/issues for
+      #     the current state.
+      - name: buildkitd
+        image: "{{ .Values.dynamicrp.buildkit.image }}"
+        args:
+        - --addr
+        - tcp://127.0.0.1:1234
+        - --oci-worker-no-process-sandbox
+        readinessProbe:
+          exec:
+            command: ["buildctl", "--addr", "tcp://127.0.0.1:1234", "debug", "workers"]
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          exec:
+            command: ["buildctl", "--addr", "tcp://127.0.0.1:1234", "debug", "workers"]
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 1000
+          # Rootless BuildKit needs Unconfined seccomp + AppArmor to set
+          # up its rootlesskit user-namespace shim (newuidmap, unshare).
+          # PSA baseline forbids both; this means the radius-system
+          # namespace must be PSA-labeled "privileged" (or unlabeled,
+          # which defaults to privileged) when buildkit is enabled.
+          # AppArmor is set via securityContext.appArmorProfile on K8s
+          # 1.30+ and via the container.apparmor.security.beta annotation
+          # on older clusters (set on the pod template metadata above).
+          seccompProfile:
+            type: Unconfined
+          {{- if semverCompare ">=1.30-0" .Capabilities.KubeVersion.Version }}
+          appArmorProfile:
+            type: Unconfined
+          {{- end }}
+          # rootlesskit's newuidmap relies on file capabilities, which
+          # the kernel nullifies under no_new_privs=1 (set when
+          # allowPrivilegeEscalation: false).
+          allowPrivilegeEscalation: true
+        volumeMounts:
+        - name: buildkit-state
+          mountPath: /home/user/.local/share/buildkit
+        {{- with .Values.dynamicrp.buildkit.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      {{- end }}
       volumes:
         - name: config-volume
           configMap:
@@ -204,6 +368,12 @@ spec:
           secret:
             secretName: radius-encryption-key
             defaultMode: 0400
+        {{- if .Values.dynamicrp.buildkit.enabled }}
+        - name: buildctl-bin
+          emptyDir: {}
+        - name: buildkit-state
+          emptyDir: {}
+        {{- end }}
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           secret:
@@ -213,3 +383,4 @@ spec:
         - name: ssl-certs
           emptyDir: {}
         {{- end }}
+        {{- include "radius.targetCluster.volume" . | nindent 8 }}

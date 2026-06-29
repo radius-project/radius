@@ -32,6 +32,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
+	k8sclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -59,6 +61,12 @@ const (
 	APIVersion             = "2023-10-01-preview"
 	TestNamespace          = "kind-radius"
 	AWSDeletionRetryLimit  = 5
+
+	// externalKubeconfigEnvVar points at the kubeconfig of the external (workload)
+	// cluster in multi-cluster runs. It mirrors the RADIUS_TARGET_KUBECONFIG
+	// contract Radius honors, but is consumed by the test harness to provision the
+	// application namespace on, and assert resources land on, the external cluster.
+	externalKubeconfigEnvVar = "RADIUS_TEST_EXTERNAL_KUBECONFIG"
 
 	// Used to check required features
 	daprComponentCRD         = "components.dapr.io"
@@ -134,6 +142,11 @@ type RPTest struct {
 	Steps            []TestStep
 	PostDeleteVerify func(ctx context.Context, t *testing.T, ct RPTest)
 
+	// PreSetup is called after CreateInitialResources but before test steps.
+	// Use this for setup that requires the CLI, such as creating preview environments
+	// with recipe packs for tests using Radius.Core/Radius.Compute resource types.
+	PreSetup func(ctx context.Context, t *testing.T, test RPTest)
+
 	// RequiredFeatures specifies the optional features that are required
 	// for this test to run.
 	RequiredFeatures []RequiredFeature
@@ -142,6 +155,11 @@ type RPTest struct {
 	// Useful when unique resource names are used and cluster cleanup handles orphaned resources.
 	// This dramatically reduces test execution time by avoiding deletion timeouts.
 	FastCleanup bool
+
+	// RunSerial prevents the test from being marked parallel.
+	// Use this only when the test relies on shared external state that cannot
+	// safely handle concurrent operations, such as Terraform state locking.
+	RunSerial bool
 }
 
 type TestOptions struct {
@@ -223,6 +241,46 @@ func NewRPTest(t *testing.T, name string, steps []TestStep, initialResources ...
 	}
 }
 
+// NewPreviewEnvPreSetup creates a PreSetup function that provisions a preview environment
+// and configures its Kubernetes namespace for recipe-driven resource deployment.
+// It returns the PreSetup function and the environment resource ID.
+//
+// The preview environment is created via `rad env create <name> --preview --kubernetes-namespace <ns>`,
+// which automatically registers a default recipe pack (including container recipes) and sets the
+// Kubernetes namespace where recipes will deploy resources.
+//
+// The environment name is derived from the test name with "-env" suffix to avoid collisions.
+// The kubernetesNamespace parameter specifies where recipes should deploy K8s resources —
+// this typically matches the test's expected pod namespace (often the test name).
+//
+// t.Cleanup is registered immediately after env creation to prevent resource leaks.
+func NewPreviewEnvPreSetup(testName string, workspaceScope string, kubernetesNamespace string) (preSetup func(ctx context.Context, t *testing.T, test RPTest), envID string) {
+	envName := testName + "-env"
+	envID = fmt.Sprintf("%s/providers/Radius.Core/environments/%s", workspaceScope, envName)
+
+	preSetup = func(ctx context.Context, t *testing.T, test RPTest) {
+		cli := radcli.NewCLI(t, test.Options.ConfigFilePath)
+
+		// Create the preview environment with the test-specific Kubernetes namespace so recipes
+		// know where to deploy resources. Passing the namespace at create time (rather than via a
+		// later update) avoids colliding on the default namespace, which the RP rejects when two
+		// environments in the same scope share a namespace. The --preview flag also creates a
+		// default recipe pack with container and other resource recipes registered.
+		_, err := cli.EnvironmentCreatePreview(ctx, envName, "", kubernetesNamespace)
+		require.NoError(t, err, "failed to create preview environment")
+
+		// Register cleanup immediately after create to prevent leaks.
+		t.Cleanup(func() {
+			_, err := cli.EnvironmentDeletePreview(ctx, envName, "")
+			if err != nil {
+				t.Logf("failed to delete preview environment %s: %v", envName, err)
+			}
+		})
+	}
+
+	return preSetup, envID
+}
+
 // K8sSecretResource creates the secret resource from the given namespace, name, secretType and key-value pairs,
 // for Initial Resource in NewRPTest().
 func K8sSecretResource(namespace, name, secretType string, kv ...any) unstructured.Unstructured {
@@ -266,7 +324,12 @@ func K8sSecretResource(namespace, name, secretType string, kv ...any) unstructur
 // CreateInitialResources creates a namespace and creates initial resources from the InitialResources field of the
 // RPTest struct. It returns an error if either of these operations fail.
 func (ct RPTest) CreateInitialResources(ctx context.Context) error {
-	if err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name); err != nil {
+	nsClient, err := ct.deploymentTargetK8sClient()
+	if err != nil {
+		return fmt.Errorf("failed to build deployment-target Kubernetes client: %w", err)
+	}
+
+	if err := kubernetes.EnsureNamespace(ctx, nsClient, ct.Name); err != nil {
 		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
 	}
 
@@ -280,6 +343,28 @@ func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// deploymentTargetK8sClient returns the Kubernetes client for the cluster that an
+// application's resources deploy to. In multi-cluster runs the test sets
+// RADIUS_TEST_EXTERNAL_KUBECONFIG to the external (workload) cluster's kubeconfig;
+// this mirrors the RADIUS_TARGET_KUBECONFIG contract Radius itself honors, so the
+// harness provisions the application namespace on the same cluster Radius deploys
+// to and the control-plane cluster is not populated with per-application
+// namespaces. When the variable is unset (single-cluster runs) the control-plane
+// client is returned unchanged.
+func (ct RPTest) deploymentTargetK8sClient() (k8sclient.Interface, error) {
+	kubeconfigPath := os.Getenv(externalKubeconfigEnvVar)
+	if kubeconfigPath == "" {
+		return ct.Options.K8sClient, nil
+	}
+
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load external kubeconfig from %s=%q: %w", externalKubeconfigEnvVar, kubeconfigPath, err)
+	}
+
+	return k8sclient.NewForConfig(config)
 }
 
 // Method CleanUpExtensionResources deletes all resources in the given slice of unstructured objects.
@@ -347,8 +432,12 @@ func (ct RPTest) Test(t *testing.T) {
 	// This runs each application deployment step as a nested test, with the cleanup as part of the surrounding test.
 	// This way we can catch deletion failures and report them as test failures.
 
-	// Each of our tests are isolated, so they can run in parallel.
-	t.Parallel()
+	// Each of our tests should be isolated and can run in parallel by default.
+	// Some external systems, such as Terraform backends, use shared locks and
+	// need opt-in serialization to avoid cross-test contention.
+	if !ct.RunSerial {
+		t.Parallel()
+	}
 
 	logPrefix := os.Getenv(ContainerLogPathEnvVar)
 	if logPrefix == "" {
@@ -388,6 +477,10 @@ func (ct RPTest) Test(t *testing.T) {
 	defer ct.CleanUpExtensionResources(ct.InitialResources)
 	err := ct.CreateInitialResources(ctx)
 	require.NoError(t, err, "failed to create initial resources")
+
+	if ct.PreSetup != nil {
+		ct.PreSetup(ctx, t, ct)
+	}
 
 	success := true
 	for i, step := range ct.Steps {
@@ -510,7 +603,7 @@ func (ct RPTest) Test(t *testing.T) {
 
 		for _, resource := range step.RPResources.Resources {
 			t.Logf("deleting %s", resource.Name)
-			
+
 			if ct.FastCleanup {
 				// Fast cleanup: initiate deletion but don't wait for completion
 				// This avoids timeout issues with recipe-based resources (like DynamicRP postgres)

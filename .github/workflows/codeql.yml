@@ -13,6 +13,10 @@ on:
       - reopened
       - synchronize
       - ready_for_review
+  # Revalidate the combined changes when a PR is queued in the merge queue.
+  # The required check is the always-run `check-codeql` (CodeQL) aggregator job.
+  merge_group:
+    branches: [main]
   schedule:
     # Runs at 05:15, only on Friday
     - cron: 15 5 * * 5
@@ -31,7 +35,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -81,7 +85,7 @@ jobs:
       matrix: ${{ fromJSON(needs.changes.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
@@ -100,7 +104,7 @@ jobs:
 
       - name: Initialize CodeQL
         if: ${{ !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/init@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
+        uses: github/codeql-action/init@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
           config-file: .github/configs/.codeql.yml
           languages: ${{ matrix.language }}
@@ -108,7 +112,7 @@ jobs:
 
       - name: Auto build
         if: matrix.build-mode == 'autobuild'
-        uses: github/codeql-action/autobuild@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
+        uses: github/codeql-action/autobuild@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
           working-directory: ${{ matrix.working-directory }}
 
@@ -120,30 +124,38 @@ jobs:
 
       - name: Perform GoSec Analysis
         if: matrix.language == 'custom-gosec'
-        uses: securego/gosec@4a3bd8af174872c778439083ded7adbf3747e770 # v2.26.1
+        uses: securego/gosec@9e6a9843d7a4a6e3e9a8539b02612c8a4aa3f889 # v2.27.1
         with:
           args: -no-fail -fmt sarif -out gosec-results.sarif ./...
         continue-on-error: true
 
+      # Skip the code-scanning upload in the merge queue: the ephemeral
+      # `refs/heads/gh-readonly-queue/...` ref is rejected by the SARIF upload
+      # API ("ref not found"). The analysis above still runs as the required gate;
+      # results are uploaded on `push`/`pull_request` against persistent refs.
       - name: Upload GoSec result
-        if: ${{ always() && matrix.language == 'custom-gosec' }}
-        uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
+        if: ${{ always() && github.event_name != 'merge_group' && matrix.language == 'custom-gosec' }}
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
           sarif_file: gosec-results.sarif
           wait-for-processing: true
 
       - name: Perform CodeQL Analysis
         if: ${{ !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/analyze@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
+        uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         id: codeql-analyze
         with:
           category: /language:${{matrix.language}}
           upload: never
           output: .codeql-results
 
+      # Skip the code-scanning upload in the merge queue: the ephemeral
+      # `refs/heads/gh-readonly-queue/...` ref is rejected by the SARIF upload
+      # API ("ref not found"). The analysis above still runs as the required gate;
+      # results are uploaded on `push`/`pull_request` against persistent refs.
       - name: Upload CodeQL result
-        if: ${{ always() && !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/upload-sarif@68bde559dea0fdcac2102bfdf6230c5f70eb485e # v4.35.4
+        if: ${{ always() && github.event_name != 'merge_group' && !startsWith(matrix.language, 'custom-') }}
+        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
           sarif_file: ${{ format('{0}/{1}.sarif', steps.codeql-analyze.outputs.sarif-output, matrix.language) }}
           wait-for-processing: true

@@ -39,14 +39,15 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      issues: write # Required to create an issue when the scheduled run fails
     steps:
       - name: Checkout the repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        uses: aws-actions/configure-aws-credentials@e7f100cf4c008499ea8adda475de1042d6975c7b # v6.2.0
         with:
           aws-access-key-id: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
@@ -54,13 +55,13 @@ jobs:
 
       - name: Delete old AWS resources
         run: |
-          ./.github/scripts/delete-aws-resources.sh ${{ env.AWS_RESOURCE_TYPES }}
+          ./.github/scripts/delete-aws-resources.sh "${AWS_RESOURCE_TYPES}"
 
       - name: Create issue for failing purge aws test resources run
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         if: failure()
         with:
-          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          github-token: ${{ github.token }}
           script: |
             github.rest.issues.create({
               ...context.repo,

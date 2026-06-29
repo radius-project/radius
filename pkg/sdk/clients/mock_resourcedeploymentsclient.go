@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
 	"github.com/google/uuid"
 )
 
@@ -67,9 +67,9 @@ func (rdc *MockResourceDeploymentsClient) CreateOrUpdate(ctx context.Context, pa
 	defer rdc.lock.Unlock()
 
 	value := ClientCreateOrUpdateResponse{
-		DeploymentExtended: armresources.DeploymentExtended{
+		DeploymentExtended: armdeployments.DeploymentExtended{
 			ID:         &resourceID,
-			Properties: &armresources.DeploymentPropertiesExtended{},
+			Properties: &armdeployments.DeploymentPropertiesExtended{},
 		},
 	}
 	state := &OperationState{
@@ -113,9 +113,9 @@ func (rdc *MockResourceDeploymentsClient) Delete(ctx context.Context, resourceID
 		Kind:       http.MethodDelete,
 		ResourceID: resourceID,
 		Value: ClientDeleteResponse{
-			DeploymentExtended: armresources.DeploymentExtended{
+			DeploymentExtended: armdeployments.DeploymentExtended{
 				ID:         &resourceID,
-				Properties: &armresources.DeploymentPropertiesExtended{},
+				Properties: &armdeployments.DeploymentPropertiesExtended{},
 			},
 		},
 	}
@@ -150,6 +150,22 @@ func (rdc *MockResourceDeploymentsClient) GetResource(resourceID string) (*Clien
 	resource, ok := rdc.resourceDeployments[resourceID]
 
 	return resource, ok
+}
+
+// DeletedResourceIDs returns the resource IDs for which a Delete operation was started. It allows
+// tests to assert whether (or not) the controller issued a UCP delete for a given resource.
+func (rdc *MockResourceDeploymentsClient) DeletedResourceIDs() []string {
+	rdc.lock.Lock()
+	defer rdc.lock.Unlock()
+
+	ids := []string{}
+	for _, state := range rdc.operations {
+		if state.Kind == http.MethodDelete {
+			ids = append(ids, state.ResourceID)
+		}
+	}
+
+	return ids
 }
 
 type MockResourceDeploymentsClientPoller[T any] struct {

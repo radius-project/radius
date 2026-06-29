@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -25,16 +26,28 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v2"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork/v9"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 	"github.com/stretchr/testify/require"
 
+	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
 )
 
 func Test_ACI(t *testing.T) {
+	// Disabled: this test dominates the corerp-cloud functional leg's wall-clock
+	// time. It provisions real Azure Container Instances (plus a VNet/NSG/ILB) and
+	// is wrapped in a 2x retry with 60s backoff to tolerate the subscription-shared
+	// 'StandardCores' ACI quota (ContainerGroupQuotaReached). When the quota is
+	// exhausted by concurrent CI runs the deploy is retried end-to-end, so a single
+	// run can take ~11-12 minutes (vs <1 minute for every other test in the leg) and
+	// roughly doubles the cloud workflow's total time. Re-enable once the ACI tests
+	// are isolated onto their own quota-aware lane. See #12044 and #12163.
+	t.Skip("Test_ACI is temporarily disabled: real ACI provisioning + quota retries dominate corerp-cloud CI time. See #12044, #12163.")
+
 	name := "aci-app"
 	containerResourceName := "frontend"
 	containerResourceName2 := "magpie"
@@ -43,7 +56,7 @@ func Test_ACI(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor:             step.NewDeployExecutor(template).WithRetry(1, 30*time.Second, isTransientAzureError),
+			Executor:             step.NewDeployExecutor(template).WithRetry(2, 60*time.Second, isTransientAzureError),
 			SkipObjectValidation: true,
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
@@ -163,23 +176,95 @@ func normalizeLocation(location string) string {
 	return strings.ToLower(strings.ReplaceAll(location, " ", ""))
 }
 
-// isTransientAzureError returns true if the error is a known transient Azure error
-// that may succeed on retry.
+// transientAzureErrorMarkers are substrings that identify transient Azure
+// deployment failures that may succeed on retry.
+var transientAzureErrorMarkers = []string{
+	// Managed identity propagation delay after environment identity creation.
+	"ManagedServiceIdentityNotFound",
+	// The regional ACI 'StandardCores' quota is shared across the subscription
+	// and is frequently exhausted by concurrent CI runs and in-progress async
+	// resource group cleanups. It drains on its own, so retrying after a short
+	// delay typically succeeds.
+	"ContainerGroupQuotaReached",
+}
+
+// isTransientAzureError returns true if the error is a known transient Azure
+// error that may succeed on retry. It delegates to step.ErrorContainsAny, which
+// flattens the nested ARM error details rad surfaces inside a CLIError so the
+// match covers causes such as the ACI container group quota error.
 func isTransientAzureError(err error) bool {
-	if err == nil {
-		return false
+	return step.ErrorContainsAny(err, transientAzureErrorMarkers...)
+}
+
+func Test_isTransientAzureError(t *testing.T) {
+	// aciQuotaError mirrors how rad surfaces an ACI quota failure: the quota
+	// error code only appears inside a deeply nested details[].message field,
+	// while the top-level code/message returned by CLIError.Error() is the
+	// generic "DeploymentFailed".
+	aciQuotaError := &radcli.CLIError{
+		ErrorResponse: apiv1.ErrorResponse{
+			Error: &apiv1.ErrorDetails{
+				Code:    "DeploymentFailed",
+				Message: "At least one resource deployment operation failed.",
+				Details: []*apiv1.ErrorDetails{
+					{Code: "OK"},
+					{
+						Code:    "ResourceDeploymentFailure",
+						Message: "Failed",
+						Details: []*apiv1.ErrorDetails{
+							{
+								Code:    "Internal",
+								Message: `ERROR CODE: AzureContainerInstance/ContainerGroupQuotaReached; container group quota 'StandardCores' exceeded in region 'westus2'. Limit: '10', Usage: '10' Requested: '1'.`,
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
-	msg := err.Error()
-	transientErrors := []string{
-		"ManagedServiceIdentityNotFound",
+	// msiError mirrors a nested ManagedServiceIdentityNotFound failure, which is
+	// also reported under a generic top-level "DeploymentFailed" code.
+	msiError := &radcli.CLIError{
+		ErrorResponse: apiv1.ErrorResponse{
+			Error: &apiv1.ErrorDetails{
+				Code:    "DeploymentFailed",
+				Message: "At least one resource deployment operation failed.",
+				Details: []*apiv1.ErrorDetails{
+					{
+						Code:    "Internal",
+						Message: "ManagedServiceIdentityNotFound: the managed identity could not be found",
+					},
+				},
+			},
+		},
 	}
 
-	for _, te := range transientErrors {
-		if strings.Contains(msg, te) {
-			return true
-		}
+	nonTransientError := &radcli.CLIError{
+		ErrorResponse: apiv1.ErrorResponse{
+			Error: &apiv1.ErrorDetails{
+				Code:    "DeploymentFailed",
+				Message: "the resource type is not supported",
+			},
+		},
 	}
 
-	return false
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{name: "nil error", err: nil, expected: false},
+		{name: "nested ACI quota error", err: aciQuotaError, expected: true},
+		{name: "nested managed identity error", err: msiError, expected: true},
+		{name: "plain transient error string", err: errors.New("deployment failed: ManagedServiceIdentityNotFound"), expected: true},
+		{name: "non-transient CLIError", err: nonTransientError, expected: false},
+		{name: "unrelated error", err: errors.New("connection refused"), expected: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, isTransientAzureError(tc.err))
+		})
+	}
 }

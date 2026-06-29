@@ -1,4 +1,7 @@
 {{- $appversion := include "radius.versiontag" . }}
+{{- if ne .Values.rp.terraform.path "/terraform" }}
+{{- fail "rp.terraform.path must be \"/terraform\" -- the runtime configmap (deploy/Chart/templates/rp/configmaps.yaml) and pkg/recipes/terraform/install.go both hard-code /terraform, so overriding the mount path produces an inconsistent deployment and silently breaks Terraform execution/caching." }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -86,17 +89,20 @@ spec:
           
           # Determine download URL
           TERRAFORM_URL="{{ .Values.global.terraform.downloadUrl }}"
-          
-          # If no custom URL provided, fetch latest version from HashiCorp API
+
+          # If no custom URL provided, build the URL from the pinned version.
+          # Version MUST match terraformVersion in
+          # pkg/recipes/terraform/version.go so the pre-mounted binary
+          # and the runtime download fallback agree -- otherwise recipes
+          # behave differently between cold and warm starts.
           if [[ -z "$TERRAFORM_URL" ]]; then
-            echo "Fetching latest Terraform version from HashiCorp API..."
-            LATEST_VERSION=$(wget -qO- "https://api.releases.hashicorp.com/v1/releases/terraform/latest" | grep -o '"version":"[^"]*"' | cut -d'"' -f4)
-            if [[ -z "$LATEST_VERSION" ]]; then
-              echo "ERROR: Failed to fetch latest Terraform version from API"
+            TERRAFORM_VERSION="{{ .Values.global.terraform.version }}"
+            if [[ -z "$TERRAFORM_VERSION" ]]; then
+              echo "ERROR: global.terraform.version is empty and no global.terraform.downloadUrl is set"
               exit 2
             fi
-            echo "Latest Terraform version: $LATEST_VERSION"
-            TERRAFORM_URL="https://releases.hashicorp.com/terraform/${LATEST_VERSION}/terraform_${LATEST_VERSION}_linux_${TERRAFORM_ARCH}.zip"
+            echo "Pinned Terraform version: $TERRAFORM_VERSION"
+            TERRAFORM_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${TERRAFORM_ARCH}.zip"
           fi
           
           echo "Download URL: $TERRAFORM_URL"
@@ -122,10 +128,23 @@ spec:
           unzip terraform.zip || { echo "ERROR: Failed to extract terraform"; exit 5; }
           
           echo "Installing terraform binary..."
+          # Path/marker MUST match constants in
+          # pkg/recipes/terraform/install.go (defaultGlobalTerraformBinary,
+          # defaultGlobalMarkerFile). The runtime hard-codes
+          # /terraform/.terraform-global, so this path is hard-coded too --
+          # do NOT derive it from .Values.rp.terraform.path or overrides to
+          # that value will silently reintroduce the path-mismatch bug this
+          # fix addresses.
+          GLOBAL_DIR="/terraform/.terraform-global"
+          mkdir -p "$GLOBAL_DIR" || { echo "ERROR: Failed to create global terraform directory"; exit 6; }
+          cp terraform "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
+          chmod +x "$GLOBAL_DIR/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
+          touch "$GLOBAL_DIR/.terraform-ready" || { echo "ERROR: Failed to create terraform-ready marker"; exit 8; }
+
+          # Keep a copy at the legacy path and write the legacy marker so any
+          # tooling that still references {{ .Values.rp.terraform.path }}/terraform continues to work.
           cp terraform "{{ .Values.rp.terraform.path }}/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
           chmod +x "{{ .Values.rp.terraform.path }}/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
-          
-          # Create marker file to indicate pre-mounted binary is available
           echo "pre-mounted" > "{{ .Values.rp.terraform.path }}/.terraform-source"
           
           echo "Terraform binary successfully pre-downloaded and installed"
@@ -143,6 +162,13 @@ spec:
         args:
         - --config-file=/etc/config/radius-self-host.yaml
         env:
+        {{- if .Values.database.enabled }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: database-secret
+              key: POSTGRES_PASSWORD
+        {{- end }}
         - name: SKIP_ARM
           value: 'false'
         - name: ARM_AUTH_METHOD
@@ -159,6 +185,7 @@ spec:
         - name: {{ .Values.global.rootCA.sslCertDirEnvVar }}
           value: {{ .Values.global.rootCA.mountPath }}
         {{- end}}
+        {{- include "radius.targetCluster.env" . | nindent 8 }}
         ports:
         - containerPort: 5443
           name: applications-rp
@@ -192,6 +219,7 @@ spec:
           mountPath: /etc/ssl/certs
           readOnly: true
         {{- end }}
+        {{- include "radius.targetCluster.volumeMount" . | nindent 8 }}
         {{- if .Values.rp.resources }}
         resources:{{ toYaml .Values.rp.resources | nindent 10 }}
         {{- end }}
@@ -219,3 +247,4 @@ spec:
         - name: ssl-certs
           emptyDir: {}
         {{- end }}
+        {{- include "radius.targetCluster.volume" . | nindent 8 }}

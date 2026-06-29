@@ -51,7 +51,7 @@ func ConfigFromContext(ctx context.Context) *viper.Viper {
 	return holder.Config
 }
 
-//go:generate mockgen -typed -destination=./mock_config.go -package=framework -self_package github.com/radius-project/radius/pkg/cli/framework github.com/radius-project/radius/pkg/cli/framework ConfigFileInterface
+//go:generate go tool mockgen -typed -destination=./mock_config.go -package=framework -self_package github.com/radius-project/radius/pkg/cli/framework github.com/radius-project/radius/pkg/cli/framework ConfigFileInterface
 
 type ConfigFileInterface interface {
 	ConfigFromContext(ctx context.Context) *viper.Viper

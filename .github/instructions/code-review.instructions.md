@@ -92,7 +92,7 @@ Act as a critic of your own review to ensure:
 
 ### Step 4: Assess Contributor Documentation Impact
 
-Use the [Contributing Docs Updater](../skills/contributing-docs-updater/SKILL.md) skill for a code review doc impact assessment to determine if the code changes require updates to contributor documentation in `docs/contributing/` or `docs/architecture/`.
+Use the [Contributing Docs Updater](../skills/radius-contributing-docs-updater/SKILL.md) skill for a code review doc impact assessment to determine if the code changes require updates to contributor documentation in `docs/contributing/` or `docs/architecture/`.
 
 Common triggers for doc updates:
 
@@ -103,7 +103,9 @@ Common triggers for doc updates:
 - Configuration or prerequisite changes
 - Architecture changes
 
-If doc updates are needed, note which docs to update and what changes are required in your review.
+To make the suggestion concrete rather than vague, consult the [code ↔ doc path map](../../docs/contributing/contributing-agent-assets.md#code--doc-path-map): when the PR touches a mapped code glob, name the specific backing doc that likely needs updating. The map lands empty and grows as the contributing docs are filled out, so also search `docs/contributing/` and `docs/architecture/` for prose that references any changed command, flag, or path.
+
+If doc updates are needed, note which docs to update and what changes are required in your review, and suggest using the [`radius-update-doc`](../skills/radius-update-doc/SKILL.md) skill to draft the targeted patch. This assessment is **advisory, not a blocking gate** — flag the drift and propose a concrete fix, but do not require it to merge.
 
 ### Review Output Format
 

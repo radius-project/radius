@@ -5,12 +5,21 @@ name: PR Required Labels
 on:
   pull_request:
     types: [opened, labeled, unlabeled, synchronize]
+  # Required so this check reports in the merge queue. There is no PR to
+  # validate on a merge_group event, so the label check step is skipped and the
+  # job reports success. Scoped to main only so the release branch flow is
+  # never affected.
+  merge_group:
+    branches:
+      - main
 
 permissions: {}
 
 jobs:
   pr-required-labels:
-    if: github.event.pull_request.user.login != 'dependabot[bot]' # skip for Dependabot PRs
+    # Run on merge_group (no PR context) so the required check reports; otherwise
+    # skip for Dependabot PRs.
+    if: github.event_name == 'merge_group' || github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -18,6 +27,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Run PR Required Labels
+        if: github.event_name != 'merge_group'
         uses: mheap/github-action-required-labels@0ac283b4e65c1fb28ce6079dea5546ceca98ccbe # v5.5.2
         with:
           mode: exactly

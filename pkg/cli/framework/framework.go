@@ -32,10 +32,11 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
+	"github.com/radius-project/radius/pkg/graph/persistence"
 	"github.com/spf13/cobra"
 )
 
-//go:generate mockgen -typed -destination=./mock_factory.go -package=framework -self_package github.com/radius-project/radius/pkg/cli/framework github.com/radius-project/radius/pkg/cli/framework Factory
+//go:generate go tool mockgen -typed -destination=./mock_factory.go -package=framework -self_package github.com/radius-project/radius/pkg/cli/framework github.com/radius-project/radius/pkg/cli/framework Factory
 
 // Factory interface handles resources for interfacing with corerp and configs
 type Factory interface {
@@ -60,6 +61,10 @@ type Factory interface {
 
 	// GetAzureClient returns the Azure Client.
 	GetAzureClient() azure.Client
+
+	// GetGraphStore returns the persistence.Store used by the modeled graph
+	// command to commit graphs to the radius-graph orphan branch.
+	GetGraphStore() persistence.Store
 }
 
 type Impl struct {
@@ -82,6 +87,9 @@ type Impl struct {
 
 	// AzureClient is the client for Azure.
 	AzureClient azure.Client
+
+	// GraphStore persists modeled application graphs.
+	GraphStore persistence.Store
 }
 
 // GetBicep() returns the Bicep interface stored in the Impl struct.
@@ -181,6 +189,11 @@ func (i *Impl) GetAWSClient() aws.Client {
 // GetAzureClient returns an azure.Client from the Impl struct.
 func (i *Impl) GetAzureClient() azure.Client {
 	return i.AzureClient
+}
+
+// GetGraphStore returns the persistence.Store stored in the Impl struct.
+func (i *Impl) GetGraphStore() persistence.Store {
+	return i.GraphStore
 }
 
 type Runner interface {

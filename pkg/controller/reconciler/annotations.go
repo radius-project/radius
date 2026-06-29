@@ -17,13 +17,13 @@ limitations under the License.
 package reconciler
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/hashutil"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
 )
 
@@ -81,9 +81,21 @@ func (c *deploymentConfiguration) computeHash() (string, error) {
 		return "", err
 	}
 
-	sum := sha1.Sum(b)
-	hash := hex.EncodeToString(sum[:])
-	return hash, nil
+	return hashutil.Hex(b), nil
+}
+
+// matchesHash reports whether stored matches the current configuration hash.
+//
+// It accepts both the current SHA-256 hash and the legacy SHA-1 hash so that
+// upgrading Radius (which changes the hash algorithm) does not flag an otherwise
+// unchanged configuration as out-of-date and trigger an unnecessary update.
+func (c *deploymentConfiguration) matchesHash(stored string) bool {
+	b, err := json.Marshal(c)
+	if err != nil {
+		return false
+	}
+
+	return stored == hashutil.Hex(b) || stored == hashutil.LegacyHex(b)
 }
 
 type deploymentStatus struct {
@@ -115,6 +127,11 @@ func readAnnotations(deployment *appsv1.Deployment) (deploymentAnnotations, erro
 			return result, fmt.Errorf("failed to unmarshal status annotation: %w", err)
 		}
 
+		err = validateDeploymentStatus(&s)
+		if err != nil {
+			return result, fmt.Errorf("invalid status annotation: %w", err)
+		}
+
 		result.Status = &s
 	}
 
@@ -138,6 +155,41 @@ func readAnnotations(deployment *appsv1.Deployment) (deploymentAnnotations, erro
 	}
 
 	return result, nil
+}
+
+func validateDeploymentStatus(status *deploymentStatus) error {
+	if status == nil {
+		return nil
+	}
+
+	// The reconciler state machine may persist status.scope (and an in-progress operation) before
+	// status.container is known, so scope-only status is valid. When the environment or application
+	// changes, status.scope is updated to the new scope while status.container still references the
+	// previous container (which the reconciler then deletes), so we do not require status.scope to
+	// match the container's root scope.
+	if status.Scope != "" {
+		if _, err := resources.ParseScope(status.Scope); err != nil {
+			return fmt.Errorf("invalid status.scope: %w", err)
+		}
+	}
+
+	if status.Container == "" {
+		return nil
+	}
+
+	if status.Scope == "" {
+		return fmt.Errorf("status.scope must be set when status.container is set")
+	}
+
+	parsedContainer, err := resources.ParseResource(status.Container)
+	if err != nil {
+		return fmt.Errorf("invalid status.container: %w", err)
+	}
+	if !strings.EqualFold(parsedContainer.Type(), applicationsCoreContainersResourceType) {
+		return fmt.Errorf("status.container type %q is not %q", parsedContainer.Type(), applicationsCoreContainersResourceType)
+	}
+
+	return nil
 }
 
 // ApplyToDeployment applies the configuration and status to a Deployment.
@@ -193,12 +245,7 @@ func (annotations *deploymentAnnotations) IsUpToDate() bool {
 		return false
 	}
 
-	hash, err := annotations.Configuration.computeHash()
-	if err != nil {
-		return false // If the hash cannot be computed, we assume the configuration is outdated.
-	}
-
-	return hash == annotations.ConfigurationHash
+	return annotations.Configuration.matchesHash(annotations.ConfigurationHash)
 }
 
 // OperationInProgress returns true if there is an operation in progress for the given deployment.

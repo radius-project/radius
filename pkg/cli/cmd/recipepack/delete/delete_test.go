@@ -120,7 +120,7 @@ func Test_Run(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, func() corerpfake.EnvironmentsServer {
 			return corerpfake.EnvironmentsServer{
 				Get: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientGetResponse{
@@ -134,7 +134,7 @@ func Test_Run(t *testing.T) {
 					return
 				},
 				CreateOrUpdate: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					resource v20250801preview.EnvironmentResource,
 					_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
@@ -163,7 +163,6 @@ func Test_Run(t *testing.T) {
 		require.Empty(t, capturedEnv.Properties.RecipePacks)
 
 		require.Equal(t, []any{
-			output.LogOutput{Format: msgDeletingRecipePack, Params: []any{packName}},
 			output.LogOutput{Format: msgRecipePackDeleted, Params: []any{packName}},
 		}, outputSink.Writes)
 	})
@@ -199,7 +198,6 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, []any{
-			output.LogOutput{Format: msgDeletingRecipePack, Params: []any{packName}},
 			output.LogOutput{Format: msgRecipePackDeleted, Params: []any{packName}},
 		}, outputSink.Writes)
 	})
@@ -226,7 +224,7 @@ func Test_Run(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, func() corerpfake.EnvironmentsServer {
 			return corerpfake.EnvironmentsServer{
 				Get: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					errResp.SetResponseError(404, "Not Found")
@@ -249,7 +247,6 @@ func Test_Run(t *testing.T) {
 		err = runner.Run(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, []any{
-			output.LogOutput{Format: msgDeletingRecipePack, Params: []any{packName}},
 			output.LogOutput{Format: msgRecipePackDeleted, Params: []any{packName}},
 		}, outputSink.Writes)
 	})
@@ -277,9 +274,7 @@ func Test_Run(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
-		require.Equal(t, []any{
-			output.LogOutput{Format: msgRecipePackNotDeleted, Params: []any{packName}},
-		}, outputSink.Writes)
+		require.Empty(t, outputSink.Writes)
 	})
 
 	t.Run("get recipe pack returns 404 — returns error", func(t *testing.T) {
@@ -346,7 +341,7 @@ func Test_Run(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, func() corerpfake.EnvironmentsServer {
 			return corerpfake.EnvironmentsServer{
 				Get: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					errResp.SetError(fmt.Errorf("internal server error"))
@@ -390,7 +385,7 @@ func Test_Run(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, func() corerpfake.EnvironmentsServer {
 			return corerpfake.EnvironmentsServer{
 				Get: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientGetResponse{
@@ -404,7 +399,7 @@ func Test_Run(t *testing.T) {
 					return
 				},
 				CreateOrUpdate: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					resource v20250801preview.EnvironmentResource,
 					_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
@@ -461,7 +456,6 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 		require.Equal(t, []any{
-			output.LogOutput{Format: msgDeletingRecipePack, Params: []any{packName}},
 			output.LogOutput{Format: msgRecipePackNotFound, Params: []any{packName}},
 		}, outputSink.Writes)
 	})
@@ -492,7 +486,7 @@ func Test_Run(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, func() corerpfake.EnvironmentsServer {
 			return corerpfake.EnvironmentsServer{
 				Get: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientGetResponse{
@@ -506,7 +500,7 @@ func Test_Run(t *testing.T) {
 					return
 				},
 				CreateOrUpdate: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					resource v20250801preview.EnvironmentResource,
 					_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
@@ -570,7 +564,7 @@ func Test_Run(t *testing.T) {
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(scope, func() corerpfake.EnvironmentsServer {
 			return corerpfake.EnvironmentsServer{
 				Get: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientGetResponse{
@@ -587,7 +581,7 @@ func Test_Run(t *testing.T) {
 					return
 				},
 				CreateOrUpdate: func(
-					ctx context.Context, environmentName string,
+					ctx context.Context, rootScope string, environmentName string,
 					resource v20250801preview.EnvironmentResource,
 					_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
