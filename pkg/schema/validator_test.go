@@ -2340,6 +2340,106 @@ func TestValidator_checkSensitiveAnnotation(t *testing.T) {
 	}
 }
 
+func TestValidator_checkRetainAnnotation(t *testing.T) {
+	validator := NewValidator()
+
+	tests := []struct {
+		name   string
+		schema *openapi3.Schema
+		path   string
+		hasErr bool
+		errMsg string
+	}{
+		{
+			name: "retain with sensitive on string type - valid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: true,
+					annotationRadiusRetain:    true,
+				},
+			},
+			path:   "data.value",
+			hasErr: false,
+		},
+		{
+			name: "retain without sensitive - invalid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+				Extensions: map[string]any{
+					annotationRadiusRetain: true,
+				},
+			},
+			path:   "data.value",
+			hasErr: true,
+			errMsg: fmt.Sprintf("%s requires %s to be true on the same field", annotationRadiusRetain, annotationRadiusSensitive),
+		},
+		{
+			name: "retain with sensitive set to false - invalid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: false,
+					annotationRadiusRetain:    true,
+				},
+			},
+			path:   "data.value",
+			hasErr: true,
+			errMsg: fmt.Sprintf("%s requires %s to be true on the same field", annotationRadiusRetain, annotationRadiusSensitive),
+		},
+		{
+			name: "retain set to false - valid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+				Extensions: map[string]any{
+					annotationRadiusRetain: false,
+				},
+			},
+			path:   "data.value",
+			hasErr: false,
+		},
+		{
+			name: "no retain annotation - valid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: true,
+				},
+			},
+			path:   "password",
+			hasErr: false,
+		},
+		{
+			name: "retain with non-boolean value - invalid",
+			schema: &openapi3.Schema{
+				Type: &openapi3.Types{"string"},
+				Extensions: map[string]any{
+					annotationRadiusSensitive: true,
+					annotationRadiusRetain:    "true",
+				},
+			},
+			path:   "data.value",
+			hasErr: true,
+			errMsg: fmt.Sprintf("%s must be a boolean value", annotationRadiusRetain),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.checkRetainAnnotation(tt.schema, tt.path)
+			if tt.hasErr {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.errMsg)
+				var constraintErr *ValidationError
+				require.ErrorAs(t, err, &constraintErr)
+				require.Equal(t, ErrorTypeConstraint, constraintErr.Type)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestValidator_ValidateSchema_WithSensitiveAnnotation(t *testing.T) {
 	validator := NewValidator()
 	ctx := context.Background()

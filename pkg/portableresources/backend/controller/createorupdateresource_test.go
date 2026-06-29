@@ -106,6 +106,7 @@ type TestResourceProperties struct {
 	IsProcessed bool                             `json:"isProcessed"`
 	Recipe      portableresources.ResourceRecipe `json:"recipe"`
 	Secret      any                              `json:"secret,omitempty"`
+	Plain       any                              `json:"plain,omitempty"`
 	Credentials map[string]any                   `json:"credentials,omitempty"`
 }
 
@@ -601,6 +602,163 @@ func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
 	engExecute := eng.EXPECT().Execute(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(_ context.Context, opts engine.ExecuteOptions) (*recipes.RecipeOutput, error) {
 			require.Equal(t, secretValue, opts.BaseOptions.Recipe.Properties["secret"])
+			return &recipes.RecipeOutput{}, nil
+		},
+	)
+
+	gomock.InOrder(
+		redactionSave,
+		cfg.EXPECT().LoadConfiguration(gomock.Any(), recipes.ResourceMetadata{EnvironmentID: TestEnvironmentID, ApplicationID: TestApplicationID, ResourceID: TestResourceID}).Return(configuration, nil),
+		engExecute,
+		finalSave,
+	)
+
+	opts := ctrl.Options{
+		DatabaseClient: msc,
+		UcpClient:      ucpClient,
+		KubeClient:     k8sClient,
+	}
+
+	recipeCfg := &controllerconfig.RecipeControllerConfig{
+		Engine:       eng,
+		ConfigLoader: cfg,
+	}
+
+	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
+	require.NoError(t, err)
+
+	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+		OperationID:      uuid.New(),
+		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
+		ResourceID:       TestResourceID,
+		CorrelationID:    uuid.NewString(),
+		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
+	})
+	require.NoError(t, err)
+	require.Equal(t, ctrl.Result{}, res)
+}
+
+func TestCreateOrUpdateResource_Run_RetainEncrypted(t *testing.T) {
+	// A field marked x-radius-retain (in addition to x-radius-sensitive) must keep its encrypted value at
+	// rest instead of being redacted to nil, so the secrets loader can decrypt it from the store. A
+	// sensitive-only field on the same resource must still be redacted. In both cases the recipe must
+	// receive the decrypted cleartext.
+	mctrl := gomock.NewController(t)
+	msc := database.NewMockClient(mctrl)
+	eng := engine.NewMockEngine(mctrl)
+	cfg := configloader.NewMockConfigurationLoader(mctrl)
+
+	key, err := encryption.GenerateKey()
+	require.NoError(t, err)
+
+	provider, err := encryption.NewInMemoryKeyProvider(key)
+	require.NoError(t, err)
+
+	handler, err := encryption.NewSensitiveDataHandlerFromProvider(context.Background(), provider)
+	require.NoError(t, err)
+
+	retainValue := "retain-me"
+	plainValue := "redact-me"
+	properties := map[string]any{
+		"application":       TestApplicationID,
+		"environment":       TestEnvironmentID,
+		"provisioningState": "Accepted",
+		"secret":            retainValue,
+		"plain":             plainValue,
+		"recipe": map[string]any{
+			"name": "test-recipe",
+		},
+		"status": map[string]any{
+			"outputResources": []map[string]any{},
+		},
+	}
+
+	err = handler.EncryptSensitiveFields(properties, []string{"secret", "plain"}, TestResourceID)
+	require.NoError(t, err)
+
+	data := map[string]any{
+		"name":              "tr",
+		"type":              TestResourceType,
+		"id":                TestResourceID,
+		"location":          v1.LocationGlobal,
+		"updatedApiVersion": "2024-01-01",
+		"properties":        properties,
+	}
+
+	msc.EXPECT().
+		Get(gomock.Any(), TestResourceID).
+		Return(&database.Object{Metadata: database.Metadata{ID: TestResourceID, ETag: "etag-1"}, Data: data}, nil).
+		Times(1)
+
+	ucpClient, err := testUCPClientFactory(map[string]any{
+		"properties": map[string]any{
+			"secret": map[string]any{
+				"type":               "string",
+				"x-radius-sensitive": true,
+				"x-radius-retain":    true,
+			},
+			"plain": map[string]any{
+				"type":               "string",
+				"x-radius-sensitive": true,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      encryption.DefaultEncryptionKeySecretName,
+			Namespace: encryption.RadiusNamespace,
+		},
+		Data: map[string][]byte{
+			encryption.DefaultEncryptionKeySecretKey: mustKeyStoreJSON(t, key),
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(scheme))
+	k8sClient := controllerfake.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
+
+	configuration := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace:            "test-namespace",
+				EnvironmentNamespace: "test-env-namespace",
+			},
+		},
+	}
+
+	// assertPersisted verifies the retain field keeps its encrypted envelope while the sensitive-only
+	// field is redacted to nil.
+	assertPersisted := func(obj *database.Object) {
+		props, err := resourceutil.GetPropertiesFromResource(obj.Data)
+		require.NoError(t, err)
+		require.Nil(t, props["plain"])
+		retained, ok := props["secret"].(map[string]any)
+		require.True(t, ok, "retain field should keep its encrypted envelope, got %T", props["secret"])
+		require.Contains(t, retained, "encrypted")
+		require.Contains(t, retained, "nonce")
+	}
+
+	redactionSave := msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, obj *database.Object, _ ...database.SaveOptions) error {
+			assertPersisted(obj)
+			obj.Metadata.ETag = "etag-2"
+			return nil
+		},
+	)
+
+	finalSave := msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, obj *database.Object, _ ...database.SaveOptions) error {
+			assertPersisted(obj)
+			return nil
+		},
+	)
+
+	engExecute := eng.EXPECT().Execute(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, opts engine.ExecuteOptions) (*recipes.RecipeOutput, error) {
+			require.Equal(t, retainValue, opts.BaseOptions.Recipe.Properties["secret"])
+			require.Equal(t, plainValue, opts.BaseOptions.Recipe.Properties["plain"])
 			return &recipes.RecipeOutput{}, nil
 		},
 	)

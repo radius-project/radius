@@ -109,8 +109,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 			secretBindingPaths = schemautil.ExtractSecretBindingPaths(schema, "")
 
 			sensitiveFieldPaths := schemautil.ExtractSensitiveFieldPaths(schema, "")
+			retainFieldPaths := schemautil.ExtractRetainFieldPaths(schema, "")
 			if len(sensitiveFieldPaths) > 0 {
-				logger.Info("Sensitive fields detected for resource", "resourceID", req.ResourceID, "paths", sensitiveFieldPaths)
+				logger.Info("Sensitive fields detected for resource", "resourceID", req.ResourceID, "paths", sensitiveFieldPaths, "retain", retainFieldPaths)
 
 				properties, err := resourceutil.GetPropertiesFromResource(resource)
 				if err != nil {
@@ -147,7 +148,12 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 				if err != nil {
 					return ctrl.Result{}, err
 				}
-				schemautil.RedactFields(redactedProperties, sensitiveFieldPaths)
+				// Retain-marked fields (e.g. Radius.Security/secrets data values) keep their encrypted
+				// value at rest so the secrets loader can decrypt from the store instead of reading a
+				// cluster (multi-cluster safe). Only non-retain sensitive fields are redacted to nil here;
+				// retain fields are redacted on read (GET/LIST) instead.
+				redactFieldPaths := pathsExcept(sensitiveFieldPaths, retainFieldPaths)
+				schemautil.RedactFields(redactedProperties, redactFieldPaths)
 
 				if err = applyPropertiesToResource(resource, redactedProperties); err != nil {
 					logger.Error(err, "Failed to apply redacted properties", "resourceID", req.ResourceID)
@@ -311,6 +317,23 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 			return nil, fmt.Errorf("failed to get metadata from connected resource %s: %w", connectedResourceID, err)
 		}
 
+		// Redact sensitive fields from a connected Radius.Security/secrets resource before exposing its
+		// properties to the recipe. Its value is retained encrypted at rest (x-radius-retain), and must not
+		// be surfaced — even as ciphertext — through the recipe context; secrets are consumed via secret
+		// bindings/references, not connections. Other resource types still redact their sensitive fields to
+		// nil at rest, so they need no redaction here.
+		if strings.EqualFold(connectedResourceMetadata.Type, secretReferenceResourceType) && len(connectedResourceMetadata.Properties) > 0 {
+			if apiVersion := connectedResourceAPIVersion(connectedResource.Data); apiVersion != "" {
+				connectedSchema, err := schemautil.GetSchema(ctx, c.UcpClient(), connectedResourceID, connectedResourceMetadata.Type, apiVersion)
+				if err != nil {
+					return nil, fmt.Errorf("failed to fetch schema to redact connected secret %s: %w", connectedResourceID, err)
+				}
+				if connectedSchema != nil {
+					schemautil.RedactFields(connectedResourceMetadata.Properties, schemautil.ExtractSensitiveFieldPaths(connectedSchema, ""))
+				}
+			}
+		}
+
 		connectedResourcesMetadata[connName] = recipes.ConnectedResource{
 			ID:         connectedResourceMetadata.ID,
 			Name:       connectedResourceMetadata.Name,
@@ -356,6 +379,25 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 
 func getResourceAPIVersion[P rpv1.RadiusResourceModel](resource P) string {
 	return resource.GetBaseResource().InternalMetadata.UpdatedAPIVersion
+}
+
+// connectedResourceAPIVersion extracts the api-version a connected resource was last updated with from its
+// raw stored representation, so the connected resource's schema can be fetched to redact its sensitive fields.
+// Returns "" if the api-version cannot be determined.
+func connectedResourceAPIVersion(data any) string {
+	var partial struct {
+		UpdatedAPIVersion string `json:"updatedApiVersion"`
+	}
+
+	bs, err := json.Marshal(data)
+	if err != nil {
+		return ""
+	}
+	if err := json.Unmarshal(bs, &partial); err != nil {
+		return ""
+	}
+
+	return partial.UpdatedAPIVersion
 }
 
 // buildSecretReferences resolves x-radius-secret-reference property values (each the name of a
@@ -470,6 +512,25 @@ func valueAtPath(properties map[string]any, path string) (any, bool) {
 	}
 
 	return current, true
+}
+
+// pathsExcept returns the elements of all that are not present in exclude. Used to redact only the
+// sensitive field paths that are NOT retain-marked (retain fields keep their encrypted value at rest).
+func pathsExcept(all []string, exclude []string) []string {
+	if len(exclude) == 0 {
+		return all
+	}
+	excluded := make(map[string]struct{}, len(exclude))
+	for _, p := range exclude {
+		excluded[p] = struct{}{}
+	}
+	result := make([]string, 0, len(all))
+	for _, p := range all {
+		if _, found := excluded[p]; !found {
+			result = append(result, p)
+		}
+	}
+	return result
 }
 
 func deepCopyProperties(source map[string]any) (map[string]any, error) {

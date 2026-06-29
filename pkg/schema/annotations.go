@@ -50,6 +50,21 @@ func GetSensitiveFieldPaths(ctx context.Context, ucpClient *v20231001preview.Cli
 	return ExtractSensitiveFieldPaths(schema, ""), nil
 }
 
+// GetRetainFieldPaths fetches the schema for a resource and returns paths to fields marked with
+// x-radius-retain. Retain fields are the subset of sensitive fields whose encrypted value is kept at
+// rest (vault semantics) instead of being redacted after recipe execution. Mirrors GetSensitiveFieldPaths.
+func GetRetainFieldPaths(ctx context.Context, ucpClient *v20231001preview.ClientFactory, resourceID string, resourceType string, apiVersion string) ([]string, error) {
+	schema, err := GetSchema(ctx, ucpClient, resourceID, resourceType, apiVersion)
+	if err != nil {
+		return nil, err
+	}
+	if schema == nil {
+		return nil, nil
+	}
+
+	return ExtractRetainFieldPaths(schema, ""), nil
+}
+
 // GetSchema fetches the OpenAPI schema for a resource type and api version.
 // Returns nil if the schema is not found or the client is nil.
 func GetSchema(ctx context.Context, ucpClient *v20231001preview.ClientFactory, resourceID string, resourceType string, apiVersion string) (map[string]any, error) {
@@ -82,6 +97,22 @@ func GetSchema(ctx context.Context, ucpClient *v20231001preview.ClientFactory, r
 // Supports object properties, array items, and additionalProperties (maps).
 // If a field is marked sensitive, its nested properties are not checked since the entire field is considered sensitive.
 func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
+	return extractAnnotatedFieldPaths(schema, prefix, annotationRadiusSensitive)
+}
+
+// ExtractRetainFieldPaths recursively walks the schema and returns paths to fields marked with
+// x-radius-retain. Retain fields are the subset of sensitive fields whose encrypted value is kept at
+// rest (vault semantics) instead of being redacted after recipe execution. The traversal mirrors
+// ExtractSensitiveFieldPaths.
+func ExtractRetainFieldPaths(schema map[string]any, prefix string) []string {
+	return extractAnnotatedFieldPaths(schema, prefix, annotationRadiusRetain)
+}
+
+// extractAnnotatedFieldPaths recursively walks the schema and returns paths to fields where the given
+// boolean annotation is set to true. The prefix parameter builds up the path as we traverse nested
+// objects. Supports object properties, array items, and additionalProperties (maps). If a field is
+// annotated, its nested properties are not checked since the entire field is treated as a leaf.
+func extractAnnotatedFieldPaths(schema map[string]any, prefix string, annotation string) []string {
 	var paths []string
 
 	properties, ok := schema["properties"].(map[string]any)
@@ -103,9 +134,9 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 			fullPath = prefix + "." + fieldName
 		}
 
-		// Check if this field has the x-radius-sensitive annotation
-		// If sensitive, treat the whole field as sensitive and skip nested properties.
-		if isSensitive, ok := fieldSchemaMap[annotationRadiusSensitive].(bool); ok && isSensitive {
+		// Check if this field has the annotation
+		// If annotated, treat the whole field as a leaf and skip nested properties.
+		if isAnnotated, ok := fieldSchemaMap[annotation].(bool); ok && isAnnotated {
 			paths = append(paths, fullPath)
 			continue
 		}
@@ -113,7 +144,7 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 		// Recursively check nested objects
 		if nestedProps, ok := fieldSchemaMap["properties"].(map[string]any); ok {
 			nestedSchema := map[string]any{"properties": nestedProps}
-			nestedPaths := ExtractSensitiveFieldPaths(nestedSchema, fullPath)
+			nestedPaths := extractAnnotatedFieldPaths(nestedSchema, fullPath, annotation)
 			paths = append(paths, nestedPaths...)
 		}
 
@@ -122,15 +153,15 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 		if items, ok := fieldSchemaMap["items"].(map[string]any); ok {
 			arrayItemPath := fullPath + "[*]"
 
-			// Check if items themselves are marked sensitive
-			// If sensitive, add the path and skip nested properties
-			if isSensitive, ok := items[annotationRadiusSensitive].(bool); ok && isSensitive {
+			// Check if items themselves are annotated
+			// If annotated, add the path and skip nested properties
+			if isAnnotated, ok := items[annotation].(bool); ok && isAnnotated {
 				paths = append(paths, arrayItemPath)
 			} else {
 				// Recursively check nested properties within array items
 				if itemProps, ok := items["properties"].(map[string]any); ok {
 					itemSchema := map[string]any{"properties": itemProps}
-					nestedPaths := ExtractSensitiveFieldPaths(itemSchema, arrayItemPath)
+					nestedPaths := extractAnnotatedFieldPaths(itemSchema, arrayItemPath, annotation)
 					paths = append(paths, nestedPaths...)
 				}
 			}
@@ -141,15 +172,15 @@ func ExtractSensitiveFieldPaths(schema map[string]any, prefix string) []string {
 		if additionalProps, ok := fieldSchemaMap["additionalProperties"].(map[string]any); ok {
 			mapValuePath := fullPath + "[*]"
 
-			// Check if additionalProperties values are marked sensitive
-			// If sensitive, add the path and skip nested properties
-			if isSensitive, ok := additionalProps[annotationRadiusSensitive].(bool); ok && isSensitive {
+			// Check if additionalProperties values are annotated
+			// If annotated, add the path and skip nested properties
+			if isAnnotated, ok := additionalProps[annotation].(bool); ok && isAnnotated {
 				paths = append(paths, mapValuePath)
 			} else {
 				// Recursively check nested properties within additionalProperties
 				if addProps, ok := additionalProps["properties"].(map[string]any); ok {
 					addPropsSchema := map[string]any{"properties": addProps}
-					nestedPaths := ExtractSensitiveFieldPaths(addPropsSchema, mapValuePath)
+					nestedPaths := extractAnnotatedFieldPaths(addPropsSchema, mapValuePath, annotation)
 					paths = append(paths, nestedPaths...)
 				}
 			}
