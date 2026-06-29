@@ -107,6 +107,14 @@ Radius stores only the identity selector; the short-lived token is read at runti
 - **Azure** — the GitHub Actions OIDC JWT is short-lived, but the Azure SDKs exchange it once for an ~1-hour AAD token. The workflow mints it once and does not refresh it; a run whose Azure work outlives that window may fail. Refreshing mid-run is a deferred fast follow.
 - **AWS** — the EKS bearer token used to *reach* the target cluster is ~15 minutes and is used directly on every API call, so the workflow re-mints it and rewrites the `target-kubeconfig` Secret immediately before running commands, then restarts the RP/DE deployments to pick it up.
 
+### Cluster credential model — injected kubeconfig (v1) versus cloud-derived (v2)
+
+This design ships on the **v1 injected-kubeconfig** seam described above: the workflow builds a kubeconfig on the runner and mounts it via `global.targetCluster.enabled`. This is the mechanism that is merged and working today, and it keeps the cluster-access logic in the workflow where it can be iterated quickly.
+
+The target state is the **v2 cloud-derived** model from the [multi-cluster design](2026-06-multi-cluster.md) and the [external-kubernetes feature](2026-05-external-kubernetes.md): the environment names the cluster on its cloud-provider block (`aws.eksClusterName` / `azure.aksClusterName`) and Radius acquires Kubernetes API access **in-process** from the cloud credential it already holds (EKS `DescribeCluster` + STS presign; AKS `ListClusterUserCredentials`). The Repo Radius feature spec's Investment 1 points here, and it is the better long-term backend for this workflow specifically because it **deletes the most fragile part of v1**: minting the 15-minute EKS bearer token, rewriting the `target-kubeconfig` Secret before every deploy, and restarting the RP/DE pods to pick it up (see [Credential lifetime](#credential-lifetime) above). In-process acquisition refreshes the short-lived cluster credential where it is used, with no Secret remount and no pod restart.
+
+The action contract hides which model is in use: the dispatch inputs and the result artifact are identical either way, so moving from v1 to v2 is a backend change behind the same stable contract and does not require frontends or committed workflows to change. v2 is gated only on the in-process acquisition being implemented for both providers; until then v1 is the sanctioned interim.
+
 ### State persistence — `rad startup` / `rad shutdown`
 
 `rad startup` and `rad shutdown` are kind-agnostic CLI commands that back up and restore all durable Radius state (control-plane PostgreSQL + Terraform recipe-state Secrets) to a `radius-state` git orphan branch pushed to the repo's `origin`. They do not manage cluster lifecycle — the workflow owns creating and destroying the ephemeral control plane around them. The mechanism is the plan of record; see the [state-storage design](../2026-06-repo-radius-state-storage.md).
@@ -114,6 +122,13 @@ Radius stores only the identity selector; the short-lived token is read at runti
 ### Recipe pack and environment
 
 The workflow generates a Bicep file defining a `Radius.Core/recipePacks` resource that bundles the Kubernetes compute/data recipes (`containers`, `containerImages`, `persistentVolumes`, `routes`, `postgreSqlDatabases`, `secrets`) plus a provider-gated `mySqlDatabases` recipe (AWS RDS or Azure Flexible Server), and a `Radius.Core/environments` resource that references the pack and carries the cloud provider scope. The `containerImages` recipe builds the application image with the in-pod BuildKit (`dynamicrp.buildkit.enabled=true`) and pushes it to the configured registry, authenticated by a Kubernetes Secret created in the app's runtime namespace.
+
+### Control plane startup (Investment 5)
+
+Because the control plane is created and torn down on every operation, startup time is on the critical path for every user-facing action and is the primary determinant of perceived responsiveness. Two backend decisions follow from that, both owned by this technical design rather than the feature spec:
+
+- **Package the engine as a composite action, not a Docker action.** A Docker action adds an image-pull on the critical path of every run; a composite action of shell steps adds none. The engine is a sequence of CLI invocations (`k3d`, `rad`, `kubectl`), which composites express directly.
+- **Pre-bake the control-plane image.** The dominant startup cost is not action packaging but `k3d cluster create` plus `rad install` pulling the Radius images. The mitigation is a pre-built k3d node image with the Radius control-plane images already loaded, so install becomes a local image reference rather than a registry pull. This is the highest-leverage startup optimization and is tracked as the concrete deliverable for Investment 5.
 
 ## Testing
 
@@ -125,3 +140,5 @@ The `test/functional-portable/statestore` lifecycle test (its own isolated `stat
 - **Deploy-only `image` input (no `radius_commands`).** Rejected as the sole contract: it cannot express `app graph` or multi-command flows the spec requires. `image` is retained as a convenience alongside `radius_commands`.
 - **Inject AWS/Azure credentials as plain env vars instead of registering them.** Rejected: the merged code paths read the federated token from a fixed file and resolve the identity through the UCP credential, so the registered credential plus projected token file is the supported model.
 - **Refresh the Azure federated token mid-run.** Deferred; the one-time exchange covers ~1 hour, sufficient for current deploys.
+- **Stay on the injected-kubeconfig model permanently.** Rejected as the target state: the cloud-derived model removes the EKS token-refresh dance entirely. The injected-kubeconfig seam is retained only as the v1 interim behind the same action contract (see [Cluster credential model](#cluster-credential-model--injected-kubeconfig-v1-versus-cloud-derived-v2)).
+- **Package the engine as a Docker action.** Rejected: the image-pull latency lands on the per-run critical path that Investment 5 works to minimize; a composite action avoids it (see [Control plane startup](#control-plane-startup-investment-5)).
