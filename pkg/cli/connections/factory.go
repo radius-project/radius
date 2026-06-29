@@ -41,6 +41,7 @@ var DefaultFactory = &impl{}
 type Factory interface {
 	CreateDeploymentClient(ctx context.Context, workspace workspaces.Workspace) (clients.DeploymentClient, error)
 	CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error)
+	CreateDiagnosticsClientPreview(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error)
 	CreateApplicationsManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.ApplicationsManagementClient, error)
 	CreateCredentialManagementClient(ctx context.Context, workspace workspaces.Workspace) (cli_credential.CredentialManagementClient, error)
 }
@@ -146,6 +147,44 @@ func (i *impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported connection type: %+v", connection)
+	}
+}
+
+// CreateDiagnosticsClientPreview creates a DiagnosticsClient that operates against the preview
+// resource types (Radius.Compute/containers, Radius.Core/applications). The namespace of a
+// container is resolved via the management client (which discovers the correct API version per
+// resource type).
+func (i *impl) CreateDiagnosticsClientPreview(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error) {
+	connectionConfig, err := workspace.ConnectionConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	switch c := connectionConfig.(type) {
+	case *workspaces.KubernetesConnectionConfig:
+		k8sClient, config, err := kubernetes.NewClientset(c.Context)
+		if err != nil {
+			return nil, err
+		}
+		client, err := kubernetes.NewRuntimeClient(c.Context, kubernetes.Scheme)
+		if err != nil {
+			return nil, err
+		}
+
+		managementClient, err := i.CreateApplicationsManagementClient(ctx, workspace)
+		if err != nil {
+			return nil, err
+		}
+
+		return &deployment.ARMDiagnosticsClient{
+			K8sTypedClient:   k8sClient,
+			RestConfig:       config,
+			K8sRuntimeClient: client,
+			Preview:          true,
+			ManagementClient: managementClient,
+		}, nil
+	default:
+		return nil, fmt.Errorf("unsupported connection type: %+v", connectionConfig)
 	}
 }
 
