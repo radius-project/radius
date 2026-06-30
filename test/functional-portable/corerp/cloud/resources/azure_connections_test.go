@@ -17,6 +17,7 @@ limitations under the License.
 package resource_test
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -30,25 +31,24 @@ func Test_AzureConnections(t *testing.T) {
 	name := "corerp-azure-connection-database-service"
 	containerResourceName := "db-service"
 	template := "testdata/corerp-azure-connection-database-service.bicep"
+	appNamespace := name
 
 	if os.Getenv("AZURE_COSMOS_MONGODB_ACCOUNT_ID") == "" {
 		t.Error("AZURE_COSMOS_MONGODB_ACCOUNT_ID environment variable must be set to run this test.")
 	}
 	cosmosmongodbresourceid := "cosmosmongodbresourceid=" + os.Getenv("AZURE_COSMOS_MONGODB_ACCOUNT_ID")
-	appNamespace := "default-corerp-azure-connection-database-service"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), cosmosmongodbresourceid),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: containerResourceName,
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -62,6 +62,10 @@ func Test_AzureConnections(t *testing.T) {
 			},
 		},
 	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), cosmosmongodbresourceid, fmt.Sprintf("environment=%s", previewEnvID))
 
 	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAzure}
 	test.Test(t)
