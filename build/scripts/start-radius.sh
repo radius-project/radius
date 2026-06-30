@@ -11,6 +11,12 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DEBUG_ROOT="$REPO_ROOT/debug_files"
 
+# Terraform recipes install a global shared binary. The default location is
+# /terraform/.terraform-global, which fails on macOS because the root filesystem
+# is read-only. Point it at a writable directory under debug_files instead.
+export TERRAFORM_TEST_GLOBAL_DIR="$DEBUG_ROOT/terraform-global"
+mkdir -p "$TERRAFORM_TEST_GLOBAL_DIR"
+
 # Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
