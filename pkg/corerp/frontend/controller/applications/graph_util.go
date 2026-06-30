@@ -248,7 +248,7 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentName
 // will display the results to a human user, so rather than failing to computeGraph the graph, we will return partial
 // results. Each ApplicationGraphResource will have a provisioning state that indicates whether the resource
 // was successfully processed or not.
-func computeGraph(applicationResources []generated.GenericResource, environmentResources []generated.GenericResource) *corerpv20231001preview.ApplicationGraphResponse {
+func computeGraph(applicationResources []generated.GenericResource, environmentResources []generated.GenericResource, tenantID string) *corerpv20231001preview.ApplicationGraphResponse {
 	if applicationResources == nil && environmentResources == nil {
 		return &corerpv20231001preview.ApplicationGraphResponse{Resources: []*corerpv20231001preview.ApplicationGraphResource{}}
 	}
@@ -316,7 +316,7 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 		})
 
 		applicationGraphResource.Connections = connections
-		applicationGraphResource.OutputResources = outputResourcesFromAPIData(resource)
+		applicationGraphResource.OutputResources = outputResourcesFromAPIData(resource, tenantID)
 		applicationGraphResource.Properties = getResourceTypeSpecificProperties(resource.Properties)
 
 		applicationGraphResourcesByID[*resource.ID] = *applicationGraphResource
@@ -498,17 +498,60 @@ func getResourceTypeSpecificProperties(properties map[string]any) map[string]any
 }
 
 // outputResourceEntryFromID creates a outputResourceEntry from a resource ID.
-func outputResourceEntryFromID(id resources.ID) corerpv20231001preview.ApplicationGraphOutputResource {
-	return corerpv20231001preview.ApplicationGraphOutputResource{
+func outputResourceEntryFromID(id resources.ID, tenantID string) corerpv20231001preview.ApplicationGraphOutputResource {
+	entry := corerpv20231001preview.ApplicationGraphOutputResource{
 		ID:   new(id.String()),
 		Name: new(id.Name()),
 		Type: new(id.Type()),
+	}
+
+	if url := azurePortalURL(id, tenantID); url != "" {
+		entry.PortalURL = new(url)
+	}
+
+	return entry
+}
+
+// azurePortalURL returns a deep link to the Azure portal for an Azure (ARM) resource, or "" when the
+// resource is not an Azure resource or no tenant is available. Azure resource IDs are relative ARM
+// IDs (not UCP-qualified) with at least one scope segment, e.g. /subscriptions/.../resourceGroups/...
+func azurePortalURL(id resources.ID, tenantID string) string {
+	if tenantID == "" {
+		return ""
+	}
+	if id.IsUCPQualified() || len(id.ScopeSegments()) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("https://portal.azure.com/#@%s/resource%s", tenantID, id.String())
+}
+
+// azureTenantID returns the tenant ID of the registered Azure credential (service principal or
+// workload identity), or "" when no Azure credential is registered. It is best-effort: any error
+// results in an empty tenant ID so the application graph can still be rendered.
+func azureTenantID(ctx context.Context, clientOptions *policy.ClientOptions) string {
+	client, err := ucpv20231001preview.NewAzureCredentialsClient(&aztoken.AnonymousCredential{}, clientOptions)
+	if err != nil {
+		return ""
+	}
+
+	resp, err := client.Get(ctx, "azurecloud", "default", nil)
+	if err != nil {
+		return ""
+	}
+
+	switch props := resp.AzureCredentialResource.Properties.(type) {
+	case *ucpv20231001preview.AzureServicePrincipalProperties:
+		return to.String(props.TenantID)
+	case *ucpv20231001preview.AzureWorkloadIdentityProperties:
+		return to.String(props.TenantID)
+	default:
+		return ""
 	}
 }
 
 // outputResourcesFromAPIData processes the generic resource representation returned by the Radius API
 // and produces a list of output resources.
-func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20231001preview.ApplicationGraphOutputResource {
+func outputResourcesFromAPIData(resource generated.GenericResource, tenantID string) []*corerpv20231001preview.ApplicationGraphOutputResource {
 	// Directly access the nested weakly-typed property bag instead of using jsonpointer on the struct.
 	// The previous implementation relied on jsonpointer with the path /properties/status/outputResources.
 	// When applied to the struct value, jsonpointer failed to locate the lowercase JSON field name and
@@ -545,7 +588,7 @@ func outputResourcesFromAPIData(resource generated.GenericResource) []*corerpv20
 		}
 
 		// Now build the entry from the API data
-		entry := outputResourceEntryFromID(data.ID)
+		entry := outputResourceEntryFromID(data.ID, tenantID)
 		entries = append(entries, &entry)
 	}
 

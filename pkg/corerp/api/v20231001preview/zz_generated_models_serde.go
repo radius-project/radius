@@ -75,6 +75,7 @@ func (a ApplicationGraphOutputResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "id", a.ID)
 	populate(objectMap, "name", a.Name)
+	populate(objectMap, "portalUrl", a.PortalURL)
 	populate(objectMap, "type", a.Type)
 	return json.Marshal(objectMap)
 }
@@ -93,6 +94,9 @@ func (a *ApplicationGraphOutputResource) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "name":
 			err = unpopulate(val, "Name", &a.Name)
+			delete(rawMsg, key)
+		case "portalUrl":
+			err = unpopulate(val, "PortalURL", &a.PortalURL)
 			delete(rawMsg, key)
 		case "type":
 			err = unpopulate(val, "Type", &a.Type)
