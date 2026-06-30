@@ -50,6 +50,9 @@ on:
 permissions: {}
 
 env:
+  # yq version
+  YQ_VERSION: v4.44.3
+  YQ_LINUX_AMD64_SHA256: a2c097180dd884a8d50c956ee16a9cec070f30a7947cf4ebf87d5f36213e9ed7
   # Dapr runtime version
   DAPR_RUNTIME_VER: 1.15.4
   # Dapr dashboard version
@@ -84,6 +87,9 @@ env:
   GIT_HTTP_PASSWORD: not-a-secret-password
   # Kubernetes client QPS and Burst settings for high-concurrency CI environments
   RADIUS_QPS_AND_BURST: "800"
+  # Bicep CLI pinned: v0.40+ rejects br:localhost:5000/... (ThrowIfRegistryNotTrusted).
+  # Bump only after verifying localhost support or adding allowedUntrustedRegistries to bicepconfig.json.
+  BICEP_VER: v0.42.1
 
 jobs:
   changes:
@@ -167,6 +173,7 @@ jobs:
             kubernetes-noncloud,
             msgrp-noncloud,
             multicluster-noncloud,
+            statestore-noncloud,
             samples-noncloud,
             ucp-noncloud,
             datastoresrp-noncloud,
@@ -214,12 +221,12 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
       - name: Checkout samples repo
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         if: matrix.name == 'samples-noncloud'
         with:
           repository: radius-project/samples
@@ -241,7 +248,12 @@ jobs:
 
       - name: Install yq
         # Required by make generate-bicep-types-contrib to parse defaults.yaml.
-        run: make install-yq
+        run: |
+          mkdir -p "${RUNNER_TEMP}/bin"
+          curl -fsSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -o "${RUNNER_TEMP}/bin/yq"
+          echo "${YQ_LINUX_AMD64_SHA256}  ${RUNNER_TEMP}/bin/yq" | sha256sum -c -
+          chmod +x "${RUNNER_TEMP}/bin/yq"
+          echo "${RUNNER_TEMP}/bin" >> "${GITHUB_PATH}"
 
       - name: Generate Bicep extensibility types from OpenAPI specs
         env:
@@ -265,9 +277,12 @@ jobs:
           registry-server: ${{ env.LOCAL_REGISTRY_SERVER }}
           registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
 
-      - name: Install bicep CLI
-        # Pinned version + checksum live in build/tools.mk.
-        run: make install-bicep
+      - name: Setup and verify bicep CLI
+        run: |
+          curl -Lo bicep "https://github.com/Azure/bicep/releases/download/${BICEP_VER}/bicep-linux-x64"
+          chmod +x ./bicep
+          sudo mv ./bicep /usr/local/bin/bicep
+          bicep --version
 
       - name: Publish bicep types
         env:
@@ -398,6 +413,10 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Install Radius
+        # The statestore leg drives its own install/uninstall/reinstall lifecycle
+        # inside the test (it must reinstall to simulate an ephemeral control
+        # plane), so the shared install is skipped for it.
+        if: matrix.name != 'statestore-noncloud'
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
@@ -591,7 +610,9 @@ jobs:
           make "test-functional-${MATRIX_NAME}"
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
-          TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
+          # The statestore leg installs/uninstalls/reinstalls Radius, so it needs
+          # far longer than the standard per-leg timeout.
+          TEST_TIMEOUT: ${{ matrix.name == 'statestore-noncloud' && '40m' || env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
@@ -601,6 +622,9 @@ jobs:
           RADIUS_TEST_FAST_CLEANUP: true
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
           MATRIX_NAME: ${{ matrix.name }}
+          # Used by the statestore leg's in-test `rad install` to trust the secure
+          # local registry; ignored by other legs.
+          RADIUS_REGISTRY_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results

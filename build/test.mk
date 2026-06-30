@@ -148,6 +148,13 @@ test-functional-multicluster-noncloud: ## Runs multi-cluster functional tests th
 	# because of that extra setup.
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/multicluster/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
+.PHONY: test-functional-statestore-noncloud
+test-functional-statestore-noncloud: ## Runs the rad startup/shutdown state-storage lifecycle test
+	# Destructive: the test installs, uninstalls (--purge), and reinstalls Radius
+	# to simulate an ephemeral control plane, so it must run on a dedicated cluster
+	# and never alongside other functional legs. Not part of test-functional-all-noncloud.
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/statestore/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
+
 .PHONY: test-functional-upgrade
 test-functional-upgrade: test-functional-upgrade-noncloud ## Runs all Upgrade functional tests
 
