@@ -5,7 +5,7 @@ description: Deploy a Radius application to a configured environment via the aut
 
 # Radius — Deploy Application
 
-Trigger the `Radius - Deploy Application` workflow which spins up an ephemeral k3d Radius control plane, connects to the target AKS/EKS cluster, registers the right recipes for the env's provider, restores persisted state, runs `rad deploy`, and persists state again before tearing the control plane down.
+Trigger the `Radius - Run rad Commands` workflow which spins up an ephemeral k3d Radius control plane, connects to the target AKS/EKS cluster, registers the right recipes for the env's provider, restores persisted state, runs the requested `rad` commands (deploying by default), and persists state again before tearing the control plane down.
 
 ## When to use this skill
 
@@ -24,15 +24,15 @@ Before invoking this skill, all of these must exist:
 
 ## How to invoke
 
-Trigger the deploy workflow via the GitHub API (or `gh`):
+Trigger the workflow via the GitHub API (or `gh`). Omit `rad_commands` to run the default `rad deploy` of `.radius/app.bicep`:
 
 ```
-POST /repos/{owner}/{repo}/actions/workflows/radius-deploy.yml/dispatches
+POST /repos/{owner}/{repo}/actions/workflows/radius-run-rad-commands.yml/dispatches
 { "ref": "main", "inputs": { "environment": "<env-name>", "image": "<optional-image>" } }
 ```
 
 ```bash
-gh workflow run radius-deploy.yml -f environment=<env-name> [-f image=<optional-image>]
+gh workflow run radius-run-rad-commands.yml -f environment=<env-name> [-f image=<optional-image>]
 ```
 
 Then follow the run (`gh run watch` or the run URL) until it succeeds, fails, or times out.
@@ -66,5 +66,5 @@ Then follow the run (`gh run watch` or the run URL) until it succeeds, fails, or
 
 ## Related files
 
-- `.github/extension/radius-deploy.yml` (this repo) — the canonical deploy workflow template; a copy is committed into the user repo at `.github/workflows/radius-deploy.yml`.
+- `.github/extension/radius-run-rad-commands.yml` (this repo) — the canonical run-rad-commands workflow template; a copy is committed into the user repo at `.github/workflows/radius-run-rad-commands.yml`.
 - `.github/extension/README.md` — the workflow contract: trigger/inputs, required `vars`, secrets, and prerequisites.
