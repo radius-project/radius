@@ -1,56 +1,61 @@
 # Running Radius functional tests
 
-You can find the functional tests under `./test/functional`. A functional test (in our terminology) is a test that interacts with real hosting environments (Kubernetes), deploys real applications and resources, and covers realistic or simulated user scenarios.
+## Purpose
 
-These tests verify whether:
+Functional tests (also called end-to-end tests) interact with real hosting environments (Kubernetes), deploy real applications and resources, and cover realistic user scenarios. They verify, for example, that a Radius Environment can be created successfully and that the Bicep templates of sample applications can be deployed to it. This page is for contributors validating a change against a real cluster; for the full set of test tiers and when to run each, start at the [test matrix overview](./README.md).
 
-- That Radius Environment can be created successfully.
-- That Bicep templates of sample applications can be deployed to the Radius Environment.
+The tests live under `./test/functional-portable`. They use product functionality — the Radius CLI configuration and your local KubeConfig — to detect settings, so the local setup resembles a real user scenario.
 
-## Running via GitHub workflow
+## Prerequisites
 
-These tests automatically run for every PR in the `functional-tests.yml` github workflow.
+1. Place `rad` on your path.
+2. Make sure `bicep` is downloaded (`rad bicep download`).
+3. Make sure your [local dev environment is set up](../contributing-code-debugging/radius-os-processes-debugging.md).
+4. Log into your GitHub account and [generate a PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
+5. Log in to the container registry of your GitHub organization:
 
-We do not run these tests for commits to `main` or tags since they might block the build if they fail.
+   ```sh
+   export CR_PAT=<your_pat>
+   echo $CR_PAT | docker login ghcr.io -u <your_username> --password-stdin
+   ```
 
-### How this works
+6. Publish the Bicep test recipes: `BICEP_RECIPE_REGISTRY=<registry-name> make publish-test-bicep-recipes`.
+7. Publish the Terraform test recipes: `make publish-test-terraform-recipes`.
+8. Change the visibility of the published packages to `public`.
 
-For each PR we run the following set of steps:
+> ⚠️ The tests assume the Kubernetes namespace in use is `default`. If your environment is set up differently you will see test failures.
+>
+> ⚠️ If you set environment variables for functional tests you may need to restart VS Code or other editors for them to take effect.
 
-- Build Radius and publish test assets
-- For each group of tests:
-  - Create a Kubernetes cluster and install the build
-  - Run tests
-  - Delete any cloud resources that were created
+## Steps
 
-We have a separate scheduled job (`purge-test-resources.yaml`) that will delete cloud resources that are left behind. This can happen when the test run is cancelled or times out.
+### Run the tests locally
 
-## Configuration
+Run:
 
-These tests use your local Kubernetes credentials, and Radius Environment for testing. In a GitHub workflow, our automation makes the CI environment resemble a real user scenario. This way we test a setup that is close to what users will have in the real world.
+```sh
+./test/executeFunctionalTest.sh <resourcegroup_name>
+```
 
-As much as possible, the tests use product functionality such as the Radius CLI configuration and local KubeConfig to detect settings.
+When you run locally with this configuration, the tests use your locally selected Radius Environment and your local copy of `rad`. `executeFunctionalTest.sh` creates the Azure resources, exports the values used by the tests, and runs:
 
-## Test cleanup modes
+```sh
+make test-functional-corerp
+make test-functional-msgrp
+make test-functional-daprrp
+make test-functional-datastoresrp
+```
 
-Functional tests support two cleanup modes to optimize test execution:
+To run a single group directly, call its `make` target — for example `make test-functional-corerp-noncloud` for the non-cloud Core RP tests, or `make test-functional-all-noncloud` for every non-cloud group. The full list of groups (`ucp`, `kubernetes`, `corerp`, `cli`, `msgrp`, `daprrp`, `datastoresrp`, `dynamicrp`, `samples`, `upgrade`) and their `-noncloud`/`-cloud` variants is defined in [`build/test.mk`](../../../../build/test.mk).
 
-### Standard cleanup (default for local development)
-- Waits for each resource to be fully deleted before proceeding
-- Provides detailed logging of the deletion process
-- Shows retry attempts for resources stuck in "Updating" state
-- Best for debugging cleanup issues
+You can also run or debug individual tests from VS Code.
 
-### Fast cleanup (default for CI)
-- Initiates resource deletions in the background without waiting for completion
-- Dramatically reduces test execution time by avoiding deletion timeouts
-- Safe for non-cloud tests where Kubernetes cluster cleanup handles orphaned resources
-- Enabled automatically in CI via `RADIUS_TEST_FAST_CLEANUP=true`
-- **Skips post-delete verification** since background deletions may not be complete
+### Control test cleanup
 
-### Configuration
+Functional tests support two cleanup modes, selected with the `RADIUS_TEST_FAST_CLEANUP` environment variable:
 
-You can control the cleanup mode using the `RADIUS_TEST_FAST_CLEANUP` environment variable:
+- **Standard cleanup** (default for local development): waits for each resource to be fully deleted before proceeding, logs the deletion process, and shows retries for resources stuck in "Updating". Best for debugging cleanup issues.
+- **Fast cleanup** (default for CI): initiates deletions in the background without waiting, which avoids deletion timeouts and dramatically reduces run time. It **skips post-delete verification**, so it is only safe for non-cloud tests where Kubernetes cluster cleanup handles orphaned resources. CI enables it with `RADIUS_TEST_FAST_CLEANUP=true`.
 
 ```bash
 # Enable fast cleanup (useful for local testing with unique resource names)
@@ -62,90 +67,53 @@ export RADIUS_TEST_FAST_CLEANUP=false
 go test ./test/functional-portable/corerp/noncloud/resources
 ```
 
-When fast cleanup is used, you'll see output like:
-```
-Fast cleanup mode: 4 resources were deleted in the background
-skipping post-delete verification in fast cleanup mode (background deletions may not be complete)
-If you need to debug cleanup issues, re-run with RADIUS_TEST_FAST_CLEANUP=false
-```
-
 > ⚠️ **Important**: Fast cleanup is only safe for non-cloud tests. Cloud tests always use standard cleanup to ensure proper deletion of cloud resources that incur costs.
 
-## Running the tests locally
+### See log output in VS Code
 
-### Prerequisites
-
-1. Place `rad` on your path
-2. Make sure `bicep` is downloaded (`rad bicep download`)
-3. Make sure your [local dev environment is set up](../contributing-code-debugging/radius-os-processes-debugging.md)
-4. Log into your Github account and [Generate PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
-5. Log-in to the container registry of your Github organization.
-
-   `export CR_PAT=<your_pat>`
-
-   `echo $CR_PAT | docker login ghcr.io -u <your_username> --password-stdin`
-
-6. Publish Bicep test recipes by running `BICEP_RECIPE_REGISTRY=<registry-name> make publish-test-bicep-recipes`
-7. Publish Terraform test recipes by running `make publish-test-terraform-recipes`
-8. Change the visibility of the published packages to 'public'
-
-> ⚠️ The tests assume the Kubernetes namespace in use is `default`. If your environment is set up differently you will see
-> test failures.
-
-> ⚠️ If you set environment variables for functional tests you may need to restart VS Code or other editors for them to take effect.
-
-### Run
-
-1. Run:
-
-   ```sh
-       .{workspace}/radius/test/executeFunctionalTest.sh
-   ```
-
-When you're running locally with this configuration, the tests will use your locally selected Radius Environment and your local copy of `rad`. The executeFunctionalTest.sh scripts creates the azure resources and exports the values to be used in the functional test and runs:
-
-```sh
-   make test-functional-corerp
-   make test-functional-msgrp
-   make test-functional-daprrp
-   make test-functional-datastoresrp
-```
-
-You can also run/debug individual tests from VSCode.
-
-### Tips
-
-> 💡 If you make changes to recipes, make sure to re-run the _publish test recipe_ step from prerequisites.
-> 💡 Make sure the packages published to your organization have their visibility set to "public"
-> 💡 If you make changes to the `rad` CLI make sure to copy it to your path.
-
-### Seeing log output
-
-Some of these tests take a few minutes to run since they interact with cloud resources. You should configure VSCode to output verbose output so you can see the progress.
-
-Open your VSCode `settings.json` with the command `Preferences: Open Settings (JSON)` and configure the following options:
+Some tests take a few minutes because they interact with cloud resources. Configure VS Code to show verbose output so you can follow progress. Open `settings.json` with **Preferences: Open Settings (JSON)** and set:
 
 ```json
 {
-    ...
     "go.testTimeout": "60m",
     "go.testFlags": [
         "-v"
-    ],
+    ]
 }
 ```
 
-### Using Codelens (VSCode)
+### Use Codelens (VS Code)
 
-VSCode will start a child process when you execute a `'run test'/'debug test'` codelens action (see image for example). If you are using this to run functional tests, this process may not resolve `rad` correctly. You can specify environment variables for codelens using `settings.json`:
+VS Code starts a child process when you use a `run test`/`debug test` Codelens action. That process may not resolve `rad` correctly. Specify environment variables for Codelens in `settings.json`:
 
 ```json
 {
-    ...
     "go.testEnvVars": {
         "RAD_PATH": "${workspaceFolder}/dist/linux_amd64/release"
-    },
+    }
 }
 ```
 
 ![Screenshot of VS Code Codelens UI](./vscode_debug_test.png)
+
+### How the tests run in CI
+
+These tests run automatically for every PR via the `functional-test-noncloud.yaml` and `functional-test-cloud.yaml` GitHub workflows. We do not run them for commits to `main` or for tags, since a failure could block the build. For each PR, CI:
+
+- Builds Radius and publishes the test assets.
+- For each group of tests: creates a Kubernetes cluster, installs the build, runs the tests, and deletes any cloud resources that were created.
+
+Separate scheduled jobs (`purge-azure-test-resources.yaml` and `purge-aws-test-resources.yaml`) delete cloud resources left behind when a run is cancelled or times out.
+
+## Verification
+
+- Each group prints `ok` (or the `gotestsum` summary) per package and `go test` exits non-zero on any failure.
+- A successful run creates a Radius Environment, deploys the sample applications, asserts on their state, and then cleans up the resources it created.
+
+## Troubleshooting
+
+- **You changed a recipe.** Re-run the *publish test recipe* prerequisite step so the cluster uses your updated recipe.
+- **Tests cannot pull a package.** Confirm the packages published to your organization have their visibility set to `public`.
+- **You changed the `rad` CLI.** Copy the rebuilt `rad` to your path (or set `RAD_PATH` for Codelens) so the tests use your new binary.
+- **Environment variables seem ignored.** Restart VS Code or your editor so newly set variables take effect.
+- **Many tests fail immediately.** Confirm the Kubernetes namespace in use is `default`.
