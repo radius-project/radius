@@ -57,13 +57,13 @@ A single combined artifact is preferred over per-command artifacts (`rad-command
 
 ### GitHub Environment variables
 
-The workflow reads Actions **variables** (`vars`) for cloud configuration; a provider's branch runs only when its identifying variable (`AZURE_CLIENT_ID` or `AWS_IAM_ROLE_ARN`) is non-empty.
+The workflow reads Actions **variables** (`vars`) for cloud configuration; a provider's branch runs only when its identifying variable (`AZURE_CLIENT_ID` or `AWS_ROLE_ARN`) is non-empty.
 
-| Provider | Variables                                                                                                                     |
-|----------|-------------------------------------------------------------------------------------------------------------------------------|
-| Azure    | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_LOCATION`, `RADIUS_K8S_CLUSTER` |
-| AWS      | `AWS_IAM_ROLE_ARN`, `AWS_REGION`, `AWS_ACCOUNT_ID`, `RADIUS_K8S_CLUSTER`, `RADIUS_VPC_ID`, `RADIUS_SUBNET_IDS`                |
-| Common   | `RADIUS_K8S_NAMESPACE` (target namespace, defaults to `default`), `RADIUS_BUILD_REGISTRY` (image-build push target)           |
+| Provider | Variables                                                                                                                         |
+|----------|-----------------------------------------------------------------------------------------------------------------------------------|
+| Azure    | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_LOCATION`, `AZURE_AKS_CLUSTER_NAME` |
+| AWS      | `AWS_ROLE_ARN`, `AWS_REGION`, `AWS_ACCOUNT_ID`, `AWS_EKS_CLUSTER_NAME`, `RADIUS_VPC_ID`, `RADIUS_SUBNET_IDS`                      |
+| Common   | `KUBERNETES_NAMESPACE` (target namespace, defaults to `default`), `RADIUS_BUILD_REGISTRY` (image-build push target)               |
 
 Secrets used: `GHCR_PAT` (or `GITHUB_TOKEN`) for image-build registry auth, and `RADIUS_DB_PASSWORD` for the optional `password` deploy parameter.
 
