@@ -206,5 +206,5 @@ func display(applicationResources []*corerpv20250801.ApplicationGraphResource, a
 }
 
 func makeHyperlink(resource *corerpv20250801.ApplicationGraphOutputResource) string {
-	return graph.MakeResourceHyperlink(*resource.ID, *resource.Name)
+	return graph.MakeResourceHyperlink(resource.PortalURL, *resource.Name)
 }
