@@ -1070,6 +1070,57 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 	validateContourHTTPRoute(t, output.Resources, "B", expectedHTTPRouteSpecB, "")
 }
 
+func Test_Render_MultipleRoutes_OrderOutputResourcesDeploysRouteChildrenBeforeRoot(t *testing.T) {
+	r := &Renderer{}
+
+	routes := []datamodel.GatewayRoute{
+		{
+			Destination: "http://A",
+			Path:        "/",
+		},
+		{
+			Destination: "http://B",
+			Path:        "/agent",
+		},
+	}
+	properties := datamodel.GatewayProperties{
+		BasicResourceProperties: rpv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Routes: routes,
+	}
+	resource := makeResource(properties)
+	environmentOptions := getEnvironmentOptions("", testExternalIP, "", false, false)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Environment: environmentOptions})
+	require.NoError(t, err)
+
+	rootHTTPProxy, rootOutputResource := kubernetes.FindContourHTTPProxy(output.Resources)
+	require.NotNil(t, rootHTTPProxy)
+	require.NotNil(t, rootOutputResource.CreateResource)
+	expectedRouteLocalIDs := []string{
+		fmt.Sprintf("%s-%s", rpv1.LocalIDHttpProxy, "A"),
+		fmt.Sprintf("%s-%s", rpv1.LocalIDHttpProxy, "B"),
+	}
+	require.ElementsMatch(t, expectedRouteLocalIDs, rootOutputResource.CreateResource.Dependencies)
+
+	orderedResources, err := rpv1.OrderOutputResources(output.Resources)
+	require.NoError(t, err)
+
+	orderedIndexes := map[string]int{}
+	for i, resource := range orderedResources {
+		orderedIndexes[resource.LocalID] = i
+	}
+
+	rootIndex, ok := orderedIndexes[rpv1.LocalIDGateway]
+	require.True(t, ok)
+	for _, localID := range expectedRouteLocalIDs {
+		routeIndex, ok := orderedIndexes[localID]
+		require.True(t, ok)
+		require.Less(t, routeIndex, rootIndex)
+	}
+}
+
 func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 	r := &Renderer{}
 
