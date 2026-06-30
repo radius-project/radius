@@ -220,6 +220,27 @@ func (d *dynamicResourceBasicPropertiesAdapter) EnvironmentID() string {
 	return str
 }
 
+// CodeReference returns the codeReference property of the resource, or an empty
+// string if it is absent or not a string. codeReference is a common base
+// property and mirrors ApplicationID / EnvironmentID.
+func (d *dynamicResourceBasicPropertiesAdapter) CodeReference() string {
+	if d.resource.Properties == nil {
+		return ""
+	}
+
+	obj, ok := d.resource.Properties["codeReference"]
+	if !ok {
+		return ""
+	}
+
+	str, ok := obj.(string)
+	if !ok {
+		return ""
+	}
+
+	return str
+}
+
 // GetResourceStatus implements v1.BasicResourcePropertiesAdapter.
 func (d *dynamicResourceBasicPropertiesAdapter) GetResourceStatus() rpv1.ResourceStatus {
 	// This is the best we can do. We require all of the data we store to be JSON-marshallable,

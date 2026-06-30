@@ -1,66 +1,27 @@
 namespace: Test.Resources
 types:
-  userTypeAlpha:    
+  userTypeAlpha:
     apiVersions:
       "2023-10-01-preview":
         schema:
           type: "object"
           properties:
-            application:
-              type: string
-              description: The resource ID of the application.
-            environment:
-              type: string
-              description: The resource ID of the environment.
-            connections:
-              type: object
-              additionalProperties:
-                type: object
-                properties:
-                  source:
-                    type: string
-                    description: The resourceID of the source of the connection.
             port:
               type: string
               description: The port number exposed by the application.
             host:
               type: string
               description: The host name (in-cluster service DNS) produced by a recipe.
-          required:
-            - application
-            - environment
       "2025-01-01-preview":
         schema:
           type: "object"
-          properties:
-            application:
-              type: string
-              description: The resource ID of the application.
-            environment:
-              type: string
-              description: The resource ID of the environment.
-            connections:
-              type: object
-              additionalProperties:
-                type: object
-                properties:
-                  source:
-                    type: string
-                    description: The resourceID of the source of the connection.
-          required:
-            - application
-            - environment
+          properties: {}
   postgres:
     apiVersions:
       '2025-01-01-preview':
-        schema: 
+        schema:
           type: object
           properties:
-            environment:
-              type: string
-            application:
-              type: string
-              description: The resource ID of the application.
             database:
               type: string
               description: The name of the database.
@@ -83,19 +44,11 @@ types:
         schema:
           type: "object"
           properties:
-            application:
-              type: string
-              description: The resource ID of the application.
-            environment:
-              type: string
-              description: The resource ID of the environment.
             configMap:
               type: string
               description: The data contained in a config map.
           required:
-            - application
-            - environment
-            - configMap 
+            - configMap
   # Additional resource types for shared API version deletion test (GitHub issue #9754)
   sharedAPITestTypeA:
     capabilities: ["ManualResourceProvisioning"]
@@ -104,18 +57,9 @@ types:
         schema:
           type: "object"
           properties:
-            application:
-              type: string
-              description: The resource ID of the application.
-            environment:
-              type: string
-              description: The resource ID of the environment.
             configA:
               type: string
               description: Configuration data for shared API test type A.
-          required:
-            - application
-            - environment
   sharedAPITestTypeB:
     capabilities: ["ManualResourceProvisioning"]
     apiVersions:
@@ -123,18 +67,9 @@ types:
         schema:
           type: "object"
           properties:
-            application:
-              type: string
-              description: The resource ID of the application.
-            environment:
-              type: string
-              description: The resource ID of the environment.
             configB:
               type: string
               description: Configuration data for shared API test type B.
-          required:
-            - application
-            - environment
   testResourceSchema:
     capabilities: ["ManualResourceProvisioning"]
     apiVersions:
@@ -142,12 +77,6 @@ types:
         schema:
           type: "object"
           properties:
-            application:
-              type: string
-              description: The resource ID of the application.
-            environment:
-              type: string
-              description: The resource ID of the environment.
             validationData:
               type: string
               description: Data used for schema validation testing (must be string).
@@ -163,8 +92,6 @@ types:
                 name:
                   type: string
           required:
-            - application
-            - environment
             - validationData
   testValidPlatformOptionsSchema:
     capabilities: ["ManualResourceProvisioning"]
@@ -173,33 +100,18 @@ types:
         schema:
           type: "object"
           properties:
-            application:
-              type: string
-              description: The resource ID of the application.
-            environment:
-              type: string
-              description: The resource ID of the environment.
             platformOptions:
               type: object
               description: Platform options with type any in additionalProperties (should pass validation).
               additionalProperties:
                 type: any
                 description: Accepts any value. Valid under platformOptions.
-          required:
-            - application
-            - environment
   sensitiveResource:
     apiVersions:
       "2023-10-01-preview":
         schema:
           type: "object"
           properties:
-            application:
-              type: string
-              description: The resource ID of the application.
-            environment:
-              type: string
-              description: The resource ID of the environment.
             username:
               type: string
               description: A non-sensitive username field.
@@ -237,6 +149,3 @@ types:
               type: string
               description: The name of the Kubernetes secret created by the recipe.
               readOnly: true
-          required:
-            - application
-            - environment

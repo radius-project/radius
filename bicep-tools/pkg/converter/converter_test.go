@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -136,6 +137,11 @@ func TestAddResourceTypeForAPIVersion(t *testing.T) {
 	apiVersion := resourceType.APIVersions["2021-01-01"]
 	typeFactory := factory.NewTypeFactory()
 
+	base, err := loadBaseResource()
+	if err != nil {
+		t.Fatalf("loadBaseResource: %v", err)
+	}
+
 	result, err := addResourceTypeForAPIVersion(
 		provider,
 		"testResources",
@@ -143,6 +149,7 @@ func TestAddResourceTypeForAPIVersion(t *testing.T) {
 		"2021-01-01",
 		&apiVersion,
 		typeFactory,
+		base,
 	)
 
 	if err != nil {
@@ -263,6 +270,11 @@ func TestAddResourceTypeForAPIVersion_HoistsPropertiesAsReadOnlyAliases(t *testi
 	apiVersion := resourceType.APIVersions["2021-01-01"]
 	typeFactory := factory.NewTypeFactory()
 
+	base, err := loadBaseResource()
+	if err != nil {
+		t.Fatalf("loadBaseResource: %v", err)
+	}
+
 	if _, err := addResourceTypeForAPIVersion(
 		provider,
 		"testResources",
@@ -270,6 +282,7 @@ func TestAddResourceTypeForAPIVersion_HoistsPropertiesAsReadOnlyAliases(t *testi
 		"2021-01-01",
 		&apiVersion,
 		typeFactory,
+		base,
 	); err != nil {
 		t.Fatalf("Expected no error, got: %v", err)
 	}
@@ -729,6 +742,128 @@ func TestConvert(t *testing.T) {
 	if result.IndexContent[0] != '{' {
 		t.Error("Expected index content to start with '{'")
 	}
+}
+
+// TestConvert_MultipleTypesAndAPIVersions verifies Convert handles a provider
+// that declares more than one resource type and more than one API version per
+// type. Every (resourceType, apiVersion) pair must appear in the index, and the
+// per-version properties type generated for each must include the merged base
+// properties (application, environment, connections, codeReference) even when
+// the author's schema declares none of them.
+func TestConvert_MultipleTypesAndAPIVersions(t *testing.T) {
+	provider := &manifest.ResourceProvider{
+		Namespace: "Demo.Examples",
+		Types: map[string]manifest.ResourceType{
+			"widgets": {
+				APIVersions: map[string]manifest.APIVersion{
+					"2026-06-01-preview": {
+						Schema: manifest.Schema{
+							Type: "object",
+							Properties: map[string]manifest.Schema{
+								"size":  {Type: "integer", Description: ptr("Widget size.")},
+								"color": {Type: "string", Description: ptr("Widget color.")},
+							},
+							Required: []string{"size", "application", "environment"},
+						},
+						Capabilities: []string{"ManualResourceProvisioning"},
+					},
+				},
+			},
+			"widgets1": {
+				APIVersions: map[string]manifest.APIVersion{
+					"2026-06-01-preview": {
+						Schema: manifest.Schema{
+							Type: "object",
+							Properties: map[string]manifest.Schema{
+								"size": {Type: "integer", Description: ptr("Widget size.")},
+							},
+						},
+						Capabilities: []string{"ManualResourceProvisioning"},
+					},
+					"2025-06-01-preview": {
+						Schema: manifest.Schema{
+							Type: "object",
+							Properties: map[string]manifest.Schema{
+								"size": {Type: "integer", Description: ptr("Widget size.")},
+							},
+						},
+						Capabilities: []string{"ManualResourceProvisioning"},
+					},
+				},
+			},
+		},
+	}
+
+	result, err := Convert(provider)
+	if err != nil {
+		t.Fatalf("Convert returned error: %v", err)
+	}
+
+	// Every (resourceType, apiVersion) pair must appear in the generated index.
+	// The index serializes resources as a flat map keyed by "<namespace>/<type>@<version>".
+	var idx struct {
+		Resources map[string]json.RawMessage `json:"resources"`
+	}
+	if err := json.Unmarshal([]byte(result.IndexContent), &idx); err != nil {
+		t.Fatalf("failed to parse IndexContent as JSON: %v", err)
+	}
+
+	expectedQualified := []string{
+		"Demo.Examples/widgets@2026-06-01-preview",
+		"Demo.Examples/widgets1@2025-06-01-preview",
+		"Demo.Examples/widgets1@2026-06-01-preview",
+	}
+	for _, qualified := range expectedQualified {
+		if _, ok := idx.Resources[qualified]; !ok {
+			t.Errorf("index missing resource %q; have=%v", qualified, keys(idx.Resources))
+		}
+	}
+
+	// Each per-version properties type must carry the merged base properties.
+	// Inspect the types JSON to confirm the four base property names appear on
+	// every generated *Properties object. The serialized type discriminator is
+	// "$type": "ObjectType" with lowercase "name" and "properties" fields.
+	var typesArr []struct {
+		Type       string                     `json:"$type"`
+		Name       string                     `json:"name"`
+		Properties map[string]json.RawMessage `json:"properties"`
+	}
+	if err := json.Unmarshal([]byte(result.TypesContent), &typesArr); err != nil {
+		t.Fatalf("failed to parse TypesContent as JSON: %v", err)
+	}
+
+	propertiesObjectsByName := map[string]map[string]json.RawMessage{}
+	for _, entry := range typesArr {
+		if entry.Type != "ObjectType" {
+			continue
+		}
+		if strings.HasSuffix(entry.Name, "Properties") {
+			propertiesObjectsByName[entry.Name] = entry.Properties
+		}
+	}
+
+	for _, name := range []string{"widgetsProperties", "widgets1Properties"} {
+		props, ok := propertiesObjectsByName[name]
+		if !ok {
+			t.Errorf("expected generated properties type %q in TypesContent; have=%v", name, keys(propertiesObjectsByName))
+			continue
+		}
+		for _, base := range []string{"application", "environment", "connections", "codeReference"} {
+			if _, ok := props[base]; !ok {
+				t.Errorf("%s missing merged base property %q; have=%v", name, base, keys(props))
+			}
+		}
+	}
+}
+
+// keys returns the keys of m as a slice, for use in test failure messages where
+// the exact ordering does not matter.
+func keys[V any](m map[string]V) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
 }
 
 func TestAddSchemaType_Array_StringItems(t *testing.T) {
@@ -1206,6 +1341,11 @@ func TestAddResourceTypeForAPIVersion_WithAdditionalProperties(t *testing.T) {
 	apiVersion := resourceType.APIVersions["2021-01-01"]
 	typeFactory := factory.NewTypeFactory()
 
+	base, err := loadBaseResource()
+	if err != nil {
+		t.Fatalf("loadBaseResource: %v", err)
+	}
+
 	result, err := addResourceTypeForAPIVersion(
 		provider,
 		"testResources",
@@ -1213,6 +1353,7 @@ func TestAddResourceTypeForAPIVersion_WithAdditionalProperties(t *testing.T) {
 		"2021-01-01",
 		&apiVersion,
 		typeFactory,
+		base,
 	)
 
 	if err != nil {

@@ -1,0 +1,15 @@
+namespace: MyCompany.Resources
+location:
+  global:
+    'http://localhost:8080'
+types:
+  testResources:
+    description: This is a test resource type with a bare schema.
+    apiVersions:
+      '2025-01-01-preview':
+        schema:
+          type: object
+          properties:
+            size:
+              type: string
+    capabilities: ["ManualResourceProvisioning"]
