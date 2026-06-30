@@ -19,6 +19,7 @@ package handlers
 import (
 	"context"
 	"testing"
+	"time"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/radius-project/radius/pkg/kubernetes"
@@ -127,6 +128,39 @@ func TestHTTPProxyWaiter_WaitUntilReadySkipsRouteChild(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestHTTPProxyWaiter_WaitUntilReadyTimeoutGetsNamespacedHTTPProxy(t *testing.T) {
+	httpProxy := newTestHTTPProxy(contourv1.HTTPProxySpec{
+		VirtualHost: &contourv1.VirtualHost{
+			Fqdn: "example.com",
+		},
+	})
+	httpProxy.Status = contourv1.HTTPProxyStatus{
+		Conditions: []contourv1.DetailedCondition{
+			{
+				Condition: metav1.Condition{
+					Message: "still reconciling",
+					Reason:  "Waiting",
+				},
+			},
+		},
+	}
+
+	s := runtime.NewScheme()
+	err := contourv1.AddToScheme(s)
+	require.NoError(t, err)
+	fakeClient := fakedynamic.NewSimpleDynamicClient(s, httpProxy)
+
+	httpProxyWaiter := &httpProxyWaiter{
+		dynamicClientSet:           fakeClient,
+		httpProxyDeploymentTimeout: 50 * time.Millisecond,
+	}
+
+	err = httpProxyWaiter.waitUntilReady(context.Background(), httpProxy)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "HTTP proxy deployment timed out, name: example.com, namespace default, status: still reconciling, reason: Waiting")
+	require.NotContains(t, err.Error(), "not found")
+}
+
 func TestCheckHTTPProxyStatus_ValidStatus(t *testing.T) {
 
 	httpProxy := &contourv1.HTTPProxy{
@@ -175,6 +209,44 @@ func TestCheckHTTPProxyStatus_ValidStatus(t *testing.T) {
 	// call the function with the fake clientset, informer factory, logger, object, and done channel
 	go httpProxyWaiter.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, obj, doneCh)
 	err = <-doneCh
+	require.NoError(t, err)
+}
+
+func TestCheckHTTPProxyStatus_ValidRootProxyWithOverriddenLabels(t *testing.T) {
+	httpProxy := newTestHTTPProxy(contourv1.HTTPProxySpec{
+		VirtualHost: &contourv1.VirtualHost{
+			Fqdn: "example.com",
+		},
+	})
+	httpProxy.Labels = map[string]string{
+		kubernetes.LabelManagedBy: "radius",
+		kubernetes.LabelName:      "custom-name",
+	}
+	httpProxy.Status = contourv1.HTTPProxyStatus{
+		CurrentStatus: HTTPProxyStatusValid,
+	}
+
+	s := runtime.NewScheme()
+	err := contourv1.AddToScheme(s)
+	require.NoError(t, err)
+	fakeClient := fakedynamic.NewSimpleDynamicClient(s, httpProxy)
+
+	dynamicInformerFactory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(fakeClient, 0, "default", nil)
+	err = dynamicInformerFactory.ForResource(contourv1.HTTPProxyGVR).Informer().GetIndexer().Add(httpProxy)
+	require.NoError(t, err, "Could not add test http proxy to informer cache")
+
+	doneCh := make(chan error, 1)
+	httpProxyWaiter := &httpProxyWaiter{
+		dynamicClientSet: fakeClient,
+	}
+
+	ctx := context.Background()
+	dynamicInformerFactory.Start(ctx.Done())
+	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
+
+	status := httpProxyWaiter.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, httpProxy, doneCh)
+	err = <-doneCh
+	require.True(t, status)
 	require.NoError(t, err)
 }
 
@@ -392,7 +464,7 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRouteProxy(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestCheckHTTPProxyStatus_WrongSelector(t *testing.T) {
+func TestCheckHTTPProxyStatus_WrongName(t *testing.T) {
 
 	httpProxy := &contourv1.HTTPProxy{
 		ObjectMeta: metav1.ObjectMeta{
