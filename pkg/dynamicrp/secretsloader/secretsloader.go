@@ -23,9 +23,10 @@ limitations under the License.
 // radius-system), which works regardless of which cluster the application's Kubernetes Secret lives in
 // (multi-cluster safe).
 //
-// For secrets created before retain-at-rest landed (whose stored value is nil), the loader falls back to
-// reading the backing Kubernetes Secret from the control-plane cluster — the previous behavior. That
-// fallback is single-cluster only and is expected to be removed once existing secrets have been redeployed.
+// The loader fails closed: if a secret's value is not retained encrypted at rest — for example a secret
+// created before retain-at-rest landed, whose stored value is nil — it returns an error directing the
+// operator to redeploy the secret, rather than silently falling back to reading the secret from a single
+// cluster's Kubernetes Secret.
 package secretsloader
 
 import (
@@ -33,27 +34,20 @@ import (
 	"fmt"
 	"strings"
 
-	corev1 "k8s.io/api/core/v1"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/crypto/encryption"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/schema"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 )
 
 const (
 	// secretResourceType is the resource type of the user-defined secret resource.
 	secretResourceType = "Radius.Security/secrets"
-	// kubernetesSecretType is the output resource type of a Kubernetes Secret.
-	kubernetesSecretType = "core/Secret"
 )
 
 var _ configloader.SecretsLoader = (*dispatchingLoader)(nil)
@@ -61,8 +55,8 @@ var _ configloader.SecretsLoader = (*udtSecretsLoader)(nil)
 
 // NewDispatchingLoader returns a configloader.SecretsLoader that routes each secret ID to the appropriate
 // backing loader based on its resource type: Radius.Security/secrets is resolved by decrypting the retained
-// value from the Radius store (with a Kubernetes Secret fallback for pre-retain secrets), and all other
-// types (e.g. Applications.Core/secretStores) are delegated to storeLoader.
+// value from the Radius store, and all other types (e.g. Applications.Core/secretStores) are delegated to
+// storeLoader.
 func NewDispatchingLoader(storeLoader configloader.SecretsLoader, databaseClient database.Client, kubeProvider *kubernetesclientprovider.KubernetesClientProvider, ucpClient *v20231001preview.ClientFactory) configloader.SecretsLoader {
 	return &dispatchingLoader{
 		storeLoader: storeLoader,
@@ -123,14 +117,15 @@ func (l *dispatchingLoader) LoadSecrets(ctx context.Context, secretStoreIDs map[
 }
 
 // udtSecretsLoader reads cleartext for Radius.Security/secrets resources by decrypting the value retained
-// in the Radius store, falling back to the backing Kubernetes Secret for secrets created before retain.
+// encrypted in the Radius store with the control-plane key.
 type udtSecretsLoader struct {
 	databaseClient database.Client
 	kubeProvider   *kubernetesclientprovider.KubernetesClientProvider
 	ucpClient      *v20231001preview.ClientFactory
 }
 
-// LoadSecrets reads each requested Radius.Security/secrets resource's live Kubernetes Secret and returns its data.
+// LoadSecrets resolves each requested Radius.Security/secrets resource by decrypting its retained value from
+// the Radius store and returns the cleartext data.
 func (l *udtSecretsLoader) LoadSecrets(ctx context.Context, secretStoreIDs map[string][]string) (map[string]recipes.SecretData, error) {
 	result := map[string]recipes.SecretData{}
 	for id, keys := range secretStoreIDs {
@@ -144,12 +139,10 @@ func (l *udtSecretsLoader) LoadSecrets(ctx context.Context, secretStoreIDs map[s
 	return result, nil
 }
 
-// loadSecret resolves a single Radius.Security/secrets resource to its cleartext data. It fails closed: if
-// the secret cannot be resolved, an error is returned rather than partial/empty data.
-//
-// The value is retained encrypted at rest, so it is resolved by decrypting the stored resource with the
-// control-plane key. Secrets created before retain landed have a nil value at rest; for those, loadSecret
-// falls back to reading the backing Kubernetes Secret from the control-plane cluster.
+// loadSecret resolves a single Radius.Security/secrets resource to its cleartext data by decrypting the
+// value retained encrypted in the Radius store with the control-plane key. It fails closed: if the secret
+// cannot be resolved — including a secret created before retain-at-rest landed, whose value is nil at rest —
+// an error is returned rather than partial/empty data or a silent fallback to a single-cluster read.
 func (l *udtSecretsLoader) loadSecret(ctx context.Context, secretID string, keysFilter []string) (recipes.SecretData, error) {
 	if l.databaseClient == nil || l.kubeProvider == nil {
 		return recipes.SecretData{}, fmt.Errorf("secret loader is not fully configured for Radius.Security/secrets")
@@ -160,43 +153,32 @@ func (l *udtSecretsLoader) loadSecret(ctx context.Context, secretID string, keys
 		return recipes.SecretData{}, fmt.Errorf("failed to get secret resource %q: %w", secretID, err)
 	}
 
-	// Resolve from the encrypted store copy first (multi-cluster safe).
-	data, legacy, err := l.loadSecretFromStore(ctx, secretID, resource, keysFilter)
-	if err != nil {
-		return recipes.SecretData{}, err
-	}
-	if !legacy {
-		return data, nil
-	}
-
-	// Migration fallback: the secret predates retain-at-rest (its value is nil in the store), so read the
-	// backing Kubernetes Secret from the control-plane cluster. Single-cluster only.
-	return l.loadSecretFromKubernetes(ctx, secretID, resource, keysFilter)
+	return l.loadSecretFromStore(ctx, secretID, resource, keysFilter)
 }
 
 // loadSecretFromStore decrypts the secret resource's retained value using the control-plane encryption key
-// and returns its cleartext. The returned legacy flag is true when the value is not retained at rest (the
-// secret was created before retain landed, or no schema is available), signaling the Kubernetes fallback.
-func (l *udtSecretsLoader) loadSecretFromStore(ctx context.Context, secretID string, resource *datamodel.DynamicResource, keysFilter []string) (recipes.SecretData, bool, error) {
+// (held in radius-system) and returns its cleartext. Because the key lives on the control-plane cluster,
+// decryption never depends on the application's target cluster, so it is multi-cluster safe. It fails closed
+// if the value is not retained encrypted at rest.
+func (l *udtSecretsLoader) loadSecretFromStore(ctx context.Context, secretID string, resource *datamodel.DynamicResource, keysFilter []string) (recipes.SecretData, error) {
 	if resource.Properties == nil {
-		return recipes.SecretData{}, true, nil
+		return recipes.SecretData{}, fmt.Errorf("secret %q has no properties to resolve; redeploy the secret so its value is stored encrypted at rest", secretID)
 	}
 
 	apiVersion := resource.InternalMetadata.UpdatedAPIVersion
 	schemaMap, err := schema.GetSchema(ctx, l.ucpClient, secretID, secretResourceType, apiVersion)
 	if err != nil {
-		return recipes.SecretData{}, false, fmt.Errorf("failed to fetch schema for secret %q: %w", secretID, err)
+		return recipes.SecretData{}, fmt.Errorf("failed to fetch schema for secret %q: %w", secretID, err)
 	}
 	if schemaMap == nil {
-		// No schema available (e.g. ucpClient not configured); cannot decrypt. Defer to the fallback.
-		return recipes.SecretData{}, true, nil
+		return recipes.SecretData{}, fmt.Errorf("no schema is available for secret %q (%s, api-version %q); cannot decrypt its retained value", secretID, secretResourceType, apiVersion)
 	}
 
 	sensitivePaths := schema.ExtractSensitiveFieldPaths(schemaMap, "")
 
 	runtimeClient, err := l.kubeProvider.RuntimeClient()
 	if err != nil {
-		return recipes.SecretData{}, false, fmt.Errorf("failed to create Kubernetes client to decrypt secret %q: %w", secretID, err)
+		return recipes.SecretData{}, fmt.Errorf("failed to create Kubernetes client to decrypt secret %q: %w", secretID, err)
 	}
 
 	// The encryption key lives in radius-system on the control-plane cluster, so decryption never depends
@@ -204,88 +186,27 @@ func (l *udtSecretsLoader) loadSecretFromStore(ctx context.Context, secretID str
 	keyProvider := encryption.NewKubernetesKeyProvider(runtimeClient, nil)
 	handler, err := encryption.NewSensitiveDataHandlerFromProvider(ctx, keyProvider)
 	if err != nil {
-		return recipes.SecretData{}, false, fmt.Errorf("failed to create decryption handler for secret %q: %w", secretID, err)
+		return recipes.SecretData{}, fmt.Errorf("failed to create decryption handler for secret %q: %w", secretID, err)
 	}
 
 	if err := handler.DecryptSensitiveFieldsWithSchema(ctx, resource.Properties, sensitivePaths, secretID, schemaMap); err != nil {
-		return recipes.SecretData{}, false, fmt.Errorf("failed to decrypt secret %q: %w", secretID, err)
+		return recipes.SecretData{}, fmt.Errorf("failed to decrypt secret %q: %w", secretID, err)
 	}
 
 	return buildSecretDataFromStore(secretID, resource.Properties, keysFilter)
-}
-
-// loadSecretFromKubernetes reads the secret's backing Kubernetes Secret from the control-plane cluster. This
-// is the migration fallback for secrets created before retain-at-rest landed and is single-cluster only.
-func (l *udtSecretsLoader) loadSecretFromKubernetes(ctx context.Context, secretID string, resource *datamodel.DynamicResource, keysFilter []string) (recipes.SecretData, error) {
-	namespace, name, found := kubernetesSecretLocation(resource.OutputResources())
-	if !found {
-		return recipes.SecretData{}, fmt.Errorf("secret %q has no retained value and no Kubernetes Secret output resource; redeploy the secret to populate its encrypted value", secretID)
-	}
-
-	runtimeClient, err := l.kubeProvider.RuntimeClient()
-	if err != nil {
-		return recipes.SecretData{}, fmt.Errorf("failed to create Kubernetes client to read secret %q: %w", secretID, err)
-	}
-
-	ksecret := &corev1.Secret{}
-	if err := runtimeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: namespace, Name: name}, ksecret); err != nil {
-		return recipes.SecretData{}, fmt.Errorf("failed to read Kubernetes Secret for secret %q: %w", secretID, err)
-	}
-
-	return buildSecretData(secretID, ksecret, keysFilter)
-}
-
-// kubernetesSecretLocation returns the namespace and name of the Kubernetes Secret output resource, if present.
-func kubernetesSecretLocation(outputResources []rpv1.OutputResource) (namespace string, name string, found bool) {
-	for _, outputResource := range outputResources {
-		if strings.EqualFold(outputResource.ID.Type(), kubernetesSecretType) {
-			_, _, namespace, name = resources_kubernetes.ToParts(outputResource.ID)
-			return namespace, name, true
-		}
-	}
-
-	return "", "", false
-}
-
-// buildSecretData converts the live Kubernetes Secret into recipes.SecretData. When keysFilter is empty, all
-// keys are returned; otherwise only the requested keys are returned and a missing key is an error.
-func buildSecretData(secretID string, ksecret *corev1.Secret, keysFilter []string) (recipes.SecretData, error) {
-	data := recipes.SecretData{
-		Type: secretResourceType,
-		Data: map[string]string{},
-	}
-
-	keys := keysFilter
-	if len(keys) == 0 {
-		keys = make([]string, 0, len(ksecret.Data))
-		for key := range ksecret.Data {
-			keys = append(keys, key)
-		}
-	}
-
-	for _, key := range keys {
-		value, ok := ksecret.Data[key]
-		if !ok {
-			return recipes.SecretData{}, fmt.Errorf("secret key %q was not found in secret %q", key, secretID)
-		}
-		data.Data[key] = string(value)
-	}
-
-	return data, nil
 }
 
 // buildSecretDataFromStore converts a decrypted Radius.Security/secrets properties map into recipes.SecretData.
 // The secret's data property is a map of key to {value, encoding}; the (already decrypted) value is returned
 // as-is, matching how Applications.Core/secretStores secrets are surfaced to recipes.
 //
-// When keysFilter is empty, all keys are returned; otherwise only the requested keys are returned and a
-// missing key is an error. A requested key whose value is nil indicates the secret predates retain-at-rest
-// (the backend redacted it), so the legacy flag is returned true to trigger the Kubernetes fallback.
-func buildSecretDataFromStore(secretID string, properties map[string]any, keysFilter []string) (recipes.SecretData, bool, error) {
+// When keysFilter is empty, all keys are returned; otherwise only the requested keys are returned. It fails
+// closed: a missing requested key, or a value that is not retained at rest (nil, e.g. a secret created before
+// retain landed), is an error rather than empty/incorrect data.
+func buildSecretDataFromStore(secretID string, properties map[string]any, keysFilter []string) (recipes.SecretData, error) {
 	rawData, ok := properties["data"].(map[string]any)
 	if !ok {
-		// No data to read from the store; defer to the Kubernetes fallback.
-		return recipes.SecretData{}, true, nil
+		return recipes.SecretData{}, fmt.Errorf("secret %q has no data stored at rest; redeploy the secret so its value is stored encrypted at rest", secretID)
 	}
 
 	keys := keysFilter
@@ -304,27 +225,26 @@ func buildSecretDataFromStore(secretID string, properties map[string]any, keysFi
 	for _, key := range keys {
 		entryRaw, exists := rawData[key]
 		if !exists {
-			return recipes.SecretData{}, false, fmt.Errorf("secret key %q was not found in secret %q", key, secretID)
+			return recipes.SecretData{}, fmt.Errorf("secret key %q was not found in secret %q", key, secretID)
 		}
 
 		entry, ok := entryRaw.(map[string]any)
 		if !ok {
-			return recipes.SecretData{}, false, fmt.Errorf("secret %q key %q has an unexpected format", secretID, key)
+			return recipes.SecretData{}, fmt.Errorf("secret %q key %q has an unexpected format", secretID, key)
 		}
 
 		value, exists := entry["value"]
 		if !exists || value == nil {
-			// Value is redacted/absent at rest: this secret predates retain. Trigger the Kubernetes fallback.
-			return recipes.SecretData{}, true, nil
+			return recipes.SecretData{}, fmt.Errorf("secret %q key %q has no value stored at rest; it may have been created before secrets were retained encrypted at rest — redeploy the secret to populate its encrypted value", secretID, key)
 		}
 
 		valueStr, ok := value.(string)
 		if !ok {
-			return recipes.SecretData{}, false, fmt.Errorf("secret %q key %q value is not a string", secretID, key)
+			return recipes.SecretData{}, fmt.Errorf("secret %q key %q value is not a string", secretID, key)
 		}
 
 		result.Data[key] = valueStr
 	}
 
-	return result, false, nil
+	return result, nil
 }
