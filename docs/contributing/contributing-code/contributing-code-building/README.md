@@ -9,7 +9,7 @@ This is the authoritative guide for building Radius from source. It covers build
 - The repository cloned locally. See [Creating your own fork](../contributing-code-forks/index.md).
 - The tools listed in the [prerequisites guide](../contributing-code-prerequisites/README.md) — at minimum Go (the version pinned in [go.mod](../../../../go.mod)) and GNU Make.
 - For building container images: a working Docker daemon and a registry you can push to.
-- For `make generate`: the extra code-generation tools listed under [Code generation](../contributing-code-prerequisites/README.md#code-generation).
+- For `make generate`: the extra code-generation tools listed under [Install code-generation tools](../contributing-code-prerequisites/README.md#install-code-generation-tools).
 
 Run `make` (or `make help`) with no arguments at any time to print every target and its description.
 
@@ -72,7 +72,7 @@ If you work with Radius frequently, set `DOCKER_REGISTRY` in your shell profile.
 
 When you change API schemas or Go APIs that have mocks, regenerate the checked-in generated code as part of your commit. Radius **checks in** generated code so that not every contributor has to install the generators. The PR process validates that the generated files are up to date.
 
-After installing the [code-generation prerequisites](../contributing-code-prerequisites/README.md#code-generation), run:
+After installing the [code-generation prerequisites](../contributing-code-prerequisites/README.md#install-code-generation-tools), run:
 
 ```sh
 make generate

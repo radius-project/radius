@@ -41,7 +41,7 @@ The following are properties that can be specified for UCP:
 |-----|-------------|---------|
 | secretProvider | Configuration options for the secret provider | [**See below**](#secretprovider)
 | plane | Configuration options for the UCP plane | [**See below**](#plane)
-| identity | Configuration options for authenticating with external systems like Azure and AWS | [**See below**](#external system identity)
+| identity | Configuration options for authenticating with external systems like Azure and AWS | [**See below**](#external-system-identity)
 | ucp | Configuration options for connecting to UCP's API | [**See below**](#ucp)
 
 
@@ -143,7 +143,7 @@ ucp:
 | id | The ID of the UCP plane | `/planes/radius/local` |
 | type | The type of UCP plane | `System.Radius/planes` |
 | name | The name of the UCP plane | `ucp` |
-| properties | The properties specified on the plane | [**See below**](#properties) |
+| properties | The properties specified on the plane | [**See below**](#plane-properties) |
 
 ## Available providers
 
