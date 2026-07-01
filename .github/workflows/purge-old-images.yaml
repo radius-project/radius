@@ -31,6 +31,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
+      # Ensure the cache path exists so the restore/save steps are idempotent:
+      # in dry-run mode the script never writes the cache, so on a first-run /
+      # cache-miss the directory would otherwise be absent when cache/save runs.
+      - name: Prepare ghost cache directory
+        run: mkdir -p .ghcr-ghost-cache
+
       # GHCR's list-package-versions API is eventually consistent: it keeps
       # returning versions (with their old tags) long after they were deleted,
       # so a naive delete loop logs thousands of harmless "404 Not Found" errors

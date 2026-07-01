@@ -41,7 +41,7 @@
 # so no separate multi-arch protection is needed.
 #
 # Auth: GITHUB_TOKEN must be a classic PAT with read:packages + delete:packages.
-# Deps: gh, jq.
+# Deps: gh, jq, curl, awk.
 # ============================================================================
 
 set -euo pipefail
@@ -88,7 +88,7 @@ usage() {
 }
 
 validate_requirements() {
-    for tool in gh jq curl; do
+    for tool in gh jq curl awk; do
         if ! command -v "${tool}" > /dev/null 2>&1; then
             echo "Error: required tool '${tool}' is not installed" >&2
             exit 1
