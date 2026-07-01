@@ -358,6 +358,13 @@ func ValidateManifest(ctx context.Context, path string) (resourceProvider *Resou
 		return nil, fmt.Errorf("failed to read manifest: %w", err)
 	}
 
+	// Merge the common base resource properties into every schema before
+	// validation and registration. This mutates resourceProvider in place; the
+	// same schema maps are what registration ships to UCP.
+	if err := applyBaseResourceManifest(resourceProvider); err != nil {
+		return nil, fmt.Errorf("failed to apply base resource manifest: %w", err)
+	}
+
 	if err := validateManifestSchemas(ctx, resourceProvider); err != nil {
 		return nil, fmt.Errorf("failed to validate manifest schemas: %w", err)
 	}

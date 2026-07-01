@@ -55,7 +55,7 @@ import (
 func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 	template := "testdata/sensitive-resource.bicep"
 	appName := "udt-sensitive-app"
-	appNamespace := "udt-sensitive-env-udt-sensitive-app"
+	appNamespace := "udt-sensitive-app"
 	resourceTypeName := "Test.Resources/sensitiveResource"
 	resourceName := "udt-sensitive-instance"
 	filepath := "testdata/testresourcetypes.yaml"
@@ -102,16 +102,16 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "udt-sensitive-env",
-						Type: validation.EnvironmentsResource,
-					},
-					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: resourceName,
 						Type: resourceTypeName,
+					},
+					{
+						Name: "udt-sensitive-env",
+						Type: validation.CoreEnvironmentsResource,
 					},
 				},
 			},
@@ -132,16 +132,20 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "udt-sensitive-env",
-						Type: validation.EnvironmentsResource,
-					},
-					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: resourceName,
 						Type: resourceTypeName,
+					},
+					{
+						Name: "udt-sensitive-env",
+						Type: validation.CoreEnvironmentsResource,
+					},
+					{
+						Name: "udt-sensitive-recipe-pack",
+						Type: validation.CoreRecipePacksResource,
 					},
 				},
 			},
