@@ -132,6 +132,27 @@ func Test_ExecuteWithRetry_DefaultRetriesTransientImagePullError(t *testing.T) {
 	assert.Equal(t, int32(2), calls.Load()) // failed once, succeeded on retry
 }
 
+func Test_ExecuteWithRetry_DefaultRetriesTransientConnectionError(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	// NewDeployExecutor retries transient UCP connection resets by default, which
+	// occur when the kind control-plane restarts and drops the port-forward tunnel.
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = 10 * time.Millisecond // shorten the delay for the test
+
+	err := d.executeWithRetry(context.Background(), t, func() error {
+		n := calls.Add(1)
+		if n < 2 {
+			return errors.New(`command 'rad deploy' had non-zero exit code: exit status 1
+Error: Get "https://127.0.0.1:37481/apis/api.ucp.dev/v1alpha3/.../operationStatuses/...": read tcp 127.0.0.1:38764->127.0.0.1:37481: read: connection reset by peer`)
+		}
+		return nil
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), calls.Load()) // failed once, succeeded on retry
+}
+
 func Test_ExecuteWithRetry_ContextCancelledDuringDelay(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
@@ -225,6 +246,80 @@ func Test_IsTransientImagePullError(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			require.Equal(t, tc.expected, IsTransientImagePullError(tc.err))
+		})
+	}
+}
+
+func Test_IsTransientConnectionError(t *testing.T) {
+	// nonTransientError mirrors a permanent structured deployment failure, which
+	// must not be treated as a transient connection reset.
+	nonTransientError := &radcli.CLIError{
+		ErrorResponse: apiv1.ErrorResponse{
+			Error: &apiv1.ErrorDetails{
+				Code:    "DeploymentFailed",
+				Message: "the resource type is not supported",
+			},
+		},
+	}
+
+	// markerBearingStructuredError mirrors a genuine (non-transient) structured
+	// ARM deployment failure whose flattened message happens to contain a
+	// connection marker. The concrete-type guard must keep this from being
+	// misclassified as a retryable transport failure.
+	markerBearingStructuredError := &radcli.CLIError{
+		ErrorResponse: apiv1.ErrorResponse{
+			Error: &apiv1.ErrorDetails{
+				Code:    "DeploymentFailed",
+				Message: "recipe execution failed: unexpected EOF while parsing module output",
+			},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{name: "nil error", err: nil, expected: false},
+		{
+			name:     "port-forward connection reset",
+			err:      errors.New(`Get "https://127.0.0.1:37481/.../operationStatuses/...": read tcp 127.0.0.1:38764->127.0.0.1:37481: read: connection reset by peer`),
+			expected: true,
+		},
+		{
+			name:     "clean EOF mid-response",
+			err:      errors.New(`Get "https://127.0.0.1:37481/.../deployments/rad-deploy-...": EOF`),
+			expected: true,
+		},
+		{name: "log-stream unexpected EOF", err: errors.New("error streaming logs: unexpected EOF"), expected: true},
+		{name: "broken pipe on write", err: errors.New("write tcp 127.0.0.1:38764->127.0.0.1:37481: write: broken pipe"), expected: true},
+		{name: "non-transient structured failure", err: nonTransientError, expected: false},
+		{name: "structured failure containing a marker", err: markerBearingStructuredError, expected: false},
+		{name: "unrelated error", err: errors.New("connection refused"), expected: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, IsTransientConnectionError(tc.err))
+		})
+	}
+}
+
+func Test_IsTransientDeployError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{name: "nil error", err: nil, expected: false},
+		{name: "transient image pull", err: errors.New("pod is stuck in ImagePullBackOff"), expected: true},
+		{name: "transient connection reset", err: errors.New("read: connection reset by peer"), expected: true},
+		{name: "non-transient failure", err: errors.New("the resource type is not supported"), expected: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, IsTransientDeployError(tc.err))
 		})
 	}
 }
