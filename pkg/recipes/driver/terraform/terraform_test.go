@@ -889,7 +889,7 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			recipeResponse, err := d.prepareRecipeResponse(context.Background(), opts.BaseOptions.Definition, opts.Configuration, tt.state)
+			recipeResponse, err := d.prepareRecipeResponse(context.Background(), opts.BaseOptions.Definition, nil, opts.Configuration, tt.state)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})
@@ -1038,7 +1038,7 @@ func Test_Terraform_PrepareRecipeResponse_DirectModule(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			recipeResponse, err := d.prepareRecipeResponse(context.Background(), tt.definition, recipes.Configuration{}, tt.state)
+			recipeResponse, err := d.prepareRecipeResponse(context.Background(), tt.definition, nil, recipes.Configuration{}, tt.state)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})

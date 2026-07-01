@@ -35,6 +35,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	controllerfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -1415,5 +1416,131 @@ func Test_stringValueAtPath(t *testing.T) {
 	t.Run("path through a non-map", func(t *testing.T) {
 		_, ok := stringValueAtPath(properties, "secretName.deeper")
 		require.False(t, ok)
+	})
+}
+
+func Test_applySecretWriteBacks(t *testing.T) {
+	const boundSecretID = "/planes/radius/local/resourceGroups/radius-test-rg/providers/Radius.Security/secrets/kafkasecret"
+	const namespace = "test-namespace"
+	const newConnString = "Endpoint=sb://ns.servicebus.windows.net/;SharedAccessKeyName=Root;SharedAccessKey=abc123="
+
+	// Schema for Radius.Security/secrets: data is a map whose values carry a sensitive, retained `value`.
+	secretSchema := map[string]any{
+		"properties": map[string]any{
+			"data": map[string]any{
+				"type": "object",
+				"additionalProperties": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"value": map[string]any{
+							"type":               "string",
+							"x-radius-sensitive": true,
+							"x-radius-retain":    true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	setup := func(t *testing.T) (*CreateOrUpdateResource[*TestResource, TestResource], *database.MockClient, runtimeclient.Client) {
+		t.Helper()
+		mctrl := gomock.NewController(t)
+		msc := database.NewMockClient(mctrl)
+
+		key, err := encryption.GenerateKey()
+		require.NoError(t, err)
+
+		ucpClient, err := testUCPClientFactory(secretSchema)
+		require.NoError(t, err)
+
+		keySecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      encryption.DefaultEncryptionKeySecretName,
+				Namespace: encryption.RadiusNamespace,
+			},
+			Data: map[string][]byte{
+				encryption.DefaultEncryptionKeySecretKey: mustKeyStoreJSON(t, key),
+			},
+		}
+		// The backing Kubernetes Secret the secret's own recipe would have materialized (empty placeholder).
+		backingSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "kafkasecret",
+				Namespace: namespace,
+				Labels:    map[string]string{"resource": "kafkasecret"},
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: map[string][]byte{"connectionString": []byte("")},
+		}
+
+		scheme := runtime.NewScheme()
+		require.NoError(t, corev1.AddToScheme(scheme))
+		k8sClient := controllerfake.NewClientBuilder().WithScheme(scheme).WithObjects(keySecret, backingSecret).Build()
+
+		opts := ctrl.Options{DatabaseClient: msc, UcpClient: ucpClient, KubeClient: k8sClient}
+		c, err := NewCreateOrUpdateResource(opts, successProcessorReference, engine.NewMockEngine(mctrl), configloader.NewMockConfigurationLoader(mctrl))
+		require.NoError(t, err)
+
+		return c.(*CreateOrUpdateResource[*TestResource, TestResource]), msc, k8sClient
+	}
+
+	storedSecret := func() map[string]any {
+		return map[string]any{
+			"id":                boundSecretID,
+			"name":              "kafkasecret",
+			"type":              "Radius.Security/secrets",
+			"updatedApiVersion": "2025-08-01-preview",
+			"properties": map[string]any{
+				"data": map[string]any{
+					"connectionString": map[string]any{"value": "placeholder-encrypted", "encoding": "string"},
+				},
+			},
+		}
+	}
+
+	runtimeConfig := recipes.RuntimeConfiguration{Kubernetes: &recipes.KubernetesRuntime{Namespace: namespace}}
+
+	t.Run("encrypts the value at rest and refreshes the backing Kubernetes Secret", func(t *testing.T) {
+		c, msc, k8sClient := setup(t)
+
+		msc.EXPECT().Get(gomock.Any(), boundSecretID).Return(
+			&database.Object{Metadata: database.Metadata{ID: boundSecretID, ETag: "etag-secret"}, Data: storedSecret()}, nil)
+
+		var savedValue map[string]any
+		msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ context.Context, obj *database.Object, opts ...database.SaveOptions) error {
+				data := obj.Data.(map[string]any)
+				props := data["properties"].(map[string]any)
+				dataMap := props["data"].(map[string]any)
+				entry := dataMap["connectionString"].(map[string]any)
+				require.Equal(t, "string", entry["encoding"])
+				savedValue = entry["value"].(map[string]any)
+				return nil
+			})
+
+		err := c.applySecretWriteBacks(context.Background(), []recipes.SecretWriteBack{
+			{SecretID: boundSecretID, Data: map[string]string{"connectionString": newConnString}},
+		}, runtimeConfig)
+		require.NoError(t, err)
+
+		// The value persisted at rest is an encrypted envelope, not the plaintext.
+		require.Contains(t, savedValue, "encrypted")
+		require.Contains(t, savedValue, "nonce")
+		require.NotContains(t, fmt.Sprintf("%v", savedValue["encrypted"]), newConnString)
+
+		// The backing Kubernetes Secret now carries the plaintext so a container can consume it.
+		updated := &corev1.Secret{}
+		require.NoError(t, k8sClient.Get(context.Background(), runtimeclient.ObjectKey{Namespace: namespace, Name: "kafkasecret"}, updated))
+		require.Equal(t, newConnString, string(updated.Data["connectionString"]))
+	})
+
+	t.Run("fails closed when the namespace is missing", func(t *testing.T) {
+		c, _, _ := setup(t)
+		err := c.applySecretWriteBacks(context.Background(), []recipes.SecretWriteBack{
+			{SecretID: boundSecretID, Data: map[string]string{"connectionString": newConnString}},
+		}, recipes.RuntimeConfiguration{})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "namespace")
 	})
 }

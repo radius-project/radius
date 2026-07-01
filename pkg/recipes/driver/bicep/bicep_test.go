@@ -314,7 +314,7 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 		},
 		PrevState: []string{},
 	}
-	actualResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, response, resources)
+	actualResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, nil, response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -351,7 +351,7 @@ func Test_Bicep_PrepareRecipeResponse_EmptySecret(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := d.prepareRecipeResponse(recipes.EnvironmentDefinition{TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"}, response, resources)
+	actualResponse, err := d.prepareRecipeResponse(recipes.EnvironmentDefinition{TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"}, nil, response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -373,7 +373,7 @@ func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 		},
 	}
 
-	actualResponse, err := d.prepareRecipeResponse(recipes.EnvironmentDefinition{TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"}, response, resources)
+	actualResponse, err := d.prepareRecipeResponse(recipes.EnvironmentDefinition{TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0"}, nil, response, resources)
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)
 }
@@ -739,7 +739,7 @@ func Test_Bicep_PrepareRecipeResponse_DirectModule(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			resp, err := d.prepareRecipeResponse(tt.definition, tt.outputs, tt.resources)
+			resp, err := d.prepareRecipeResponse(tt.definition, nil, tt.outputs, tt.resources)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expectedResponse, resp)
 		})

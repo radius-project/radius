@@ -2021,6 +2021,16 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "secretOutputs": {
+          "type": "object",
+          "description": "Map of resource type property names to a map of Kubernetes Secret data keys to module output names. Used for recipes that point directly at a Bicep or Terraform module to materialize sensitive module outputs into a Kubernetes Secret in the application's namespace. For each entry, Radius creates a Secret whose data keys are populated from the named module outputs, and sets the named resource property to the generated Secret's name so connected resources can reference it.",
+          "additionalProperties": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          }
         }
       },
       "required": [

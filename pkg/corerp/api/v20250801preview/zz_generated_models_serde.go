@@ -1005,6 +1005,7 @@ func (r RecipeDefinition) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "outputs", r.Outputs)
 	populate(objectMap, "parameters", r.Parameters)
 	populate(objectMap, "plainHttp", r.PlainHTTP)
+	populate(objectMap, "secretOutputs", r.SecretOutputs)
 	populate(objectMap, "source", r.Source)
 	return json.Marshal(objectMap)
 }
@@ -1029,6 +1030,9 @@ func (r *RecipeDefinition) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "plainHttp":
 			err = unpopulate(val, "PlainHTTP", &r.PlainHTTP)
+			delete(rawMsg, key)
+		case "secretOutputs":
+			err = unpopulate(val, "SecretOutputs", &r.SecretOutputs)
 			delete(rawMsg, key)
 		case "source":
 			err = unpopulate(val, "Source", &r.Source)

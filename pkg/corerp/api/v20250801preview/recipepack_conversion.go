@@ -103,6 +103,9 @@ func toRecipesDataModel(recipes map[string]*RecipeDefinition) map[string]*datamo
 			if recipe.Outputs != nil {
 				definition.Outputs = to.StringMap(recipe.Outputs)
 			}
+			if recipe.SecretOutputs != nil {
+				definition.SecretOutputs = toSecretOutputsDataModel(recipe.SecretOutputs)
+			}
 			result[key] = definition
 		}
 	}
@@ -126,10 +129,46 @@ func fromRecipesDataModel(recipes map[string]*datamodel.RecipeDefinition) map[st
 			if recipe.Outputs != nil {
 				definition.Outputs = *to.StringMapPtr(recipe.Outputs)
 			}
+			if recipe.SecretOutputs != nil {
+				definition.SecretOutputs = fromSecretOutputsDataModel(recipe.SecretOutputs)
+			}
 			result[key] = definition
 		}
 	}
 	return result
+}
+
+// toSecretOutputsDataModel converts a versioned secretOutputs map (property name -> secret data key ->
+// module output name, with pointer values) into the version-agnostic datamodel representation.
+func toSecretOutputsDataModel(in map[string]map[string]*string) map[string]map[string]string {
+	if in == nil {
+		return nil
+	}
+	out := make(map[string]map[string]string, len(in))
+	for property, keys := range in {
+		inner := make(map[string]string, len(keys))
+		for secretKey, outputName := range keys {
+			inner[secretKey] = to.String(outputName)
+		}
+		out[property] = inner
+	}
+	return out
+}
+
+// fromSecretOutputsDataModel converts a datamodel secretOutputs map into the versioned representation.
+func fromSecretOutputsDataModel(in map[string]map[string]string) map[string]map[string]*string {
+	if in == nil {
+		return nil
+	}
+	out := make(map[string]map[string]*string, len(in))
+	for property, keys := range in {
+		inner := make(map[string]*string, len(keys))
+		for secretKey, outputName := range keys {
+			inner[secretKey] = to.Ptr(outputName)
+		}
+		out[property] = inner
+	}
+	return out
 }
 
 func toRecipeKindDataModel(kind *RecipeKind) string {

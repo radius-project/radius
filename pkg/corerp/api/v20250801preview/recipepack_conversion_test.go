@@ -122,3 +122,30 @@ func TestRecipePackConvertInvalidModel(t *testing.T) {
 		require.Equal(t, v1.ErrInvalidModelConversion, err)
 	})
 }
+
+func TestSecretOutputsConversion(t *testing.T) {
+	t.Run("round-trips a nested secretOutputs map", func(t *testing.T) {
+		versioned := map[string]map[string]*string{
+			"secretName": {
+				"CONNECTIONSTRING": to.Ptr("primaryConnectionString"),
+				"HOST":             to.Ptr("host"),
+			},
+		}
+
+		dm := toSecretOutputsDataModel(versioned)
+		require.Equal(t, map[string]map[string]string{
+			"secretName": {
+				"CONNECTIONSTRING": "primaryConnectionString",
+				"HOST":             "host",
+			},
+		}, dm)
+
+		back := fromSecretOutputsDataModel(dm)
+		require.Equal(t, versioned, back)
+	})
+
+	t.Run("nil maps convert to nil", func(t *testing.T) {
+		require.Nil(t, toSecretOutputsDataModel(nil))
+		require.Nil(t, fromSecretOutputsDataModel(nil))
+	})
+}

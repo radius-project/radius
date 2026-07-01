@@ -71,6 +71,9 @@ model RecipeDefinition {
 
   @doc("Map of resource type property names to module output names. Used for recipes that point directly at a Bicep or Terraform module to map the module's outputs onto the resource's properties.")
   outputs?: Record<string>;
+
+  @doc("Map of resource type property names to a map of Kubernetes Secret data keys to module output names. Used for recipes that point directly at a Bicep or Terraform module to materialize sensitive module outputs into a Kubernetes Secret in the application's namespace. For each entry, Radius creates a Secret whose data keys are populated from the named module outputs, and sets the named resource property to the generated Secret's name so connected resources can reference it.")
+  secretOutputs?: Record<Record<string>>;
 }
 
 @doc("The type of recipe")

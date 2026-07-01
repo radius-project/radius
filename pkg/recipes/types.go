@@ -91,6 +91,14 @@ type EnvironmentDefinition struct {
 	// Outputs maps resource property names to module output names for direct module support.
 	// When nil or empty, all module outputs pass through with their original names.
 	Outputs map[string]string
+	// SecretOutputs maps the name of a Radius.Security/secrets resource bound to the deploying resource
+	// (via an x-radius-secret-binding array property) to a map of that secret's data keys to module output
+	// names. After the recipe runs, the driver resolves each entry against the resource's bound secrets and
+	// the module's raw outputs into a RecipeOutput.SecretWriteBack; the resource controller then writes the
+	// values back into the bound secret (encrypted at rest + its backing Kubernetes Secret). This is the
+	// "backwards" secret flow for direct module support: a recipe's secure output populates a
+	// developer-authored secret rather than being exposed as a (redactable) resource property.
+	SecretOutputs map[string]map[string]string
 }
 
 // ResourceMetadata represents recipe details provided while deploying a portable or a user-defined resource.
@@ -153,6 +161,22 @@ type RecipeOutput struct {
 
 	// Status represents the recipe status at deployment time of resource.
 	Status *rpv1.RecipeStatus
+
+	// SecretWriteBacks lists resolved write-backs of secure module outputs into developer-authored
+	// Radius.Security/secrets resources bound to the deploying resource (via the definition's SecretOutputs
+	// mapping). The driver populates it; the resource controller applies each one, patching the bound
+	// secret's data (encrypted at rest) and refreshing its backing Kubernetes Secret.
+	SecretWriteBacks []SecretWriteBack
+}
+
+// SecretWriteBack is a resolved instruction to write secure module output values into a
+// developer-authored Radius.Security/secrets resource bound to the deploying resource. It is the
+// "backwards" secret flow: a recipe's secure output populates a developer-authored secret.
+type SecretWriteBack struct {
+	// SecretID is the fully qualified resource ID of the bound Radius.Security/secrets resource.
+	SecretID string
+	// Data maps the bound secret's data keys to the plaintext values to write under them.
+	Data map[string]string
 }
 
 // SecretData represents secrets data and includes secret type and a map of secret keys to their values.
@@ -184,6 +208,10 @@ type RecipeDefinition struct {
 	// Outputs maps resource property names to module output names for direct module support.
 	// When nil or empty, all module outputs pass through with their original names.
 	Outputs map[string]string
+	// SecretOutputs maps the name of a bound Radius.Security/secrets resource to a map of that secret's
+	// data keys to module output names, writing the recipe's secure outputs back into the developer-authored
+	// secret (the "backwards" secret flow). Used for direct module support.
+	SecretOutputs map[string]map[string]string
 	// PlainHTTP connects to the source using HTTP (not-HTTPS)
 	PlainHTTP bool
 }

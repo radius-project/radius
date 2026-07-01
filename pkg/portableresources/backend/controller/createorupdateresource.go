@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -39,6 +40,10 @@ import (
 	schemautil "github.com/radius-project/radius/pkg/schema"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // secretReferenceResourceType is the resource type of a Radius.Security/secrets resource named by an
@@ -209,6 +214,20 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 				return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
 			}
 			return ctrl.Result{}, err
+		}
+
+		// Apply any secret write-backs the recipe driver resolved: secure module outputs routed into
+		// developer-authored Radius.Security/secrets resources bound to this resource (the "backwards"
+		// secret flow). This patches each bound secret's retained (encrypted) value in the store and
+		// refreshes its backing Kubernetes Secret so connected containers can consume it via secretKeyRef.
+		if recipeOutput != nil && len(recipeOutput.SecretWriteBacks) > 0 {
+			if err = c.applySecretWriteBacks(ctx, recipeOutput.SecretWriteBacks, config.Runtime); err != nil {
+				logger.Error(err, "Failed to apply secret write-backs", "resourceID", req.ResourceID)
+				if redactionCompleted {
+					return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+				}
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
@@ -398,6 +417,196 @@ func connectedResourceAPIVersion(data any) string {
 	}
 
 	return partial.UpdatedAPIVersion
+}
+
+// applySecretWriteBacks writes secure recipe (module) outputs back into the developer-authored
+// Radius.Security/secrets resources bound to the deploying resource (the "backwards" secret flow). For each
+// write-back it: (1) reads the bound secret from the store, (2) encrypts only the new values with the
+// control-plane key — bound to the secret's own resource ID and sensitive field paths so it matches how the
+// secret is encrypted at rest and the loader can later decrypt it — merges them into the secret's retained
+// data, and saves it, and (3) refreshes the secret's backing Kubernetes Secret so connected containers
+// consuming it via secretKeyRef observe the resolved value. It fails closed: any error aborts the deployment
+// rather than leaving a container to read an empty secret.
+//
+// NOTE (single-cluster): the backing Kubernetes Secret is written through the control-plane Kubernetes
+// client (the same cluster the secret's own recipe targets in the default single-cluster topology).
+// Cross-cluster write-back of the backing Secret is out of scope; the encrypted-at-rest store copy is the
+// multi-cluster source of truth for recipe reads.
+func (c *CreateOrUpdateResource[P, T]) applySecretWriteBacks(ctx context.Context, writeBacks []recipes.SecretWriteBack, runtime recipes.RuntimeConfiguration) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	if c.KubeClient() == nil {
+		return fmt.Errorf("kubernetes client not configured for secret write-back")
+	}
+	keyProvider := encryption.NewKubernetesKeyProvider(c.KubeClient(), nil)
+	handler, err := encryption.NewSensitiveDataHandlerFromProvider(ctx, keyProvider)
+	if err != nil {
+		return fmt.Errorf("failed to initialize sensitive data handler for secret write-back: %w", err)
+	}
+
+	if runtime.Kubernetes == nil || runtime.Kubernetes.Namespace == "" {
+		return fmt.Errorf("no Kubernetes namespace available to write back secrets")
+	}
+	namespace := runtime.Kubernetes.Namespace
+
+	for _, wb := range writeBacks {
+		if len(wb.Data) == 0 {
+			continue
+		}
+
+		obj, err := c.DatabaseClient().Get(ctx, wb.SecretID)
+		if err != nil {
+			return fmt.Errorf("failed to read bound secret %q for write-back: %w", wb.SecretID, err)
+		}
+
+		var secretResource map[string]any
+		if err := obj.As(&secretResource); err != nil {
+			return fmt.Errorf("failed to decode bound secret %q for write-back: %w", wb.SecretID, err)
+		}
+
+		apiVersion := connectedResourceAPIVersion(obj.Data)
+		secretSchema, err := schemautil.GetSchema(ctx, c.UcpClient(), wb.SecretID, secretReferenceResourceType, apiVersion)
+		if err != nil {
+			return fmt.Errorf("failed to fetch schema for bound secret %q: %w", wb.SecretID, err)
+		}
+		if secretSchema == nil {
+			return fmt.Errorf("no schema available for bound secret %q (%s, api-version %q); cannot write back its value", wb.SecretID, secretReferenceResourceType, apiVersion)
+		}
+		sensitiveFieldPaths := schemautil.ExtractSensitiveFieldPaths(secretSchema, "")
+
+		properties, ok := secretResource["properties"].(map[string]any)
+		if !ok {
+			return fmt.Errorf("bound secret %q has no properties to write back into", wb.SecretID)
+		}
+		data, ok := properties["data"].(map[string]any)
+		if !ok || data == nil {
+			data = map[string]any{}
+		}
+
+		// Encrypt ONLY the new values. The stored data is already encrypted at rest (retain), so
+		// re-encrypting it would double-encrypt. Build a minimal {data: {key: {value}}} carrying just the
+		// new values and encrypt it with the secret's own resource ID + sensitive paths (matching at-rest
+		// encryption so a later read can decrypt), then merge the ciphertext into the retained data.
+		encData := make(map[string]any, len(wb.Data))
+		for key, value := range wb.Data {
+			encData[key] = map[string]any{"value": value}
+		}
+		encWrapper := map[string]any{"data": encData}
+		if err := handler.EncryptSensitiveFields(encWrapper, sensitiveFieldPaths, wb.SecretID); err != nil {
+			return fmt.Errorf("failed to encrypt write-back values for secret %q: %w", wb.SecretID, err)
+		}
+		encryptedData, _ := encWrapper["data"].(map[string]any)
+
+		// Build the plaintext view keyed by encoding for the backing Kubernetes Secret, and merge the
+		// encrypted entries into the store's retained data (preserving each key's existing encoding).
+		stringData := map[string]string{}
+		base64Data := map[string]string{}
+		for key, plaintext := range wb.Data {
+			encoding := "string"
+			if existing, ok := data[key].(map[string]any); ok {
+				if enc, ok := existing["encoding"].(string); ok && enc != "" {
+					encoding = enc
+				}
+			}
+
+			entry := map[string]any{"encoding": encoding}
+			if encEntry, ok := encryptedData[key].(map[string]any); ok {
+				entry["value"] = encEntry["value"]
+			}
+			data[key] = entry
+
+			if encoding == "base64" {
+				base64Data[key] = plaintext
+			} else {
+				stringData[key] = plaintext
+			}
+		}
+		properties["data"] = data
+		secretResource["properties"] = properties
+
+		update := &database.Object{
+			Metadata: database.Metadata{ID: wb.SecretID},
+			Data:     secretResource,
+		}
+		if err := c.DatabaseClient().Save(ctx, update, database.WithETag(obj.ETag)); err != nil {
+			return fmt.Errorf("failed to persist write-back for secret %q: %w", wb.SecretID, err)
+		}
+
+		if err := c.upsertBackingSecret(ctx, wb.SecretID, namespace, stringData, base64Data); err != nil {
+			return fmt.Errorf("failed to refresh backing Kubernetes Secret for secret %q: %w", wb.SecretID, err)
+		}
+
+		logger.Info("Applied secret write-back", "secretID", wb.SecretID, "keyCount", len(wb.Data), "namespace", namespace)
+	}
+
+	return nil
+}
+
+// upsertBackingSecret refreshes the Kubernetes Secret that backs a Radius.Security/secrets resource so a
+// container consuming it via secretKeyRef observes the written-back value. The Secret's name matches the
+// secret resource's name (as materialized by the secrets recipe). Existing keys are preserved: string-encoded
+// values are written to StringData and base64-encoded values to Data. If the Secret does not yet exist it is
+// created (best effort) with the recipe's resource label.
+func (c *CreateOrUpdateResource[P, T]) upsertBackingSecret(ctx context.Context, secretID string, namespace string, stringData map[string]string, base64Data map[string]string) error {
+	parsed, err := resources.ParseResource(secretID)
+	if err != nil {
+		return fmt.Errorf("failed to parse secret ID %q: %w", secretID, err)
+	}
+	name := parsed.Name()
+
+	kubeClient := c.KubeClient()
+	secret := &corev1.Secret{}
+	getErr := kubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: namespace, Name: name}, secret)
+	if getErr != nil {
+		if !apierrors.IsNotFound(getErr) {
+			return fmt.Errorf("failed to read backing Kubernetes Secret %q in namespace %q: %w", name, namespace, getErr)
+		}
+
+		// The secret's own recipe should have created this Secret already; create it as a fail-safe.
+		secret = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Labels:    map[string]string{"resource": name},
+			},
+			Type: corev1.SecretTypeOpaque,
+		}
+		applyBackingSecretData(secret, stringData, base64Data)
+		if err := kubeClient.Create(ctx, secret); err != nil {
+			return fmt.Errorf("failed to create backing Kubernetes Secret %q in namespace %q: %w", name, namespace, err)
+		}
+		return nil
+	}
+
+	applyBackingSecretData(secret, stringData, base64Data)
+	if err := kubeClient.Update(ctx, secret); err != nil {
+		return fmt.Errorf("failed to update backing Kubernetes Secret %q in namespace %q: %w", name, namespace, err)
+	}
+	return nil
+}
+
+// applyBackingSecretData merges the written-back values into a Kubernetes Secret, preserving other keys.
+// Both string- and base64-encoded values are written to Data as raw bytes (string values verbatim, base64
+// values decoded), so the result matches how the secrets recipe materializes the Secret and does not depend
+// on the API server folding StringData into Data.
+func applyBackingSecretData(secret *corev1.Secret, stringData map[string]string, base64Data map[string]string) {
+	if len(stringData) == 0 && len(base64Data) == 0 {
+		return
+	}
+	if secret.Data == nil {
+		secret.Data = map[string][]byte{}
+	}
+	for k, v := range stringData {
+		secret.Data[k] = []byte(v)
+	}
+	for k, v := range base64Data {
+		if decoded, err := base64.StdEncoding.DecodeString(v); err == nil {
+			secret.Data[k] = decoded
+		} else {
+			// Not valid base64; store the raw bytes so the value is still surfaced.
+			secret.Data[k] = []byte(v)
+		}
+	}
 }
 
 // buildSecretReferences resolves x-radius-secret-reference property values (each the name of a
