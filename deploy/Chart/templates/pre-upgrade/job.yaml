@@ -32,7 +32,6 @@ spec:
       containers:
       - name: pre-upgrade
         image: "{{ include "radius.image" (dict "image" .Values.preupgrade.image "tag" (.Values.preupgrade.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
-        imagePullPolicy: 'Always'
         env:
         - name: TARGET_VERSION
           value: "{{ .Values.preupgrade.targetVersion | default .Chart.AppVersion }}"
