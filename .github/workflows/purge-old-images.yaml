@@ -5,6 +5,11 @@ name: Purge test container images
 on:
   # Enable manual trigger
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: List candidates without deleting anything
+        type: boolean
+        default: true
   schedule:
     # Run twice a day
     - cron: 30 0,12 * * *
@@ -20,32 +25,53 @@ jobs:
     if: github.repository == 'radius-project/radius'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    permissions: {}
+    permissions:
+      contents: read # Required to check out the purge script
     steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # GHCR's list-package-versions API is eventually consistent: it keeps
+      # returning versions (with their old tags) long after they were deleted,
+      # so a naive delete loop logs thousands of harmless "404 Not Found" errors
+      # every run. We persist those already-gone version ids in a cache so
+      # subsequent runs skip them instead of re-issuing the failed deletes.
+      - name: Restore ghost version cache
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .ghcr-ghost-cache
+          key: ghcr-ghost-versions-${{ github.run_id }}
+          restore-keys: |
+            ghcr-ghost-versions-
+
       # GitHub Container Registry package APIs are only accessible to classic
       # personal access tokens (and the built-in GITHUB_TOKEN). GitHub App
       # installation tokens cannot list or delete org packages — the list
       # endpoint returns "400 Invalid argument" and deletes are rejected. See
       # https://github.com/snok/container-retention-policy/issues/94 (GitHub
-      # Support confirmation). The wildcard image-names below also requires the
-      # list-packages endpoint, so a classic PAT is required here.
+      # Support confirmation). The wildcard dev/* image selection also requires
+      # the list-packages endpoint, so a classic PAT is required here.
       #
       # secrets.GH_RAD_CI_BOT_PAT must be a classic PAT with the following scopes:
       #   - read:packages   (list package versions)
       #   - delete:packages (delete old package versions)
-      - name: Delete 'dev' containers older than a week
-        uses: snok/container-retention-policy@d3bdcf5ce9b05f685154e4a16c39233b245e3d53 # v3.1.0
+      - name: Delete 'dev' pr-* containers older than a week
+        env:
+          GH_TOKEN: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+        run: |
+          ./.github/scripts/purge-ghcr-dev-images.sh \
+            --org "${{ github.repository_owner }}" \
+            --prefix "dev/" \
+            --cutoff-days 7 \
+            --ghost-cache ".ghcr-ghost-cache/ghosts.txt"
+
+      - name: Save ghost version cache
+        if: always()
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
-          account: ${{ github.repository_owner }}
-          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
-          image-names: dev/*
-          image-tags: pr-*
-          # Only delete the pr-* tagged image indexes. GHCR cascade-removes their
-          # untagged child manifests automatically, so we avoid issuing thousands
-          # of redundant deletes for already-removed children (which otherwise log
-          # as "404 Package not found" errors).
-          tag-selection: tagged
-          cut-off: 1w
+          path: .ghcr-ghost-cache
+          key: ghcr-ghost-versions-${{ github.run_id }}
 
   create_issue_on_failure:
     name: Create issue for failing purge old images resources run
