@@ -17,6 +17,8 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -35,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 const (
@@ -42,6 +45,32 @@ const (
 	recipeTestWaitInterval            = time.Millisecond * 200
 	recipeTestControllerDelayInterval = time.Millisecond * 100
 )
+
+// startManager starts the controller-runtime manager in a background goroutine and registers a
+// t.Cleanup that cancels the manager's context and then blocks until the manager goroutine has
+// fully exited.
+//
+// Awaiting shutdown matters: cancelling the context only signals the manager to stop, it does not
+// wait for mgr.Start to return. Without this wait, manager goroutines outlive the test that owns
+// them and race with subsequent tests and package teardown (env.Stop in TestMain), which made this
+// suite intermittently fail at the package level with no named failing test.
+func startManager(t *testing.T, mgr manager.Manager, ctx context.Context, cancel context.CancelFunc) {
+	t.Helper()
+
+	stopped := make(chan struct{})
+	go func() {
+		defer close(stopped)
+		// Cannot use require/assert here - accessing testing.T from a non-test goroutine causes a data race.
+		if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			panic(fmt.Sprintf("manager exited with error: %v", err))
+		}
+	}()
+
+	t.Cleanup(func() {
+		cancel()
+		<-stopped
+	})
+}
 
 func createEnvironment(radius *mockRadiusClient, resourceGroup, name string) {
 	id := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", resourceGroup, name)
