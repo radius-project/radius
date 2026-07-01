@@ -539,8 +539,6 @@ func matchesActualLabels(t *testing.T, expectedResources []K8sObject, actualReso
 					resourceExists = true
 					actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
 					break
-				} else {
-					t.Logf("Resource: %s Expected labels %v, got %v", actualResource.GetName(), expectedResource.Labels, actualResource.GetLabels())
 				}
 			}
 		}
