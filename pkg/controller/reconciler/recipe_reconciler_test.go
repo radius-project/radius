@@ -17,9 +17,7 @@ limitations under the License.
 package reconciler
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -47,7 +45,6 @@ func SetupRecipeTest(t *testing.T) (*mockRadiusClient, client.Client) {
 
 	// Shut down the manager when the test exits.
 	ctx, cancel := testcontext.NewWithCancel(t)
-	t.Cleanup(cancel)
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
@@ -73,12 +70,7 @@ func SetupRecipeTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	}).SetupWithManager(mgr)
 	require.NoError(t, err)
 
-	go func() {
-		// Cannot use require/assert here - accessing testing.T from a non-test goroutine causes a data race.
-		if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
-			panic(fmt.Sprintf("manager exited with error: %v", err))
-		}
-	}()
+	startManager(t, mgr, ctx, cancel)
 
 	return radius, mgr.GetClient()
 }
