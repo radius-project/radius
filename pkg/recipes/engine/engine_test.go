@@ -1214,3 +1214,302 @@ func Test_Engine_Delete_With_Secrets_Success(t *testing.T) {
 	})
 	require.NoError(t, err)
 }
+
+func Test_enrichConnectionSecrets(t *testing.T) {
+	const (
+		secretStoreID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/secretStores/db-credentials"
+		dbID          = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/sqlDatabases/db"
+	)
+
+	newRecipe := func() *recipes.ResourceMetadata {
+		return &recipes.ResourceMetadata{
+			ConnectedResourcesProperties: map[string]recipes.ConnectedResource{
+				"credentials": {
+					ID:   secretStoreID,
+					Name: "db-credentials",
+					Type: "Applications.Core/secretStores",
+				},
+				"database": {
+					ID:   dbID,
+					Name: "db",
+					Type: "Applications.Datastores/sqlDatabases",
+				},
+			},
+		}
+	}
+
+	t.Run("populates secrets for secret-typed connections only", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		secretsLoader := configloader.NewMockSecretsLoader(ctrl)
+		ctx := testcontext.New(t)
+		e := engine{options: Options{SecretsLoader: secretsLoader}}
+		recipe := newRecipe()
+
+		secretsLoader.EXPECT().
+			LoadSecrets(ctx, map[string][]string{secretStoreID: nil}).
+			Times(1).
+			Return(map[string]recipes.SecretData{
+				secretStoreID: {Type: "generic", Data: map[string]string{"username": "admin", "password": "s3cr3t"}},
+			}, nil)
+
+		e.enrichConnectionSecrets(ctx, recipe)
+
+		require.Equal(t, map[string]string{"username": "admin", "password": "s3cr3t"}, recipe.ConnectedResourcesProperties["credentials"].Secrets)
+		require.Nil(t, recipe.ConnectedResourcesProperties["database"].Secrets)
+	})
+
+	t.Run("load error is non-fatal and leaves connection without secrets", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		secretsLoader := configloader.NewMockSecretsLoader(ctrl)
+		ctx := testcontext.New(t)
+		e := engine{options: Options{SecretsLoader: secretsLoader}}
+		recipe := newRecipe()
+
+		secretsLoader.EXPECT().
+			LoadSecrets(ctx, map[string][]string{secretStoreID: nil}).
+			Times(1).
+			Return(nil, errors.New("secret store not found"))
+
+		e.enrichConnectionSecrets(ctx, recipe)
+
+		require.Nil(t, recipe.ConnectedResourcesProperties["credentials"].Secrets)
+	})
+
+	t.Run("nil secrets loader is a no-op", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		e := engine{options: Options{}}
+		recipe := newRecipe()
+
+		require.NotPanics(t, func() { e.enrichConnectionSecrets(ctx, recipe) })
+		require.Nil(t, recipe.ConnectedResourcesProperties["credentials"].Secrets)
+	})
+}
+
+func Test_enrichSecretReferences(t *testing.T) {
+	const secretID = "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Security/secrets/db-secret"
+
+	t.Run("populates secrets from referenced secret", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		secretsLoader := configloader.NewMockSecretsLoader(ctrl)
+		ctx := testcontext.New(t)
+		e := engine{options: Options{SecretsLoader: secretsLoader}}
+		recipe := &recipes.ResourceMetadata{
+			SecretReferences: map[string]string{"secretName": secretID},
+		}
+
+		secretsLoader.EXPECT().
+			LoadSecrets(ctx, map[string][]string{secretID: nil}).
+			Times(1).
+			Return(map[string]recipes.SecretData{
+				secretID: {Type: "Radius.Security/secrets", Data: map[string]string{"password": "s3cr3t"}},
+			}, nil)
+
+		err := e.enrichSecretReferences(ctx, recipe)
+		require.NoError(t, err)
+		require.Equal(t, map[string]string{"password": "s3cr3t"}, recipe.Secrets)
+	})
+
+	t.Run("load error fails closed", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		secretsLoader := configloader.NewMockSecretsLoader(ctrl)
+		ctx := testcontext.New(t)
+		e := engine{options: Options{SecretsLoader: secretsLoader}}
+		recipe := &recipes.ResourceMetadata{
+			SecretReferences: map[string]string{"secretName": secretID},
+		}
+
+		secretsLoader.EXPECT().
+			LoadSecrets(ctx, map[string][]string{secretID: nil}).
+			Times(1).
+			Return(nil, errors.New("kubernetes secret not found"))
+
+		err := e.enrichSecretReferences(ctx, recipe)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "kubernetes secret not found")
+		require.Empty(t, recipe.Secrets)
+	})
+
+	t.Run("missing data for referenced secret fails closed", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		secretsLoader := configloader.NewMockSecretsLoader(ctrl)
+		ctx := testcontext.New(t)
+		e := engine{options: Options{SecretsLoader: secretsLoader}}
+		recipe := &recipes.ResourceMetadata{
+			SecretReferences: map[string]string{"secretName": secretID},
+		}
+
+		secretsLoader.EXPECT().
+			LoadSecrets(ctx, map[string][]string{secretID: nil}).
+			Times(1).
+			Return(map[string]recipes.SecretData{}, nil)
+
+		err := e.enrichSecretReferences(ctx, recipe)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "returned no data")
+	})
+
+	t.Run("nil secrets loader with references fails closed", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		e := engine{options: Options{}}
+		recipe := &recipes.ResourceMetadata{
+			SecretReferences: map[string]string{"secretName": secretID},
+		}
+
+		err := e.enrichSecretReferences(ctx, recipe)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "secrets loader is not configured")
+	})
+
+	t.Run("no secret references is a no-op", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		e := engine{options: Options{}}
+		recipe := &recipes.ResourceMetadata{}
+
+		err := e.enrichSecretReferences(ctx, recipe)
+		require.NoError(t, err)
+		require.Nil(t, recipe.Secrets)
+	})
+}
+
+func Test_enrichSecretBindings(t *testing.T) {
+	const secretID = "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Security/secrets/db-secret"
+	const tlsSecretID = "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Security/secrets/tls-secret"
+
+	t.Run("namespaces all keys of a bound secret by its name", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		secretsLoader := configloader.NewMockSecretsLoader(ctrl)
+		ctx := testcontext.New(t)
+		e := engine{options: Options{SecretsLoader: secretsLoader}}
+		recipe := &recipes.ResourceMetadata{
+			SecretBindings: []string{secretID},
+		}
+
+		secretsLoader.EXPECT().
+			LoadSecrets(ctx, map[string][]string{secretID: nil}).
+			Times(1).
+			Return(map[string]recipes.SecretData{
+				secretID: {Type: "Radius.Security/secrets", Data: map[string]string{"USERNAME": "radadmin", "PASSWORD": "s3cr3t"}},
+			}, nil)
+
+		err := e.enrichSecretBindings(ctx, recipe)
+		require.NoError(t, err)
+		require.Equal(t, map[string]string{"db-secret.USERNAME": "radadmin", "db-secret.PASSWORD": "s3cr3t"}, recipe.Secrets)
+	})
+
+	t.Run("namespaces multiple secrets distinctly", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		secretsLoader := configloader.NewMockSecretsLoader(ctrl)
+		ctx := testcontext.New(t)
+		e := engine{options: Options{SecretsLoader: secretsLoader}}
+		recipe := &recipes.ResourceMetadata{
+			SecretBindings: []string{secretID, tlsSecretID},
+		}
+
+		secretsLoader.EXPECT().
+			LoadSecrets(ctx, map[string][]string{secretID: nil}).
+			Times(1).
+			Return(map[string]recipes.SecretData{
+				secretID: {Type: "Radius.Security/secrets", Data: map[string]string{"USERNAME": "radadmin"}},
+			}, nil)
+		secretsLoader.EXPECT().
+			LoadSecrets(ctx, map[string][]string{tlsSecretID: nil}).
+			Times(1).
+			Return(map[string]recipes.SecretData{
+				tlsSecretID: {Type: "Radius.Security/secrets", Data: map[string]string{"USERNAME": "tlsuser", "CA_CERT": "pem"}},
+			}, nil)
+
+		err := e.enrichSecretBindings(ctx, recipe)
+		require.NoError(t, err)
+		require.Equal(t, map[string]string{
+			"db-secret.USERNAME":  "radadmin",
+			"tls-secret.USERNAME": "tlsuser",
+			"tls-secret.CA_CERT":  "pem",
+		}, recipe.Secrets)
+	})
+
+	t.Run("load error fails closed", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		secretsLoader := configloader.NewMockSecretsLoader(ctrl)
+		ctx := testcontext.New(t)
+		e := engine{options: Options{SecretsLoader: secretsLoader}}
+		recipe := &recipes.ResourceMetadata{
+			SecretBindings: []string{secretID},
+		}
+
+		secretsLoader.EXPECT().
+			LoadSecrets(ctx, map[string][]string{secretID: nil}).
+			Times(1).
+			Return(nil, errors.New("kubernetes secret not found"))
+
+		err := e.enrichSecretBindings(ctx, recipe)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "kubernetes secret not found")
+		require.Empty(t, recipe.Secrets)
+	})
+
+	t.Run("invalid secret ID fails closed", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		secretsLoader := configloader.NewMockSecretsLoader(ctrl)
+		ctx := testcontext.New(t)
+		e := engine{options: Options{SecretsLoader: secretsLoader}}
+		recipe := &recipes.ResourceMetadata{
+			SecretBindings: []string{"not-a-valid-id"},
+		}
+
+		err := e.enrichSecretBindings(ctx, recipe)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid bound secret ID")
+	})
+
+	t.Run("namespace collision fails closed", func(t *testing.T) {
+		// Two distinct secret IDs whose resource names are identical and whose data disagree on a key.
+		const dupA = "/planes/radius/local/resourceGroups/rg-a/providers/Radius.Security/secrets/db-secret"
+		const dupB = "/planes/radius/local/resourceGroups/rg-b/providers/Radius.Security/secrets/db-secret"
+		ctrl := gomock.NewController(t)
+		secretsLoader := configloader.NewMockSecretsLoader(ctrl)
+		ctx := testcontext.New(t)
+		e := engine{options: Options{SecretsLoader: secretsLoader}}
+		recipe := &recipes.ResourceMetadata{
+			SecretBindings: []string{dupA, dupB},
+		}
+
+		secretsLoader.EXPECT().
+			LoadSecrets(ctx, map[string][]string{dupA: nil}).
+			Times(1).
+			Return(map[string]recipes.SecretData{
+				dupA: {Type: "Radius.Security/secrets", Data: map[string]string{"USERNAME": "a"}},
+			}, nil)
+		secretsLoader.EXPECT().
+			LoadSecrets(ctx, map[string][]string{dupB: nil}).
+			Times(1).
+			Return(map[string]recipes.SecretData{
+				dupB: {Type: "Radius.Security/secrets", Data: map[string]string{"USERNAME": "b"}},
+			}, nil)
+
+		err := e.enrichSecretBindings(ctx, recipe)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "namespace collision")
+	})
+
+	t.Run("nil secrets loader with bindings fails closed", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		e := engine{options: Options{}}
+		recipe := &recipes.ResourceMetadata{
+			SecretBindings: []string{secretID},
+		}
+
+		err := e.enrichSecretBindings(ctx, recipe)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "secrets loader is not configured")
+	})
+
+	t.Run("no bindings is a no-op", func(t *testing.T) {
+		ctx := testcontext.New(t)
+		e := engine{options: Options{}}
+		recipe := &recipes.ResourceMetadata{}
+
+		err := e.enrichSecretBindings(ctx, recipe)
+		require.NoError(t, err)
+		require.Nil(t, recipe.Secrets)
+	})
+}

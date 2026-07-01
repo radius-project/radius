@@ -35,6 +35,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 	controllerfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -106,6 +107,7 @@ type TestResourceProperties struct {
 	IsProcessed bool                             `json:"isProcessed"`
 	Recipe      portableresources.ResourceRecipe `json:"recipe"`
 	Secret      any                              `json:"secret,omitempty"`
+	Plain       any                              `json:"plain,omitempty"`
 	Credentials map[string]any                   `json:"credentials,omitempty"`
 }
 
@@ -637,6 +639,163 @@ func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
 	require.Equal(t, ctrl.Result{}, res)
 }
 
+func TestCreateOrUpdateResource_Run_RetainEncrypted(t *testing.T) {
+	// A field marked x-radius-retain (in addition to x-radius-sensitive) must keep its encrypted value at
+	// rest instead of being redacted to nil, so the secrets loader can decrypt it from the store. A
+	// sensitive-only field on the same resource must still be redacted. In both cases the recipe must
+	// receive the decrypted cleartext.
+	mctrl := gomock.NewController(t)
+	msc := database.NewMockClient(mctrl)
+	eng := engine.NewMockEngine(mctrl)
+	cfg := configloader.NewMockConfigurationLoader(mctrl)
+
+	key, err := encryption.GenerateKey()
+	require.NoError(t, err)
+
+	provider, err := encryption.NewInMemoryKeyProvider(key)
+	require.NoError(t, err)
+
+	handler, err := encryption.NewSensitiveDataHandlerFromProvider(context.Background(), provider)
+	require.NoError(t, err)
+
+	retainValue := "retain-me"
+	plainValue := "redact-me"
+	properties := map[string]any{
+		"application":       TestApplicationID,
+		"environment":       TestEnvironmentID,
+		"provisioningState": "Accepted",
+		"secret":            retainValue,
+		"plain":             plainValue,
+		"recipe": map[string]any{
+			"name": "test-recipe",
+		},
+		"status": map[string]any{
+			"outputResources": []map[string]any{},
+		},
+	}
+
+	err = handler.EncryptSensitiveFields(properties, []string{"secret", "plain"}, TestResourceID)
+	require.NoError(t, err)
+
+	data := map[string]any{
+		"name":              "tr",
+		"type":              TestResourceType,
+		"id":                TestResourceID,
+		"location":          v1.LocationGlobal,
+		"updatedApiVersion": "2024-01-01",
+		"properties":        properties,
+	}
+
+	msc.EXPECT().
+		Get(gomock.Any(), TestResourceID).
+		Return(&database.Object{Metadata: database.Metadata{ID: TestResourceID, ETag: "etag-1"}, Data: data}, nil).
+		Times(1)
+
+	ucpClient, err := testUCPClientFactory(map[string]any{
+		"properties": map[string]any{
+			"secret": map[string]any{
+				"type":               "string",
+				"x-radius-sensitive": true,
+				"x-radius-retain":    true,
+			},
+			"plain": map[string]any{
+				"type":               "string",
+				"x-radius-sensitive": true,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      encryption.DefaultEncryptionKeySecretName,
+			Namespace: encryption.RadiusNamespace,
+		},
+		Data: map[string][]byte{
+			encryption.DefaultEncryptionKeySecretKey: mustKeyStoreJSON(t, key),
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	require.NoError(t, corev1.AddToScheme(scheme))
+	k8sClient := controllerfake.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
+
+	configuration := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace:            "test-namespace",
+				EnvironmentNamespace: "test-env-namespace",
+			},
+		},
+	}
+
+	// assertPersisted verifies the retain field keeps its encrypted envelope while the sensitive-only
+	// field is redacted to nil.
+	assertPersisted := func(obj *database.Object) {
+		props, err := resourceutil.GetPropertiesFromResource(obj.Data)
+		require.NoError(t, err)
+		require.Nil(t, props["plain"])
+		retained, ok := props["secret"].(map[string]any)
+		require.True(t, ok, "retain field should keep its encrypted envelope, got %T", props["secret"])
+		require.Contains(t, retained, "encrypted")
+		require.Contains(t, retained, "nonce")
+	}
+
+	redactionSave := msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, obj *database.Object, _ ...database.SaveOptions) error {
+			assertPersisted(obj)
+			obj.Metadata.ETag = "etag-2"
+			return nil
+		},
+	)
+
+	finalSave := msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, obj *database.Object, _ ...database.SaveOptions) error {
+			assertPersisted(obj)
+			return nil
+		},
+	)
+
+	engExecute := eng.EXPECT().Execute(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(_ context.Context, opts engine.ExecuteOptions) (*recipes.RecipeOutput, error) {
+			require.Equal(t, retainValue, opts.BaseOptions.Recipe.Properties["secret"])
+			require.Equal(t, plainValue, opts.BaseOptions.Recipe.Properties["plain"])
+			return &recipes.RecipeOutput{}, nil
+		},
+	)
+
+	gomock.InOrder(
+		redactionSave,
+		cfg.EXPECT().LoadConfiguration(gomock.Any(), recipes.ResourceMetadata{EnvironmentID: TestEnvironmentID, ApplicationID: TestApplicationID, ResourceID: TestResourceID}).Return(configuration, nil),
+		engExecute,
+		finalSave,
+	)
+
+	opts := ctrl.Options{
+		DatabaseClient: msc,
+		UcpClient:      ucpClient,
+		KubeClient:     k8sClient,
+	}
+
+	recipeCfg := &controllerconfig.RecipeControllerConfig{
+		Engine:       eng,
+		ConfigLoader: cfg,
+	}
+
+	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
+	require.NoError(t, err)
+
+	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+		OperationID:      uuid.New(),
+		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
+		ResourceID:       TestResourceID,
+		CorrelationID:    uuid.NewString(),
+		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
+	})
+	require.NoError(t, err)
+	require.Equal(t, ctrl.Result{}, res)
+}
+
 func TestCreateOrUpdateResource_Run_SensitiveMissingKey(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	msc := database.NewMockClient(mctrl)
@@ -1101,4 +1260,287 @@ func TestCreateOrUpdateResource_Run_SensitiveMultipleFields(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, ctrl.Result{}, res)
+}
+
+func Test_buildSecretReferences(t *testing.T) {
+	const resourceID = "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Test/testResources/my-resource"
+
+	t.Run("resolves a top-level reference to a sibling secret ID", func(t *testing.T) {
+		properties := map[string]any{"secretName": "db-secret"}
+
+		references, err := buildSecretReferences(resourceID, properties, []string{"secretName"})
+		require.NoError(t, err)
+		require.Equal(t, map[string]string{
+			"secretName": "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Security/secrets/db-secret",
+		}, references)
+	})
+
+	t.Run("resolves a nested reference", func(t *testing.T) {
+		properties := map[string]any{"config": map[string]any{"secretName": "db-secret"}}
+
+		references, err := buildSecretReferences(resourceID, properties, []string{"config.secretName"})
+		require.NoError(t, err)
+		require.Equal(t, map[string]string{
+			"config.secretName": "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Security/secrets/db-secret",
+		}, references)
+	})
+
+	t.Run("skips an unset reference", func(t *testing.T) {
+		references, err := buildSecretReferences(resourceID, map[string]any{}, []string{"secretName"})
+		require.NoError(t, err)
+		require.Nil(t, references)
+	})
+
+	t.Run("returns nil when there are no reference paths", func(t *testing.T) {
+		references, err := buildSecretReferences(resourceID, map[string]any{"secretName": "db-secret"}, nil)
+		require.NoError(t, err)
+		require.Nil(t, references)
+	})
+
+	t.Run("fails closed on an invalid resource ID", func(t *testing.T) {
+		_, err := buildSecretReferences("not-a-valid-id", map[string]any{"secretName": "db-secret"}, []string{"secretName"})
+		require.Error(t, err)
+	})
+}
+
+func Test_buildSecretBindings(t *testing.T) {
+	const secretID = "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Security/secrets/db-secret"
+	const tlsSecretID = "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Security/secrets/tls-secret"
+
+	t.Run("resolves an array of secret IDs", func(t *testing.T) {
+		properties := map[string]any{
+			"secrets": []any{secretID, tlsSecretID},
+		}
+
+		bindings, err := buildSecretBindings(properties, []string{"secrets"})
+		require.NoError(t, err)
+		require.Equal(t, []string{secretID, tlsSecretID}, bindings)
+	})
+
+	t.Run("resolves a nested array", func(t *testing.T) {
+		properties := map[string]any{
+			"config": map[string]any{
+				"secrets": []any{secretID},
+			},
+		}
+
+		bindings, err := buildSecretBindings(properties, []string{"config.secrets"})
+		require.NoError(t, err)
+		require.Equal(t, []string{secretID}, bindings)
+	})
+
+	t.Run("skips an unset property", func(t *testing.T) {
+		bindings, err := buildSecretBindings(map[string]any{}, []string{"secrets"})
+		require.NoError(t, err)
+		require.Nil(t, bindings)
+	})
+
+	t.Run("returns nil when there are no binding paths", func(t *testing.T) {
+		bindings, err := buildSecretBindings(map[string]any{"secrets": []any{secretID}}, nil)
+		require.NoError(t, err)
+		require.Nil(t, bindings)
+	})
+
+	t.Run("fails closed when the property is not an array", func(t *testing.T) {
+		properties := map[string]any{
+			"secrets": map[string]any{"username": secretID},
+		}
+
+		_, err := buildSecretBindings(properties, []string{"secrets"})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "must be an array of secret IDs")
+	})
+
+	t.Run("fails closed on a non-string entry", func(t *testing.T) {
+		properties := map[string]any{
+			"secrets": []any{secretID, 42},
+		}
+
+		_, err := buildSecretBindings(properties, []string{"secrets"})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "must be a non-empty secret ID string")
+	})
+
+	t.Run("fails closed on an empty entry", func(t *testing.T) {
+		properties := map[string]any{
+			"secrets": []any{""},
+		}
+
+		_, err := buildSecretBindings(properties, []string{"secrets"})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "must be a non-empty secret ID string")
+	})
+
+	t.Run("fails closed on an invalid secret ID", func(t *testing.T) {
+		properties := map[string]any{
+			"secrets": []any{"not-a-valid-id"},
+		}
+
+		_, err := buildSecretBindings(properties, []string{"secrets"})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "invalid secret ID")
+	})
+}
+
+func Test_stringValueAtPath(t *testing.T) {
+	properties := map[string]any{
+		"secretName": "db-secret",
+		"config": map[string]any{
+			"secretName": "nested-secret",
+		},
+		"port": 5432,
+	}
+
+	t.Run("top-level string", func(t *testing.T) {
+		value, ok := stringValueAtPath(properties, "secretName")
+		require.True(t, ok)
+		require.Equal(t, "db-secret", value)
+	})
+
+	t.Run("nested string", func(t *testing.T) {
+		value, ok := stringValueAtPath(properties, "config.secretName")
+		require.True(t, ok)
+		require.Equal(t, "nested-secret", value)
+	})
+
+	t.Run("missing path", func(t *testing.T) {
+		_, ok := stringValueAtPath(properties, "missing")
+		require.False(t, ok)
+	})
+
+	t.Run("non-string value", func(t *testing.T) {
+		_, ok := stringValueAtPath(properties, "port")
+		require.False(t, ok)
+	})
+
+	t.Run("path through a non-map", func(t *testing.T) {
+		_, ok := stringValueAtPath(properties, "secretName.deeper")
+		require.False(t, ok)
+	})
+}
+
+func Test_applySecretWriteBacks(t *testing.T) {
+	const boundSecretID = "/planes/radius/local/resourceGroups/radius-test-rg/providers/Radius.Security/secrets/kafkasecret"
+	const namespace = "test-namespace"
+	const newConnString = "Endpoint=sb://ns.servicebus.windows.net/;SharedAccessKeyName=Root;SharedAccessKey=abc123="
+
+	// Schema for Radius.Security/secrets: data is a map whose values carry a sensitive, retained `value`.
+	secretSchema := map[string]any{
+		"properties": map[string]any{
+			"data": map[string]any{
+				"type": "object",
+				"additionalProperties": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"value": map[string]any{
+							"type":               "string",
+							"x-radius-sensitive": true,
+							"x-radius-retain":    true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	setup := func(t *testing.T) (*CreateOrUpdateResource[*TestResource, TestResource], *database.MockClient, runtimeclient.Client) {
+		t.Helper()
+		mctrl := gomock.NewController(t)
+		msc := database.NewMockClient(mctrl)
+
+		key, err := encryption.GenerateKey()
+		require.NoError(t, err)
+
+		ucpClient, err := testUCPClientFactory(secretSchema)
+		require.NoError(t, err)
+
+		keySecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      encryption.DefaultEncryptionKeySecretName,
+				Namespace: encryption.RadiusNamespace,
+			},
+			Data: map[string][]byte{
+				encryption.DefaultEncryptionKeySecretKey: mustKeyStoreJSON(t, key),
+			},
+		}
+		// The backing Kubernetes Secret the secret's own recipe would have materialized (empty placeholder).
+		backingSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "kafkasecret",
+				Namespace: namespace,
+				Labels:    map[string]string{"resource": "kafkasecret"},
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: map[string][]byte{"connectionString": []byte("")},
+		}
+
+		scheme := runtime.NewScheme()
+		require.NoError(t, corev1.AddToScheme(scheme))
+		k8sClient := controllerfake.NewClientBuilder().WithScheme(scheme).WithObjects(keySecret, backingSecret).Build()
+
+		opts := ctrl.Options{DatabaseClient: msc, UcpClient: ucpClient, KubeClient: k8sClient}
+		c, err := NewCreateOrUpdateResource(opts, successProcessorReference, engine.NewMockEngine(mctrl), configloader.NewMockConfigurationLoader(mctrl))
+		require.NoError(t, err)
+
+		return c.(*CreateOrUpdateResource[*TestResource, TestResource]), msc, k8sClient
+	}
+
+	storedSecret := func() map[string]any {
+		return map[string]any{
+			"id":                boundSecretID,
+			"name":              "kafkasecret",
+			"type":              "Radius.Security/secrets",
+			"updatedApiVersion": "2025-08-01-preview",
+			"properties": map[string]any{
+				"data": map[string]any{
+					"connectionString": map[string]any{"value": "placeholder-encrypted", "encoding": "string"},
+				},
+			},
+		}
+	}
+
+	runtimeConfig := recipes.RuntimeConfiguration{Kubernetes: &recipes.KubernetesRuntime{Namespace: namespace}}
+
+	t.Run("encrypts the value at rest and refreshes the backing Kubernetes Secret", func(t *testing.T) {
+		c, msc, k8sClient := setup(t)
+
+		msc.EXPECT().Get(gomock.Any(), boundSecretID).Return(
+			&database.Object{Metadata: database.Metadata{ID: boundSecretID, ETag: "etag-secret"}, Data: storedSecret()}, nil)
+
+		var savedValue map[string]any
+		msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ context.Context, obj *database.Object, opts ...database.SaveOptions) error {
+				data := obj.Data.(map[string]any)
+				props := data["properties"].(map[string]any)
+				dataMap := props["data"].(map[string]any)
+				entry := dataMap["connectionString"].(map[string]any)
+				require.Equal(t, "string", entry["encoding"])
+				savedValue = entry["value"].(map[string]any)
+				return nil
+			})
+
+		err := c.applySecretWriteBacks(context.Background(), []recipes.SecretWriteBack{
+			{SecretID: boundSecretID, Data: map[string]string{"connectionString": newConnString}},
+		}, runtimeConfig)
+		require.NoError(t, err)
+
+		// The value persisted at rest is an encrypted envelope, not the plaintext.
+		require.Contains(t, savedValue, "encrypted")
+		require.Contains(t, savedValue, "nonce")
+		require.NotContains(t, fmt.Sprintf("%v", savedValue["encrypted"]), newConnString)
+
+		// The backing Kubernetes Secret now carries the plaintext so a container can consume it.
+		updated := &corev1.Secret{}
+		require.NoError(t, k8sClient.Get(context.Background(), runtimeclient.ObjectKey{Namespace: namespace, Name: "kafkasecret"}, updated))
+		require.Equal(t, newConnString, string(updated.Data["connectionString"]))
+	})
+
+	t.Run("fails closed when the namespace is missing", func(t *testing.T) {
+		c, _, _ := setup(t)
+		err := c.applySecretWriteBacks(context.Background(), []recipes.SecretWriteBack{
+			{SecretID: boundSecretID, Data: map[string]string{"connectionString": newConnString}},
+		}, recipes.RuntimeConfiguration{})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "namespace")
+	})
 }

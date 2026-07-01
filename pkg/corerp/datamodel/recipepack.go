@@ -62,6 +62,11 @@ type RecipeDefinition struct {
 	// directly at a Bicep or Terraform module to map the module's outputs onto resource properties.
 	Outputs map[string]string `json:"outputs,omitempty"`
 
+	// SecretOutputs maps resource-type property names to a map of Kubernetes Secret data keys to
+	// module output names. Used to materialize sensitive module outputs into a Kubernetes Secret in
+	// the application's namespace; the named resource property is set to the generated Secret's name.
+	SecretOutputs map[string]map[string]string `json:"secretOutputs,omitempty"`
+
 	// PlainHTTP connects to the source using HTTP (not-HTTPS).
 	PlainHTTP bool `json:"plainHTTP,omitempty"`
 }

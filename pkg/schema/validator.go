@@ -41,6 +41,29 @@ const (
 // Constants for annotation names
 const (
 	annotationRadiusSensitive = "x-radius-sensitive"
+
+	// annotationRadiusRetain marks an x-radius-sensitive field whose encrypted value must be RETAINED
+	// at rest (vault semantics) instead of redacted to nil after recipe execution. Retained fields are
+	// persisted encrypted and redacted on read (GET/LIST) rather than on write, so the secrets loader
+	// can resolve the value by decrypting Radius's own stored copy instead of reading a cluster (required
+	// for multi-cluster). A retain field must also be x-radius-sensitive, otherwise its value would be
+	// persisted in plaintext (it would be neither encrypted on write nor redacted).
+	annotationRadiusRetain = "x-radius-retain"
+
+	// annotationRadiusSecretReference marks a string property whose value is the name of a
+	// Radius.Security/secrets resource. Radius resolves the referenced secret's data and exposes it
+	// to recipes through the context.resource.secrets.<key> expression path. Unlike x-radius-sensitive
+	// (which marks the secret value itself), this annotation marks a reference to a secret by name.
+	annotationRadiusSecretReference = "x-radius-secret-reference"
+
+	// annotationRadiusSecretBinding marks an array property whose items are resource IDs of
+	// Radius.Security/secrets resources the resource depends on. Radius loads every key of each
+	// listed secret and exposes the values to recipes through the
+	// context.resource.secrets.<secretName>.<key> expression path, where <secretName> is the secret
+	// resource's name and <key> is a key within that secret's data. Unlike x-radius-secret-reference
+	// (a single secret named by a string property), this annotation binds a list of secrets by ID and
+	// namespaces their keys by the secret resource name.
+	annotationRadiusSecretBinding = "x-radius-secret-binding"
 )
 
 // joinPath concatenates two path segments with a dot separator for property path tracking.
@@ -350,6 +373,15 @@ func (v *Validator) validateRadiusConstraintsWithPath(schema *openapi3.Schema, p
 		}
 	}
 
+	// Check x-radius-retain annotation constraints
+	if err := v.checkRetainAnnotation(schema, path); err != nil {
+		if valErr, ok := err.(*ValidationError); ok {
+			errors.Add(valErr)
+		} else {
+			errors.Add(NewConstraintError("", err.Error()))
+		}
+	}
+
 	// Validate type constraints
 	if err := v.validateTypeConstraints(schema, path); err != nil {
 		if valErr, ok := err.(*ValidationError); ok {
@@ -590,6 +622,40 @@ func (v *Validator) checkSensitiveAnnotation(schema *openapi3.Schema, path strin
 		if !isString && !isObject {
 			return NewConstraintError(path, fmt.Sprintf("%s annotation is only supported on string and object types, got '%s'", annotationRadiusSensitive, typeStr))
 		}
+	}
+
+	return nil
+}
+
+// checkRetainAnnotation validates the x-radius-retain annotation. Retain means the encrypted value is
+// kept at rest (vault semantics) instead of being redacted after recipe execution. A retain field must
+// also be x-radius-sensitive; otherwise the value would be persisted in plaintext (neither encrypted on
+// write nor redacted), which would be a security regression.
+func (v *Validator) checkRetainAnnotation(schema *openapi3.Schema, path string) error {
+	if schema.Extensions == nil {
+		return nil
+	}
+
+	retain, exists := schema.Extensions[annotationRadiusRetain]
+	if !exists {
+		return nil
+	}
+
+	// Validate that the value is a boolean
+	boolVal, ok := retain.(bool)
+	if !ok {
+		return NewConstraintError(path, fmt.Sprintf("%s must be a boolean value", annotationRadiusRetain))
+	}
+
+	if !boolVal {
+		return nil
+	}
+
+	// A retain field must also be marked x-radius-sensitive.
+	sensitive, sensitiveExists := schema.Extensions[annotationRadiusSensitive]
+	sensitiveVal, sensitiveIsBool := sensitive.(bool)
+	if !sensitiveExists || !sensitiveIsBool || !sensitiveVal {
+		return NewConstraintError(path, fmt.Sprintf("%s requires %s to be true on the same field", annotationRadiusRetain, annotationRadiusSensitive))
 	}
 
 	return nil

@@ -49,11 +49,13 @@ func NewGetResourceWithRedaction(
 
 // Run returns the requested resource with sensitive fields redacted.
 //
-// Design consideration (GET Operation Update): When provisioningState is "Succeeded",
-// the backend has already redacted sensitive data from the database, so we skip the
-// schema fetch and redaction (fast path). For all other states (e.g., "Updating",
-// "Accepted", "Failed"), the resource may still contain encrypted data, so we fetch
-// the schema and redact sensitive fields to prevent exposure.
+// Redaction is schema-driven. When provisioningState is "Succeeded" the backend has already redacted
+// every non-retain sensitive field to nil, but retain fields (x-radius-retain, e.g. the secret value
+// of Radius.Security/secrets) are persisted encrypted at rest so the secrets loader can decrypt them
+// from the store. Those retain fields must be redacted on read so the API never returns the retained
+// ciphertext. For all other states the resource may still contain encrypted data for any sensitive
+// field, so every sensitive field is redacted. Because retain fields can survive into Succeeded, the
+// schema is fetched on every read (the previous Succeeded fast-path that skipped the fetch is gone).
 func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	logger := ucplog.FromContextOrDiscard(ctx)
@@ -66,10 +68,7 @@ func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWrite
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
-	// Fast path: if provisioningState is Succeeded, the backend has already redacted
-	// sensitive fields. Skip the schema fetch for better performance.
-	provisioningState := resource.ProvisioningState()
-	if provisioningState != v1.ProvisioningStateSucceeded && resource.Properties != nil {
+	if resource.Properties != nil {
 		resourceID := serviceCtx.ResourceID.String()
 		resourceType := serviceCtx.ResourceID.Type()
 
@@ -77,15 +76,9 @@ func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWrite
 		// encryption and redaction use the same schema
 		apiVersion := resource.InternalMetadata.UpdatedAPIVersion
 
-		sensitiveFieldPaths, err := schema.GetSensitiveFieldPaths(
-			ctx,
-			c.ucpClient,
-			resourceID,
-			resourceType,
-			apiVersion,
-		)
+		paths, err := fetchRedactionPaths(ctx, c.ucpClient, resourceID, resourceType, apiVersion)
 		if err != nil {
-			logger.Error(err, "Failed to fetch sensitive field paths for GET redaction",
+			logger.Error(err, "Failed to fetch field paths for GET redaction",
 				"resourceType", resourceType, "apiVersion", apiVersion)
 			// Fail-safe: return error to prevent potential exposure of sensitive data
 			// This is consistent with the write path (encryption filter)
@@ -97,11 +90,13 @@ func (c *GetResourceWithRedaction) Run(ctx context.Context, w http.ResponseWrite
 			}), nil
 		}
 
-		if len(sensitiveFieldPaths) > 0 {
-			schema.RedactFields(resource.Properties, sensitiveFieldPaths)
-			logger.V(ucplog.LevelDebug).Info("Redacted sensitive fields in GET response",
+		provisioningState := resource.ProvisioningState()
+		fieldPaths := paths.forState(provisioningState)
+		if len(fieldPaths) > 0 {
+			schema.RedactFields(resource.Properties, fieldPaths)
+			logger.V(ucplog.LevelDebug).Info("Redacted fields in GET response",
 				"provisioningState", provisioningState,
-				"count", len(sensitiveFieldPaths), "resourceType", resourceType)
+				"count", len(fieldPaths), "resourceType", resourceType)
 		}
 	}
 

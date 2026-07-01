@@ -433,6 +433,276 @@ func TestExtractSensitiveFieldPaths_WithPrefix(t *testing.T) {
 	require.Equal(t, []string{"parent.secret"}, result)
 }
 
+func TestExtractRetainFieldPaths_WithPrefix(t *testing.T) {
+	schema := map[string]any{
+		"properties": map[string]any{
+			"secret": map[string]any{
+				"type":                    "string",
+				annotationRadiusSensitive: true,
+				annotationRadiusRetain:    true,
+			},
+		},
+	}
+
+	result := ExtractRetainFieldPaths(schema, "parent")
+
+	require.Equal(t, []string{"parent.secret"}, result)
+}
+
+func TestExtractRetainFieldPaths(t *testing.T) {
+	tests := []struct {
+		name     string
+		schema   map[string]any
+		expected []string
+	}{
+		{
+			name:     "empty schema",
+			schema:   map[string]any{},
+			expected: []string{},
+		},
+		{
+			name: "sensitive but not retained yields no retain paths",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"password": map[string]any{
+						"type":                    "string",
+						annotationRadiusSensitive: true,
+					},
+				},
+			},
+			expected: []string{},
+		},
+		{
+			name: "single retained field",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"name": map[string]any{
+						"type": "string",
+					},
+					"password": map[string]any{
+						"type":                    "string",
+						annotationRadiusSensitive: true,
+						annotationRadiusRetain:    true,
+					},
+				},
+			},
+			expected: []string{"password"},
+		},
+		{
+			name: "only retained fields are returned",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"password": map[string]any{
+						"type":                    "string",
+						annotationRadiusSensitive: true,
+						annotationRadiusRetain:    true,
+					},
+					"apiKey": map[string]any{
+						"type":                    "string",
+						annotationRadiusSensitive: true,
+					},
+				},
+			},
+			expected: []string{"password"},
+		},
+		{
+			name: "retained map value (Radius.Security/secrets data shape)",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"data": map[string]any{
+						"type": "object",
+						"additionalProperties": map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"value": map[string]any{
+									"type":                    "string",
+									annotationRadiusSensitive: true,
+									annotationRadiusRetain:    true,
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []string{"data[*].value"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ExtractRetainFieldPaths(tt.schema, "")
+
+			// Sort both slices for comparison since map iteration order is not guaranteed
+			require.ElementsMatch(t, tt.expected, result)
+		})
+	}
+}
+
+func TestExtractSecretReferenceFieldPaths(t *testing.T) {
+	t.Run("top-level marked field", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"secretName": map[string]any{
+					"type":                          "string",
+					annotationRadiusSecretReference: true,
+				},
+				"host": map[string]any{
+					"type": "string",
+				},
+			},
+		}
+
+		require.Equal(t, []string{"secretName"}, ExtractSecretReferenceFieldPaths(schema, ""))
+	})
+
+	t.Run("nested marked field", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"config": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"secretName": map[string]any{
+							"type":                          "string",
+							annotationRadiusSecretReference: true,
+						},
+					},
+				},
+			},
+		}
+
+		require.Equal(t, []string{"config.secretName"}, ExtractSecretReferenceFieldPaths(schema, ""))
+	})
+
+	t.Run("marked field is treated as a leaf", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"secretName": map[string]any{
+					"type":                          "object",
+					annotationRadiusSecretReference: true,
+					"properties": map[string]any{
+						"nested": map[string]any{
+							"type":                          "string",
+							annotationRadiusSecretReference: true,
+						},
+					},
+				},
+			},
+		}
+
+		require.Equal(t, []string{"secretName"}, ExtractSecretReferenceFieldPaths(schema, ""))
+	})
+
+	t.Run("no marked fields", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"host": map[string]any{
+					"type": "string",
+				},
+			},
+		}
+
+		require.Empty(t, ExtractSecretReferenceFieldPaths(schema, ""))
+	})
+
+	t.Run("with prefix", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"secretName": map[string]any{
+					"type":                          "string",
+					annotationRadiusSecretReference: true,
+				},
+			},
+		}
+
+		require.Equal(t, []string{"parent.secretName"}, ExtractSecretReferenceFieldPaths(schema, "parent"))
+	})
+}
+
+func TestExtractSecretBindingPaths(t *testing.T) {
+	t.Run("top-level marked property", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"secrets": map[string]any{
+					"type":                        "array",
+					annotationRadiusSecretBinding: true,
+					"items":                       map[string]any{"type": "string"},
+				},
+				"host": map[string]any{
+					"type": "string",
+				},
+			},
+		}
+
+		require.Equal(t, []string{"secrets"}, ExtractSecretBindingPaths(schema, ""))
+	})
+
+	t.Run("nested marked property", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"config": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"secrets": map[string]any{
+							"type":                        "array",
+							annotationRadiusSecretBinding: true,
+							"items":                       map[string]any{"type": "string"},
+						},
+					},
+				},
+			},
+		}
+
+		require.Equal(t, []string{"config.secrets"}, ExtractSecretBindingPaths(schema, ""))
+	})
+
+	t.Run("marked property is treated as a leaf", func(t *testing.T) {
+		// A marked property is a leaf: the extractor must not descend into its sub-schema, even if that
+		// sub-schema contains another marked property.
+		schema := map[string]any{
+			"properties": map[string]any{
+				"secrets": map[string]any{
+					"type":                        "array",
+					annotationRadiusSecretBinding: true,
+					"properties": map[string]any{
+						"nested": map[string]any{
+							"type":                        "array",
+							annotationRadiusSecretBinding: true,
+						},
+					},
+				},
+			},
+		}
+
+		require.Equal(t, []string{"secrets"}, ExtractSecretBindingPaths(schema, ""))
+	})
+
+	t.Run("no marked properties", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"host": map[string]any{
+					"type": "string",
+				},
+			},
+		}
+
+		require.Empty(t, ExtractSecretBindingPaths(schema, ""))
+	})
+
+	t.Run("with prefix", func(t *testing.T) {
+		schema := map[string]any{
+			"properties": map[string]any{
+				"secrets": map[string]any{
+					"type":                        "array",
+					annotationRadiusSecretBinding: true,
+					"items":                       map[string]any{"type": "string"},
+				},
+			},
+		}
+
+		require.Equal(t, []string{"parent.secrets"}, ExtractSecretBindingPaths(schema, "parent"))
+	})
+}
+
 func TestGetSensitiveFieldPaths(t *testing.T) {
 	ctx := context.Background()
 

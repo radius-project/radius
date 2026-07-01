@@ -18,9 +18,11 @@ package controller
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-logr/logr"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -36,8 +38,17 @@ import (
 	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	schemautil "github.com/radius-project/radius/pkg/schema"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// secretReferenceResourceType is the resource type of a Radius.Security/secrets resource named by an
+// x-radius-secret-reference property.
+const secretReferenceResourceType = "Radius.Security/secrets"
 
 // CreateOrUpdateResource is the async operation controller to create or update portable resources.
 type CreateOrUpdateResource[P interface {
@@ -82,6 +93,8 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 
 	currentETag := storedResource.ETag
 	var recipeProperties map[string]any
+	var secretReferencePaths []string
+	var secretBindingPaths []string
 	redactionCompleted := false
 
 	// Attempt to decrypt and redact sensitive fields before recipe execution.
@@ -92,9 +105,18 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 		if schemaErr != nil {
 			return ctrl.Result{}, fmt.Errorf("failed to fetch schema for sensitive field detection: %w", schemaErr)
 		} else if schema != nil {
+			// Detect properties that reference a Radius.Security/secrets resource by name so the engine can
+			// resolve them into recipe context (context.resource.secrets.<key>).
+			secretReferencePaths = schemautil.ExtractSecretReferenceFieldPaths(schema, "")
+
+			// Detect secrets arrays (x-radius-secret-binding) so the engine can load each listed
+			// secret's keys into recipe context (context.resource.secrets.<secretName>.<key>).
+			secretBindingPaths = schemautil.ExtractSecretBindingPaths(schema, "")
+
 			sensitiveFieldPaths := schemautil.ExtractSensitiveFieldPaths(schema, "")
+			retainFieldPaths := schemautil.ExtractRetainFieldPaths(schema, "")
 			if len(sensitiveFieldPaths) > 0 {
-				logger.Info("Sensitive fields detected for resource", "resourceID", req.ResourceID, "paths", sensitiveFieldPaths)
+				logger.Info("Sensitive fields detected for resource", "resourceID", req.ResourceID, "paths", sensitiveFieldPaths, "retain", retainFieldPaths)
 
 				properties, err := resourceutil.GetPropertiesFromResource(resource)
 				if err != nil {
@@ -131,7 +153,12 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 				if err != nil {
 					return ctrl.Result{}, err
 				}
-				schemautil.RedactFields(redactedProperties, sensitiveFieldPaths)
+				// Retain-marked fields (e.g. Radius.Security/secrets data values) keep their encrypted
+				// value at rest so the secrets loader can decrypt from the store instead of reading a
+				// cluster (multi-cluster safe). Only non-retain sensitive fields are redacted to nil here;
+				// retain fields are redacted on read (GET/LIST) instead.
+				redactFieldPaths := pathsExcept(sensitiveFieldPaths, retainFieldPaths)
+				schemautil.RedactFields(redactedProperties, redactFieldPaths)
 
 				if err = applyPropertiesToResource(resource, redactedProperties); err != nil {
 					logger.Error(err, "Failed to apply redacted properties", "resourceID", req.ResourceID)
@@ -171,7 +198,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	recipeDataModel, supportsRecipes := any(resource).(datamodel.RecipeDataModel)
 	var recipeOutput *recipes.RecipeOutput
 	if supportsRecipes && recipeDataModel.GetRecipe() != nil {
-		recipeOutput, err = c.executeRecipeIfNeeded(ctx, resource, recipeDataModel, previousOutputResources, config.Simulated, recipeProperties)
+		recipeOutput, err = c.executeRecipeIfNeeded(ctx, resource, recipeDataModel, previousOutputResources, config.Simulated, recipeProperties, secretReferencePaths, secretBindingPaths)
 		if err != nil {
 			return c.handleRecipeError(ctx, err, recipeDataModel, req.ResourceID, currentETag, logger, redactionCompleted)
 		}
@@ -187,6 +214,20 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 				return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
 			}
 			return ctrl.Result{}, err
+		}
+
+		// Apply any secret write-backs the recipe driver resolved: secure module outputs routed into
+		// developer-authored Radius.Security/secrets resources bound to this resource (the "backwards"
+		// secret flow). This patches each bound secret's retained (encrypted) value in the store and
+		// refreshes its backing Kubernetes Secret so connected containers can consume it via secretKeyRef.
+		if recipeOutput != nil && len(recipeOutput.SecretWriteBacks) > 0 {
+			if err = c.applySecretWriteBacks(ctx, recipeOutput.SecretWriteBacks, config.Runtime); err != nil {
+				logger.Error(err, "Failed to apply secret write-backs", "resourceID", req.ResourceID)
+				if redactionCompleted {
+					return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
+				}
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
@@ -262,7 +303,7 @@ func (c *CreateOrUpdateResource[P, T]) copyOutputResources(resource P) []string 
 	return previousOutputResources
 }
 
-func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, resource P, recipeDataModel datamodel.RecipeDataModel, prevState []string, simulated bool, recipeProperties map[string]any) (*recipes.RecipeOutput, error) {
+func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context, resource P, recipeDataModel datamodel.RecipeDataModel, prevState []string, simulated bool, recipeProperties map[string]any, secretReferencePaths []string, secretBindingPaths []string) (*recipes.RecipeOutput, error) {
 	// Caller ensures recipeDataModel supports recipes and has a non-nil recipe
 	recipe := recipeDataModel.GetRecipe()
 
@@ -295,6 +336,23 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 			return nil, fmt.Errorf("failed to get metadata from connected resource %s: %w", connectedResourceID, err)
 		}
 
+		// Redact sensitive fields from a connected Radius.Security/secrets resource before exposing its
+		// properties to the recipe. Its value is retained encrypted at rest (x-radius-retain), and must not
+		// be surfaced — even as ciphertext — through the recipe context; secrets are consumed via secret
+		// bindings/references, not connections. Other resource types still redact their sensitive fields to
+		// nil at rest, so they need no redaction here.
+		if strings.EqualFold(connectedResourceMetadata.Type, secretReferenceResourceType) && len(connectedResourceMetadata.Properties) > 0 {
+			if apiVersion := connectedResourceAPIVersion(connectedResource.Data); apiVersion != "" {
+				connectedSchema, err := schemautil.GetSchema(ctx, c.UcpClient(), connectedResourceID, connectedResourceMetadata.Type, apiVersion)
+				if err != nil {
+					return nil, fmt.Errorf("failed to fetch schema to redact connected secret %s: %w", connectedResourceID, err)
+				}
+				if connectedSchema != nil {
+					schemautil.RedactFields(connectedResourceMetadata.Properties, schemautil.ExtractSensitiveFieldPaths(connectedSchema, ""))
+				}
+			}
+		}
+
 		connectedResourcesMetadata[connName] = recipes.ConnectedResource{
 			ID:         connectedResourceMetadata.ID,
 			Name:       connectedResourceMetadata.Name,
@@ -313,6 +371,22 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		ConnectedResourcesProperties: connectedResourcesMetadata,
 	}
 
+	// Resolve x-radius-secret-reference properties to Radius.Security/secrets resource IDs so the engine
+	// can load their secret material into the recipe context.
+	secretReferences, err := buildSecretReferences(resource.GetBaseResource().ID, resourceProperties, secretReferencePaths)
+	if err != nil {
+		return nil, err
+	}
+	metadata.SecretReferences = secretReferences
+
+	// Resolve the x-radius-secret-binding array property to the list of secret IDs it references so the engine
+	// can load each bound secret's keys into the recipe context.
+	secretBindings, err := buildSecretBindings(resourceProperties, secretBindingPaths)
+	if err != nil {
+		return nil, err
+	}
+	metadata.SecretBindings = secretBindings
+
 	return c.engine.Execute(ctx, engine.ExecuteOptions{
 		BaseOptions: engine.BaseOptions{
 			Recipe: metadata,
@@ -324,6 +398,348 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 
 func getResourceAPIVersion[P rpv1.RadiusResourceModel](resource P) string {
 	return resource.GetBaseResource().InternalMetadata.UpdatedAPIVersion
+}
+
+// connectedResourceAPIVersion extracts the api-version a connected resource was last updated with from its
+// raw stored representation, so the connected resource's schema can be fetched to redact its sensitive fields.
+// Returns "" if the api-version cannot be determined.
+func connectedResourceAPIVersion(data any) string {
+	var partial struct {
+		UpdatedAPIVersion string `json:"updatedApiVersion"`
+	}
+
+	bs, err := json.Marshal(data)
+	if err != nil {
+		return ""
+	}
+	if err := json.Unmarshal(bs, &partial); err != nil {
+		return ""
+	}
+
+	return partial.UpdatedAPIVersion
+}
+
+// applySecretWriteBacks writes secure recipe (module) outputs back into the developer-authored
+// Radius.Security/secrets resources bound to the deploying resource (the "backwards" secret flow). For each
+// write-back it: (1) reads the bound secret from the store, (2) encrypts only the new values with the
+// control-plane key — bound to the secret's own resource ID and sensitive field paths so it matches how the
+// secret is encrypted at rest and the loader can later decrypt it — merges them into the secret's retained
+// data, and saves it, and (3) refreshes the secret's backing Kubernetes Secret so connected containers
+// consuming it via secretKeyRef observe the resolved value. It fails closed: any error aborts the deployment
+// rather than leaving a container to read an empty secret.
+//
+// NOTE (single-cluster): the backing Kubernetes Secret is written through the control-plane Kubernetes
+// client (the same cluster the secret's own recipe targets in the default single-cluster topology).
+// Cross-cluster write-back of the backing Secret is out of scope; the encrypted-at-rest store copy is the
+// multi-cluster source of truth for recipe reads.
+func (c *CreateOrUpdateResource[P, T]) applySecretWriteBacks(ctx context.Context, writeBacks []recipes.SecretWriteBack, runtime recipes.RuntimeConfiguration) error {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	if c.KubeClient() == nil {
+		return fmt.Errorf("kubernetes client not configured for secret write-back")
+	}
+	keyProvider := encryption.NewKubernetesKeyProvider(c.KubeClient(), nil)
+	handler, err := encryption.NewSensitiveDataHandlerFromProvider(ctx, keyProvider)
+	if err != nil {
+		return fmt.Errorf("failed to initialize sensitive data handler for secret write-back: %w", err)
+	}
+
+	if runtime.Kubernetes == nil || runtime.Kubernetes.Namespace == "" {
+		return fmt.Errorf("no Kubernetes namespace available to write back secrets")
+	}
+	namespace := runtime.Kubernetes.Namespace
+
+	for _, wb := range writeBacks {
+		if len(wb.Data) == 0 {
+			continue
+		}
+
+		obj, err := c.DatabaseClient().Get(ctx, wb.SecretID)
+		if err != nil {
+			return fmt.Errorf("failed to read bound secret %q for write-back: %w", wb.SecretID, err)
+		}
+
+		var secretResource map[string]any
+		if err := obj.As(&secretResource); err != nil {
+			return fmt.Errorf("failed to decode bound secret %q for write-back: %w", wb.SecretID, err)
+		}
+
+		apiVersion := connectedResourceAPIVersion(obj.Data)
+		secretSchema, err := schemautil.GetSchema(ctx, c.UcpClient(), wb.SecretID, secretReferenceResourceType, apiVersion)
+		if err != nil {
+			return fmt.Errorf("failed to fetch schema for bound secret %q: %w", wb.SecretID, err)
+		}
+		if secretSchema == nil {
+			return fmt.Errorf("no schema available for bound secret %q (%s, api-version %q); cannot write back its value", wb.SecretID, secretReferenceResourceType, apiVersion)
+		}
+		sensitiveFieldPaths := schemautil.ExtractSensitiveFieldPaths(secretSchema, "")
+
+		properties, ok := secretResource["properties"].(map[string]any)
+		if !ok {
+			return fmt.Errorf("bound secret %q has no properties to write back into", wb.SecretID)
+		}
+		data, ok := properties["data"].(map[string]any)
+		if !ok || data == nil {
+			data = map[string]any{}
+		}
+
+		// Encrypt ONLY the new values. The stored data is already encrypted at rest (retain), so
+		// re-encrypting it would double-encrypt. Build a minimal {data: {key: {value}}} carrying just the
+		// new values and encrypt it with the secret's own resource ID + sensitive paths (matching at-rest
+		// encryption so a later read can decrypt), then merge the ciphertext into the retained data.
+		encData := make(map[string]any, len(wb.Data))
+		for key, value := range wb.Data {
+			encData[key] = map[string]any{"value": value}
+		}
+		encWrapper := map[string]any{"data": encData}
+		if err := handler.EncryptSensitiveFields(encWrapper, sensitiveFieldPaths, wb.SecretID); err != nil {
+			return fmt.Errorf("failed to encrypt write-back values for secret %q: %w", wb.SecretID, err)
+		}
+		encryptedData, _ := encWrapper["data"].(map[string]any)
+
+		// Build the plaintext view keyed by encoding for the backing Kubernetes Secret, and merge the
+		// encrypted entries into the store's retained data (preserving each key's existing encoding).
+		stringData := map[string]string{}
+		base64Data := map[string]string{}
+		for key, plaintext := range wb.Data {
+			encoding := "string"
+			if existing, ok := data[key].(map[string]any); ok {
+				if enc, ok := existing["encoding"].(string); ok && enc != "" {
+					encoding = enc
+				}
+			}
+
+			entry := map[string]any{"encoding": encoding}
+			if encEntry, ok := encryptedData[key].(map[string]any); ok {
+				entry["value"] = encEntry["value"]
+			}
+			data[key] = entry
+
+			if encoding == "base64" {
+				base64Data[key] = plaintext
+			} else {
+				stringData[key] = plaintext
+			}
+		}
+		properties["data"] = data
+		secretResource["properties"] = properties
+
+		update := &database.Object{
+			Metadata: database.Metadata{ID: wb.SecretID},
+			Data:     secretResource,
+		}
+		if err := c.DatabaseClient().Save(ctx, update, database.WithETag(obj.ETag)); err != nil {
+			return fmt.Errorf("failed to persist write-back for secret %q: %w", wb.SecretID, err)
+		}
+
+		if err := c.upsertBackingSecret(ctx, wb.SecretID, namespace, stringData, base64Data); err != nil {
+			return fmt.Errorf("failed to refresh backing Kubernetes Secret for secret %q: %w", wb.SecretID, err)
+		}
+
+		logger.Info("Applied secret write-back", "secretID", wb.SecretID, "keyCount", len(wb.Data), "namespace", namespace)
+	}
+
+	return nil
+}
+
+// upsertBackingSecret refreshes the Kubernetes Secret that backs a Radius.Security/secrets resource so a
+// container consuming it via secretKeyRef observes the written-back value. The Secret's name matches the
+// secret resource's name (as materialized by the secrets recipe). Existing keys are preserved: string-encoded
+// values are written to StringData and base64-encoded values to Data. If the Secret does not yet exist it is
+// created (best effort) with the recipe's resource label.
+func (c *CreateOrUpdateResource[P, T]) upsertBackingSecret(ctx context.Context, secretID string, namespace string, stringData map[string]string, base64Data map[string]string) error {
+	parsed, err := resources.ParseResource(secretID)
+	if err != nil {
+		return fmt.Errorf("failed to parse secret ID %q: %w", secretID, err)
+	}
+	name := parsed.Name()
+
+	kubeClient := c.KubeClient()
+	secret := &corev1.Secret{}
+	getErr := kubeClient.Get(ctx, runtimeclient.ObjectKey{Namespace: namespace, Name: name}, secret)
+	if getErr != nil {
+		if !apierrors.IsNotFound(getErr) {
+			return fmt.Errorf("failed to read backing Kubernetes Secret %q in namespace %q: %w", name, namespace, getErr)
+		}
+
+		// The secret's own recipe should have created this Secret already; create it as a fail-safe.
+		secret = &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Labels:    map[string]string{"resource": name},
+			},
+			Type: corev1.SecretTypeOpaque,
+		}
+		applyBackingSecretData(secret, stringData, base64Data)
+		if err := kubeClient.Create(ctx, secret); err != nil {
+			return fmt.Errorf("failed to create backing Kubernetes Secret %q in namespace %q: %w", name, namespace, err)
+		}
+		return nil
+	}
+
+	applyBackingSecretData(secret, stringData, base64Data)
+	if err := kubeClient.Update(ctx, secret); err != nil {
+		return fmt.Errorf("failed to update backing Kubernetes Secret %q in namespace %q: %w", name, namespace, err)
+	}
+	return nil
+}
+
+// applyBackingSecretData merges the written-back values into a Kubernetes Secret, preserving other keys.
+// Both string- and base64-encoded values are written to Data as raw bytes (string values verbatim, base64
+// values decoded), so the result matches how the secrets recipe materializes the Secret and does not depend
+// on the API server folding StringData into Data.
+func applyBackingSecretData(secret *corev1.Secret, stringData map[string]string, base64Data map[string]string) {
+	if len(stringData) == 0 && len(base64Data) == 0 {
+		return
+	}
+	if secret.Data == nil {
+		secret.Data = map[string][]byte{}
+	}
+	for k, v := range stringData {
+		secret.Data[k] = []byte(v)
+	}
+	for k, v := range base64Data {
+		if decoded, err := base64.StdEncoding.DecodeString(v); err == nil {
+			secret.Data[k] = decoded
+		} else {
+			// Not valid base64; store the raw bytes so the value is still surfaced.
+			secret.Data[k] = []byte(v)
+		}
+	}
+}
+
+// buildSecretReferences resolves x-radius-secret-reference property values (each the name of a
+// Radius.Security/secrets resource) to fully qualified resource IDs scoped to the consuming resource's
+// resource group. Unset reference properties are skipped; a malformed reference is an error so the
+// deployment fails closed rather than passing an unresolved value to the recipe.
+func buildSecretReferences(resourceID string, properties map[string]any, secretReferencePaths []string) (map[string]string, error) {
+	if len(secretReferencePaths) == 0 {
+		return nil, nil
+	}
+
+	parsed, err := resources.ParseResource(resourceID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse resource ID %q for secret reference resolution: %w", resourceID, err)
+	}
+
+	references := map[string]string{}
+	for _, path := range secretReferencePaths {
+		name, ok := stringValueAtPath(properties, path)
+		if !ok || name == "" {
+			// The reference property is optional and unset; nothing to resolve.
+			continue
+		}
+
+		secretID := fmt.Sprintf("%s/providers/%s/%s", parsed.RootScope(), secretReferenceResourceType, name)
+		if _, err := resources.ParseResource(secretID); err != nil {
+			return nil, fmt.Errorf("failed to construct secret resource ID for property %q with value %q: %w", path, name, err)
+		}
+		references[path] = secretID
+	}
+
+	if len(references) == 0 {
+		return nil, nil
+	}
+
+	return references, nil
+}
+
+// stringValueAtPath returns the string value at the given dot-separated path in a nested properties map.
+func stringValueAtPath(properties map[string]any, path string) (string, bool) {
+	var current any = properties
+	for _, segment := range strings.Split(path, ".") {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return "", false
+		}
+		current, ok = m[segment]
+		if !ok {
+			return "", false
+		}
+	}
+
+	value, ok := current.(string)
+	return value, ok
+}
+
+// buildSecretBindings resolves an x-radius-secret-binding array property into the list of Radius.Security/secrets
+// resource IDs it references. Each entry must be a non-empty string that parses as a resource ID; the engine
+// loads every key of each secret into the recipe's Secrets under a "<secretName>.<key>" namespace for the
+// context.resource.secrets.<secretName>.<key> expression path. An unset property is skipped; a malformed entry
+// (non-string, empty, or not a resource ID) is an error so the deployment fails closed rather than silently
+// dropping a secret the recipe expects.
+func buildSecretBindings(properties map[string]any, secretBindingPaths []string) ([]string, error) {
+	if len(secretBindingPaths) == 0 {
+		return nil, nil
+	}
+
+	var secretIDs []string
+	for _, path := range secretBindingPaths {
+		raw, ok := valueAtPath(properties, path)
+		if !ok || raw == nil {
+			// The property is optional and unset; nothing to resolve.
+			continue
+		}
+
+		entries, ok := raw.([]any)
+		if !ok {
+			return nil, fmt.Errorf("secret binding property %q must be an array of secret IDs", path)
+		}
+
+		for i, entry := range entries {
+			id, ok := entry.(string)
+			if !ok || id == "" {
+				return nil, fmt.Errorf("secret binding %q[%d] must be a non-empty secret ID string", path, i)
+			}
+			if _, err := resources.ParseResource(id); err != nil {
+				return nil, fmt.Errorf("secret binding %q[%d] has invalid secret ID %q: %w", path, i, id, err)
+			}
+			secretIDs = append(secretIDs, id)
+		}
+	}
+
+	if len(secretIDs) == 0 {
+		return nil, nil
+	}
+
+	return secretIDs, nil
+}
+
+// valueAtPath returns the value at the given dot-separated path in a nested properties map.
+func valueAtPath(properties map[string]any, path string) (any, bool) {
+	var current any = properties
+	for _, segment := range strings.Split(path, ".") {
+		m, ok := current.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		current, ok = m[segment]
+		if !ok {
+			return nil, false
+		}
+	}
+
+	return current, true
+}
+
+// pathsExcept returns the elements of all that are not present in exclude. Used to redact only the
+// sensitive field paths that are NOT retain-marked (retain fields keep their encrypted value at rest).
+func pathsExcept(all []string, exclude []string) []string {
+	if len(exclude) == 0 {
+		return all
+	}
+	excluded := make(map[string]struct{}, len(exclude))
+	for _, p := range exclude {
+		excluded[p] = struct{}{}
+	}
+	result := make([]string, 0, len(all))
+	for _, p := range all {
+		if _, found := excluded[p]; !found {
+			result = append(result, p)
+		}
+	}
+	return result
 }
 
 func deepCopyProperties(source map[string]any) (map[string]any, error) {

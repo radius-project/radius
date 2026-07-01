@@ -277,6 +277,30 @@ func testUCPClientFactoryWithNestedSensitiveFields() (*v20231001preview.ClientFa
 	})
 }
 
+// testUCPClientFactoryWithRetainFields returns a schema with one retain field (password: sensitive +
+// retain) and one sensitive-only field (apikey: sensitive). Retain fields keep their encrypted value at
+// rest and must be redacted on read even at Succeeded; sensitive-only fields are already nil at rest at
+// Succeeded and are only redacted in non-terminal states.
+func testUCPClientFactoryWithRetainFields() (*v20231001preview.ClientFactory, error) {
+	return createFakeUCPClientFactory(map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"name": map[string]any{
+				"type": "string",
+			},
+			"password": map[string]any{
+				"type":               "string",
+				"x-radius-sensitive": true,
+				"x-radius-retain":    true,
+			},
+			"apikey": map[string]any{
+				"type":               "string",
+				"x-radius-sensitive": true,
+			},
+		},
+	})
+}
+
 func testUCPClientFactoryWithError() (*v20231001preview.ClientFactory, error) {
 	apiVersionsServer := fake.APIVersionsServer{
 		Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {

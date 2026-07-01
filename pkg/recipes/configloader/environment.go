@@ -385,6 +385,7 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 			TemplateVersion: templateVersion,
 			PlainHTTP:       recipeDefinition.PlainHTTP,
 			Outputs:         recipeDefinition.Outputs,
+			SecretOutputs:   recipeDefinition.SecretOutputs,
 		}
 		return definition, nil
 	}
@@ -472,17 +473,35 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 					plainHTTP = *definition.PlainHTTP
 				}
 				return &recipes.RecipeDefinition{
-					Kind:       string(*definition.Kind),
-					Source:     string(*definition.Source),
-					Parameters: definition.Parameters,
-					PlainHTTP:  plainHTTP,
-					Outputs:    to.StringMap(definition.Outputs),
+					Kind:          string(*definition.Kind),
+					Source:        string(*definition.Source),
+					Parameters:    definition.Parameters,
+					PlainHTTP:     plainHTTP,
+					Outputs:       to.StringMap(definition.Outputs),
+					SecretOutputs: toRecipeSecretOutputs(definition.SecretOutputs),
 				}, nil
 			}
 		}
 	}
 
 	return nil, fmt.Errorf("no recipe pack found with recipe for resource type %q", resourceType)
+}
+
+// toRecipeSecretOutputs converts a versioned secretOutputs map (property name -> secret data key ->
+// module output name, with pointer values) into the recipe definition representation.
+func toRecipeSecretOutputs(in map[string]map[string]*string) map[string]map[string]string {
+	if in == nil {
+		return nil
+	}
+	out := make(map[string]map[string]string, len(in))
+	for property, keys := range in {
+		inner := make(map[string]string, len(keys))
+		for secretKey, outputName := range keys {
+			inner[secretKey] = to.String(outputName)
+		}
+		out[property] = inner
+	}
+	return out
 }
 
 // reconcileRecipeParameters merges recipe pack parameters with environment-level recipe parameters.

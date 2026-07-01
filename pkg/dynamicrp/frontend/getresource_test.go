@@ -71,6 +71,53 @@ func newGetTestDynamicResource(provisioningState v1.ProvisioningState, propertie
 	}
 }
 
+func TestGetResourceWithRedaction_SucceededRedactsRetainOnly(t *testing.T) {
+	// At Succeeded a retain field still holds its encrypted value, so it MUST be redacted on read. A
+	// sensitive-only field was already redacted to nil at rest by the backend, so it is returned as-is
+	// (here, absent because the stored resource no longer carries it).
+	mctrl := gomock.NewController(t)
+	defer mctrl.Finish()
+
+	resource := newGetTestDynamicResource(v1.ProvisioningStateSucceeded, map[string]any{
+		"password": "still-encrypted",
+		"apikey":   "already-nil-at-rest",
+	})
+
+	storeObject := rpctest.FakeStoreObject(resource)
+	storeObject.Metadata = database.Metadata{ID: testResourceID, ETag: "etag-1"}
+
+	databaseClient := database.NewMockClient(mctrl)
+	databaseClient.EXPECT().
+		Get(gomock.Any(), testResourceID).
+		Return(storeObject, nil)
+
+	ucpClient, err := testUCPClientFactoryWithRetainFields()
+	require.NoError(t, err)
+
+	c := newTestGetController(t, databaseClient, ucpClient)
+
+	req, err := http.NewRequest(http.MethodGet, testGetURL, nil)
+	require.NoError(t, err)
+	ctx := rpctest.NewARMRequestContext(req)
+	w := httptest.NewRecorder()
+
+	resp, err := c.Run(ctx, w, req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	_ = resp.Apply(ctx, w, req)
+	require.Equal(t, http.StatusOK, w.Result().StatusCode)
+
+	var body map[string]any
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
+	properties, ok := body["properties"].(map[string]any)
+	require.True(t, ok)
+	// Retain field is redacted even at Succeeded.
+	require.Nil(t, properties["password"])
+	// Sensitive-only field is not redacted at Succeeded (it is already nil at rest in practice).
+	require.Equal(t, "already-nil-at-rest", properties["apikey"])
+}
+
 func TestGetResourceWithRedaction_NonSucceededRedacts(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()

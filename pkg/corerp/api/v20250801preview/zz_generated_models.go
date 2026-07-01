@@ -436,6 +436,12 @@ type RecipeDefinition struct {
 	// Connect to the source using HTTP (not HTTPS). This should be used when the source is known not to support HTTPS, for example
 	// in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)
 	PlainHTTP *bool
+
+	// Map of resource type property names to a map of Kubernetes Secret data keys to module output names. Used for recipes that
+	// point directly at a Bicep or Terraform module to materialize sensitive module outputs into a Kubernetes Secret in the application's
+	// namespace. For each entry, Radius creates a Secret whose data keys are populated from the named module outputs, and sets
+	// the named resource property to the generated Secret's name so connected resources can reference it.
+	SecretOutputs map[string]map[string]*string
 }
 
 // RecipePackProperties - Recipe Pack properties

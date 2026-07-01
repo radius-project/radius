@@ -86,6 +86,12 @@ type TerraformConfig struct {
 	// https://developer.hashicorp.com/terraform/language/modules/syntax
 	Module map[string]TFModuleConfig `json:"module"`
 
+	// Variable is the Terraform input variable configuration. Radius declares sensitive variables to
+	// carry secret-sourced module parameters so their values are redacted from Terraform plan/apply
+	// output. The value is a map keyed by variable name.
+	// https://developer.hashicorp.com/terraform/language/values/variables
+	Variable map[string]any `json:"variable,omitempty"`
+
 	// Output is the Terraform output configuration.
 	// https://developer.hashicorp.com/terraform/language/values/outputs
 	Output map[string]any `json:"output,omitempty"`
