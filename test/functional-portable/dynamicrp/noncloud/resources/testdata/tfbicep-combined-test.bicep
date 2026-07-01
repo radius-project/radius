@@ -55,7 +55,7 @@ resource registrySecret 'Applications.Core/secretStores@2023-10-01-preview' = {
 }
 
 resource bicepSettings 'Radius.Core/bicepSettings@2025-08-01-preview' = {
-  name: 'tfbicep-combined-bicepconfig'
+  name: 'tfbicep-combined-bicepsettings'
   location: 'global'
   properties: {
     registryAuthentications: {
