@@ -140,7 +140,17 @@ func (cli *CLI) deployInternal(ctx context.Context, templateFilePath string, env
 		return &CLIError{ErrorResponse: errResponse}
 	}
 
-	return cliErr
+	if cliErr != nil {
+		// The failure is not a structured ARM error (for example a transport-level
+		// failure such as a UCP connection reset or EOF when the port-forward tunnel
+		// drops). rad prints that cause to its output and exits non-zero, but the
+		// wrapped exec error only carries "exit status 1". Fold the output into the
+		// returned error so retry predicates (see step.IsTransientConnectionError)
+		// can inspect the underlying cause.
+		return fmt.Errorf("%w\n%s", cliErr, out)
+	}
+
+	return nil
 }
 
 // ShowOptions provides flexible configuration for show commands
