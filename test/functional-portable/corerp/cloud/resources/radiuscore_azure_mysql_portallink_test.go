@@ -34,6 +34,8 @@ import (
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // Test_RadiusCore_AzureMySql_PortalLink verifies that the application graph
@@ -71,6 +73,7 @@ func Test_RadiusCore_AzureMySql_PortalLink(t *testing.T) {
 	secretName := "azure-mysql-portallink-secret-" + uniqueSeed
 	mysqlName := "azure-mysql-portallink-db-" + uniqueSeed
 	recipePackName := "azure-mysql-portallink-pack"
+	appNamespace := "azure-mysql-portallink-ns"
 
 	azureSubscriptionID := os.Getenv("AZURE_SUBSCRIPTION_ID")
 	azureResourceGroupName := os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
@@ -79,6 +82,22 @@ func Test_RadiusCore_AzureMySql_PortalLink(t *testing.T) {
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
 	testSteps := []rp.TestStep{
+		{
+			// Radius.Core/environments requires the target Kubernetes namespace to
+			// exist beforehand (unlike Applications.Core/environments, which
+			// auto-creates it). Pre-create it so the environment resource can bind.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, opts test.TestOptions) {
+				_, err := opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{Name: appNamespace},
+				}, metav1.CreateOptions{})
+				if err != nil && !strings.Contains(err.Error(), "already exists") {
+					require.NoError(t, err)
+				}
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+		},
 		{
 			// Preflight: confirm Radius.Data/mySqlDatabases is registered.
 			// This built-in resource type ships as a default (see
