@@ -262,6 +262,19 @@ func Test_IsTransientConnectionError(t *testing.T) {
 		},
 	}
 
+	// markerBearingStructuredError mirrors a genuine (non-transient) structured
+	// ARM deployment failure whose flattened message happens to contain a
+	// connection marker. The concrete-type guard must keep this from being
+	// misclassified as a retryable transport failure.
+	markerBearingStructuredError := &radcli.CLIError{
+		ErrorResponse: apiv1.ErrorResponse{
+			Error: &apiv1.ErrorDetails{
+				Code:    "DeploymentFailed",
+				Message: "recipe execution failed: unexpected EOF while parsing module output",
+			},
+		},
+	}
+
 	tests := []struct {
 		name     string
 		err      error
@@ -281,6 +294,7 @@ func Test_IsTransientConnectionError(t *testing.T) {
 		{name: "log-stream unexpected EOF", err: errors.New("error streaming logs: unexpected EOF"), expected: true},
 		{name: "broken pipe on write", err: errors.New("write tcp 127.0.0.1:38764->127.0.0.1:37481: write: broken pipe"), expected: true},
 		{name: "non-transient structured failure", err: nonTransientError, expected: false},
+		{name: "structured failure containing a marker", err: markerBearingStructuredError, expected: false},
 		{name: "unrelated error", err: errors.New("connection refused"), expected: false},
 	}
 

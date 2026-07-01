@@ -144,13 +144,33 @@ func (cli *CLI) deployInternal(ctx context.Context, templateFilePath string, env
 		// The failure is not a structured ARM error (for example a transport-level
 		// failure such as a UCP connection reset or EOF when the port-forward tunnel
 		// drops). rad prints that cause to its output and exits non-zero, but the
-		// wrapped exec error only carries "exit status 1". Fold the output into the
-		// returned error so retry predicates (see step.IsTransientConnectionError)
-		// can inspect the underlying cause.
-		return fmt.Errorf("%w\n%s", cliErr, out)
+		// wrapped exec error only carries "exit status 1". Fold the tail of the
+		// output into the returned error so retry predicates (see
+		// step.IsTransientConnectionError) can inspect the underlying cause. Only
+		// the tail is kept: ReportCommandResult already streams the full output to
+		// the test log, and the transport markers rad prints appear at the end, so
+		// keeping the tail avoids duplicating large logs across retries.
+		return fmt.Errorf("%w\n%s", cliErr, tailLines(out, maxDeployErrorOutputLines))
 	}
 
 	return nil
+}
+
+// maxDeployErrorOutputLines bounds how many trailing lines of rad CLI output are
+// folded into a non-structured deploy error (see deployInternal).
+const maxDeployErrorOutputLines = 20
+
+// tailLines returns the last maxLines lines of s, prefixed with a truncation
+// marker when earlier lines were dropped. It preserves the trailing transport
+// error markers needed to classify retryable failures without carrying the
+// entire (already-logged) CLI output.
+func tailLines(s string, maxLines int) string {
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	if len(lines) <= maxLines {
+		return s
+	}
+	tail := lines[len(lines)-maxLines:]
+	return "...(output truncated; see test log for full output)...\n" + strings.Join(tail, "\n")
 }
 
 // ShowOptions provides flexible configuration for show commands

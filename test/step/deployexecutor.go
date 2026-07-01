@@ -18,6 +18,7 @@ package step
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -126,10 +127,17 @@ var transientConnectionErrorMarkers = []string{
 // IsTransientConnectionError reports whether err was caused by a transient
 // network disruption between rad and the UCP API server (a reset or closed
 // port-forward tunnel) that is likely to succeed on retry. See
-// transientConnectionErrorMarkers for the environmental root cause. It never
-// matches a structured deployment failure, so a genuine deployment error is not
-// retried.
+// transientConnectionErrorMarkers for the environmental root cause.
+//
+// A connection reset/EOF is a transport-level failure that rad surfaces as a
+// non-structured exit error, never as a structured ARM error. It therefore
+// never matches a *radcli.CLIError: guarding on the concrete type ensures a
+// genuine deployment failure whose flattened ARM message happens to contain a
+// marker such as "unexpected EOF" is not misclassified as retryable.
 func IsTransientConnectionError(err error) bool {
+	if _, ok := errors.AsType[*radcli.CLIError](err); ok {
+		return false
+	}
 	return ErrorContainsAny(err, transientConnectionErrorMarkers...)
 }
 
