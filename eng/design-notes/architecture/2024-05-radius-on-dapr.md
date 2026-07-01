@@ -99,7 +99,7 @@ After
 
 *Adding Dapr as a dependency has the potential to impact our development experience. We can follow some existing patterns that Dapr users like to simplify this.*
 
-Wilford is a developer that's making some contributions to Radius for the first time. To get started, he reads the developer document at in [the repo](https://github.com/radius-project/radius/blob/0fb202fda9bf6f7e15601a7a17c6f9fab8b41a6e/docs/contributing/contributing-code/contributing-code-control-plane/running-controlplane-locally.md). He sees that installing Dapr is part of the prerequisites, so he follows the [getting started instructions](https://docs.dapr.io/getting-started/).
+Wilford is a developer that's making some contributions to Radius for the first time. To get started, he reads the developer document in [the repo](https://github.com/radius-project/radius/blob/0fb202fda9bf6f7e15601a7a17c6f9fab8b41a6e/docs/contributing/contributing-code/contributing-code-control-plane/running-controlplane-locally.md). He sees that installing Dapr is part of the prerequisites, so he follows the [getting started instructions](https://docs.dapr.io/getting-started/).
 
 After that he follows the rest of the instructions to set up a Kubernetes cluster, and configure his `rad` CLI to talk to the local instance of Radius. When he's done with the setup instructions, he can launch Radius in the debugger. When he does that Radius manages the lifetime of each Dapr process so that Wilford does not to do that manually or learn any extra commands.
 

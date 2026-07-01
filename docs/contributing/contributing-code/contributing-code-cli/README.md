@@ -34,7 +34,7 @@ set -eu
 go run /path/to/radius/cmd/rad/main.go "$@"
 ```
 
-Replace `/path/to/radius` with your repository root, then `chmod +x dev-rad`. Because it uses `go run`, the wrapper only works when your shell's working directory is inside the repository.
+Replace `/path/to/radius` with your repository root, then `chmod +x dev-rad`. Because the script uses `go run` with an absolute path, you can run `dev-rad` from any directory.
 
 ### Install a local build
 
