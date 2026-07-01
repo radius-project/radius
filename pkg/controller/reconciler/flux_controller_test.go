@@ -177,10 +177,12 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 	}()
 
 	// Cancel the manager context and wait for the manager goroutine to fully exit before the test
-	// completes, so it does not leak into subsequent tests or into package teardown.
+	// completes, so it does not leak into subsequent tests or into package teardown. The wait is
+	// bounded so a manager that fails to stop fails the test instead of hanging until the global
+	// `go test` timeout.
 	t.Cleanup(func() {
 		mgrCancel()
-		<-managerStopped
+		waitForManagerShutdown(t, managerStopped)
 	})
 
 	t.Log("Waiting for cache to be ready")
