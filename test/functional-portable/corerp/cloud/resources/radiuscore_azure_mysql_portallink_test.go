@@ -34,6 +34,7 @@ import (
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -180,6 +181,17 @@ func Test_RadiusCore_AzureMySql_PortalLink(t *testing.T) {
 	test := rp.NewRPTest(t, testName, testSteps)
 	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAzure}
 	test.RunSerial = true
+
+	// Delete the pre-created Kubernetes namespace after RP cleanup finishes.
+	// PostDeleteVerify runs after Radius has deleted the mysql resource (which
+	// triggers `terraform destroy` of the Azure MySQL flexible server), so the
+	// namespace is not torn down while an in-flight destroy still needs it.
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+		err := ct.Options.K8sClient.CoreV1().Namespaces().Delete(ctx, appNamespace, metav1.DeleteOptions{})
+		if err != nil && !apierrors.IsNotFound(err) {
+			t.Logf("Warning: Failed to delete namespace %s: %v", appNamespace, err)
+		}
+	}
 
 	// Skip if the CI env vars needed by the bicep are missing (e.g. local runs
 	// without Azure credentials). The bicep template requires a real Azure
