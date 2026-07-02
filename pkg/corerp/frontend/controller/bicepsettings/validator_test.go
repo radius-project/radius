@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package bicepconfigs
+package bicepsettings
 
 import (
 	"context"
@@ -98,8 +98,8 @@ func TestValidateRequest(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			r := &datamodel.BicepConfig{
-				Properties: datamodel.BicepConfigResourceProperties{
+			r := &datamodel.BicepSettings{
+				Properties: datamodel.BicepSettingsResourceProperties{
 					RegistryAuthentications: tc.auths,
 				},
 			}

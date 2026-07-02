@@ -19,7 +19,7 @@ resource registrySecret 'Applications.Core/secretStores@2023-10-01-preview' = {
   }
 }
 
-resource bicepConfig 'Radius.Core/bicepConfigs@2025-08-01-preview' = {
+resource bicepSettings 'Radius.Core/bicepSettings@2025-08-01-preview' = {
   name: 'test-bicep-config'
   location: 'global'
   properties: {
@@ -41,7 +41,7 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
         namespace: 'bicepconfig-test-ns'
       }
     }
-    bicepConfig: bicepConfig.id
+    bicepSettings: bicepSettings.id
   }
 }
 

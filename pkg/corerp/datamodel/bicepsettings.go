@@ -20,23 +20,23 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
-const BicepConfigResourceType = "Radius.Core/bicepConfigs"
+const BicepSettingsResourceType = "Radius.Core/bicepSettings"
 
-// BicepConfig represents the Radius.Core/bicepConfigs resource.
-type BicepConfig struct {
+// BicepSettings represents the Radius.Core/bicepSettings resource.
+type BicepSettings struct {
 	v1.BaseResource
 
 	// Properties is the properties of the resource.
-	Properties BicepConfigResourceProperties `json:"properties"`
+	Properties BicepSettingsResourceProperties `json:"properties"`
 }
 
-// ResourceTypeName returns the resource type of the BicepConfig instance.
-func (r *BicepConfig) ResourceTypeName() string {
-	return BicepConfigResourceType
+// ResourceTypeName returns the resource type of the BicepSettings instance.
+func (r *BicepSettings) ResourceTypeName() string {
+	return BicepSettingsResourceType
 }
 
-// BicepConfigResourceProperties represents the properties of the Bicep config resource.
-type BicepConfigResourceProperties struct {
+// BicepSettingsResourceProperties represents the properties of the Bicep config resource.
+type BicepSettingsResourceProperties struct {
 	// RegistryAuthentications maps registry hostname (e.g. "corp.acr.io") to its
 	// authentication configuration. The Bicep driver looks up credentials by the
 	// host parsed from the recipe template path.
@@ -51,7 +51,8 @@ type BicepRegistryAuthentication struct {
 	// AuthenticationMethod is the method to use (BasicAuth, AzureWI, AwsIrsa).
 	AuthenticationMethod string `json:"authenticationMethod,omitempty"`
 
-	// BasicAuthSecretId is the ID of a SecretStore with username/password for BasicAuth.
+	// BasicAuthSecretId is the ID of a secret resource with username/password for BasicAuth.
+	// Supported types: Radius.Security/secrets or Applications.Core/secretStores.
 	BasicAuthSecretId string `json:"basicAuthSecretId,omitempty"`
 
 	// AzureWiClientId is the Azure Workload Identity client ID.

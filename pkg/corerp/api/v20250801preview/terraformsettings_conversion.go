@@ -22,9 +22,9 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 )
 
-// ConvertTo converts from the versioned TerraformConfig resource to version-agnostic datamodel.
-func (src *TerraformConfigResource) ConvertTo() (v1.DataModelInterface, error) {
-	converted := &datamodel.TerraformConfig{
+// ConvertTo converts from the versioned TerraformSettings resource to version-agnostic datamodel.
+func (src *TerraformSettingsResource) ConvertTo() (v1.DataModelInterface, error) {
+	converted := &datamodel.TerraformSettings{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
 				ID:       to.String(src.ID),
@@ -39,7 +39,7 @@ func (src *TerraformConfigResource) ConvertTo() (v1.DataModelInterface, error) {
 				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
-		Properties: datamodel.TerraformConfigResourceProperties{},
+		Properties: datamodel.TerraformSettingsResourceProperties{},
 	}
 
 	if src.Properties.Terraformrc != nil {
@@ -57,9 +57,9 @@ func (src *TerraformConfigResource) ConvertTo() (v1.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned TerraformConfig resource.
-func (dst *TerraformConfigResource) ConvertFrom(src v1.DataModelInterface) error {
-	tc, ok := src.(*datamodel.TerraformConfig)
+// ConvertFrom converts from version-agnostic datamodel to the versioned TerraformSettings resource.
+func (dst *TerraformSettingsResource) ConvertFrom(src v1.DataModelInterface) error {
+	tc, ok := src.(*datamodel.TerraformSettings)
 	if !ok {
 		return v1.ErrInvalidModelConversion
 	}
@@ -70,7 +70,7 @@ func (dst *TerraformConfigResource) ConvertFrom(src v1.DataModelInterface) error
 	dst.SystemData = fromSystemDataModel(&tc.SystemData)
 	dst.Location = &tc.Location
 	dst.Tags = *to.StringMapPtr(tc.Tags)
-	dst.Properties = &TerraformConfigProperties{
+	dst.Properties = &TerraformSettingsProperties{
 		ProvisioningState: fromProvisioningStateDataModel(tc.InternalMetadata.AsyncProvisioningState),
 	}
 

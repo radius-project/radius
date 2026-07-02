@@ -46,7 +46,7 @@
       "name": "Applications"
     },
     {
-      "name": "BicepConfigs"
+      "name": "BicepSettings"
     },
     {
       "name": "Environments"
@@ -55,7 +55,7 @@
       "name": "RecipePacks"
     },
     {
-      "name": "TerraformConfigs"
+      "name": "TerraformSettings"
     }
   ],
   "paths": {
@@ -343,13 +343,13 @@
         }
       }
     },
-    "/{rootScope}/providers/Radius.Core/bicepConfigs": {
+    "/{rootScope}/providers/Radius.Core/bicepSettings": {
       "get": {
-        "operationId": "BicepConfigs_ListByScope",
+        "operationId": "BicepSettings_ListByScope",
         "tags": [
-          "BicepConfigs"
+          "BicepSettings"
         ],
-        "description": "List BicepConfigResource resources by Scope",
+        "description": "List BicepSettingsResource resources by Scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -362,7 +362,7 @@
           "200": {
             "description": "Azure operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/BicepConfigResourceListResult"
+              "$ref": "#/definitions/BicepSettingsResourceListResult"
             }
           },
           "default": {
@@ -377,13 +377,13 @@
         }
       }
     },
-    "/{rootScope}/providers/Radius.Core/bicepConfigs/{bicepConfigName}": {
+    "/{rootScope}/providers/Radius.Core/bicepSettings/{bicepSettingsName}": {
       "get": {
-        "operationId": "BicepConfigs_Get",
+        "operationId": "BicepSettings_Get",
         "tags": [
-          "BicepConfigs"
+          "BicepSettings"
         ],
-        "description": "Get a BicepConfigResource",
+        "description": "Get a BicepSettingsResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -392,7 +392,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "bicepConfigName",
+            "name": "bicepSettingsName",
             "in": "path",
             "description": "Bicep configuration name",
             "required": true,
@@ -405,7 +405,7 @@
           "200": {
             "description": "Azure operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/BicepConfigResource"
+              "$ref": "#/definitions/BicepSettingsResource"
             }
           },
           "default": {
@@ -417,11 +417,11 @@
         }
       },
       "put": {
-        "operationId": "BicepConfigs_CreateOrUpdate",
+        "operationId": "BicepSettings_CreateOrUpdate",
         "tags": [
-          "BicepConfigs"
+          "BicepSettings"
         ],
-        "description": "Create a BicepConfigResource",
+        "description": "Create a BicepSettingsResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -430,7 +430,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "bicepConfigName",
+            "name": "bicepSettingsName",
             "in": "path",
             "description": "Bicep configuration name",
             "required": true,
@@ -444,21 +444,21 @@
             "description": "Resource create parameters.",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/BicepConfigResource"
+              "$ref": "#/definitions/BicepSettingsResource"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Resource 'BicepConfigResource' update operation succeeded",
+            "description": "Resource 'BicepSettingsResource' update operation succeeded",
             "schema": {
-              "$ref": "#/definitions/BicepConfigResource"
+              "$ref": "#/definitions/BicepSettingsResource"
             }
           },
           "201": {
-            "description": "Resource 'BicepConfigResource' create operation succeeded",
+            "description": "Resource 'BicepSettingsResource' create operation succeeded",
             "schema": {
-              "$ref": "#/definitions/BicepConfigResource"
+              "$ref": "#/definitions/BicepSettingsResource"
             }
           },
           "default": {
@@ -470,11 +470,11 @@
         }
       },
       "patch": {
-        "operationId": "BicepConfigs_Update",
+        "operationId": "BicepSettings_Update",
         "tags": [
-          "BicepConfigs"
+          "BicepSettings"
         ],
-        "description": "Update a BicepConfigResource",
+        "description": "Update a BicepSettingsResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -483,7 +483,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "bicepConfigName",
+            "name": "bicepSettingsName",
             "in": "path",
             "description": "Bicep configuration name",
             "required": true,
@@ -497,7 +497,7 @@
             "description": "The resource properties to be updated.",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/BicepConfigResourceUpdate"
+              "$ref": "#/definitions/BicepSettingsResourceUpdate"
             }
           }
         ],
@@ -505,7 +505,7 @@
           "200": {
             "description": "Azure operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/BicepConfigResource"
+              "$ref": "#/definitions/BicepSettingsResource"
             }
           },
           "default": {
@@ -517,11 +517,11 @@
         }
       },
       "delete": {
-        "operationId": "BicepConfigs_Delete",
+        "operationId": "BicepSettings_Delete",
         "tags": [
-          "BicepConfigs"
+          "BicepSettings"
         ],
-        "description": "Delete a BicepConfigResource",
+        "description": "Delete a BicepSettingsResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -530,7 +530,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "bicepConfigName",
+            "name": "bicepSettingsName",
             "in": "path",
             "description": "Bicep configuration name",
             "required": true,
@@ -1010,13 +1010,13 @@
         }
       }
     },
-    "/{rootScope}/providers/Radius.Core/terraformConfigs": {
+    "/{rootScope}/providers/Radius.Core/terraformSettings": {
       "get": {
-        "operationId": "TerraformConfigs_ListByScope",
+        "operationId": "TerraformSettings_ListByScope",
         "tags": [
-          "TerraformConfigs"
+          "TerraformSettings"
         ],
-        "description": "List TerraformConfigResource resources by Scope",
+        "description": "List TerraformSettingsResource resources by Scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -1029,7 +1029,7 @@
           "200": {
             "description": "Azure operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/TerraformConfigResourceListResult"
+              "$ref": "#/definitions/TerraformSettingsResourceListResult"
             }
           },
           "default": {
@@ -1044,13 +1044,13 @@
         }
       }
     },
-    "/{rootScope}/providers/Radius.Core/terraformConfigs/{terraformConfigName}": {
+    "/{rootScope}/providers/Radius.Core/terraformSettings/{terraformSettingsName}": {
       "get": {
-        "operationId": "TerraformConfigs_Get",
+        "operationId": "TerraformSettings_Get",
         "tags": [
-          "TerraformConfigs"
+          "TerraformSettings"
         ],
-        "description": "Get a TerraformConfigResource",
+        "description": "Get a TerraformSettingsResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -1059,7 +1059,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "terraformConfigName",
+            "name": "terraformSettingsName",
             "in": "path",
             "description": "Terraform configuration name",
             "required": true,
@@ -1072,7 +1072,7 @@
           "200": {
             "description": "Azure operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/TerraformConfigResource"
+              "$ref": "#/definitions/TerraformSettingsResource"
             }
           },
           "default": {
@@ -1084,11 +1084,11 @@
         }
       },
       "put": {
-        "operationId": "TerraformConfigs_CreateOrUpdate",
+        "operationId": "TerraformSettings_CreateOrUpdate",
         "tags": [
-          "TerraformConfigs"
+          "TerraformSettings"
         ],
-        "description": "Create a TerraformConfigResource",
+        "description": "Create a TerraformSettingsResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -1097,7 +1097,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "terraformConfigName",
+            "name": "terraformSettingsName",
             "in": "path",
             "description": "Terraform configuration name",
             "required": true,
@@ -1111,21 +1111,21 @@
             "description": "Resource create parameters.",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/TerraformConfigResource"
+              "$ref": "#/definitions/TerraformSettingsResource"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Resource 'TerraformConfigResource' update operation succeeded",
+            "description": "Resource 'TerraformSettingsResource' update operation succeeded",
             "schema": {
-              "$ref": "#/definitions/TerraformConfigResource"
+              "$ref": "#/definitions/TerraformSettingsResource"
             }
           },
           "201": {
-            "description": "Resource 'TerraformConfigResource' create operation succeeded",
+            "description": "Resource 'TerraformSettingsResource' create operation succeeded",
             "schema": {
-              "$ref": "#/definitions/TerraformConfigResource"
+              "$ref": "#/definitions/TerraformSettingsResource"
             }
           },
           "default": {
@@ -1137,11 +1137,11 @@
         }
       },
       "patch": {
-        "operationId": "TerraformConfigs_Update",
+        "operationId": "TerraformSettings_Update",
         "tags": [
-          "TerraformConfigs"
+          "TerraformSettings"
         ],
-        "description": "Update a TerraformConfigResource",
+        "description": "Update a TerraformSettingsResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -1150,7 +1150,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "terraformConfigName",
+            "name": "terraformSettingsName",
             "in": "path",
             "description": "Terraform configuration name",
             "required": true,
@@ -1164,7 +1164,7 @@
             "description": "The resource properties to be updated.",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/TerraformConfigResourceUpdate"
+              "$ref": "#/definitions/TerraformSettingsResourceUpdate"
             }
           }
         ],
@@ -1172,7 +1172,7 @@
           "200": {
             "description": "Azure operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/TerraformConfigResource"
+              "$ref": "#/definitions/TerraformSettingsResource"
             }
           },
           "default": {
@@ -1184,11 +1184,11 @@
         }
       },
       "delete": {
-        "operationId": "TerraformConfigs_Delete",
+        "operationId": "TerraformSettings_Delete",
         "tags": [
-          "TerraformConfigs"
+          "TerraformSettings"
         ],
-        "description": "Delete a TerraformConfigResource",
+        "description": "Delete a TerraformSettingsResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -1197,7 +1197,7 @@
             "$ref": "#/parameters/RootScopeParameter"
           },
           {
-            "name": "terraformConfigName",
+            "name": "terraformSettingsName",
             "in": "path",
             "description": "Terraform configuration name",
             "required": true,
@@ -1513,7 +1513,33 @@
         ]
       }
     },
-    "BicepConfigProperties": {
+    "BicepRegistryAuthentication": {
+      "type": "object",
+      "description": "Authentication configuration for a single private Bicep registry. When `authenticationMethod` is `BasicAuth`, `basicAuthSecretId` is required; the controller rejects configs that omit it.",
+      "properties": {
+        "authenticationMethod": {
+          "$ref": "#/definitions/BicepAuthenticationMethod",
+          "description": "The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa."
+        },
+        "basicAuthSecretId": {
+          "type": "string",
+          "description": "The ID of a secret resource containing username and password for BasicAuth. Supported types: Radius.Security/secrets (recommended) or Applications.Core/secretStores. Required when authenticationMethod is 'BasicAuth'."
+        },
+        "azureWiClientId": {
+          "type": "string",
+          "description": "Azure Workload Identity client ID. Required when authenticationMethod is 'AzureWI'."
+        },
+        "azureWiTenantId": {
+          "type": "string",
+          "description": "Azure Workload Identity tenant ID. Required when authenticationMethod is 'AzureWI'."
+        },
+        "awsIamRoleArn": {
+          "type": "string",
+          "description": "AWS IAM Role ARN for IRSA authentication. Required when authenticationMethod is 'AwsIrsa'."
+        }
+      }
+    },
+    "BicepSettingsProperties": {
       "type": "object",
       "description": "Bicep configuration properties.",
       "properties": {
@@ -1539,12 +1565,12 @@
         }
       }
     },
-    "BicepConfigResource": {
+    "BicepSettingsResource": {
       "type": "object",
       "description": "The Bicep configuration resource, providing reusable Bicep recipe settings for environments.",
       "properties": {
         "properties": {
-          "$ref": "#/definitions/BicepConfigProperties",
+          "$ref": "#/definitions/BicepSettingsProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
           "x-ms-mutability": [
@@ -1562,15 +1588,15 @@
         }
       ]
     },
-    "BicepConfigResourceListResult": {
+    "BicepSettingsResourceListResult": {
       "type": "object",
-      "description": "The response of a BicepConfigResource list operation.",
+      "description": "The response of a BicepSettingsResource list operation.",
       "properties": {
         "value": {
           "type": "array",
-          "description": "The BicepConfigResource items on this page",
+          "description": "The BicepSettingsResource items on this page",
           "items": {
-            "$ref": "#/definitions/BicepConfigResource"
+            "$ref": "#/definitions/BicepSettingsResource"
           }
         },
         "nextLink": {
@@ -1583,7 +1609,7 @@
         "value"
       ]
     },
-    "BicepConfigResourceUpdate": {
+    "BicepSettingsResourceUpdate": {
       "type": "object",
       "description": "The Bicep configuration resource, providing reusable Bicep recipe settings for environments.",
       "allOf": [
@@ -1591,32 +1617,6 @@
           "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
       ]
-    },
-    "BicepRegistryAuthentication": {
-      "type": "object",
-      "description": "Authentication configuration for a single private Bicep registry. When `authenticationMethod` is `BasicAuth`, `basicAuthSecretId` is required; the controller rejects configs that omit it.",
-      "properties": {
-        "authenticationMethod": {
-          "$ref": "#/definitions/BicepAuthenticationMethod",
-          "description": "The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa."
-        },
-        "basicAuthSecretId": {
-          "type": "string",
-          "description": "The ID of an Applications.Core/SecretStore resource containing username and password for BasicAuth. Required when authenticationMethod is 'BasicAuth'."
-        },
-        "azureWiClientId": {
-          "type": "string",
-          "description": "Azure Workload Identity client ID. Required when authenticationMethod is 'AzureWI'."
-        },
-        "azureWiTenantId": {
-          "type": "string",
-          "description": "Azure Workload Identity tenant ID. Required when authenticationMethod is 'AzureWI'."
-        },
-        "awsIamRoleArn": {
-          "type": "string",
-          "description": "AWS IAM Role ARN for IRSA authentication. Required when authenticationMethod is 'AwsIrsa'."
-        }
-      }
     },
     "Direction": {
       "type": "string",
@@ -1691,13 +1691,13 @@
           "$ref": "#/definitions/Providers",
           "description": "Cloud provider configuration for the environment."
         },
-        "terraformConfig": {
+        "terraformSettings": {
           "type": "string",
-          "description": "Resource ID of a Radius.Core/terraformConfigs resource providing Terraform recipe settings."
+          "description": "Resource ID of a Radius.Core/terraformSettings resource providing Terraform recipe settings."
         },
-        "bicepConfig": {
+        "bicepSettings": {
           "type": "string",
-          "description": "Resource ID of a Radius.Core/bicepConfigs resource providing Bicep recipe settings."
+          "description": "Resource ID of a Radius.Core/bicepSettings resource providing Bicep recipe settings."
         },
         "simulated": {
           "type": "boolean",
@@ -2184,96 +2184,13 @@
         }
       }
     },
-    "TerraformConfigProperties": {
-      "type": "object",
-      "description": "Terraform configuration properties.",
-      "properties": {
-        "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
-          "description": "The status of the asynchronous operation.",
-          "readOnly": true
-        },
-        "referencedBy": {
-          "type": "array",
-          "description": "Environments that reference this Terraform configuration.",
-          "items": {
-            "type": "string"
-          },
-          "readOnly": true
-        },
-        "terraformrc": {
-          "$ref": "#/definitions/TerraformrcConfig",
-          "description": "Terraform CLI configuration file settings. Maps directly to the Terraform CLI configuration file (.terraformrc)."
-        },
-        "env": {
-          "type": "object",
-          "description": "Environment variables injected during Terraform recipe execution.",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "TerraformConfigResource": {
-      "type": "object",
-      "description": "The Terraform configuration resource, providing reusable Terraform recipe settings for environments.",
-      "properties": {
-        "properties": {
-          "$ref": "#/definitions/TerraformConfigProperties",
-          "description": "The resource-specific properties for this resource.",
-          "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
-        }
-      },
-      "required": [
-        "properties"
-      ],
-      "allOf": [
-        {
-          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
-        }
-      ]
-    },
-    "TerraformConfigResourceListResult": {
-      "type": "object",
-      "description": "The response of a TerraformConfigResource list operation.",
-      "properties": {
-        "value": {
-          "type": "array",
-          "description": "The TerraformConfigResource items on this page",
-          "items": {
-            "$ref": "#/definitions/TerraformConfigResource"
-          }
-        },
-        "nextLink": {
-          "type": "string",
-          "format": "uri",
-          "description": "The link to the next page of items"
-        }
-      },
-      "required": [
-        "value"
-      ]
-    },
-    "TerraformConfigResourceUpdate": {
-      "type": "object",
-      "description": "The Terraform configuration resource, providing reusable Terraform recipe settings for environments.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
-        }
-      ]
-    },
     "TerraformCredentialConfig": {
       "type": "object",
       "description": "Credential configuration for a Terraform registry or module source host.",
       "properties": {
         "secret": {
           "type": "string",
-          "description": "The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret named 'token'."
+          "description": "The ID of a secret resource containing the authentication token. Supported types: Radius.Security/secrets (recommended) or Applications.Core/secretStores. The secret must have a key named 'token'."
         }
       }
     },
@@ -2334,6 +2251,89 @@
           }
         }
       }
+    },
+    "TerraformSettingsProperties": {
+      "type": "object",
+      "description": "Terraform configuration properties.",
+      "properties": {
+        "provisioningState": {
+          "$ref": "#/definitions/ProvisioningState",
+          "description": "The status of the asynchronous operation.",
+          "readOnly": true
+        },
+        "referencedBy": {
+          "type": "array",
+          "description": "Environments that reference this Terraform configuration.",
+          "items": {
+            "type": "string"
+          },
+          "readOnly": true
+        },
+        "terraformrc": {
+          "$ref": "#/definitions/TerraformrcConfig",
+          "description": "Terraform CLI configuration file settings. Maps directly to the Terraform CLI configuration file (.terraformrc)."
+        },
+        "env": {
+          "type": "object",
+          "description": "Environment variables injected during Terraform recipe execution.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "TerraformSettingsResource": {
+      "type": "object",
+      "description": "The Terraform configuration resource, providing reusable Terraform recipe settings for environments.",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/TerraformSettingsProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "required": [
+        "properties"
+      ],
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "TerraformSettingsResourceListResult": {
+      "type": "object",
+      "description": "The response of a TerraformSettingsResource list operation.",
+      "properties": {
+        "value": {
+          "type": "array",
+          "description": "The TerraformSettingsResource items on this page",
+          "items": {
+            "$ref": "#/definitions/TerraformSettingsResource"
+          }
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    "TerraformSettingsResourceUpdate": {
+      "type": "object",
+      "description": "The Terraform configuration resource, providing reusable Terraform recipe settings for environments.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
+        }
+      ]
     },
     "TerraformrcConfig": {
       "type": "object",
