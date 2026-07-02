@@ -382,7 +382,7 @@ jobs:
           allow-unsafe-pr-checkout: true
 
       - name: Setup Go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -619,7 +619,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04]
-        name: [corerp-cloud, ucp-cloud]
+        # TEMP: filtered to corerp-cloud only for PR validation of
+        # Test_RadiusCore_AzureMySql_PortalLink. Revert to
+        #   name: [corerp-cloud, ucp-cloud]
+        # before merging.
+        name: [corerp-cloud]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     permissions:
@@ -692,7 +696,7 @@ jobs:
           allow-unsafe-pr-checkout: true
 
       - name: Setup Go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -1009,7 +1013,11 @@ jobs:
           export AZURE_MSSQL_USERNAME="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_USERNAME')"
           export AZURE_MSSQL_PASSWORD="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_PASSWORD')"
 
-          make "test-functional-${MATRIX_NAME}"
+          # TEMP: filtered to Test_RadiusCore_AzureMySql_PortalLink only for
+          # PR validation. Revert to
+          #   make "test-functional-${MATRIX_NAME}"
+          # before merging.
+          make "test-functional-${MATRIX_NAME}" GOTEST_OPTS="-run ^Test_RadiusCore_AzureMySql_PortalLink$$"
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
