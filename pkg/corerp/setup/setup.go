@@ -305,11 +305,19 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 	})
 
 	_ = ns.AddResource("terraformSettings", &builder.ResourceOption[*datamodel.TerraformSettings, datamodel.TerraformSettings]{
+		// The builder derives the route parameter by trimming a trailing "s" (terraformSettings ->
+		// terraformSettingName), but the generated OpenAPI spec keeps the plural stem
+		// (terraformSettingsName). Override so the router route matches the spec path; otherwise API
+		// validation fails with "undefined route path".
+		ResourceParamName: "terraformSettingsName",
 		RequestConverter:  converter.TerraformSettingsDataModelFromVersioned,
 		ResponseConverter: converter.TerraformSettingsDataModelToVersioned,
 	})
 
 	_ = ns.AddResource("bicepSettings", &builder.ResourceOption[*datamodel.BicepSettings, datamodel.BicepSettings]{
+		// See the terraformSettings note above: keep the route parameter aligned with the generated
+		// OpenAPI spec path (bicepSettingsName) instead of the builder's trimmed default.
+		ResourceParamName: "bicepSettingsName",
 		RequestConverter:  converter.BicepSettingsDataModelFromVersioned,
 		ResponseConverter: converter.BicepSettingsDataModelToVersioned,
 
