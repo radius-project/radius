@@ -1,8 +1,8 @@
-# Reusable Terraform and Bicep Config for Radius.Core/environments
+# Reusable Terraform and Bicep Settings for Radius.Core/environments
 
 ## Summary
 
-Add `Radius.Core/terraformConfig` and `Radius.Core/bicepConfig` as standalone
+Add `Radius.Core/terraformSettings` and `Radius.Core/bicepSettings` as standalone
 Radius resources. Environments reference them by resource ID. This lets platform
 teams define private registry authentication, provider configuration, and
 environment variables once and share them across multiple environments.
@@ -25,9 +25,9 @@ one.
 
 Two new resources in the `Radius.Core` namespace:
 
-```
-Radius.Core/terraformConfig   (CRUD, resource-group scoped)
-Radius.Core/bicepConfig        (CRUD, resource-group scoped)
+```text
+Radius.Core/terraformSettings   (CRUD, resource-group scoped)
+Radius.Core/bicepSettings        (CRUD, resource-group scoped)
 ```
 
 ### Environment references
@@ -38,15 +38,15 @@ Radius.Core/bicepConfig        (CRUD, resource-group scoped)
 model EnvironmentProperties {
   // ...existing fields (recipePacks, recipeParameters, providers, simulated)...
 
-  @doc("Resource ID of a Radius.Core/terraformConfig providing Terraform recipe settings.")
-  terraformConfig?: string;
+  @doc("Resource ID of a Radius.Core/terraformSettings providing Terraform recipe settings.")
+  terraformSettings?: string;
 
-  @doc("Resource ID of a Radius.Core/bicepConfig providing Bicep recipe settings.")
-  bicepConfig?: string;
+  @doc("Resource ID of a Radius.Core/bicepSettings providing Bicep recipe settings.")
+  bicepSettings?: string;
 }
 ```
 
-### TerraformConfig shape
+### TerraformSettings shape
 
 Follows the schema from the [feature spec](https://github.com/radius-project/design-notes/pull/107).
 The `terraformrc` property holds **structured properties that Radius uses to
@@ -62,15 +62,15 @@ See [Why generate, not consume](#why-generate-not-consume) below for the
 rationale.
 
 ```typespec
-model TerraformConfigResource
-  is TrackedResourceRequired<TerraformConfigProperties, "terraformConfigs"> {
-  @key("terraformConfigName")
+model TerraformSettingsResource
+  is TrackedResourceRequired<TerraformSettingsProperties, "terraformSettings"> {
+  @key("terraformSettingsName")
   @path
-  @segment("terraformConfigs")
+  @segment("terraformSettings")
   name: ResourceNameString;
 }
 
-model TerraformConfigProperties {
+model TerraformSettingsProperties {
   provisioningState?: ProvisioningState;
   referencedBy?: string[];
 
@@ -95,7 +95,7 @@ include/exclude), `TerraformProviderMirror` (url, include, exclude),
 ### Why generate, not consume
 
 Radius does not accept user-authored `.terraformrc` content. Instead, the
-user expresses intent through typed properties on `terraformConfig`, and
+user expresses intent through typed properties on `terraformSettings`, and
 Radius renders the file. This:
 
 - Avoids parsing, validating, or migrating arbitrary HCL the user might author.
@@ -115,22 +115,22 @@ scope for this design) include a `rawTerraformrc?: string` field for opaque
 content or a `terraformrcSecretId?: string` reference if the content needs
 to carry secrets.
 
-### BicepConfig shape
+### BicepSettings shape
 
 Follows the schema from the feature spec. Uses a structured `registryAuthentication`
 property supporting three authentication methods (BasicAuth, AzureWI, AwsIrsa)
 with first-class properties for non-secret identity values.
 
 ```typespec
-model BicepConfigResource
-  is TrackedResourceRequired<BicepConfigProperties, "bicepConfigs"> {
-  @key("bicepConfigName")
+model BicepSettingsResource
+  is TrackedResourceRequired<BicepSettingsProperties, "bicepSettings"> {
+  @key("bicepSettingsName")
   @path
-  @segment("bicepConfigs")
+  @segment("bicepSettings")
   name: ResourceNameString;
 }
 
-model BicepConfigProperties {
+model BicepSettingsProperties {
   provisioningState?: ProvisioningState;
   referencedBy?: string[];
 
@@ -156,8 +156,8 @@ graph LR
     end
 
     subgraph Radius.Core Resources
-        TC["terraformConfig"]
-        BC["bicepConfig"]
+        TC["terraformSettings"]
+        BC["bicepSettings"]
         ENV["environments"]
     end
 
@@ -168,17 +168,17 @@ graph LR
     B -->|create| TC
     B -->|create| BC
     B -->|"create (refs TC, BC)"| ENV
-    ENV -->|resolve terraformConfig ID| TC
-    ENV -->|resolve bicepConfig ID| BC
+    ENV -->|resolve terraformSettings ID| TC
+    ENV -->|resolve bicepSettings ID| BC
     DRIVER -->|"reads config at execution time"| TC
     DRIVER -->|"reads config at execution time"| BC
 ```
 
 ### Runtime flow
 
-1. Platform team deploys `terraformConfig` and/or `bicepConfig` resources.
+1. Platform team deploys `terraformSettings` and/or `bicepSettings` resources.
 2. Platform team deploys an `environment` referencing them by resource ID.
-3. Environment controller validates the referenced config resources exist
+3. Environment controller validates the referenced settings resources exist
    at PUT time and returns `400 Bad Request` if not.
 4. At recipe execution time, the configuration loader fetches the referenced
    config resources and populates `recipes.Configuration.RecipeConfig`. The
@@ -200,7 +200,7 @@ graph LR
 ### Example usage
 
 ```bicep
-resource tfConfig 'Radius.Core/terraformConfigs@2025-08-01-preview' = {
+resource tfConfig 'Radius.Core/terraformSettings@2025-08-01-preview' = {
   name: 'corp-terraform'
   properties: {
     terraformrc: {
@@ -227,7 +227,7 @@ resource tfConfig 'Radius.Core/terraformConfigs@2025-08-01-preview' = {
   }
 }
 
-resource bicepConfig 'Radius.Core/bicepConfigs@2025-08-01-preview' = {
+resource bicepConfig 'Radius.Core/bicepSettings@2025-08-01-preview' = {
   name: 'corp-bicep'
   properties: {
     registryAuthentications: {
@@ -251,8 +251,8 @@ resource prodEnv 'Radius.Core/environments@2025-08-01-preview' = {
       }
     }
     recipePacks: [recipePack.id]
-    terraformConfig: tfConfig.id
-    bicepConfig: bicepConfig.id
+    terraformSettings: tfConfig.id
+    bicepSettings: bicepConfig.id
   }
 }
 
@@ -268,8 +268,8 @@ resource stagingEnv 'Radius.Core/environments@2025-08-01-preview' = {
       }
     }
     recipePacks: [recipePack.id]
-    terraformConfig: tfConfig.id    // same config, reused
-    bicepConfig: bicepConfig.id     // same config, reused
+    terraformSettings: tfConfig.id    // same config, reused
+    bicepSettings: bicepConfig.id     // same config, reused
   }
 }
 ```
@@ -277,15 +277,14 @@ resource stagingEnv 'Radius.Core/environments@2025-08-01-preview' = {
 ## What is excluded
 
 | Concern | Status | Rationale |
-|---|---|---|
+| --- | --- | --- |
 | Terraform binary lifecycle (`rad terraform install`) | Deferred | Orthogonal to registry config. Current init-container approach works. |
 | Installer async pipeline / queue worker | Deferred | Only needed for binary lifecycle. |
 | Shared PVC with ReadWriteMany | Deferred | Only needed for binary lifecycle. |
 | Backend config (S3, AzureRM state stores) | Deferred | Separate concern, not required for private registries. |
 | Migration tooling for `Applications.Core` `recipeConfig` | Not needed | `Applications.Core/environments` continues working as-is. |
-| `terraformSettings` / `bicepSettings` as designed in design-notes #117 | Replaced | This design achieves the same reusability goal with less complexity. |
-| Legacy `providers` on TerraformConfig | Not carried forward | Per spec, provider secrets should flow via recipe parameters. |
-| Legacy `envSecrets` on TerraformConfig | Not carried forward | Per spec, replaced with recipe parameters. |
+| Legacy `providers` on TerraformSettings | Not carried forward | Per spec, provider secrets should flow via recipe parameters. |
+| Legacy `envSecrets` on TerraformSettings | Not carried forward | Per spec, replaced with recipe parameters. |
 
 ## Compatibility
 
@@ -298,23 +297,25 @@ resource stagingEnv 'Radius.Core/environments@2025-08-01-preview' = {
   through the same internal shape, so the drivers do not need to know which
   namespace the environment came from.
 - A new optional `ProviderInstallation` field was added to the shared
-  `TerraformConfigProperties` datamodel. The `Applications.Core` path leaves
-  it nil, so the Terraform driver behavior is unchanged for existing users.
+  `TerraformConfigProperties` datamodel (the internal transport type consumed
+  by the shared drivers, distinct from the new `TerraformSettings` resource).
+  The `Applications.Core` path leaves it nil, so the Terraform driver behavior
+  is unchanged for existing users.
 
 ## Code map
 
-- `typespec/Radius.Core/terraformConfigs.tsp`,
-  `typespec/Radius.Core/bicepConfigs.tsp` — resource definitions.
-- `typespec/Radius.Core/environments.tsp` — adds `terraformConfig?` and
-  `bicepConfig?` properties.
+- `typespec/Radius.Core/terraformSettings.tsp`,
+  `typespec/Radius.Core/bicepSettings.tsp` — resource definitions.
+- `typespec/Radius.Core/environments.tsp` — adds `terraformSettings?` and
+  `bicepSettings?` properties.
 - `swagger/specification/radius/resource-manager/Radius.Core/preview/2025-08-01-preview/openapi.json`
   and `pkg/corerp/api/v20250801preview/zz_generated_*` — regenerated SDK.
-- `pkg/corerp/datamodel/terraformconfig.go`,
-  `pkg/corerp/datamodel/bicepconfig.go` — datamodels.
-- `pkg/corerp/api/v20250801preview/terraformconfig_conversion.go`,
-  `bicepconfig_conversion.go` — bidirectional converters.
-- `pkg/corerp/datamodel/converter/terraformconfig_converter.go`,
-  `bicepconfig_converter.go` — versioned converter wiring.
+- `pkg/corerp/datamodel/terraformsettings.go`,
+  `pkg/corerp/datamodel/bicepsettings.go` — datamodels.
+- `pkg/corerp/api/v20250801preview/terraformsettings_conversion.go`,
+  `bicepsettings_conversion.go` — bidirectional converters.
+- `pkg/corerp/datamodel/converter/terraformsettings_converter.go`,
+  `bicepsettings_converter.go` — versioned converter wiring.
 - `pkg/corerp/setup/setup.go` — registers CRUD routes for both resources.
 - `pkg/corerp/setup/operations.go` — RBAC operation entries
   (read/write/delete) for both resource types.
@@ -324,8 +325,8 @@ resource stagingEnv 'Radius.Core/environments@2025-08-01-preview' = {
   routes exist but UCP rejects requests with `BadRequest: resource type not
   found`.
 - `pkg/corerp/frontend/controller/environments/v20250801preview/createorupdateenvironment.go` —
-  PUT-time validation of referenced config IDs.
-- `pkg/recipes/configloader/environment.go` — resolves config resources and
+  PUT-time validation of referenced settings IDs.
+- `pkg/recipes/configloader/environment.go` — resolves settings resources and
   bridges them into the shared `RecipeConfig` shape.
 - `pkg/corerp/datamodel/recipe_types.go` — adds optional `ProviderInstallation`
   to `TerraformConfigProperties` for the shared driver.
@@ -338,11 +339,11 @@ resource stagingEnv 'Radius.Core/environments@2025-08-01-preview' = {
 - `pkg/recipes/driver/terraform/terraform.go` — `FindSecretIDs` reports
   credentials secret stores (with the `token` key) so the engine fetches them
   before the driver runs.
-- `pkg/corerp/frontend/controller/bicepconfigs/validator.go` — enforces the
+- `pkg/corerp/frontend/controller/bicepsettings/validator.go` — enforces the
   conditional-required-field rule that, for example, `BasicAuth` requires
   `basicAuthSecretId`. TypeSpec cannot express this without a discriminated
   union restructure, so it lives here.
-- `test/functional-portable/dynamicrp/noncloud/resources/terraformconfig_bicepconfig_test.go` —
+- `test/functional-portable/dynamicrp/noncloud/resources/terraformsettings_bicepsettings_test.go` —
   functional tests for CRUD wiring and the combined Terraform+Bicep flow.
 
 ## Status and known limitations
@@ -369,4 +370,4 @@ end, and are tracked as follow-ups:
   (rendered as native `credentials "host" {}` blocks with a `token` value);
   it does not cover Git module source PAT authentication, which today is
   available only via the legacy `Applications.Core` `recipeConfig` path. A
-  separate property on `terraformConfig` for Git auth is a follow-up.
+  separate property on `terraformSettings` for Git auth is a follow-up.

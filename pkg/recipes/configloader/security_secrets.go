@@ -150,7 +150,9 @@ func findKubernetesSecretOutputResource(properties map[string]any) (namespace st
 		if kindLower != "secret" && kindLower != "secretv1" {
 			continue
 		}
-		if n == "" {
+		// Skip malformed or cluster-scoped entries with no namespace/name so the search continues
+		// for a valid namespaced Secret rather than issuing a GET against an empty namespace.
+		if ns == "" || n == "" {
 			continue
 		}
 

@@ -125,6 +125,19 @@ func Test_findKubernetesSecretOutputResource(t *testing.T) {
 			expectedNamespace: "app-ns",
 			expectedName:      "my-secret",
 		},
+		{
+			name: "skips cluster-scoped secret with empty namespace and continues to namespaced secret",
+			properties: map[string]any{
+				"status": map[string]any{
+					"outputResources": []any{
+						map[string]any{"id": "/planes/kubernetes/local/providers/core/Secret/cluster-secret"},
+						map[string]any{"id": secretID},
+					},
+				},
+			},
+			expectedNamespace: "app-ns",
+			expectedName:      "my-secret",
+		},
 	}
 
 	for _, tt := range tests {

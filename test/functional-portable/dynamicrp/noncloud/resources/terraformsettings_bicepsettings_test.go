@@ -31,7 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Test_TerraformSettings_Redis tests that a Radius.Core/terraformSettingss resource can be created
+// Test_TerraformSettings_Redis tests that a Radius.Core/terraformSettings resource can be created
 // and referenced by an environment to provide Terraform recipe configuration (env vars).
 // This test deploys a Terraform recipe (Redis on Kubernetes) via the new config resource path.
 func Test_TerraformSettings_Redis(t *testing.T) {
@@ -92,7 +92,7 @@ func Test_TerraformSettings_Redis(t *testing.T) {
 	test.Test(t)
 }
 
-// Test_BicepSettings_CRUD tests that a Radius.Core/bicepSettingss resource can be created
+// Test_BicepSettings_CRUD tests that a Radius.Core/bicepSettings resource can be created
 // and referenced by an environment. This validates the CRUD path and environment wiring
 // without requiring a private registry.
 func Test_BicepSettings_CRUD(t *testing.T) {
@@ -149,7 +149,7 @@ func Test_BicepSettings_CRUD(t *testing.T) {
 }
 
 // Test_TerraformSettings_SecuritySecret_Credentials regression-tests issue #12122: a
-// Radius.Core/terraformSettingss resource must accept a Radius.Security/secrets reference for
+// Radius.Core/terraformSettings resource must accept a Radius.Security/secrets reference for
 // registry credentials, not only Applications.Core/secretStores.
 //
 // The test provisions a Radius.Security/secrets resource (whose Kubernetes recipe materializes a
@@ -230,8 +230,8 @@ func Test_TerraformSettings_SecuritySecret_Credentials(t *testing.T) {
 }
 
 // Test_TerraformSettings_BicepSettings_Combined deploys an environment that references
-// both a Radius.Core/terraformSettingss resource (with terraformrc.providerInstallation
-// and env vars) and a Radius.Core/bicepSettingss resource. It runs a Terraform recipe
+// both a Radius.Core/terraformSettings resource (with terraformrc.providerInstallation
+// and env vars) and a Radius.Core/bicepSettings resource. It runs a Terraform recipe
 // end-to-end to prove that:
 //
 //  1. The environment controller validates and resolves both config refs.

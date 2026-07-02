@@ -517,7 +517,7 @@ up before the Radius resource record is removed.
 - [ucp.md](ucp.md) — UCP request routing and the proxy controller.
 - [deployment-engine.md](deployment-engine.md) — what the bicep driver hands
   templates to.
-- [terraform-bicep-config.md](terraform-bicep-config.md) — environment-level
+- [terraform-bicep-settings.md](terraform-bicep-settings.md) — environment-level
   recipe configuration (private registries, provider installation, env vars).
 - [state-persistence.md](state-persistence.md) — where resource and recipe
   state lives.
