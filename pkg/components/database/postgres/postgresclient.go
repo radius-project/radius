@@ -226,11 +226,11 @@ func (p *PostgresClient) Query(ctx context.Context, query database.Query, option
 	// If you need to work on this code MAKE SURE you use SQL parameters
 	// for any user input.
 	sql := `
-SELECT original_id, etag, resource_data, created_at
+SELECT original_id, etag, resource_data, created_at 
 FROM resources
-WHERE ((root_scope = $1) OR ($2 AND (root_scope LIKE $1 || '%'))) AND
-	resource_type = $3 AND
-	((routing_scope LIKE $4 || '%') OR $4 IS NULL) AND
+WHERE ((root_scope = $1) OR ($2 AND (root_scope LIKE $1 || '%'))) AND 
+	resource_type = $3 AND 
+	((routing_scope LIKE $4 || '%') OR $4 IS NULL) AND 
 	(created_at > $5::TIMESTAMP OR $5 IS NULL)
 ORDER BY created_at ASC
 LIMIT $6`
@@ -343,8 +343,8 @@ func (p *PostgresClient) Save(ctx context.Context, obj *database.Object, options
 WITH updated AS (
 	INSERT INTO resources (id, original_id, resource_type, root_scope, routing_scope, etag, resource_data)
 	VALUES ($1, $2, $3, $4, $5, $6, $7)
-	ON CONFLICT (id)
-	DO UPDATE SET resource_data = $7, etag = $6
+	ON CONFLICT (id) 
+	DO UPDATE SET resource_data = $7
 	RETURNING id
 )
 SELECT
@@ -369,7 +369,7 @@ END AS result;`
 		// NOTE: we want to report ErrConcurrency for all failure cases here. This is what the tests do.
 		sql = `
 WITH updated AS (
-	UPDATE resources SET resource_data = $2, etag = $4
+	UPDATE resources SET resource_data = $2
 	WHERE id = $1 AND etag = $3
 	RETURNING id
 )
@@ -380,7 +380,7 @@ CASE
 	ELSE 'ErrConcurrency'
 END AS result;`
 
-		args = []any{databaseutil.NormalizePart(converted.String()), obj.Data, config.ETag, obj.ETag}
+		args = []any{databaseutil.NormalizePart(converted.String()), obj.Data, config.ETag}
 	}
 
 	result := ""
