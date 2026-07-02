@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/dynamicrp/secretsloader"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
@@ -38,6 +39,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/sdk/clients"
+	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	ucpconfig "github.com/radius-project/radius/pkg/ucp/config"
 	sdk_cred "github.com/radius-project/radius/pkg/ucp/credentials"
 )
@@ -119,7 +121,17 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 	}
 
 	options.Recipes.ConfigurationLoader = configloader.NewEnvironmentLoader(sdk.NewClientOptions(options.UCP))
-	options.Recipes.SecretsLoader = configloader.NewSecretStoreLoader(sdk.NewClientOptions(options.UCP))
+
+	// The dispatching loader resolves Radius.Security/secrets resources by decrypting the value retained
+	// (encrypted) in the Radius store using the control-plane key, which is multi-cluster safe. It falls
+	// back to reading the backing Kubernetes Secret for secrets created before retain landed, and delegates
+	// other secret store types to the default Applications.Core/secretStores loader.
+	ucpClient, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, sdk.NewClientOptions(options.UCP))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create UCP client for secrets loader: %w", err)
+	}
+	storeLoader := configloader.NewSecretStoreLoader(sdk.NewClientOptions(options.UCP))
+	options.Recipes.SecretsLoader = secretsloader.NewDispatchingLoader(storeLoader, databaseClient, options.KubernetesProvider, ucpClient)
 
 	// If this is set to nil, then the service will use the default recipe drivers.
 	//

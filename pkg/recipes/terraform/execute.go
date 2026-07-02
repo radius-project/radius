@@ -371,6 +371,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		//update the recipe context with connected resources properties
 		if options.ResourceRecipe != nil {
 			recipectx.Resource.Connections = options.ResourceRecipe.ConnectedResourcesProperties
+			recipectx.Resource.Secrets = options.ResourceRecipe.Secrets
 		}
 
 		if err = tfConfig.AddRecipeContext(ctx, options.EnvRecipe.Name, recipectx); err != nil {
@@ -388,6 +389,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 
 		if options.ResourceRecipe != nil {
 			recipectx.Resource.Connections = options.ResourceRecipe.ConnectedResourcesProperties
+			recipectx.Resource.Secrets = options.ResourceRecipe.Secrets
 		}
 
 		// Merge environment-level and resource-level parameters (resource parameters take precedence),
@@ -397,9 +399,14 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 			resourceParams = options.ResourceRecipe.Parameters
 		}
 		mergedParams := recipes_util.ShallowMergeParameters(options.EnvRecipe.Parameters, resourceParams)
-		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipectx)
-		if resolvedParams != nil {
-			tfConfig.Module[options.EnvRecipe.Name].SetParams(config.RecipeParams(resolvedParams))
+		resolved, err := paramresolver.ResolveParameterExpressions(mergedParams, recipectx)
+		if err != nil {
+			return "", err
+		}
+		if resolved.Values != nil {
+			// Secret-sourced parameters (resolved.SecureKeys) are routed through sensitive Terraform
+			// variables so their values are redacted from plan/apply output.
+			tfConfig.SetModuleParams(options.EnvRecipe.Name, config.RecipeParams(resolved.Values), resolved.SecureKeys)
 		}
 	}
 	if loadedModule.ResultOutputExists {

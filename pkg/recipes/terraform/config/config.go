@@ -199,6 +199,60 @@ func (cfg *TerraformConfig) AddRecipeContext(ctx context.Context, moduleName str
 	return nil
 }
 
+// SetModuleParams sets the resolved recipe parameters on the named module, routing any parameter named
+// in secureKeys through a Terraform input variable marked sensitive = true. The module argument then
+// references that variable (${var.<name>}) so Terraform redacts the value from plan/apply output.
+// Non-secure parameters are set inline. Nil values are skipped so a module variable's default is not
+// overridden with an explicit null.
+func (cfg *TerraformConfig) SetModuleParams(moduleName string, params RecipeParams, secureKeys map[string]bool) {
+	mod, ok := cfg.Module[moduleName]
+	if !ok {
+		return
+	}
+
+	for k, v := range params {
+		if v == nil {
+			continue
+		}
+
+		if secureKeys[k] {
+			varName := secureVariableName(moduleName, k)
+			if cfg.Variable == nil {
+				cfg.Variable = map[string]any{}
+			}
+			cfg.Variable[varName] = map[string]any{
+				"type":      "string",
+				"sensitive": true,
+				"default":   v,
+			}
+			mod[k] = fmt.Sprintf("${var.%s}", varName)
+			continue
+		}
+
+		mod[k] = v
+	}
+}
+
+// secureVariableName builds a deterministic, valid Terraform identifier for the sensitive variable that
+// backs a secret-sourced module parameter, namespaced by module and parameter name to avoid collisions.
+func secureVariableName(moduleName, paramKey string) string {
+	return "radius_secret_" + sanitizeTerraformIdentifier(moduleName) + "_" + sanitizeTerraformIdentifier(paramKey)
+}
+
+// sanitizeTerraformIdentifier replaces any character that is not a letter, digit, or underscore with an
+// underscore so the result is a valid Terraform identifier component.
+func sanitizeTerraformIdentifier(s string) string {
+	out := make([]rune, 0, len(s))
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
+			out = append(out, r)
+		} else {
+			out = append(out, '_')
+		}
+	}
+	return string(out)
+}
+
 // newModuleConfig creates a new TFModuleConfig object with the given module source and version
 // and also populates RecipeParams in TF module config. If same parameter key exists across params
 // then the last map specified gets precedence.

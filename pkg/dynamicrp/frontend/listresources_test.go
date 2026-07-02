@@ -119,7 +119,8 @@ func TestListResourcesWithRedaction_SucceededResourcesNotRedacted(t *testing.T) 
 			Items: []database.Object{*rpctest.FakeStoreObject(resource)},
 		}, nil)
 
-	// Schema should NOT be fetched for Succeeded resources
+	// A sensitive-only field (no x-radius-retain) is not redacted at Succeeded: the backend already
+	// redacted it to nil at rest. The schema is still fetched to look for retain fields.
 	ucpClient, err := testUCPClientFactoryWithSensitiveFields()
 	require.NoError(t, err)
 
@@ -140,6 +141,62 @@ func TestListResourcesWithRedaction_SucceededResourcesNotRedacted(t *testing.T) 
 	paginatedList, ok := paginatedResp.Body.(*v1.PaginatedList)
 	require.True(t, ok)
 	require.Len(t, paginatedList.Value, 1)
+}
+
+func TestListResourcesWithRedaction_SucceededRedactsRetainOnly(t *testing.T) {
+	// At Succeeded a retain field still holds ciphertext and must be redacted on read, while a
+	// sensitive-only field (already nil at rest) is returned as-is. This proves LIST no longer blanket-
+	// skips redaction for Succeeded items.
+	mctrl := gomock.NewController(t)
+	defer mctrl.Finish()
+
+	resource := newTestDynamicResource(
+		testResourceID,
+		"myResource",
+		v1.ProvisioningStateSucceeded,
+		map[string]any{
+			"name":     "test",
+			"password": "still-encrypted",
+			"apikey":   "already-nil-at-rest",
+		},
+	)
+
+	databaseClient := database.NewMockClient(mctrl)
+	databaseClient.EXPECT().
+		Query(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(&database.ObjectQueryResult{
+			Items: []database.Object{*rpctest.FakeStoreObject(resource)},
+		}, nil)
+
+	ucpClient, err := testUCPClientFactoryWithRetainFields()
+	require.NoError(t, err)
+
+	c := newTestListController(t, databaseClient, ucpClient)
+
+	req, err := http.NewRequest(http.MethodGet, testListURL, nil)
+	require.NoError(t, err)
+	ctx := rpctest.NewARMRequestContext(req)
+	w := httptest.NewRecorder()
+
+	resp, err := c.Run(ctx, w, req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	paginatedResp, ok := resp.(*rest.OKResponse)
+	require.True(t, ok)
+	paginatedList, ok := paginatedResp.Body.(*v1.PaginatedList)
+	require.True(t, ok)
+	require.Len(t, paginatedList.Value, 1)
+
+	// Inspect the returned item's properties via a JSON round-trip.
+	itemBytes, err := json.Marshal(paginatedList.Value[0])
+	require.NoError(t, err)
+	var item map[string]any
+	require.NoError(t, json.Unmarshal(itemBytes, &item))
+	properties, ok := item["properties"].(map[string]any)
+	require.True(t, ok)
+	require.Nil(t, properties["password"])
+	require.Equal(t, "already-nil-at-rest", properties["apikey"])
 }
 
 func TestListResourcesWithRedaction_NonSucceededResourcesRedacted(t *testing.T) {

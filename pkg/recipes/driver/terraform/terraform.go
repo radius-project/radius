@@ -121,7 +121,7 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	recipeOutputs, err := d.prepareRecipeResponse(ctx, opts.BaseOptions.Definition, opts.Configuration, tfState)
+	recipeOutputs, err := d.prepareRecipeResponse(ctx, opts.BaseOptions.Definition, opts.BaseOptions.Recipe.SecretBindings, opts.Configuration, tfState)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
@@ -187,7 +187,7 @@ func (d *terraformDriver) Delete(ctx context.Context, opts driver.DeleteOptions)
 //   - If no `outputs` mapping exists and the module has a `result` output, the module is treated as a
 //     wrapped recipe (existing behavior).
 //   - If neither is present, all module outputs pass through unchanged.
-func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition recipes.EnvironmentDefinition, configuration recipes.Configuration, tfState *tfjson.State) (*recipes.RecipeOutput, error) {
+func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition recipes.EnvironmentDefinition, secretBindings []string, configuration recipes.Configuration, tfState *tfjson.State) (*recipes.RecipeOutput, error) {
 	// We need to use reflect.DeepEqual to compare the struct that has a slice with an empty struct.
 	// The reason is that Go does not allow comparison of structs that contain slices.
 	// Please see: https://go.dev/ref/spec#Comparison_operators.
@@ -218,6 +218,25 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 			values, secrets := collectFlatOutputs(moduleOutputs)
 			recipeResponse.Values = values
 			recipeResponse.Secrets = secrets
+		}
+
+		// Resolve any declared secretOutputs into write-back instructions using the raw module outputs
+		// (before an outputs mapping is applied, which keeps only mapped outputs and would drop a secure
+		// output routed solely into a secret). The resource controller applies these, writing the secure
+		// module outputs back into the developer-authored Radius.Security/secrets resources bound to the
+		// resource. Consumed outputs are removed from the plain response so a value written into a secret
+		// is not also surfaced as a plain value or recipe secret.
+		if len(definition.SecretOutputs) > 0 {
+			rawValues, rawSecrets := collectFlatOutputs(moduleOutputs)
+			writeBacks, consumed, err := recipes.ResolveSecretWriteBacks(rawValues, rawSecrets, definition.SecretOutputs, secretBindings)
+			if err != nil {
+				return &recipes.RecipeOutput{}, err
+			}
+			recipeResponse.SecretWriteBacks = writeBacks
+			for outputName := range consumed {
+				delete(recipeResponse.Values, outputName)
+				delete(recipeResponse.Secrets, outputName)
+			}
 		}
 	}
 

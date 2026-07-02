@@ -19,6 +19,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/radius-project/radius/pkg/components/metrics"
@@ -27,6 +28,7 @@ import (
 	recipedriver "github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/util"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -94,6 +96,26 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 	secrets, err := e.getRecipeConfigSecrets(ctx, driver, configuration, definition)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	// Enrich secret-typed connections with their secret material so recipe parameter expressions
+	// (context.resource.connections.<name>.secrets.<key>) can resolve developer-authored secrets.
+	e.enrichConnectionSecrets(ctx, &recipe)
+
+	// Enrich x-radius-secret-reference properties with their referenced secret material so recipe
+	// parameter expressions (context.resource.secrets.<key>) can resolve developer-authored secrets.
+	// Unlike connection enrichment, this is fail-closed: a referenced secret that cannot be loaded fails
+	// the deployment rather than passing an unresolved expression (a literal placeholder) to the module.
+	if err := e.enrichSecretReferences(ctx, &recipe); err != nil {
+		return nil, definition, recipes.NewRecipeError(recipes.RecipeConfigurationFailure, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
+	}
+
+	// Enrich x-radius-secret-binding properties with their bound secret material so recipe parameter
+	// expressions (context.resource.secrets.<secretName>.<key>) can resolve developer-authored secrets. Like
+	// enrichSecretReferences, this is fail-closed: a bound secret that cannot be loaded fails the deployment
+	// rather than passing an unresolved expression (a literal placeholder) to the module.
+	if err := e.enrichSecretBindings(ctx, &recipe); err != nil {
+		return nil, definition, recipes.NewRecipeError(recipes.RecipeConfigurationFailure, err.Error(), util.RecipeSetupError, recipes.GetErrorDetails(err))
 	}
 
 	res, err := driver.Execute(ctx, recipedriver.ExecuteOptions{
@@ -246,4 +268,156 @@ func (e *engine) getRecipeConfigSecrets(ctx context.Context, driver recipedriver
 	}
 
 	return secretData, nil
+}
+
+// secretConnectionTypes is the set of connected-resource types whose values are sourced from the secret
+// store rather than from non-secret properties.
+var secretConnectionTypes = map[string]bool{
+	"applications.core/secretstores": true,
+	"radius.security/secrets":        true,
+}
+
+// isSecretConnectionType reports whether a connected resource's type is a secret-typed resource.
+func isSecretConnectionType(resourceType string) bool {
+	return secretConnectionTypes[strings.ToLower(resourceType)]
+}
+
+// enrichConnectionSecrets loads secret material for secret-typed connected resources through the secret
+// store and stores it on each connection's tainted Secrets field, so the parameter resolver can inject
+// developer-authored secrets into module parameters. Enrichment is best-effort: if the secrets loader is
+// unavailable or a secret cannot be loaded, the connection is left without secret data and any recipe
+// expression that references it is left unresolved (consistent with other unresolved expressions) rather
+// than failing the deployment.
+func (e *engine) enrichConnectionSecrets(ctx context.Context, recipe *recipes.ResourceMetadata) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+	if e.options.SecretsLoader == nil || recipe == nil {
+		return
+	}
+
+	for name, conn := range recipe.ConnectedResourcesProperties {
+		if conn.ID == "" || !isSecretConnectionType(conn.Type) {
+			continue
+		}
+
+		// A nil keys filter loads all secret keys for the secret store.
+		loaded, err := e.options.SecretsLoader.LoadSecrets(ctx, map[string][]string{conn.ID: nil})
+		if err != nil {
+			logger.Info(fmt.Sprintf("skipping secret enrichment for connection %q: %s", name, err.Error()))
+			continue
+		}
+
+		if data, ok := loaded[conn.ID]; ok {
+			conn.Secrets = data.Data
+			recipe.ConnectedResourcesProperties[name] = conn
+		}
+	}
+}
+
+// enrichSecretReferences loads secret material for x-radius-secret-reference properties and stores it on
+// the recipe's tainted Secrets field, so the parameter resolver can inject developer-authored secrets into
+// module parameters via the context.resource.secrets.<key> expression path. Unlike enrichConnectionSecrets,
+// this is fail-closed: if a referenced secret cannot be loaded, an error is returned so the deployment fails
+// rather than passing an unresolved expression (and therefore a literal placeholder) to the module.
+func (e *engine) enrichSecretReferences(ctx context.Context, recipe *recipes.ResourceMetadata) error {
+	if recipe == nil || len(recipe.SecretReferences) == 0 {
+		return nil
+	}
+
+	if e.options.SecretsLoader == nil {
+		return fmt.Errorf("secrets loader is not configured; cannot resolve referenced secrets")
+	}
+
+	// Collect the distinct secret IDs referenced by the resource's properties.
+	secretIDs := map[string]bool{}
+	for _, secretID := range recipe.SecretReferences {
+		if secretID != "" {
+			secretIDs[secretID] = true
+		}
+	}
+	if len(secretIDs) == 0 {
+		return nil
+	}
+
+	if recipe.Secrets == nil {
+		recipe.Secrets = map[string]string{}
+	}
+
+	for secretID := range secretIDs {
+		// A nil keys filter loads all secret keys for the referenced secret.
+		loaded, err := e.options.SecretsLoader.LoadSecrets(ctx, map[string][]string{secretID: nil})
+		if err != nil {
+			return fmt.Errorf("failed to load referenced secret %q: %w", secretID, err)
+		}
+
+		data, ok := loaded[secretID]
+		if !ok {
+			return fmt.Errorf("referenced secret %q returned no data", secretID)
+		}
+
+		for key, val := range data.Data {
+			recipe.Secrets[key] = val
+		}
+	}
+
+	return nil
+}
+
+// enrichSecretBindings loads every key of each secret listed in an x-radius-secret-binding array property and
+// stores it on the recipe's tainted Secrets field under a "<secretName>.<key>" namespace, so the parameter
+// resolver can inject developer-authored secrets into module parameters via the
+// context.resource.secrets.<secretName>.<key> expression path. The secret name is parsed from the bound
+// resource ID. Like enrichSecretReferences, this is fail-closed: if a bound secret cannot be loaded, an error
+// is returned so the deployment fails rather than passing an unresolved expression to the module.
+func (e *engine) enrichSecretBindings(ctx context.Context, recipe *recipes.ResourceMetadata) error {
+	if recipe == nil || len(recipe.SecretBindings) == 0 {
+		return nil
+	}
+
+	if e.options.SecretsLoader == nil {
+		return fmt.Errorf("secrets loader is not configured; cannot resolve bound secrets")
+	}
+
+	// Collect the distinct secret IDs bound by the resource's properties.
+	secretIDs := map[string]bool{}
+	for _, secretID := range recipe.SecretBindings {
+		if secretID != "" {
+			secretIDs[secretID] = true
+		}
+	}
+	if len(secretIDs) == 0 {
+		return nil
+	}
+
+	if recipe.Secrets == nil {
+		recipe.Secrets = map[string]string{}
+	}
+
+	for secretID := range secretIDs {
+		parsed, err := resources.ParseResource(secretID)
+		if err != nil {
+			return fmt.Errorf("invalid bound secret ID %q: %w", secretID, err)
+		}
+		name := parsed.Name()
+
+		// A nil keys filter loads all secret keys for the bound secret.
+		loaded, err := e.options.SecretsLoader.LoadSecrets(ctx, map[string][]string{secretID: nil})
+		if err != nil {
+			return fmt.Errorf("failed to load bound secret %q: %w", secretID, err)
+		}
+
+		data, ok := loaded[secretID]
+		if !ok {
+			return fmt.Errorf("bound secret %q returned no data", secretID)
+		}
+
+		for key, val := range data.Data {
+			namespacedKey := name + "." + key
+			if existing, exists := recipe.Secrets[namespacedKey]; exists && existing != val {
+				return fmt.Errorf("bound secret namespace collision for %q: two secrets named %q provide different values for key %q", namespacedKey, name, key)
+			}
+			recipe.Secrets[namespacedKey] = val
+		}
+	}
+
+	return nil
 }

@@ -783,6 +783,55 @@ func Test_AddMappedOutputs(t *testing.T) {
 	}
 }
 
+func Test_SetModuleParams(t *testing.T) {
+	envRecipe, resourceRecipe := getTestInputs()
+
+	t.Run("routes secure params through sensitive variables and sets others inline", func(t *testing.T) {
+		tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe)
+		require.NoError(t, err)
+
+		params := RecipeParams{
+			"administratorLogin":         "admin",
+			"administratorLoginPassword": "s3cr3t-p@ss",
+			"sku":                        "Standard",
+			"ignoredNil":                 nil,
+		}
+		secureKeys := map[string]bool{"administratorLoginPassword": true}
+
+		tfconfig.SetModuleParams(testRecipeName, params, secureKeys)
+
+		secureVar := "radius_secret_redis_azure_administratorLoginPassword"
+		mod := tfconfig.Module[testRecipeName]
+
+		// Non-secure params are set inline.
+		require.Equal(t, "admin", mod["administratorLogin"])
+		require.Equal(t, "Standard", mod["sku"])
+		// Nil params are skipped so a module variable default is not overridden with null.
+		_, hasNil := mod["ignoredNil"]
+		require.False(t, hasNil)
+		// The secure param references the sensitive variable instead of carrying the value inline.
+		require.Equal(t, "${var."+secureVar+"}", mod["administratorLoginPassword"])
+		require.Equal(t, map[string]any{
+			secureVar: map[string]any{
+				"type":      "string",
+				"sensitive": true,
+				"default":   "s3cr3t-p@ss",
+			},
+		}, tfconfig.Variable)
+	})
+
+	t.Run("unknown module name is a no-op", func(t *testing.T) {
+		tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe)
+		require.NoError(t, err)
+
+		tfconfig.SetModuleParams("does-not-exist", RecipeParams{"foo": "bar"}, nil)
+
+		require.Nil(t, tfconfig.Variable)
+		_, hasFoo := tfconfig.Module[testRecipeName]["foo"]
+		require.False(t, hasFoo)
+	})
+}
+
 func Test_AddAllOutputs(t *testing.T) {
 	envRecipe, resourceRecipe := getTestInputs()
 

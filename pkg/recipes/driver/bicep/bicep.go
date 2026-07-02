@@ -125,6 +125,9 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	//update the recipe context with connected resources properties
 	recipeContext.Resource.Connections = opts.Recipe.ConnectedResourcesProperties
 
+	// update the recipe context with secret material referenced through x-radius-secret-reference properties
+	recipeContext.Resource.Secrets = opts.Recipe.Secrets
+
 	// get the parameters after resolving the conflict between developer and operator parameters
 	// if the recipe template also has the context parameter defined then add it to the parameter for deployment
 	isContextParameterDefined := hasContextParameter(recipeData)
@@ -137,8 +140,14 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		// Direct module — resolve {{context.*}} expressions, merge parameters, and wrap as ARM parameters.
 		// Resource (developer) parameters take precedence over environment (operator) parameters.
 		mergedParams := recipes_util.ShallowMergeParameters(opts.Definition.Parameters, opts.Recipe.Parameters)
-		resolvedParams := paramresolver.ResolveParameterExpressions(mergedParams, recipeContext)
-		parameters = wrapARMParameters(resolvedParams)
+		resolved, err := paramresolver.ResolveParameterExpressions(mergedParams, recipeContext)
+		if err != nil {
+			return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
+		}
+		// Secret-sourced parameters (resolved.SecureKeys) are passed to the module's @secure() parameters.
+		// ARM scrubs @secure() parameter values from deployment history, and Radius never logs the
+		// parameter map, so no additional handling is required on the Bicep path.
+		parameters = wrapARMParameters(resolved.Values)
 	}
 
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -181,7 +190,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, fmt.Sprintf("failed to deploy recipe %s of type %s", opts.BaseOptions.Recipe.Name, opts.BaseOptions.Definition.ResourceType), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, resp.Properties.Outputs, resp.Properties.OutputResources)
+	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, opts.BaseOptions.Recipe.SecretBindings, resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
@@ -400,7 +409,7 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 //
 // The latter is needed because non-ARM and non-UCP resources are not returned as part of the implicit 'resources'
 // collection. For us this mostly means Kubernetes resources - the user has to be explicit.
-func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefinition, outputs any, resources []*armdeployments.ResourceReference) (*recipes.RecipeOutput, error) {
+func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefinition, secretBindings []string, outputs any, resources []*armdeployments.ResourceReference) (*recipes.RecipeOutput, error) {
 	recipeResponse := &recipes.RecipeOutput{}
 	out, ok := outputs.(map[string]any)
 	if ok && len(out) > 0 {
@@ -427,6 +436,25 @@ func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefini
 			// Direct module without a mapping — pass through all ARM outputs unchanged, routing
 			// secure-typed outputs to Secrets so they are not exposed as plain values.
 			recipeResponse.Values, recipeResponse.Secrets = collectARMOutputs(out)
+		}
+
+		// Resolve any declared secretOutputs into write-back instructions using the RAW module outputs
+		// (before an outputs mapping is applied, which keeps only mapped outputs and would drop a secure
+		// output routed solely into a secret). The resource controller applies these, writing the secure
+		// module outputs back into the developer-authored Radius.Security/secrets resources bound to the
+		// resource. Consumed outputs are removed from the plain response so a value written into a secret
+		// is not also surfaced as a plain value or recipe secret.
+		if len(definition.SecretOutputs) > 0 {
+			rawValues, rawSecrets := collectARMOutputs(out)
+			writeBacks, consumed, err := recipes.ResolveSecretWriteBacks(rawValues, rawSecrets, definition.SecretOutputs, secretBindings)
+			if err != nil {
+				return &recipes.RecipeOutput{}, err
+			}
+			recipeResponse.SecretWriteBacks = writeBacks
+			for outputName := range consumed {
+				delete(recipeResponse.Values, outputName)
+				delete(recipeResponse.Secrets, outputName)
+			}
 		}
 	}
 
