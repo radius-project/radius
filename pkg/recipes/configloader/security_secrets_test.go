@@ -18,14 +18,21 @@ package configloader
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 
+	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
+	genfake "github.com/radius-project/radius/pkg/cli/clients_new/generated/fake"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -153,27 +160,130 @@ func Test_LoadSecrets_SecuritySecret_NoKubernetesClient(t *testing.T) {
 	require.Contains(t, err.Error(), "kubernetes client is not configured")
 }
 
-// Test_readBackingSecret verifies that, given a resolved namespace/name, secret values are read from the
-// backing Kubernetes Secret and filtered by the requested keys.
-func Test_readBackingSecret(t *testing.T) {
-	clientset := k8sfake.NewSimpleClientset(&corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{Name: "my-secret", Namespace: "app-ns"},
-		Data: map[string][]byte{
-			"username": []byte("admin"),
-			"password": []byte("p4ssw0rd"),
+// Test_loadSecuritySecret drives the production read path for a Radius.Security/secrets resource: it fetches the
+// resource through a fake generated client to extract the secret kind and locate the backing Kubernetes Secret,
+// then reads and filters the secret values from a fake clientset. It covers explicit-kind reads, the default-kind
+// path with an empty key filter, and the missing-key error.
+func Test_loadSecuritySecret(t *testing.T) {
+	const (
+		secretResourceID = "/planes/radius/local/resourceGroups/rg/providers/Radius.Security/secrets/my-secret"
+		backingSecretID  = "/planes/kubernetes/local/namespaces/app-ns/providers/core/Secret/my-secret"
+	)
+
+	// backingSecretProperties builds the resource properties returned by the fake Get, including the
+	// status.outputResources entry that points loadSecuritySecret at the backing Kubernetes Secret. An empty
+	// kind omits the `kind` property so the default-kind path is exercised.
+	backingSecretProperties := func(kind string) map[string]any {
+		props := map[string]any{
+			"status": map[string]any{
+				"outputResources": []any{
+					map[string]any{"id": backingSecretID},
+				},
+			},
+		}
+		if kind != "" {
+			props["kind"] = kind
+		}
+		return props
+	}
+
+	tests := []struct {
+		name           string
+		properties     map[string]any
+		keysFilter     []string
+		expectedType   string
+		expectedData   map[string]string
+		expectError    bool
+		expectedErrMsg string
+	}{
+		{
+			name:         "success - explicit kind filters to requested keys",
+			properties:   backingSecretProperties("basicAuthentication"),
+			keysFilter:   []string{"username"},
+			expectedType: "basicAuthentication",
+			expectedData: map[string]string{"username": "admin"},
 		},
-	})
+		{
+			name:         "success - default kind returns all keys when filter is empty",
+			properties:   backingSecretProperties(""),
+			keysFilter:   nil,
+			expectedType: defaultSecuritySecretKind,
+			expectedData: map[string]string{"username": "admin", "password": "p4ssw0rd"},
+		},
+		{
+			name:           "fail - requested key missing from backing secret",
+			properties:     backingSecretProperties("generic"),
+			keysFilter:     []string{"missing"},
+			expectError:    true,
+			expectedErrMsg: "'missing' secret key was not found",
+		},
+		{
+			name:           "fail - resource has no properties",
+			properties:     nil,
+			expectError:    true,
+			expectedErrMsg: "has no properties",
+		},
+		{
+			name: "fail - no backing kubernetes secret output resource",
+			properties: map[string]any{
+				"kind":   "generic",
+				"status": map[string]any{"outputResources": []any{}},
+			},
+			expectError:    true,
+			expectedErrMsg: "failed to locate backing Kubernetes Secret",
+		},
+	}
 
-	provider := kubernetesclientprovider.FromConfig(nil)
-	provider.SetClientGoClient(clientset)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	secret, err := clientset.CoreV1().Secrets("app-ns").Get(context.Background(), "my-secret", metav1.GetOptions{})
-	require.NoError(t, err)
-	require.Equal(t, "admin", string(secret.Data["username"]))
-	require.Equal(t, "p4ssw0rd", string(secret.Data["password"]))
+			clientset := k8sfake.NewSimpleClientset(&corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "my-secret", Namespace: "app-ns"},
+				Data: map[string][]byte{
+					"username": []byte("admin"),
+					"password": []byte("p4ssw0rd"),
+				},
+			})
 
-	// Sanity check that the resource ID helper round-trips with the kubernetes ID format used above.
-	id, err := resources.ParseResource("/planes/kubernetes/local/namespaces/app-ns/providers/core/Secret/my-secret")
-	require.NoError(t, err)
-	require.Equal(t, "core/Secret", id.Type())
+			provider := kubernetesclientprovider.FromConfig(nil)
+			provider.SetClientGoClient(clientset)
+
+			loader := &secretsLoader{
+				ArmClientOptions: &arm.ClientOptions{
+					ClientOptions: policy.ClientOptions{
+						Transport: genfake.NewServerFactoryTransport(&genfake.ServerFactory{
+							GenericResourcesServer: genfake.GenericResourcesServer{
+								Get: func(ctx context.Context, resourceName string, options *generated.GenericResourcesClientGetOptions) (resp azfake.Responder[generated.GenericResourcesClientGetResponse], errResp azfake.ErrorResponder) {
+									require.Equal(t, "my-secret", resourceName)
+									resp.SetResponse(http.StatusOK, generated.GenericResourcesClientGetResponse{
+										GenericResource: generated.GenericResource{
+											ID:         to.Ptr(secretResourceID),
+											Name:       to.Ptr("my-secret"),
+											Properties: tt.properties,
+										},
+									}, nil)
+									return
+								},
+							},
+						}),
+					},
+				},
+				KubernetesProvider: provider,
+			}
+
+			id, err := resources.ParseResource(secretResourceID)
+			require.NoError(t, err)
+
+			secretData, err := loader.loadSecuritySecret(context.Background(), id, tt.keysFilter)
+			if tt.expectError {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.expectedErrMsg)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedType, secretData.Type)
+			require.Equal(t, tt.expectedData, secretData.Data)
+		})
+	}
 }
