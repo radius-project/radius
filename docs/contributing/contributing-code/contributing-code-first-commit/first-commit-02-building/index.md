@@ -1,67 +1,33 @@
 # Your first commit: Building
 
+This step of the walkthrough gets you a working build. For the full build reference — every `make` target, container builds, and code generation — see the authoritative [Building the code](../../contributing-code-building/README.md) guide.
+
 ## Fork the repository
 
-If you have not already done so, make a fork of the repository and clone it to your local machine. You can find the instructions [here](../../contributing-code-forks/index.md).
+If you have not already done so, [make a fork of the repository](../../contributing-code-forks/index.md) and clone it to your local machine.
 
-## Building the code
+## Build the code
 
-You can build the main outputs using `make`:
+From the root of the repository, build the main outputs with:
 
 ```sh
 make build
 ```
 
-You should see output similar to the following:
+The first build downloads and compiles dependencies, so it may take a few minutes; later builds are faster. When it finishes, the `rad` CLI binary is written under `./dist/<GOOS>_<GOARCH>/release/rad` (the exact path is printed in the build output, and depends on your OS and architecture).
 
-```txt
-➜ make build
-=> Building CLI from 'cmd/rad/main.go'
-=> Built CLI in './dist/darwin_amd64/release/rad'
-CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
-	go build \
-	-gcflags "" \
-	-ldflags "-s -w -X main.version=edge" \
-	-o ./dist/darwin_amd64/release/rad \
-	./cmd/rad/main.go;
-```
-
-Our makefile also has a built-in help command. Run `make` or `make help` to see the list of targets.
+Run `make` (or `make help`) at any time to see every target and its description.
 
 ## Test it out
 
-You should be able to run the binary that was just produced for the CLI. Copy the path from the previous output and run it at the command line.
+Run the binary that was just built — copy the path printed in the build output (it depends on your OS and architecture):
 
 ```sh
-./dist/darwin_amd64/release/rad
+./dist/<GOOS>_<GOARCH>/release/rad
 ```
 
-You should see the basic help text of the CLI. At the time of this writing it looks like:
+You should see the `rad` CLI help text listing its top-level commands. If you got this far, your build works.
 
-```txt
-Radius CLI
+## Next step
 
-Usage:
-  rad [command]
-
-Available Commands:
-  application Manage applications
-  bicep       Manage bicep compiler
-  component   Manage components
-  deploy      Deploy a Radius Application
-  deployment  Manage deployments
-  env         Manage environments
-  expose      Expose local port
-  help        Help about any command
-
-Flags:
-      --config string   config file (default is $HOME/.rad/config.yaml)
-  -h, --help            help for rad
-
-Use "rad [command] --help" for more information about a command.
-```
-
-If you got this far then you're able to build, and you should move to the next step.
-
-## Next step:
 - [Work on the CLI](../first-commit-03-working-on-cli/index.md)
