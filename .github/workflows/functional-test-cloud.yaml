@@ -619,11 +619,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04]
-        # TEMP: filtered to corerp-cloud only for PR validation of
-        # Test_RadiusCore_AzureMySql_PortalLink. Revert to
-        #   name: [corerp-cloud, ucp-cloud]
-        # before merging.
-        name: [corerp-cloud]
+        name: [corerp-cloud, ucp-cloud]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     permissions:
@@ -1013,11 +1009,7 @@ jobs:
           export AZURE_MSSQL_USERNAME="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_USERNAME')"
           export AZURE_MSSQL_PASSWORD="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_PASSWORD')"
 
-          # TEMP: filtered to Test_RadiusCore_AzureMySql_PortalLink only for
-          # PR validation. Revert to
-          #   make "test-functional-${MATRIX_NAME}"
-          # before merging.
-          make "test-functional-${MATRIX_NAME}" GOTEST_OPTS="-run ^Test_RadiusCore_AzureMySql_PortalLink$$"
+          make "test-functional-${MATRIX_NAME}"
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}

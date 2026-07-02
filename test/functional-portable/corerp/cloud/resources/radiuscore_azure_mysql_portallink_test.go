@@ -18,7 +18,6 @@ package resource_test
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -182,12 +181,14 @@ func Test_RadiusCore_AzureMySql_PortalLink(t *testing.T) {
 	test.RequiredFeatures = []rp.RequiredFeature{rp.FeatureAzure}
 	test.RunSerial = true
 
-	// Fail fast if the CI env vars needed by the bicep are missing.
+	// Skip if the CI env vars needed by the bicep are missing (e.g. local runs
+	// without Azure credentials). The bicep template requires a real Azure
+	// subscription and resource group to provision the MySQL flexible server.
 	if azureSubscriptionID == "" {
-		t.Fatal(fmt.Errorf("AZURE_SUBSCRIPTION_ID must be set"))
+		t.Skip("AZURE_SUBSCRIPTION_ID is not set; skipping Azure MySQL portal link test")
 	}
 	if azureResourceGroupName == "" {
-		t.Fatal(fmt.Errorf("INTEGRATION_TEST_RESOURCE_GROUP_NAME must be set"))
+		t.Skip("INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set; skipping Azure MySQL portal link test")
 	}
 
 	test.Test(t)
