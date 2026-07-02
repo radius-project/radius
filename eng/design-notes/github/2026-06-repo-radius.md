@@ -8,7 +8,7 @@ Today, Radius requires users to install Radius on a Kubernetes cluster. That Kub
 
 This is a heavy requirement to place on any team. Running Radius as a Kubernetes service carries real install and maintenance complexity, and a team must take that on before they can build a single application. Teams that already have platform engineers, or their own Kubernetes expertise, may accept that cost. For everyone else, and especially for developers without Kubernetes expertise, it is too much to ask just to build an app. This makes Radius not a viable option for these users.
 
-Repo Radius is a rethinking of how to deliver Radius to developers. Repo Radius transforms Radius from a heavyweight persistent control plane into a lightweight on-demand engine. Concretely, Repo Radius enables developers to run Radius within a GitHub Actions runner, with state stored externally in the same GitHub account.
+Repo Radius is a rethinking of how to deliver Radius to developers. It transforms Radius from a heavyweight persistent control plane into a lightweight on-demand engine. Concretely, Repo Radius enables developers to run Radius within a GitHub Actions runner, with state stored externally in the same GitHub account.
 
 ### Top level goals
 
@@ -21,11 +21,11 @@ Repo Radius is a rethinking of how to deliver Radius to developers. Repo Radius 
 ### Non-goals (out of scope)
 
 * Replacing the existing persistent control plane deployment model. Repo Radius is an alternative delivery mechanism, not a replacement.
-* Building the frontend UI component such as the Copilot app. Repo Radius must ship with a separate frontend component.
+* Building the frontend UI component such as the Radius extension for the Copilot app. Repo Radius must ship with a separate frontend component.
 * Supporting non-GitHub source control platforms (GitLab, Bitbucket, Azure DevOps).
 * Running Repo Radius outside of GitHub Actions (e.g., locally on a developer's workstation as the primary mode).
 * Supporting multi-repo applications is deferred to a later date.
-* Customizing, hardening, or expanding the recipe pack. The initial release uses the default AWS and Azure recipe pack that ships with Radius as-is; improving that pack is separate work, deferred to a later date.
+* Customizing, hardening, or expanding the recipe pack. The initial release uses the default AWS and Azure recipe pack that ships with Radius as-is.
 
 ## Definition of terms
 
@@ -38,6 +38,8 @@ Throughout this document, several terms are used with a specific meaning in the 
 **Frontend** – The separate user-facing component (such as the Copilot app) that drives Repo Radius by dispatching GitHub Action workflows and presenting their results.
 
 **Ephemeral control plane** – A Radius control plane created on demand inside a GitHub Actions runner for the duration of a single operation and torn down when it completes.
+
+**k3d cluster** – A lightweight Kubernetes cluster which hosts the ephemeral Radius control plane inside a GitHub Actions runner.
 
 **Workload cluster** – The developer's own EKS or AKS cluster where application workloads are deployed, separate from the ephemeral control plane.
 
@@ -53,9 +55,9 @@ Throughout this document, several terms are used with a specific meaning in the 
 
 ### User personas
 
-The primary user is a developer working on a cloud-native application hosted on GitHub. They may be an individual developer, a small team, or part of a larger organization. They do not have a dedicated platform engineering team and likely do not have deep Kubernetes expertise. They want to deploy their application to AWS or Azure without managing infrastructure.
+The primary user is a developer building a cloud-native application with the source code hosted on GitHub. They may be an individual developer, a small team, or part of a larger organization. They likely do not have a dedicated platform engineering team or have deep Kubernetes expertise. They want to deploy their application to AWS or Azure without managing infrastructure.
 
-A secondary user is a platform engineer who tailors Repo Radius for their teams, customizing recipes and predefining governed environments (User Journey 5) so that developers deploy within approved organizational standards. This tailoring role is largely deferred beyond the initial release.
+A secondary user is a platform engineer who tailors Repo Radius for their teams, customizing recipes and predefining governed environments (User Journey 5) so that developers deploy within approved organizational standards.
 
 ### The developer's problem
 
@@ -68,21 +70,21 @@ I am a developer building a cloud-native application, an online storefront: a we
 
 ### The platform engineer's problem
 
-I am a platform engineer supporting several teams. I want my developers to deploy on their own, but I am accountable for what lands in our cloud accounts. The default recipes are a good start but do not match our standards for naming, tagging, network and security baselines, approved services and SKUs, and cost controls; and today each repository configures its own cloud access and environments, which I cannot easily govern. I want to set recipes and approved environments once and have every team inherit them, so developers keep their fast, self-service experience while I keep the consistency, security, and governance I am accountable for.
+I am a platform engineer supporting several teams. I want my developers to deploy on their own, but I am accountable for what lands in our cloud accounts. I need to keep the consistency, security, and governance I am accountable for without taking away the fast, self-service experience my developers depend on. I do this today by publishing standard internally developed Terraform modules that all projects are expected to use and programmatically provisioning cloud environments via a self-service developer portal such as Backstage.
 
-* **No way to enforce organizational standards**. The default recipes do not match the organization's naming, tagging, network and security baselines, approved services and SKUs, or cost controls, so ungoverned deployments produce non-compliant resources that must be found and remediated after the fact.
-* **Ungoverned, per-repository environments**. Each repository configures its own identity federation and targets whatever cloud account, region, and Kubernetes cluster a developer chooses, leaving the platform engineer without central visibility or assurance that production is separated from non-production.
-* **No central place to tailor Repo Radius**. There is no single place to customize recipes and predefine approved environments once and have every team inherit them.
+* **Predefined environments and managed credentials**. The platform engineer needs a way to programmatically create logical environments teams deploy to (dev, test, production), each bound to an approved cloud account, region, and cluster, and to manage the cloud credentials centrally so developers never handle long-lived secrets and production stays separated from non-production.
+* **Standard, enforceable deployment modules**. The platform engineer needs to define the organization's standard IaC deployment modules once, encoding naming, tagging, network and security baselines, approved services and SKUs, and cost controls, and enforce them so every team's resources are provisioned to those standards rather than remediated after the fact.
+* **Scale across a large estate**. The platform engineer needs both of these to work at scale across many teams and repositories, so governance is defined once and inherited everywhere without per-team configuration or after-the-fact enforcement.
 
 ### Positive user outcome
 
-A developer can deploy to AWS or Azure without installing Kubernetes or Radius: they create environments with their cloud account details, and Repo Radius provisions the infrastructure on demand within GitHub Actions, storing state in the same GitHub account. If they outgrow it, the same application definition moves to a self-hosted Radius installation unchanged.
+A developer can deploy to AWS or Azure without installing Kubernetes or self-hosted Radius. They create environments with their cloud account details and ask for their application to be deployed and Repo Radius provisions the exact infrastructure needed for the application in a secure and cost-efficient manner. As they modify their application, Repo Radius updates the deployed infrastructure to match the updated application. If they outgrow Repo Radius, the developer can migrate to self-hosted Radius without changing their application definition.
 
-A platform engineer sets organizational recipes and governed environments once and every team inherits them, so developers keep a fast, self-service experience while the platform engineer keeps the consistency, security, and governance they are accountable for.
+A platform engineer can define organization-wide recipes once and every team inherits them, and is able to programmatically create environments with cloud credentials so developers keep a fast, self-service experience while the platform engineer keeps the consistency, security, and governance they are accountable for.
 
 ## User journeys
 
-The experience is organized into five journeys. The first four follow the developer's lifecycle of an application: getting it running, iterating on it, operating it across environments, and evolving it over time. The fifth covers the platform engineer who tailors Repo Radius for a team. Each journey is made up of user stories that describe a single thing the user wants to accomplish. The journeys and their stories are detailed in the sections that follow.
+The user experience is organized into five journeys. The first four follow the developer's lifecycle of an application: getting it running, iterating on it, operating it across environments, and evolving it over time. The fifth covers the platform engineer who tailors Repo Radius for a team. This fifth user journey is largely deferred beyond the initial release. Each journey is made up of user stories that describe a single thing the user wants to accomplish. The journeys and their stories are detailed in the sections that follow.
 
 Repo Radius is the backend for these journeys, not a user interface. A separate frontend (such as the Copilot app) turns the user's intent into GitHub Action workflow runs and shows the results. The user stories describe what the user wants to accomplish and what Repo Radius does on each operation; what the user sees and clicks is defined by the frontend.
 
@@ -104,13 +106,13 @@ The developer chooses where the application should run (an AWS account and regio
 
 The developer works entirely through the frontend, which walks them through three steps:
 
-1. **Enable Repo Radius for the repository.** The frontend asks the developer for permission to enable Radius for the repository. On the developer's acknowledgement, it commits the required GitHub Action workflows to the repository so that GitHub Actions has a dispatchable entry point for each Radius operation.
+1. **Enable Repo Radius for the repository.** The frontend asks the developer for permission to enable Radius for the repository. With the developer's acknowledgement, it commits the required GitHub Action workflows to the repository so that GitHub Actions has a dispatchable entry point for each Radius operation.
 
-2. **Create an environment.** The frontend guides the developer through creating an environment, prompting for the environment name (for example, `dev`), whether it targets AWS or Azure, the cloud account details (AWS account and region, or Azure subscription and resource group), and the workload cluster details (the EKS or AKS cluster name and Kubernetes namespace).
+2. **Create an environment.** The frontend guides the developer through creating a GitHub Environment, prompting for the environment name (for example, `dev`), whether it targets AWS or Azure, the cloud account details (AWS account and region, or Azure subscription and resource group), and the workload cluster details (the EKS or AKS cluster name and Kubernetes namespace).
 
-3. **Set up cloud access.** The frontend guides the developer through establishing the OIDC trust connection between GitHub and their cloud provider. The developer follows the prompts to create the trust on their cloud account, and the frontend captures the resulting identifiers.
+3. **Set up cloud access.** The frontend guides the developer through establishing the OIDC trust connection between GitHub and their cloud provider. The developer follows the prompts to create the trust on their cloud account, and the frontend captures the OIDC identifiers and stores them in the GitHub Environment.
 
-Once these steps are complete, the frontend verifies the connection on the developer's behalf and reports whether the environment is ready.
+Once these steps are complete, the frontend asks Repo Radius to verify the connection and reports to the user whether the environment is ready.
 
 #### Result
 
@@ -127,9 +129,11 @@ Completing these steps produces the following, all stored in the developer's own
 
 * **An OIDC trust configuration** on the cloud provider: for Azure, a federated credential on an Entra ID app registration; for AWS, an IAM OIDC identity provider and an IAM role whose trust policy accepts GitHub Actions tokens. The trust is scoped to the repository (matching a subject such as `repo:my-org/my-repo:*`) rather than to an individual environment, so every environment in the repository that targets this cloud account shares it.
 
-To confirm the environment is ready, the frontend dispatches `radius-verify-cloud-auth.yml`, which runs the `radius-project/verify-cloud-auth` action. The action requests a GitHub Actions OIDC token, exchanges it with the cloud provider, confirms the resulting short-lived credentials are valid, and verifies the identity holds the required permissions. When a Kubernetes cluster name is present, it also confirms the cluster's API server is reachable. It does not provision, modify, or delete anything.
+To confirm the environment is ready, the frontend dispatches `radius-verify-cloud-auth.yml`, which runs the `radius-project/verify-cloud-auth` action. The action requests a GitHub Actions OIDC token, exchanges it with the cloud provider, confirms the resulting short-lived credentials are valid, and verifies the identity holds the required permissions. When a Kubernetes cluster name is present in the environment, it also confirms the cluster's API server is reachable. It does not provision, modify, or delete anything.
 
-The frontend alerts the developer by examining the verify workflow: it reads the run's success or failure conclusion for a coarse signal, and downloads the `verify-cloud-auth-result` artifact, a small JSON document with the specific outcome, a human-readable message, and remediation guidance. The artifact name and schema are a stable contract that the frontend can rely on. On `success`, the frontend reports that the environment is ready, and it is reused by every later deployment.
+The action creates a `verify-cloud-auth-result` artifact within GitHub Actions containing the verification result. This artifact is a small JSON document with the outcome of the action and a human-readable message with helpful remediation guidance when there is an error.
+
+The frontend informs the developer of the results by reading the workflow's success or failure conclusion for a coarse signal, then calling the GitHub Actions API and examining the artifact for specifics. The artifact name and schema are a stable contract that the frontend can rely on. On `success`, the frontend reports that the environment is ready, and it is reused by every later deployment.
 
 Because this trust is scoped to the repository and stores no secret, adding or renaming an environment that targets the same cloud account needs no cloud-side change, and there are no credentials to rotate. It changes in only three cases: the repository is renamed or moved, a new cloud account or subscription is targeted, or the identity's permissions must change. Authentication problems from later drift are handled in the troubleshooting flow (User Story 2.4).
 
@@ -139,13 +143,13 @@ The verify workflow reports one of the following failure outcomes in the `verify
 
 | Outcome | Meaning |
 | --- | --- |
-| Required setting missing | A required variable for the selected cloud provider is absent. |
+| Required setting missing | A required variable for the selected cloud provider is absent such as AWS region or Azure resource group. |
 | Cloud provider does not trust GitHub | The cloud provider rejected the GitHub OIDC token (trust policy or federated credential mismatch). |
-| Identity lacks required permissions | Authentication succeeded, but the identity lacks the required permissions. |
-| Kubernetes cluster cannot be reached | A Kubernetes cluster name was given, but the cluster was not found or its API server is unreachable. |
-| Cloud provider cannot be reached | The cloud provider's authentication endpoint could not be reached. |
+| Identity lacks required permissions | Authentication succeeded, but the identity lacks the required permissions. Note that the required permissions will need to be documented for the user. |
+| Kubernetes cluster cannot be reached | A Kubernetes workload cluster name was given, but the cluster was not found, or its API server is unreachable. |
+| Cloud provider cannot be reached | The cloud provider's API endpoint could not be reached. |
 
-In every case, the frontend is responsible for surfacing the outcome and its remediation guidance to the developer so they can correct the problem; how it presents them is a frontend concern.
+In every case, the frontend is responsible for surfacing the outcome and its remediation guidance to the developer so they can correct the problem.
 
 ### User Story 1.2: Deploy my application and view the result
 
@@ -153,7 +157,7 @@ In every case, the frontend is responsible for surfacing the outcome and its rem
 
 #### Summary
 
-With the application already modeled in `app.bicep`, the developer asks the frontend to deploy it. Repo Radius runs on demand inside a GitHub Actions runner, provisions the resources defined in `app.bicep`, connects them to the containers, and shuts down. The developer never provisions a Kubernetes cluster, installs Radius, or learns each provider's resource types and arguments.
+With the application already modeled in `app.bicep`, the developer asks the frontend to deploy it. Repo Radius runs on demand inside a GitHub Actions runner, provisions the resources defined in `app.bicep` and shuts down. The developer never installs or configures Radius or learns each provider's resource types and arguments.
 
 #### User Experience
 
@@ -163,13 +167,13 @@ The developer asks the frontend to deploy an application:
 
 2. **Preview what will be created.** Before anything is provisioned, the frontend shows the cloud resources that will be created and asks the developer for confirmation. For example, since the `dev` environment is configured to deploy to Azure, the frontend shows the developer:
 
-    | Application resource | Cloud resource                                  |
-    | -------------------- | ----------------------------------------------- |
-    | `frontend` container | Kubernetes service, deployment, service account |
-    | `api` container      | Kubernetes service, deployment, service account |
-    | `orders-db` database | Azure Database for PostgreSQL Flexible Server   |
-    | `cache`              | Azure Cache for Redis                           |
-    | `orders-queue`       | Azure Event Hubs                                |
+    | Application resource       | Cloud resource                                  |
+    | -------------------------- | ----------------------------------------------- |
+    | `frontend` container       | Kubernetes service, deployment, service account |
+    | `api` container            | Kubernetes service, deployment, service account |
+    | `orders-db` database       | Azure Database for PostgreSQL Flexible Server   |
+    | `cache` Redis cache        | Azure Cache for Redis                           |
+    | `orders-queue` Kafka queue | Azure Event Hubs                                |
 
     It is the frontend's responsibility to examine the application's resources and their recipes to produce this initial deployment plan; previewing changes to an already-deployed application is covered in User Story 2.2.
 
@@ -179,21 +183,21 @@ The developer asks the frontend to deploy an application:
 
 #### Result
 
-The frontend deploys the application by dispatching `radius-run-rad-commands.yml` for the target environment with a `rad deploy` command.
+The frontend deploys the application by dispatching the `radius-run-rad-commands.yml` workflow passing in the target environment name and the `rad deploy` command.
 
 | Input | Value |
 | --- | --- |
 | `environment` | The GitHub Environment name |
-| `ref` | The git commit or tag to deploy (defaults to the latest commit on the default branch) |
+| `ref` | The git commit or tag to deploy (defaults to the latest commit on the default branch). Not used in this user story but is used in User Story 3.1. |
 | `rad_commands` | `['deploy .radius/app.bicep', 'app graph storefront -o json']` |
 
-Only commands from an allowed set are accepted; each entry in `rad_commands` is validated before anything runs, so commands that do not fit the ephemeral, per-run model (for example, managing a persistent control plane or changing installation state) are rejected up front rather than provisioning anything.
+Only commands from an allowed set are accepted; each entry in `rad_commands` is validated before anything runs, so commands that do not fit the ephemeral, per-run model (for example, managing Radius resource groups or workspaces) are rejected up front rather than executing the workflow.
 
-On dispatch, the action checks out the repository at the requested `ref` to obtain the application definition, authenticates to the cloud provider using the environment's OIDC variables, then creates a fresh ephemeral Radius control plane on the runner and loads the persisted data store into it. The control plane hosts Radius only; the application's workloads deploy to the environment's own EKS or AKS cluster. The action registers the default recipe pack so the application's resources resolve without the developer authoring recipes, runs the requested `rad` commands in order (stopping at the first failure), and writes the updated data store back so the next operation resumes from it. This per-run control plane lifecycle is common to every `run-rad-commands` operation.
+On dispatch, the action checks out the repository at the requested `ref` (or the latest commit if not specified) to obtain the application definition, authenticates to the cloud provider using the environment's OIDC variables, then creates a fresh ephemeral Radius control plane on the runner and loads the persisted data store into it. The control plane hosts Radius only; the application is deployed to the environment's own EKS or AKS cluster. The action uses the default recipe pack so the application's resources resolve without the developer authoring recipes, runs the requested `rad` commands in order (stopping at the first failure), and writes the updated data store back so the next operation resumes from it. This per-run control plane lifecycle is common to every `run-rad-commands` operation.
 
-The run performs two commands: `rad deploy` provisions the resources, and a read-only `rad app graph` returns the application graph. The `app graph` output provides each resource's cloud provider resource ID, the connections between components, and the reachable endpoints, which the frontend surfaces so the developer can confirm everything was wired as modeled (User Experience step 4). On success, the action uploads a single `run-rad-commands-result` artifact whose `commands` array holds each command's status and output. On a successful deployment, the action also records a GitHub Deployment for the environment at the deployed commit, so the version running in each environment is tracked in GitHub and can later be promoted to another environment (User Story 3.1). The frontend uses the streaming workflow logs to report incremental progress and the `run-rad-commands-result` artifact to report the final outcome to the developer.
+The run performs two commands: `rad deploy` provisions the resources, and `rad app graph` returns the application graph. The `rad app graph` output provides each resource's cloud provider resource ID, the connections between components, and the reachable endpoints, which the frontend surfaces so the developer can confirm everything was wired as modeled (User Experience step 4). On success, the action uploads a single `run-rad-commands-result` artifact whose `commands` array holds the output of the deployment and the application graph JSON (see Appendix 4 for an example). On a successful deployment, the action also records a GitHub Deployment for the environment at the deployed commit, so the version running in each environment is tracked in GitHub and can later be promoted to another environment (User Story 3.1). The frontend uses the streaming workflow logs to report incremental progress and the `run-rad-commands-result` artifact to report the final outcome to the developer.
 
-This is the same standard deployment Radius performs today; Repo Radius does not change how Radius deploys applications. The only potential change to core Radius is adjusting the output of the `rad deploy` command so the frontend can collect incremental resource deployment progress updates.
+This is the same standard deployment Radius performs today; Repo Radius does not change how Radius deploys applications. The only potential change to core Radius is adjusting the output of the `rad deploy` command so the frontend can collect incremental deployment progress updates.
 
 #### Exceptions
 
@@ -205,14 +209,14 @@ The action reports one of the following failure outcomes in the `run-rad-command
 | Command not allowed | A requested command is not in the allowed set; nothing ran. |
 | Environment not found | The named GitHub Environment does not exist or has no configuration; nothing ran. |
 | Cloud authentication failed | Cloud authentication failed before any command ran. |
-| State could not be loaded | The persisted data store could not be read or restored; nothing ran. |
+| State could not be loaded | The persisted data store could not be read or restored; nothing ran. Note that this does not apply if this is the first deployment (no data store is expected then). Repo Radius will need a method of determining if a data store should be expected or not. |
 | State could not be saved | The commands ran, but the updated data store could not be written back, so the cloud may contain resources the persisted state does not reflect. |
 
 ## User Journey 2: Iterate
 
 User Journey 2 covers the developer's day-to-day inner loop once their application is running in an environment: inspecting what is deployed, previewing a change before applying it, redeploying the application as it evolves, and recovering when a deployment fails. Every story builds on the environment and application established in User Journey 1.
 
-Except where noted, each operation below is carried out the same way: the frontend dispatches `radius-run-rad-commands.yml` for the target environment with a specific `rad_commands` list (and, for deployments, the git `ref` to deploy), the action runs it through the per-run control plane lifecycle described in User Story 1.2, and it returns the `run-rad-commands-result` artifact with the same failure outcomes listed in that story's Exceptions. Each story below therefore describes only its own `rad_commands` and any behavior unique to it.
+Except where noted, each operation below dispatches `radius-run-rad-commands.yml` through the same per-run lifecycle and failure outcomes described in User Story 1.2, so each story covers only its own `rad_commands` and any unique behavior.
 
 ### User Story 2.1: View my application's graph
 
@@ -220,11 +224,11 @@ Except where noted, each operation below is carried out the same way: the fronte
 
 #### Summary
 
-The developer asks the frontend to show the application graph for an application in an environment. Repo Radius returns the graph as a read-only operation, without provisioning, modifying, or deleting anything.
+The developer asks the frontend to show the application graph for an application in an environment. Repo Radius returns the graph in the `run-rad-commands-result` artifact.
 
 #### User Experience
 
-The developer asks to view the graph for a deployed application, selecting the environment by name. For example, the developer requests the graph for the storefront application in the `dev` environment, and the frontend shows:
+The developer asks to view the graph for a deployed application, selecting the environment and application by name. For example, the developer requests the graph for the storefront application in the `dev` environment, and the frontend shows:
 
 * The resources that make up the application (the `frontend` and `api` containers, and the `orders-db` database, `cache`, and `orders-queue` backing services)
 * The connections between them (the `api` connected to `orders-db`, `cache`, and `orders-queue`)
@@ -242,13 +246,13 @@ If the named application has not been deployed to the environment, the `rad app 
 
 ### User Story 2.2: Review planned changes before deployment
 
-> As a developer, I want to review the changes a deployment will make before I apply them, so that I can catch unintended or destructive changes before they reach my cloud environment.
+> As a developer, I want to review the changes a deployment will make to an already deployed application before I apply them, so that I can catch unintended or destructive changes before they reach my cloud environment.
 
 #### Summary
 
 Before redeploying (User Story 2.3), the developer wants to see what a deployment will change: which resources it will add, change, or remove. This is analogous to `terraform plan` or `az deployment group what-if`. Producing a trustworthy plan means comparing the application's desired state (the edited `app.bicep`) against its actual deployed state and predicting how the deployment engine and recipes would resolve the difference between the two, including provider-level effects such as whether a change forces a resource to be replaced. The frontend cannot do this on its own; only Radius, which owns the deployment engine and recipe resolution, can produce an accurate what-if.
 
-This preview-before-apply capability is central to deploying with confidence, and it is a significant new feature in its own right that is not specific to Repo Radius: self-hosted Radius needs the same what-if, and both delivery models would consume it. Because of that shared scope, it is sequenced as its own standalone feature specification rather than dropped, and that spec will define the user experience, command surface, and result contract. It is called out here so the iterate journey reflects where it belongs, and left undetailed pending that dedicated spec.
+This preview-before-apply capability is central to deploying with confidence, and it is a significant new feature that is not specific to Repo Radius—self-hosted Radius needs the same what-if, and both versions of Radius would use it. Because it is a generalized feature, a standalone feature specification is required that defines the user experience and functionality. It is called out here so the iterate journey reflects where it belongs, and left undetailed pending that dedicated spec.
 
 ### User Story 2.3: Change my application and redeploy
 
@@ -256,15 +260,15 @@ This preview-before-apply capability is central to deploying with confidence, an
 
 #### Summary
 
-The developer, working through the frontend, edits `app.bicep` and commits it to the repository (for example, they may add a resource or change a setting), then requests the application to be redeployed to an existing environment. Repo Radius runs the same deploy operation as the initial deployment (User Story 1.2). As with Radius today, deployment is incremental and does not prune: a resource removed from the definition is not deleted by a redeploy. The only explicit teardown today is deleting the entire application (User Story 3.2); automatically pruning individual resources dropped from the definition, as `terraform apply` does, is a core Radius limitation.
+The developer, working through the frontend, edits app.bicep and commits it to the repository (for example, they may add a resource or change a setting), then requests the application to be redeployed to an existing environment. Repo Radius runs the same deploy operation as the initial deployment (User Story 1.2). As with Radius today, deployment is incremental and does not delete resources removed from the application definition. The frontend is responsible for identifying when resources are removed and prompting the developer if they want to delete the individual resource. Note that Terraform automatically deletes resources after being removed from a definition and the `az` CLI offers the `--mode Complete` to accomplish the same. This is a limitation of Radius today.
 
 #### User Experience
 
-The redeploy experience is the same as the initial deployment (User Story 1.2). The difference is that only changed resources show activity. For example, if the developer added a full-text search service and changed the `orders-db` size, the redeploy provisions the new Azure AI Search resource and updates the database, while the `frontend` and `api` containers, `cache`, and `orders-queue` are reported as unchanged.
+The redeploy experience is the same as the initial deployment (User Story 1.2). The difference is that only changed resources show activity. For example, if the developer added a full-text search service to the storefront application and changed the `orders-db` size, the redeploy provisions the new Azure AI Search resource and updates the database, while the `frontend` and `api` containers, `cache`, and `orders-queue` are reported as unchanged.
 
 #### Exceptions
 
-Because a redeploy may change several resources, a mid-deployment failure (the Command failed outcome) can leave the environment partially updated, with some changes applied and others not. The failed command's error output identifies where the redeployment stopped, and the developer can correct the definition and redeploy to converge, or troubleshoot the failure (User Story 2.4).
+Because a redeploy may change several resources, a mid-deployment failure (the Command failed outcome) can leave the environment partially updated, with some changes applied and others not. The failed command's error output identifies where the redeployment stopped, and the developer can correct the definition and redeploy to converge or troubleshoot the failure (User Story 2.4).
 
 ### User Story 2.4: Troubleshoot or recover a failed deployment
 
@@ -272,15 +276,15 @@ Because a redeploy may change several resources, a mid-deployment failure (the C
 
 #### Summary
 
-When a deployment fails, the developer needs to know what went wrong and how to get back to a good state. Repo Radius adopts core Radius's existing troubleshooting and failure recovery capabilities, along with their limitations. The same errors core Radius reports during a deployment are surfaced to the developer, and recovery follows the pattern Radius uses today: correct the problem and redeploy, or delete and redeploy as a last resort. Repo Radius introduces one new failure mode, discussed below.
+When a deployment fails, the developer needs to know what went wrong and how to get back to a good state. Repo Radius adopts core Radius's existing troubleshooting and failure recovery capabilities, along with its limitations. The same errors core Radius reports during a deployment are surfaced to the developer, and recovery follows the pattern Radius uses today: correct the problem and redeploy or delete and redeploy as a last resort. Repo Radius introduces one new failure mode, discussed below.
 
 #### User Experience
 
-Repo Radius communicates the existing Radius deployment errors straight through to the developer rather than interpreting or replacing them. When a command fails, its error output is captured and written into the `run-rad-commands-result` artifact under the Command failed outcome, alongside the streaming workflow logs and the recorded graph showing which resources were provisioned before the failure. The developer therefore diagnoses from the same information they would see running `rad` locally, and routes to the appropriate recovery path:
+Repo Radius communicates the existing Radius deployment errors straight through to the developer rather than interpreting or replacing them. When a command fails, its error output is captured and written into the `run-rad-commands-result` artifact showing the exact Radius error message. The developer therefore diagnoses from the same information they would see running `rad` locally, and routes to the appropriate recovery path:
 
-* **Authentication or permissions drift.** If the failure is a cloud authentication or permissions error (for example, the trust or role changed since setup), the developer re-verifies the environment (User Story 1.1), then redeploys.
-* **Definition or recipe error.** If a resource failed because of the application definition or a recipe (for example, an invalid setting or an unsupported configuration), the developer corrects `app.bicep` and redeploys to converge (User Story 2.3).
-* **Partial or unsaved state.** If a run failed partway through, the developer redeploys to converge the environment, or deletes the application and redeploys from scratch (User Story 3.2) when redeploying cannot bring it back to a good state.
+* **Authentication or permissions drift.** If the failure is a cloud authentication or permissions error (for example, the trust or role changed since setup), the developer re-verifies the environment (User Story 1.1) which describes OIDC authentication and authorization errors in more detail, then redeploys.
+* **Definition or recipe error.** If a resource failed because of the application definition or a recipe (for example, an invalid setting or an unsupported configuration), the developer corrects `app.bicep` and redeploys (User Story 2.3).
+* **Partial or unsaved state.** If a run failed partway through, the developer redeploys to converge the environment or, when redeploying cannot bring it back to a good state, deletes the application and redeploys from scratch (User Story 3.2).
 
 Diagnosing an application that deployed successfully but is not behaving correctly at runtime is done with the workload cluster's own tooling and is out of scope for Repo Radius.
 
@@ -291,11 +295,11 @@ Because its control plane is ephemeral and its state is loaded at the start of a
 * **Orphaned resources.** If a run provisions resources but then fails to save the updated data store (the State could not be saved outcome), those resources exist in the cloud with no record in the persisted state. The control plane is torn down after the run, so nothing retains knowledge of them.
 * **Stale starting state.** Because every run begins from whatever was last persisted, a run that ended without saving leaves the next run's view of the application behind reality before it starts, so it may try to recreate resources that already exist.
 
-Mitigating this is a Repo Radius responsibility rather than a core Radius one: the load and save around each run must be as reliable as possible, and a failed save must be surfaced clearly so the developer knows the cloud may hold resources the recorded state does not reflect. The design of the externalized data store and its load and save guarantees is covered in the technical design.
+Mitigating this is a Repo Radius responsibility: the load and save around each run must be as reliable as possible, and a failed save must be surfaced clearly so the developer knows the cloud may hold resources the recorded state does not reflect. The design of the externalized data store and its load and save guarantees is covered in the technical design.
 
 ## User Journey 3: Operate across environments
 
-User Journey 3 covers managing an application beyond a single environment: promoting a validated version from one environment to another, and removing an application and its infrastructure when it is no longer needed. Both stories use the same `run-rad-commands` mechanism and shared convention introduced in User Journey 2.
+User Journey 3 covers managing an application beyond a single environment: promoting a validated version from one environment to another and removing an application and its infrastructure when it is no longer needed. Both stories use the same `run-rad-commands` mechanism and shared convention introduced in User Journey 2.
 
 ### User Story 3.1: Promote my application to another environment
 
@@ -312,11 +316,11 @@ The frontend performs the promotion by reading the commit currently deployed to 
 
 #### User Experience
 
-The developer asks the frontend to promote an application from a source environment to a target environment. For example, the developer promotes the storefront from `dev` to `production`. From there the experience is the same as an initial deployment (User Story 1.2): the frontend previews what will be deployed, the developer confirms, and progress is shown resource by resource. The difference is that the developer chooses a source environment to promote from rather than a version to deploy; the frontend resolves the version from the source environment automatically. Because `production` carries its own configuration, the promoted definition provisions production-scoped resources without any change to the application definition.
+The developer asks the frontend to promote an application from a source environment to a target environment. For example, the developer promotes the storefront from `dev` to `production`. From there the experience is the same as an initial deployment (User Story 1.2): the frontend previews what will be deployed, the developer confirms, and progress is shown resource by resource. The difference is that the developer chooses a source environment to promote from rather than a version to deploy. Because `production` carries its own configuration, the promoted definition provisions production-scoped resources without any change to the application definition.
 
 #### Result
 
-The frontend reads the source environment's current GitHub Deployment to obtain the commit deployed there, then dispatches `radius-run-rad-commands.yml` for the target environment with that commit as the `ref` and the same deploy command as an initial deployment (User Story 1.2). The action checks out the promoted commit, deploys it against the target environment using that environment's own configuration, and returns the `run-rad-commands-result` artifact. On success, the action records a new GitHub Deployment for the target environment at the promoted commit, so every environment's deployed version is tracked and promotions can chain across a pipeline (for example, `dev` to `test` to `production`).
+The frontend reads the source environment's current GitHub Deployment to obtain the commit deployed there, then dispatches `radius-run-rad-commands.yml` for the target environment with that commit as the `ref` and the same deploy command as an initial deployment (User Story 1.2). The action checks out the promoted commit, deploys it against the target environment using that environment's own configuration, and returns the `run-rad-commands-result` artifact. On success, the action records a new GitHub Deployment for the target environment at the promoted commit, so every environment's deployed version is tracked, and promotions can chain across a pipeline (for example, `dev` to `test` to `production`).
 
 #### Exceptions
 
@@ -328,7 +332,7 @@ Promotion reports the same failure outcomes as an initial deployment (User Story
 
 #### Summary
 
-The developer removes an application from an environment, the explicit teardown referenced in User Story 2.3. The frontend dispatches the delete command `rad_commands: ['app delete storefront --yes']`, which deletes the application and its provisioned cloud resources and saves the updated state. The frontend also marks the environment's GitHub Deployment inactive, so the environment is no longer recorded as running the application. Removal reports the same failure outcomes as User Story 1.2; a mid-deletion failure can leave some resources deleted and others still present, which the developer can retry or troubleshoot (User Story 2.4).
+The developer asks the frontend to delete an application from an environment. The frontend dispatches the delete command `rad_commands: ['app delete storefront --yes']`, which deletes the application and its provisioned cloud resources. The frontend also marks the environment's GitHub Deployment inactive, so the environment is no longer recorded as running the application. Removal reports the same failure outcomes as User Story 1.2; a mid-deletion failure can leave some resources deleted and others still present, which the developer can retry or troubleshoot (User Story 2.4).
 
 ## User Journey 4: Evolve
 
@@ -338,13 +342,13 @@ The developer removes an application from an environment, the explicit teardown 
 
 Repo Radius ships as the two GitHub Actions (User Story 1.1), published to the GitHub Marketplace and versioned by major tag. The committed workflows reference each action by its major tag (for example, `radius-project/run-rad-commands@v1`), so every run automatically picks up the latest backward-compatible release of that major version without the developer changing anything.
 
-A breaking change (to the workflow inputs, the allowed-command set, or the result artifact schema) ships as a new major version (`@v2`). The existing `@v1` continues to work, so repositories are unaffected until they opt in. Adopting it is the one case where a committed workflow changes: the frontend updates the tag (for example, to `radius-project/run-rad-commands@v2`).
+A breaking change (to the workflow inputs, the allowed command set, or the result artifact schema) ships as a new major version (`@v2`). The existing `@v1` continues to work, so repositories are unaffected until they opt in. Adopting a new major version requires the user, or the frontend to update the tag in the workflow stored in the repository.
 
 ### User Story 4.2: Migrate to self-hosted Radius
 
 > As a developer, I want to move my application from Repo Radius to a self-hosted Radius installation, so that I can grow beyond Repo Radius without rewriting my application.
 
-Repo Radius runs the same Radius as a self-hosted installation, so the application definition (`app.bicep`) is fully portable: a team that outgrows Repo Radius, for example one that wants a persistent control plane, can deploy the same definition to a self-hosted Radius installation without changing it. This compatibility is guaranteed because the initial release uses only the standard resource types that ship with Radius, so the application depends on nothing unique to Repo Radius. This is the no-lock-in portability promised in the positive user outcome. Migrating the recorded state so a self-hosted installation adopts the already-provisioned cloud resources, rather than re-provisioning them, is not planned.
+Repo Radius runs the same Radius as a self-hosted installation and uses only the standard resource types that ship with Radius. Therefore an application definition is fully portable. A team that outgrows Repo Radius can deploy the same definition to a self-hosted Radius installation without modification. Limiting Repo Radius to only using the standard resource types is a limitation that is accepted to guarantee portability (this is a two-way door that can be revisited in the future).
 
 ## User Journey 5: Tailor Repo Radius for a team
 
@@ -393,7 +397,7 @@ The requirements below are a first pass at what the initial release must deliver
 | FR17 | Radius data store | Shall be externalized to GitHub-native storage, loaded at the start of each run and saved at the end (resource data, application graphs, deployment history, Terraform state). |
 | FR18 | Radius CLI | `rad deploy` output shall be adjusted so the frontend can report resource-by-resource progress. |
 
-**Deferred to a later release:** preview planned changes / what-if (User Story 2.2), prune on deploy (User Story 2.3), custom recipe packs (User Story 5.1), a predefined environment catalog (User Story 5.2), and state migration to self-hosted Radius (User Story 4.2).
+**Deferred to a later release:** preview planned changes / what-if (User Story 2.2), custom recipe packs (User Story 5.1), a predefined environment catalog (User Story 5.2), and state migration to self-hosted Radius (User Story 4.2).
 
 ### Non-functional requirements
 
@@ -401,7 +405,7 @@ The requirements below are a first pass at what the initial release must deliver
 | --- | --- | --- |
 | NFR1 | Performance | Control plane startup shall be fast enough that per-run latency is acceptable, since startup is on the critical path for every operation. |
 | NFR2 | Security | Deployments shall authenticate with short-lived, OIDC-issued cloud credentials and shall not store long-lived cloud secrets. |
-| NFR3 | Security | The cloud identity shall be scoped to the least privilege required and isolated per environment to limit blast radius. |
+| NFR3 | Security | The cloud identity shall be scoped to the least privilege required and isolated per repository (and per cloud account or subscription to separate production from non-production) to limit blast radius. |
 | NFR4 | Reliability | The data store load and save around each run shall be reliable and atomic, so a failed run does not silently corrupt or desync state. |
 
 ## Appendix 2: Dependencies and risks
@@ -453,3 +457,63 @@ We considered scoping the cloud trust relationship to each individual GitHub Env
 * **Repository scope (recommended)**. The trust condition matches any subject from the repository (for example, `repo:my-org/my-repo:*`), so a single trust relationship and role cover every environment in the repository. Adding or renaming an environment that targets the same cloud account is purely a GitHub-side action and requires no cloud change. The trade-off is coarser isolation: all environments in the repository can assume the same cloud identity, so separation between non-production and production is achieved by targeting a different cloud account or subscription (each with its own trust and role) rather than by the trust condition alone.
 
 **Recommendation**: Repository-scoped trust. It keeps adding environments a self-service, GitHub-only action, avoids per-environment cloud configuration and Azure's federated-credential limits, and matches how teams already separate production from non-production, by using a distinct cloud account or subscription. Where stronger isolation between environments in the same account is required, a team can still create a separate role and repository-scoped trust per account.
+
+## Appendix 4: Example Result Artifact
+
+Below is an example run-rad-commands-result artifact from the prototype. This example shows the workflow being run with three commands: rad resource list -o json, rad app show todo-list -o json, and rad app graph todo-list -o json. Note that the second commands failed and the third did not execute.
+
+```json
+{
+  "schemaVersion": "1.0",
+  "outcome": "command_failed",
+  "exitCode": 1,
+  "environment": "production",
+  "commandsRequested": 3,
+  "commandsRan": 2,
+  "startedAt": "2026-06-29T18:42:01Z",
+  "completedAt": "2026-06-29T18:42:37Z",
+  "durationSeconds": 36,
+  "message": "1 of 3 commands failed. Remaining commands were not run.",
+  "commands": [
+    {
+      "index": 0,
+      "command": "resource list -o json",
+      "artifact": "rad-command-0",
+      "outcome": "succeeded",
+      "exitCode": 0,
+      "startedAt": "2026-06-29T18:42:05Z",
+      "completedAt": "2026-06-29T18:42:11Z",
+      "durationSeconds": 6,
+      "stdout": "[{\"id\":\"/planes/radius/local/resourceGroups/default/providers/Applications.Core/containers/frontend\",\"name\":\"frontend\",\"type\":\"Applications.Core/containers\"}]",
+      "stderr": "",
+      "errorMessage": null
+    },
+    {
+      "index": 1,
+      "command": "app show todo-list -o json",
+      "artifact": "rad-command-1",
+      "outcome": "failed",
+      "exitCode": 1,
+      "startedAt": "2026-06-29T18:42:11Z",
+      "completedAt": "2026-06-29T18:42:37Z",
+      "durationSeconds": 26,
+      "stdout": "",
+      "stderr": "Error: application \"todo-list\" not found in environment \"production\"\nTraceId: 5ec67312f45304c527560e39433eff84",
+      "errorMessage": "application \"todo-list\" not found in environment \"production\""
+    },
+    {
+      "index": 2,
+      "command": "app graph todo-list -o json",
+      "artifact": null,
+      "outcome": "skipped",
+      "exitCode": null,
+      "startedAt": null,
+      "completedAt": null,
+      "durationSeconds": null,
+      "stdout": null,
+      "stderr": null,
+      "errorMessage": "Not run: a prior command failed."
+    }
+  ]
+}
+```
