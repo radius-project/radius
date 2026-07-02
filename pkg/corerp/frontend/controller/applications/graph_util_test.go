@@ -156,7 +156,7 @@ func Test_computeGraph(t *testing.T) {
 			expected := []*corerpv20231001preview.ApplicationGraphResource{}
 			testutil.MustUnmarshalFromFile(tt.expectedDataFile, &expected)
 
-			got := computeGraph(appResource, envResource)
+			got := computeGraph(appResource, envResource, "")
 			require.ElementsMatch(t, expected, got.Resources)
 		})
 	}

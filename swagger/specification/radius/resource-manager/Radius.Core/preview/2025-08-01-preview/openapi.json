@@ -1288,6 +1288,10 @@
         "name": {
           "type": "string",
           "description": "The resource name."
+        },
+        "portalUrl": {
+          "type": "string",
+          "description": "A deep link to the underlying resource in its cloud provider's portal (for example, the Azure portal). Empty when no link is available for the resource."
         }
       },
       "required": [

@@ -69,7 +69,11 @@ func ComputeGraphResponse(ctx context.Context, applicationID resources.ID, envir
 		return nil, err
 	}
 
-	graph := computeGraph(applicationResources, environmentResources)
+	// Look up the registered Azure tenant so output resources backed by Azure can carry a portal
+	// deep link. For non-azure resources no link is available.
+	tenantID := azureTenantID(ctx, clientOptions)
+
+	graph := computeGraph(applicationResources, environmentResources, tenantID)
 	return rest.NewOKResponse(graph), nil
 }
 
