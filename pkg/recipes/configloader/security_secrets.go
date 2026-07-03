@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -32,6 +33,11 @@ import (
 // defaultSecuritySecretKind is the secret kind assumed when a Radius.Security/secrets resource does not set
 // `properties.kind`. It mirrors the schema default for the resource type.
 const defaultSecuritySecretKind = "generic"
+
+// securitySecretsAPIVersion is the API version used to read Radius.Security/secrets resources. The shared
+// GenericResourcesClient is generated against 2023-10-01-preview, but Radius.Security/secrets only supports
+// 2025-08-01-preview, so the client's API version is overridden per request via ClientOptions.APIVersion.
+const securitySecretsAPIVersion = "2025-08-01-preview"
 
 // loadSecuritySecret retrieves secret data for a Radius.Security/secrets resource.
 //
@@ -45,7 +51,16 @@ func (e *secretsLoader) loadSecuritySecret(ctx context.Context, secretResourceID
 		return recipes.SecretData{}, fmt.Errorf("kubernetes client is not configured; cannot read Radius.Security/secrets resource '%s'", secretResourceID.String())
 	}
 
-	client, err := generated.NewGenericResourcesClient(secretResourceID.Type(), secretResourceID.RootScope(), &aztoken.AnonymousCredential{}, e.ArmClientOptions)
+	// The shared GenericResourcesClient hardcodes api-version 2023-10-01-preview, which
+	// Radius.Security/secrets does not support. Override the API version for this request via a shallow
+	// copy of the client options so the shared options are not mutated.
+	clientOptions := &arm.ClientOptions{}
+	if e.ArmClientOptions != nil {
+		clientOptions = &arm.ClientOptions{ClientOptions: e.ArmClientOptions.ClientOptions}
+	}
+	clientOptions.APIVersion = securitySecretsAPIVersion
+
+	client, err := generated.NewGenericResourcesClient(secretResourceID.Type(), secretResourceID.RootScope(), &aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {
 		return recipes.SecretData{}, err
 	}
