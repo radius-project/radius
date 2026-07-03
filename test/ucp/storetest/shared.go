@@ -281,6 +281,36 @@ func RunTest(t *testing.T, client database.Client, clear func(t *testing.T)) {
 		obj1Get, err := client.Get(ctx, Resource1ID.String())
 		require.NoError(t, err)
 		compareObjects(t, &obj1, obj1Get)
+
+		// The stored ETag must reflect the updated data so that subsequent
+		// reads and optimistic-concurrency writes agree on the current value.
+		require.Equal(t, obj1.ETag, obj1Get.ETag)
+	})
+
+	t.Run("save_can_update_repeatedly_with_matching_etag", func(t *testing.T) {
+		clear(t)
+
+		// Regression test: an update must refresh the stored ETag so that a
+		// caller can chain optimistic-concurrency updates using the ETag
+		// returned by the previous Save. Otherwise the second update fails
+		// with a spurious concurrency conflict.
+		obj1 := createObject(Resource1ID, Data1)
+		err := client.Save(ctx, &obj1)
+		require.NoError(t, err)
+		require.NotEmpty(t, obj1.ETag)
+
+		obj1.Data = Data2
+		err = client.Save(ctx, &obj1, database.WithETag(obj1.ETag))
+		require.NoError(t, err)
+
+		obj1.Data = Data1
+		err = client.Save(ctx, &obj1, database.WithETag(obj1.ETag))
+		require.NoError(t, err)
+
+		obj1Get, err := client.Get(ctx, Resource1ID.String())
+		require.NoError(t, err)
+		compareObjects(t, &obj1, obj1Get)
+		require.Equal(t, obj1.ETag, obj1Get.ETag)
 	})
 
 	t.Run("save_cannot_update_not_matching_etag", func(t *testing.T) {
