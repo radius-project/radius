@@ -36,17 +36,17 @@ using OpenAPI;
 namespace Radius.Core;
 
 @doc("The Bicep configuration resource, providing reusable Bicep recipe settings for environments.")
-model BicepConfigResource
-  is TrackedResourceRequired<BicepConfigProperties, "bicepConfigs"> {
+model BicepSettingsResource
+  is TrackedResourceRequired<BicepSettingsProperties, "bicepSettings"> {
   @doc("Bicep configuration name")
-  @key("bicepConfigName")
+  @key("bicepSettingsName")
   @path
-  @segment("bicepConfigs")
+  @segment("bicepSettings")
   name: ResourceNameString;
 }
 
 @doc("Bicep configuration properties.")
-model BicepConfigProperties {
+model BicepSettingsProperties {
   @doc("The status of the asynchronous operation.")
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
@@ -64,7 +64,7 @@ model BicepRegistryAuthentication {
   @doc("The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa.")
   authenticationMethod?: BicepAuthenticationMethod;
 
-  @doc("The ID of an Applications.Core/SecretStore resource containing username and password for BasicAuth. Required when authenticationMethod is 'BasicAuth'.")
+  @doc("The ID of a secret resource containing username and password for BasicAuth. Supported types: Radius.Security/secrets (recommended) or Applications.Core/secretStores. Required when authenticationMethod is 'BasicAuth'.")
   basicAuthSecretId?: string;
 
   @doc("Azure Workload Identity client ID. Required when authenticationMethod is 'AzureWI'.")
@@ -92,31 +92,31 @@ union BicepAuthenticationMethod {
 }
 
 @armResourceOperations
-interface BicepConfigs {
+interface BicepSettings {
   get is ArmResourceRead<
-    BicepConfigResource,
-    UCPBaseParameters<BicepConfigResource>
+    BicepSettingsResource,
+    UCPBaseParameters<BicepSettingsResource>
   >;
 
   createOrUpdate is ArmResourceCreateOrReplaceSync<
-    BicepConfigResource,
-    UCPBaseParameters<BicepConfigResource>
+    BicepSettingsResource,
+    UCPBaseParameters<BicepSettingsResource>
   >;
 
   update is ArmResourcePatchSync<
-    BicepConfigResource,
-    BicepConfigProperties,
-    UCPBaseParameters<BicepConfigResource>
+    BicepSettingsResource,
+    BicepSettingsProperties,
+    UCPBaseParameters<BicepSettingsResource>
   >;
 
   delete is ArmResourceDeleteSync<
-    BicepConfigResource,
-    UCPBaseParameters<BicepConfigResource>
+    BicepSettingsResource,
+    UCPBaseParameters<BicepSettingsResource>
   >;
 
   listByScope is ArmResourceListByParent<
-    BicepConfigResource,
-    UCPBaseParameters<BicepConfigResource>,
+    BicepSettingsResource,
+    UCPBaseParameters<BicepSettingsResource>,
     "Scope",
     "Scope"
   >;

@@ -648,7 +648,7 @@ func TestCreateOrUpdateEnvironment_RecipePackValidation(t *testing.T) {
 		},
 		{
 			desc:               "wrong-type-recipe-pack-id",
-			recipePacks:        []string{"/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/terraformConfigs/tc"},
+			recipePacks:        []string{"/subscriptions/sub1/resourceGroups/rg1/providers/Radius.Core/terraformSettings/tc"},
 			setupMockDB:        func(*database.MockClient) {},
 			expectedStatusCode: 400,
 			expectedError:      "has type",

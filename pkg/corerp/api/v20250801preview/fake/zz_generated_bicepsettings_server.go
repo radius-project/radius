@@ -18,48 +18,48 @@ import (
 	"slices"
 )
 
-// BicepConfigsServer is a fake server for instances of the v20250801preview.BicepConfigsClient type.
-type BicepConfigsServer struct {
-	// CreateOrUpdate is the fake for method BicepConfigsClient.CreateOrUpdate
+// BicepSettingsServer is a fake server for instances of the v20250801preview.BicepSettingsClient type.
+type BicepSettingsServer struct {
+	// CreateOrUpdate is the fake for method BicepSettingsClient.CreateOrUpdate
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusCreated
-	CreateOrUpdate func(ctx context.Context, rootScope string, bicepConfigName string, resource v20250801preview.BicepConfigResource, options *v20250801preview.BicepConfigsClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.BicepConfigsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
+	CreateOrUpdate func(ctx context.Context, rootScope string, bicepSettingsName string, resource v20250801preview.BicepSettingsResource, options *v20250801preview.BicepSettingsClientCreateOrUpdateOptions) (resp azfake.Responder[v20250801preview.BicepSettingsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder)
 
-	// Delete is the fake for method BicepConfigsClient.Delete
+	// Delete is the fake for method BicepSettingsClient.Delete
 	// HTTP status codes to indicate success: http.StatusOK, http.StatusNoContent
-	Delete func(ctx context.Context, rootScope string, bicepConfigName string, options *v20250801preview.BicepConfigsClientDeleteOptions) (resp azfake.Responder[v20250801preview.BicepConfigsClientDeleteResponse], errResp azfake.ErrorResponder)
+	Delete func(ctx context.Context, rootScope string, bicepSettingsName string, options *v20250801preview.BicepSettingsClientDeleteOptions) (resp azfake.Responder[v20250801preview.BicepSettingsClientDeleteResponse], errResp azfake.ErrorResponder)
 
-	// Get is the fake for method BicepConfigsClient.Get
+	// Get is the fake for method BicepSettingsClient.Get
 	// HTTP status codes to indicate success: http.StatusOK
-	Get func(ctx context.Context, rootScope string, bicepConfigName string, options *v20250801preview.BicepConfigsClientGetOptions) (resp azfake.Responder[v20250801preview.BicepConfigsClientGetResponse], errResp azfake.ErrorResponder)
+	Get func(ctx context.Context, rootScope string, bicepSettingsName string, options *v20250801preview.BicepSettingsClientGetOptions) (resp azfake.Responder[v20250801preview.BicepSettingsClientGetResponse], errResp azfake.ErrorResponder)
 
-	// NewListByScopePager is the fake for method BicepConfigsClient.NewListByScopePager
+	// NewListByScopePager is the fake for method BicepSettingsClient.NewListByScopePager
 	// HTTP status codes to indicate success: http.StatusOK
-	NewListByScopePager func(rootScope string, options *v20250801preview.BicepConfigsClientListByScopeOptions) (resp azfake.PagerResponder[v20250801preview.BicepConfigsClientListByScopeResponse])
+	NewListByScopePager func(rootScope string, options *v20250801preview.BicepSettingsClientListByScopeOptions) (resp azfake.PagerResponder[v20250801preview.BicepSettingsClientListByScopeResponse])
 
-	// Update is the fake for method BicepConfigsClient.Update
+	// Update is the fake for method BicepSettingsClient.Update
 	// HTTP status codes to indicate success: http.StatusOK
-	Update func(ctx context.Context, rootScope string, bicepConfigName string, properties v20250801preview.BicepConfigResource, options *v20250801preview.BicepConfigsClientUpdateOptions) (resp azfake.Responder[v20250801preview.BicepConfigsClientUpdateResponse], errResp azfake.ErrorResponder)
+	Update func(ctx context.Context, rootScope string, bicepSettingsName string, properties v20250801preview.BicepSettingsResource, options *v20250801preview.BicepSettingsClientUpdateOptions) (resp azfake.Responder[v20250801preview.BicepSettingsClientUpdateResponse], errResp azfake.ErrorResponder)
 }
 
-// NewBicepConfigsServerTransport creates a new instance of BicepConfigsServerTransport with the provided implementation.
-// The returned BicepConfigsServerTransport instance is connected to an instance of v20250801preview.BicepConfigsClient via the
+// NewBicepSettingsServerTransport creates a new instance of BicepSettingsServerTransport with the provided implementation.
+// The returned BicepSettingsServerTransport instance is connected to an instance of v20250801preview.BicepSettingsClient via the
 // azcore.ClientOptions.Transporter field in the client's constructor parameters.
-func NewBicepConfigsServerTransport(srv *BicepConfigsServer) *BicepConfigsServerTransport {
-	return &BicepConfigsServerTransport{
+func NewBicepSettingsServerTransport(srv *BicepSettingsServer) *BicepSettingsServerTransport {
+	return &BicepSettingsServerTransport{
 		srv:                 srv,
-		newListByScopePager: newTracker[azfake.PagerResponder[v20250801preview.BicepConfigsClientListByScopeResponse]](),
+		newListByScopePager: newTracker[azfake.PagerResponder[v20250801preview.BicepSettingsClientListByScopeResponse]](),
 	}
 }
 
-// BicepConfigsServerTransport connects instances of v20250801preview.BicepConfigsClient to instances of BicepConfigsServer.
-// Don't use this type directly, use NewBicepConfigsServerTransport instead.
-type BicepConfigsServerTransport struct {
-	srv                 *BicepConfigsServer
-	newListByScopePager *tracker[azfake.PagerResponder[v20250801preview.BicepConfigsClientListByScopeResponse]]
+// BicepSettingsServerTransport connects instances of v20250801preview.BicepSettingsClient to instances of BicepSettingsServer.
+// Don't use this type directly, use NewBicepSettingsServerTransport instead.
+type BicepSettingsServerTransport struct {
+	srv                 *BicepSettingsServer
+	newListByScopePager *tracker[azfake.PagerResponder[v20250801preview.BicepSettingsClientListByScopeResponse]]
 }
 
-// Do implements the policy.Transporter interface for BicepConfigsServerTransport.
-func (b *BicepConfigsServerTransport) Do(req *http.Request) (*http.Response, error) {
+// Do implements the policy.Transporter interface for BicepSettingsServerTransport.
+func (b *BicepSettingsServerTransport) Do(req *http.Request) (*http.Response, error) {
 	rawMethod := req.Context().Value(runtime.CtxAPINameKey{})
 	method, ok := rawMethod.(string)
 	if !ok {
@@ -69,25 +69,25 @@ func (b *BicepConfigsServerTransport) Do(req *http.Request) (*http.Response, err
 	return b.dispatchToMethodFake(req, method)
 }
 
-func (b *BicepConfigsServerTransport) dispatchToMethodFake(req *http.Request, method string) (*http.Response, error) {
+func (b *BicepSettingsServerTransport) dispatchToMethodFake(req *http.Request, method string) (*http.Response, error) {
 	resultChan := make(chan result, 1)
 	go func() {
 		var intercepted bool
 		var res result
-		if bicepConfigsServerTransportInterceptor != nil {
-			res.resp, res.err, intercepted = bicepConfigsServerTransportInterceptor.Do(req)
+		if bicepSettingsServerTransportInterceptor != nil {
+			res.resp, res.err, intercepted = bicepSettingsServerTransportInterceptor.Do(req)
 		}
 		if !intercepted {
 			switch method {
-			case "BicepConfigsClient.CreateOrUpdate":
+			case "BicepSettingsClient.CreateOrUpdate":
 				res.resp, res.err = b.dispatchCreateOrUpdate(req)
-			case "BicepConfigsClient.Delete":
+			case "BicepSettingsClient.Delete":
 				res.resp, res.err = b.dispatchDelete(req)
-			case "BicepConfigsClient.Get":
+			case "BicepSettingsClient.Get":
 				res.resp, res.err = b.dispatchGet(req)
-			case "BicepConfigsClient.NewListByScopePager":
+			case "BicepSettingsClient.NewListByScopePager":
 				res.resp, res.err = b.dispatchNewListByScopePager(req)
-			case "BicepConfigsClient.Update":
+			case "BicepSettingsClient.Update":
 				res.resp, res.err = b.dispatchUpdate(req)
 			default:
 				res.err = fmt.Errorf("unhandled API %s", method)
@@ -105,17 +105,17 @@ func (b *BicepConfigsServerTransport) dispatchToMethodFake(req *http.Request, me
 	}
 }
 
-func (b *BicepConfigsServerTransport) dispatchCreateOrUpdate(req *http.Request) (*http.Response, error) {
+func (b *BicepSettingsServerTransport) dispatchCreateOrUpdate(req *http.Request) (*http.Response, error) {
 	if b.srv.CreateOrUpdate == nil {
 		return nil, &nonRetriableError{errors.New("fake for method CreateOrUpdate not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepConfigs/(?P<bicepConfigName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	body, err := server.UnmarshalRequestAsJSON[v20250801preview.BicepConfigResource](req)
+	body, err := server.UnmarshalRequestAsJSON[v20250801preview.BicepSettingsResource](req)
 	if err != nil {
 		return nil, err
 	}
@@ -123,11 +123,11 @@ func (b *BicepConfigsServerTransport) dispatchCreateOrUpdate(req *http.Request) 
 	if err != nil {
 		return nil, err
 	}
-	bicepConfigNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepConfigName")])
+	bicepSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingsName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := b.srv.CreateOrUpdate(req.Context(), rootScopeParam, bicepConfigNameParam, body, nil)
+	respr, errRespr := b.srv.CreateOrUpdate(req.Context(), rootScopeParam, bicepSettingsNameParam, body, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -135,18 +135,18 @@ func (b *BicepConfigsServerTransport) dispatchCreateOrUpdate(req *http.Request) 
 	if !slices.Contains([]int{http.StatusOK, http.StatusCreated}, respContent.HTTPStatus) {
 		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK, http.StatusCreated", respContent.HTTPStatus)}
 	}
-	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).BicepConfigResource, req)
+	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).BicepSettingsResource, req)
 	if err != nil {
 		return nil, err
 	}
 	return resp, nil
 }
 
-func (b *BicepConfigsServerTransport) dispatchDelete(req *http.Request) (*http.Response, error) {
+func (b *BicepSettingsServerTransport) dispatchDelete(req *http.Request) (*http.Response, error) {
 	if b.srv.Delete == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Delete not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepConfigs/(?P<bicepConfigName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -156,11 +156,11 @@ func (b *BicepConfigsServerTransport) dispatchDelete(req *http.Request) (*http.R
 	if err != nil {
 		return nil, err
 	}
-	bicepConfigNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepConfigName")])
+	bicepSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingsName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := b.srv.Delete(req.Context(), rootScopeParam, bicepConfigNameParam, nil)
+	respr, errRespr := b.srv.Delete(req.Context(), rootScopeParam, bicepSettingsNameParam, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -175,11 +175,11 @@ func (b *BicepConfigsServerTransport) dispatchDelete(req *http.Request) (*http.R
 	return resp, nil
 }
 
-func (b *BicepConfigsServerTransport) dispatchGet(req *http.Request) (*http.Response, error) {
+func (b *BicepSettingsServerTransport) dispatchGet(req *http.Request) (*http.Response, error) {
 	if b.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepConfigs/(?P<bicepConfigName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -189,11 +189,11 @@ func (b *BicepConfigsServerTransport) dispatchGet(req *http.Request) (*http.Resp
 	if err != nil {
 		return nil, err
 	}
-	bicepConfigNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepConfigName")])
+	bicepSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingsName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := b.srv.Get(req.Context(), rootScopeParam, bicepConfigNameParam, nil)
+	respr, errRespr := b.srv.Get(req.Context(), rootScopeParam, bicepSettingsNameParam, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -201,20 +201,20 @@ func (b *BicepConfigsServerTransport) dispatchGet(req *http.Request) (*http.Resp
 	if !slices.Contains([]int{http.StatusOK}, respContent.HTTPStatus) {
 		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK", respContent.HTTPStatus)}
 	}
-	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).BicepConfigResource, req)
+	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).BicepSettingsResource, req)
 	if err != nil {
 		return nil, err
 	}
 	return resp, nil
 }
 
-func (b *BicepConfigsServerTransport) dispatchNewListByScopePager(req *http.Request) (*http.Response, error) {
+func (b *BicepSettingsServerTransport) dispatchNewListByScopePager(req *http.Request) (*http.Response, error) {
 	if b.srv.NewListByScopePager == nil {
 		return nil, &nonRetriableError{errors.New("fake for method NewListByScopePager not implemented")}
 	}
 	newListByScopePager := b.newListByScopePager.get(req)
 	if newListByScopePager == nil {
-		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepConfigs`
+		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 2 {
@@ -227,7 +227,7 @@ func (b *BicepConfigsServerTransport) dispatchNewListByScopePager(req *http.Requ
 		resp := b.srv.NewListByScopePager(rootScopeParam, nil)
 		newListByScopePager = &resp
 		b.newListByScopePager.add(req, newListByScopePager)
-		server.PagerResponderInjectNextLinks(newListByScopePager, req, func(page *v20250801preview.BicepConfigsClientListByScopeResponse, createLink func() string) {
+		server.PagerResponderInjectNextLinks(newListByScopePager, req, func(page *v20250801preview.BicepSettingsClientListByScopeResponse, createLink func() string) {
 			page.NextLink = to.Ptr(createLink())
 		})
 	}
@@ -245,17 +245,17 @@ func (b *BicepConfigsServerTransport) dispatchNewListByScopePager(req *http.Requ
 	return resp, nil
 }
 
-func (b *BicepConfigsServerTransport) dispatchUpdate(req *http.Request) (*http.Response, error) {
+func (b *BicepSettingsServerTransport) dispatchUpdate(req *http.Request) (*http.Response, error) {
 	if b.srv.Update == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Update not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepConfigs/(?P<bicepConfigName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	body, err := server.UnmarshalRequestAsJSON[v20250801preview.BicepConfigResource](req)
+	body, err := server.UnmarshalRequestAsJSON[v20250801preview.BicepSettingsResource](req)
 	if err != nil {
 		return nil, err
 	}
@@ -263,11 +263,11 @@ func (b *BicepConfigsServerTransport) dispatchUpdate(req *http.Request) (*http.R
 	if err != nil {
 		return nil, err
 	}
-	bicepConfigNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepConfigName")])
+	bicepSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingsName")])
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := b.srv.Update(req.Context(), rootScopeParam, bicepConfigNameParam, body, nil)
+	respr, errRespr := b.srv.Update(req.Context(), rootScopeParam, bicepSettingsNameParam, body, nil)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}
@@ -275,15 +275,15 @@ func (b *BicepConfigsServerTransport) dispatchUpdate(req *http.Request) (*http.R
 	if !slices.Contains([]int{http.StatusOK}, respContent.HTTPStatus) {
 		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK", respContent.HTTPStatus)}
 	}
-	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).BicepConfigResource, req)
+	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).BicepSettingsResource, req)
 	if err != nil {
 		return nil, err
 	}
 	return resp, nil
 }
 
-// set this to conditionally intercept incoming requests to BicepConfigsServerTransport
-var bicepConfigsServerTransportInterceptor interface {
+// set this to conditionally intercept incoming requests to BicepSettingsServerTransport
+var bicepSettingsServerTransportInterceptor interface {
 	// Do returns true if the server transport should use the returned response/error
 	Do(*http.Request) (*http.Response, error, bool)
 }

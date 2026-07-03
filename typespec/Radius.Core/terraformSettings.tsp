@@ -36,17 +36,17 @@ using OpenAPI;
 namespace Radius.Core;
 
 @doc("The Terraform configuration resource, providing reusable Terraform recipe settings for environments.")
-model TerraformConfigResource
-  is TrackedResourceRequired<TerraformConfigProperties, "terraformConfigs"> {
+model TerraformSettingsResource
+  is TrackedResourceRequired<TerraformSettingsProperties, "terraformSettings"> {
   @doc("Terraform configuration name")
-  @key("terraformConfigName")
+  @key("terraformSettingsName")
   @path
-  @segment("terraformConfigs")
+  @segment("terraformSettings")
   name: ResourceNameString;
 }
 
 @doc("Terraform configuration properties.")
-model TerraformConfigProperties {
+model TerraformSettingsProperties {
   @doc("The status of the asynchronous operation.")
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
@@ -103,36 +103,36 @@ model TerraformProviderDirect {
 
 @doc("Credential configuration for a Terraform registry or module source host.")
 model TerraformCredentialConfig {
-  @doc("The ID of an Applications.Core/SecretStore resource containing the authentication token. The secret store must have a secret named 'token'.")
+  @doc("The ID of a secret resource containing the authentication token. Supported types: Radius.Security/secrets (recommended) or Applications.Core/secretStores. The secret must have a key named 'token'.")
   secret?: string;
 }
 
 @armResourceOperations
-interface TerraformConfigs {
+interface TerraformSettings {
   get is ArmResourceRead<
-    TerraformConfigResource,
-    UCPBaseParameters<TerraformConfigResource>
+    TerraformSettingsResource,
+    UCPBaseParameters<TerraformSettingsResource>
   >;
 
   createOrUpdate is ArmResourceCreateOrReplaceSync<
-    TerraformConfigResource,
-    UCPBaseParameters<TerraformConfigResource>
+    TerraformSettingsResource,
+    UCPBaseParameters<TerraformSettingsResource>
   >;
 
   update is ArmResourcePatchSync<
-    TerraformConfigResource,
-    TerraformConfigProperties,
-    UCPBaseParameters<TerraformConfigResource>
+    TerraformSettingsResource,
+    TerraformSettingsProperties,
+    UCPBaseParameters<TerraformSettingsResource>
   >;
 
   delete is ArmResourceDeleteSync<
-    TerraformConfigResource,
-    UCPBaseParameters<TerraformConfigResource>
+    TerraformSettingsResource,
+    UCPBaseParameters<TerraformSettingsResource>
   >;
 
   listByScope is ArmResourceListByParent<
-    TerraformConfigResource,
-    UCPBaseParameters<TerraformConfigResource>,
+    TerraformSettingsResource,
+    UCPBaseParameters<TerraformSettingsResource>,
     "Scope",
     "Scope"
   >;

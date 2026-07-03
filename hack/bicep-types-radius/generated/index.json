@@ -57,7 +57,7 @@
     "Radius.Core/applications@2025-08-01-preview": {
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/66"
     },
-    "Radius.Core/bicepConfigs@2025-08-01-preview": {
+    "Radius.Core/bicepSettings@2025-08-01-preview": {
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/99"
     },
     "Radius.Core/environments@2025-08-01-preview": {
@@ -66,7 +66,7 @@
     "Radius.Core/recipePacks@2025-08-01-preview": {
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/167"
     },
-    "Radius.Core/terraformConfigs@2025-08-01-preview": {
+    "Radius.Core/terraformSettings@2025-08-01-preview": {
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/205"
     },
     "Radius.Data/mySqlDatabases@2025-08-01-preview": {

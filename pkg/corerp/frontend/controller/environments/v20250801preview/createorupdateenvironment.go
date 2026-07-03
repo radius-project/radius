@@ -133,13 +133,13 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 	newResource.Properties.RecipePacks = normalizedRecipePacks
 
 	// Validate referenced config resources exist and are of the correct type.
-	if newResource.Properties.TerraformConfig != "" {
-		if resp := validateConfigRef(ctx, e, newResource.Properties.TerraformConfig, datamodel.TerraformConfigResourceType, "terraformConfig"); resp != nil {
+	if newResource.Properties.TerraformSettings != "" {
+		if resp := validateConfigRef(ctx, e, newResource.Properties.TerraformSettings, datamodel.TerraformSettingsResourceType, "terraformSettings"); resp != nil {
 			return resp, nil
 		}
 	}
-	if newResource.Properties.BicepConfig != "" {
-		if resp := validateConfigRef(ctx, e, newResource.Properties.BicepConfig, datamodel.BicepConfigResourceType, "bicepConfig"); resp != nil {
+	if newResource.Properties.BicepSettings != "" {
+		if resp := validateConfigRef(ctx, e, newResource.Properties.BicepSettings, datamodel.BicepSettingsResourceType, "bicepSettings"); resp != nil {
 			return resp, nil
 		}
 	}
@@ -244,7 +244,7 @@ func resolveRecipePackRef(envID resources.ID, ref string) (string, rest.Response
 // validateConfigRef checks that the referenced resource ID parses, has the
 // expected resource type, and exists. It returns a populated rest.Response on
 // validation failure or nil on success. propertyName is the user-facing field
-// label used in error messages (e.g. "terraformConfig").
+// label used in error messages (e.g. "terraformSettings").
 //
 // Without the type check, any existing resource ID (a recipe pack, an
 // application, etc.) would silently pass and the loader would fail at recipe

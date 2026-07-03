@@ -26,19 +26,19 @@ import (
 )
 
 const (
-	tfConfigID       = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/terraformConfigs/tf"
+	tfConfigID       = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/terraformSettings/tf"
 	tfConfigName     = "tf"
-	tfConfigType     = "Radius.Core/terraformConfigs"
+	tfConfigType     = "Radius.Core/terraformSettings"
 	tfConfigLocation = "global"
 )
 
-func TestTerraformConfig_ConvertTo_Empty(t *testing.T) {
-	src := &TerraformConfigResource{
+func TestTerraformSettings_ConvertTo_Empty(t *testing.T) {
+	src := &TerraformSettingsResource{
 		ID:       to.Ptr(tfConfigID),
 		Name:     to.Ptr(tfConfigName),
 		Type:     to.Ptr(tfConfigType),
 		Location: to.Ptr(tfConfigLocation),
-		Properties: &TerraformConfigProperties{
+		Properties: &TerraformSettingsProperties{
 			ProvisioningState: to.Ptr(ProvisioningStateSucceeded),
 		},
 	}
@@ -46,7 +46,7 @@ func TestTerraformConfig_ConvertTo_Empty(t *testing.T) {
 	dm, err := src.ConvertTo()
 	require.NoError(t, err)
 
-	tc, ok := dm.(*datamodel.TerraformConfig)
+	tc, ok := dm.(*datamodel.TerraformSettings)
 	require.True(t, ok)
 	require.Equal(t, tfConfigID, tc.ID)
 	require.Nil(t, tc.Properties.Terraformrc.ProviderInstallation)
@@ -55,8 +55,8 @@ func TestTerraformConfig_ConvertTo_Empty(t *testing.T) {
 	require.Empty(t, tc.Properties.ReferencedBy)
 }
 
-func TestTerraformConfig_ConvertTo_NetworkMirrorOnly(t *testing.T) {
-	src := newVersionedTerraformConfig(&TerraformrcConfig{
+func TestTerraformSettings_ConvertTo_NetworkMirrorOnly(t *testing.T) {
+	src := newVersionedTerraformSettings(&TerraformrcConfig{
 		ProviderInstallation: &TerraformProviderInstallation{
 			NetworkMirror: &TerraformProviderMirror{
 				URL:     to.Ptr("https://mirror.example.com/"),
@@ -68,7 +68,7 @@ func TestTerraformConfig_ConvertTo_NetworkMirrorOnly(t *testing.T) {
 
 	dm, err := src.ConvertTo()
 	require.NoError(t, err)
-	tc := dm.(*datamodel.TerraformConfig)
+	tc := dm.(*datamodel.TerraformSettings)
 
 	require.NotNil(t, tc.Properties.Terraformrc.ProviderInstallation)
 	require.NotNil(t, tc.Properties.Terraformrc.ProviderInstallation.NetworkMirror)
@@ -78,8 +78,8 @@ func TestTerraformConfig_ConvertTo_NetworkMirrorOnly(t *testing.T) {
 	require.Nil(t, tc.Properties.Terraformrc.ProviderInstallation.Direct)
 }
 
-func TestTerraformConfig_ConvertTo_DirectOnly(t *testing.T) {
-	src := newVersionedTerraformConfig(&TerraformrcConfig{
+func TestTerraformSettings_ConvertTo_DirectOnly(t *testing.T) {
+	src := newVersionedTerraformSettings(&TerraformrcConfig{
 		ProviderInstallation: &TerraformProviderInstallation{
 			Direct: &TerraformProviderDirect{
 				Include: to.SliceOfPtrs("hashicorp/google"),
@@ -90,7 +90,7 @@ func TestTerraformConfig_ConvertTo_DirectOnly(t *testing.T) {
 
 	dm, err := src.ConvertTo()
 	require.NoError(t, err)
-	tc := dm.(*datamodel.TerraformConfig)
+	tc := dm.(*datamodel.TerraformSettings)
 
 	require.NotNil(t, tc.Properties.Terraformrc.ProviderInstallation)
 	require.Nil(t, tc.Properties.Terraformrc.ProviderInstallation.NetworkMirror)
@@ -99,8 +99,8 @@ func TestTerraformConfig_ConvertTo_DirectOnly(t *testing.T) {
 	require.Equal(t, []string{"hashicorp/aws"}, tc.Properties.Terraformrc.ProviderInstallation.Direct.Exclude)
 }
 
-func TestTerraformConfig_ConvertTo_Both(t *testing.T) {
-	src := newVersionedTerraformConfig(&TerraformrcConfig{
+func TestTerraformSettings_ConvertTo_Both(t *testing.T) {
+	src := newVersionedTerraformSettings(&TerraformrcConfig{
 		ProviderInstallation: &TerraformProviderInstallation{
 			NetworkMirror: &TerraformProviderMirror{URL: to.Ptr("https://mirror.example.com/")},
 			Direct:        &TerraformProviderDirect{Include: to.SliceOfPtrs("hashicorp/google")},
@@ -109,14 +109,14 @@ func TestTerraformConfig_ConvertTo_Both(t *testing.T) {
 
 	dm, err := src.ConvertTo()
 	require.NoError(t, err)
-	tc := dm.(*datamodel.TerraformConfig)
+	tc := dm.(*datamodel.TerraformSettings)
 
 	require.NotNil(t, tc.Properties.Terraformrc.ProviderInstallation.NetworkMirror)
 	require.NotNil(t, tc.Properties.Terraformrc.ProviderInstallation.Direct)
 }
 
-func TestTerraformConfig_ConvertTo_MultipleCredentialHosts(t *testing.T) {
-	src := newVersionedTerraformConfig(&TerraformrcConfig{
+func TestTerraformSettings_ConvertTo_MultipleCredentialHosts(t *testing.T) {
+	src := newVersionedTerraformSettings(&TerraformrcConfig{
 		Credentials: map[string]*TerraformCredentialConfig{
 			"app.terraform.io":     {Secret: to.Ptr("/planes/radius/local/.../secretA")},
 			"registry.example.com": {Secret: to.Ptr("/planes/radius/local/.../secretB")},
@@ -126,7 +126,7 @@ func TestTerraformConfig_ConvertTo_MultipleCredentialHosts(t *testing.T) {
 
 	dm, err := src.ConvertTo()
 	require.NoError(t, err)
-	tc := dm.(*datamodel.TerraformConfig)
+	tc := dm.(*datamodel.TerraformSettings)
 
 	require.Len(t, tc.Properties.Terraformrc.Credentials, 3)
 	require.Equal(t, "/planes/radius/local/.../secretA", tc.Properties.Terraformrc.Credentials["app.terraform.io"].Secret)
@@ -134,10 +134,10 @@ func TestTerraformConfig_ConvertTo_MultipleCredentialHosts(t *testing.T) {
 	require.Equal(t, "/planes/radius/local/.../secretC", tc.Properties.Terraformrc.Credentials["private.example.com"].Secret)
 }
 
-func TestTerraformConfig_ConvertTo_NilCredentialEntrySkipped(t *testing.T) {
+func TestTerraformSettings_ConvertTo_NilCredentialEntrySkipped(t *testing.T) {
 	// A nil entry in the Credentials map should not produce a panic; the
 	// converter should silently skip it.
-	src := newVersionedTerraformConfig(&TerraformrcConfig{
+	src := newVersionedTerraformSettings(&TerraformrcConfig{
 		Credentials: map[string]*TerraformCredentialConfig{
 			"app.terraform.io":     {Secret: to.Ptr("/planes/.../s1")},
 			"registry.example.com": nil,
@@ -146,22 +146,22 @@ func TestTerraformConfig_ConvertTo_NilCredentialEntrySkipped(t *testing.T) {
 
 	dm, err := src.ConvertTo()
 	require.NoError(t, err)
-	tc := dm.(*datamodel.TerraformConfig)
+	tc := dm.(*datamodel.TerraformSettings)
 
 	require.Len(t, tc.Properties.Terraformrc.Credentials, 1)
 	_, has := tc.Properties.Terraformrc.Credentials["app.terraform.io"]
 	require.True(t, has)
 }
 
-func TestTerraformConfig_ConvertFrom_Wrong_Type(t *testing.T) {
-	dst := &TerraformConfigResource{}
+func TestTerraformSettings_ConvertFrom_Wrong_Type(t *testing.T) {
+	dst := &TerraformSettingsResource{}
 	err := dst.ConvertFrom(&datamodel.Environment{})
 	require.Error(t, err)
 	require.Equal(t, v1.ErrInvalidModelConversion, err)
 }
 
-func TestTerraformConfig_RoundTrip_Identity(t *testing.T) {
-	original := newVersionedTerraformConfig(&TerraformrcConfig{
+func TestTerraformSettings_RoundTrip_Identity(t *testing.T) {
+	original := newVersionedTerraformSettings(&TerraformrcConfig{
 		ProviderInstallation: &TerraformProviderInstallation{
 			NetworkMirror: &TerraformProviderMirror{
 				URL:     to.Ptr("https://mirror.example.com/"),
@@ -185,7 +185,7 @@ func TestTerraformConfig_RoundTrip_Identity(t *testing.T) {
 	dm, err := original.ConvertTo()
 	require.NoError(t, err)
 
-	roundTripped := &TerraformConfigResource{}
+	roundTripped := &TerraformSettingsResource{}
 	require.NoError(t, roundTripped.ConvertFrom(dm))
 
 	// Provider installation
@@ -208,16 +208,16 @@ func TestTerraformConfig_RoundTrip_Identity(t *testing.T) {
 	require.Equal(t, "/tmp/tf.log", *roundTripped.Properties.Env["TF_LOG_PATH"])
 }
 
-func TestTerraformConfig_CredentialsAreIndependentEntries(t *testing.T) {
+func TestTerraformSettings_CredentialsAreIndependentEntries(t *testing.T) {
 	// Guards against pointer-aliasing bugs in the credentials map: each host's
 	// Secret must point to its own value, not share storage across iterations.
-	dm := &datamodel.TerraformConfig{
+	dm := &datamodel.TerraformSettings{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
 				ID: tfConfigID, Name: tfConfigName, Type: tfConfigType, Location: tfConfigLocation,
 			},
 		},
-		Properties: datamodel.TerraformConfigResourceProperties{
+		Properties: datamodel.TerraformSettingsResourceProperties{
 			Terraformrc: datamodel.TerraformrcConfig{
 				Credentials: map[string]datamodel.TerraformCredentialConfig{
 					"hostA": {Secret: "secretA"},
@@ -227,7 +227,7 @@ func TestTerraformConfig_CredentialsAreIndependentEntries(t *testing.T) {
 		},
 	}
 
-	versioned := &TerraformConfigResource{}
+	versioned := &TerraformSettingsResource{}
 	require.NoError(t, versioned.ConvertFrom(dm))
 
 	creds := versioned.Properties.Terraformrc.Credentials
@@ -238,15 +238,15 @@ func TestTerraformConfig_CredentialsAreIndependentEntries(t *testing.T) {
 	require.NotSame(t, creds["hostA"].Secret, creds["hostB"].Secret)
 }
 
-// newVersionedTerraformConfig builds a TerraformConfigResource with the
+// newVersionedTerraformSettings builds a TerraformSettingsResource with the
 // required tracked-resource fields populated and the supplied .terraformrc.
-func newVersionedTerraformConfig(rc *TerraformrcConfig) *TerraformConfigResource {
-	return &TerraformConfigResource{
+func newVersionedTerraformSettings(rc *TerraformrcConfig) *TerraformSettingsResource {
+	return &TerraformSettingsResource{
 		ID:       to.Ptr(tfConfigID),
 		Name:     to.Ptr(tfConfigName),
 		Type:     to.Ptr(tfConfigType),
 		Location: to.Ptr(tfConfigLocation),
-		Properties: &TerraformConfigProperties{
+		Properties: &TerraformSettingsProperties{
 			ProvisioningState: to.Ptr(ProvisioningStateSucceeded),
 			Terraformrc:       rc,
 		},

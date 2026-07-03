@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package bicepconfigs hosts request validators and other custom controller
-// logic for Radius.Core/bicepConfigs that the generic CRUD framework cannot
+// Package bicepsettings hosts request validators and other custom controller
+// logic for Radius.Core/bicepSettings that the generic CRUD framework cannot
 // express through TypeSpec alone.
-package bicepconfigs
+package bicepsettings
 
 import (
 	"context"
@@ -41,10 +41,10 @@ const (
 //   - authenticationMethod=AzureWI   requires azureWiClientId and azureWiTenantId
 //   - authenticationMethod=AwsIrsa   requires awsIamRoleArn
 //
-// Without this hook the API would silently accept BicepConfig resources that
+// Without this hook the API would silently accept BicepSettings resources that
 // reference no credentials, and the failure would surface much later at recipe
 // execution time.
-func ValidateRequest(ctx context.Context, newResource *datamodel.BicepConfig, oldResource *datamodel.BicepConfig, options *controller.Options) (rest.Response, error) {
+func ValidateRequest(ctx context.Context, newResource *datamodel.BicepSettings, oldResource *datamodel.BicepSettings, options *controller.Options) (rest.Response, error) {
 	for host, auth := range newResource.Properties.RegistryAuthentications {
 		if auth.AuthenticationMethod == "" {
 			// AuthenticationMethod is itself optional in TypeSpec; if the user

@@ -38,33 +38,33 @@ type ApplicationsClientUpdateResponse struct {
 	ApplicationResource
 }
 
-// BicepConfigsClientCreateOrUpdateResponse contains the response from method BicepConfigsClient.CreateOrUpdate.
-type BicepConfigsClientCreateOrUpdateResponse struct {
+// BicepSettingsClientCreateOrUpdateResponse contains the response from method BicepSettingsClient.CreateOrUpdate.
+type BicepSettingsClientCreateOrUpdateResponse struct {
 	// The Bicep configuration resource, providing reusable Bicep recipe settings for environments.
-	BicepConfigResource
+	BicepSettingsResource
 }
 
-// BicepConfigsClientDeleteResponse contains the response from method BicepConfigsClient.Delete.
-type BicepConfigsClientDeleteResponse struct {
+// BicepSettingsClientDeleteResponse contains the response from method BicepSettingsClient.Delete.
+type BicepSettingsClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
-// BicepConfigsClientGetResponse contains the response from method BicepConfigsClient.Get.
-type BicepConfigsClientGetResponse struct {
+// BicepSettingsClientGetResponse contains the response from method BicepSettingsClient.Get.
+type BicepSettingsClientGetResponse struct {
 	// The Bicep configuration resource, providing reusable Bicep recipe settings for environments.
-	BicepConfigResource
+	BicepSettingsResource
 }
 
-// BicepConfigsClientListByScopeResponse contains the response from method BicepConfigsClient.NewListByScopePager.
-type BicepConfigsClientListByScopeResponse struct {
-	// The response of a BicepConfigResource list operation.
-	BicepConfigResourceListResult
+// BicepSettingsClientListByScopeResponse contains the response from method BicepSettingsClient.NewListByScopePager.
+type BicepSettingsClientListByScopeResponse struct {
+	// The response of a BicepSettingsResource list operation.
+	BicepSettingsResourceListResult
 }
 
-// BicepConfigsClientUpdateResponse contains the response from method BicepConfigsClient.Update.
-type BicepConfigsClientUpdateResponse struct {
+// BicepSettingsClientUpdateResponse contains the response from method BicepSettingsClient.Update.
+type BicepSettingsClientUpdateResponse struct {
 	// The Bicep configuration resource, providing reusable Bicep recipe settings for environments.
-	BicepConfigResource
+	BicepSettingsResource
 }
 
 // EnvironmentsClientCreateOrUpdateResponse contains the response from method EnvironmentsClient.CreateOrUpdate.
@@ -131,31 +131,31 @@ type RecipePacksClientUpdateResponse struct {
 	RecipePackResource
 }
 
-// TerraformConfigsClientCreateOrUpdateResponse contains the response from method TerraformConfigsClient.CreateOrUpdate.
-type TerraformConfigsClientCreateOrUpdateResponse struct {
+// TerraformSettingsClientCreateOrUpdateResponse contains the response from method TerraformSettingsClient.CreateOrUpdate.
+type TerraformSettingsClientCreateOrUpdateResponse struct {
 	// The Terraform configuration resource, providing reusable Terraform recipe settings for environments.
-	TerraformConfigResource
+	TerraformSettingsResource
 }
 
-// TerraformConfigsClientDeleteResponse contains the response from method TerraformConfigsClient.Delete.
-type TerraformConfigsClientDeleteResponse struct {
+// TerraformSettingsClientDeleteResponse contains the response from method TerraformSettingsClient.Delete.
+type TerraformSettingsClientDeleteResponse struct {
 	// placeholder for future response values
 }
 
-// TerraformConfigsClientGetResponse contains the response from method TerraformConfigsClient.Get.
-type TerraformConfigsClientGetResponse struct {
+// TerraformSettingsClientGetResponse contains the response from method TerraformSettingsClient.Get.
+type TerraformSettingsClientGetResponse struct {
 	// The Terraform configuration resource, providing reusable Terraform recipe settings for environments.
-	TerraformConfigResource
+	TerraformSettingsResource
 }
 
-// TerraformConfigsClientListByScopeResponse contains the response from method TerraformConfigsClient.NewListByScopePager.
-type TerraformConfigsClientListByScopeResponse struct {
-	// The response of a TerraformConfigResource list operation.
-	TerraformConfigResourceListResult
+// TerraformSettingsClientListByScopeResponse contains the response from method TerraformSettingsClient.NewListByScopePager.
+type TerraformSettingsClientListByScopeResponse struct {
+	// The response of a TerraformSettingsResource list operation.
+	TerraformSettingsResourceListResult
 }
 
-// TerraformConfigsClientUpdateResponse contains the response from method TerraformConfigsClient.Update.
-type TerraformConfigsClientUpdateResponse struct {
+// TerraformSettingsClientUpdateResponse contains the response from method TerraformSettingsClient.Update.
+type TerraformSettingsClientUpdateResponse struct {
 	// The Terraform configuration resource, providing reusable Terraform recipe settings for environments.
-	TerraformConfigResource
+	TerraformSettingsResource
 }
