@@ -1,10 +1,14 @@
 // -----------------------------------------------------------------------------
 // Scenario 3 - Combined: one environment, private Terraform AND private Bicep
 //
-// A single Radius.Core/environments references BOTH a Radius.Core/terraformConfigs
-// (private Terraform registry credentials + env vars) and a Radius.Core/bicepConfigs
+// A single Radius.Core/environments references BOTH a Radius.Core/terraformSettings
+// (private Terraform registry credentials + env vars) and a Radius.Core/bicepSettings
 // (private OCI/Bicep registry BasicAuth). This mirrors a platform team that
 // defines registry authentication once and reuses it across recipe kinds.
+//
+// Both registry credentials are stored as Radius.Security/secrets resources,
+// provisioned into a dedicated secrets environment so their backing Kubernetes
+// Secrets exist before the recipe drivers resolve them.
 //
 // Replace the parameters below with the details of your own private registries.
 // See ../README.md for the full step-by-step walkthrough.
@@ -15,8 +19,11 @@ extension radius
 @description('Name of the Radius Application to create.')
 param appName string = 'private-combined-demo'
 
-@description('Kubernetes namespace the environment deploys into. Must already exist.')
+@description('Kubernetes namespace the application environment deploys into. Must already exist.')
 param kubernetesNamespace string = 'private-combined-demo'
+
+@description('Kubernetes namespace the secrets environment deploys into. Must already exist and differ from kubernetesNamespace.')
+param secretsNamespace string = 'private-combined-demo-secrets'
 
 // --- Private Terraform registry inputs ---
 @description('Hostname of the private Terraform registry that requires a token.')
@@ -44,13 +51,31 @@ param bicepRegistryUsername string
 @secure()
 param bicepRegistryPassword string
 
-// SecretStore for the Terraform registry token (key: token).
-resource terraformTokenSecret 'Applications.Core/secretStores@2023-10-01-preview' = {
+// Secrets environment. It carries NO recipePacks, so `rad deploy` injects the
+// cluster's default recipe pack, which registers the Radius.Security/secrets
+// Kubernetes recipe. Both credential secrets below are provisioned here so their
+// backing Kubernetes Secrets exist before the recipe drivers resolve them. It
+// uses a separate namespace from the application environment because Radius
+// rejects two environments that share a namespace.
+resource secretsEnv 'Radius.Core/environments@2025-08-01-preview' = {
+  name: 'combined-secrets-env'
+  location: 'global'
+  properties: {
+    providers: {
+      kubernetes: {
+        namespace: secretsNamespace
+      }
+    }
+  }
+}
+
+// Radius.Security/secrets for the Terraform registry token (key: token).
+resource terraformTokenSecret 'Radius.Security/secrets@2025-08-01-preview' = {
   name: 'combined-tf-token-secret'
   location: 'global'
   properties: {
-    resource: '${kubernetesNamespace}/combined-tf-token-secret'
-    type: 'generic'
+    environment: secretsEnv.id
+    kind: 'generic'
     data: {
       token: {
         value: terraformRegistryToken
@@ -59,13 +84,13 @@ resource terraformTokenSecret 'Applications.Core/secretStores@2023-10-01-preview
   }
 }
 
-// SecretStore for the Bicep OCI registry BasicAuth (keys: username, password).
-resource bicepRegistrySecret 'Applications.Core/secretStores@2023-10-01-preview' = {
+// Radius.Security/secrets for the Bicep OCI registry BasicAuth (keys: username, password).
+resource bicepRegistrySecret 'Radius.Security/secrets@2025-08-01-preview' = {
   name: 'combined-bicep-registry-secret'
   location: 'global'
   properties: {
-    resource: '${kubernetesNamespace}/combined-bicep-registry-secret'
-    type: 'generic'
+    environment: secretsEnv.id
+    kind: 'generic'
     data: {
       username: {
         value: bicepRegistryUsername
@@ -77,8 +102,8 @@ resource bicepRegistrySecret 'Applications.Core/secretStores@2023-10-01-preview'
   }
 }
 
-resource tfConfig 'Radius.Core/terraformConfigs@2025-08-01-preview' = {
-  name: 'combined-tf-config'
+resource tfSettings 'Radius.Core/terraformSettings@2025-08-01-preview' = {
+  name: 'combined-tf-settings'
   location: 'global'
   properties: {
     terraformrc: {
@@ -101,8 +126,8 @@ resource tfConfig 'Radius.Core/terraformConfigs@2025-08-01-preview' = {
   }
 }
 
-resource bicepConfig 'Radius.Core/bicepConfigs@2025-08-01-preview' = {
-  name: 'combined-bicep-config'
+resource bicepSettings 'Radius.Core/bicepSettings@2025-08-01-preview' = {
+  name: 'combined-bicep-settings'
   location: 'global'
   properties: {
     registryAuthentications: {
@@ -120,14 +145,14 @@ resource recipePack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   properties: {
     recipes: {
       'Applications.Core/extenders': {
-        recipeKind: 'terraform'
-        recipeLocation: terraformRecipeLocation
+        kind: 'terraform'
+        source: terraformRecipeLocation
       }
     }
   }
 }
 
-// One environment, two config resources, both reused from a single definition.
+// One environment, two settings resources, both reused from a single definition.
 resource env 'Radius.Core/environments@2025-08-01-preview' = {
   name: 'combined-env'
   location: 'global'
@@ -140,8 +165,8 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
         namespace: kubernetesNamespace
       }
     }
-    terraformConfig: tfConfig.id
-    bicepConfig: bicepConfig.id
+    terraformSettings: tfSettings.id
+    bicepSettings: bicepSettings.id
   }
 }
 

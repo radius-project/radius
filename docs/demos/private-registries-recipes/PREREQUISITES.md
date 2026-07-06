@@ -108,7 +108,7 @@ export BICEP_REGISTRY_PASSWORD="<your-pat>"
 
 The demo's [Scenario 1](./README.md#scenario-1--private-bicep-recipe-registry-oci)
 publishes [`recipes/redis-recipe.bicep`](./recipes/redis-recipe.bicep) to
-`BICEP_RECIPE` and feeds the credentials into a `Radius.Core/bicepConfigs`.
+`BICEP_RECIPE` and feeds the credentials into a `Radius.Core/bicepSettings`.
 
 ---
 
@@ -116,7 +116,7 @@ publishes [`recipes/redis-recipe.bicep`](./recipes/redis-recipe.bicep) to
 
 **Goal:** a private Terraform module source that authenticates with a **token**,
 plus the module address Radius should fetch. The demo's
-`Radius.Core/terraformConfigs` renders a `.terraformrc` `credentials` block for
+`Radius.Core/terraformSettings` renders a `.terraformrc` `credentials` block for
 that host.
 
 ### High-level steps (any token-authenticated registry)
@@ -183,12 +183,12 @@ export TF_REGISTRY_TOKEN="<your-terralist-api-token>"
 > `TF_RECIPE_LOCATION` is whatever module source your private recipe lives at - a
 > private registry module address or an HTTP module archive URL. The demo's
 > [Scenario 2](./README.md#scenario-2--private-terraform-module-registry--repository)
-> stores the token in a `SecretStore` and references it from a
-> `Radius.Core/terraformConfigs`.
+> stores the token in a `Radius.Security/secrets` and references it from a
+> `Radius.Core/terraformSettings`.
 
 > **Git-based private modules (PAT auth):** authenticating to a private **Git**
 > module source with a personal access token is a separate path that the new
-> `Radius.Core/terraformConfigs` resource does not cover yet. For Git PAT auth
+> `Radius.Core/terraformSettings` resource does not cover yet. For Git PAT auth
 > today, use the legacy `Applications.Core/environments` `recipeConfig` path -
 > see [Known limitations](./README.md#known-limitations-as-of-this-demo).
 

@@ -60,6 +60,12 @@ $RadGroup = 'demo-private-registries'
 $BicepNamespace = 'private-bicep-demo'
 $TfNamespace = 'private-tf-demo'
 $CombinedNamespace = 'private-combined-demo'
+# Each scenario provisions its Radius.Security/secrets into a dedicated secrets
+# environment, which needs its own namespace (Radius rejects two environments
+# that share a namespace).
+$BicepSecretsNamespace = 'private-bicep-demo-secrets'
+$TfSecretsNamespace = 'private-tf-demo-secrets'
+$CombinedSecretsNamespace = 'private-combined-demo-secrets'
 
 function Test-Tools {
     foreach ($tool in @('rad', 'kubectl')) {
@@ -107,6 +113,7 @@ function Invoke-Bicep {
     Assert-Vars @('BICEP_REGISTRY', 'BICEP_RECIPE',
         'BICEP_REGISTRY_USERNAME', 'BICEP_REGISTRY_PASSWORD')
     Confirm-Namespace $BicepNamespace
+    Confirm-Namespace $BicepSecretsNamespace
 
     if (-not $SkipPublish) {
         Write-Host "Publishing Bicep recipe to $(Get-Var 'BICEP_RECIPE')"
@@ -130,6 +137,7 @@ function Invoke-Bicep {
 function Invoke-Terraform {
     Assert-Vars @('TF_REGISTRY_HOST', 'TF_RECIPE_LOCATION', 'TF_REGISTRY_TOKEN')
     Confirm-Namespace $TfNamespace
+    Confirm-Namespace $TfSecretsNamespace
 
     Write-Host 'Deploying Scenario 2 (private Terraform registry)'
     rad deploy (Join-Path $BicepDir 'terraform-private-registry.bicep') `
@@ -147,6 +155,7 @@ function Invoke-Combined {
         'BICEP_REGISTRY_USERNAME', 'BICEP_REGISTRY_PASSWORD',
         'TF_REGISTRY_HOST', 'TF_RECIPE_LOCATION', 'TF_REGISTRY_TOKEN')
     Confirm-Namespace $CombinedNamespace
+    Confirm-Namespace $CombinedSecretsNamespace
 
     if (-not $SkipPublish) {
         Write-Host "Publishing Bicep recipe to $(Get-Var 'BICEP_RECIPE')"
@@ -166,8 +175,8 @@ function Invoke-Combined {
 
     Write-Host 'Verifying Scenario 3'
     rad resource show Radius.Core/environments combined-env
-    rad resource list Radius.Core/terraformConfigs
-    rad resource list Radius.Core/bicepConfigs
+    rad resource list Radius.Core/terraformSettings
+    rad resource list Radius.Core/bicepSettings
 }
 
 function Remove-Demo {
@@ -179,7 +188,9 @@ function Remove-Demo {
     rad group switch default 2>$null
     rad group delete $RadGroup --yes 2>$null
     kubectl delete namespace `
-        $BicepNamespace $TfNamespace $CombinedNamespace --ignore-not-found
+        $BicepNamespace $TfNamespace $CombinedNamespace `
+        $BicepSecretsNamespace $TfSecretsNamespace $CombinedSecretsNamespace `
+        --ignore-not-found
     Write-Host 'Cleanup complete'
 }
 

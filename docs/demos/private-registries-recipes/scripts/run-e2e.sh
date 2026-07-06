@@ -26,6 +26,12 @@ readonly RAD_GROUP="demo-private-registries"
 readonly BICEP_NAMESPACE="private-bicep-demo"
 readonly TF_NAMESPACE="private-tf-demo"
 readonly COMBINED_NAMESPACE="private-combined-demo"
+# Each scenario provisions its Radius.Security/secrets into a dedicated secrets
+# environment, which needs its own namespace (Radius rejects two environments
+# that share a namespace).
+readonly BICEP_SECRETS_NAMESPACE="private-bicep-demo-secrets"
+readonly TF_SECRETS_NAMESPACE="private-tf-demo-secrets"
+readonly COMBINED_SECRETS_NAMESPACE="private-combined-demo-secrets"
 
 # Default values
 SCENARIO="all"
@@ -110,6 +116,7 @@ run_bicep() {
     require_vars BICEP_REGISTRY BICEP_RECIPE \
         BICEP_REGISTRY_USERNAME BICEP_REGISTRY_PASSWORD
     ensure_namespace "${BICEP_NAMESPACE}"
+    ensure_namespace "${BICEP_SECRETS_NAMESPACE}"
 
     if [[ "${PUBLISH_RECIPE}" == "true" ]]; then
         echo "Publishing Bicep recipe to ${BICEP_RECIPE}"
@@ -133,6 +140,7 @@ run_bicep() {
 run_terraform() {
     require_vars TF_REGISTRY_HOST TF_RECIPE_LOCATION TF_REGISTRY_TOKEN
     ensure_namespace "${TF_NAMESPACE}"
+    ensure_namespace "${TF_SECRETS_NAMESPACE}"
 
     echo "Deploying Scenario 2 (private Terraform registry)"
     rad deploy "${BICEP_DIR}/terraform-private-registry.bicep" \
@@ -150,6 +158,7 @@ run_combined() {
         BICEP_REGISTRY_USERNAME BICEP_REGISTRY_PASSWORD \
         TF_REGISTRY_HOST TF_RECIPE_LOCATION TF_REGISTRY_TOKEN
     ensure_namespace "${COMBINED_NAMESPACE}"
+    ensure_namespace "${COMBINED_SECRETS_NAMESPACE}"
 
     if [[ "${PUBLISH_RECIPE}" == "true" ]]; then
         echo "Publishing Bicep recipe to ${BICEP_RECIPE}"
@@ -169,8 +178,8 @@ run_combined() {
 
     echo "Verifying Scenario 3"
     rad resource show Radius.Core/environments combined-env
-    rad resource list Radius.Core/terraformConfigs
-    rad resource list Radius.Core/bicepConfigs
+    rad resource list Radius.Core/terraformSettings
+    rad resource list Radius.Core/bicepSettings
 }
 
 cleanup_demo() {
@@ -183,6 +192,8 @@ cleanup_demo() {
     rad group delete "${RAD_GROUP}" --yes 2>/dev/null || true
     kubectl delete namespace \
         "${BICEP_NAMESPACE}" "${TF_NAMESPACE}" "${COMBINED_NAMESPACE}" \
+        "${BICEP_SECRETS_NAMESPACE}" "${TF_SECRETS_NAMESPACE}" \
+        "${COMBINED_SECRETS_NAMESPACE}" \
         --ignore-not-found
     echo "Cleanup complete"
 }

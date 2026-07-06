@@ -2,7 +2,7 @@
 // Sample Bicep recipe for the private-registry demo (Scenario 1).
 //
 // Publish this to your *private* OCI registry with `rad bicep publish`, then
-// point the RecipePack's recipeLocation at the published artifact. See
+// point the RecipePack's recipe `source` at the published artifact. See
 // ../README.md for the publishing commands.
 //
 // The recipe provisions a small Redis Deployment + Service on Kubernetes and

@@ -2,9 +2,15 @@
 // Scenario 2 - Private Terraform module registry / repository
 //
 // Demonstrates authenticating to a *private* Terraform module source by attaching
-// a Radius.Core/terraformConfigs resource to a Radius.Core/environments. The
-// terraformConfig renders a .terraformrc (credentials + provider_installation)
-// at recipe execution time and points Terraform at it via TF_CLI_CONFIG_FILE.
+// a Radius.Core/terraformSettings resource to a Radius.Core/environments. The
+// terraformSettings resource renders a .terraformrc (credentials + provider
+// installation) at recipe execution time and points Terraform at it via
+// TF_CLI_CONFIG_FILE.
+//
+// The registry token is stored in a Radius.Security/secrets resource. The
+// terraformSettings credentials block references that secret by ID; the
+// Terraform driver resolves the secret's 'token' key and renders it into the
+// generated .terraformrc.
 //
 // Replace the parameters below with the details of your own private registry.
 // See ../README.md for the full step-by-step walkthrough.
@@ -15,8 +21,11 @@ extension radius
 @description('Name of the Radius Application to create.')
 param appName string = 'private-tf-demo'
 
-@description('Kubernetes namespace the environment deploys into. Must already exist.')
+@description('Kubernetes namespace the application environment deploys into. Must already exist.')
 param kubernetesNamespace string = 'private-tf-demo'
+
+@description('Kubernetes namespace the secrets environment deploys into. Must already exist and differ from kubernetesNamespace.')
+param secretsNamespace string = 'private-tf-demo-secrets'
 
 @description('Hostname of the private Terraform registry that requires a token, e.g. "app.terraform.io" or "registry.mycompany.com".')
 param terraformRegistryHostname string
@@ -31,14 +40,33 @@ param terraformRegistryToken string
 @description('Name of the Redis cache the example Terraform recipe provisions.')
 param redisCacheName string = 'tf-private-redis'
 
-// SecretStore holding the Terraform registry token. The terraformConfig
-// credentials block references this; the secret store must expose a 'token' key.
-resource registryTokenSecret 'Applications.Core/secretStores@2023-10-01-preview' = {
+// Secrets environment. It carries NO recipePacks, so `rad deploy` injects the
+// cluster's default recipe pack, which registers the Radius.Security/secrets
+// Kubernetes recipe. That recipe materializes the backing Kubernetes Secret the
+// Terraform driver later reads. It uses a separate namespace from the
+// application environment because Radius rejects two environments that share a
+// namespace.
+resource secretsEnv 'Radius.Core/environments@2025-08-01-preview' = {
+  name: 'private-tf-secrets-env'
+  location: 'global'
+  properties: {
+    providers: {
+      kubernetes: {
+        namespace: secretsNamespace
+      }
+    }
+  }
+}
+
+// Radius.Security/secrets holding the Terraform registry token. The
+// terraformSettings credentials block references this by ID; the backing
+// Kubernetes Secret must expose a 'token' key, which the driver reads.
+resource registryTokenSecret 'Radius.Security/secrets@2025-08-01-preview' = {
   name: 'private-tf-token-secret'
   location: 'global'
   properties: {
-    resource: '${kubernetesNamespace}/private-tf-token-secret'
-    type: 'generic'
+    environment: secretsEnv.id
+    kind: 'generic'
     data: {
       token: {
         value: terraformRegistryToken
@@ -47,14 +75,14 @@ resource registryTokenSecret 'Applications.Core/secretStores@2023-10-01-preview'
   }
 }
 
-// TerraformConfig that:
+// TerraformSettings that:
 //   * authenticates to the private Terraform registry (credentials block), and
 //   * keeps provider installation on the default "direct" path (fetch providers
 //     from the public registry). Swap "direct" for "networkMirror" if your
 //     providers also live behind a private mirror.
 //   * injects env vars into the Terraform process (here, raise the log level).
-resource tfConfig 'Radius.Core/terraformConfigs@2025-08-01-preview' = {
-  name: 'private-tf-config'
+resource tfSettings 'Radius.Core/terraformSettings@2025-08-01-preview' = {
+  name: 'private-tf-settings'
   location: 'global'
   properties: {
     terraformrc: {
@@ -85,14 +113,14 @@ resource recipePack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   properties: {
     recipes: {
       'Applications.Core/extenders': {
-        recipeKind: 'terraform'
-        recipeLocation: recipeLocation
+        kind: 'terraform'
+        source: recipeLocation
       }
     }
   }
 }
 
-// Environment that references both the recipe pack and the Terraform config.
+// Environment that references both the recipe pack and the Terraform settings.
 resource env 'Radius.Core/environments@2025-08-01-preview' = {
   name: 'private-tf-env'
   location: 'global'
@@ -105,7 +133,7 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
         namespace: kubernetesNamespace
       }
     }
-    terraformConfig: tfConfig.id
+    terraformSettings: tfSettings.id
   }
 }
 
