@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -163,4 +164,38 @@ Resources: (none)
 		require.Equal(t, expected, actual)
 	})
 
+}
+
+func Test_MakeResourceHyperlink(t *testing.T) {
+	tests := []struct {
+		name         string
+		portalURL    *string
+		resourceName string
+		want         string
+	}{
+		{
+			name:         "nil portal URL returns empty string",
+			portalURL:    nil,
+			resourceName: "myresource",
+			want:         "",
+		},
+		{
+			name:         "empty portal URL returns empty string",
+			portalURL:    to.Ptr(""),
+			resourceName: "myresource",
+			want:         "",
+		},
+		{
+			name:         "populated portal URL is wrapped in terminal hyperlink escape sequence",
+			portalURL:    to.Ptr("https://portal.azure.com/#@tenant/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"),
+			resourceName: "mystorage",
+			want:         "\x1b]8;;https://portal.azure.com/#@tenant/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage\x07mystorage\x1b]8;;\x07",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, MakeResourceHyperlink(tt.portalURL, tt.resourceName))
+		})
+	}
 }

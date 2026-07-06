@@ -18,8 +18,13 @@ package applications
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
+	azpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -443,6 +448,220 @@ func Test_outputResourceEntryFromID(t *testing.T) {
 				require.NotNil(t, entry.PortalURL)
 				require.Equal(t, tt.wantPortalURL, *entry.PortalURL)
 			}
+		})
+	}
+}
+
+func Test_outputResourcesFromAPIData(t *testing.T) {
+	const tenantID = "11111111-1111-1111-1111-111111111111"
+	const azureStorageID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
+	const kubernetesUCPID = "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/foo"
+
+	makeResource := func(properties map[string]any) generated.GenericResource {
+		return generated.GenericResource{Properties: properties}
+	}
+
+	tests := []struct {
+		name              string
+		resource          generated.GenericResource
+		tenantID          string
+		wantIDsInOrder    []string
+		wantPortalURLByID map[string]string // empty string / missing key means PortalURL must be nil
+	}{
+		{
+			name:           "missing status returns empty slice",
+			resource:       makeResource(map[string]any{}),
+			tenantID:       tenantID,
+			wantIDsInOrder: nil,
+		},
+		{
+			name:           "status without outputResources returns empty slice",
+			resource:       makeResource(map[string]any{"status": map[string]any{}}),
+			tenantID:       tenantID,
+			wantIDsInOrder: nil,
+		},
+		{
+			name: "empty outputResources returns empty slice",
+			resource: makeResource(map[string]any{
+				"status": map[string]any{"outputResources": []any{}},
+			}),
+			tenantID:       tenantID,
+			wantIDsInOrder: nil,
+		},
+		{
+			name: "entries without id are skipped",
+			resource: makeResource(map[string]any{
+				"status": map[string]any{"outputResources": []any{
+					map[string]any{"id": ""},
+					map[string]any{"id": azureStorageID},
+				}},
+			}),
+			tenantID:       tenantID,
+			wantIDsInOrder: []string{azureStorageID},
+			wantPortalURLByID: map[string]string{
+				azureStorageID: "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID,
+			},
+		},
+		{
+			name: "Azure and UCP IDs coexist; only Azure IDs get PortalURL",
+			resource: makeResource(map[string]any{
+				"status": map[string]any{"outputResources": []any{
+					map[string]any{"id": azureStorageID},
+					map[string]any{"id": kubernetesUCPID},
+				}},
+			}),
+			tenantID: tenantID,
+			// Sort order is by Type then Name then ID. Azure Type="Microsoft.Storage/storageAccounts",
+			// Kubernetes Type="apps/Deployment". 'M' (0x4d) < 'a' (0x61), so the Azure entry sorts first.
+			wantIDsInOrder: []string{azureStorageID, kubernetesUCPID},
+			wantPortalURLByID: map[string]string{
+				azureStorageID: "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID,
+			},
+		},
+		{
+			name: "empty tenant leaves PortalURL nil for all entries",
+			resource: makeResource(map[string]any{
+				"status": map[string]any{"outputResources": []any{
+					map[string]any{"id": azureStorageID},
+				}},
+			}),
+			tenantID:       "",
+			wantIDsInOrder: []string{azureStorageID},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := outputResourcesFromAPIData(tt.resource, tt.tenantID)
+
+			require.Len(t, got, len(tt.wantIDsInOrder))
+			for i, wantID := range tt.wantIDsInOrder {
+				require.NotNil(t, got[i].ID)
+				require.Equal(t, wantID, *got[i].ID, "entry %d ID", i)
+
+				wantURL, hasURL := tt.wantPortalURLByID[wantID]
+				if hasURL && wantURL != "" {
+					require.NotNil(t, got[i].PortalURL, "entry %d expected PortalURL", i)
+					require.Equal(t, wantURL, *got[i].PortalURL)
+				} else {
+					require.Nil(t, got[i].PortalURL, "entry %d expected no PortalURL", i)
+				}
+			}
+		})
+	}
+}
+
+func Test_azureTenantID(t *testing.T) {
+	const spTenant = "22222222-2222-2222-2222-222222222222"
+	const wiTenant = "33333333-3333-3333-3333-333333333333"
+
+	// Body helpers matching the AzureCredentialResource wire format at
+	// GET /planes/azure/azurecloud/providers/System.Azure/credentials/default.
+	servicePrincipalBody := `{
+	  "id": "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
+	  "name": "default",
+	  "type": "System.Azure/credentials",
+	  "location": "global",
+	  "properties": {
+	    "kind": "ServicePrincipal",
+	    "tenantId": "` + spTenant + `",
+	    "clientId": "client-id",
+	    "storage": {"kind": "Internal"}
+	  }
+	}`
+	workloadIdentityBody := `{
+	  "id": "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
+	  "name": "default",
+	  "type": "System.Azure/credentials",
+	  "location": "global",
+	  "properties": {
+	    "kind": "WorkloadIdentity",
+	    "tenantId": "` + wiTenant + `",
+	    "clientId": "client-id",
+	    "storage": {"kind": "Internal"}
+	  }
+	}`
+	unknownKindBody := `{
+	  "id": "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
+	  "name": "default",
+	  "type": "System.Azure/credentials",
+	  "location": "global",
+	  "properties": {"kind": "Unknown"}
+	}`
+
+	tests := []struct {
+		name    string
+		handler http.HandlerFunc
+		want    string
+	}{
+		{
+			name: "service principal credential returns tenant ID",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(servicePrincipalBody))
+			},
+			want: spTenant,
+		},
+		{
+			name: "workload identity credential returns tenant ID",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(workloadIdentityBody))
+			},
+			want: wiTenant,
+		},
+		{
+			name: "unknown credential kind returns empty tenant",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(unknownKindBody))
+			},
+			want: "",
+		},
+		{
+			name: "not found response returns empty tenant",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNotFound)
+			},
+			want: "",
+		},
+		{
+			name: "server error response returns empty tenant",
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusInternalServerError)
+			},
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(tt.handler)
+			t.Cleanup(server.Close)
+
+			opts := &policy.ClientOptions{
+				ClientOptions: azpolicy.ClientOptions{
+					Transport: server.Client(),
+					Cloud: cloud.Configuration{
+						Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
+							cloud.ResourceManager: {
+								Endpoint: server.URL,
+								Audience: "https://management.core.windows.net",
+							},
+						},
+					},
+					InsecureAllowCredentialWithHTTP: true,
+					Retry: azpolicy.RetryOptions{
+						MaxRetries: -1, // disable retries so 5xx responses don't slow the test
+					},
+				},
+			}
+
+			got := azureTenantID(context.Background(), opts)
+			require.Equal(t, tt.want, got)
 		})
 	}
 }
