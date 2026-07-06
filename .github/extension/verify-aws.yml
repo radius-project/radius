@@ -1,0 +1,42 @@
+name: Radius - Verify Credentials
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to verify'
+        required: true
+        default: '{{ENV}}'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Verify AWS Credentials
+        run: |
+          aws sts get-caller-identity
+          echo "✅ AWS OIDC login successful"
+
+      - name: Verify EKS Access
+        run: |
+          aws eks update-kubeconfig --name "${{ vars.AWS_EKS_CLUSTER_NAME }}" --region "${{ vars.AWS_REGION }}"
+          kubectl cluster-info
+          echo "✅ EKS cluster accessible"
+
+      - name: Summary
+        run: |
+          echo "## ✅ Credentials Verified" >> $GITHUB_STEP_SUMMARY
+          echo "Environment: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "Provider: aws" >> $GITHUB_STEP_SUMMARY
