@@ -1,0 +1,66 @@
+# Provider-agnostic teardown shared by run-rad-commands-aws.yml and
+# run-rad-commands-azure.yml. Persists durable state via `rad shutdown`, collects
+# logs on failure, and always tears the k3d control plane down. Invoked with
+# `if: always()` so it runs even when an earlier step failed.
+name: Radius - Teardown
+description: Persist state (rad shutdown), collect logs on failure, and delete the k3d control plane.
+
+runs:
+  using: composite
+  steps:
+    - name: Persist Radius state (rad shutdown)
+      if: always()
+      shell: bash
+      run: |
+        # rad shutdown backs up the control-plane PostgreSQL databases and the
+        # Terraform recipe-state Secrets to the `radius-state` git orphan branch and
+        # pushes it to origin (contents: write). It runs even when a command fails so
+        # a partially-applied Terraform run is not lost. It does not manage the
+        # cluster; the cleanup step tears k3d down afterwards.
+        git config --global user.email "radius-deploy@users.noreply.github.com"
+        git config --global user.name "radius-deploy"
+        rad shutdown
+
+    - name: Show application status
+      if: always()
+      shell: bash
+      run: |
+        rad app list || true
+
+    - name: Collect Radius logs
+      if: failure()
+      shell: bash
+      run: |
+        mkdir -p /tmp/radius-logs
+        for deploy in applications-rp dynamic-rp bicep-de controller ucpd; do
+          kubectl logs -n radius-system -l app.kubernetes.io/name=$deploy --tail=200 >> /tmp/radius-logs/$deploy.log 2>&1 || true
+        done
+        kubectl get pods -n radius-system -o wide >> /tmp/radius-logs/pods.txt 2>&1 || true
+        kubectl get events -n radius-system --sort-by=.lastTimestamp >> /tmp/radius-logs/events.txt 2>&1 || true
+
+        # Collect app pod logs and events from target cluster
+        APP_NS="default-todo-list-app"
+        TKC="$RADIUS_TARGET_KUBECONFIG"
+        KC=""; [ -f "$TKC" ] && KC="--kubeconfig $TKC"
+        if kubectl $KC get ns "$APP_NS" &>/dev/null; then
+          kubectl $KC get pods -n "$APP_NS" -o wide >> /tmp/radius-logs/app-pods.txt 2>&1 || true
+          kubectl $KC get events -n "$APP_NS" --sort-by=.lastTimestamp >> /tmp/radius-logs/app-events.txt 2>&1 || true
+          for pod in $(kubectl $KC get pods -n "$APP_NS" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
+            kubectl $KC logs -n "$APP_NS" "$pod" --all-containers --tail=100 >> "/tmp/radius-logs/app-pod-$pod.log" 2>&1 || true
+            kubectl $KC describe pod -n "$APP_NS" "$pod" >> "/tmp/radius-logs/app-describe-$pod.txt" 2>&1 || true
+          done
+          kubectl $KC get secret dbsecret -n "$APP_NS" -o jsonpath='{.data}' >> /tmp/radius-logs/app-dbsecret-keys.txt 2>&1 || true
+        fi
+
+    - name: Upload Radius logs
+      if: failure()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: radius-logs
+        path: /tmp/radius-logs/
+        retention-days: 3
+
+    - name: Cleanup control plane cluster
+      if: always()
+      shell: bash
+      run: k3d cluster delete radius-cp || true

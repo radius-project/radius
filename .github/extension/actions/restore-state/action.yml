@@ -1,0 +1,50 @@
+# Provider-agnostic state restore shared by run-rad-commands-aws.yml and
+# run-rad-commands-azure.yml. Sets up the Radius workspace/resource group and
+# restores durable state from the previous run via `rad startup`.
+name: Radius - Restore state
+description: Configure the Radius workspace and restore persisted state (rad startup).
+
+inputs:
+  namespace:
+    description: Target Kubernetes namespace (vars.KUBERNETES_NAMESPACE, defaults to default).
+    required: false
+    default: default
+
+runs:
+  using: composite
+  steps:
+    - name: Configure Radius workspace
+      shell: bash
+      env:
+        NAMESPACE: ${{ inputs.namespace }}
+      run: |
+        # Ensure namespace exists on target cluster before Radius deploys into it.
+        TARGET_KUBECONFIG="$RADIUS_TARGET_KUBECONFIG"
+        if [ -f "$TARGET_KUBECONFIG" ]; then
+          echo "Ensuring namespace $NAMESPACE exists on target cluster..."
+          kubectl --kubeconfig "$TARGET_KUBECONFIG" get namespace "$NAMESPACE" 2>/dev/null || \
+            kubectl --kubeconfig "$TARGET_KUBECONFIG" create namespace "$NAMESPACE"
+        fi
+
+        # The Radius.Core/environments resource (with its recipe pack and
+        # cloud providers) is created later via Bicep. `rad install kubernetes`
+        # already creates the 'default' resource group server-side, but we create
+        # it explicitly (idempotent) as a defensive measure against older control
+        # planes, then set up the local CLI workspace and point it at that group.
+        rad workspace create kubernetes default
+        rad group create default
+        rad group switch default
+
+    - name: Restore Radius state (rad startup)
+      shell: bash
+      run: |
+        # rad startup restores the control-plane PostgreSQL databases and the
+        # Terraform recipe-state Secrets saved by the previous run's `rad shutdown`
+        # from the `radius-state` git orphan branch, so commands plan against prior
+        # state instead of an empty backend. On the first ever run there is nothing
+        # to restore and it is a no-op. It needs the workspace created above and
+        # waits for PostgreSQL to be ready itself. Configure a git identity so it can
+        # manage the state branch.
+        git config --global user.email "radius-deploy@users.noreply.github.com"
+        git config --global user.name "radius-deploy"
+        rad startup
