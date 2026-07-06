@@ -20,6 +20,7 @@ defaultRegistration:
   - Radius.Data/mySqlDatabases
   - Radius.Data/mongoDatabases
   - Radius.Data/postgreSqlDatabases
+  - Radius.Data/redisCaches
   - Radius.Messaging/kafka
   - Radius.Messaging/rabbitMQ
   - Radius.AI/search
