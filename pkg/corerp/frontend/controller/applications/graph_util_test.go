@@ -18,6 +18,7 @@ package applications
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -27,6 +28,7 @@ import (
 	azpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
@@ -335,6 +337,7 @@ func Test_azurePortalURL(t *testing.T) {
 	const tenantID = "11111111-1111-1111-1111-111111111111"
 	const azureStorageID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
 	const azureSubscriptionScopedID = "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Resources/tags/default"
+	const azureUCPQualifiedID = "/planes/azure/azurecloud/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
 	const ucpQualifiedID = "/planes/radius/local/resourceGroups/default/providers/Applications.Core/containers/mycontainer"
 	const kubernetesUCPID = "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/foo"
 
@@ -379,6 +382,12 @@ func Test_azurePortalURL(t *testing.T) {
 			id:       resources.MustParse(azureSubscriptionScopedID),
 			tenantID: tenantID,
 			want:     "https://portal.azure.com/#@" + tenantID + "/resource" + azureSubscriptionScopedID,
+		},
+		{
+			name:     "UCP-qualified Azure ID is normalized to ARM form for the portal link",
+			id:       resources.MustParse(azureUCPQualifiedID),
+			tenantID: tenantID,
+			want:     "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID,
 		},
 	}
 
@@ -551,6 +560,86 @@ func Test_outputResourcesFromAPIData(t *testing.T) {
 	}
 }
 
+func Test_containsAzureOutputResource(t *testing.T) {
+	const azureRelativeID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
+	const azureUCPQualifiedID = "/planes/azure/azurecloud/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
+	const radiusUCPID = "/planes/radius/local/resourceGroups/default/providers/Applications.Core/containers/mycontainer"
+	const kubernetesUCPID = "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/foo"
+
+	withOutputResources := func(ids ...string) generated.GenericResource {
+		items := make([]any, 0, len(ids))
+		for _, id := range ids {
+			items = append(items, map[string]any{"id": id})
+		}
+		return generated.GenericResource{
+			Properties: map[string]any{
+				"status": map[string]any{"outputResources": items},
+			},
+		}
+	}
+
+	tests := []struct {
+		name string
+		list []generated.GenericResource
+		want bool
+	}{
+		{
+			name: "empty list returns false",
+			list: nil,
+			want: false,
+		},
+		{
+			name: "resource without status returns false",
+			list: []generated.GenericResource{{Properties: map[string]any{}}},
+			want: false,
+		},
+		{
+			name: "only Kubernetes output resources returns false",
+			list: []generated.GenericResource{withOutputResources(kubernetesUCPID)},
+			want: false,
+		},
+		{
+			name: "only Radius UCP output resources returns false",
+			list: []generated.GenericResource{withOutputResources(radiusUCPID)},
+			want: false,
+		},
+		{
+			name: "relative ARM Azure ID returns true",
+			list: []generated.GenericResource{withOutputResources(azureRelativeID)},
+			want: true,
+		},
+		{
+			name: "UCP-qualified Azure ID returns true",
+			list: []generated.GenericResource{withOutputResources(azureUCPQualifiedID)},
+			want: true,
+		},
+		{
+			name: "Azure ID mixed with non-Azure IDs returns true",
+			list: []generated.GenericResource{withOutputResources(kubernetesUCPID, azureRelativeID)},
+			want: true,
+		},
+		{
+			name: "Azure ID on a later resource in the list still returns true",
+			list: []generated.GenericResource{
+				withOutputResources(kubernetesUCPID),
+				withOutputResources(azureRelativeID),
+			},
+			want: true,
+		},
+		{
+			name: "empty and invalid IDs are skipped without matching",
+			list: []generated.GenericResource{withOutputResources("", "not-a-real-id")},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, containsAzureOutputResource(tt.list))
+		})
+	}
+}
+
 func Test_azureTenantID(t *testing.T) {
 	const spTenant = "22222222-2222-2222-2222-222222222222"
 	const wiTenant = "33333333-3333-3333-3333-333333333333"
@@ -664,4 +753,67 @@ func Test_azureTenantID(t *testing.T) {
 			require.Equal(t, tt.want, got)
 		})
 	}
+}
+
+func Test_computeGraph_azurePortalLinksInGraphJSON(t *testing.T) {
+	const tenantID = "11111111-1111-1111-1111-111111111111"
+	const containerID = "/planes/radius/local/resourcegroups/default/providers/Applications.Core/containers/mycontainer"
+	const azureStorageID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
+	const kubernetesDeploymentID = "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/foo"
+
+	container := generated.GenericResource{
+		ID:   to.Ptr(containerID),
+		Name: to.Ptr("mycontainer"),
+		Type: to.Ptr("Applications.Core/containers"),
+		Properties: map[string]any{
+			"application": "/planes/radius/local/resourcegroups/default/providers/Applications.Core/applications/myapp",
+			"status": map[string]any{
+				"outputResources": []any{
+					map[string]any{"id": azureStorageID},
+					map[string]any{"id": kubernetesDeploymentID},
+				},
+			},
+		},
+	}
+
+	graph := computeGraph([]generated.GenericResource{container}, nil, tenantID)
+	require.Len(t, graph.Resources, 1, "expected exactly one graph resource")
+
+	// Marshal to JSON and re-parse so the assertion actually exercises the wire format
+	// that HTTP clients (rad CLI, portal, tests) will see.
+	raw, err := json.Marshal(graph)
+	require.NoError(t, err)
+
+	var decoded struct {
+		Resources []struct {
+			ID              string `json:"id"`
+			OutputResources []struct {
+				ID        string  `json:"id"`
+				Name      string  `json:"name"`
+				Type      string  `json:"type"`
+				PortalURL *string `json:"portalUrl,omitempty"`
+			} `json:"outputResources"`
+		} `json:"resources"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &decoded))
+
+	require.Len(t, decoded.Resources, 1)
+	require.Equal(t, containerID, decoded.Resources[0].ID)
+
+	// Index the output resources by ID so we can make ID-based assertions regardless of
+	// the sort order chosen by outputResourcesFromAPIData.
+	byID := map[string]*string{}
+	for _, or := range decoded.Resources[0].OutputResources {
+		or := or
+		byID[or.ID] = or.PortalURL
+	}
+
+	azurePortalURL, hasAzure := byID[azureStorageID]
+	require.True(t, hasAzure, "graph JSON must include the Azure output resource")
+	require.NotNil(t, azurePortalURL, "Azure output resource must carry a portalUrl in the graph JSON")
+	require.Equal(t, "https://portal.azure.com/#@"+tenantID+"/resource"+azureStorageID, *azurePortalURL)
+
+	k8sPortalURL, hasK8s := byID[kubernetesDeploymentID]
+	require.True(t, hasK8s, "graph JSON must include the Kubernetes output resource")
+	require.Nil(t, k8sPortalURL, "non-Azure output resource must not carry a portalUrl in the graph JSON")
 }

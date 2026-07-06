@@ -36,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -498,7 +499,8 @@ func getResourceTypeSpecificProperties(properties map[string]any) map[string]any
 	return propertyBag
 }
 
-// outputResourceEntryFromID creates a outputResourceEntry from a resource ID.
+// outputResourceEntryFromID creates a outputResourceEntry from a resource ID. When tenantID
+// is non-empty and the ID is an Azure ARM resource, the entry is decorated with a portal URL.
 func outputResourceEntryFromID(id resources.ID, tenantID string) corerpv20231001preview.ApplicationGraphOutputResource {
 	entry := corerpv20231001preview.ApplicationGraphOutputResource{
 		ID:   new(id.String()),
@@ -513,17 +515,81 @@ func outputResourceEntryFromID(id resources.ID, tenantID string) corerpv20231001
 	return entry
 }
 
-// azurePortalURL returns a deep link to the Azure portal for an Azure (ARM) resource, or "" when the
-// resource is not an Azure resource or no tenant is available. Azure resource IDs are relative ARM
-// IDs (not UCP-qualified) with at least one scope segment, e.g. /subscriptions/.../resourceGroups/...
+// azurePortalURL returns a deep link to the Azure portal for an Azure resource, or "" when the
+// resource is not an Azure resource or no tenant is available. It matches both the relative ARM
+// form (/subscriptions/.../providers/...) and the UCP-qualified form
+// (/planes/azure/.../subscriptions/.../providers/...) via resources_azure.IsAzureResource, and
+// normalizes UCP-qualified Azure IDs to their ARM-relative form so the portal link is valid.
 func azurePortalURL(id resources.ID, tenantID string) string {
 	if tenantID == "" {
 		return ""
 	}
-	if id.IsUCPQualified() || len(id.ScopeSegments()) == 0 {
+	if !resources_azure.IsAzureResource(id) {
 		return ""
 	}
-	return fmt.Sprintf("https://portal.azure.com/#@%s/resource%s", tenantID, id.String())
+	armID := id
+	if id.IsUCPQualified() {
+		// Drop the /planes/azure/<name> scope prefix to produce a plain ARM ID.
+		parsed, err := resources.ParseResource(resources.MakeRelativeID(
+			id.ScopeSegments()[1:], id.TypeSegments(), id.ExtensionSegments()))
+		if err != nil {
+			return ""
+		}
+		armID = parsed
+	}
+	return fmt.Sprintf("https://portal.azure.com/#@%s/resource%s", tenantID, armID.String())
+}
+
+// containsAzureOutputResource reports whether any resource in the list carries at least one
+// output resource with an Azure ARM ID. Callers use this to decide whether the extra UCP
+// credential lookup for the Azure tenant is worthwhile.
+func containsAzureOutputResource(list []generated.GenericResource) bool {
+	for _, resource := range list {
+		for _, id := range outputResourceIDs(resource) {
+			if resources_azure.IsAzureResource(id) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// outputResourceIDs extracts the parsed IDs of the resource's output resources from the API
+// property bag. Entries that cannot be parsed or have empty IDs are skipped.
+//
+// The implementation reads directly from the weakly-typed property bag rather than using
+// jsonpointer on the struct. jsonpointer at /properties/status/outputResources fails to locate
+// the lowercase JSON key when applied to the struct value, so it silently returns an empty list.
+// Direct map access avoids that footgun.
+func outputResourceIDs(resource generated.GenericResource) []resources.ID {
+	statusRaw, ok := resource.Properties["status"]
+	if !ok || statusRaw == nil {
+		return nil
+	}
+	statusMap, ok := statusRaw.(map[string]any)
+	if !ok {
+		return nil
+	}
+	orRaw, ok := statusMap["outputResources"]
+	if !ok || orRaw == nil {
+		return nil
+	}
+	ors, ok := orRaw.([]any)
+	if !ok || len(ors) == 0 {
+		return nil
+	}
+	type outputResourceWireFormat struct {
+		ID resources.ID `json:"id"`
+	}
+	ids := make([]resources.ID, 0, len(ors))
+	for _, or := range ors {
+		data := outputResourceWireFormat{}
+		if err := toStronglyTypedData(or, &data); err != nil || data.ID.String() == "" {
+			continue
+		}
+		ids = append(ids, data.ID)
+	}
+	return ids
 }
 
 // azureTenantID returns the tenant ID of the registered Azure credential (service principal or
@@ -559,43 +625,10 @@ func azureTenantID(ctx context.Context, clientOptions *policy.ClientOptions) str
 // outputResourcesFromAPIData processes the generic resource representation returned by the Radius API
 // and produces a list of output resources.
 func outputResourcesFromAPIData(resource generated.GenericResource, tenantID string) []*corerpv20231001preview.ApplicationGraphOutputResource {
-	// Directly access the nested weakly-typed property bag instead of using jsonpointer on the struct.
-	// The previous implementation relied on jsonpointer with the path /properties/status/outputResources.
-	// When applied to the struct value, jsonpointer failed to locate the lowercase JSON field name and
-	// silently returned an empty list, causing OutputResources to be omitted in the application graph.
-	statusRaw, ok := resource.Properties["status"]
-	if !ok || statusRaw == nil {
-		return []*corerpv20231001preview.ApplicationGraphOutputResource{}
-	}
-	statusMap, ok := statusRaw.(map[string]any)
-	if !ok {
-		return []*corerpv20231001preview.ApplicationGraphOutputResource{}
-	}
-	orRaw, ok := statusMap["outputResources"]
-	if !ok || orRaw == nil {
-		return []*corerpv20231001preview.ApplicationGraphOutputResource{}
-	}
-	ors, ok := orRaw.([]any)
-	if !ok || len(ors) == 0 {
-		return []*corerpv20231001preview.ApplicationGraphOutputResource{}
-	}
-
-	entries := []*corerpv20231001preview.ApplicationGraphOutputResource{}
-	for _, or := range ors {
-		// This is the wire format returned by the API for an output resource.
-		// Wire format: { "id": "<resource id>" }
-		type outputResourceWireFormat struct {
-			ID resources.ID `json:"id"`
-		}
-
-		data := outputResourceWireFormat{}
-		err := toStronglyTypedData(or, &data)
-		if err != nil || data.ID.String() == "" {
-			continue
-		}
-
-		// Now build the entry from the API data
-		entry := outputResourceEntryFromID(data.ID, tenantID)
+	ids := outputResourceIDs(resource)
+	entries := make([]*corerpv20231001preview.ApplicationGraphOutputResource, 0, len(ids))
+	for _, id := range ids {
+		entry := outputResourceEntryFromID(id, tenantID)
 		entries = append(entries, &entry)
 	}
 
