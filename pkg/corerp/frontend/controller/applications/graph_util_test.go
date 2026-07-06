@@ -22,6 +22,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 )
@@ -321,6 +322,127 @@ func Test_getResourceTypeSpecificProperties(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := getResourceTypeSpecificProperties(tt.in)
 			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func Test_azurePortalURL(t *testing.T) {
+	const tenantID = "11111111-1111-1111-1111-111111111111"
+	const azureStorageID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
+	const azureSubscriptionScopedID = "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Resources/tags/default"
+	const ucpQualifiedID = "/planes/radius/local/resourceGroups/default/providers/Applications.Core/containers/mycontainer"
+	const kubernetesUCPID = "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/foo"
+
+	tests := []struct {
+		name     string
+		id       resources.ID
+		tenantID string
+		want     string
+	}{
+		{
+			name:     "empty tenant returns empty URL",
+			id:       resources.MustParse(azureStorageID),
+			tenantID: "",
+			want:     "",
+		},
+		{
+			name:     "UCP-qualified Radius ID is not an Azure resource",
+			id:       resources.MustParse(ucpQualifiedID),
+			tenantID: tenantID,
+			want:     "",
+		},
+		{
+			name:     "UCP-qualified Kubernetes ID is not an Azure resource",
+			id:       resources.MustParse(kubernetesUCPID),
+			tenantID: tenantID,
+			want:     "",
+		},
+		{
+			name:     "zero-value ID has no scope segments",
+			id:       resources.ID{},
+			tenantID: tenantID,
+			want:     "",
+		},
+		{
+			name:     "Azure ARM ID with subscription and resource group produces portal URL",
+			id:       resources.MustParse(azureStorageID),
+			tenantID: tenantID,
+			want:     "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID,
+		},
+		{
+			name:     "Azure ARM ID scoped to a subscription only produces portal URL",
+			id:       resources.MustParse(azureSubscriptionScopedID),
+			tenantID: tenantID,
+			want:     "https://portal.azure.com/#@" + tenantID + "/resource" + azureSubscriptionScopedID,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, azurePortalURL(tt.id, tt.tenantID))
+		})
+	}
+}
+
+func Test_outputResourceEntryFromID(t *testing.T) {
+	const tenantID = "11111111-1111-1111-1111-111111111111"
+	const azureStorageID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"
+	const ucpQualifiedID = "/planes/radius/local/resourceGroups/default/providers/Applications.Core/containers/mycontainer"
+
+	tests := []struct {
+		name          string
+		id            string
+		tenantID      string
+		wantName      string
+		wantType      string
+		wantPortalURL string // empty means PortalURL must be nil
+	}{
+		{
+			name:          "Azure ID with tenant sets PortalURL",
+			id:            azureStorageID,
+			tenantID:      tenantID,
+			wantName:      "mystorage",
+			wantType:      "Microsoft.Storage/storageAccounts",
+			wantPortalURL: "https://portal.azure.com/#@" + tenantID + "/resource" + azureStorageID,
+		},
+		{
+			name:          "Azure ID without tenant omits PortalURL",
+			id:            azureStorageID,
+			tenantID:      "",
+			wantName:      "mystorage",
+			wantType:      "Microsoft.Storage/storageAccounts",
+			wantPortalURL: "",
+		},
+		{
+			name:          "UCP-qualified ID with tenant omits PortalURL",
+			id:            ucpQualifiedID,
+			tenantID:      tenantID,
+			wantName:      "mycontainer",
+			wantType:      "Applications.Core/containers",
+			wantPortalURL: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			id, err := resources.Parse(tt.id)
+			require.NoError(t, err)
+
+			entry := outputResourceEntryFromID(id, tt.tenantID)
+
+			require.NotNil(t, entry.ID)
+			require.Equal(t, tt.id, *entry.ID)
+			require.NotNil(t, entry.Name)
+			require.Equal(t, tt.wantName, *entry.Name)
+			require.NotNil(t, entry.Type)
+			require.Equal(t, tt.wantType, *entry.Type)
+
+			if tt.wantPortalURL == "" {
+				require.Nil(t, entry.PortalURL)
+			} else {
+				require.NotNil(t, entry.PortalURL)
+				require.Equal(t, tt.wantPortalURL, *entry.PortalURL)
+			}
 		})
 	}
 }
