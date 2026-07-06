@@ -321,11 +321,11 @@ types:
 		require.Len(t, summaryModel.Properties.ResourceTypes, len(radiusCoreTypeOpenAPIDefinitions))
 
 		expectedDescriptions := map[string]string{
-			"applications":     "Radius Application resource",
-			"bicepConfigs":     "The Bicep configuration resource, providing reusable Bicep recipe settings for environments.",
-			"environments":     "The environment resource",
-			"recipePacks":      "The recipe pack resource",
-			"terraformConfigs": "The Terraform configuration resource, providing reusable Terraform recipe settings for environments.",
+			"applications":      "Radius Application resource",
+			"bicepSettings":     "The Bicep configuration resource, providing reusable Bicep recipe settings for environments.",
+			"environments":      "The environment resource",
+			"recipePacks":       "The recipe pack resource",
+			"terraformSettings": "The Terraform configuration resource, providing reusable Terraform recipe settings for environments.",
 		}
 		require.Len(t, expectedDescriptions, len(radiusCoreTypeOpenAPIDefinitions))
 		for typeName, expectedDescription := range expectedDescriptions {
@@ -373,17 +373,17 @@ types:
 		assert.NotContains(t, sourceProperty, "$ref")
 		assert.Equal(t, "string", sourceProperty["type"])
 
-		terraformConfigs := summaryModel.Properties.ResourceTypes["terraformConfigs"]
-		terraformConfigSchema := terraformConfigs.APIVersions["2025-08-01-preview"].Schema
-		terraformConfigProperties := requireSchemaProperties(t, terraformConfigSchema)
-		terraformrcProperty := requireSchemaProperty(t, terraformConfigProperties, "terraformrc")
+		terraformSettings := summaryModel.Properties.ResourceTypes["terraformSettings"]
+		terraformSettingsSchema := terraformSettings.APIVersions["2025-08-01-preview"].Schema
+		terraformSettingsProperties := requireSchemaProperties(t, terraformSettingsSchema)
+		terraformrcProperty := requireSchemaProperty(t, terraformSettingsProperties, "terraformrc")
 		assert.NotContains(t, terraformrcProperty, "$ref")
 		assert.Equal(t, "object", terraformrcProperty["type"])
 
-		bicepConfigs := summaryModel.Properties.ResourceTypes["bicepConfigs"]
-		bicepConfigSchema := bicepConfigs.APIVersions["2025-08-01-preview"].Schema
-		bicepConfigProperties := requireSchemaProperties(t, bicepConfigSchema)
-		registryAuthenticationsProperty := requireSchemaProperty(t, bicepConfigProperties, "registryAuthentications")
+		bicepSettings := summaryModel.Properties.ResourceTypes["bicepSettings"]
+		bicepSettingsSchema := bicepSettings.APIVersions["2025-08-01-preview"].Schema
+		bicepSettingsProperties := requireSchemaProperties(t, bicepSettingsSchema)
+		registryAuthenticationsProperty := requireSchemaProperty(t, bicepSettingsProperties, "registryAuthentications")
 		assert.NotContains(t, registryAuthenticationsProperty, "$ref")
 		assert.Equal(t, "object", registryAuthenticationsProperty["type"])
 

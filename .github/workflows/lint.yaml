@@ -63,7 +63,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -92,13 +92,12 @@ jobs:
       - name: Run TypeSpec format check
         run: make tsp-format-check
 
+      - name: Install golangci-lint
+        # Pinned version + checksums live in build/tools.mk (GOLANGCI_LINT_VERSION).
+        run: make install-golangci-lint
+
       - name: Run linter
-        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
-        with:
-          version-file: .golangci-lint-version
-          args: --timeout=10m
-          skip-cache: true
-          install-mode: binary
+        run: golangci-lint run --timeout=10m
 
       - name: Run make generate
         run: make generate

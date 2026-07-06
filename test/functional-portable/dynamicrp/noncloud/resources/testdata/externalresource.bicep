@@ -8,19 +8,19 @@ extension kubernetes with {
 @description('Specifies the location for resources.')
 param location string = 'global'
 
-resource env 'Applications.Core/environments@2023-10-01-preview' = {
+resource env 'Radius.Core/environments@2025-08-01-preview' = {
   name: 'udt-externalresource-env'
   location: location
   properties: {
-    compute: {
-      kind: 'kubernetes'
-      resourceId: 'self'
-      namespace: 'udt-externalresource-env'
+    providers: {
+      kubernetes: {
+        namespace: 'udt-externalresource-app'
+      }
     }
   }
 }
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'udt-externalresource-app'
   location: location
   properties: {
@@ -28,14 +28,18 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-resource externalresourcecntr 'Applications.Core/containers@2023-10-01-preview' = {
-    name: 'externalresourcecntr'
-    properties: {
-      application: app.id
-      container: {
+resource externalresourcecntr 'Radius.Compute/containers@2025-08-01-preview' = {
+  name: 'externalresourcecntr'
+  location: location
+  properties: {
+    application: app.id
+    environment: env.id
+    containers: {
+      externalresourcecntr: {
         image: 'ghcr.io/radius-project/mirror/debian:latest'
         command: ['/bin/sh']
         args: ['-c', 'while true; do echo hello; sleep 10;done']
+      }
     }
     connections: {
       externalresource: {

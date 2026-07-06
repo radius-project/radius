@@ -25,14 +25,14 @@ import (
 	resources "github.com/radius-project/radius/pkg/ucp/resources"
 )
 
-// FetchTerraformConfig fetches a TerraformConfig resource by ID.
-func FetchTerraformConfig(ctx context.Context, resourceID string, ucpOptions *arm.ClientOptions) (*v20250801preview.TerraformConfigResource, error) {
+// FetchTerraformSettings fetches a TerraformSettings resource by ID.
+func FetchTerraformSettings(ctx context.Context, resourceID string, ucpOptions *arm.ClientOptions) (*v20250801preview.TerraformSettingsResource, error) {
 	id, err := resources.ParseResource(resourceID)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := v20250801preview.NewTerraformConfigsClient(&aztoken.AnonymousCredential{}, ucpOptions)
+	client, err := v20250801preview.NewTerraformSettingsClient(&aztoken.AnonymousCredential{}, ucpOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -42,17 +42,17 @@ func FetchTerraformConfig(ctx context.Context, resourceID string, ucpOptions *ar
 		return nil, err
 	}
 
-	return &response.TerraformConfigResource, nil
+	return &response.TerraformSettingsResource, nil
 }
 
-// FetchBicepConfig fetches a BicepConfig resource by ID.
-func FetchBicepConfig(ctx context.Context, resourceID string, ucpOptions *arm.ClientOptions) (*v20250801preview.BicepConfigResource, error) {
+// FetchBicepSettings fetches a BicepSettings resource by ID.
+func FetchBicepSettings(ctx context.Context, resourceID string, ucpOptions *arm.ClientOptions) (*v20250801preview.BicepSettingsResource, error) {
 	id, err := resources.ParseResource(resourceID)
 	if err != nil {
 		return nil, err
 	}
 
-	client, err := v20250801preview.NewBicepConfigsClient(&aztoken.AnonymousCredential{}, ucpOptions)
+	client, err := v20250801preview.NewBicepSettingsClient(&aztoken.AnonymousCredential{}, ucpOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -62,5 +62,5 @@ func FetchBicepConfig(ctx context.Context, resourceID string, ucpOptions *arm.Cl
 		return nil, err
 	}
 
-	return &response.BicepConfigResource, nil
+	return &response.BicepSettingsResource, nil
 }

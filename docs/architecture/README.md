@@ -32,8 +32,8 @@ change-safety guidance.
   and used for deployments, and how clients authenticate to a Radius install.
 - [application-graph.md](application-graph.md) explains how the application
   graph is computed from stored resources and displayed via the CLI.
-- [terraform-bicep-config.md](terraform-bicep-config.md) explains the reusable
-  `Radius.Core/terraformConfigs` and `bicepConfigs` resources referenced by
+- [terraform-bicep-settings.md](terraform-bicep-settings.md) explains the reusable
+  `Radius.Core/terraformSettings` and `bicepSettings` resources referenced by
   environments to provide private registry auth, Terraform CLI provider
   installation rules, and recipe environment variables.
 

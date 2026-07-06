@@ -18,8 +18,6 @@ package reconciler
 
 import (
 	"context"
-	"crypto/sha1"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -37,6 +35,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
+	"github.com/radius-project/radius/pkg/hashutil"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
@@ -606,20 +605,23 @@ func computeHash(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) (strin
 		return "", err
 	}
 
-	sum := sha1.Sum(b)
-	hash := hex.EncodeToString(sum[:])
-	return hash, nil
+	return hashutil.Hex(b), nil
 }
 
 // isUpToDate returns true if the desired state of the DeploymentTemplate
 // matches the observed state.
+//
+// It accepts both the current SHA-256 hash and the legacy SHA-1 hash so that
+// upgrading Radius (which changes the hash algorithm) does not flag an otherwise
+// unchanged DeploymentTemplate as out-of-date and trigger an unnecessary deployment.
 func isUpToDate(deploymentTemplate *radappiov1alpha3.DeploymentTemplate) bool {
-	hash, err := computeHash(deploymentTemplate)
+	b, err := json.Marshal(deploymentTemplate.Spec)
 	if err != nil {
 		return false
 	}
 
-	return deploymentTemplate.Status.StatusHash == hash
+	stored := deploymentTemplate.Status.StatusHash
+	return stored == hashutil.Hex(b) || stored == hashutil.LegacyHex(b)
 }
 
 // updateFailedStatus updates the deployment template status to failed state and clears the operation.

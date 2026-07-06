@@ -178,7 +178,10 @@ generate-go: ## Generates go with 'go generate' (Mocks).
 # as individual YAML files (e.g. containers.yaml, routes.yaml).
 DEFAULTS_YAML := deploy/manifest/defaults.yaml
 BICEP_TYPES_CONTRIB_API_VERSION ?= 2025-08-01-preview
-BICEP_TYPES_OUTPUT_BASE := hack/bicep-types-radius/generated/radius
+# Shared locations for the TypeSpec Bicep emitter package and its generated output.
+BICEP_TYPES_EMITTER_DIR := hack/bicep-types-radius/src/typespec-bicep-types
+BICEP_TYPES_GENERATED_DIR := hack/bicep-types-radius/generated
+BICEP_TYPES_OUTPUT_BASE := $(BICEP_TYPES_GENERATED_DIR)/radius
 BICEP_TYPES_CONTRIB_MANIFEST_DIR := deploy/manifest/built-in-providers/self-hosted
 
 .PHONY: generate-bicep-types
@@ -187,13 +190,19 @@ generate-bicep-types: ## Generate Bicep extensibility types
 	@$(MAKE) generate-bicep-types-contrib
 	@$(MAKE) rebuild-bicep-types-index
 
+# Install dependencies and compile the TypeSpec Bicep emitter. Factored into its own
+# target so the aggregate `generate-bicep-types` path builds it once (via
+# generate-bicep-types-core) instead of building it a second time in
+# rebuild-bicep-types-index.
+.PHONY: generate-bicep-types-emitter
+generate-bicep-types-emitter: generate-pnpm-installed
+	@echo "$(ARROW) Build the TypeSpec Bicep emitter..."
+	CI=true pnpm -C $(BICEP_TYPES_EMITTER_DIR) install && pnpm -C $(BICEP_TYPES_EMITTER_DIR) run build
+
 .PHONY: generate-bicep-types-core
-generate-bicep-types-core: generate-node-installed generate-pnpm-installed ## Generate Bicep extensibility types from OpenAPI specs.
-	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
-	@echo "$(ARROW) Build autorest.bicep..."
-	CI=true pnpm -C hack/bicep-types-radius/src/autorest.bicep install && pnpm -C hack/bicep-types-radius/src/autorest.bicep run build; \
-	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
-	CI=true pnpm -C hack/bicep-types-radius/src/generator install && pnpm -C hack/bicep-types-radius/src/generator run generate --specs-dir ../../../../swagger --release-version ${VERSION} --verbose
+generate-bicep-types-core: generate-tsp-installed generate-bicep-types-emitter ## Generate Bicep extensibility types from TypeSpec.
+	@echo "$(ARROW) Generating Bicep extensibility types from TypeSpec..."
+	node $(BICEP_TYPES_EMITTER_DIR)/dist/src/cmd/compile-projects.js --typespec-dir typespec --out-dir $(BICEP_TYPES_GENERATED_DIR)
 
 .PHONY: generate-yq-installed
 generate-yq-installed:
@@ -210,10 +219,15 @@ generate-bicep-types-contrib: generate-yq-installed ## Generates Bicep types.jso
 		"$(BICEP_TYPES_OUTPUT_BASE)" \
 		"$(BICEP_TYPES_CONTRIB_API_VERSION)"
 
+# rebuild-bicep-types-index rebuilds the unified index from the per-namespace
+# types.json files. It builds the emitter only when it is not already built (e.g.
+# when run standalone); the aggregate generate-bicep-types path builds it once in
+# generate-bicep-types-core.
 .PHONY: rebuild-bicep-types-index
 rebuild-bicep-types-index:
 	@echo "$(ARROW) Rebuilding unified Bicep types index..."
-	CI=true pnpm -C hack/bicep-types-radius/src/generator run rebuild-index --release-version ${VERSION}
+	@test -f $(BICEP_TYPES_EMITTER_DIR)/dist/src/cmd/rebuild-index.js || $(MAKE) generate-bicep-types-emitter
+	node $(BICEP_TYPES_EMITTER_DIR)/dist/src/cmd/rebuild-index.js --out-dir $(BICEP_TYPES_GENERATED_DIR) --release-version ${VERSION}
 
 # Publishing the unified `radius` Bicep extension. Runnable locally against any
 # OCI registry (e.g. a local Zot/CRane-backed registry, or biceptypes.azurecr.io

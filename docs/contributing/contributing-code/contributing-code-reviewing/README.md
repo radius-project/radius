@@ -1,14 +1,14 @@
 # Code reviews
 
-We welcome **any contributor or community-member** to engage with any **any pull-request** on our repository as a reviewer.
+## Purpose
 
-This page some contains guidance for:
+This document captures how code review works for Radius — the maintainers' philosophy, what good review feedback looks like, and the responsibilities of the **approver** and **maintainer** roles. It is process and reference material rather than a step-by-step how-to, and is recommended reading for anyone participating in pull requests as either a submitter or a reviewer. For how to open and shepherd a pull request, see the [pull request guide](../../contributing-pull-requests/README.md).
 
-- Our philosophy as maintainers for code-reviewing
+We welcome **any contributor or community member** to engage with any pull request on our repository as a reviewer. This page contains guidance for:
+
+- Our philosophy as maintainers for code reviewing
 - How to give effective code review feedback
 - Responsibilities for the **maintainer** and **reviewer** roles
-
-This is recommended reading for anyone participating in pull-requests either as a submitter or reviewer.
 
 ## About code reviews
 
@@ -77,7 +77,7 @@ VS Code will pick up `.github/prompts/radius.code-review.prompt.md` and prompt y
 
 ## Philosophy
 
-As maintainers we like the [code review pyramid](https://www.morling.dev/blog/the-code-review-pyramid/) as a guiding principle. 
+As maintainers we like the [code review pyramid](https://www.morling.dev/blog/the-code-review-pyramid/) as a guiding principle.
 
 The most valuable feedback comes from a deep understanding of the project goals and design, and should be applied early in the pull-request process. Surface-level feedback like style suggestions is still valuable, but is most relevant later in the pull-request lifecycle.
 
@@ -92,7 +92,7 @@ We can tweak the code review pyramid's descriptions to be more applicable to Rad
 - **Style**: Does the code match good Go style? Is the style consistent with the decisions in the surrounding code?
 - **Correctness**: Does the code work as advertised? Are tests in place to make sure it will continue to work?
 - **Design**: Is the design testable? Is the design straightforward? Is the design consistent with the decisions in the surrounding code?
-- **Behavior**: Does the user-visible behavior makes sense to the user? Has the feature design been fully considered, edge cases and all? 
+- **Behavior**: Does the user-visible behavior makes sense to the user? Has the feature design been fully considered, edge cases and all?
 - **Scope**: Does the feature belong in Radius? Is this feature something that the maintainers can support long-term?
 
 > :lightbulb: Open questions about behavior and scope should ideally be resolved before an issue becomes a pull-request, but things don't always go to plan. If a code review identifies a misunderstanding or incomplete design for a feature's behavior, it's a good idea to put the pull-request *"on pause"* until we can resolve the ambiguity.
@@ -151,7 +151,7 @@ Now that you've walked through a *"unit"* of functionality, look at the tests fo
 
 This is a basic recipe to follow so you can give good feedback without familiarity with the codebase or overall architecture.
 
-----
+---
 
 As you're reviewing, here's a checklist of things to look for in most code:
 
@@ -178,11 +178,11 @@ Review feedback for design should focus on the following points:
 
 Go is a pragmatic and simple language and our designs should leverage its simplicity. In general we want to avoid complex hierarchies or object-oriented abstractions where possible. The flip-side of this is that because Go is a simple language, the type system and what it can express is limited.
 
-Where possible we want to optimize for correctness, testability, and simplicity in that order. 
+Where possible we want to optimize for correctness, testability, and simplicity in that order.
 
 ---
 
-We include *naming* in the design category because an understanding of the requirements, concepts, and design of a feature is required knowledge for most good naming feedback. For each feature or feature-area we want to define a limited set of named concepts, and then use those concepts to choose the names of software constructs like struct and variable names. 
+We include *naming* in the design category because an understanding of the requirements, concepts, and design of a feature is required knowledge for most good naming feedback. For each feature or feature-area we want to define a limited set of named concepts, and then use those concepts to choose the names of software constructs like struct and variable names.
 
 It is much better for us to leverage user-facing concepts in code than to make up artificial constructs. This way someone with a knowledge of the features can navigate the code based on their background knowledge.
 
@@ -195,7 +195,7 @@ As you're reviewing, here's a checklist of things to look for in most code:
 - What are the dependencies? What are the interaction patterns with dependencies?
 - Do the names reflect the concepts? Have we created artificial concepts?
 - How long are the functions (in terms of code)?
-- Are there new Go APIs? Do they follow *effective Go*? 
+- Are there new Go APIs? Do they follow *effective Go*?
 - How testable is the design?
 
 ### Good feedback: Behavior
@@ -222,7 +222,7 @@ As a Maintainer, you are responsible for the long-term maintenance and stewardsh
 
 Within the Radius project we recognize individuals with a history of contributions to the project as **approvers** - they have the right to approve pull-requests. Those with high quality judgement and leadership are also recognized as **maintainers**. Maintainers are the decision makers for the technical roadmap of the project and have the final decision over each change.
 
-More details about those roles can be found in the [community repo](https://github.com/radius-project/community). 
+More details about those roles can be found in the [community repo](https://github.com/radius-project/community).
 
 ### Responsibilities of an approver
 
@@ -242,6 +242,6 @@ Maintainers are explicitly required to review and approve new dependencies to th
 
 We encourage anyone to report a [code of conduct](https://github.com/radius-project/community/blob/main/CODE-OF-CONDUCT.md) violation if they see one occur. Any code of conduct violation should be reported as per instructions in the link above.
 
-It is **explicitly** a responsibility of approvers and maintainers to report a violation if they suspect one. If a code of conduct violation occurs in a pull-request, follow the instructions [here](https://docs.github.com/en/communities/moderating-comments-and-conversations/managing-disruptive-comments) to minimize the comment and report the violation.
+It is **explicitly** a responsibility of approvers and maintainers to report a violation if they suspect one. If a code of conduct violation occurs in a pull-request, follow [GitHub's guidance on managing disruptive comments](https://docs.github.com/en/communities/moderating-comments-and-conversations/managing-disruptive-comments) to minimize the comment and report the violation.
 
-Approvers and maintainers (or anyone else with write-access) **MUST NOT** edit any *other* contributor's comments to maintain trust and transparency. If you do this by accident, please restore the original content and apologize with your own comment. 
+Approvers and maintainers (or anyone else with write-access) **MUST NOT** edit any *other* contributor's comments to maintain trust and transparency. If you do this by accident, please restore the original content and apologize with your own comment.

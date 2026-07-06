@@ -119,7 +119,7 @@ func NewOptions(ctx context.Context, config *Config) (*Options, error) {
 	}
 
 	options.Recipes.ConfigurationLoader = configloader.NewEnvironmentLoader(sdk.NewClientOptions(options.UCP))
-	options.Recipes.SecretsLoader = configloader.NewSecretStoreLoader(sdk.NewClientOptions(options.UCP))
+	options.Recipes.SecretsLoader = configloader.NewSecretStoreLoader(sdk.NewClientOptions(options.UCP), options.KubernetesProvider)
 
 	// If this is set to nil, then the service will use the default recipe drivers.
 	//

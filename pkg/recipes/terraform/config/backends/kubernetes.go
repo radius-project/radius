@@ -18,11 +18,11 @@ package backends
 
 import (
 	"context"
-	"crypto/sha1"
 	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/radius-project/radius/pkg/hashutil"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -62,12 +62,59 @@ func NewKubernetesBackend(k8sClientSet kubernetes.Interface) Backend {
 // in-cluster config is not present.
 // https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes
 func (p *kubernetesBackend) BuildBackend(resourceRecipe *recipes.ResourceMetadata) (map[string]any, error) {
-	secretSuffix, err := generateSecretSuffix(resourceRecipe)
+	secretSuffix, err := p.resolveSecretSuffix(resourceRecipe)
 	if err != nil {
 		return nil, err
 	}
 
 	return generateKubernetesBackendConfig(secretSuffix)
+}
+
+// resolveSecretSuffix returns the secret suffix to use for the Terraform state backend.
+//
+// It prefers the current (SHA-256) suffix, but falls back to the legacy (SHA-1) suffix when a
+// Terraform state secret already exists under the legacy name (written by an older version of
+// Radius). New deployments use the current suffix. This keeps the SHA-1 -> SHA-256 migration from
+// losing existing Terraform state. See https://github.com/radius-project/radius/issues/8084.
+func (p *kubernetesBackend) resolveSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, error) {
+	currentSuffix, err := generateSecretSuffix(resourceRecipe)
+	if err != nil {
+		return "", err
+	}
+
+	// Some callers only need the computed suffix and do not provide a Kubernetes client (for example
+	// test tooling). Without a client we cannot check for an existing state secret, so use the current
+	// suffix.
+	if p.k8sClientSet == nil {
+		return currentSuffix, nil
+	}
+
+	// A background context is sufficient here: this is a single, short-lived existence check used to
+	// pick the correct (current vs legacy) state secret name before Terraform runs.
+	ctx := context.Background()
+
+	exists, err := p.ValidateBackendExists(ctx, KubernetesBackendNamePrefix+currentSuffix)
+	if err != nil {
+		return "", err
+	}
+	if exists {
+		return currentSuffix, nil
+	}
+
+	legacySuffix, err := generateLegacySecretSuffix(resourceRecipe)
+	if err != nil {
+		return "", err
+	}
+
+	exists, err = p.ValidateBackendExists(ctx, KubernetesBackendNamePrefix+legacySuffix)
+	if err != nil {
+		return "", err
+	}
+	if exists {
+		return legacySuffix, nil
+	}
+
+	return currentSuffix, nil
 }
 
 // ValidateBackendExists checks if the Kubernetes secret for Terraform state file exists.
@@ -89,9 +136,40 @@ func (p *kubernetesBackend) ValidateBackendExists(ctx context.Context, name stri
 	return true, nil
 }
 
+// secretSuffixLength is the number of hexadecimal characters of the hash used for the Terraform
+// state secret suffix. The Terraform Kubernetes backend stores secret_suffix as a Kubernetes label
+// value (limited to 63 characters), so the SHA-256 hash (64 hex characters) is truncated. 40
+// characters (160 bits) matches the legacy SHA-1 width and keeps ample collision resistance.
+const secretSuffixLength = 40
+
 // generateSecretSuffix returns a unique string from the resourceID, environmentID, and applicationID
 // which is used as key for kubernetes secret in defining terraform backend.
 func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, error) {
+	input, err := secretSuffixInput(resourceRecipe)
+	if err != nil {
+		return "", err
+	}
+
+	return hashutil.Hex([]byte(input))[:secretSuffixLength], nil
+}
+
+// generateLegacySecretSuffix returns the legacy SHA-1 based secret suffix.
+//
+// SHA-1 is retained only to locate Terraform state secrets created by older versions of Radius
+// during the migration to SHA-256. Use generateSecretSuffix for new values. See
+// https://github.com/radius-project/radius/issues/8084.
+func generateLegacySecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, error) {
+	input, err := secretSuffixInput(resourceRecipe)
+	if err != nil {
+		return "", err
+	}
+
+	return hashutil.LegacyHex([]byte(input)), nil
+}
+
+// secretSuffixInput returns the deterministic input string that the Terraform state secret suffix is
+// derived from for the given recipe.
+func secretSuffixInput(resourceRecipe *recipes.ResourceMetadata) (string, error) {
 	parsedResourceID, err := resources.Parse(resourceRecipe.ResourceID)
 	if err != nil {
 		return "", err
@@ -111,22 +189,11 @@ func generateSecretSuffix(resourceRecipe *recipes.ResourceMetadata) (string, err
 		appName = parsedAppID.Name()
 	}
 
-	var inputString string
 	if appName != "" {
-		inputString = strings.ToLower(fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), appName, parsedResourceID.String()))
-	} else {
-		inputString = strings.ToLower(fmt.Sprintf("%s-%s", parsedEnvID.Name(), parsedResourceID.String()))
+		return strings.ToLower(fmt.Sprintf("%s-%s-%s", parsedEnvID.Name(), appName, parsedResourceID.String())), nil
 	}
 
-	hasher := sha1.New()
-	_, err = hasher.Write([]byte(inputString))
-	if err != nil {
-		return "", err
-	}
-	hash := hasher.Sum(nil)
-	suffix := fmt.Sprintf("%x", hash)
-
-	return suffix, nil
+	return strings.ToLower(fmt.Sprintf("%s-%s", parsedEnvID.Name(), parsedResourceID.String())), nil
 }
 
 // generateKubernetesBackendConfig returns Terraform backend configuration to store Terraform state file for the deployment.

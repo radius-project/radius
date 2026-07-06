@@ -145,6 +145,93 @@ install-helm: ## Install the pinned Helm CLI into a user-owned bin dir (no sudo)
 		HELM_INSTALL_DIR="$(HELM_INSTALL_DIR)" \
 		./build/scripts/install-helm.sh
 
+# k3d (k3s in Docker) - pinned version and per-platform SHA-256 checksums consumed
+# by build/scripts/install-k3d.sh. The script is generic: clear K3D_VERSION to
+# install the latest release, and clear a checksum to have it read from the
+# release's own combined 'checksums.txt' file. Keep the checksums in sync when
+# bumping K3D_VERSION.
+K3D_VERSION ?= v5.9.0
+K3D_CHECKSUM_LINUX_AMD64 ?= 06d8f25bc3a971c4eb29e0ff08429b180402db0f4dec838c9eac427e296800a0
+K3D_CHECKSUM_LINUX_ARM64 ?= 03cde5cf23e6e8e67de5a039ecf26e5b85aca82fba3e5d13dadf904cd218a250
+K3D_CHECKSUM_DARWIN_AMD64 ?= b4aabc37534f95b9c764e7823f2df923f50d57600837aa60a06266cce47db732
+K3D_CHECKSUM_DARWIN_ARM64 ?= fe106541d5d0a3f18debcd4d432a16f8c0ce3e6ddc06f8fbb6f696a122313e00
+
+.PHONY: install-k3d
+install-k3d: ## Install the pinned k3d cluster tool into a user-owned bin dir (no sudo).
+	@K3D_VERSION="$(K3D_VERSION)" \
+		K3D_CHECKSUM_LINUX_AMD64="$(K3D_CHECKSUM_LINUX_AMD64)" \
+		K3D_CHECKSUM_LINUX_ARM64="$(K3D_CHECKSUM_LINUX_ARM64)" \
+		K3D_CHECKSUM_DARWIN_AMD64="$(K3D_CHECKSUM_DARWIN_AMD64)" \
+		K3D_CHECKSUM_DARWIN_ARM64="$(K3D_CHECKSUM_DARWIN_ARM64)" \
+		K3D_INSTALL_DIR="$(K3D_INSTALL_DIR)" \
+		./build/scripts/install-k3d.sh
+
+# golangci-lint - pinned version and per-platform SHA-256 checksums (of the
+# release tarball) consumed by build/scripts/install-golangci-lint.sh. The script
+# is generic: clear GOLANGCI_LINT_VERSION to install the latest release, and clear
+# a checksum to have it read from the release's own
+# 'golangci-lint-<version>-checksums.txt' file. Keep the checksums in sync when
+# bumping GOLANGCI_LINT_VERSION.
+GOLANGCI_LINT_VERSION ?= v2.12.2
+GOLANGCI_LINT_CHECKSUM_LINUX_AMD64 ?= 8df580d2670fed8fa984aac0507099af8df275e665215f5c7a2ae3943893a553
+GOLANGCI_LINT_CHECKSUM_LINUX_ARM64 ?= 44cd40a8c76c86755375adfeea52cfd3533cb43d7bd647771e0ae065e166df3a
+GOLANGCI_LINT_CHECKSUM_DARWIN_AMD64 ?= f6f06d94b6241521c53d15450c5209b028270bf966f842afb11c030c79f5bc16
+GOLANGCI_LINT_CHECKSUM_DARWIN_ARM64 ?= a9c54498731b3128f79e090be6110f3e5fffccc617b08142ed244d4126c73f29
+
+.PHONY: install-golangci-lint
+install-golangci-lint: ## Install the pinned golangci-lint into a user-owned bin dir (no sudo).
+	@GOLANGCI_LINT_VERSION="$(GOLANGCI_LINT_VERSION)" \
+		GOLANGCI_LINT_CHECKSUM_LINUX_AMD64="$(GOLANGCI_LINT_CHECKSUM_LINUX_AMD64)" \
+		GOLANGCI_LINT_CHECKSUM_LINUX_ARM64="$(GOLANGCI_LINT_CHECKSUM_LINUX_ARM64)" \
+		GOLANGCI_LINT_CHECKSUM_DARWIN_AMD64="$(GOLANGCI_LINT_CHECKSUM_DARWIN_AMD64)" \
+		GOLANGCI_LINT_CHECKSUM_DARWIN_ARM64="$(GOLANGCI_LINT_CHECKSUM_DARWIN_ARM64)" \
+		GOLANGCI_LINT_INSTALL_DIR="$(GOLANGCI_LINT_INSTALL_DIR)" \
+		./build/scripts/install-golangci-lint.sh
+
+# Terraform CLI - per-platform SHA-256 checksums (of the release zip) consumed by
+# build/scripts/install-terraform.sh. TERRAFORM_VERSION itself is defined in
+# build/build.mk, where it defaults to the .terraform-version file (overridable,
+# e.g. `make install-terraform TERRAFORM_VERSION=1.15.0`) and is also embedded into
+# the rad binary. Keep these checksums in sync when bumping .terraform-version. The
+# script is generic: clear a checksum to have it read from the release's own
+# 'terraform_<version>_SHA256SUMS' file.
+TERRAFORM_CHECKSUM_LINUX_AMD64 ?= 2e5cffc20a0b48a67a76268723bd5a10b8666f69b2aa4f04906e206726bedd63
+TERRAFORM_CHECKSUM_LINUX_ARM64 ?= 863002085b886453795d9ff4b8989b8468784478150b70ba8a1df3e3ad66da99
+TERRAFORM_CHECKSUM_DARWIN_AMD64 ?= c15326e1af102d2767d40208a0157d1402057f80192991f56803b66457304cf3
+TERRAFORM_CHECKSUM_DARWIN_ARM64 ?= 5bc0b11b7a63c8984a41d82523356df46f7833c2e9651a39a7f8919422de5cde
+
+.PHONY: install-terraform
+install-terraform: ## Install the pinned Terraform CLI into a user-owned bin dir (no sudo).
+	@TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
+		TERRAFORM_CHECKSUM_LINUX_AMD64="$(TERRAFORM_CHECKSUM_LINUX_AMD64)" \
+		TERRAFORM_CHECKSUM_LINUX_ARM64="$(TERRAFORM_CHECKSUM_LINUX_ARM64)" \
+		TERRAFORM_CHECKSUM_DARWIN_AMD64="$(TERRAFORM_CHECKSUM_DARWIN_AMD64)" \
+		TERRAFORM_CHECKSUM_DARWIN_ARM64="$(TERRAFORM_CHECKSUM_DARWIN_ARM64)" \
+		TERRAFORM_INSTALL_DIR="$(TERRAFORM_INSTALL_DIR)" \
+		./build/scripts/install-terraform.sh
+
+# stern (multi-pod Kubernetes log tailing) - pinned version and per-platform
+# SHA-256 checksums (of the release tarball) consumed by
+# build/scripts/install-stern.sh. The script is generic: clear STERN_VERSION to
+# install the latest release, and clear a checksum to have it read from the
+# release's own combined 'checksums.txt' file. Keep the checksums in sync when
+# bumping STERN_VERSION.
+STERN_VERSION ?= v1.34.0
+STERN_CHECKSUM_LINUX_AMD64 ?= 7754adfa653939240f7d20fff4ada9b69cda40c9e70732301f67bb8045f1ef3e
+STERN_CHECKSUM_LINUX_ARM64 ?= e215cfc5e42d71e93b77d3fac8f0df7d736271f44b2d92a5b417eaa588edff3a
+STERN_CHECKSUM_DARWIN_AMD64 ?= 153355317f21e565ea10bc710d4c2e3d98fd06f83cae5eb927e7031cc724a7a6
+STERN_CHECKSUM_DARWIN_ARM64 ?= 4014d84096e1e603ee115864e03a1e15fb9bae9876647bf7bb8031eee278dcd3
+
+.PHONY: install-stern
+install-stern: ## Install the pinned stern log tailing tool into a user-owned bin dir (no sudo).
+	@STERN_VERSION="$(STERN_VERSION)" \
+		STERN_CHECKSUM_LINUX_AMD64="$(STERN_CHECKSUM_LINUX_AMD64)" \
+		STERN_CHECKSUM_LINUX_ARM64="$(STERN_CHECKSUM_LINUX_ARM64)" \
+		STERN_CHECKSUM_DARWIN_AMD64="$(STERN_CHECKSUM_DARWIN_AMD64)" \
+		STERN_CHECKSUM_DARWIN_ARM64="$(STERN_CHECKSUM_DARWIN_ARM64)" \
+		STERN_INSTALL_DIR="$(STERN_INSTALL_DIR)" \
+		./build/scripts/install-stern.sh
+
 # ORAS (OCI Registry As Storage) CLI - pinned version and per-platform SHA-256
 # checksums (of the release tarball) consumed by build/scripts/install-oras.sh.
 # The script is generic: clear ORAS_VERSION to install the latest release, and

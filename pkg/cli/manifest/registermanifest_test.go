@@ -693,6 +693,26 @@ func TestValidateManifest(t *testing.T) {
 	}
 }
 
+func TestValidateManifest_MergesBaseResourceManifest(t *testing.T) {
+	t.Parallel()
+
+	resourceProvider, err := ValidateManifest(context.Background(), "testdata/merge-base-manifest.yaml")
+	require.NoError(t, err)
+	require.NotNil(t, resourceProvider)
+
+	schemaMap := resourceProvider.Types["testResources"].APIVersions["2025-01-01-preview"].Schema.(map[string]any)
+	props := schemaMap["properties"].(map[string]any)
+
+	// Author-declared property preserved.
+	require.Contains(t, props, "size")
+	// Base properties merged into the schema that registration ships to UCP.
+	require.Contains(t, props, "application")
+	require.Contains(t, props, "environment")
+	require.Contains(t, props, "connections")
+	require.Contains(t, props, "codeReference")
+	require.Contains(t, schemaMap["required"], "environment")
+}
+
 func TestExtractLocationInfo(t *testing.T) {
 	t.Parallel()
 

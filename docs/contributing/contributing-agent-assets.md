@@ -35,16 +35,16 @@ This rule keeps a single, durable knowledge base that humans read directly and e
 
 ## Where each asset lives
 
-| Asset | Location | Read by | Holds |
-|---|---|---|---|
-| Orientation | `AGENTS.md` (repo root) | every agent; Copilot family via symlink | ≤ 2-page map to everything else |
-| Copilot entry point | `.github/copilot-instructions.md` → `AGENTS.md` | Copilot family (incl. GitHub.com) | symlink to `AGENTS.md` |
-| How-to knowledge | [CONTRIBUTING.md](../../CONTRIBUTING.md), `docs/contributing/` | everyone | setup, build, test, debug, schema, releases |
-| Architecture | [docs/architecture/](../architecture/) | everyone | code-grounded subsystem explanations |
-| Coding conventions | `.github/instructions/*.instructions.md` | Copilot surfaces; Claude via `.claude/rules/` | path-scoped rules linters can't enforce |
-| Workflow wrappers | `.github/skills/*/SKILL.md` | Copilot surfaces; Claude via `.claude/skills/` | multi-step Radius-specific workflows |
-| Slash commands | `.github/prompts/*.prompt.md` | VS Code only | shortcuts to a backing doc |
-| Custom agents | `.github/agents/*.agent.md` | Copilot surfaces; Claude via `.claude/agents/` | scoped agent personas |
+| Asset               | Location                                                       | Read by                                        | Holds                                       |
+|---------------------|----------------------------------------------------------------|------------------------------------------------|---------------------------------------------|
+| Orientation         | `AGENTS.md` (repo root)                                        | every agent; Copilot family via symlink        | ≤ 2-page map to everything else             |
+| Copilot entry point | `.github/copilot-instructions.md` → `AGENTS.md`                | Copilot family (incl. GitHub.com)              | symlink to `AGENTS.md`                      |
+| How-to knowledge    | [CONTRIBUTING.md](../../CONTRIBUTING.md), `docs/contributing/` | everyone                                       | setup, build, test, debug, schema, releases |
+| Architecture        | [docs/architecture/](../architecture/)                         | everyone                                       | code-grounded subsystem explanations        |
+| Coding conventions  | `.github/instructions/*.instructions.md`                       | Copilot surfaces; Claude via `.claude/rules/`  | path-scoped rules linters can't enforce     |
+| Workflow wrappers   | `.github/skills/*/SKILL.md`                                    | Copilot surfaces; Claude via `.claude/skills/` | multi-step Radius-specific workflows        |
+| Slash commands      | `.github/prompts/*.prompt.md`                                  | VS Code only                                   | shortcuts to a backing doc                  |
+| Custom agents       | `.github/agents/*.agent.md`                                    | Copilot surfaces; Claude via `.claude/agents/` | scoped agent personas                       |
 
 See the [tool landscape table in the plan](../../specs/002-agent-ex/agent-ex-plan.md#1-tool-landscape) for the full file-to-tool matrix.
 
@@ -52,13 +52,13 @@ See the [tool landscape table in the plan](../../specs/002-agent-ex/agent-ex-pla
 
 Always-on context costs tokens before a task starts, so each asset has a budget. Keep knowledge that an agent reads on demand in a doc instead of in always-on context.
 
-| Asset | Budget |
-|---|---|
-| `AGENTS.md` | ≤ 1500 words (≈ 2 pages) |
-| `*.instructions.md` | ≤ 200 lines |
-| `SKILL.md` | ≤ 500 lines |
-| `*.prompt.md` | ≤ 300 lines |
-| `*.agent.md` | ≤ 200 lines |
+| Asset               | Budget                   |
+|---------------------|--------------------------|
+| `AGENTS.md`         | ≤ 1500 words (≈ 2 pages) |
+| `*.instructions.md` | ≤ 200 lines              |
+| `SKILL.md`          | ≤ 500 lines              |
+| `*.prompt.md`       | ≤ 300 lines              |
+| `*.agent.md`        | ≤ 200 lines              |
 
 Contributing and architecture docs have no fixed line budget — they are read on demand — but should stay focused on a single workflow or subsystem.
 
@@ -66,12 +66,12 @@ Contributing and architecture docs have no fixed line budget — they are read o
 
 Skills and agents use a `radius-` prefix; prompts use a `radius.` prefix (matching the repository's existing prompts). The shared `radius` namespace keeps chat completions grouped and avoids collisions with extensions.
 
-| Asset | Pattern | Example | Appears in chat as |
-|---|---|---|---|
-| Skill | `radius-<verb>-<noun>/SKILL.md` | `radius-build-cli/` | listed in skill picker |
-| Instruction | `<technology>.instructions.md` | `golang.instructions.md` | auto-applied |
-| Agent | `radius-<name>.agent.md` | `radius-resource-type-contributor.agent.md` | `@radius-resource-type-contributor` |
-| Prompt | `radius.<action>.prompt.md` | `radius.create-pr.prompt.md` | `/radius.create-pr` |
+| Asset       | Pattern                         | Example                                     | Appears in chat as                  |
+|-------------|---------------------------------|---------------------------------------------|-------------------------------------|
+| Skill       | `radius-<verb>-<noun>/SKILL.md` | `radius-build-cli/`                         | listed in skill picker              |
+| Instruction | `<technology>.instructions.md`  | `golang.instructions.md`                    | auto-applied                        |
+| Agent       | `radius-<name>.agent.md`        | `radius-resource-type-contributor.agent.md` | `@radius-resource-type-contributor` |
+| Prompt      | `radius.<action>.prompt.md`     | `radius.create-pr.prompt.md`                | `/radius.create-pr`                 |
 
 **The `<repo>` segment is optional.** Add it only when a skill or prompt is repo-specific and would otherwise collide with a similarly named asset in another repo (for example `radius-contrib-add-resource-type` in `resource-types-contrib/`). Repo short names: `core` (radius/), `dash` (dashboard/), `contrib` (resource-types-contrib/), `docs` (docs/), `bicep-aws` (bicep-types-aws/).
 
@@ -209,11 +209,19 @@ Backing doc: [<doc title>](../../docs/contributing/<path>.md)
 
 ## Code ↔ doc path map
 
-The docs-drift code-review instructions and the scheduled drift workflow consult a per-repo map from a code glob to the contributor doc that documents its behavior. The map lands **empty** here and grows as Phase 3 fills out the contributing docs.
+The docs-drift code-review instructions and the scheduled drift workflow consult a per-repo map from a code glob to the contributor doc that documents its behavior. Each row pairs a `<code-glob>` with the single primary doc that describes how to change that code; the globs mirror the `applyTo` scopes of the matching [`.github/instructions/*`](../../.github/instructions/) files where one exists.
 
-| Code glob | Backing doc |
-|---|---|
-| *(none yet — populated in Phase 3)* | |
+| Code glob                                             | Backing doc                                                                                                                        |
+|-------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `**/*.go`, `**/go.mod`, `**/go.sum`, `**/go.work`     | [contributing-code/contributing-code-writing/README.md](./contributing-code/contributing-code-writing/README.md)                   |
+| `typespec/**`, `swagger/**`                           | [contributing-code/contributing-code-schema-changes/README.md](./contributing-code/contributing-code-schema-changes/README.md)     |
+| `pkg/cli/**`, `cmd/rad/**`                            | [contributing-code/contributing-code-cli/README.md](./contributing-code/contributing-code-cli/README.md)                           |
+| `.github/workflows/*.yml`, `.github/workflows/*.yaml` | [contributing-code/contributing-code-github-workflows/README.md](./contributing-code/contributing-code-github-workflows/README.md) |
+| `**/Dockerfile`, `**/Dockerfile.*`, `**/*.dockerfile` | [contributing-code/contributing-code-dockerfiles/README.md](./contributing-code/contributing-code-dockerfiles/README.md)           |
+| `**/*.bicep`                                          | [contributing-code/contributing-code-bicep/README.md](./contributing-code/contributing-code-bicep/README.md)                       |
+| `**/*.sh`, `**/Makefile`, `**/*.mk`, `**/GNUmakefile` | [contributing-code/contributing-code-shell-and-make/README.md](./contributing-code/contributing-code-shell-and-make/README.md)     |
+| `test/**`                                             | [contributing-code/contributing-code-tests/README.md](./contributing-code/contributing-code-tests/README.md)                       |
+| `docs/**`, `**/*.md`                                  | [authoring-contributing-docs.md](./authoring-contributing-docs.md)                                                                 |
 
 ## Verification
 

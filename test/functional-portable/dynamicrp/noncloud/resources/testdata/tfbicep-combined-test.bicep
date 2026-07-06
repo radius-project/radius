@@ -18,7 +18,7 @@ param appName string
 // resources are accepted, the environment resolves both refs, and that the
 // recipe (which uses no providers from the mirror) still succeeds. This proves
 // the wiring without requiring a real network mirror in the test cluster.
-resource tfConfig 'Radius.Core/terraformConfigs@2025-08-01-preview' = {
+resource tfConfig 'Radius.Core/terraformSettings@2025-08-01-preview' = {
   name: 'tfbicep-combined-tfconfig'
   location: 'global'
   properties: {
@@ -54,8 +54,8 @@ resource registrySecret 'Applications.Core/secretStores@2023-10-01-preview' = {
   }
 }
 
-resource bicepConfig 'Radius.Core/bicepConfigs@2025-08-01-preview' = {
-  name: 'tfbicep-combined-bicepconfig'
+resource bicepSettings 'Radius.Core/bicepSettings@2025-08-01-preview' = {
+  name: 'tfbicep-combined-bicepsettings'
   location: 'global'
   properties: {
     registryAuthentications: {
@@ -92,8 +92,8 @@ resource env 'Radius.Core/environments@2025-08-01-preview' = {
         namespace: 'tfbicep-combined-ns'
       }
     }
-    terraformConfig: tfConfig.id
-    bicepConfig: bicepConfig.id
+    terraformSettings: tfConfig.id
+    bicepSettings: bicepSettings.id
   }
 }
 

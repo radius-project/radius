@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	sourcev1 "github.com/fluxcd/source-controller/api/v1"
+	"github.com/go-logr/logr"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -30,6 +31,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	runtimelog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // config holds a reference to the rest config for the test environment.
@@ -51,6 +53,14 @@ type testWebhookOptions struct {
 //
 // We're using this to ensure that one (and only one) copy of env-test is booted up.
 func TestMain(m *testing.M) {
+	// Provide controller-runtime with a logger up front. Without this, the manager's shutdown path
+	// calls into the global logger before SetLogger is ever called, which triggers
+	// controller-runtime's eventuallyFulfillRoot fallback: after a ~30s delay it prints a
+	// "log.SetLogger(...) was never called" warning with a goroutine stack dump. That noisy, delayed
+	// path showed up at the point of an intermittent package-level test failure. A discard logger is
+	// safe here because it never writes to testing.T after a test completes.
+	runtimelog.SetLogger(logr.Discard())
+
 	if os.Getenv("KUBEBUILDER_ASSETS") == "" {
 		// We don't know how to start the envtest environment. Just go ahead and call the tests so they can skip.
 		os.Exit(m.Run()) //nolint:forbidigo // this is OK inside the TestMain function.

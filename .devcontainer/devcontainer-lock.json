@@ -5,15 +5,15 @@
       "resolved": "ghcr.io/dapr/cli/dapr-cli@sha256:e935ef5a3e52f5cba9e87ccda401d380b8426c965068574cad0403e430c459dc",
       "integrity": "sha256:e935ef5a3e52f5cba9e87ccda401d380b8426c965068574cad0403e430c459dc"
     },
-    "ghcr.io/devcontainers/features/docker-in-docker:3.1.0": {
-      "version": "3.1.0",
-      "resolved": "ghcr.io/devcontainers/features/docker-in-docker@sha256:62e04ec83d944da4fd2830f68a677d1f5466c0654aea1e4baa30232d16029ac1",
-      "integrity": "sha256:62e04ec83d944da4fd2830f68a677d1f5466c0654aea1e4baa30232d16029ac1"
+    "ghcr.io/devcontainers/features/docker-in-docker:4.0.0": {
+      "version": "4.0.0",
+      "resolved": "ghcr.io/devcontainers/features/docker-in-docker@sha256:4fa87399214366e320d489991769c4f3f461e1ffe461f54eea78a41b34945bb5",
+      "integrity": "sha256:4fa87399214366e320d489991769c4f3f461e1ffe461f54eea78a41b34945bb5"
     },
     "ghcr.io/devcontainers/features/git:1": {
-      "version": "1.3.5",
-      "resolved": "ghcr.io/devcontainers/features/git@sha256:27905dc196c01f77d6ba8709cb82eeaf330b3b108772e2f02d1cd0d826de1251",
-      "integrity": "sha256:27905dc196c01f77d6ba8709cb82eeaf330b3b108772e2f02d1cd0d826de1251"
+      "version": "1.3.7",
+      "resolved": "ghcr.io/devcontainers/features/git@sha256:a3e43ff91b9f5f6bd2c14bd510d43e5e698f1266dc41027ba4e04e7e45be607a",
+      "integrity": "sha256:a3e43ff91b9f5f6bd2c14bd510d43e5e698f1266dc41027ba4e04e7e45be607a"
     },
     "ghcr.io/devcontainers/features/github-cli:1": {
       "version": "1.1.0",

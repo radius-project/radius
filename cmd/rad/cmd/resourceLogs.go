@@ -34,7 +34,7 @@ import (
 var resourceLogsCmd = &cobra.Command{
 	Use:   "logs [resource]",
 	Short: "Read logs from a running containers resource",
-	Long: `Reads logs from a running resource. Currently only supports the resource type 'Applications.Core/containers'.
+	Long: `Reads logs from a running resource. Supports the resource type 'Applications.Core/containers', or 'Radius.Compute/containers' when the '--preview' flag is set.
 This command allows you to access logs of a deployed application and output those logs to the local console.
 
 'rad resource logs' will output all currently available logs for the resource and then exit.
@@ -52,78 +52,105 @@ rad resource logs Applications.Core/containers orders --application icecream-sto
 rad resource logs Applications.Core/containers orders --application icecream-store --follow
 
 # read logs from the 'daprd' sidecar container of the 'orders' resource of the 'icecream-store' application
-rad resource logs Applications.Core/containers orders --application icecream-store --container daprd`,
+rad resource logs Applications.Core/containers orders --application icecream-store --container daprd
+
+# read logs from the 'orders' resource using the preview resource type 'Radius.Compute/containers'
+rad resource logs Radius.Compute/containers orders --application icecream-store --preview`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		workspace, err := cli.RequireWorkspace(cmd, ConfigFromContext(cmd.Context()))
-		if err != nil {
-			return err
-		}
-
-		scope, err := cli.RequireScope(cmd, *workspace)
-		if err != nil {
-			return err
-		}
-		workspace.Scope = scope
-
-		application, err := cli.RequireApplication(cmd, *workspace)
-		if err != nil {
-			return err
-		}
-
-		resourceType, resourceName, err := cli.RequireResource(cmd, args)
-		if err != nil {
-			return err
-		}
-		if !strings.EqualFold(resourceType, ContainerType) {
-			return fmt.Errorf("only %s is supported", ContainerType)
-		}
-		follow, err := cmd.Flags().GetBool("follow")
-		if err != nil {
-			return err
-		}
-
-		container, err := cmd.Flags().GetString("container")
-		if err != nil {
-			return err
-		}
-
-		var client clients.DiagnosticsClient
-		client, err = connections.DefaultFactory.CreateDiagnosticsClient(cmd.Context(), *workspace)
-		if err != nil {
-			return err
-		}
-
-		streams, err := client.Logs(cmd.Context(), clients.LogsOptions{
-			Application: application,
-			Resource:    resourceName,
-			Follow:      follow,
-			Container:   container})
-		if err != nil {
-			return err
-		}
-
-		logErrors := make(chan error, len(streams))
-		for _, logInfo := range streams {
-
-			// We can keep reading this until cancellation occurs.
-			if follow {
-				// Sending to stderr so it doesn't interfere with parsing
-				fmt.Fprintf(os.Stderr, "Streaming logs from replica %s for Container %s. Press CTRL+C to exit...\n", logInfo.Name, resourceName)
-			}
-
-			// Kick off go routine to read the logs from each stream.
-			go captureLogs(logInfo, logErrors, follow)
-		}
-
-		for range streams {
-			err := <-logErrors
-			if err != nil {
-				// TODO format
-				fmt.Fprintln(os.Stderr, err)
-			}
-		}
-		return nil
+		return logsResource(cmd, args, false)
 	},
+}
+
+// resourceLogsPreviewCmd holds the preview implementation of "rad resource logs".
+// It is wired to resourceLogsCmd via wirePreviewSubcommand so it is selected by the
+// --preview flag or the RADIUS_PREVIEW environment variable.
+var resourceLogsPreviewCmd = &cobra.Command{
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return logsResource(cmd, args, true)
+	},
+}
+
+// logsResource runs "rad resource logs" against either the legacy
+// (Applications.Core/containers) or preview (Radius.Compute/containers) API surface.
+func logsResource(cmd *cobra.Command, args []string, preview bool) error {
+	workspace, err := cli.RequireWorkspace(cmd, ConfigFromContext(cmd.Context()))
+	if err != nil {
+		return err
+	}
+
+	scope, err := cli.RequireScope(cmd, *workspace)
+	if err != nil {
+		return err
+	}
+	workspace.Scope = scope
+
+	application, err := cli.RequireApplication(cmd, *workspace)
+	if err != nil {
+		return err
+	}
+
+	resourceType, resourceName, err := cli.RequireResource(cmd, args)
+	if err != nil {
+		return err
+	}
+
+	expectedType := ContainerType
+	if preview {
+		expectedType = PreviewContainerType
+	}
+	if !strings.EqualFold(resourceType, expectedType) {
+		return fmt.Errorf("only %s is supported", expectedType)
+	}
+	follow, err := cmd.Flags().GetBool("follow")
+	if err != nil {
+		return err
+	}
+
+	container, err := cmd.Flags().GetString("container")
+	if err != nil {
+		return err
+	}
+
+	var client clients.DiagnosticsClient
+	if preview {
+		client, err = connections.DefaultFactory.CreateDiagnosticsClientPreview(cmd.Context(), *workspace)
+	} else {
+		client, err = connections.DefaultFactory.CreateDiagnosticsClient(cmd.Context(), *workspace)
+	}
+	if err != nil {
+		return err
+	}
+
+	streams, err := client.Logs(cmd.Context(), clients.LogsOptions{
+		Application: application,
+		Resource:    resourceName,
+		Follow:      follow,
+		Container:   container})
+	if err != nil {
+		return err
+	}
+
+	logErrors := make(chan error, len(streams))
+	for _, logInfo := range streams {
+
+		// We can keep reading this until cancellation occurs.
+		if follow {
+			// Sending to stderr so it doesn't interfere with parsing
+			fmt.Fprintf(os.Stderr, "Streaming logs from replica %s for Container %s. Press CTRL+C to exit...\n", logInfo.Name, resourceName)
+		}
+
+		// Kick off go routine to read the logs from each stream.
+		go captureLogs(logInfo, logErrors, follow)
+	}
+
+	for range streams {
+		err := <-logErrors
+		if err != nil {
+			// TODO format
+			fmt.Fprintln(os.Stderr, err)
+		}
+	}
+	return nil
 }
 
 func captureLogs(info clients.LogStream, logErrors chan<- error, follow bool) {
@@ -182,5 +209,6 @@ func init() {
 	resourceLogsCmd.Flags().BoolP("follow", "f", false, "specify that logs should be stream until the command is canceled")
 	resourceLogsCmd.Flags().String("replica", "", "specify the replica to collect logs from")
 	commonflags.AddResourceGroupFlag(resourceLogsCmd)
+	wirePreviewSubcommand(resourceLogsCmd, resourceLogsPreviewCmd)
 	resourceCmd.AddCommand(resourceLogsCmd)
 }

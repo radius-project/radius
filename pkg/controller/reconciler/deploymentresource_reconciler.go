@@ -204,8 +204,32 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 
 	logger.Info("Resource is being deleted.")
 
-	// Check if the resource is being used by another resource
-	deploymentResourceList, err := listResourcesWithSameOwner(ctx, r.Client, deploymentResource.Namespace, deploymentResource.OwnerReferences[0])
+	// Only delete the referenced resource if this controller provisioned it for a DeploymentTemplate.
+	// A DeploymentResource is eligible for deletion when it is a controller-owned child of an existing
+	// DeploymentTemplate and its Spec.Id falls within that template's deployment scope. Skipping the
+	// delete otherwise avoids issuing a UCP delete for a resource the controller never created (for
+	// example a DeploymentResource whose Spec.Id points outside its owning template).
+	ownerRef := metav1.GetControllerOf(deploymentResource)
+	eligible, err := r.deleteIsEligible(ctx, deploymentResource, ownerRef)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if !eligible {
+		// deleteIsEligible can return false for several reasons (no controller owner, owner not
+		// found, UID mismatch, unresolvable scope, or Spec.Id outside scope); the specific reason is
+		// logged within deleteIsEligible. Keep this message general so it is not misleading.
+		logger.Info("Skipping delete: DeploymentResource is not an eligible controller-owned child of a DeploymentTemplate within its scope.", "resourceId", deploymentResource.Spec.Id)
+		r.EventRecorder.Event(deploymentResource, corev1.EventTypeNormal, EventDeploymentResourceDeleteSkipped,
+			fmt.Sprintf("Skipping delete of %q: it is not an eligible controller-owned child of a DeploymentTemplate within the matching deployment scope", deploymentResource.Spec.Id))
+
+		// Nothing to delete in UCP. Remove the finalizer so the object is not wedged in
+		// Terminating; the controller never provisioned the referenced resource.
+		return ctrl.Result{}, r.completeDeleteOperation(ctx, deploymentResource)
+	}
+
+	// Check if the resource is being used by another resource. ownerRef is guaranteed non-nil
+	// here because the eligibility check above succeeded.
+	deploymentResourceList, err := listResourcesWithSameOwner(ctx, r.Client, deploymentResource.Namespace, *ownerRef)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -305,6 +329,74 @@ func (r *DeploymentResourceReconciler) startDeleteOperation(ctx context.Context,
 
 	// Deletion was synchronous
 	return nil, nil
+}
+
+// deleteIsEligible reports whether the controller should issue a UCP delete for deploymentResource.
+// A DeploymentResource is eligible only when it is controlled by a DeploymentTemplate that still
+// exists in the same namespace and the resource it references (Spec.Id) is within that template's
+// deployment scope. This keeps the controller from deleting a resource it did not provision, such as
+// a DeploymentResource whose Spec.Id points outside its owning template. It returns false (without an
+// error) when eligibility cannot be established so the caller can safely skip the delete.
+func (r *DeploymentResourceReconciler) deleteIsEligible(ctx context.Context, deploymentResource *radappiov1alpha3.DeploymentResource, ownerRef *metav1.OwnerReference) (bool, error) {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
+	// DeploymentResources created by the controller always have their owning DeploymentTemplate as
+	// the controller reference.
+	if ownerRef == nil || ownerRef.Kind != deploymentTemplateKind {
+		logger.Info("DeploymentResource is not controlled by a DeploymentTemplate.")
+		return false, nil
+	}
+
+	owner := &radappiov1alpha3.DeploymentTemplate{}
+	err := r.Client.Get(ctx, client.ObjectKey{Namespace: deploymentResource.Namespace, Name: ownerRef.Name}, owner)
+	if apierrors.IsNotFound(err) {
+		logger.Info("Owning DeploymentTemplate was not found.", "owner", ownerRef.Name)
+		return false, nil
+	} else if err != nil {
+		return false, err
+	}
+
+	// Guard against an owner reference that names an existing DeploymentTemplate but carries a stale
+	// UID (for example a template that was deleted and recreated under the same name).
+	if owner.UID != ownerRef.UID {
+		logger.Info("Owning DeploymentTemplate UID does not match the owner reference.", "owner", ownerRef.Name)
+		return false, nil
+	}
+
+	scope, err := ParseDeploymentScopeFromProviderConfig(owner.Spec.ProviderConfig)
+	if err != nil {
+		// The scope cannot be determined from the owning DeploymentTemplate's ProviderConfig, so
+		// eligibility cannot be confirmed. Skip the delete instead of returning an error: returning an
+		// error here would requeue forever and leave the DeploymentResource wedged with its finalizer.
+		logger.Info("Unable to determine deployment scope from owning DeploymentTemplate; skipping delete.", "owner", ownerRef.Name, "error", err.Error())
+		return false, nil
+	}
+
+	within, err := resourceWithinScope(deploymentResource.Spec.Id, scope)
+	if err != nil {
+		// An unparseable Spec.Id cannot be checked against the scope, so skip the delete rather than
+		// surfacing a retryable error for input that can never become valid.
+		logger.Info("Unable to parse resource id for scope check; skipping delete.", "resourceId", deploymentResource.Spec.Id, "error", err.Error())
+		return false, nil
+	}
+	if !within {
+		logger.Info("Resource is outside the owning DeploymentTemplate's deployment scope.", "resourceId", deploymentResource.Spec.Id, "expectedScope", scope)
+		return false, nil
+	}
+
+	return true, nil
+}
+
+// resourceWithinScope reports whether resourceID belongs to the given deployment scope (the root
+// scope, e.g. "/planes/radius/local/resourceGroups/my-group"). The comparison is case-insensitive
+// because resource ids and scopes can legitimately differ in casing.
+func resourceWithinScope(resourceID string, scope string) (bool, error) {
+	id, err := resources.ParseResource(resourceID)
+	if err != nil {
+		return false, err
+	}
+
+	return strings.EqualFold(strings.TrimRight(id.RootScope(), "/"), strings.TrimRight(scope, "/")), nil
 }
 
 func (r *DeploymentResourceReconciler) requeueDelay() time.Duration {
