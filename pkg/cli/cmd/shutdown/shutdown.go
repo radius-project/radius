@@ -33,10 +33,10 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/gitstate"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/pgbackup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	storagegit "github.com/radius-project/radius/pkg/storage/git"
 )
 
 // NewCommand creates an instance of the `rad shutdown` command and runner.
@@ -68,7 +68,7 @@ rad shutdown --workspace my-workspace`,
 	return cmd, runner
 }
 
-// worktreeHandle decouples Run from the concrete gitstate worktree so the command can be tested
+// worktreeHandle decouples Run from the concrete storage session so the command can be tested
 // without performing real git operations.
 type worktreeHandle struct {
 	path          string
@@ -98,16 +98,17 @@ func NewRunner(factory framework.Factory) *Runner {
 	return r
 }
 
-// defaultOpenWorktree opens the real gitstate worktree and adapts it to worktreeHandle.
+// defaultOpenWorktree opens a git-backed storage session for the state branch and adapts it to
+// worktreeHandle.
 func defaultOpenWorktree(ctx context.Context) (worktreeHandle, error) {
-	w, err := gitstate.OpenOrCreate(ctx, gitstate.BranchName())
+	session, err := storagegit.NewBackend().Open(ctx, pgbackup.StateBranchName())
 	if err != nil {
 		return worktreeHandle{}, err
 	}
 	return worktreeHandle{
-		path:          w.Path,
-		commitAndPush: w.CommitAndPush,
-		remove:        w.Remove,
+		path:          session.Path(),
+		commitAndPush: session.Commit,
+		remove:        session.Close,
 	}, nil
 }
 
@@ -149,7 +150,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to back up Terraform state: %w", err)
 	}
 
-	r.Output.LogInfo("Committing state to branch %q...", gitstate.BranchName())
+	r.Output.LogInfo("Committing state to branch %q...", pgbackup.StateBranchName())
 	if err := wt.commitAndPush(ctx, "radius: shutdown backup"); err != nil {
 		return fmt.Errorf("failed to commit and push state: %w", err)
 	}

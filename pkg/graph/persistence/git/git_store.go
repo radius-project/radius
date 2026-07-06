@@ -14,6 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Package git provides a persistence.Store backed by a git orphan branch.
+//
+// It is a thin, graph-specific adapter over the shared pluggable storage
+// backend in pkg/storage: it maps persistence.Key values to JSON files on the
+// orphan branch and delegates all git I/O to a storage.Backend (the git one by
+// default). Swapping in a different storage.Backend (for example an OCI or
+// filesystem backend) requires no change here.
+//
+// Key -> path layout on the branch:
+//
+//	<namespace>/<name>.json
 package git
 
 import (
@@ -22,51 +33,57 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/persistence"
+	"github.com/radius-project/radius/pkg/storage"
+	storagegit "github.com/radius-project/radius/pkg/storage/git"
 )
+
+// DefaultGraphBranch is the default orphan branch name for graph artifacts.
+const DefaultGraphBranch = "radius-graph"
 
 // Options configures a Store.
 type Options struct {
 	// Branch is the orphan branch used to persist graphs. If empty,
 	// DefaultGraphBranch is used.
 	Branch string
+
+	// Backend is the durable storage backend. If nil, the git orphan-branch
+	// backend is used. Tests may inject an alternative implementation.
+	Backend storage.Backend
 }
 
-// Store is a persistence.Store backed by a git orphan branch. Each saved
-// graph is committed as a JSON file on the branch using a StateWorktree, so
-// the application's working tree is never touched.
+// Store is a persistence.Store that persists each graph as a JSON file on a
+// durable storage backend. The default backend is a git orphan branch, so the
+// application's working tree is never touched.
 //
-// Key → path layout on the branch:
-//
-//	<namespace>/<name>.json
-//
-// Concurrency: `git worktree add` refuses to add a second worktree for a
-// branch that is already checked out, so concurrent Save/Load/List/Delete
-// calls on the same Store would otherwise fail nondeterministically. The
-// persistence.Store contract requires implementations to be safe for
-// concurrent use, so all operations are serialized through mu.
+// Concurrency: the persistence.Store contract requires implementations to be
+// safe for concurrent use. Serialization is delegated to the backend, which
+// serializes sessions per branch (git refuses two worktrees on one branch).
 type Store struct {
-	branch string
-	mu     sync.Mutex
+	branch  string
+	backend storage.Backend
 }
 
-// NewStore returns a git-backed Store. The repository is auto-detected via
-// `git rev-parse --show-toplevel` at I/O time, so no path is required up
-// front.
+// NewStore returns a git-backed Store. The repository is auto-detected by the
+// backend at I/O time, so no path is required up front.
 func NewStore(opts Options) (*Store, error) {
 	branch := opts.Branch
 	if branch == "" {
 		branch = DefaultGraphBranch
 	}
-	return &Store{branch: branch}, nil
+	backend := opts.Backend
+	if backend == nil {
+		backend = storagegit.NewBackend()
+	}
+	return &Store{branch: branch, backend: backend}, nil
 }
 
-// Save commits graph to the configured orphan branch under constructPathForKey(key).
+// Save commits graph to the configured branch under constructPathForKey(key).
 func (s *Store) Save(ctx context.Context, key persistence.Key, graph *corerpv20250801preview.ApplicationGraphResponse, opts persistence.SaveOptions) error {
 	if graph == nil {
 		return errors.New("git: nil graph")
@@ -81,24 +98,25 @@ func (s *Store) Save(ctx context.Context, key persistence.Key, graph *corerpv202
 		return fmt.Errorf("git: marshal graph: %w", err)
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	wt, err := OpenOrCreate(ctx, s.branch)
+	session, err := s.backend.Open(ctx, s.branch)
 	if err != nil {
 		return err
 	}
-	defer wt.Remove(ctx)
+	defer session.Close(ctx)
 
-	if err := wt.WriteFile(path, data); err != nil {
-		return err
+	fullPath := filepath.Join(session.Path(), path)
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
+		return fmt.Errorf("git: creating directories for %s: %w", path, err)
+	}
+	if err := os.WriteFile(fullPath, data, 0o644); err != nil {
+		return fmt.Errorf("git: writing %s: %w", path, err)
 	}
 
 	msg := opts.Message
 	if msg == "" {
 		msg = fmt.Sprintf("radius: update %s", path)
 	}
-	return wt.CommitAndPush(ctx, msg)
+	return session.Commit(ctx, msg)
 }
 
 // Load returns the graph previously stored under key, or persistence.ErrNotFound.
@@ -108,16 +126,13 @@ func (s *Store) Load(ctx context.Context, key persistence.Key) (*corerpv20250801
 		return nil, err
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	wt, err := OpenOrCreate(ctx, s.branch)
+	session, err := s.backend.Open(ctx, s.branch)
 	if err != nil {
 		return nil, err
 	}
-	defer wt.Remove(ctx)
+	defer session.Close(ctx)
 
-	data, err := wt.ReadFile(path)
+	data, err := os.ReadFile(filepath.Join(session.Path(), path))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil, persistence.ErrNotFound
@@ -140,18 +155,15 @@ func (s *Store) List(ctx context.Context, namespace string) ([]persistence.Key, 
 		}
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	wt, err := OpenOrCreate(ctx, s.branch)
+	session, err := s.backend.Open(ctx, s.branch)
 	if err != nil {
 		return nil, err
 	}
-	defer wt.Remove(ctx)
+	defer session.Close(ctx)
 
-	root := wt.Path
+	root := session.Path()
 	if namespace != "" {
-		root = filepath.Join(wt.Path, namespace)
+		root = filepath.Join(session.Path(), namespace)
 	}
 
 	var keys []persistence.Key
@@ -172,7 +184,7 @@ func (s *Store) List(ctx context.Context, namespace string) ([]persistence.Key, 
 		if !strings.HasSuffix(d.Name(), ".json") {
 			return nil
 		}
-		rel, err := filepath.Rel(wt.Path, path)
+		rel, err := filepath.Rel(session.Path(), path)
 		if err != nil {
 			return err
 		}
@@ -192,16 +204,13 @@ func (s *Store) Delete(ctx context.Context, key persistence.Key) error {
 		return err
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	wt, err := OpenOrCreate(ctx, s.branch)
+	session, err := s.backend.Open(ctx, s.branch)
 	if err != nil {
 		return err
 	}
-	defer wt.Remove(ctx)
+	defer session.Close(ctx)
 
-	if err := wt.RemoveFile(path); err != nil {
+	if err := os.Remove(filepath.Join(session.Path(), path)); err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return persistence.ErrNotFound
 		}
@@ -209,7 +218,7 @@ func (s *Store) Delete(ctx context.Context, key persistence.Key) error {
 	}
 
 	msg := fmt.Sprintf("radius: delete %s", path)
-	return wt.CommitAndPush(ctx, msg)
+	return session.Commit(ctx, msg)
 }
 
 // constructPathForKey returns the in-repo relative path used to store a

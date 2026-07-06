@@ -33,10 +33,10 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/gitstate"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/pgbackup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	storagegit "github.com/radius-project/radius/pkg/storage/git"
 )
 
 // NewCommand creates an instance of the `rad startup` command and runner.
@@ -69,7 +69,7 @@ rad startup --workspace my-workspace`,
 	return cmd, runner
 }
 
-// worktreeHandle decouples Run from the concrete gitstate worktree so the command can be tested
+// worktreeHandle decouples Run from the concrete storage session so the command can be tested
 // without performing real git operations.
 type worktreeHandle struct {
 	path   string
@@ -102,15 +102,16 @@ func NewRunner(factory framework.Factory) *Runner {
 	return r
 }
 
-// defaultOpenWorktree opens the real gitstate worktree and adapts it to worktreeHandle.
+// defaultOpenWorktree opens a git-backed storage session for the state branch and adapts it to
+// worktreeHandle.
 func defaultOpenWorktree(ctx context.Context) (worktreeHandle, error) {
-	w, err := gitstate.OpenOrCreate(ctx, gitstate.BranchName())
+	session, err := storagegit.NewBackend().Open(ctx, pgbackup.StateBranchName())
 	if err != nil {
 		return worktreeHandle{}, err
 	}
 	return worktreeHandle{
-		path:   w.Path,
-		remove: w.Remove,
+		path:   session.Path(),
+		remove: session.Close,
 	}, nil
 }
 

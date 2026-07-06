@@ -48,8 +48,28 @@ const (
 	PostgresUser = "radius"
 )
 
+const (
+	// DefaultStateBranch is the git orphan branch that durable Radius state is committed to:
+	// the PostgreSQL dumps produced by this package and the Terraform state Secrets exported by
+	// pkg/cli/tfstate. It is shared by the "rad shutdown" and "rad startup" commands.
+	DefaultStateBranch = "radius-state"
+
+	// StateBranchEnvVar overrides DefaultStateBranch. It lets parallel tests use isolated
+	// branches without colliding.
+	StateBranchEnvVar = "RADIUS_STATE_BRANCH"
+)
+
 // Databases is the list of PostgreSQL databases that hold control-plane state.
 var Databases = []string{"ucp", "applications_rp", "dynamic_rp"}
+
+// StateBranchName returns the state branch name, honoring StateBranchEnvVar and falling back to
+// DefaultStateBranch.
+func StateBranchName() string {
+	if v := os.Getenv(StateBranchEnvVar); v != "" {
+		return v
+	}
+	return DefaultStateBranch
+}
 
 // HasBackup reports whether a SQL dump exists for every database in the state directory.
 func HasBackup(stateDir string) bool {
