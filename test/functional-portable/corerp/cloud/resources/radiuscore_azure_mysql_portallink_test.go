@@ -78,6 +78,15 @@ func Test_RadiusCore_AzureMySql_PortalLink(t *testing.T) {
 	azureSubscriptionID := os.Getenv("AZURE_SUBSCRIPTION_ID")
 	azureResourceGroupName := os.Getenv("INTEGRATION_TEST_RESOURCE_GROUP_NAME")
 
+	// Skip early (before any setup) if the CI env vars needed by the bicep are
+	// missing (e.g. local runs without Azure credentials).
+	if azureSubscriptionID == "" {
+		t.Skip("AZURE_SUBSCRIPTION_ID is not set; skipping Azure MySQL portal link test")
+	}
+	if azureResourceGroupName == "" {
+		t.Skip("INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set; skipping Azure MySQL portal link test")
+	}
+
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
@@ -191,16 +200,6 @@ func Test_RadiusCore_AzureMySql_PortalLink(t *testing.T) {
 		if err != nil && !apierrors.IsNotFound(err) {
 			t.Logf("Warning: Failed to delete namespace %s: %v", appNamespace, err)
 		}
-	}
-
-	// Skip if the CI env vars needed by the bicep are missing (e.g. local runs
-	// without Azure credentials). The bicep template requires a real Azure
-	// subscription and resource group to provision the MySQL flexible server.
-	if azureSubscriptionID == "" {
-		t.Skip("AZURE_SUBSCRIPTION_ID is not set; skipping Azure MySQL portal link test")
-	}
-	if azureResourceGroupName == "" {
-		t.Skip("INTEGRATION_TEST_RESOURCE_GROUP_NAME is not set; skipping Azure MySQL portal link test")
 	}
 
 	test.Test(t)
