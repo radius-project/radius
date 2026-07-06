@@ -99,7 +99,7 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 	cfg.ConfigLoader = configloader.NewEnvironmentLoader(clientOptions)
 	cfg.Engine = engine.NewEngine(engine.Options{
 		ConfigurationLoader: cfg.ConfigLoader,
-		SecretsLoader:       configloader.NewSecretStoreLoader(clientOptions),
+		SecretsLoader:       configloader.NewSecretStoreLoader(clientOptions, cfg.Kubernetes),
 		Drivers: map[string]driver.Driver{
 			recipes.TemplateKindBicep: bicep.NewBicepDriver(
 				clientOptions,

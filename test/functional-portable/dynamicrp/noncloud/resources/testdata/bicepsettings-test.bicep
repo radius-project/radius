@@ -7,10 +7,10 @@ param appName string
 // The values are placeholders since this test exercises CRUD wiring and
 // environment reference validation, not an actual private registry pull.
 resource registrySecret 'Applications.Core/secretStores@2023-10-01-preview' = {
-  name: 'bicepconfig-test-secret'
+  name: 'bicepsettings-test-secret'
   location: 'global'
   properties: {
-    resource: 'bicepconfig-test-ns/bicepconfig-test-secret'
+    resource: 'bicepsettings-test-ns/bicepsettings-test-secret'
     type: 'generic'
     data: {
       username: { value: 'test-user' }
@@ -19,7 +19,7 @@ resource registrySecret 'Applications.Core/secretStores@2023-10-01-preview' = {
   }
 }
 
-resource bicepConfig 'Radius.Core/bicepConfigs@2025-08-01-preview' = {
+resource bicepSettings 'Radius.Core/bicepSettings@2025-08-01-preview' = {
   name: 'test-bicep-config'
   location: 'global'
   properties: {
@@ -33,15 +33,15 @@ resource bicepConfig 'Radius.Core/bicepConfigs@2025-08-01-preview' = {
 }
 
 resource env 'Radius.Core/environments@2025-08-01-preview' = {
-  name: 'bicepconfig-test-env'
+  name: 'bicepsettings-test-env'
   location: 'global'
   properties: {
     providers: {
       kubernetes: {
-        namespace: 'bicepconfig-test-ns'
+        namespace: 'bicepsettings-test-ns'
       }
     }
-    bicepConfig: bicepConfig.id
+    bicepSettings: bicepSettings.id
   }
 }
 

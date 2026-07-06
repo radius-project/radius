@@ -34,9 +34,9 @@ import (
 )
 
 const (
-	tfConfigID    = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/terraformConfigs/tf"
-	bicepConfigID = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/bicepConfigs/bc"
-	recipePackID  = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/pack"
+	tfConfigID      = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/terraformSettings/tf"
+	bicepSettingsID = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/bicepSettings/bc"
+	recipePackID    = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/recipePacks/pack"
 )
 
 // newControllerForValidateConfigRef builds a CreateOrUpdateEnvironmentv20250801preview
@@ -62,11 +62,11 @@ func TestValidateConfigRef_InvalidResourceID(t *testing.T) {
 	// No DB calls expected: parsing fails first.
 
 	e := newControllerForValidateConfigRef(databaseClient)
-	resp := validateConfigRef(context.Background(), e, "not a resource id", datamodel.TerraformConfigResourceType, "terraformConfig")
+	resp := validateConfigRef(context.Background(), e, "not a resource id", datamodel.TerraformSettingsResourceType, "terraformSettings")
 
 	br, ok := resp.(*rest.BadRequestResponse)
 	require.True(t, ok, "expected BadRequestResponse, got %T", resp)
-	require.Contains(t, br.Body.Error.Message, "Invalid terraformConfig resource ID")
+	require.Contains(t, br.Body.Error.Message, "Invalid terraformSettings resource ID")
 }
 
 func TestValidateConfigRef_WrongType(t *testing.T) {
@@ -77,12 +77,12 @@ func TestValidateConfigRef_WrongType(t *testing.T) {
 
 	e := newControllerForValidateConfigRef(databaseClient)
 	// recipePackID has a valid ARM-style structure but the wrong resource type.
-	resp := validateConfigRef(context.Background(), e, recipePackID, datamodel.TerraformConfigResourceType, "terraformConfig")
+	resp := validateConfigRef(context.Background(), e, recipePackID, datamodel.TerraformSettingsResourceType, "terraformSettings")
 
 	br, ok := resp.(*rest.BadRequestResponse)
 	require.True(t, ok, "expected BadRequestResponse, got %T", resp)
 	msg := br.Body.Error.Message
-	require.True(t, strings.Contains(msg, "expected") && strings.Contains(msg, "terraformConfig"),
+	require.True(t, strings.Contains(msg, "expected") && strings.Contains(msg, "terraformSettings"),
 		"unexpected error message: %s", msg)
 }
 
@@ -99,7 +99,7 @@ func TestValidateConfigRef_NotFound_ReturnsBadRequest(t *testing.T) {
 		Return(nil, &database.ErrNotFound{ID: tfConfigID})
 
 	e := newControllerForValidateConfigRef(databaseClient)
-	resp := validateConfigRef(context.Background(), e, tfConfigID, datamodel.TerraformConfigResourceType, "terraformConfig")
+	resp := validateConfigRef(context.Background(), e, tfConfigID, datamodel.TerraformSettingsResourceType, "terraformSettings")
 
 	br, ok := resp.(*rest.BadRequestResponse)
 	require.True(t, ok, "expected BadRequestResponse for missing resource, got %T", resp)
@@ -116,20 +116,20 @@ func TestValidateConfigRef_DatabaseError_ReturnsInternalServerError(t *testing.T
 		Return(nil, errors.New("database is on fire"))
 
 	e := newControllerForValidateConfigRef(databaseClient)
-	resp := validateConfigRef(context.Background(), e, tfConfigID, datamodel.TerraformConfigResourceType, "terraformConfig")
+	resp := validateConfigRef(context.Background(), e, tfConfigID, datamodel.TerraformSettingsResourceType, "terraformSettings")
 
 	ise, ok := resp.(*rest.InternalServerErrorResponse)
 	require.True(t, ok, "expected InternalServerErrorResponse for transport failure, got %T", resp)
 	require.Contains(t, ise.Body.Error.Message, "database is on fire")
 }
 
-func TestValidateConfigRef_HappyPath_TerraformConfig(t *testing.T) {
+func TestValidateConfigRef_HappyPath_TerraformSettings(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 	databaseClient := database.NewMockClient(mctrl)
 
-	versioned := &v20250801preview.TerraformConfigResource{
-		Properties: &v20250801preview.TerraformConfigProperties{},
+	versioned := &v20250801preview.TerraformSettingsResource{
+		Properties: &v20250801preview.TerraformSettingsProperties{},
 	}
 	databaseClient.EXPECT().
 		Get(gomock.Any(), tfConfigID).
@@ -139,26 +139,26 @@ func TestValidateConfigRef_HappyPath_TerraformConfig(t *testing.T) {
 		}, nil)
 
 	e := newControllerForValidateConfigRef(databaseClient)
-	resp := validateConfigRef(context.Background(), e, tfConfigID, datamodel.TerraformConfigResourceType, "terraformConfig")
+	resp := validateConfigRef(context.Background(), e, tfConfigID, datamodel.TerraformSettingsResourceType, "terraformSettings")
 	require.Nil(t, resp, "expected validateConfigRef to return nil on success")
 }
 
-func TestValidateConfigRef_HappyPath_BicepConfig(t *testing.T) {
+func TestValidateConfigRef_HappyPath_BicepSettings(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 	databaseClient := database.NewMockClient(mctrl)
 
-	versioned := &v20250801preview.BicepConfigResource{
-		Properties: &v20250801preview.BicepConfigProperties{},
+	versioned := &v20250801preview.BicepSettingsResource{
+		Properties: &v20250801preview.BicepSettingsProperties{},
 	}
 	databaseClient.EXPECT().
-		Get(gomock.Any(), bicepConfigID).
+		Get(gomock.Any(), bicepSettingsID).
 		Return(&database.Object{
-			Metadata: database.Metadata{ID: bicepConfigID, ETag: "etag-1"},
+			Metadata: database.Metadata{ID: bicepSettingsID, ETag: "etag-1"},
 			Data:     versioned,
 		}, nil)
 
 	e := newControllerForValidateConfigRef(databaseClient)
-	resp := validateConfigRef(context.Background(), e, bicepConfigID, datamodel.BicepConfigResourceType, "bicepConfig")
+	resp := validateConfigRef(context.Background(), e, bicepSettingsID, datamodel.BicepSettingsResourceType, "bicepSettings")
 	require.Nil(t, resp, "expected validateConfigRef to return nil on success")
 }

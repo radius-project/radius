@@ -20,23 +20,23 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 )
 
-const TerraformConfigResourceType = "Radius.Core/terraformConfigs"
+const TerraformSettingsResourceType = "Radius.Core/terraformSettings"
 
-// TerraformConfig represents the Radius.Core/terraformConfigs resource.
-type TerraformConfig struct {
+// TerraformSettings represents the Radius.Core/terraformSettings resource.
+type TerraformSettings struct {
 	v1.BaseResource
 
 	// Properties is the properties of the resource.
-	Properties TerraformConfigResourceProperties `json:"properties"`
+	Properties TerraformSettingsResourceProperties `json:"properties"`
 }
 
-// ResourceTypeName returns the resource type of the TerraformConfig instance.
-func (r *TerraformConfig) ResourceTypeName() string {
-	return TerraformConfigResourceType
+// ResourceTypeName returns the resource type of the TerraformSettings instance.
+func (r *TerraformSettings) ResourceTypeName() string {
+	return TerraformSettingsResourceType
 }
 
-// TerraformConfigResourceProperties represents the properties of the Terraform config resource.
-type TerraformConfigResourceProperties struct {
+// TerraformSettingsResourceProperties represents the properties of the Terraform config resource.
+type TerraformSettingsResourceProperties struct {
 	// Terraformrc contains Terraform CLI configuration file (.terraformrc) settings.
 	Terraformrc TerraformrcConfig `json:"terraformrc"`
 
@@ -80,6 +80,7 @@ type TerraformProviderDirect struct {
 
 // TerraformCredentialConfig holds credential information for a Terraform registry host.
 type TerraformCredentialConfig struct {
-	// Secret is the ID of a SecretStore containing the authentication token.
+	// Secret is the ID of a secret resource containing the authentication token.
+	// Supported types: Radius.Security/secrets or Applications.Core/secretStores.
 	Secret string `json:"secret,omitempty"`
 }

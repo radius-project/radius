@@ -469,44 +469,67 @@ func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expec
 
 	client := newTestHTTPClient(isHttps, hostname)
 
-	retries := 2
+	// A freshly-deployed gateway can briefly return errors (e.g. HTTP 503 from Envoy) while
+	// Contour programs the xDS route/cluster for the new route. Poll over a realistic window
+	// instead of failing after only a couple of attempts. See radius-project/radius#12298.
 	retryBackoff := 5 * time.Second
-	for i := 1; i <= retries; i++ {
+	timeout := 90 * time.Second
+	deadline := time.Now().Add(timeout)
+
+	var lastRes *http.Response
+	var lastErr error
+	attempts := 0
+	for {
+		attempts++
 		res, err := client.Do(req)
 		if err == nil && res.StatusCode == expectedStatusCode {
-			// Got expected status code, return
+			// Got expected status code, close the body and return.
+			res.Body.Close()
 			return nil
 		}
 
-		// If we got an error, or the status code was not what we expected, log the error and retry
-		// Logging the request and response will help with debugging the issue
+		// Close the previously retained response body before overwriting it so we don't
+		// accumulate open bodies/connections across the widened poll budget.
+		if lastRes != nil {
+			lastRes.Body.Close()
+		}
+		lastRes, lastErr = res, err
 
-		t.Logf("failed to make request to %s with error: %s", urlPath, err)
-		requestDump, err := httputil.DumpRequestOut(req, true)
+		// Log a concise message per attempt; the full request/response dump is emitted once
+		// below when the poll budget is exhausted to avoid flooding the test log.
 		if err != nil {
-			t.Logf("failed to dump request with error: %s", err)
-		}
-		t.Logf("request dump: %s", string(requestDump))
-
-		if res == nil {
-			t.Logf("response is nil")
+			t.Logf("attempt %d: failed to make request to %s with error: %s", attempts, urlPath, err)
+		} else {
+			t.Logf("attempt %d: expected status code %d, got %d from %s", attempts, expectedStatusCode, res.StatusCode, urlPath)
 		}
 
-		if res != nil && res.StatusCode != expectedStatusCode {
-			t.Logf("expected status code %d, got %d", expectedStatusCode, res.StatusCode)
-			responseDump, err := httputil.DumpResponse(res, true)
-			if err != nil {
-				t.Logf("failed to dump response with error: %s", err)
-			}
-			t.Logf("response dump: %s", string(responseDump))
+		if time.Now().After(deadline) {
+			break
 		}
 
 		// Wait for retryBackoff before trying again
 		time.Sleep(retryBackoff)
-		continue
 	}
 
-	return fmt.Errorf("failed to make request to %s after %d retries", urlPath, retries)
+	// The poll budget is exhausted; dump the last request and response to help with debugging.
+	requestDump, dumpErr := httputil.DumpRequestOut(req, true)
+	if dumpErr != nil {
+		t.Logf("failed to dump request with error: %s", dumpErr)
+	}
+	t.Logf("request dump: %s", string(requestDump))
+
+	if lastRes == nil {
+		t.Logf("last response is nil (last error: %v)", lastErr)
+	} else {
+		responseDump, dumpErr := httputil.DumpResponse(lastRes, true)
+		if dumpErr != nil {
+			t.Logf("failed to dump response with error: %s", dumpErr)
+		}
+		t.Logf("response dump: %s", string(responseDump))
+		lastRes.Body.Close()
+	}
+
+	return fmt.Errorf("failed to make request to %s after %d attempts over %s", urlPath, attempts, timeout)
 }
 
 func newTestHTTPClient(isHttps bool, hostname string) *http.Client {

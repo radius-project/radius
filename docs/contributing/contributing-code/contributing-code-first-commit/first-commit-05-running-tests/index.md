@@ -1,5 +1,7 @@
 # Your first commit: Running tests
 
+This walkthrough covers running the unit tests, which is all you need for your first commit. For every test tier — integration, functional, and the local-iteration loop — and when to run each, see the [test matrix overview](../../contributing-code-tests/README.md).
+
 ## Running tests
 
 To run all the unit tests for the project from the command line:
