@@ -1,0 +1,67 @@
+# Provider-agnostic resource-type + Bicep setup shared by run-rad-commands-aws.yml
+# and run-rad-commands-azure.yml. Registers the resource types from
+# resource-types-contrib, builds the local containerImages Bicep extension, and
+# writes the deployment bicepconfig.json.
+name: Radius - Register resource types
+description: Register resource types, build the local Bicep extension, and write bicepconfig.json.
+
+inputs:
+  resource-types-repo:
+    description: resource-types-contrib git repository URL.
+    required: false
+    default: https://github.com/radius-project/resource-types-contrib.git
+  resource-types-ref:
+    description: resource-types-contrib git ref.
+    required: false
+    default: main
+
+runs:
+  using: composite
+  steps:
+    - name: Clone resource-types-contrib and register resource types
+      shell: bash
+      env:
+        RESOURCE_TYPES_CONTRIB_REPO: ${{ inputs.resource-types-repo }}
+        RESOURCE_TYPES_CONTRIB_REF: ${{ inputs.resource-types-ref }}
+      run: |
+        git clone --depth 1 --branch "$RESOURCE_TYPES_CONTRIB_REF" "$RESOURCE_TYPES_CONTRIB_REPO" /tmp/resource-types-contrib
+
+        for TYPE_YAML in \
+          Compute/containerImages/containerImages.yaml; do
+          if [ -f "/tmp/resource-types-contrib/$TYPE_YAML" ]; then
+            echo "Registering $TYPE_YAML..."
+            rad resource-type create -f "/tmp/resource-types-contrib/$TYPE_YAML" || \
+              (echo "Retrying after 5s..." && sleep 5 && rad resource-type create -f "/tmp/resource-types-contrib/$TYPE_YAML")
+          else
+            echo "Skipping $TYPE_YAML (not found)"
+          fi
+        done
+        echo "✅ Resource types registered"
+
+        # Build a local Bicep extension from the containerImages type definition.
+        CONTAINER_IMAGES_YAML="/tmp/resource-types-contrib/Compute/containerImages/containerImages.yaml"
+        if [ -f "$CONTAINER_IMAGES_YAML" ]; then
+          echo "Building local Bicep extension for containerImages..."
+          rad bicep publish-extension -f "$CONTAINER_IMAGES_YAML" --target ./radiuscompute.tgz --force
+          echo "✅ radiuscompute.tgz built"
+        fi
+
+    - name: Create bicepconfig for deployment
+      shell: bash
+      run: |
+        cat > bicepconfig.json << 'EOF'
+        {
+          "experimentalFeaturesEnabled": {
+            "extensibility": true
+          },
+          "extensions": {
+            "radius": "br:biceptypes.azurecr.io/radius:latest",
+            "radiusCompute": "./radiuscompute.tgz",
+            "radiusData": "br:biceptypes.azurecr.io/radiusdata:latest",
+            "radiusSecurity": "br:biceptypes.azurecr.io/radiussecurity:latest",
+            "aws": "br:biceptypes.azurecr.io/aws:latest"
+          }
+        }
+        EOF
+        echo "bicepconfig.json created"
+        cat bicepconfig.json

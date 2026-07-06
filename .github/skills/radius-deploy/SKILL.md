@@ -27,19 +27,19 @@ Before invoking this skill, all of these must exist:
 Trigger the workflow via the GitHub API (or `gh`). Omit `rad_commands` to run the default `rad deploy` of `.radius/app.bicep`:
 
 ```
-POST /repos/{owner}/{repo}/actions/workflows/radius-run-rad-commands.yml/dispatches
+POST /repos/{owner}/{repo}/actions/workflows/run-rad-commands.yml/dispatches
 { "ref": "main", "inputs": { "environment": "<env-name>", "image": "<optional-image>" } }
 ```
 
 ```bash
-gh workflow run radius-run-rad-commands.yml -f environment=<env-name> [-f image=<optional-image>]
+gh workflow run run-rad-commands.yml -f environment=<env-name> [-f image=<optional-image>]
 ```
 
-Then follow the run (`gh run watch` or the run URL) until it succeeds, fails, or times out.
+Then follow the run (`gh run watch` or the run URL) until it succeeds, fails, or times out. `run-rad-commands.yml` is a dispatcher: it detects the environment's provider and calls the matching reusable workflow (`run-rad-commands-azure.yml` / `run-rad-commands-aws.yml`), so the actual deploy work runs as a called workflow underneath it.
 
 ## What the workflow does
 
-1. Authenticates to AWS (OIDC) **and/or** Azure (OIDC) based on which `vars.*` are set.
+1. The dispatcher detects the environment's provider (from `AZURE_CLIENT_ID` / `AWS_ROLE_ARN`) and calls the matching provider workflow, which authenticates to that cloud via OIDC.
 2. Fetches a kubeconfig for the target cluster into `RADIUS_TARGET_KUBECONFIG` (EKS via `aws eks describe-cluster` + a static bearer-token kubeconfig; AKS via `az aks get-credentials`).
 3. Installs `k3d`, creates the ephemeral `radius-cp` cluster, and installs the `rad` CLI (edge) and Terraform.
 4. When a target kubeconfig exists, creates the `target-kubeconfig` secret and installs Radius with `--set global.targetCluster.enabled=true` (plus `--set database.enabled=true` for state backup/restore and `--set dynamicrp.buildkit.enabled=true` for in-pod image builds). The chart mounts the secret into `applications-rp`, `dynamic-rp`, and `bicep-de` and sets `RADIUS_TARGET_KUBECONFIG` so recipes and directly-rendered resources target the external cluster. Without a target kubeconfig, resources deploy to the k3d control plane. The Terraform state backend stays on the control plane.
@@ -47,7 +47,7 @@ Then follow the run (`gh run watch` or the run URL) until it succeeds, fails, or
 6. Refreshes the (short-lived EKS) target token, updates the `target-kubeconfig` secret, and restarts the recipe-executing pods so they re-read it.
 7. Creates the CLI workspace/group, then runs `rad startup` to restore the control-plane databases and Terraform recipe-state Secrets saved by the previous run (a no-op on the first run), clones `radius-project/resource-types-contrib@main` (or the ref in `RESOURCE_TYPES_CONTRIB_REF`), registers the `Radius.Compute/containerImages` resource type, and builds its local Bicep extension.
 8. Deploys a `Radius.Core/environments` resource and recipe pack. The pack bundles the Kubernetes recipes (`containers`, `containerImages`, `persistentVolumes`, `routes`, `postgreSqlDatabases`, `secrets`) plus a provider-gated `mySqlDatabases` recipe (AWS RDS vs Azure Flexible Server).
-9. Creates registry credentials for image builds, then runs `rad deploy` on `.radius/app.bicep` (passing the `image` parameter, and `password` from the `RADIUS_DB_PASSWORD` secret when set). Afterwards `rad shutdown` (`if: always()`) backs the control-plane databases and Terraform recipe-state Secrets up to the `radius-state` git orphan branch. On failure, logs are uploaded as the `radius-logs` artifact; the k3d cluster is always deleted.
+9. Creates registry credentials for image builds, then runs `rad deploy` on `.radius/app.bicep` (passing the `image` parameter, and any application parameters from the `RADIUS_DEPLOY_PARAMS` secret when set). Afterwards `rad shutdown` (`if: always()`) backs the control-plane databases and Terraform recipe-state Secrets up to the `radius-state` git orphan branch. On failure, logs are uploaded as the `radius-logs` artifact; the k3d cluster is always deleted.
 
 ## Common failure modes
 
@@ -66,5 +66,7 @@ Then follow the run (`gh run watch` or the run URL) until it succeeds, fails, or
 
 ## Related files
 
-- `.github/extension/radius-run-rad-commands.yml` (this repo) — the canonical run-rad-commands workflow template; a copy is committed into the user repo at `.github/workflows/radius-run-rad-commands.yml`.
+- `.github/extension/run-rad-commands.yml` (this repo) — the unified dispatcher template; a copy is committed into the user repo at `.github/workflows/run-rad-commands.yml` and is the file that gets dispatched.
+- `.github/extension/run-rad-commands-azure.yml` and `.github/extension/run-rad-commands-aws.yml` — the provider-specific reusable (`workflow_call`) workflows the dispatcher calls; committed alongside the dispatcher.
+- `.github/extension/actions/*` — the shared composite actions (`setup-control-plane`, `restore-state`, `register-resource-types`, `run-rad-commands`, `teardown`) the provider workflows reference from `radius-project/radius`; not copied into the user repo.
 - `.github/extension/README.md` — the workflow contract: trigger/inputs, required `vars`, secrets, and prerequisites.
