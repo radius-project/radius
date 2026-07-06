@@ -36,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
 var (
@@ -527,15 +528,20 @@ func azurePortalURL(id resources.ID, tenantID string) string {
 
 // azureTenantID returns the tenant ID of the registered Azure credential (service principal or
 // workload identity), or "" when no Azure credential is registered. It is best-effort: any error
-// results in an empty tenant ID so the application graph can still be rendered.
+// results in an empty tenant ID so the application graph can still be rendered. Errors are logged
+// at debug level to leave a breadcrumb for troubleshooting missing portal links.
 func azureTenantID(ctx context.Context, clientOptions *policy.ClientOptions) string {
+	logger := ucplog.FromContextOrDiscard(ctx)
+
 	client, err := ucpv20231001preview.NewAzureCredentialsClient(&aztoken.AnonymousCredential{}, clientOptions)
 	if err != nil {
+		logger.V(ucplog.LevelDebug).Info("Skipping Azure portal links: failed to construct Azure credentials client", "error", err.Error())
 		return ""
 	}
 
 	resp, err := client.Get(ctx, "azurecloud", "default", nil)
 	if err != nil {
+		logger.V(ucplog.LevelDebug).Info("Skipping Azure portal links: failed to fetch Azure credential 'default'", "error", err.Error())
 		return ""
 	}
 
@@ -545,6 +551,7 @@ func azureTenantID(ctx context.Context, clientOptions *policy.ClientOptions) str
 	case *ucpv20231001preview.AzureWorkloadIdentityProperties:
 		return to.String(props.TenantID)
 	default:
+		logger.V(ucplog.LevelDebug).Info("Skipping Azure portal links: Azure credential has unrecognized properties kind", "propertiesType", fmt.Sprintf("%T", props))
 		return ""
 	}
 }
