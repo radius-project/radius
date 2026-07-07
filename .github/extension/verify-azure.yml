@@ -1,0 +1,47 @@
+name: Radius - Verify Credentials
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to verify'
+        required: true
+        default: '{{ENV}}'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Azure Login (OIDC)
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify Azure Credentials
+        run: |
+          az account show
+          echo "✅ Azure OIDC login successful"
+
+      - name: Set up kubelogin
+        uses: azure/use-kubelogin@0ce7c36141aa27d4934872cf00b0120804c98a29 # v1.3
+        with:
+          kubelogin-version: 'v0.2.19'
+
+      - name: Verify AKS Access
+        run: |
+          az aks get-credentials --name "${{ vars.AZURE_AKS_CLUSTER_NAME }}" --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --overwrite-existing
+          kubelogin convert-kubeconfig -l azurecli
+          kubectl cluster-info
+          echo "✅ AKS cluster accessible"
+
+      - name: Summary
+        run: |
+          echo "## ✅ Credentials Verified" >> $GITHUB_STEP_SUMMARY
+          echo "Environment: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "Provider: azure" >> $GITHUB_STEP_SUMMARY
