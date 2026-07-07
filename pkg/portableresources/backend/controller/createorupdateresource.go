@@ -219,7 +219,9 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 }
 
 // handleRecipeError handles recipe execution errors: logs, updates status, persists, and returns the appropriate result.
-// When redactionCompleted is true, all failure paths return NewFailedResult to prevent retries that would fail
+// A RecipeError is always terminal and returns NewFailedResult with the recipe's error details, even if the
+// best-effort status persistence fails, so the real recipe failure is never masked. For non-RecipeError failures,
+// when redactionCompleted is true the failure is made terminal (NewFailedResult) to prevent a retry that would fail
 // because sensitive data has already been nullified from the database.
 func (c *CreateOrUpdateResource[P, T]) handleRecipeError(ctx context.Context, err error, recipeDataModel datamodel.RecipeDataModel, resourceID string, etag string, logger logr.Logger, redactionCompleted bool) (ctrl.Result, error) {
 	var recipeErr *recipes.RecipeError
@@ -234,12 +236,12 @@ func (c *CreateOrUpdateResource[P, T]) handleRecipeError(ctx context.Context, er
 		}
 
 		// Save portable resource with updated deployment status to track errors during deletion.
-		err = c.DatabaseClient().Save(ctx, update, database.WithETag(etag))
-		if err != nil {
-			if redactionCompleted {
-				return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
-			}
-			return ctrl.Result{}, err
+		// This persistence is best-effort bookkeeping: if it fails we must still surface the
+		// original recipe error to the caller rather than masking it with the save error (for
+		// example a spurious ErrConcurrency). The operation is terminal either way, so there is
+		// nothing to be gained by returning the save error instead of the real recipe failure.
+		if saveErr := c.DatabaseClient().Save(ctx, update, database.WithETag(etag)); saveErr != nil {
+			logger.Error(saveErr, "failed to persist recipe error status; returning the original recipe error")
 		}
 
 		return ctrl.NewFailedResult(recipeErr.ErrorDetails), nil
