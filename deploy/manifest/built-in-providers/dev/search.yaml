@@ -1,0 +1,70 @@
+# Portability note: this schema is platform-neutral so the same Radius.AI/search
+# type can work with Azure AVM (Bicep), AWS Terraform registry modules, and Kubernetes
+# recipes. Only the recipePack source plus parameters/outputs mapping change per platform;
+# the developer-facing properties and readOnly connection surface stay identical.
+namespace: Radius.AI
+types:
+  search:
+    description: |
+      The Radius.AI/search Resource Type deploys a search service. To
+      deploy a search service, add a search resource to the application
+      definition Bicep file. The platform-engineer recipe provisions the concrete
+      backend and maps its endpoint and API key outputs back onto this resource.
+      ```
+      resource search 'Radius.AI/search@2025-08-01-preview' = {
+        name: 'search'
+        properties: {
+          environment: environment
+          application: myApplication.id
+        }
+      }
+      ```
+
+      To connect your container to the service, create a connection from the
+      Container resource to the search service as shown below.
+      ```
+      resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'frontend'
+        properties: {
+          application: myApplication.id
+          environment: environment
+          container: {
+            image: 'frontend:1.25'
+          }
+          connections: {
+            search: {
+              source: search.id
+            }
+          }
+        }
+      }
+      ```
+
+      The connection automatically injects environment variables into the
+      container for all properties from the search service. The environment
+      variables are named `CONNECTION_<CONNECTION-NAME>_<PROPERTY-NAME>`. In this
+      example the connection name is `search` so the environment variables will be:
+
+      - CONNECTION_SEARCH_ENDPOINT
+      - CONNECTION_SEARCH_APIKEY
+
+    apiVersions:
+      '2025-08-01-preview':
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+              description: "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`."
+            application:
+              type: string
+              description: "(Optional) The Radius Application ID. `myApplication.id` for example."
+            endpoint:
+              type: string
+              description: The endpoint used to connect to the search service. Mapped from the recipe module's output.
+              readOnly: true
+            apiKey:
+              type: string
+              description: The admin API key used to connect to the search service. Mapped from the recipe module's output.
+              readOnly: true
+          required: [environment]

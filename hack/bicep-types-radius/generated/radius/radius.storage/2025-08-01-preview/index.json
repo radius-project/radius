@@ -1,0 +1,12 @@
+{
+  "resources": {
+    "Radius.Storage/objectStorage@2025-08-01-preview": {
+      "$ref": "types.json#/19"
+    }
+  },
+  "resourceFunctions": {},
+  "settings": {
+    "name": "radiusradiusstorage",
+    "version": "0.0.1"
+  }
+}
