@@ -17,10 +17,10 @@ limitations under the License.
 // Package git provides a persistence.Store backed by a git orphan branch.
 //
 // It is a thin, graph-specific adapter over the shared pluggable storage
-// backend in pkg/storage: it maps persistence.Key values to JSON files on the
-// orphan branch and delegates all git I/O to a storage.Backend (the git one by
-// default). Swapping in a different storage.Backend (for example an OCI or
-// filesystem backend) requires no change here.
+// backend in pkg/statearchive: it maps persistence.Key values to JSON files on the
+// orphan branch and delegates all git I/O to a statearchive.Archive (the git one by
+// default). Swapping in a different statearchive.Archive (for example an OCI or
+// filesystem implementation) requires no change here.
 //
 // Key -> path layout on the branch:
 //
@@ -39,8 +39,8 @@ import (
 
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/persistence"
-	"github.com/radius-project/radius/pkg/storage"
-	storagegit "github.com/radius-project/radius/pkg/storage/git"
+	"github.com/radius-project/radius/pkg/statearchive"
+	archivegit "github.com/radius-project/radius/pkg/statearchive/git"
 )
 
 // DefaultGraphBranch is the default orphan branch name for graph artifacts.
@@ -52,35 +52,35 @@ type Options struct {
 	// DefaultGraphBranch is used.
 	Branch string
 
-	// Backend is the durable storage backend. If nil, the git orphan-branch
-	// backend is used. Tests may inject an alternative implementation.
-	Backend storage.Backend
+	// Archive is the durable state archive. If nil, the git orphan-branch
+	// implementation is used. Tests may inject an alternative implementation.
+	Archive statearchive.Archive
 }
 
-// Store is a persistence.Store that persists each graph as a JSON file on a
-// durable storage backend. The default backend is a git orphan branch, so the
+// Store is a persistence.Store that persists each graph as a JSON file in a
+// durable state archive. The default archive is a git orphan branch, so the
 // application's working tree is never touched.
 //
 // Concurrency: the persistence.Store contract requires implementations to be
-// safe for concurrent use. Serialization is delegated to the backend, which
+// safe for concurrent use. Serialization is delegated to the archive, which
 // serializes sessions per branch (git refuses two worktrees on one branch).
 type Store struct {
 	branch  string
-	backend storage.Backend
+	archive statearchive.Archive
 }
 
 // NewStore returns a git-backed Store. The repository is auto-detected by the
-// backend at I/O time, so no path is required up front.
+// archive at I/O time, so no path is required up front.
 func NewStore(opts Options) (*Store, error) {
 	branch := opts.Branch
 	if branch == "" {
 		branch = DefaultGraphBranch
 	}
-	backend := opts.Backend
-	if backend == nil {
-		backend = storagegit.NewBackend()
+	archive := opts.Archive
+	if archive == nil {
+		archive = archivegit.NewGitArchive()
 	}
-	return &Store{branch: branch, backend: backend}, nil
+	return &Store{branch: branch, archive: archive}, nil
 }
 
 // Save commits graph to the configured branch under constructPathForKey(key).
@@ -98,7 +98,7 @@ func (s *Store) Save(ctx context.Context, key persistence.Key, graph *corerpv202
 		return fmt.Errorf("git: marshal graph: %w", err)
 	}
 
-	session, err := s.backend.Open(ctx, s.branch)
+	session, err := s.archive.Open(ctx, s.branch)
 	if err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func (s *Store) Load(ctx context.Context, key persistence.Key) (*corerpv20250801
 		return nil, err
 	}
 
-	session, err := s.backend.Open(ctx, s.branch)
+	session, err := s.archive.Open(ctx, s.branch)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (s *Store) List(ctx context.Context, namespace string) ([]persistence.Key, 
 		}
 	}
 
-	session, err := s.backend.Open(ctx, s.branch)
+	session, err := s.archive.Open(ctx, s.branch)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +204,7 @@ func (s *Store) Delete(ctx context.Context, key persistence.Key) error {
 		return err
 	}
 
-	session, err := s.backend.Open(ctx, s.branch)
+	session, err := s.archive.Open(ctx, s.branch)
 	if err != nil {
 		return err
 	}

@@ -14,19 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package git implements the storage.Backend interface on top of a git orphan
-// branch.
+// Package git implements the statearchive.Archive interface on top of a git
+// orphan branch.
 //
-// A store name maps to an orphan branch that shares no history with the
+// An archive name maps to an orphan branch that shares no history with the
 // application branches. Opening a session checks that branch out into a
 // temporary git worktree, isolated from the application working tree, so state
 // files never appear in the application checkout's "git status". Committing a
 // session commits every change in the worktree and pushes it to the remote
 // when one is configured.
 //
-// This backend is the single, shared implementation of the "orphan branch as
-// durable store" primitive that previously lived, duplicated, in both the app
-// graph store and the CLI state code.
+// This is the single, shared implementation of the "orphan branch as durable
+// store" primitive that previously lived, duplicated, in both the app graph
+// store and the CLI state code.
 package git
 
 import (
@@ -40,7 +40,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/radius-project/radius/pkg/storage"
+	"github.com/radius-project/radius/pkg/statearchive"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -69,19 +69,19 @@ func lockForBranch(branch string) *sync.Mutex {
 	return v.(*sync.Mutex)
 }
 
-// Backend is a storage.Backend backed by git orphan branches. The repository is auto-detected via
-// "git rev-parse --show-toplevel" at Open time, so no path is required up front.
-type Backend struct{}
+// GitArchive is a statearchive.Archive backed by git orphan branches. The repository is
+// auto-detected via "git rev-parse --show-toplevel" at Open time, so no path is required up front.
+type GitArchive struct{}
 
-// NewBackend returns a git-backed storage.Backend.
-func NewBackend() *Backend {
-	return &Backend{}
+// NewGitArchive returns a git-backed statearchive.Archive.
+func NewGitArchive() *GitArchive {
+	return &GitArchive{}
 }
 
 // Open checks the orphan branch named branch out into a temporary worktree, creating the branch
 // (from the remote, or empty) if it does not yet exist. The returned Session holds a per-branch
 // lock until Close.
-func (b *Backend) Open(ctx context.Context, branch string) (storage.Session, error) {
+func (b *GitArchive) Open(ctx context.Context, branch string) (statearchive.Session, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	lock := lockForBranch(branch)
@@ -277,8 +277,8 @@ func gitExecIn(ctx context.Context, dir string, args ...string) error {
 	return nil
 }
 
-// Compile-time checks that the git backend satisfies the storage interfaces.
+// Compile-time checks that the git implementation satisfies the statearchive interfaces.
 var (
-	_ storage.Backend = (*Backend)(nil)
-	_ storage.Session = (*session)(nil)
+	_ statearchive.Archive = (*GitArchive)(nil)
+	_ statearchive.Session = (*session)(nil)
 )

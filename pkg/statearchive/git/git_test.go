@@ -91,7 +91,7 @@ func TestOpen_CreatesOrphanBranchAndIsolatesState(t *testing.T) {
 
 	ctx := context.Background()
 	branch := "radius-state-test"
-	s, err := NewBackend().Open(ctx, branch)
+	s, err := NewGitArchive().Open(ctx, branch)
 	require.NoError(t, err)
 	defer s.Close(ctx)
 
@@ -113,7 +113,7 @@ func TestOpen_RestoresPreviousState(t *testing.T) {
 	chdir(t, root)
 
 	ctx := context.Background()
-	b := NewBackend()
+	b := NewGitArchive()
 
 	// First session writes state and commits it.
 	s1, err := b.Open(ctx, "radius-state-test")
@@ -137,7 +137,7 @@ func TestOpen_ReusesBranch(t *testing.T) {
 	chdir(t, root)
 
 	ctx := context.Background()
-	b := NewBackend()
+	b := NewGitArchive()
 	branch := "radius-state-test"
 
 	s1, err := b.Open(ctx, branch)
@@ -157,7 +157,7 @@ func TestOpen_UsesRemoteBranch(t *testing.T) {
 	branch := "radius-state-test"
 
 	chdir(t, sourceDir)
-	seed, err := NewBackend().Open(ctx, branch)
+	seed, err := NewGitArchive().Open(ctx, branch)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(seed.Path(), "app.json"), []byte(`{"version":"seed"}`), 0o644))
 	require.NoError(t, seed.Commit(ctx, "test: seed remote artifact"))
@@ -166,7 +166,7 @@ func TestOpen_UsesRemoteBranch(t *testing.T) {
 	cloneDir := cloneRepo(t, remoteDir)
 	chdir(t, cloneDir)
 
-	s, err := NewBackend().Open(ctx, branch)
+	s, err := NewGitArchive().Open(ctx, branch)
 	require.NoError(t, err)
 	defer s.Close(ctx)
 
@@ -180,7 +180,7 @@ func TestCommit_NoRemoteIsNotAnError(t *testing.T) {
 	chdir(t, root)
 
 	ctx := context.Background()
-	s, err := NewBackend().Open(ctx, "radius-state-test")
+	s, err := NewGitArchive().Open(ctx, "radius-state-test")
 	require.NoError(t, err)
 	defer s.Close(ctx)
 
@@ -194,7 +194,7 @@ func TestCommit_NoChangesIsNoOp(t *testing.T) {
 	chdir(t, root)
 
 	ctx := context.Background()
-	s, err := NewBackend().Open(ctx, "radius-state-test")
+	s, err := NewGitArchive().Open(ctx, "radius-state-test")
 	require.NoError(t, err)
 	defer s.Close(ctx)
 
@@ -207,7 +207,7 @@ func TestCommit_PushesToRemote(t *testing.T) {
 
 	ctx := context.Background()
 	branch := "radius-state-test"
-	s, err := NewBackend().Open(ctx, branch)
+	s, err := NewGitArchive().Open(ctx, branch)
 	require.NoError(t, err)
 	defer s.Close(ctx)
 
@@ -223,7 +223,7 @@ func TestCommit_ReturnsErrorWhenPushFails(t *testing.T) {
 	chdir(t, repoDir)
 
 	ctx := context.Background()
-	s, err := NewBackend().Open(ctx, "radius-state-test")
+	s, err := NewGitArchive().Open(ctx, "radius-state-test")
 	require.NoError(t, err)
 	defer s.Close(ctx)
 
@@ -250,7 +250,7 @@ func TestCommit_CommitsWithoutConfiguredIdentity(t *testing.T) {
 	chdir(t, root)
 
 	ctx := context.Background()
-	s, err := NewBackend().Open(ctx, "radius-state-test")
+	s, err := NewGitArchive().Open(ctx, "radius-state-test")
 	require.NoError(t, err)
 	defer s.Close(ctx)
 

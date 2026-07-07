@@ -36,7 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/pgbackup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	storagegit "github.com/radius-project/radius/pkg/storage/git"
+	archivegit "github.com/radius-project/radius/pkg/statearchive/git"
 )
 
 // NewCommand creates an instance of the `rad shutdown` command and runner.
@@ -98,10 +98,10 @@ func NewRunner(factory framework.Factory) *Runner {
 	return r
 }
 
-// defaultOpenWorktree opens a git-backed storage session for the state branch and adapts it to
-// worktreeHandle.
+// defaultOpenWorktree opens a git-backed state-archive session for the state branch and adapts it
+// to worktreeHandle.
 func defaultOpenWorktree(ctx context.Context) (worktreeHandle, error) {
-	session, err := storagegit.NewBackend().Open(ctx, pgbackup.StateBranchName())
+	session, err := archivegit.NewGitArchive().Open(ctx, pgbackup.StateBranchName())
 	if err != nil {
 		return worktreeHandle{}, err
 	}

@@ -126,13 +126,17 @@ unbounded git history). Both are real but neither is a v1 blocker. They are reco
 **v2 direction** below.
 
 To keep the v2 backend swap a localized change, the orphan-branch primitive lives behind a small
-pluggable interface in [`pkg/storage`](../../pkg/storage/storage.go): a `Backend` opens a named
-`Session` — a local working directory whose contents survive across opens once `Commit` succeeds —
-and callers write files into `Session.Path()` with any tool (`pg_dump`, `kubectl`, `os.WriteFile`)
-and then `Commit`. The git orphan-branch backend ([`pkg/storage/git`](../../pkg/storage/git/git.go))
-is the single shipped implementation; the app-graph store and the `rad startup` / `rad shutdown`
-commands are the two consumers, both routed through the interface. A future OCI/GHCR or filesystem
-backend implements the same two methods without changing any consumer.
+pluggable interface in [`pkg/statearchive`](../../pkg/statearchive/statearchive.go): an `Archive`
+opens a named `Session` — a local working directory whose contents survive across opens once
+`Commit` succeeds — and callers write files into `Session.Path()` with any tool (`pg_dump`,
+`kubectl`, `os.WriteFile`) and then `Commit`. This is deliberately separate from the live,
+record-oriented persistence subsystems in `pkg/components` (`database.Client`, `secret.Client`,
+`queue.Client`), which serve the running control plane; an `Archive` instead captures a whole
+directory of state as a durable snapshot for export and restore. The git orphan-branch
+implementation ([`pkg/statearchive/git`](../../pkg/statearchive/git/git.go), `GitArchive`) is the
+single shipped backend; the app-graph store and the `rad startup` / `rad shutdown` commands are the
+two consumers, both routed through the interface. A future OCI/GHCR or filesystem `Archive`
+implements the same two methods without changing any consumer.
 
 ### Decision 2 — Control-plane state: physical `pg_dump`, not logical export
 
@@ -211,7 +215,7 @@ the scale-to-zero approach was chosen as the one that addresses both.
 
 ## v2 direction (not in this delivery)
 
-* **OCI/GHCR backend**: an additional `pkg/storage.Backend` (the pluggable interface already
+* **OCI/GHCR backend**: an additional `statearchive.Archive` (the pluggable interface already
   exists) that pushes an encrypted, content-addressed state artifact to a private GHCR repo, with a
   tag compare-and-swap lock. Resolves the orphan-branch security exposure and unbounded git-history
   growth. Because the seam is in place, this plugs in without changing either consumer.
@@ -230,7 +234,7 @@ the scale-to-zero approach was chosen as the one that addresses both.
 |----|----------|--------|
 | PR 1 | PostgreSQL enablement fixes: RP `database.enabled` conditionals, init-db configmap, `POSTGRES_DB` value, `factory.go` env-var substitution, Helm chart tests | Gap 2 |
 | PR 2 | Terraform-state Secret backup/restore (`pkg/cli/tfstate`) | Gap 1 |
-| PR 3 | `pkg/cli/pgbackup` + the pluggable `pkg/storage` interface and its git orphan-branch backend `pkg/storage/git` (loud push), the kind-agnostic `rad startup` / `rad shutdown` commands, and the end-to-end functional test | Gap 3, Decision 0 |
+| PR 3 | `pkg/cli/pgbackup` + the pluggable `pkg/statearchive` interface and its git orphan-branch backend `pkg/statearchive/git` (loud push), the kind-agnostic `rad startup` / `rad shutdown` commands, and the end-to-end functional test | Gap 3, Decision 0 |
 
 ## Test plan
 

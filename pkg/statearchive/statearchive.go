@@ -14,20 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package storage defines a pluggable backend for durable state that Radius
-// persists outside of a running cluster.
+// Package statearchive defines a pluggable archive for durable Radius state
+// that is exported out of a running cluster and restored later (for example
+// across ephemeral CI runs).
 //
-// Today the only backend is a git orphan branch (pkg/storage/git), but the
-// interface deliberately hides that: a session is just a local working
-// directory whose contents survive across Open calls once Commit succeeds.
-// Callers write files into Session.Path() with any tool (pg_dump, kubectl,
-// os.WriteFile, ...), then Commit to persist them. Alternative backends
-// (for example OCI/GHCR or a plain filesystem) implement the same two
-// interfaces without changing any caller.
+// It is intentionally distinct from the live, record-oriented persistence
+// subsystems in pkg/components (database.Client, secret.Client, queue.Client):
+// those serve the running control plane, whereas an Archive captures a whole
+// directory of state as a durable snapshot. Today the only implementation is a
+// git orphan branch (pkg/statearchive/git), but the interface deliberately
+// hides that: a Session is just a local working directory whose contents
+// survive across Open calls once Commit succeeds. Callers write files into
+// Session.Path() with any tool (pg_dump, kubectl, os.WriteFile, ...), then
+// Commit to persist them. Alternative implementations (for example OCI/GHCR or
+// a plain filesystem) implement the same two interfaces without changing any
+// caller.
 //
 // Typical use:
 //
-//	session, err := backend.Open(ctx, "radius-state")
+//	session, err := archive.Open(ctx, "radius-state")
 //	if err != nil {
 //		return err
 //	}
@@ -36,22 +41,22 @@ limitations under the License.
 //	if err := session.Commit(ctx, "radius: backup"); err != nil {
 //		return err
 //	}
-package storage
+package statearchive
 
 import "context"
 
-// Backend is a pluggable durable storage backend. Each named store is
+// Archive is a pluggable durable state archive. Each named archive is
 // materialized into a local working directory (a Session) that callers mutate
 // with any tool and then persist atomically via Session.Commit.
 //
-// Implementations must be safe for concurrent use by multiple goroutines. A
-// backend is free to serialize concurrent Open calls for the same name when
-// its underlying storage cannot support simultaneous sessions (the git backend
-// does this because git refuses two worktrees on one branch).
+// Implementations must be safe for concurrent use by multiple goroutines. An
+// implementation is free to serialize concurrent Open calls for the same name
+// when its underlying storage cannot support simultaneous sessions (the git
+// implementation does this because git refuses two worktrees on one branch).
 //
-//go:generate go tool mockgen -typed -destination=./mock_backend.go -package=storage -self_package github.com/radius-project/radius/pkg/storage github.com/radius-project/radius/pkg/storage Backend,Session
-type Backend interface {
-	// Open materializes the durable store identified by name into a local
+//go:generate go tool mockgen -typed -destination=./mock_archive.go -package=statearchive -self_package github.com/radius-project/radius/pkg/statearchive github.com/radius-project/radius/pkg/statearchive Archive,Session
+type Archive interface {
+	// Open materializes the durable archive identified by name into a local
 	// working directory and returns a Session. Files persisted by a previous
 	// Commit are present under Session.Path() when Open returns. The caller
 	// must always defer Session.Close.
