@@ -24,4 +24,6 @@ defaultRegistration:
   - Radius.Messaging/kafka
   - Radius.Messaging/rabbitMQ
   - Radius.AI/search
+  - Radius.AI/models
   - Radius.Data/sqlServerDatabases
+  - Radius.Storage/objectStorage

@@ -1,0 +1,74 @@
+namespace: Radius.AI
+types:
+  models:
+    description: |
+      The Radius.AI/models Resource Type deploys an LLM inference model endpoint.
+      To deploy a model, add a models resource to the application definition Bicep
+      file. The platform-engineer recipe binds this developer-facing contract to a
+      managed cloud model service without exposing any module details to the app.
+      ```
+      resource model 'Radius.AI/models@2025-08-01-preview' = {
+        name: 'model'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          model: 'gpt-5-mini'
+        }
+      }
+      ```
+
+      To connect your container to the model, create a connection from the
+      Container resource to the model as shown below.
+      ```
+      resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'frontend'
+        properties: {
+          application: myApplication.id
+          environment: environment
+          containers: {
+            frontend: {
+              image: 'frontend:1.25'
+            }
+          }
+          connections: {
+            llm: {
+              source: model.id
+            }
+          }
+        }
+      }
+      ```
+
+      The connection automatically injects environment variables into the
+      container for all properties from the model. The environment variables are
+      named `CONNECTION_<CONNECTION-NAME>_<PROPERTY-NAME>`. In this example the
+      connection name is `llm` so the environment variables will be:
+
+      - CONNECTION_LLM_MODEL
+      - CONNECTION_LLM_ENDPOINT
+      - CONNECTION_LLM_APIKEY
+
+    apiVersions:
+      '2025-08-01-preview':
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+              description: "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`."
+            application:
+              type: string
+              description: "(Optional) The Radius Application ID. `myApplication.id` for example."
+            model:
+              type: string
+              default: gpt-5-mini
+              description: "(Optional) The model deployment to provision. Defaults to `gpt-5-mini` if not provided."
+            endpoint:
+              type: string
+              description: "(Read Only) The base URL used to call the model inference endpoint. Mapped from the recipe module's output."
+              readOnly: true
+            apiKey:
+              type: string
+              description: "(Read Only) The API key used to call the model inference endpoint. Mapped from the recipe module's `primaryKey` output."
+              readOnly: true
+          required: [environment]

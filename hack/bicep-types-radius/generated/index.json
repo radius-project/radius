@@ -45,8 +45,11 @@
     "Applications.Messaging/rabbitMQQueues@2023-10-01-preview": {
       "$ref": "applications/applications.messaging/2023-10-01-preview/types.json#/69"
     },
+    "Radius.AI/models@2025-08-01-preview": {
+      "$ref": "radius/radius.ai/2025-08-01-preview/types.json#/17"
+    },
     "Radius.AI/search@2025-08-01-preview": {
-      "$ref": "radius/radius.ai/2025-08-01-preview/types.json#/16"
+      "$ref": "radius/radius.ai/2025-08-01-preview/types.json#/33"
     },
     "Radius.Compute/containers@2025-08-01-preview": {
       "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/126"
@@ -95,6 +98,9 @@
     },
     "Radius.Security/secrets@2025-08-01-preview": {
       "$ref": "radius/radius.security/2025-08-01-preview/types.json#/27"
+    },
+    "Radius.Storage/objectStorage@2025-08-01-preview": {
+      "$ref": "radius/radius.storage/2025-08-01-preview/types.json#/19"
     }
   },
   "resourceFunctions": {},

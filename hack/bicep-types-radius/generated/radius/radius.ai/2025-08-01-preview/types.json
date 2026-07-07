@@ -49,11 +49,14 @@
     "$type": "StringType"
   },
   {
+    "$type": "StringType"
+  },
+  {
     "$type": "ObjectType",
-    "name": "searchProperties",
+    "name": "modelsProperties",
     "properties": {
       "apiKey": {
-        "description": "The admin API key used to connect to the search service. Mapped from the recipe module's output.",
+        "description": "(Read Only) The API key used to call the model inference endpoint. Mapped from the recipe module's `primaryKey` output.",
         "flags": 2,
         "type": {
           "$ref": "#/0"
@@ -81,7 +84,7 @@
         }
       },
       "endpoint": {
-        "description": "The endpoint used to connect to the search service. Mapped from the recipe module's output.",
+        "description": "(Read Only) The base URL used to call the model inference endpoint. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
           "$ref": "#/7"
@@ -92,6 +95,230 @@
         "flags": 1,
         "type": {
           "$ref": "#/8"
+        }
+      },
+      "model": {
+        "description": "(Optional) The model deployment to provision. Defaults to `gpt-5-mini` if not provided.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/9"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2025-08-01-preview"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Radius.AI/models"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Radius.AI/models@2025-08-01-preview",
+    "properties": {
+      "apiKey": {
+        "description": "(Read Only) The API key used to call the model inference endpoint. Mapped from the recipe module's `primaryKey` output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/0"
+        }
+      },
+      "apiVersion": {
+        "description": "The API version.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/13"
+        }
+      },
+      "application": {
+        "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/1"
+        }
+      },
+      "codeReference": {
+        "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
+        "flags": 2,
+        "type": {
+          "$ref": "#/2"
+        }
+      },
+      "connections": {
+        "description": "Map of connection name to connection data.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/6"
+        }
+      },
+      "endpoint": {
+        "description": "(Read Only) The base URL used to call the model inference endpoint. Mapped from the recipe module's output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/7"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/8"
+        }
+      },
+      "id": {
+        "description": "The resource id.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/15"
+        }
+      },
+      "location": {
+        "description": "The resource location.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/12"
+        }
+      },
+      "model": {
+        "description": "(Optional) The model deployment to provision. Defaults to `gpt-5-mini` if not provided.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/9"
+        }
+      },
+      "name": {
+        "description": "The resource name.",
+        "flags": 17,
+        "type": {
+          "$ref": "#/11"
+        }
+      },
+      "properties": {
+        "description": "The resource properties.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/10"
+        }
+      },
+      "type": {
+        "description": "The resource type.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/14"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "body": {
+      "$ref": "#/16"
+    },
+    "name": "Radius.AI/models@2025-08-01-preview",
+    "readableScopes": 0,
+    "writableScopes": 0
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "connectionsAdditionalProperties",
+    "properties": {
+      "disableDefaultEnvVars": {
+        "description": "Disables the automatic injection of environment variables from the connected resource's properties.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/3"
+        }
+      },
+      "source": {
+        "description": "Resource ID of the source resource for this connection.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/21"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "additionalProperties": {
+      "$ref": "#/22"
+    },
+    "name": "connections",
+    "properties": {}
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "searchProperties",
+    "properties": {
+      "apiKey": {
+        "description": "The admin API key used to connect to the search service. Mapped from the recipe module's output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/18"
+        }
+      },
+      "application": {
+        "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/19"
+        }
+      },
+      "codeReference": {
+        "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
+        "flags": 0,
+        "type": {
+          "$ref": "#/20"
+        }
+      },
+      "connections": {
+        "description": "Map of connection name to connection data.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/23"
+        }
+      },
+      "endpoint": {
+        "description": "The endpoint used to connect to the search service. Mapped from the recipe module's output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/24"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/25"
         }
       }
     }
@@ -121,84 +348,84 @@
         "description": "The admin API key used to connect to the search service. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/0"
+          "$ref": "#/18"
         }
       },
       "apiVersion": {
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/12"
+          "$ref": "#/29"
         }
       },
       "application": {
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 2,
         "type": {
-          "$ref": "#/1"
+          "$ref": "#/19"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 2,
         "type": {
-          "$ref": "#/2"
+          "$ref": "#/20"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 2,
         "type": {
-          "$ref": "#/6"
+          "$ref": "#/23"
         }
       },
       "endpoint": {
         "description": "The endpoint used to connect to the search service. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/7"
+          "$ref": "#/24"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 2,
         "type": {
-          "$ref": "#/8"
+          "$ref": "#/25"
         }
       },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/14"
+          "$ref": "#/31"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/11"
+          "$ref": "#/28"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/10"
+          "$ref": "#/27"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/9"
+          "$ref": "#/26"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/13"
+          "$ref": "#/30"
         }
       }
     }
@@ -206,7 +433,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/15"
+      "$ref": "#/32"
     },
     "name": "Radius.AI/search@2025-08-01-preview",
     "readableScopes": 0,
