@@ -9,7 +9,7 @@ replace github.com/opencontainers/go-digest => github.com/opencontainers/go-dige
 require (
 	charm.land/bubbles/v2 v2.1.0
 	charm.land/bubbletea/v2 v2.0.7
-	charm.land/lipgloss/v2 v2.0.4
+	charm.land/lipgloss/v2 v2.0.5
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.22.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.0
 	github.com/Azure/azure-sdk-for-go/sdk/containers/azcontainerregistry v0.2.3
@@ -26,34 +26,34 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/agnivade/levenshtein v1.2.1
 	github.com/aws/aws-sdk-go-v2 v1.42.0
-	github.com/aws/aws-sdk-go-v2/config v1.32.25
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.24
-	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.30.6
-	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.72.1
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.308.0
-	github.com/aws/aws-sdk-go-v2/service/ecr v1.58.4
-	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3
-	github.com/aws/smithy-go v1.27.2
+	github.com/aws/aws-sdk-go-v2/config v1.32.26
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.25
+	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.30.7
+	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.72.2
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.309.0
+	github.com/aws/aws-sdk-go-v2/service/ecr v1.58.5
+	github.com/aws/aws-sdk-go-v2/service/sts v1.43.4
+	github.com/aws/smithy-go v1.27.3
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20260615092313-b57e5e6d29bb
 	github.com/distribution/reference v0.6.0
 	github.com/fatih/color v1.19.0
-	github.com/fluxcd/pkg/apis/meta v1.30.0
+	github.com/fluxcd/pkg/apis/meta v1.31.0
 	github.com/fluxcd/pkg/http/fetch v0.25.0
 	github.com/fluxcd/pkg/tar v1.2.0
-	github.com/fluxcd/source-controller/api v1.9.0
+	github.com/fluxcd/source-controller/api v1.9.1
 	github.com/getkin/kin-openapi v0.140.0
 	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/go-logr/logr v1.4.3
 	github.com/go-logr/zapr v1.3.0
 	github.com/go-openapi/errors v0.22.8
-	github.com/go-openapi/jsonpointer v0.23.1
+	github.com/go-openapi/jsonpointer v0.24.0
 	github.com/go-openapi/loads v0.24.0
 	github.com/go-openapi/runtime v0.32.4
 	github.com/go-openapi/spec v0.22.6
-	github.com/go-openapi/strfmt v0.26.3
-	github.com/go-openapi/swag/loading v0.26.1
+	github.com/go-openapi/strfmt v0.26.4
+	github.com/go-openapi/swag/loading v0.27.0
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.30.3
@@ -136,9 +136,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.30 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.12 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.29 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.2.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.31.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.2.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.31.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.7 // indirect
 	github.com/aymanbagabas/go-udiff v0.4.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
@@ -182,15 +182,15 @@ require (
 	github.com/go-openapi/runtime/server-middleware v0.30.0 // indirect
 	github.com/go-openapi/swag v0.26.0 // indirect
 	github.com/go-openapi/swag/cmdutils v0.26.0 // indirect
-	github.com/go-openapi/swag/conv v0.26.1 // indirect
+	github.com/go-openapi/swag/conv v0.27.0 // indirect
 	github.com/go-openapi/swag/fileutils v0.26.1 // indirect
 	github.com/go-openapi/swag/jsonname v0.26.1 // indirect
-	github.com/go-openapi/swag/jsonutils v0.26.1 // indirect
+	github.com/go-openapi/swag/jsonutils v0.27.0 // indirect
 	github.com/go-openapi/swag/mangling v0.26.1 // indirect
 	github.com/go-openapi/swag/netutils v0.26.0 // indirect
 	github.com/go-openapi/swag/stringutils v0.26.1 // indirect
-	github.com/go-openapi/swag/typeutils v0.26.1 // indirect
-	github.com/go-openapi/swag/yamlutils v0.26.1 // indirect
+	github.com/go-openapi/swag/typeutils v0.27.0 // indirect
+	github.com/go-openapi/swag/yamlutils v0.27.0 // indirect
 	github.com/go-openapi/validate v0.26.0 // indirect
 	github.com/go-test/deep v1.0.8 // indirect
 	github.com/gobuffalo/flect v1.0.3 // indirect
