@@ -45,6 +45,9 @@
     "Applications.Messaging/rabbitMQQueues@2023-10-01-preview": {
       "$ref": "applications/applications.messaging/2023-10-01-preview/types.json#/69"
     },
+    "Radius.AI/search@2025-08-01-preview": {
+      "$ref": "radius/radius.ai/2025-08-01-preview/types.json#/16"
+    },
     "Radius.Compute/containers@2025-08-01-preview": {
       "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/126"
     },
@@ -69,8 +72,26 @@
     "Radius.Core/terraformSettings@2025-08-01-preview": {
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/205"
     },
+    "Radius.Data/mongoDatabases@2025-08-01-preview": {
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/17"
+    },
     "Radius.Data/mySqlDatabases@2025-08-01-preview": {
-      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/22"
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/40"
+    },
+    "Radius.Data/postgreSqlDatabases@2025-08-01-preview": {
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/64"
+    },
+    "Radius.Data/redisCaches@2025-08-01-preview": {
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/85"
+    },
+    "Radius.Data/sqlServerDatabases@2025-08-01-preview": {
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/104"
+    },
+    "Radius.Messaging/kafka@2025-08-01-preview": {
+      "$ref": "radius/radius.messaging/2025-08-01-preview/types.json#/17"
+    },
+    "Radius.Messaging/rabbitMQ@2025-08-01-preview": {
+      "$ref": "radius/radius.messaging/2025-08-01-preview/types.json#/34"
     },
     "Radius.Security/secrets@2025-08-01-preview": {
       "$ref": "radius/radius.security/2025-08-01-preview/types.json#/27"
