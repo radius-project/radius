@@ -212,7 +212,7 @@ function Install-RadEdge {
         exit 1
     }
 
-    $downloadURL = "ghcr.io/$GitHubOrg/rad/$DetectedOS-$($DetectedArch):edge"
+    $downloadURL = "ghcr.io/$GitHubOrg/rad/$DetectedOS-$($DetectedArch):latest"
     Write-Output "Downloading edge CLI from $downloadURL..."
 
     & oras pull $downloadURL -o $TargetDir

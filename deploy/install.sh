@@ -297,7 +297,7 @@ downloadFile() {
             exit 1
         fi
 
-        local download_url="ghcr.io/radius-project/rad/${OS}-${ARCH}:edge"
+        local download_url="ghcr.io/radius-project/rad/${OS}-${ARCH}:latest"
         echo "Downloading edge CLI from ${download_url}..."
         if ! oras pull "${download_url}" -o "${RADIUS_TMP_ROOT}"; then
             echo "Failed to download edge CLI."

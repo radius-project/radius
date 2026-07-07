@@ -160,17 +160,17 @@ jobs:
         # Version pinned in build/tools.mk (ORAS_VERSION).
         run: make install-oras
 
-      - name: Push edge rad cli binary to GHCR (unix-like)
+      - name: Push latest rad cli binary to GHCR (unix-like)
         if: github.ref == 'refs/heads/main' && matrix.target_os != 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
           cp "./dist/${GOOS}_${GOARCH}/release/rad" ./rad
-          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:edge" ./rad --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
+          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:latest" ./rad --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
 
-      - name: Push edge rad cli binary to GHCR (windows)
+      - name: Copy cli binaries to release (windows)
         if: github.ref == 'refs/heads/main' && matrix.target_os == 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
           cp "./dist/${GOOS}_${GOARCH}/release/rad.exe" ./rad.exe
-          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:edge" ./rad.exe --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
+          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:latest" ./rad.exe --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
 
       - name: Skip
         if: needs.changes.outputs.only_changed == 'true'
