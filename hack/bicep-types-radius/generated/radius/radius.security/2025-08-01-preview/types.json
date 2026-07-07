@@ -104,7 +104,7 @@
     "name": "icon",
     "properties": {
       "bytes": {
-        "description": "Verbatim SVG file content as a UTF-8 string. Populated by `rad resource-type create --icon \u003cpath\u003e`; never edited in the source YAML.",
+        "description": "Verbatim SVG file content as a UTF-8 string. Populated at resource-type registration time; never edited in the source YAML.",
         "flags": 0,
         "type": {
           "$ref": "#/13"
@@ -206,7 +206,7 @@
         }
       },
       "icon": {
-        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time (`rad resource-type create --icon \u003cpath\u003e`) and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
+        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
         "flags": 2,
         "type": {
           "$ref": "#/15"
@@ -285,7 +285,7 @@
         }
       },
       "icon": {
-        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time (`rad resource-type create --icon \u003cpath\u003e`) and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
+        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
         "flags": 2,
         "type": {
           "$ref": "#/15"
