@@ -199,11 +199,18 @@ func (s *session) Close(ctx context.Context) {
 // commitArgs builds the git arguments for committing the worktree, injecting a fallback identity
 // via "-c" flags (rather than mutating repo config) when the repository has no user identity.
 func (s *session) commitArgs(ctx context.Context, message string) []string {
-	var args []string
-	if !gitIdentityConfigured(ctx, s.path) {
-		args = append(args, "-c", "user.name="+fallbackUserName, "-c", "user.email="+fallbackUserEmail)
+	return append(identityArgs(ctx, s.path), "commit", "-m", message)
+}
+
+// identityArgs returns git "-c user.name=... -c user.email=..." flags when the repository at dir
+// has no committer identity configured, and nil otherwise. Any git command that creates a commit
+// (git commit, git commit-tree) fails without an identity, which fresh CI environments frequently
+// lack, so both commit paths inject the same fallback rather than mutating repo config.
+func identityArgs(ctx context.Context, dir string) []string {
+	if gitIdentityConfigured(ctx, dir) {
+		return nil
 	}
-	return append(args, "commit", "-m", message)
+	return []string{"-c", "user.name=" + fallbackUserName, "-c", "user.email=" + fallbackUserEmail}
 }
 
 // gitIdentityConfigured reports whether user.email is set for the repository at dir.
@@ -241,7 +248,8 @@ func branchExists(ctx context.Context, root, branch string) bool {
 // the working tree or switching branches. It relies on the well-known empty-tree SHA that is
 // constant across all git repositories.
 func createOrphanBranch(ctx context.Context, root, branch string) error {
-	cmd := exec.CommandContext(ctx, "git", "commit-tree", emptyTreeSHA, "-m", "radius: init state branch")
+	args := append(identityArgs(ctx, root), "commit-tree", emptyTreeSHA, "-m", "radius: init state branch")
+	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = root
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
