@@ -481,7 +481,7 @@ tests:
           path: spec.template.spec.initContainers
           content:
             name: append-root-ca
-            image: applications-rp:latest
+            image: applications-rp:edge
             command:
               - sh
               - -c
@@ -740,7 +740,7 @@ tests:
           path: spec.template.spec.initContainers
           content:
             name: append-root-ca
-            image: applications-rp:latest
+            image: applications-rp:edge
             command:
               - sh
               - -c
@@ -793,7 +793,7 @@ tests:
           path: spec.template.spec.initContainers
           content:
             name: append-root-ca
-            image: applications-rp:latest
+            image: applications-rp:edge
             command:
               - sh
               - -c
@@ -912,7 +912,7 @@ tests:
       # Verify valid base64 format (base64-encoded JSON)
       - matchRegex:
           path: data["keys.json"]
-          pattern: '^[A-Za-z0-9+/]+=*$'
+          pattern: "^[A-Za-z0-9+/]+=*$"
         documentIndex: 0
       # Ensure no typos or old field names
       - isNull:
@@ -1043,7 +1043,7 @@ tests:
             name: encryption-secret
             secret:
               secretName: radius-encryption-key
-              defaultMode: 256  # 0400 in octal = 256 in decimal (read-only for owner)
+              defaultMode: 256 # 0400 in octal = 256 in decimal (read-only for owner)
 
   - it: should reference exact secret name radius-encryption-key in deployment volume
     set:
@@ -1479,7 +1479,7 @@ tests:
       # Verify it's a valid base64 value (base64-encoded JSON)
       - matchRegex:
           path: data["keys.json"]
-          pattern: '^[A-Za-z0-9+/]+=*$'
+          pattern: "^[A-Za-z0-9+/]+=*$"
         documentIndex: 0
       # The secrets.lookup helper in the template ensures that:
       # - On fresh install: generates new versioned key store with version 1
@@ -1500,7 +1500,7 @@ tests:
       # The key store must be properly encoded (base64-encoded JSON)
       - matchRegex:
           path: data["keys.json"]
-          pattern: '^[A-Za-z0-9+/]+=*$'
+          pattern: "^[A-Za-z0-9+/]+=*$"
         documentIndex: 0
       # BEHAVIOR: secrets.lookup helper checks for existing secret first
       # - If secret exists in cluster: returns existing value (preserves all keys)

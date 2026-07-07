@@ -1,4 +1,5 @@
 {{- $appversion := include "radius.versiontag" . }}
+{{- $externalversion := include "radius.externalversiontag" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -67,7 +68,7 @@ spec:
         {{- include "radius.targetCluster.volume" . | nindent 8 }}
       containers:
       - name: de
-        image: {{ include "radius.image" (dict "image" .Values.de.image "tag" (.Values.de.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}
+        image: {{ include "radius.image" (dict "image" .Values.de.image "tag" (.Values.de.tag | default .Values.global.imageTag | default $externalversion) "global" .Values.global) }}
         args:
         - --kubernetes=true
         volumeMounts:

@@ -160,17 +160,17 @@ jobs:
         # Version pinned in build/tools.mk (ORAS_VERSION).
         run: make install-oras
 
-      - name: Push latest rad cli binary to GHCR (unix-like)
+      - name: Push edge rad cli binary to GHCR (unix-like)
         if: github.ref == 'refs/heads/main' && matrix.target_os != 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
           cp "./dist/${GOOS}_${GOARCH}/release/rad" ./rad
-          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:latest" ./rad --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
+          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:edge" ./rad --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
 
-      - name: Copy cli binaries to release (windows)
+      - name: Push edge rad cli binary to GHCR (windows)
         if: github.ref == 'refs/heads/main' && matrix.target_os == 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
           cp "./dist/${GOOS}_${GOARCH}/release/rad.exe" ./rad.exe
-          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:latest" ./rad.exe --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
+          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:edge" ./rad.exe --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
 
       - name: Skip
         if: needs.changes.outputs.only_changed == 'true'
@@ -267,22 +267,31 @@ jobs:
           path: ./dist/images/
           retention-days: 1
 
-      - name: Push container images (latest)
+      - name: Push container images (edge)
         run: |
           make docker-multi-arch-push
-        if: (github.ref == 'refs/heads/main') # push image to latest on merge to main
+        if: (github.ref == 'refs/heads/main') # push image to edge on merge to main
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
-          DOCKER_TAG_VERSION: latest
+          DOCKER_TAG_VERSION: edge
           DOCKER_CACHE_GHA: 1
 
-      - name: Push container images (release)
+      - name: Push container images (release channel)
         run: |
           make docker-multi-arch-push
-        if: startsWith(github.ref, 'refs/tags/v') # push image on tag
+        if: startsWith(github.ref, 'refs/tags/v') # push image to the major.minor (or prerelease) channel on tag
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
+          DOCKER_CACHE_GHA: 1
+
+      - name: Push container images (latest)
+        run: |
+          make docker-multi-arch-push
+        if: startsWith(github.ref, 'refs/tags/v') && env.UPDATE_RELEASE == 'true' # push image to latest only on a full (non-prerelease) release
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: latest
           DOCKER_CACHE_GHA: 1
 
       - name: Collect build metrics
@@ -292,7 +301,7 @@ jobs:
           cat dist/metrics/metrics.txt >> $GITHUB_STEP_SUMMARY
         env:
           DOCKER_REGISTRY: ${{ github.event_name == 'pull_request' && format('{0}/dev', env.CONTAINER_REGISTRY) || env.CONTAINER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ github.event_name == 'pull_request' && env.REL_VERSION || (github.ref == 'refs/heads/main' && 'latest' || env.REL_CHANNEL) }}
+          DOCKER_TAG_VERSION: ${{ github.event_name == 'pull_request' && env.REL_VERSION || (github.ref == 'refs/heads/main' && 'edge' || env.REL_CHANNEL) }}
 
       - name: Upload build metrics
         if: always()

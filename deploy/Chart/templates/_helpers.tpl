@@ -1,5 +1,22 @@
-{{/* Parse version and extract major and manor version from Appversion for image tag. */}}
+{{/* Parse version and extract major and minor version from AppVersion for image tag.
+     Used for Radius-owned images (controller, ucpd, applications-rp, dynamic-rp,
+     bicep, pre-upgrade) which publish an 'edge' tag for builds from the top of
+     the main branch and a 'major.minor' tag for releases. */}}
 {{- define "radius.versiontag" }}
+{{- $version := .Chart.AppVersion }}
+{{- /* Tag version will be 'major.minor' unless version is edge or rc release */}}
+{{- if and (ne $version "edge") (not (contains "rc" $version)) }}
+  {{- $ver := split "." $version }}
+  {{- $version = printf "%s.%s" $ver._0 $ver._1 }}
+{{- end -}}
+{{- print $version }}
+{{- end -}}
+
+{{/* Same as radius.versiontag but maps the 'edge' channel to the 'latest' tag.
+     Used for images hosted in external repositories (deployment-engine,
+     dashboard) that publish a 'latest' tag for main builds but do not publish
+     an 'edge' tag. */}}
+{{- define "radius.externalversiontag" }}
 {{- $version := .Chart.AppVersion }}
 {{- /* Set latest if version is edge */}}
 {{- if eq $version "edge" }}
