@@ -203,6 +203,27 @@ func TestCommit_NoChangesIsNoOp(t *testing.T) {
 	require.NoError(t, s.Commit(ctx, "radius: empty"))
 }
 
+// TestCommit_NoChangesDoesNotPush verifies that a commit with nothing staged is a true no-op: it
+// returns before touching the remote, so a broken remote cannot fail a commit that changed nothing.
+func TestCommit_NoChangesDoesNotPush(t *testing.T) {
+	repoDir, _ := initTestRepoWithOrigin(t)
+	chdir(t, repoDir)
+
+	ctx := context.Background()
+	branch := "radius-state-test"
+	s, err := NewGitArchive().Open(ctx, branch)
+	require.NoError(t, err)
+	defer s.Close(ctx)
+
+	// Persist an initial change so the branch exists on the remote.
+	require.NoError(t, os.WriteFile(filepath.Join(s.Path(), "ucp.sql"), []byte("dump"), 0o644))
+	require.NoError(t, s.Commit(ctx, "radius: backup"))
+
+	// Point origin at a missing remote so any push would fail, then commit with nothing staged.
+	runGit(t, repoDir, "git", "remote", "set-url", "origin", filepath.Join(t.TempDir(), "missing.git"))
+	require.NoError(t, s.Commit(ctx, "radius: no changes"), "a no-op commit must not attempt a push")
+}
+
 func TestCommit_PushesToRemote(t *testing.T) {
 	repoDir, _ := initTestRepoWithOrigin(t)
 	chdir(t, repoDir)
@@ -262,6 +283,48 @@ func TestCommit_CommitsWithoutConfiguredIdentity(t *testing.T) {
 	author := runGit(t, s.Path(), "git", "log", "-1", "--format=%an <%ae>")
 	require.Contains(t, author, fallbackUserName)
 	require.Contains(t, author, fallbackUserEmail)
+}
+
+// TestCommit_CommitsWithOnlyEmailConfigured verifies the fallback identity kicks in when only
+// user.email is set but user.name is missing. git needs both to commit, so a partial identity must
+// still trigger the fallback rather than failing the commit.
+func TestCommit_CommitsWithOnlyEmailConfigured(t *testing.T) {
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+
+	root := initTestRepo(t)
+	// Configure only user.email, leaving user.name unset.
+	runGit(t, root, "git", "config", "--unset", "user.name")
+	chdir(t, root)
+
+	ctx := context.Background()
+	s, err := NewGitArchive().Open(ctx, "radius-state-test")
+	require.NoError(t, err)
+	defer s.Close(ctx)
+
+	require.NoError(t, os.WriteFile(filepath.Join(s.Path(), "ucp.sql"), []byte("dump"), 0o644))
+	require.NoError(t, s.Commit(ctx, "radius: backup"))
+
+	author := runGit(t, s.Path(), "git", "log", "-1", "--format=%an <%ae>")
+	require.Contains(t, author, fallbackUserName, "fallback user.name must be used when user.name is unset")
+	require.Contains(t, author, fallbackUserEmail)
+}
+
+// TestOpen_UnreachableRemoteFailsLoudly verifies that when an origin remote is configured but cannot
+// be reached, Open fails loudly instead of treating the remote as "branch absent" and silently
+// creating an empty branch (which would restore the wrong, empty state).
+func TestOpen_UnreachableRemoteFailsLoudly(t *testing.T) {
+	root := initTestRepo(t)
+	// Configure an origin that cannot be reached; the branch does not exist locally either.
+	runGit(t, root, "git", "remote", "add", "origin", filepath.Join(t.TempDir(), "missing.git"))
+	chdir(t, root)
+
+	branch := "radius-state-test"
+	_, err := NewGitArchive().Open(context.Background(), branch)
+	require.Error(t, err, "Open must fail when the configured remote is unreachable")
+	require.False(t, branchExists(context.Background(), root, branch),
+		"Open must not create a local branch when it cannot confirm remote state")
 }
 
 // TestOpen_OutsideGitRepositoryReturnsError verifies that opening an archive when the working

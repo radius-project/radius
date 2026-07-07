@@ -32,6 +32,7 @@ package git
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -164,10 +165,15 @@ func (s *session) Commit(ctx context.Context, message string) error {
 		return fmt.Errorf("failed to stage state files: %w", err)
 	}
 
-	// Nothing staged means nothing to persist.
+	// Nothing staged means nothing to persist: a true no-op. Return before touching the remote —
+	// the branch was already synced to the remote at Open, so there is nothing to push, and a
+	// redundant push could fail the operation (network/auth) for a commit that changed nothing.
 	if gitExecIn(ctx, s.path, "diff", "--cached", "--quiet") == nil {
 		logger.Info("No state changes to commit", "branch", s.branch)
-	} else if err := gitExecIn(ctx, s.path, s.commitArgs(ctx, message)...); err != nil {
+		return nil
+	}
+
+	if err := gitExecIn(ctx, s.path, s.commitArgs(ctx, message)...); err != nil {
 		return fmt.Errorf("failed to commit state: %w", err)
 	}
 
@@ -213,12 +219,23 @@ func identityArgs(ctx context.Context, dir string) []string {
 	return []string{"-c", "user.name=" + fallbackUserName, "-c", "user.email=" + fallbackUserEmail}
 }
 
-// gitIdentityConfigured reports whether user.email is set for the repository at dir.
+// gitIdentityConfigured reports whether the repository at dir has a committer identity. git
+// requires both user.name and user.email to create a commit, so both must be set; if either is
+// missing the caller injects the fallback identity.
 func gitIdentityConfigured(ctx context.Context, dir string) bool {
-	cmd := exec.CommandContext(ctx, "git", "config", "--get", "user.email")
+	return gitConfigValue(ctx, dir, "user.name") != "" && gitConfigValue(ctx, dir, "user.email") != ""
+}
+
+// gitConfigValue returns the trimmed value of a git config key for the repository at dir, or an
+// empty string if the key is unset or git fails.
+func gitConfigValue(ctx context.Context, dir, key string) string {
+	cmd := exec.CommandContext(ctx, "git", "config", "--get", key)
 	cmd.Dir = dir
 	out, err := cmd.Output()
-	return err == nil && strings.TrimSpace(string(out)) != ""
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 // hasRemote reports whether a remote named origin is configured.
@@ -229,12 +246,23 @@ func hasRemote(ctx context.Context, root string) bool {
 }
 
 // remoteHasBranch queries the remote directly (without relying on a prior fetch) to report whether
-// branch exists on it. This distinguishes "the branch exists remotely but we could not fetch it"
-// (an error) from "the branch does not exist remotely yet" (a normal first run).
+// branch exists on it. "git ls-remote --exit-code" exits 0 when the branch is found and 2 when the
+// remote was reached but has no such branch (a normal first run). Any other exit status means the
+// remote could not be reached (network/auth/bad URL); in that case this returns true so Open
+// proceeds to fetch and fails loudly, rather than treating an unreachable remote as "branch absent"
+// and silently creating an empty branch that would restore the wrong (empty) state.
 func remoteHasBranch(ctx context.Context, root, branch string) bool {
 	cmd := exec.CommandContext(ctx, "git", "ls-remote", "--exit-code", "--heads", remoteName, branch)
 	cmd.Dir = root
-	return cmd.Run() == nil
+	err := cmd.Run()
+	if err == nil {
+		return true
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) && exitErr.ExitCode() == 2 {
+		return false
+	}
+	return true
 }
 
 // branchExists reports whether branch exists locally in the repository at root.
