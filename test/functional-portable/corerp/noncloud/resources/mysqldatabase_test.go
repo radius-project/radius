@@ -44,11 +44,6 @@ func Test_MySQLDatabase(t *testing.T) {
 						Type: validation.CoreApplicationsResource,
 					},
 					{
-						Name: "mysqldb-secret",
-						Type: validation.SecuritySecretsResource,
-						App:  name,
-					},
-					{
 						Name: "mysqldb-db",
 						Type: validation.DataMySQLDatabasesResource,
 						App:  name,
@@ -77,7 +72,7 @@ func Test_MySQLDatabase(t *testing.T) {
 
 	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
 	test.PreSetup = preSetup
-	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID), fmt.Sprintf("password=%s", "not-prod-password"))
 
 	test.Test(t)
 }

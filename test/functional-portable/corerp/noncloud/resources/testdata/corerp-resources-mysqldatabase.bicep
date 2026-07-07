@@ -9,28 +9,15 @@ param magpieimage string
 @description('Specifies the environment for resources.')
 param environment string
 
+@secure()
+@description('Administrator password for the MySQL database.')
+param password string
+
 resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'corerp-resources-mysqldb'
   location: location
   properties: {
     environment: environment
-  }
-}
-
-resource dbSecret 'Radius.Security/secrets@2025-08-01-preview' = {
-  name: 'mysqldb-secret'
-  location: location
-  properties: {
-    environment: environment
-    application: app.id
-    data: {
-      USERNAME: {
-        value: 'admin'
-      }
-      PASSWORD: {
-        value: 'password'
-      }
-    }
   }
 }
 
@@ -40,7 +27,8 @@ resource mysql 'Radius.Data/mySqlDatabases@2025-08-01-preview' = {
   properties: {
     environment: environment
     application: app.id
-    secretName: dbSecret.name
+    username: 'admin'
+    password: password
   }
 }
 

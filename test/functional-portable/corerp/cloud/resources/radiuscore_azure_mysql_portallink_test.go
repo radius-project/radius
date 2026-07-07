@@ -47,9 +47,8 @@ import (
 //  1. Preflight: confirm the built-in Radius.Data/mySqlDatabases resource
 //     type is registered (default-registered per deploy/manifest/defaults.yaml).
 //  2. Deploy: a Radius.Core/recipePacks + Radius.Core/environments (with an
-//     Azure provider) + Radius.Core/applications + Radius.Security/secrets +
-//     Radius.Data/mySqlDatabases (whose Terraform recipe provisions an Azure
-//     MySQL Flexible Server).
+//     Azure provider) + Radius.Core/applications + Radius.Data/mySqlDatabases
+//     (whose Terraform recipe provisions an Azure MySQL Flexible Server).
 //  3. Verify: call GetGraph via the v20250801preview client and assert that
 //     one of the mysql resource's output resources is an Azure MySQL
 //     Flexible Server carrying a well-formed portalUrl.
@@ -70,7 +69,6 @@ func Test_RadiusCore_AzureMySql_PortalLink(t *testing.T) {
 
 	appName := "azure-mysql-portallink-app"
 	envName := "azure-mysql-portallink-env-" + uniqueSeed
-	secretName := "azure-mysql-portallink-secret-" + uniqueSeed
 	mysqlName := "azure-mysql-portallink-db-" + uniqueSeed
 	recipePackName := "azure-mysql-portallink-pack"
 	appNamespace := "azure-mysql-portallink-ns"
@@ -135,7 +133,6 @@ func Test_RadiusCore_AzureMySql_PortalLink(t *testing.T) {
 					{Name: recipePackName, Type: validation.CoreRecipePacksResource},
 					{Name: envName, Type: validation.CoreEnvironmentsResource},
 					{Name: appName, Type: validation.CoreApplicationsResource, App: appName},
-					{Name: secretName, Type: validation.SecuritySecretsResource},
 					{Name: mysqlName, Type: validation.DataMySQLDatabasesResource, App: appName},
 				},
 			},

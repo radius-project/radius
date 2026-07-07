@@ -16,20 +16,16 @@ param azureSubscriptionId string
 param azureResourceGroupName string
 
 @secure()
-@description('Value stored on the Radius.Security/secrets resource. Not consumed by the mysql recipe (which generates its own admin credentials); present to exercise the same shape as the Radius.Security/secrets + Radius.Data/mySqlDatabases pattern used in real deployments.')
+@description('Administrator password set on the Radius.Data/mySqlDatabases resource (required by the resource schema). The Azure MySQL recipe generates its own Azure-compliant admin credentials and does not consume this value.')
 param password string
 
-// Recipe pack referencing two recipes shipped from the repo test terraform
-// module server: secrets-kubernetes.zip and mysql-azure.zip.
+// Recipe pack referencing the mysql-azure.zip recipe shipped from the repo
+// test terraform module server.
 resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   name: 'azure-mysql-portallink-pack'
   location: 'global'
   properties: {
     recipes: {
-      'Radius.Security/secrets': {
-        kind: 'terraform'
-        source: '${moduleServer}/secrets-kubernetes.zip'
-      }
       'Radius.Data/mySqlDatabases': {
         kind: 'terraform'
         source: '${moduleServer}/mysql-azure.zip'
@@ -65,30 +61,20 @@ resource app 'Radius.Core/applications@2025-08-01-preview' = {
   }
 }
 
-resource mysqlSecret 'Radius.Security/secrets@2025-08-01-preview' = {
-  name: 'azure-mysql-portallink-secret-${uniqueSeed}'
-  properties: {
-    environment: env.id
-    data: {
-      USERNAME: {
-        value: 'admin'
-      }
-      PASSWORD: {
-        value: password
-      }
-    }
-  }
-}
-
 // The mysql recipe provisions a real Azure MySQL Flexible Server (+ firewall
 // rule + database). The Terraform driver auto-discovers azurerm_* resources
 // from the tf state and records their ARM IDs into status.outputResources,
 // which the application graph then decorates with an Azure portal deep link.
+//
+// username/password are required by the resource schema. The Azure MySQL recipe
+// generates its own Azure-compliant admin credentials (Azure rejects common
+// names such as "admin"), so these values are not consumed by the recipe.
 resource mysql 'Radius.Data/mySqlDatabases@2025-08-01-preview' = {
   name: 'azure-mysql-portallink-db-${uniqueSeed}'
   properties: {
     environment: env.id
     application: app.id
-    secretName: mysqlSecret.name
+    username: 'mysqladmin'
+    password: password
   }
 }
