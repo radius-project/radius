@@ -28,6 +28,9 @@ change-safety guidance.
   backend services.
 - [state-persistence.md](state-persistence.md) explains the shared database,
   secret, and queue abstractions used by the control-plane services.
+- [state-archive.md](state-archive.md) explains the pluggable durable state
+  archive used to export and restore whole-directory snapshots of Radius state
+  (git orphan branch implementation today).
 - [credentials.md](credentials.md) explains how cloud credentials are stored
   and used for deployments, and how clients authenticate to a Radius install.
 - [application-graph.md](application-graph.md) explains how the application
