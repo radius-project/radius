@@ -710,6 +710,7 @@ func TestValidateManifest_MergesBaseResourceManifest(t *testing.T) {
 	require.Contains(t, props, "environment")
 	require.Contains(t, props, "connections")
 	require.Contains(t, props, "codeReference")
+	require.Contains(t, props, "icon")
 	require.Contains(t, schemaMap["required"], "environment")
 }
 

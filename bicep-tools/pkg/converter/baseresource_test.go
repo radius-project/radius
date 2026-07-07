@@ -18,7 +18,7 @@ func TestBaseResource_DecodedFromCanonicalYAML(t *testing.T) {
 		t.Fatalf("loadBaseResource: %v", err)
 	}
 
-	for _, name := range []string{"application", "environment", "connections", "codeReference"} {
+	for _, name := range []string{"application", "environment", "connections", "codeReference", "icon"} {
 		if _, ok := base.properties[name]; !ok {
 			t.Errorf("expected base property %q to be decoded from base.yaml", name)
 		}
@@ -59,7 +59,7 @@ func TestApplyBaseResource_MergesIntoBareSchema(t *testing.T) {
 
 	base.apply(schema)
 
-	for _, name := range []string{"size", "application", "environment", "connections", "codeReference"} {
+	for _, name := range []string{"size", "application", "environment", "connections", "codeReference", "icon"} {
 		if _, ok := schema.Properties[name]; !ok {
 			t.Errorf("expected property %q to be present after merge", name)
 		}
@@ -129,7 +129,7 @@ func TestApplyBaseResource_EmptySchema(t *testing.T) {
 
 	base.apply(schema)
 
-	expected := []string{"application", "environment", "connections", "codeReference"}
+	expected := []string{"application", "environment", "connections", "codeReference", "icon"}
 	if len(schema.Properties) != len(expected) {
 		t.Errorf("expected exactly %d merged base properties, got %d (%v)", len(expected), len(schema.Properties), schema.Properties)
 	}

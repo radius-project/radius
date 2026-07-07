@@ -848,7 +848,7 @@ func TestConvert_MultipleTypesAndAPIVersions(t *testing.T) {
 			t.Errorf("expected generated properties type %q in TypesContent; have=%v", name, keys(propertiesObjectsByName))
 			continue
 		}
-		for _, base := range []string{"application", "environment", "connections", "codeReference"} {
+		for _, base := range []string{"application", "environment", "connections", "codeReference", "icon"} {
 			if _, ok := props[base]; !ok {
 				t.Errorf("%s missing merged base property %q; have=%v", name, base, keys(props))
 			}

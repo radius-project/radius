@@ -962,12 +962,38 @@
     }
   },
   {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "icon",
+    "properties": {
+      "bytes": {
+        "description": "Verbatim SVG file content as a UTF-8 string. Populated by `rad resource-type create --icon \u003cpath\u003e`; never edited in the source YAML.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/99"
+        }
+      },
+      "hash": {
+        "description": "Server-computed SHA-256 of `icon.bytes`. Content-addresses the icon for graph responses.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/100"
+        }
+      }
+    }
+  },
+  {
     "$type": "AnyType"
   },
   {
     "$type": "ObjectType",
     "additionalProperties": {
-      "$ref": "#/99"
+      "$ref": "#/102"
     },
     "name": "platformOptions",
     "properties": {}
@@ -991,13 +1017,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/102"
+        "$ref": "#/105"
       },
       {
-        "$ref": "#/103"
+        "$ref": "#/106"
       },
       {
-        "$ref": "#/104"
+        "$ref": "#/107"
       }
     ]
   },
@@ -1013,10 +1039,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/106"
+        "$ref": "#/109"
       },
       {
-        "$ref": "#/107"
+        "$ref": "#/110"
       }
     ]
   },
@@ -1028,7 +1054,7 @@
         "description": "(Optional) Set to `memory` for a tmpfs (RAM backed filesystem). Note that while tmpfs is very fast storage counts against the memory limit of the container.",
         "flags": 0,
         "type": {
-          "$ref": "#/108"
+          "$ref": "#/111"
         }
       }
     }
@@ -1049,13 +1075,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/110"
+        "$ref": "#/113"
       },
       {
-        "$ref": "#/111"
+        "$ref": "#/114"
       },
       {
-        "$ref": "#/112"
+        "$ref": "#/115"
       }
     ]
   },
@@ -1070,14 +1096,14 @@
         "description": "(Optional) Set to `ReadWriteOnce` if no other Containers can mount in read/write mode. Set to `ReadOnlyMany` to enable other Containers to mount in read-only mode. Set to `ReadWriteMany` to allow multiple containers to mount in read/write mode. Assumed to be `ReadWriteOnce` if not specified.",
         "flags": 0,
         "type": {
-          "$ref": "#/113"
+          "$ref": "#/116"
         }
       },
       "resourceId": {
         "description": "(Required) The Radius PersistentVolume resource ID.",
         "flags": 0,
         "type": {
-          "$ref": "#/114"
+          "$ref": "#/117"
         }
       }
     }
@@ -1093,21 +1119,21 @@
         "description": "(Optional) An empty directory.",
         "flags": 0,
         "type": {
-          "$ref": "#/109"
+          "$ref": "#/112"
         }
       },
       "persistentVolume": {
         "description": "(Optional) Mount an existing Radius PersistentVolume resource.",
         "flags": 0,
         "type": {
-          "$ref": "#/115"
+          "$ref": "#/118"
         }
       },
       "secretName": {
         "description": "(Optional) The Radius Secret resource name.",
         "flags": 0,
         "type": {
-          "$ref": "#/116"
+          "$ref": "#/119"
         }
       }
     }
@@ -1115,7 +1141,7 @@
   {
     "$type": "ObjectType",
     "additionalProperties": {
-      "$ref": "#/117"
+      "$ref": "#/120"
     },
     "name": "volumes",
     "properties": {}
@@ -1171,32 +1197,39 @@
           "$ref": "#/98"
         }
       },
+      "icon": {
+        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time (`rad resource-type create --icon \u003cpath\u003e`) and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/101"
+        }
+      },
       "platformOptions": {
         "description": "(Optional) If enabled by the platform engineer, properties to be passed to the Recipe for the specified platform.",
         "flags": 0,
         "type": {
-          "$ref": "#/100"
+          "$ref": "#/103"
         }
       },
       "replicas": {
         "description": "(Optional) The minimum number of replicas for the set of containers.",
         "flags": 0,
         "type": {
-          "$ref": "#/101"
+          "$ref": "#/104"
         }
       },
       "restartPolicy": {
         "description": "(Optional) Defines how a containers behave when they terminate. `Always` will restart containers regardless of their exit status. `OnFailure` will restart containers if they return a non-zero exit code.",
         "flags": 0,
         "type": {
-          "$ref": "#/105"
+          "$ref": "#/108"
         }
       },
       "volumes": {
         "description": "(Optional) List of volumes that can be mounted by a container.",
         "flags": 0,
         "type": {
-          "$ref": "#/118"
+          "$ref": "#/121"
         }
       }
     }
@@ -1226,7 +1259,7 @@
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/122"
+          "$ref": "#/125"
         }
       },
       "application": {
@@ -1276,67 +1309,74 @@
           "$ref": "#/98"
         }
       },
+      "icon": {
+        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time (`rad resource-type create --icon \u003cpath\u003e`) and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/101"
+        }
+      },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/124"
+          "$ref": "#/127"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/121"
+          "$ref": "#/124"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/120"
+          "$ref": "#/123"
         }
       },
       "platformOptions": {
         "description": "(Optional) If enabled by the platform engineer, properties to be passed to the Recipe for the specified platform.",
         "flags": 2,
         "type": {
-          "$ref": "#/100"
+          "$ref": "#/103"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/119"
+          "$ref": "#/122"
         }
       },
       "replicas": {
         "description": "(Optional) The minimum number of replicas for the set of containers.",
         "flags": 2,
         "type": {
-          "$ref": "#/101"
+          "$ref": "#/104"
         }
       },
       "restartPolicy": {
         "description": "(Optional) Defines how a containers behave when they terminate. `Always` will restart containers regardless of their exit status. `OnFailure` will restart containers if they return a non-zero exit code.",
         "flags": 2,
         "type": {
-          "$ref": "#/105"
+          "$ref": "#/108"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/123"
+          "$ref": "#/126"
         }
       },
       "volumes": {
         "description": "(Optional) List of volumes that can be mounted by a container.",
         "flags": 2,
         "type": {
-          "$ref": "#/118"
+          "$ref": "#/121"
         }
       }
     }
@@ -1344,7 +1384,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/125"
+      "$ref": "#/128"
     },
     "name": "Radius.Compute/containers@2025-08-01-preview",
     "readableScopes": 0,
@@ -1366,13 +1406,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/127"
+        "$ref": "#/130"
       },
       {
-        "$ref": "#/128"
+        "$ref": "#/131"
       },
       {
-        "$ref": "#/129"
+        "$ref": "#/132"
       }
     ]
   },
@@ -1400,7 +1440,7 @@
         "description": "Resource ID of the source resource for this connection.",
         "flags": 1,
         "type": {
-          "$ref": "#/133"
+          "$ref": "#/136"
         }
       }
     }
@@ -1408,13 +1448,39 @@
   {
     "$type": "ObjectType",
     "additionalProperties": {
-      "$ref": "#/134"
+      "$ref": "#/137"
     },
     "name": "connections",
     "properties": {}
   },
   {
     "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "icon",
+    "properties": {
+      "bytes": {
+        "description": "Verbatim SVG file content as a UTF-8 string. Populated by `rad resource-type create --icon \u003cpath\u003e`; never edited in the source YAML.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/140"
+        }
+      },
+      "hash": {
+        "description": "Server-computed SHA-256 of `icon.bytes`. Content-addresses the icon for graph responses.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/141"
+        }
+      }
+    }
   },
   {
     "$type": "IntegerType"
@@ -1427,42 +1493,49 @@
         "description": "(Optional) The access modes which are permitted to be requested by a Container. Assumed to be all modes if not specified.",
         "flags": 0,
         "type": {
-          "$ref": "#/130"
+          "$ref": "#/133"
         }
       },
       "application": {
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 0,
         "type": {
-          "$ref": "#/131"
+          "$ref": "#/134"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 0,
         "type": {
-          "$ref": "#/132"
+          "$ref": "#/135"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 0,
         "type": {
-          "$ref": "#/135"
+          "$ref": "#/138"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 1,
         "type": {
-          "$ref": "#/136"
+          "$ref": "#/139"
+        }
+      },
+      "icon": {
+        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time (`rad resource-type create --icon \u003cpath\u003e`) and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/142"
         }
       },
       "sizeInGib": {
         "description": "(Required) The size of the volume in gibibytes. `1` represents 1024 MiB.",
         "flags": 1,
         "type": {
-          "$ref": "#/137"
+          "$ref": "#/143"
         }
       }
     }
@@ -1492,84 +1565,91 @@
         "description": "(Optional) The access modes which are permitted to be requested by a Container. Assumed to be all modes if not specified.",
         "flags": 2,
         "type": {
-          "$ref": "#/130"
+          "$ref": "#/133"
         }
       },
       "apiVersion": {
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/141"
+          "$ref": "#/147"
         }
       },
       "application": {
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 2,
         "type": {
-          "$ref": "#/131"
+          "$ref": "#/134"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 2,
         "type": {
-          "$ref": "#/132"
+          "$ref": "#/135"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 2,
         "type": {
-          "$ref": "#/135"
+          "$ref": "#/138"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 2,
         "type": {
-          "$ref": "#/136"
+          "$ref": "#/139"
+        }
+      },
+      "icon": {
+        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time (`rad resource-type create --icon \u003cpath\u003e`) and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/142"
         }
       },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/143"
+          "$ref": "#/149"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/140"
+          "$ref": "#/146"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/139"
+          "$ref": "#/145"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/138"
+          "$ref": "#/144"
         }
       },
       "sizeInGib": {
         "description": "(Required) The size of the volume in gibibytes. `1` represents 1024 MiB.",
         "flags": 2,
         "type": {
-          "$ref": "#/137"
+          "$ref": "#/143"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/142"
+          "$ref": "#/148"
         }
       }
     }
@@ -1577,7 +1657,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/144"
+      "$ref": "#/150"
     },
     "name": "Radius.Compute/persistentVolumes@2025-08-01-preview",
     "readableScopes": 0,
@@ -1607,7 +1687,7 @@
         "description": "Resource ID of the source resource for this connection.",
         "flags": 1,
         "type": {
-          "$ref": "#/148"
+          "$ref": "#/154"
         }
       }
     }
@@ -1615,7 +1695,7 @@
   {
     "$type": "ObjectType",
     "additionalProperties": {
-      "$ref": "#/149"
+      "$ref": "#/155"
     },
     "name": "connections",
     "properties": {}
@@ -1629,7 +1709,33 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/152"
+      "$ref": "#/158"
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "icon",
+    "properties": {
+      "bytes": {
+        "description": "Verbatim SVG file content as a UTF-8 string. Populated by `rad resource-type create --icon \u003cpath\u003e`; never edited in the source YAML.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/160"
+        }
+      },
+      "hash": {
+        "description": "Server-computed SHA-256 of `icon.bytes`. Content-addresses the icon for graph responses.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/161"
+        }
+      }
     }
   },
   {
@@ -1652,16 +1758,16 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/154"
+        "$ref": "#/163"
       },
       {
-        "$ref": "#/155"
+        "$ref": "#/164"
       },
       {
-        "$ref": "#/156"
+        "$ref": "#/165"
       },
       {
-        "$ref": "#/157"
+        "$ref": "#/166"
       }
     ]
   },
@@ -1695,19 +1801,19 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/161"
+        "$ref": "#/170"
       },
       {
-        "$ref": "#/162"
+        "$ref": "#/171"
       },
       {
-        "$ref": "#/163"
+        "$ref": "#/172"
       },
       {
-        "$ref": "#/164"
+        "$ref": "#/173"
       },
       {
-        "$ref": "#/165"
+        "$ref": "#/174"
       }
     ]
   },
@@ -1718,19 +1824,19 @@
       "hostname": {
         "flags": 0,
         "type": {
-          "$ref": "#/159"
+          "$ref": "#/168"
         }
       },
       "port": {
         "flags": 0,
         "type": {
-          "$ref": "#/160"
+          "$ref": "#/169"
         }
       },
       "protocol": {
         "flags": 0,
         "type": {
-          "$ref": "#/166"
+          "$ref": "#/175"
         }
       }
     }
@@ -1752,21 +1858,21 @@
         "description": "(Required) The specific container to target within the Container resource.",
         "flags": 1,
         "type": {
-          "$ref": "#/168"
+          "$ref": "#/177"
         }
       },
       "containerPort": {
         "description": "(Required) The port to target from the container.",
         "flags": 1,
         "type": {
-          "$ref": "#/169"
+          "$ref": "#/178"
         }
       },
       "resourceId": {
         "description": "(Required) The Radius Container resource ID.",
         "flags": 1,
         "type": {
-          "$ref": "#/170"
+          "$ref": "#/179"
         }
       }
     }
@@ -1785,14 +1891,14 @@
         "description": "(Required) The name of the HTTP Header to be matched. Must be exact.",
         "flags": 1,
         "type": {
-          "$ref": "#/172"
+          "$ref": "#/181"
         }
       },
       "value": {
         "description": "(Required) Value of HTTP Header to be matched.",
         "flags": 1,
         "type": {
-          "$ref": "#/173"
+          "$ref": "#/182"
         }
       }
     }
@@ -1800,7 +1906,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/174"
+      "$ref": "#/183"
     }
   },
   {
@@ -1843,31 +1949,31 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/176"
+        "$ref": "#/185"
       },
       {
-        "$ref": "#/177"
+        "$ref": "#/186"
       },
       {
-        "$ref": "#/178"
+        "$ref": "#/187"
       },
       {
-        "$ref": "#/179"
+        "$ref": "#/188"
       },
       {
-        "$ref": "#/180"
+        "$ref": "#/189"
       },
       {
-        "$ref": "#/181"
+        "$ref": "#/190"
       },
       {
-        "$ref": "#/182"
+        "$ref": "#/191"
       },
       {
-        "$ref": "#/183"
+        "$ref": "#/192"
       },
       {
-        "$ref": "#/184"
+        "$ref": "#/193"
       }
     ]
   },
@@ -1888,14 +1994,14 @@
         "description": "(Required) Name of the HTTP query parameter to be matched. Specify only when kind is HTTP.",
         "flags": 1,
         "type": {
-          "$ref": "#/187"
+          "$ref": "#/196"
         }
       },
       "value": {
         "description": "(Required) Value of the HTTP query parameter to be matched.",
         "flags": 1,
         "type": {
-          "$ref": "#/188"
+          "$ref": "#/197"
         }
       }
     }
@@ -1903,7 +2009,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/189"
+      "$ref": "#/198"
     }
   },
   {
@@ -1914,28 +2020,28 @@
         "description": "(Optional) HTTP headers to match. Specify only when kind is HTTP. Multiple match values are ANDed together. A request must match all the specified headers to match.",
         "flags": 0,
         "type": {
-          "$ref": "#/175"
+          "$ref": "#/184"
         }
       },
       "httpMethod": {
         "description": "(Optional) The HTTP method to match. Specify only when kind is HTTP.",
         "flags": 0,
         "type": {
-          "$ref": "#/185"
+          "$ref": "#/194"
         }
       },
       "httpPath": {
         "description": "(Optional) The HTTP request path to match. Trailing space is ignored. Requests for `/abc`, `/abc/`, and ``/abc/def/` will all match `/abc`.",
         "flags": 0,
         "type": {
-          "$ref": "#/186"
+          "$ref": "#/195"
         }
       },
       "httpQueryParams": {
         "description": "(Optional) HTTP query parameters to match. Specify only when kind is HTTP.",
         "flags": 0,
         "type": {
-          "$ref": "#/190"
+          "$ref": "#/199"
         }
       }
     }
@@ -1943,7 +2049,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/191"
+      "$ref": "#/200"
     }
   },
   {
@@ -1953,14 +2059,14 @@
       "destinationContainer": {
         "flags": 1,
         "type": {
-          "$ref": "#/171"
+          "$ref": "#/180"
         }
       },
       "matches": {
         "description": "(Required) Matches define conditions used for matching a request.",
         "flags": 1,
         "type": {
-          "$ref": "#/192"
+          "$ref": "#/201"
         }
       }
     }
@@ -1968,7 +2074,7 @@
   {
     "$type": "ArrayType",
     "itemType": {
-      "$ref": "#/193"
+      "$ref": "#/202"
     }
   },
   {
@@ -1979,56 +2085,63 @@
         "description": "(Required) The Radius Application ID. `myApplication.id` for example.",
         "flags": 1,
         "type": {
-          "$ref": "#/146"
+          "$ref": "#/152"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 0,
         "type": {
-          "$ref": "#/147"
+          "$ref": "#/153"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 0,
         "type": {
-          "$ref": "#/150"
+          "$ref": "#/156"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 1,
         "type": {
-          "$ref": "#/151"
+          "$ref": "#/157"
         }
       },
       "hostnames": {
         "description": "(Optional) Use only when kind is HTTP or TLS. When HTTP, match against the HTTP Host header. When using TLS, match against the SNI attribute of TLS ClientHello message. Hostname may be preceded by a * wildcard.",
         "flags": 0,
         "type": {
-          "$ref": "#/153"
+          "$ref": "#/159"
+        }
+      },
+      "icon": {
+        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time (`rad resource-type create --icon \u003cpath\u003e`) and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/162"
         }
       },
       "kind": {
         "description": "(Optional) The type of rule. If not specified, `HTTPRoute` is assumed. `HTTPRoute` provides L7 ingress with support for matching based on the hostname and HTTP header. `TCPRoute` provides L4 ingress with no support for matching (all traffic is forwarded to the Container). `TLSRoute` provides L4 ingress with the ability to match based on Server Name Indication (SNI) which is equivalent to hostname in TLS. `UDPRoute` is similar to TCPRoutes but uses UDP.",
         "flags": 0,
         "type": {
-          "$ref": "#/158"
+          "$ref": "#/167"
         }
       },
       "listener": {
         "description": "(Read Only) The Gateway Listener the route is assigned to.",
         "flags": 2,
         "type": {
-          "$ref": "#/167"
+          "$ref": "#/176"
         }
       },
       "rules": {
         "description": "(Required) Rules define semantics for matching a network connection request based on conditions and forwarding the request to a Container.",
         "flags": 1,
         "type": {
-          "$ref": "#/194"
+          "$ref": "#/203"
         }
       }
     }
@@ -2058,98 +2171,105 @@
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/198"
+          "$ref": "#/207"
         }
       },
       "application": {
         "description": "(Required) The Radius Application ID. `myApplication.id` for example.",
         "flags": 2,
         "type": {
-          "$ref": "#/146"
+          "$ref": "#/152"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 2,
         "type": {
-          "$ref": "#/147"
+          "$ref": "#/153"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 2,
         "type": {
-          "$ref": "#/150"
+          "$ref": "#/156"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 2,
         "type": {
-          "$ref": "#/151"
+          "$ref": "#/157"
         }
       },
       "hostnames": {
         "description": "(Optional) Use only when kind is HTTP or TLS. When HTTP, match against the HTTP Host header. When using TLS, match against the SNI attribute of TLS ClientHello message. Hostname may be preceded by a * wildcard.",
         "flags": 2,
         "type": {
-          "$ref": "#/153"
+          "$ref": "#/159"
+        }
+      },
+      "icon": {
+        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time (`rad resource-type create --icon \u003cpath\u003e`) and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/162"
         }
       },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/200"
+          "$ref": "#/209"
         }
       },
       "kind": {
         "description": "(Optional) The type of rule. If not specified, `HTTPRoute` is assumed. `HTTPRoute` provides L7 ingress with support for matching based on the hostname and HTTP header. `TCPRoute` provides L4 ingress with no support for matching (all traffic is forwarded to the Container). `TLSRoute` provides L4 ingress with the ability to match based on Server Name Indication (SNI) which is equivalent to hostname in TLS. `UDPRoute` is similar to TCPRoutes but uses UDP.",
         "flags": 2,
         "type": {
-          "$ref": "#/158"
+          "$ref": "#/167"
         }
       },
       "listener": {
         "description": "(Read Only) The Gateway Listener the route is assigned to.",
         "flags": 2,
         "type": {
-          "$ref": "#/167"
+          "$ref": "#/176"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/197"
+          "$ref": "#/206"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/196"
+          "$ref": "#/205"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/195"
+          "$ref": "#/204"
         }
       },
       "rules": {
         "description": "(Required) Rules define semantics for matching a network connection request based on conditions and forwarding the request to a Container.",
         "flags": 2,
         "type": {
-          "$ref": "#/194"
+          "$ref": "#/203"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/199"
+          "$ref": "#/208"
         }
       }
     }
@@ -2157,7 +2277,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/201"
+      "$ref": "#/210"
     },
     "name": "Radius.Compute/routes@2025-08-01-preview",
     "readableScopes": 0,

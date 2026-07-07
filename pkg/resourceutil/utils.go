@@ -29,7 +29,7 @@ const (
 )
 
 // BasicProperties is a list of common properties that are expected to be present in all resources
-var BasicProperties = []string{"application", "environment", "status", "connections", "codeReference"}
+var BasicProperties = []string{"application", "environment", "status", "connections", "codeReference", "icon"}
 
 // marshalAndUnmarshalResource serializes a resource to JSON and then deserializes it into the target structure
 func marshalAndUnmarshalResource[P any, T any](resource P, target *T) error {

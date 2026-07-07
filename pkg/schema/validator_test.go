@@ -1664,6 +1664,54 @@ func TestValidator_checkReservedProperties(t *testing.T) {
 		require.Contains(t, validationErrors.Errors[0].Message, "property 'codeReference' must be a string")
 	})
 
+	t.Run("icon property must be an object", func(t *testing.T) {
+		// icon is a reserved base property (see pkg/schema/baseresource/base.yaml)
+		// with a nested {bytes, hash} shape. An author who redeclares it with a
+		// non-object type is rejected so the merged base definition stays
+		// consistent across all resource types.
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"icon": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 1)
+		require.Equal(t, "icon", validationErrors.Errors[0].Field)
+		require.Contains(t, validationErrors.Errors[0].Message, "property 'icon' must be an object")
+	})
+
+	t.Run("icon property as an object is accepted", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"icon": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"object"},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		require.NoError(t, validator.checkReservedProperties(schema))
+	})
+
 	t.Run("valid environment property as string", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},

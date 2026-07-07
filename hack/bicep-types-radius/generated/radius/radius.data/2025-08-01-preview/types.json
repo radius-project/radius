@@ -49,6 +49,32 @@
     "$type": "StringType"
   },
   {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "icon",
+    "properties": {
+      "bytes": {
+        "description": "Verbatim SVG file content as a UTF-8 string. Populated by `rad resource-type create --icon \u003cpath\u003e`; never edited in the source YAML.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/9"
+        }
+      },
+      "hash": {
+        "description": "Server-computed SHA-256 of `icon.bytes`. Content-addresses the icon for graph responses.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/10"
+        }
+      }
+    }
+  },
+  {
     "$type": "IntegerType"
   },
   {
@@ -70,13 +96,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/11"
+        "$ref": "#/14"
       },
       {
-        "$ref": "#/12"
+        "$ref": "#/15"
       },
       {
-        "$ref": "#/13"
+        "$ref": "#/16"
       }
     ]
   },
@@ -126,25 +152,32 @@
           "$ref": "#/8"
         }
       },
+      "icon": {
+        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time (`rad resource-type create --icon \u003cpath\u003e`) and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/11"
+        }
+      },
       "port": {
         "description": "(Read-only) The port number used to connect to the database.",
         "flags": 2,
         "type": {
-          "$ref": "#/9"
+          "$ref": "#/12"
         }
       },
       "secretName": {
         "description": "(Required) The name of the secret containing the database credentials.",
         "flags": 1,
         "type": {
-          "$ref": "#/10"
+          "$ref": "#/13"
         }
       },
       "version": {
         "description": "(Optional) The major MySQL server version in the X.Y format. Assumed to be 8.4 if not specified.",
         "flags": 0,
         "type": {
-          "$ref": "#/14"
+          "$ref": "#/17"
         }
       }
     }
@@ -174,7 +207,7 @@
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/18"
+          "$ref": "#/21"
         }
       },
       "application": {
@@ -219,60 +252,67 @@
           "$ref": "#/8"
         }
       },
+      "icon": {
+        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time (`rad resource-type create --icon \u003cpath\u003e`) and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/11"
+        }
+      },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/20"
+          "$ref": "#/23"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/17"
+          "$ref": "#/20"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/16"
+          "$ref": "#/19"
         }
       },
       "port": {
         "description": "(Read-only) The port number used to connect to the database.",
         "flags": 2,
         "type": {
-          "$ref": "#/9"
+          "$ref": "#/12"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/15"
+          "$ref": "#/18"
         }
       },
       "secretName": {
         "description": "(Required) The name of the secret containing the database credentials.",
         "flags": 2,
         "type": {
-          "$ref": "#/10"
+          "$ref": "#/13"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/19"
+          "$ref": "#/22"
         }
       },
       "version": {
         "description": "(Optional) The major MySQL server version in the X.Y format. Assumed to be 8.4 if not specified.",
         "flags": 2,
         "type": {
-          "$ref": "#/14"
+          "$ref": "#/17"
         }
       }
     }
@@ -280,7 +320,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/21"
+      "$ref": "#/24"
     },
     "name": "Radius.Data/mySqlDatabases@2025-08-01-preview",
     "readableScopes": 0,

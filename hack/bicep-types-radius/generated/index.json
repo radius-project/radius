@@ -46,13 +46,13 @@
       "$ref": "applications/applications.messaging/2023-10-01-preview/types.json#/69"
     },
     "Radius.Compute/containers@2025-08-01-preview": {
-      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/126"
+      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/129"
     },
     "Radius.Compute/persistentVolumes@2025-08-01-preview": {
-      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/145"
+      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/151"
     },
     "Radius.Compute/routes@2025-08-01-preview": {
-      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/202"
+      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/211"
     },
     "Radius.Core/applications@2025-08-01-preview": {
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/66"
@@ -70,10 +70,10 @@
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/205"
     },
     "Radius.Data/mySqlDatabases@2025-08-01-preview": {
-      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/22"
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/25"
     },
     "Radius.Security/secrets@2025-08-01-preview": {
-      "$ref": "radius/radius.security/2025-08-01-preview/types.json#/27"
+      "$ref": "radius/radius.security/2025-08-01-preview/types.json#/30"
     }
   },
   "resourceFunctions": {},

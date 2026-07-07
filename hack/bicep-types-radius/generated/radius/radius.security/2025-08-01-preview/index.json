@@ -1,7 +1,7 @@
 {
   "resources": {
     "Radius.Security/secrets@2025-08-01-preview": {
-      "$ref": "types.json#/27"
+      "$ref": "types.json#/30"
     }
   },
   "resourceFunctions": {},

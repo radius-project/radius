@@ -159,9 +159,9 @@ func TestApply_InvalidRequired(t *testing.T) {
 
 func TestPropertyNames(t *testing.T) {
 	names := mustLoad(t).PropertyNames()
-	require.ElementsMatch(t, []string{"application", "environment", "connections", "codeReference"}, names)
+	require.ElementsMatch(t, []string{"application", "environment", "connections", "codeReference", "icon"}, names)
 	// Sorted for deterministic output.
-	require.Equal(t, []string{"application", "codeReference", "connections", "environment"}, names)
+	require.Equal(t, []string{"application", "codeReference", "connections", "environment", "icon"}, names)
 }
 
 func TestRequiredNames(t *testing.T) {
@@ -184,4 +184,32 @@ func TestConnectionsShapePreserved(t *testing.T) {
 	additionalProps, err := toStringMap(additional["properties"])
 	require.NoError(t, err)
 	require.Contains(t, additionalProps, "source")
+}
+
+// TestIconShapePreserved verifies that Apply merges the icon property as a
+// nested object with `bytes` and `hash` sub-properties, and that the whole
+// object is marked read-only so it never appears on the Bicep authoring
+// surface (see bicep-tools/pkg/converter/converter.go — readOnly maps to
+// TypePropertyFlagsReadOnly). icon is intentionally absent from the base
+// "required" list so the whole property is optional on every resource type.
+func TestIconShapePreserved(t *testing.T) {
+	b := mustLoad(t)
+	schema := map[string]any{"type": "object"}
+	require.NoError(t, b.Apply(schema))
+
+	props, err := schemaProperties(schema)
+	require.NoError(t, err)
+
+	icon, err := toStringMap(props["icon"])
+	require.NoError(t, err)
+	require.Equal(t, "object", icon["type"])
+	require.Equal(t, true, icon["readOnly"], "icon must be read-only so Bicep authoring surfaces exclude it")
+
+	iconProps, err := toStringMap(icon["properties"])
+	require.NoError(t, err)
+	require.Contains(t, iconProps, "bytes")
+	require.Contains(t, iconProps, "hash")
+
+	// icon itself is optional.
+	require.NotContains(t, b.RequiredNames(), "icon")
 }

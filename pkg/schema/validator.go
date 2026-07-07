@@ -36,6 +36,7 @@ const (
 	reservedPropRecipe        = "recipe"
 	reservedPropConnections   = "connections"
 	reservedPropCodeReference = "codeReference"
+	reservedPropIcon          = "icon"
 )
 
 // Constants for annotation names
@@ -826,6 +827,17 @@ func (v *Validator) checkReservedProperties(schema *openapi3.Schema) error {
 						errors.Add(err)
 					}
 				}
+			}
+		}
+
+		// icon groups the SVG bytes and their server-computed hash under a single
+		// nested object. If an author redeclares it, enforce the object shape so
+		// the merged base definition (see pkg/schema/baseresource/base.yaml) stays
+		// consistent across all resource types.
+		if propName == reservedPropIcon {
+			if propRef.Value != nil && propRef.Value.Type != nil && !propRef.Value.Type.Is("object") {
+				err := NewConstraintError(propName, fmt.Sprintf("property '%s' must be an object", reservedPropIcon))
+				errors.Add(err)
 			}
 		}
 	}

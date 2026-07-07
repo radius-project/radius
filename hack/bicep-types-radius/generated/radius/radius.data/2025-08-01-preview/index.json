@@ -1,7 +1,7 @@
 {
   "resources": {
     "Radius.Data/mySqlDatabases@2025-08-01-preview": {
-      "$ref": "types.json#/22"
+      "$ref": "types.json#/25"
     }
   },
   "resourceFunctions": {},

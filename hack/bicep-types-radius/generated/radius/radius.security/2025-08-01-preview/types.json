@@ -94,6 +94,32 @@
     "$type": "StringType"
   },
   {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "icon",
+    "properties": {
+      "bytes": {
+        "description": "Verbatim SVG file content as a UTF-8 string. Populated by `rad resource-type create --icon \u003cpath\u003e`; never edited in the source YAML.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/13"
+        }
+      },
+      "hash": {
+        "description": "Server-computed SHA-256 of `icon.bytes`. Content-addresses the icon for graph responses.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/14"
+        }
+      }
+    }
+  },
+  {
     "$type": "StringLiteralType",
     "value": "generic"
   },
@@ -121,15 +147,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/13"
-      },
-      {
-        "$ref": "#/14"
-      },
-      {
-        "$ref": "#/15"
-      },
-      {
         "$ref": "#/16"
       },
       {
@@ -137,6 +154,15 @@
       },
       {
         "$ref": "#/18"
+      },
+      {
+        "$ref": "#/19"
+      },
+      {
+        "$ref": "#/20"
+      },
+      {
+        "$ref": "#/21"
       }
     ]
   },
@@ -179,11 +205,18 @@
           "$ref": "#/12"
         }
       },
+      "icon": {
+        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time (`rad resource-type create --icon \u003cpath\u003e`) and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/15"
+        }
+      },
       "kind": {
         "description": "(Optional) The kind of content of the secret. If not specified, generic is assumed. basicAuthentication, awsIRSA, and azureWorkloadIdentity should only be used for configuring authentication to OCI registries for storing Bicep templates. This will change in the future.",
         "flags": 0,
         "type": {
-          "$ref": "#/19"
+          "$ref": "#/22"
         }
       }
     }
@@ -213,7 +246,7 @@
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/23"
+          "$ref": "#/26"
         }
       },
       "application": {
@@ -251,46 +284,53 @@
           "$ref": "#/12"
         }
       },
+      "icon": {
+        "description": "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time (`rad resource-type create --icon \u003cpath\u003e`) and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/15"
+        }
+      },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/25"
+          "$ref": "#/28"
         }
       },
       "kind": {
         "description": "(Optional) The kind of content of the secret. If not specified, generic is assumed. basicAuthentication, awsIRSA, and azureWorkloadIdentity should only be used for configuring authentication to OCI registries for storing Bicep templates. This will change in the future.",
         "flags": 2,
         "type": {
-          "$ref": "#/19"
+          "$ref": "#/22"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/22"
+          "$ref": "#/25"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/21"
+          "$ref": "#/24"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/20"
+          "$ref": "#/23"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/24"
+          "$ref": "#/27"
         }
       }
     }
@@ -298,7 +338,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/26"
+      "$ref": "#/29"
     },
     "name": "Radius.Security/secrets@2025-08-01-preview",
     "readableScopes": 0,

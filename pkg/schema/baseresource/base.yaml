@@ -29,5 +29,16 @@ properties:
   codeReference:
     type: string
     description: "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27"
+  icon:
+    type: object
+    readOnly: true
+    description: "Optional icon associated with the resource type, rendered by Radius graph views. Populated at resource-type registration time (`rad resource-type create --icon <path>`) and by server-side hash computation; deployed resource instances never set it. Marked read-only so it never appears on the Bicep authoring surface for a resource."
+    properties:
+      bytes:
+        type: string
+        description: "Verbatim SVG file content as a UTF-8 string. Populated by `rad resource-type create --icon <path>`; never edited in the source YAML."
+      hash:
+        type: string
+        description: "Server-computed SHA-256 of `icon.bytes`. Content-addresses the icon for graph responses."
 required:
   - environment
