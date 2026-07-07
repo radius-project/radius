@@ -36,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/pgbackup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/statearchive"
 	archivegit "github.com/radius-project/radius/pkg/statearchive/git"
 )
 
@@ -69,13 +70,6 @@ rad startup --workspace my-workspace`,
 	return cmd, runner
 }
 
-// worktreeHandle decouples Run from the concrete storage session so the command can be tested
-// without performing real git operations.
-type worktreeHandle struct {
-	path   string
-	remove func(ctx context.Context)
-}
-
 // Runner is the runner implementation for the `rad startup` command.
 type Runner struct {
 	ConfigHolder *framework.ConfigHolder
@@ -83,8 +77,9 @@ type Runner struct {
 	Workspace    *workspaces.Workspace
 	StateClient  StateRestoreClient
 
-	// openWorktree opens (or creates) the state worktree. Overridable in tests.
-	openWorktree func(ctx context.Context) (worktreeHandle, error)
+	// Archive is the durable state archive that state is restored from. Defaults to the git
+	// orphan-branch implementation; tests inject a mock.
+	Archive statearchive.Archive
 
 	// newScaler builds the control-plane scaler for a context/namespace. Overridable in tests.
 	newScaler func(kubeContext, namespace string) (ControlPlaneScaler, error)
@@ -96,23 +91,10 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigHolder: factory.GetConfigHolder(),
 		Output:       factory.GetOutput(),
 		StateClient:  NewStateRestoreClient(),
+		Archive:      archivegit.NewGitArchive(),
 	}
-	r.openWorktree = defaultOpenWorktree
 	r.newScaler = newScalerForContext
 	return r
-}
-
-// defaultOpenWorktree opens a git-backed state-archive session for the state branch and adapts it
-// to worktreeHandle.
-func defaultOpenWorktree(ctx context.Context) (worktreeHandle, error) {
-	session, err := archivegit.NewGitArchive().Open(ctx, pgbackup.StateBranchName())
-	if err != nil {
-		return worktreeHandle{}, err
-	}
-	return worktreeHandle{
-		path:   session.Path(),
-		remove: session.Close,
-	}, nil
 }
 
 // Validate resolves the workspace and ensures it targets a Kubernetes cluster.
@@ -142,11 +124,13 @@ func (r *Runner) Run(ctx context.Context) error {
 		return clierrors.Message("Could not determine the Kubernetes context for workspace %q.", r.Workspace.Name)
 	}
 
-	wt, err := r.openWorktree(ctx)
+	session, err := r.Archive.Open(ctx, pgbackup.StateBranchName())
 	if err != nil {
-		return fmt.Errorf("failed to open state worktree: %w", err)
+		return fmt.Errorf("failed to open state archive: %w", err)
 	}
-	defer wt.remove(ctx)
+	defer session.Close(ctx)
+
+	stateDir := session.Path()
 
 	scaler, err := r.newScaler(kubeContext, pgbackup.DefaultNamespace)
 	if err != nil {
@@ -176,12 +160,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	r.Output.LogInfo("Restoring control-plane databases...")
-	if err := r.StateClient.RestoreDatabases(ctx, kubeContext, pgbackup.DefaultNamespace, wt.path); err != nil {
+	if err := r.StateClient.RestoreDatabases(ctx, kubeContext, pgbackup.DefaultNamespace, stateDir); err != nil {
 		return fmt.Errorf("failed to restore control-plane databases: %w", err)
 	}
 
 	r.Output.LogInfo("Restoring Terraform recipe state...")
-	if err := r.StateClient.RestoreTerraform(ctx, kubeContext, pgbackup.DefaultNamespace, wt.path); err != nil {
+	if err := r.StateClient.RestoreTerraform(ctx, kubeContext, pgbackup.DefaultNamespace, stateDir); err != nil {
 		return fmt.Errorf("failed to restore Terraform state: %w", err)
 	}
 

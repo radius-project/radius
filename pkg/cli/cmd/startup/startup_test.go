@@ -23,9 +23,12 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/pgbackup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/statearchive"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -99,13 +102,6 @@ func (f *fakeStateRestoreClient) RestoreTerraform(ctx context.Context, kubeConte
 	return f.restoreTFErr
 }
 
-type fakeWorktree struct {
-	path    string
-	removed bool
-}
-
-func (w *fakeWorktree) remove(ctx context.Context) { w.removed = true }
-
 // fakeScaler records scale operations and appends them to a shared order slice so tests can assert
 // that the control plane is scaled down before any restore and back up afterward.
 type fakeScaler struct {
@@ -145,27 +141,35 @@ func kubernetesWorkspace() *workspaces.Workspace {
 	}
 }
 
-func newTestRunner(t *testing.T, client *fakeStateRestoreClient) (*Runner, *fakeWorktree, *fakeScaler) {
+func newTestRunner(t *testing.T, ctrl *gomock.Controller, client *fakeStateRestoreClient) (*Runner, *fakeScaler) {
 	t.Helper()
-	wt := &fakeWorktree{path: t.TempDir()}
+
+	session := statearchive.NewMockSession(ctrl)
+	session.EXPECT().Path().Return(t.TempDir()).AnyTimes()
+	session.EXPECT().Close(gomock.Any()).Times(1)
+
+	archive := statearchive.NewMockArchive(ctrl)
+	archive.EXPECT().Open(gomock.Any(), pgbackup.StateBranchName()).Return(session, nil).Times(1)
+
 	scaler := &fakeScaler{order: &client.order}
 	r := &Runner{
 		Output:      &output.MockOutput{},
 		Workspace:   kubernetesWorkspace(),
 		StateClient: client,
-		openWorktree: func(ctx context.Context) (worktreeHandle, error) {
-			return worktreeHandle{path: wt.path, remove: wt.remove}, nil
-		},
+		Archive:     archive,
 		newScaler: func(kubeContext, namespace string) (ControlPlaneScaler, error) {
 			return scaler, nil
 		},
 	}
-	return r, wt, scaler
+	return r, scaler
 }
 
 func Test_Run_RestoresInOrderWaitDatabaseTerraform(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	client := &fakeStateRestoreClient{}
-	r, wt, scaler := newTestRunner(t, client)
+	r, scaler := newTestRunner(t, ctrl, client)
 
 	err := r.Run(context.Background())
 	require.NoError(t, err)
@@ -177,40 +181,45 @@ func Test_Run_RestoresInOrderWaitDatabaseTerraform(t *testing.T) {
 	require.True(t, scaler.upCalled)
 	require.Equal(t, []string{"scaledown", "wait", "db", "tf", "scaleup"}, client.order,
 		"must scale down, wait, restore databases, restore terraform, then scale up")
-	require.True(t, wt.removed)
 }
 
 func Test_Run_ScaleDownFailureStopsBeforeRestore(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	client := &fakeStateRestoreClient{}
-	r, wt, scaler := newTestRunner(t, client)
+	r, scaler := newTestRunner(t, ctrl, client)
 	scaler.scaleDownErr = errors.New("scale down boom")
 
 	err := r.Run(context.Background())
 	require.ErrorContains(t, err, "scale down boom")
 	require.False(t, client.waited, "no restore should run if scale down failed")
 	require.False(t, scaler.upCalled, "scale up should not run if scale down failed")
-	require.True(t, wt.removed)
 }
 
 func Test_Run_WaitFailureStopsBeforeRestore(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	client := &fakeStateRestoreClient{waitErr: errors.New("db never ready")}
-	r, wt, scaler := newTestRunner(t, client)
+	r, scaler := newTestRunner(t, ctrl, client)
 
 	err := r.Run(context.Background())
 	require.ErrorContains(t, err, "db never ready")
 	require.False(t, client.dbCalled)
 	require.False(t, client.tfCalled)
 	require.True(t, scaler.upCalled, "control plane must be scaled back up even when a restore step fails")
-	require.True(t, wt.removed)
 }
 
 func Test_Run_DatabaseRestoreFailureScalesBackUp(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	client := &fakeStateRestoreClient{restoreDBErr: errors.New("psql boom")}
-	r, wt, scaler := newTestRunner(t, client)
+	r, scaler := newTestRunner(t, ctrl, client)
 
 	err := r.Run(context.Background())
 	require.ErrorContains(t, err, "psql boom")
 	require.False(t, client.tfCalled, "terraform restore must not run after database restore failure")
 	require.True(t, scaler.upCalled, "control plane must be scaled back up after a failed restore")
-	require.True(t, wt.removed)
 }

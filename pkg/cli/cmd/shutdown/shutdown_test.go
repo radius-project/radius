@@ -23,9 +23,12 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/pgbackup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	"github.com/radius-project/radius/pkg/statearchive"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -98,72 +101,64 @@ func kubernetesWorkspace() *workspaces.Workspace {
 	}
 }
 
-func newTestRunner(t *testing.T, ws *workspaces.Workspace, client *fakeStateBackupClient) (*Runner, *fakeWorktree) {
+func newTestRunner(t *testing.T, ctrl *gomock.Controller, client *fakeStateBackupClient) (*Runner, *statearchive.MockSession, string) {
 	t.Helper()
-	wt := &fakeWorktree{path: t.TempDir()}
+	stateDir := t.TempDir()
+
+	session := statearchive.NewMockSession(ctrl)
+	session.EXPECT().Path().Return(stateDir).AnyTimes()
+	session.EXPECT().Close(gomock.Any()).Times(1)
+
+	archive := statearchive.NewMockArchive(ctrl)
+	archive.EXPECT().Open(gomock.Any(), pgbackup.StateBranchName()).Return(session, nil).Times(1)
+
 	r := &Runner{
 		Output:      &output.MockOutput{},
-		Workspace:   ws,
+		Workspace:   kubernetesWorkspace(),
 		StateClient: client,
-		openWorktree: func(ctx context.Context) (worktreeHandle, error) {
-			return worktreeHandle{
-				path:          wt.path,
-				commitAndPush: wt.commitAndPush,
-				remove:        wt.remove,
-			}, nil
-		},
+		Archive:     archive,
 	}
-	return r, wt
+	return r, session, stateDir
 }
-
-// fakeWorktree records commit/remove invocations.
-type fakeWorktree struct {
-	path          string
-	committed     bool
-	removed       bool
-	commitMessage string
-	commitErr     error
-}
-
-func (w *fakeWorktree) commitAndPush(ctx context.Context, message string) error {
-	w.committed = true
-	w.commitMessage = message
-	return w.commitErr
-}
-
-func (w *fakeWorktree) remove(ctx context.Context) { w.removed = true }
 
 func Test_Run_BacksUpBothStoresAndCommits(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	client := &fakeStateBackupClient{}
-	r, wt := newTestRunner(t, kubernetesWorkspace(), client)
+	r, session, stateDir := newTestRunner(t, ctrl, client)
+	session.EXPECT().Commit(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 	err := r.Run(context.Background())
 	require.NoError(t, err)
 
 	require.True(t, client.dbCalled, "databases should be backed up")
 	require.True(t, client.tfCalled, "terraform state should be backed up")
-	require.Equal(t, wt.path, client.stateDirSeen, "backup must target the worktree path")
-	require.True(t, wt.committed, "state should be committed and pushed")
-	require.True(t, wt.removed, "worktree should be removed")
+	require.Equal(t, stateDir, client.stateDirSeen, "backup must target the archive path")
 }
 
-func Test_Run_DatabaseBackupFailureStopsAndStillRemovesWorktree(t *testing.T) {
+func Test_Run_DatabaseBackupFailureStopsBeforeCommit(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	client := &fakeStateBackupClient{backupDBErr: errors.New("pg_dump boom")}
-	r, wt := newTestRunner(t, kubernetesWorkspace(), client)
+	// Commit is intentionally not expected: a backup failure must stop before committing. The
+	// deferred session.Close is still expected (verified by the mock at ctrl.Finish).
+	r, _, _ := newTestRunner(t, ctrl, client)
 
 	err := r.Run(context.Background())
 	require.ErrorContains(t, err, "pg_dump boom")
 	require.False(t, client.tfCalled, "terraform backup should not run after database failure")
-	require.False(t, wt.committed, "nothing should be committed on failure")
-	require.True(t, wt.removed, "worktree must still be removed via defer")
 }
 
 func Test_Run_CommitFailureIsReturned(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	client := &fakeStateBackupClient{}
-	r, wt := newTestRunner(t, kubernetesWorkspace(), client)
-	wt.commitErr = errors.New("push rejected")
+	r, session, _ := newTestRunner(t, ctrl, client)
+	session.EXPECT().Commit(gomock.Any(), gomock.Any()).Return(errors.New("push rejected")).Times(1)
 
 	err := r.Run(context.Background())
 	require.ErrorContains(t, err, "push rejected")
-	require.True(t, wt.removed)
 }
