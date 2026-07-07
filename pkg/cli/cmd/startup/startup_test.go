@@ -223,3 +223,31 @@ func Test_Run_DatabaseRestoreFailureScalesBackUp(t *testing.T) {
 	require.False(t, client.tfCalled, "terraform restore must not run after database restore failure")
 	require.True(t, scaler.upCalled, "control plane must be scaled back up after a failed restore")
 }
+
+// Test_Run_ArchiveOpenFailureIsReturned verifies that when the archive cannot be opened (for
+// example, running outside a git repository) Run returns the wrapped error before touching the
+// control plane.
+func Test_Run_ArchiveOpenFailureIsReturned(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	archive := statearchive.NewMockArchive(ctrl)
+	archive.EXPECT().Open(gomock.Any(), pgbackup.StateBranchName()).Return(nil, errors.New("not a git repo")).Times(1)
+
+	client := &fakeStateRestoreClient{}
+	r := &Runner{
+		Output:      &output.MockOutput{},
+		Workspace:   kubernetesWorkspace(),
+		StateClient: client,
+		Archive:     archive,
+		newScaler: func(kubeContext, namespace string) (ControlPlaneScaler, error) {
+			t.Fatal("newScaler must not be called when the archive cannot be opened")
+			return nil, nil
+		},
+	}
+
+	err := r.Run(context.Background())
+	require.ErrorContains(t, err, "failed to open state archive")
+	require.ErrorContains(t, err, "not a git repo")
+	require.False(t, client.waited, "no restore should run when the archive cannot be opened")
+}

@@ -22,7 +22,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/radius-project/radius/pkg/statearchive"
 	"github.com/stretchr/testify/require"
 )
 
@@ -260,4 +262,66 @@ func TestCommit_CommitsWithoutConfiguredIdentity(t *testing.T) {
 	author := runGit(t, s.Path(), "git", "log", "-1", "--format=%an <%ae>")
 	require.Contains(t, author, fallbackUserName)
 	require.Contains(t, author, fallbackUserEmail)
+}
+
+// TestOpen_OutsideGitRepositoryReturnsError verifies that opening an archive when the working
+// directory is not inside a git repository fails with a clear, wrapped error instead of a lower-level
+// git message. This is the failure a user hits by running "rad shutdown" / "rad startup" outside a
+// repository.
+func TestOpen_OutsideGitRepositoryReturnsError(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("skipping git-backed test: git binary not found in PATH")
+	}
+	// A bare temp dir with no "git init" is not inside any repository.
+	chdir(t, t.TempDir())
+
+	_, err := NewGitArchive().Open(context.Background(), "radius-state-test")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to determine git repo root")
+}
+
+// TestOpen_SerializesSessionsPerBranch verifies the per-branch lock: a second Open on the same
+// branch blocks until the first session is closed (git refuses two worktrees on one branch), while
+// Open on a different branch proceeds concurrently. This is the correctness guarantee behind
+// branchLocks.
+func TestOpen_SerializesSessionsPerBranch(t *testing.T) {
+	root := initTestRepo(t)
+	chdir(t, root)
+
+	ctx := context.Background()
+	b := NewGitArchive()
+	const branch = "radius-state-test"
+
+	first, err := b.Open(ctx, branch)
+	require.NoError(t, err)
+
+	// A second Open on the SAME branch must block until first is closed.
+	sameBranchOpened := make(chan statearchive.Session, 1)
+	go func() {
+		s, openErr := b.Open(ctx, branch)
+		require.NoError(t, openErr)
+		sameBranchOpened <- s
+	}()
+
+	select {
+	case <-sameBranchOpened:
+		t.Fatal("second Open on the same branch returned while the first session was still open")
+	case <-time.After(300 * time.Millisecond):
+		// Still blocked, as expected.
+	}
+
+	// A DIFFERENT branch must not be blocked by the held lock.
+	other, err := b.Open(ctx, "radius-state-other")
+	require.NoError(t, err, "Open on a different branch must not be blocked")
+	other.Close(ctx)
+
+	// Closing the first session releases the lock; the queued Open then completes.
+	first.Close(ctx)
+
+	select {
+	case s := <-sameBranchOpened:
+		s.Close(ctx)
+	case <-time.After(5 * time.Second):
+		t.Fatal("second Open on the same branch did not proceed after the first session was closed")
+	}
 }

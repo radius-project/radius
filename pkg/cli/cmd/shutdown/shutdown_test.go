@@ -162,3 +162,26 @@ func Test_Run_CommitFailureIsReturned(t *testing.T) {
 	err := r.Run(context.Background())
 	require.ErrorContains(t, err, "push rejected")
 }
+
+// Test_Run_ArchiveOpenFailureIsReturned verifies that when the archive cannot be opened (for
+// example, running outside a git repository) Run returns the wrapped error and performs no backup.
+func Test_Run_ArchiveOpenFailureIsReturned(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	archive := statearchive.NewMockArchive(ctrl)
+	archive.EXPECT().Open(gomock.Any(), pgbackup.StateBranchName()).Return(nil, errors.New("not a git repo")).Times(1)
+
+	client := &fakeStateBackupClient{}
+	r := &Runner{
+		Output:      &output.MockOutput{},
+		Workspace:   kubernetesWorkspace(),
+		StateClient: client,
+		Archive:     archive,
+	}
+
+	err := r.Run(context.Background())
+	require.ErrorContains(t, err, "failed to open state archive")
+	require.ErrorContains(t, err, "not a git repo")
+	require.False(t, client.dbCalled, "no backup should run when the archive cannot be opened")
+}

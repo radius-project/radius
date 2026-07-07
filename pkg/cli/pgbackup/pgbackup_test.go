@@ -53,3 +53,16 @@ func Test_HasBackup_PartialDumpsAreNotABackup(t *testing.T) {
 func Test_HasBackup_MissingDirectory(t *testing.T) {
 	require.False(t, HasBackup(filepath.Join(t.TempDir(), "does-not-exist")))
 }
+
+func Test_StateBranchName_DefaultsWhenUnset(t *testing.T) {
+	// t.Setenv unsets after the test; explicitly clear to isolate from the ambient environment.
+	t.Setenv(StateBranchEnvVar, "")
+	require.NoError(t, os.Unsetenv(StateBranchEnvVar))
+
+	require.Equal(t, DefaultStateBranch, StateBranchName(), "an unset override must fall back to the default branch")
+}
+
+func Test_StateBranchName_HonorsOverride(t *testing.T) {
+	t.Setenv(StateBranchEnvVar, "radius-state-pr-42")
+	require.Equal(t, "radius-state-pr-42", StateBranchName(), "%s must override the default branch", StateBranchEnvVar)
+}
