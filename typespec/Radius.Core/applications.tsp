@@ -124,6 +124,9 @@ model ApplicationGraphOutputResource {
 
   @doc("The resource name.")
   name: string;
+
+  @doc("A deep link to the underlying resource in its cloud provider's portal (for example, the Azure portal). Empty when no link is available for the resource.")
+  portalUrl?: string;
 }
 
 #suppress "@azure-tools/typespec-azure-core/casing-style"

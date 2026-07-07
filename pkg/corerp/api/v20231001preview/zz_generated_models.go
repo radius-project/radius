@@ -31,6 +31,10 @@ type ApplicationGraphOutputResource struct {
 
 	// REQUIRED; The resource type.
 	Type *string
+
+	// A deep link to the underlying resource in its cloud provider's portal (for example, the Azure portal). Empty when no link
+	// is available for the resource.
+	PortalURL *string
 }
 
 // ApplicationGraphResource - Describes a resource in the application graph.
