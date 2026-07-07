@@ -151,15 +151,16 @@ serve the "durable state that never pollutes the application checkout" goal:
   (`branchLocks`) serializes sessions per branch, because `git worktree add`
   refuses a second worktree for an already-checked-out branch. The lock is held
   from `Open` until `Close`.
-- **Remote as durable store** — when an `origin` remote is configured, `Open`
-  fetches the branch (a fetch failure is fatal, so a stale local branch cannot
-  shadow the real state) and `Commit` pushes it (a push failure fails the
-  operation). With no remote (local dev, tests), the local commit alone is
-  sufficient and the missing remote is not an error.
+- **Remote as durable store** — when an `origin` remote is configured and
+  already has the branch, `Open` fetches it (a fetch failure is fatal, so a stale
+  local branch cannot shadow the real state) and `Commit` pushes it (a push
+  failure fails the operation). With no remote (local dev, tests), the local
+  commit alone is sufficient and the missing remote is not an error.
 - **Orphan branch creation** — a missing branch is created with git plumbing
   (`commit-tree` on the well-known empty-tree SHA + `update-ref`) so the working
   tree is never touched.
-- **CI-friendly identity** — commits inject a fallback `user.name`/`user.email`
+- **CI-friendly identity** — every commit — both the orphan-branch `commit-tree`
+  at `Open` and the worktree `commit` — injects a fallback `user.name`/`user.email`
   via `-c` flags when the repo has none, which fresh CI environments frequently
   lack.
 
@@ -176,10 +177,10 @@ backends:
 - **Graph store** — [pkg/graph/persistence/git/git_store.go](../../pkg/graph/persistence/git/git_store.go)
   holds an `archive statearchive.Archive` and defaults it to
   `archivegit.NewGitArchive()` only when `Options.Archive` is nil. Its
-  `Save`/`Load`/`List`/`Delete` methods call `Open`, use `session.Path()` to
-  build file paths, and `Commit` — never a git command directly. Its doc comment
-  states that swapping in a different `statearchive.Archive` "requires no change
-  here."
+  `Save`/`Load`/`List`/`Delete` methods call `Open` and use `session.Path()` to
+  build file paths — never a git command directly; the mutating `Save`/`Delete`
+  also `Commit`, while `Load`/`List` only read. Its doc comment states that
+  swapping in a different `statearchive.Archive` "requires no change here."
 - **`rad shutdown` / `rad startup`** — both `Runner` structs expose an
   `Archive statearchive.Archive` field defaulted to `archivegit.NewGitArchive()`
   in their factory, then drive the same `Open → Path → Commit → Close` shape.

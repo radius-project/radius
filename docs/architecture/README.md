@@ -53,8 +53,9 @@ If you are new to the codebase, read these in order:
 7. [controller.md](controller.md)
 8. [rad-cli.md](rad-cli.md)
 9. [state-persistence.md](state-persistence.md)
-10. [credentials.md](credentials.md)
-11. [application-graph.md](application-graph.md)
+10. [state-archive.md](state-archive.md)
+11. [credentials.md](credentials.md)
+12. [application-graph.md](application-graph.md)
 
 ## Related Material
 
