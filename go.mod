@@ -76,7 +76,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/projectcontour/contour v1.33.5
 	github.com/prometheus/client_golang v1.23.2
-	github.com/radius-project/resource-types-contrib v0.0.0-20260618174538-51ee446a8fc6
+	github.com/radius-project/resource-types-contrib v0.0.0-20260707170730-715bf767d121
 	github.com/sanity-io/litter v1.5.8
 	github.com/sethvargo/go-retry v0.3.0
 	github.com/spf13/cobra v1.10.2
