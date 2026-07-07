@@ -50,6 +50,8 @@ The credential-verification workflow reads only Actions **variables**, never sec
 
 Copy the provider's template from `.github/extension/` into the target repository at `.github/workflows/verify-<provider>.yml` — [`verify-aws.yml`](../../.github/extension/verify-aws.yml) for AWS or [`verify-azure.yml`](../../.github/extension/verify-azure.yml) for Azure (both are named `Radius - Verify Credentials`). See [`.github/extension/README.md`](../../.github/extension/README.md) for the contract between the workflow and any frontend that drives it.
 
+> **Note:** the template's `environment` input has a `default: '{{ENV}}'` placeholder that the canvas/skill substitutes automatically. When copying the file by hand, replace `{{ENV}}` with your environment name (or delete the `default:` line).
+
 ### 5. Dispatch the workflow
 
 Trigger the workflow with `workflow_dispatch`, passing the environment name as the `environment` input. The workflow:

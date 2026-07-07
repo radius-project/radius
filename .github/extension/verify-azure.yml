@@ -16,10 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
-      - uses: actions/checkout@v4
-
       - name: Azure Login (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
@@ -31,9 +29,9 @@ jobs:
           echo "✅ Azure OIDC login successful"
 
       - name: Set up kubelogin
-        uses: azure/use-kubelogin@v1
+        uses: azure/use-kubelogin@0ce7c36141aa27d4934872cf00b0120804c98a29 # v1.3
         with:
-          kubelogin-version: 'v0.1.4'
+          kubelogin-version: 'v0.2.19'
 
       - name: Verify AKS Access
         run: |
