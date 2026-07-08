@@ -197,12 +197,6 @@ jobs:
           fi
           echo "✅ Cloud credentials registered with Radius."
 
-      - name: Register resource types
-        uses: radius-project/radius/.github/extension/actions/register-resource-types@{{RADIUS_REF}}
-        with:
-          resource-types-repo: ${{ env.RESOURCE_TYPES_CONTRIB_REPO }}
-          resource-types-ref: ${{ env.RESOURCE_TYPES_CONTRIB_REF }}
-
       - name: Create Radius environment and recipe pack
         run: |
           REPO="${{ env.RESOURCE_TYPES_CONTRIB_REPO }}"

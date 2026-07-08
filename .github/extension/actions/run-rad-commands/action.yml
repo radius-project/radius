@@ -110,14 +110,6 @@ runs:
         mkdir -p /tmp/radius-output
         RESULT_FILE=/tmp/radius-output/rad-commands-result.json
 
-        # Ensure the radiusCompute extension is imported for Radius.Compute/containerImages.
-        # Without it, the Bicep compiler routes Radius.Compute types to Azure ARM instead of UCP.
-        if ! grep -q 'extension radiusCompute' "$APP_FILE" 2>/dev/null; then
-          echo "Injecting 'extension radiusCompute' into $APP_FILE"
-          sed -i '/^extension radius$/a extension radiusCompute' "$APP_FILE" 2>/dev/null || true
-        fi
-
-
         # Aggregate result accumulators. The result is written by a trap on EXIT so
         # the combined `rad-commands-result` artifact is complete even when a command
         # fails and the step exits early.
