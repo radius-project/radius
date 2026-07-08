@@ -60,6 +60,8 @@ func (dst *ResourceProviderSummary) ConvertFrom(src v1.DataModelInterface) error
 			DefaultAPIVersion: resourceType.DefaultAPIVersion,
 			APIVersions:       apiVersions,
 			Description:       resourceType.Description,
+			Icon:              resourceType.Icon,
+			IconHash:          resourceType.IconHash,
 		}
 	}
 

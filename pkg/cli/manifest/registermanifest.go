@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/datamodel"
 )
 
 const (
@@ -207,8 +208,11 @@ func CreateEmptyResourceProvider(ctx context.Context, clientFactory *v20231001pr
 	return nil
 }
 
-// RegisterType registers a type specified in a manifest file
-func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, filePath string, typeName string, logger func(format string, args ...any)) error {
+// RegisterType registers a type specified in a manifest file. When iconFilePath is
+// non-empty, the SVG file at that path is read and its verbatim UTF-8 bytes are set
+// as the resource type's `icon` on ResourceTypeProperties. The control plane computes
+// and returns the `iconHash`.
+func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFactory, planeName string, filePath string, typeName string, iconFilePath string, logger func(format string, args ...any)) error {
 	if filePath == "" {
 		return fmt.Errorf("invalid manifest file path")
 	}
@@ -225,6 +229,20 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 		return fmt.Errorf("type %s not found in manifest file %s", typeName, filePath)
 	}
 
+	// Resolve the icon once (if provided). The verbatim SVG bytes are sent to the
+	// control plane, which computes the hash.
+	var icon *string
+	if iconFilePath != "" {
+		bytes, err := os.ReadFile(iconFilePath)
+		if err != nil {
+			return fmt.Errorf("failed to read icon file %s: %w", iconFilePath, err)
+		}
+		if err := datamodel.ValidateIcon(bytes); err != nil {
+			return fmt.Errorf("invalid icon file %s: %w", iconFilePath, err)
+		}
+		icon = to.Ptr(string(bytes))
+	}
+
 	if len(resourceType.Capabilities) == 0 {
 		logIfEnabled(logger, "Creating resource type %s/%s", resourceProvider.Namespace, typeName)
 	} else {
@@ -237,6 +255,7 @@ func RegisterType(ctx context.Context, clientFactory *v20231001preview.ClientFac
 				Capabilities:      to.SliceOfPtrs(resourceType.Capabilities...),
 				DefaultAPIVersion: resourceType.DefaultAPIVersion,
 				Description:       resourceType.Description,
+				Icon:              icon,
 			},
 		}, nil)
 		if err != nil {

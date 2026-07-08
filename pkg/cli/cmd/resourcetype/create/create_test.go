@@ -55,6 +55,12 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
+		{
+			Name:          "Invalid: multiple types with icon and no type name",
+			Input:         []string{"--from-file", "testdata/valid.yaml", "--icon", "icon.svg"},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{Config: config},
+		},
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)

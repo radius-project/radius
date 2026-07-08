@@ -1680,6 +1680,8 @@ func (r ResourceProviderSummaryResourceType) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "capabilities", r.Capabilities)
 	populate(objectMap, "defaultApiVersion", r.DefaultAPIVersion)
 	populate(objectMap, "description", r.Description)
+	populate(objectMap, "icon", r.Icon)
+	populate(objectMap, "iconHash", r.IconHash)
 	return json.Marshal(objectMap)
 }
 
@@ -1704,6 +1706,12 @@ func (r *ResourceProviderSummaryResourceType) UnmarshalJSON(data []byte) error {
 		case "description":
 			err = unpopulate(val, "Description", &r.Description)
 			delete(rawMsg, key)
+		case "icon":
+			err = unpopulate(val, "Icon", &r.Icon)
+			delete(rawMsg, key)
+		case "iconHash":
+			err = unpopulate(val, "IconHash", &r.IconHash)
+			delete(rawMsg, key)
 		}
 		if err != nil {
 			return fmt.Errorf("unmarshalling type %T: %v", r, err)
@@ -1718,6 +1726,8 @@ func (r ResourceTypeProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "capabilities", r.Capabilities)
 	populate(objectMap, "defaultApiVersion", r.DefaultAPIVersion)
 	populate(objectMap, "description", r.Description)
+	populate(objectMap, "icon", r.Icon)
+	populate(objectMap, "iconHash", r.IconHash)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	return json.Marshal(objectMap)
 }
@@ -1739,6 +1749,12 @@ func (r *ResourceTypeProperties) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "description":
 			err = unpopulate(val, "Description", &r.Description)
+			delete(rawMsg, key)
+		case "icon":
+			err = unpopulate(val, "Icon", &r.Icon)
+			delete(rawMsg, key)
+		case "iconHash":
+			err = unpopulate(val, "IconHash", &r.IconHash)
 			delete(rawMsg, key)
 		case "provisioningState":
 			err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
