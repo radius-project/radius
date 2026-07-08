@@ -41,6 +41,13 @@ type ResourceType struct {
 
 	// Description of the resource type.
 	Description *string `yaml:"description,omitempty"`
+
+	// Icon carries the verbatim SVG bytes of the resource type's icon. This
+	// field is populated in-memory from an out-of-band source (the --icon flag
+	// on `rad resource-type create`, or a sibling <typeName>.svg file next to
+	// this manifest at server initialization time) and is deliberately excluded
+	// from the YAML surface — see spec 003 FR-003 / FR-010a.
+	Icon *string `yaml:"-"`
 }
 
 type ResourceTypeAPIVersion struct {

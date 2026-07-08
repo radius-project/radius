@@ -18,15 +18,19 @@ package initializer
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/components/hosting"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
@@ -88,11 +92,29 @@ func (w *Service) Run(ctx context.Context) error {
 		}
 
 		filePath := filepath.Join(manifestDir, fileInfo.Name())
+
+		if strings.EqualFold(filepath.Ext(fileInfo.Name()), ".svg") {
+			continue
+		}
+
 		logger.Info("Loading manifest", "file", filePath)
 
 		rp, err := manifest.ValidateManifest(ctx, filePath)
 		if err != nil {
 			return fmt.Errorf("failed to validate manifest %s: %w", filePath, err)
+		}
+
+		// If a sibling <basename>.svg exists next to <basename>.yaml, apply
+		// its verbatim SVG bytes to every type declared in this manifest.
+		// startup registration attaches the icon to the type.
+		icon, err := loadSiblingIcon(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to load icon for manifest %s: %w", filePath, err)
+		}
+		if icon != nil {
+			for _, resourceType := range rp.Types {
+				resourceType.Icon = icon
+			}
 		}
 
 		existing, ok := merged[rp.Namespace]
@@ -131,6 +153,27 @@ func (w *Service) Run(ctx context.Context) error {
 
 	logger.Info("Successfully registered manifests", "directory", manifestDir)
 	return nil
+}
+
+// loadSiblingIcon looks for a <basename>.svg file sibling to the given
+// manifest file path and, when present, returns its verbatim UTF-8 bytes as a
+// string pointer after validating them with datamodel.ValidateIcon. When no
+// sibling exists, it returns (nil, nil) so the caller treats the type as
+// icon-less.
+func loadSiblingIcon(manifestPath string) (*string, error) {
+	ext := filepath.Ext(manifestPath)
+	iconPath := strings.TrimSuffix(manifestPath, ext) + ".svg"
+	bytes, err := os.ReadFile(iconPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to read icon file %s: %w", iconPath, err)
+	}
+	if err := datamodel.ValidateIcon(bytes); err != nil {
+		return nil, fmt.Errorf("invalid icon file %s: %w", iconPath, err)
+	}
+	return to.Ptr(string(bytes)), nil
 }
 
 // registerResourceProviderDirect writes resource provider metadata directly to the database,
@@ -176,6 +219,16 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	for typeName, resourceType := range rp.Types {
 		typeID := rpID + "/resourceTypes/" + typeName
 
+		// If the manifest brought in an icon via a sibling <basename>.svg
+		// file (see loadSiblingIcon), compute its SHA-256 hash server-side so
+		// the wire model always publishes the hash of exactly the bytes we
+		// stored (FR-010).
+		var iconHash *string
+		if resourceType.Icon != nil {
+			sum := sha256.Sum256([]byte(*resourceType.Icon))
+			iconHash = to.Ptr(hex.EncodeToString(sum[:]))
+		}
+
 		typeModel := &datamodel.ResourceType{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
@@ -191,6 +244,8 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 				Capabilities:      resourceType.Capabilities,
 				DefaultAPIVersion: resourceType.DefaultAPIVersion,
 				Description:       resourceType.Description,
+				Icon:              resourceType.Icon,
+				IconHash:          iconHash,
 			},
 		}
 
@@ -234,6 +289,8 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 			Capabilities:      resourceType.Capabilities,
 			Description:       resourceType.Description,
 			APIVersions:       summaryAPIVersions,
+			Icon:              resourceType.Icon,
+			IconHash:          iconHash,
 		}
 	}
 
