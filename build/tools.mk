@@ -253,3 +253,28 @@ install-oras: ## Install the pinned ORAS CLI into a user-owned bin dir (no sudo)
 		ORAS_CHECKSUM_DARWIN_ARM64="$(ORAS_CHECKSUM_DARWIN_ARM64)" \
 		ORAS_INSTALL_DIR="$(ORAS_INSTALL_DIR)" \
 		./build/scripts/install-oras.sh
+
+# ShellCheck (static analysis for shell scripts) - pinned version and per-platform
+# SHA-256 checksums (of the release '.tar.xz' archive) consumed by
+# build/scripts/install-shellcheck.sh. ShellCheck is published as a per-platform
+# archive on koalaman/shellcheck's GitHub releases and publishes no checksums
+# file, so these are computed from the pinned release - recompute them (download
+# each shellcheck-<version>.<os>.<arch>.tar.xz asset and sha256sum it) when
+# bumping SHELLCHECK_VERSION. The script is generic: clear SHELLCHECK_VERSION to
+# install the latest release, and clear a checksum to install without
+# verification.
+SHELLCHECK_VERSION ?= v0.11.0
+SHELLCHECK_CHECKSUM_LINUX_AMD64 ?= 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
+SHELLCHECK_CHECKSUM_LINUX_ARM64 ?= 12b331c1d2db6b9eb13cfca64306b1b157a86eb69db83023e261eaa7e7c14588
+SHELLCHECK_CHECKSUM_DARWIN_AMD64 ?= 3c89db4edcab7cf1c27bff178882e0f6f27f7afdf54e859fa041fca10febe4c6
+SHELLCHECK_CHECKSUM_DARWIN_ARM64 ?= 56affdd8de5527894dca6dc3d7e0a99a873b0f004d7aabc30ae407d3f48b0a79
+
+.PHONY: install-shellcheck
+install-shellcheck: ## Install the pinned ShellCheck into a user-owned bin dir (no sudo).
+	@SHELLCHECK_VERSION="$(SHELLCHECK_VERSION)" \
+		SHELLCHECK_CHECKSUM_LINUX_AMD64="$(SHELLCHECK_CHECKSUM_LINUX_AMD64)" \
+		SHELLCHECK_CHECKSUM_LINUX_ARM64="$(SHELLCHECK_CHECKSUM_LINUX_ARM64)" \
+		SHELLCHECK_CHECKSUM_DARWIN_AMD64="$(SHELLCHECK_CHECKSUM_DARWIN_AMD64)" \
+		SHELLCHECK_CHECKSUM_DARWIN_ARM64="$(SHELLCHECK_CHECKSUM_DARWIN_ARM64)" \
+		SHELLCHECK_INSTALL_DIR="$(SHELLCHECK_INSTALL_DIR)" \
+		./build/scripts/install-shellcheck.sh

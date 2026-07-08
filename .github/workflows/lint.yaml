@@ -16,7 +16,7 @@
 
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: Check code is up-to-date
+name: Lint
 
 on:
   workflow_dispatch:
@@ -45,12 +45,16 @@ jobs:
       contents: read
       pull-requests: read
 
-  linter_check:
+  # A single "Lint" job runs every linter and reports one aggregated status
+  # check. The independent, read-only linters run concurrently as parallel steps
+  # (see the `parallel:` group below), so a failure in any one of them still lets
+  # the others run and surface their findings in the same job.
+  lint:
     name: Lint
     runs-on: ubuntu-24.04
     needs: changes
     if: needs.changes.outputs.only_changed != 'true'
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       GOPROXY: https://proxy.golang.org
       HELM_CHARTS_DIR: deploy/Chart
@@ -75,30 +79,45 @@ jobs:
           node-version-file: .node-version
 
       - name: Install yq
-        # Required by make generate-bicep-types-contrib to parse defaults.yaml.
+        # Required by make generate to parse defaults.yaml.
         run: make install-yq
 
       - name: Install helm
         # Version pinned in build/tools.mk (HELM_VERSION).
         run: make install-helm
 
-      - name: Run Helm linter
-        run: |
-          helm lint "${HELM_CHARTS_DIR}"
-
-      - name: Run Helm unit tests
-        run: make test-helm
-
-      - name: Run TypeSpec format check
-        run: make tsp-format-check
-
       - name: Install golangci-lint
         # Pinned version + checksums live in build/tools.mk (GOLANGCI_LINT_VERSION).
         run: make install-golangci-lint
 
-      - name: Run linter
-        run: golangci-lint run --timeout=10m
+      - name: Install shellcheck
+        # Pinned version + checksums live in build/tools.mk (SHELLCHECK_VERSION).
+        run: make install-shellcheck
 
+      # Run the independent, read-only linters concurrently. Each parallel step is
+      # self-contained; the TypeSpec and Prettier checks share a pnpm/corepack
+      # toolchain, so they are grouped into one step to avoid racing on that
+      # shared install. The group has an implicit wait that aggregates results:
+      # every linter runs and any failure fails this job (a single status check).
+      - parallel:
+          - name: Go lint (golangci-lint)
+            run: golangci-lint run --timeout=10m
+
+          - name: Helm lint and unit tests
+            run: |
+              helm lint "${HELM_CHARTS_DIR}"
+              make test-helm
+
+          - name: TypeSpec and Prettier format checks
+            run: |
+              make tsp-format-check
+              make format-check || { echo "Format check failed. Run 'make format-write' to fix the formatting issues."; exit 1; }
+
+          - name: Shellcheck
+            run: make lint-shell
+
+      # The generated-code check mutates the working tree, so it runs
+      # sequentially after the parallel linters rather than inside the group.
       - name: Run make generate
         run: make generate
 
@@ -112,35 +131,4 @@ jobs:
         if: steps.gitdiff.outcome != 'success'
         run: |
           echo "Generated code is not up to date, run 'make generate' to update generated code."
-          exit 1
-
-  format-check:
-    name: Format check with Prettier
-    runs-on: ubuntu-24.04
-    needs: changes
-    if: needs.changes.outputs.only_changed != 'true'
-    timeout-minutes: 30
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          persist-credentials: false
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version-file: .node-version
-
-      - name: Run `make format-check`
-        id: format-check
-        continue-on-error: true
-        run: |
-          make format-check
-
-      - name: Check for formatting failures
-        if: steps.format-check.outcome == 'failure'
-        run: |
-          echo "Format check failed. Please fix the formatting issues. You can run 'make format-write' to update the code."
           exit 1
