@@ -355,7 +355,7 @@ jobs:
           chmod +x ./bin/rad
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
-          rad bicep download
+          make install-bicep BICEP_INSTALL_DIR="$HOME/.rad/bin"
           rad version
 
       - name: Install helm
