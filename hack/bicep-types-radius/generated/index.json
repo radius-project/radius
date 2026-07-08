@@ -51,14 +51,17 @@
     "Radius.AI/search@2025-08-01-preview": {
       "$ref": "radius/radius.ai/2025-08-01-preview/types.json#/33"
     },
+    "Radius.Compute/containerImages@2025-08-01-preview": {
+      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/23"
+    },
     "Radius.Compute/containers@2025-08-01-preview": {
-      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/126"
+      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/149"
     },
     "Radius.Compute/persistentVolumes@2025-08-01-preview": {
-      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/145"
+      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/168"
     },
     "Radius.Compute/routes@2025-08-01-preview": {
-      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/202"
+      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/225"
     },
     "Radius.Core/applications@2025-08-01-preview": {
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/66"

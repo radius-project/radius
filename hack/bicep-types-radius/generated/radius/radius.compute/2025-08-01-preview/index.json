@@ -1,13 +1,16 @@
 {
   "resources": {
+    "Radius.Compute/containerImages@2025-08-01-preview": {
+      "$ref": "types.json#/23"
+    },
     "Radius.Compute/containers@2025-08-01-preview": {
-      "$ref": "types.json#/126"
+      "$ref": "types.json#/149"
     },
     "Radius.Compute/persistentVolumes@2025-08-01-preview": {
-      "$ref": "types.json#/145"
+      "$ref": "types.json#/168"
     },
     "Radius.Compute/routes@2025-08-01-preview": {
-      "$ref": "types.json#/202"
+      "$ref": "types.json#/225"
     }
   },
   "resourceFunctions": {},
