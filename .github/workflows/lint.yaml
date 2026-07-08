@@ -100,8 +100,8 @@ jobs:
       # shared install. The group has an implicit wait that aggregates results:
       # every linter runs and any failure fails this job (a single status check).
       - parallel:
-          - name: Go lint (golangci-lint)
-            run: golangci-lint run --timeout=10m
+          - name: Go lint
+            run: make lint-go
 
           - name: Helm lint and unit tests
             run: |
@@ -113,7 +113,7 @@ jobs:
               make tsp-format-check
               make format-check || { echo "Format check failed. Run 'make format-write' to fix the formatting issues."; exit 1; }
 
-          - name: Shellcheck
+          - name: Shell lint
             run: make lint-shell
 
       # The generated-code check mutates the working tree, so it runs

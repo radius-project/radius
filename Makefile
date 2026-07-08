@@ -17,4 +17,4 @@
 ARROW := \033[34;1m=>\033[0m
 
 # order matters for these
-include build/help.mk build/version.mk build/build.mk build/generate.mk build/test.mk build/docker.mk build/artifacts.mk build/recipes.mk build/install.mk build/db.mk build/prettier.mk build/spellcheck.mk build/shellcheck.mk build/debug.mk build/workflow.mk build/resource-types.mk build/tools.mk
+include build/help.mk build/version.mk build/build.mk build/generate.mk build/test.mk build/docker.mk build/artifacts.mk build/recipes.mk build/install.mk build/db.mk build/lint.mk build/debug.mk build/workflow.mk build/resource-types.mk build/tools.mk

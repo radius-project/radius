@@ -29,13 +29,9 @@ else
 	GOBIN=$(shell go env GOBIN)
 endif
 
-# Check Operating System and set binary extension,
-# and golangci-lint binary name.
+# Check Operating System and set binary extension.
 ifeq ($(GOOS),windows)
    BINARY_EXT = .exe
-   GOLANGCI_LINT:=golangci-lint.exe
-else
-   GOLANGCI_LINT:=golangci-lint
 endif
 
 # Check if DEBUG is set to 1 or not.
@@ -154,11 +150,6 @@ build-binaries: $(BINARY_TARGETS) ## Builds all go binaries.
 clean: ## Cleans output directory.
 	@echo "$(ARROW) Cleaning all $(OUT_DIR)"
 	rm -rf $(OUT_DIR)
-
-# Due to https://github.com/golangci/golangci-lint/issues/580, we need to add --fix for windows
-.PHONY: lint
-lint: ## Runs golangci-lint
-	$(GOLANGCI_LINT) run --fix --timeout 5m
 
 .PHONY: build-bicep
 build-bicep: build-bicep-$(GOOS)-$(GOARCH)
