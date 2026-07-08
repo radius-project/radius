@@ -36,8 +36,13 @@ env:
   ENVIRONMENT: ${{ inputs.environment }}
   APP_FILE: '{{APP_FILE}}'
   APP_IMAGE: ${{ inputs.image || github.sha || 'latest' }}
-  RESOURCE_TYPES_CONTRIB_REPO: https://github.com/radius-project/resource-types-contrib.git
-  RESOURCE_TYPES_CONTRIB_REF: main
+  # Azure recipe pack from resource-types-contrib. Provisions data / messaging /
+  # AI types with Azure Verified Modules (Bicep), builds the app image from repo
+  # source via the Kubernetes containerImages recipe, and keeps core types
+  # (containers, persistentVolumes, routes, secrets) on the shared Kubernetes
+  # recipes. Tracks main; RECIPE_PACK_REF can be pinned to a commit if needed.
+  RECIPE_PACK_REF: main
+  RECIPE_PACK_PATH: recipepack/azure/aks-recipepack.bicep
 
 jobs:
   deploy:
@@ -173,8 +178,6 @@ jobs:
 
       - name: Create Radius environment and recipe pack
         run: |
-          REPO="${{ env.RESOURCE_TYPES_CONTRIB_REPO }}"
-          REF="${{ env.RESOURCE_TYPES_CONTRIB_REF }}"
           NAMESPACE="${{ vars.KUBERNETES_NAMESPACE || 'default' }}"
 
           # Registry and credentials for the Radius.Compute/containerImages recipe.
@@ -184,100 +187,46 @@ jobs:
           # in-cluster provider (the control-plane cluster where dynamic-rp/BuildKit
           # run), the secret is provisioned directly onto the control plane by the
           # run-and-teardown action. Only the secret NAME is wired here via the
-          # recipe pack's registrySecretName. $BUILD_REGISTRY is ghcr.io/<owner>/<repo>
-          # so images land under the repository's package namespace; it must be lowercase.
+          # recipe pack's containerImagesRegistrySecretName. $BUILD_REGISTRY is
+          # ghcr.io/<owner>/<repo> so images land under the repository's package
+          # namespace; it must be lowercase.
           BUILD_REGISTRY=$(echo "${{ vars.RADIUS_BUILD_REGISTRY || format('ghcr.io/{0}', github.repository) }}" | tr '[:upper:]' '[:lower:]')
           REGISTRY_SECRET_NAME="ghcr-registry-creds"
 
-          # Select the provider-specific Terraform recipe pack. Both provider packs
-          # bundle the shared Kubernetes compute/data recipes and differ only in the
-          # mySQL database recipe and cloud provider config.
-          PACK_NAME="azure-terraform"
-          # The Azure mySQL recipe reads subscription, resource group, and
-          # location from the Radius recipe context (var.context.azure), which
-          # Radius populates from the environment's providers.azure block below.
-          # It declares no azure_subscription_id/resourceGroupName/location
-          # variables, so passing them as recipe parameters makes Terraform fail
-          # with "Extraneous JSON object property". Pass no parameters here.
-          MYSQL_RECIPE=$(cat <<EOF
-          'Radius.Data/mySqlDatabases': {
-            kind: 'terraform'
-            source: 'git::$REPO//Data/mySqlDatabases/recipes/azure/terraform?ref=sk593/add-azure-mysql-recipe'
-          }
-          EOF
-          )
-          CLOUD_PROVIDER=$(cat <<EOF
-          azure: {
-            subscriptionId: '${{ vars.AZURE_SUBSCRIPTION_ID }}'
-            resourceGroupName: '${{ vars.AZURE_RESOURCE_GROUP }}'
-          }
-          EOF
-          )
-          echo "Selected recipe pack: $PACK_NAME"
+          # Download the default Azure recipe pack from resource-types-contrib,
+          # pinned to $RECIPE_PACK_REF. The recipe logic lives upstream; here we
+          # only supply parameters. The pack creates a Radius.Core/recipePacks
+          # resource and a Radius.Core/environments resource referencing it.
+          RECIPE_PACK_URL="https://raw.githubusercontent.com/radius-project/resource-types-contrib/${{ env.RECIPE_PACK_REF }}/${{ env.RECIPE_PACK_PATH }}"
+          echo "Downloading recipe pack from $RECIPE_PACK_URL"
+          # Place the recipe pack next to the app file so `rad deploy` resolves the
+          # repo's own bicepconfig.json (which declares the `radius` extension). bicep
+          # resolves the config nearest the .bicep file, so writing it to $APP_DIR
+          # (e.g. .radius/) picks up .radius/bicepconfig.json instead of the workspace
+          # root, where no config exists.
+          APP_DIR=$(dirname "$APP_FILE")
+          ENV_BICEP="$APP_DIR/radius-env.bicep"
+          curl -fsSL "$RECIPE_PACK_URL" -o "$ENV_BICEP"
 
-          # Generate a Bicep file that defines a recipe pack bundling every
-          # recipe and a Radius.Core/environments resource that references it.
-          cat > radius-env.bicep <<EOF
-          extension radius
+          # routesGatewayName is a required pack parameter, but it only matters when
+          # a Radius.Compute/routes resource is actually deployed. Default to empty
+          # unless the repo configures an existing Kubernetes Gateway.
+          ROUTES_GATEWAY_NAME="${{ vars.RADIUS_ROUTES_GATEWAY_NAME }}"
+          ROUTES_GATEWAY_NAMESPACE="${{ vars.RADIUS_ROUTES_GATEWAY_NAMESPACE || 'default' }}"
 
-          resource recipePack 'Radius.Core/recipePacks@2025-08-01-preview' = {
-            name: '$PACK_NAME'
-            properties: {
-              recipes: {
-                'Radius.Compute/containerImages': {
-                  kind: 'terraform'
-                  source: 'git::$REPO//Compute/containerImages/recipes/kubernetes/terraform?ref=$REF'
-                  parameters: {
-                    registry: '$BUILD_REGISTRY'
-                    registrySecretName: '$REGISTRY_SECRET_NAME'
-                  }
-                }
-                'Radius.Compute/containers': {
-                  kind: 'terraform'
-                  source: 'git::$REPO//Compute/containers/recipes/kubernetes/terraform?ref=$REF'
-                }
-                'Radius.Compute/persistentVolumes': {
-                  kind: 'terraform'
-                  source: 'git::$REPO//Compute/persistentVolumes/recipes/kubernetes/terraform?ref=$REF'
-                }
-                'Radius.Compute/routes': {
-                  kind: 'terraform'
-                  source: 'git::$REPO//Compute/routes/recipes/kubernetes/terraform?ref=$REF'
-                }
-                'Radius.Data/postgreSqlDatabases': {
-                  kind: 'terraform'
-                  source: 'git::$REPO//Data/postgreSqlDatabases/recipes/kubernetes/terraform?ref=$REF'
-                }
-                'Radius.Security/secrets': {
-                  kind: 'terraform'
-                  source: 'git::$REPO//Security/secrets/recipes/kubernetes/terraform?ref=$REF'
-                }
-          $MYSQL_RECIPE
-              }
-            }
-          }
-
-          resource env 'Radius.Core/environments@2025-08-01-preview' = {
-            name: '$ENVIRONMENT'
-            properties: {
-              recipePacks: [
-                recipePack.id
-              ]
-              providers: {
-                kubernetes: {
-                  namespace: '$NAMESPACE'
-                }
-          $CLOUD_PROVIDER
-              }
-            }
-          }
-          EOF
-
-          echo "Generated radius-env.bicep:"
-          cat radius-env.bicep
+          echo "Recipe pack file:"
+          cat "$ENV_BICEP"
           echo ""
           echo "Deploying Radius.Core/environments and recipe pack..."
-          rad deploy radius-env.bicep
+          rad deploy "$ENV_BICEP" \
+            --parameters environmentName="$ENVIRONMENT" \
+            --parameters environmentNamespace="$NAMESPACE" \
+            --parameters azureSubscriptionId="${{ vars.AZURE_SUBSCRIPTION_ID }}" \
+            --parameters azureResourceGroup="${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --parameters routesGatewayName="$ROUTES_GATEWAY_NAME" \
+            --parameters routesGatewayNamespace="$ROUTES_GATEWAY_NAMESPACE" \
+            --parameters containerImagesRegistry="$BUILD_REGISTRY" \
+            --parameters containerImagesRegistrySecretName="$REGISTRY_SECRET_NAME"
           echo "✅ Environment '$ENVIRONMENT' created with recipe pack."
 
       - name: Run rad commands
