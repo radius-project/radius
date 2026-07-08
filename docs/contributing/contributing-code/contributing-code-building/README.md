@@ -51,6 +51,8 @@ If `format-check` reports issues, or if you added or changed any `.ts`, `.js`, `
 make format-write
 ```
 
+If you changed any shell scripts, lint them with ShellCheck — install the pinned version once with `make install-shellcheck`, then run `make lint-shell`. See the [shell scripts and Makefiles guide](../contributing-code-shell-and-make/README.md#linting-shell-scripts-with-shellcheck) for details.
+
 See the [tests guide](../contributing-code-tests/) for the full test matrix and the [writing code guide](../contributing-code-writing/) for linting details.
 
 ### Build the container images

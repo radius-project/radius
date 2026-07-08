@@ -56,6 +56,7 @@ if command -v pgrep >/dev/null 2>&1; then
   pkill -f "dlv.*exec.*dynamic-rp" 2>/dev/null || true
   pkill -f "dlv.*exec.*controller" 2>/dev/null || true
 else
+  # shellcheck disable=SC2009 # ps|grep is the intended portable fallback where pgrep is unavailable.
   ps aux | grep -E "(ucpd|applications-rp|dynamic-rp|controller.*--config-file.*controller.yaml|dlv.*exec)" | grep -v grep | awk '{print $2}' | xargs -r kill 2>/dev/null || true
 fi
 
@@ -74,7 +75,7 @@ if command -v psql >/dev/null 2>&1; then
   # Truncate tables first (if they exist)
   psql "postgresql://applications_rp:radius_pass@localhost:5432/applications_rp" -c "TRUNCATE TABLE resources;" 2>/dev/null || true
   psql "postgresql://ucp:radius_pass@localhost:5432/ucp" -c "TRUNCATE TABLE resources;" 2>/dev/null || true
-  
+
   # Drop databases and users
   psql_exec "DROP DATABASE IF EXISTS applications_rp;" || true
   psql_exec "DROP DATABASE IF EXISTS ucp;" || true
@@ -82,13 +83,13 @@ if command -v psql >/dev/null 2>&1; then
   psql_exec "DROP USER IF EXISTS applications_rp;" || true
   psql_exec "DROP USER IF EXISTS ucp;" || true
   psql_exec "DROP USER IF EXISTS radius;" || true
-  
+
   echo "✅ Database nuclear cleanup complete"
 elif docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "SELECT 1;" >/dev/null 2>&1; then
   # Fall back to docker exec for truncation (needs specific database target)
   docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -d applications_rp -c "TRUNCATE TABLE resources;" 2>/dev/null || true
   docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -d ucp -c "TRUNCATE TABLE resources;" 2>/dev/null || true
-  
+
   # Drop databases and users via psql_exec (handles docker exec fallback)
   psql_exec "DROP DATABASE IF EXISTS applications_rp;" || true
   psql_exec "DROP DATABASE IF EXISTS ucp;" || true
@@ -96,7 +97,7 @@ elif docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -c "SELECT 1;" >/de
   psql_exec "DROP USER IF EXISTS applications_rp;" || true
   psql_exec "DROP USER IF EXISTS ucp;" || true
   psql_exec "DROP USER IF EXISTS radius;" || true
-  
+
   echo "✅ Database nuclear cleanup complete (via Docker)"
 else
   echo "⚠️  Neither psql nor Docker container available - skipping database cleanup"

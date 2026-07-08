@@ -52,7 +52,7 @@ fi
 
 echo "## Recipes published to $REGISTRY_PATH" >>$GITHUB_STEP_SUMMARY
 
-for RECIPE in $(find "$DIRECTORY" -type f -name "*.bicep"); do
+while IFS= read -r RECIPE; do
     FILENAME=$(basename $RECIPE)
     PUBLISH_REF="$REGISTRY_PATH/${FILENAME%.*}:$RECIPE_VERSION"
 
@@ -66,4 +66,4 @@ for RECIPE in $(find "$DIRECTORY" -type f -name "*.bicep"); do
     echo "Publishing $RECIPE to $PUBLISH_REF"
     echo "- $PUBLISH_REF" >>$GITHUB_STEP_SUMMARY
     rad bicep publish --file $RECIPE --target "br:$PUBLISH_REF"
-done
+done < <(find "$DIRECTORY" -type f -name "*.bicep")
