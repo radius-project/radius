@@ -14,7 +14,7 @@ The workflow ships as a **unified dispatcher plus two thin provider workflows an
 
 - [`run-rad-commands.yml`](../../../.github/extension/run-rad-commands.yml) — the dispatcher and the only file that is dispatched. It owns the dispatch contract and, via a `detect` job bound to the GitHub Environment, routes to the matching provider workflow (`workflow_call`, `secrets: inherit`).
 - [`run-rad-commands-azure.yml`](../../../.github/extension/run-rad-commands-azure.yml) and [`run-rad-commands-aws.yml`](../../../.github/extension/run-rad-commands-aws.yml) — reusable workflows carrying only the cloud-specific steps (OIDC login, cluster connection, token projection, credential registration, and recipe pack).
-- [`.github/extension/actions/`](../../../.github/extension/actions/) — composite actions for the provider-agnostic phases (`setup-control-plane`, `restore-state`, `register-resource-types`, `run-rad-commands`, `teardown`), referenced from `radius-project/radius` at a pinned ref.
+- [`.github/extension/actions/`](../../../.github/extension/actions/) — composite actions for the provider-agnostic phases (`setup-control-plane`, `restore-state`, `run-rad-commands`, `teardown`), referenced from `radius-project/radius` at a pinned ref.
 
 A frontend (the Copilot app, the CLI, etc.) writes the dispatcher and both provider workflows into a user's repository under `.github/workflows/` and dispatches `run-rad-commands.yml`. The provider workflows are not dispatched directly, and the composite actions are never copied into the user repo — they stay at [`.github/extension/`](../../../.github/extension/) so the shared logic has a canonical, reviewed home.
 
@@ -85,7 +85,7 @@ The provider paths share ~80% of their steps, so the workflow is factored to def
 
 - The **dispatcher** owns the trigger surface and the routing. A reusable-workflow caller job (`uses:`) cannot itself bind an `environment:`, so it cannot read environment-scoped variables to pick a provider. The dispatcher works around this with a `detect` job that *does* bind `environment: ${{ inputs.environment }}`, reads `AZURE_CLIENT_ID` / `AWS_ROLE_ARN`, and emits `provider`; two downstream `uses:` jobs (`azure`, `aws`) gate on that output and pass inputs through with `secrets: inherit`.
 - The **provider workflows** are reusable (`workflow_call`) and hold only the cloud-specific steps. They bind the environment themselves, so environment variables and the OIDC subject apply inside them.
-- The **composite actions** (`setup-control-plane`, `restore-state`, `register-resource-types`, `run-rad-commands`, `teardown`) hold the provider-agnostic phases and are referenced from `radius-project/radius` at a pinned ref. `run-rad-commands` and `teardown` are deliberately separate: the provider workflow invokes `run-rad-commands` on success but `teardown` with `if: always()`, so `rad shutdown`, log collection, and the k3d delete still run when an earlier step fails without the deploy itself running after a failed prerequisite. Because composite-action steps cannot read the `vars`/`secrets` contexts or the caller's `env:` block, every value they need (namespace, resource-types repo/ref, app file, image, rad-commands, deploy params, registry credentials) is passed explicitly as an action input; the target-cluster kubeconfig path is the exception, shared via `RADIUS_TARGET_KUBECONFIG` exported to `$GITHUB_ENV`.
+- The **composite actions** (`setup-control-plane`, `restore-state`, `run-rad-commands`, `teardown`) hold the provider-agnostic phases and are referenced from `radius-project/radius` at a pinned ref. `run-rad-commands` and `teardown` are deliberately separate: the provider workflow invokes `run-rad-commands` on success but `teardown` with `if: always()`, so `rad shutdown`, log collection, and the k3d delete still run when an earlier step fails without the deploy itself running after a failed prerequisite. Because composite-action steps cannot read the `vars`/`secrets` contexts or the caller's `env:` block, every value they need (namespace, app file, image, rad-commands, deploy params, registry credentials) is passed explicitly as an action input; the target-cluster kubeconfig path is the exception, shared via `RADIUS_TARGET_KUBECONFIG` exported to `$GITHUB_ENV`.
 
 ### Permissions
 
@@ -104,7 +104,7 @@ flowchart TD
     G --> H[Configure workspace<br/>rad workspace/group]
     H --> I[rad startup<br/>restore PostgreSQL + Terraform state]
     I --> J[rad credential register<br/>aws irsa / azure wi]
-    J --> K[Register resource types<br/>+ create environment + recipe pack]
+    J --> K[Create environment + recipe pack]
     K --> L[Provision registry creds on control plane]
     L --> M[Run rad_commands or default deploy<br/>upload rad-commands-result artifact]
     M --> N[rad shutdown<br/>back up + push radius-state]
@@ -152,7 +152,9 @@ The action contract hides which model is in use: the dispatch inputs and the res
 
 ### Recipe pack and environment
 
-The workflow generates a Bicep file defining a `Radius.Core/recipePacks` resource that bundles the Kubernetes compute/data recipes (`containers`, `containerImages`, `persistentVolumes`, `routes`, `postgreSqlDatabases`, `secrets`) plus a provider-gated `mySqlDatabases` recipe (AWS RDS or Azure Flexible Server), and a `Radius.Core/environments` resource that references the pack and carries the cloud provider scope. The `containerImages` recipe builds the application image with the in-pod BuildKit (`dynamicrp.buildkit.enabled=true`) and pushes it to the configured registry, authenticated by a Kubernetes Secret created in the app's runtime namespace.
+The workflow provisions a `Radius.Core/recipePacks` resource and a `Radius.Core/environments` resource that references the pack and carries the cloud provider scope. **Azure** downloads the `azure-avm` pack from [resource-types-contrib](https://github.com/radius-project/resource-types-contrib) (`recipepack/azure/aks-recipepack.bicep`), which provisions data/messaging/AI types with Azure Verified Modules and keeps compute types on the shared Kubernetes recipes. **AWS** generates an inline Bicep pack bundling the Kubernetes compute/data recipes (`containers`, `containerImages`, `persistentVolumes`, `routes`, `postgreSqlDatabases`, `secrets`) plus a provider-gated `mySqlDatabases` recipe (AWS RDS). The `containerImages` recipe builds the application image with the in-pod BuildKit (`dynamicrp.buildkit.enabled=true`) and pushes it to the configured registry, authenticated by a Kubernetes Secret created in the app's runtime namespace.
+
+The `radius-env.bicep` that carries the pack is written to the app file's directory (e.g. `.radius/`) and deployed from there. bicep resolves `bicepconfig.json` nearest the `.bicep` file, so deploying from that directory picks up the repo's own `.radius/bicepconfig.json` — which declares the `radius` extension — rather than a (non-existent) config at the workspace root. The `Radius.Compute/containerImages` type ships with the published `radius` Bicep extension, so the workflow no longer registers resource types or wires a local Bicep extension at deploy time.
 
 ### Control plane startup (Investment 5)
 
