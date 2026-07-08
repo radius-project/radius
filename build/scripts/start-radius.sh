@@ -166,6 +166,7 @@ if command -v pgrep >/dev/null 2>&1; then
   pkill -f "dlv.*exec.*controller" 2>/dev/null || true
 else
   # Fallback for systems without pkill
+  # shellcheck disable=SC2009 # ps|grep is the intended portable fallback where pgrep is unavailable.
   ps aux | grep -E "(ucpd|applications-rp|dynamic-rp|controller.*--config-file.*controller.yaml|dlv.*exec)" | grep -v grep | awk '{print $2}' | xargs -r kill 2>/dev/null || true
 fi
 
@@ -252,7 +253,7 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${db_user};
     docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -d "$db" -c "$table_sql"
   elif [ "$postgres_type" = "docker" ]; then
     local conn
-    conn=$(echo "$POSTGRES_WORKING_CONNECTION" | sed "s|/postgres\$|/${db}|")
+    conn="${POSTGRES_WORKING_CONNECTION%/postgres}/${db}"
     psql "$conn" -c "$table_sql"
   else
     # Homebrew/local: use bare database name for peer auth compatibility
