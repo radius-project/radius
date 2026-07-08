@@ -241,7 +241,13 @@ jobs:
 
           # Generate a Bicep file that defines a recipe pack bundling every
           # recipe and a Radius.Core/environments resource that references it.
-          cat > radius-env.bicep <<EOF
+          # Write it next to the app file so `rad deploy` resolves the repo's own
+          # bicepconfig.json (which declares the `radius` extension). bicep resolves
+          # the config nearest the .bicep file, so writing to $APP_DIR (e.g. .radius/)
+          # picks up .radius/bicepconfig.json instead of the workspace root.
+          APP_DIR=$(dirname "$APP_FILE")
+          ENV_BICEP="$APP_DIR/radius-env.bicep"
+          cat > "$ENV_BICEP" <<EOF
           extension radius
 
           resource recipePack 'Radius.Core/recipePacks@2025-08-01-preview' = {
@@ -298,10 +304,10 @@ jobs:
           EOF
 
           echo "Generated radius-env.bicep:"
-          cat radius-env.bicep
+          cat "$ENV_BICEP"
           echo ""
           echo "Deploying Radius.Core/environments and recipe pack..."
-          rad deploy radius-env.bicep
+          rad deploy "$ENV_BICEP"
           echo "✅ Environment '$ENVIRONMENT' created with recipe pack."
 
       - name: Run rad commands
