@@ -4,97 +4,43 @@ applyTo: '**/*'
 
 ## Code Review Guidelines
 
-When performing code reviews for pull requests in the Radius repository, follow these comprehensive steps.
+This is the rubric for what a good Radius code review contains. It applies to any review Copilot performs. For the end-to-end procedure of reviewing a specific pull request — fetching the PR, syncing to the latest head, resolving line numbers, and staging comments — use the [`radius-code-review`](../skills/radius-code-review/SKILL.md) skill, which references this rubric.
 
-**Important**: When reviewing code in specific languages or technologies, refer to the corresponding instruction files in `.github/instructions/*.instructions.md` for language-specific best practices, conventions, and review criteria. These files contain detailed guidelines for Go, Shell scripts, GitHub Workflows, and other technologies used in this project.
+When reviewing code in a specific language or technology, also apply the matching `.github/instructions/*.instructions.md` file (Go, Shell, Make, Docker, GitHub Workflows, Bicep, Markdown).
 
-**Error Handling:**
-- If files are too large to analyze completely, focus on the most critical changes and note it in the review.
-- If unable to access certain files, note this limitation in the review.
+### Principles
 
-### Code Review Principles
+- Be concise and direct — short imperative statements, not paragraphs.
+- Give actionable feedback; avoid vague directives like "be more accurate."
+- Be specific: exact file paths, line numbers, and clear issue descriptions.
+- Prefer specific over general: "Use `const` instead of `let` on line 42" beats "improve variable declarations."
+- Provide rationale — explain why a change is needed, not just what to change.
+- Show a corrected example when it clarifies a non-trivial issue.
+- Avoid generic praise; focus only on changes that need to be made.
 
-- **Be concise and direct**: Use short, imperative statements rather than long paragraphs
-- **Focus on actionable feedback**: Avoid vague directives like "be more accurate" or "identify all issues"
-- **Structure matters**: Use bullet points and clear headings for organization
-- **Show examples**: Demonstrate concepts with sample code when clarification is needed
-- **Be specific**: Provide exact file paths, line numbers, and clear issue descriptions
-- **Avoid generic praise**: Remove purely complimentary comments; focus on improvements needed
+### What to evaluate
 
-### Before Starting a Review
+- **Correctness**: bugs, unhandled edge cases, race conditions, and regressions.
+- **Security**: input validation, authentication and authorization, injection sinks, unsafe deserialization, secret or credential handling, and supply-chain risk from new dependencies.
+- **Idiomatic usage**: does the code follow language best practices?
+- **Readability and simplicity**: is the code clear, maintainable, and free of unnecessary complexity?
+- **Performance**: are there avoidable performance problems?
+- **Consistency**: does the change align with existing codebase patterns?
 
-1. Use the active pull request context to understand the PR background
-2. Review the project's contributing guidelines if available
-3. Check for related GitHub issues referenced in the PR description
-4. Look at any previous discussions and comments on the PR
+### Reviewing tests
 
-### Step 1: Analyze the Changes
+- Use parallel execution where possible.
+- Consolidate copy/paste tests into parameterized cases.
+- Check for clear names, adequate assertions, and proper setup/teardown and test doubles.
+- Confirm coverage of edge cases and error conditions.
 
-Conduct a detailed file-by-file analysis of the PR:
+### PR title
 
-- **PR Summary**: Understand the overall purpose and scope of the changes
-- **File-by-file analysis**: For each changed file, document:
-  - The file's purpose and role in the codebase
-  - Specific changes made
-  - Impact assessment of those changes
+Ensure the title clearly and accurately describes the change. If it is vague, overly broad, or misleading, suggest a better one.
 
-Consider both the PR author's description and the actual code changes when analyzing.
+### Documentation impact
 
-### Step 2: Provide Review Feedback
-
-Review the analyzed changes and provide constructive, actionable feedback:
-
-- **Focus**: Look for issues, bugs, and non-idiomatic language usage
-- **Avoid**: Purely complimentary comments or unnecessary summaries
-- **Format**: Keep comments concise and focused on changes that need to be made
-- **Structure**: Organize feedback by file with specific line references
-
-#### PR Title Review
-
-- Examine the PR title to ensure it clearly and concisely describes the changes in the PR
-- If the PR title is not descriptive, vague, overly broad, or does not accurately reflect the changes, suggest an improved title that clearly and concisely describes the PR
-
-#### General Code Quality Criteria
-
-As a world-class programming expert and good teammate, evaluate:
-
-- **Idiomatic usage**: Does the code follow language-specific best practices?
-- **Code quality**: Is the code maintainable and well-structured?
-- **Readability**: Is the code clear and easy to understand?
-- **Simplicity**: Is the code as simple as possible? Avoid unnecessary complexity
-- **Performance**: Are there potential performance issues?
-- **Bugs**: Are there any potential bugs or edge cases not handled?
-
-#### Unit Test Review Criteria
-
-When reviewing tests, specifically look for:
-
-- **Parallel execution**: Are tests using parallel execution where possible?
-- **Test consolidation**: Flag copy/paste tests that could be consolidated with parameters
-- **Test clarity**: Are test cases clear and concise?
-- **Mocking/stubbing**: Proper use of test doubles
-- **Organization**: Proper structure of test files and functions
-- **Assertions**: Adequate assertions to verify expected behavior
-- **Setup/teardown**: Proper handling of test lifecycle
-- **Naming conventions**: Clear, descriptive test names
-- **Framework usage**: Appropriate use of test frameworks and libraries
-- **Helper functions**: Good reuse to avoid duplication
-- **Coverage**: Adequate coverage of edge cases and error conditions
-
-### Step 3: Validate Your Review
-
-Act as a critic of your own review to ensure:
-
-- **Accuracy**: File names, paths, and line numbers are correct
-- **Clarity**: Comments are clear, concise, and actionable
-- **Value**: Remove any comments that are purely complimentary
-- **Correctness**: Fix any discrepancies found during validation
-
-### Step 4: Assess Contributor Documentation Impact
-
-Use the [Contributing Docs Updater](../skills/radius-contributing-docs-updater/SKILL.md) skill for a code review doc impact assessment to determine if the code changes require updates to contributor documentation in `docs/contributing/` or `docs/architecture/`.
-
-Common triggers for doc updates:
+Assess whether the change requires updates to contributor documentation in `docs/contributing/` or `docs/architecture/`. Common triggers:
 
 - New or changed CLI commands/flags
 - Build system changes (Makefile targets, scripts)
@@ -103,28 +49,20 @@ Common triggers for doc updates:
 - Configuration or prerequisite changes
 - Architecture changes
 
-To make the suggestion concrete rather than vague, consult the [code ↔ doc path map](../../docs/contributing/contributing-agent-assets.md#code--doc-path-map): when the PR touches a mapped code glob, name the specific backing doc that likely needs updating. The map lands empty and grows as the contributing docs are filled out, so also search `docs/contributing/` and `docs/architecture/` for prose that references any changed command, flag, or path.
+Use the [`radius-contributing-docs-updater`](../skills/radius-contributing-docs-updater/SKILL.md) skill for the assessment. To make the suggestion concrete, consult the [code ↔ doc path map](../../docs/contributing/contributing-agent-assets.md#code--doc-path-map): when the PR touches a mapped code glob, name the specific backing doc that likely needs updating. The map grows as the contributing docs are filled out, so also search `docs/contributing/` and `docs/architecture/` for prose that references any changed command, flag, or path. If doc updates are needed, name the docs and the required change, and suggest the [`radius-update-doc`](../skills/radius-update-doc/SKILL.md) skill to draft the patch. This assessment is **advisory, not a blocking gate**.
 
-If doc updates are needed, note which docs to update and what changes are required in your review, and suggest using the [`radius-update-doc`](../skills/radius-update-doc/SKILL.md) skill to draft the targeted patch. This assessment is **advisory, not a blocking gate** — flag the drift and propose a concrete fix, but do not require it to merge.
+### Output format
 
-### Review Output Format
-
-Structure your review comments as:
+Structure review comments as:
 
 ```text
 path/to/file.ext
-    Line X: Specific issue description
-    Line Y: Suggestion for improvement
+    Line X: Specific issue description and requested change.
 ```
 
-Include an overall PR assessment summarizing the key findings and recommendations.
+Include an overall assessment summarizing the key findings and recommendations.
 
-### Best Practices for Effective Reviews
+### Handling limitations
 
-1. **Clear titles**: Use descriptive headings for different review sections
-2. **Prefer specific over general**: "Use `const` instead of `let` on line 42" is better than "improve variable declarations"
-3. **Provide rationale**: Explain why a change is needed, not just what to change
-4. **Code examples**: Show correct and incorrect patterns when clarifying complex issues
-5. **Language context**: Consider language-specific idioms and best practices
-6. **Consistency**: Ensure feedback aligns with existing codebase patterns
-7. **Readability focus**: Prioritize code clarity and maintainability
+- If a file is too large to analyze completely, focus on the most critical changes and note the limitation.
+- If a file cannot be accessed, note that in the review.

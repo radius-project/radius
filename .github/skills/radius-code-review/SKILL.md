@@ -1,292 +1,92 @@
 ---
 name: radius-code-review
-description: 'Perform an automated code review for a GitHub pull request in the Radius repository. Produces a PR analysis document, a PR review document, and a shell script that posts the review comments via the GitHub API. Use when asked to review a PR, generate review feedback for a PR, or create a script that posts PR review comments.'
+description: 'Review a GitHub pull request in the Radius repository and produce concise, line-accurate feedback. Use when asked to review a PR, generate review feedback for a PR, or stage review comments for a PR.'
 argument-hint: 'Provide the PR number (and optionally repository owner/name) to review'
 user-invocable: true
 ---
 
 # Radius Code Review
 
-Use this skill to perform an automated, end-to-end code review for a Radius pull request. The skill produces three artifacts in the `.copilot-tracking/` folder at the repository root:
-
-1. `pr-analysis-${prNumber}.md` — file-by-file analysis of the PR
-2. `pr-review-${prNumber}.md` — review comments and overall assessment
-3. `pr-review-${prNumber}.sh` — shell script that posts the review to GitHub via the REST API
-
-**Important**: Follow the code review guidelines defined in [`.github/instructions/code-review.instructions.md`](../../instructions/code-review.instructions.md) for the review process, principles, code quality criteria, and validation steps. This skill defines only the file creation and script generation workflow specific to this automated review.
+The procedure for reviewing a specific Radius pull request end to end. The rubric for *what* a good review contains — principles, quality and test criteria, PR-title and documentation-impact expectations, and output format — lives in [`code-review.instructions.md`](../../instructions/code-review.instructions.md). This skill covers *how* to run the review: syncing to the latest PR head, resolving accurate line numbers, and delivering or staging comments. Keep working notes in the session and deliver the review through chat or the active PR review surface.
 
 ## When to Use
 
 - Reviewing a specific pull request and producing structured feedback
-- Generating per-file analysis and review comments for a PR
-- Producing a runnable script that posts review comments back to the PR
+- Drafting or staging PR review comments when the user asks
 
 Do not use this skill for:
 
-- General code authoring or refactoring tasks
-- Documentation-only changes (use `radius-contributing-docs-updater` instead when contributor doc impact is the focus)
+- General code authoring or refactoring
+- Documentation-only drift checks (use `radius-contributing-docs-updater`)
 - Reviewing local uncommitted changes (use the built-in `code-review` agent)
 
 ## Inputs
 
-Before starting, confirm:
+- **PR number** (required; ask if it is not provided and cannot be inferred)
+- **Repository owner / name** (defaults to `radius-project/radius`)
 
-- **PR number** (required)
-- **Repository owner / name** (defaults to `radius-project/radius` if not specified)
-- Access to PR metadata, file diffs, and the PR description
+## 1. Sync to the latest PR head
 
-If the PR number is not provided and cannot be inferred, ask the user for it.
+Never trust the current worktree, cached diffs, or a prior review pass.
 
-## Preparation
+- Run `gh pr view <pr-number> --json title,body,headRefName,headRefOid,baseRefName,baseRefOid,commits,files,comments,reviews` to collect PR metadata, changed files, prior discussion, and the head SHA.
+- Run `git fetch`, then compare the local checkout to the remote head. Account for rebases and force-pushes: note when the head SHA, commit list, changed-file set, or merge base differs from anything you observed before.
+- Recompute the merge base against the base branch and read the actual diff at the latest head before writing findings.
 
-1. Read [`.github/instructions/code-review.instructions.md`](../../instructions/code-review.instructions.md) and follow its **Before Starting a Review** section.
-2. Create the `.copilot-tracking/` folder at the repository root if it does not exist.
-3. Fetch the PR (title, description, changed files, diffs, linked issues, prior discussion) using `gh` or the GitHub API.
+## 2. Review the changes
 
-## Step 1: Analyze the Changes
+Apply the rubric in [`code-review.instructions.md`](../../instructions/code-review.instructions.md) and the matching language files in `.github/instructions/` (Go, Shell, Make, Docker, GitHub Workflows, Bicep, Markdown). Read complete functions or surrounding call sites when a hunk alone cannot prove or disprove a finding.
 
-Follow the **Step 1: Analyze the Changes** section in `.github/instructions/code-review.instructions.md`.
+Prioritize high-confidence, actionable issues:
 
-Create `.copilot-tracking/pr-analysis-${prNumber}.md` containing:
+- Correctness bugs, missing error handling, regressions, race conditions, and flaky or broken tests
+- Security, authorization, credential, injection, or supply-chain concerns
+- API compatibility, migration, generated-code, or deployment issues
+- Test gaps that leave changed behavior unprotected
+- Documentation drift that misleads contributors
 
-- **PR Summary** — purpose, scope, and linked issues
-- **File-by-file analysis** — for each changed file:
-  - File purpose and role in the codebase
-  - Specific changes made
-  - Impact assessment
+Skip pure preference, generic praise, and style already handled by automation.
 
-Consider both the PR author's description and the actual diff when writing the analysis.
+## 3. Resolve accurate line numbers
 
-## Step 2: Provide Review Feedback
+Wrong line numbers are the most common defect in generated reviews. For every inline comment:
 
-Follow the **Step 2: Provide Review Feedback** section in `.github/instructions/code-review.instructions.md`, including all General Code Quality Criteria and Unit Test Review Criteria. Apply language-specific guidance from the relevant files in `.github/instructions/` (Go, Shell, Make, Docker, GitHub Workflows, Bicep).
+- Never type a line number from memory.
+- Resolve it from the latest head with a deterministic lookup such as `git diff --unified=0 <merge-base>...<head>` plus a unique snippet search in the changed hunk.
+- Confirm the line is on the `RIGHT` side of the diff and inside a changed hunk. If the issue concerns nearby unchanged code, attach to the closest changed line and say so in the comment body.
+- Re-check line numbers after any rebase, force-push, or refreshed diff.
 
-Create `.copilot-tracking/pr-review-${prNumber}.md` containing:
+## 4. Validate before delivering
 
-- **PR title review** — flag vague or inaccurate titles and suggest improvements
-- **Overall PR assessment** — summary of key findings and recommendations
-- **Per-file review comments** in this format:
+- Every finding is supported by the latest diff and surrounding code.
+- Paths and line numbers point to the current head and appear in the diff.
+- Comments do not duplicate existing reviewer feedback unless they add materially new evidence.
+- Severity matches impact; do not block on advisory documentation drift.
+- Drop speculative or low-confidence findings — returning no findings is better than noise.
 
-  ```text
-  path/to/file.ext
-      Line X (anchor: `unique code snippet from line X`): Specific issue description
-      Line Y (anchor: `unique code snippet from line Y`): Suggestion for improvement
-  ```
+## 5. Assess documentation impact
 
-Keep comments concise, actionable, and specific. Remove purely complimentary comments.
+Follow the documentation-impact section of the rubric. Use the [`radius-contributing-docs-updater`](../radius-contributing-docs-updater/SKILL.md) skill; when the drift is directly caused by the PR, raise it as a normal finding with the specific doc path and required change.
 
-### Line-number accuracy (mandatory)
+## 6. Deliver or stage the review
 
-Wrong line numbers are the most common defect in generated reviews because they
-are hand-transcribed and GitHub silently attaches a comment to whatever diff
-line you name — there is no error when the number is off. To prevent this:
+- **Summary only**: reply in chat with the overall assessment and findings, using the rubric's output format.
+- **Draft or stage comments**: if the environment exposes a PR review tool, stage comments in the pending review draft. Write each comment as the reviewer — direct and human-sounding, with no mention of a skill or AI. Do not submit the review unless the user explicitly asks and the tool supports it.
+- **No PR review tool available**: provide the comments in chat in the rubric's output format so the user can paste them into GitHub.
 
-- **Never type a line number from memory.** For every comment, look up the exact
-  line by searching the file for a unique substring on that line:
-
-  ```bash
-  grep -n 'func pathForKey' pkg/graph/persistence/git/git_store.go
-  ```
-
-- Record an **anchor** (the unique code snippet you grepped for) next to each
-  comment in the review markdown. The anchor — not the integer — is the source
-  of truth. The generated script resolves the line number from the anchor at
-  build time (see Step 5) so a stale integer can never reach GitHub.
-- The cited line must also be part of the PR diff on the `RIGHT` side. If the
-  anchored line is not in the diff, attach to the nearest changed line and say
-  so in the comment body, or omit the inline comment.
-
-## Step 3: Validate Your Review
-
-Follow the **Step 3: Validate Your Review** section in `.github/instructions/code-review.instructions.md`. Verify:
-
-- File paths and line numbers are correct
-- Comments are clear and actionable
-- No purely complimentary noise remains
-- Findings align with the actual diff
-
-**Mandatory line-number verification.** Before generating the script, print the
-actual content at every cited line and confirm it matches the comment's anchor.
-Do not rely on visual inspection of the markdown alone:
-
-```bash
-# For each (path, line) pair in the review, show the real file content.
-while IFS=: read -r f n; do
-    printf '%-55s %s\n' "$f:$n" "$(sed -n "${n}p" "$f")"
-done <<'EOF'
-pkg/graph/persistence/git/git_store.go:214
-pkg/graph/build/build.go:143
-EOF
-```
-
-If any printed line does not contain the comment's anchor snippet, fix the line
-number (re-`grep`) before continuing.
-
-## Step 4: Assess Contributor Documentation Impact
-
-Per the **Step 4** guidance in the code review instructions, use the [`radius-contributing-docs-updater`](../radius-contributing-docs-updater/SKILL.md) skill to determine whether contributor documentation in `docs/contributing/` or `docs/architecture/` needs updates. Record the assessment in the overall assessment section of `pr-review-${prNumber}.md`.
-
-## Step 5: Generate the Review-Posting Script
-
-Generate `.copilot-tracking/pr-review-${prNumber}.sh`. Do **not** execute the script.
-
-Requirements:
-
-- Use the GitHub REST API (`POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews`) rather than `gh` CLI, because the API supports posting multiple inline comments in one review. See [GitHub docs](https://docs.github.com/en/rest/pulls/reviews?apiVersion=2022-11-28#create-a-review-for-a-pull-request).
-- Iterate over each comment in `pr-review-${prNumber}.md` and include it in the review payload.
-- **Resolve every comment's line number from its anchor snippet at runtime** (see the `line_for` helper below) instead of hard-coding integers. The helper must fail if the anchor matches zero or more than one line, so a wrong or stale anchor aborts the script instead of mis-placing a comment.
-- Include an overall review body taken from the overall PR assessment section.
-- Use `jq` for both response parsing and request payload construction. Never build JSON by string interpolation, and never parse GitHub API responses with `grep`/`sed` — the PR response contains multiple `"sha":` fields and arbitrary field ordering.
-- Read `GITHUB_TOKEN` from the environment; fail fast with a clear error if it is unset. Fail fast with a clear error if `jq` is not installed.
-- Accept `PR_NUMBER` (and optionally `REPO_OWNER`/`REPO_NAME`) from environment variables so the same script can be re-run against a different PR without editing the file. Default `REPO_OWNER`/`REPO_NAME` to `radius-project`/`radius`.
-- Resolve the head commit SHA from the PR via `jq -r '.head.sha // empty'`, not `HEAD`.
-- Print success or failure messages with the review URL or response body.
-
-Reference script structure:
-
-```bash
-#!/bin/bash
-#
-# GitHub PR Review Script
-# Posts a review with multiple inline comments via the GitHub REST API.
-#
-# Usage:
-#   export GITHUB_TOKEN=<your_token>
-#   PR_NUMBER=1234 ./pr-review-1234.sh
-#
-# Required tools: curl, jq
-
-set -euo pipefail
-
-REPO_OWNER="${REPO_OWNER:-radius-project}"
-REPO_NAME="${REPO_NAME:-radius}"
-PR_NUMBER="${PR_NUMBER:-}"   # Override at runtime, or hard-code per PR
-
-if [ -z "${GITHUB_TOKEN:-}" ]; then
-    echo "Error: GITHUB_TOKEN environment variable is not set" >&2
-    echo "Please set it with: export GITHUB_TOKEN=your_token_here" >&2
-    exit 1
-fi
-
-if [ -z "${PR_NUMBER}" ]; then
-    echo "Error: PR_NUMBER is not set" >&2
-    exit 1
-fi
-
-if ! command -v jq >/dev/null 2>&1; then
-    echo "Error: jq is required but not installed" >&2
-    exit 1
-fi
-
-echo "Creating GitHub review for PR #${PR_NUMBER}..."
-echo "Repository: ${REPO_OWNER}/${REPO_NAME}"
-
-# Resolve the head commit SHA from the PR.
-PR_RESPONSE=$(curl -sS \
-    -H "Accept: application/vnd.github+json" \
-    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-    -H "X-GitHub-Api-Version: 2022-11-28" \
-    "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/pulls/${PR_NUMBER}")
-
-COMMIT_SHA=$(echo "${PR_RESPONSE}" | jq -r '.head.sha // empty')
-
-if [ -z "${COMMIT_SHA}" ]; then
-    echo "❌ Could not resolve head commit SHA from PR response" >&2
-    echo "Response: ${PR_RESPONSE}" >&2
-    exit 1
-fi
-
-echo "Using commit SHA: ${COMMIT_SHA}"
-
-REVIEW_BODY="Overall assessment goes here."
-
-# Resolve a line number from a unique anchor snippet, failing loudly if the
-# anchor is missing or ambiguous. This prevents stale/hand-typed line numbers
-# from silently landing a comment on the wrong line.
-line_for() {
-    local file="$1" anchor="$2" matches
-    matches=$(git show "${COMMIT_SHA}:${file}" | grep -nF -- "${anchor}" || true)
-    local count
-    count=$(printf '%s' "${matches}" | grep -c . || true)
-    if [ "${count}" -ne 1 ]; then
-        echo "❌ anchor '${anchor}' matched ${count} lines in ${file} (need exactly 1)" >&2
-        exit 1
-    fi
-    printf '%s' "${matches%%:*}"
-}
-
-# Body text uses single quotes so backticks and double quotes need no escaping.
-P1="path/to/file.ext"
-B1='Comment body; jq handles JSON escaping.'
-L1=$(line_for "${P1}" 'unique code snippet on the target line')
-
-# One object per inline comment. Line numbers come from line_for, not literals.
-COMMENTS_JSON=$(jq -n \
-    --arg p1 "${P1}" --argjson l1 "${L1}" --arg b1 "${B1}" \
-    '[
-        {path: $p1, line: $l1, side: "RIGHT", body: $b1}
-    ]')
-
-PAYLOAD=$(jq -n \
-    --arg commit_id "${COMMIT_SHA}" \
-    --arg body "${REVIEW_BODY}" \
-    --arg event "COMMENT" \
-    --argjson comments "${COMMENTS_JSON}" \
-    '{commit_id: $commit_id, body: $body, event: $event, comments: $comments}')
-
-RESPONSE=$(curl -sS -X POST \
-    -H "Accept: application/vnd.github+json" \
-    -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-    -H "X-GitHub-Api-Version: 2022-11-28" \
-    "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/pulls/${PR_NUMBER}/reviews" \
-    -d "${PAYLOAD}")
-
-REVIEW_ID=$(echo "${RESPONSE}" | jq -r '.id // empty')
-
-if [ -n "${REVIEW_ID}" ]; then
-    echo "✅ Review created successfully!"
-    echo "Review ID: ${REVIEW_ID}"
-    echo "Review URL: https://github.com/${REPO_OWNER}/${REPO_NAME}/pull/${PR_NUMBER}"
-else
-    echo "❌ Failed to create review" >&2
-    echo "Response: ${RESPONSE}" >&2
-    exit 1
-fi
-```
-
-Choose the review `event` value based on the overall assessment:
-
-- `COMMENT` for informational reviews
-- `REQUEST_CHANGES` when blocking issues exist
-- `APPROVE` only when explicitly requested by the user
-
-## Outputs
-
-After the skill runs, the user has:
-
-- `.copilot-tracking/pr-analysis-${prNumber}.md`
-- `.copilot-tracking/pr-review-${prNumber}.md`
-- `.copilot-tracking/pr-review-${prNumber}.sh` (not executed)
-
-Report the three file paths and remind the user to set `GITHUB_TOKEN` and run the script themselves to post the review.
+Report one overall outcome: **No findings**, **Comments** (advisory), or **Request changes** (at least one blocking issue). Approve only when the user explicitly asks and you have authority in the active review surface.
 
 ## Example Prompts
 
 - `/radius-code-review Review PR #1234`
-- `/radius-code-review Generate review artifacts for radius-project/radius#5678`
-- `/radius-code-review Produce a review and posting script for the active PR`
+- `/radius-code-review Review radius-project/radius#5678`
+- `/radius-code-review Draft review comments for the active PR`
 
-## Quality Checklist
+## Checklist
 
-Before finishing:
-
-- [ ] `.copilot-tracking/` exists and contains all three artifacts
-- [ ] Analysis covers every changed file in the PR
-- [ ] Review comments are specific, actionable, and free of generic praise
-- [ ] Every comment records an anchor snippet, and each cited line number was resolved by `grep`/`sed` against the file (never typed from memory)
-- [ ] Line-number verification (Step 3) was run and every printed line matches its anchor
-- [ ] All cited file paths and line numbers match the PR diff
-- [ ] Generated script passes `shellcheck -x` with no errors (variables quoted, JSON built via `jq`)
-- [ ] Script uses the resolved head commit SHA, not `HEAD`
-- [ ] Script was created but not executed
-- [ ] Contributor doc impact assessed via `radius-contributing-docs-updater`
+- [ ] Latest head fetched; merge base and changed files recomputed
+- [ ] Rubric and language instructions applied
+- [ ] Findings are specific, actionable, and high-confidence
+- [ ] Cited paths and line numbers match the current diff
+- [ ] Existing discussion checked to avoid duplicate comments
+- [ ] Documentation impact assessed
