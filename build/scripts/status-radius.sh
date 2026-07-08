@@ -3,7 +3,7 @@
 # Get debug directory from environment or default
 DEBUG_DEV_ROOT=${DEBUG_DEV_ROOT:-"$(pwd)/debug_files"}
 
-cd "$DEBUG_DEV_ROOT"
+cd "$DEBUG_DEV_ROOT" || exit 1
 
 echo "📊 Radius Component Status:"
 echo "=========================="
