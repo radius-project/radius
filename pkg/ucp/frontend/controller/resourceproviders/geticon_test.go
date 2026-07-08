@@ -91,6 +91,8 @@ func TestGetIcon_Success(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "image/svg+xml; charset=utf-8", rec.Header().Get("Content-Type"))
 	require.Equal(t, "public, max-age=31536000, immutable", rec.Header().Get("Cache-Control"))
+	require.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
+	require.Equal(t, "default-src 'none'; style-src 'unsafe-inline'; sandbox", rec.Header().Get("Content-Security-Policy"))
 	require.Equal(t, testIconSVG, rec.Body.String())
 }
 

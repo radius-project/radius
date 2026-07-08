@@ -96,6 +96,13 @@ type iconResponse struct {
 func (r *iconResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	w.Header().Set("Content-Type", "image/svg+xml; charset=utf-8")
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	// Defense in depth: ValidateIcon already rejects <script>, on* handlers,
+	// <foreignObject>, and external href references before storage. These
+	// headers harden the response against MIME-sniffing and neutralize any
+	// residual active content if a client (e.g. a browser) navigates to the
+	// icon URL top-level rather than embedding it via <img>.
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
 	w.WriteHeader(http.StatusOK)
 	_, err := w.Write([]byte(r.content))
 	return err
