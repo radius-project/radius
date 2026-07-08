@@ -18,16 +18,11 @@ Contributors and reviewers might communicate about a pull-request outside Github
 
 ### Optional: AI-assisted review with the `radius-code-review` skill
 
-If you use GitHub Copilot (CLI or the VS Code extension), the repository ships an opinionated skill at [`.github/skills/radius-code-review/SKILL.md`](../../../../.github/skills/radius-code-review/SKILL.md) that produces a structured review for a given pull-request. The skill generates three artifacts under `.copilot-tracking/`:
-
-- `pr-analysis-<n>.md` — per-file analysis of the changes
-- `pr-review-<n>.md` — review comments and overall assessment
-- `pr-review-<n>.sh` — a shell script that posts the review via the GitHub REST API
+If you use GitHub Copilot (CLI or the VS Code extension), the repository ships an opinionated skill at [`.github/skills/radius-code-review/SKILL.md`](../../../../.github/skills/radius-code-review/SKILL.md) that produces a structured review for a given pull-request. The skill reviews the latest PR head, returns concise findings in chat, and can stage comments in the active PR review surface when that capability is available.
 
 **Prerequisites**
 
 - Authenticated [`gh` CLI](https://cli.github.com/) (the skill uses it to fetch PR metadata and diffs).
-- [`jq`](https://jqlang.org/) installed locally (the generated posting script depends on it).
 - One of:
   - The [GitHub Copilot app](https://github.com/features/copilot).
   - [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-cli), or
@@ -41,7 +36,7 @@ Run the CLI from the repository root, then in the chat session enter:
 /radius-code-review Review PR #<pr-number>
 ```
 
-The skill is auto-discovered from `.github/skills/`. It will fetch the PR, analyze each changed file, and write the three artifacts to `.copilot-tracking/`.
+The skill is auto-discovered from `.github/skills/`. It will fetch the latest PR state, analyze each changed file, and return the review findings in chat, or stage comments in the active review surface when that capability is available.
 
 **From the GitHub Copilot app**
 
@@ -57,7 +52,7 @@ You can also use:
 /radius-code-review Review PR #<pr-number>
 ```
 
-The app will invoke the skill, then generate the same `.copilot-tracking/` artifacts as the CLI flow.
+The app will invoke the skill, then return the same review findings as the CLI flow, or stage comments in the active review surface when that capability is available.
 
 **From VS Code Copilot Chat**
 
@@ -72,7 +67,7 @@ VS Code will pick up `.github/prompts/radius.code-review.prompt.md` and prompt y
 **Reviewer responsibilities still apply**
 
 - **You own the review.** AI-generated feedback is a starting point, not the final word. Read each comment, drop the ones that are wrong or low-value, and refine the rest before posting.
-- **Verify line numbers, paths, and claims against the actual diff.** The skill produces a script you can edit; do not run it blind.
+- **Verify line numbers, paths, and claims against the actual diff.** Review every staged or suggested comment before posting it.
 - The rest of this document (philosophy, what good feedback looks like, the code-review pyramid) applies equally whether your first draft came from the skill or from your own reading.
 
 ## Philosophy
