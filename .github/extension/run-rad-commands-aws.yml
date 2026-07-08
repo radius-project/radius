@@ -22,7 +22,7 @@ on:
         required: false
         default: ''
       rad_commands:
-        description: 'rad CLI command string, or JSON array of command strings (rad prefix omitted, run verbatim). Overrides the default deploy.'
+        description: 'rad CLI command string, or JSON array of command strings (rad prefix omitted; split on whitespace, so arguments with spaces are not supported). Overrides the default deploy.'
         type: string
         required: false
         default: ''

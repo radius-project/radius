@@ -24,10 +24,11 @@ on:
         # JSON-encoded array of command strings run in order, with the `rad` prefix
         # omitted (e.g. `deploy .radius/app.bicep --environment dev` or
         # `["deploy .radius/app.bicep --environment dev", "app graph my-app -o json"]`).
-        # Commands run verbatim, so the caller must include any flags a command needs.
+        # Each command string is split on whitespace; arguments containing spaces are
+        # not supported. The caller must include any flags a command needs.
         # Each command is validated against the allowed-command set before anything
         # runs. When empty, the workflow runs its default `rad deploy` of the app file.
-        description: 'rad CLI command string, or JSON array of command strings (rad prefix omitted, run verbatim). Overrides the default deploy.'
+        description: 'rad CLI command string, or JSON array of command strings (rad prefix omitted; split on whitespace, so arguments with spaces are not supported). Overrides the default deploy.'
         required: false
         default: ''
   # Auto-trigger after the Verify Credentials workflow completes. The extension's
