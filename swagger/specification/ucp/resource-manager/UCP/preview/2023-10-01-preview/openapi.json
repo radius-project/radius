@@ -1422,6 +1422,13 @@
             "type": "string",
             "maxLength": 63,
             "pattern": "^([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))\\.([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))?$"
+          },
+          {
+            "name": "includeIcons",
+            "in": "query",
+            "description": "When true, resource type icon bytes are included in the response. When false or omitted, only the icon hash is returned.",
+            "required": false,
+            "type": "boolean"
           }
         ],
         "responses": {
@@ -2539,6 +2546,84 @@
           "final-state-via": "location"
         },
         "x-ms-long-running-operation": true
+      }
+    },
+    "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}/icons/{hash}": {
+      "get": {
+        "operationId": "ResourceTypes_GetIcon",
+        "tags": [
+          "ResourceTypes"
+        ],
+        "description": "Get the icon bytes stored for the specified resource type, addressed by the SHA-256 hash of those bytes. Returns the verbatim SVG file content with Content-Type: image/svg+xml and an immutable Cache-Control. If the hash does not match the stored icon, or the resource type has no icon, returns 404.",
+        "produces": [
+          "image/svg+xml",
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeName",
+            "in": "path",
+            "description": "The plane name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$"
+          },
+          {
+            "name": "resourceProviderName",
+            "in": "path",
+            "description": "The resource provider name. This is also the resource provider namespace. Example: 'Applications.Datastores'.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))\\.([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))?$"
+          },
+          {
+            "name": "resourceTypeName",
+            "in": "path",
+            "description": "The resource type name.",
+            "required": true,
+            "type": "string",
+            "maxLength": 63,
+            "pattern": "^([A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9]))$"
+          },
+          {
+            "name": "hash",
+            "in": "path",
+            "description": "The SHA-256 hash of the icon's SVG bytes, as a lowercase hex string.",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The response body for fetching a resource type's icon bytes.",
+            "schema": {
+              "type": "file"
+            },
+            "headers": {
+              "cache-control": {
+                "type": "string",
+                "description": "Caching hint. Icon bytes are content-addressed by SHA-256 and safe to cache immutably.",
+                "enum": [
+                  "public, max-age=31536000, immutable"
+                ],
+                "x-ms-enum": {
+                  "modelAsString": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
       }
     },
     "/planes/radius/{planeName}/resourcegroups": {
@@ -3993,10 +4078,32 @@
         "description": {
           "type": "string",
           "description": "Description of the resource type."
+        },
+        "icon": {
+          "type": "string",
+          "description": "The verbatim SVG icon content associated with the resource type, carried as a UTF-8 string."
+        },
+        "iconHash": {
+          "type": "string",
+          "description": "The SHA-256 hash of the icon's SVG bytes, computed by the control plane."
         }
       },
       "required": [
         "apiVersions"
+      ]
+    },
+    "ResourceTypeIconResponse": {
+      "type": "object",
+      "description": "The response body for fetching a resource type's icon bytes.",
+      "properties": {
+        "body": {
+          "type": "string",
+          "format": "byte",
+          "description": "The verbatim SVG file content stored for the resource type."
+        }
+      },
+      "required": [
+        "body"
       ]
     },
     "ResourceTypeNameString": {
@@ -4028,6 +4135,15 @@
         "description": {
           "type": "string",
           "description": "Description of the resource type."
+        },
+        "icon": {
+          "type": "string",
+          "description": "The verbatim SVG file content of the icon associated with the resource type, carried as a UTF-8 string. Set by 'rad resource-type create --icon <path>'."
+        },
+        "iconHash": {
+          "type": "string",
+          "description": "The SHA-256 hash of the icon's SVG bytes. Computed by the control plane and used to content-address the icon.",
+          "readOnly": true
         }
       }
     },

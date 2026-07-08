@@ -44,7 +44,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Create or update a resource type",
 		Long: `Create or update a resource type from a resource type definition file.
 
-Resource types define the resources that Radius can deploy and the API for those resources. They are defined by a name, one or more API versions, and an OpenAPI schema. 
+Resource types define the resources that Radius can deploy and the API for those resources. They are defined by a name, one or more API versions, and an OpenAPI schema.
 
 Input can be passed in using a JSON or YAML file using the --from-file option.
 
@@ -61,7 +61,7 @@ rad resource-type create myType --from-file /path/to/input.json
 
 # Create all resource types from a YAML file
 rad resource-type create --from-file /path/to/input.yaml
- 
+
 # Create all resource types from a JSON file
 rad resource-type create --from-file /path/to/input.json
 `,
@@ -72,6 +72,7 @@ rad resource-type create --from-file /path/to/input.json
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddFromFileFlagVar(cmd, &runner.ResourceProviderManifestFilePath)
+	cmd.Flags().StringVar(&runner.IconFilePath, "icon", "", "Path to an SVG file to associate with the resource type(s) being created. The icon's bytes and a SHA-256 hash are stored with the resource type.")
 
 	return cmd, runner
 }
@@ -87,6 +88,10 @@ type Runner struct {
 	ResourceProviderManifestFilePath string
 	ResourceProvider                 *manifest.ResourceProvider
 	ResourceTypeName                 string
+
+	// IconFilePath is the optional path to an SVG file whose bytes and hash are
+	// stored alongside the resource type(s) being created.
+	IconFilePath string
 }
 
 // NewRunner creates an instance of the runner for the `rad resource-type create` command.
@@ -125,6 +130,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if !ok {
 			return clierrors.Message("Resource type %q not found in the manifest", r.ResourceTypeName)
 		}
+	}
+
+	if r.IconFilePath != "" && r.ResourceTypeName == "" && len(resourcesTypes) > 1 {
+		return clierrors.Message("The --icon flag can only be used with a single resource type. When the manifest defines multiple types, specify a single type to register: rad resource-type create <typeName> --from-file <file> --icon <path>")
 	}
 
 	return nil
@@ -172,7 +181,7 @@ func (r *Runner) registerTypes(ctx context.Context, typeNames []string) error {
 
 	// Register each type individually and emit a single concise line per type.
 	for _, typeName := range typesToRegister {
-		err = manifest.RegisterType(ctx, r.UCPClientFactory, defaultPlaneName, r.ResourceProviderManifestFilePath, typeName, nil)
+		err = manifest.RegisterType(ctx, r.UCPClientFactory, defaultPlaneName, r.ResourceProviderManifestFilePath, typeName, r.IconFilePath, nil)
 		if err != nil {
 			return err
 		}

@@ -83,12 +83,19 @@ func (r *GetResourceProviderSummary) Run(ctx context.Context, w http.ResponseWri
 		return nil, err
 	}
 
-	response, err := r.createResponse(ctx, result)
+	response, err := r.createResponse(ctx, result, includeIcons(req))
 	if err != nil {
 		return nil, err
 	}
 
 	return armrpc_rest.NewOKResponse(response), nil
+}
+
+// includeIcons reports whether the caller opted into icon bytes via the
+// includeIcons=true query parameter. Absent or any other value means false, so
+// the response carries icon hashes only (FR-015 of the resource-type icons spec).
+func includeIcons(req *http.Request) bool {
+	return strings.EqualFold(req.URL.Query().Get("includeIcons"), "true")
 }
 
 func (r *GetResourceProviderSummary) extractScopeAndName(relativePath string) (resources.ID, string, error) {
@@ -117,13 +124,23 @@ func (r *GetResourceProviderSummary) extractScopeAndName(relativePath string) (r
 	return scope, name, nil
 }
 
-func (r *GetResourceProviderSummary) createResponse(ctx context.Context, result *database.Object) (any, error) {
+func (r *GetResourceProviderSummary) createResponse(ctx context.Context, result *database.Object, includeIcons bool) (any, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	summary := datamodel.ResourceProviderSummary{}
 	err := result.As(&summary)
 	if err != nil {
 		return nil, err
+	}
+
+	// Icon bytes are only returned when the caller opts in with includeIcons=true.
+	// The icon hash is always retained so consumers can content-address the icon
+	// via the icon endpoint (FR-015).
+	if !includeIcons {
+		for name, resourceType := range summary.Properties.ResourceTypes {
+			resourceType.Icon = nil
+			summary.Properties.ResourceTypes[name] = resourceType
+		}
 	}
 
 	return converter.ResourceProviderSummaryDataModelToVersioned(&summary, serviceCtx.APIVersion)

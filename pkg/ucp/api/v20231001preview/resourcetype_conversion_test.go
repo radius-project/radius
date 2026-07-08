@@ -17,6 +17,8 @@ limitations under the License.
 package v20231001preview
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"testing"
 
@@ -114,6 +116,110 @@ func Test_ResourceType_DataModelToVersioned(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_ResourceType_Icon_VersionedToDataModel(t *testing.T) {
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg"></svg>`
+	sum := sha256.Sum256([]byte(svg))
+	expectedHash := hex.EncodeToString(sum[:])
+
+	t.Run("icon present is stored verbatim and hashed server-side", func(t *testing.T) {
+		versioned := &ResourceTypeResource{
+			ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
+			Name: to.Ptr("testResources"),
+			Properties: &ResourceTypeProperties{
+				Icon: to.Ptr(svg),
+			},
+		}
+
+		dm, err := versioned.ConvertTo()
+		require.NoError(t, err)
+
+		rt := dm.(*datamodel.ResourceType)
+		require.NotNil(t, rt.Properties.Icon)
+		require.Equal(t, svg, *rt.Properties.Icon)
+		require.NotNil(t, rt.Properties.IconHash)
+		require.Equal(t, expectedHash, *rt.Properties.IconHash)
+	})
+
+	t.Run("no icon leaves icon and hash unset", func(t *testing.T) {
+		versioned := &ResourceTypeResource{
+			ID:         to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
+			Name:       to.Ptr("testResources"),
+			Properties: &ResourceTypeProperties{},
+		}
+
+		dm, err := versioned.ConvertTo()
+		require.NoError(t, err)
+
+		rt := dm.(*datamodel.ResourceType)
+		require.Nil(t, rt.Properties.Icon)
+		require.Nil(t, rt.Properties.IconHash)
+	})
+}
+
+func Test_ResourceType_ConvertTo_RejectsInvalidIcon(t *testing.T) {
+	tests := []struct {
+		name    string
+		icon    string
+		wantErr string
+	}{
+		{
+			name:    "not svg",
+			icon:    "<html><body/></html>",
+			wantErr: "invalid icon",
+		},
+		{
+			name:    "script element",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`,
+			wantErr: "invalid icon",
+		},
+		{
+			name:    "event handler",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>`,
+			wantErr: "invalid icon",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			versioned := &ResourceTypeResource{
+				ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
+				Name: to.Ptr("testResources"),
+				Properties: &ResourceTypeProperties{
+					Icon: to.Ptr(tc.icon),
+				},
+			}
+			_, err := versioned.ConvertTo()
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.wantErr)
+		})
+	}
+}
+
+func Test_ResourceType_Icon_DataModelToVersioned(t *testing.T) {
+	dm := &datamodel.ResourceType{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources",
+				Name: "testResources",
+				Type: datamodel.ResourceTypeResourceType,
+			},
+		},
+		Properties: datamodel.ResourceTypeProperties{
+			Capabilities: []string{},
+			Icon:         to.Ptr(`<svg/>`),
+			IconHash:     to.Ptr("abc123"),
+		},
+	}
+
+	versioned := &ResourceTypeResource{}
+	err := versioned.ConvertFrom(dm)
+	require.NoError(t, err)
+
+	require.NotNil(t, versioned.Properties.Icon)
+	require.Equal(t, `<svg/>`, *versioned.Properties.Icon)
+	require.NotNil(t, versioned.Properties.IconHash)
+	require.Equal(t, "abc123", *versioned.Properties.IconHash)
 }
 
 func Test_validateCapability(t *testing.T) {
