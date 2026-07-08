@@ -14,6 +14,7 @@
 #   4. Commit the updated files (defaults.yaml, go.mod, go.sum, and copied YAMLs).
 defaultRegistration:
   - Radius.Compute/containers
+  - Radius.Compute/containerImages
   - Radius.Compute/persistentVolumes
   - Radius.Compute/routes
   - Radius.Security/secrets
