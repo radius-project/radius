@@ -36,7 +36,7 @@ Run the CLI from the repository root, then in the chat session enter:
 /radius-code-review Review PR #<pr-number>
 ```
 
-The skill is auto-discovered from `.github/skills/`. It will fetch the latest PR state, analyze each changed file, and return the review findings in chat or stage comments in the active review surface.
+The skill is auto-discovered from `.github/skills/`. It will fetch the latest PR state, analyze each changed file, and return the review findings in chat, or stage comments in the active review surface when that capability is available.
 
 **From the GitHub Copilot app**
 
@@ -52,7 +52,7 @@ You can also use:
 /radius-code-review Review PR #<pr-number>
 ```
 
-The app will invoke the skill, then return the same review findings as the CLI flow or stage comments in the active review surface.
+The app will invoke the skill, then return the same review findings as the CLI flow, or stage comments in the active review surface when that capability is available.
 
 **From VS Code Copilot Chat**
 

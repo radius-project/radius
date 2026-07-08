@@ -73,7 +73,7 @@ Suggested workflow:
    - **GitHub Copilot app**: open Copilot for this repository and ask `Use the radius-code-review skill to review PR #<your-pr-number>.` (or `/radius-code-review Review PR #<your-pr-number>`).
    - **Copilot CLI** (from the repo root): `/radius-code-review Review PR #<your-pr-number>`
    - **VS Code Copilot Chat**: type `/radius.code-review` in the chat input; VS Code will pick up `.github/prompts/radius.code-review.prompt.md` and prompt you for the PR number.
-3. Read the findings the skill returns in chat or stages in the active PR review surface. Treat the output as a draft, not a verdict.
+3. Read the findings the skill returns in chat, or stages in the active PR review surface when that capability is available. Treat the output as a draft, not a verdict.
 4. Apply the fixes you agree with, push the updates, and discard or push back on the suggestions you disagree with.
 5. Do **not** post AI-generated review text to your own PR as-is. A human reviewer's review is still required for merge.
 
