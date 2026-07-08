@@ -26,10 +26,12 @@ runs:
 
     - name: Create ephemeral Radius control plane cluster
       shell: bash
+      env:
+        GITHUB_WORKSPACE_SAFE: ${{ github.workspace }}
       run: |
         k3d cluster create radius-cp \
           --volume /var/run/docker.sock:/var/run/docker.sock \
-          --volume "${{ github.workspace }}/:/app/demo" \
+          --volume "${GITHUB_WORKSPACE_SAFE}/:/app/demo" \
           --k3s-arg "--disable=traefik@server:*" \
           --wait
         kubectl wait --for=condition=Ready node --all --timeout=120s
