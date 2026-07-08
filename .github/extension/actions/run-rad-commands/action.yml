@@ -117,6 +117,40 @@ runs:
           sed -i '/^extension radius$/a extension radiusCompute' "$APP_FILE" 2>/dev/null || true
         fi
 
+        # Ensure the repo's own bicepconfig.json (next to the app file) declares the
+        # containerImages Bicep extension so `rad deploy` can resolve
+        # Radius.Compute/containerImages. bicep resolves the config nearest the .bicep
+        # file, so we update the one beside $APP_FILE. The radiuscompute.tgz tarball is
+        # built at the workspace root by the register-resource-types action; the alias
+        # path is therefore relative to the bicepconfig's own directory. We edit the
+        # working copy ONLY — nothing is committed back to the repo. An existing config
+        # is merged in place (adding only radiusCompute + the extensibility flag when
+        # missing, never clobbering the user's other settings); a missing one is created.
+        APP_DIR=$(dirname "$APP_FILE")
+        BICEPCONFIG="$APP_DIR/bicepconfig.json"
+        TGZ_REF=$(python3 -c "import os,sys; r=os.path.relpath('radiuscompute.tgz', sys.argv[1]); print(r if r.startswith('.') else './'+r)" "$APP_DIR")
+        if [ -f "$BICEPCONFIG" ]; then
+          echo "Merging radiusCompute extension into existing $BICEPCONFIG"
+          tmp=$(mktemp)
+          jq --arg tgz "$TGZ_REF" '
+            .experimentalFeaturesEnabled = ((.experimentalFeaturesEnabled // {}) + {extensibility: true})
+            | .extensions = (.extensions // {})
+            | (if (.extensions | has("radiusCompute")) then . else .extensions.radiusCompute = $tgz end)
+          ' "$BICEPCONFIG" > "$tmp" && mv "$tmp" "$BICEPCONFIG"
+        else
+          echo "Creating $BICEPCONFIG with Radius extensions"
+          mkdir -p "$APP_DIR"
+          jq -n --arg tgz "$TGZ_REF" '{
+            experimentalFeaturesEnabled: { extensibility: true },
+            extensions: {
+              radius: "br:biceptypes.azurecr.io/radius:latest",
+              radiusCompute: $tgz
+            }
+          }' > "$BICEPCONFIG"
+        fi
+        echo "Deployment bicepconfig ($BICEPCONFIG):"
+        cat "$BICEPCONFIG"
+
 
         # Aggregate result accumulators. The result is written by a trap on EXIT so
         # the combined `rad-commands-result` artifact is complete even when a command
