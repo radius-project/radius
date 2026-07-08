@@ -150,17 +150,14 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 		status["outputResources"] = outputResources
 	}
 
-	// Store computed values and secrets as separate maps under status.
+	// Store computed values under status. Secret values are intentionally NOT stored here: recipe secret
+	// outputs are materialized into a managed Radius.Security/secrets resource by the dynamic processor,
+	// and only a reference to that resource is exposed on the owner. Persisting secret plaintext (or
+	// ciphertext) on the owner resource is never allowed.
 	computedValues := map[string]any{}
 	maps.Copy(computedValues, deploymentOutput.ComputedValues)
 	if len(computedValues) > 0 {
 		status["computedValues"] = computedValues
-	}
-
-	secrets := map[string]rpv1.SecretValueReference{}
-	maps.Copy(secrets, deploymentOutput.SecretValues)
-	if len(secrets) > 0 {
-		status["secrets"] = secrets
 	}
 
 	return nil

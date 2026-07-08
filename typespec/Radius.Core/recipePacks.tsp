@@ -71,6 +71,9 @@ model RecipeDefinition {
 
   @doc("Map of resource type property names to module output names. Used for recipes that point directly at a Bicep or Terraform module to map the module's outputs onto the resource's properties.")
   outputs?: Record<string>;
+
+  @doc("Map of secret resource type property names to module output names. Like `outputs`, but a `secretOutputs` entry always routes its module output to the resource's secret outputs regardless of how the module classified it. Used to map an output such as an AVM module's `primaryConnectionString` onto a declared secret.")
+  secretOutputs?: Record<string>;
 }
 
 @doc("The type of recipe")

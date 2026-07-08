@@ -33,6 +33,9 @@
           "host": "redis_host",
           "port": "redis_port"
         },
+        "secretOutputs": {
+          "connectionString": "redis_connection_string"
+        },
         "plainHttp": true
       }
     }

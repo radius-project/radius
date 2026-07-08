@@ -50,6 +50,24 @@ GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 test: test-get-envtools test-helm ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
 
+# SECRETS_PACKAGES enumerates the Go packages that implement recipe secret input/output handling:
+# the schema `secrets` block, managed Radius.Security/secrets materialization, the recipe output and
+# secretOutputs mappings, and the dynamic-rp processor/controllers that wire them together. Keep this
+# list in sync when the secret-handling code moves. These packages do not need cluster tooling
+# (KUBEBUILDER_ASSETS / helm), so `test-secrets` stays fast for focused local and CI feedback.
+SECRETS_PACKAGES ?= \
+	./pkg/schema/... \
+	./pkg/resourceutil/... \
+	./pkg/recipes/... \
+	./pkg/corerp/api/v20250801preview/... \
+	./pkg/corerp/datamodel/... \
+	./pkg/dynamicrp/...
+
+.PHONY: test-secrets
+test-secrets: ## Runs go vet and unit tests for the recipe secret-handling packages (fast; no cluster tooling required)
+	go vet $(SECRETS_PACKAGES)
+	CGO_ENABLED=1 $(GOTEST_TOOL) $(SECRETS_PACKAGES) $(GOTEST_OPTS)
+
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
 	@echo "$(ARROW) Compiling unit tests..."

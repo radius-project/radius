@@ -103,6 +103,9 @@ func toRecipesDataModel(recipes map[string]*RecipeDefinition) map[string]*datamo
 			if recipe.Outputs != nil {
 				definition.Outputs = to.StringMap(recipe.Outputs)
 			}
+			if recipe.SecretOutputs != nil {
+				definition.SecretOutputs = to.StringMap(recipe.SecretOutputs)
+			}
 			result[key] = definition
 		}
 	}
@@ -125,6 +128,9 @@ func fromRecipesDataModel(recipes map[string]*datamodel.RecipeDefinition) map[st
 			}
 			if recipe.Outputs != nil {
 				definition.Outputs = *to.StringMapPtr(recipe.Outputs)
+			}
+			if recipe.SecretOutputs != nil {
+				definition.SecretOutputs = *to.StringMapPtr(recipe.SecretOutputs)
 			}
 			result[key] = definition
 		}

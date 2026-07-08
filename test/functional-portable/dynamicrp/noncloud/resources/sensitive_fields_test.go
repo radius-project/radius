@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/radius-project/radius/test"
@@ -119,7 +120,7 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 			SkipObjectValidation:                   true,
 			SkipResourceDeletion:                   true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
-				verifySensitiveFieldRedaction(ctx, t, ct, resourceTypeName, resourceName, appNamespace,
+				verifySensitiveFieldRedaction(ctx, t, ct, resourceTypeName, resourceName, appName, appNamespace,
 					createPassword, createAPIKey, createCredentialSecret, createConnectionConfigURL, createConnectionConfigToken)
 			},
 		},
@@ -152,7 +153,7 @@ func Test_DynamicRP_SensitiveFieldEncryption(t *testing.T) {
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
-				verifySensitiveFieldRedaction(ctx, t, ct, resourceTypeName, resourceName, appNamespace,
+				verifySensitiveFieldRedaction(ctx, t, ct, resourceTypeName, resourceName, appName, appNamespace,
 					updatePassword, updateAPIKey, updateCredentialSecret, updateConnectionConfigURL, updateConnectionConfigToken)
 			},
 		},
@@ -167,7 +168,7 @@ func verifySensitiveFieldRedaction(
 	ctx context.Context,
 	t *testing.T,
 	ct rp.RPTest,
-	resourceTypeName, resourceName, appNamespace string,
+	resourceTypeName, resourceName, appName, appNamespace string,
 	expectedPassword, expectedAPIKey, expectedCredentialSecret, expectedConnectionConfigURL, expectedConnectionConfigToken string,
 ) {
 	t.Helper()
@@ -249,4 +250,53 @@ func verifySensitiveFieldRedaction(
 		"K8s Secret should contain the decrypted connectionConfig url")
 	require.Equal(t, expectedConnectionConfigToken, string(k8sSecret.Data["connectionConfigToken"]),
 		"K8s Secret should contain the decrypted connectionConfig token")
+
+	// --- No-leak verification: secret values must not surface through `rad resource show` or the app graph ---
+	verifySecretsNotExposed(ctx, t, ct, appName, resourceTypeName, resourceName,
+		[]string{expectedPassword, expectedAPIKey, expectedCredentialSecret, expectedConnectionConfigToken})
+}
+
+// verifySecretsNotExposed asserts that none of the provided secret values are exposed through the two
+// developer-facing read paths: the resource GET response (what `rad resource show` renders) and the
+// application graph (`rad app graph`). Both are serialized to JSON and checked for the raw secret values,
+// which is a strong, path-agnostic guarantee that secrets do not leak regardless of nesting. It also
+// asserts the resource is actually present in the graph so the graph check is not vacuous.
+func verifySecretsNotExposed(
+	ctx context.Context,
+	t *testing.T,
+	ct rp.RPTest,
+	appName, resourceTypeName, resourceName string,
+	secretValues []string,
+) {
+	t.Helper()
+
+	// rad resource show: the serialized GET response must not contain any secret value.
+	resource, err := ct.Options.ManagementClient.GetResource(ctx, resourceTypeName, resourceName)
+	require.NoError(t, err)
+	resourceJSON, err := json.Marshal(resource)
+	require.NoError(t, err)
+	for _, secret := range secretValues {
+		require.NotContains(t, string(resourceJSON), secret,
+			"secret value must not appear in the resource GET response (rad resource show)")
+	}
+
+	// rad app graph: the serialized application graph must not contain any secret value.
+	graph, err := ct.Options.ManagementClient.GetApplicationGraph(ctx, appName)
+	require.NoError(t, err)
+	graphJSON, err := json.Marshal(graph)
+	require.NoError(t, err)
+	for _, secret := range secretValues {
+		require.NotContains(t, string(graphJSON), secret,
+			"secret value must not appear in the application graph (rad app graph)")
+	}
+
+	// The graph no-leak check is only meaningful if the resource is actually part of the graph.
+	found := false
+	for _, res := range graph.Resources {
+		if res != nil && res.Name != nil && *res.Name == resourceName {
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "resource %s should be present in the application graph", resourceName)
 }

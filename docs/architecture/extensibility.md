@@ -415,14 +415,85 @@ The engine
 7. Returns a `RecipeOutput` (`Resources`, `Values`, `Secrets`) to the
   controller.
 
-The dynamic resource processor records deployed resources, computed values,
-and secret references under status. It uses the registered schema as a filter
-when copying computed or secret values back into top-level resource
-properties, so recipe output only becomes user-visible when the property name
-exists in the schema and is not one of the basic Radius properties. The
-processor does not currently validate dynamic recipe output against the full
-registered schema; [pkg/dynamicrp/backend/processor/dynamicresource.go](../../pkg/dynamicrp/backend/processor/dynamicresource.go)
+The dynamic resource processor records deployed resources and computed values
+under status. It uses the registered schema as a filter when copying computed
+values back into top-level resource properties, so recipe output only becomes
+user-visible when the property name exists in the schema and is not one of the
+basic Radius properties. The processor does not currently validate dynamic
+recipe output against the full registered schema;
+[pkg/dynamicrp/backend/processor/dynamicresource.go](../../pkg/dynamicrp/backend/processor/dynamicresource.go)
 contains a TODO noting that schema-driven output validation is bypassed.
+
+### Recipe Secret Outputs
+
+Recipe **secret** outputs (`RecipeOutput.Secrets`) are handled separately from
+computed values, and are never persisted on the owning resource — not as
+plaintext and not as ciphertext. A resource type declares which recipe outputs
+are secrets with a top-level `secrets` object property in its schema:
+
+```yaml
+properties:
+  host:
+    type: string
+    readOnly: true
+  secrets:
+    type: object
+    readOnly: true
+    properties:
+      connectionString:
+        type: string
+        readOnly: true
+```
+
+After a recipe runs, the dynamic processor
+([pkg/dynamicrp/backend/processor/dynamicresource.go](../../pkg/dynamicrp/backend/processor/dynamicresource.go)):
+
+1. Reads the declared secret keys from the schema's `secrets` block via
+   [`schema.GetSecretsBlock`](../../pkg/schema/secrets.go).
+2. Collects the recipe secret outputs whose keys match those declared keys.
+   Secret outputs with no matching declared key are dropped, never stored.
+3. Materializes a single Radius-managed `Radius.Security/secrets` resource for
+   the owner via
+   [pkg/dynamicrp/backend/secret](../../pkg/dynamicrp/backend/secret). The
+   managed secret is named `<owner>-secrets`, carries the owner's environment
+   and application, and holds the secret key/values as its sensitive `data`.
+   Because it is a normal `Radius.Security/secrets` resource, it flows through
+   the usual encrypt-at-rest → recipe → Kubernetes Secret → redact path, so the
+   plaintext lives only in the backing Kubernetes Secret.
+4. Sets a read-only `secret` reference on the owner
+   (`properties.secret = { name, id }`) pointing at the managed secret.
+
+A recipe produces secret outputs in one of two ways. A wrapped recipe returns them
+under `result.secrets`. A direct module (for example an AVM Bicep or Terraform
+module) maps them with the recipe pack's `secretOutputs` field
+(`pkg/recipes/util.ApplyOutputsMapping`), which routes a named module output to the
+recipe's secrets regardless of whether the module itself declared it sensitive — the
+plain `outputs` map only routes an output to secrets when the module marks it sensitive
+(`@secure()` in Bicep, `sensitive = true` in Terraform).
+
+A consuming container binds to the secret by name — it never reads the value
+from the owner's state:
+
+```bicep
+env: {
+  KAFKA_CONNECTIONSTRING: {
+    valueFrom: {
+      secretKeyRef: { key: 'connectionString', secretName: kafka.properties.secret.name }
+    }
+  }
+}
+```
+
+When the owner resource is deleted, its delete controller cascade-deletes the
+managed secret. `secrets` and `secret` are treated as framework-owned basic
+properties (see `pkg/resourceutil.BasicProperties`) so they are never overwritten
+by generic recipe-output copying.
+
+Secret **inputs** (Scenario 1) are unrelated and already handled by the
+`x-radius-sensitive` encryption filter described under
+[How dynamic-rp Picks A Path](#how-dynamic-rp-picks-a-path). Re-fetching a
+secret's live value from a cloud provider at bind time (Scenario 2) is not yet
+supported: `SecretValueReference` currently carries only a stored value.
 
 ## Delete Invocation
 
@@ -486,6 +557,10 @@ up before the Radius resource record is removed.
 - Dynamic recipe output only becomes user-visible resource properties when
   those properties exist in the registered schema and are not basic Radius
   properties such as `application` or `environment`.
+- Recipe **secret** outputs are never stored on the owning resource. They are
+  materialized into a managed `Radius.Security/secrets` resource, and the owner
+  exposes only a read-only `secret` reference (`{ name, id }`). Secret outputs
+  not declared in the schema's `secrets` block are dropped.
 - Sensitive input fields marked by schema annotations are encrypted by the
   frontend filter when the accepted resource is first stored. During backend
   processing the recipe controller decrypts an in-memory copy for recipe

@@ -395,6 +395,7 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 			TemplateVersion: templateVersion,
 			PlainHTTP:       recipeDefinition.PlainHTTP,
 			Outputs:         recipeDefinition.Outputs,
+			SecretOutputs:   recipeDefinition.SecretOutputs,
 		}
 		return definition, nil
 	}
@@ -482,11 +483,12 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 					plainHTTP = *definition.PlainHTTP
 				}
 				return &recipes.RecipeDefinition{
-					Kind:       string(*definition.Kind),
-					Source:     string(*definition.Source),
-					Parameters: definition.Parameters,
-					PlainHTTP:  plainHTTP,
-					Outputs:    to.StringMap(definition.Outputs),
+					Kind:          string(*definition.Kind),
+					Source:        string(*definition.Source),
+					Parameters:    definition.Parameters,
+					PlainHTTP:     plainHTTP,
+					Outputs:       to.StringMap(definition.Outputs),
+					SecretOutputs: to.StringMap(definition.SecretOutputs),
 				}, nil
 			}
 		}

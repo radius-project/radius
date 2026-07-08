@@ -22,10 +22,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/radius-project/radius/pkg/dynamicrp/backend/secret"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	schemautil "github.com/radius-project/radius/pkg/schema"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"golang.org/x/exp/slices"
@@ -36,12 +38,26 @@ var ErrNoSchemaFound = errors.New("no schema found for resource type")
 
 // DynamicProcessor is a processor for dynamic resources. It implements the processors.ResourceProcessor interface.
 type DynamicProcessor struct {
+	// SecretMaterializer materializes declared recipe secret outputs into a managed Radius.Security/secrets
+	// resource. When nil, secret materialization is skipped and recipe secret outputs are dropped (never
+	// persisted on the owner resource).
+	SecretMaterializer secret.Materializer
 }
 
 // Delete implements the processors.Processor interface for dynamic resources.
-// Deletion of resources is handled in recipe_delete_controller.go and inert_delete_controller.go.
+// Deletion of the recipe-created resources is handled in recipe_delete_controller.go and
+// inert_delete_controller.go. Here we cascade-delete the managed Radius.Security/secrets resource that
+// backs this resource's declared secret outputs, if one was materialized.
 func (d *DynamicProcessor) Delete(ctx context.Context, resource *datamodel.DynamicResource, options processors.Options) error {
-	return nil
+	if d.SecretMaterializer == nil {
+		return nil
+	}
+	// Only resources that materialized a managed secret carry the secret reference; skip the delete call
+	// otherwise to avoid spurious requests.
+	if _, ok := resource.Properties[schemautil.SecretReferencePropertyName]; !ok {
+		return nil
+	}
+	return d.SecretMaterializer.Delete(ctx, resource.ID)
 }
 
 // Process validates resource properties, and applies output values from the recipe output.
@@ -72,71 +88,114 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 		validator.AddOptionalSecretField(key, &strValue)
 	}
 
-	err := validator.SetAndValidate(options.RecipeOutput)
+	if err := validator.SetAndValidate(options.RecipeOutput); err != nil {
+		return err
+	}
+
+	// Persist output resources and computed values. Secret values are never persisted on the owner
+	// resource: they are materialized into a managed Radius.Security/secrets resource below.
+	if err := resource.ApplyDeploymentOutput(rpv1.DeploymentOutput{DeployedOutputResources: outputResources, ComputedValues: computedValues}); err != nil {
+		return err
+	}
+
+	// Fetch the resource type schema once and use it for both computed-value filtering and secret routing.
+	schema, err := getResourceSchema(ctx, options.UcpClient, resource)
 	if err != nil {
 		return err
 	}
 
-	err = resource.ApplyDeploymentOutput(rpv1.DeploymentOutput{DeployedOutputResources: outputResources, ComputedValues: computedValues, SecretValues: secretValues})
+	addComputedValuesToResourceProperties(resource, schema, computedValues)
+
+	return d.materializeDeclaredSecrets(ctx, resource, schema, secretValues)
+}
+
+// getResourceSchema fetches and returns the OpenAPI schema for the resource's type and API version.
+func getResourceSchema(ctx context.Context, ucpClient *v20231001preview.ClientFactory, resource *datamodel.DynamicResource) (map[string]any, error) {
+	raw, err := GetSchemaForResourceType(ctx, ucpClient, resource.ID, resource.InternalMetadata.UpdatedAPIVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	schema, ok := raw.(map[string]any)
+	if !ok {
+		return nil, ErrNoSchemaFound
+	}
+	return schema, nil
+}
+
+// addComputedValuesToResourceProperties copies recipe computed values onto the resource properties when the
+// property name is declared in the schema and is not a framework-owned basic property. This avoids
+// overwriting properties like application, environment, secrets and the secret reference.
+func addComputedValuesToResourceProperties(resource *datamodel.DynamicResource, schema map[string]any, computedValues map[string]any) {
+	resourceProps := schemaPropertyNames(schema)
+	for key, value := range computedValues {
+		if slices.Contains(resourceProps, key) {
+			if resource.Properties == nil {
+				resource.Properties = map[string]any{}
+			}
+			resource.Properties[key] = value
+		}
+	}
+}
+
+// materializeDeclaredSecrets routes recipe secret outputs whose keys are declared in the schema `secrets`
+// block into a managed Radius.Security/secrets resource, and exposes a read-only reference to that resource
+// on the owner. Secret values are never written onto the owner resource. When the resource type declares no
+// `secrets` block, recipe secret outputs are dropped rather than persisted.
+func (d *DynamicProcessor) materializeDeclaredSecrets(ctx context.Context, resource *datamodel.DynamicResource, schema map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
+	declaredKeys, ok := schemautil.GetSecretsBlock(schema)
+	if !ok {
+		return nil
+	}
+
+	data := map[string]string{}
+	for _, key := range declaredKeys {
+		if ref, ok := secretValues[key]; ok {
+			data[key] = ref.Value
+		}
+	}
+	if len(data) == 0 {
+		return nil
+	}
+
+	if d.SecretMaterializer == nil {
+		// No materializer configured (for example in unit tests); skip materialization.
+		return nil
+	}
+
+	result, err := d.SecretMaterializer.Materialize(ctx, secret.Request{
+		OwnerResourceID: resource.ID,
+		EnvironmentID:   resource.ResourceMetadata().EnvironmentID(),
+		ApplicationID:   resource.ResourceMetadata().ApplicationID(),
+		Data:            data,
+	})
 	if err != nil {
 		return err
 	}
 
-	err = addOutputValuestoResourceProperties(ctx, options.UcpClient, resource, computedValues, secretValues)
-	if err != nil {
-		return err
+	if resource.Properties == nil {
+		resource.Properties = map[string]any{}
+	}
+	resource.Properties[schemautil.SecretReferencePropertyName] = map[string]any{
+		"name": result.Name,
+		"id":   result.ID,
 	}
 
 	return nil
 }
 
-// addOutputValuestoResourceProperties adds the computed values and secret values to the resource properties.
-// It retrieves the schema of the resource type and filters out the values that are not part of the schema.
-func addOutputValuestoResourceProperties(ctx context.Context, ucpClient *v20231001preview.ClientFactory, resource *datamodel.DynamicResource, computedValues map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
-
-	ID, err := resources.Parse(resource.ID)
-	if err != nil {
-		return err
-	}
-
-	plane := ID.PlaneNamespace()
-	planeName := strings.Split(plane, "/")[1]
-	resourceProvider := strings.Split(resource.Type, "/")[0]
-	resourceType := strings.Split(resource.Type, "/")[1]
-	apiVersionResource, err := ucpClient.NewAPIVersionsClient().Get(ctx, planeName, resourceProvider, resourceType, resource.InternalMetadata.UpdatedAPIVersion, nil)
-	if err != nil {
-		return err
-	}
-
-	// Filter out the basic properties from the resource properties
-	// This is to avoid overwriting the properties like application, environment etc when they are added as computed values or secret values.
-	resourceProps := []string{}
-	schema := apiVersionResource.APIVersionResource.Properties.Schema
-	if schema != nil {
-		if properties, ok := schema["properties"].(map[string]any); ok {
-			for key := range properties {
-				if !slices.Contains(resourceutil.BasicProperties, key) {
-					resourceProps = append(resourceProps, key)
-				}
+// schemaPropertyNames returns the property names declared in the schema, excluding framework-owned basic
+// properties.
+func schemaPropertyNames(schema map[string]any) []string {
+	names := []string{}
+	if properties, ok := schema["properties"].(map[string]any); ok {
+		for key := range properties {
+			if !slices.Contains(resourceutil.BasicProperties, key) {
+				names = append(names, key)
 			}
 		}
 	}
-
-	// Add the computed values to the resource properties if they are part of the schema.
-	for key, value := range computedValues {
-		if slices.Contains(resourceProps, key) {
-			resource.Properties[key] = value
-		}
-	}
-
-	// Add the secret values to the resource properties if they are part of the schema.
-	for key, value := range secretValues {
-		if slices.Contains(resourceProps, key) {
-			resource.Properties[key] = value.Value
-		}
-	}
-
-	return nil
+	return names
 }
 
 // GetSchemaForResourceType fetches the schema for a resource type from UCP

@@ -2025,6 +2025,13 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+        "secretOutputs": {
+          "type": "object",
+          "description": "Map of secret resource type property names to module output names. Like `outputs`, but a `secretOutputs` entry always routes its module output to the resource's secret outputs regardless of how the module classified it. Used to map an output such as an AVM module's `primaryConnectionString` onto a declared secret.",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       },
       "required": [

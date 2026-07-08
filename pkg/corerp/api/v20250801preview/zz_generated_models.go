@@ -434,6 +434,10 @@ type RecipeDefinition struct {
 	// module to map the module's outputs onto the resource's properties.
 	Outputs map[string]*string
 
+	// Map of secret resource type property names to module output names. Like outputs, but a secretOutputs entry always routes
+	// its module output to the resource's secret outputs regardless of how the module classified it.
+	SecretOutputs map[string]*string
+
 	// Parameters to pass to the recipe
 	Parameters map[string]any
 

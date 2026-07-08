@@ -47,7 +47,7 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 		require.NoError(t, err)
 
 		// The recipe engine and configuration loader are not used in this test.
-		controller, err := NewDynamicResourceController(ctrl.Options{}, ucp, nil, nil)
+		controller, err := NewDynamicResourceController(ctrl.Options{}, ucp, nil, nil, nil)
 		require.NoError(t, err)
 		return controller.(*DynamicResourceController)
 	}
@@ -216,7 +216,7 @@ func Test_DynamicResourceController_fetchResourceTypeDetails(t *testing.T) {
 	setup := func() *DynamicResourceController {
 		ucp, err := testUCPClientFactory()
 		require.NoError(t, err)
-		controller, err := NewDynamicResourceController(ctrl.Options{}, ucp, nil, nil)
+		controller, err := NewDynamicResourceController(ctrl.Options{}, ucp, nil, nil, nil)
 		require.NoError(t, err)
 		return controller.(*DynamicResourceController)
 	}
@@ -272,7 +272,7 @@ func TestDynamicResourceController_validateRequestSchema(t *testing.T) {
 		ucp, err := testUCPClientFactory()
 		require.NoError(t, err)
 
-		controller, err := NewDynamicResourceController(ctrl.Options{}, ucp, nil, nil)
+		controller, err := NewDynamicResourceController(ctrl.Options{}, ucp, nil, nil, nil)
 		require.NoError(t, err)
 		return controller.(*DynamicResourceController)
 	}
