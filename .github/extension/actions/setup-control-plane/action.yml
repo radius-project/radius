@@ -11,7 +11,18 @@ runs:
   steps:
     - name: Install k3d
       shell: bash
-      run: curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+      env:
+        # Pin the k3d install script to a released tag and pin the k3d version it
+        # installs, then verify the script checksum before executing. Avoids piping
+        # a script from a moving branch (main) straight into bash, so the step is
+        # deterministic and safe to run in arbitrary repositories.
+        K3D_VERSION: v5.9.0
+        K3D_INSTALL_SHA256: 0f6bd9a3ab8ea8625843b21657a6538f117975bb2823b73200dc8b92ccc626de
+      run: |
+        curl -sSL "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" -o install-k3d.sh
+        echo "${K3D_INSTALL_SHA256}  install-k3d.sh" | sha256sum -c -
+        TAG="${K3D_VERSION}" bash install-k3d.sh
+        rm -f install-k3d.sh
 
     - name: Create ephemeral Radius control plane cluster
       shell: bash
@@ -28,8 +39,17 @@ runs:
 
     - name: Install Radius CLI
       shell: bash
+      env:
+        # Pin the Radius install script to a released tag and verify its checksum
+        # before running it, rather than piping from main. The CLI channel stays
+        # `edge` so the workflow still exercises the latest control-plane build.
+        RADIUS_INSTALL_REF: v0.59.0
+        RADIUS_INSTALL_SHA256: cf96794af522b266f56985f195e9c2bdd4f7e8d9e5267ae0595b9d37cb225e7b
       run: |
-        wget -q "https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh" -O - | /bin/bash -s edge
+        curl -sSL "https://raw.githubusercontent.com/radius-project/radius/${RADIUS_INSTALL_REF}/deploy/install.sh" -o install-rad.sh
+        echo "${RADIUS_INSTALL_SHA256}  install-rad.sh" | sha256sum -c -
+        /bin/bash install-rad.sh edge
+        rm -f install-rad.sh
         rad version
 
     - name: Install Terraform

@@ -38,20 +38,6 @@ runs:
         kubectl get pods -n radius-system -o wide >> /tmp/radius-logs/pods.txt 2>&1 || true
         kubectl get events -n radius-system --sort-by=.lastTimestamp >> /tmp/radius-logs/events.txt 2>&1 || true
 
-        # Collect app pod logs and events from target cluster
-        APP_NS="default-todo-list-app"
-        TKC="$RADIUS_TARGET_KUBECONFIG"
-        KC=""; [ -f "$TKC" ] && KC="--kubeconfig $TKC"
-        if kubectl $KC get ns "$APP_NS" &>/dev/null; then
-          kubectl $KC get pods -n "$APP_NS" -o wide >> /tmp/radius-logs/app-pods.txt 2>&1 || true
-          kubectl $KC get events -n "$APP_NS" --sort-by=.lastTimestamp >> /tmp/radius-logs/app-events.txt 2>&1 || true
-          for pod in $(kubectl $KC get pods -n "$APP_NS" -o jsonpath='{.items[*].metadata.name}' 2>/dev/null); do
-            kubectl $KC logs -n "$APP_NS" "$pod" --all-containers --tail=100 >> "/tmp/radius-logs/app-pod-$pod.log" 2>&1 || true
-            kubectl $KC describe pod -n "$APP_NS" "$pod" >> "/tmp/radius-logs/app-describe-$pod.txt" 2>&1 || true
-          done
-          kubectl $KC get secret dbsecret -n "$APP_NS" -o jsonpath='{.data}' >> /tmp/radius-logs/app-dbsecret-keys.txt 2>&1 || true
-        fi
-
     - name: Upload Radius logs
       if: failure()
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
