@@ -68,6 +68,7 @@ jobs:
           else
             echo "No AZURE_CLIENT_ID or AWS_ROLE_ARN set on this environment." >&2
             echo "provider=none" >> "$GITHUB_OUTPUT"
+            exit 1
           fi
 
   azure:
