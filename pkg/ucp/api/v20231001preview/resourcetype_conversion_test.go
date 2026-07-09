@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
@@ -86,7 +85,7 @@ func Test_ResourceType_DataModelToVersioned(t *testing.T) {
 			filename: "resourcetype_datamodel.json",
 			expected: &ResourceTypeResource{
 				ID:   new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
-				Type: to.Ptr(datamodel.ResourceTypeResourceType),
+				Type: new(datamodel.ResourceTypeResourceType),
 				Name: new("testResources"),
 				Properties: &ResourceTypeProperties{
 					ProvisioningState: new(ProvisioningStateSucceeded),
@@ -125,10 +124,10 @@ func Test_ResourceType_Icon_VersionedToDataModel(t *testing.T) {
 
 	t.Run("icon present is stored verbatim and hashed server-side", func(t *testing.T) {
 		versioned := &ResourceTypeResource{
-			ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
-			Name: to.Ptr("testResources"),
+			ID:   new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
+			Name: new("testResources"),
 			Properties: &ResourceTypeProperties{
-				Icon: to.Ptr(svg),
+				Icon: new(svg),
 			},
 		}
 
@@ -144,8 +143,8 @@ func Test_ResourceType_Icon_VersionedToDataModel(t *testing.T) {
 
 	t.Run("no icon leaves icon and hash unset", func(t *testing.T) {
 		versioned := &ResourceTypeResource{
-			ID:         to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
-			Name:       to.Ptr("testResources"),
+			ID:         new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
+			Name:       new("testResources"),
 			Properties: &ResourceTypeProperties{},
 		}
 
@@ -183,10 +182,10 @@ func Test_ResourceType_ConvertTo_RejectsInvalidIcon(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			versioned := &ResourceTypeResource{
-				ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
-				Name: to.Ptr("testResources"),
+				ID:   new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
+				Name: new("testResources"),
 				Properties: &ResourceTypeProperties{
-					Icon: to.Ptr(tc.icon),
+					Icon: new(tc.icon),
 				},
 			}
 			_, err := versioned.ConvertTo()
@@ -207,8 +206,8 @@ func Test_ResourceType_Icon_DataModelToVersioned(t *testing.T) {
 		},
 		Properties: datamodel.ResourceTypeProperties{
 			Capabilities: []string{},
-			Icon:         to.Ptr(`<svg/>`),
-			IconHash:     to.Ptr("abc123"),
+			Icon:         new(`<svg/>`),
+			IconHash:     new("abc123"),
 		},
 	}
 
@@ -230,7 +229,7 @@ func Test_validateCapability(t *testing.T) {
 	}{
 		{
 			name:  "valid capability",
-			input: to.Ptr(string(datamodel.CapabilityManualResourceProvisioning)),
+			input: new(string(datamodel.CapabilityManualResourceProvisioning)),
 		},
 		{
 			name:        "invalid capability",

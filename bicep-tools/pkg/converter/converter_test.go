@@ -760,8 +760,8 @@ func TestConvert_MultipleTypesAndAPIVersions(t *testing.T) {
 						Schema: manifest.Schema{
 							Type: "object",
 							Properties: map[string]manifest.Schema{
-								"size":  {Type: "integer", Description: ptr("Widget size.")},
-								"color": {Type: "string", Description: ptr("Widget color.")},
+								"size":  {Type: "integer", Description: new("Widget size.")},
+								"color": {Type: "string", Description: new("Widget color.")},
 							},
 							Required: []string{"size", "application", "environment"},
 						},
@@ -775,7 +775,7 @@ func TestConvert_MultipleTypesAndAPIVersions(t *testing.T) {
 						Schema: manifest.Schema{
 							Type: "object",
 							Properties: map[string]manifest.Schema{
-								"size": {Type: "integer", Description: ptr("Widget size.")},
+								"size": {Type: "integer", Description: new("Widget size.")},
 							},
 						},
 						Capabilities: []string{"ManualResourceProvisioning"},
@@ -784,7 +784,7 @@ func TestConvert_MultipleTypesAndAPIVersions(t *testing.T) {
 						Schema: manifest.Schema{
 							Type: "object",
 							Properties: map[string]manifest.Schema{
-								"size": {Type: "integer", Description: ptr("Widget size.")},
+								"size": {Type: "integer", Description: new("Widget size.")},
 							},
 						},
 						Capabilities: []string{"ManualResourceProvisioning"},
