@@ -4,6 +4,7 @@ package tooling
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -92,6 +93,13 @@ func LoadManifest(path string) (Manifest, error) {
 	decoder.KnownFields(true)
 	if err := decoder.Decode(&manifest); err != nil {
 		return Manifest{}, fmt.Errorf("parse tool manifest: %w", err)
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return Manifest{}, fmt.Errorf("parse tool manifest: multiple YAML documents are not supported")
+		}
+		return Manifest{}, fmt.Errorf("parse trailing tool manifest content: %w", err)
 	}
 	if err := manifest.Validate(); err != nil {
 		return Manifest{}, fmt.Errorf("validate tool manifest: %w", err)

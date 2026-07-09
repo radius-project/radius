@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -45,8 +46,11 @@ func NewClient(token string) *Client {
 	}
 	httpClient := &http.Client{
 		Timeout: 90 * time.Second,
-		CheckRedirect: func(request *http.Request, _ []*http.Request) error {
-			if request.URL.Hostname() != "api.github.com" {
+		CheckRedirect: func(request *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return errors.New("stopped after 10 redirects")
+			}
+			if request.URL.Scheme != "https" || request.URL.Hostname() != "api.github.com" {
 				request.Header.Del("Authorization")
 			}
 			return nil
@@ -245,10 +249,11 @@ func (client *Client) get(ctx context.Context, url string) ([]byte, error) {
 			return nil, fmt.Errorf("create request for %s: %w", url, err)
 		}
 		request.Header.Set("User-Agent", client.UserAgent)
-		if request.URL.Hostname() == "api.github.com" {
+		isGitHubAPI := request.URL.Scheme == "https" && request.URL.Hostname() == "api.github.com"
+		if isGitHubAPI {
 			request.Header.Set("Accept", "application/vnd.github+json")
 		}
-		if client.Token != "" && request.URL.Hostname() == "api.github.com" {
+		if client.Token != "" && isGitHubAPI {
 			request.Header.Set("Authorization", "Bearer "+client.Token)
 		}
 
