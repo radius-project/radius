@@ -104,15 +104,12 @@ func (w *Service) Run(ctx context.Context) error {
 			return fmt.Errorf("failed to validate manifest %s: %w", filePath, err)
 		}
 
-		// If a sibling <basename>.svg exists next to <basename>.yaml, apply
-		// its verbatim SVG bytes to every type declared in this manifest.
-		// startup registration attaches the icon to the type.
-		icon, err := loadSiblingIcon(filePath)
-		if err != nil {
-			return fmt.Errorf("failed to load icon for manifest %s: %w", filePath, err)
-		}
-		if icon != nil {
-			for _, resourceType := range rp.Types {
+		for typeName, resourceType := range rp.Types {
+			icon, err := loadTypeIcon(manifestDir, typeName)
+			if err != nil {
+				return fmt.Errorf("failed to load icon for %s/%s: %w", rp.Namespace, typeName, err)
+			}
+			if icon != nil {
 				resourceType.Icon = icon
 			}
 		}
@@ -155,14 +152,12 @@ func (w *Service) Run(ctx context.Context) error {
 	return nil
 }
 
-// loadSiblingIcon looks for a <basename>.svg file sibling to the given
-// manifest file path and, when present, returns its verbatim UTF-8 bytes as a
-// string pointer after validating them with datamodel.ValidateIcon. When no
-// sibling exists, it returns (nil, nil) so the caller treats the type as
-// icon-less.
-func loadSiblingIcon(manifestPath string) (*string, error) {
-	ext := filepath.Ext(manifestPath)
-	iconPath := strings.TrimSuffix(manifestPath, ext) + ".svg"
+// loadTypeIcon looks for <manifestDir>/<typeName>.svg and, when present,
+// returns its UTF-8 bytes as a string pointer after validating them
+// with datamodel.ValidateIcon. When no such file exists, it returns
+// (nil, nil) so the caller treats the type as icon-less.
+func loadTypeIcon(manifestDir, typeName string) (*string, error) {
+	iconPath := filepath.Join(manifestDir, typeName+".svg")
 	bytes, err := os.ReadFile(iconPath)
 	if err != nil {
 		if os.IsNotExist(err) {
