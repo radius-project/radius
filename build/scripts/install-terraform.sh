@@ -51,7 +51,10 @@ cleanup() {
 # curl wrapper: enforces HTTPS + TLS 1.2 and sets a User-Agent.
 # releases.hashicorp.com is a public CDN, so no authentication is required.
 tf_curl() {
-    curl --proto '=https' --tlsv1.2 -H "User-Agent: terraform-installer" "$@"
+    # --retry rides out transient failures (timeouts and HTTP 408/429/5xx such as
+    # 504 gateway timeouts) with exponential backoff, while still failing fast on
+    # 404s (a wrong version).
+    curl --proto '=https' --tlsv1.2 --retry 5 --retry-connrefused -H "User-Agent: terraform-installer" "$@"
 }
 
 detect_os() {

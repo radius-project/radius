@@ -57,7 +57,10 @@ gh_curl() {
     if [ -n "${GITHUB_TOKEN:-}" ]; then
         headers+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
     fi
-    curl --proto '=https' --tlsv1.2 "${headers[@]}" "$@"
+    # --retry rides out transient failures (timeouts and HTTP 408/429/5xx such as
+    # the 504 gateway timeouts GitHub's release CDN returns intermittently) with
+    # exponential backoff, while still failing fast on 404s (a wrong version).
+    curl --proto '=https' --tlsv1.2 --retry 5 --retry-connrefused "${headers[@]}" "$@"
 }
 
 detect_os() {

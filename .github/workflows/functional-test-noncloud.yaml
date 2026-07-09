@@ -186,26 +186,32 @@ jobs:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}
           DOCKER_TAG_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
 
-      - name: Upload rad CLI binary
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: radius_test_cli
-          path: ./dist/linux_amd64/release/rad
-          if-no-files-found: error
+      # Upload the three build artifacts concurrently. Each targets a distinct
+      # artifact name and source path, so they are independent; running them as a
+      # parallel group overlaps the small rad CLI and Bicep-types uploads with the
+      # much larger container-image upload. The implicit wait at the end of the
+      # group ensures all three uploads finish before the job completes.
+      - parallel:
+          - name: Upload rad CLI binary
+            uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+            with:
+              name: radius_test_cli
+              path: ./dist/linux_amd64/release/rad
+              if-no-files-found: error
 
-      - name: Upload container image artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: radius_test_images
-          path: ./dist/images
-          if-no-files-found: error
+          - name: Upload container image artifacts
+            uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+            with:
+              name: radius_test_images
+              path: ./dist/images
+              if-no-files-found: error
 
-      - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: radius_test_bicep_types
-          path: ./hack/bicep-types-radius/generated
-          if-no-files-found: error
+          - name: Upload Radius Bicep types artifacts
+            uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+            with:
+              name: radius_test_bicep_types
+              path: ./hack/bicep-types-radius/generated
+              if-no-files-found: error
 
   tests:
     name: Run ${{ matrix.name }} functional tests
@@ -283,24 +289,29 @@ jobs:
       # "build" job and shared with every matrix leg. Downloading them here avoids
       # recompiling the source and reinstalling the Node/yq toolchain in each leg.
       # They land in the same paths a local build would produce, so the remaining
-      # steps are unchanged.
-      - name: Download rad CLI binary
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: radius_test_cli
-          path: ./dist/linux_amd64/release
+      # steps are unchanged. The three artifacts have distinct names and paths, so
+      # they download concurrently as a parallel group: the small rad CLI and
+      # Bicep-types downloads overlap with the larger container-image download. The
+      # implicit wait at the end of the group ensures all three are present before
+      # the local registry and Bicep publishing steps run.
+      - parallel:
+          - name: Download rad CLI binary
+            uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+            with:
+              name: radius_test_cli
+              path: ./dist/linux_amd64/release
 
-      - name: Download container image artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: radius_test_images
-          path: ./dist/images
+          - name: Download container image artifacts
+            uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+            with:
+              name: radius_test_images
+              path: ./dist/images
 
-      - name: Download Radius Bicep types artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: radius_test_bicep_types
-          path: ./hack/bicep-types-radius/generated
+          - name: Download Radius Bicep types artifacts
+            uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+            with:
+              name: radius_test_bicep_types
+              path: ./hack/bicep-types-radius/generated
 
       - name: Create a secure local registry
         id: create-local-registry

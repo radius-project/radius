@@ -69,7 +69,7 @@ check_prerequisites() {
   local advisory_msgs=()
 
   # Required tools
-  command -v dlv >/dev/null 2>&1 || missing_tools+=("dlv -> go install github.com/go-delve/delve/cmd/dlv@latest")
+  command -v dlv >/dev/null 2>&1 || missing_tools+=("dlv -> make install-dlv")
   command -v go >/dev/null 2>&1 || missing_tools+=("go -> https://golang.org/doc/install")
   command -v k3d >/dev/null 2>&1 || missing_tools+=("k3d -> https://k3d.io/")
   command -v kubectl >/dev/null 2>&1 || missing_tools+=("kubectl -> https://kubernetes.io/docs/tasks/tools/")
