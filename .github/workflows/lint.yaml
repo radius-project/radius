@@ -83,15 +83,15 @@ jobs:
         run: make install-yq
 
       - name: Install helm
-        # Version pinned in build/tools.mk (HELM_VERSION).
+        # Version pinned in build/tools.yaml (HELM_VERSION).
         run: make install-helm
 
       - name: Install golangci-lint
-        # Pinned version + checksums live in build/tools.mk (GOLANGCI_LINT_VERSION).
+        # Pinned version + checksums live in build/tools.yaml (GOLANGCI_LINT_VERSION).
         run: make install-golangci-lint
 
       - name: Install shellcheck
-        # Pinned version + checksums live in build/tools.mk (SHELLCHECK_VERSION).
+        # Pinned version + checksums live in build/tools.yaml (SHELLCHECK_VERSION).
         run: make install-shellcheck
 
       # Run the independent, read-only linters concurrently. Each parallel step is

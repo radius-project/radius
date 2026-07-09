@@ -19,14 +19,13 @@ package terraform
 // terraformVersion is the version of Terraform that Radius downloads and
 // uses to execute Terraform recipes.
 //
-// The canonical source of truth is the .terraform-version file at the
-// repository root (matching the .node-version / .python-version
-// convention used by tfenv, tfswitch, asdf, and mise). The Makefile reads
-// that file and overrides this value at build time via the
-// -X linker flag. The hard-coded default below is used by `go test`,
-// `go run`, and other invocations that do not go through the Makefile;
-// the TestTerraformVersionMatchesFile test guarantees it stays in sync
-// with the file.
+// The canonical source of truth is the build/tools.yaml manifest. The updater
+// synchronizes the .terraform-version compatibility file, chart default, and
+// this fallback with that manifest. The Makefile also overrides this value at
+// build time via the -X linker flag. The hard-coded default below is used by
+// `go test`, `go run`, and other invocations that do not go through the
+// Makefile; the TestTerraformVersionMatchesFile test guarantees it stays in
+// sync with the compatibility file.
 var terraformVersion = "1.14.9"
 
 // TerraformVersion returns the Terraform version Radius will install.

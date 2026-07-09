@@ -9,7 +9,7 @@ set -euo pipefail
 #
 # k3d is published as a per-platform single binary on k3d-io/k3d's GitHub
 # releases. The pinned version and per-platform SHA-256 checksums are normally
-# provided by build/tools.mk through the environment. The script is generic, so
+# provided by build/tools.yaml through the generated Make include. The script is generic, so
 # when a value is not supplied it is resolved at runtime:
 #   * empty K3D_VERSION             -> the latest published release
 #   * missing checksum for platform -> read from the release's own combined

@@ -17,6 +17,10 @@ Follow the [shell instruction file](../../../../.github/instructions/shell.instr
 - **Well-structured Make** — declare `.PHONY` targets, keep recipes small, and add a `##`-style help comment so `make help` stays complete.
 - **One home per target** — add a new target to the `build/*.mk` include that owns its topic rather than the root `Makefile`.
 
+## Managing external CLI pins
+
+The canonical versions, release sources, platform assets, and SHA-256 checksums for downloaded CLI tools live in [`build/tools.yaml`](../../../../build/tools.yaml). Run `make update-tools` to check every source and refresh available versions and checksums. The command regenerates the committed [`build/tools.generated.mk`](../../../../build/tools.generated.mk) include that supplies metadata to the existing `make install-<tool>` targets. The updater is built into the ignored `bin/` directory before it runs, which avoids Windows security software blocking Go's temporary `go run` executable. See the [tool updater reference](../../../../internal/tooling/README.md) for the manifest schema and supported values. Bicep is checked but intentionally held at its compatibility-pinned version until newer releases support the local registries used by functional tests.
+
 ## Linting shell scripts with ShellCheck
 
 Every tracked `.sh` script is validated with [ShellCheck](https://github.com/koalaman/shellcheck) as part of the pull request checks, so run it locally before you push. Install the pinned version (into a user-owned bin directory — no `sudo`) and lint every tracked script with:
@@ -26,7 +30,7 @@ make install-shellcheck
 make lint-shell
 ```
 
-`make lint-shell` applies the shared configuration in [`.shellcheckrc`](../../../../.github/linters/.shellcheckrc) and skips the third-party Spec Kit tooling under `.specify/`. The version and per-platform checksums that `make install-shellcheck` pins live in [`build/tools.mk`](../../../../build/tools.mk) (`SHELLCHECK_VERSION`).
+`make lint-shell` applies the shared configuration in [`.shellcheckrc`](../../../../.github/linters/.shellcheckrc) and skips the third-party Spec Kit tooling under `.specify/`. The version and per-platform checksums that `make install-shellcheck` pins live in [`build/tools.yaml`](../../../../build/tools.yaml) (`SHELLCHECK_VERSION`).
 
 The easy path is the [dev container](../../../../.devcontainer/), which installs the ShellCheck CLI on the `PATH` and the ShellCheck VS Code extension for you, so you can run `make lint-shell` (and see findings inline as you edit) without installing anything.
 

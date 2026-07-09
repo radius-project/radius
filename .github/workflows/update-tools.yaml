@@ -1,0 +1,131 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: update-tools
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: update-tools
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  update:
+    if: >-
+      github.repository == 'radius-project/radius' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      PR_BRANCH: automation/update-tools
+      PR_TITLE: "chore: update pinned tool versions"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
+
+      - name: Check and update tool metadata
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: make update-tools
+
+      - name: Detect changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git status --short
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Tool metadata is current."
+          fi
+
+      - name: Generate Dependabot-manager App token
+        if: >-
+          steps.changes.outputs.changed == 'true' &&
+          github.repository == 'radius-project/radius'
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.DEPENDABOT_MANAGER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.DEPENDABOT_MANAGER_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            radius
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Commit and push update branch
+        if: >-
+          steps.changes.outputs.changed == 'true' &&
+          github.repository == 'radius-project/radius'
+        env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "dependabot-manager[bot]"
+          bot_email='dependabot-manager[bot]@users.noreply.github.com'
+          git config user.email "$bot_email"
+          git checkout -B "$PR_BRANCH"
+          git add build/tools.yaml build/tools.generated.mk .terraform-version \
+            pkg/recipes/terraform/version.go deploy/Chart/values.yaml
+          git commit -m "$PR_TITLE"
+          remote="https://x-access-token:${APP_TOKEN}@github.com/"
+          remote+="${GITHUB_REPOSITORY}.git"
+          git push --force "$remote" "HEAD:${PR_BRANCH}"
+
+      - name: Create or update pull request
+        if: >-
+          steps.changes.outputs.changed == 'true' &&
+          github.repository == 'radius-project/radius'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          existing_pr="$(
+            gh pr list --state open --head "$PR_BRANCH" \
+              --json number --jq '.[0].number'
+          )"
+          body=$(cat <<'EOF'
+          This automated PR refreshes the pinned command-line tool versions and
+          SHA-256 checksums from the release sources declared in
+          `build/tools.yaml`.
+
+          `build/tools.generated.mk` is generated from the manifest and committed
+          with it. Bicep remains intentionally held at its compatibility-pinned
+          version until local `br:localhost` functional tests support a newer
+          release.
+          EOF
+          )
+          if [ -n "$existing_pr" ]; then
+            gh pr edit "$existing_pr" --title "$PR_TITLE" --body "$body"
+            echo "Updated PR #$existing_pr"
+          else
+            gh pr create --base main --head "$PR_BRANCH" \
+              --title "$PR_TITLE" --body "$body"
+          fi
+
+      - name: Report fork changes
+        if: >-
+          steps.changes.outputs.changed == 'true' &&
+          github.repository != 'radius-project/radius'
+        run: |
+          echo "Tool updates were found."
+          echo "PR creation is skipped outside radius-project/radius because"
+          echo "the Dependabot-manager App secrets are unavailable to forks."
