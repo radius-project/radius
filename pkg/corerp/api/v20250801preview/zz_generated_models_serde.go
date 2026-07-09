@@ -88,6 +88,7 @@ func (a ApplicationGraphResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "connections", a.Connections)
 	populate(objectMap, "diffHash", a.DiffHash)
 	populate(objectMap, "id", a.ID)
+	populate(objectMap, "iconHash", a.IconHash)
 	populate(objectMap, "name", a.Name)
 	populate(objectMap, "outputResources", a.OutputResources)
 	populate(objectMap, "properties", a.Properties)
@@ -113,6 +114,9 @@ func (a *ApplicationGraphResource) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "id":
 			err = unpopulate(val, "ID", &a.ID)
+			delete(rawMsg, key)
+		case "iconHash":
+			err = unpopulate(val, "IconHash", &a.IconHash)
 			delete(rawMsg, key)
 		case "name":
 			err = unpopulate(val, "Name", &a.Name)
@@ -140,6 +144,7 @@ func (a *ApplicationGraphResource) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type ApplicationGraphResponse.
 func (a ApplicationGraphResponse) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
+	populate(objectMap, "icons", a.Icons)
 	populate(objectMap, "resources", a.Resources)
 	return json.Marshal(objectMap)
 }
@@ -153,6 +158,9 @@ func (a *ApplicationGraphResponse) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "icons":
+			err = unpopulate(val, "Icons", &a.Icons)
+			delete(rawMsg, key)
 		case "resources":
 			err = unpopulate(val, "Resources", &a.Resources)
 			delete(rawMsg, key)
@@ -643,6 +651,33 @@ func (e *EnvironmentResourceListResult) UnmarshalJSON(data []byte) error {
 		}
 		if err != nil {
 			return fmt.Errorf("unmarshalling type %T: %v", e, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type GetGraphRequest.
+func (g GetGraphRequest) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]any)
+	populate(objectMap, "includeIcons", g.IncludeIcons)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type GetGraphRequest.
+func (g *GetGraphRequest) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", g, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "includeIcons":
+			err = unpopulate(val, "IncludeIcons", &g.IncludeIcons)
+			delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", g, err)
 		}
 	}
 	return nil

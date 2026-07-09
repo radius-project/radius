@@ -65,6 +65,15 @@ model ApplicationGraphResponse {
   @doc("The resources in the application graph.")
   @extension("x-ms-identifiers", #["id"])
   resources: Array<ApplicationGraphResource>;
+
+  @doc("Map from iconHash to the verbatim SVG UTF-8 bytes for every icon referenced by any resource in this response. Populated only when the request specifies `includeIcons: true`. Deduped: at most one entry per distinct hash regardless of how many nodes reference it (spec 003 FR-013).")
+  icons?: Record<string>;
+}
+
+@doc("Request body for the getGraph action.")
+model GetGraphRequest {
+  @doc("When true, `ApplicationGraphResponse.icons` is populated with the SVG bytes for every distinct `iconHash` referenced by the response's resources. When false or omitted, only per-resource `iconHash` values are returned and clients resolve bytes via the icon endpoint (FR-018). Default is false (spec 003 FR-015, FR-017).")
+  includeIcons?: boolean;
 }
 
 @doc("Describes the connection between two resources.")
@@ -109,6 +118,9 @@ model ApplicationGraphResource {
 
   @doc("Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify resources as added, removed, modified, or unchanged across graphs. Format: 'sha256:{hex}'.")
   diffHash?: string;
+
+  @doc("SHA-256 hex of the resource type's icon SVG, matching `iconHash` on the resource-type registry (spec 003 FR-011). Null when the type has no icon registered. The bytes themselves are delivered inline via `ApplicationGraphResponse.icons` when the request specifies `includeIcons: true`; otherwise clients fetch bytes by hash from the resource-type icon endpoint (FR-018).")
+  iconHash?: string;
 
   @doc("Resource-type-specific properties of the resource as returned by its resource provider. The shape of this map varies by `type` (e.g. a `Radius.Compute/containers` resource exposes different keys than `Radius.Datastores/redisCaches` or any user-defined resource type) and matches the `properties` returned by that resource's GET response. Top-level keys already surfaced as first-class fields on this model (`provisioningState`, `connections`) are omitted. The whole `status` object is also omitted because it may contain computed values that include sensitive data (for example, connection strings); the redundant `status.outputResources` list is surfaced via the dedicated `outputResources` field instead. Use `diffHash` rather than a byte-wise compare of this map to detect change.")
   properties?: Record<unknown>;
@@ -164,7 +176,7 @@ interface Applications {
   @action("getGraph")
   getGraph is ArmResourceActionSync<
     ApplicationResource,
-    {},
+    GetGraphRequest,
     ApplicationGraphResponse,
     UCPBaseParameters<ApplicationResource>
   >;
