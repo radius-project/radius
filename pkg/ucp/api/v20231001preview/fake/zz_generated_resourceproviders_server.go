@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"regexp"
 	"slices"
+	"strconv"
 )
 
 // ResourceProvidersServer is a fake server for instances of the v20231001preview.ResourceProvidersClient type.
@@ -252,6 +253,7 @@ func (r *ResourceProvidersServerTransport) dispatchGetProviderSummary(req *http.
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
+	qp := req.URL.Query()
 	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
 	if err != nil {
 		return nil, err
@@ -260,7 +262,17 @@ func (r *ResourceProvidersServerTransport) dispatchGetProviderSummary(req *http.
 	if err != nil {
 		return nil, err
 	}
-	respr, errRespr := r.srv.GetProviderSummary(req.Context(), planeNameParam, resourceProviderNameParam, nil)
+	includeIconsParam, err := parseOptional(qp.Get("includeIcons"), strconv.ParseBool)
+	if err != nil {
+		return nil, err
+	}
+	var options *v20231001preview.ResourceProvidersClientGetProviderSummaryOptions
+	if includeIconsParam != nil {
+		options = &v20231001preview.ResourceProvidersClientGetProviderSummaryOptions{
+			IncludeIcons: includeIconsParam,
+		}
+	}
+	respr, errRespr := r.srv.GetProviderSummary(req.Context(), planeNameParam, resourceProviderNameParam, options)
 	if respErr := server.GetError(errRespr, req); respErr != nil {
 		return nil, respErr
 	}

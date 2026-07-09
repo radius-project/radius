@@ -17,6 +17,8 @@ limitations under the License.
 package v20231001preview
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -58,6 +60,19 @@ func (src *ResourceTypeResource) ConvertTo() (v1.DataModelInterface, error) {
 
 	dst.Properties.Description = src.Properties.Description
 
+	// The icon is written by the client as verbatim SVG bytes. The hash is
+	// server-computed (read-only on the wire) so it content-addresses exactly
+	// the bytes that were stored.
+	dst.Properties.Icon = src.Properties.Icon
+	if src.Properties.Icon != nil {
+		iconBytes := []byte(*src.Properties.Icon)
+		if err := datamodel.ValidateIcon(iconBytes); err != nil {
+			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid icon: %s", err.Error()))
+		}
+		sum := sha256.Sum256(iconBytes)
+		dst.Properties.IconHash = to.Ptr(hex.EncodeToString(sum[:]))
+	}
+
 	return dst, nil
 }
 
@@ -79,6 +94,8 @@ func (dst *ResourceTypeResource) ConvertFrom(src v1.DataModelInterface) error {
 		Capabilities:      to.SliceOfPtrs(dm.Properties.Capabilities...),
 		DefaultAPIVersion: dm.Properties.DefaultAPIVersion,
 		Description:       dm.Properties.Description,
+		Icon:              dm.Properties.Icon,
+		IconHash:          dm.Properties.IconHash,
 	}
 
 	return nil

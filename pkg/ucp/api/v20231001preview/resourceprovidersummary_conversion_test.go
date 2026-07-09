@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 
@@ -84,4 +85,29 @@ func Test_ResourceProviderSummary_DataModelToVersioned(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_ResourceProviderSummary_Icon_DataModelToVersioned(t *testing.T) {
+	dm := &datamodel.ResourceProviderSummary{
+		Properties: datamodel.ResourceProviderSummaryProperties{
+			ResourceTypes: map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{
+				"testResources": {
+					Icon:     to.Ptr(`<svg/>`),
+					IconHash: to.Ptr("deadbeef"),
+				},
+			},
+		},
+	}
+	dm.Name = "Applications.Test"
+
+	versioned := &ResourceProviderSummary{}
+	err := versioned.ConvertFrom(dm)
+	require.NoError(t, err)
+
+	rt := versioned.ResourceTypes["testResources"]
+	require.NotNil(t, rt)
+	require.NotNil(t, rt.Icon)
+	require.Equal(t, `<svg/>`, *rt.Icon)
+	require.NotNil(t, rt.IconHash)
+	require.Equal(t, "deadbeef", *rt.IconHash)
 }

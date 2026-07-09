@@ -32,6 +32,10 @@ type ResourceTypesServer struct {
 	// HTTP status codes to indicate success: http.StatusOK
 	Get func(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, options *v20231001preview.ResourceTypesClientGetOptions) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], errResp azfake.ErrorResponder)
 
+	// GetIcon is the fake for method ResourceTypesClient.GetIcon
+	// HTTP status codes to indicate success: http.StatusOK
+	GetIcon func(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, hashParam string, options *v20231001preview.ResourceTypesClientGetIconOptions) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetIconResponse], errResp azfake.ErrorResponder)
+
 	// NewListPager is the fake for method ResourceTypesClient.NewListPager
 	// HTTP status codes to indicate success: http.StatusOK
 	NewListPager func(planeName string, resourceProviderName string, options *v20231001preview.ResourceTypesClientListOptions) (resp azfake.PagerResponder[v20231001preview.ResourceTypesClientListResponse])
@@ -85,6 +89,8 @@ func (r *ResourceTypesServerTransport) dispatchToMethodFake(req *http.Request, m
 				res.resp, res.err = r.dispatchBeginDelete(req)
 			case "ResourceTypesClient.Get":
 				res.resp, res.err = r.dispatchGet(req)
+			case "ResourceTypesClient.GetIcon":
+				res.resp, res.err = r.dispatchGetIcon(req)
 			case "ResourceTypesClient.NewListPager":
 				res.resp, res.err = r.dispatchNewListPager(req)
 			default:
@@ -236,6 +242,56 @@ func (r *ResourceTypesServerTransport) dispatchGet(req *http.Request) (*http.Res
 	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).ResourceTypeResource, req)
 	if err != nil {
 		return nil, err
+	}
+	return resp, nil
+}
+
+func (r *ResourceTypesServerTransport) dispatchGetIcon(req *http.Request) (*http.Response, error) {
+	if r.srv.GetIcon == nil {
+		return nil, &nonRetriableError{errors.New("fake for method GetIcon not implemented")}
+	}
+	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Resources/resourceproviders/(?P<resourceProviderName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcetypes/(?P<resourceTypeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/icons/(?P<hash>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	regex := regexp.MustCompile(regexStr)
+	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+	if len(matches) < 5 {
+		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+	}
+	planeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("planeName")])
+	if err != nil {
+		return nil, err
+	}
+	resourceProviderNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceProviderName")])
+	if err != nil {
+		return nil, err
+	}
+	resourceTypeNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("resourceTypeName")])
+	if err != nil {
+		return nil, err
+	}
+	hashParamParam, err := url.PathUnescape(matches[regex.SubexpIndex("hash")])
+	if err != nil {
+		return nil, err
+	}
+	respr, errRespr := r.srv.GetIcon(req.Context(), planeNameParam, resourceProviderNameParam, resourceTypeNameParam, hashParamParam, nil)
+	if respErr := server.GetError(errRespr, req); respErr != nil {
+		return nil, respErr
+	}
+	respContent := server.GetResponseContent(respr)
+	if !slices.Contains([]int{http.StatusOK}, respContent.HTTPStatus) {
+		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK", respContent.HTTPStatus)}
+	}
+	resp, err := server.NewResponse(respContent, req, &server.ResponseOptions{
+		Body:        server.GetResponse(respr).Body,
+		ContentType: req.Header.Get("Content-Type"),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if val := server.GetResponse(respr).CacheControl; val != nil {
+		resp.Header.Set("cache-control", "public, max-age=31536000, immutable")
+	}
+	if val := server.GetResponse(respr).ContentType; val != nil {
+		resp.Header.Set("content-type", "image/svg+xml")
 	}
 	return resp, nil
 }

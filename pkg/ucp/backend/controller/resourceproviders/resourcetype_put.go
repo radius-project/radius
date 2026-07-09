@@ -81,6 +81,8 @@ func (c *ResourceTypePutController) updateSummary(id resources.ID, resourceType 
 		resourceTypeEntry.Capabilities = resourceType.Properties.Capabilities
 		resourceTypeEntry.DefaultAPIVersion = resourceType.Properties.DefaultAPIVersion
 		resourceTypeEntry.Description = resourceType.Properties.Description
+		resourceTypeEntry.Icon = resourceType.Properties.Icon
+		resourceTypeEntry.IconHash = resourceType.Properties.IconHash
 		summary.Properties.ResourceTypes[resourceTypeName] = resourceTypeEntry
 		return nil
 	}

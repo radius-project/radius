@@ -96,14 +96,14 @@ jobs:
   build:
     name: Build Radius for test
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    # Compiles the Go binaries and builds every container image once for the whole
+    # "tests" matrix, so this needs a real build budget rather than the old
+    # id-generation-only timeout.
+    timeout-minutes: 30
     needs: [changes]
     if: needs.changes.outputs.only_changed != 'true'
     permissions:
-      id-token: write # Required for requesting the JWT
-      contents: read # Required for listing the commits
-      packages: write # Required for uploading the package
-      checks: write # Required for creating a check run
+      contents: read # Required for actions/checkout
     env:
       DE_IMAGE: ghcr.io/radius-project/deployment-engine
       DE_TAG: latest
@@ -142,6 +142,71 @@ jobs:
             echo "DE_TAG=${DE_TAG}"
           } >> "${GITHUB_OUTPUT}"
 
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # Build artifacts from the same ref the tests job checks out so the
+          # compiled artifacts match the source under test. On workflow_dispatch
+          # that is the "branch" input; otherwise it is the triggering ref (which
+          # for schedule/repository_dispatch is the default branch).
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/heads/{0}', github.event.inputs.branch) || github.ref }}
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: .node-version
+
+      - name: Install yq
+        # Required by make generate-bicep-types-contrib to parse defaults.yaml.
+        run: make install-yq
+
+      - name: Generate Bicep extensibility types from OpenAPI specs
+        env:
+          BICEP_TYPES_VERSION: ${{ steps.gen-id.outputs.REL_VERSION == 'edge' && 'latest' || steps.gen-id.outputs.REL_VERSION }}
+        run: |
+          make generate-bicep-types VERSION="${BICEP_TYPES_VERSION}"
+
+      - name: Build Radius binaries and container images
+        # Build the CLI plus the RP/controller/test container images and save them
+        # to dist/images/*.tar exactly once. Every leg of the "tests" job downloads
+        # and loads these artifacts instead of recompiling from source. Images are
+        # tagged for the per-leg local registry (localhost:<port>) so each leg can
+        # push the loaded images without retagging.
+        run: |
+          make build && make docker-build && make docker-save-images
+        env:
+          DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}
+          DOCKER_TAG_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
+
+      - name: Upload rad CLI binary
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: radius_test_cli
+          path: ./dist/linux_amd64/release/rad
+          if-no-files-found: error
+
+      - name: Upload container image artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: radius_test_images
+          path: ./dist/images
+          if-no-files-found: error
+
+      - name: Upload Radius Bicep types artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: radius_test_bicep_types
+          path: ./hack/bicep-types-radius/generated
+          if-no-files-found: error
+
   tests:
     name: Run ${{ matrix.name }} functional tests
     needs: [changes, build]
@@ -167,6 +232,7 @@ jobs:
             kubernetes-noncloud,
             msgrp-noncloud,
             multicluster-noncloud,
+            statestore-noncloud,
             samples-noncloud,
             ucp-noncloud,
             datastoresrp-noncloud,
@@ -181,41 +247,20 @@ jobs:
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
     steps:
-      - name: Set up checkout target (scheduled)
-        if: github.event_name == 'schedule' || github.event_name == 'repository_dispatch'
-        run: |
-          {
-            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
-            echo "CHECKOUT_REF=refs/heads/main"
-          } >> "${GITHUB_ENV}"
-
-      - name: Set up checkout target (pull_request or merge_group)
-        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+      - name: Determine PR number
+        if: github.event_name == 'pull_request'
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          {
-            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
-            echo "CHECKOUT_REF=${GITHUB_REF}"
-          } >> "${GITHUB_ENV}"
-          # There is no pull request associated with a merge_group event.
-          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
-            echo "PR_NUMBER=${PR_NUMBER}" >> "${GITHUB_ENV}"
-          fi
-
-      - name: Set up checkout target (workflow_dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          INPUT_BRANCH: ${{ github.event.inputs.branch }}
-        run: |
-          {
-            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
-            echo "CHECKOUT_REF=refs/heads/${INPUT_BRANCH}"
-          } >> "${GITHUB_ENV}"
+        run: echo "PR_NUMBER=${PR_NUMBER}" >> "${GITHUB_ENV}"
 
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
+          # Check out the same ref the build job built its artifacts from so the
+          # source under test matches those artifacts. On workflow_dispatch that is
+          # the "branch" input; otherwise it is the triggering ref (which for
+          # schedule/repository_dispatch is the default branch).
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/heads/{0}', github.event.inputs.branch) || github.ref }}
           persist-credentials: false
 
       - name: Checkout samples repo
@@ -234,27 +279,28 @@ jobs:
           cache-dependency-path: go.sum
           cache: true
 
-      - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      # The rad CLI, container images and Bicep types are built once in the
+      # "build" job and shared with every matrix leg. Downloading them here avoids
+      # recompiling the source and reinstalling the Node/yq toolchain in each leg.
+      # They land in the same paths a local build would produce, so the remaining
+      # steps are unchanged.
+      - name: Download rad CLI binary
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          node-version-file: .node-version
+          name: radius_test_cli
+          path: ./dist/linux_amd64/release
 
-      - name: Install yq
-        # Required by make generate-bicep-types-contrib to parse defaults.yaml.
-        run: make install-yq
-
-      - name: Generate Bicep extensibility types from OpenAPI specs
-        env:
-          BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
-        run: |
-          make generate-bicep-types VERSION="${BICEP_TYPES_VERSION}"
-
-      - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Download container image artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: ${{ matrix.name }}_radius_bicep_types
+          name: radius_test_images
+          path: ./dist/images
+
+      - name: Download Radius Bicep types artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: radius_test_bicep_types
           path: ./hack/bicep-types-radius/generated
-          if-no-files-found: error
 
       - name: Create a secure local registry
         id: create-local-registry
@@ -291,9 +337,13 @@ jobs:
           }
           EOF
 
-      - name: Build and Push container images
+      - name: Load and Push container images
+        # Images were built and saved to tarballs once in the "build" job and
+        # downloaded above; load them into the local Docker daemon and push them to
+        # this leg's local registry. They are already tagged for
+        # localhost:<port>, so no retag is needed before pushing.
         run: |
-          make build && make docker-build && make docker-push
+          make docker-load-images && make docker-push
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
@@ -305,7 +355,7 @@ jobs:
           chmod +x ./bin/rad
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
-          rad bicep download
+          make install-bicep BICEP_INSTALL_DIR="$HOME/.rad/bin"
           rad version
 
       - name: Install helm
@@ -398,6 +448,10 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Install Radius
+        # The statestore leg drives its own install/uninstall/reinstall lifecycle
+        # inside the test (it must reinstall to simulate an ephemeral control
+        # plane), so the shared install is skipped for it.
+        if: matrix.name != 'statestore-noncloud'
         run: |
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           which rad || { echo "cannot find rad"; exit 1; }
@@ -591,7 +645,9 @@ jobs:
           make "test-functional-${MATRIX_NAME}"
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
-          TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
+          # The statestore leg installs/uninstalls/reinstalls Radius, so it needs
+          # far longer than the standard per-leg timeout.
+          TEST_TIMEOUT: ${{ matrix.name == 'statestore-noncloud' && '40m' || env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
           BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
@@ -601,6 +657,9 @@ jobs:
           RADIUS_TEST_FAST_CLEANUP: true
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
           MATRIX_NAME: ${{ matrix.name }}
+          # Used by the statestore leg's in-test `rad install` to trust the secure
+          # local registry; ignored by other legs.
+          RADIUS_REGISTRY_CERT_FILE: ${{ steps.create-local-registry.outputs.temp-cert-dir }}/certs/${{ env.LOCAL_REGISTRY_SERVER }}/client.crt
 
       - name: Process Functional Test Results
         uses: ./.github/actions/process-test-results

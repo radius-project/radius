@@ -237,6 +237,77 @@ func (client *ResourceTypesClient) getHandleResponse(resp *http.Response) (Resou
 	return result, nil
 }
 
+// GetIcon - Get the icon bytes stored for the specified resource type, addressed by the SHA-256 hash of those bytes. Returns
+// the verbatim SVG file content with Content-Type: image/svg+xml and an immutable Cache-Control. If the hash does not match
+// the stored icon, or the resource type has no icon, returns 404.
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - planeName - The plane name.
+//   - resourceProviderName - The resource provider name. This is also the resource provider namespace. Example: 'Applications.Datastores'.
+//   - resourceTypeName - The resource type name.
+//   - hashParam - The SHA-256 hash of the icon's SVG bytes, as a lowercase hex string.
+//   - options - ResourceTypesClientGetIconOptions contains the optional parameters for the ResourceTypesClient.GetIcon method.
+func (client *ResourceTypesClient) GetIcon(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, hashParam string, options *ResourceTypesClientGetIconOptions) (ResourceTypesClientGetIconResponse, error) {
+	var err error
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ResourceTypesClient.GetIcon")
+	req, err := client.getIconCreateRequest(ctx, planeName, resourceProviderName, resourceTypeName, hashParam, options)
+	if err != nil {
+		return ResourceTypesClientGetIconResponse{}, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return ResourceTypesClientGetIconResponse{}, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return ResourceTypesClientGetIconResponse{}, err
+	}
+	resp, err := client.getIconHandleResponse(httpResp)
+	return resp, err
+}
+
+// getIconCreateRequest creates the GetIcon request.
+func (client *ResourceTypesClient) getIconCreateRequest(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, hashParam string, _ *ResourceTypesClientGetIconOptions) (*policy.Request, error) {
+	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes/{resourceTypeName}/icons/{hash}"
+	if planeName == "" {
+		return nil, errors.New("parameter planeName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	if resourceProviderName == "" {
+		return nil, errors.New("parameter resourceProviderName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{resourceProviderName}", url.PathEscape(resourceProviderName))
+	if resourceTypeName == "" {
+		return nil, errors.New("parameter resourceTypeName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{resourceTypeName}", url.PathEscape(resourceTypeName))
+	if hashParam == "" {
+		return nil, errors.New("parameter hashParam cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{hash}", url.PathEscape(hashParam))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20231001Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	runtime.SkipBodyDownload(req)
+	req.Raw().Header["Accept"] = []string{"image/svg+xml"}
+	return req, nil
+}
+
+// getIconHandleResponse handles the GetIcon response.
+func (client *ResourceTypesClient) getIconHandleResponse(resp *http.Response) (ResourceTypesClientGetIconResponse, error) {
+	result := ResourceTypesClientGetIconResponse{Body: resp.Body}
+	if val := resp.Header.Get("cache-control"); val != "" {
+		result.CacheControl = &val
+	}
+	if val := resp.Header.Get("content-type"); val != "" {
+		result.ContentType = &val
+	}
+	return result, nil
+}
+
 // NewListPager - List resource types.
 //   - planeName - The plane name.
 //   - resourceProviderName - The resource provider name. This is also the resource provider namespace. Example: 'Applications.Datastores'.

@@ -63,7 +63,7 @@ If you use GitHub Copilot, you can run the [`radius-code-review`](../../../.gith
 
 Prerequisites for the skill:
 
-- Authenticated [`gh` CLI](https://cli.github.com/) and [`jq`](https://jqlang.org/) installed locally.
+- Authenticated [`gh` CLI](https://cli.github.com/) installed locally.
 - One of: the [GitHub Copilot app](https://github.com/features/copilot), [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-cli), or VS Code with the [GitHub Copilot Chat](https://marketplace.visualstudio.com/items?itemName=GitHub.copilot-chat) extension (with prompt files enabled — see VS Code's [prompt files docs](https://code.visualstudio.com/docs/copilot/copilot-customization#_prompt-files-experimental)).
 
 Suggested workflow:
@@ -73,9 +73,9 @@ Suggested workflow:
    - **GitHub Copilot app**: open Copilot for this repository and ask `Use the radius-code-review skill to review PR #<your-pr-number>.` (or `/radius-code-review Review PR #<your-pr-number>`).
    - **Copilot CLI** (from the repo root): `/radius-code-review Review PR #<your-pr-number>`
    - **VS Code Copilot Chat**: type `/radius.code-review` in the chat input; VS Code will pick up `.github/prompts/radius.code-review.prompt.md` and prompt you for the PR number.
-3. Read the generated `pr-analysis-<n>.md` and `pr-review-<n>.md` under `.copilot-tracking/`. Treat the output as a draft, not a verdict.
+3. Read the findings the skill returns in chat, or stages in the active PR review surface when that capability is available. Treat the output as a draft, not a verdict.
 4. Apply the fixes you agree with, push the updates, and discard or push back on the suggestions you disagree with.
-5. Do **not** post the AI-generated review to your own PR as-is. The script under `.copilot-tracking/pr-review-<n>.sh` is a starting point if you want to surface specific findings, but a human reviewer's review is still required for merge.
+5. Do **not** post AI-generated review text to your own PR as-is. A human reviewer's review is still required for merge.
 
 See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md#optional-ai-assisted-review-with-the-radius-code-review-skill) for the reviewer perspective on this skill.
 

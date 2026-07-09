@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -249,7 +250,7 @@ func (client *ResourceProvidersClient) GetProviderSummary(ctx context.Context, p
 }
 
 // getProviderSummaryCreateRequest creates the GetProviderSummary request.
-func (client *ResourceProvidersClient) getProviderSummaryCreateRequest(ctx context.Context, planeName string, resourceProviderName string, _ *ResourceProvidersClientGetProviderSummaryOptions) (*policy.Request, error) {
+func (client *ResourceProvidersClient) getProviderSummaryCreateRequest(ctx context.Context, planeName string, resourceProviderName string, options *ResourceProvidersClientGetProviderSummaryOptions) (*policy.Request, error) {
 	urlPath := "/planes/radius/{planeName}/providers/{resourceProviderName}"
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
@@ -265,6 +266,9 @@ func (client *ResourceProvidersClient) getProviderSummaryCreateRequest(ctx conte
 	}
 	reqQP := req.Raw().URL.Query()
 	reqQP.Set("api-version", version20231001Preview)
+	if options != nil && options.IncludeIcons != nil {
+		reqQP.Set("includeIcons", strconv.FormatBool(*options.IncludeIcons))
+	}
 	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
