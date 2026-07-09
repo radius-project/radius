@@ -85,16 +85,24 @@ jobs:
           mkdir tmp-radius-bicep-extension
           mkdir tmp-testresources-bicep-extension
 
-      - name: Publish bicep types
-        run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz --force
+      # The two publish-extension commands are independent: they write to separate
+      # output files (tmp-radius-bicep-extension/radius.tgz and
+      # tmp-testresources-bicep-extension/testresources.tgz, both created above).
+      # Running them as a parallel group overlaps the slow `go run` compile of the
+      # testresources publisher with the Bicep publish. The implicit wait at the
+      # end of the group ensures both finish before bicepconfig.json is modified.
+      - parallel:
+          - name: Publish bicep types
+            run: |
+              bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target ./tmp-radius-bicep-extension/radius.tgz --force
 
-      - name: Publish testresources extension
-        run: |
-          go run ./cmd/rad/main.go bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target ./tmp-testresources-bicep-extension/testresources.tgz --force
+          - name: Publish testresources extension
+            run: |
+              go run ./cmd/rad/main.go bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target ./tmp-testresources-bicep-extension/testresources.tgz --force
 
       - name: Install jq
-        run: sudo apt-get install -y jq
+        # Pinned version + checksums live in build/tools.mk (JQ_VERSION).
+        run: make install-jq
 
       - name: Modify bicepconfig.json
         run: |

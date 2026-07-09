@@ -278,3 +278,40 @@ install-shellcheck: ## Install the pinned ShellCheck into a user-owned bin dir (
 		SHELLCHECK_CHECKSUM_DARWIN_ARM64="$(SHELLCHECK_CHECKSUM_DARWIN_ARM64)" \
 		SHELLCHECK_INSTALL_DIR="$(SHELLCHECK_INSTALL_DIR)" \
 		./build/scripts/install-shellcheck.sh
+
+# jq (command-line JSON processor) - pinned version and per-platform SHA-256
+# checksums consumed by build/scripts/install-jq.sh. jq is published as a single
+# per-platform binary on jqlang/jq's GitHub releases (release tags are
+# 'jq-<version>', and darwin assets are named 'macos'). The script is generic:
+# clear JQ_VERSION to install the latest release, and clear a checksum to have it
+# read from the release's own 'sha256sum.txt' file. Keep the checksums in sync
+# when bumping JQ_VERSION.
+JQ_VERSION ?= 1.8.2
+JQ_CHECKSUM_LINUX_AMD64 ?= b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f
+JQ_CHECKSUM_LINUX_ARM64 ?= 8b85c817833814ddca00a144c33705546355afccf0cf39b188f3cdb48b852309
+JQ_CHECKSUM_DARWIN_AMD64 ?= e94b266e3c26690550006abe63152b782280f4e14374accdf04cbde844f00bc0
+JQ_CHECKSUM_DARWIN_ARM64 ?= 2d75340ba57a4b4b4c8708a21c2dc8e958a48aaa8bba13b27f77f6e4c0eca07e
+
+.PHONY: install-jq
+install-jq: ## Install the pinned jq JSON processor into a user-owned bin dir (no sudo).
+	@JQ_VERSION="$(JQ_VERSION)" \
+		JQ_CHECKSUM_LINUX_AMD64="$(JQ_CHECKSUM_LINUX_AMD64)" \
+		JQ_CHECKSUM_LINUX_ARM64="$(JQ_CHECKSUM_LINUX_ARM64)" \
+		JQ_CHECKSUM_DARWIN_AMD64="$(JQ_CHECKSUM_DARWIN_AMD64)" \
+		JQ_CHECKSUM_DARWIN_ARM64="$(JQ_CHECKSUM_DARWIN_ARM64)" \
+		JQ_INSTALL_DIR="$(JQ_INSTALL_DIR)" \
+		./build/scripts/install-jq.sh
+
+# Delve (the 'dlv' Go debugger) - pinned module version consumed by
+# build/scripts/install-dlv.sh. Delve publishes no prebuilt binaries, so it is
+# installed with 'go install' and its integrity is guaranteed by the Go checksum
+# database; there are no per-platform SHA-256 checksums to pin. Clear DLV_VERSION
+# to install the latest release. Used by the process-debugging workflow (make
+# debug-*).
+DLV_VERSION ?= v1.27.0
+
+.PHONY: install-dlv
+install-dlv: ## Install the pinned Delve (dlv) Go debugger via 'go install'.
+	@DLV_VERSION="$(DLV_VERSION)" \
+		DLV_INSTALL_DIR="$(DLV_INSTALL_DIR)" \
+		./build/scripts/install-dlv.sh
