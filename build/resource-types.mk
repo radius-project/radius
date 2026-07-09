@@ -96,6 +96,7 @@ sync-resource-types: ## Copy manifest files listed in defaults.yaml from the pin
 		rel_path=$$(echo "$$entry" | sed 's/^Radius\.//') && \
 		type_name=$$(echo "$$rel_path" | cut -d'/' -f2) && \
 		src_path="$$MODULE_DIR/$$rel_path/$$type_name.yaml" && \
+		src_icon="$$MODULE_DIR/$$rel_path/$$type_name.svg" && \
 		if [ ! -f "$$src_path" ]; then \
 			echo "ERROR: File not found: $$src_path (from entry '$$entry')"; \
 			echo "       Verify the entry in $(DEFAULTS_YAML) and the resource-types-contrib version."; \
@@ -103,21 +104,31 @@ sync-resource-types: ## Copy manifest files listed in defaults.yaml from the pin
 		fi && \
 		for dest_dir in $(MANIFEST_DEST_DIRS); do \
 			cp "$$src_path" "$$dest_dir/$$type_name.yaml"; \
+			if [ -f "$$src_icon" ]; then \
+				cp "$$src_icon" "$$dest_dir/$$type_name.svg"; \
+			else \
+				rm -f "$$dest_dir/$$type_name.svg"; \
+			fi; \
 		done && \
-		echo "  Copied $$entry"; \
+		if [ -f "$$src_icon" ]; then \
+			echo "  Copied $$entry (with icon)"; \
+		else \
+			echo "  Copied $$entry"; \
+		fi; \
 	done
-	@# Remove stale managed files: any YAML in the destination directories that
-	@# is NOT in MANUAL_CORE_MANIFESTS and NOT in the current defaults.yaml list.
-	@# This prevents previously-copied manifests from remaining registered after
-	@# their entry is removed from defaults.yaml.
+	@# Remove stale managed files: any YAML or SVG in the destination
+	@# directories that is NOT in MANUAL_CORE_MANIFESTS and NOT in the current
+	@# defaults.yaml list. This prevents previously-copied manifests or icons
+	@# from remaining after their entry is removed from defaults.yaml.
 	@EXPECTED_FILES="" && \
 	for entry in $$(yq '.defaultRegistration[]' $(DEFAULTS_YAML)); do \
 		rel_path=$$(echo "$$entry" | sed 's/^Radius\.//') && \
 		type_name=$$(echo "$$rel_path" | cut -d'/' -f2) && \
-		EXPECTED_FILES="$$EXPECTED_FILES $$type_name.yaml"; \
+		EXPECTED_FILES="$$EXPECTED_FILES $$type_name.yaml $$type_name.svg"; \
 	done && \
 	for dest_dir in $(MANIFEST_DEST_DIRS); do \
-		for file in "$$dest_dir"/*.yaml; do \
+		for file in "$$dest_dir"/*.yaml "$$dest_dir"/*.svg; do \
+			[ -e "$$file" ] || continue; \
 			basename=$$(basename "$$file") && \
 			is_manual=false && \
 			for mc in $(MANUAL_CORE_MANIFESTS); do \
@@ -129,7 +140,7 @@ sync-resource-types: ## Copy manifest files listed in defaults.yaml from the pin
 				if [ "$$basename" = "$$ef" ]; then is_expected=true; break; fi; \
 			done && \
 			if [ "$$is_expected" = "false" ]; then \
-				echo "  Removing stale manifest: $$file"; \
+				echo "  Removing stale file: $$file"; \
 				rm "$$file"; \
 			fi; \
 		done; \
