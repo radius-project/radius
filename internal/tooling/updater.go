@@ -43,8 +43,17 @@ func NewClient(token string) *Client {
 	if token == "" {
 		token = os.Getenv("GH_TOKEN")
 	}
+	httpClient := &http.Client{
+		Timeout: 90 * time.Second,
+		CheckRedirect: func(request *http.Request, _ []*http.Request) error {
+			if request.URL.Hostname() != "api.github.com" {
+				request.Header.Del("Authorization")
+			}
+			return nil
+		},
+	}
 	return &Client{
-		HTTP:      &http.Client{Timeout: 90 * time.Second},
+		HTTP:      httpClient,
 		Token:     token,
 		UserAgent: "radius-tool-updater",
 		fileCache: map[string][]byte{},
@@ -236,10 +245,10 @@ func (client *Client) get(ctx context.Context, url string) ([]byte, error) {
 			return nil, fmt.Errorf("create request for %s: %w", url, err)
 		}
 		request.Header.Set("User-Agent", client.UserAgent)
-		if strings.Contains(request.URL.Host, "api.github.com") {
+		if request.URL.Hostname() == "api.github.com" {
 			request.Header.Set("Accept", "application/vnd.github+json")
 		}
-		if client.Token != "" && request.URL.Host == "api.github.com" {
+		if client.Token != "" && request.URL.Hostname() == "api.github.com" {
 			request.Header.Set("Authorization", "Bearer "+client.Token)
 		}
 

@@ -34,7 +34,7 @@ $(TOOL_MAKE_INCLUDE): $(TOOL_MANIFEST) $(TOOL_UPDATER_BINARY)
 
 .PHONY: update-tools
 update-tools: $(TOOL_UPDATER_BINARY) ## Check tool releases and refresh versions and checksums in the manifest.
-	@"$(TOOL_UPDATER_BINARY)" update --manifest "$(TOOL_MANIFEST)" --makefile "$(TOOL_MAKE_INCLUDE)" --terraform-version-file .terraform-version
+	@"$(TOOL_UPDATER_BINARY)" update --manifest "$(TOOL_MANIFEST)" --makefile "$(TOOL_MAKE_INCLUDE)"
 
 .PHONY: install-yq
 install-yq: ## Install the pinned yq YAML processor into a user-owned bin dir (no sudo).

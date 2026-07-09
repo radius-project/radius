@@ -3,10 +3,18 @@ package tooling
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
+
+type httpClientFunc func(*http.Request) (*http.Response, error)
+
+func (function httpClientFunc) Do(request *http.Request) (*http.Response, error) {
+	return function(request)
+}
 
 func TestUpdateManifestRefreshesVersionAndChecksum(t *testing.T) {
 	const checksum = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -24,9 +32,8 @@ func TestUpdateManifestRefreshesVersionAndChecksum(t *testing.T) {
 	defer server.Close()
 
 	manifest := Manifest{
-		SchemaVersion:        1,
-		TerraformVersionFile: ".terraform-version",
-		Platforms:            []string{"linux_amd64"},
+		SchemaVersion: 1,
+		Platforms:     []string{"linux_amd64"},
 		Tools: []Tool{{
 			Name:       "tool",
 			MakePrefix: "TOOL",
@@ -75,6 +82,70 @@ func TestNewerVersionDoesNotDowngrade(t *testing.T) {
 	}
 	if newer {
 		t.Fatal("newerVersion() reported a downgrade as an upgrade")
+	}
+}
+
+func TestClientOnlyAuthenticatesExactGitHubAPIHost(t *testing.T) {
+	tests := []struct {
+		name              string
+		url               string
+		wantAuthorization string
+		wantAccept        string
+	}{
+		{
+			name:              "GitHub API",
+			url:               "https://api.github.com/repos/example/tool/releases/latest",
+			wantAuthorization: "Bearer secret",
+			wantAccept:        "application/vnd.github+json",
+		},
+		{
+			name: "lookalike host",
+			url:  "https://api.github.com.attacker.example/releases/latest",
+		},
+		{
+			name: "GitHub release download",
+			url:  "https://github.com/example/tool/releases/latest",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			client := NewClient("secret")
+			client.HTTP = httpClientFunc(func(request *http.Request) (*http.Response, error) {
+				if got := request.Header.Get("Authorization"); got != test.wantAuthorization {
+					t.Errorf("Authorization = %q, want %q", got, test.wantAuthorization)
+				}
+				if got := request.Header.Get("Accept"); got != test.wantAccept {
+					t.Errorf("Accept = %q, want %q", got, test.wantAccept)
+				}
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body:       io.NopCloser(strings.NewReader("{}")),
+				}, nil
+			})
+			if _, err := client.get(context.Background(), test.url); err != nil {
+				t.Fatalf("get() error = %v", err)
+			}
+		})
+	}
+}
+
+func TestClientStripsAuthorizationOnRedirectAwayFromGitHubAPI(t *testing.T) {
+	client := NewClient("secret")
+	httpClient, ok := client.HTTP.(*http.Client)
+	if !ok {
+		t.Fatalf("HTTP client has type %T, want *http.Client", client.HTTP)
+	}
+	request, err := http.NewRequest(http.MethodGet, "https://uploads.github.com/object", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request.Header.Set("Authorization", "Bearer secret")
+	if err := httpClient.CheckRedirect(request, nil); err != nil {
+		t.Fatalf("CheckRedirect() error = %v", err)
+	}
+	if got := request.Header.Get("Authorization"); got != "" {
+		t.Fatalf("Authorization after redirect = %q, want empty", got)
 	}
 }
 

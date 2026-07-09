@@ -8,7 +8,8 @@ import (
 )
 
 func TestLoadRepositoryManifest(t *testing.T) {
-	manifestPath := filepath.Join("..", "..", "build", "tools.yaml")
+	buildPath := filepath.Join("..", "..", "build")
+	manifestPath := filepath.Join(buildPath, "tools.yaml")
 	manifest, err := LoadManifest(manifestPath)
 	if err != nil {
 		t.Fatalf("LoadManifest() error = %v", err)
@@ -18,16 +19,32 @@ func TestLoadRepositoryManifest(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GenerateMake() error = %v", err)
 	}
-	generated := string(contents)
-	for _, expected := range []string{
-		"YQ_VERSION ?= v4.53.3",
-		"BICEP_CHECKSUM_LINUX_AMD64 ?= aed90eb2c69a6ee2bd70dc0d4354408ac4d04fd9911d3ec8e0cd74ad173e7139",
-		"TERRAFORM_VERSION ?= 1.14.9",
-		"DLV_VERSION ?= v1.27.0",
-	} {
-		if !strings.Contains(generated, expected) {
-			t.Errorf("generated Make metadata does not contain %q", expected)
-		}
+	committed, err := os.ReadFile(filepath.Join(buildPath, "tools.generated.mk"))
+	if err != nil {
+		t.Fatalf("read committed Make metadata: %v", err)
+	}
+	if string(contents) != string(committed) {
+		t.Fatal("generated Make metadata differs from build/tools.generated.mk; run make update-tools")
+	}
+}
+
+func TestLoadManifestRejectsUnknownFields(t *testing.T) {
+	contents, err := os.ReadFile(filepath.Join("..", "..", "build", "tools.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalid := strings.Replace(string(contents), "update: false", "updat: false", 1)
+	if invalid == string(contents) {
+		t.Fatal("test fixture does not contain update: false")
+	}
+	path := filepath.Join(t.TempDir(), "tools.yaml")
+	if err := os.WriteFile(path, []byte(invalid), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = LoadManifest(path)
+	if err == nil || !strings.Contains(err.Error(), "field updat not found") {
+		t.Fatalf("LoadManifest() error = %v, want unknown-field error", err)
 	}
 }
 
@@ -50,6 +67,20 @@ func TestManifestValidationRejectsInvalidSourcesAndFormats(t *testing.T) {
 				manifest.Tools[0].Source.LatestURL = "http://example.test/latest"
 			},
 			want: "valid HTTPS URL",
+		},
+		{
+			name: "insecure download URL",
+			setup: func(manifest *Manifest) {
+				manifest.Tools[0].DownloadTemplate = "http://example.test/{version}/{asset}"
+			},
+			want: "downloadTemplate must expand to a valid HTTPS URL",
+		},
+		{
+			name: "insecure checksum URL",
+			setup: func(manifest *Manifest) {
+				manifest.Tools[0].ChecksumSource.URLTemplate = "http://example.test/checksums"
+			},
+			want: "checksumSource.urlTemplate must expand to a valid HTTPS URL",
 		},
 		{
 			name: "unsupported checksum format",
@@ -81,9 +112,8 @@ func TestManifestValidationRejectsInvalidSourcesAndFormats(t *testing.T) {
 
 func validManifestForValidation() Manifest {
 	return Manifest{
-		SchemaVersion:        1,
-		TerraformVersionFile: ".terraform-version",
-		Platforms:            []string{"linux_amd64"},
+		SchemaVersion: 1,
+		Platforms:     []string{"linux_amd64"},
 		Tools: []Tool{{
 			Name:       "tool",
 			MakePrefix: "TOOL",
@@ -230,7 +260,6 @@ func TestSyncVersionFiles(t *testing.T) {
 func TestWriteManifestPreservesComments(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "tools.yaml")
 	contents := `schemaVersion: 1
-terraformVersionFile: .terraform-version
 platforms:
   - linux_amd64
 tools:

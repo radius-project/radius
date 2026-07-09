@@ -83,9 +83,8 @@ jobs:
           bot_email='dependabot-manager[bot]@users.noreply.github.com'
           git config user.email "$bot_email"
           git checkout -B "$PR_BRANCH"
-          git add build/tools.yaml build/tools.generated.mk .terraform-version \
-            pkg/recipes/terraform/version.go deploy/Chart/values.yaml
-          git commit -m "$PR_TITLE"
+          git add -A
+          git commit --signoff -m "$PR_TITLE"
           remote="https://x-access-token:${APP_TOKEN}@github.com/"
           remote+="${GITHUB_REPOSITORY}.git"
           git push --force "$remote" "HEAD:${PR_BRANCH}"
