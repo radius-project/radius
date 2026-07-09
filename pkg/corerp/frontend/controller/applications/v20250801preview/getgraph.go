@@ -53,7 +53,8 @@ func NewGetGraphv20250801preview(opts ctrl.Options, connection sdk.Connection) (
 
 // Run handles the getGraph custom action for Radius.Core/applications. It looks up the application,
 // resolves its environment, lists application- and environment-scoped resources, and returns the
-// computed application graph.
+// computed application graph enriched with each node's `iconHash` (spec 003 FR-011). The request
+// body's `includeIcons` field is honored in a follow-up commit.
 func (ctrl *GetGraphv20250801preview) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
@@ -68,5 +69,20 @@ func (ctrl *GetGraphv20250801preview) Run(ctx context.Context, w http.ResponseWr
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 
-	return app_ctrl.ComputeGraphResponse(ctx, applicationID, applicationResource.Properties.Environment, ctrl.connection)
+	payload, err := app_ctrl.ComputeGraphPayload(ctx, applicationID, applicationResource.Properties.Environment, ctrl.connection)
+	if err != nil {
+		return nil, err
+	}
+
+	// Per-node iconHash comes from the resource-type registry: one
+	// GetProviderSummary call per distinct namespace in the graph, then a
+	// lookup by "<namespace>/<typeName>". A type without a registered icon
+	// simply leaves the corresponding node's IconHash nil (FR-011 default
+	// substitution is a control-plane-side concern, not the graph layer's).
+	icons, err := fetchIcons(ctx, ctrl.connection, payload, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return rest.NewOKResponse(convertGraphResponseWithIcons(payload, icons)), nil
 }
