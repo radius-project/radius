@@ -125,8 +125,8 @@ func Test_ResourceType_Icon_VersionedToDataModel(t *testing.T) {
 
 	t.Run("icon present is stored verbatim and hashed server-side", func(t *testing.T) {
 		versioned := &ResourceTypeResource{
-			ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
-			Name: to.Ptr("testResources"),
+			ID:   new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
+			Name: new("testResources"),
 			Properties: &ResourceTypeProperties{
 				Icon: to.Ptr(svg),
 			},
@@ -144,8 +144,8 @@ func Test_ResourceType_Icon_VersionedToDataModel(t *testing.T) {
 
 	t.Run("no icon leaves icon and hash unset", func(t *testing.T) {
 		versioned := &ResourceTypeResource{
-			ID:         to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
-			Name:       to.Ptr("testResources"),
+			ID:         new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
+			Name:       new("testResources"),
 			Properties: &ResourceTypeProperties{},
 		}
 
@@ -183,10 +183,10 @@ func Test_ResourceType_ConvertTo_RejectsInvalidIcon(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			versioned := &ResourceTypeResource{
-				ID:   to.Ptr("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
-				Name: to.Ptr("testResources"),
+				ID:   new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
+				Name: new("testResources"),
 				Properties: &ResourceTypeProperties{
-					Icon: to.Ptr(tc.icon),
+					Icon: new(tc.icon),
 				},
 			}
 			_, err := versioned.ConvertTo()
@@ -207,8 +207,8 @@ func Test_ResourceType_Icon_DataModelToVersioned(t *testing.T) {
 		},
 		Properties: datamodel.ResourceTypeProperties{
 			Capabilities: []string{},
-			Icon:         to.Ptr(`<svg/>`),
-			IconHash:     to.Ptr("abc123"),
+			Icon:         new(`<svg/>`),
+			IconHash:     new("abc123"),
 		},
 	}
 

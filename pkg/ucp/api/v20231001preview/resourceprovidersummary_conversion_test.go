@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 
@@ -92,8 +91,8 @@ func Test_ResourceProviderSummary_Icon_DataModelToVersioned(t *testing.T) {
 		Properties: datamodel.ResourceProviderSummaryProperties{
 			ResourceTypes: map[string]datamodel.ResourceProviderSummaryPropertiesResourceType{
 				"testResources": {
-					Icon:     to.Ptr(`<svg/>`),
-					IconHash: to.Ptr("deadbeef"),
+					Icon:     new(`<svg/>`),
+					IconHash: new("deadbeef"),
 				},
 			},
 		},
