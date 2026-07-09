@@ -428,8 +428,10 @@ contains a TODO noting that schema-driven output validation is bypassed.
 
 Recipe **secret** outputs (`RecipeOutput.Secrets`) are handled separately from
 computed values, and are never persisted on the owning resource — not as
-plaintext and not as ciphertext. A resource type declares which recipe outputs
-are secrets with a top-level `secrets` object property in its schema:
+plaintext and not as ciphertext. A resource type declares its recipe secrets with
+a top-level `secrets` object property in its schema. The block reserves a
+read-only `name` sub-property (the reference to the managed secret) and declares
+one read-only sub-property per secret key the recipe produces:
 
 ```yaml
 properties:
@@ -438,18 +440,25 @@ properties:
     readOnly: true
   secrets:
     type: object
-    readOnly: true
     properties:
+      name:
+        type: string
+        readOnly: true
       connectionString:
         type: string
         readOnly: true
 ```
 
+The `secrets` block itself is intentionally not marked `readOnly`, so it can hold
+both recipe secret outputs (read-only, materialized) and, in future, writable
+secret inputs; each sub-property's own `readOnly` flag is the discriminator.
+
 After a recipe runs, the dynamic processor
 ([pkg/dynamicrp/backend/processor/dynamicresource.go](../../pkg/dynamicrp/backend/processor/dynamicresource.go)):
 
-1. Reads the declared secret keys from the schema's `secrets` block via
-   [`schema.GetSecretsBlock`](../../pkg/schema/secrets.go).
+1. Reads the declared secret output keys from the schema's `secrets` block via
+   [`schema.GetSecretsBlock`](../../pkg/schema/secrets.go), which returns the
+   read-only sub-properties excluding the reserved `name`.
 2. Collects the recipe secret outputs whose keys match those declared keys.
    Secret outputs with no matching declared key are dropped, never stored.
 3. Materializes a single Radius-managed `Radius.Security/secrets` resource for
@@ -460,16 +469,22 @@ After a recipe runs, the dynamic processor
    Because it is a normal `Radius.Security/secrets` resource, it flows through
    the usual encrypt-at-rest → recipe → Kubernetes Secret → redact path, so the
    plaintext lives only in the backing Kubernetes Secret.
-4. Sets a read-only `secret` reference on the owner
-   (`properties.secret = { name, id }`) pointing at the managed secret.
+4. Sets the reserved `secrets.name` reference on the owner
+   (`properties.secrets.name`) to the managed secret's name. The declared secret
+   data keys are never populated on the owner.
 
 A recipe produces secret outputs in one of two ways. A wrapped recipe returns them
 under `result.secrets`. A direct module (for example an AVM Bicep or Terraform
-module) maps them with the recipe pack's `secretOutputs` field
-(`pkg/recipes/util.ApplyOutputsMapping`), which routes a named module output to the
-recipe's secrets regardless of whether the module itself declared it sensitive — the
-plain `outputs` map only routes an output to secrets when the module marks it sensitive
-(`@secure()` in Bicep, `sensitive = true` in Terraform).
+module) maps them with a nested `secrets` object inside the recipe pack's `outputs`
+field, for example `outputs: { host: 'name', secrets: { connectionString: 'primaryConnectionString' } }`.
+An entry under `secrets` always routes its named module output to the recipe's
+secrets regardless of whether the module itself declared it sensitive, whereas a
+top-level (non-`secrets`) `outputs` entry only routes an output to secrets when the
+module marks it sensitive (`@secure()` in Bicep, `sensitive = true` in Terraform).
+The API models `outputs` as an untyped map; the versioned-to-datamodel converter and
+the recipe config loader split the nested `secrets` object back out via
+`v20250801preview.SplitRecipeOutputs`, and `pkg/recipes/util.ApplyOutputsMapping`
+applies the resulting mappings.
 
 A consuming container binds to the secret by name — it never reads the value
 from the owner's state:
@@ -478,16 +493,16 @@ from the owner's state:
 env: {
   KAFKA_CONNECTIONSTRING: {
     valueFrom: {
-      secretKeyRef: { key: 'connectionString', secretName: kafka.properties.secret.name }
+      secretKeyRef: { key: 'connectionString', secretName: kafka.properties.secrets.name }
     }
   }
 }
 ```
 
 When the owner resource is deleted, its delete controller cascade-deletes the
-managed secret. `secrets` and `secret` are treated as framework-owned basic
-properties (see `pkg/resourceutil.BasicProperties`) so they are never overwritten
-by generic recipe-output copying.
+managed secret. `secrets` is treated as a framework-owned basic property (see
+`pkg/resourceutil.BasicProperties`) so it is never overwritten by generic
+recipe-output copying.
 
 Secret **inputs** (Scenario 1) are unrelated and already handled by the
 `x-radius-sensitive` encryption filter described under
@@ -559,7 +574,7 @@ up before the Radius resource record is removed.
   properties such as `application` or `environment`.
 - Recipe **secret** outputs are never stored on the owning resource. They are
   materialized into a managed `Radius.Security/secrets` resource, and the owner
-  exposes only a read-only `secret` reference (`{ name, id }`). Secret outputs
+  exposes only the reserved read-only `secrets.name` reference. Secret outputs
   not declared in the schema's `secrets` block are dropped.
 - Sensitive input fields marked by schema annotations are encrypted by the
   frontend filter when the accepted resource is first stored. During backend

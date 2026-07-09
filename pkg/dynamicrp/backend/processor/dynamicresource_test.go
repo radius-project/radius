@@ -116,7 +116,7 @@ func Test_Process(t *testing.T) {
 		require.False(t, hasSecrets, "secret outputs must not be stored in status")
 
 		// No secrets block is declared, so no managed secret reference is set.
-		_, hasSecretRef := properties["secret"]
+		_, hasSecretRef := properties["secrets"]
 		require.False(t, hasSecretRef)
 	})
 
@@ -249,11 +249,13 @@ func Test_Process(t *testing.T) {
 		require.False(t, hasPlaintext)
 		require.Equal(t, hostname, properties["host"])
 
-		// The owner exposes only a read-only reference to the managed secret.
-		ref, ok := properties["secret"].(map[string]any)
+		// The owner exposes only the managed secret's name via the reserved `secrets.name` reference.
+		// The declared secret data key is never populated on the owner, and the id is not exposed.
+		secrets, ok := properties["secrets"].(map[string]any)
 		require.True(t, ok)
-		require.Equal(t, "test-resource-secrets", ref["name"])
-		require.Equal(t, mat.result.ID, ref["id"])
+		require.Equal(t, "test-resource-secrets", secrets["name"])
+		require.NotContains(t, secrets, "id")
+		require.NotContains(t, secrets, "connectionString")
 
 		status, _ := properties["status"].(map[string]any)
 		_, hasSecrets := status["secrets"]
@@ -328,7 +330,7 @@ func Test_Process(t *testing.T) {
 
 		// With only a nil secret value, there is no secret data to materialize.
 		require.False(t, mat.called, "materializer should not be called when there is no secret data")
-		_, hasSecretRef := resource.Properties["secret"]
+		_, hasSecretRef := resource.Properties["secrets"]
 		require.False(t, hasSecretRef)
 	})
 }

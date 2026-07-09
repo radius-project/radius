@@ -430,13 +430,12 @@ type RecipeDefinition struct {
 	// the module source.
 	Source *string
 
-	// Map of resource type property names to module output names. Used for recipes that point directly at a Bicep or Terraform
-	// module to map the module's outputs onto the resource's properties.
-	Outputs map[string]*string
-
-	// Map of secret resource type property names to module output names. Like outputs, but a secretOutputs entry always routes
-	// its module output to the resource's secret outputs regardless of how the module classified it.
-	SecretOutputs map[string]*string
+	// Maps the module's outputs onto the resource type's properties, for recipes that point directly at a Bicep or Terraform
+	// module. Each entry's value is either a string (the module output name for a non-secret property) or, under the reserved
+	// `secrets` key, a nested object mapping secret property names to module output names. A `secrets` entry always routes its
+	// module output to the resource's secret outputs regardless of how the module classified it (for example an AVM module's
+	// `primaryConnectionString`). Example: `{ host: 'name', secrets: { connectionString: 'primaryConnectionString' } }`.
+	Outputs map[string]any
 
 	// Parameters to pass to the recipe
 	Parameters map[string]any

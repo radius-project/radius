@@ -23,19 +23,20 @@ import (
 
 const (
 	// SecretsBlockPropertyName is the name of the top-level object property in a resource type
-	// schema that declares which recipe outputs are secrets. Each sub-property of this block names
-	// a secret key produced by the recipe (for example `connectionString`).
+	// schema that declares a resource's recipe secrets. Its sub-properties are the reserved secret
+	// reference (see SecretNameReferenceKey) plus one entry per secret key produced by the recipe
+	// (for example `connectionString`).
 	SecretsBlockPropertyName = "secrets"
 
-	// SecretReferencePropertyName is the name of the runtime, read-only reference property that
-	// Radius populates on a resource instance. It points at the Radius.Security/secrets resource that
-	// backs the resource's declared secrets so consumers can bind to it (for example via
-	// `properties.secret.name`).
-	SecretReferencePropertyName = "secret"
+	// SecretNameReferenceKey is the reserved sub-property of the `secrets` block that Radius populates
+	// at runtime with the name of the managed Radius.Security/secrets resource backing the resource's
+	// declared secrets. Consumers bind to it by name (for example via `properties.secrets.name`). It is
+	// a reserved reference, not a materializable secret data key.
+	SecretNameReferenceKey = "name"
 )
 
-// GetSecretsBlock inspects a resource type OpenAPI schema and returns the names of the secret output
-// properties declared under the top-level `secrets` object property. The second return value reports
+// GetSecretsBlock inspects a resource type OpenAPI schema and returns the names of the recipe secret
+// output keys declared under the top-level `secrets` object property. The second return value reports
 // whether a `secrets` block is present at all. The returned keys are sorted for deterministic ordering.
 //
 // A resource type declares its recipe secret outputs like this:
@@ -43,13 +44,18 @@ const (
 //	properties:
 //	  secrets:
 //	    type: object
-//	    readOnly: true
 //	    properties:
+//	      name:
+//	        type: string
+//	        readOnly: true
 //	      connectionString:
 //	        type: string
 //	        readOnly: true
 //
-// For the schema above GetSecretsBlock returns (["connectionString"], true).
+// For the schema above GetSecretsBlock returns (["connectionString"], true): the reserved `name`
+// reference is excluded, and only readOnly sub-properties are returned (they are recipe secret
+// outputs to materialize). Writable sub-properties are reserved for future secret inputs and are not
+// returned here. The `secrets` block itself is intentionally not required to be readOnly.
 func GetSecretsBlock(schema map[string]any) ([]string, bool) {
 	secretsSchema, ok := secretsBlockSchema(schema)
 	if !ok {
@@ -64,7 +70,20 @@ func GetSecretsBlock(schema map[string]any) ([]string, bool) {
 	}
 
 	keys := make([]string, 0, len(secretProps))
-	for key := range secretProps {
+	for key, raw := range secretProps {
+		// The reserved reference sub-property is not a materializable secret data key.
+		if key == SecretNameReferenceKey {
+			continue
+		}
+		// Only readOnly sub-properties are recipe secret outputs to materialize. Writable
+		// sub-properties are reserved for future secret inputs and are skipped here.
+		propSchema, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		if readOnly, ok := propSchema["readOnly"].(bool); !ok || !readOnly {
+			continue
+		}
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
@@ -78,8 +97,11 @@ func HasSecretsBlock(schema map[string]any) bool {
 }
 
 // ValidateSecretsBlock validates the shape of the `secrets` block in a resource type schema, if present.
-// The block must be an object marked readOnly, and every declared secret sub-property must be a readOnly
-// string. It returns nil when no `secrets` block is declared.
+// The block must be an object. Every declared sub-property must be a string. The reserved `name`
+// reference sub-property, if present, must be readOnly. The block itself is intentionally not required
+// to be readOnly, and data sub-properties are not required to be readOnly, so the block can hold both
+// recipe secret outputs (readOnly) and, in future, writable secret inputs. It returns nil when no
+// `secrets` block is declared.
 func ValidateSecretsBlock(schema map[string]any) error {
 	secretsSchema, ok := secretsBlockSchema(schema)
 	if !ok {
@@ -88,10 +110,6 @@ func ValidateSecretsBlock(schema map[string]any) error {
 
 	if t, ok := secretsSchema["type"].(string); ok && t != "object" {
 		return fmt.Errorf("property '%s' must be an object", SecretsBlockPropertyName)
-	}
-
-	if readOnly, ok := secretsSchema["readOnly"].(bool); !ok || !readOnly {
-		return fmt.Errorf("property '%s' must be marked readOnly", SecretsBlockPropertyName)
 	}
 
 	secretProps, ok := secretsSchema["properties"].(map[string]any)
@@ -107,8 +125,11 @@ func ValidateSecretsBlock(schema map[string]any) error {
 		if t, ok := propSchema["type"].(string); ok && t != "string" {
 			return fmt.Errorf("secret '%s.%s' must be a string", SecretsBlockPropertyName, key)
 		}
-		if readOnly, ok := propSchema["readOnly"].(bool); !ok || !readOnly {
-			return fmt.Errorf("secret '%s.%s' must be marked readOnly", SecretsBlockPropertyName, key)
+		// The reserved reference sub-property is a server-populated output and must be readOnly.
+		if key == SecretNameReferenceKey {
+			if readOnly, ok := propSchema["readOnly"].(bool); !ok || !readOnly {
+				return fmt.Errorf("secret '%s.%s' must be marked readOnly", SecretsBlockPropertyName, key)
+			}
 		}
 	}
 

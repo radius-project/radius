@@ -32,10 +32,10 @@ const (
 // in all resources. These are excluded from generic recipe-output copying and connection-based
 // environment variable injection.
 //
-// "secrets" is the author-declared block naming which recipe outputs are secrets; Radius routes those
-// values into a managed Radius.Security/secrets resource rather than copying them onto the resource.
-// "secret" is the read-only reference Radius populates that points at that managed secret.
-var BasicProperties = []string{"application", "environment", "status", "connections", "codeReference", "secrets", "secret"}
+// "secrets" is the framework-owned block that both declares which recipe outputs are secrets and,
+// via its reserved read-only "name" sub-property, exposes the reference to the managed
+// Radius.Security/secrets resource that Radius materializes for those outputs.
+var BasicProperties = []string{"application", "environment", "status", "connections", "codeReference", "secrets"}
 
 // marshalAndUnmarshalResource serializes a resource to JSON and then deserializes it into the target structure
 func marshalAndUnmarshalResource[P any, T any](resource P, target *T) error {

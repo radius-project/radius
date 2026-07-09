@@ -31,10 +31,10 @@
         },
         "outputs": {
           "host": "redis_host",
-          "port": "redis_port"
-        },
-        "secretOutputs": {
-          "connectionString": "redis_connection_string"
+          "port": "redis_port",
+          "secrets": {
+            "connectionString": "redis_connection_string"
+          }
         },
         "plainHttp": true
       }

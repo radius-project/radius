@@ -54,7 +54,11 @@ func (d *DynamicProcessor) Delete(ctx context.Context, resource *datamodel.Dynam
 	}
 	// Only resources that materialized a managed secret carry the secret reference; skip the delete call
 	// otherwise to avoid spurious requests.
-	if _, ok := resource.Properties[schemautil.SecretReferencePropertyName]; !ok {
+	secrets, ok := resource.Properties[schemautil.SecretsBlockPropertyName].(map[string]any)
+	if !ok {
+		return nil
+	}
+	if _, ok := secrets[schemautil.SecretNameReferenceKey]; !ok {
 		return nil
 	}
 	return d.SecretMaterializer.Delete(ctx, resource.ID)
@@ -140,8 +144,9 @@ func addComputedValuesToResourceProperties(resource *datamodel.DynamicResource, 
 
 // materializeDeclaredSecrets routes recipe secret outputs whose keys are declared in the schema `secrets`
 // block into a managed Radius.Security/secrets resource, and exposes a read-only reference to that resource
-// on the owner. Secret values are never written onto the owner resource. When the resource type declares no
-// `secrets` block, recipe secret outputs are dropped rather than persisted.
+// on the owner via the reserved `secrets.name` sub-property. Secret values are never written onto the owner
+// resource. When the resource type declares no `secrets` block, recipe secret outputs are dropped rather
+// than persisted.
 func (d *DynamicProcessor) materializeDeclaredSecrets(ctx context.Context, resource *datamodel.DynamicResource, schema map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
 	declaredKeys, ok := schemautil.GetSecretsBlock(schema)
 	if !ok {
@@ -173,13 +178,18 @@ func (d *DynamicProcessor) materializeDeclaredSecrets(ctx context.Context, resou
 		return err
 	}
 
+	// Expose only the managed secret's name via the reserved `secrets.name` reference. The secret data
+	// keys declared in the block are never populated on the owner. Merge into any existing `secrets`
+	// object so we don't clobber a declared block.
 	if resource.Properties == nil {
 		resource.Properties = map[string]any{}
 	}
-	resource.Properties[schemautil.SecretReferencePropertyName] = map[string]any{
-		"name": result.Name,
-		"id":   result.ID,
+	secrets, ok := resource.Properties[schemautil.SecretsBlockPropertyName].(map[string]any)
+	if !ok {
+		secrets = map[string]any{}
+		resource.Properties[schemautil.SecretsBlockPropertyName] = secrets
 	}
+	secrets[schemautil.SecretNameReferenceKey] = result.Name
 
 	return nil
 }

@@ -33,9 +33,13 @@ func kafkaSchema() map[string]any {
 				"readOnly": true,
 			},
 			"secrets": map[string]any{
-				"type":     "object",
-				"readOnly": true,
+				"type": "object",
 				"properties": map[string]any{
+					// Reserved reference sub-property; excluded from the returned data keys.
+					"name": map[string]any{
+						"type":     "string",
+						"readOnly": true,
+					},
 					"connectionString": map[string]any{
 						"type":     "string",
 						"readOnly": true,
@@ -58,9 +62,41 @@ func Test_GetSecretsBlock(t *testing.T) {
 		wantOK   bool
 	}{
 		{
-			name:     "declared secrets block returns sorted keys",
+			name:     "declared secrets block returns sorted data keys, excluding reserved name",
 			schema:   kafkaSchema(),
 			wantKeys: []string{"connectionString", "password"},
+			wantOK:   true,
+		},
+		{
+			name: "block with only the reserved name has no data keys",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"secrets": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"name": map[string]any{"type": "string", "readOnly": true},
+						},
+					},
+				},
+			},
+			wantKeys: []string{},
+			wantOK:   true,
+		},
+		{
+			name: "writable sub-properties are excluded (reserved for future inputs)",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"secrets": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"name":             map[string]any{"type": "string", "readOnly": true},
+							"connectionString": map[string]any{"type": "string", "readOnly": true},
+							"inputValue":       map[string]any{"type": "string"},
+						},
+					},
+				},
+			},
+			wantKeys: []string{"connectionString"},
 			wantOK:   true,
 		},
 		{
@@ -68,8 +104,7 @@ func Test_GetSecretsBlock(t *testing.T) {
 			schema: map[string]any{
 				"properties": map[string]any{
 					"secrets": map[string]any{
-						"type":     "object",
-						"readOnly": true,
+						"type": "object",
 					},
 				},
 			},
@@ -141,21 +176,34 @@ func Test_ValidateSecretsBlock(t *testing.T) {
 			wantErr: "property 'secrets' must be an object",
 		},
 		{
-			name: "secrets block must be readOnly",
+			name: "secrets block is not required to be readOnly",
 			schema: map[string]any{
 				"properties": map[string]any{
 					"secrets": map[string]any{"type": "object"},
 				},
 			},
-			wantErr: "property 'secrets' must be marked readOnly",
+			wantErr: "",
+		},
+		{
+			name: "writable data sub-property is allowed (future input)",
+			schema: map[string]any{
+				"properties": map[string]any{
+					"secrets": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"connectionString": map[string]any{"type": "string"},
+						},
+					},
+				},
+			},
+			wantErr: "",
 		},
 		{
 			name: "secret sub-property must be string",
 			schema: map[string]any{
 				"properties": map[string]any{
 					"secrets": map[string]any{
-						"type":     "object",
-						"readOnly": true,
+						"type": "object",
 						"properties": map[string]any{
 							"connectionString": map[string]any{"type": "object", "readOnly": true},
 						},
@@ -165,19 +213,18 @@ func Test_ValidateSecretsBlock(t *testing.T) {
 			wantErr: "secret 'secrets.connectionString' must be a string",
 		},
 		{
-			name: "secret sub-property must be readOnly",
+			name: "reserved name sub-property must be readOnly",
 			schema: map[string]any{
 				"properties": map[string]any{
 					"secrets": map[string]any{
-						"type":     "object",
-						"readOnly": true,
+						"type": "object",
 						"properties": map[string]any{
-							"connectionString": map[string]any{"type": "string"},
+							"name": map[string]any{"type": "string"},
 						},
 					},
 				},
 			},
-			wantErr: "secret 'secrets.connectionString' must be marked readOnly",
+			wantErr: "secret 'secrets.name' must be marked readOnly",
 		},
 	}
 
