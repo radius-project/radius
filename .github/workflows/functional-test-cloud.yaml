@@ -507,7 +507,7 @@ jobs:
           make generate-bicep-types VERSION="${BICEP_TYPES_VERSION}"
 
       - name: Install bicep CLI
-        # Pinned version + checksum live in build/tools.mk (previously installed
+        # Pinned version + checksum live in build/tools.yaml (previously installed
         # the unpinned 'latest', which could pull v0.43+).
         run: make install-bicep
 
@@ -745,7 +745,7 @@ jobs:
           AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - name: Install helm
-        # Version pinned in build/tools.mk (HELM_VERSION).
+        # Version pinned in build/tools.yaml (HELM_VERSION).
         run: make install-helm
 
       # The role-to-assume is the role that the github action will assume to execute aws commands and
@@ -758,7 +758,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Install KinD
-        # Installs the version pinned in build/tools.mk (KIND_VERSION) and adds
+        # Installs the version pinned in build/tools.yaml (KIND_VERSION) and adds
         # the install dir to the job PATH for the cluster-create step below.
         run: make install-kind
 

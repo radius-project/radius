@@ -315,7 +315,7 @@ jobs:
           registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
 
       - name: Install bicep CLI
-        # Pinned version + checksum live in build/tools.mk.
+        # Pinned version + checksum live in build/tools.yaml.
         run: make install-bicep
 
       - name: Publish bicep types
@@ -366,7 +366,7 @@ jobs:
           rad version
 
       - name: Install helm
-        # Version pinned in build/tools.mk (HELM_VERSION).
+        # Version pinned in build/tools.yaml (HELM_VERSION).
         run: make install-helm
 
       - name: Create a KinD cluster with a local registry
@@ -583,7 +583,7 @@ jobs:
 
       - name: Install Dapr CLI
         if: matrix.name == 'daprrp-noncloud'
-        # Version pinned in build/tools.mk (DAPR_VERSION).
+        # Version pinned in build/tools.yaml (DAPR_VERSION).
         run: make install-dapr
 
       - name: Install Dapr control plane

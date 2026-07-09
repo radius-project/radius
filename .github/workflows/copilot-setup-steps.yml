@@ -26,7 +26,7 @@
 # functional-test-noncloud.yaml). Language runtime versions are read from the
 # repo's version files (go.mod, .node-version, .python-version, .terraform-version)
 # so a version bump flows here automatically; CLI tool versions and checksums are
-# pinned in build/tools.mk and installed via the shared `make install-<tool>`
+# pinned in build/tools.yaml and installed via the shared `make install-<tool>`
 # targets. Versions are NOT declared in a workflow-level `env:`
 # block because the Copilot coding agent replays these steps in a harness that
 # does not provide that context.
@@ -41,7 +41,10 @@ on:
       - .node-version
       - .python-version
       - .terraform-version
+      - build/tools.yaml
       - build/tools.mk
+      - cmd/tool-updater/**
+      - internal/tooling/**
       - build/scripts/install-*.sh
   pull_request:
     paths:
@@ -49,7 +52,10 @@ on:
       - .node-version
       - .python-version
       - .terraform-version
+      - build/tools.yaml
       - build/tools.mk
+      - cmd/tool-updater/**
+      - internal/tooling/**
       - build/scripts/install-*.sh
 
 permissions: {}
@@ -64,7 +70,7 @@ permissions: {}
 # See: https://docs.github.com/en/copilot/how-tos/use-copilot-agents/coding-agent/customize-the-agent-environment
 # Language runtime versions read from repo version files (go.mod, .node-version,
 # .python-version, .terraform-version) still work because the steps read the files
-# directly; CLI tool versions come from build/tools.mk via `make install-<tool>`.
+# directly; CLI tool versions come from build/tools.yaml via `make install-<tool>`.
 
 jobs:
   # The job MUST be named `copilot-setup-steps` for the Copilot coding agent to
@@ -103,11 +109,11 @@ jobs:
           python-version-file: .python-version
 
       - name: Install helm
-        # Version pinned in build/tools.mk (HELM_VERSION).
+        # Version pinned in build/tools.yaml (HELM_VERSION).
         run: make install-helm
 
       - name: Install kubectl
-        # Version pinned in build/tools.mk (KUBECTL_VERSION).
+        # Version pinned in build/tools.yaml (KUBECTL_VERSION).
         run: make install-kubectl
 
       - name: Install pnpm and TypeSpec tooling
@@ -136,14 +142,14 @@ jobs:
           cspell --version
 
       - name: Install golangci-lint
-        # Pinned version + checksums live in build/tools.mk (GOLANGCI_LINT_VERSION).
+        # Pinned version + checksums live in build/tools.yaml (GOLANGCI_LINT_VERSION).
         run: make install-golangci-lint
 
       - name: Install Delve (dlv)
         # controller-gen, mockgen, and gotestsum are managed as Go tool dependencies
         # (the 'tool' directives in go.mod) and run via `go tool`, so they need no
         # separate install. dlv (Delve) is used by the process-debugging workflow
-        # (make debug-*). Version pinned in build/tools.mk (DLV_VERSION).
+        # (make debug-*). Version pinned in build/tools.yaml (DLV_VERSION).
         run: make install-dlv
 
       - name: Install yq
@@ -152,31 +158,31 @@ jobs:
 
       - name: Install KinD
         # Lets the agent create a local Kubernetes cluster for integration and
-        # functional tests. Version pinned in build/tools.mk (KIND_VERSION).
+        # functional tests. Version pinned in build/tools.yaml (KIND_VERSION).
         run: make install-kind
 
       - name: Install k3d
         # Used by the local debug environment (make debug-start) to create a
-        # lightweight Kubernetes cluster. Version pinned in build/tools.mk (K3D_VERSION).
+        # lightweight Kubernetes cluster. Version pinned in build/tools.yaml (K3D_VERSION).
         run: make install-k3d
 
       - name: Install stern
         # Multi-pod log tailing for debugging Kubernetes output across the
-        # radius-system components. Version pinned in build/tools.mk (STERN_VERSION).
+        # radius-system components. Version pinned in build/tools.yaml (STERN_VERSION).
         run: make install-stern
 
       - name: Install Dapr CLI
-        # Version pinned in build/tools.mk (DAPR_VERSION).
+        # Version pinned in build/tools.yaml (DAPR_VERSION).
         run: make install-dapr
 
       - name: Install Terraform
         # Version defaults to .terraform-version (overridable via TERRAFORM_VERSION)
-        # and is compiled into the rad binary; checksums pinned in build/tools.mk.
+        # and is compiled into the rad binary; checksums pinned in build/tools.yaml.
         run: make install-terraform
 
       - name: Install Bicep CLI
         # Required by Bicep type publishing (make publish-bicep-extension) and
-        # rad bicep flows. Pinned version + checksum live in build/tools.mk.
+        # rad bicep flows. Pinned version + checksum live in build/tools.yaml.
         run: make install-bicep
 
       - name: Install PostgreSQL client
