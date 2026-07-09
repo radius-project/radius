@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
@@ -86,7 +85,7 @@ func Test_ResourceType_DataModelToVersioned(t *testing.T) {
 			filename: "resourcetype_datamodel.json",
 			expected: &ResourceTypeResource{
 				ID:   new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
-				Type: to.Ptr(datamodel.ResourceTypeResourceType),
+				Type: new(datamodel.ResourceTypeResourceType),
 				Name: new("testResources"),
 				Properties: &ResourceTypeProperties{
 					ProvisioningState: new(ProvisioningStateSucceeded),
@@ -128,7 +127,7 @@ func Test_ResourceType_Icon_VersionedToDataModel(t *testing.T) {
 			ID:   new("/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources"),
 			Name: new("testResources"),
 			Properties: &ResourceTypeProperties{
-				Icon: to.Ptr(svg),
+				Icon: new(svg),
 			},
 		}
 
@@ -230,7 +229,7 @@ func Test_validateCapability(t *testing.T) {
 	}{
 		{
 			name:  "valid capability",
-			input: to.Ptr(string(datamodel.CapabilityManualResourceProvisioning)),
+			input: new(string(datamodel.CapabilityManualResourceProvisioning)),
 		},
 		{
 			name:        "invalid capability",
