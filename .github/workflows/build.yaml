@@ -131,13 +131,13 @@ jobs:
       - name: Copy cli binaries to release (unix-like)
         if: matrix.target_os != 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
-          mkdir "${RELEASE_PATH}"
+          mkdir -p "${RELEASE_PATH}"
           cp "./dist/${GOOS}_${GOARCH}/release/rad" "${RELEASE_PATH}/rad_${GOOS}_${GOARCH}"
 
       - name: Copy cli binaries to release (windows)
         if: matrix.target_os == 'windows' && needs.changes.outputs.only_changed != 'true'
         run: |
-          mkdir "${RELEASE_PATH}"
+          mkdir -p "${RELEASE_PATH}"
           cp "./dist/${GOOS}_${GOARCH}/release/rad.exe" "${RELEASE_PATH}/rad_${GOOS}_${GOARCH}.exe"
 
       - name: Upload CLI binary

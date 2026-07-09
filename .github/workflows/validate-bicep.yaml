@@ -82,8 +82,8 @@ jobs:
 
       - name: Create a temporary file system
         run: |
-          mkdir tmp-radius-bicep-extension
-          mkdir tmp-testresources-bicep-extension
+          mkdir -p tmp-radius-bicep-extension
+          mkdir -p tmp-testresources-bicep-extension
 
       # The two publish-extension commands are independent: they write to separate
       # output files (tmp-radius-bicep-extension/radius.tgz and
