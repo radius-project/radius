@@ -131,7 +131,7 @@ flowchart TD
     end
     ghcleanup["GitHub Workflow Cleanup"]:::io
     devcleanup["Dev Machine Cleanup"]:::io
-    
+
     ghsetup --> logic
     devsetup --> logic
     cloudsetup --> work
@@ -150,7 +150,7 @@ Here is an example of logic that is embedded within a workflow, which prevents i
     - name: Publish UDT types
         if: steps.skip-build.outputs.SKIP_BUILD != 'true'
         run: |
-          mkdir ./bin
+          mkdir -p ./bin
           cp ./dist/linux_amd64/release/rad ./bin/rad
           chmod +x ./bin/rad
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
@@ -177,7 +177,7 @@ flowchart LR
     fork["Fork the repo"]
     setupCreds["Set up credentials"]
     invoke["Invoke the forked workflow"]
-    
+
     fork --> setupCreds
     setupCreds --> invoke
 ```
@@ -199,7 +199,7 @@ The use of actions should be limited to setup and cleanup that is unique to GitH
 * Retrieving stored secrets
 * Publishing results
 
-> NOTE: Most of the items in the list above also happen on developer machines, but the implementation is different. For example, a dev machine is more likely to have a long-lived git repo, whereas a GitHub workflow will clone a repo for each workflow run. 
+> NOTE: Most of the items in the list above also happen on developer machines, but the implementation is different. For example, a dev machine is more likely to have a long-lived git repo, whereas a GitHub workflow will clone a repo for each workflow run.
 
 :warning: When using GitHub actions that are published on other repositories, we are [placing trust](https://arstechnica.com/information-technology/2025/03/supply-chain-attack-exposing-credentials-affects-23k-users-of-tj-actions/) in the authors of that repo that they will prevent malicious code from executing. Choose wisely, and consider forking and customizing a GitHub action instead of calling it directly. Our trust in GitHub actions is similar to the way we trust code dependencies: we trust our code the most, we highly trust code published by GitHub, Microsoft, CNCF, or other trusted entities, we mostly trust code created by people we trust, and least of all trust code created by people we do not know.
 
@@ -258,7 +258,7 @@ Where possible, the automation logic will use the GitHub CLI, which has identity
 
 * A new folder exists in the `radius/docs` folder that provides a `README.md` file with guidance on creating and editing GitHub workflows and other repo automation like `make`.
 * The `README.md` document contains a real-world example of converting complex workflow logic into a `make` command that invokes a shell script.
-* The `README.md` document contains a checklist for reviewing workflow edits. Examples of checklist items are: 
+* The `README.md` document contains a checklist for reviewing workflow edits. Examples of checklist items are:
 
     [ ] Workflow logic is testable on a developer machine by running `make` commands and with minimal setup.
     [ ] The workflow is runnable from a repo fork using `workflow_dispatch` (manually invoked).
@@ -272,9 +272,9 @@ Where possible, the automation logic will use the GitHub CLI, which has identity
 
 Modify the PR template checklist for each repository that contains workflows to include items similar to the following:
 
-Workflow modifications have been tested on a repo fork and the changes conform to the workflow development guidance (add hyperlink to the guidance )  
+Workflow modifications have been tested on a repo fork and the changes conform to the workflow development guidance (add hyperlink to the guidance )
 
-* [ ] This PR contains no modifications to GitHub workflows or repo automation.  
+* [ ] This PR contains no modifications to GitHub workflows or repo automation.
 * [ ] Changes to GitHub workflows, actions, and other repo automation have been tested on a repo fork.
 
 ### Existing GitHub Workflows
