@@ -19,7 +19,7 @@ Make builds the updater into `bin/` before executing it. This stable path is imp
 To invoke the compiled updater directly:
 
 ```sh
-bin/tool-updater.exe update --manifest build/tools.yaml --makefile build/tools.generated.mk --terraform-version-file .terraform-version
+bin/tool-updater.exe update --manifest build/tools.yaml --makefile build/tools.generated.mk
 ```
 
 Use `bin/tool-updater` instead of `bin/tool-updater.exe` on non-Windows systems. The other subcommand regenerates only the Make include:
@@ -32,12 +32,11 @@ bin/tool-updater.exe generate-make --manifest build/tools.yaml --output build/to
 
 The manifest is YAML with the following top-level properties:
 
-| Property               | Type            | Allowed or required values                                                                         | Description                                             |
-|------------------------|-----------------|----------------------------------------------------------------------------------------------------|---------------------------------------------------------|
-| `schemaVersion`        | integer         | `1`                                                                                                | Manifest schema version.                                |
-| `terraformVersionFile` | string          | Non-empty repository-relative path                                                                 | Compatibility file synchronized for the Terraform tool. |
-| `platforms`            | list of strings | One or more unique values matching `linux_amd64`, `linux_arm64`, `darwin_amd64`, or `darwin_arm64` | Platforms for which checksums and assets are recorded.  |
-| `tools`                | list of objects | One or more tools                                                                                  | Tool definitions described below.                       |
+| Property        | Type            | Allowed or required values                                                                         | Description                                            |
+|-----------------|-----------------|----------------------------------------------------------------------------------------------------|--------------------------------------------------------|
+| `schemaVersion` | integer         | `1`                                                                                                | Manifest schema version.                               |
+| `platforms`     | list of strings | One or more unique values matching `linux_amd64`, `linux_arm64`, `darwin_amd64`, or `darwin_arm64` | Platforms for which checksums and assets are recorded. |
+| `tools`         | list of objects | One or more tools                                                                                  | Tool definitions described below.                      |
 
 ### Tool properties
 
@@ -114,7 +113,7 @@ A `versionFiles` entry keeps another repository file synchronized when a tool ve
 | `prefix` | string | Required for `replace`; empty for `plain` | Text immediately before the embedded version.                             |
 | `suffix` | string | Required for `replace`; empty for `plain` | Text immediately after the embedded version.                              |
 
-The `replace` prefix must occur exactly once. Terraform uses `terraformVersionFile` for `.terraform-version`, and uses this mechanism for the Go fallback and Helm chart default.
+The `replace` prefix must occur exactly once. Terraform uses `versionFiles` for `.terraform-version`, the Go fallback, and the Helm chart default.
 
 ## Update behavior
 

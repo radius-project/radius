@@ -59,7 +59,6 @@ func update(args []string) error {
 	flags := flag.NewFlagSet("update", flag.ContinueOnError)
 	manifestPath := flags.String("manifest", "build/tools.yaml", "tool manifest path")
 	makePath := flags.String("makefile", "build/tools.generated.mk", "generated Make include path")
-	terraformVersionPath := flags.String("terraform-version-file", "", "Terraform compatibility version file")
 	err := flags.Parse(args)
 	if err != nil {
 		return fmt.Errorf("parse flags: %w", err)
@@ -68,10 +67,6 @@ func update(args []string) error {
 	manifest, err := tooling.LoadManifest(*manifestPath)
 	if err != nil {
 		return fmt.Errorf("load manifest: %w", err)
-	}
-	terraformVersionPathValue := *terraformVersionPath
-	if terraformVersionPathValue == "" {
-		terraformVersionPathValue = manifest.TerraformVersionFile
 	}
 	changes, err := tooling.UpdateManifest(context.Background(), &manifest, tooling.NewClient(""))
 	if err != nil {
@@ -88,13 +83,8 @@ func update(args []string) error {
 		}
 	}
 
-	if terraform, ok := findTool(manifest, "terraform"); ok {
-		if _, err := tooling.WriteTextFile(terraformVersionPathValue, terraform.Version+"\n"); err != nil {
-			return fmt.Errorf("write Terraform version file: %w", err)
-		}
-		if err := tooling.SyncVersionFiles(".", terraform); err != nil {
-			return fmt.Errorf("sync Terraform version consumers: %w", err)
-		}
+	if err := syncVersionFiles(".", manifest); err != nil {
+		return err
 	}
 	if _, err := tooling.WriteMakeFile(*makePath, manifest); err != nil {
 		return fmt.Errorf("write Make metadata: %w", err)
@@ -102,11 +92,11 @@ func update(args []string) error {
 	return nil
 }
 
-func findTool(manifest tooling.Manifest, name string) (tooling.Tool, bool) {
+func syncVersionFiles(root string, manifest tooling.Manifest) error {
 	for _, tool := range manifest.Tools {
-		if tool.Name == name {
-			return tool, true
+		if err := tooling.SyncVersionFiles(root, tool); err != nil {
+			return fmt.Errorf("sync %s version consumers: %w", tool.Name, err)
 		}
 	}
-	return tooling.Tool{}, false
+	return nil
 }

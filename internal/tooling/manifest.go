@@ -25,10 +25,9 @@ var (
 // Manifest is the source of truth for the versions, release sources, assets,
 // and checksums of the external tools used by the repository.
 type Manifest struct {
-	SchemaVersion        int      `yaml:"schemaVersion"`
-	TerraformVersionFile string   `yaml:"terraformVersionFile"`
-	Platforms            []string `yaml:"platforms"`
-	Tools                []Tool   `yaml:"tools"`
+	SchemaVersion int      `yaml:"schemaVersion"`
+	Platforms     []string `yaml:"platforms"`
+	Tools         []Tool   `yaml:"tools"`
 }
 
 // Tool describes one pinned external tool.
@@ -89,7 +88,9 @@ func LoadManifest(path string) (Manifest, error) {
 	}
 
 	var manifest Manifest
-	if err := yaml.Unmarshal(contents, &manifest); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(contents))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(&manifest); err != nil {
 		return Manifest{}, fmt.Errorf("parse tool manifest: %w", err)
 	}
 	if err := manifest.Validate(); err != nil {
@@ -103,9 +104,6 @@ func LoadManifest(path string) (Manifest, error) {
 func (m Manifest) Validate() error {
 	if m.SchemaVersion != manifestSchemaVersion {
 		return fmt.Errorf("unsupported schemaVersion %d", m.SchemaVersion)
-	}
-	if strings.TrimSpace(m.TerraformVersionFile) == "" {
-		return fmt.Errorf("terraformVersionFile is required")
 	}
 	if len(m.Platforms) == 0 {
 		return fmt.Errorf("at least one platform is required")
@@ -181,9 +179,46 @@ func (m Manifest) Validate() error {
 			if !hashPattern.MatchString(entry.Checksum) {
 				return fmt.Errorf("tool %s has invalid SHA-256 for %s", tool.Name, platform)
 			}
+			if err := validateToolURLs(tool, platform); err != nil {
+				return err
+			}
 		}
 	}
 
+	return nil
+}
+
+func validateToolURLs(tool Tool, platform string) error {
+	values, err := tool.TemplateValues(platform, tool.Version)
+	if err != nil {
+		return err
+	}
+	asset, err := ExpandTemplate(values["asset"], values)
+	if err != nil {
+		return fmt.Errorf("expand asset for %s %s: %w", tool.Name, platform, err)
+	}
+	values["asset"] = asset
+
+	if err := validateHTTPSTemplate(tool.Name+" downloadTemplate", tool.DownloadTemplate, values); err != nil {
+		return err
+	}
+	if tool.ChecksumSource.Type == "url-file" {
+		if err := validateHTTPSTemplate(tool.Name+" checksumSource.urlTemplate", tool.ChecksumSource.URLTemplate, values); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateHTTPSTemplate(name, template string, values map[string]string) error {
+	expanded, err := ExpandTemplate(template, values)
+	if err != nil {
+		return fmt.Errorf("expand %s: %w", name, err)
+	}
+	parsedURL, err := url.Parse(expanded)
+	if err != nil || parsedURL.Scheme != "https" || parsedURL.Host == "" {
+		return fmt.Errorf("%s must expand to a valid HTTPS URL", name)
+	}
 	return nil
 }
 

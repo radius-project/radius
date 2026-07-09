@@ -1,6 +1,5 @@
 ---
 schemaVersion: 1
-terraformVersionFile: .terraform-version
 platforms:
   - linux_amd64
   - linux_arm64
@@ -241,6 +240,8 @@ tools:
       urlTemplate: https://releases.hashicorp.com/terraform/{version}/terraform_{version}_SHA256SUMS
       format: standard
     versionFiles:
+      - path: .terraform-version
+        format: plain
       - path: pkg/recipes/terraform/version.go
         format: replace
         prefix: 'var terraformVersion = "'
