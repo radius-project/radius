@@ -106,6 +106,10 @@ func TestClientOnlyAuthenticatesExactGitHubAPIHost(t *testing.T) {
 			name: "GitHub release download",
 			url:  "https://github.com/example/tool/releases/latest",
 		},
+		{
+			name: "insecure GitHub API URL",
+			url:  "http://api.github.com/repos/example/tool/releases/latest",
+		},
 	}
 
 	for _, test := range tests {
@@ -146,6 +150,22 @@ func TestClientStripsAuthorizationOnRedirectAwayFromGitHubAPI(t *testing.T) {
 	}
 	if got := request.Header.Get("Authorization"); got != "" {
 		t.Fatalf("Authorization after redirect = %q, want empty", got)
+	}
+}
+
+func TestClientLimitsRedirects(t *testing.T) {
+	client := NewClient("secret")
+	httpClient, ok := client.HTTP.(*http.Client)
+	if !ok {
+		t.Fatalf("HTTP client has type %T, want *http.Client", client.HTTP)
+	}
+	request, err := http.NewRequest(http.MethodGet, "https://api.github.com/redirect", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	via := make([]*http.Request, 10)
+	if err := httpClient.CheckRedirect(request, via); err == nil {
+		t.Fatal("CheckRedirect() accepted more than 10 redirects")
 	}
 }
 

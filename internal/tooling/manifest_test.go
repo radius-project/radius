@@ -48,6 +48,22 @@ func TestLoadManifestRejectsUnknownFields(t *testing.T) {
 	}
 }
 
+func TestLoadManifestRejectsMultipleDocuments(t *testing.T) {
+	contents, err := os.ReadFile(filepath.Join("..", "..", "build", "tools.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "tools.yaml")
+	if err := os.WriteFile(path, append(contents, []byte("\n---\nextra: document\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = LoadManifest(path)
+	if err == nil || !strings.Contains(err.Error(), "multiple YAML documents") {
+		t.Fatalf("LoadManifest() error = %v, want multiple-document error", err)
+	}
+}
+
 func TestManifestValidationRejectsInvalidSourcesAndFormats(t *testing.T) {
 	tests := []struct {
 		name  string
