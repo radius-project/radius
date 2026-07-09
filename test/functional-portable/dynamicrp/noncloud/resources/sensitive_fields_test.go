@@ -253,7 +253,7 @@ func verifySensitiveFieldRedaction(
 
 	// --- No-leak verification: secret values must not surface through `rad resource show` or the app graph ---
 	verifySecretsNotExposed(ctx, t, ct, appName, resourceTypeName, resourceName,
-		[]string{expectedPassword, expectedAPIKey, expectedCredentialSecret, expectedConnectionConfigToken})
+		[]string{expectedPassword, expectedAPIKey, expectedCredentialSecret, expectedConnectionConfigURL, expectedConnectionConfigToken})
 }
 
 // verifySecretsNotExposed asserts that none of the provided secret values are exposed through the two
