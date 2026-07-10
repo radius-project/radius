@@ -86,6 +86,8 @@ const (
 	radiusPodSelector     = "app.kubernetes.io/part-of=radius"
 )
 
+var registryHTTPClient = &http.Client{Timeout: 5 * time.Second}
+
 // installRadius installs Radius with the PostgreSQL state backend enabled, using the images and
 // chart of the build under test. In CI the registry/tag come from DOCKER_REGISTRY/REL_VERSION and
 // the secure local registry's CA is supplied via RADIUS_REGISTRY_CERT_FILE; locally it falls back
@@ -200,6 +202,10 @@ func waitForCleanTeardown(t *testing.T, ctx context.Context) {
 func startLocalRegistry(t *testing.T) string {
 	t.Helper()
 
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Docker is required for the OCI state archive functional test")
+	}
+
 	cmd := exec.Command("docker", "run", "--detach", "--rm", "--publish", "127.0.0.1::5000", "registry:2")
 	out, err := cmd.CombinedOutput()
 	require.NoErrorf(t, err, "start local OCI registry: %s", out)
@@ -218,7 +224,7 @@ func startLocalRegistry(t *testing.T) string {
 	address := "127.0.0.1:" + strings.TrimSpace(string(portOut))
 
 	require.Eventually(t, func() bool {
-		response, requestErr := http.Get("http://" + address + "/v2/")
+		response, requestErr := registryHTTPClient.Get("http://" + address + "/v2/")
 		if requestErr != nil {
 			return false
 		}
@@ -294,7 +300,7 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	out, err = stateCLI.RunCommand(ctx, []string{"shutdown"})
 	require.NoErrorf(t, err, "rad shutdown failed: %s", out)
 	require.Eventually(t, func() bool {
-		response, requestErr := http.Get("http://" + registry + "/v2/radius-state/manifests/radius-state")
+		response, requestErr := registryHTTPClient.Get("http://" + registry + "/v2/radius-state/manifests/radius-state")
 		if requestErr != nil {
 			return false
 		}

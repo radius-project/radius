@@ -144,7 +144,7 @@ func (a *OCIArchive) Open(ctx context.Context, name string) (statearchive.Sessio
 
 func (a *OCIArchive) openRemoteTarget(context.Context) (oras.Target, error) {
 	if a.options.Repository == "" {
-		return nil, errors.New("OCI archive repository is not configured")
+		return nil, errors.New("OCI archive repository is not configured; set RADIUS_STATE_REGISTRY or RADIUS_GRAPH_REGISTRY")
 	}
 
 	credentialStore, err := credentials.NewStoreFromDocker(credentials.StoreOptions{
@@ -392,15 +392,30 @@ func unpackArchive(ctx context.Context, target oras.Target, manifestDesc ocispec
 	if err != nil {
 		return err
 	}
-	defer layerReader.Close()
 
 	gzipReader, err := gzip.NewReader(layerReader)
 	if err != nil {
+		_ = layerReader.Close()
 		return fmt.Errorf("invalid archive compression: %w", err)
 	}
-	defer gzipReader.Close()
 
-	tarReader := tar.NewReader(gzipReader)
+	unpackErr := unpackArchiveEntries(gzipReader, root)
+	gzipCloseErr := gzipReader.Close()
+	layerCloseErr := layerReader.Close()
+	if unpackErr != nil {
+		return unpackErr
+	}
+	if gzipCloseErr != nil {
+		return fmt.Errorf("failed to close archive compression stream: %w", gzipCloseErr)
+	}
+	if layerCloseErr != nil {
+		return fmt.Errorf("failed to close archive layer: %w", layerCloseErr)
+	}
+	return nil
+}
+
+func unpackArchiveEntries(reader io.Reader, root string) error {
+	tarReader := tar.NewReader(reader)
 	for {
 		header, err := tarReader.Next()
 		if errors.Is(err, io.EOF) {
@@ -409,7 +424,7 @@ func unpackArchive(ctx context.Context, target oras.Target, manifestDesc ocispec
 		if err != nil {
 			return fmt.Errorf("invalid archive entry: %w", err)
 		}
-		if header.Typeflag != tar.TypeReg && header.Typeflag != tar.TypeRegA {
+		if header.Typeflag != tar.TypeReg {
 			return fmt.Errorf("unsupported archive entry %q", header.Name)
 		}
 

@@ -55,7 +55,7 @@ const (
 	DefaultStateArchive = "radius-state"
 
 	// StateArchiveEnvVar overrides DefaultStateArchive. It lets parallel tests use isolated
-	// branches without colliding.
+	// archives without colliding.
 	StateArchiveEnvVar = "RADIUS_STATE_ARCHIVE"
 
 	// DefaultStateBranch is deprecated. Use DefaultStateArchive.
