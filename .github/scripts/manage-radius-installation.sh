@@ -163,6 +163,7 @@ install_radius() {
     echo "Installing Radius..."
     if ! rad install kubernetes \
         --set global.azureWorkloadIdentity.enabled=true \
+        --set global.aws.irsa.enabled=true \
         --set database.enabled=false; then
         echo ""
         echo "============================================================================"
@@ -275,9 +276,11 @@ main() {
         # NOTE: Helm upgrades do not automatically reuse values from the previous release.
         # We must re-apply critical chart values or they will reset to chart defaults.
         # - global.azureWorkloadIdentity.enabled defaults to false and is required for Azure WI auth in this workflow.
+        # - global.aws.irsa.enabled defaults to false and is required for AWS IRSA auth in this workflow.
         # https://github.com/radius-project/radius/issues/11218
         if ! rad upgrade kubernetes \
             --set global.azureWorkloadIdentity.enabled=true \
+            --set global.aws.irsa.enabled=true \
             --set database.enabled=false; then
             echo ""
             echo "============================================================================"

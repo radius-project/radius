@@ -4,7 +4,7 @@
 
 Functional tests (also called end-to-end tests) interact with real hosting environments (Kubernetes), deploy real applications and resources, and cover realistic user scenarios. They verify, for example, that a Radius Environment can be created successfully and that the Bicep templates of sample applications can be deployed to it. This page is for contributors validating a change against a real cluster; for the full set of test tiers and when to run each, start at the [test matrix overview](./README.md).
 
-The tests live under `./test/functional-portable`. They use product functionality — the Radius CLI configuration and your local KubeConfig — to detect settings, so the local setup resembles a real user scenario.
+The tests live under `./test/functional-portable`. They use product functionality - the Radius CLI configuration and your local KubeConfig - to detect settings, so the local setup resembles a real user scenario.
 
 ## Prerequisites
 
@@ -138,6 +138,64 @@ These tests run automatically for every PR via the `functional-test-noncloud.yam
 - For each group of tests: creates a Kubernetes cluster, installs the build, runs the tests, and deletes any cloud resources that were created.
 
 Separate scheduled jobs (`purge-azure-test-resources.yaml` and `purge-aws-test-resources.yaml`) delete cloud resources left behind when a run is cancelled or times out.
+
+### Cloud credentials in CI (federated identity)
+
+The cloud CI workflows - `functional-test-cloud.yaml`, the long-running test `long-running-azure.yaml` ("LRT"), and the two scheduled purge jobs - authenticate to Azure and AWS with **federated identity only**. No static cloud secrets (service-principal passwords or AWS access keys) are stored in GitHub; every credential is a short-lived token minted from an OIDC trust. Two distinct trusts are in play:
+
+- **Runner -> cloud.** The GitHub Actions runner gets tokens from GitHub's OIDC provider (`token.actions.githubusercontent.com`), and `azure/login` / `aws-actions/configure-aws-credentials` exchange them for short-lived credentials that the test and purge code use to verify and delete cloud resources. Every such job sets `permissions: id-token: write`.
+- **Radius control plane -> cloud.** The Radius pods (service accounts `ucp`, `applications-rp`, and `dynamic-rp` in `radius-system`) assume a cloud identity through the *cluster's own* OIDC issuer - Azure Workload Identity on Azure, IRSA on AWS - using a projected service-account token (audience `sts.amazonaws.com` for AWS). Radius reads the target identity from the credential registered with `rad credential register azure wi` and `rad credential register aws irsa`; enabling it requires installing the chart with `--set global.azureWorkloadIdentity.enabled=true` and `--set global.aws.irsa.enabled=true` (the LRT does this in [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh)).
+
+The identities are carried in repository secrets rather than in the workflow files:
+
+| Secret                                             | Assumed by                                                              | Trust                                                     |
+|----------------------------------------------------|-------------------------------------------------------------------------|-----------------------------------------------------------|
+| `AWS_GH_ACTIONS_ROLE`                              | the runner, via `configure-aws-credentials`                             | GitHub OIDC -> IAM role                                   |
+| `FUNC_TEST_RAD_IRSA_ROLE`                          | the Radius pods, via IRSA                                               | cluster OIDC issuer -> IAM role                           |
+| `AZURE_SP_TESTS_APPID` + `AZURE_SP_TESTS_TENANTID` | both the runner (`azure/login`) and the Radius pods (workload identity) | GitHub OIDC and AKS OIDC -> AAD app federated credentials |
+| `FUNCTEST_AWS_ACCOUNT_ID`                          | the AWS account id passed to `rad env update` (not a credential)        | -                                                         |
+
+#### Point the AWS IRSA role at the LRT cluster
+
+`FUNC_TEST_RAD_IRSA_ROLE` is shared with `functional-test-cloud.yaml`, which runs on a KinD cluster whose OIDC issuer is an Azure-blob issuer. The LRT runs on a pre-provisioned AKS cluster with a *different* OIDC issuer, so the role's trust policy must also trust that issuer. Register the AKS issuer as an IAM OIDC provider and append a trust statement for the three Radius service accounts. Run this once, when the LRT cluster is created or rotated:
+
+```bash
+export AWS_ACCOUNT_ID="<test-account-id>"            # = FUNCTEST_AWS_ACCOUNT_ID
+export AKS_CLUSTER_NAME="<LRT_AKS_CLUSTER_NAME>"     # = vars.LRT_AKS_CLUSTER_NAME
+export AKS_RESOURCE_GROUP="<LRT_AKS_RESOURCE_GROUP>" # = vars.LRT_AKS_RESOURCE_GROUP
+IRSA_ROLE_NAME="$(basename "<FUNC_TEST_RAD_IRSA_ROLE-arn>")"
+
+# 1. Fetch the AKS OIDC issuer and register it as an IAM OIDC provider (skip if it already exists).
+AKS_OIDC_ISSUER="$(az aks show -n "$AKS_CLUSTER_NAME" -g "$AKS_RESOURCE_GROUP" --query 'oidcIssuerProfile.issuerUrl' -o tsv)"
+ISSUER_HOST="$(echo "$AKS_OIDC_ISSUER" | sed -e 's~^https://~~' -e 's~/.*$~~')"
+THUMBPRINT="$(echo | openssl s_client -servername "$ISSUER_HOST" -connect "${ISSUER_HOST}:443" \
+  | openssl x509 -fingerprint -sha1 -noout | cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f')"
+aws iam create-open-id-connect-provider --url "$AKS_OIDC_ISSUER" \
+  --client-id-list "sts.amazonaws.com" --thumbprint-list "$THUMBPRINT"
+
+# 2. Append a trust statement for the Radius service accounts on the AKS issuer.
+OIDC_PROVIDER="${AKS_OIDC_ISSUER#https://}"
+aws iam get-role --role-name "$IRSA_ROLE_NAME" --query 'Role.AssumeRolePolicyDocument' > trust.json
+cat > aks-statement.json <<EOF
+{
+  "Effect": "Allow",
+  "Principal": { "Federated": "arn:aws:iam::${AWS_ACCOUNT_ID}:oidc-provider/${OIDC_PROVIDER}" },
+  "Action": "sts:AssumeRoleWithWebIdentity",
+  "Condition": { "StringEquals": {
+    "${OIDC_PROVIDER}:aud": "sts.amazonaws.com",
+    "${OIDC_PROVIDER}:sub": [
+      "system:serviceaccount:radius-system:ucp",
+      "system:serviceaccount:radius-system:applications-rp",
+      "system:serviceaccount:radius-system:dynamic-rp"
+    ]
+  } }
+}
+EOF
+jq '.Statement += [input]' trust.json aks-statement.json > trust-updated.json
+aws iam update-assume-role-policy --role-name "$IRSA_ROLE_NAME" --policy-document file://trust-updated.json
+```
+
+`AWS_GH_ACTIONS_ROLE` needs no cluster-specific change, but because the LRT is triggered on a schedule its OIDC subject is `repo:radius-project/radius:ref:refs/heads/main`; confirm the role's trust `sub` condition matches (widen it if it was scoped only to pull requests) and that its `MaxSessionDuration` is at least the 60-minute functional-test window.
 
 ## Verification
 
