@@ -8,7 +8,7 @@ They live here so the workflow contract has a canonical, reviewed home that any 
 
 ## Credential-verification workflows
 
-Radius uses these workflows to confirm that a GitHub Environment is wired up correctly before any application is deployed. The environment-setup flow (see the `radius-environment` skill) generates the provider-specific file, commits it to the target repo under `.github/workflows/`, and triggers it.
+Radius uses these workflows to confirm that a GitHub Environment is wired up correctly before any application is deployed. The environment-setup flow generates the provider-specific file, commits it to the target repo under `.github/workflows/`, and triggers it.
 
 There is one workflow per provider:
 
@@ -65,7 +65,7 @@ To keep the two provider paths from duplicating the ~80% of steps they share, it
 - **`run-rad-commands-aws.yml`** — a reusable (`workflow_call`) workflow with only the AWS-specific steps: AWS OIDC login, EKS connection (access entry + static token kubeconfig), IRSA credential registration, and the `aws-terraform` recipe pack.
 - **`actions/*`** — composite actions holding the provider-agnostic phases both provider workflows share: [`setup-control-plane`](actions/setup-control-plane/action.yml), [`restore-state`](actions/restore-state/action.yml), [`run-rad-commands`](actions/run-rad-commands/action.yml), and [`teardown`](actions/teardown/action.yml). The provider workflows reference them from `radius-project/radius` at a pinned ref (the `{{RADIUS_REF}}` placeholder the generator fills in), so the shared logic has a single reviewed home and is not copied into user repos. Third-party actions in these workflows are pinned to full commit SHAs (with a `# vX` comment); only the first-party Radius composite actions are referenced by ref.
 
-The deploy flow (see the `radius-deploy` skill) generates the dispatcher and both provider workflows, commits them to the target repo under `.github/workflows/`, and dispatches `run-rad-commands.yml`.
+The deploy flow generates the dispatcher and both provider workflows, commits them to the target repo under `.github/workflows/`, and dispatches `run-rad-commands.yml`.
 
 ### What it does
 
@@ -134,4 +134,4 @@ This workflow also reads GitHub Actions **secrets** for image push and applicati
 - The target cluster (`AWS_EKS_CLUSTER_NAME` / `AZURE_AKS_CLUSTER_NAME`) must already exist and be reachable; the assumed identity needs cluster-admin-level access to it.
 - The application must define its app bicep file in the target repo.
 
-For the full deploy flow and troubleshooting, see the `radius-deploy` skill.
+For the full deploy flow, see the workflow steps described above.
