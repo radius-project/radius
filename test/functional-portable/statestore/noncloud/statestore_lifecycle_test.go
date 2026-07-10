@@ -32,8 +32,10 @@ package statestore
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -42,6 +44,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/radius-project/radius/pkg/statearchive/factory"
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/functional-portable/corerp"
 	"github.com/radius-project/radius/test/radcli"
@@ -194,26 +197,35 @@ func waitForCleanTeardown(t *testing.T, ctx context.Context) {
 	}, apiServiceDeregistrationTimeout, apiServiceDeregistrationInterval, "aggregated APIService did not deregister within timeout")
 }
 
-// newStateRepo creates a throwaway git repository with no remote for `rad shutdown` / `rad startup`
-// to persist state into. gitstate resolves the repo from the rad process's working directory and
-// pushes to `origin` when a remote exists; running from this remote-less repo exercises the
-// design's supported local/test case (commit-only, no push) instead of trying to push to the
-// checkout's GitHub origin, which has no credentials in CI.
-func newStateRepo(t *testing.T) string {
+func startLocalRegistry(t *testing.T) string {
 	t.Helper()
-	dir := t.TempDir()
-	for _, args := range [][]string{
-		{"init"},
-		{"config", "user.email", "statestore-test@radapp.io"},
-		{"config", "user.name", "statestore-test"},
-		{"commit", "--allow-empty", "-m", "init"},
-	} {
-		cmd := exec.Command("git", args...)
-		cmd.Dir = dir
-		out, err := cmd.CombinedOutput()
-		require.NoErrorf(t, err, "git %v failed: %s", args, out)
-	}
-	return dir
+
+	cmd := exec.Command("docker", "run", "--detach", "--rm", "--publish", "127.0.0.1::5000", "registry:2")
+	out, err := cmd.CombinedOutput()
+	require.NoErrorf(t, err, "start local OCI registry: %s", out)
+	containerID := strings.TrimSpace(string(out))
+	t.Cleanup(func() {
+		cleanup := exec.Command("docker", "rm", "--force", containerID)
+		cleanupOut, cleanupErr := cleanup.CombinedOutput()
+		if cleanupErr != nil {
+			t.Logf("remove local OCI registry: %v: %s", cleanupErr, cleanupOut)
+		}
+	})
+
+	portCmd := exec.Command("docker", "inspect", "--format", "{{(index (index .NetworkSettings.Ports \"5000/tcp\") 0).HostPort}}", containerID)
+	portOut, err := portCmd.CombinedOutput()
+	require.NoErrorf(t, err, "get local OCI registry port: %s", portOut)
+	address := "127.0.0.1:" + strings.TrimSpace(string(portOut))
+
+	require.Eventually(t, func() bool {
+		response, requestErr := http.Get("http://" + address + "/v2/")
+		if requestErr != nil {
+			return false
+		}
+		defer response.Body.Close()
+		return response.StatusCode == http.StatusOK
+	}, time.Minute, time.Second, "local OCI registry did not become ready")
+	return address
 }
 
 // Test_StateStore_ShutdownStartup_TerraformCrossDeploy exercises every state path:
@@ -224,12 +236,12 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	defer cancel()
 
 	cli := radcli.NewCLI(t, "")
+	registry := startLocalRegistry(t)
+	t.Setenv(factory.BackendEnvVar, "oci")
+	t.Setenv(factory.StateRegistryEnvVar, registry+"/radius-state")
+	t.Setenv(factory.ArchivePlainHTTPEnvVar, "true")
 
-	// shutdown/startup persist state into a remote-less git repo so the backup commits locally
-	// without trying to push to the checkout's GitHub origin (no credentials in CI). Both commands
-	// must use the same repo so the state committed by shutdown survives into startup.
 	stateCLI := radcli.NewCLI(t, "")
-	stateCLI.WorkingDirectory = newStateRepo(t)
 
 	appName := "statestore-tf-redis-app"
 	envName := "statestore-tf-redis-env"
@@ -281,6 +293,14 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	// 3. Back up all durable state.
 	out, err = stateCLI.RunCommand(ctx, []string{"shutdown"})
 	require.NoErrorf(t, err, "rad shutdown failed: %s", out)
+	require.Eventually(t, func() bool {
+		response, requestErr := http.Get("http://" + registry + "/v2/radius-state/manifests/radius-state")
+		if requestErr != nil {
+			return false
+		}
+		defer response.Body.Close()
+		return response.StatusCode == http.StatusOK
+	}, time.Minute, time.Second, "state archive was not pushed to the local OCI registry")
 
 	// 4. Tear the control plane down completely (ephemeral teardown).
 	uninstallRadius(ctx, t, cli)

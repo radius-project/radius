@@ -36,7 +36,7 @@ func TestNewStore_DefaultsBranch(t *testing.T) {
 	s, err := NewStore(Options{})
 	require.NoError(t, err)
 	require.NotNil(t, s)
-	assert.Equal(t, DefaultGraphBranch, s.branch)
+	assert.Equal(t, DefaultGraphArchive, s.archiveName)
 }
 
 func TestNewStore_HonorsBranch(t *testing.T) {
@@ -44,7 +44,7 @@ func TestNewStore_HonorsBranch(t *testing.T) {
 
 	s, err := NewStore(Options{Branch: "custom"})
 	require.NoError(t, err)
-	assert.Equal(t, "custom", s.branch)
+	assert.Equal(t, "custom", s.archiveName)
 }
 
 func TestKeyFromPath(t *testing.T) {
