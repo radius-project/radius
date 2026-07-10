@@ -33,12 +33,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
 	"time"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -234,6 +236,37 @@ func startLocalRegistry(t *testing.T) string {
 	return address
 }
 
+func registryManifestExists(ctx context.Context, registry, repository, reference string) bool {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://%s/v2/%s/manifests/%s", registry, repository, reference), nil)
+	if err != nil {
+		return false
+	}
+	// Distribution rejects OCI manifests unless clients explicitly accept the OCI media type.
+	request.Header.Set("Accept", ocispec.MediaTypeImageManifest)
+
+	response, err := registryHTTPClient.Do(request)
+	if err != nil {
+		return false
+	}
+	defer response.Body.Close()
+
+	return response.StatusCode == http.StatusOK
+}
+
+func TestRegistryManifestExists(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/v2/radius-state/manifests/radius-state" && request.Header.Get("Accept") == ocispec.MediaTypeImageManifest {
+			response.WriteHeader(http.StatusOK)
+			return
+		}
+		response.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	registry := strings.TrimPrefix(server.URL, "http://")
+	require.True(t, registryManifestExists(context.Background(), registry, "radius-state", "radius-state"))
+}
+
 // Test_StateStore_ShutdownStartup_TerraformCrossDeploy exercises every state path:
 // install, deploy a Terraform resource, shut down (backup), tear down, start up (restore), then
 // deploy an update to the same resource.
@@ -300,12 +333,7 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	out, err = stateCLI.RunCommand(ctx, []string{"shutdown"})
 	require.NoErrorf(t, err, "rad shutdown failed: %s", out)
 	require.Eventually(t, func() bool {
-		response, requestErr := registryHTTPClient.Get("http://" + registry + "/v2/radius-state/manifests/radius-state")
-		if requestErr != nil {
-			return false
-		}
-		defer response.Body.Close()
-		return response.StatusCode == http.StatusOK
+		return registryManifestExists(ctx, registry, "radius-state", "radius-state")
 	}, time.Minute, time.Second, "state archive was not pushed to the local OCI registry")
 
 	// 4. Tear the control plane down completely (ephemeral teardown).
