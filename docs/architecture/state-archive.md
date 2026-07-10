@@ -175,19 +175,26 @@ keeps satisfying the interface.
 
 ## Selecting an Archive
 
-[pkg/statearchive/factory](../../pkg/statearchive/factory/factory.go) selects the default
-archive implementation:
+[pkg/statearchive/factory](../../pkg/statearchive/factory/factory.go) selects the
+archive implementation. **OCI is the default**, but the two consumers differ in
+what happens when no registry is configured:
 
-- Git is the default.
-- OCI is selected when `RADIUS_STATE_BACKEND=oci`, or when the applicable OCI
-  repository variable is configured.
+- `NewStateArchive` (used by `rad startup` and `rad shutdown`) defaults to OCI.
+  When `RADIUS_STATE_REGISTRY` is not set, it stays on OCI and `Archive.Open`
+  returns a configuration error naming the missing variable — it does not fall
+  back to git. Set `RADIUS_STATE_BACKEND=git` to opt into the git backend.
+- `NewGraphArchive` (used for modeled graph output in GitHub Actions) uses OCI
+  when `RADIUS_GRAPH_REGISTRY` is set and otherwise **falls back to git**, so
+  existing workflows keep working without any configuration.
+- `RADIUS_STATE_BACKEND` overrides both: `git` always selects git and `oci`
+  always selects OCI.
 - `RADIUS_STATE_REGISTRY` configures `rad startup` and `rad shutdown`.
 - `RADIUS_GRAPH_REGISTRY` configures modeled graph output in GitHub Actions.
 - `RADIUS_ARCHIVE_PLAIN_HTTP=true` enables HTTP for a local test registry.
 
 OCI repositories are configured explicitly. Radius does not derive a repository
-from `GITHUB_REPOSITORY`, so existing GitHub Actions workflows keep using git
-until their configuration opts into OCI.
+from `GITHUB_REPOSITORY`, so existing GitHub Actions graph workflows keep using
+git until their configuration opts into OCI.
 
 ## The OCI Implementation
 

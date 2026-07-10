@@ -259,7 +259,7 @@ func init() {
 
 func initSubCommands() {
 	graphStore, err := git.NewStore(git.Options{
-		Archive: factory.NewFromEnvironment(os.Getenv(factory.GraphRegistryEnvVar)),
+		Archive: factory.NewGraphArchive(os.Getenv(factory.GraphRegistryEnvVar)),
 	})
 	if err != nil {
 		// graphStore is required only when we are in repo radius

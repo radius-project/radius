@@ -42,15 +42,38 @@ const (
 	GraphRegistryEnvVar = "RADIUS_GRAPH_REGISTRY"
 )
 
-// NewFromEnvironment returns the configured archive. Git is the default. OCI
-// is selected when registry is set or BackendEnvVar is explicitly set to "oci".
-func NewFromEnvironment(registry string) statearchive.Archive {
+// NewStateArchive returns the archive for rad startup and rad shutdown. OCI is
+// the default: when BackendEnvVar is unset, OCI is selected even without a
+// registry, so a missing RADIUS_STATE_REGISTRY surfaces as a configuration
+// error from Archive.Open rather than silently falling back to git. Set
+// BackendEnvVar to "git" to opt into the git backend.
+func NewStateArchive(registry string) statearchive.Archive {
+	return newFromEnvironment(registry, true)
+}
+
+// NewGraphArchive returns the archive for modeled graph output. OCI is selected
+// when a registry is configured or BackendEnvVar is "oci"; otherwise git is used
+// so existing GitHub Actions workflows keep working without any configuration.
+// Set BackendEnvVar to "git" to force the git backend.
+func NewGraphArchive(registry string) statearchive.Archive {
+	return newFromEnvironment(registry, false)
+}
+
+// newFromEnvironment selects the archive implementation. BackendEnvVar overrides
+// the default: "git" always selects git and "oci" always selects OCI. When it is
+// unset, OCI is selected if a registry is configured; when no registry is set,
+// ociDefaultWhenUnset decides between OCI (state commands, so the missing
+// registry is reported) and git (graph output, which keeps a zero-config
+// fallback).
+func newFromEnvironment(registry string, ociDefaultWhenUnset bool) statearchive.Archive {
 	backend := strings.ToLower(os.Getenv(BackendEnvVar))
 	switch backend {
-	case "", "git":
-		if backend == "" && registry != "" {
+	case "":
+		if registry != "" || ociDefaultWhenUnset {
 			return newOCIArchive(registry)
 		}
+		return archivegit.NewGitArchive()
+	case "git":
 		return archivegit.NewGitArchive()
 	case "oci":
 		return newOCIArchive(registry)

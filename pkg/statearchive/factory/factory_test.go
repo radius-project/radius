@@ -24,49 +24,88 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewFromEnvironment_DefaultsToGit(t *testing.T) {
+func TestNewGraphArchive_DefaultsToGitWithoutRegistry(t *testing.T) {
 	t.Setenv(BackendEnvVar, "")
 
-	archive := NewFromEnvironment("")
+	archive := NewGraphArchive("")
 	_, ok := archive.(*oci.OCIArchive)
 	require.False(t, ok)
 }
 
-func TestNewFromEnvironment_UsesOCIWhenRegistryConfigured(t *testing.T) {
+func TestNewGraphArchive_UsesOCIWhenRegistryConfigured(t *testing.T) {
 	t.Setenv(BackendEnvVar, "")
 
-	archive := NewFromEnvironment("localhost:5000/radius-state")
+	archive := NewGraphArchive("localhost:5000/radius-graph")
 	require.IsType(t, &oci.OCIArchive{}, archive)
 }
 
-func TestNewFromEnvironment_UsesOCIWhenExplicitlyConfigured(t *testing.T) {
+func TestNewGraphArchive_UsesOCIWhenExplicitlyConfigured(t *testing.T) {
 	t.Setenv(BackendEnvVar, "oci")
 
-	archive := NewFromEnvironment("localhost:5000/radius-state")
+	archive := NewGraphArchive("localhost:5000/radius-graph")
 	require.IsType(t, &oci.OCIArchive{}, archive)
 }
 
-func TestNewFromEnvironment_ExplicitOCIWithoutRegistryFailsOnOpen(t *testing.T) {
-	t.Setenv(BackendEnvVar, "oci")
+func TestNewGraphArchive_ExplicitGitWins(t *testing.T) {
+	t.Setenv(BackendEnvVar, "git")
+
+	archive := NewGraphArchive("localhost:5000/radius-graph")
+	_, ok := archive.(*oci.OCIArchive)
+	require.False(t, ok)
+}
+
+func TestNewGraphArchive_InvalidBackendFailsOnOpen(t *testing.T) {
+	t.Setenv(BackendEnvVar, "filesystem")
+
+	archive := NewGraphArchive("")
+	_, err := archive.Open(context.Background(), "radius-graph")
+	require.ErrorContains(t, err, "invalid "+BackendEnvVar)
+}
+
+func TestNewStateArchive_DefaultsToOCIWithoutRegistry(t *testing.T) {
+	t.Setenv(BackendEnvVar, "")
+
+	archive := NewStateArchive("")
+	require.IsType(t, &oci.OCIArchive{}, archive)
+}
+
+func TestNewStateArchive_DefaultWithoutRegistryFailsOnOpen(t *testing.T) {
+	t.Setenv(BackendEnvVar, "")
 	t.Setenv("DOCKER_CONFIG", t.TempDir())
 
-	archive := NewFromEnvironment("")
+	archive := NewStateArchive("")
 	_, err := archive.Open(context.Background(), "radius-state")
 	require.ErrorContains(t, err, "repository is not configured")
 }
 
-func TestNewFromEnvironment_ExplicitGitWins(t *testing.T) {
+func TestNewStateArchive_UsesOCIWhenRegistryConfigured(t *testing.T) {
+	t.Setenv(BackendEnvVar, "")
+
+	archive := NewStateArchive("localhost:5000/radius-state")
+	require.IsType(t, &oci.OCIArchive{}, archive)
+}
+
+func TestNewStateArchive_ExplicitOCIWithoutRegistryFailsOnOpen(t *testing.T) {
+	t.Setenv(BackendEnvVar, "oci")
+	t.Setenv("DOCKER_CONFIG", t.TempDir())
+
+	archive := NewStateArchive("")
+	_, err := archive.Open(context.Background(), "radius-state")
+	require.ErrorContains(t, err, "repository is not configured")
+}
+
+func TestNewStateArchive_ExplicitGitWins(t *testing.T) {
 	t.Setenv(BackendEnvVar, "git")
 
-	archive := NewFromEnvironment("localhost:5000/radius-state")
+	archive := NewStateArchive("localhost:5000/radius-state")
 	_, ok := archive.(*oci.OCIArchive)
 	require.False(t, ok)
 }
 
-func TestNewFromEnvironment_InvalidBackendFailsOnOpen(t *testing.T) {
+func TestNewStateArchive_InvalidBackendFailsOnOpen(t *testing.T) {
 	t.Setenv(BackendEnvVar, "filesystem")
 
-	archive := NewFromEnvironment("")
+	archive := NewStateArchive("")
 	_, err := archive.Open(context.Background(), "radius-state")
 	require.ErrorContains(t, err, "invalid "+BackendEnvVar)
 }

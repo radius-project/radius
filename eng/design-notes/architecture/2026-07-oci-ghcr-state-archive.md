@@ -16,7 +16,7 @@ The existing `statearchive.Archive` interface already lets the state commands an
 
 - Add an OCI/GHCR implementation of `statearchive.Archive`.
 - Let `rad startup`, `rad shutdown`, and the GitHub Actions graph path select OCI without changing how they save files.
-- Keep git as the default until OCI is explicitly configured.
+- Make OCI the default backend: state commands require an OCI registry (or an explicit `RADIUS_STATE_BACKEND=git` opt-in), while the GitHub Actions graph path falls back to git when no graph registry is configured.
 
 ### Non goals
 
@@ -98,7 +98,8 @@ classDiagram
     }
     class ArchiveFactory {
         <<pkg/statearchive/factory>>
-        +NewFromEnvironment(registry) Archive
+        +NewStateArchive(registry) Archive
+        +NewGraphArchive(registry) Archive
     }
     class GraphStore {
         <<graph.Store>>
@@ -182,12 +183,18 @@ sequenceDiagram
 
 ### Configuration and wiring
 
-Add `pkg/statearchive/factory`. It selects the git or OCI archive from the environment.
+Add `pkg/statearchive/factory`. It selects the git or OCI archive from the environment. **OCI is the default**; git is opt-in through `RADIUS_STATE_BACKEND=git`. The factory exposes two constructors because the two consumers want different behavior when no registry is configured.
 
 ```go
-// NewFromEnvironment returns git by default. RADIUS_STATE_BACKEND=git wins.
-// Otherwise, it returns OCI when RADIUS_STATE_BACKEND=oci or registry is set.
-func NewFromEnvironment(registry string) statearchive.Archive
+// NewStateArchive selects the archive for rad startup and rad shutdown.
+// OCI is the default even without a registry, so a missing RADIUS_STATE_REGISTRY
+// surfaces as a configuration error from Open. RADIUS_STATE_BACKEND=git opts out.
+func NewStateArchive(registry string) statearchive.Archive
+
+// NewGraphArchive selects the archive for modeled graph output. OCI is used when
+// RADIUS_GRAPH_REGISTRY is set; otherwise git is used so existing workflows keep
+// working without configuration. RADIUS_STATE_BACKEND overrides both.
+func NewGraphArchive(registry string) statearchive.Archive
 ```
 
 Configuration errors are returned by `Open`. This keeps the existing `NewRunner` signatures unchanged and preserves test injection through `Runner.Archive`.
@@ -199,11 +206,16 @@ Configuration errors are returned by `Open`. This keeps the existing `NewRunner`
 | `RADIUS_GRAPH_REGISTRY`     | OCI repository for modeled graphs created in GitHub Actions, for example `ghcr.io/<owner>/<repo>-graphs`. |
 | `RADIUS_ARCHIVE_PLAIN_HTTP` | `true` only for a local HTTP test registry.                                                               |
 
-GitHub Actions automatically sets `GITHUB_REPOSITORY` to the source repository name, such as `radius-project/radius`. Radius does not use that value to guess an OCI repository. If it did, every existing GitHub Actions run would switch from the current git-orphan-branch behavior to OCI without an intentional workflow change or the required GHCR permissions and login.
+GitHub Actions automatically sets `GITHUB_REPOSITORY` to the source repository name, such as `radius-project/radius`. Radius does not use that value to guess an OCI repository. If it did, every existing GitHub Actions graph run would switch from git-orphan-branch behavior to OCI without an intentional workflow change or the required GHCR permissions and login. That is why graph output keeps a git fallback while the state commands do not.
 
-OCI is selected when the relevant `RADIUS_*_REGISTRY` variable is set, or when `RADIUS_STATE_BACKEND=oci` is explicitly set. When OCI is selected, the matching registry variable is required: `rad startup` and `rad shutdown` require `RADIUS_STATE_REGISTRY`; GitHub Actions graph output requires `RADIUS_GRAPH_REGISTRY`. If it is missing, `Archive.Open` returns a configuration error that names the required variable. Radius must not fall back to git after OCI was explicitly selected.
+State and graph select the backend differently when `RADIUS_STATE_BACKEND` is unset:
 
-`cmd/rad/cmd/root.go` calls the factory with `RADIUS_GRAPH_REGISTRY` and passes its result in `git.Options{Archive: archive}` when it creates the graph store. `startup.NewRunner` and `shutdown.NewRunner` call the same factory with `RADIUS_STATE_REGISTRY` for their default `Runner.Archive`. Existing tests already replace those archive fields with mocks.
+- **State (`rad startup` / `rad shutdown`):** OCI is the default. Without `RADIUS_STATE_REGISTRY`, `Archive.Open` returns a configuration error naming the missing variable; it does not fall back to git. `RADIUS_STATE_BACKEND=git` is the explicit opt-in for git.
+- **Graph (GitHub Actions):** OCI when `RADIUS_GRAPH_REGISTRY` is set, otherwise git, so existing workflows keep working unchanged.
+
+`RADIUS_STATE_BACKEND=oci` forces OCI for either consumer; when it is set, the matching registry variable is required and a missing one is reported by `Open`. Radius must not fall back to git after OCI was explicitly selected.
+
+`cmd/rad/cmd/root.go` calls `NewGraphArchive` with `RADIUS_GRAPH_REGISTRY` and passes its result in `git.Options{Archive: archive}` when it creates the graph store. `startup.NewRunner` and `shutdown.NewRunner` call `NewStateArchive` with `RADIUS_STATE_REGISTRY` for their default `Runner.Archive`. Existing tests already replace those archive fields with mocks.
 
 For example, `rad shutdown` saves to `ghcr.io/my-org/radius-state:radius-state`; GitHub Actions graph generation saves to `ghcr.io/my-org/radius-graphs:radius-graph`. They do not overwrite each other.
 
@@ -232,7 +244,7 @@ The OCI session uses an in-process lock per archive name, just as `GitArchive` u
 
 - **Unit:** Test `OCIArchive` with ORAS's local OCI content store in `t.TempDir()`. It needs no network, container, Docker daemon, or credentials, so it runs as a normal `make test` unit test. Verify that a first open is empty; files saved by `Commit` are present after the next `Open`; an unchanged session does not upload again; emptying an archive persists the deletion (an empty directory survives a reopen); committing a brand-new empty archive uploads nothing; and the temporary file-backed artifact is cleaned up. Use an injected fake registry target only to test that pull and upload failures return errors.
 - **Unit:** Save and load a modeled graph through `graph.Store` using `OCIArchive` and the local OCI content store. This covers the graph caller without a registry container.
-- **Unit:** Test backend selection: git remains the default; each configured OCI repository selects OCI; explicitly selecting OCI without its repository returns a configuration error. Update the existing graph and state-command tests for the new archive-neutral names and messages.
+- **Unit:** Test backend selection: OCI is the default for both consumers. `NewStateArchive` selects OCI even without a registry, so its `Open` reports the missing `RADIUS_STATE_REGISTRY`; `NewGraphArchive` falls back to git when `RADIUS_GRAPH_REGISTRY` is unset. Each configured OCI repository selects OCI, and explicitly selecting OCI without its repository returns a configuration error. `RADIUS_STATE_BACKEND=git` forces git for both. Update the existing graph and state-command tests for the new archive-neutral names and messages.
 - **Functional:** Extend `test/functional-portable/statestore/noncloud`, the dedicated state lifecycle test. It starts a local `registry:2` container, then runs `rad shutdown` and `rad startup` with OCI selected, `RADIUS_STATE_REGISTRY=localhost:<port>/radius-state`, and `RADIUS_ARCHIVE_PLAIN_HTTP=true`. The existing uninstall, reinstall, restore, and Terraform update flow proves that state was saved to and restored from the OCI registry. Cleanup removes the registry container.
 
 ## Security

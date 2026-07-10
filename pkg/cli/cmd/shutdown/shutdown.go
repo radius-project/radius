@@ -87,7 +87,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigHolder: factory.GetConfigHolder(),
 		Output:       factory.GetOutput(),
 		StateClient:  NewStateBackupClient(),
-		Archive:      archivefactory.NewFromEnvironment(os.Getenv(archivefactory.StateRegistryEnvVar)),
+		Archive:      archivefactory.NewStateArchive(os.Getenv(archivefactory.StateRegistryEnvVar)),
 	}
 }
 

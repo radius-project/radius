@@ -91,7 +91,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigHolder: factory.GetConfigHolder(),
 		Output:       factory.GetOutput(),
 		StateClient:  NewStateRestoreClient(),
-		Archive:      archivefactory.NewFromEnvironment(os.Getenv(archivefactory.StateRegistryEnvVar)),
+		Archive:      archivefactory.NewStateArchive(os.Getenv(archivefactory.StateRegistryEnvVar)),
 	}
 	r.newScaler = newScalerForContext
 	return r
