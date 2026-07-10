@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the prose walkthrough for configuring a **GitHub Environment** so Radius can deploy applications from that repository to AWS or Azure. It describes the same end-to-end workflow the [`radius-environment`](../../.github/skills/radius-environment/SKILL.md) skill automates, so any contributor (or any agent) can follow it without the skill wrapper.
+This document is the prose walkthrough for configuring a **GitHub Environment** so Radius can deploy applications from that repository to AWS or Azure. It describes the end-to-end workflow any contributor (or any agent) can follow to set up a deploy environment.
 
 A Radius deploy environment is a GitHub Actions Environment whose **variables** (`vars`) carry the cloud coordinates Radius needs (region, cluster name, account/subscription identifiers, etc.) and whose **OIDC trust** allows the runner to obtain short-lived cloud credentials. No long-lived cloud secrets are stored on GitHub.
 
@@ -78,5 +78,4 @@ Once the run is green, the environment is ready for Radius to deploy into.
 
 ## Related
 
-- [`.github/skills/radius-environment/SKILL.md`](../../.github/skills/radius-environment/SKILL.md) — the agent-invocable wrapper over this workflow.
 - [`.github/extension/README.md`](../../.github/extension/README.md) — the canonical workflow template and its contract with frontends.
