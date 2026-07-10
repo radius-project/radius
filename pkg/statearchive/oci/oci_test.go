@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -54,9 +55,9 @@ func TestOCIArchive_CommitRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("saved state"), data)
 
-	pushes := target.pushes
+	pushes := target.PushCount()
 	require.NoError(t, session.Commit(ctx, "ignored message"))
-	require.Equal(t, pushes, target.pushes, "unchanged state must not upload again")
+	require.Equal(t, pushes, target.PushCount(), "unchanged state must not upload again")
 }
 
 func TestOCIArchive_UsesOCIStorageForGraphs(t *testing.T) {
@@ -121,12 +122,21 @@ func newTestArchive(t *testing.T) (*OCIArchive, *countingTarget) {
 
 type countingTarget struct {
 	oras.Target
+	mu     sync.Mutex
 	pushes int
 }
 
 func (t *countingTarget) Push(ctx context.Context, desc ocispec.Descriptor, content io.Reader) error {
+	t.mu.Lock()
 	t.pushes++
+	t.mu.Unlock()
 	return t.Target.Push(ctx, desc, content)
+}
+
+func (t *countingTarget) PushCount() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.pushes
 }
 
 type failedPushTarget struct{}
