@@ -185,19 +185,18 @@ Add `pkg/statearchive/factory`. It selects the git or OCI archive from the envir
 
 ```go
 // NewFromEnvironment returns git by default. RADIUS_STATE_BACKEND=git wins.
-// Otherwise, it returns OCI when RADIUS_STATE_BACKEND=oci or
-// the caller's OCI repository is set.
-func NewFromEnvironment(archiveName, repository string) statearchive.Archive
+// Otherwise, it returns OCI when RADIUS_STATE_BACKEND=oci or registry is set.
+func NewFromEnvironment(registry string) statearchive.Archive
 ```
 
 Configuration errors are returned by `Open`. This keeps the existing `NewRunner` signatures unchanged and preserves test injection through `Runner.Archive`.
 
-| Variable                           | Purpose                                                                                                   |
-|------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| `RADIUS_STATE_BACKEND`             | Optional `git` or `oci` override for both archive types.                                                  |
-| `RADIUS_STATE_REGISTRY`            | OCI repository for `rad startup` and `rad shutdown`, for example `ghcr.io/<owner>/<repo>-state`.          |
-| `RADIUS_GRAPH_REGISTRY`            | OCI repository for modeled graphs created in GitHub Actions, for example `ghcr.io/<owner>/<repo>-graphs`. |
-| `RADIUS_STATE_REGISTRY_PLAIN_HTTP` | `true` only for a local HTTP test registry.                                                               |
+| Variable                    | Purpose                                                                                                   |
+|-----------------------------|-----------------------------------------------------------------------------------------------------------|
+| `RADIUS_STATE_BACKEND`      | Optional `git` or `oci` override for both archive types.                                                  |
+| `RADIUS_STATE_REGISTRY`     | OCI repository for `rad startup` and `rad shutdown`, for example `ghcr.io/<owner>/<repo>-state`.          |
+| `RADIUS_GRAPH_REGISTRY`     | OCI repository for modeled graphs created in GitHub Actions, for example `ghcr.io/<owner>/<repo>-graphs`. |
+| `RADIUS_ARCHIVE_PLAIN_HTTP` | `true` only for a local HTTP test registry.                                                               |
 
 GitHub Actions automatically sets `GITHUB_REPOSITORY` to the source repository name, such as `radius-project/radius`. Radius does not use that value to guess an OCI repository. If it did, every existing GitHub Actions run would switch from the current git-orphan-branch behavior to OCI without an intentional workflow change or the required GHCR permissions and login.
 
@@ -222,22 +221,21 @@ The OCI session uses an in-process lock per archive name, just as `GitArchive` u
 
 ### Error handling
 
-- A missing tag starts a new empty archive.
+- A missing tag starts a new empty archive. OCI registries use the same `404` response for a missing tag and, in some cases, a missing repository, so this behavior matches the current git backend's first-run behavior.
 - A pull error for an existing tag stops `Open`; it must not restore from an empty directory.
 - An upload error stops `Commit`; it must not report a successful backup.
-- Registry `401`, `403`, and `404` errors get the same clear login, permission, and repository guidance used by Bicep publishing.
+- Registry `401` and `403` errors get the same clear login and permission guidance used by Bicep publishing.
 
 ## Test plan
 
 - **Unit:** Test `OCIArchive` with ORAS's local OCI content store in `t.TempDir()`. It needs no network, container, Docker daemon, or credentials, so it runs as a normal `make test` unit test. Verify that a first open is empty; files saved by `Commit` are present after the next `Open`; and an unchanged session does not upload again. Use an injected fake registry target only to test that pull and upload failures return errors.
+- **Unit:** Save and load a modeled graph through `graph.Store` using `OCIArchive` and the local OCI content store. This covers the graph caller without a registry container.
 - **Unit:** Test backend selection: git remains the default; each configured OCI repository selects OCI; explicitly selecting OCI without its repository returns a configuration error. Update the existing graph and state-command tests for the new archive-neutral names and messages.
-- **Functional:** Extend `test/functional-portable/statestore/noncloud`, the dedicated state lifecycle test. It starts a local `registry:2` container, then runs `rad shutdown` and `rad startup` with OCI selected, `RADIUS_STATE_REGISTRY=localhost:<port>/radius-state`, and `RADIUS_STATE_REGISTRY_PLAIN_HTTP=true`. The existing uninstall, reinstall, restore, and Terraform update flow proves that state was saved to and restored from the OCI registry. Cleanup removes the registry container.
+- **Functional:** Extend `test/functional-portable/statestore/noncloud`, the dedicated state lifecycle test. It starts a local `registry:2` container, then runs `rad shutdown` and `rad startup` with OCI selected, `RADIUS_STATE_REGISTRY=localhost:<port>/radius-state`, and `RADIUS_ARCHIVE_PLAIN_HTTP=true`. The existing uninstall, reinstall, restore, and Terraform update flow proves that state was saved to and restored from the OCI registry. Cleanup removes the registry container.
 
 ## Security
 
 The archive can contain secrets from database rows and Terraform state. A private GHCR repository can have access rules separate from source-repository read access, which is an improvement over a git branch. The OCI repository must remain private until client-side encryption is added.
-
-## Open Questions
 
 ## Alternatives considered
 
