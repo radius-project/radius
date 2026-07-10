@@ -39,7 +39,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/content/memory"
+	filecontent "oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
@@ -190,23 +190,21 @@ func (s *session) Path() string {
 
 // Commit writes the session directory to the configured OCI repository.
 func (s *session) Commit(ctx context.Context, _ string) error {
-	layer, hasFiles, err := createLayer(s.path)
+	artifact, err := createArtifact(ctx, s.name, s.path)
 	if err != nil {
 		return err
 	}
+	defer artifact.Close(ctx)
+
 	// A brand-new archive with nothing to store is a true no-op, matching the git
 	// backend (which does not create an empty-tree commit on first run). An empty
 	// directory for an archive that already exists is not skipped here: it must be
 	// persisted as an empty archive so deletions are not silently dropped.
-	if !hasFiles && s.manifestDigest == "" {
+	if !artifact.hasFiles && s.manifestDigest == "" {
 		return nil
 	}
 
-	source, manifestDesc, err := createArtifact(ctx, s.name, layer)
-	if err != nil {
-		return err
-	}
-	if manifestDesc.Digest == s.manifestDigest {
+	if artifact.manifestDesc.Digest == s.manifestDigest {
 		return nil
 	}
 
@@ -214,10 +212,10 @@ func (s *session) Commit(ctx context.Context, _ string) error {
 		return err
 	}
 
-	if _, err := oras.Copy(ctx, source, s.name, s.target, s.name, oras.DefaultCopyOptions); err != nil {
+	if _, err := oras.Copy(ctx, artifact.source, s.name, s.target, s.name, oras.DefaultCopyOptions); err != nil {
 		return fmt.Errorf("failed to push OCI archive %q: %w", s.name, err)
 	}
-	s.manifestDigest = manifestDesc.Digest
+	s.manifestDigest = artifact.manifestDesc.Digest
 	return nil
 }
 
@@ -246,16 +244,75 @@ func (s *session) Close(ctx context.Context) {
 	}
 }
 
-func createArtifact(ctx context.Context, name string, layer []byte) (oras.Target, ocispec.Descriptor, error) {
-	source := memory.New()
+type artifact struct {
+	source       *filecontent.Store
+	manifestDesc ocispec.Descriptor
+	hasFiles     bool
+	tempDir      string
+}
 
-	layerDesc, err := pushBlob(ctx, source, layerMediaType, layer)
-	if err != nil {
-		return nil, ocispec.Descriptor{}, fmt.Errorf("failed to add archive layer: %w", err)
+func (a *artifact) Close(ctx context.Context) {
+	if err := a.source.Close(); err != nil {
+		ucplog.FromContextOrDiscard(ctx).Info("Failed to close OCI artifact store", "error", err)
 	}
+	if err := os.RemoveAll(a.tempDir); err != nil {
+		ucplog.FromContextOrDiscard(ctx).Info("Failed to remove OCI artifact directory", "path", a.tempDir, "error", err)
+	}
+}
+
+func createArtifact(ctx context.Context, name, root string) (*artifact, error) {
+	tempDir, err := os.MkdirTemp("", "radius-oci-artifact-")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OCI artifact directory: %w", err)
+	}
+	removeTempDir := true
+	defer func() {
+		if removeTempDir {
+			if removeErr := os.RemoveAll(tempDir); removeErr != nil {
+				ucplog.FromContextOrDiscard(ctx).Info("Failed to remove OCI artifact directory", "path", tempDir, "error", removeErr)
+			}
+		}
+	}()
+
+	layerPath := filepath.Join(tempDir, "layer.tar.gz")
+	layerFile, err := os.Create(layerPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create archive layer: %w", err)
+	}
+	hasFiles, layerErr := createLayer(root, layerFile)
+	closeErr := layerFile.Close()
+	if layerErr != nil {
+		return nil, layerErr
+	}
+	if closeErr != nil {
+		return nil, fmt.Errorf("failed to close archive layer: %w", closeErr)
+	}
+
+	source, err := filecontent.New(tempDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OCI artifact store: %w", err)
+	}
+	closeSource := true
+	defer func() {
+		if closeSource {
+			if closeErr := source.Close(); closeErr != nil {
+				ucplog.FromContextOrDiscard(ctx).Info("Failed to close OCI artifact store", "error", closeErr)
+			}
+		}
+	}()
+
+	layerDesc, err := source.Add(ctx, filepath.Base(layerPath), layerMediaType, layerPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add archive layer: %w", err)
+	}
+	// content/file adds an OCI title annotation for filesystem restoration. The
+	// archive layer is content-addressed and does not need it; removing it keeps
+	// manifests compatible with artifacts created by the previous memory store.
+	layerDesc.Annotations = nil
+
 	configDesc, err := pushBlob(ctx, source, configMediaType, []byte("{}"))
 	if err != nil {
-		return nil, ocispec.Descriptor{}, fmt.Errorf("failed to add archive config: %w", err)
+		return nil, fmt.Errorf("failed to add archive config: %w", err)
 	}
 
 	manifest := ocispec.Manifest{
@@ -267,16 +324,24 @@ func createArtifact(ctx context.Context, name string, layer []byte) (oras.Target
 	}
 	manifestBytes, err := json.Marshal(manifest)
 	if err != nil {
-		return nil, ocispec.Descriptor{}, fmt.Errorf("failed to create archive manifest: %w", err)
+		return nil, fmt.Errorf("failed to create archive manifest: %w", err)
 	}
 	manifestDesc, err := pushBlob(ctx, source, ocispec.MediaTypeImageManifest, manifestBytes)
 	if err != nil {
-		return nil, ocispec.Descriptor{}, fmt.Errorf("failed to add archive manifest: %w", err)
+		return nil, fmt.Errorf("failed to add archive manifest: %w", err)
 	}
 	if err := source.Tag(ctx, manifestDesc, name); err != nil {
-		return nil, ocispec.Descriptor{}, fmt.Errorf("failed to tag archive manifest: %w", err)
+		return nil, fmt.Errorf("failed to tag archive manifest: %w", err)
 	}
-	return source, manifestDesc, nil
+
+	closeSource = false
+	removeTempDir = false
+	return &artifact{
+		source:       source,
+		manifestDesc: manifestDesc,
+		hasFiles:     hasFiles,
+		tempDir:      tempDir,
+	}, nil
 }
 
 func pushBlob(ctx context.Context, target oras.Target, mediaType string, data []byte) (ocispec.Descriptor, error) {
@@ -287,19 +352,18 @@ func pushBlob(ctx context.Context, target oras.Target, mediaType string, data []
 	return desc, nil
 }
 
-// createLayer builds a deterministic gzipped tar of every regular file under
-// root. The second return value reports whether root contained any files; the
-// layer itself is always valid (an empty directory yields a valid empty
-// tar+gzip) so callers can persist deletions rather than silently dropping them.
-func createLayer(root string) ([]byte, bool, error) {
+// createLayer writes a deterministic gzipped tar of every regular file under
+// root. The return value reports whether root contained any files; the layer is
+// always valid (an empty directory yields a valid empty tar+gzip) so callers can
+// persist deletions rather than silently dropping them.
+func createLayer(root string, output io.Writer) (bool, error) {
 	paths, err := archiveFiles(root)
 	if err != nil {
-		return nil, false, err
+		return false, err
 	}
 	hasFiles := len(paths) > 0
 
-	var output bytes.Buffer
-	gzipWriter := gzip.NewWriter(&output)
+	gzipWriter := gzip.NewWriter(output)
 	gzipWriter.Header.ModTime = time.Unix(0, 0)
 	gzipWriter.Header.OS = 255
 	tarWriter := tar.NewWriter(gzipWriter)
@@ -307,11 +371,11 @@ func createLayer(root string) ([]byte, bool, error) {
 	for _, path := range paths {
 		rel, err := filepath.Rel(root, path)
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to determine archive path: %w", err)
+			return false, fmt.Errorf("failed to determine archive path: %w", err)
 		}
 		info, err := os.Stat(path)
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to stat archive file %q: %w", rel, err)
+			return false, fmt.Errorf("failed to stat archive file %q: %w", rel, err)
 		}
 		header := &tar.Header{
 			Format:  tar.FormatPAX,
@@ -321,30 +385,30 @@ func createLayer(root string) ([]byte, bool, error) {
 			ModTime: time.Unix(0, 0),
 		}
 		if err := tarWriter.WriteHeader(header); err != nil {
-			return nil, false, fmt.Errorf("failed to write archive header for %q: %w", rel, err)
+			return false, fmt.Errorf("failed to write archive header for %q: %w", rel, err)
 		}
 
 		file, err := os.Open(path)
 		if err != nil {
-			return nil, false, fmt.Errorf("failed to open archive file %q: %w", rel, err)
+			return false, fmt.Errorf("failed to open archive file %q: %w", rel, err)
 		}
 		_, copyErr := io.Copy(tarWriter, file)
 		closeErr := file.Close()
 		if copyErr != nil {
-			return nil, false, fmt.Errorf("failed to add archive file %q: %w", rel, copyErr)
+			return false, fmt.Errorf("failed to add archive file %q: %w", rel, copyErr)
 		}
 		if closeErr != nil {
-			return nil, false, fmt.Errorf("failed to close archive file %q: %w", rel, closeErr)
+			return false, fmt.Errorf("failed to close archive file %q: %w", rel, closeErr)
 		}
 	}
 
 	if err := tarWriter.Close(); err != nil {
-		return nil, false, fmt.Errorf("failed to finish archive: %w", err)
+		return false, fmt.Errorf("failed to finish archive: %w", err)
 	}
 	if err := gzipWriter.Close(); err != nil {
-		return nil, false, fmt.Errorf("failed to compress archive: %w", err)
+		return false, fmt.Errorf("failed to compress archive: %w", err)
 	}
-	return output.Bytes(), hasFiles, nil
+	return hasFiles, nil
 }
 
 func archiveFiles(root string) ([]string, error) {

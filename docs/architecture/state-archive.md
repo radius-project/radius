@@ -197,8 +197,9 @@ they have separate lifecycles and access requirements.
 
 - **Open** resolves the tag and unpacks its single gzipped tar layer into a
   temporary directory. A missing tag starts an empty archive.
-- **Commit** creates a deterministic tar.gz artifact. Unchanged files create
-  the same digest, so no upload occurs.
+- **Commit** streams a deterministic tar.gz artifact through a temporary
+  file-backed ORAS store. Memory use stays bounded as archives grow, and
+  unchanged files create the same digest, so no upload occurs.
 - **Authentication** uses Docker credentials, including credentials created by
   `docker/login-action` in GitHub Actions.
 - **Local testing** can use `RADIUS_ARCHIVE_PLAIN_HTTP=true` with a local OCI

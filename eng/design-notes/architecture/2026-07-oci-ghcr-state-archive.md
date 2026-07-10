@@ -146,6 +146,7 @@ Add `pkg/statearchive/oci`. `OCIArchive` and its session type implement the exis
 - Each repository uses the archive name as its tag: `radius-state` for the state repository and `radius-graph` for the graph repository.
 - Each committed archive is one OCI manifest with one gzipped tar layer containing the complete session directory.
 - An OCI digest is a fingerprint of the exact uploaded bytes. A normal tar.gz can include the current time, file timestamps, and an arbitrary file order, so identical files could get a different fingerprint on every save. The OCI backend uses a fixed file order and fixed metadata so unchanged files get the same fingerprint and do not upload again.
+- The backend streams the tar.gz layer through a temporary file-backed ORAS store. Memory use stays bounded as database dumps grow, and the temporary artifact is removed after the commit attempt.
 - `Commit` ignores its `message` argument. Git uses that message for its commit history; OCI has no equivalent that can be stored without changing an otherwise identical artifact.
 
 ```mermaid
@@ -229,7 +230,7 @@ The OCI session uses an in-process lock per archive name, just as `GitArchive` u
 
 ## Test plan
 
-- **Unit:** Test `OCIArchive` with ORAS's local OCI content store in `t.TempDir()`. It needs no network, container, Docker daemon, or credentials, so it runs as a normal `make test` unit test. Verify that a first open is empty; files saved by `Commit` are present after the next `Open`; an unchanged session does not upload again; emptying an archive persists the deletion (an empty directory survives a reopen); and committing a brand-new empty archive uploads nothing. Use an injected fake registry target only to test that pull and upload failures return errors.
+- **Unit:** Test `OCIArchive` with ORAS's local OCI content store in `t.TempDir()`. It needs no network, container, Docker daemon, or credentials, so it runs as a normal `make test` unit test. Verify that a first open is empty; files saved by `Commit` are present after the next `Open`; an unchanged session does not upload again; emptying an archive persists the deletion (an empty directory survives a reopen); committing a brand-new empty archive uploads nothing; and the temporary file-backed artifact is cleaned up. Use an injected fake registry target only to test that pull and upload failures return errors.
 - **Unit:** Save and load a modeled graph through `graph.Store` using `OCIArchive` and the local OCI content store. This covers the graph caller without a registry container.
 - **Unit:** Test backend selection: git remains the default; each configured OCI repository selects OCI; explicitly selecting OCI without its repository returns a configuration error. Update the existing graph and state-command tests for the new archive-neutral names and messages.
 - **Functional:** Extend `test/functional-portable/statestore/noncloud`, the dedicated state lifecycle test. It starts a local `registry:2` container, then runs `rad shutdown` and `rad startup` with OCI selected, `RADIUS_STATE_REGISTRY=localhost:<port>/radius-state`, and `RADIUS_ARCHIVE_PLAIN_HTTP=true`. The existing uninstall, reinstall, restore, and Terraform update flow proves that state was saved to and restored from the OCI registry. Cleanup removes the registry container.

@@ -180,11 +180,10 @@ func TestOCIArchive_CommitRejectsConcurrentTagUpdate(t *testing.T) {
 
 	externalPath := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(externalPath, "state.txt"), []byte("external state"), 0o644))
-	externalLayer, _, err := createLayer(externalPath)
+	externalArtifact, err := createArtifact(ctx, "radius-state", externalPath)
 	require.NoError(t, err)
-	source, _, err := createArtifact(ctx, "radius-state", externalLayer)
-	require.NoError(t, err)
-	_, err = oras.Copy(ctx, source, "radius-state", target, "radius-state", oras.DefaultCopyOptions)
+	defer externalArtifact.Close(ctx)
+	_, err = oras.Copy(ctx, externalArtifact.source, "radius-state", target, "radius-state", oras.DefaultCopyOptions)
 	require.NoError(t, err)
 
 	err = session.Commit(ctx, "ignored message")
@@ -219,8 +218,60 @@ func TestCreateLayerRejectsSymbolicLinks(t *testing.T) {
 		t.Skipf("symbolic links are unavailable: %v", err)
 	}
 
-	_, _, err := createLayer(root)
+	_, err := createLayer(root, io.Discard)
 	require.ErrorContains(t, err, "unsupported symbolic link")
+}
+
+func TestCreateArtifactUsesCompatibleManifestAndCleansUp(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "state.txt"), []byte("state"), 0o644))
+
+	var expectedLayer bytes.Buffer
+	_, err := createLayer(root, &expectedLayer)
+	require.NoError(t, err)
+
+	artifact, err := createArtifact(ctx, "radius-state", root)
+	require.NoError(t, err)
+	require.DirExists(t, artifact.tempDir)
+
+	manifestReader, err := artifact.source.Fetch(ctx, artifact.manifestDesc)
+	require.NoError(t, err)
+	manifestBytes, err := io.ReadAll(manifestReader)
+	require.NoError(t, err)
+	require.NoError(t, manifestReader.Close())
+
+	var manifest ocispec.Manifest
+	require.NoError(t, json.Unmarshal(manifestBytes, &manifest))
+	require.Len(t, manifest.Layers, 1)
+	require.Equal(t, layerMediaType, manifest.Layers[0].MediaType)
+	require.Empty(t, manifest.Layers[0].Annotations, "file-store annotations must not change the archive manifest")
+
+	expectedLayerDesc := content.NewDescriptorFromBytes(layerMediaType, expectedLayer.Bytes())
+	expectedConfigDesc := content.NewDescriptorFromBytes(configMediaType, []byte("{}"))
+	expectedManifest := ocispec.Manifest{
+		Versioned:    manifest.Versioned,
+		MediaType:    ocispec.MediaTypeImageManifest,
+		ArtifactType: configMediaType,
+		Config:       expectedConfigDesc,
+		Layers:       []ocispec.Descriptor{expectedLayerDesc},
+	}
+	expectedManifestBytes, err := json.Marshal(expectedManifest)
+	require.NoError(t, err)
+	expectedManifestDesc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageManifest, expectedManifestBytes)
+	require.Equal(t, expectedManifestDesc, artifact.manifestDesc, "file-backed artifact must retain the previous manifest digest")
+
+	tempDir := artifact.tempDir
+	artifact.Close(ctx)
+	require.NoDirExists(t, tempDir)
+}
+
+func TestCreateLayerPropagatesWriterErrors(t *testing.T) {
+	root := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(root, "state.txt"), []byte("state"), 0o644))
+
+	_, err := createLayer(root, failingWriter{})
+	require.ErrorContains(t, err, "write failed")
 }
 
 func TestArchivePathRejectsUnsafeNames(t *testing.T) {
@@ -352,4 +403,10 @@ func (failedPushTarget) Push(context.Context, ocispec.Descriptor, io.Reader) err
 
 func (failedPushTarget) Tag(context.Context, ocispec.Descriptor, string) error {
 	return nil
+}
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) {
+	return 0, errors.New("write failed")
 }
