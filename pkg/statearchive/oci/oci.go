@@ -190,11 +190,15 @@ func (s *session) Path() string {
 
 // Commit writes the session directory to the configured OCI repository.
 func (s *session) Commit(ctx context.Context, _ string) error {
-	layer, changed, err := createLayer(s.path)
+	layer, hasFiles, err := createLayer(s.path)
 	if err != nil {
 		return err
 	}
-	if !changed {
+	// A brand-new archive with nothing to store is a true no-op, matching the git
+	// backend (which does not create an empty-tree commit on first run). An empty
+	// directory for an archive that already exists is not skipped here: it must be
+	// persisted as an empty archive so deletions are not silently dropped.
+	if !hasFiles && s.manifestDigest == "" {
 		return nil
 	}
 
@@ -283,14 +287,16 @@ func pushBlob(ctx context.Context, target oras.Target, mediaType string, data []
 	return desc, nil
 }
 
+// createLayer builds a deterministic gzipped tar of every regular file under
+// root. The second return value reports whether root contained any files; the
+// layer itself is always valid (an empty directory yields a valid empty
+// tar+gzip) so callers can persist deletions rather than silently dropping them.
 func createLayer(root string) ([]byte, bool, error) {
 	paths, err := archiveFiles(root)
 	if err != nil {
 		return nil, false, err
 	}
-	if len(paths) == 0 {
-		return nil, false, nil
-	}
+	hasFiles := len(paths) > 0
 
 	var output bytes.Buffer
 	gzipWriter := gzip.NewWriter(&output)
@@ -338,7 +344,7 @@ func createLayer(root string) ([]byte, bool, error) {
 	if err := gzipWriter.Close(); err != nil {
 		return nil, false, fmt.Errorf("failed to compress archive: %w", err)
 	}
-	return output.Bytes(), true, nil
+	return output.Bytes(), hasFiles, nil
 }
 
 func archiveFiles(root string) ([]string, error) {

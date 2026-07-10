@@ -107,6 +107,52 @@ func TestOCIArchive_CommitReturnsTargetError(t *testing.T) {
 	require.ErrorContains(t, err, "push failed")
 }
 
+func TestOCIArchive_CommitPersistsDeletion(t *testing.T) {
+	archive, target := newTestArchive(t)
+	ctx := context.Background()
+
+	session, err := archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("saved state"), 0o644))
+	require.NoError(t, session.Commit(ctx, "ignored message"))
+	session.Close(ctx)
+
+	session, err = archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	require.NoError(t, os.Remove(filepath.Join(session.Path(), "state.txt")))
+	pushesBeforeDelete := target.PushCount()
+	require.NoError(t, session.Commit(ctx, "ignored message"))
+	require.Greater(t, target.PushCount(), pushesBeforeDelete, "emptying the archive must be persisted")
+	session.Close(ctx)
+
+	session, err = archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	t.Cleanup(func() { session.Close(ctx) })
+
+	entries, err := os.ReadDir(session.Path())
+	require.NoError(t, err)
+	require.Empty(t, entries, "deletion must survive a reopen")
+}
+
+func TestOCIArchive_EmptyNewArchiveIsNoOp(t *testing.T) {
+	archive, target := newTestArchive(t)
+	ctx := context.Background()
+
+	session, err := archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	require.NoError(t, session.Commit(ctx, "ignored message"))
+	session.Close(ctx)
+
+	require.Equal(t, 0, target.PushCount(), "an empty new archive must not upload anything")
+
+	session, err = archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	t.Cleanup(func() { session.Close(ctx) })
+	entries, err := os.ReadDir(session.Path())
+	require.NoError(t, err)
+	require.Empty(t, entries)
+}
+
 func newTestArchive(t *testing.T) (*OCIArchive, *countingTarget) {
 	t.Helper()
 
