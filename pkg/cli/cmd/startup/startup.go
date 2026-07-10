@@ -26,6 +26,7 @@ package startup
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -37,7 +38,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/pgbackup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/statearchive"
-	archivegit "github.com/radius-project/radius/pkg/statearchive/git"
+	archivefactory "github.com/radius-project/radius/pkg/statearchive/factory"
 )
 
 // NewCommand creates an instance of the `rad startup` command and runner.
@@ -49,7 +50,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short: "Restore Radius state after startup",
 		Long: `Restore durable Radius state for the current workspace.
 
-Opens the radius-state git orphan branch, waits for the control-plane PostgreSQL instance to be
+Opens the radius-state archive, waits for the control-plane PostgreSQL instance to be
 ready, restores the control-plane databases, and re-creates the Terraform recipe state Secrets.
 Run this after Radius is installed on a fresh cluster to resume from the state saved by
 'rad shutdown'.
@@ -77,8 +78,7 @@ type Runner struct {
 	Workspace    *workspaces.Workspace
 	StateClient  StateRestoreClient
 
-	// Archive is the durable state archive that state is restored from. Defaults to the git
-	// orphan-branch implementation; tests inject a mock.
+	// Archive is the durable state archive that state is restored from. Tests inject a mock.
 	Archive statearchive.Archive
 
 	// newScaler builds the control-plane scaler for a context/namespace. Overridable in tests.
@@ -91,7 +91,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigHolder: factory.GetConfigHolder(),
 		Output:       factory.GetOutput(),
 		StateClient:  NewStateRestoreClient(),
-		Archive:      archivegit.NewGitArchive(),
+		Archive:      archivefactory.NewFromEnvironment(os.Getenv(archivefactory.StateRegistryEnvVar)),
 	}
 	r.newScaler = newScalerForContext
 	return r
@@ -112,7 +112,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run restores the control-plane and Terraform state from the state branch.
+// Run restores the control-plane and Terraform state from the state archive.
 //
 // The database-backed control-plane deployments are scaled to zero before the restore and back up
 // afterward. Restoring a pg_dump underneath live resource-provider connections would invalidate
@@ -124,7 +124,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return clierrors.Message("Could not determine the Kubernetes context for workspace %q.", r.Workspace.Name)
 	}
 
-	session, err := r.Archive.Open(ctx, pgbackup.StateBranchName())
+	session, err := r.Archive.Open(ctx, pgbackup.StateArchiveName())
 	if err != nil {
 		return fmt.Errorf("failed to open state archive: %w", err)
 	}

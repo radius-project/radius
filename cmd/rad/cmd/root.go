@@ -111,6 +111,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/graph/persistence/git"
+	"github.com/radius-project/radius/pkg/statearchive/factory"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -257,7 +258,9 @@ func init() {
 }
 
 func initSubCommands() {
-	graphStore, err := git.NewStore(git.Options{})
+	graphStore, err := git.NewStore(git.Options{
+		Archive: factory.NewFromEnvironment(os.Getenv(factory.GraphRegistryEnvVar)),
+	})
 	if err != nil {
 		// graphStore is required only when we are in repo radius
 		// it can be nil otherwise.

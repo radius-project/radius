@@ -4,7 +4,7 @@ The **state archive** is a pluggable abstraction for durable Radius state that
 is exported out of a running cluster and restored later — for example across
 ephemeral CI runs. It is defined by two small Go interfaces in
 [pkg/statearchive/statearchive.go](../../pkg/statearchive/statearchive.go) and
-has a single implementation today (a git orphan branch), but every caller
+has two implementations today (a git orphan branch and an OCI artifact), but every caller
 depends only on the interfaces, so an alternative backend can be swapped in
 without touching consumer code.
 
@@ -30,7 +30,8 @@ graph TD
     subgraph "Implementations"
         GitArchive["GitArchive / session<br/>pkg/statearchive/git"]
         MockArchive["MockArchive / MockSession<br/>mock_archive.go (tests)"]
-        Future["Future: OCI / GHCR / filesystem<br/>(not yet implemented)"]
+        OCIArchive["OCIArchive / session<br/>pkg/statearchive/oci"]
+        Future["Future: filesystem"]
     end
 
     Shutdown -->|"Open → write → Commit"| Archive
@@ -40,6 +41,7 @@ graph TD
     Archive -->|"returns"| Session
 
     Archive -.->|implements| GitArchive
+    Archive -.->|implements| OCIArchive
     Archive -.->|implements| MockArchive
     Archive -.->|"can implement"| Future
 ```
@@ -55,8 +57,11 @@ graph TD
   `os.WriteFile`), `Commit(ctx, message)` persists every change made under
   `Path()`, and `Close(ctx)` releases resources (best-effort, safe to `defer`).
 - **`GitArchive` / `session`** ([pkg/statearchive/git/git.go](../../pkg/statearchive/git/git.go))
-  — the only production implementation, backed by a git orphan branch checked
-  out into an isolated worktree.
+  — a production implementation backed by a git orphan branch checked out into
+  an isolated worktree.
+- **`OCIArchive` / `session`** ([pkg/statearchive/oci/oci.go](../../pkg/statearchive/oci/oci.go))
+  — a production implementation that stores each archive as a gzipped tar layer
+  in an OCI artifact.
 - **`MockArchive` / `MockSession`** ([pkg/statearchive/mock_archive.go](../../pkg/statearchive/mock_archive.go))
   — GoMock doubles generated from the interfaces, used by consumer tests so they
   never touch git.
@@ -168,22 +173,51 @@ Compile-time assertions at the bottom of the file
 (`var _ statearchive.Archive = (*GitArchive)(nil)`) guarantee the implementation
 keeps satisfying the interface.
 
+## Selecting an Archive
+
+[pkg/statearchive/factory](../../pkg/statearchive/factory/factory.go) selects the default
+archive implementation:
+
+- Git is the default.
+- OCI is selected when `RADIUS_STATE_BACKEND=oci`, or when the applicable OCI
+  repository variable is configured.
+- `RADIUS_STATE_REGISTRY` configures `rad startup` and `rad shutdown`.
+- `RADIUS_GRAPH_REGISTRY` configures modeled graph output in GitHub Actions.
+- `RADIUS_ARCHIVE_PLAIN_HTTP=true` enables HTTP for a local test registry.
+
+OCI repositories are configured explicitly. Radius does not derive a repository
+from `GITHUB_REPOSITORY`, so existing GitHub Actions workflows keep using git
+until their configuration opts into OCI.
+
+## The OCI Implementation
+
+[pkg/statearchive/oci/oci.go](../../pkg/statearchive/oci/oci.go) maps an archive
+`name` to an OCI tag. State and modeled graphs use separate repositories because
+they have separate lifecycles and access requirements.
+
+- **Open** resolves the tag and unpacks its single gzipped tar layer into a
+  temporary directory. A missing tag starts an empty archive.
+- **Commit** creates a deterministic tar.gz artifact. Unchanged files create
+  the same digest, so no upload occurs.
+- **Authentication** uses Docker credentials, including credentials created by
+  `docker/login-action` in GitHub Actions.
+- **Local testing** can use `RADIUS_ARCHIVE_PLAIN_HTTP=true` with a local OCI
+  registry.
+
 ## How Consumers Stay Decoupled
 
-Every consumer stores a `statearchive.Archive` (the interface), defaulting to
-the git implementation but accepting any implementation for tests or future
-backends:
+Every consumer stores a `statearchive.Archive` (the interface) and accepts any
+implementation for tests or future backends:
 
 - **Graph store** — [pkg/graph/persistence/git/git_store.go](../../pkg/graph/persistence/git/git_store.go)
-  holds an `archive statearchive.Archive` and defaults it to
-  `archivegit.NewGitArchive()` only when `Options.Archive` is nil. Its
+  holds an `archive statearchive.Archive`. Its
   `Save`/`Load`/`List`/`Delete` methods call `Open` and use `session.Path()` to
   build file paths — never a git command directly; the mutating `Save`/`Delete`
   also `Commit`, while `Load`/`List` only read. Its doc comment states that
   swapping in a different `statearchive.Archive` "requires no change here."
 - **`rad shutdown` / `rad startup`** — both `Runner` structs expose an
-  `Archive statearchive.Archive` field defaulted to `archivegit.NewGitArchive()`
-  in their factory, then drive the same `Open → Path → Commit → Close` shape.
+  `Archive statearchive.Archive` field and drive the same
+  `Open → Path → Commit → Close` shape.
 - **Tests** — because the field is the interface, tests inject `MockArchive` /
   `MockSession` and assert on `Open`/`Commit`/`Close` calls without any git
   repository.
@@ -192,7 +226,7 @@ backends:
 graph LR
     Consumer["Consumer<br/>(Store / Runner)"]
     Field["field: statearchive.Archive"]
-    Default["default: archivegit.NewGitArchive()"]
+    Default["default: factory.NewFromEnvironment(...)"]
     Inject["injected: MockArchive / other"]
 
     Consumer --> Field
@@ -203,8 +237,7 @@ graph LR
 ## Plugging In a Future Implementation
 
 Because consumers depend only on the two interfaces, a new backend (for example
-OCI/GHCR image layers or a plain filesystem directory) is added without editing
-any consumer. The steps:
+a plain filesystem directory) is added without editing any consumer. The steps:
 
 1. **Create a new package** under `pkg/statearchive/<backend>/` (mirroring
    `pkg/statearchive/git/`).

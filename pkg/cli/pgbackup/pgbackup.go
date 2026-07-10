@@ -49,26 +49,40 @@ const (
 )
 
 const (
-	// DefaultStateBranch is the git orphan branch that durable Radius state is committed to:
+	// DefaultStateArchive is the default archive name where durable Radius state is committed:
 	// the PostgreSQL dumps produced by this package and the Terraform state Secrets exported by
 	// pkg/cli/tfstate. It is shared by the "rad shutdown" and "rad startup" commands.
-	DefaultStateBranch = "radius-state"
+	DefaultStateArchive = "radius-state"
 
-	// StateBranchEnvVar overrides DefaultStateBranch. It lets parallel tests use isolated
+	// StateArchiveEnvVar overrides DefaultStateArchive. It lets parallel tests use isolated
 	// branches without colliding.
+	StateArchiveEnvVar = "RADIUS_STATE_ARCHIVE"
+
+	// DefaultStateBranch is deprecated. Use DefaultStateArchive.
+	DefaultStateBranch = DefaultStateArchive
+
+	// StateBranchEnvVar is deprecated. Use StateArchiveEnvVar.
 	StateBranchEnvVar = "RADIUS_STATE_BRANCH"
 )
 
 // Databases is the list of PostgreSQL databases that hold control-plane state.
 var Databases = []string{"ucp", "applications_rp", "dynamic_rp"}
 
-// StateBranchName returns the state branch name, honoring StateBranchEnvVar and falling back to
-// DefaultStateBranch.
-func StateBranchName() string {
+// StateArchiveName returns the state archive name, honoring StateArchiveEnvVar, then the
+// deprecated StateBranchEnvVar, and falling back to DefaultStateArchive.
+func StateArchiveName() string {
+	if v := os.Getenv(StateArchiveEnvVar); v != "" {
+		return v
+	}
 	if v := os.Getenv(StateBranchEnvVar); v != "" {
 		return v
 	}
-	return DefaultStateBranch
+	return DefaultStateArchive
+}
+
+// StateBranchName is deprecated. Use StateArchiveName.
+func StateBranchName() string {
+	return StateArchiveName()
 }
 
 // HasBackup reports whether a SQL dump exists for every database in the state directory.
