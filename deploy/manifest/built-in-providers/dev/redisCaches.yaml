@@ -1,0 +1,80 @@
+namespace: Radius.Data
+types:
+  redisCaches:
+    description: |
+      The Radius.Data/redisCaches Resource Type deploys a Redis cache. To deploy a
+      Redis cache, add a redisCaches resource to the application definition Bicep
+      file. Unlike database types, no secret is required: Azure Managed Redis
+      generates its own access keys, so the platform-engineer recipe needs no
+      injected credentials.
+      ```
+      resource cache 'Radius.Data/redisCaches@2025-08-01-preview' = {
+        name: 'redis'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          size: 'S'
+        }
+      }
+      ```
+
+      To connect your container to the cache, create a connection from the
+      Container resource to the cache as shown below.
+      ```
+      resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'frontend'
+        properties: {
+          application: myApplication.id
+          environment: environment
+          containers: {
+            frontend: {
+              image: 'frontend:1.25'
+            }
+          }
+          connections: {
+            redis: {
+              source: cache.id
+            }
+          }
+        }
+      }
+      ```
+
+      The connection automatically injects environment variables into the
+      container for all properties from the cache. The environment variables are
+      named `CONNECTION_<CONNECTION-NAME>_<PROPERTY-NAME>`. In this example the
+      connection name is `redis` so the environment variables will be:
+
+      - CONNECTION_REDIS_HOST
+      - CONNECTION_REDIS_PORT
+      - CONNECTION_REDIS_URL
+
+    apiVersions:
+      '2025-08-01-preview':
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+              description: "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`."
+            application:
+              type: string
+              description: "(Optional) The Radius Application ID. `myApplication.id` for example."
+            size:
+              type: string
+              enum: ['S', 'M', 'L']
+              description: "(Optional) The size of the Redis cache. Defaults to `S` if not provided. The recipe maps the size onto a concrete cloud SKU."
+            host:
+              type: string
+              description: "(Read Only) The host name used to connect to the cache. Mapped from the recipe module's output."
+              readOnly: true
+            port:
+              type: integer
+              description: "(Read Only) The TLS port number used to connect to the cache. Mapped from the recipe module's `port` output (Azure Managed Redis uses 10000)."
+              readOnly: true
+            url:
+              type: string
+              description: "(Read Only) The full TLS connection URL (`rediss://:<access-key>@<host>:<port>`) used to connect to the cache, including the access key. Mapped from the recipe module's `primaryConnectionString` output."
+              x-radius-sensitive: true
+              readOnly: true
+          required: [environment]

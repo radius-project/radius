@@ -48,17 +48,15 @@ failed_count=0
 for recipe_spec in "${recipes[@]}"; do
     # Split resource_type:template_path
     IFS=':' read -r resource_type template_path <<< "$recipe_spec"
-    
+
     echo "Registering default recipe for $resource_type -> $template_path"
-    
+
     # Try to register the recipe
-    output=$("$RAD_WRAPPER" recipe register "default" \
+    if output=$("$RAD_WRAPPER" recipe register "default" \
         --resource-type "$resource_type" \
         --template-kind "bicep" \
         --template-path "$template_path" \
-        --environment default 2>&1)
-    
-    if [ $? -eq 0 ]; then
+        --environment default 2>&1); then
         echo "✅ Registered: default recipe for $resource_type"
         ((registered_count++))
     elif echo "$output" | grep -q "already exists\|already registered"; then

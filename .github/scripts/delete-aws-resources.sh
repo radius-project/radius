@@ -42,8 +42,8 @@ function delete_old_aws_resources() {
   truncate -s 0 $DELETED_RESOURCES_FILE
 
   for resource_type in ${RESOURCE_TYPES//,/ }; do
-    aws cloudcontrol list-resources --type-name "$resource_type" --query "ResourceDescriptions[].Identifier" --output text | tr '\t' '\n' | while read identifier; do
-      aws cloudcontrol get-resource --type-name "$resource_type" --identifier "$identifier" --query "ResourceDescription.Properties" --output text | while read resource; do
+    aws cloudcontrol list-resources --type-name "$resource_type" --query "ResourceDescriptions[].Identifier" --output text | tr '\t' '\n' | while read -r identifier; do
+      aws cloudcontrol get-resource --type-name "$resource_type" --identifier "$identifier" --query "ResourceDescription.Properties" --output text | while read -r resource; do
         resource_tags=$(jq -c -r .Tags <<<"$resource")
         if [[ "$resource_tags" != "null" && "$resource_tags" != "" ]]; then
           for tag in $(jq -c -r '.[]' <<<"$resource_tags"); do

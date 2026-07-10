@@ -29,7 +29,10 @@ import (
 // Test_MySQLDatabase deploys a Radius.Data/mySqlDatabases resource using the default
 // preview-environment recipe pack and validates that the recipe-provisioned MySQL
 // Deployment/Service has a running Pod, and that a Radius.Compute/containers resource is
-// deployed with a connection to the database.
+// deployed alongside it. The container wires the database connection details directly as
+// env vars (rather than via a `connections` block) because the x-radius-sensitive
+// `password` property is redacted to null on reads, which the containers recipe cannot
+// serialize into CONNECTION_* env vars.
 func Test_MySQLDatabase(t *testing.T) {
 	template := "testdata/corerp-resources-mysqldatabase.bicep"
 	name := "corerp-resources-mysqldb"
@@ -42,11 +45,6 @@ func Test_MySQLDatabase(t *testing.T) {
 					{
 						Name: name,
 						Type: validation.CoreApplicationsResource,
-					},
-					{
-						Name: "mysqldb-secret",
-						Type: validation.SecuritySecretsResource,
-						App:  name,
 					},
 					{
 						Name: "mysqldb-db",
@@ -77,7 +75,7 @@ func Test_MySQLDatabase(t *testing.T) {
 
 	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
 	test.PreSetup = preSetup
-	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID), fmt.Sprintf("password=%s", "not-prod-password"))
 
 	test.Test(t)
 }

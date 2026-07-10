@@ -2,6 +2,7 @@ package converter
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/radius-project/radius/bicep-tools/pkg/manifest"
@@ -37,7 +38,7 @@ func TestBaseResource_DecodedFromCanonicalYAML(t *testing.T) {
 			t.Errorf("expected connections.additionalProperties to declare %q", name)
 		}
 	}
-	if !contains(connections.AdditionalProperties.Required, "source") {
+	if !slices.Contains(connections.AdditionalProperties.Required, "source") {
 		t.Errorf("expected connections.additionalProperties.required to contain source, got %v", connections.AdditionalProperties.Required)
 	}
 }
@@ -65,7 +66,7 @@ func TestApplyBaseResource_MergesIntoBareSchema(t *testing.T) {
 		}
 	}
 
-	if !contains(schema.Required, "environment") {
+	if !slices.Contains(schema.Required, "environment") {
 		t.Errorf("expected environment to be required after merge, got %v", schema.Required)
 	}
 }
@@ -78,7 +79,7 @@ func TestApplyBaseResource_PerTypeWins(t *testing.T) {
 		t.Fatalf("loadBaseResource: %v", err)
 	}
 
-	custom := manifest.Schema{Type: "string", Description: ptr("custom")}
+	custom := manifest.Schema{Type: "string", Description: new("custom")}
 	schema := &manifest.Schema{
 		Type: "object",
 		Properties: map[string]manifest.Schema{
@@ -139,18 +140,9 @@ func TestApplyBaseResource_EmptySchema(t *testing.T) {
 		}
 	}
 
-	if !contains(schema.Required, "environment") {
+	if !slices.Contains(schema.Required, "environment") {
 		t.Errorf("expected environment to be required after merge, got %v", schema.Required)
 	}
-}
-
-func contains(values []string, target string) bool {
-	for _, v := range values {
-		if v == target {
-			return true
-		}
-	}
-	return false
 }
 
 func countOccurrences(values []string, target string) int {
@@ -161,9 +153,4 @@ func countOccurrences(values []string, target string) int {
 		}
 	}
 	return count
-}
-
-// ptr returns a pointer to v.
-func ptr[T any](v T) *T {
-	return &v
 }

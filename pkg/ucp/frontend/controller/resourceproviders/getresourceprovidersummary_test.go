@@ -2,6 +2,8 @@ package resourceproviders
 
 import (
 	"errors"
+	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -60,6 +62,27 @@ func TestExtractScopeAndName(t *testing.T) {
 
 			require.Equal(t, tt.expectedScope, scope, "expected scope %v, got %v", tt.expectedScope, scope)
 			require.Equal(t, tt.expectedName, name, "expected name %v, got %v", tt.expectedName, name)
+		})
+	}
+}
+
+func TestIncludeIcons(t *testing.T) {
+	tests := []struct {
+		name     string
+		rawQuery string
+		expected bool
+	}{
+		{name: "true opts in", rawQuery: "includeIcons=true", expected: true},
+		{name: "case-insensitive true", rawQuery: "includeIcons=TRUE", expected: true},
+		{name: "explicit false", rawQuery: "includeIcons=false", expected: false},
+		{name: "unrecognized value", rawQuery: "includeIcons=1", expected: false},
+		{name: "absent parameter", rawQuery: "", expected: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := &http.Request{URL: &url.URL{RawQuery: tt.rawQuery}}
+			require.Equal(t, tt.expected, includeIcons(req))
 		})
 	}
 }

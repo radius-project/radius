@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,6 +56,7 @@ func Test_display(t *testing.T) {
 		azureRedisID := "/planes/azure/local/resourcegroups/default/providers/Applications.Datastores/Microsoft.Cache/Azure"
 		azureRedisName := "redis"
 		azureRedisType := "Applications.Datastores/redis"
+		azureRedisPortalURL := "https://portal.azure.com/#@test-tenant/resource" + azureRedisID
 
 		provisioningStateSuccess := "Succeeded"
 		dirInbound := corerpv20231001preview.DirectionInbound
@@ -114,9 +116,10 @@ func Test_display(t *testing.T) {
 				ProvisioningState: &provisioningStateSuccess,
 				OutputResources: []*corerpv20231001preview.ApplicationGraphOutputResource{
 					{
-						ID:   &azureRedisID,
-						Name: &azureRedisName,
-						Type: &azureRedisType,
+						ID:        &azureRedisID,
+						Name:      &azureRedisName,
+						Type:      &azureRedisType,
+						PortalURL: &azureRedisPortalURL,
 					},
 				},
 				Connections: []*corerpv20231001preview.ApplicationGraphConnection{
@@ -149,7 +152,7 @@ Name: redis (Applications.Datastores/redis)
 Connections:
   sql-db (Applications.Datastores/sqlDatabases) -> redis
 Resources:
-  ` + "\x1b]8;;" + `https://portal.azure.com/#@72f988bf-86f1-41af-91ab-2d7cd011db47/resource/planes/azure/local/resourcegroups/default/providers/Applications.Datastores/Microsoft.Cache/Azure` + "\aredis\x1b]8;;\a" + ` (Applications.Datastores/redis)
+  ` + "\x1b]8;;" + `https://portal.azure.com/#@test-tenant/resource/planes/azure/local/resourcegroups/default/providers/Applications.Datastores/Microsoft.Cache/Azure` + "\aredis\x1b]8;;\a" + ` (Applications.Datastores/redis)
 
 Name: sql-db (Applications.Datastores/sqlDatabases)
 Connections: (none)
@@ -161,4 +164,38 @@ Resources: (none)
 		require.Equal(t, expected, actual)
 	})
 
+}
+
+func Test_MakeResourceHyperlink(t *testing.T) {
+	tests := []struct {
+		name         string
+		portalURL    *string
+		resourceName string
+		want         string
+	}{
+		{
+			name:         "nil portal URL returns empty string",
+			portalURL:    nil,
+			resourceName: "myresource",
+			want:         "",
+		},
+		{
+			name:         "empty portal URL returns empty string",
+			portalURL:    to.Ptr(""),
+			resourceName: "myresource",
+			want:         "",
+		},
+		{
+			name:         "populated portal URL is wrapped in terminal hyperlink escape sequence",
+			portalURL:    to.Ptr("https://portal.azure.com/#@tenant/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage"),
+			resourceName: "mystorage",
+			want:         "\x1b]8;;https://portal.azure.com/#@tenant/resource/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/Microsoft.Storage/storageAccounts/mystorage\x07mystorage\x1b]8;;\x07",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, MakeResourceHyperlink(tt.portalURL, tt.resourceName))
+		})
+	}
 }

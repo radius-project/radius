@@ -29,11 +29,8 @@ RETRY_DELAY=5
 # Retry loop
 RETRY_COUNT=0
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-    # Download the file with retries and resume capability
-    curl --retry $MAX_RETRIES --retry-delay $RETRY_DELAY --continue-at - $@
-
-    # Check if the download was successful
-    if [ $? -eq 0 ]; then
+    # Download the file with retries and resume capability, checking success directly.
+    if curl --retry "$MAX_RETRIES" --retry-delay "$RETRY_DELAY" --continue-at - "$@"; then
         echo "File downloaded successfully"
         break
     fi

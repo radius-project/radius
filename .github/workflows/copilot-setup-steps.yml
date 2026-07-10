@@ -139,14 +139,12 @@ jobs:
         # Pinned version + checksums live in build/tools.mk (GOLANGCI_LINT_VERSION).
         run: make install-golangci-lint
 
-      - name: Install Go tools
+      - name: Install Delve (dlv)
         # controller-gen, mockgen, and gotestsum are managed as Go tool dependencies
         # (the 'tool' directives in go.mod) and run via `go tool`, so they need no
         # separate install. dlv (Delve) is used by the process-debugging workflow
-        # (make debug-*).
-        run: |
-          DLV_VER="v1.26.3"
-          go install "github.com/go-delve/delve/cmd/dlv@${DLV_VER}"
+        # (make debug-*). Version pinned in build/tools.mk (DLV_VERSION).
+        run: make install-dlv
 
       - name: Install yq
         # Required by Bicep type generation to parse YAML defaults.

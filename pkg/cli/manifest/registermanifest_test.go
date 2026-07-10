@@ -21,6 +21,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -214,7 +216,7 @@ func TestRegisterType(t *testing.T) {
 			clientFactory := createTestClientFactory(t)
 			logger, logBuffer := createTestLogger()
 
-			err := RegisterType(context.Background(), clientFactory, tt.planeName, tt.filePath, tt.resourceTypeName, logger)
+			err := RegisterType(context.Background(), clientFactory, tt.planeName, tt.filePath, tt.resourceTypeName, "", logger)
 			if tt.expectError {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErrorMessage)
@@ -924,10 +926,43 @@ func TestRegisterType_ErrorScenarios(t *testing.T) {
 			logger, _ := createTestLogger()
 
 			testErrorScenario(t, func() error {
-				return RegisterType(context.Background(), clientFactory, "local", tt.filePath, tt.typeName, logger)
+				return RegisterType(context.Background(), clientFactory, "local", tt.filePath, tt.typeName, "", logger)
 			}, tt.expectError, tt.expectedErrorMessage)
 		})
 	}
+}
+
+func TestRegisterType_IconFileNotFound(t *testing.T) {
+	t.Parallel()
+
+	clientFactory := createTestClientFactory(t)
+	logger, _ := createTestLogger()
+
+	err := RegisterType(context.Background(), clientFactory, "local",
+		"testdata/registerdirectory/resourceprovider-valid2.yaml", "testResource3",
+		"testdata/nonexistent-icon.svg", logger)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to read icon file testdata/nonexistent-icon.svg")
+}
+
+func TestRegisterType_IconValidationRejectsBadSVG(t *testing.T) {
+	t.Parallel()
+
+	clientFactory := createTestClientFactory(t)
+	logger, _ := createTestLogger()
+
+	dir := t.TempDir()
+	badIcon := filepath.Join(dir, "bad.svg")
+	require.NoError(t, os.WriteFile(badIcon, []byte(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`), 0o600))
+
+	err := RegisterType(context.Background(), clientFactory, "local",
+		"testdata/registerdirectory/resourceprovider-valid2.yaml", "testResource3",
+		badIcon, logger)
+
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid icon file")
+	require.Contains(t, err.Error(), "<script>")
 }
 
 func TestRegisterFile_ErrorScenarios(t *testing.T) {

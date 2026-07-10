@@ -105,6 +105,13 @@ model ResourceTypeProperties {
 
   @doc("Description of the resource type.")
   description?: string;
+
+  @doc("The verbatim SVG file content of the icon associated with the resource type, carried as a UTF-8 string. Set by 'rad resource-type create --icon <path>'.")
+  icon?: string;
+
+  @doc("The SHA-256 hash of the icon's SVG bytes. Computed by the control plane and used to content-address the icon.")
+  @visibility(Lifecycle.Read)
+  iconHash?: string;
 }
 
 @doc("The resource type for defining an API version of a resource type supported by the containing resource provider.")
@@ -189,6 +196,12 @@ model ResourceProviderSummaryResourceType {
 
   @doc("Description of the resource type.")
   description?: string;
+
+  @doc("The verbatim SVG icon content associated with the resource type, carried as a UTF-8 string.")
+  icon?: string;
+
+  @doc("The SHA-256 hash of the icon's SVG bytes, computed by the control plane.")
+  iconHash?: string;
 }
 
 @doc("The configuration of a resource type API version.")
@@ -294,7 +307,30 @@ interface ResourceProviders {
     @path
     @segment("providers")
     resourceProviderName: ResourceProviderNamespaceString,
+
+    @doc("When true, resource type icon bytes are included in the response. When false or omitted, only the icon hash is returned.")
+    @query
+    includeIcons?: boolean,
   ): ArmResponse<ResourceProviderSummary> | ErrorResponse;
+}
+
+@doc("The response body for fetching a resource type's icon bytes.")
+model ResourceTypeIconResponse {
+  @doc("HTTP status code.")
+  @statusCode
+  statusCode: 200;
+
+  @doc("MIME type of the icon bytes.")
+  @header
+  contentType: "image/svg+xml";
+
+  @doc("Caching hint. Icon bytes are content-addressed by SHA-256 and safe to cache immutably.")
+  @header("cache-control")
+  cacheControl: "public, max-age=31536000, immutable";
+
+  @doc("The verbatim SVG file content stored for the resource type.")
+  @body
+  body: bytes;
 }
 
 @route("/planes")
@@ -327,6 +363,17 @@ interface ResourceTypes {
     ResourceTypeResource,
     ResourceTypeBaseParameters<ResourceTypeResource>
   >;
+
+  @doc("Get the icon bytes stored for the specified resource type, addressed by the SHA-256 hash of those bytes. Returns the verbatim SVG file content with Content-Type: image/svg+xml and an immutable Cache-Control. If the hash does not match the stored icon, or the resource type has no icon, returns 404.")
+  @get
+  getIcon(
+    ...ResourceTypeBaseParameters<ResourceTypeResource>,
+
+    @doc("The SHA-256 hash of the icon's SVG bytes, as a lowercase hex string.")
+    @path
+    @segment("icons")
+    hash: string,
+  ): ResourceTypeIconResponse | ErrorResponse;
 }
 
 @route("/planes")

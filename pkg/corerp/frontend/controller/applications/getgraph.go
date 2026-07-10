@@ -69,7 +69,14 @@ func ComputeGraphResponse(ctx context.Context, applicationID resources.ID, envir
 		return nil, err
 	}
 
-	graph := computeGraph(applicationResources, environmentResources)
+	// Only look up the registered Azure tenant when the fetched resources actually contain at
+	// least one Azure output resource. Pure-Kubernetes graphs skip the extra UCP credential Get.
+	tenantID := ""
+	if containsAzureOutputResource(applicationResources) || containsAzureOutputResource(environmentResources) {
+		tenantID = azureTenantID(ctx, clientOptions)
+	}
+
+	graph := computeGraph(applicationResources, environmentResources, tenantID)
 	return rest.NewOKResponse(graph), nil
 }
 

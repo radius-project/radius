@@ -27,7 +27,7 @@ In addition to the base environment, debugging requires these tools. `make debug
 ```bash
 brew install go kubectl k3d terraform postgresql
 brew install --cask docker
-go install github.com/go-delve/delve/cmd/dlv@latest
+make install-dlv
 echo 'export PATH="$HOME/go/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
 ```
 
@@ -43,7 +43,7 @@ echo 'export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"' >> ~/.bashrc && source
 sudo apt update && sudo apt install -y kubectl postgresql-client docker.io
 
 # Delve and k3d
-go install github.com/go-delve/delve/cmd/dlv@latest
+make install-dlv
 wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
 
 # Terraform
