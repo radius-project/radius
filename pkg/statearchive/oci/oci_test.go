@@ -17,7 +17,10 @@ limitations under the License.
 package oci
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -32,8 +35,11 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/content/memory"
 	ocistore "oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 func TestOCIArchive_CommitRoundTrip(t *testing.T) {
@@ -80,6 +86,17 @@ func TestOCIArchive_UsesOCIStorageForGraphs(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got.Resources, 1)
 	require.Equal(t, "frontend", *got.Resources[0].Name)
+
+	require.NoError(t, store.Delete(context.Background(), key))
+	_, err = store.Load(context.Background(), key)
+	require.ErrorIs(t, err, persistence.ErrNotFound)
+}
+
+func TestOCIArchive_OpenRejectsEmptyName(t *testing.T) {
+	archive, _ := newTestArchive(t)
+
+	_, err := archive.Open(context.Background(), "")
+	require.ErrorContains(t, err, "OCI archive name must not be empty")
 }
 
 func TestOCIArchive_OpenReturnsTargetError(t *testing.T) {
@@ -151,6 +168,136 @@ func TestOCIArchive_EmptyNewArchiveIsNoOp(t *testing.T) {
 	entries, err := os.ReadDir(session.Path())
 	require.NoError(t, err)
 	require.Empty(t, entries)
+}
+
+func TestOCIArchive_CommitRejectsConcurrentTagUpdate(t *testing.T) {
+	archive, target := newTestArchive(t)
+	ctx := context.Background()
+
+	session, err := archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("local state"), 0o644))
+
+	externalPath := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(externalPath, "state.txt"), []byte("external state"), 0o644))
+	externalLayer, _, err := createLayer(externalPath)
+	require.NoError(t, err)
+	source, _, err := createArtifact(ctx, "radius-state", externalLayer)
+	require.NoError(t, err)
+	_, err = oras.Copy(ctx, source, "radius-state", target, "radius-state", oras.DefaultCopyOptions)
+	require.NoError(t, err)
+
+	err = session.Commit(ctx, "ignored message")
+	require.ErrorContains(t, err, "changed while this session was open")
+	session.Close(ctx)
+
+	session, err = archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	t.Cleanup(func() { session.Close(ctx) })
+	data, err := os.ReadFile(filepath.Join(session.Path(), "state.txt"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("external state"), data)
+}
+
+func TestOCIArchive_OpenRemoteTargetConfiguresPlainHTTP(t *testing.T) {
+	t.Setenv("DOCKER_CONFIG", t.TempDir())
+	archive := NewOCIArchive(Options{Repository: "localhost:5000/radius-state", PlainHTTP: true})
+
+	target, err := archive.openRemoteTarget(context.Background())
+	require.NoError(t, err)
+	repository, ok := target.(*remote.Repository)
+	require.True(t, ok)
+	require.True(t, repository.PlainHTTP)
+	require.NotNil(t, repository.Client)
+}
+
+func TestCreateLayerRejectsSymbolicLinks(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "target.txt")
+	require.NoError(t, os.WriteFile(target, []byte("state"), 0o644))
+	if err := os.Symlink(target, filepath.Join(root, "state-link")); err != nil {
+		t.Skipf("symbolic links are unavailable: %v", err)
+	}
+
+	_, _, err := createLayer(root)
+	require.ErrorContains(t, err, "unsupported symbolic link")
+}
+
+func TestArchivePathRejectsUnsafeNames(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		path string
+	}{
+		{name: "empty", path: ""},
+		{name: "current directory", path: "."},
+		{name: "parent directory", path: ".."},
+		{name: "parent directory file", path: "../state.txt"},
+		{name: "absolute", path: filepath.Join(t.TempDir(), "state.txt")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := archivePath(t.TempDir(), test.path)
+			require.ErrorContains(t, err, "invalid archive path")
+		})
+	}
+}
+
+func TestUnpackArchiveEntriesRejectsNonRegularEntries(t *testing.T) {
+	for _, entry := range []tar.Header{
+		{Name: "directory/", Typeflag: tar.TypeDir},
+		{Name: "state-link", Typeflag: tar.TypeSymlink, Linkname: "state.txt"},
+	} {
+		t.Run(entry.Name, func(t *testing.T) {
+			var archive bytes.Buffer
+			writer := tar.NewWriter(&archive)
+			require.NoError(t, writer.WriteHeader(&entry))
+			require.NoError(t, writer.Close())
+
+			err := unpackArchiveEntries(&archive, t.TempDir())
+			require.ErrorContains(t, err, "unsupported archive entry")
+		})
+	}
+}
+
+func TestUnpackArchiveRejectsInvalidArtifacts(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("malformed manifest", func(t *testing.T) {
+		target := memory.New()
+		data := []byte("{")
+		manifestDesc := content.NewDescriptorFromBytes("application/octet-stream", data)
+		require.NoError(t, target.Push(ctx, manifestDesc, bytes.NewReader(data)))
+
+		err := unpackArchive(ctx, target, manifestDesc, t.TempDir())
+		require.ErrorContains(t, err, "invalid OCI manifest")
+	})
+
+	t.Run("invalid layers", func(t *testing.T) {
+		target := memory.New()
+		manifestDesc := pushTestManifest(t, target, ocispec.Manifest{})
+
+		err := unpackArchive(ctx, target, manifestDesc, t.TempDir())
+		require.ErrorContains(t, err, "exactly one state archive layer")
+	})
+
+	t.Run("invalid compression", func(t *testing.T) {
+		target := memory.New()
+		layerDesc, err := pushBlob(ctx, target, layerMediaType, []byte("not gzip"))
+		require.NoError(t, err)
+		manifestDesc := pushTestManifest(t, target, ocispec.Manifest{Layers: []ocispec.Descriptor{layerDesc}})
+
+		err = unpackArchive(ctx, target, manifestDesc, t.TempDir())
+		require.ErrorContains(t, err, "invalid archive compression")
+	})
+}
+
+func pushTestManifest(t *testing.T, target oras.Target, manifest ocispec.Manifest) ocispec.Descriptor {
+	t.Helper()
+
+	data, err := json.Marshal(manifest)
+	require.NoError(t, err)
+	desc, err := pushBlob(context.Background(), target, ocispec.MediaTypeImageManifest, data)
+	require.NoError(t, err)
+	return desc
 }
 
 func newTestArchive(t *testing.T) (*OCIArchive, *countingTarget) {

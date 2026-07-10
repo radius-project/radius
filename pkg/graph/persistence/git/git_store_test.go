@@ -47,6 +47,29 @@ func TestNewStore_HonorsBranch(t *testing.T) {
 	assert.Equal(t, "custom", s.archiveName)
 }
 
+func TestNewStore_HonorsArchiveName(t *testing.T) {
+	t.Parallel()
+
+	s, err := NewStore(Options{ArchiveName: "custom"})
+	require.NoError(t, err)
+	assert.Equal(t, "custom", s.archiveName)
+}
+
+func TestNewStore_RejectsConflictingArchiveNames(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewStore(Options{ArchiveName: "archive-name", Branch: "branch-name"})
+	require.ErrorContains(t, err, "conflicts with deprecated branch option")
+}
+
+func TestNewStore_AcceptsMatchingArchiveNames(t *testing.T) {
+	t.Parallel()
+
+	s, err := NewStore(Options{ArchiveName: "shared-name", Branch: "shared-name"})
+	require.NoError(t, err)
+	assert.Equal(t, "shared-name", s.archiveName)
+}
+
 func TestKeyFromPath(t *testing.T) {
 	t.Parallel()
 
