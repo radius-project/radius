@@ -1136,51 +1136,9 @@ jobs:
         env:
           AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
         run: |
-          # The regional Azure Container Instances 'StandardCores' quota is shared
-          # across all concurrent cloud functional-test runs and is the bottleneck
-          # behind Test_ACI (deploys fail with ContainerGroupQuotaReached). The
-          # resource group is deleted with --no-wait below because the full delete is
-          # slow for gateways/VNets (see #12044), so its ACI resources would otherwise
-          # linger for minutes and keep holding quota that other runs need. Delete the
-          # ACI resources synchronously here to release the quota promptly. Best-effort:
-          # the resource group delete and the purge workflow still clean up the rest.
-          set -uo pipefail
-          sub="${AZURE_SUBSCRIPTIONID_TESTS}"
-          rg="${AZURE_TEST_RESOURCE_GROUP}"
-          # Radius creates the ACI nGroups/containerGroupProfiles with this API version
-          # (pkg/sdk/v20241101preview). Delete with it explicitly: a plain delete lets
-          # ARM pick the provider's latest advertised version (e.g. 2026-06-01-preview),
-          # which the RP rejects ("api-version not supported"), leaving the nGroups -
-          # and therefore the whole resource group - undeletable.
-          aci_api_version="2024-11-01-preview"
-          if ! az group show --subscription "${sub}" --name "${rg}" >/dev/null 2>&1; then
-            echo "Resource group ${rg} not found; nothing to release."
-            exit 0
-          fi
-          aci_ids=$(az resource list \
-            --subscription "${sub}" \
-            --resource-group "${rg}" \
-            --query "[?starts_with(type, 'Microsoft.ContainerInstance/')].id" \
-            --output tsv 2>/dev/null || true)
-          if [ -z "${aci_ids}" ]; then
-            echo "No Azure Container Instances resources in ${rg}."
-            exit 0
-          fi
-          echo "Releasing ACI quota by deleting:"
-          echo "${aci_ids}"
-          # nGroups (container scale sets) back the quota-holding container groups, so
-          # delete them first (in parallel) and wait, then delete the remaining ACI
-          # resources (profiles). Parallelizing keeps the synchronous teardown short
-          # while preserving the nGroups-before-profiles order (nGroups reference the
-          # profiles).
-          for id in $(echo "${aci_ids}" | grep -i '/nGroups/' || true); do
-            az resource delete --subscription "${sub}" --ids "${id}" --api-version "${aci_api_version}" --verbose || true &
-          done
-          wait
-          for id in $(echo "${aci_ids}" | grep -iv '/nGroups/' || true); do
-            az resource delete --subscription "${sub}" --ids "${id}" --api-version "${aci_api_version}" --verbose || true &
-          done
-          wait
+          ./.github/scripts/release-aci-quota.sh \
+            "${AZURE_SUBSCRIPTIONID_TESTS}" \
+            "${AZURE_TEST_RESOURCE_GROUP}"
 
       - name: Delete azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         if: always()
