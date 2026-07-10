@@ -10,6 +10,7 @@ templates:
   - de/deployment.yaml
   - dashboard/deployment.yaml
   - database/statefulset.yaml
+  - pre-upgrade/job.yaml
 tests:
   - it: should use default ghcr.io registry when global.imageRegistry is not set
     set:
@@ -239,14 +240,43 @@ tests:
           path: spec.template.spec.imagePullSecrets[0].name
         template: rp/deployment.yaml
 
-  - it: should work with default tag from appVersion
+  - it: should use edge for Radius images and latest for external images by default
     set:
       controller.image: controller
+      preupgrade.enabled: true
     asserts:
-      - matchRegex:
+      - equal:
           path: spec.template.spec.containers[0].image
-          pattern: ^ghcr\.io/radius-project/controller:.*$
+          value: ghcr.io/radius-project/controller:edge
         template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: ghcr.io/radius-project/bicep:edge
+        template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/ucpd:edge
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/applications-rp:edge
+        template: rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dynamic-rp:edge
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/pre-upgrade:edge
+        template: pre-upgrade/job.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:latest
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dashboard:latest
+        template: dashboard/deployment.yaml
 
   - it: should work with custom registry and default tag
     set:
