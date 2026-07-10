@@ -155,47 +155,17 @@ The identities are carried in repository secrets rather than in the workflow fil
 | `AZURE_SP_TESTS_APPID` + `AZURE_SP_TESTS_TENANTID` | both the runner (`azure/login`) and the Radius pods (workload identity) | GitHub OIDC and AKS OIDC -> AAD app federated credentials |
 | `FUNCTEST_AWS_ACCOUNT_ID`                          | the AWS account id passed to `rad env update` (not a credential)        | -                                                         |
 
-#### Point the AWS IRSA role at the LRT cluster
+#### Provision the AWS identities
 
-`FUNC_TEST_RAD_IRSA_ROLE` is shared with `functional-test-cloud.yaml`, which runs on a KinD cluster whose OIDC issuer is an Azure-blob issuer. The LRT runs on a pre-provisioned AKS cluster with a *different* OIDC issuer, so the role's trust policy must also trust that issuer. Register the AKS issuer as an IAM OIDC provider and append a trust statement for the three Radius service accounts. Run this once, when the LRT cluster is created or rotated:
+The AWS identity resources are owned by the [`radius-project/wellknown`](https://github.com/radius-project/wellknown) Terraform layers. Do not create OIDC providers or edit role trust policies manually because a later Terraform apply will overwrite that drift.
 
-```bash
-export AWS_ACCOUNT_ID="<test-account-id>"            # = FUNCTEST_AWS_ACCOUNT_ID
-export AKS_CLUSTER_NAME="<LRT_AKS_CLUSTER_NAME>"     # = vars.LRT_AKS_CLUSTER_NAME
-export AKS_RESOURCE_GROUP="<LRT_AKS_RESOURCE_GROUP>" # = vars.LRT_AKS_RESOURCE_GROUP
-IRSA_ROLE_NAME="$(basename "<FUNC_TEST_RAD_IRSA_ROLE-arn>")"
+Apply the layers in order whenever the LRT cluster is created or rotated:
 
-# 1. Fetch the AKS OIDC issuer and register it as an IAM OIDC provider (skip if it already exists).
-AKS_OIDC_ISSUER="$(az aks show -n "$AKS_CLUSTER_NAME" -g "$AKS_RESOURCE_GROUP" --query 'oidcIssuerProfile.issuerUrl' -o tsv)"
-ISSUER_HOST="$(echo "$AKS_OIDC_ISSUER" | sed -e 's~^https://~~' -e 's~/.*$~~')"
-THUMBPRINT="$(echo | openssl s_client -servername "$ISSUER_HOST" -connect "${ISSUER_HOST}:443" \
-  | openssl x509 -fingerprint -sha1 -noout | cut -d= -f2 | tr -d ':' | tr 'A-F' 'a-f')"
-aws iam create-open-id-connect-provider --url "$AKS_OIDC_ISSUER" \
-  --client-id-list "sts.amazonaws.com" --thumbprint-list "$THUMBPRINT"
+1. `modules/20-functional-tests` publishes `workload_identity_issuers`, containing both the blob-hosted KinD issuer and the managed AKS issuer, plus the Radius service-account subjects.
+2. [`modules/21-functional-tests-aws`](https://github.com/radius-project/wellknown/tree/main/modules/21-functional-tests-aws) creates or reuses an IAM OIDC provider for each issuer. It creates the IRSA role trusted by every issuer and the GitHub Actions role trusted by the Radius repository.
+3. `modules/30-functional-tests-github` publishes the resulting role ARNs as `FUNC_TEST_RAD_IRSA_ROLE` and `AWS_GH_ACTIONS_ROLE`.
 
-# 2. Append a trust statement for the Radius service accounts on the AKS issuer.
-OIDC_PROVIDER="${AKS_OIDC_ISSUER#https://}"
-aws iam get-role --role-name "$IRSA_ROLE_NAME" --query 'Role.AssumeRolePolicyDocument' > trust.json
-cat > aks-statement.json <<EOF
-{
-  "Effect": "Allow",
-  "Principal": { "Federated": "arn:aws:iam::${AWS_ACCOUNT_ID}:oidc-provider/${OIDC_PROVIDER}" },
-  "Action": "sts:AssumeRoleWithWebIdentity",
-  "Condition": { "StringEquals": {
-    "${OIDC_PROVIDER}:aud": "sts.amazonaws.com",
-    "${OIDC_PROVIDER}:sub": [
-      "system:serviceaccount:radius-system:ucp",
-      "system:serviceaccount:radius-system:applications-rp",
-      "system:serviceaccount:radius-system:dynamic-rp"
-    ]
-  } }
-}
-EOF
-jq '.Statement += [input]' trust.json aks-statement.json > trust-updated.json
-aws iam update-assume-role-policy --role-name "$IRSA_ROLE_NAME" --policy-document file://trust-updated.json
-```
-
-`AWS_GH_ACTIONS_ROLE` needs no cluster-specific change, but because the LRT is triggered on a schedule its OIDC subject is `repo:radius-project/radius:ref:refs/heads/main`; confirm the role's trust `sub` condition matches (widen it if it was scoped only to pull requests) and that its `MaxSessionDuration` is at least the 60-minute functional-test window.
+The GitHub Actions role allows 5400-second sessions, and the LRT workflow requests that duration to leave headroom over the 60-minute functional-test window. Its generated subject patterns include branch refs, so the scheduled `main` run uses `repo:radius-project/radius:ref:refs/heads/main` without a separate trust-policy edit.
 
 ## Verification
 
@@ -209,4 +179,5 @@ aws iam update-assume-role-policy --role-name "$IRSA_ROLE_NAME" --policy-documen
 - **You changed the `rad` CLI.** Copy the rebuilt `rad` to your path (or set `RAD_PATH` for Codelens) so the tests use your new binary.
 - **Environment variables seem ignored.** Restart VS Code or your editor so newly set variables take effect.
 - **Many tests fail immediately.** Confirm the Kubernetes namespace in use is `default`.
+- **LRT AWS tests fail with `AccessDenied` on `AssumeRoleWithWebIdentity`.** Confirm the latest `modules/20-functional-tests`, `modules/21-functional-tests-aws`, and `modules/30-functional-tests-github` layers from `radius-project/wellknown` were applied in order. Verify the AKS issuer appears in the AWS layer's `oidc_issuers` output and the current `FUNC_TEST_RAD_IRSA_ROLE` secret matches its `irsa_role_arn` output.
 - **A special test group is skipped or fails during setup.** Confirm that you met the isolated-cluster requirements in [Run a special test group](#run-a-special-test-group).

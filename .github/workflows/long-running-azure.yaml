@@ -386,6 +386,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
           role-session-name: ${{ github.run_id }}
+          role-duration-seconds: 5400
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Run functional tests

@@ -22,7 +22,7 @@
 # This script detects the installed Radius control plane version on the
 # connected Kubernetes cluster and takes appropriate action:
 # - If not installed: runs rad install kubernetes
-# - If same version as CLI: skips installation (no action needed)
+# - If same version as CLI: reconciles required chart values when needed
 # - If different version: attempts rad upgrade kubernetes
 # ============================================================================
 
@@ -158,6 +158,65 @@ save_skip_resources_list() {
     fi
 }
 
+aws_irsa_token_volumes_enabled() {
+    local -a deployments=(ucp applications-rp dynamic-rp)
+    local deployment volume_name
+
+    for deployment in "${deployments[@]}"; do
+        if ! volume_name=$(
+            kubectl get deployment "${deployment}" -n radius-system \
+                -o jsonpath='{.spec.template.spec.volumes[?(@.name=="aws-iam-token")].name}'
+        ); then
+            echo "Error: Failed to inspect deployment ${deployment} for AWS IRSA configuration." >&2
+            return 2
+        fi
+
+        if [[ "${volume_name}" != "aws-iam-token" ]]; then
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+upgrade_radius() {
+    rad upgrade kubernetes \
+        --set global.azureWorkloadIdentity.enabled=true \
+        --set global.aws.irsa.enabled=true \
+        --set database.enabled=false \
+        "$@"
+}
+
+reconcile_required_chart_values() {
+    local irsa_status=0
+    aws_irsa_token_volumes_enabled || irsa_status=$?
+
+    if [[ ${irsa_status} -eq 0 ]]; then
+        echo "Required Radius chart values are already configured."
+        return 0
+    fi
+
+    if [[ ${irsa_status} -ne 1 ]]; then
+        return 1
+    fi
+
+    echo "AWS IRSA is not enabled on the current Radius installation. Reconciling chart values..."
+    # The upgrade preflight rejects a same-version target. We already established
+    # that this is an installed, matching-version control plane, so skip preflight
+    # for this one-time Helm value reconciliation.
+    if ! upgrade_radius --skip-preflight; then
+        echo "Error: Failed to reconcile required Radius chart values." >&2
+        return 1
+    fi
+
+    if ! aws_irsa_token_volumes_enabled; then
+        echo "Error: AWS IRSA token volumes are still missing after reconciliation." >&2
+        return 1
+    fi
+
+    echo "Required Radius chart values reconciled successfully."
+}
+
 # Install Radius on the cluster
 install_radius() {
     echo "Installing Radius..."
@@ -237,7 +296,11 @@ main() {
         install_radius
     elif [[ "${cp_version}" == "${cli_version}" ]]; then
         echo ""
-        echo "Radius control plane version matches CLI version (${cli_version}). Skipping install/upgrade."
+        echo "Radius control plane version matches CLI version (${cli_version})."
+
+        if ! reconcile_required_chart_values; then
+            exit 1
+        fi
 
         # Verify resource types with retry for transient failures.
         local check_result=0
@@ -278,10 +341,7 @@ main() {
         # - global.azureWorkloadIdentity.enabled defaults to false and is required for Azure WI auth in this workflow.
         # - global.aws.irsa.enabled defaults to false and is required for AWS IRSA auth in this workflow.
         # https://github.com/radius-project/radius/issues/11218
-        if ! rad upgrade kubernetes \
-            --set global.azureWorkloadIdentity.enabled=true \
-            --set global.aws.irsa.enabled=true \
-            --set database.enabled=false; then
+        if ! upgrade_radius; then
             echo ""
             echo "============================================================================"
             echo "ERROR: Radius upgrade failed"
@@ -300,4 +360,6 @@ main() {
     echo "============================================================================"
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    main "$@"
+fi
