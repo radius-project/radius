@@ -1,0 +1,73 @@
+# Provider-agnostic custom recipe-pack apply shared by run-rad-commands-aws.yml
+# and run-rad-commands-azure.yml. Runs after the provider-specific "Create Radius
+# environment and recipe pack" step. When the repo defines custom resource types
+# via one or more `*recipe-pack*.bicep` files in the app's `.radius/` folder
+# (alongside `.radius/app.bicep`), this deploys each of them, lists every recipe
+# pack now known to the control plane, and rewrites the environment's recipe pack
+# list to reference all of them -- so the environment carries both the default
+# provider pack and the user's custom packs. When no such files exist the action
+# is a no-op, leaving the default pack in place.
+name: Radius - Apply custom recipe packs
+description: Deploy the repo's custom recipe pack bicep files (if any) and attach every recipe pack to the environment.
+
+inputs:
+  environment:
+    description: Radius environment name to update with the full recipe pack list.
+    required: true
+  app-file:
+    description: Application bicep file. Its directory (e.g. .radius/) is searched for *recipe-pack*.bicep files.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Deploy custom recipe packs and attach to environment
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        APP_FILE: ${{ inputs.app-file }}
+      run: |
+        set -euo pipefail
+
+        # Custom recipe packs live next to the app file (e.g. .radius/) so that
+        # `rad deploy` resolves the repo's own .radius/bicepconfig.json (which
+        # declares the `radius` extension) -- bicep resolves the config nearest the
+        # .bicep file. Any file matching *recipe-pack*.bicep in that directory is
+        # treated as a custom recipe pack. No matches => nothing to do, keep the
+        # default pack.
+        APP_DIR=$(dirname "$APP_FILE")
+
+        shopt -s nullglob
+        RECIPE_PACK_FILES=("$APP_DIR"/*recipe-pack*.bicep)
+        shopt -u nullglob
+
+        if [ ${#RECIPE_PACK_FILES[@]} -eq 0 ]; then
+          echo "No custom recipe pack (*recipe-pack*.bicep) found in $APP_DIR; keeping the default recipe pack."
+          exit 0
+        fi
+
+        for RECIPE_PACK_BICEP in "${RECIPE_PACK_FILES[@]}"; do
+          echo "Custom recipe pack file: $RECIPE_PACK_BICEP"
+          cat "$RECIPE_PACK_BICEP"
+          echo ""
+          echo "Deploying custom recipe pack from $RECIPE_PACK_BICEP..."
+          rad deploy "$RECIPE_PACK_BICEP"
+        done
+
+        # List every recipe pack the control plane now knows about (the default
+        # provider pack created earlier plus the custom packs just deployed) and
+        # collect their full resource IDs. IDs are used rather than names so the
+        # env update resolves each pack unambiguously regardless of its scope.
+        echo "Listing recipe packs..."
+        PACK_IDS=$(rad recipe-pack list -o json | jq -r '(if type == "array" then . else [.] end) | map(.id) | join(",")')
+
+        if [ -z "$PACK_IDS" ]; then
+          echo "No recipe packs found to attach to environment '$ENVIRONMENT'." >&2
+          exit 1
+        fi
+
+        # Replace the environment's recipe pack list with every pack so the custom
+        # types resolve alongside the default provider recipes.
+        echo "Attaching recipe packs to environment '$ENVIRONMENT': $PACK_IDS"
+        rad env update "$ENVIRONMENT" --recipe-packs "$PACK_IDS"
+        echo "✅ Environment '$ENVIRONMENT' updated with all recipe packs."
