@@ -1,27 +1,30 @@
-# Provider-agnostic custom recipe-pack apply shared by run-rad-commands-aws.yml
-# and run-rad-commands-azure.yml. Runs after the provider-specific "Create Radius
-# environment and recipe pack" step. When the repo defines custom resource types
-# via one or more `*recipe-pack*.bicep` files in the app's `.radius/` folder
-# (alongside `.radius/app.bicep`), this deploys each of them, lists every recipe
-# pack now known to the control plane, and rewrites the environment's recipe pack
-# list to reference all of them -- so the environment carries both the default
-# provider pack and the user's custom packs. When no such files exist the action
-# is a no-op, leaving the default pack in place.
+# Provider-agnostic custom resource-type / recipe-pack apply shared by
+# run-rad-commands-aws.yml and run-rad-commands-azure.yml. Runs after the
+# provider-specific "Create Radius environment and recipe pack" step. When the
+# app's `.radius/` folder (alongside `.radius/app.bicep`) carries custom resource
+# types, this:
+#   1. registers those types from `.radius/custom-types.yaml` via
+#      `rad resource-type create --from-file` (skipped when the file is absent), and
+#   2. deploys `.radius/custom-recipe-pack.bicep`, then lists every recipe pack now
+#      known to the control plane and rewrites the environment's recipe pack list to
+#      reference all of them -- so the environment carries both the default provider
+#      pack and the user's custom pack (skipped when the file is absent).
+# When neither file exists the action is a no-op, leaving the default pack in place.
 name: Radius - Apply custom recipe packs
-description: Deploy the repo's custom recipe pack bicep files (if any) and attach every recipe pack to the environment.
+description: Register the repo's custom resource types and recipe pack (if present) and attach every recipe pack to the environment.
 
 inputs:
   environment:
     description: Radius environment name to update with the full recipe pack list.
     required: true
   app-file:
-    description: Application bicep file. Its directory (e.g. .radius/) is searched for *recipe-pack*.bicep files.
+    description: Application bicep file. Its directory (e.g. .radius/) is searched for custom-types.yaml and custom-recipe-pack.bicep.
     required: true
 
 runs:
   using: composite
   steps:
-    - name: Deploy custom recipe packs and attach to environment
+    - name: Register custom types and apply custom recipe pack
       shell: bash
       env:
         ENVIRONMENT: ${{ inputs.environment }}
@@ -29,33 +32,40 @@ runs:
       run: |
         set -euo pipefail
 
-        # Custom recipe packs live next to the app file (e.g. .radius/) so that
-        # `rad deploy` resolves the repo's own .radius/bicepconfig.json (which
-        # declares the `radius` extension) -- bicep resolves the config nearest the
-        # .bicep file. Any file matching *recipe-pack*.bicep in that directory is
-        # treated as a custom recipe pack. No matches => nothing to do, keep the
-        # default pack.
+        # Custom type / recipe-pack files live next to the app file (e.g. .radius/).
+        # Deploying from that directory lets `rad deploy` resolve the repo's own
+        # .radius/bicepconfig.json (which declares the `radius` extension) -- bicep
+        # resolves the config nearest the .bicep file.
         APP_DIR=$(dirname "$APP_FILE")
+        CUSTOM_TYPES_YAML="$APP_DIR/custom-types.yaml"
+        RECIPE_PACK_BICEP="$APP_DIR/custom-recipe-pack.bicep"
 
-        shopt -s nullglob
-        RECIPE_PACK_FILES=("$APP_DIR"/*recipe-pack*.bicep)
-        shopt -u nullglob
+        # 1. Register custom resource types with Radius. --from-file registers every
+        # type defined in the manifest. Must run before deploying the recipe pack,
+        # which references these types. Absent file => nothing to register.
+        if [ -f "$CUSTOM_TYPES_YAML" ]; then
+          echo "Registering custom resource types from $CUSTOM_TYPES_YAML..."
+          rad resource-type create --from-file "$CUSTOM_TYPES_YAML"
+          echo "✅ Custom resource types registered."
+        else
+          echo "No custom resource types at $CUSTOM_TYPES_YAML; skipping type registration."
+        fi
 
-        if [ ${#RECIPE_PACK_FILES[@]} -eq 0 ]; then
-          echo "No custom recipe pack (*recipe-pack*.bicep) found in $APP_DIR; keeping the default recipe pack."
+        # 2. Deploy the custom recipe pack and attach it to the environment. Absent
+        # file => nothing to deploy, keep the default pack.
+        if [ ! -f "$RECIPE_PACK_BICEP" ]; then
+          echo "No custom recipe pack at $RECIPE_PACK_BICEP; keeping the default recipe pack."
           exit 0
         fi
 
-        for RECIPE_PACK_BICEP in "${RECIPE_PACK_FILES[@]}"; do
-          echo "Custom recipe pack file: $RECIPE_PACK_BICEP"
-          cat "$RECIPE_PACK_BICEP"
-          echo ""
-          echo "Deploying custom recipe pack from $RECIPE_PACK_BICEP..."
-          rad deploy "$RECIPE_PACK_BICEP"
-        done
+        echo "Custom recipe pack file:"
+        cat "$RECIPE_PACK_BICEP"
+        echo ""
+        echo "Deploying custom recipe pack from $RECIPE_PACK_BICEP..."
+        rad deploy "$RECIPE_PACK_BICEP"
 
         # List every recipe pack the control plane now knows about (the default
-        # provider pack created earlier plus the custom packs just deployed) and
+        # provider pack created earlier plus the custom pack just deployed) and
         # collect their full resource IDs. IDs are used rather than names so the
         # env update resolves each pack unambiguously regardless of its scope.
         echo "Listing recipe packs..."
