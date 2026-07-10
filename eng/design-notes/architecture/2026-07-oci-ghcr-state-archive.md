@@ -98,7 +98,7 @@ classDiagram
     }
     class ArchiveFactory {
         <<pkg/statearchive/factory>>
-        +NewFromEnvironment(name, repository) Archive
+        +NewFromEnvironment(registry) Archive
     }
     class GraphStore {
         <<graph.Store>>
