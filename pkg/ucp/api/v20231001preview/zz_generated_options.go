@@ -241,7 +241,8 @@ type ResourceProvidersClientGetOptions struct {
 // ResourceProvidersClientGetProviderSummaryOptions contains the optional parameters for the ResourceProvidersClient.GetProviderSummary
 // method.
 type ResourceProvidersClientGetProviderSummaryOptions struct {
-	// placeholder for future optional parameters
+	// When true, resource type icon bytes are included in the response. When false or omitted, only the icon hash is returned.
+	IncludeIcons *bool
 }
 
 // ResourceProvidersClientListOptions contains the optional parameters for the ResourceProvidersClient.NewListPager method.
@@ -266,6 +267,11 @@ type ResourceTypesClientBeginCreateOrUpdateOptions struct {
 type ResourceTypesClientBeginDeleteOptions struct {
 	// Resumes the long-running operation from the provided token.
 	ResumeToken string
+}
+
+// ResourceTypesClientGetIconOptions contains the optional parameters for the ResourceTypesClient.GetIcon method.
+type ResourceTypesClientGetIconOptions struct {
+	// placeholder for future optional parameters
 }
 
 // ResourceTypesClientGetOptions contains the optional parameters for the ResourceTypesClient.Get method.

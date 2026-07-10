@@ -3,6 +3,8 @@
 
 package v20231001preview
 
+import "io"
+
 // APIVersionsClientCreateOrUpdateResponse contains the response from method APIVersionsClient.BeginCreateOrUpdate.
 type APIVersionsClientCreateOrUpdateResponse struct {
 	// The resource type for defining an API version of a resource type supported by the containing resource provider.
@@ -273,6 +275,18 @@ type ResourceTypesClientCreateOrUpdateResponse struct {
 // ResourceTypesClientDeleteResponse contains the response from method ResourceTypesClient.BeginDelete.
 type ResourceTypesClientDeleteResponse struct {
 	// placeholder for future response values
+}
+
+// ResourceTypesClientGetIconResponse contains the response from method ResourceTypesClient.GetIcon.
+type ResourceTypesClientGetIconResponse struct {
+	// Body contains the streaming response.
+	Body io.ReadCloser
+
+	// Caching hint. Icon bytes are content-addressed by SHA-256 and safe to cache immutably.
+	CacheControl *string
+
+	// MIME type of the icon bytes.
+	ContentType *string
 }
 
 // ResourceTypesClientGetResponse contains the response from method ResourceTypesClient.Get.

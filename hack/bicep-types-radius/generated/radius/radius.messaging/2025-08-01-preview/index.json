@@ -1,0 +1,15 @@
+{
+  "resources": {
+    "Radius.Messaging/kafka@2025-08-01-preview": {
+      "$ref": "types.json#/17"
+    },
+    "Radius.Messaging/rabbitMQ@2025-08-01-preview": {
+      "$ref": "types.json#/34"
+    }
+  },
+  "resourceFunctions": {},
+  "settings": {
+    "name": "radiusradiusmessaging",
+    "version": "0.0.1"
+  }
+}

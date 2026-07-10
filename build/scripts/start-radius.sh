@@ -69,7 +69,7 @@ check_prerequisites() {
   local advisory_msgs=()
 
   # Required tools
-  command -v dlv >/dev/null 2>&1 || missing_tools+=("dlv -> go install github.com/go-delve/delve/cmd/dlv@latest")
+  command -v dlv >/dev/null 2>&1 || missing_tools+=("dlv -> make install-dlv")
   command -v go >/dev/null 2>&1 || missing_tools+=("go -> https://golang.org/doc/install")
   command -v k3d >/dev/null 2>&1 || missing_tools+=("k3d -> https://k3d.io/")
   command -v kubectl >/dev/null 2>&1 || missing_tools+=("kubectl -> https://kubernetes.io/docs/tasks/tools/")
@@ -166,6 +166,7 @@ if command -v pgrep >/dev/null 2>&1; then
   pkill -f "dlv.*exec.*controller" 2>/dev/null || true
 else
   # Fallback for systems without pkill
+  # shellcheck disable=SC2009 # ps|grep is the intended portable fallback where pgrep is unavailable.
   ps aux | grep -E "(ucpd|applications-rp|dynamic-rp|controller.*--config-file.*controller.yaml|dlv.*exec)" | grep -v grep | awk '{print $2}' | xargs -r kill 2>/dev/null || true
 fi
 
@@ -252,7 +253,7 @@ GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${db_user};
     docker exec "$POSTGRES_CONTAINER_NAME" psql -U postgres -d "$db" -c "$table_sql"
   elif [ "$postgres_type" = "docker" ]; then
     local conn
-    conn=$(echo "$POSTGRES_WORKING_CONNECTION" | sed "s|/postgres\$|/${db}|")
+    conn="${POSTGRES_WORKING_CONNECTION%/postgres}/${db}"
     psql "$conn" -c "$table_sql"
   else
     # Homebrew/local: use bare database name for peer auth compatibility

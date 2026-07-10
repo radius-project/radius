@@ -804,7 +804,6 @@ func Test_computeGraph_azurePortalLinksInGraphJSON(t *testing.T) {
 	// the sort order chosen by outputResourcesFromAPIData.
 	byID := map[string]*string{}
 	for _, or := range decoded.Resources[0].OutputResources {
-		or := or
 		byID[or.ID] = or.PortalURL
 	}
 

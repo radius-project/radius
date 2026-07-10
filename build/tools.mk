@@ -253,3 +253,65 @@ install-oras: ## Install the pinned ORAS CLI into a user-owned bin dir (no sudo)
 		ORAS_CHECKSUM_DARWIN_ARM64="$(ORAS_CHECKSUM_DARWIN_ARM64)" \
 		ORAS_INSTALL_DIR="$(ORAS_INSTALL_DIR)" \
 		./build/scripts/install-oras.sh
+
+# ShellCheck (static analysis for shell scripts) - pinned version and per-platform
+# SHA-256 checksums (of the release '.tar.xz' archive) consumed by
+# build/scripts/install-shellcheck.sh. ShellCheck is published as a per-platform
+# archive on koalaman/shellcheck's GitHub releases and publishes no checksums
+# file, so these are computed from the pinned release - recompute them (download
+# each shellcheck-<version>.<os>.<arch>.tar.xz asset and sha256sum it) when
+# bumping SHELLCHECK_VERSION. The script is generic: clear SHELLCHECK_VERSION to
+# install the latest release, and clear a checksum to install without
+# verification.
+SHELLCHECK_VERSION ?= v0.11.0
+SHELLCHECK_CHECKSUM_LINUX_AMD64 ?= 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
+SHELLCHECK_CHECKSUM_LINUX_ARM64 ?= 12b331c1d2db6b9eb13cfca64306b1b157a86eb69db83023e261eaa7e7c14588
+SHELLCHECK_CHECKSUM_DARWIN_AMD64 ?= 3c89db4edcab7cf1c27bff178882e0f6f27f7afdf54e859fa041fca10febe4c6
+SHELLCHECK_CHECKSUM_DARWIN_ARM64 ?= 56affdd8de5527894dca6dc3d7e0a99a873b0f004d7aabc30ae407d3f48b0a79
+
+.PHONY: install-shellcheck
+install-shellcheck: ## Install the pinned ShellCheck into a user-owned bin dir (no sudo).
+	@SHELLCHECK_VERSION="$(SHELLCHECK_VERSION)" \
+		SHELLCHECK_CHECKSUM_LINUX_AMD64="$(SHELLCHECK_CHECKSUM_LINUX_AMD64)" \
+		SHELLCHECK_CHECKSUM_LINUX_ARM64="$(SHELLCHECK_CHECKSUM_LINUX_ARM64)" \
+		SHELLCHECK_CHECKSUM_DARWIN_AMD64="$(SHELLCHECK_CHECKSUM_DARWIN_AMD64)" \
+		SHELLCHECK_CHECKSUM_DARWIN_ARM64="$(SHELLCHECK_CHECKSUM_DARWIN_ARM64)" \
+		SHELLCHECK_INSTALL_DIR="$(SHELLCHECK_INSTALL_DIR)" \
+		./build/scripts/install-shellcheck.sh
+
+# jq (command-line JSON processor) - pinned version and per-platform SHA-256
+# checksums consumed by build/scripts/install-jq.sh. jq is published as a single
+# per-platform binary on jqlang/jq's GitHub releases (release tags are
+# 'jq-<version>', and darwin assets are named 'macos'). The script is generic:
+# clear JQ_VERSION to install the latest release, and clear a checksum to have it
+# read from the release's own 'sha256sum.txt' file. Keep the checksums in sync
+# when bumping JQ_VERSION.
+JQ_VERSION ?= 1.8.2
+JQ_CHECKSUM_LINUX_AMD64 ?= b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f
+JQ_CHECKSUM_LINUX_ARM64 ?= 8b85c817833814ddca00a144c33705546355afccf0cf39b188f3cdb48b852309
+JQ_CHECKSUM_DARWIN_AMD64 ?= e94b266e3c26690550006abe63152b782280f4e14374accdf04cbde844f00bc0
+JQ_CHECKSUM_DARWIN_ARM64 ?= 2d75340ba57a4b4b4c8708a21c2dc8e958a48aaa8bba13b27f77f6e4c0eca07e
+
+.PHONY: install-jq
+install-jq: ## Install the pinned jq JSON processor into a user-owned bin dir (no sudo).
+	@JQ_VERSION="$(JQ_VERSION)" \
+		JQ_CHECKSUM_LINUX_AMD64="$(JQ_CHECKSUM_LINUX_AMD64)" \
+		JQ_CHECKSUM_LINUX_ARM64="$(JQ_CHECKSUM_LINUX_ARM64)" \
+		JQ_CHECKSUM_DARWIN_AMD64="$(JQ_CHECKSUM_DARWIN_AMD64)" \
+		JQ_CHECKSUM_DARWIN_ARM64="$(JQ_CHECKSUM_DARWIN_ARM64)" \
+		JQ_INSTALL_DIR="$(JQ_INSTALL_DIR)" \
+		./build/scripts/install-jq.sh
+
+# Delve (the 'dlv' Go debugger) - pinned module version consumed by
+# build/scripts/install-dlv.sh. Delve publishes no prebuilt binaries, so it is
+# installed with 'go install' and its integrity is guaranteed by the Go checksum
+# database; there are no per-platform SHA-256 checksums to pin. Clear DLV_VERSION
+# to install the latest release. Used by the process-debugging workflow (make
+# debug-*).
+DLV_VERSION ?= v1.27.0
+
+.PHONY: install-dlv
+install-dlv: ## Install the pinned Delve (dlv) Go debugger via 'go install'.
+	@DLV_VERSION="$(DLV_VERSION)" \
+		DLV_INSTALL_DIR="$(DLV_INSTALL_DIR)" \
+		./build/scripts/install-dlv.sh

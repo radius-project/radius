@@ -6,7 +6,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -47,7 +47,7 @@ check_org_restriction() {
     local operation="$1"
     local repo_url
     repo_url=$(git remote get-url origin 2>/dev/null || echo "")
-    
+
     if [[ "$repo_url" == *"radius-project/"* ]]; then
         print_info "Operation '$operation' should only be used on personal forks."
         exit 1
@@ -81,19 +81,19 @@ check_gh_cli() {
         print_info "Please run 'gh auth login' to authenticate."
         exit 1
     fi
-    
+
     if [[ -z "$token" ]]; then
         print_error "Unable to retrieve GitHub authentication token."
         print_info "Please run 'gh auth login' to authenticate."
         exit 1
     fi
-    
+
     export GITHUB_TOKEN="$token"
 }
 
 # Get repository info
 get_repo_info() {
-    
+
     # Verify we're in a git repository
     if ! git rev-parse --git-dir &> /dev/null; then
         print_error "Not in a git repository."
@@ -102,12 +102,12 @@ get_repo_info() {
 
     local repo_url
     repo_url=$(git remote get-url origin 2>/dev/null)
-    
+
     if [[ -z "$repo_url" ]]; then
         print_error "Not in a git repository or no origin remote found."
         exit 1
     fi
-    
+
     # Check if it's a GitHub repository
     if [[ "$repo_url" != *"github.com"* ]]; then
         print_error "Repository is not hosted on GitHub."
@@ -116,19 +116,19 @@ get_repo_info() {
 
     # Remove https://github.com/ from the beginning
     repo_url="${repo_url#https://github.com/}"
-    
+
     # Remove .git from the end if present
     repo_url="${repo_url%.git}"
-    
+
     echo "$repo_url"
 }
 
 # Delete all workflow runs
 delete_all_runs() {
     check_org_restriction "delete all workflow runs"
-    
+
     print_info "Deleting all workflow runs..."
-    
+
     # Check if repository parameter is provided
     if [ $# -eq 0 ]; then
         echo "Usage: $0 <repository>"
@@ -136,19 +136,19 @@ delete_all_runs() {
     fi
 
     local REPO="$1"
-    
+
     while true; do
         # Get a batch of workflow run IDs
         run_ids=$(gh run list --repo "$REPO" -L 30 --json databaseId --jq '.[].databaseId')
-        
+
         # Check if we got any results
         if [[ -z "$run_ids" ]]; then
             echo "No more workflow runs found. Exiting."
             break
         fi
-        
+
         # Process each ID in the current batch
-        echo "$run_ids" | while read id; do
+        echo "$run_ids" | while read -r id; do
             echo "Deleting workflow run with ID: $id"
             # The gh CLI command show below is simpler but much slower than using curl
             # gh run delete --repo "$REPO" "$id"
@@ -169,7 +169,7 @@ delete_all_runs() {
 
 # Toggle workflows (enable or disable)
 toggle_workflows() {
-    
+
     if [[ $# -ne 2 ]]; then
         print_error "Usage: toggle_workflows <action> <repo>"
         exit 1
@@ -184,7 +184,7 @@ toggle_workflows() {
     fi
 
     check_org_restriction "$action all workflows"
-    
+
     local action_verb action_past_tense gh_command gh_state
     if [[ "$action" == "enable" ]]; then
         action_verb="Enabling"
@@ -208,7 +208,7 @@ toggle_workflows() {
         print_warning "No workflows found that need to be $action_past_tense."
         return 0
     fi
-    
+
     # Enable/disable each workflow that needs the action
     while read -r name; do
         if [[ -n "$name" ]]; then
@@ -216,19 +216,19 @@ toggle_workflows() {
             gh workflow "$gh_command" --repo "$repo" "$name"
         fi
     done <<< "$workflows"
-    
+
     print_success "All workflows have been $action_past_tense."
 }
 
 # Main function
 main() {
-    
+
     local available_commands="Available commands: enable-all, disable-all, delete-all-runs"
 
     # Check if command is provided
     if [[ $# -eq 0 ]]; then
         print_error "No command provided."
-        print_info "Usage: $0 <command>"    
+        print_info "Usage: $0 <command>"
         print_info "$available_commands"
         exit 1
     fi

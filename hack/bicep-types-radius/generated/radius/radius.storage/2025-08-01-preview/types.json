@@ -1,0 +1,266 @@
+[
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "BooleanType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "connectionsAdditionalProperties",
+    "properties": {
+      "disableDefaultEnvVars": {
+        "description": "Disables the automatic injection of environment variables from the connected resource's properties.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/5"
+        }
+      },
+      "source": {
+        "description": "Resource ID of the source resource for this connection.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/6"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ObjectType",
+    "additionalProperties": {
+      "$ref": "#/7"
+    },
+    "name": "connections",
+    "properties": {}
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "objectStorageProperties",
+    "properties": {
+      "accountKey": {
+        "description": "The Azure Storage account access key. Mapped from the recipe module's `primaryAccessKey` output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/0"
+        }
+      },
+      "accountName": {
+        "description": "The Azure Storage account name. Mapped from the recipe module's `name` output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/1"
+        }
+      },
+      "application": {
+        "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/2"
+        }
+      },
+      "codeReference": {
+        "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
+        "flags": 0,
+        "type": {
+          "$ref": "#/3"
+        }
+      },
+      "connectionString": {
+        "description": "The storage account connection string. Mapped from the recipe module's `primaryConnectionString` output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/4"
+        }
+      },
+      "connections": {
+        "description": "Map of connection name to connection data.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/8"
+        }
+      },
+      "containerName": {
+        "description": "(Optional) The object container (blob container / S3 bucket) name to create inside the storage account. Defaults to `data` if not provided.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/9"
+        }
+      },
+      "endpoint": {
+        "description": "The object storage endpoint used to connect to the store. Mapped from the recipe module's `primaryBlobEndpoint` output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/10"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/11"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "2025-08-01-preview"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "Radius.Storage/objectStorage"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "Radius.Storage/objectStorage@2025-08-01-preview",
+    "properties": {
+      "accountKey": {
+        "description": "The Azure Storage account access key. Mapped from the recipe module's `primaryAccessKey` output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/0"
+        }
+      },
+      "accountName": {
+        "description": "The Azure Storage account name. Mapped from the recipe module's `name` output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/1"
+        }
+      },
+      "apiVersion": {
+        "description": "The API version.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/15"
+        }
+      },
+      "application": {
+        "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/2"
+        }
+      },
+      "codeReference": {
+        "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
+        "flags": 2,
+        "type": {
+          "$ref": "#/3"
+        }
+      },
+      "connectionString": {
+        "description": "The storage account connection string. Mapped from the recipe module's `primaryConnectionString` output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/4"
+        }
+      },
+      "connections": {
+        "description": "Map of connection name to connection data.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/8"
+        }
+      },
+      "containerName": {
+        "description": "(Optional) The object container (blob container / S3 bucket) name to create inside the storage account. Defaults to `data` if not provided.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/9"
+        }
+      },
+      "endpoint": {
+        "description": "The object storage endpoint used to connect to the store. Mapped from the recipe module's `primaryBlobEndpoint` output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/10"
+        }
+      },
+      "environment": {
+        "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/11"
+        }
+      },
+      "id": {
+        "description": "The resource id.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/17"
+        }
+      },
+      "location": {
+        "description": "The resource location.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/14"
+        }
+      },
+      "name": {
+        "description": "The resource name.",
+        "flags": 17,
+        "type": {
+          "$ref": "#/13"
+        }
+      },
+      "properties": {
+        "description": "The resource properties.",
+        "flags": 1,
+        "type": {
+          "$ref": "#/12"
+        }
+      },
+      "type": {
+        "description": "The resource type.",
+        "flags": 10,
+        "type": {
+          "$ref": "#/16"
+        }
+      }
+    }
+  },
+  {
+    "$type": "ResourceType",
+    "body": {
+      "$ref": "#/18"
+    },
+    "name": "Radius.Storage/objectStorage@2025-08-01-preview",
+    "readableScopes": 0,
+    "writableScopes": 0
+  }
+]

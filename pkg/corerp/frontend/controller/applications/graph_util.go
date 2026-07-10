@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"sort"
 	"strings"
 
@@ -545,10 +546,8 @@ func azurePortalURL(id resources.ID, tenantID string) string {
 // credential lookup for the Azure tenant is worthwhile.
 func containsAzureOutputResource(list []generated.GenericResource) bool {
 	for _, resource := range list {
-		for _, id := range outputResourceIDs(resource) {
-			if resources_azure.IsAzureResource(id) {
-				return true
-			}
+		if slices.ContainsFunc(outputResourceIDs(resource), resources_azure.IsAzureResource) {
+			return true
 		}
 	}
 	return false

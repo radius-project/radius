@@ -1,0 +1,91 @@
+namespace: Radius.Data
+types:
+  postgreSqlDatabases:  
+    description: |
+      The Radius.Data/postgreSqlDatabases Resource Type deploys a PostgreSQL database. Provide the administrator `username` and `password` directly on the resource. The `password` property is marked `x-radius-sensitive`, so Radius encrypts it at rest, redacts it on reads, and exposes it (decrypted) only to the recipe that provisions the database.
+      ```
+      resource postgresql 'Radius.Data/postgreSqlDatabases@2025-08-01-preview' = {
+          name: 'postgresql'
+          properties: {
+            environment: environment
+            application: myApplication.id
+            size: 'S'
+            database: 'appdb'
+            username: 'myadmin'
+            // From a @secure() password parameter passed in via the CLI
+            password: password
+          }
+        }
+      ```
+
+      When deploying the application definition, provide the database password value as a parameter. It is recommended to use a password generator such as `openssl` or equivalent. For example, `rad deploy app.bicep -p password=$(openssl rand -hex 16)`.
+
+      To connect your container to the database, create a connection from the Container resource to the database as shown below. 
+      ```
+      resource myApplication 'Radius.Core/Applications@2025-08-01-preview' = { ... }
+
+      resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'frontend'
+        properties: {
+          application: myApplication.id
+          environment: environment
+          container: {
+            image: 'frontend:1.25'
+            ports: {
+              web: {
+                containerPort: 8080
+              }
+            }
+          }
+          connections: {
+            postgresql: {
+              source: postgresql.id
+            }
+          }
+        }
+      }
+      ```
+
+      The connection automatically injects environment variables into the container for all properties from the database. The environment variables are named `CONNECTION_<CONNECTION-NAME>_<PROPERTY-NAME>`. In this example, the connection name is `postgresql` so the environment variables will be:
+ 
+      - CONNECTION_POSTGRESQL_DATABASE
+      - CONNECTION_POSTGRESQL_HOST
+      - CONNECTION_POSTGRESQL_PORT
+
+    apiVersions:
+      '2025-08-01-preview':
+        schema: 
+          type: object
+          properties:
+            environment:
+              type: string
+              description: "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`."
+            application:
+              type: string
+              description: "(Optional) The Radius Application ID. `myApplication.id` for example."
+            size:
+              type: string
+              enum: ['S', 'M', 'L']
+              description: "(Optional) The size of the PostgreSQL database. Defaults to `S` if not provided."
+            username:
+              type: string
+              description: "(Required) The administrator username for the PostgreSQL database. Provided directly on the resource and passed to the recipe as `{{context.resource.properties.username}}`."
+            password:
+              type: string
+              x-radius-sensitive: true
+              description: "(Required) The administrator password for the PostgreSQL database. Marked `x-radius-sensitive`: Radius encrypts it at rest, redacts it on reads, and exposes it decrypted only to the recipe as `{{context.resource.properties.password}}`."
+            database:
+              type: string
+              description: "(Optional) The name of the database. Defaults to `postgres_db` if not provided."
+            initSql:
+              type: string
+              description: "(Optional) SQL script mounted into the PostgreSQL container's `/docker-entrypoint-initdb.d/` directory and executed whenever PGDATA is empty. With the default ephemeral storage this runs on every pod restart. If a PersistentVolumeClaim is used, the script runs only on the very first startup and subsequent changes to initSql are ignored on existing volumes. Limited to ~1 MiB. Useful for creating tables, indexes, and inserting seed data."
+            host:
+              type: string
+              description: The host name used to connect to the database.
+              readOnly: true
+            port:
+              type: string
+              description: The port number used to connect to the database.
+              readOnly: true
+          required: [environment,username,password]

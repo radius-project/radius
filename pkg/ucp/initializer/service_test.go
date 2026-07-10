@@ -18,6 +18,8 @@ package initializer
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/stretchr/testify/assert"
@@ -595,4 +598,254 @@ func requireRenderableNestedObjectSchema(t *testing.T, path string, schema map[s
 			requireRenderableNestedObjectSchema(t, propertyPath, propertySchema)
 		}
 	}
+}
+
+// validIconSVG is a minimal SVG that passes datamodel.ValidateIcon; used across
+// the icon-related tests below.
+var validIconSVG = []byte(`<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>`)
+
+// invalidIconSVG contains a <script> element, which datamodel.ValidateIcon
+// rejects.
+var invalidIconSVG = []byte(`<svg xmlns="http://www.w3.org/2000/svg"><script/></svg>`)
+
+// iconManifestYAML is a single-type manifest used by the icon tests. Kept
+// separate from the test bodies so the tests are easy to read.
+const iconManifestYAML = `
+namespace: Test.Provider
+location:
+  global: "http://localhost:9090"
+types:
+  widgets:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`
+
+const iconMultiTypeManifestYAML = `
+namespace: Test.Provider
+location:
+  global: "http://localhost:9090"
+types:
+  widgets:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+  gadgets:
+    apiVersions:
+      "2025-01-01":
+        schema: {}
+`
+
+func Test_loadTypeIcon(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns nil when no <typeName>.svg exists", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
+
+		icon, err := loadTypeIcon(dir, "widgets")
+		require.NoError(t, err)
+		assert.Nil(t, icon)
+	})
+
+	t.Run("returns bytes when <typeName>.svg exists and is valid", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "widgets.svg"), validIconSVG, 0600))
+
+		icon, err := loadTypeIcon(dir, "widgets")
+		require.NoError(t, err)
+		require.NotNil(t, icon)
+		assert.Equal(t, string(validIconSVG), *icon)
+	})
+
+	t.Run("returns error when <typeName>.svg fails validation", func(t *testing.T) {
+		t.Parallel()
+
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "widgets.svg"), invalidIconSVG, 0600))
+
+		icon, err := loadTypeIcon(dir, "widgets")
+		require.Error(t, err)
+		assert.Nil(t, icon)
+		assert.Contains(t, err.Error(), "invalid icon file")
+	})
+
+	t.Run("only <typeName>.svg is considered, not the manifest basename", func(t *testing.T) {
+		t.Parallel()
+
+		// A file named after the manifest (types.svg) must NOT be applied to
+		// individual types — the loader keys strictly on the type name.
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "types.svg"), validIconSVG, 0600))
+
+		icon, err := loadTypeIcon(dir, "widgets")
+		require.NoError(t, err)
+		assert.Nil(t, icon)
+	})
+}
+
+func Test_Run_Icons(t *testing.T) {
+	t.Parallel()
+
+	sum := sha256.Sum256(validIconSVG)
+	expectedHashHex := hex.EncodeToString(sum[:])
+
+	t.Run("applies <typeName>.svg to the matching type and stores server-computed hash", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.yaml"), []byte(iconManifestYAML), 0600))
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.svg"), validIconSVG, 0600))
+
+		svc := newTestService(tempDir)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		require.NoError(t, err)
+
+		require.NoError(t, svc.Run(context.Background()))
+
+		// Verify the resource type record carries the icon and hash.
+		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider/resourceTypes/widgets")
+		require.NoError(t, err)
+
+		rt := &datamodel.ResourceType{}
+		require.NoError(t, obj.As(rt))
+		require.NotNil(t, rt.Properties.Icon)
+		assert.Equal(t, string(validIconSVG), *rt.Properties.Icon)
+		require.NotNil(t, rt.Properties.IconHash)
+		assert.Equal(t, expectedHashHex, *rt.Properties.IconHash)
+
+		// Verify the summary mirrors the same icon and hash.
+		obj, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviderSummaries/Test.Provider")
+		require.NoError(t, err)
+
+		summary := &datamodel.ResourceProviderSummary{}
+		require.NoError(t, obj.As(summary))
+		require.Contains(t, summary.Properties.ResourceTypes, "widgets")
+		summaryType := summary.Properties.ResourceTypes["widgets"]
+		require.NotNil(t, summaryType.Icon)
+		assert.Equal(t, string(validIconSVG), *summaryType.Icon)
+		require.NotNil(t, summaryType.IconHash)
+		assert.Equal(t, expectedHashHex, *summaryType.IconHash)
+	})
+
+	t.Run("in a multi-type manifest, <typeName>.svg applies only to the matching type", func(t *testing.T) {
+		t.Parallel()
+
+		// Per spec 003 FR-002 / FR-002b, a bare icon cannot silently apply to
+		// every type of a multi-type manifest. The sibling-file flow mirrors
+		// that: a <typeName>.svg is scoped to that one type.
+		tempDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "types.yaml"), []byte(iconMultiTypeManifestYAML), 0600))
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.svg"), validIconSVG, 0600))
+
+		svc := newTestService(tempDir)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		require.NoError(t, err)
+
+		require.NoError(t, svc.Run(context.Background()))
+
+		// widgets got the icon.
+		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider/resourceTypes/widgets")
+		require.NoError(t, err)
+		widgets := &datamodel.ResourceType{}
+		require.NoError(t, obj.As(widgets))
+		require.NotNil(t, widgets.Properties.Icon)
+		assert.Equal(t, string(validIconSVG), *widgets.Properties.Icon)
+		require.NotNil(t, widgets.Properties.IconHash)
+		assert.Equal(t, expectedHashHex, *widgets.Properties.IconHash)
+
+		// gadgets did NOT get the icon.
+		obj, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider/resourceTypes/gadgets")
+		require.NoError(t, err)
+		gadgets := &datamodel.ResourceType{}
+		require.NoError(t, obj.As(gadgets))
+		assert.Nil(t, gadgets.Properties.Icon)
+		assert.Nil(t, gadgets.Properties.IconHash)
+	})
+
+	t.Run("manifest without <typeName>.svg leaves icon and hash nil", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.yaml"), []byte(iconManifestYAML), 0600))
+
+		svc := newTestService(tempDir)
+		dbClient, err := svc.options.DatabaseProvider.GetClient(context.Background())
+		require.NoError(t, err)
+
+		require.NoError(t, svc.Run(context.Background()))
+
+		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider/resourceTypes/widgets")
+		require.NoError(t, err)
+
+		rt := &datamodel.ResourceType{}
+		require.NoError(t, obj.As(rt))
+		assert.Nil(t, rt.Properties.Icon)
+		assert.Nil(t, rt.Properties.IconHash)
+	})
+
+	t.Run("skips stray svg files during directory scan", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+		// An .svg with no matching .yaml — Run must ignore it rather than try to parse it as a manifest.
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "orphan.svg"), validIconSVG, 0600))
+
+		svc := newTestService(tempDir)
+		require.NoError(t, svc.Run(context.Background()))
+	})
+
+	t.Run("invalid <typeName>.svg fails startup", func(t *testing.T) {
+		t.Parallel()
+
+		tempDir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.yaml"), []byte(iconManifestYAML), 0600))
+		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.svg"), invalidIconSVG, 0600))
+
+		svc := newTestService(tempDir)
+		err := svc.Run(context.Background())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid icon file")
+	})
+}
+
+func Test_registerResourceProviderDirect_Icon(t *testing.T) {
+	t.Parallel()
+
+	svg := "<svg xmlns=\"http://www.w3.org/2000/svg\"><rect/></svg>"
+	sum := sha256.Sum256([]byte(svg))
+	expectedHashHex := hex.EncodeToString(sum[:])
+
+	dbClient := inmemory.NewClient()
+	rp := createTestResourceProvider()
+	rp.Types["widgets"].Icon = to.Ptr(svg)
+
+	require.NoError(t, registerResourceProviderDirect(context.Background(), dbClient, "local", rp))
+
+	// The resource type record carries the icon and its server-computed SHA-256 hash.
+	obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources/resourceTypes/widgets")
+	require.NoError(t, err)
+
+	rt := &datamodel.ResourceType{}
+	require.NoError(t, obj.As(rt))
+	require.NotNil(t, rt.Properties.Icon)
+	assert.Equal(t, svg, *rt.Properties.Icon)
+	require.NotNil(t, rt.Properties.IconHash)
+	assert.Equal(t, expectedHashHex, *rt.Properties.IconHash)
+
+	// The summary mirror carries the same icon and hash.
+	obj, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviderSummaries/MyCompany.Resources")
+	require.NoError(t, err)
+
+	summary := &datamodel.ResourceProviderSummary{}
+	require.NoError(t, obj.As(summary))
+	require.Contains(t, summary.Properties.ResourceTypes, "widgets")
+	summaryType := summary.Properties.ResourceTypes["widgets"]
+	require.NotNil(t, summaryType.Icon)
+	assert.Equal(t, svg, *summaryType.Icon)
+	require.NotNil(t, summaryType.IconHash)
+	assert.Equal(t, expectedHashHex, *summaryType.IconHash)
 }

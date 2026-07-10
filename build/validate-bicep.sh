@@ -32,7 +32,7 @@ do
 
 done
 
-# Restore the extensions once 
+# Restore the extensions once
 echo "running Radius: $BICEP_PATH build $FIRST_FILE_RAD"
 STDERR=$($BICEP_PATH build $FIRST_FILE_RAD --stdout 2>&1 1>/dev/null)
 echo "Restoring Radius extension with response: $STDERR..."
@@ -52,7 +52,7 @@ do
     echo "validating $F"
     # We need to run bicep and fail in one of two cases:
     # - non-zero exit code
-    # - non-empty stderr 
+    # - non-empty stderr
     #
     # We also don't want to dirty any files on disk.
     #
@@ -68,26 +68,26 @@ do
         EXITCODE=$?
         exec 3>&-
     fi
-    
+
     if [[ $STDERR == *"Warning"* ]]
     then
         echo $STDERR
-        WARNINGS+=$F
+        WARNINGS+=("$F")
     fi
 
     if [[ ! $EXITCODE -eq 0 || $STDERR == *"Error"* ]]
     then
         echo $STDERR
-        FAILURES+=$F
+        FAILURES+=("$F")
     fi
 done
 
-for F in $FAILURES
+for F in "${FAILURES[@]}"
 do
   echo "Failed: $F"
 done
 
-for F in $WARNINGS
+for F in "${WARNINGS[@]}"
 do
   echo "Warning: $F"
 done

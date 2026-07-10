@@ -28,6 +28,12 @@ pnpm config set store-dir /tmp/.pnpm-store
 echo "Installing golangci-lint..."
 GOLANGCI_LINT_INSTALL_DIR="$(go env GOPATH)/bin" make install-golangci-lint
 
+# Install the binary form of shellcheck into the Go bin directory (on PATH in the
+# dev container) so 'make lint-shell' works out of the box. Pinned version +
+# checksums live in build/tools.mk.
+echo "Installing shellcheck..."
+SHELLCHECK_INSTALL_DIR="$(go env GOPATH)/bin" make install-shellcheck
+
 echo "Installing cspell..."
 # Ensure pnpm global bin directory exists and is on PATH before installing
 # global packages. `pnpm setup` updates shell rc files for future sessions,
