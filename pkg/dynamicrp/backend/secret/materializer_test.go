@@ -19,6 +19,7 @@ package secret
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -26,13 +27,30 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	genfake "github.com/radius-project/radius/pkg/cli/clients_new/generated/fake"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
 
 const testOwnerID = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/kafkas/kafka"
 
 func Test_ManagedSecretName(t *testing.T) {
-	require.Equal(t, "kafka-secrets", ManagedSecretName("kafka"))
+	ownerID, err := resources.ParseResource(testOwnerID)
+	require.NoError(t, err)
+
+	name := ManagedSecretName(ownerID)
+
+	// The name is <ownerName>-<shortHash>-secrets: readable prefix, disambiguating hash, reserved suffix.
+	require.True(t, strings.HasPrefix(name, "kafka-"), "name should start with the owner name: %q", name)
+	require.True(t, strings.HasSuffix(name, managedSecretNameSuffix), "name should end with the reserved suffix: %q", name)
+
+	// Deterministic: the same owner ID always yields the same managed secret name (Materialize/Delete rely
+	// on this).
+	require.Equal(t, name, ManagedSecretName(ownerID))
+
+	// Uniqueness: a different resource type with the SAME name in the SAME resource group must not collide.
+	other, err := resources.ParseResource("/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/queues/kafka")
+	require.NoError(t, err)
+	require.NotEqual(t, name, ManagedSecretName(other), "same name but different type must not collide")
 }
 
 func Test_Materialize(t *testing.T) {
@@ -60,9 +78,13 @@ func Test_Materialize(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	require.Equal(t, "kafka-secrets", capturedName)
-	require.Equal(t, "kafka-secrets", result.Name)
-	require.Equal(t, "/planes/radius/local/resourceGroups/test-group/providers/Radius.Security/secrets/kafka-secrets", result.ID)
+	ownerID, err := resources.ParseResource(testOwnerID)
+	require.NoError(t, err)
+	expectedName := ManagedSecretName(ownerID)
+
+	require.Equal(t, expectedName, capturedName)
+	require.Equal(t, expectedName, result.Name)
+	require.Equal(t, "/planes/radius/local/resourceGroups/test-group/providers/Radius.Security/secrets/"+expectedName, result.ID)
 
 	require.Equal(t, "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/environments/env", captured.Properties["environment"])
 	require.Equal(t, "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/applications/app", captured.Properties["application"])
@@ -122,7 +144,9 @@ func Test_Delete(t *testing.T) {
 	m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
 
 	require.NoError(t, m.Delete(context.Background(), testOwnerID))
-	require.Equal(t, "kafka-secrets", capturedName)
+	ownerID, err := resources.ParseResource(testOwnerID)
+	require.NoError(t, err)
+	require.Equal(t, ManagedSecretName(ownerID), capturedName)
 }
 
 func Test_Delete_NotFoundIsIgnored(t *testing.T) {

@@ -21,9 +21,12 @@ package secret
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -45,6 +48,10 @@ const (
 
 	// managedSecretNameSuffix is appended to an owner resource name to derive its managed secret name.
 	managedSecretNameSuffix = "-secrets"
+
+	// managedSecretNameHashLength is the number of hex characters of the owner-ID hash included in the
+	// managed secret name to disambiguate owners that share a name but differ in resource type or scope.
+	managedSecretNameHashLength = 8
 )
 
 // Request describes the managed secret to create or update for an owner resource.
@@ -92,9 +99,14 @@ func NewMaterializer(armClientOptions *arm.ClientOptions) Materializer {
 }
 
 // ManagedSecretName derives the deterministic name of the managed Radius.Security/secrets resource for an
-// owner resource of the given name.
-func ManagedSecretName(ownerName string) string {
-	return ownerName + managedSecretNameSuffix
+// owner resource. It combines the owner's name with a short hash of the owner's fully-qualified resource ID
+// so that owners that share a name but differ in resource type or scope — which is allowed within a single
+// resource group — never collide on the same managed secret. The name is stable for a given owner, so
+// Materialize and Delete derive the same value.
+func ManagedSecretName(ownerID resources.ID) string {
+	sum := sha256.Sum256([]byte(strings.ToLower(ownerID.String())))
+	hash := hex.EncodeToString(sum[:])[:managedSecretNameHashLength]
+	return fmt.Sprintf("%s-%s%s", ownerID.Name(), hash, managedSecretNameSuffix)
 }
 
 // Materialize creates or updates the managed Radius.Security/secrets resource for the owner and returns its
@@ -106,7 +118,7 @@ func (m *clientMaterializer) Materialize(ctx context.Context, req Request) (Resu
 		return Result{}, err
 	}
 
-	secretName := ManagedSecretName(ownerID.Name())
+	secretName := ManagedSecretName(ownerID)
 	secretID := fmt.Sprintf("%s/providers/%s/%s", ownerID.RootScope(), SecuritySecretsResourceType, secretName)
 
 	data := make(map[string]any, len(req.Data))
@@ -148,7 +160,7 @@ func (m *clientMaterializer) Delete(ctx context.Context, ownerResourceID string)
 		return err
 	}
 
-	secretName := ManagedSecretName(ownerID.Name())
+	secretName := ManagedSecretName(ownerID)
 	client, err := generated.NewGenericResourcesClient(SecuritySecretsResourceType, ownerID.RootScope(), &aztoken.AnonymousCredential{}, m.clientOptions())
 	if err != nil {
 		return err

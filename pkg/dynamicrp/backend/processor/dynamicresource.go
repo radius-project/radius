@@ -110,7 +110,7 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 
 	addComputedValuesToResourceProperties(resource, schema, computedValues)
 
-	return d.materializeDeclaredSecrets(ctx, resource, schema, secretValues)
+	return d.materializeRecipeSecrets(ctx, resource, schema, secretValues)
 }
 
 // getResourceSchema fetches and returns the OpenAPI schema for the resource's type and API version.
@@ -142,22 +142,25 @@ func addComputedValuesToResourceProperties(resource *datamodel.DynamicResource, 
 	}
 }
 
-// materializeDeclaredSecrets routes recipe secret outputs whose keys are declared in the schema `secrets`
-// block into a managed Radius.Security/secrets resource, and exposes a read-only reference to that resource
-// on the owner via the reserved `secrets.name` sub-property. Secret values are never written onto the owner
-// resource. When the resource type declares no `secrets` block, recipe secret outputs are dropped rather
-// than persisted.
-func (d *DynamicProcessor) materializeDeclaredSecrets(ctx context.Context, resource *datamodel.DynamicResource, schema map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
-	declaredKeys, ok := schemautil.GetSecretsBlock(schema)
-	if !ok {
+// materializeRecipeSecrets routes the recipe's secret outputs into a managed Radius.Security/secrets
+// resource, and exposes a read-only reference to that resource on the owner via the reserved `secrets.name`
+// sub-property. Secret values are never written onto the owner resource.
+//
+// A resource type opts into secret materialization by declaring a `secrets` block in its schema; that block
+// is also what makes `secrets.name` a referenceable read-only property. Once a type opts in, ALL of the
+// recipe's secret outputs are materialized — not just those whose keys are declared in the block. The
+// declared keys document the type's expected secret surface but do not filter what is materialized, so a
+// recipe (for example a direct AVM module) that emits an additional sensitive output does not silently lose
+// it. When the resource type declares no `secrets` block, recipe secret outputs are dropped rather than
+// persisted.
+func (d *DynamicProcessor) materializeRecipeSecrets(ctx context.Context, resource *datamodel.DynamicResource, schema map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
+	if _, ok := schemautil.GetSecretsBlock(schema); !ok {
 		return nil
 	}
 
-	data := map[string]string{}
-	for _, key := range declaredKeys {
-		if ref, ok := secretValues[key]; ok {
-			data[key] = ref.Value
-		}
+	data := make(map[string]string, len(secretValues))
+	for key, ref := range secretValues {
+		data[key] = ref.Value
 	}
 	if len(data) == 0 {
 		return nil

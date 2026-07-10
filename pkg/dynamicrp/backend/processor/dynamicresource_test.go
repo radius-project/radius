@@ -262,6 +262,54 @@ func Test_Process(t *testing.T) {
 		require.False(t, hasSecrets)
 	})
 
+	t.Run("materializes recipe secret outputs not declared in the schema secrets block", func(t *testing.T) {
+		mat := &fakeMaterializer{result: secret.Result{
+			ID:   "/planes/radius/local/resourceGroups/test-group/providers/Radius.Security/secrets/test-resource-secrets",
+			Name: "test-resource-secrets",
+		}}
+		p := DynamicProcessor{SecretMaterializer: mat}
+		// The schema's secrets block declares only `connectionString`; the recipe also emits `extraSecret`.
+		cf, err := testUCPClientFactoryWithSecrets("connectionString")
+		require.NoError(t, err)
+
+		resource := &datamodel.DynamicResource{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+					Type: "Applications.Test/testRecipeResources",
+				},
+				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
+			},
+			Properties: map[string]any{"status": map[string]any{}},
+		}
+		options := processors.Options{
+			RecipeOutput: &recipes.RecipeOutput{
+				Values:  map[string]any{"host": hostname},
+				Secrets: map[string]any{"connectionString": "secret-conn", "extraSecret": "secret-extra"},
+			},
+			UcpClient: cf,
+		}
+
+		require.NoError(t, p.Process(context.Background(), resource, options))
+
+		// Both the declared and the undeclared recipe secret outputs are materialized: the schema's declared
+		// keys document the expected surface but do not filter what is routed to the managed secret, so a
+		// recipe-emitted secret the type author did not anticipate is not silently dropped.
+		require.True(t, mat.called)
+		require.Equal(t, map[string]string{"connectionString": "secret-conn", "extraSecret": "secret-extra"}, mat.request.Data)
+
+		// Neither secret value lands on the owner; only the managed secret name reference is exposed.
+		bs, err := json.Marshal(resource.Properties)
+		require.NoError(t, err)
+		properties := map[string]any{}
+		require.NoError(t, json.Unmarshal(bs, &properties))
+		require.NotContains(t, properties, "connectionString")
+		require.NotContains(t, properties, "extraSecret")
+		secrets, ok := properties["secrets"].(map[string]any)
+		require.True(t, ok)
+		require.Equal(t, "test-resource-secrets", secrets["name"])
+	})
+
 	t.Run("stringifies non-string secret values before materializing", func(t *testing.T) {
 		mat := &fakeMaterializer{result: secret.Result{ID: "managed-id", Name: "managed-name"}}
 		p := DynamicProcessor{SecretMaterializer: mat}
