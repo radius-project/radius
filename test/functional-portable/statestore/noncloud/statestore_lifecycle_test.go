@@ -70,8 +70,8 @@ const (
 	redisRecipeTemplate = "../../corerp/noncloud/resources/testdata/corerp-resources-terraform-redis.bicep"
 
 	// controlPlaneTimeout is how long to wait for the control plane API to become available after an
-	// install. It is generous because the UCP aggregated APIService may briefly return 503 while the
-	// pods roll. (Lesson from the flaky upgrade test, PR #12245.)
+	// install or startup. It is generous because the UCP aggregated APIService may briefly return
+	// 503 while the pods roll. (Lesson from the flaky upgrade test, PR #12245.)
 	controlPlaneTimeout      = 5 * time.Minute
 	controlPlanePollInterval = 5 * time.Second
 
@@ -134,7 +134,7 @@ func uninstallRadius(ctx context.Context, t *testing.T, cli *radcli.CLI) {
 // waitForControlPlane polls until every Radius control-plane deployment in radius-system reports
 // Available, treating transient API errors (including 503 from the aggregated APIService while
 // pods roll) as retryable. It is deliberately workspace-independent: it talks to Kubernetes
-// directly, so it can run immediately after install and before any rad workspace exists.
+// directly, so it can run immediately after install or startup and before any rad workspace exists.
 func waitForControlPlane(t *testing.T, ctx context.Context) {
 	t.Helper()
 	k8s := test.NewTestOptions(t).K8sClient
@@ -346,6 +346,7 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	// 6. Restore the saved state.
 	out, err = stateCLI.RunCommand(ctx, []string{"startup"})
 	require.NoErrorf(t, err, "rad startup failed: %s", out)
+	waitForControlPlane(t, ctx)
 
 	// 7. Both stores must be restored: the Terraform state Secret is back, and the control-plane
 	//    resource is queryable again.
