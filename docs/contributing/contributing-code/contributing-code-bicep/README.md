@@ -4,7 +4,7 @@
 
 This is the primary doc for writing and modifying the `.bicep` files in Radius — the recipes and deployment templates that describe infrastructure, plus the Bicep test fixtures. It is reference material for anyone authoring Bicep. The detailed, rule-by-rule conventions live in the [Bicep instruction file](../../../../.github/instructions/bicep.instructions.md), which Copilot applies automatically to any `.bicep` file you edit; this doc gives the map of where the Bicep files live and how to keep them consistent.
 
-> **Not the same as Bicep _types_.** Generating the Radius/AWS Bicep type extensions is a separate pipeline — see the [Bicep types migration guide](../../bicep-types-migration-guide.md). This doc is about authoring `.bicep` source (recipes, deployment templates, and test data).
+> **Not the same as Bicep _types_.** Generating the Radius Bicep type extension is part of the TypeSpec → Swagger → Go pipeline — see the [schema changes guide](../contributing-code-schema-changes/README.md#4-optional-test-the-schema-change-locally-with-bicep). This doc is about authoring `.bicep` source (recipes, deployment templates, and test data).
 
 ## Where these files live
 
@@ -26,5 +26,5 @@ Follow the [Bicep instruction file](../../../../.github/instructions/bicep.instr
 
 ## Related docs
 
-- [Bicep types migration guide](../../bicep-types-migration-guide.md) — the separate type-generation pipeline.
+- [Schema changes](../contributing-code-schema-changes/README.md) — generate and locally publish the Radius Bicep type extension.
 - [Documentation index](../../README.md) — every contributing doc.

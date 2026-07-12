@@ -46,9 +46,43 @@ make test-functional-daprrp
 make test-functional-datastoresrp
 ```
 
-To run a single group directly, call its `make` target — for example `make test-functional-corerp-noncloud` for the non-cloud Core RP tests, or `make test-functional-all-noncloud` for every non-cloud group. The full list of groups (`ucp`, `kubernetes`, `corerp`, `cli`, `msgrp`, `daprrp`, `datastoresrp`, `dynamicrp`, `samples`, `upgrade`) and their `-noncloud`/`-cloud` variants is defined in [`build/test.mk`](../../../../build/test.mk).
+To run a single group directly, call its `make` target — for example `make test-functional-corerp-noncloud` for the non-cloud Core RP tests, or `make test-functional-all-noncloud` for the standard non-cloud groups. The groups (`ucp`, `kubernetes`, `corerp`, `cli`, `msgrp`, `daprrp`, `datastoresrp`, `dynamicrp`, `samples`, `upgrade`, `multicluster`, and `statestore`) and the variants each group supports are defined in [`build/test.mk`](../../../../build/test.mk).
 
 You can also run or debug individual tests from VS Code.
+
+### Run a special test group
+
+The aggregate `make test-functional-all-noncloud` target intentionally excludes these isolated groups:
+
+| Target                                       | Requirements and behavior                                                                                                                      |
+|----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| `make test-functional-multicluster-noncloud` | Requires a second Kubernetes cluster, a target-cluster Secret mounted into Radius, and `RADIUS_TEST_EXTERNAL_KUBECONFIG` for the test process. |
+| `make test-functional-statestore-noncloud`   | Destructive lifecycle test that installs, purges, and reinstalls Radius. Run it only on a dedicated cluster.                                   |
+| `make test-functional-upgrade-noncloud`      | Exercises the Radius upgrade path and performs its own install/upgrade lifecycle.                                                              |
+
+The multicluster and statestore groups run as isolated CI legs in `functional-test-noncloud.yaml`; do not run them against a shared development cluster.
+
+For multicluster tests, create the namespace and Secret before installing Radius. The kubeconfig stored in the Secret must use an API-server address reachable from the Radius pods:
+
+```bash
+kubectl create namespace radius-system --dry-run=client -o yaml | kubectl apply -f -
+kubectl create secret generic target-kubeconfig \
+  --namespace radius-system \
+  --from-file=kubeconfig=<pod-reachable-external-kubeconfig>
+```
+
+Install Radius with `global.targetCluster.enabled=true`, then set `RADIUS_TEST_EXTERNAL_KUBECONFIG` to the host-side kubeconfig that the test process uses to assert where resources were created.
+
+### Configure test execution
+
+The Make targets accept these environment variables:
+
+| Variable                          | Purpose                                                                |
+|-----------------------------------|------------------------------------------------------------------------|
+| `TEST_TIMEOUT`                    | Overrides the Go test timeout. The default in `build/test.mk` is `1h`. |
+| `RADIUS_TEST_EXTERNAL_KUBECONFIG` | Points multicluster tests at the external workload cluster.            |
+| `TF_RECIPE_MODULE_SERVER_URL`     | Overrides the Terraform recipe module server URL.                      |
+| `RADIUS_TEST_FAST_CLEANUP`        | Selects standard or fast cleanup as described below.                   |
 
 ### Control test cleanup
 
@@ -117,3 +151,4 @@ Separate scheduled jobs (`purge-azure-test-resources.yaml` and `purge-aws-test-r
 - **You changed the `rad` CLI.** Copy the rebuilt `rad` to your path (or set `RAD_PATH` for Codelens) so the tests use your new binary.
 - **Environment variables seem ignored.** Restart VS Code or your editor so newly set variables take effect.
 - **Many tests fail immediately.** Confirm the Kubernetes namespace in use is `default`.
+- **A special test group is skipped or fails during setup.** Confirm that you met the isolated-cluster requirements in [Run a special test group](#run-a-special-test-group).
