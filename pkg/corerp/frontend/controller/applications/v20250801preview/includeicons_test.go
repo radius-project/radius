@@ -29,7 +29,7 @@ import (
 )
 
 // Test_readIncludeIcons enumerates the request-body shapes getGraph must
-// tolerate. The flag is additive on the wire (spec 003 NFR-004), so absent /
+// tolerate. The flag is additive on the wire, so absent /
 // empty / non-JSON bodies must resolve to the default false rather than error.
 func Test_readIncludeIcons(t *testing.T) {
 	newRequest := func(body string, contentType string) *http.Request {
@@ -94,7 +94,7 @@ func Test_readIncludeIcons(t *testing.T) {
 	})
 }
 
-// Test_buildIconsMap covers the response-side dedupe (spec 003 FR-013): every
+// Test_buildIconsMap covers the response-side dedupe: every
 // distinct hash referenced by the resources gets exactly one entry regardless
 // of node count, with the verbatim SVG bytes attached.
 func Test_buildIconsMap(t *testing.T) {

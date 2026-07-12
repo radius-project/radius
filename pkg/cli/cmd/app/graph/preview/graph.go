@@ -59,7 +59,7 @@ rad app graph my-application --preview -o json --include-icons`,
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddApplicationNameFlag(cmd)
 	commonflags.AddOutputFlag(cmd)
-	cmd.Flags().Bool("include-icons", false, "When set, embeds each referenced resource type icon's SVG bytes in the response (deduped by hash). Default is false so text output and machine consumers do not pay for bytes they cannot render (spec 003 FR-017).")
+	cmd.Flags().Bool("include-icons", false, "When set, embeds each referenced resource type icon's SVG bytes in the response.")
 
 	return cmd, runner
 }
@@ -127,9 +127,6 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	appClient := r.RadiusCoreClientFactory.NewApplicationsClient()
 
-	// Fetch the application graph — GetGraph returns 404 if the application does not exist.
-	// includeIcons is opt-in (spec 003 FR-015 / FR-017): default off keeps
-	// text and JSON output small unless the caller explicitly asks for bytes.
 	body := corerpv20250801.GetGraphRequest{}
 	if r.IncludeIcons {
 		body.IncludeIcons = to.Ptr(true)

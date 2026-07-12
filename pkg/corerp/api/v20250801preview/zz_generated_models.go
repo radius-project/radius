@@ -55,10 +55,9 @@ type ApplicationGraphResource struct {
 	// resources as added, removed, modified, or unchanged across graphs. Format: 'sha256:{hex}'.
 	DiffHash *string
 
-	// SHA-256 hex of the resource type's icon SVG, matching `iconHash` on the resource-type registry (spec 003 FR-011). Null
-	// when the type has no icon registered. The bytes themselves are delivered inline via `ApplicationGraphResponse.icons` when
-	// the request specifies `includeIcons: true`; otherwise clients fetch bytes by hash from the resource-type icon endpoint
-	// (FR-018).
+	// SHA-256 hex of the resource type's icon SVG, matching `iconHash` on the resource-type registry. Null when the type has
+	// no icon registered. The bytes themselves are delivered inline via `ApplicationGraphResponse.icons` when the request specifies
+	// `includeIcons: true`; otherwise clients fetch bytes by hash from the resource-type icon endpoint.
 	IconHash *string
 
 	// Resource-type-specific properties of the resource as returned by its resource provider. The shape of this map varies by
@@ -77,8 +76,7 @@ type ApplicationGraphResponse struct {
 	Resources []*ApplicationGraphResource
 
 	// Map from iconHash to the verbatim SVG UTF-8 bytes for every icon referenced by any resource in this response. Populated
-	// only when the request specifies `includeIcons: true`. Deduped: at most one entry per distinct hash regardless of how many
-	// nodes reference it (spec 003 FR-013).
+	// only when the request specifies `includeIcons: true`.
 	Icons map[string]*string
 }
 
@@ -292,8 +290,7 @@ type EnvironmentResourceListResult struct {
 // GetGraphRequest - Request body for the getGraph action.
 type GetGraphRequest struct {
 	// When true, `ApplicationGraphResponse.icons` is populated with the SVG bytes for every distinct `iconHash` referenced by
-	// the response's resources. When false or omitted, only per-resource `iconHash` values are returned and clients resolve bytes
-	// via the icon endpoint (FR-018). Default is false (spec 003 FR-015, FR-017).
+	// the response's resources. When false or omitted, only per-resource `iconHash` values are returned.
 	IncludeIcons *bool
 }
 

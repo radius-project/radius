@@ -184,8 +184,7 @@ func Test_Run(t *testing.T) {
 	})
 
 	// Assert the --include-icons flag threads through into GetGraphRequest.IncludeIcons.
-	// The default (flag not set) must send nil so the server treats it as false per
-	// spec 003 FR-015 / FR-017.
+	// The default (flag not set) must send nil so the server treats it as false.
 	t.Run("Success: IncludeIcons defaults to nil on request body", func(t *testing.T) {
 		var received corerpv20250801.GetGraphRequest
 		observeServer := func() fake.ApplicationsServer {

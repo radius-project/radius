@@ -81,11 +81,7 @@ rad app graph ./app.bicep`,
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddApplicationNameFlag(cmd)
 	commonflags.AddOutputFlag(cmd)
-	// --include-icons is only consumed by the preview (Radius.Core) runner, but
-	// wirePreviewSubcommand routes the parent command's flag set into the
-	// preview runner, so the flag must be declared here too for
-	// GetBool("include-icons") to succeed when --preview is set.
-	cmd.Flags().Bool("include-icons", false, "When set with --preview, embeds each referenced resource type icon's SVG bytes in the response (deduped by hash). Default is false so text output and machine consumers do not pay for bytes they cannot render (spec 003 FR-017).")
+	cmd.Flags().Bool("include-icons", false, "When set with --preview, embeds each referenced resource type icon's SVG bytes in the response.")
 
 	return cmd, runner
 }

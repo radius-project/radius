@@ -734,9 +734,6 @@ func Test_Run_Icons(t *testing.T) {
 	t.Run("in a multi-type manifest, <typeName>.svg applies only to the matching type", func(t *testing.T) {
 		t.Parallel()
 
-		// Per spec 003 FR-002 / FR-002b, a bare icon cannot silently apply to
-		// every type of a multi-type manifest. The sibling-file flow mirrors
-		// that: a <typeName>.svg is scoped to that one type.
 		tempDir := t.TempDir()
 		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "types.yaml"), []byte(iconMultiTypeManifestYAML), 0600))
 		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.svg"), validIconSVG, 0600))

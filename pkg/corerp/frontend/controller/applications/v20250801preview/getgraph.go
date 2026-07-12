@@ -56,9 +56,9 @@ func NewGetGraphv20250801preview(opts ctrl.Options, connection sdk.Connection) (
 
 // Run handles the getGraph custom action for Radius.Core/applications. It looks up the application,
 // resolves its environment, lists application- and environment-scoped resources, and returns the
-// computed application graph enriched with each node's `iconHash` (spec 003 FR-011). When the
+// computed application graph enriched with each node's `iconHash`. When the
 // request body sets `includeIcons: true` the response also carries a deduped `icons` map from
-// iconHash to verbatim SVG bytes (FR-013, FR-015).
+// iconHash to verbatim SVG bytes.
 func (ctrl *GetGraphv20250801preview) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
@@ -86,7 +86,7 @@ func (ctrl *GetGraphv20250801preview) Run(ctx context.Context, w http.ResponseWr
 	// Per-node iconHash comes from the resource-type registry: one
 	// GetProviderSummary call per distinct namespace in the graph, then a
 	// lookup by "<namespace>/<typeName>". A type without a registered icon
-	// simply leaves the corresponding node's IconHash nil (FR-011 default
+	// simply leaves the corresponding node's IconHash nil (default
 	// substitution is a control-plane-side concern, not the graph layer's).
 	icons, err := fetchIcons(ctx, ctrl.connection, payload, includeIcons)
 	if err != nil {
@@ -96,7 +96,7 @@ func (ctrl *GetGraphv20250801preview) Run(ctx context.Context, w http.ResponseWr
 	response := convertGraphResponseWithIcons(payload, icons)
 
 	// When the caller opted in with includeIcons=true, dedupe by hash and
-	// emit the icons map alongside the resources (spec 003 FR-013).
+	// emit the icons map alongside the resources.
 	if includeIcons {
 		response.Icons = buildIconsMap(response.Resources, icons)
 	}
@@ -108,7 +108,7 @@ func (ctrl *GetGraphv20250801preview) Run(ctx context.Context, w http.ResponseWr
 // value of its includeIcons field. Missing bodies, empty bodies, and bodies
 // posted without a JSON content type (typical for existing clients that pre-date
 // the flag) all resolve to the default value false so this feature stays
-// additive on the wire (spec 003 NFR-004).
+// additive on the wire.
 func readIncludeIcons(req *http.Request) (bool, error) {
 	if req.Body == nil || req.ContentLength == 0 {
 		return false, nil
