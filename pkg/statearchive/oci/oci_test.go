@@ -124,6 +124,239 @@ func TestOCIArchive_CommitReturnsTargetError(t *testing.T) {
 	require.ErrorContains(t, err, "push failed")
 }
 
+func TestOCIArchive_CommitEnforcesGHCRVisibility(t *testing.T) {
+	for _, test := range []struct {
+		name          string
+		visibility    packageVisibility
+		errorContains string
+	}{
+		{name: "private", visibility: packageVisibilityPrivate},
+		{name: "internal", visibility: packageVisibilityInternal},
+		{name: "public", visibility: packageVisibilityPublic, errorContains: "is public"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			archive, target := newTestArchive(t)
+			checks := 0
+			archive.checkPackageVisibility = func(context.Context) (packageVisibility, error) {
+				checks++
+				return test.visibility, nil
+			}
+
+			ctx := context.Background()
+			session, err := archive.Open(ctx, "radius-state")
+			require.NoError(t, err)
+			t.Cleanup(func() { session.Close(ctx) })
+			require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
+
+			err = session.Commit(ctx, "ignored message")
+			if test.errorContains != "" {
+				require.ErrorContains(t, err, test.errorContains)
+				require.Equal(t, 0, target.PushCount(), "public packages must reject state before any upload")
+			} else {
+				require.NoError(t, err)
+				require.Greater(t, target.PushCount(), 0)
+
+				checksAfterUpload := checks
+				require.NoError(t, session.Commit(ctx, "ignored message"))
+				require.Equal(t, checksAfterUpload, checks, "unchanged state must not repeat the visibility check")
+			}
+			require.Equal(t, 1, checks)
+		})
+	}
+}
+
+func TestOCIArchive_CommitBootstrapsMissingGHCRPackage(t *testing.T) {
+	for _, test := range []struct {
+		name          string
+		finalResult   visibilityResult
+		errorContains string
+	}{
+		{
+			name:        "private",
+			finalResult: visibilityResult{visibility: packageVisibilityPrivate},
+		},
+		{
+			name:        "internal",
+			finalResult: visibilityResult{visibility: packageVisibilityInternal},
+		},
+		{
+			name:          "public",
+			finalResult:   visibilityResult{visibility: packageVisibilityPublic},
+			errorContains: "is public",
+		},
+		{
+			name:          "still not found",
+			finalResult:   visibilityResult{err: errGHCRPackageNotFound},
+			errorContains: "after empty archive bootstrap",
+		},
+		{
+			name:          "API failure",
+			finalResult:   visibilityResult{err: errors.New("API unavailable")},
+			errorContains: "API unavailable",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			archive, target := newTestArchive(t)
+			visibility := &visibilitySequence{results: []visibilityResult{
+				{err: errGHCRPackageNotFound},
+				test.finalResult,
+			}}
+			archive.checkPackageVisibility = visibility.Check
+
+			ctx := context.Background()
+			session, err := archive.Open(ctx, "radius-state")
+			require.NoError(t, err)
+			require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("sensitive state"), 0o644))
+
+			err = session.Commit(ctx, "ignored message")
+			if test.errorContains == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, test.errorContains)
+			}
+			require.Equal(t, 2, visibility.calls)
+			require.Greater(t, target.PushCount(), 0, "a missing package must be bootstrapped with an empty archive")
+			session.Close(ctx)
+
+			session, err = archive.Open(ctx, "radius-state")
+			require.NoError(t, err)
+			t.Cleanup(func() { session.Close(ctx) })
+			if test.errorContains == "" {
+				data, err := os.ReadFile(filepath.Join(session.Path(), "state.txt"))
+				require.NoError(t, err)
+				require.Equal(t, []byte("sensitive state"), data)
+			} else {
+				entries, err := os.ReadDir(session.Path())
+				require.NoError(t, err)
+				require.Empty(t, entries, "failed visibility verification must leave only the empty bootstrap archive")
+			}
+		})
+	}
+}
+
+func TestOCIArchive_BootstrapDoesNotOverwriteConcurrentState(t *testing.T) {
+	archive, target := newTestArchive(t)
+	ctx := context.Background()
+	checks := 0
+	archive.checkPackageVisibility = func(context.Context) (packageVisibility, error) {
+		checks++
+		if checks == 1 {
+			return "", errGHCRPackageNotFound
+		}
+
+		externalPath := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(externalPath, "state.txt"), []byte("external state"), 0o644))
+		externalArtifact, err := createArtifact(ctx, "radius-state", externalPath)
+		require.NoError(t, err)
+		defer externalArtifact.Close(ctx)
+		_, err = oras.Copy(ctx, externalArtifact.source, "radius-state", target, "radius-state", oras.DefaultCopyOptions)
+		require.NoError(t, err)
+		return packageVisibilityPrivate, nil
+	}
+
+	session, err := archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("local state"), 0o644))
+
+	err = session.Commit(ctx, "ignored message")
+	require.ErrorContains(t, err, "changed while this session was open")
+	session.Close(ctx)
+
+	session, err = archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	t.Cleanup(func() { session.Close(ctx) })
+	data, err := os.ReadFile(filepath.Join(session.Path(), "state.txt"))
+	require.NoError(t, err)
+	require.Equal(t, []byte("external state"), data)
+}
+
+func TestOCIArchive_PublicPackageAllowsStateDeletion(t *testing.T) {
+	archive, target := newTestArchive(t)
+	ctx := context.Background()
+	archive.checkPackageVisibility = func(context.Context) (packageVisibility, error) {
+		return packageVisibilityPrivate, nil
+	}
+
+	session, err := archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
+	require.NoError(t, session.Commit(ctx, "ignored message"))
+	session.Close(ctx)
+
+	archive.checkPackageVisibility = func(context.Context) (packageVisibility, error) {
+		return packageVisibilityPublic, nil
+	}
+	session, err = archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	require.NoError(t, os.Remove(filepath.Join(session.Path(), "state.txt")))
+	pushesBeforeDelete := target.PushCount()
+	require.NoError(t, session.Commit(ctx, "ignored message"))
+	require.Greater(t, target.PushCount(), pushesBeforeDelete)
+	session.Close(ctx)
+
+	session, err = archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	t.Cleanup(func() { session.Close(ctx) })
+	entries, err := os.ReadDir(session.Path())
+	require.NoError(t, err)
+	require.Empty(t, entries)
+}
+
+func TestOCIArchive_CommitReturnsVisibilityErrorBeforeUpload(t *testing.T) {
+	archive, target := newTestArchive(t)
+	archive.checkPackageVisibility = func(context.Context) (packageVisibility, error) {
+		return "", errors.New("visibility unavailable")
+	}
+
+	ctx := context.Background()
+	session, err := archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	t.Cleanup(func() { session.Close(ctx) })
+	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
+
+	err = session.Commit(ctx, "ignored message")
+	require.ErrorContains(t, err, "visibility unavailable")
+	require.Equal(t, 0, target.PushCount())
+}
+
+func TestOCIArchive_CommitReturnsBootstrapUploadError(t *testing.T) {
+	archive := NewOCIArchive(Options{Repository: "ghcr.io/radius-project/state"})
+	archive.newTarget = func(context.Context) (oras.Target, error) {
+		return failedPushTarget{}, nil
+	}
+	archive.checkPackageVisibility = func(context.Context) (packageVisibility, error) {
+		return "", errGHCRPackageNotFound
+	}
+
+	ctx := context.Background()
+	session, err := archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	t.Cleanup(func() { session.Close(ctx) })
+	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
+
+	err = session.Commit(ctx, "ignored message")
+	require.ErrorContains(t, err, "failed to bootstrap GHCR package")
+	require.ErrorContains(t, err, "push failed")
+}
+
+func TestOCIArchive_EmptyNewArchiveSkipsVisibilityCheck(t *testing.T) {
+	archive, target := newTestArchive(t)
+	checks := 0
+	archive.checkPackageVisibility = func(context.Context) (packageVisibility, error) {
+		checks++
+		return packageVisibilityPublic, nil
+	}
+
+	ctx := context.Background()
+	session, err := archive.Open(ctx, "radius-state")
+	require.NoError(t, err)
+	t.Cleanup(func() { session.Close(ctx) })
+
+	require.NoError(t, session.Commit(ctx, "ignored message"))
+	require.Equal(t, 0, checks)
+	require.Equal(t, 0, target.PushCount())
+}
+
 func TestOCIArchive_CommitPersistsDeletion(t *testing.T) {
 	archive, target := newTestArchive(t)
 	ctx := context.Background()
@@ -409,4 +642,20 @@ type failingWriter struct{}
 
 func (failingWriter) Write([]byte) (int, error) {
 	return 0, errors.New("write failed")
+}
+
+type visibilityResult struct {
+	visibility packageVisibility
+	err        error
+}
+
+type visibilitySequence struct {
+	results []visibilityResult
+	calls   int
+}
+
+func (s *visibilitySequence) Check(context.Context) (packageVisibility, error) {
+	result := s.results[s.calls]
+	s.calls++
+	return result.visibility, result.err
 }

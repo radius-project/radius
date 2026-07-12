@@ -149,12 +149,15 @@ Add `pkg/statearchive/oci`. `OCIArchive` and its session type implement the exis
 - An OCI digest is a fingerprint of the exact uploaded bytes. A normal tar.gz can include the current time, file timestamps, and an arbitrary file order, so identical files could get a different fingerprint on every save. The OCI backend uses a fixed file order and fixed metadata so unchanged files get the same fingerprint and do not upload again.
 - The backend streams the tar.gz layer through a temporary file-backed ORAS store. Memory use stays bounded as database dumps grow, and the temporary artifact is removed after the commit attempt.
 - `Commit` ignores its `message` argument. Git uses that message for its commit history; OCI has no equivalent that can be stored without changing an otherwise identical artifact.
+- Before each state-bearing GHCR upload, the backend queries GitHub Packages metadata. Private and internal packages are accepted; public packages return an error without uploading Radius state. Other OCI registries are unchanged.
+- A package cannot be inspected before it exists. On the first GHCR upload, the backend publishes a valid empty archive under a reserved bootstrap tag, verifies the newly created package visibility, and uploads the real archive only after the package is confirmed private or internal. The bootstrap does not touch the state tag, so the existing optimistic concurrency check still rejects a concurrent writer.
 
 ```mermaid
 sequenceDiagram
     participant C as Caller
     participant A as OCIArchive
     participant R as GHCR
+    participant G as GitHub Packages API
 
     C->>A: Open(ctx, "radius-state")
     A->>R: Resolve tag
@@ -172,14 +175,24 @@ sequenceDiagram
     alt digest unchanged
         A-->>C: Return without upload
     else digest changed
-        A->>R: Push manifest and update tag
-        R-->>A: Success or error
+        A->>G: Read package visibility
+        alt package does not exist
+            A->>R: Push empty archive under bootstrap tag
+            R-->>A: Empty package created
+            A->>G: Re-read package visibility
+        end
+        alt package is public or cannot be verified
+            A-->>C: Error without uploading state
+        else package is private or internal
+            A->>R: Push manifest and update tag
+            R-->>A: Success or error
+        end
     end
     C->>A: Close(ctx)
     A->>A: Remove temporary directory
 ```
 
-`Open` treats a missing tag as a new, empty archive. Any other pull or authentication failure is returned as an error. `Commit` returns an error if the upload fails; callers must not continue as though state was saved.
+`Open` treats a missing tag as a new, empty archive. Any other pull or authentication failure is returned as an error. `Commit` returns an error if the upload fails or GHCR package visibility cannot be verified; callers must not continue as though state was saved.
 
 ### Configuration and wiring
 
@@ -228,7 +241,7 @@ The state commands and graph output must also use storage-neutral language:
 
 ### Authentication and concurrency
 
-Reuse the ORAS setup in `pkg/cli/cmd/bicep/publish/publish.go`: `credentials.NewStoreFromDocker` and an ORAS `auth.Client`. Workflows that use OCI must run `docker/login-action` before Radius runs. The existing build and functional-test workflows already show that pattern.
+Reuse the ORAS setup in `pkg/cli/cmd/bicep/publish/publish.go`: `credentials.NewStoreFromDocker` and an ORAS `auth.Client`. Workflows that use OCI must run `docker/login-action` before Radius runs. The existing build and functional-test workflows already show that pattern. For GHCR, Radius also uses the Docker credential token to call the GitHub Packages REST API, so the token must be able to read package metadata.
 
 The OCI session uses an in-process lock per archive name, just as `GitArchive` uses one lock per branch. Before upload, it checks whether the tag changed after `Open` and returns an error if it did. This is only a best-effort safety check: another writer can still update the tag after that check. A true cross-process lock is future work.
 
@@ -237,19 +250,22 @@ The OCI session uses an in-process lock per archive name, just as `GitArchive` u
 - A missing tag starts a new empty archive. OCI registries use the same `404` response for a missing tag and, in some cases, a missing repository, so this behavior matches the current git backend's first-run behavior.
 - A pull error for an existing tag stops `Open`; it must not restore from an empty directory.
 - An upload error stops `Commit`; it must not report a successful backup.
+- A public GHCR package stops `Commit` before Radius state is uploaded. Private and internal packages are accepted.
+- A missing GHCR package is bootstrapped with an empty archive and checked again. If the follow-up metadata request reports public visibility, still cannot find the package, or otherwise fails, `Commit` returns an error and leaves only the non-sensitive empty archive.
 - Emptying an existing archive (for example deleting its last file) is persisted as an empty archive, matching the git backend's empty-tree commit. `Commit` only short-circuits without an upload when the directory is empty *and* no archive exists yet, so deletions are never silently dropped.
 - Registry `401` and `403` errors get the same clear login and permission guidance used by Bicep publishing.
 
 ## Test plan
 
 - **Unit:** Test `OCIArchive` with ORAS's local OCI content store in `t.TempDir()`. It needs no network, container, Docker daemon, or credentials, so it runs as a normal `make test` unit test. Verify that a first open is empty; files saved by `Commit` are present after the next `Open`; an unchanged session does not upload again; emptying an archive persists the deletion (an empty directory survives a reopen); committing a brand-new empty archive uploads nothing; and the temporary file-backed artifact is cleaned up. Use an injected fake registry target only to test that pull and upload failures return errors.
+- **Unit:** Test the GHCR metadata client and upload guard with an `httptest` GitHub API and the local OCI content store. Cover organization and user owners, nested package names, private/internal/public visibility, first-use empty bootstrap, metadata and credential failures, and proof that rejected paths never upload Radius state.
 - **Unit:** Save and load a modeled graph through `graph.Store` using `OCIArchive` and the local OCI content store. This covers the graph caller without a registry container.
 - **Unit:** Test backend selection: OCI is the default for both consumers. `NewStateArchive` selects OCI even without a registry, so its `Open` reports the missing `RADIUS_STATE_REGISTRY`; `NewGraphArchive` falls back to git when `RADIUS_GRAPH_REGISTRY` is unset. Each configured OCI repository selects OCI, and explicitly selecting OCI without its repository returns a configuration error. `RADIUS_STATE_BACKEND=git` forces git for both. Update the existing graph and state-command tests for the new archive-neutral names and messages.
 - **Functional:** Extend `test/functional-portable/statestore/noncloud`, the dedicated state lifecycle test. It starts a local `registry:2` container, then runs `rad shutdown` and `rad startup` with OCI selected, `RADIUS_STATE_REGISTRY=localhost:<port>/radius-state`, and `RADIUS_ARCHIVE_PLAIN_HTTP=true`. The existing uninstall, reinstall, restore, and Terraform update flow proves that state was saved to and restored from the OCI registry. Cleanup removes the registry container.
 
 ## Security
 
-The archive can contain secrets from database rows and Terraform state. A private GHCR repository can have access rules separate from source-repository read access, which is an improvement over a git branch. The OCI repository must remain private until client-side encryption is added.
+The archive can contain secrets from database rows and Terraform state. A non-public GHCR package can have access rules separate from source-repository read access, which is an improvement over a git branch. Radius rejects public packages before uploading state. New packages are created with an empty archive and verified before the real archive is pushed; private and internal visibility are accepted until client-side encryption is added.
 
 ## Alternatives considered
 

@@ -51,8 +51,9 @@ import (
 )
 
 const (
-	layerMediaType  = "application/vnd.radius.statearchive.layer.v1.tar+gzip"
-	configMediaType = "application/vnd.radius.statearchive.config.v1+json"
+	layerMediaType         = "application/vnd.radius.statearchive.layer.v1.tar+gzip"
+	configMediaType        = "application/vnd.radius.statearchive.config.v1+json"
+	visibilityBootstrapTag = "radius-visibility-bootstrap"
 )
 
 var archiveLocks sync.Map // repository and archive name -> *sync.Mutex
@@ -71,13 +72,17 @@ type targetFactory func(context.Context) (oras.Target, error)
 
 // OCIArchive is a statearchive.Archive backed by OCI artifacts.
 type OCIArchive struct {
-	options   Options
-	newTarget targetFactory
+	options                Options
+	newTarget              targetFactory
+	checkPackageVisibility packageVisibilityChecker
 }
 
 // NewOCIArchive returns an OCI-backed state archive.
 func NewOCIArchive(options Options) *OCIArchive {
-	archive := &OCIArchive{options: options}
+	archive := &OCIArchive{
+		options:                options,
+		checkPackageVisibility: visibilityCheckerForRepository(options.Repository),
+	}
 	archive.newTarget = archive.openRemoteTarget
 	return archive
 }
@@ -116,10 +121,12 @@ func (a *OCIArchive) Open(ctx context.Context, name string) (statearchive.Sessio
 	}()
 
 	session := &session{
-		path:   path,
-		name:   name,
-		target: target,
-		unlock: lock.Unlock,
+		path:                   path,
+		name:                   name,
+		repository:             a.options.Repository,
+		target:                 target,
+		checkPackageVisibility: a.checkPackageVisibility,
+		unlock:                 lock.Unlock,
 	}
 
 	desc, err := target.Resolve(ctx, name)
@@ -174,10 +181,12 @@ func lockForArchive(repository, name string) *sync.Mutex {
 }
 
 type session struct {
-	path           string
-	name           string
-	target         oras.Target
-	manifestDigest digest.Digest
+	path                   string
+	name                   string
+	repository             string
+	target                 oras.Target
+	manifestDigest         digest.Digest
+	checkPackageVisibility packageVisibilityChecker
 
 	unlock   func()
 	unlocked bool
@@ -208,6 +217,12 @@ func (s *session) Commit(ctx context.Context, _ string) error {
 		return nil
 	}
 
+	if artifact.hasFiles {
+		if err := s.ensurePackageNotPublic(ctx); err != nil {
+			return err
+		}
+	}
+
 	if err := s.ensureTagUnchanged(ctx); err != nil {
 		return err
 	}
@@ -216,6 +231,60 @@ func (s *session) Commit(ctx context.Context, _ string) error {
 		return fmt.Errorf("failed to push OCI archive %q: %w", s.name, err)
 	}
 	s.manifestDigest = artifact.manifestDesc.Digest
+	return nil
+}
+
+func (s *session) ensurePackageNotPublic(ctx context.Context) error {
+	if s.checkPackageVisibility == nil {
+		return nil
+	}
+
+	visibility, err := s.checkPackageVisibility(ctx)
+	if errors.Is(err, errGHCRPackageNotFound) {
+		if bootstrapErr := s.pushEmptyArchive(ctx); bootstrapErr != nil {
+			return fmt.Errorf("failed to bootstrap GHCR package %q with an empty archive: %w", s.repository, bootstrapErr)
+		}
+
+		visibility, err = s.checkPackageVisibility(ctx)
+		if errors.Is(err, errGHCRPackageNotFound) {
+			return fmt.Errorf("failed to verify GHCR package %q after empty archive bootstrap: %w", s.repository, err)
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("failed to verify GHCR package %q visibility: %w", s.repository, err)
+	}
+
+	switch visibility {
+	case packageVisibilityPrivate, packageVisibilityInternal:
+		return nil
+	case packageVisibilityPublic:
+		return fmt.Errorf("GHCR package %q is public; refusing to upload Radius archive contents", s.repository)
+	default:
+		return fmt.Errorf("GHCR package %q has unsupported visibility %q; refusing to upload Radius archive contents", s.repository, visibility)
+	}
+}
+
+func (s *session) pushEmptyArchive(ctx context.Context) error {
+	path, err := os.MkdirTemp("", "radius-oci-empty-")
+	if err != nil {
+		return fmt.Errorf("failed to create empty archive directory: %w", err)
+	}
+	defer func() {
+		if removeErr := os.RemoveAll(path); removeErr != nil {
+			ucplog.FromContextOrDiscard(ctx).Info("Failed to remove empty archive directory", "path", path, "error", removeErr)
+		}
+	}()
+
+	artifact, err := createArtifact(ctx, s.name, path)
+	if err != nil {
+		return err
+	}
+	defer artifact.Close(ctx)
+
+	_, err = oras.Copy(ctx, artifact.source, s.name, s.target, visibilityBootstrapTag, oras.DefaultCopyOptions)
+	if err != nil {
+		return fmt.Errorf("failed to push empty OCI archive: %w", err)
+	}
 	return nil
 }
 

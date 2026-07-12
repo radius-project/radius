@@ -207,8 +207,10 @@ they have separate lifecycles and access requirements.
 - **Commit** streams a deterministic tar.gz artifact through a temporary
   file-backed ORAS store. Memory use stays bounded as archives grow, and
   unchanged files create the same digest, so no upload occurs.
+- **GHCR visibility guard** checks GitHub Packages metadata immediately before each state-bearing upload. Private and internal packages are accepted; public packages are rejected without uploading the archive contents. When the package does not exist yet, Radius first pushes a valid empty archive under a reserved bootstrap tag, verifies the resulting package visibility, and only then uploads the real archive. The separate tag cannot overwrite a concurrently created state tag.
 - **Authentication** uses Docker credentials, including credentials created by
-  `docker/login-action` in GitHub Actions.
+  `docker/login-action` in GitHub Actions. GHCR visibility checks use the same
+  token with GitHub Packages metadata access.
 - **Local testing** can use `RADIUS_ARCHIVE_PLAIN_HTTP=true` with a local OCI
   registry.
 
