@@ -16,7 +16,8 @@ class GetReleaseVersionTests(unittest.TestCase):
             github_env = temp_path / "github-env"
             versions_file = temp_path / "versions.yaml"
             versions_file.write_text(
-                versions or (
+                versions
+                or (
                     "supported:\n"
                     "  - channel: '0.60'\n"
                     "    version: 'v0.60.0-rc1'\n"
@@ -29,11 +30,13 @@ class GetReleaseVersionTests(unittest.TestCase):
             )
 
             environment = os.environ.copy()
-            environment.update({
-                "GITHUB_ENV": str(github_env),
-                "GITHUB_REF": git_ref,
-                "VERSIONS_FILE": str(versions_file),
-            })
+            environment.update(
+                {
+                    "GITHUB_ENV": str(github_env),
+                    "GITHUB_REF": git_ref,
+                    "VERSIONS_FILE": str(versions_file),
+                }
+            )
             subprocess.run(
                 [sys.executable, str(SCRIPT_PATH)],
                 check=True,

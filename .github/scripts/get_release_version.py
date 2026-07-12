@@ -59,9 +59,11 @@ from pathlib import Path
 def get_supported_releases(versions_file):
     in_supported = False
     channel_pattern = re.compile(
-        r"^\s*-\s+channel:\s*(['\"]?)(?P<channel>\d+\.\d+)\1\s*(?:#.*)?$")
+        r"^\s*-\s+channel:\s*(['\"]?)(?P<channel>\d+\.\d+)\1\s*(?:#.*)?$"
+    )
     version_pattern = re.compile(
-        r"^\s+version:\s*(['\"]?)(?P<version>v[^'\"\s]+)\1\s*(?:#.*)?$")
+        r"^\s+version:\s*(['\"]?)(?P<version>v[^'\"\s]+)\1\s*(?:#.*)?$"
+    )
     candidateChannel = None
     releases = []
 
@@ -82,15 +84,20 @@ def get_supported_releases(versions_file):
 
                 versionMatch = version_pattern.match(line)
                 if versionMatch is not None and candidateChannel is not None:
-                    releases.append((
-                        candidateChannel,
-                        versionMatch.group("version").removeprefix("v")))
+                    releases.append(
+                        (
+                            candidateChannel,
+                            versionMatch.group("version").removeprefix("v"),
+                        )
+                    )
                     candidateChannel = None
 
     if not releases:
         raise ValueError(
-            "Could not find supported releases in {}".format(versions_file))
+            "Could not find supported releases in {}".format(versions_file)
+        )
     return releases
+
 
 gitRef = os.getenv("GITHUB_REF")
 githubEnvPath = os.getenv("GITHUB_ENV")
@@ -105,17 +112,21 @@ pullRefRegex = r"^refs/pull/(.*)/(.*)$"
 
 with open(githubEnvPath, "a", encoding="utf-8") as githubEnv:
     versionsFile = os.getenv(
-        "VERSIONS_FILE",
-        Path(__file__).resolve().parents[2] / "versions.yaml")
+        "VERSIONS_FILE", Path(__file__).resolve().parents[2] / "versions.yaml"
+    )
     supportedReleases = get_supported_releases(versionsFile)
-    latestStableRelease = next((
-        (releaseChannel, releaseVersion.partition("+")[0])
-        for releaseChannel, releaseVersion in supportedReleases
-        if "-" not in releaseVersion.partition("+")[0]
-    ), None)
+    latestStableRelease = next(
+        (
+            (releaseChannel, releaseVersion.partition("+")[0])
+            for releaseChannel, releaseVersion in supportedReleases
+            if "-" not in releaseVersion.partition("+")[0]
+        ),
+        None,
+    )
     if latestStableRelease is None:
         raise ValueError(
-            "Could not find the latest stable release in {}".format(versionsFile))
+            "Could not find the latest stable release in {}".format(versionsFile)
+        )
     latestChannel, latestVersion = latestStableRelease
     latestStableChannel = "LATEST_STABLE_CHANNEL={}".format(latestChannel)
     print("Setting: {}".format(latestStableChannel))
@@ -131,7 +142,8 @@ with open(githubEnvPath, "a", encoding="utf-8") as githubEnv:
 
     if gitRef is None:
         print(
-            "This is not running in github, GITHUB_REF is null. Assuming a local build...")
+            "This is not running in github, GITHUB_REF is null. Assuming a local build..."
+        )
 
         version = "REL_VERSION=edge"
         print("Setting: {}".format(version))
@@ -181,7 +193,8 @@ with open(githubEnvPath, "a", encoding="utf-8") as githubEnv:
             githubEnv.write(chart + "\n")
 
             channel = "REL_CHANNEL={}.{}".format(
-                match.group("major"), match.group("minor"))
+                match.group("major"), match.group("minor")
+            )
             print("Setting: {}".format(channel))
             githubEnv.write(channel + "\n")
 
