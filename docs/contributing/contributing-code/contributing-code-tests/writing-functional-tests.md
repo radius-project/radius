@@ -30,38 +30,42 @@ Put `.bicep` files and other fixtures in a `testdata` directory inside the test 
 
 Most resource-provider tests use `rp.NewRPTest`, one or more `rp.TestStep` values, a deploy executor, and explicit resource or Kubernetes-object validation. A minimal test has this shape:
 
+<!-- markdownlint-disable MD010 -->
+
 ```go
 package resource_test
 
 import (
- "testing"
+	"testing"
 
- "github.com/radius-project/radius/test/rp"
- "github.com/radius-project/radius/test/step"
- "github.com/radius-project/radius/test/validation"
+	"github.com/radius-project/radius/test/rp"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
 )
 
 func Test_DescriptiveTestName(t *testing.T) {
- name := "unique-test-name"
- template := "testdata/unique-test-name.bicep"
+	name := "unique-test-name"
+	template := "testdata/unique-test-name.bicep"
 
- test := rp.NewRPTest(t, name, []rp.TestStep{
-  {
-   Executor: step.NewDeployExecutor(template, ""),
-   RPResources: &validation.RPResourceSet{
-    Resources: []validation.RPResource{
-     {
-      Name: name,
-      Type: validation.ApplicationsResource,
-     },
-    },
-   },
-  },
- })
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, ""),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+				},
+			},
+		},
+	})
 
- test.Test(t)
+	test.Test(t)
 }
 ```
+
+<!-- markdownlint-enable MD010 -->
 
 Copy a nearby test rather than this skeleton when the scenario needs recipe modules, cloud credentials, custom cleanup, output-resource validation, or Kubernetes assertions.
 
