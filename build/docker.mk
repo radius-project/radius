@@ -16,6 +16,7 @@
 
 DOCKER_REGISTRY?=$(shell whoami)
 DOCKER_TAG_VERSION?=latest
+DOCKER_SOURCE_TAG_VERSION?=
 IMAGE_SRC?=https://github.com/radius-project/radius
 MANIFEST_DIR?=deploy/manifest/built-in-providers/self-hosted
 
@@ -63,6 +64,15 @@ endif
 docker-push-$(1):
 	@echo "$(ARROW) Pushing image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
 	docker push $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)
+endef
+
+define generateDockerPromoteTarget
+.PHONY: docker-promote-tag-$(1)
+docker-promote-tag-$(1):
+	@test -n "$(DOCKER_SOURCE_TAG_VERSION)" || (echo "DOCKER_SOURCE_TAG_VERSION is required" && exit 1)
+	@bash ./build/scripts/promote-container-image.sh \
+		"$(DOCKER_REGISTRY)/$(1):$(DOCKER_SOURCE_TAG_VERSION)" \
+		"$(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
 endef
 
 define generateDockerMultiArches
@@ -145,6 +155,9 @@ $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP)) $(call generateDockerTa
 # This command will dynamically generate the multi-arch targets for each image in the APPS_MAP list.
 $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP)) $(call generateDockerMultiArches,$(NAME),.,$(DIR)/Dockerfile)))
 
+# This command will dynamically generate remote tag promotion targets for each image in APPS_MAP.
+$(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP)) $(call generateDockerPromoteTarget,$(NAME))))
+
 # list of 'outputs' to build all images
 DOCKER_BUILD_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-build-$(NAME))
 
@@ -156,6 +169,8 @@ DOCKER_BUILD_MULTI_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$
 
 # list of 'outputs' to push all multi arch images
 DOCKER_PUSH_MULTI_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-multi-arch-push-$(NAME))
+
+DOCKER_PROMOTE_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-promote-tag-$(NAME))
 
 # targets to build development images
 .PHONY: docker-build
@@ -171,3 +186,6 @@ docker-multi-arch-build: copy-manifests $(DOCKER_BUILD_MULTI_TARGETS) ## Builds 
 
 .PHONY: docker-multi-arch-push
 docker-multi-arch-push: copy-manifests $(DOCKER_PUSH_MULTI_TARGETS) ## Pushes all docker images for multiple architectures after building.
+
+.PHONY: docker-promote-tag
+docker-promote-tag: $(DOCKER_PROMOTE_TARGETS) ## Promotes an existing remote image tag to another tag without rebuilding.

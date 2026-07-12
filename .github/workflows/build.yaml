@@ -41,9 +41,9 @@ on:
 permissions: {}
 
 concurrency:
-  # Cancel the previously triggered build for only PR build.
-  group: build-${{ github.ref }}-${{ github.event.pull_request.number || github.sha }}
-  cancel-in-progress: true
+  # Cancel stale PR and main builds. Release tags use independent groups so no release is discarded.
+  group: build-${{ github.ref }}-${{ github.event.pull_request.number || (github.ref == 'refs/heads/main' && 'main') || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
 
 env:
   # GitHub Actor for pushing images to GHCR
@@ -217,6 +217,19 @@ jobs:
         with:
           python-version-file: .python-version
 
+      - name: Test release version parsing
+        run: python ./.github/scripts/test_get_release_version.py
+
+      - name: Test container image promotion
+        run: bash ./build/scripts/test-promote-container-image.sh
+
+      - name: Read release metadata from main
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          git show FETCH_HEAD:versions.yaml > "${RUNNER_TEMP}/versions-main.yaml"
+          echo "VERSIONS_FILE=${RUNNER_TEMP}/versions-main.yaml" >> "${GITHUB_ENV}"
+
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
 
@@ -276,23 +289,39 @@ jobs:
           DOCKER_TAG_VERSION: edge
           DOCKER_CACHE_GHA: 1
 
-      - name: Push container images (release channel)
+      - name: Push container images (release version)
         run: |
           make docker-multi-arch-push
-        if: startsWith(github.ref, 'refs/tags/v') # push image to the major.minor (or prerelease) channel on tag
+        if: startsWith(github.ref, 'refs/tags/v') # publish the immutable full version before updating mutable aliases
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
           DOCKER_CACHE_GHA: 1
 
-      - name: Push container images (latest)
+      - name: Refresh release metadata from main
+        if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          make docker-multi-arch-push
-        if: startsWith(github.ref, 'refs/tags/v') && env.UPDATE_RELEASE == 'true' # push image to latest only on a full (non-prerelease) release
+          git fetch --no-tags --depth=1 origin main
+          git show FETCH_HEAD:versions.yaml > "${VERSIONS_FILE}"
+          python ./.github/scripts/get_release_version.py
+
+      - name: Promote container images to the release channel
+        run: |
+          make docker-promote-tag
+        if: startsWith(github.ref, 'refs/tags/v') && env.UPDATE_RELEASE == 'true' && env.UPDATE_CHANNEL == 'true'
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_SOURCE_TAG_VERSION: ${{ env.REL_VERSION }}
+          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
+
+      - name: Ensure latest points to the stable release
+        run: |
+          make docker-promote-tag
+        if: github.ref == 'refs/heads/main' || (startsWith(github.ref, 'refs/tags/v') && env.UPDATE_LATEST == 'true')
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_SOURCE_TAG_VERSION: ${{ github.ref == 'refs/heads/main' && env.LATEST_STABLE_CHANNEL || env.REL_VERSION }}
           DOCKER_TAG_VERSION: latest
-          DOCKER_CACHE_GHA: 1
 
       - name: Collect build metrics
         if: always()
@@ -301,7 +330,7 @@ jobs:
           cat dist/metrics/metrics.txt >> $GITHUB_STEP_SUMMARY
         env:
           DOCKER_REGISTRY: ${{ github.event_name == 'pull_request' && format('{0}/dev', env.CONTAINER_REGISTRY) || env.CONTAINER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ github.event_name == 'pull_request' && env.REL_VERSION || (github.ref == 'refs/heads/main' && 'edge' || env.REL_CHANNEL) }}
+          DOCKER_TAG_VERSION: ${{ github.ref == 'refs/heads/main' && 'edge' || env.REL_VERSION }}
 
       - name: Upload build metrics
         if: always()

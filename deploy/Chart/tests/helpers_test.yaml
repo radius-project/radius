@@ -278,6 +278,44 @@ tests:
           value: ghcr.io/radius-project/dashboard:latest
         template: dashboard/deployment.yaml
 
+  - it: should use the major.minor channel for a stable chart version
+    chart:
+      appVersion: 0.59.1
+    set:
+      controller.image: controller
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/controller:0.59
+        template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:0.59
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dashboard:0.59
+        template: dashboard/deployment.yaml
+
+  - it: should preserve the full prerelease chart version
+    chart:
+      appVersion: 0.60.0-rc1
+    set:
+      controller.image: controller
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/controller:0.60.0-rc1
+        template: controller/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:0.60.0-rc1
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dashboard:0.60.0-rc1
+        template: dashboard/deployment.yaml
+
   - it: should work with custom registry and default tag
     set:
       global.imageRegistry: custom.registry.io
