@@ -516,6 +516,22 @@ managed secret. `secrets` is treated as a framework-owned basic property (see
 `pkg/resourceutil.BasicProperties`) so it is never overwritten by generic
 recipe-output copying.
 
+**Binding is lazy, and materialization is non-blocking.** The materializer
+issues an accepted PUT for the managed secret and returns without waiting for
+that secret's own asynchronous provisioning to finish — it deliberately does not
+poll to completion, because that would hold a processing worker while the managed
+secret's provisioning waits for another worker from the same pool (a starvation /
+deadlock hazard). As a result the owner's operation can reach `Succeeded` before
+the backing Kubernetes Secret exists. This is safe for the normal case: a
+consuming container references the secret via `secretKeyRef`, which Kubernetes
+resolves lazily and retries until the Secret appears, so a brief materialization
+lag self-heals. The residual gap is a *permanent* managed-secret provisioning
+failure — the owner is already `Succeeded`, nothing reconciles it, and the error
+only surfaces when the consumer tries to bind at connect time. Making the owner's
+success depend on the managed secret being deployed, without blocking a worker
+(an async reconcile / requeue that verifies the secret before marking the owner
+`Succeeded`), is a planned follow-up.
+
 Secret **inputs** (Scenario 1) are unrelated and already handled by the
 `x-radius-sensitive` encryption filter described under
 [How dynamic-rp Picks A Path](#how-dynamic-rp-picks-a-path). Re-fetching a
