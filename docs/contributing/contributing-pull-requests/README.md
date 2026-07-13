@@ -10,7 +10,7 @@ Before opening a pull request, make sure you have:
 
 - **Agreement on scope.** For anything beyond a trivial fix (like a typo), [choose an existing issue](https://github.com/radius-project/radius/issues) or [open a new one](https://github.com/radius-project/radius/issues/new/choose) and work with the maintainers to confirm the change is in scope *before* writing code. The maintainers have discretion over what they accept — see [this article](https://www.igvita.com/2011/12/19/dont-push-your-pull-requests/) for why. If you have any doubt whether a contribution is valuable, ask first.
 - **A fork of the repository.** Submit pull requests from a forked repo against the `main` branch (the default) unless otherwise instructed.
-- **A working local build.** Run the basic validations (`make build test lint`) successfully before you submit. See [building the repo](../contributing-code/contributing-code-building/) for setup.
+- **A working local build.** Run the basic validations (`make build test lint format-check`) successfully before you submit. See [building the repo](../contributing-code/contributing-code-building/) for setup.
 
 ## Steps
 
@@ -19,7 +19,7 @@ Before opening a pull request, make sure you have:
 Work on your fork and run the basic validations before submitting:
 
 ```bash
-make build test lint
+make build test lint format-check
 ```
 
 This builds the repo, runs the unit tests, and runs the linters. If you get stuck, you can open the pull request anyway and ask for help in our [forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814).
@@ -49,13 +49,14 @@ The Developer Certificate of Origin (DCO) check requires every commit to be sign
 
 ### 4. Open the pull request and fill out the template
 
-Open the pull request from your fork against `main`. The form is pre-populated with our [template](https://github.com/radius-project/radius/blob/main/.github/pull_request_template.md). Fill it out to give your PR structure — a good commit message (step 2) makes this easy.
+Open the pull request from your fork against `main`. The form is pre-populated with our [template](https://github.com/radius-project/radius/blob/main/.github/pull_request_template.md). Complete its summary, reason for change, test instructions, and per-file change summary so reviewers can understand both the intent and the verification.
 
-The template asks you to choose one of three change types. This helps us author the release notes and tells reviewers what to look for:
+Every non-Dependabot pull request must have exactly one release-impact label:
 
-- **Bugfix** — the change fixes a case where Radius does not work as advertised, crashes, or fails internally.
-- **Feature** — the change introduces new behavior or modifies an existing feature in a user-visible way.
-- **Task** — a catch-all for changes with no direct user-visible impact (minor refactors, code/style cleanup, test improvements, comment fixes, build changes). Tasks are not included in the release notes.
+- **`pr:standard`** — ongoing maintenance, minor improvements, documentation updates, and routine development work.
+- **`pr:important`** — major features, breaking changes, deprecations, or other high-impact changes that need special attention during release.
+
+The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
 
 ### 5. (Optional) Self-review with the `radius-code-review` skill
 
@@ -93,7 +94,7 @@ A pull request must pass these checkpoints to be accepted:
 
 - **Initial review** — a maintainer reviews your summary and confirms an appropriate issue is linked.
 - **Automated tests** — GitHub Actions workflows run unit, integration, and functional tests against your changes. Automation adds comments with links to logs so you can diagnose failures.
-- **Contributor checklist** — the PR meets the [checklist requirements](https://github.com/radius-project/radius/blob/main/.github/pull_request_template.md#contributor-checklist).
+- **Required label** — exactly one of `pr:standard` or `pr:important` is applied.
 - **Code review** — you receive and address feedback from a maintainer or other contributors.
 
 The functional-tests workflow requires approval to run. One of our approvers is automatically notified when you submit the PR; once they approve the run, the functional tests start.
@@ -115,4 +116,4 @@ The functional-tests workflow requires approval to run. One of our approvers is 
 
   cspell requires [Node.js](https://nodejs.org/); install it globally with `npm install -g cspell`.
 - **A CI failure you can't understand.** Our automation adds comments with links to logs. If you're still stuck, ask the maintainers for help.
-- **Your PR was marked stale.** Pull requests inactive for 90 days are marked with a stale label and closed after a further 7 days of inactivity. This timeframe may be adjusted in the future based on project needs. Comment or push an update to keep your PR active.
+- **Your PR was marked stale.** Pull requests inactive for 28 days are marked with the `stale` label and closed after one further day of inactivity. Comment or push an update to keep your PR active.

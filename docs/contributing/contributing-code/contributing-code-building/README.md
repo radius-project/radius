@@ -70,6 +70,23 @@ DOCKER_REGISTRY=ghcr.io/my-registry make docker-build docker-push
 
 If you work with Radius frequently, set `DOCKER_REGISTRY` in your shell profile. The [radius-build-images](../../../../.github/skills/radius-build-images/SKILL.md) skill wraps this workflow, including single-image and multi-architecture builds.
 
+#### Build multi-architecture images
+
+The multi-architecture targets build `linux/amd64`, `linux/arm64`, and `linux/arm` images with Docker Buildx. Initialize the QEMU and Buildx builder once:
+
+```bash
+make configure-buildx
+docker buildx use radius-builder
+```
+
+The Make target creates and bootstraps the `radius-builder` builder when needed; `docker buildx use` selects it for the commands that follow. Then build and push a multi-architecture image index:
+
+```bash
+DOCKER_REGISTRY=ghcr.io/my-registry DOCKER_TAG_VERSION=latest make docker-multi-arch-push
+```
+
+Use `make docker-multi-arch-build` to build without pushing, or append an image name such as `make docker-multi-arch-push-applications-rp` to build and push one image.
+
 ### Generate code
 
 When you change API schemas or Go APIs that have mocks, regenerate the checked-in generated code as part of your commit. Radius **checks in** generated code so that not every contributor has to install the generators. The PR process validates that the generated files are up to date.
@@ -93,5 +110,6 @@ This runs several generators in sequence and may take a few minutes. **Commit** 
 
 - **A `make` command fails on a missing dependency.** Review the [prerequisites guide](../contributing-code-prerequisites/README.md) and install the missing tool.
 - **Docker push fails with an authentication error.** Confirm you are logged in to the registry named in `DOCKER_REGISTRY`.
+- **A multi-architecture build cannot find a builder or emulator.** Run `make configure-buildx`, select it with `docker buildx use radius-builder`, then confirm it is active in `docker buildx ls`.
 - **You need to report a build problem.** Dump every Makefile variable with `make dump` (the output is large, so redirect it to a file) and include it in your report.
 - **Still stuck.** Ask in the [Radius Discord forum](https://discordapp.com/channels/1113519723347456110/1115302284356767814), or [open an issue](https://github.com/radius-project/radius/issues/new/choose) so we can improve the tooling and these instructions.
