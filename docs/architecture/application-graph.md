@@ -6,6 +6,15 @@ underlying infrastructure (output resources) backing each one. It is computed
 at query time from data already persisted in storage — there is no separate
 graph database or materialized view.
 
+The graph is exposed at two API versions. The stable
+`Applications.Core/applications/getGraph@2023-10-01-preview` endpoint returns
+the resources/connections/output-resources view described throughout most of
+this document. The newer
+`Radius.Core/applications/getGraph@2025-08-01-preview` endpoint reuses the same
+computation and additionally attaches per-node icon metadata resolved from the
+UCP resource-type registry; see [Radius.Core preview: icon
+enrichment](#radiuscore-preview-icon-enrichment) for the delta.
+
 ```mermaid
 sequenceDiagram
     participant CLI as rad CLI
@@ -36,13 +45,16 @@ sequenceDiagram
 
 | Component | Location | Responsibility |
 |---|---|---|
-| `rad app graph` command | `pkg/cli/cmd/app/graph/graph.go` | CLI entry point; calls SDK, dispatches to text or JSON output |
+| `rad app graph` command | `pkg/cli/cmd/app/graph/graph.go` | CLI entry point; dispatches between the stable Applications.Core path and the `--preview` Radius.Core path |
+| `rad app graph --preview` runner | `pkg/cli/cmd/app/graph/preview/graph.go` | Preview runner; owns the `--include-icons` flag and calls the Radius.Core preview client |
 | `display()` | `pkg/cli/cmd/app/graph/display.go` | Formats graph resources into human-readable text |
 | `UCPApplicationsManagementClient` | `pkg/cli/clients/management.go` | CLI SDK wrapper; calls `ApplicationsClient.GetGraph()` |
-| `ApplicationsClient.GetGraph()` | `pkg/corerp/api/v20231001preview/zz_generated_applications_client.go` | Auto-generated ARM client; builds the HTTP POST request |
+| `ApplicationsClient.GetGraph()` | `pkg/corerp/api/v20231001preview/zz_generated_applications_client.go`, `pkg/corerp/api/v20250801preview/zz_generated_applications_client.go` | Auto-generated ARM clients (one per API version); build the HTTP POST request |
 | UCP Proxy | `pkg/ucp/frontend/controller/radius/proxy.go` | Routes request to the Applications RP based on registered provider |
-| `GetGraph` controller | `pkg/corerp/frontend/controller/applications/getgraph.go` | Server-side entry point; orchestrates resource listing and graph computation |
-| `computeGraph()` | `pkg/corerp/frontend/controller/applications/graph_util.go` | Core algorithm that builds the graph from raw resource data |
+| `GetGraph` controller (Applications.Core) | `pkg/corerp/frontend/controller/applications/getgraph.go` | Server-side entry point for the stable API; orchestrates resource listing and graph computation |
+| `GetGraphv20250801preview` controller (Radius.Core) | `pkg/corerp/frontend/controller/applications/v20250801preview/getgraph.go` | Preview handler; wraps the shared computation with icon enrichment |
+| `fetchIcons` / `convertGraphResponseWithIcons` | `pkg/corerp/frontend/controller/applications/v20250801preview/graphicons.go` | Preview icon pipeline: one `GetProviderSummary` call per distinct namespace, then attaches per-node `iconHash` and optionally builds the deduped `icons` map |
+| `computeGraph()` | `pkg/corerp/frontend/controller/applications/graph_util.go` | Core algorithm that builds the graph from raw resource data (shared by both API versions) |
 | `database.Client` | `pkg/components/database/client.go` | Storage interface for all resource CRUD |
 
 ## How Data Gets Into Storage
@@ -300,7 +312,12 @@ output resources.
 
 ## API Wire Format
 
-The graph endpoint is a **custom action** on the Application resource:
+The graph endpoint is a **custom action** on the Application resource. Two API
+versions are live; both flow through the Kubernetes aggregated API
+(`api.ucp.dev/v1alpha3`) to UCP, which proxies to the appropriate Applications
+RP handler based on the registered resource provider.
+
+### `Applications.Core` (stable)
 
 | Field | Value |
 |---|---|
@@ -309,9 +326,105 @@ The graph endpoint is a **custom action** on the Application resource:
 | Request Body | `{}` (empty JSON object) |
 | Response | `ApplicationGraphResponse` (200 OK) |
 
-The request flows through the Kubernetes aggregated API (`api.ucp.dev/v1alpha3`)
-to UCP, which proxies it to the Applications RP based on the registered
-resource provider for `Applications.Core`.
+### `Radius.Core` (preview)
+
+| Field | Value |
+|---|---|
+| HTTP Method | `POST` |
+| URL | `{rootScope}/providers/Radius.Core/applications/{name}/getGraph?api-version=2025-08-01-preview` |
+| Request Body | `GetGraphRequest` — `{ "includeIcons": false }` (both the object and the field are optional; missing or empty bodies resolve to `false`) |
+| Response | `ApplicationGraphResponse` (200 OK) — same resources/connections/output-resources as the stable version, plus per-node `iconHash` and (when `includeIcons: true`) a top-level `icons` map from hash to verbatim SVG bytes |
+
+## Radius.Core Preview: Icon Enrichment
+
+The Radius.Core handler ([`GetGraphv20250801preview`](../../pkg/corerp/frontend/controller/applications/v20250801preview/getgraph.go))
+reuses the shared `ComputeGraphPayload` and then attaches icon metadata before
+returning the response.
+
+```mermaid
+graph TD
+    Request["POST getGraph<br/>body: { includeIcons: bool }"] --> Compute["ComputeGraphPayload<br/>(shared)"]
+    Compute --> Namespaces["Collect distinct namespaces<br/>from graph.Resources[].type"]
+    Namespaces --> ForEachNS["For each namespace"]
+    ForEachNS --> GPS["UCP GetProviderSummary<br/>/planes/radius/local/providers/&lt;ns&gt;"]
+    GPS -->|"200 with iconHash"| BuildLookup["Build lookup<br/>&lt;ns&gt;/&lt;typeName&gt; → { hash, bytes? }"]
+    GPS -->|"404 — provider not in local registry"| Skip["Skip namespace<br/>(nodes end up with iconHash: nil)"]
+    GPS -->|"Other error"| Fail["Fail the getGraph request"]
+    BuildLookup --> Attach["convertGraphResponseWithIcons:<br/>set node.iconHash from lookup"]
+    Skip --> Attach
+    Attach -->|"includeIcons: true"| BuildMap["buildIconsMap:<br/>dedupe icons by hash"]
+    Attach -->|"includeIcons: false"| Response["ApplicationGraphResponse<br/>(no icons map)"]
+    BuildMap --> Response
+```
+
+### Fetch, Batch, Dedupe
+
+- **Batching**: `fetchIcons` collects the distinct provider namespaces
+  referenced by the graph and issues one `GetProviderSummary` per namespace —
+  not one per resource type or per node.
+- **Hash vs bytes**: `GetProviderSummary` is called with `IncludeIcons: true`
+  only when the caller set `includeIcons: true` on the request. In the default
+  hash-only path the UCP client does not fetch icon bytes.
+- **Response dedupe**: When `includeIcons: true`, `buildIconsMap` emits at
+  most one entry in the top-level `icons` map per distinct `iconHash`,
+  regardless of how many nodes reference it. Clients can render every
+  referenced icon by iterating `icons` and looking each hash up.
+
+### External Nodes and Missing Providers
+
+`computeGraph` deliberately synthesizes graph entries for connected external
+cloud nodes such as `Microsoft.Storage/storageAccounts`. Those namespaces are
+not registered in the local Radius resource-type registry, so
+`GetProviderSummary` returns 404 for them. `fetchIcons` treats a 404 as "no
+icons for this namespace" and continues — the corresponding nodes appear in
+the response with `iconHash: null` rather than causing the whole request to
+fail. Non-404 errors still surface. This behavior applies regardless of the
+`includeIcons` value.
+
+### Data Model Delta
+
+```mermaid
+classDiagram
+    class GetGraphRequest {
+        +includeIcons?: bool
+    }
+    class ApplicationGraphResponse {
+        +resources: ApplicationGraphResource[]
+        +icons?: Map~string,string~
+    }
+    class ApplicationGraphResource {
+        +id: string
+        +type: string
+        +name: string
+        +provisioningState: string
+        +iconHash?: string
+        +connections: ApplicationGraphConnection[]
+        +outputResources: ApplicationGraphOutputResource[]
+    }
+
+    GetGraphRequest ..> ApplicationGraphResponse : produces
+    ApplicationGraphResponse "1" --> "*" ApplicationGraphResource : resources
+```
+
+The types are defined in TypeSpec at `typespec/Radius.Core/applications.tsp`
+and generated into `pkg/corerp/api/v20250801preview/`. `iconHash` is `nil`
+when the resource's type has no icon registered or its provider was not found
+in the local registry.
+
+### CLI
+
+`rad app graph --preview` uses this endpoint. The `--include-icons` flag
+threads through to `GetGraphRequest.IncludeIcons`; without it the CLI sends
+`nil` and the server defaults to `false`. Text output does not render SVGs;
+the flag is intended for programmatic consumers using `-o json`.
+
+```bash
+# Hash-only: nodes carry iconHash; clients fetch bytes separately by hash.
+rad app graph my-app --preview -o json
+
+# Bytes inline: response also includes a deduped icons map (hash → SVG bytes).
+rad app graph my-app --preview -o json --include-icons
+```
 
 ## Notable Details
 

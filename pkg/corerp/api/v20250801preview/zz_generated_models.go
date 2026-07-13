@@ -55,6 +55,11 @@ type ApplicationGraphResource struct {
 	// resources as added, removed, modified, or unchanged across graphs. Format: 'sha256:{hex}'.
 	DiffHash *string
 
+	// SHA-256 hex of the resource type's icon SVG, matching `iconHash` on the resource-type registry. Null when the type has
+	// no icon registered. The bytes themselves are delivered inline via `ApplicationGraphResponse.icons` when the request specifies
+	// `includeIcons: true`; otherwise clients fetch bytes by hash from the resource-type icon endpoint.
+	IconHash *string
+
 	// Resource-type-specific properties of the resource as returned by its resource provider. The shape of this map varies by
 	// `type` (e.g. a `Radius.Compute/containers` resource exposes different keys than `Radius.Datastores/redisCaches` or any
 	// user-defined resource type) and matches the `properties` returned by that resource's GET response. Top-level keys already
@@ -69,6 +74,10 @@ type ApplicationGraphResource struct {
 type ApplicationGraphResponse struct {
 	// REQUIRED; The resources in the application graph.
 	Resources []*ApplicationGraphResource
+
+	// Map from iconHash to the verbatim SVG UTF-8 bytes for every icon referenced by any resource in this response. Populated
+	// only when the request specifies `includeIcons: true`.
+	Icons map[string]*string
 }
 
 // ApplicationProperties - Application properties
@@ -278,7 +287,11 @@ type EnvironmentResourceListResult struct {
 	NextLink *string
 }
 
+// GetGraphRequest - Request body for the getGraph action.
 type GetGraphRequest struct {
+	// When true, `ApplicationGraphResponse.icons` is populated with the SVG bytes for every distinct `iconHash` referenced by
+	// the response's resources. When false or omitted, only per-resource `iconHash` values are returned.
+	IncludeIcons *bool
 }
 
 // IdentitySettings is the external identity setting.

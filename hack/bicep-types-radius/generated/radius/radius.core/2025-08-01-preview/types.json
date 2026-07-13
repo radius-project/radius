@@ -621,6 +621,13 @@
         },
         "flags": 1,
         "description": "The resources in the application graph."
+      },
+      "icons": {
+        "type": {
+          "$ref": "#/65"
+        },
+        "flags": 0,
+        "description": "Map from iconHash to the verbatim SVG UTF-8 bytes for every icon referenced by any resource in this response. Populated only when the request specifies `includeIcons: true`."
       }
     }
   },
@@ -676,6 +683,13 @@
         },
         "flags": 0,
         "description": "Stable hash over the authorable properties of this resource and its sorted dependsOn list. Used by tooling to classify resources as added, removed, modified, or unchanged across graphs. Format: 'sha256:{hex}'."
+      },
+      "iconHash": {
+        "type": {
+          "$ref": "#/0"
+        },
+        "flags": 0,
+        "description": "SHA-256 hex of the resource type's icon SVG, matching `iconHash` on the resource-type registry. Null when the type has no icon registered. The bytes themselves are delivered inline via `ApplicationGraphResponse.icons` when the request specifies `includeIcons: true`; otherwise clients fetch bytes by hash from the resource-type icon endpoint."
       },
       "properties": {
         "type": {
@@ -789,8 +803,24 @@
     }
   },
   {
+    "$type": "ObjectType",
+    "name": "Record",
+    "properties": {},
+    "additionalProperties": {
+      "$ref": "#/0"
+    }
+  },
+  {
     "$type": "FunctionType",
-    "parameters": [],
+    "parameters": [
+      {
+        "name": "includeIcons",
+        "type": {
+          "$ref": "#/28"
+        },
+        "description": "When true, `ApplicationGraphResponse.icons` is populated with the SVG bytes for every distinct `iconHash` referenced by the response's resources. When false or omitted, only per-resource `iconHash` values are returned."
+      }
+    ],
     "output": {
       "$ref": "#/53"
     }
@@ -806,7 +836,7 @@
     "functions": {
       "getGraph": {
         "type": {
-          "$ref": "#/65"
+          "$ref": "#/66"
         },
         "description": "getGraph"
       }
@@ -856,9 +886,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/69"
-      },
-      {
         "$ref": "#/70"
       },
       {
@@ -878,6 +905,9 @@
       },
       {
         "$ref": "#/76"
+      },
+      {
+        "$ref": "#/77"
       }
     ]
   },
@@ -893,7 +923,7 @@
     "properties": {
       "authenticationMethod": {
         "type": {
-          "$ref": "#/83"
+          "$ref": "#/84"
         },
         "flags": 0,
         "description": "The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa."
@@ -944,13 +974,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/80"
-      },
-      {
         "$ref": "#/81"
       },
       {
         "$ref": "#/82"
+      },
+      {
+        "$ref": "#/83"
       }
     ]
   },
@@ -959,7 +989,7 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/79"
+      "$ref": "#/80"
     }
   },
   {
@@ -968,21 +998,21 @@
     "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/94"
+          "$ref": "#/95"
         },
         "flags": 2,
         "description": "The status of the asynchronous operation."
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/95"
+          "$ref": "#/96"
         },
         "flags": 2,
         "description": "Environments that reference this Bicep configuration."
       },
       "registryAuthentications": {
         "type": {
-          "$ref": "#/96"
+          "$ref": "#/97"
         },
         "flags": 0,
         "description": "Authentication configuration for private Bicep registries, keyed by registry hostname (e.g. 'corp.acr.io'). The Bicep driver looks up credentials by the host parsed from the recipe template path."
@@ -1025,9 +1055,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/86"
-      },
-      {
         "$ref": "#/87"
       },
       {
@@ -1047,6 +1074,9 @@
       },
       {
         "$ref": "#/93"
+      },
+      {
+        "$ref": "#/94"
       }
     ]
   },
@@ -1061,7 +1091,7 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/79"
+      "$ref": "#/80"
     }
   },
   {
@@ -1092,49 +1122,49 @@
       },
       "type": {
         "type": {
-          "$ref": "#/67"
+          "$ref": "#/68"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/68"
+          "$ref": "#/69"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/77"
+          "$ref": "#/78"
         },
         "flags": 2,
         "description": "The status of the asynchronous operation."
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/78"
+          "$ref": "#/79"
         },
         "flags": 2,
         "description": "Environments that reference this Bicep configuration."
       },
       "registryAuthentications": {
         "type": {
-          "$ref": "#/84"
+          "$ref": "#/85"
         },
         "flags": 2,
         "description": "Authentication configuration for private Bicep registries, keyed by registry hostname (e.g. 'corp.acr.io'). The Bicep driver looks up credentials by the host parsed from the recipe template path."
       },
       "properties": {
         "type": {
-          "$ref": "#/85"
+          "$ref": "#/86"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/97"
+          "$ref": "#/98"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1159,7 +1189,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/bicepSettings@2025-08-01-preview",
     "body": {
-      "$ref": "#/98"
+      "$ref": "#/99"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -1209,9 +1239,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/102"
-      },
-      {
         "$ref": "#/103"
       },
       {
@@ -1231,6 +1258,9 @@
       },
       {
         "$ref": "#/109"
+      },
+      {
+        "$ref": "#/110"
       }
     ]
   },
@@ -1253,7 +1283,7 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/112"
+      "$ref": "#/113"
     }
   },
   {
@@ -1262,21 +1292,21 @@
     "properties": {
       "azure": {
         "type": {
-          "$ref": "#/115"
+          "$ref": "#/116"
         },
         "flags": 0,
         "description": "The Azure cloud provider configuration."
       },
       "kubernetes": {
         "type": {
-          "$ref": "#/116"
+          "$ref": "#/117"
         },
         "flags": 0,
         "description": "The Kubernetes provider configuration."
       },
       "aws": {
         "type": {
-          "$ref": "#/117"
+          "$ref": "#/118"
         },
         "flags": 0,
         "description": "The AWS cloud provider configuration."
@@ -1349,28 +1379,28 @@
     "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/127"
+          "$ref": "#/128"
         },
         "flags": 2,
         "description": "The status of the asynchronous operation."
       },
       "recipePacks": {
         "type": {
-          "$ref": "#/128"
+          "$ref": "#/129"
         },
         "flags": 0,
         "description": "List of Recipe Pack resource IDs linked to this environment."
       },
       "recipeParameters": {
         "type": {
-          "$ref": "#/130"
+          "$ref": "#/131"
         },
         "flags": 0,
         "description": "Recipe specific parameters that apply to all resources of a given type in this environment."
       },
       "providers": {
         "type": {
-          "$ref": "#/114"
+          "$ref": "#/115"
         },
         "flags": 0,
         "description": "Cloud provider configuration for the environment."
@@ -1434,9 +1464,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/119"
-      },
-      {
         "$ref": "#/120"
       },
       {
@@ -1456,6 +1483,9 @@
       },
       {
         "$ref": "#/126"
+      },
+      {
+        "$ref": "#/127"
       }
     ]
   },
@@ -1478,7 +1508,7 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/129"
+      "$ref": "#/130"
     }
   },
   {
@@ -1509,42 +1539,42 @@
       },
       "type": {
         "type": {
-          "$ref": "#/100"
+          "$ref": "#/101"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/101"
+          "$ref": "#/102"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/110"
+          "$ref": "#/111"
         },
         "flags": 2,
         "description": "The status of the asynchronous operation."
       },
       "recipePacks": {
         "type": {
-          "$ref": "#/111"
+          "$ref": "#/112"
         },
         "flags": 2,
         "description": "List of Recipe Pack resource IDs linked to this environment."
       },
       "recipeParameters": {
         "type": {
-          "$ref": "#/113"
+          "$ref": "#/114"
         },
         "flags": 2,
         "description": "Recipe specific parameters that apply to all resources of a given type in this environment."
       },
       "providers": {
         "type": {
-          "$ref": "#/114"
+          "$ref": "#/115"
         },
         "flags": 2,
         "description": "Cloud provider configuration for the environment."
@@ -1572,14 +1602,14 @@
       },
       "properties": {
         "type": {
-          "$ref": "#/118"
+          "$ref": "#/119"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/131"
+          "$ref": "#/132"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1604,7 +1634,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/environments@2025-08-01-preview",
     "body": {
-      "$ref": "#/132"
+      "$ref": "#/133"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -1654,9 +1684,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/136"
-      },
-      {
         "$ref": "#/137"
       },
       {
@@ -1676,6 +1703,9 @@
       },
       {
         "$ref": "#/143"
+      },
+      {
+        "$ref": "#/144"
       }
     ]
   },
@@ -1691,7 +1721,7 @@
     "properties": {
       "kind": {
         "type": {
-          "$ref": "#/149"
+          "$ref": "#/150"
         },
         "flags": 1,
         "description": "The type of recipe (e.g., Terraform, Bicep)"
@@ -1712,14 +1742,14 @@
       },
       "parameters": {
         "type": {
-          "$ref": "#/150"
+          "$ref": "#/151"
         },
         "flags": 0,
         "description": "Parameters to pass to the recipe"
       },
       "outputs": {
         "type": {
-          "$ref": "#/151"
+          "$ref": "#/152"
         },
         "flags": 0,
         "description": "Map of resource type property names to module output names. Used for recipes that point directly at a Bicep or Terraform module to map the module's outputs onto the resource's properties."
@@ -1738,10 +1768,10 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/147"
+        "$ref": "#/148"
       },
       {
-        "$ref": "#/148"
+        "$ref": "#/149"
       }
     ]
   },
@@ -1766,7 +1796,7 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/146"
+      "$ref": "#/147"
     }
   },
   {
@@ -1775,21 +1805,21 @@
     "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/162"
+          "$ref": "#/163"
         },
         "flags": 2,
         "description": "The status of the asynchronous operation"
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/163"
+          "$ref": "#/164"
         },
         "flags": 2,
         "description": "List of environment IDs that reference this recipe pack"
       },
       "recipes": {
         "type": {
-          "$ref": "#/164"
+          "$ref": "#/165"
         },
         "flags": 1,
         "description": "Map of resource types to their recipe configurations"
@@ -1832,9 +1862,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/154"
-      },
-      {
         "$ref": "#/155"
       },
       {
@@ -1854,6 +1881,9 @@
       },
       {
         "$ref": "#/161"
+      },
+      {
+        "$ref": "#/162"
       }
     ]
   },
@@ -1868,7 +1898,7 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/146"
+      "$ref": "#/147"
     }
   },
   {
@@ -1899,49 +1929,49 @@
       },
       "type": {
         "type": {
-          "$ref": "#/134"
+          "$ref": "#/135"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/135"
+          "$ref": "#/136"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/144"
+          "$ref": "#/145"
         },
         "flags": 2,
         "description": "The status of the asynchronous operation"
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/145"
+          "$ref": "#/146"
         },
         "flags": 2,
         "description": "List of environment IDs that reference this recipe pack"
       },
       "recipes": {
         "type": {
-          "$ref": "#/152"
+          "$ref": "#/153"
         },
         "flags": 2,
         "description": "Map of resource types to their recipe configurations"
       },
       "properties": {
         "type": {
-          "$ref": "#/153"
+          "$ref": "#/154"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/165"
+          "$ref": "#/166"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -1966,7 +1996,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/recipePacks@2025-08-01-preview",
     "body": {
-      "$ref": "#/166"
+      "$ref": "#/167"
     },
     "readableScopes": 0,
     "writableScopes": 0,
@@ -2016,9 +2046,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/170"
-      },
-      {
         "$ref": "#/171"
       },
       {
@@ -2038,6 +2065,9 @@
       },
       {
         "$ref": "#/177"
+      },
+      {
+        "$ref": "#/178"
       }
     ]
   },
@@ -2053,14 +2083,14 @@
     "properties": {
       "providerInstallation": {
         "type": {
-          "$ref": "#/181"
+          "$ref": "#/182"
         },
         "flags": 0,
         "description": "Provider installation configuration. Specifies the location of providers via network mirrors or direct downloads."
       },
       "credentials": {
         "type": {
-          "$ref": "#/189"
+          "$ref": "#/190"
         },
         "flags": 0,
         "description": "Credentials for authenticating to private Terraform registries (HTTP-based, e.g. app.terraform.io). Map of registry hostname to credential configuration. Rendered as native `credentials \"hostname\" {}` blocks in the generated .terraformrc. Note: this is for Terraform CLI registry auth (HTTP), not for Git-based module sources; Git auth is a separate mechanism."
@@ -2073,14 +2103,14 @@
     "properties": {
       "networkMirror": {
         "type": {
-          "$ref": "#/182"
+          "$ref": "#/183"
         },
         "flags": 0,
         "description": "Network mirror configuration for downloading providers."
       },
       "direct": {
         "type": {
-          "$ref": "#/185"
+          "$ref": "#/186"
         },
         "flags": 0,
         "description": "Direct provider installation configuration."
@@ -2100,14 +2130,14 @@
       },
       "include": {
         "type": {
-          "$ref": "#/183"
+          "$ref": "#/184"
         },
         "flags": 0,
         "description": "Provider address patterns to include from this mirror."
       },
       "exclude": {
         "type": {
-          "$ref": "#/184"
+          "$ref": "#/185"
         },
         "flags": 0,
         "description": "Provider address patterns to exclude from this mirror."
@@ -2132,14 +2162,14 @@
     "properties": {
       "include": {
         "type": {
-          "$ref": "#/186"
+          "$ref": "#/187"
         },
         "flags": 0,
         "description": "Provider address patterns to include for direct installation."
       },
       "exclude": {
         "type": {
-          "$ref": "#/187"
+          "$ref": "#/188"
         },
         "flags": 0,
         "description": "Provider address patterns to exclude from direct installation."
@@ -2176,7 +2206,7 @@
     "name": "Record",
     "properties": {},
     "additionalProperties": {
-      "$ref": "#/188"
+      "$ref": "#/189"
     }
   },
   {
@@ -2193,28 +2223,28 @@
     "properties": {
       "provisioningState": {
         "type": {
-          "$ref": "#/200"
+          "$ref": "#/201"
         },
         "flags": 2,
         "description": "The status of the asynchronous operation."
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/201"
+          "$ref": "#/202"
         },
         "flags": 2,
         "description": "Environments that reference this Terraform configuration."
       },
       "terraformrc": {
         "type": {
-          "$ref": "#/180"
+          "$ref": "#/181"
         },
         "flags": 0,
         "description": "Terraform CLI configuration file settings. Maps directly to the Terraform CLI configuration file (.terraformrc)."
       },
       "env": {
         "type": {
-          "$ref": "#/202"
+          "$ref": "#/203"
         },
         "flags": 0,
         "description": "Environment variables injected during Terraform recipe execution."
@@ -2257,9 +2287,6 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/192"
-      },
-      {
         "$ref": "#/193"
       },
       {
@@ -2279,6 +2306,9 @@
       },
       {
         "$ref": "#/199"
+      },
+      {
+        "$ref": "#/200"
       }
     ]
   },
@@ -2324,56 +2354,56 @@
       },
       "type": {
         "type": {
-          "$ref": "#/168"
+          "$ref": "#/169"
         },
         "flags": 10,
         "description": "The resource type"
       },
       "apiVersion": {
         "type": {
-          "$ref": "#/169"
+          "$ref": "#/170"
         },
         "flags": 10,
         "description": "The resource api version"
       },
       "provisioningState": {
         "type": {
-          "$ref": "#/178"
+          "$ref": "#/179"
         },
         "flags": 2,
         "description": "The status of the asynchronous operation."
       },
       "referencedBy": {
         "type": {
-          "$ref": "#/179"
+          "$ref": "#/180"
         },
         "flags": 2,
         "description": "Environments that reference this Terraform configuration."
       },
       "terraformrc": {
         "type": {
-          "$ref": "#/180"
+          "$ref": "#/181"
         },
         "flags": 2,
         "description": "Terraform CLI configuration file settings. Maps directly to the Terraform CLI configuration file (.terraformrc)."
       },
       "env": {
         "type": {
-          "$ref": "#/190"
+          "$ref": "#/191"
         },
         "flags": 2,
         "description": "Environment variables injected during Terraform recipe execution."
       },
       "properties": {
         "type": {
-          "$ref": "#/191"
+          "$ref": "#/192"
         },
         "flags": 1,
         "description": "The resource-specific properties for this resource."
       },
       "tags": {
         "type": {
-          "$ref": "#/203"
+          "$ref": "#/204"
         },
         "flags": 0,
         "description": "Resource tags."
@@ -2398,7 +2428,7 @@
     "$type": "ResourceType",
     "name": "Radius.Core/terraformSettings@2025-08-01-preview",
     "body": {
-      "$ref": "#/204"
+      "$ref": "#/205"
     },
     "readableScopes": 0,
     "writableScopes": 0,
