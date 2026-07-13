@@ -848,6 +848,7 @@ managedIdentity
 managedStore
 manualScaling
 mapstructure
+materializer
 maxLogRequests
 maxOperationConcurrency
 maxOperationRetryCount
