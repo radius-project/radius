@@ -77,7 +77,9 @@ runs:
         fi
 
         # Replace the environment's recipe pack list with every pack so the custom
-        # types resolve alongside the default provider recipes.
+        # types resolve alongside the default provider recipes. --preview selects the
+        # Radius.Core implementation; without it `rad env update` dispatches to the
+        # legacy command, which does not understand --recipe-packs.
         echo "Attaching recipe packs to environment '$ENVIRONMENT': $PACK_IDS"
-        rad env update "$ENVIRONMENT" --recipe-packs "$PACK_IDS"
+        rad env update "$ENVIRONMENT" --recipe-packs "$PACK_IDS" --preview
         echo "✅ Environment '$ENVIRONMENT' updated with all recipe packs."
