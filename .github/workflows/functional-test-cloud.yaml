@@ -754,7 +754,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
         with:
           role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
-          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          role-session-name: ${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Install KinD

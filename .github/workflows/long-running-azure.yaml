@@ -281,8 +281,7 @@ jobs:
           AZURE_SP_TESTS_APPID: ${{ secrets.AZURE_SP_TESTS_APPID }}
           AZURE_SP_TESTS_TENANTID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
           FUNCTEST_AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
-          FUNCTEST_AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
-          FUNCTEST_AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
+          FUNC_TEST_RAD_IRSA_ROLE: ${{ secrets.FUNC_TEST_RAD_IRSA_ROLE }}
         run: |
           set -x
 
@@ -307,8 +306,12 @@ jobs:
 
           echo "*** Configuring AWS provider ***"
           rad env update "${RADIUS_TEST_ENVIRONMENT_NAME}" --aws-region "${AWS_REGION}" --aws-account-id "${FUNCTEST_AWS_ACCOUNT_ID}"
-          rad credential register aws access-key \
-            --access-key-id "${FUNCTEST_AWS_ACCESS_KEY_ID}" --secret-access-key "${FUNCTEST_AWS_SECRET_ACCESS_KEY}"
+          # Register AWS credentials using IRSA (IAM Roles for Service Accounts).
+          # The Radius pods on the AKS cluster assume this role via their
+          # projected service account tokens (workload identity), so no static
+          # access keys are stored in the control plane.
+          rad credential register aws irsa \
+            --iam-role "${FUNC_TEST_RAD_IRSA_ROLE}"
 
       - name: Log radius installation status (failure)
         if: failure()
@@ -373,6 +376,19 @@ jobs:
         env:
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
+      - name: Configure AWS credentials using assumed role
+        # The test verification code constructs an AWS Cloud Control client via
+        # the default credential chain to check and clean up AWS resources. Use
+        # federated OIDC to assume a role instead of static access keys; the
+        # action exports short-lived AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY /
+        # AWS_SESSION_TOKEN into the environment for the test step below.
+        uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+        with:
+          role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
+          role-session-name: ${{ github.run_id }}
+          role-duration-seconds: 5400
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Run functional tests
         timeout-minutes: 120
         env:
@@ -380,8 +396,6 @@ jobs:
           UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ env.AWS_REGION }}
           AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
