@@ -1,234 +1,124 @@
-## Radius Control-plane configuration and settings
+# Radius control-plane configuration
 
-## Summary
+## Purpose
 
-Configuration schemas are used to define the service configuration for the resource provider's execution. The default configurations use the `Applications.Core RP` but configurations can also be set to run `Portable Resources' Providers` for private preview and dev/test purposes.
+This guide explains where Radius control-plane configuration lives and how to change it for local development or a Helm-based installation. The Go option types are the schema source of truth; the checked-in development YAML and Helm templates show complete configurations.
 
-If you wanted to locally run Radius with specific configurations, `yaml` files can be created and stored in the `cmd` folder for the corresponding UCP or resource provider.
+## Prerequisites
 
-![Local Config](./configExamples/localConfig.png)
+- Complete the [repository prerequisites](../contributing-code-prerequisites/README.md).
+- For local process debugging, complete the setup in [Running and debugging the control plane locally](../contributing-code-debugging/radius-os-processes-debugging.md).
+- For Kubernetes configuration changes, install Helm.
 
-If you wanted to run Radius on Kubernetes with specific configurations, `yaml` files can be created and stored in the `deploy/Chart/charts` folder for `Applications.Core RP`, `Portable Resources' Providers`, or `UCP`.
+## Steps
 
-![Kubernetes Config](./configExamples/kubeConfig.png)
+### 1. Choose the configuration surface
 
+Use the development YAML for a service that runs as a local process:
 
-## Config File Schema
+| Service         | Development configuration                      |
+|-----------------|------------------------------------------------|
+| UCP             | `cmd/ucpd/ucp-dev.yaml`                        |
+| Applications RP | `cmd/applications-rp/applications-rp-dev.yaml` |
+| Dynamic RP      | `cmd/dynamic-rp/dynamicrp-dev.yaml`            |
+| Controller      | `cmd/controller/controller-dev.yaml`           |
 
-The following properties can be specified in configuration for all services:
-| Key | Description | Example |
-|-----|-------------|---------|
-| environment | Environment name and its role location | [**See below**](#environment) |
-| identity | AAD APP authentication for the resource provider | [**See below**](#identity) |
-| databaseProvider | Configuration options for the database provider | [**See below**](#databaseprovider) |
-| queueProvider | Configuration options for the provider to create and manage the queue client | [**See below**](#queueprovider) |
-| secretProvider | Configuration options for the provider to manage credential | [**See below**](#secretprovider) |
-| server | Configuration options for the HTTP server bootstrap | [**See below**](#server) |
-| workerServer | Configuration options for the worker server | [**See below**](#workerserver) |
-| metricsProvider | Configuration options of the providers for publishing metrics | [**See below**](#metricsProvider) |
+For Kubernetes installations, configuration is rendered from `deploy/Chart/templates/<service>/configmaps.yaml` with values from `deploy/Chart/values.yaml`. Do not add configuration under `deploy/Chart/charts`; that directory does not exist.
 
------
+### 2. Update shared service options
 
-The following are properties that can be specified for the `Applications.Core RP` and `Portable Resources`:
-| Key | Description | Example |
-|-----|-------------|---------|
-| ucp | Configuration options for connecting to UCP's API | [**See below**](#ucp)
+The development files combine shared host options with service-specific settings. Use the option types linked below instead of treating this page as a manually duplicated schema:
 
-----
+| YAML section                    | Source of truth                                                                                       | Current values or shape                                                    |
+|---------------------------------|-------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
+| `environment`                   | [`hostoptions.EnvironmentOptions`](../../../../pkg/armrpc/hostoptions/options.go)                     | `name`, `roleLocation`                                                     |
+| `databaseProvider`              | [`databaseprovider.Options`](../../../../pkg/components/database/databaseprovider/options.go)         | Provider is `apiserver`, `inmemory`, or `postgresql`                       |
+| `queueProvider`                 | [`queueprovider.QueueProviderOptions`](../../../../pkg/components/queue/queueprovider/options.go)     | Provider is `apiserver` or `inmemory`; includes a queue `name`             |
+| `secretProvider`                | [`secretprovider.SecretProviderOptions`](../../../../pkg/components/secret/secretprovider/options.go) | Provider is `kubernetes` or `inmemory`                                     |
+| `metricsProvider`               | [`metricsservice.Options`](../../../../pkg/components/metrics/metricsservice/options.go)              | `enabled`, `serviceName`, and nested `prometheus.path` / `prometheus.port` |
+| `server`, `workerServer`, `ucp` | [`pkg/armrpc/hostoptions`](../../../../pkg/armrpc/hostoptions/)                                       | HTTP listener, async worker, and UCP connection settings                   |
 
-The following are properties that can be specified for UCP:
-| Key | Description | Example |
-|-----|-------------|---------|
-| secretProvider | Configuration options for the secret provider | [**See below**](#secretprovider)
-| plane | Configuration options for the UCP plane | [**See below**](#plane)
-| identity | Configuration options for authenticating with external systems like Azure and AWS | [**See below**](#external-system-identity)
-| ucp | Configuration options for connecting to UCP's API | [**See below**](#ucp)
-
-
-### environment
-| Key | Description | Example |
-|-----|-------------|---------|
-| name | The name of the environment | `Dev` |
-| location | The role location of the environment | `West US` |
-
-### identity
-| Key | Description | Example |
-|-----|-------------|---------|
-| clientId | Client ID of the Azure AAD App  | `your-client-ID` |
-| instance | The identity provider instance | `https://login.windows.net` |
-| tenantId | Tenant ID of the Azure AAD App | `your-tenant-ID` |
-| armEndpoint | ARM endpoint | `https://management.azure.com:443` |
-| audience | The recipient of the certificate | `https://management.core.windows.net` |
-| pemCertPath | Path to certificate file | `/var/certs/rp-aad-app.pem` |
-
-### databaseProvider
-| Key | Description | Example |
-|-----|-------------|---------|
-| provider | The type of database provider | `apiServer` |
-| apiServer | Object containing properties for Kubernetes APIServer database | [**See below**](#apiserver) |
-| etcd | Object containing properties for ETCD database | [**See below**](#etcd)|
-
-### queueProvider
-| Key | Description | Example |
-|-----|-------------|---------|
-| provider | The type of queue provider | `apiServer` |
-| apiServer |  Object containing properties for Kubernetes APIServer queue | [**See below**](#apiserver) |
-| inMemoryQueue | Object containing properties for InMemory Queue client | |
-
-### secretProvider
-| Key | Description | Example |
-|-----|-------------|---------|
-| provider | The type of secret provider | `etcd` or `kubernetes` |
-| etcd | Object containing properties for ETCD secret store | [**See below**](#etcd) |
-
-### server
-| Key | Description | Example |
-|-----|-------------|---------|
-| host | Domain name of the server | `0.0.0.0` |
-| port | HTTP port | `8080` |
-| pathBase | HTTPRequest PathBase | `""` |
-| authType | The environment authentication type (e.g. client certificate, etc) |`ClientCertificate` |
-| armMetadataEndpoint | Endpoint that provides the client certification | `https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01` |
-| enableArmAuth | If set, the ARM client authentication is performed (must be `true`/`false`) | `true` |
-
-### workerServer
-| Key | Description | Example |
-|-----|-------------|---------|
-| port | the localhost port which provides system-level info | `2222` |
-| maxOperationConcurrency | The maximum concurrency to process async request operations | `10` |
-| maxOperationRetryCount | The maximum retry count to process async request operation | `2` |
-
-### metricsProvider
-| Key | Description | Example |
-|-----|-------------|---------|
-| enabled | Specified whether to publish metrics (must be `true`/`false`) | `true` |
-| port | The connection port | `/metrics` |
-| path | The endpoint name where the metrics are posted | `9090` |
-
-### ucp
-
-This section configures the connection from either the `Applications.Core RP` or the `Portable Resources' Providers` to UCP's API. As the UCP service does not need to connect to itself, these settings do not apply in UCP's configuration files.
-
-| Key | Description | Example |
-|-----|-------------|---------|
-| kind | Specifies how to connect and authenticate with UCP. Either `kubernetes` or `direct`. Kubernetes should always be used for production scenarios. Use `direct` for a local debugging configuration | `kubernetes` |
-| direct | Settings that are applied when `kind==direct` | `{ }`|
-| direct.endpoint | The URL endpoint used to connect to to UCP. | `http://localhost:9000` |
-
-Example production use:
+For example, local services commonly use Kubernetes API server storage and expose Prometheus settings in this shape:
 
 ```yaml
-ucp:
-  kind: kubernetes
+databaseProvider:
+  provider: apiserver
+  apiserver:
+    context: ""
+    namespace: radius-testing
+
+queueProvider:
+  provider: apiserver
+  name: radius
+  apiserver:
+    context: ""
+    namespace: radius-testing
+
+secretProvider:
+  provider: kubernetes
+
+metricsProvider:
+  enabled: false
+  serviceName: ucp
+  prometheus:
+    path: /metrics
+    port: 9091
 ```
 
-Example development use:
+Use a `direct` UCP connection only for local process debugging:
 
 ```yaml
 ucp:
   kind: direct
   direct:
-    endpoint: 'http://localhost:9000' # Tell RP that UCP is listening on port 9000 locally
+    endpoint: http://localhost:9000/apis/api.ucp.dev/v1alpha3
 ```
 
-### secretProvider
-| Key | Description | Example |
-|-----|-------------|---------|
-| provider | The type of secret provider | `etcd` |
-| etcd | Object containing properties for ETCD secret store | [**See below**](#etcd) |
+Kubernetes deployments use the chart-rendered UCP connection instead of the local endpoint.
 
-### plane
-| Key | Description | Example |
-|-----|-------------|---------|
-| id | The ID of the UCP plane | `/planes/radius/local` |
-| type | The type of UCP plane | `System.Radius/planes` |
-| name | The name of the UCP plane | `ucp` |
-| properties | The properties specified on the plane | [**See below**](#plane-properties) |
+### 3. Configure supported environment overrides
 
-## Available providers
+Some behavior is read directly from the process environment:
 
-### apiServer
-| Key | Description | Example |
-|-----|-------------|---------|
-| context | The Kubernetes context name to use for the connection | `myContext` |
-| namespace | The Kubernetes namespace used for data-storage | `radius-system` |
+| Environment variable                 | Purpose                                                                         |
+|--------------------------------------|---------------------------------------------------------------------------------|
+| `SKIP_ARM`                           | Set to `true` to disable Azure Resource Manager integration                     |
+| `ARM_AUTH_METHOD`                    | Selects `UCPCredential`, `Managed`, `ServicePrincipal`, or `Cli` authentication |
+| `AZURE_CLIENT_ID`                    | Service-principal client ID                                                     |
+| `AZURE_CLIENT_SECRET`                | Service-principal client secret                                                 |
+| `AZURE_TENANT_ID`                    | Service-principal tenant ID                                                     |
+| `MSI_ENDPOINT` / `IDENTITY_ENDPOINT` | Signals that managed identity is available                                      |
+| `RADIUS_LOGGING_JSON`                | Selects the `development` or `production` log profile                           |
+| `RADIUS_LOGGING_LEVEL`               | Overrides the configured log level                                              |
 
-### etcd
-| Key | Description | Example |
-|-----|-------------|---------|
-| inMemory | Configures the etcd store to run in-memory with the resource provider (must be `true`/`false`) | `true` |
+The logging environment variables take precedence over the equivalent `logging.json` and `logging.level` YAML values. See [Logging](./logging.md) for logging conventions.
 
-## Plane properties
+### 4. Render or run the changed configuration
 
-| Key | Description | Example |
-|-----|-------------|---------|
-| resourceProviders | Resource Providers for UCP Native Plane | `http://applications-rp.radius-system:5443` |
-| kind | The kind of plane | `Azure` |
-| url | URL to forward requests to for non UCP Native Plane | `http://localhost:7443` |
+For a Helm change, render the chart and inspect the generated ConfigMaps:
 
-## external system identity
+```bash
+helm template radius deploy/Chart
+```
 
-| Key | Description | Example |
-|-----|-------------|---------|
-| authMethod | The method of authentication | `UCPCredential` using UCP Credential APIs, `Default` using environment variable |
+For a local development change, restart the affected process through the debug workflow:
 
-## Example configuration files
+```bash
+make debug-stop
+make debug-start
+make debug-status
+```
 
-See the configuration files in `cmd/<service>/*.yaml` for examples of configuration files.
+## Verification
 
-## Environment Variables
+- `helm template radius deploy/Chart` succeeds after a chart configuration change.
+- `make debug-start` starts every local component after a development configuration change.
+- `make debug-status` reports the affected component as running.
+- The service log contains no YAML decoding or unknown-provider errors.
 
-> **Note:** This section documents environment variables that the control-plane services read directly from the process environment. Some are the only way to configure their behavior (for example the ARM authentication settings); others — notably the logging variables — override the equivalent keys in the [configuration file](#config-file-schema) (`logging.json` / `logging.level`) when set. Long-term we plan to consolidate the remaining env-only settings into the configuration file.
+## Troubleshooting
 
-The Radius control-plane services support a number of different settings that will configure their behavior.
-
-Unlike the `rad` CLI or other infrastructure, all of the supported settings for the Radius RP are environment variables.
-
-Many of the optional settings are booleans, which apply the following logic:
-
-- `true` enables the setting. This value is compared *case-insensitively*, so `True` would also be accepted.
-- ANY other value disables the setting.
-
-Enum values are compared *case-insensitively*.
-
-### All settings
-
-| Environment variable           | Required / (default value) | Type    | Description                                                                                                                                  |
-| ------------------------------ | -------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| SKIP_ARM                       | no (false)                 | boolean | Optionally skip connecting to ARM. This means that Azure resources will not be supported.                                                    |
-| ARM_AUTH_METHOD                | no (auto)                  | string  | Configures explicitly which type of credentials the RP will use for ARM (UCPCredential,Managed,ServicePrincipal,Cli). By default the RP will autodetect the credential type |
-| AZURE_CLIENT_ID                | no                         | string  | Configures the client id of a service principal for ARM authentication.                                                                      |
-| AZURE_CLIENT_SECRET            | no                         | string  | Configures the client secret of a service principal for ARM authentication.                                                                  |
-| AZURE_TENANT_ID                | no                         | string  | Configures the AAD tenant of a service principal for ARM authentication.                                                                     |
-| MSI_ENDPOINT/IDENTITY_ENDPOINT | no                         | string  | Used to detect whether the RP should use managed identity for ARM authentication.                                                            |
-| RADIUS_LOGGING_JSON                 | no (`development`)   | string  | Configures the log profile for Radius |
-| RADIUS_LOGGING_LEVEL                   | *see Logging section*   | string  | Configures the log level for Radius |
-
-### ARM authentication
-
-Authentication with ARM can be disabled totally by setting `SKIP_ARM=true`. This will disable ARM features like creation and management of Azure resources.
-
-The RP can connect to ARM using credentials from one of three different sources in order of priority:
-
-- Service Principal
-- Managed Identity (used when deployed)
-- CLI authentication (used in local development)
-
-Our detection logic mirrors what the newer Azure Go SDKs do. Since we require the use of the old-style SDKs we also perform the same logic. The environment variables we use to read these settings are the **standard set** used by all Azure tools. eg: `AZURE_CLIENT_ID` is the standard environment variable supported by all Azure tools.
-
-### Kubernetes
-
-The RP connects to Kubernetes using two different strategies to find the identity and credentials in order or priority:
-
-- Using in-cluster credentials (if present)
-- Using local Kubeconfig
-
-### Logging
-
-Radius Resource Provider uses the zap logger as the log sink and logr as the interface.
-
-#### Configuring Radius Log Profile
-Radius Log Profile can be set using the environment variable `RADIUS_LOGGING_JSON`. The allowed values are `production` and `development` (default `development`). This setting controls the output log encoding format, default log level and other related zap logger settings.
-
-#### Configuring Radius Log Level
-Radius Log Level can be set using the environment variable `RADIUS_LOGGING_LEVEL`. The allowed values are `INFO`, `DEBUG`, `WARN`, and `ERROR` (compared case-insensitively). If this environment variable is not set, the default log level is determined by the log profile configured above.
+- **The service rejects a provider name.** Check the provider constants linked in [Update shared service options](#2-update-shared-service-options); provider names are lowercase.
+- **A local service cannot reach UCP.** Compare its `ucp.direct.endpoint` with `cmd/ucpd/ucp-dev.yaml`; the development endpoint includes `/apis/api.ucp.dev/v1alpha3`.
+- **A Helm edit does not change the installed configuration.** Confirm you changed the appropriate `deploy/Chart/templates/<service>/configmaps.yaml` template or the value that feeds it, then render the chart before reinstalling.
+- **Logging ignores the YAML value.** Unset `RADIUS_LOGGING_JSON` or `RADIUS_LOGGING_LEVEL`; environment values take precedence.

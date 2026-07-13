@@ -217,6 +217,7 @@ The docs-drift code-review instructions and the scheduled drift workflow consult
 | `typespec/**`, `swagger/**`                           | [contributing-code/contributing-code-schema-changes/README.md](./contributing-code/contributing-code-schema-changes/README.md)     |
 | `pkg/cli/**`, `cmd/rad/**`                            | [contributing-code/contributing-code-cli/README.md](./contributing-code/contributing-code-cli/README.md)                           |
 | `.github/workflows/*.yml`, `.github/workflows/*.yaml` | [contributing-code/contributing-code-github-workflows/README.md](./contributing-code/contributing-code-github-workflows/README.md) |
+| `.github/extension/**`                                | [contributing-deploy-environments.md](./contributing-deploy-environments.md)                                                       |
 | `**/Dockerfile`, `**/Dockerfile.*`, `**/*.dockerfile` | [contributing-code/contributing-code-dockerfiles/README.md](./contributing-code/contributing-code-dockerfiles/README.md)           |
 | `**/*.bicep`                                          | [contributing-code/contributing-code-bicep/README.md](./contributing-code/contributing-code-bicep/README.md)                       |
 | `**/*.sh`, `**/Makefile`, `**/*.mk`, `**/GNUmakefile` | [contributing-code/contributing-code-shell-and-make/README.md](./contributing-code/contributing-code-shell-and-make/README.md)     |
