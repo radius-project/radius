@@ -1,69 +1,106 @@
 # Writing Radius functional tests
 
-You can find the functional tests under `./test/functional`. A functional tests (in our terminology) is a test that interacts with real hosting environments (Azure, Kubernetes), deploys real applications and resources, and covers realistic or simulated user scenarios.
+## Purpose
 
-## Organization
+This guide explains how to add a functional test to the portable Radius test suite. Functional tests deploy real applications and resources to Kubernetes or a cloud provider and validate complete user scenarios. Use them when a change cannot be covered by the self-contained unit and integration tests that run through `make test`.
 
-Functional tests are organized using the following pattern:
+For instructions on running the suite, including its prerequisites and cleanup behavior, see [Running Radius functional tests](./running-functional-tests.md).
 
-> `/test/functional/<host>/<kind>`
+## Prerequisites
 
-For example a test for deploying an Azure Service Bus resource would be in `/test/functional/azure/resources/servicebus_test.go`. It's fine to create additional levels of hierarchy within the `<kind>`.
+- Complete the setup in [Running Radius functional tests](./running-functional-tests.md#prerequisites).
+- Choose the existing test group that owns the behavior you are testing. The Make targets and package paths for every group are defined in [`build/test.mk`](../../../../build/test.mk).
+- Read a nearby test in the same group and follow its setup and validation patterns.
 
-`.bicep` files used by tests should be in the `testdata` folder inside the test's package.
+## Steps
 
-## Authoring
+### 1. Choose the package
 
-Tests should look like the following. You can actually copy-paste this to create a new test!
+Portable functional tests live under:
+
+```text
+test/functional-portable/<group>[/<cloud-or-noncloud>][/<kind>]
+```
+
+For example, non-cloud Core RP resource tests live under `test/functional-portable/corerp/noncloud/resources`, while upgrade tests live directly under `test/functional-portable/upgrade`. The group names generally match the `make test-functional-<group>` targets; the Messaging RP target is named `msgrp`, while its source directory is `messagingrp`. Use the exact package path in [`build/test.mk`](../../../../build/test.mk) for the group you are changing.
+
+Put `.bicep` files and other fixtures in a `testdata` directory inside the test package.
+
+### 2. Follow the current test harness
+
+Most resource-provider tests use `rp.NewRPTest`, one or more `rp.TestStep` values, a deploy executor, and explicit resource or Kubernetes-object validation. A minimal test has this shape:
+
+<!-- markdownlint-disable MD010 -->
 
 ```go
-import "github.com/radius-project/radius/test/functional/azure"
+package resource_test
+
+import (
+	"testing"
+
+	"github.com/radius-project/radius/test/rp"
+	"github.com/radius-project/radius/test/step"
+	"github.com/radius-project/radius/test/validation"
+)
 
 func Test_DescriptiveTestName(t *testing.T) {
-    application := "unique-application-name"
-    template := "testdata/unique-application-name.bicep"
-    test := azure.NewApplicationTest(t, application, []azure.Step{
-        {
-            Executor: step.NewDeployExecutor(template, ""),
-            Components: &validation.ComponentSet{
-            // Set of components to validate
-        },
-        Pods: &validation.K8sObjectSet{
-        // set of K8s resources to validate
-        },
-        // This should be set to true for every test for now
-        SkipARMResources: true,
-        },
-    })
+	name := "unique-test-name"
+	template := "testdata/unique-test-name.bicep"
 
-    test.Test(t)
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, ""),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+				},
+			},
+		},
+	})
+
+	test.Test(t)
 }
 ```
 
-When adding a new functional test:
+<!-- markdownlint-enable MD010 -->
 
-- Follow established patterns for naming of things like application, template filename, test filename
-- Double-check that the application name is unique (do a search in the repo)
-- Avoid skipping any verifications (other than `SkipARMResources`)
-- Avoid using `PostStepVerify` and `PostDeleteVerify` if you can add new capabilities to the test system
-- For the tests to verify that the containers are actually started and in Ready state, you can add a readiness probe to the bicep file as below.
+Copy a nearby test rather than this skeleton when the scenario needs recipe modules, cloud credentials, custom cleanup, output-resource validation, or Kubernetes assertions.
 
-    ```bicep
-    resource a 'Container' = {
-        name: 'a'
-        properties: {
-            container: {
-                // This image implements readiness checks
-                image: '${registry}/magpiego:latest' 
-                env: {
-                    COOL_SETTING: env
-                }
-                readinessProbe:{
-                    kind:'httpGet'
-                    containerPort:3000
-                    path: '/healthz'
-                }
-            }
-        }
-    }
-    ```
+### 3. Keep the test isolated
+
+- Give applications, environments, and resources names that are unique across the repository.
+- Follow the [functional-test naming conventions](./tests-naming-conventions.md).
+- Keep non-cloud tests independent of cloud accounts and cloud resources.
+- Add readiness probes to test containers when the test needs to assert that a workload becomes ready.
+- Prefer the existing validation sets over custom `PostStepVerify` or `PostDeleteVerify` callbacks. Add a callback only when the shared validation framework cannot express the assertion.
+- Put cleanup in the test harness so failed tests do not leave resources behind.
+
+### 4. Run the narrowest target
+
+Run the package directly while iterating:
+
+```bash
+go test ./test/functional-portable/<package-path>/...
+```
+
+Then run its Make target before opening a pull request:
+
+```bash
+make test-functional-<group>-<cloud-or-noncloud>
+```
+
+## Verification
+
+- The new test passes through both `go test` on its package and the matching `make test-functional-*` target.
+- Test fixtures are under the package's `testdata` directory.
+- Resource names follow the naming conventions and do not collide with another test.
+- The test cleans up everything it creates.
+
+## Troubleshooting
+
+- **The deployment succeeds but validation fails.** Compare the `validation.RPResourceSet` or `validation.K8sObjectSet` with a nearby test for the same resource type.
+- **A Terraform recipe test cannot find its module.** Publish the test recipes and set the module server URL as described in [Running Radius functional tests](./running-functional-tests.md).
+- **The test passes alone but fails in a group.** Check for reused application, environment, namespace, or resource names.

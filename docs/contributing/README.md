@@ -49,7 +49,6 @@ Every contributing doc, grouped by topic. This is the single index that [AGENTS.
 ### Schema & API
 
 - [Schema changes (TypeSpec → Swagger → Go)](./contributing-code/contributing-code-schema-changes/README.md)
-- [Bicep types migration guide](./bicep-types-migration-guide.md)
 
 ### CLI
 
@@ -61,6 +60,7 @@ Every contributing doc, grouped by topic. This is the single index that [AGENTS.
 - [Dockerfiles](./contributing-code/contributing-code-dockerfiles/README.md)
 - [Bicep files](./contributing-code/contributing-code-bicep/README.md)
 - [Shell scripts & Makefiles](./contributing-code/contributing-code-shell-and-make/README.md)
+- [Setting up a Radius deploy environment](./contributing-deploy-environments.md)
 
 ### Pull requests & code review
 
@@ -76,7 +76,7 @@ Every contributing doc, grouped by topic. This is the single index that [AGENTS.
 
 ## Capability index
 
-Maps each capability in [agent-ex-features.md](../../specs/002-agent-ex/agent-ex-features.md#capabilities) that this repository owns to its single primary backing doc. Capabilities owned by satellite repos (1.9 resource types, 1.10 dashboard, 1.13 AWS Bicep types) are out of scope here. Parent rows link to the [documentation index](#documentation-index) above rather than a single doc.
+Maps each capability in [agent-ex-features.md](../../specs/002-agent-ex/agent-ex-features.md#capabilities) that this repository owns to its single primary backing doc. Capabilities added after the original Agent Ex plan use `n/a`. Capabilities owned by satellite repos (1.9 resource types, 1.10 dashboard, 1.13 AWS Bicep types) are out of scope here. Parent rows link to the [documentation index](#documentation-index) above rather than a single doc.
 
 | Capability                                | Primary backing doc                                                                                              |
 |-------------------------------------------|------------------------------------------------------------------------------------------------------------------|
@@ -93,6 +93,7 @@ Maps each capability in [agent-ex-features.md](../../specs/002-agent-ex/agent-ex
 | 1.12 Pull requests                        | [contributing-pull-requests/README.md](./contributing-pull-requests/README.md)                                   |
 | 2 Code review                             | [contributing-code-reviewing/README.md](./contributing-code/contributing-code-reviewing/README.md)               |
 | 3 Investigate issues                      | [contributing-issues/README.md](./contributing-issues/README.md)                                                 |
+| n/a Configure a deploy environment        | [contributing-deploy-environments.md](./contributing-deploy-environments.md)                                     |
 | 5 Author and evolve docs and capabilities | [Documentation index](#documentation-index)                                                                      |
 | 5.1 Author a new doc                      | [authoring-contributing-docs.md](./authoring-contributing-docs.md)                                               |
 | 5.2 Repair drift                          | [extending-agent-ex.md](./extending-agent-ex.md)                                                                 |
