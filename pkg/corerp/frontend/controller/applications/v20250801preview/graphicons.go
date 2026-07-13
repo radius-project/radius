@@ -18,9 +18,12 @@ package v20250801preview
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
@@ -83,6 +86,17 @@ func fetchIcons(ctx context.Context, connection sdk.Connection, graph *corerpv20
 	for namespace := range namespaces {
 		summary, err := client.GetProviderSummary(ctx, "local", namespace, opts)
 		if err != nil {
+			// `computeGraph` deliberately adds connected external nodes such as
+			// `Microsoft.Storage/storageAccounts` that live outside the local
+			// Radius resource-type registry. Their providers are not registered
+			// with UCP, so GetProviderSummary returns 404. Treat that as "no
+			// icons for this namespace" rather than failing the whole graph
+			// request — the corresponding nodes simply end up with a nil
+			// iconHash.
+			var respErr *azcore.ResponseError
+			if errors.As(err, &respErr) && respErr.StatusCode == http.StatusNotFound {
+				continue
+			}
 			return nil, fmt.Errorf("failed to fetch resource provider summary for %q: %w", namespace, err)
 		}
 		for typeName, rt := range summary.ResourceTypes {

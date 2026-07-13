@@ -170,3 +170,51 @@ func Test_fetchIcons_EmptyGraph(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, icons)
 }
+
+// Test_fetchIcons_ExternalProviderNotFound covers the case where the graph
+// contains connected external nodes (e.g. Microsoft.Storage/storageAccounts)
+// whose provider is not registered in the local Radius resource-type registry.
+// GetProviderSummary returns 404 for that namespace; the graph request must
+// still succeed, and the icons map should carry entries only for the
+// namespaces that were resolvable.
+func Test_fetchIcons_ExternalProviderNotFound(t *testing.T) {
+	mux := http.NewServeMux()
+	// Radius.Compute is registered locally and has an icon.
+	mux.HandleFunc("/planes/radius/local/providers/Radius.Compute", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"name": "Radius.Compute",
+			"resourceTypes": map[string]any{
+				"containers": map[string]any{
+					"iconHash": "hash-containers",
+				},
+			},
+		})
+	})
+	// Microsoft.Storage has no handler — the mux answers 404, mirroring what
+	// UCP returns for an unregistered provider namespace.
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	conn, err := sdk.NewDirectConnection(server.URL)
+	require.NoError(t, err)
+
+	graph := &corerpv20231001preview.ApplicationGraphResponse{
+		Resources: []*corerpv20231001preview.ApplicationGraphResource{
+			{Type: to.Ptr("Radius.Compute/containers")},
+			{Type: to.Ptr("Microsoft.Storage/storageAccounts")},
+		},
+	}
+
+	// includeBytes=false because the reviewer's report was specifically that
+	// the graph errored even when the caller had not opted into inline bytes.
+	icons, err := fetchIcons(context.Background(), conn, graph, false)
+	require.NoError(t, err)
+	require.NotNil(t, icons)
+
+	// The resolvable namespace contributes its icon; the missing one is
+	// silently skipped so the corresponding node's IconHash ends up nil.
+	require.Contains(t, icons, "Radius.Compute/containers")
+	assert.Equal(t, "hash-containers", icons["Radius.Compute/containers"].hash)
+	assert.NotContains(t, icons, "Microsoft.Storage/storageAccounts")
+}
