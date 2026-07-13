@@ -764,6 +764,41 @@ jobs:
           path: recipes/pod-logs
           if-no-files-found: error
 
+  # Stable summary for branch protection that collapses the build and test matrix results.
+  noncloud-test-summary:
+    if: always()
+    name: Non-Cloud Functional Test Run
+    needs: [changes, build, tests]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Check non-cloud functional test jobs
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          ONLY_CHANGED: ${{ needs.changes.outputs.only_changed }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          TESTS_RESULT: ${{ needs.tests.result }}
+        run: |
+          echo "changes=${CHANGES_RESULT} only_changed=${ONLY_CHANGED} build=${BUILD_RESULT} tests=${TESTS_RESULT}"
+
+          if [[ "${CHANGES_RESULT}" != "success" ]]; then
+            echo "::error::Change detection did not succeed"
+            exit 1
+          fi
+
+          if [[ "${ONLY_CHANGED}" == "true" ]]; then
+            echo "Non-cloud functional tests skipped because only excluded files changed"
+            exit 0
+          fi
+
+          if [[ "${BUILD_RESULT}" != "success" || "${TESTS_RESULT}" != "success" ]]; then
+            echo "::error::Non-cloud functional tests failed or were cancelled"
+            exit 1
+          fi
+
+          echo "All non-cloud functional test jobs succeeded"
+
   report-failure:
     if: failure() && github.event_name == 'schedule' && github.repository == vars.RADIUS_REPOSITORY && needs.changes.outputs.only_changed != 'true'
     name: Report test failure
