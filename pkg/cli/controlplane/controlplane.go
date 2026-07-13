@@ -52,6 +52,8 @@ const (
 
 	// scalePollInterval is how often deployment status is polled while waiting.
 	scalePollInterval = 2 * time.Second
+
+	radiusAPIGroupVersion = "api.ucp.dev/v1alpha3"
 )
 
 // Scaler scales the control-plane deployments in a namespace.
@@ -133,7 +135,25 @@ func (s *Scaler) ScaleUp(ctx context.Context, saved map[string]int32) error {
 		}
 	}
 
+	if saved["ucp"] > 0 {
+		if err := s.waitForAPIService(ctx); err != nil {
+			return fmt.Errorf("timed out waiting for Radius APIService to become available: %w", err)
+		}
+	}
+
 	return nil
+}
+
+func (s *Scaler) waitForAPIService(ctx context.Context) error {
+	var lastErr error
+	err := wait.PollUntilContextTimeout(ctx, scalePollInterval, scaleTimeout, true, func(context.Context) (bool, error) {
+		_, lastErr = s.clientset.Discovery().ServerResourcesForGroupVersion(radiusAPIGroupVersion)
+		return lastErr == nil, nil
+	})
+	if err != nil && lastErr != nil {
+		return fmt.Errorf("%w (last discovery error: %v)", err, lastErr)
+	}
+	return err
 }
 
 // setReplicas sets the replica count of a deployment, retrying on optimistic-concurrency conflicts.
