@@ -1,0 +1,95 @@
+# Provider-agnostic resource delete shared by delete-azure.yml and delete-aws.yml.
+# Runs after restore-state (rad startup) has brought back the control-plane state,
+# so the environment, its recipe packs, the application, and the Terraform recipe
+# state all exist and recipe deletes can run. Deletes a single application or
+# environment with the Radius.Core preview surface, then writes a rad-delete-result
+# artifact. State is persisted again by the separate `teardown` action (rad shutdown),
+# which runs unconditionally after this step.
+name: Radius - Delete resource
+description: Delete a Radius application or environment (Radius.Core preview) and write a result artifact.
+
+inputs:
+  resource-type:
+    description: What to delete -- "application" or "environment".
+    required: true
+  name:
+    description: Name of the application or environment to delete.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Delete Radius resource
+      shell: bash
+      env:
+        RESOURCE_TYPE: ${{ inputs.resource-type }}
+        RESOURCE_NAME: ${{ inputs.name }}
+      run: |
+        # pipefail so a failed `rad` whose output is piped through `tee` is detected
+        # via PIPESTATUS rather than masked by tee's exit code.
+        set -uo pipefail
+        mkdir -p /tmp/radius-output
+        RESULT_FILE=/tmp/radius-output/rad-delete-result.json
+
+        # Write the combined result on exit so the rad-delete-result artifact is
+        # complete even when the delete fails and the step exits early.
+        OUTCOME="succeeded"
+        EXIT=0
+        OUTPUT=""
+        write_result() {
+          jq -n \
+            --arg outcome "$OUTCOME" \
+            --argjson exitCode "$EXIT" \
+            --arg resourceType "$RESOURCE_TYPE" \
+            --arg name "$RESOURCE_NAME" \
+            --arg output "$OUTPUT" \
+            '{schemaVersion:"1.0", outcome:$outcome, exitCode:$exitCode, resourceType:$resourceType, name:$name, output:$output}' \
+            > "$RESULT_FILE"
+        }
+        trap write_result EXIT
+
+        if [ -z "${RESOURCE_NAME//[[:space:]]/}" ]; then
+          echo "No resource name supplied to delete." >&2
+          OUTCOME="invalid_input"
+          EXIT=2
+          exit 2
+        fi
+
+        # Map the resource type to its rad command. Only application and environment
+        # are supported; anything else fails fast without touching the control plane.
+        case "$RESOURCE_TYPE" in
+          application) VERB=(app delete) ;;
+          environment) VERB=(env delete) ;;
+          *)
+            echo "Unsupported resource type: '$RESOURCE_TYPE' (expected 'application' or 'environment')." >&2
+            OUTCOME="invalid_input"
+            EXIT=2
+            exit 2
+            ;;
+        esac
+
+        # --yes bypasses the interactive confirmation prompt; --preview selects the
+        # Radius.Core implementation the deploy workflow provisions (without it the
+        # base command dispatches to the legacy, non-Radius.Core surface).
+        outfile=$(mktemp)
+        echo "::group::rad ${VERB[*]} $RESOURCE_NAME --yes --preview"
+        rad "${VERB[@]}" "$RESOURCE_NAME" --yes --preview 2>&1 | tee "$outfile"
+        EXIT=${PIPESTATUS[0]}
+        echo "::endgroup::"
+        OUTPUT=$(cat "$outfile")
+        rm -f "$outfile"
+
+        if [ "$EXIT" -ne 0 ]; then
+          OUTCOME="failed"
+          echo "Failed to delete $RESOURCE_TYPE '$RESOURCE_NAME'." >&2
+          exit "$EXIT"
+        fi
+        echo "✅ Deleted $RESOURCE_TYPE '$RESOURCE_NAME'."
+
+    - name: Upload delete result
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: rad-delete-result
+        path: /tmp/radius-output/
+        retention-days: 1
