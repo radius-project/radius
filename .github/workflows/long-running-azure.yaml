@@ -409,11 +409,16 @@ jobs:
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
-          # The released v0.59 test code predates main's temporary Test_ACI skip.
-          # This RE2 expression matches every test name except the exact Test_ACI
-          # name, keeping the long-running suite aligned with that mitigation until
-          # a release contains it. See #12044, #12163, and #12247.
-          GOTEST_OPTS: "-run='^(Test_ACI.+|Test_AC[^I].*|Test_A[^C].*|Test_[^A].*|Test[^_].*|Tes[^t].*|Te[^s].*|T[^e].*|[^T].*|T|Te|Tes|Test|Test_|Test_A|Test_AC)$$'"
+          # The released v0.59 test code predates two incompatibilities with main:
+          #   - Test_ACI: tracked in #12044 (cleanup timeout flake).
+          #   - Test_RecipePack, Test_RadiusCoreEnv: the v0.59 recipe-pack fixture
+          #     uses the old recipeKind/recipeLocation properties that were renamed
+          #     to kind/source in PR #12104 (merged 2026-06-22), four days after the
+          #     v0.59.0 release (2026-06-18). The old names produce a BCP037 compile
+          #     error against the mutable latest Bicep extension.
+          # Skip these exact tests until a release that includes the fixes is cut.
+          # See #12044, #12104, #12163, #12247, and #12392.
+          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RecipePack|Test_RadiusCoreEnv)$$'"
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
         run: |
           set -euo pipefail
