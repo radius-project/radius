@@ -211,12 +211,14 @@ func (m *clientMaterializer) Delete(ctx context.Context, ownerResourceID string)
 }
 
 // clientOptions returns a shallow copy of the configured ARM client options with the API version overridden
-// to the version Radius.Security/secrets supports, so the shared options are not mutated.
+// to the version Radius.Security/secrets supports, so the shared options are not mutated. It copies the full
+// arm.ClientOptions (not just the embedded azcore ClientOptions) so sibling fields such as
+// DisableRPRegistration are preserved.
 func (m *clientMaterializer) clientOptions() *arm.ClientOptions {
-	options := &arm.ClientOptions{}
+	options := arm.ClientOptions{}
 	if m.armClientOptions != nil {
-		options = &arm.ClientOptions{ClientOptions: m.armClientOptions.ClientOptions}
+		options = *m.armClientOptions
 	}
 	options.APIVersion = securitySecretsAPIVersion
-	return options
+	return &options
 }

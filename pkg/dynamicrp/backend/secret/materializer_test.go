@@ -155,6 +155,30 @@ func Test_Materialize_InvalidOwnerID(t *testing.T) {
 	require.Error(t, err)
 }
 
+func Test_clientOptions_PreservesArmFields(t *testing.T) {
+	// Sibling arm.ClientOptions fields (e.g. DisableRPRegistration, which sdk.NewClientOptions sets to
+	// true) must survive the per-request copy; only APIVersion is overridden.
+	m := &clientMaterializer{armClientOptions: &arm.ClientOptions{
+		DisableRPRegistration: true,
+		AuxiliaryTenants:      []string{"tenant-a"},
+	}}
+
+	opts := m.clientOptions()
+
+	require.True(t, opts.DisableRPRegistration, "DisableRPRegistration must be preserved")
+	require.Equal(t, []string{"tenant-a"}, opts.AuxiliaryTenants, "AuxiliaryTenants must be preserved")
+	require.Equal(t, securitySecretsAPIVersion, opts.APIVersion, "APIVersion must be overridden")
+
+	// The shared options must not be mutated by the copy.
+	require.Empty(t, m.armClientOptions.APIVersion, "source options must not be mutated")
+}
+
+func Test_clientOptions_NilSource(t *testing.T) {
+	m := &clientMaterializer{}
+	opts := m.clientOptions()
+	require.Equal(t, securitySecretsAPIVersion, opts.APIVersion)
+}
+
 func Test_Delete(t *testing.T) {
 	var capturedName string
 
