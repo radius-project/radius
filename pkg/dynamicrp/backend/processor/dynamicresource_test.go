@@ -460,6 +460,46 @@ func Test_Process(t *testing.T) {
 		require.False(t, hasSecretRef, "the stale secrets.name reference should be removed")
 	})
 
+	t.Run("reclaims a stale managed secret when the block is dropped but the recipe still emits secrets", func(t *testing.T) {
+		mat := &fakeMaterializer{}
+		p := DynamicProcessor{SecretMaterializer: mat}
+		// The type's schema no longer declares a secrets block, yet the recipe still emits secret outputs
+		// and the owner still carries a reference from a prior deploy that materialized one.
+		cf, err := testUCPClientFactory()
+		require.NoError(t, err)
+
+		resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource"
+		resource := &datamodel.DynamicResource{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID:   resourceID,
+					Type: "Applications.Test/testRecipeResources",
+				},
+				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
+			},
+			Properties: map[string]any{
+				"status":  map[string]any{},
+				"secrets": map[string]any{"name": "test-resource-secrets"},
+			},
+		}
+		options := processors.Options{
+			RecipeOutput: &recipes.RecipeOutput{
+				Values: map[string]any{"host": hostname},
+				// The recipe still emits a secret, but the type no longer opts into materialization.
+				Secrets: map[string]any{"connectionString": "secret-conn"},
+			},
+			UcpClient: cf,
+		}
+
+		require.NoError(t, p.Process(context.Background(), resource, options))
+
+		// The new secret is dropped (no block), and the prior managed secret is reclaimed rather than
+		// orphaned — even though this update produced secret outputs.
+		require.Equal(t, []string{resourceID}, mat.deleted, "the stale managed secret should be deleted")
+		require.False(t, mat.called, "no new secret should be materialized without a secrets block")
+		_, hasSecretRef := resource.Properties["secrets"]
+		require.False(t, hasSecretRef, "the stale secrets.name reference should be removed")
+	})
 	t.Run("fails fast when the schema declares a malformed secrets block", func(t *testing.T) {
 		mat := &fakeMaterializer{}
 		p := DynamicProcessor{SecretMaterializer: mat}

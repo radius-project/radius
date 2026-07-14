@@ -160,8 +160,9 @@ func addComputedValuesToResourceProperties(resource *datamodel.DynamicResource, 
 // it. When the resource type declares no `secrets` block, recipe secret outputs are dropped rather than
 // persisted.
 //
-// When an update produces no secret outputs, any managed secret a prior deploy materialized is reclaimed
-// regardless of the schema, so neither an emptied recipe output nor a removed `secrets` block orphans it.
+// When an update produces no secret outputs, or the type no longer declares a `secrets` block, any managed
+// secret a prior deploy materialized is reclaimed so neither an emptied recipe output nor a removed
+// `secrets` block orphans it.
 func (d *DynamicProcessor) materializeRecipeSecrets(ctx context.Context, resource *datamodel.DynamicResource, schema map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
 	data := make(map[string]string, len(secretValues))
 	for key, ref := range secretValues {
@@ -179,14 +180,17 @@ func (d *DynamicProcessor) materializeRecipeSecrets(ctx context.Context, resourc
 	}
 
 	// Materialization requires the type to opt in by declaring a `secrets` block, which is also what makes
-	// `secrets.name` a referenceable read-only property. Without it, the recipe's secret outputs are
-	// dropped rather than persisted.
+	// `secrets.name` a referenceable read-only property. Without a block, the recipe's secret outputs are
+	// dropped rather than persisted — but a managed secret this owner materialized on a prior deploy (when
+	// the block still existed) is still reclaimed so it is not orphaned, and its dangling `secrets.name`
+	// reference is cleared. clearStaleManagedSecret is a no-op when there is no stale reference.
 	if _, ok := schemautil.GetSecretsBlock(schema); !ok {
-		return nil
+		return d.clearStaleManagedSecret(ctx, resource)
 	}
 
 	if d.SecretMaterializer == nil {
-		// No materializer configured (for example in unit tests); skip materialization.
+		// No materializer configured (for example in unit tests); skip materialization. There is no real
+		// managed secret to reclaim in this case, so leave any existing reference untouched.
 		return nil
 	}
 
