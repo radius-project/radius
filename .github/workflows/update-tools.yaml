@@ -71,23 +71,32 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
 
+      - name: Get Dependabot-manager bot details
+        if: >-
+          steps.changes.outputs.changed == 'true' &&
+          github.repository == 'radius-project/radius'
+        id: bot-details
+        uses: raven-actions/bot-details@ee8966a9ff6e7e42cbfc4a56b4ddb60a9d1b40a6 # v1.2.0
+        with:
+          bot-slug-name: ${{ steps.app-token.outputs.app-slug }}
+
       - name: Commit and push update branch
         if: >-
           steps.changes.outputs.changed == 'true' &&
           github.repository == 'radius-project/radius'
         env:
-          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GIT_USER_EMAIL: ${{ steps.bot-details.outputs.email }}
+          GIT_USER_NAME: ${{ steps.bot-details.outputs.name }}
         run: |
           set -euo pipefail
-          git config user.name "dependabot-manager[bot]"
-          bot_email='dependabot-manager[bot]@users.noreply.github.com'
-          git config user.email "$bot_email"
+          git config user.name "${GIT_USER_NAME}"
+          git config user.email "${GIT_USER_EMAIL}"
           git checkout -B "$PR_BRANCH"
           git add -A
           git commit --signoff -m "$PR_TITLE"
-          remote="https://x-access-token:${APP_TOKEN}@github.com/"
-          remote+="${GITHUB_REPOSITORY}.git"
-          git push --force "$remote" "HEAD:${PR_BRANCH}"
+          gh auth setup-git
+          git push --force origin "HEAD:${PR_BRANCH}"
 
       - name: Create or update pull request
         if: >-
