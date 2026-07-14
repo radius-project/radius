@@ -420,6 +420,45 @@ func Test_Process(t *testing.T) {
 		_, hasSecretRef := resource.Properties["secrets"]
 		require.False(t, hasSecretRef, "the stale secrets.name reference should be removed")
 	})
+
+	t.Run("clears a stale managed secret even when the schema no longer declares a secrets block", func(t *testing.T) {
+		mat := &fakeMaterializer{}
+		p := DynamicProcessor{SecretMaterializer: mat}
+		// The type's schema no longer declares a secrets block, yet the owner still carries a reference
+		// from a prior deploy that materialized one.
+		cf, err := testUCPClientFactory()
+		require.NoError(t, err)
+
+		resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource"
+		resource := &datamodel.DynamicResource{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID:   resourceID,
+					Type: "Applications.Test/testRecipeResources",
+				},
+				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
+			},
+			Properties: map[string]any{
+				"status":  map[string]any{},
+				"secrets": map[string]any{"name": "test-resource-secrets"},
+			},
+		}
+		options := processors.Options{
+			RecipeOutput: &recipes.RecipeOutput{
+				Values:  map[string]any{"host": hostname},
+				Secrets: map[string]any{},
+			},
+			UcpClient: cf,
+		}
+
+		require.NoError(t, p.Process(context.Background(), resource, options))
+
+		// Cleanup keys off the owner's reference, not the schema, so the orphan is still reclaimed.
+		require.Equal(t, []string{resourceID}, mat.deleted, "the stale managed secret should be deleted")
+		require.False(t, mat.called, "no new secret should be materialized")
+		_, hasSecretRef := resource.Properties["secrets"]
+		require.False(t, hasSecretRef, "the stale secrets.name reference should be removed")
+	})
 }
 
 // fakeMaterializer is a test double for secret.Materializer.

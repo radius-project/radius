@@ -153,20 +153,30 @@ func addComputedValuesToResourceProperties(resource *datamodel.DynamicResource, 
 // recipe (for example a direct AVM module) that emits an additional sensitive output does not silently lose
 // it. When the resource type declares no `secrets` block, recipe secret outputs are dropped rather than
 // persisted.
+//
+// When an update produces no secret outputs, any managed secret a prior deploy materialized is reclaimed
+// regardless of the schema, so neither an emptied recipe output nor a removed `secrets` block orphans it.
 func (d *DynamicProcessor) materializeRecipeSecrets(ctx context.Context, resource *datamodel.DynamicResource, schema map[string]any, secretValues map[string]rpv1.SecretValueReference) error {
-	if _, ok := schemautil.GetSecretsBlock(schema); !ok {
-		return nil
-	}
-
 	data := make(map[string]string, len(secretValues))
 	for key, ref := range secretValues {
 		data[key] = ref.Value
 	}
+
 	if len(data) == 0 {
-		// A prior deploy may have materialized a managed secret. If this update produced no secret
-		// outputs, delete that now-stale managed secret and clear the dangling `secrets.name` reference
-		// so we neither orphan the secret resource nor leave the owner pointing at a deleted one.
+		// This update produced no secret outputs. Reclaim any managed secret a prior deploy materialized
+		// and clear the dangling `secrets.name` reference, so we neither orphan the secret resource nor
+		// leave the owner pointing at a deleted one. This runs regardless of whether the type still
+		// declares a `secrets` block — cleanup keys off the owner's reference (like the Delete path), not
+		// the schema — so a schema that dropped its `secrets` block does not orphan a previously-created
+		// secret. clearStaleManagedSecret is a no-op when there is no stale reference.
 		return d.clearStaleManagedSecret(ctx, resource)
+	}
+
+	// Materialization requires the type to opt in by declaring a `secrets` block, which is also what makes
+	// `secrets.name` a referenceable read-only property. Without it, the recipe's secret outputs are
+	// dropped rather than persisted.
+	if _, ok := schemautil.GetSecretsBlock(schema); !ok {
+		return nil
 	}
 
 	if d.SecretMaterializer == nil {
