@@ -105,6 +105,11 @@ func (p *ProxyController) Run(ctx context.Context, w http.ResponseWriter, req *h
 	requestCtx := v1.ARMRequestContextFromContext(ctx)
 	id := requestCtx.ResourceID
 	relativePath := middleware.GetRelativePath(p.Options().PathBase, requestCtx.OriginalURL.Path)
+	if id.IsEmpty() {
+		message := "the request URL does not contain a valid resource ID"
+		response := v1.ErrorResponse{Error: &v1.ErrorDetails{Code: v1.CodeInvalid, Message: message}}
+		return armrpc_rest.NewBadRequestARMResponse(response), nil
+	}
 
 	apiVersion := requestCtx.APIVersion
 	if apiVersion == "" {
