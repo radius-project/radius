@@ -409,10 +409,13 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	} else if len(options.EnvRecipe.Outputs) > 0 || len(options.EnvRecipe.SecretOutputs) > 0 {
 		// Direct module with an outputs and/or secretOutputs mapping: generate an output block for each
 		// referenced module output so the values are available in the Terraform state for output mapping.
-		if err = tfConfig.AddMappedOutputs(options.EnvRecipe.Name, options.EnvRecipe.Outputs, loadedModule.OutputSensitivity); err != nil {
+		if err = tfConfig.AddMappedOutputs(options.EnvRecipe.Name, options.EnvRecipe.Outputs, loadedModule.OutputSensitivity, false); err != nil {
 			return "", err
 		}
-		if err = tfConfig.AddMappedOutputs(options.EnvRecipe.Name, options.EnvRecipe.SecretOutputs, loadedModule.OutputSensitivity); err != nil {
+		// SecretOutputs are always treated as secrets — force their generated output blocks sensitive so
+		// a module output the module did not itself mark sensitive (e.g. AVM primaryConnectionString) is
+		// still redacted in Terraform's stdout/stderr, which Radius streams into logs.
+		if err = tfConfig.AddMappedOutputs(options.EnvRecipe.Name, options.EnvRecipe.SecretOutputs, loadedModule.OutputSensitivity, true); err != nil {
 			return "", err
 		}
 	} else {

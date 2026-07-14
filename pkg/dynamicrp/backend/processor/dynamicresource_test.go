@@ -459,6 +459,44 @@ func Test_Process(t *testing.T) {
 		_, hasSecretRef := resource.Properties["secrets"]
 		require.False(t, hasSecretRef, "the stale secrets.name reference should be removed")
 	})
+
+	t.Run("fails fast when the schema declares a malformed secrets block", func(t *testing.T) {
+		mat := &fakeMaterializer{}
+		p := DynamicProcessor{SecretMaterializer: mat}
+		// `secrets` is declared as a string rather than the framework-owned object shape.
+		malformed := map[string]any{
+			"properties": map[string]any{
+				"environment": map[string]any{},
+				"application": map[string]any{},
+				"secrets":     map[string]any{"type": "string"},
+			},
+		}
+		cf, err := testUCPClientFactoryWithSchema(malformed)
+		require.NoError(t, err)
+
+		resource := &datamodel.DynamicResource{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+					Type: "Applications.Test/testRecipeResources",
+				},
+				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
+			},
+			Properties: map[string]any{"status": map[string]any{}},
+		}
+		options := processors.Options{
+			RecipeOutput: &recipes.RecipeOutput{
+				Values:  map[string]any{"host": hostname},
+				Secrets: map[string]any{"connectionString": "secret-conn"},
+			},
+			UcpClient: cf,
+		}
+
+		err = p.Process(context.Background(), resource, options)
+		require.Error(t, err, "a malformed secrets block should fail processing")
+		require.Contains(t, err.Error(), "must be an object")
+		require.False(t, mat.called, "no secret should be materialized for an invalid schema")
+	})
 }
 
 // fakeMaterializer is a test double for secret.Materializer.
@@ -505,7 +543,11 @@ func schemaWithSecretKeys(keys ...string) map[string]any {
 // testUCPClientFactoryWithSecrets returns a client factory whose API version schema declares a secrets block
 // with the provided keys.
 func testUCPClientFactoryWithSecrets(keys ...string) (*v20231001preview.ClientFactory, error) {
-	schema := schemaWithSecretKeys(keys...)
+	return testUCPClientFactoryWithSchema(schemaWithSecretKeys(keys...))
+}
+
+// testUCPClientFactoryWithSchema returns a client factory whose API version schema is the provided schema.
+func testUCPClientFactoryWithSchema(schema map[string]any) (*v20231001preview.ClientFactory, error) {
 	apiVersionServer := fake.APIVersionsServer{
 		Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.APIVersionsClientGetResponse{

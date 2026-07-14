@@ -108,6 +108,12 @@ func (d *DynamicProcessor) Process(ctx context.Context, resource *datamodel.Dyna
 		return err
 	}
 
+	// Fail fast on a malformed `secrets` block rather than opting a mis-shaped schema into materialization
+	// and writing an object into `properties.secrets` that violates the declared schema.
+	if err := schemautil.ValidateSecretsBlock(schema); err != nil {
+		return err
+	}
+
 	addComputedValuesToResourceProperties(resource, schema, computedValues)
 
 	return d.materializeRecipeSecrets(ctx, resource, schema, secretValues)
