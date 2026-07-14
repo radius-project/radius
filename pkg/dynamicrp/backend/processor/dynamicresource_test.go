@@ -381,6 +381,45 @@ func Test_Process(t *testing.T) {
 		_, hasSecretRef := resource.Properties["secrets"]
 		require.False(t, hasSecretRef)
 	})
+
+	t.Run("clears a stale managed secret when an update produces no secret outputs", func(t *testing.T) {
+		mat := &fakeMaterializer{}
+		p := DynamicProcessor{SecretMaterializer: mat}
+		// The type still declares a secrets block, but this recipe run emits no secret outputs.
+		cf, err := testUCPClientFactoryWithSecrets("connectionString")
+		require.NoError(t, err)
+
+		resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource"
+		resource := &datamodel.DynamicResource{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID:   resourceID,
+					Type: "Applications.Test/testRecipeResources",
+				},
+				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
+			},
+			// A prior deploy materialized a managed secret and left the reference behind.
+			Properties: map[string]any{
+				"status":  map[string]any{},
+				"secrets": map[string]any{"name": "test-resource-secrets"},
+			},
+		}
+		options := processors.Options{
+			RecipeOutput: &recipes.RecipeOutput{
+				Values:  map[string]any{"host": hostname},
+				Secrets: map[string]any{},
+			},
+			UcpClient: cf,
+		}
+
+		require.NoError(t, p.Process(context.Background(), resource, options))
+
+		// The now-stale managed secret is cascade-deleted and the dangling reference is cleared.
+		require.Equal(t, []string{resourceID}, mat.deleted, "the stale managed secret should be deleted")
+		require.False(t, mat.called, "no new secret should be materialized")
+		_, hasSecretRef := resource.Properties["secrets"]
+		require.False(t, hasSecretRef, "the stale secrets.name reference should be removed")
+	})
 }
 
 // fakeMaterializer is a test double for secret.Materializer.

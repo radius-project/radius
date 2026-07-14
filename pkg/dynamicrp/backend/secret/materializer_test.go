@@ -19,6 +19,7 @@ package secret
 import (
 	"context"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -51,6 +52,32 @@ func Test_ManagedSecretName(t *testing.T) {
 	other, err := resources.ParseResource("/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/queues/kafka")
 	require.NoError(t, err)
 	require.NotEqual(t, name, ManagedSecretName(other), "same name but different type must not collide")
+}
+
+// rfc1123Label matches a valid Kubernetes object name (lowercase alphanumeric and '-', start/end
+// alphanumeric, 1-63 chars).
+var rfc1123Label = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
+
+func Test_ManagedSecretName_ValidKubernetesName(t *testing.T) {
+	cases := map[string]string{
+		"simple lowercase":      "/planes/radius/local/resourceGroups/rg/providers/Applications.Test/kafkas/kafka",
+		"uppercase in name":     "/planes/radius/local/resourceGroups/rg/providers/Applications.Test/kafkas/MyKafka",
+		"underscores/dots":      "/planes/radius/local/resourceGroups/rg/providers/Applications.Test/kafkas/my_kafka.instance",
+		"very long owner name":  "/planes/radius/local/resourceGroups/rg/providers/Applications.Test/kafkas/" + strings.Repeat("a", 120),
+		"long name upper mixed": "/planes/radius/local/resourceGroups/rg/providers/Applications.Test/kafkas/" + strings.Repeat("AbC-", 30),
+	}
+	for label, id := range cases {
+		t.Run(label, func(t *testing.T) {
+			ownerID, err := resources.ParseResource(id)
+			require.NoError(t, err)
+
+			name := ManagedSecretName(ownerID)
+
+			require.LessOrEqual(t, len(name), managedSecretNameMaxLength, "name exceeds the 63-char limit: %q", name)
+			require.Regexp(t, rfc1123Label, name, "name is not a valid RFC 1123 label: %q", name)
+			require.Equal(t, name, ManagedSecretName(ownerID), "name must be deterministic")
+		})
+	}
 }
 
 func Test_Materialize(t *testing.T) {

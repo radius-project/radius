@@ -163,7 +163,10 @@ func (d *DynamicProcessor) materializeRecipeSecrets(ctx context.Context, resourc
 		data[key] = ref.Value
 	}
 	if len(data) == 0 {
-		return nil
+		// A prior deploy may have materialized a managed secret. If this update produced no secret
+		// outputs, delete that now-stale managed secret and clear the dangling `secrets.name` reference
+		// so we neither orphan the secret resource nor leave the owner pointing at a deleted one.
+		return d.clearStaleManagedSecret(ctx, resource)
 	}
 
 	if d.SecretMaterializer == nil {
@@ -194,6 +197,32 @@ func (d *DynamicProcessor) materializeRecipeSecrets(ctx context.Context, resourc
 	}
 	secrets[schemautil.SecretNameReferenceKey] = result.Name
 
+	return nil
+}
+
+// clearStaleManagedSecret cascade-deletes the managed secret an owner materialized on a prior deploy and
+// clears the reserved `secrets.name` reference, when the current update produced no secret outputs. The
+// presence of `properties.secrets.name` is the signal that a managed secret was previously materialized
+// (mirroring the Delete path); if it is absent there is nothing to clean up.
+func (d *DynamicProcessor) clearStaleManagedSecret(ctx context.Context, resource *datamodel.DynamicResource) error {
+	secrets, ok := resource.Properties[schemautil.SecretsBlockPropertyName].(map[string]any)
+	if !ok {
+		return nil
+	}
+	if _, ok := secrets[schemautil.SecretNameReferenceKey]; !ok {
+		return nil
+	}
+
+	if d.SecretMaterializer != nil {
+		if err := d.SecretMaterializer.Delete(ctx, resource.ID); err != nil {
+			return err
+		}
+	}
+
+	delete(secrets, schemautil.SecretNameReferenceKey)
+	if len(secrets) == 0 {
+		delete(resource.Properties, schemautil.SecretsBlockPropertyName)
+	}
 	return nil
 }
 

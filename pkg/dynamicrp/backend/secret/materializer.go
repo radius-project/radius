@@ -52,6 +52,11 @@ const (
 	// managedSecretNameHashLength is the number of hex characters of the owner-ID hash included in the
 	// managed secret name to disambiguate owners that share a name but differ in resource type or scope.
 	managedSecretNameHashLength = 8
+
+	// managedSecretNameMaxLength bounds the generated managed secret name to a valid RFC 1123 label
+	// (Kubernetes object name limit). The owner-name portion is truncated so the name — including the
+	// hash and suffix — never exceeds this.
+	managedSecretNameMaxLength = 63
 )
 
 // Request describes the managed secret to create or update for an owner resource.
@@ -101,12 +106,40 @@ func NewMaterializer(armClientOptions *arm.ClientOptions) Materializer {
 // ManagedSecretName derives the deterministic name of the managed Radius.Security/secrets resource for an
 // owner resource. It combines the owner's name with a short hash of the owner's fully-qualified resource ID
 // so that owners that share a name but differ in resource type or scope — which is allowed within a single
-// resource group — never collide on the same managed secret. The name is stable for a given owner, so
-// Materialize and Delete derive the same value.
+// resource group — never collide on the same managed secret. The result is a valid RFC 1123 label
+// (lowercase, `[a-z0-9-]`, bounded to 63 characters) so it is always a legal Kubernetes object name. The
+// name is stable for a given owner, so Materialize and Delete derive the same value.
 func ManagedSecretName(ownerID resources.ID) string {
 	sum := sha256.Sum256([]byte(strings.ToLower(ownerID.String())))
 	hash := hex.EncodeToString(sum[:])[:managedSecretNameHashLength]
-	return fmt.Sprintf("%s-%s%s", ownerID.Name(), hash, managedSecretNameSuffix)
+
+	// Reserve room for the "-<hash>" and "-secrets" segments so the total stays within the label limit.
+	maxOwnerLen := managedSecretNameMaxLength - len(managedSecretNameSuffix) - managedSecretNameHashLength - 1
+	owner := sanitizeLabel(ownerID.Name())
+	if len(owner) > maxOwnerLen {
+		owner = strings.Trim(owner[:maxOwnerLen], "-")
+	}
+
+	// The hash always keeps the name unique, so an empty/all-invalid owner name still yields a valid label.
+	if owner == "" {
+		return fmt.Sprintf("%s%s", hash, managedSecretNameSuffix)
+	}
+	return fmt.Sprintf("%s-%s%s", owner, hash, managedSecretNameSuffix)
+}
+
+// sanitizeLabel lowercases s and replaces any character that is not a lowercase alphanumeric or hyphen with a
+// hyphen, then trims leading/trailing hyphens so the result is a valid RFC 1123 label segment.
+func sanitizeLabel(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(s) {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '-':
+			b.WriteRune(r)
+		default:
+			b.WriteRune('-')
+		}
+	}
+	return strings.Trim(b.String(), "-")
 }
 
 // Materialize creates or updates the managed Radius.Security/secrets resource for the owner and returns its
