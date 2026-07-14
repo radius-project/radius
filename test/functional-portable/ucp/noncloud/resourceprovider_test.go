@@ -17,18 +17,18 @@ limitations under the License.
 package ucp
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/schema/baseresource"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_ResourceProviderRegistration(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	options := rp.NewTestOptions(t)

@@ -32,7 +32,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -125,7 +124,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -165,7 +164,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -208,7 +207,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -264,7 +263,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -326,7 +325,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -357,7 +356,7 @@ func Test_ProxyController_PrepareProxyRequest(t *testing.T) {
 			URL:    originalURL}
 
 		p, _, _, _, _ := createController(t)
-		proxyReq, err := p.PrepareProxyRequest(testcontext.New(t), originalReq, downstream, relativePath)
+		proxyReq, err := p.PrepareProxyRequest(t.Context(), originalReq, downstream, relativePath)
 		require.NoError(t, err)
 		require.NotNil(t, proxyReq)
 
@@ -377,7 +376,7 @@ func Test_ProxyController_PrepareProxyRequest(t *testing.T) {
 			URL:    originalURL}
 
 		p, _, _, _, _ := createController(t)
-		proxyReq, err := p.PrepareProxyRequest(testcontext.New(t), originalReq, downstream, relativePath)
+		proxyReq, err := p.PrepareProxyRequest(t.Context(), originalReq, downstream, relativePath)
 		require.NoError(t, err)
 		require.NotNil(t, proxyReq)
 
@@ -391,7 +390,7 @@ func Test_ProxyController_PrepareProxyRequest(t *testing.T) {
 		originalReq := &http.Request{Header: http.Header{}, URL: &url.URL{}}
 
 		p, _, _, _, _ := createController(t)
-		proxyReq, err := p.PrepareProxyRequest(testcontext.New(t), originalReq, "\ninvalid", relativePath)
+		proxyReq, err := p.PrepareProxyRequest(t.Context(), originalReq, "\ninvalid", relativePath)
 		require.Error(t, err)
 		require.Equal(t, "failed to parse downstream URL: parse \"\\ninvalid\": net/url: invalid control character in URL", err.Error())
 		require.Nil(t, proxyReq)
