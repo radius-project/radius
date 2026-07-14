@@ -89,6 +89,7 @@ func TestFromARMRequest_PrefersURLWhenRefererResourceDiffers(t *testing.T) {
 	// at a different resource is ignored in favor of the request URL.
 	cases := []struct {
 		desc       string
+		method     string
 		urlPath    string
 		referer    string
 		expectedID string
@@ -106,10 +107,29 @@ func TestFromARMRequest_PrefersURLWhenRefererResourceDiffers(t *testing.T) {
 			expectedID: "/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/Env0",
 		},
 		{
-			desc:       "referer for a different resource uses url",
+			desc:       "delete with referer for a different resource uses url",
+			method:     http.MethodDelete,
 			urlPath:    "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
 			referer:    "http://localhost/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/env0",
 			expectedID: "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
+		},
+		{
+			desc:       "malformed referer uses url",
+			urlPath:    "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
+			referer:    "://invalid",
+			expectedID: "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
+		},
+		{
+			desc:       "referer without resource id uses url",
+			urlPath:    "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
+			referer:    "http://localhost",
+			expectedID: "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core/environments/env0",
+		},
+		{
+			desc:       "invalid url does not use referer resource id",
+			urlPath:    "/planes/radius/local/resourcegroups/group-b/providers/Applications.Core//environments/env0",
+			referer:    "http://localhost/planes/radius/local/resourceGroups/group-a/providers/Applications.Core/environments/env0",
+			expectedID: "",
 		},
 		{
 			// A proxied request can carry a routing prefix on the URL (e.g. a downstream id) that the
@@ -124,7 +144,12 @@ func TestFromARMRequest_PrefersURLWhenRefererResourceDiffers(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.desc, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tt.urlPath, nil)
+			method := tt.method
+			if method == "" {
+				method = http.MethodGet
+			}
+
+			req := httptest.NewRequest(method, tt.urlPath, nil)
 			if tt.referer != "" {
 				req.Header.Set(RefererHeader, tt.referer)
 			}
