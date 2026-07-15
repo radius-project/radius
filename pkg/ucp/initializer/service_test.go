@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -337,7 +338,8 @@ types:
 			resourceType := summaryModel.Properties.ResourceTypes[typeName]
 			require.NotNil(t, resourceType, "resource type %q should be registered", typeName)
 			require.NotNil(t, resourceType.Description, "resource type %q should have a description", typeName)
-			assert.Contains(t, *resourceType.Description, expectedDescriptionPrefix)
+			assert.True(t, strings.HasPrefix(*resourceType.Description, expectedDescriptionPrefix),
+				"resource type %q description should start with %q, got %q", typeName, expectedDescriptionPrefix, *resourceType.Description)
 
 			apiVersion := resourceType.APIVersions["2025-08-01-preview"]
 			require.NotNil(t, apiVersion, "resource type %q should have API version 2025-08-01-preview", typeName)
