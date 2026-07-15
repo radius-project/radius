@@ -311,6 +311,21 @@ if [ $attempt -eq $max_attempts ]; then
 fi
 print_success "UCP started and initialized successfully"
 
+# Install the Radius + UCP CRDs into the k3d cluster the controller watches.
+# The controller aborts startup if `DeploymentResource.radapp.io` or its
+# siblings aren't registered ("failed to wait for recipe caches to sync"),
+# so this must run before we launch the controller. `kubectl apply` is
+# idempotent so re-running debug-start is safe.
+CRD_ROOT="$SCRIPT_DIR/../../deploy/Chart/crds"
+if [ -d "$CRD_ROOT/radius" ] && [ -d "$CRD_ROOT/ucpd" ]; then
+  echo "Installing Radius CRDs into k3d-radius-debug..."
+  kubectl --context k3d-radius-debug apply -f "$CRD_ROOT/radius" > /dev/null
+  kubectl --context k3d-radius-debug apply -f "$CRD_ROOT/ucpd" > /dev/null
+  print_success "CRDs installed"
+else
+  print_warning "CRD directories not found under $CRD_ROOT; controller may fail to start"
+fi
+
 # Start Controller with dlv
 echo "Starting Controller with dlv on port 40002..."
 dlv exec "$DEBUG_ROOT/bin/controller" --listen=127.0.0.1:40002 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/controller.yaml" --cert-dir="" > "$DEBUG_ROOT/logs/controller.log" 2>&1 &
@@ -336,7 +351,13 @@ fi
 
 # Start Applications RP with dlv
 echo "Starting Applications RP with dlv on port 40003..."
-dlv exec "$DEBUG_ROOT/bin/applications-rp" --listen=127.0.0.1:40003 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/applications-rp.yaml" > "$DEBUG_ROOT/logs/applications-rp.log" 2>&1 &
+# Redirect the global Terraform install directory into $DEBUG_ROOT so the RP
+# does not try to write to /terraform (read-only on macOS host). The default
+# path is set for the in-container ucpd image. TERRAFORM_TEST_GLOBAL_DIR is the
+# override entry point defined in pkg/recipes/terraform/install.go.
+mkdir -p "$DEBUG_ROOT/terraform-global"
+TERRAFORM_TEST_GLOBAL_DIR="$DEBUG_ROOT/terraform-global" \
+  dlv exec "$DEBUG_ROOT/bin/applications-rp" --listen=127.0.0.1:40003 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/applications-rp.yaml" > "$DEBUG_ROOT/logs/applications-rp.log" 2>&1 &
 echo $! > "$DEBUG_ROOT/logs/applications-rp.pid"
 
 # Wait for Applications RP to start (it takes time to register with UCP)
@@ -386,7 +407,11 @@ fi
 
 # Start Dynamic RP with dlv
 echo "Starting Dynamic RP with dlv on port 40004..."
-dlv exec "$DEBUG_ROOT/bin/dynamic-rp" --listen=127.0.0.1:40004 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/dynamic-rp.yaml" > "$DEBUG_ROOT/logs/dynamic-rp.log" 2>&1 &
+# Same TERRAFORM_TEST_GLOBAL_DIR override as applications-rp above so dynamic-rp
+# does not try to write to the read-only /terraform path on the macOS host.
+mkdir -p "$DEBUG_ROOT/terraform-global"
+TERRAFORM_TEST_GLOBAL_DIR="$DEBUG_ROOT/terraform-global" \
+  dlv exec "$DEBUG_ROOT/bin/dynamic-rp" --listen=127.0.0.1:40004 --headless=true --api-version=2 --accept-multiclient --continue -- --config-file="$SCRIPT_DIR/../configs/dynamic-rp.yaml" > "$DEBUG_ROOT/logs/dynamic-rp.log" 2>&1 &
 echo $! > "$DEBUG_ROOT/logs/dynamic-rp.pid"
 
 # Wait for Dynamic RP to start

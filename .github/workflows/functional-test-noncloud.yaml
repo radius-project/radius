@@ -343,10 +343,14 @@ jobs:
       - name: Load and Push container images
         # Images were built and saved to tarballs once in the "build" job and
         # downloaded above; load them into the local Docker daemon and push them to
-        # this leg's local registry. They are already tagged for
+        # this leg's local registry. Remove the tarballs after loading to preserve
+        # runner disk space, especially for the leg that creates a second KinD
+        # cluster. They are already tagged for
         # localhost:<port>, so no retag is needed before pushing.
         run: |
-          make docker-load-images && make docker-push
+          make docker-load-images
+          rm -rf ./dist/images
+          make docker-push
         env:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}

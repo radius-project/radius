@@ -81,6 +81,7 @@ rad app graph ./app.bicep`,
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddApplicationNameFlag(cmd)
 	commonflags.AddOutputFlag(cmd)
+	cmd.Flags().Bool("include-icons", false, "When set with --preview, embeds each referenced resource type icon's SVG bytes in the response.")
 
 	return cmd, runner
 }

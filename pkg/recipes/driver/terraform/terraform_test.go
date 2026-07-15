@@ -936,6 +936,37 @@ func Test_Terraform_PrepareRecipeResponse_DirectModule(t *testing.T) {
 			},
 		},
 		{
+			desc: "direct module with secretOutputs mapping - plain output forced to secret (AVM)",
+			definition: recipes.EnvironmentDefinition{
+				Name:            "eventhub",
+				Driver:          recipes.TemplateKindTerraform,
+				TemplatePath:    "Azure/eventhub/azurerm",
+				ResourceType:    "Demo.Messaging/kafka",
+				TemplateVersion: "1.0",
+				Outputs:         map[string]string{"host": "name"},
+				SecretOutputs:   map[string]string{"connectionString": "primary_connection_string"},
+			},
+			state: &tfjson.State{
+				Values: &tfjson.StateValues{
+					Outputs: map[string]*tfjson.StateOutput{
+						// The module declares primary_connection_string as a plain (non-sensitive) output.
+						"name":                      {Value: "myhub"},
+						"primary_connection_string": {Value: "Endpoint=sb://myhub/;SharedAccessKey=abc"},
+					},
+					RootModule: &tfjson.StateModule{},
+				},
+			},
+			expectedResponse: &recipes.RecipeOutput{
+				Values:  map[string]any{"host": "myhub"},
+				Secrets: map[string]any{"connectionString": "Endpoint=sb://myhub/;SharedAccessKey=abc"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind:    recipes.TemplateKindTerraform,
+					TemplatePath:    "Azure/eventhub/azurerm",
+					TemplateVersion: "1.0",
+				},
+			},
+		},
+		{
 			desc: "direct module without outputs mapping - pass through all",
 			definition: recipes.EnvironmentDefinition{
 				Name:            "postgres",

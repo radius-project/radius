@@ -214,10 +214,6 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 	for typeName, resourceType := range rp.Types {
 		typeID := rpID + "/resourceTypes/" + typeName
 
-		// If the manifest brought in an icon via a sibling <basename>.svg
-		// file (see loadSiblingIcon), compute its SHA-256 hash server-side so
-		// the wire model always publishes the hash of exactly the bytes we
-		// stored (FR-010).
 		var iconHash *string
 		if resourceType.Icon != nil {
 			sum := sha256.Sum256([]byte(*resourceType.Icon))
