@@ -391,20 +391,8 @@ func initSubCommands() {
 
 	legacyEnvUpdateCmd, _ := env_update.NewCommand(framework)
 	previewEnvUpdateCmd, _ := env_update_preview.NewCommand(framework)
-	envUpdateCmd := previewEnvUpdateCmd
-	envUpdateCmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation for environment update.")
-	previewRunE := envUpdateCmd.RunE
-	envUpdateCmd.RunE = func(cmd *cobra.Command, args []string) error {
-		usePreview, err := cmd.Flags().GetBool("preview")
-		if err != nil {
-			return err
-		}
-		if usePreview {
-			return previewRunE(cmd, args)
-		}
-		return legacyEnvUpdateCmd.RunE(cmd, args)
-	}
-	envCmd.AddCommand(envUpdateCmd)
+	wirePreviewSubcommandPreviewBase(previewEnvUpdateCmd, legacyEnvUpdateCmd.RunE, "Use the Radius.Core preview implementation for environment update")
+	envCmd.AddCommand(previewEnvUpdateCmd)
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
 	previewWorkspaceCreateCmd, _ := workspace_create_preview.NewCommand(framework)
@@ -529,22 +517,70 @@ func getRootSpanName() string {
 // The preview behavior can also be activated by setting the RADIUS_PREVIEW environment variable to "true" (case-insensitive).
 // The --preview flag takes precedence over the environment variable.
 func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
-	cmd.Flags().Bool("preview", false, "Use the Radius.Core preview implementation (can also be set via RADIUS_PREVIEW=true)")
+	cmd.Flags().Bool("preview", false, withPreviewEnvVarNote("Use the Radius.Core preview implementation"))
 
 	legacyRun := cmd.RunE
 	previewRun := previewCmd.RunE
 
 	cmd.RunE = func(c *cobra.Command, args []string) error {
-		usePreview, err := c.Flags().GetBool("preview")
+		usePreview, err := resolveUsePreview(c)
 		if err != nil {
 			return err
-		}
-		if !c.Flags().Changed("preview") {
-			usePreview = strings.EqualFold(os.Getenv("RADIUS_PREVIEW"), "true")
 		}
 		if usePreview {
 			return previewRun(c, args)
 		}
 		return legacyRun(c, args)
 	}
+}
+
+// wirePreviewSubcommandPreviewBase wires a subcommand whose preview implementation carries
+// flags that the legacy implementation lacks (e.g. env update's --recipe-packs), so the
+// preview command must be used as the base to expose those flags. The legacy runner is
+// invoked as a fallback. Like wirePreviewSubcommand, preview is activated by the --preview
+// flag or the RADIUS_PREVIEW environment variable, with the flag taking precedence.
+func wirePreviewSubcommandPreviewBase(previewCmd *cobra.Command, legacyRunE func(*cobra.Command, []string) error, previewFlagUsage string) {
+	previewCmd.Flags().Bool("preview", false, withPreviewEnvVarNote(previewFlagUsage))
+
+	previewRun := previewCmd.RunE
+
+	previewCmd.RunE = func(c *cobra.Command, args []string) error {
+		usePreview, err := resolveUsePreview(c)
+		if err != nil {
+			return err
+		}
+		if usePreview {
+			return previewRun(c, args)
+		}
+		return legacyRunE(c, args)
+	}
+}
+
+// resolveUsePreview reports whether a command should use its preview implementation.
+// It returns true when the --preview flag is explicitly set to true, or when the flag is
+// unset and the RADIUS_PREVIEW environment variable is "true" (case-insensitive). The
+// --preview flag takes precedence over the environment variable.
+func resolveUsePreview(cmd *cobra.Command) (bool, error) {
+	usePreview, err := cmd.Flags().GetBool("preview")
+	if err != nil {
+		return false, err
+	}
+	if !cmd.Flags().Changed("preview") {
+		usePreview = strings.EqualFold(os.Getenv("RADIUS_PREVIEW"), "true")
+	}
+	return usePreview, nil
+}
+
+// previewEnvVarNote documents that the RADIUS_PREVIEW environment variable also activates
+// preview mode. It is appended to --preview flag usage strings by withPreviewEnvVarNote.
+const previewEnvVarNote = "can also be set via RADIUS_PREVIEW=true"
+
+// withPreviewEnvVarNote ensures a --preview flag usage string mentions that RADIUS_PREVIEW
+// also activates preview, so --help stays accurate. The note is appended unless the usage
+// already references RADIUS_PREVIEW, avoiding a double-append when a caller includes it.
+func withPreviewEnvVarNote(usage string) string {
+	if strings.Contains(usage, "RADIUS_PREVIEW") {
+		return usage
+	}
+	return usage + " (" + previewEnvVarNote + ")"
 }
