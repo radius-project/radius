@@ -37,26 +37,26 @@ namespace Radius.Core;
 
 @doc("""
   The `Radius.Core/environments` Resource Type represents a Radius Environment: the deployment target that platform engineers configure for their developers. Every Radius Application is deployed to an Environment through its `environment` property.
-
+  
   An Environment defines three things for the Applications deployed to it:
-
+  
   - **Where resources are deployed**: the target compute platform and cloud provider accounts, set through the `providers` property.
   - **Which Recipes are used**: the Recipe Packs whose Recipes provision the infrastructure backing application resources, set through the `recipePacks` property.
   - **Advanced Terraform and Bicep settings**: environment-wide Recipe parameters and Terraform or Bicep engine configuration applied when Recipes run.
-
+  
   ## Defining an Environment
-
+  
   The simplest Environment can be created directly with the `rad environment create` command, without a Bicep file:
-
+  
   ```bash
   rad environment create my-environment
   ```
-
+  
   For more advanced configurations, define an Environment as a `Radius.Core/environments` resource in a Bicep file. For example:
-
+  
   ```bicep
   extension radius
-
+  
   resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
     name: 'my-environment'
     properties: {
@@ -71,24 +71,24 @@ namespace Radius.Core;
     }
   }
   ```
-
+  
   Both properties have defaults. If `providers` is omitted, resources are deployed to Kubernetes in the `default` namespace. If `recipePacks` is omitted, the Environment uses the `default` Recipe Pack in the `default` resource group.
-
+  
   ## Deploying an Environment
-
+  
   Deploy a defined Environment with the `rad deploy` command:
-
+  
   ```bash
   rad deploy ./environment.bicep
   ```
-
+  
   ## Cloud providers
-
+  
   By default an Environment deploys to Kubernetes. To deploy cloud resources, configure the `providers` property with your cloud account. For AWS, set the account ID and region:
-
+  
   ```bicep
   extension radius
-
+  
   resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
     name: 'my-environment'
     properties: {
@@ -101,12 +101,12 @@ namespace Radius.Core;
     }
   }
   ```
-
+  
   For Azure, set the subscription and resource group that resources are deployed into:
-
+  
   ```bicep
   extension radius
-
+  
   resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
     name: 'my-environment'
     properties: {
@@ -119,19 +119,19 @@ namespace Radius.Core;
     }
   }
   ```
-
+  
   The `providers` property selects the target account, but the credentials Radius uses to authenticate to AWS and Azure are configured separately with the `rad credential register` command.
-
+  
   ## Recipe Packs
-
+  
   A Recipe Pack is a collection of Recipes, defined as a separate `Radius.Core/recipePacks` resource. A Recipe is an infrastructure-as-code module, a Terraform module or Bicep template, that provisions the infrastructure backing an application resource. Reference one or more Recipe Packs by their resource IDs in the `recipePacks` property to control which Recipes are used. See the `Radius.Core/recipePacks` documentation for details.
-
+  
   Use `recipeParameters` to pass environment-specific parameters to the Recipes defined in the referenced Recipe Packs, for example to standardize configuration such as SKUs or instance sizes across an Environment.
-
+  
   ## Advanced Terraform and Bicep settings
-
+  
   For advanced Terraform and Bicep configuration, such as private module sources and registry authentication, reference a `Radius.Core/terraformSettings` or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings` properties.
-
+  
   For more information, see the Radius documentation at https://docs.radapp.io.
   """)
 model EnvironmentResource
