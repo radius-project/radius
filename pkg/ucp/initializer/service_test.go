@@ -325,19 +325,19 @@ types:
 		require.NoError(t, obj.As(summaryModel))
 		require.Len(t, summaryModel.Properties.ResourceTypes, len(radiusCoreTypeOpenAPIDefinitions))
 
-		expectedDescriptions := map[string]string{
-			"applications":      "Radius Application resource",
+		expectedDescriptionPrefixes := map[string]string{
+			"applications":      "The Radius.Core/applications Resource Type represents a Radius Application",
 			"bicepSettings":     "The Bicep configuration resource, providing reusable Bicep recipe settings for environments.",
 			"environments":      "The environment resource",
 			"recipePacks":       "The recipe pack resource",
 			"terraformSettings": "The Terraform configuration resource, providing reusable Terraform recipe settings for environments.",
 		}
-		require.Len(t, expectedDescriptions, len(radiusCoreTypeOpenAPIDefinitions))
-		for typeName, expectedDescription := range expectedDescriptions {
+		require.Len(t, expectedDescriptionPrefixes, len(radiusCoreTypeOpenAPIDefinitions))
+		for typeName, expectedDescriptionPrefix := range expectedDescriptionPrefixes {
 			resourceType := summaryModel.Properties.ResourceTypes[typeName]
 			require.NotNil(t, resourceType, "resource type %q should be registered", typeName)
 			require.NotNil(t, resourceType.Description, "resource type %q should have a description", typeName)
-			assert.Equal(t, expectedDescription, *resourceType.Description)
+			assert.Contains(t, *resourceType.Description, expectedDescriptionPrefix)
 
 			apiVersion := resourceType.APIVersions["2025-08-01-preview"]
 			require.NotNil(t, apiVersion, "resource type %q should have API version 2025-08-01-preview", typeName)

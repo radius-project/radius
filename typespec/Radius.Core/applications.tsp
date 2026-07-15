@@ -35,7 +35,40 @@ using OpenAPI;
 
 namespace Radius.Core;
 
-@doc("Radius Application resource")
+@doc("""
+  The Radius.Core/applications Resource Type represents a Radius Application: a logical grouping of the resources that make up a single application, such as containers, databases, and message queues, along with the connections between them. Radius uses the Application to build the application graph, apply shared configuration, and manage its resources together throughout their lifecycle.
+
+  An Application is always deployed to a Radius Environment, which is supplied through the `environment` property. To define an Application, add a `Radius.Core/applications` resource to your application definition Bicep file.
+
+  ```
+  extension radius
+
+  @description('The Radius Environment ID. Injected automatically by the rad CLI.')
+  param environment string
+
+  resource myApp 'Radius.Core/applications@2025-08-01-preview' = {
+    name: 'my-app'
+    properties: {
+      environment: environment
+    }
+  }
+  ```
+
+  Resources are composed into an application by setting their `application` property to the application ID. For example, in order to add a container to this application, add the following to the application definition Bicep file and set `application: myApp.id`:
+
+  ```
+  resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
+    name: 'frontend'
+    properties: {
+      environment: environment
+      application: myApp.id
+      containers: {
+        ...
+      }
+    }
+  }
+  ```
+  """)
 model ApplicationResource
   is TrackedResourceRequired<ApplicationProperties, "applications"> {
   @doc("The application name")

@@ -1417,7 +1417,7 @@
     },
     "ApplicationResource": {
       "type": "object",
-      "description": "Radius Application resource",
+      "description": "The Radius.Core/applications Resource Type represents a Radius Application: a logical grouping of the resources that make up a single application, such as containers, databases, and message queues, along with the connections between them. Radius uses the Application to build the application graph, apply shared configuration, and manage its resources together throughout their lifecycle.\n\nAn Application is always deployed to a Radius Environment, which is supplied through the `environment` property. To define an Application, add a `Radius.Core/applications` resource to your application definition Bicep file.\n\n```\nextension radius\n\n@description('The Radius Environment ID. Injected automatically by the rad CLI.')\nparam environment string\n\nresource myApp 'Radius.Core/applications@2025-08-01-preview' = {\n  name: 'my-app'\n  properties: {\n    environment: environment\n  }\n}\n```\n\nResources are composed into an application by setting their `application` property to the application ID. For example, in order to add a container to this application, add the following to the application definition Bicep file and set `application: myApp.id`:\n\n```\nresource frontend 'Radius.Compute/containers@2025-08-01-preview' = {\n  name: 'frontend'\n  properties: {\n    environment: environment\n    application: myApp.id\n    containers: {\n    ...\n    }\n  }\n}\n```",
       "properties": {
         "properties": {
           "$ref": "#/definitions/ApplicationProperties",
@@ -1461,7 +1461,7 @@
     },
     "ApplicationResourceUpdate": {
       "type": "object",
-      "description": "Radius Application resource",
+      "description": "The Radius.Core/applications Resource Type represents a Radius Application: a logical grouping of the resources that make up a single application, such as containers, databases, and message queues, along with the connections between them. Radius uses the Application to build the application graph, apply shared configuration, and manage its resources together throughout their lifecycle.\n\nAn Application is always deployed to a Radius Environment, which is supplied through the `environment` property. To define an Application, add a `Radius.Core/applications` resource to your application definition Bicep file.\n\n```\nextension radius\n\n@description('The Radius Environment ID. Injected automatically by the rad CLI.')\nparam environment string\n\nresource myApp 'Radius.Core/applications@2025-08-01-preview' = {\n  name: 'my-app'\n  properties: {\n    environment: environment\n  }\n}\n```\n\nResources are composed into an application by setting their `application` property to the application ID. For example, in order to add a container to this application, add the following to the application definition Bicep file and set `application: myApp.id`:\n\n```\nresource frontend 'Radius.Compute/containers@2025-08-01-preview' = {\n  name: 'frontend'\n  properties: {\n    environment: environment\n    application: myApp.id\n    containers: {\n    ...\n    }\n  }\n}\n```",
       "allOf": [
         {
           "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
