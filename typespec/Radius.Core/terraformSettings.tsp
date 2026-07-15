@@ -37,25 +37,29 @@ namespace Radius.Core;
 
 @doc("""
   The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI configuration that Environments apply when running Terraform Recipes. Its primary use is authenticating to private Terraform registries that host the modules referenced by a Recipe Pack, along with configuring provider installation and injecting environment variables during Recipe execution.
-  
+
   Platform engineers define a `Radius.Core/terraformSettings` resource once and reference it from any Environment whose Recipes pull modules from a private registry.
-  
+
   ## Defining Terraform settings
-  
+
   Configure `terraformrc.credentials`, keyed by registry hostname, to authenticate to a private Terraform registry. Each entry points to a secret whose `token` key holds the registry token:
-  
+
   ```bicep
   extension radius
-  
+
+  @description('The Radius Environment ID. Injected automatically by the rad CLI.')
+  param environment string
+
   resource registrySecret 'Radius.Security/secrets@2025-08-01-preview' = {
     name: 'terraform-registry-token'
     properties: {
+      environment: environment
       data: {
         token: { value: 'my-registry-token' }
       }
     }
   }
-  
+
   resource terraformRegistry 'Radius.Core/terraformSettings@2025-08-01-preview' = {
     name: 'private-registry'
     properties: {
@@ -69,13 +73,13 @@ namespace Radius.Core;
     }
   }
   ```
-  
+
   Two other settings are available: provider installation and environment variables.
-  
+
   ### Provider installation
-  
+
   In air-gapped or internal environments, use `terraformrc.providerInstallation` to install providers from a network mirror instead of the public registry. Set the mirror `url`, optionally narrow it with `include` or `exclude` provider address patterns, and use `direct` to control which providers are still downloaded directly:
-  
+
   ```bicep
   resource providerMirror 'Radius.Core/terraformSettings@2025-08-01-preview' = {
     name: 'internal-mirror'
@@ -94,11 +98,11 @@ namespace Radius.Core;
     }
   }
   ```
-  
+
   ### Environment variables
-  
+
   Use `env` to inject environment variables into every Terraform Recipe run, for example to raise the Terraform log level for troubleshooting or to tune CLI behavior:
-  
+
   ```bicep
   resource terraformLogging 'Radius.Core/terraformSettings@2025-08-01-preview' = {
     name: 'terraform-logging'
@@ -110,26 +114,26 @@ namespace Radius.Core;
     }
   }
   ```
-  
+
   ## Deploying Terraform settings
-  
+
   Deploy the settings resource with the `rad deploy` command:
-  
+
   ```bash
   rad deploy ./terraform-settings.bicep
   ```
-  
+
   ## Referencing Terraform settings from an Environment
-  
+
   Reference the settings from an Environment by setting its `terraformSettings` property to the resource ID. Every Terraform Recipe run in that Environment then uses the configured registry credentials:
-  
+
   ```bicep
   extension radius
-  
+
   resource terraformRegistry 'Radius.Core/terraformSettings@2025-08-01-preview' existing = {
     name: 'private-registry'
   }
-  
+
   resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
     name: 'my-environment'
     properties: {
@@ -137,7 +141,7 @@ namespace Radius.Core;
     }
   }
   ```
-  
+
   For more information, see the Radius documentation at https://docs.radapp.io.
   """)
 model TerraformSettingsResource

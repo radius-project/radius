@@ -40,7 +40,9 @@ type ApplicationsClientCreateOrUpdateResponse struct {
 	// environment: environment
 	// application: myApp.id
 	// containers: {
-	// ...
+	// frontend: {
+	// image: 'ghcr.io/my-org/frontend:latest'
+	// }
 	// }
 	// }
 	// }
@@ -97,7 +99,9 @@ type ApplicationsClientGetResponse struct {
 	// environment: environment
 	// application: myApp.id
 	// containers: {
-	// ...
+	// frontend: {
+	// image: 'ghcr.io/my-org/frontend:latest'
+	// }
 	// }
 	// }
 	// }
@@ -149,7 +153,9 @@ type ApplicationsClientUpdateResponse struct {
 	// environment: environment
 	// application: myApp.id
 	// containers: {
-	// ...
+	// frontend: {
+	// image: 'ghcr.io/my-org/frontend:latest'
+	// }
 	// }
 	// }
 	// }
@@ -171,9 +177,12 @@ type BicepSettingsClientCreateOrUpdateResponse struct {
 	// password from a secret:
 	// ```bicep
 	// extension radius
+	// @description('The Radius Environment ID. Injected automatically by the rad CLI.')
+	// param environment string
 	// resource registrySecret 'Radius.Security/secrets@2025-08-01-preview' = {
 	// name: 'registry-credentials'
 	// properties: {
+	// environment: environment
 	// data: {
 	// username: { value: 'my-username' }
 	// password: { value: 'my-password' }
@@ -236,9 +245,12 @@ type BicepSettingsClientGetResponse struct {
 	// password from a secret:
 	// ```bicep
 	// extension radius
+	// @description('The Radius Environment ID. Injected automatically by the rad CLI.')
+	// param environment string
 	// resource registrySecret 'Radius.Security/secrets@2025-08-01-preview' = {
 	// name: 'registry-credentials'
 	// properties: {
+	// environment: environment
 	// data: {
 	// username: { value: 'my-username' }
 	// password: { value: 'my-password' }
@@ -302,9 +314,12 @@ type BicepSettingsClientUpdateResponse struct {
 	// password from a secret:
 	// ```bicep
 	// extension radius
+	// @description('The Radius Environment ID. Injected automatically by the rad CLI.')
+	// param environment string
 	// resource registrySecret 'Radius.Security/secrets@2025-08-01-preview' = {
 	// name: 'registry-credentials'
 	// properties: {
+	// environment: environment
 	// data: {
 	// username: { value: 'my-username' }
 	// password: { value: 'my-password' }
@@ -688,7 +703,7 @@ type RecipePacksClientCreateOrUpdateResponse struct {
 	// with the `rad recipe-pack list` and `rad recipe-pack show` commands.
 	// ## Referencing a Recipe Pack from an Environment
 	// An Environment references a Recipe Pack through its `recipePacks` property. When the Recipe Pack and the Environment are
-	// deployed to the same resource group, reference it by its symbolic name:
+	// deployed to the same resource group, declare it as an `existing` resource and reference its `.id`:
 	// ```bicep
 	// extension radius
 	// resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' existing = {
@@ -777,7 +792,7 @@ type RecipePacksClientGetResponse struct {
 	// with the `rad recipe-pack list` and `rad recipe-pack show` commands.
 	// ## Referencing a Recipe Pack from an Environment
 	// An Environment references a Recipe Pack through its `recipePacks` property. When the Recipe Pack and the Environment are
-	// deployed to the same resource group, reference it by its symbolic name:
+	// deployed to the same resource group, declare it as an `existing` resource and reference its `.id`:
 	// ```bicep
 	// extension radius
 	// resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' existing = {
@@ -867,7 +882,7 @@ type RecipePacksClientUpdateResponse struct {
 	// with the `rad recipe-pack list` and `rad recipe-pack show` commands.
 	// ## Referencing a Recipe Pack from an Environment
 	// An Environment references a Recipe Pack through its `recipePacks` property. When the Recipe Pack and the Environment are
-	// deployed to the same resource group, reference it by its symbolic name:
+	// deployed to the same resource group, declare it as an `existing` resource and reference its `.id`:
 	// ```bicep
 	// extension radius
 	// resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' existing = {
@@ -908,9 +923,12 @@ type TerraformSettingsClientCreateOrUpdateResponse struct {
 	// entry points to a secret whose `token` key holds the registry token:
 	// ```bicep
 	// extension radius
+	// @description('The Radius Environment ID. Injected automatically by the rad CLI.')
+	// param environment string
 	// resource registrySecret 'Radius.Security/secrets@2025-08-01-preview' = {
 	// name: 'terraform-registry-token'
 	// properties: {
+	// environment: environment
 	// data: {
 	// token: { value: 'my-registry-token' }
 	// }
@@ -1007,9 +1025,12 @@ type TerraformSettingsClientGetResponse struct {
 	// entry points to a secret whose `token` key holds the registry token:
 	// ```bicep
 	// extension radius
+	// @description('The Radius Environment ID. Injected automatically by the rad CLI.')
+	// param environment string
 	// resource registrySecret 'Radius.Security/secrets@2025-08-01-preview' = {
 	// name: 'terraform-registry-token'
 	// properties: {
+	// environment: environment
 	// data: {
 	// token: { value: 'my-registry-token' }
 	// }
@@ -1107,9 +1128,12 @@ type TerraformSettingsClientUpdateResponse struct {
 	// entry points to a secret whose `token` key holds the registry token:
 	// ```bicep
 	// extension radius
+	// @description('The Radius Environment ID. Injected automatically by the rad CLI.')
+	// param environment string
 	// resource registrySecret 'Radius.Security/secrets@2025-08-01-preview' = {
 	// name: 'terraform-registry-token'
 	// properties: {
+	// environment: environment
 	// data: {
 	// token: { value: 'my-registry-token' }
 	// }
