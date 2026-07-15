@@ -123,7 +123,7 @@ func Test_Run(t *testing.T) {
 		svcContext := &v1.ARMRequestContext{
 			APIVersion: apiVersion,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
