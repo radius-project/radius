@@ -396,6 +396,9 @@ type EnvironmentsClientCreateOrUpdateResponse struct {
 	// }
 	// }
 	// }
+	// resource myRecipePack 'Radius.Core/recipePacks@2025-08-01-preview' existing = {
+	// name: 'my-recipe-pack'
+	// }
 	// ```
 	// Both properties have defaults. If `providers` is omitted, resources are deployed to Kubernetes in the `default` namespace.
 	// If `recipePacks` is omitted, the Environment uses the `default` Recipe Pack in the `default` resource group.
@@ -489,6 +492,9 @@ type EnvironmentsClientGetResponse struct {
 	// }
 	// }
 	// }
+	// }
+	// resource myRecipePack 'Radius.Core/recipePacks@2025-08-01-preview' existing = {
+	// name: 'my-recipe-pack'
 	// }
 	// ```
 	// Both properties have defaults. If `providers` is omitted, resources are deployed to Kubernetes in the `default` namespace.
@@ -584,6 +590,9 @@ type EnvironmentsClientUpdateResponse struct {
 	// }
 	// }
 	// }
+	// }
+	// resource myRecipePack 'Radius.Core/recipePacks@2025-08-01-preview' existing = {
+	// name: 'my-recipe-pack'
 	// }
 	// ```
 	// Both properties have defaults. If `providers` is omitted, resources are deployed to Kubernetes in the `default` namespace.

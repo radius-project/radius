@@ -37,17 +37,17 @@ namespace Radius.Core;
 
 @doc("""
   The `Radius.Core/applications` Resource Type represents a Radius Application: a logical grouping of the resources that make up a single Application, such as containers, databases, and message queues, along with the connections between them. Radius uses the Application to build the application graph, apply shared configuration, and manage its resources together throughout their lifecycle.
-
+  
   ## Defining an Application
-
+  
   An Application is always deployed to a Radius Environment, which is supplied through the `environment` property. To define an Application, add a `Radius.Core/applications` resource to your application definition Bicep file.
-
+  
   ```bicep
   extension radius
-
+  
   @description('The Radius Environment ID. Injected automatically by the rad CLI.')
   param environment string
-
+  
   resource myApp 'Radius.Core/applications@2025-08-01-preview' = {
     name: 'my-app'
     properties: {
@@ -55,19 +55,19 @@ namespace Radius.Core;
     }
   }
   ```
-
+  
   ## Deploying an Application
-
+  
   An Application is deployed with the `rad deploy` command, which deploys the Application together with the resources that belong to it:
-
+  
   ```bash
   rad deploy ./app.bicep
   ```
-
+  
   ## Adding resources to an Application
-
+  
   Resources are composed into an Application by setting their `application` property to the Application's ID. For example, to add a Container to this Application, add the following to the application definition Bicep file and set `application: myApp.id`:
-
+  
   ```bicep
   resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
     name: 'frontend'
@@ -82,7 +82,7 @@ namespace Radius.Core;
     }
   }
   ```
-
+  
   For more information, see the Radius documentation at https://docs.radapp.io.
   """)
 model ApplicationResource

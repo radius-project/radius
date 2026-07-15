@@ -33,16 +33,16 @@ namespace Radius.Core;
 
 @doc("""
   The `Radius.Core/recipePacks` Resource Type represents a Recipe Pack: a named collection of Recipes that platform engineers assign to an Environment. A Recipe maps a resource type (such as `Radius.Data/redisCaches`) to an infrastructure-as-code module, a Terraform module or Bicep template, that provisions the infrastructure backing that resource when a developer deploys it.
-
+  
   A Recipe Pack is defined as its own resource and referenced from an Environment's `recipePacks` property, so one Recipe Pack can be shared across many Environments.
-
+  
   ## Defining a Recipe Pack
-
+  
   Each entry in the `recipes` map is keyed by resource type. Set the recipe `kind` (`bicep` or `terraform`) and its `source` (an OCI registry reference for Bicep recipes, or a module source for Terraform recipes).
-
+  
   ```bicep
   extension radius
-
+  
   resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
     name: 'data-recipes'
     properties: {
@@ -59,11 +59,11 @@ namespace Radius.Core;
     }
   }
   ```
-
+  
   ## Recipe parameters
-
+  
   Each Recipe can declare default `parameters` that are passed to its module. Platform engineers set baseline values here, and developers get them automatically. An Environment can override these values per resource type through its `recipeParameters` property.
-
+  
   ```bicep
   resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
     name: 'data-recipes'
@@ -81,22 +81,22 @@ namespace Radius.Core;
     }
   }
   ```
-
+  
   ## Deploying a Recipe Pack
-
+  
   Deploy the Bicep file with `rad deploy` to create the Recipe Pack resource. Once deployed, list and inspect Recipe Packs with the `rad recipe-pack list` and `rad recipe-pack show` commands.
-
+  
   ## Referencing a Recipe Pack from an Environment
-
+  
   An Environment references a Recipe Pack through its `recipePacks` property. When the Recipe Pack and the Environment are deployed to the same resource group, declare it as an `existing` resource and reference its `.id`:
-
+  
   ```bicep
   extension radius
-
+  
   resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' existing = {
     name: 'data-recipes'
   }
-
+  
   resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
     name: 'my-environment'
     properties: {
@@ -106,19 +106,19 @@ namespace Radius.Core;
     }
   }
   ```
-
+  
   To reference a Recipe Pack in a different resource group, use its full resource ID instead:
-
+  
   ```bicep
   recipePacks: [
     '/planes/radius/local/resourceGroups/shared/providers/Radius.Core/recipePacks/data-recipes'
   ]
   ```
-
+  
   Radius is installed with a `default` Recipe Pack in the `default` resource group, which an Environment uses when `recipePacks` is not set.
-
+  
   Prebuilt Recipe Packs and the Recipes they reference are published in the [resource-types-contrib](https://github.com/radius-project/resource-types-contrib) repository.
-
+  
   For more information, see the Radius documentation at https://docs.radapp.io.
   """)
 model RecipePackResource

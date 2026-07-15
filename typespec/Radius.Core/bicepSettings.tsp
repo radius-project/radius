@@ -37,19 +37,19 @@ namespace Radius.Core;
 
 @doc("""
   The `Radius.Core/bicepSettings` Resource Type holds reusable Bicep engine configuration that Environments apply when running Bicep Recipes. Its primary use is authenticating to private Bicep registries: OCI registries, such as Azure Container Registry, that host the Recipe templates referenced by a Recipe Pack.
-
+  
   Platform engineers define a `Radius.Core/bicepSettings` resource once and reference it from any Environment whose Recipes pull templates from a private registry.
-
+  
   ## Defining Bicep settings
-
+  
   Configure `registryAuthentications`, keyed by registry hostname. When a Recipe template is pulled from a matching host, Radius authenticates using the configured method. The example below uses basic authentication, reading the username and password from a secret:
-
+  
   ```bicep
   extension radius
-
+  
   @description('The Radius Environment ID. Injected automatically by the rad CLI.')
   param environment string
-
+  
   resource registrySecret 'Radius.Security/secrets@2025-08-01-preview' = {
     name: 'registry-credentials'
     properties: {
@@ -60,7 +60,7 @@ namespace Radius.Core;
       }
     }
   }
-
+  
   resource bicepRegistry 'Radius.Core/bicepSettings@2025-08-01-preview' = {
     name: 'private-registry'
     properties: {
@@ -73,28 +73,28 @@ namespace Radius.Core;
     }
   }
   ```
-
+  
   Three authentication methods are supported: `BasicAuth` (username and password from a secret), `AwsIrsa` (AWS IAM Roles for Service Accounts, using `awsIamRoleArn`), and `AzureWI` (Azure Workload Identity, using `azureWiClientId` and `azureWiTenantId`).
-
+  
   ## Deploying Bicep settings
-
+  
   Deploy the settings resource with the `rad deploy` command:
-
+  
   ```bash
   rad deploy ./bicep-settings.bicep
   ```
-
+  
   ## Referencing Bicep settings from an Environment
-
+  
   Reference the settings from an Environment by setting its `bicepSettings` property to the resource ID. Every Bicep Recipe run in that Environment then uses the configured registry authentication:
-
+  
   ```bicep
   extension radius
-
+  
   resource bicepRegistry 'Radius.Core/bicepSettings@2025-08-01-preview' existing = {
     name: 'private-registry'
   }
-
+  
   resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
     name: 'my-environment'
     properties: {
@@ -102,7 +102,7 @@ namespace Radius.Core;
     }
   }
   ```
-
+  
   For more information, see the Radius documentation at https://docs.radapp.io.
   """)
 model BicepSettingsResource
