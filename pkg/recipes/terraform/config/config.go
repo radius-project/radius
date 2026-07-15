@@ -304,8 +304,12 @@ func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
 // Each generated output is marked sensitive according to the module's own output declaration
 // (sensitivity), because Terraform requires a re-exported sensitive value to be marked sensitive.
 // Preserving the per-output sensitivity keeps the Values/Secrets split intact when the state is read back.
+// When forceSensitive is true, every generated output is marked sensitive regardless of the module's own
+// declaration; this is used for secret-output mappings so a module output that the module did not itself
+// mark sensitive (for example an AVM `primaryConnectionString`) is still redacted in Terraform's
+// stdout/stderr (which Radius streams into logs).
 // This function only updates config in memory, Save() must be called to persist the updated config.
-func (cfg *TerraformConfig) AddMappedOutputs(localModuleName string, outputsMap map[string]string, sensitivity map[string]bool) error {
+func (cfg *TerraformConfig) AddMappedOutputs(localModuleName string, outputsMap map[string]string, sensitivity map[string]bool, forceSensitive bool) error {
 	if localModuleName == "" {
 		return errors.New("module name cannot be empty")
 	}
@@ -330,7 +334,7 @@ func (cfg *TerraformConfig) AddMappedOutputs(localModuleName string, outputsMap 
 	for _, moduleOutputName := range outputsMap {
 		cfg.Output[moduleOutputName] = map[string]any{
 			"value":     "${module." + localModuleName + "." + moduleOutputName + "}",
-			"sensitive": sensitivity[moduleOutputName],
+			"sensitive": forceSensitive || sensitivity[moduleOutputName],
 		}
 	}
 

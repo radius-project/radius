@@ -28,8 +28,14 @@ const (
 	errUnmarshalResourceProperties = "failed to unmarshal resource for properties"
 )
 
-// BasicProperties is a list of common properties that are expected to be present in all resources
-var BasicProperties = []string{"application", "environment", "status", "connections", "codeReference"}
+// BasicProperties is a list of common properties that are framework-owned and expected to be present
+// in all resources. These are excluded from generic recipe-output copying and connection-based
+// environment variable injection.
+//
+// "secrets" is the framework-owned block that both declares which recipe outputs are secrets and,
+// via its reserved read-only "name" sub-property, exposes the reference to the managed
+// Radius.Security/secrets resource that Radius materializes for those outputs.
+var BasicProperties = []string{"application", "environment", "status", "connections", "codeReference", "secrets"}
 
 // marshalAndUnmarshalResource serializes a resource to JSON and then deserializes it into the target structure
 func marshalAndUnmarshalResource[P any, T any](resource P, target *T) error {

@@ -306,11 +306,6 @@ func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
 					"port":     float64(8080), // This is an artifact of the JSON unmarshal process. It's wierd but intended.
 					"hostname": "example.com",
 				},
-				"secrets": map[string]any{
-					"password": map[string]any{
-						"Value": "v3ryS3cr3t",
-					},
-				},
 				"outputResources": []any{
 					map[string]any{
 						"id":            "/planes/example/testing/providers/Test.Namespace/testResource/example",
@@ -339,9 +334,17 @@ func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
 	response = ucp.MakeRequest(http.MethodGet, testRecipeResourceURL, nil)
 	response.EqualsValue(200, expectedResource)
 
+	// Verify the recipe's secret output ("v3ryS3cr3t") is never exposed through the resource GET
+	// response that `rad resource show` renders. This resource type declares no secrets block, so the
+	// secret output is dropped entirely; either way the value must never appear on the resource.
+	require.NotContains(t, response.Body.String(), "v3ryS3cr3t",
+		"recipe secret output value must not appear in the resource GET response (rad resource show)")
+
 	// GET (list at plane-scope)
 	response = ucp.MakeRequest(http.MethodGet, "/planes/radius/testing/resourcegroups/test-group/providers/Applications.Test/exampleRecipeResources"+"?api-version="+apiVersion, nil)
 	response.EqualsValue(200, expectedList)
+	require.NotContains(t, response.Body.String(), "v3ryS3cr3t",
+		"recipe secret output value must not appear in the resource LIST response")
 
 	// GET (list at resourcegroup-scope)
 	response = ucp.MakeRequest(http.MethodGet, "/planes/radius/testing/providers/Applications.Test/exampleRecipeResources"+"?api-version="+apiVersion, nil)

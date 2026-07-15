@@ -705,6 +705,7 @@ func Test_AddMappedOutputs(t *testing.T) {
 		moduleName     string
 		outputsMap     map[string]string
 		sensitivity    map[string]bool
+		forceSensitive bool
 		expectedOutput map[string]any
 		expectedErr    bool
 	}{
@@ -726,6 +727,22 @@ func Test_AddMappedOutputs(t *testing.T) {
 				},
 				"secret": map[string]any{
 					"value":     "${module." + testRecipeName + ".secret}",
+					"sensitive": true,
+				},
+			},
+		},
+		{
+			desc:       "forceSensitive marks a non-sensitive module output sensitive",
+			moduleName: testRecipeName,
+			outputsMap: map[string]string{
+				"connectionString": "primaryConnectionString",
+			},
+			// The module did not mark this output sensitive (mirrors AVM primaryConnectionString).
+			sensitivity:    map[string]bool{"primaryConnectionString": false},
+			forceSensitive: true,
+			expectedOutput: map[string]any{
+				"primaryConnectionString": map[string]any{
+					"value":     "${module." + testRecipeName + ".primaryConnectionString}",
 					"sensitive": true,
 				},
 			},
@@ -770,7 +787,7 @@ func Test_AddMappedOutputs(t *testing.T) {
 			tfconfig, err := New(context.Background(), testRecipeName, &envRecipe, &resourceRecipe)
 			require.NoError(t, err)
 
-			err = tfconfig.AddMappedOutputs(tc.moduleName, tc.outputsMap, tc.sensitivity)
+			err = tfconfig.AddMappedOutputs(tc.moduleName, tc.outputsMap, tc.sensitivity, tc.forceSensitive)
 			if tc.expectedErr {
 				require.Error(t, err)
 				return

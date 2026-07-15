@@ -18,6 +18,7 @@ package resource_test
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/radius-project/radius/test"
@@ -249,4 +250,32 @@ func verifySensitiveFieldRedaction(
 		"K8s Secret should contain the decrypted connectionConfig url")
 	require.Equal(t, expectedConnectionConfigToken, string(k8sSecret.Data["connectionConfigToken"]),
 		"K8s Secret should contain the decrypted connectionConfig token")
+
+	// --- No-leak verification: secret values must not surface through `rad resource show` ---
+	verifySecretsNotExposed(ctx, t, ct, resourceTypeName, resourceName,
+		[]string{expectedPassword, expectedAPIKey, expectedCredentialSecret, expectedConnectionConfigURL, expectedConnectionConfigToken})
+}
+
+// verifySecretsNotExposed asserts that none of the provided secret values are exposed through the
+// developer-facing resource read path: the resource GET response (what `rad resource show` renders).
+// The response is serialized to JSON and checked for the raw secret values, which is a strong,
+// path-agnostic guarantee that secrets do not leak regardless of nesting.
+func verifySecretsNotExposed(
+	ctx context.Context,
+	t *testing.T,
+	ct rp.RPTest,
+	resourceTypeName, resourceName string,
+	secretValues []string,
+) {
+	t.Helper()
+
+	// rad resource show: the serialized GET response must not contain any secret value.
+	resource, err := ct.Options.ManagementClient.GetResource(ctx, resourceTypeName, resourceName)
+	require.NoError(t, err)
+	resourceJSON, err := json.Marshal(resource)
+	require.NoError(t, err)
+	for _, secret := range secretValues {
+		require.NotContains(t, string(resourceJSON), secret,
+			"secret value must not appear in the resource GET response (rad resource show)")
+	}
 }

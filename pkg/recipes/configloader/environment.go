@@ -31,7 +31,6 @@ import (
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/kube"
 	"github.com/radius-project/radius/pkg/rp/util"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
@@ -395,6 +394,7 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 			TemplateVersion: templateVersion,
 			PlainHTTP:       recipeDefinition.PlainHTTP,
 			Outputs:         recipeDefinition.Outputs,
+			SecretOutputs:   recipeDefinition.SecretOutputs,
 		}
 		return definition, nil
 	}
@@ -481,12 +481,14 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 				if definition.PlainHTTP != nil {
 					plainHTTP = *definition.PlainHTTP
 				}
+				outputs, secretOutputs := v20250801preview.SplitRecipeOutputs(definition.Outputs)
 				return &recipes.RecipeDefinition{
-					Kind:       string(*definition.Kind),
-					Source:     string(*definition.Source),
-					Parameters: definition.Parameters,
-					PlainHTTP:  plainHTTP,
-					Outputs:    to.StringMap(definition.Outputs),
+					Kind:          string(*definition.Kind),
+					Source:        string(*definition.Source),
+					Parameters:    definition.Parameters,
+					PlainHTTP:     plainHTTP,
+					Outputs:       outputs,
+					SecretOutputs: secretOutputs,
 				}, nil
 			}
 		}
