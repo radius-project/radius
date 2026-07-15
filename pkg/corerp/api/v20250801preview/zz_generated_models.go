@@ -97,13 +97,14 @@ type ApplicationProperties struct {
 	Status *ResourceStatus
 }
 
-// ApplicationResource - The Radius.Core/applications Resource Type represents a Radius Application: a logical grouping of
-// the resources that make up a single application, such as containers, databases, and message queues, along with the connections
+// ApplicationResource - The `Radius.Core/applications` Resource Type represents a Radius Application: a logical grouping
+// of the resources that make up a single Application, such as containers, databases, and message queues, along with the connections
 // between them. Radius uses the Application to build the application graph, apply shared configuration, and manage its resources
 // together throughout their lifecycle.
+// ## Defining an Application
 // An Application is always deployed to a Radius Environment, which is supplied through the `environment` property. To define
 // an Application, add a `Radius.Core/applications` resource to your application definition Bicep file.
-// ```
+// ```bicep
 // extension radius
 // @description('The Radius Environment ID. Injected automatically by the rad CLI.')
 // param environment string
@@ -114,10 +115,17 @@ type ApplicationProperties struct {
 // }
 // }
 // ```
-// Resources are composed into an application by setting their `application` property to the application ID. For example,
-// in order to add a container to this application, add the following to the application definition Bicep file and set `application:
-// myApp.id`:
+// ## Deploying an Application
+// An Application is deployed with the `rad deploy` command, which deploys the Application together with the resources that
+// belong to it:
+// ```bash
+// rad deploy ./app.bicep
 // ```
+// ## Adding resources to an Application
+// Resources are composed into an Application by setting their `application` property to the Application's ID. For example,
+// to add a Container to this Application, add the following to the application definition Bicep file and set `application:
+// myApp.id`:
+// ```bicep
 // resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
 // name: 'frontend'
 // properties: {
@@ -128,8 +136,8 @@ type ApplicationProperties struct {
 // }
 // }
 // }
-// For more information, see the Radius documentation at https://docs.radapp.io.
 // ```
+// For more information, see the Radius documentation at https://docs.radapp.io.
 type ApplicationResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -294,15 +302,19 @@ type EnvironmentProperties struct {
 // EnvironmentResource - The `Radius.Core/environments` Resource Type represents a Radius Environment: the deployment target
 // that platform engineers configure for their developers. Every Radius Application is deployed to an Environment through
 // its `environment` property.
-// An Environment defines three things for the applications deployed to it:
+// An Environment defines three things for the Applications deployed to it:
 // - **Where resources are deployed**: the target compute platform and cloud provider accounts, set through the `providers`
 // property.
 // - **Which Recipes are used**: the Recipe Packs whose Recipes provision the infrastructure backing application resources,
 // set through the `recipePacks` property.
-// - **Advanced Terraform and Bicep settings**: environment-wide recipe parameters and Terraform or Bicep engine configuration
+// - **Advanced Terraform and Bicep settings**: environment-wide Recipe parameters and Terraform or Bicep engine configuration
 // applied when Recipes run.
-// Simple Environments can be created with the `rad environment create` command. More advanced configurations require defining
-// a `Radius.Core/environments` resource in a Bicep file and deploying it with `rad deploy`. For example:
+// ## Defining an Environment
+// The simplest Environment can be created directly with the `rad environment create` command, without a Bicep file:
+// ```bash
+// rad environment create my-environment
+// ```
+// For more advanced configurations, define an Environment as a `Radius.Core/environments` resource in a Bicep file. For example:
 // ```bicep
 // extension radius
 // resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
@@ -321,6 +333,11 @@ type EnvironmentProperties struct {
 // ```
 // Both properties have defaults. If `providers` is omitted, resources are deployed to Kubernetes in the `default` namespace.
 // If `recipePacks` is omitted, the Environment uses the `default` Recipe Pack in the `default` resource group.
+// ## Deploying an Environment
+// Deploy a defined Environment with the `rad deploy` command:
+// ```bash
+// rad deploy ./environment.bicep
+// ```
 // ## Cloud providers
 // By default an Environment deploys to Kubernetes. To deploy cloud resources, configure the `providers` property with your
 // cloud account. For AWS, set the account ID and region:
@@ -590,7 +607,85 @@ type RecipePackProperties struct {
 	ReferencedBy []*string
 }
 
-// RecipePackResource - The recipe pack resource
+// RecipePackResource - The `Radius.Core/recipePacks` Resource Type represents a Recipe Pack: a named collection of Recipes
+// that platform engineers assign to an Environment. A Recipe maps a resource type (such as `Radius.Data/redisCaches`) to
+// an infrastructure-as-code module, a Terraform module or Bicep template, that provisions the infrastructure backing that
+// resource when a developer deploys it.
+// A Recipe Pack is defined as its own resource and referenced from an Environment's `recipePacks` property, so one Recipe
+// Pack can be shared across many Environments.
+// ## Defining a Recipe Pack
+// Each entry in the `recipes` map is keyed by resource type. Set the recipe `kind` (`bicep` or `terraform`) and its `source`
+// (an OCI registry reference for Bicep recipes, or a module source for Terraform recipes).
+// ```bicep
+// extension radius
+// resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
+// name: 'data-recipes'
+// properties: {
+// recipes: {
+// 'Radius.Data/redisCaches': {
+// kind: 'bicep'
+// source: 'ghcr.io/my-org/recipes/redis:latest'
+// }
+// 'Radius.Data/postgreSqlDatabases': {
+// kind: 'terraform'
+// source: 'git::https://github.com/my-org/recipes//postgresql'
+// }
+// }
+// }
+// }
+// ```
+// ## Recipe parameters
+// Each Recipe can declare default `parameters` that are passed to its module. Platform engineers set baseline values here,
+// and developers get them automatically. An Environment can override these values per resource type through its `recipeParameters`
+// property.
+// ```bicep
+// resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
+// name: 'data-recipes'
+// properties: {
+// recipes: {
+// 'Radius.Data/redisCaches': {
+// kind: 'bicep'
+// source: 'ghcr.io/my-org/recipes/redis:latest'
+// parameters: {
+// sku: 'Standard'
+// capacity: 1
+// }
+// }
+// }
+// }
+// }
+// ```
+// ## Deploying a Recipe Pack
+// Deploy the Bicep file with `rad deploy` to create the Recipe Pack resource. Once deployed, list and inspect Recipe Packs
+// with the `rad recipe-pack list` and `rad recipe-pack show` commands.
+// ## Referencing a Recipe Pack from an Environment
+// An Environment references a Recipe Pack through its `recipePacks` property. When the Recipe Pack and the Environment are
+// deployed to the same resource group, reference it by its symbolic name:
+// ```bicep
+// extension radius
+// resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' existing = {
+// name: 'data-recipes'
+// }
+// resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
+// name: 'my-environment'
+// properties: {
+// recipePacks: [
+// dataRecipes.id
+// ]
+// }
+// }
+// ```
+// To reference a Recipe Pack in a different resource group, use its full resource ID instead:
+// ```bicep
+// recipePacks: [
+// '/planes/radius/local/resourceGroups/shared/providers/Radius.Core/recipePacks/data-recipes'
+// ]
+// ```
+// Radius is installed with a `default` Recipe Pack in the `default` resource group, which an Environment uses when `recipePacks`
+// is not set.
+// Prebuilt Recipe Packs and the Recipes they reference are published in the [resource-types-contrib](https://github.com/radius-project/resource-types-contrib)
+// repository.
+// For more information, see the Radius documentation at https://docs.radapp.io.
 type RecipePackResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string

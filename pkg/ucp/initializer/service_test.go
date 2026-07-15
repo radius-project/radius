@@ -326,10 +326,10 @@ types:
 		require.Len(t, summaryModel.Properties.ResourceTypes, len(radiusCoreTypeOpenAPIDefinitions))
 
 		expectedDescriptionPrefixes := map[string]string{
-			"applications":      "The Radius.Core/applications Resource Type represents a Radius Application",
+			"applications":      "The `Radius.Core/applications` Resource Type represents a Radius Application",
 			"bicepSettings":     "The Bicep configuration resource, providing reusable Bicep recipe settings for environments.",
-			"environments":      "The Radius.Core/environments Resource Type represents a Radius Environment",
-			"recipePacks":       "The recipe pack resource",
+			"environments":      "The `Radius.Core/environments` Resource Type represents a Radius Environment",
+			"recipePacks":       "The `Radius.Core/recipePacks` Resource Type represents a Recipe Pack",
 			"terraformSettings": "The Terraform configuration resource, providing reusable Terraform recipe settings for environments.",
 		}
 		require.Len(t, expectedDescriptionPrefixes, len(radiusCoreTypeOpenAPIDefinitions))
