@@ -1,0 +1,33 @@
+# base.yaml is the single, repo-owned source of truth for the "Radius-aware"
+# properties that every resource type schema inherits. It is embedded into the
+# binary via go:embed and merged into each per-type schema by Apply().
+#
+# This set is frozen: changing it affects every resource type at once, so any
+# change requires a separate design/spec. See
+# eng/design-notes/resources/2026-06-base-resource-manifest.md.
+properties:
+  application:
+    type: string
+    description: "Resource ID of the Radius.Core/applications this resource belongs to."
+  environment:
+    type: string
+    description: "Resource ID of the Radius.Core/environments this resource deploys into."
+  connections:
+    type: object
+    description: "Map of connection name to connection data."
+    additionalProperties:
+      type: object
+      properties:
+        source:
+          type: string
+          description: "Resource ID of the source resource for this connection."
+        disableDefaultEnvVars:
+          type: boolean
+          description: "Disables the automatic injection of environment variables from the connected resource's properties."
+      required:
+        - source
+  codeReference:
+    type: string
+    description: "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27"
+required:
+  - environment

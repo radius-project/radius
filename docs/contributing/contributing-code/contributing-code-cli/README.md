@@ -1,108 +1,95 @@
-# Build the Radius CLI
+# Develop the Radius CLI
 
-For a lot of your development tasks you will need to build `rad` from source instead of using a binary.
+## Purpose
 
-This is the best way to test changes, and to make sure you have the latest bits (other people's changes).
+This is the authoritative guide for developing the Radius CLI (`rad`). It covers running `rad` from source, installing a local build, debugging it in VS Code, and the error-handling conventions for CLI code. The CLI entry point is [cmd/rad/main.go](../../../../cmd/rad/main.go); commands live under [cmd/rad/cmd/](../../../../cmd/rad/cmd/) and their implementations under [pkg/cli/](../../../../pkg/cli/). For most CLI work you build `rad` from source instead of using a released binary, so you can test your changes and pick up other contributors' changes. The [first-commit CLI steps](../contributing-code-first-commit/first-commit-03-working-on-cli/index.md) link here for the canonical workflow.
 
-## Making code changes to the CLI
+## Prerequisites
 
-If you're working on the CLI then you will need to test out your changes. This section describes ways you might want to use a custom build of the CLI.
+- The repository cloned locally and a working build. See [Building the code](../contributing-code-building/README.md).
+- Go installed (the version pinned in [go.mod](../../../../go.mod)).
+- For debugging: [VS Code](https://code.visualstudio.com/) with the Go extension. The repo ships launch configurations in [.vscode/launch.json](../../../../.vscode/launch.json).
 
-## Debugging in VS Code
+## Steps
 
-We provide a debug target `Launch rad CLI` as part of our repo's VS Code configuration. Select `Launch rad CLI` from the drop-down press the Debug button to launch.
+### Run rad from source
 
-If you need to pass command line arguments into the CLI for testing then you can do this by editing `./vscode/launch.json`. Find the `Launch rad CLI` target and edit the `args` property.
+The fastest way to test a CLI change is `go run`, which builds and runs in one step:
 
-> ⚠️ VS Code debugging does not support interactive user-input. If you need to debug a command that prompts for confirmation, you can bypass it by passing `--yes` at the command line. This tip does not apply to `rad init` which is always interactive.
+```sh
+go run ./cmd/rad/main.go
+```
 
-## Installing a local build
+Pass arguments after the path, for example `go run ./cmd/rad/main.go env list`. This must be run from inside the repository so Go can resolve modules.
 
-You can use the Makefile to install a local build of Radius. By default this will install to `/usr/local/bin/rad`. You may also need to specify `sudo` depending on the destination and its permissions.
+If you prefer a built binary, run `make build-rad` (see [Building the code](../contributing-code-building/README.md)) and run the binary it writes to `./dist/<GOOS>_<GOARCH>/release/rad`.
+
+### Create a wrapper script (optional)
+
+If you frequently run a local build of `rad`, wrap `go run` in a script so it behaves like the real command. Create a file named `dev-rad` on your `PATH`:
+
+```sh
+#!/bin/sh
+set -eu
+go run /path/to/radius/cmd/rad/main.go "$@"
+```
+
+Replace `/path/to/radius` with your repository root, then `chmod +x dev-rad`. Because the script uses `go run` with an absolute path, you can run `dev-rad` from any directory.
+
+### Install a local build
+
+Use the Makefile to install a local build. By default it installs to `/usr/local/bin/rad`, which may require `sudo` depending on the destination's permissions:
 
 ```sh
 sudo make install
 ```
 
-If you need to install to a different location, you can override via the `RAD_LOCATION` environment variable. Make sure the path you choose ends includes `rad` as the filename and is on your `PATH` so it can be executed easily.
+Override the destination with `RAD_LOCATION`. The path must end in `rad` and should be on your `PATH`:
 
 ```sh
 RAD_LOCATION=/my/custom/location/rad sudo make install
 ```
 
-## Creating a wrapper script
+### Debug rad in VS Code
 
-If you frequently need to work with a local build of `rad` you can create a script that will wrap `go run`.
+The repo's [.vscode/launch.json](../../../../.vscode/launch.json) defines the **"Debug rad CLI (prompt for args)"** configuration, which launches [cmd/rad/main.go](../../../../cmd/rad/main.go) and prompts you for the command-line arguments to run.
 
-> ⚠️ This tip only works when your current working directory is inside the repository. If your shell is outside the repository, then Go won't know how to resolve modules and the build will fail.
+1. Set a breakpoint — click the gutter to the left of the line numbers. For example, break at the start of the `Run` method in [pkg/cli/cmd/version/version.go](../../../../pkg/cli/cmd/version/version.go) to debug `rad version`.
+2. Open the **Run and Debug** pane and select **"Debug rad CLI (prompt for args)"** from the drop-down.
+3. Click the green triangle to start. The project builds first (this can take a moment).
+4. When prompted, enter the arguments to debug (for example `version`, or `env list`) and confirm. Execution stops at your breakpoint.
 
-Create the following script and place it on your path with a name like `dev-rad`.
+> ⚠️ VS Code debugging does not support interactive user input. To debug a command that prompts for confirmation, pass `--yes` in the arguments to bypass the prompt. This does not apply to `rad init`, which is always interactive.
+>
+> 📝 On **macOS**, the first debug session with a new Go version may take 1–2 minutes and prompt for your password — this is expected.
 
-```sh
-#!/bin/sh
-set -eu
-go run ~/github.com/radius-project/radius/cmd/rad/main.go $@
-```
+### Write code for the CLI
 
-Replace `~/github.com/radius-project/radius` with the path to your repository root.
+Classify errors as *expected* or *unexpected*:
 
-Run `chmod +x dev-rad` to mark it executable
-
-Now use it as-if it were `rad`
-
-```txt
-➜ dev-rad env
-Radius CLI
-
-Usage:
-  rad [command]
-
-Available Commands:
-  deploy      Deploy a Radius Application
-  env         Manage environments
-  expose      Expose local port
-  help        Help about any command
-
-Flags:
-      --config string   config file (default is $HOME/.rad/config.yaml)
-  -h, --help            help for rad
-
-Use "rad [command] --help" for more information about a command.
-```
-
-### Using your $PATH variable to resolve the debug version of `rad` before the release version (MacOS/Linux)
-
-You can update your `$PATH` environment variable to resolve to a custom build of `rad` by updating your shell profile. For ZSH users this is your `~/.zshrc` file:
-
-```bash
-# add debug rad bits to $PATH resolution
-export PATH="$(pwd)/dist/linux_amd64/release:$PATH"
-```
-
-Make sure to set the appropriate path based on your OS and CPU type.
-
-## Writing code for the CLI
-
-### Error handling in the CLI
-
-In the `rad` CLI we try to classify errors into *expected* and *unexpected* errors. 
-
-- Expected: a known state we expect to encounter, that is not a bug in Radius. eg: application is not found.
-- Unexpected: an unknown state that could be a bug in Radius. eg: a partial HTTP response was sent by the server.
-
-*Expected* errors should be returned to the user as a normal error message. For these cases use the `clierrors.Message` and `clierrors.MessageWithCause` functions to create and return an error. When creating error messages for *expected* errors, write in complete sentences and end with a period. eg: `"The application could not be found."`
-
-We want *unexpected* errors to be shown to the user with full troubleshooting information. For these cases, return the error as-is. If it makes sense for the scenario it's useful to wrap the error with additional context as shown in the example below.
-
-**Example:**
+- **Expected** — a known state that is not a bug, such as "application not found". Return these as plain user-facing messages using `clierrors.Message` or `clierrors.MessageWithCause`. Write complete sentences ending with a period, for example `"The application could not be found."`.
+- **Unexpected** — an unknown state that could be a Radius bug, such as a partial HTTP response. Return these as-is so the user sees full troubleshooting information, optionally wrapping them with context.
 
 ```go
-// Good: classify expected errors and return them as basic user-facing messages.
+// Classify expected errors and return them as basic user-facing messages.
 result, err := findApplication(id)
 if errors.Is(err, NotFoundError{}) {
-   return clierrors.Message("The application %q could not be found.", applicationName)
+    return clierrors.Message("The application %q could not be found.", applicationName)
 } else if err != nil {
-  // optional: wrapping the error to add context.
-  return fmt.Errorf("error retrieving application: %w", err)
+    // optional: wrap the error to add context.
+    return fmt.Errorf("error retrieving application: %w", err)
 }
 ```
+
+## Verification
+
+- `go run ./cmd/rad/main.go version` prints version information that includes your local changes.
+- After `sudo make install`, running `rad version` from any directory resolves to your freshly installed build.
+- A breakpoint set in `cmd/rad/` is hit when you run **"Debug rad CLI (prompt for args)"**.
+
+## Troubleshooting
+
+- **`go run` fails to resolve modules.** Run it from inside the repository; Go needs the module context.
+- **The debugger never stops at your breakpoint.** Confirm you selected **"Debug rad CLI (prompt for args)"** and that the breakpoint is on an executable line in code the command actually reaches.
+- **A debugged command hangs waiting for input.** Add `--yes` to the prompted arguments (except for `rad init`).
+- **`make install` is denied.** The destination needs elevated permissions; prefix with `sudo` or point `RAD_LOCATION` at a writable directory on your `PATH`.

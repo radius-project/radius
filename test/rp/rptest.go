@@ -261,12 +261,20 @@ func NewPreviewEnvPreSetup(testName string, workspaceScope string, kubernetesNam
 	preSetup = func(ctx context.Context, t *testing.T, test RPTest) {
 		cli := radcli.NewCLI(t, test.Options.ConfigFilePath)
 
+		// Radius.Core environments require their Kubernetes namespace to already exist. Only the
+		// namespace named after the test (ct.Name) is auto-created by CreateInitialResources, so when
+		// the preview environment uses a different namespace we must create it here before the CLI
+		// call, otherwise env creation fails with "Namespace '<ns>' does not exist".
+		nsClient, err := test.deploymentTargetK8sClient()
+		require.NoError(t, err, "failed to build deployment-target Kubernetes client")
+		require.NoError(t, kubernetes.EnsureNamespace(ctx, nsClient, kubernetesNamespace), "failed to ensure preview environment namespace exists")
+
 		// Create the preview environment with the test-specific Kubernetes namespace so recipes
 		// know where to deploy resources. Passing the namespace at create time (rather than via a
 		// later update) avoids colliding on the default namespace, which the RP rejects when two
 		// environments in the same scope share a namespace. The --preview flag also creates a
 		// default recipe pack with container and other resource recipes registered.
-		_, err := cli.EnvironmentCreatePreview(ctx, envName, "", kubernetesNamespace)
+		_, err = cli.EnvironmentCreatePreview(ctx, envName, "", kubernetesNamespace)
 		require.NoError(t, err, "failed to create preview environment")
 
 		// Register cleanup immediately after create to prevent leaks.

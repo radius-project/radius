@@ -41,9 +41,9 @@ var radiusCoreTypeOpenAPIDefinitions = map[string]struct {
 		resourceDefinition:   "ApplicationResource",
 		propertiesDefinition: "ApplicationProperties",
 	},
-	"bicepConfigs": {
-		resourceDefinition:   "BicepConfigResource",
-		propertiesDefinition: "BicepConfigProperties",
+	"bicepSettings": {
+		resourceDefinition:   "BicepSettingsResource",
+		propertiesDefinition: "BicepSettingsProperties",
 	},
 	"environments": {
 		resourceDefinition:   "EnvironmentResource",
@@ -53,9 +53,9 @@ var radiusCoreTypeOpenAPIDefinitions = map[string]struct {
 		resourceDefinition:   "RecipePackResource",
 		propertiesDefinition: "RecipePackProperties",
 	},
-	"terraformConfigs": {
-		resourceDefinition:   "TerraformConfigResource",
-		propertiesDefinition: "TerraformConfigProperties",
+	"terraformSettings": {
+		resourceDefinition:   "TerraformSettingsResource",
+		propertiesDefinition: "TerraformSettingsProperties",
 	},
 }
 

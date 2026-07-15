@@ -1,9 +1,5 @@
 extension radius
 extension testresources
-extension kubernetes with {
-  kubeConfig: ''
-  namespace: 'udttoudtapp'
-} as kubernetes
 
 @description('The URL of the server hosting test Terraform modules.')
 param moduleServer string
@@ -11,40 +7,42 @@ param moduleServer string
 @description('Specifies the port the container listens on.')
 param port int = 8080
 
-resource udttoudtenv 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'udttoudtenv'
+resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
+  name: 'udt2udt-tf-recipe-pack'
   location: 'global'
   properties: {
-    compute: {
-      kind: 'kubernetes'
-      resourceId: 'self'
-      namespace: 'udttoudtenv'
-    }
     recipes: {
       'Test.Resources/userTypeAlpha': {
-        default: {
-          templateKind: 'terraform'
-          templatePath: '${moduleServer}/parent-udt.zip'
-          parameters: {
-            port: port
-          }
+        kind: 'terraform'
+        source: '${moduleServer}/parent-udt.zip'
+        parameters: {
+          port: port
         }
       }
     }
   }
 }
 
-resource udttoudtapp 'Applications.Core/applications@2023-10-01-preview' = {
+resource udttoudtenv 'Radius.Core/environments@2025-08-01-preview' = {
+  name: 'udttoudtenv'
+  location: 'global'
+  properties: {
+    recipePacks: [
+      recipepack.id
+    ]
+    providers: {
+      kubernetes: {
+        namespace: 'dynamicrp-udt2udt-tf'
+      }
+    }
+  }
+}
+
+resource udttoudtapp 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'udttoudtapp'
   location: 'global'
   properties: {
     environment: udttoudtenv.id
-    extensions: [
-      {
-        kind: 'kubernetesNamespace'
-        namespace: 'udttoudtapp'
-      }
-    ]
   }
 }
 
@@ -58,7 +56,7 @@ resource udttoudtparent 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
         source: udttoudtchild.id
       }
     }
-  }     
+  }
 }
 
 resource udttoudtchild 'Test.Resources/externalResource@2023-10-01-preview' = {

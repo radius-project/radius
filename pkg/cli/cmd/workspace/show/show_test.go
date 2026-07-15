@@ -93,6 +93,7 @@ func Test_Run(t *testing.T) {
 				Source:      workspaces.SourceUserConfig,
 				Name:        "test-workspace",
 				Environment: "test-environment",
+				Scope:       "/planes/radius/local/resourceGroups/test-group",
 				Connection:  map[string]any{},
 			},
 		}
@@ -107,6 +108,7 @@ func Test_Run(t *testing.T) {
 					Source:      workspaces.SourceUserConfig,
 					Name:        "test-workspace",
 					Environment: "test-environment",
+					Scope:       "/planes/radius/local/resourceGroups/test-group",
 					Connection:  map[string]any{},
 				},
 				Options: common.WorkspaceFormat(),

@@ -4,21 +4,22 @@ Radius is in an early phase of development right now. We welcome feedback in the
 
 > **Using an AI agent?** Start with [AGENTS.md](./AGENTS.md), the single entry point that orients GitHub Copilot, Claude Code, and other agents working in this repository.
 
-## Table of contents
+## Ways to contribute
 
-You can find our full **contributor documentation** including instructions at the following links:
+There are many ways to get involved and make a meaningful impact on the Radius project:
 
-- [How to contribute](./docs/contributing/how-to.md)
-- [See "good first issues"](https://github.com/radius-project/radius/issues?q=is:issue+is:open+label:%22good+first+issue%22)
-- [Install prerequisites](./docs/contributing/contributing-code/contributing-code-prerequisites/)
-- [Create your first commit (full walkthrough)](./docs/contributing/contributing-code/contributing-code-first-commit/)
-- [Building the repo](./docs/contributing/contributing-code/contributing-code-building/)
-- [Run tests](./docs/contributing/contributing-code/contributing-code-tests/README.md)
-- [Understanding repo organization](./docs/contributing/contributing-code/contributing-code-organization/)
-- [Working with design documents](./docs/contributing/contributing-code/contributing-code-design/)
-- [Contribute to issues](./docs/contributing/contributing-issues/)
-- [Create pull requests](./docs/contributing/contributing-pull-requests/)
-- [Contribute to documentation](https://github.com/radius-project/docs)
+- **Learn the codebase.** Browse the [contributor documentation](./docs/contributing/) for guides on prerequisites, building, testing, debugging, schema changes, design documents, and more.
+- **Tackle small tasks.** Start with a ["good first issue"](https://github.com/radius-project/radius/issues?q=is:issue+is:open+label:%22good+first+issue%22) to familiarize yourself with the project without a steep learning curve.
+- **Take on bigger projects.** Issues that are groomed and ready to be picked up are labeled ["triaged"](https://github.com/radius-project/radius/issues?q=is%3Aissue+is%3Aopen+label%3Atriaged).
+- **Contribute to designs.** Larger features need a design review before implementation; design proposals are created in the [design-notes repository](https://github.com/radius-project/design-notes).
+- **Submit pull requests.** Fork the repository, make your changes, and open a pull request with a clear description of the purpose and benefits of your changes.
+- **Help with code reviews.** Give feedback and help with changes made by others.
+- **Engage with the community.** Participate in discussions, forums, and chat channels related to Radius — seek guidance, offer help, and build connections.
+- **Test and report bugs.** Detailed bug reports help us address issues promptly and improve quality.
+- **Improve documentation.** Enhance the [Radius documentation](https://github.com/radius-project/docs) by updating content, adding guides, or adding examples.
+- **Spread the word.** Share your experiences through blog posts, talks, or social media, and star the project on GitHub!
+
+For all contributor guides and conventions, see the **[contributor documentation](./docs/contributing/)**.
 
 ## Current status
 

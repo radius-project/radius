@@ -21,6 +21,7 @@ import (
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend/processor"
+	"github.com/radius-project/radius/pkg/dynamicrp/backend/secret"
 	recipecontroller "github.com/radius-project/radius/pkg/portableresources/backend/controller"
 	"github.com/radius-project/radius/pkg/recipes/configloader"
 	"github.com/radius-project/radius/pkg/recipes/engine"
@@ -32,22 +33,24 @@ type RecipeDeleteController struct {
 	opts                ctrl.Options
 	engine              engine.Engine
 	configurationLoader configloader.ConfigurationLoader
+	secretMaterializer  secret.Materializer
 }
 
 // NewRecipeDeleteController creates a new RecipeDeleteController.
-func NewRecipeDeleteController(opts ctrl.Options, engine engine.Engine, configurationLoader configloader.ConfigurationLoader) (ctrl.Controller, error) {
+func NewRecipeDeleteController(opts ctrl.Options, engine engine.Engine, configurationLoader configloader.ConfigurationLoader, secretMaterializer secret.Materializer) (ctrl.Controller, error) {
 	return &RecipeDeleteController{
 		BaseController:      ctrl.NewBaseAsyncController(opts),
 		opts:                opts,
 		engine:              engine,
 		configurationLoader: configurationLoader,
+		secretMaterializer:  secretMaterializer,
 	}, nil
 }
 
 // Run processes DELETE operations for dynamic resources deployed using recipes.
 // It creates and delegates the request to DeleteResource controller to handle the deletion.
 func (c *RecipeDeleteController) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-	deleteController, err := recipecontroller.NewDeleteResource(c.opts, &processor.DynamicProcessor{}, c.engine, c.configurationLoader)
+	deleteController, err := recipecontroller.NewDeleteResource(c.opts, &processor.DynamicProcessor{SecretMaterializer: c.secretMaterializer}, c.engine, c.configurationLoader)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

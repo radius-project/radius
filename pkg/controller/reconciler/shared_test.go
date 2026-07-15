@@ -17,6 +17,8 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -35,13 +37,60 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 const (
 	recipeTestWaitDuration            = time.Second * 10
 	recipeTestWaitInterval            = time.Millisecond * 200
 	recipeTestControllerDelayInterval = time.Millisecond * 100
+
+	// managerShutdownTimeout bounds how long test cleanup waits for a controller-runtime manager to
+	// exit after its context is cancelled. It is comfortably above controller-runtime's default 30s
+	// graceful shutdown timeout, so a clean shutdown always finishes first. If it is exceeded, cleanup
+	// reports a failure instead of hanging until the global `go test` timeout, which would obscure the
+	// root cause.
+	managerShutdownTimeout = time.Second * 60
 )
+
+// startManager starts the controller-runtime manager in a background goroutine and registers a
+// t.Cleanup that cancels the manager's context and then blocks until the manager goroutine has
+// fully exited (or managerShutdownTimeout elapses).
+//
+// Awaiting shutdown matters: cancelling the context only signals the manager to stop, it does not
+// wait for mgr.Start to return. Without this wait, manager goroutines outlive the test that owns
+// them and race with subsequent tests and package teardown (env.Stop in TestMain), which made this
+// suite intermittently fail at the package level with no named failing test.
+func startManager(t *testing.T, mgr manager.Manager, ctx context.Context, cancel context.CancelFunc) {
+	t.Helper()
+
+	stopped := make(chan struct{})
+	go func() {
+		defer close(stopped)
+		// Don't use require/assert here: they can call t.FailNow/t.Fail, which must run on the test
+		// goroutine, not this background one.
+		if err := mgr.Start(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			panic(fmt.Sprintf("manager exited with error: %v", err))
+		}
+	}()
+
+	t.Cleanup(func() {
+		cancel()
+		waitForManagerShutdown(t, stopped)
+	})
+}
+
+// waitForManagerShutdown blocks until the manager goroutine signals it has exited by closing
+// stopped, or fails the test if that does not happen within managerShutdownTimeout.
+func waitForManagerShutdown(t *testing.T, stopped <-chan struct{}) {
+	t.Helper()
+
+	select {
+	case <-stopped:
+	case <-time.After(managerShutdownTimeout):
+		t.Errorf("timed out after %s waiting for the controller-runtime manager to shut down", managerShutdownTimeout)
+	}
+}
 
 func createEnvironment(radius *mockRadiusClient, resourceGroup, name string) {
 	id := fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", resourceGroup, name)

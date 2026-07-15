@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-  "languageVersion": "1.9-experimental",
+  "languageVersion": "2.0",
   "contentVersion": "1.0.0.0",
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.7.20.15963",
-      "templateHash": "4645026798404255599"
+      "version": "0.42.1.51946",
+      "templateHash": "6050584823325268153"
     }
   },
   "parameters": {
@@ -19,7 +19,6 @@
     },
     "environment": {
       "type": "string",
-      "defaultValue": "test",
       "metadata": {
         "description": "Specifies the environment for resources."
       }
@@ -34,13 +33,13 @@
   "imports": {
     "radius": {
       "provider": "Radius",
-      "version": "1.0"
+      "version": "latest"
     }
   },
   "resources": {
     "app": {
       "import": "radius",
-      "type": "Applications.Core/applications@2023-10-01-preview",
+      "type": "Radius.Core/applications@2025-08-01-preview",
       "properties": {
         "name": "kubernetes-cli-json",
         "location": "[parameters('location')]",
@@ -51,14 +50,17 @@
     },
     "containera": {
       "import": "radius",
-      "type": "Applications.Core/containers@2023-10-01-preview",
+      "type": "Radius.Compute/containers@2025-08-01-preview",
       "properties": {
-        "name": "containerA-json",
+        "name": "containera-json",
         "location": "[parameters('location')]",
         "properties": {
           "application": "[reference('app').id]",
-          "container": {
-            "image": "[parameters('magpieimage')]"
+          "environment": "[parameters('environment')]",
+          "containers": {
+            "main": {
+              "image": "[parameters('magpieimage')]"
+            }
           }
         }
       },
@@ -66,14 +68,17 @@
     },
     "containerb": {
       "import": "radius",
-      "type": "Applications.Core/containers@2023-10-01-preview",
+      "type": "Radius.Compute/containers@2025-08-01-preview",
       "properties": {
-        "name": "containerB-json",
+        "name": "containerb-json",
         "location": "[parameters('location')]",
         "properties": {
           "application": "[reference('app').id]",
-          "container": {
-            "image": "[parameters('magpieimage')]"
+          "environment": "[parameters('environment')]",
+          "containers": {
+            "main": {
+              "image": "[parameters('magpieimage')]"
+            }
           }
         }
       },

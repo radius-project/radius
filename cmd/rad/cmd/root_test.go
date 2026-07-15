@@ -209,3 +209,105 @@ func Test_wirePreviewSubcommand(t *testing.T) {
 		require.False(t, previewCalled, "preview runner should not have been called")
 	})
 }
+
+func Test_withPreviewEnvVarNote(t *testing.T) {
+	t.Run("appends the RADIUS_PREVIEW note when absent", func(t *testing.T) {
+		got := withPreviewEnvVarNote("Use the Radius.Core preview implementation for environment update")
+		require.Equal(t, "Use the Radius.Core preview implementation for environment update (can also be set via RADIUS_PREVIEW=true)", got)
+	})
+
+	t.Run("does not double-append when the note is already present", func(t *testing.T) {
+		usage := "Use the Radius.Core preview implementation (can also be set via RADIUS_PREVIEW=true)"
+		require.Equal(t, usage, withPreviewEnvVarNote(usage))
+	})
+
+	t.Run("preview-base wiring exposes a --preview flag mentioning RADIUS_PREVIEW", func(t *testing.T) {
+		previewCmd := &cobra.Command{
+			Use:  "test",
+			RunE: func(cmd *cobra.Command, args []string) error { return nil },
+		}
+		wirePreviewSubcommandPreviewBase(previewCmd, func(cmd *cobra.Command, args []string) error { return nil }, "Use the preview implementation")
+
+		flag := previewCmd.Flags().Lookup("preview")
+		require.NotNil(t, flag)
+		require.Contains(t, flag.Usage, "RADIUS_PREVIEW")
+	})
+}
+
+func Test_wirePreviewSubcommandPreviewBase(t *testing.T) {
+	// newCmds builds a preview command (the base) plus a legacy runner, wired together via
+	// wirePreviewSubcommandPreviewBase. The returned pointers report which runner executed.
+	newCmds := func(legacyCalled, previewCalled *bool) *cobra.Command {
+		previewCmd := &cobra.Command{
+			Use:  "test",
+			RunE: func(cmd *cobra.Command, args []string) error { *previewCalled = true; return nil },
+		}
+		legacyRunE := func(cmd *cobra.Command, args []string) error { *legacyCalled = true; return nil }
+		wirePreviewSubcommandPreviewBase(previewCmd, legacyRunE, "Use the preview implementation.")
+		return previewCmd
+	}
+
+	t.Run("routes to legacy runner when --preview is not set", func(t *testing.T) {
+		legacyCalled, previewCalled := false, false
+		cmd := newCmds(&legacyCalled, &previewCalled)
+
+		cmd.SetArgs([]string{})
+		require.NoError(t, cmd.Execute())
+		require.True(t, legacyCalled, "legacy runner should have been called")
+		require.False(t, previewCalled, "preview runner should not have been called")
+	})
+
+	t.Run("routes to preview runner when --preview is set", func(t *testing.T) {
+		legacyCalled, previewCalled := false, false
+		cmd := newCmds(&legacyCalled, &previewCalled)
+
+		cmd.SetArgs([]string{"--preview"})
+		require.NoError(t, cmd.Execute())
+		require.False(t, legacyCalled, "legacy runner should not have been called")
+		require.True(t, previewCalled, "preview runner should have been called")
+	})
+
+	t.Run("routes to preview runner when RADIUS_PREVIEW=true", func(t *testing.T) {
+		legacyCalled, previewCalled := false, false
+		cmd := newCmds(&legacyCalled, &previewCalled)
+
+		t.Setenv("RADIUS_PREVIEW", "true")
+		cmd.SetArgs([]string{})
+		require.NoError(t, cmd.Execute())
+		require.False(t, legacyCalled, "legacy runner should not have been called")
+		require.True(t, previewCalled, "preview runner should have been called")
+	})
+
+	t.Run("routes to preview runner when RADIUS_PREVIEW=True (case-insensitive)", func(t *testing.T) {
+		legacyCalled, previewCalled := false, false
+		cmd := newCmds(&legacyCalled, &previewCalled)
+
+		t.Setenv("RADIUS_PREVIEW", "True")
+		cmd.SetArgs([]string{})
+		require.NoError(t, cmd.Execute())
+		require.False(t, legacyCalled, "legacy runner should not have been called")
+		require.True(t, previewCalled, "preview runner should have been called")
+	})
+
+	t.Run("uses --preview=false to override RADIUS_PREVIEW=true", func(t *testing.T) {
+		legacyCalled, previewCalled := false, false
+		cmd := newCmds(&legacyCalled, &previewCalled)
+
+		t.Setenv("RADIUS_PREVIEW", "true")
+		cmd.SetArgs([]string{"--preview=false"})
+		require.NoError(t, cmd.Execute())
+		require.True(t, legacyCalled, "legacy runner should have been called")
+		require.False(t, previewCalled, "preview runner should not have been called")
+	})
+
+	t.Run("routes to legacy runner when RADIUS_PREVIEW is not true", func(t *testing.T) {
+		legacyCalled, previewCalled := false, false
+		cmd := newCmds(&legacyCalled, &previewCalled)
+
+		t.Setenv("RADIUS_PREVIEW", "false")
+		cmd.SetArgs([]string{})
+		require.NoError(t, cmd.Execute())
+		require.True(t, legacyCalled, "legacy runner should have been called")
+		require.False(t, previewCalled, "preview runner should not have been called")
+	})
+}

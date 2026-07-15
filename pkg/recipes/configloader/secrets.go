@@ -16,24 +16,41 @@ package configloader
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
+const (
+	// secretStoresResourceType is the resource type of an Applications.Core/secretStores resource.
+	secretStoresResourceType = "Applications.Core/secretStores"
+
+	// securitySecretsResourceType is the resource type of a Radius.Security/secrets resource.
+	securitySecretsResourceType = "Radius.Security/secrets"
+)
+
 var _ SecretsLoader = (*secretsLoader)(nil)
 
-// NewSecretStoreLoader creates a new SecretsLoader instance with the given ARM Client Options.
-func NewSecretStoreLoader(armOptions *arm.ClientOptions) SecretsLoader {
-	return &secretsLoader{ArmClientOptions: armOptions}
+// NewSecretStoreLoader creates a new SecretsLoader instance with the given ARM Client Options and Kubernetes
+// client provider. The Kubernetes client provider is used to read the backing Kubernetes Secret of a
+// Radius.Security/secrets resource; it may be nil when only Applications.Core/secretStores references are expected.
+func NewSecretStoreLoader(armOptions *arm.ClientOptions, k8sProvider *kubernetesclientprovider.KubernetesClientProvider) SecretsLoader {
+	return &secretsLoader{ArmClientOptions: armOptions, KubernetesProvider: k8sProvider}
 }
 
-// SecretsLoader struct provides functionality to get secret information from Application.Core/SecretStore resource.
+// SecretsLoader struct provides functionality to get secret information from Applications.Core/secretStores and
+// Radius.Security/secrets resources.
 type secretsLoader struct {
 	ArmClientOptions *arm.ClientOptions
+
+	// KubernetesProvider provides access to the Kubernetes client used to read the backing Secret of a
+	// Radius.Security/secrets resource.
+	KubernetesProvider *kubernetesclientprovider.KubernetesClientProvider
 }
 
 // LoadSecrets loads secrets from secret stores based on input map of provided secret store IDs and secret keys filter.
@@ -44,6 +61,10 @@ type secretsLoader struct {
 // When the secret keys filter is populated for a secret store ID, it retrieves secret data for the specified keys for the associated secret store ID.
 // The function returns a map of secret data, where the keys are the secret store IDs and the values are maps of secret keys and their corresponding values.
 // Eg; secretStoreKeysFilter = {"SecretStoreID1": ["secretkey1", "secretkey2"]} will retrieve data for only "secretkey1" and "secretkey2" keys from "SecretStoreID1".
+// ---
+// The referenced secret resource may be either an Applications.Core/secretStores resource (used by legacy
+// Applications.Core/environments) or a Radius.Security/secrets resource (used by Radius.Core/environments via
+// bicepSettings/terraformSettings). The loader dispatches on the parsed resource type.
 func (e *secretsLoader) LoadSecrets(ctx context.Context, secretStoreKeysFilter map[string][]string) (secretData map[string]recipes.SecretData, err error) {
 	secretData = make(map[string]recipes.SecretData)
 
@@ -53,19 +74,15 @@ func (e *secretsLoader) LoadSecrets(ctx context.Context, secretStoreKeysFilter m
 			return nil, err
 		}
 
-		client, err := v20231001preview.NewSecretStoresClient(&aztoken.AnonymousCredential{}, e.ArmClientOptions)
-		if err != nil {
-			return nil, err
+		var secretStoreData recipes.SecretData
+		switch {
+		case strings.EqualFold(secretStoreResourceID.Type(), securitySecretsResourceType):
+			secretStoreData, err = e.loadSecuritySecret(ctx, secretStoreResourceID, secretKeysFilter)
+		case strings.EqualFold(secretStoreResourceID.Type(), secretStoresResourceType):
+			secretStoreData, err = e.loadSecretStore(ctx, secretStoreResourceID, secretKeysFilter)
+		default:
+			return nil, fmt.Errorf("unsupported secret resource type '%s' for secret '%s'", secretStoreResourceID.Type(), secretStoreID)
 		}
-
-		// Retrieve the secrets from the secret store.
-		secrets, err := client.ListSecrets(ctx, secretStoreResourceID.RootScope(), secretStoreResourceID.Name(), v20231001preview.ListSecretsRequest{}, nil)
-		if err != nil {
-			return nil, err
-		}
-
-		// Populate secretStoreData with secret type and map of secret keys and values
-		secretStoreData, err := populateSecretData(secretStoreID, secretKeysFilter, &secrets)
 		if err != nil {
 			return nil, err
 		}
@@ -74,6 +91,23 @@ func (e *secretsLoader) LoadSecrets(ctx context.Context, secretStoreKeysFilter m
 	}
 
 	return secretData, nil
+}
+
+// loadSecretStore retrieves secret data from an Applications.Core/secretStores resource using its ListSecrets API.
+func (e *secretsLoader) loadSecretStore(ctx context.Context, secretStoreResourceID resources.ID, secretKeysFilter []string) (recipes.SecretData, error) {
+	client, err := v20231001preview.NewSecretStoresClient(&aztoken.AnonymousCredential{}, e.ArmClientOptions)
+	if err != nil {
+		return recipes.SecretData{}, err
+	}
+
+	// Retrieve the secrets from the secret store.
+	secrets, err := client.ListSecrets(ctx, secretStoreResourceID.RootScope(), secretStoreResourceID.Name(), v20231001preview.ListSecretsRequest{}, nil)
+	if err != nil {
+		return recipes.SecretData{}, err
+	}
+
+	// Populate secretStoreData with secret type and map of secret keys and values
+	return populateSecretData(secretStoreResourceID.String(), secretKeysFilter, &secrets)
 }
 
 // populateSecretData is a helper function to populate secret data from a secret store.

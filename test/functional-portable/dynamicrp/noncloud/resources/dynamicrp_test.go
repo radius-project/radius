@@ -18,9 +18,11 @@ package resource_test
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
@@ -46,14 +48,23 @@ import (
 //   - Validates that the container can access port information from the user-defined resource via environment variables
 func Test_DynamicRP_Recipe(t *testing.T) {
 	template := "testdata/usertypealpha-recipe.bicep"
+	recipePackTemplate := "testdata/usertypealpha-recipe-pack.bicep"
+	recipePackName := "usertypealpha-recipe-pack"
 	appName := "usertypealpha-recipe-app"
-	appNamespace := "usertypealpha-recipe-env-usertypealpha-recipe-app"
+	appNamespace := "usertypealpha-recipe-app"
 	containerName := "usertypealphacntr"
 	resourceTypeName := "Test.Resources/userTypeAlpha"
 	resourceTypeParam := strings.Split(resourceTypeName, "/")[1]
 	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	// Provision the preview environment (and its default recipe pack, which
+	// provides the Radius.Compute/containers recipe) before the test steps run.
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(appName, options.Workspace.Scope, appNamespace)
+	envName := appName + "-env"
+	defaultPackID := recipepack.DefaultRecipePackID()
+	customPackID := fmt.Sprintf("%s/providers/Radius.Core/recipePacks/%s", options.Workspace.Scope, recipePackName)
 
 	test := rp.NewRPTest(t, appName, []rp.TestStep{
 		{
@@ -72,21 +83,31 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 			},
 		},
 		{
-			// The next step is to deploy a bicep file using a default recipe for the resource type registered.
-			Executor: step.NewDeployExecutor(template, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			// Create the custom recipe pack (UDT recipe) and attach it to the preview
+			// environment alongside the default pack so the environment has recipes for
+			// both the user-defined type and the container.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				err := cli.Deploy(ctx, recipePackTemplate, "", "", testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion())
+				require.NoError(t, err)
+				_, err = cli.EnvironmentUpdatePreview(ctx, envName, "", defaultPackID+","+customPackID, "")
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+		},
+		{
+			// The next step is to deploy a bicep file using the registered recipe for the resource type.
+			Executor: step.NewDeployExecutor(template, fmt.Sprintf("environment=%s", previewEnvID)),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "usertypealpha-recipe-env",
-						Type: validation.EnvironmentsResource,
-					},
-					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: containerName,
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 					},
 					{
 						Name: "usertypealphainstance",
@@ -96,12 +117,16 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 						Name: "usertypealphalatest",
 						Type: resourceTypeName,
 					},
+					{
+						Name: recipePackName,
+						Type: validation.CoreRecipePacksResource,
+					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(appName, "usertypealpha").ValidateLabels(false),
+						validation.NewK8sPodForResource(appName, containerName).ValidateLabels(false),
 					},
 				},
 			},
@@ -133,6 +158,7 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 		},
 	})
 
+	test.PreSetup = preSetup
 	test.Test(t)
 }
 
@@ -143,14 +169,24 @@ func Test_DynamicRP_Recipe(t *testing.T) {
 func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 	envTemplate := "testdata/postgres-env-scoped-resource.bicep"
 	existingTemplate := "testdata/postgres-existing-and-cntr.bicep"
+	recipePackTemplate := "testdata/postgres-recipe-pack.bicep"
+	recipePackName := "dynamicrp-postgres-recipe-pack"
 	name := "dynamicrp-postgres-env"
-	appNamespace := "dynamicrp-postgres-existing-app"
+	appNamespace := "dynamicrp-postgres-env"
 	appName := "dynamicrp-postgres-existing"
 	resourceTypeName := "Test.Resources/postgres"
 	resourceTypeParam := strings.Split(resourceTypeName, "/")[1]
 	filepath := "testdata/testresourcetypes.yaml"
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	// Provision the shared preview environment (and its default recipe pack, which
+	// provides the Radius.Compute/containers recipe) before the test steps run.
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, options.Workspace.Scope, name)
+	envName := name + "-env"
+	defaultPackID := recipepack.DefaultRecipePackID()
+	customPackID := fmt.Sprintf("%s/providers/Radius.Core/recipePacks/%s", options.Workspace.Scope, recipePackName)
+
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			// The first step in this test is to create/register a user-defined resource type using the CLI.
@@ -168,13 +204,27 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 			},
 		},
 		{
-			Executor: step.NewDeployExecutor(envTemplate, testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			// Create the custom postgres recipe pack and attach it to the preview
+			// environment alongside the default pack so the environment has recipes for
+			// both the postgres resource and the container.
+			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
+				err := cli.Deploy(ctx, recipePackTemplate, "", "", testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion())
+				require.NoError(t, err)
+				_, err = cli.EnvironmentUpdatePreview(ctx, envName, "", defaultPackID+","+customPackID, "")
+				require.NoError(t, err)
+			}),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
+			SkipResourceDeletion:                   true,
+		},
+		{
+			// Deploy the environment-scoped postgres resource into the shared environment.
+			Executor: step.NewDeployExecutor(envTemplate, fmt.Sprintf("environment=%s", previewEnvID)),
+			// Deletion is consolidated into the final step so the recipe-backed
+			// container is torn down before the shared environment is deleted.
+			SkipResourceDeletion: true,
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
-					{
-						Name: name,
-						Type: validation.EnvironmentsResource,
-					},
 					{
 						Name: "existing-postgres",
 						Type: "test.resources/postgres",
@@ -190,22 +240,26 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 			},
 		},
 		{
-			Executor: step.NewDeployExecutor(existingTemplate),
+			// Deploy an app + container that consume the existing postgres resource.
+			Executor: step.NewDeployExecutor(existingTemplate, fmt.Sprintf("environment=%s", previewEnvID)),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
-						App:  appName,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "postgres-cntr",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  appName,
 					},
 					{
 						Name: "existing-postgres",
 						Type: "test.resources/postgres",
+					},
+					{
+						Name: recipePackName,
+						Type: validation.CoreRecipePacksResource,
 					},
 				},
 			},
@@ -223,6 +277,7 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 			},
 		},
 	})
+	test.PreSetup = preSetup
 	test.Test(t)
 }
 
@@ -239,7 +294,7 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 func Test_DynamicRP_ExternalResource(t *testing.T) {
 	template := "testdata/externalresource.bicep"
 	appName := "udt-externalresource-app"
-	appNamespace := "udt-externalresource-env-udt-externalresource-app"
+	appNamespace := "udt-externalresource-app"
 	expectedEnvName := "CONNECTION_EXTERNALRESOURCE_CONFIGMAP"
 	expectedEnvValue := `{"app1.sample.properties":"property1=value1\nproperty2=value2","app2.sample.properties":"property3=value3\nproperty4=value4"}`
 	resourceTypeName := "Test.Resources/externalResource"
@@ -270,20 +325,20 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "udt-externalresource-env",
-						Type: validation.EnvironmentsResource,
-					},
-					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: containerName,
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 					},
 					{
 						Name: "udt-externalresource",
 						Type: resourceTypeName,
+					},
+					{
+						Name: "udt-externalresource-env",
+						Type: validation.CoreEnvironmentsResource,
 					},
 				},
 			},
@@ -309,28 +364,16 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 				require.NotNil(t, targetContainer, "Container not found")
 
 				found := false
-				var secretName, secretKey string
 				for _, env := range targetContainer.Env {
 					if env.Name == expectedEnvName {
-						require.NotNil(t, env.ValueFrom)
-						require.NotNil(t, env.ValueFrom.SecretKeyRef)
-						require.Equal(t, env.Name, env.ValueFrom.SecretKeyRef.Key)
-						secretName = env.ValueFrom.SecretKeyRef.Name
-						secretKey = env.ValueFrom.SecretKeyRef.Key
+						// The Radius.Compute/containers model injects connection
+						// values directly as the environment variable value.
+						require.Equal(t, expectedEnvValue, env.Value, "Environment variable value does not match expected value")
 						found = true
 						break
 					}
 				}
 				require.True(t, found, "Environment variable %q not found", expectedEnvName)
-
-				// Verify the secret contains the expected value
-				secret, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, secretName, metav1.GetOptions{})
-				require.NoError(t, err)
-				require.NotNil(t, secret.Data)
-
-				secretValue, exists := secret.Data[secretKey]
-				require.True(t, exists, "Secret key %s not found in secret %s", secretKey, secretName)
-				require.Equal(t, expectedEnvValue, string(secretValue), "Secret value does not match expected value")
 			},
 		},
 	})
@@ -350,7 +393,7 @@ func Test_DynamicRP_ExternalResource(t *testing.T) {
 func Test_UDT_ConnectionTo_UDT(t *testing.T) {
 	existingTemplate := "testdata/udt2udt-connection.bicep"
 	name := "dynamicrp-udt2udt"
-	appNamespace := "udttoudtapp"
+	appNamespace := "dynamicrp-udt2udt"
 	appName := "udttoudtapp"
 	childResourceTypeName := "Test.Resources/externalResource"
 	childResourceTypeParam := strings.Split(childResourceTypeName, "/")[1]
@@ -400,8 +443,7 @@ func Test_UDT_ConnectionTo_UDT(t *testing.T) {
 				Resources: []validation.RPResource{
 					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
-						App:  appName,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "udttoudtparent",
@@ -411,6 +453,14 @@ func Test_UDT_ConnectionTo_UDT(t *testing.T) {
 					{
 						Name: "udttoudtchild",
 						Type: "test.resources/externalresource",
+					},
+					{
+						Name: "udttoudtenv",
+						Type: validation.CoreEnvironmentsResource,
+					},
+					{
+						Name: "udt2udt-recipe-pack",
+						Type: validation.CoreRecipePacksResource,
 					},
 				},
 			},
@@ -464,7 +514,7 @@ func Test_UDT_ConnectionTo_UDT(t *testing.T) {
 func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 	existingTemplate := "testdata/udt2udt-connection-tf.bicep"
 	name := "dynamicrp-udt2udt-tf"
-	appNamespace := "udttoudtapp"
+	appNamespace := "dynamicrp-udt2udt-tf"
 	appName := "udttoudtapp"
 	expectedEnvName := "CONN_INJECTED"
 	childResourceTypeName := "Test.Resources/externalResource"
@@ -514,8 +564,7 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 				Resources: []validation.RPResource{
 					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
-						App:  appName,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "udttoudtparent",
@@ -525,6 +574,14 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 					{
 						Name: "udttoudtchild",
 						Type: "test.resources/externalresource",
+					},
+					{
+						Name: "udttoudtenv",
+						Type: validation.CoreEnvironmentsResource,
+					},
+					{
+						Name: "udt2udt-tf-recipe-pack",
+						Type: validation.CoreRecipePacksResource,
 					},
 				},
 			},
@@ -651,16 +708,16 @@ func Test_DynamicRP_TypeAnyValidation_Valid(t *testing.T) {
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: "udt-platformoptions-env",
-						Type: validation.EnvironmentsResource,
-					},
-					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "udt-valid-platformoptions",
 						Type: resourceTypeName,
+					},
+					{
+						Name: "udt-platformoptions-env",
+						Type: validation.CoreEnvironmentsResource,
 					},
 				},
 			},

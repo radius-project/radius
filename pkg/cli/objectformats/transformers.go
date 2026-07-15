@@ -41,6 +41,26 @@ func (t *ResourceIDToResourceGroupNameTransformer) Transform(input string) strin
 	return id.FindScope(radius.ScopeResourceGroups)
 }
 
+// ResourceScopeToResourceGroupNameTransformer is a transformer that takes a scope ID and returns the resource group name.
+type ResourceScopeToResourceGroupNameTransformer struct {
+}
+
+// Transform takes a scope ID and returns the resource group name.
+func (t *ResourceScopeToResourceGroupNameTransformer) Transform(input string) string {
+	if input == "" {
+		return ""
+	}
+
+	// NOTE: this is for display to human users in a table. It's not a great place
+	// for us to put a long explanation.
+	id, err := resources.ParseScope(input)
+	if err != nil {
+		return "<error>"
+	}
+
+	return id.FindScope(radius.ScopeResourceGroups)
+}
+
 // ResourceIDToResourceNameTransformer is a transformer that takes a resource ID and returns the resource name.
 type ResourceIDToResourceNameTransformer struct {
 }

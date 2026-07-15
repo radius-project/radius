@@ -45,12 +45,17 @@ const (
 	// Radius.Core resource types (new provider).
 	CoreEnvironmentsResource = "radius.core/environments"
 	CoreApplicationsResource = "radius.core/applications"
+	CoreRecipePacksResource  = "radius.core/recipePacks"
 
 	// Radius.Compute resource types (new provider).
 	ComputeContainersResource = "radius.compute/containers"
+	ComputeRoutesResource     = "radius.compute/routes"
 
 	// Radius.Security resource types (new provider).
 	SecuritySecretsResource = "radius.security/secrets"
+
+	// Radius.Data resource types (new provider).
+	DataMySQLDatabasesResource = "radius.data/mySqlDatabases"
 
 	RabbitMQQueuesResource          = "applications.messaging/rabbitMQQueues"
 	DaprPubSubBrokersResource       = "applications.dapr/pubSubBrokers"
@@ -116,6 +121,10 @@ func DeleteRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client
 	} else if resource.Type == CoreEnvironmentsResource {
 		t.Logf("deleting Radius.Core environment: %s", resource.Name)
 		_, err := cli.EnvironmentDeletePreview(ctx, resource.Name, "")
+		return err
+	} else if resource.Type == CoreRecipePacksResource {
+		t.Logf("deleting Radius.Core recipe pack: %s", resource.Name)
+		_, err := client.DeleteResource(ctx, resource.Type, resource.Name, true)
 		return err
 	}
 
@@ -186,6 +195,13 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 			}
 
 			require.True(t, found, fmt.Sprintf("application %s was not found", expectedResource.Name))
+		} else if expectedResource.Type == CoreEnvironmentsResource || expectedResource.Type == CoreApplicationsResource {
+			// New Radius.Core environments/applications are retrieved directly by
+			// type + name. They carry no "application" property, so the app-scoping
+			// assertion below is intentionally skipped for them.
+			res, err := client.GetResource(ctx, expectedResource.Type, expectedResource.Name)
+			require.NoError(t, err)
+			require.NotNil(t, res, "resource %s with type %s does not exist", expectedResource.Name, expectedResource.Type)
 		} else {
 			res, err := client.GetResource(ctx, expectedResource.Type, expectedResource.Name)
 			require.NoError(t, err)

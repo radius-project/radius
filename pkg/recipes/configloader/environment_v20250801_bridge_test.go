@@ -36,25 +36,25 @@ import (
 const (
 	tfConfigName = "tfcfg"
 	bcConfigName = "bccfg"
-	tfConfigID   = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/terraformConfigs/" + tfConfigName
-	bcConfigID   = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/bicepConfigs/" + bcConfigName
+	tfConfigID   = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/terraformSettings/" + tfConfigName
+	bcConfigID   = "/planes/radius/local/resourceGroups/rg/providers/Radius.Core/bicepSettings/" + bcConfigName
 )
 
 // fakeArmOptions builds an arm.ClientOptions whose Transport routes all
-// terraformConfigs / bicepConfigs requests to the supplied fake servers.
-func fakeArmOptions(tfSrv fake.TerraformConfigsServer, bcSrv fake.BicepConfigsServer) *arm.ClientOptions {
+// terraformSettings / bicepSettings requests to the supplied fake servers.
+func fakeArmOptions(tfSrv fake.TerraformSettingsServer, bcSrv fake.BicepSettingsServer) *arm.ClientOptions {
 	return &armpolicy.ClientOptions{
 		ClientOptions: policy.ClientOptions{
 			Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
-				TerraformConfigsServer: tfSrv,
-				BicepConfigsServer:     bcSrv,
+				TerraformSettingsServer: tfSrv,
+				BicepSettingsServer:     bcSrv,
 			}),
 		},
 	}
 }
 
 // minimalEnv builds an environment resource with the fields getConfigurationV20250801
-// requires (Kubernetes namespace) plus the supplied terraformConfig / bicepConfig refs.
+// requires (Kubernetes namespace) plus the supplied terraformSettings / bicepSettings refs.
 func minimalEnv(tfRef, bcRef string) *v20250801.EnvironmentResource {
 	return &v20250801.EnvironmentResource{
 		Properties: &v20250801.EnvironmentProperties{
@@ -63,24 +63,24 @@ func minimalEnv(tfRef, bcRef string) *v20250801.EnvironmentResource {
 					Namespace: to.Ptr(envNamespace),
 				},
 			},
-			Simulated:       to.Ptr(false),
-			TerraformConfig: to.Ptr(tfRef),
-			BicepConfig:     to.Ptr(bcRef),
+			Simulated:         to.Ptr(false),
+			TerraformSettings: to.Ptr(tfRef),
+			BicepSettings:     to.Ptr(bcRef),
 		},
 	}
 }
 
 func TestGetConfigurationV20250801_TerraformCredentialsAndEnvAndProviderInstallation(t *testing.T) {
-	tfSrv := fake.TerraformConfigsServer{
-		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.TerraformConfigsClientGetOptions) (resp azfake.Responder[v20250801.TerraformConfigsClientGetResponse], errResp azfake.ErrorResponder) {
+	tfSrv := fake.TerraformSettingsServer{
+		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.TerraformSettingsClientGetOptions) (resp azfake.Responder[v20250801.TerraformSettingsClientGetResponse], errResp azfake.ErrorResponder) {
 			require.Equal(t, tfConfigName, name)
-			resp.SetResponse(http.StatusOK, v20250801.TerraformConfigsClientGetResponse{
-				TerraformConfigResource: v20250801.TerraformConfigResource{
+			resp.SetResponse(http.StatusOK, v20250801.TerraformSettingsClientGetResponse{
+				TerraformSettingsResource: v20250801.TerraformSettingsResource{
 					ID:       to.Ptr(tfConfigID),
 					Name:     to.Ptr(tfConfigName),
-					Type:     to.Ptr("Radius.Core/terraformConfigs"),
+					Type:     to.Ptr("Radius.Core/terraformSettings"),
 					Location: to.Ptr("global"),
-					Properties: &v20250801.TerraformConfigProperties{
+					Properties: &v20250801.TerraformSettingsProperties{
 						Terraformrc: &v20250801.TerraformrcConfig{
 							ProviderInstallation: &v20250801.TerraformProviderInstallation{
 								NetworkMirror: &v20250801.TerraformProviderMirror{
@@ -104,11 +104,11 @@ func TestGetConfigurationV20250801_TerraformCredentialsAndEnvAndProviderInstalla
 		},
 	}
 
-	armOpts := fakeArmOptions(tfSrv, fake.BicepConfigsServer{})
+	armOpts := fakeArmOptions(tfSrv, fake.BicepSettingsServer{})
 
 	env := minimalEnv(tfConfigID, "")
-	// Clear the bicepConfig pointer since we don't want to fetch it in this test.
-	env.Properties.BicepConfig = nil
+	// Clear the bicepSettings pointer since we don't want to fetch it in this test.
+	env.Properties.BicepSettings = nil
 
 	cfg, err := getConfigurationV20250801(context.Background(), env, armOpts)
 	require.NoError(t, err)
@@ -131,17 +131,17 @@ func TestGetConfigurationV20250801_TerraformCredentialsAndEnvAndProviderInstalla
 }
 
 func TestGetConfigurationV20250801_BicepBasicAuthMapped(t *testing.T) {
-	bcSrv := fake.BicepConfigsServer{
-		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepConfigsClientGetOptions) (resp azfake.Responder[v20250801.BicepConfigsClientGetResponse], errResp azfake.ErrorResponder) {
+	bcSrv := fake.BicepSettingsServer{
+		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepSettingsClientGetOptions) (resp azfake.Responder[v20250801.BicepSettingsClientGetResponse], errResp azfake.ErrorResponder) {
 			require.Equal(t, bcConfigName, name)
 			method := v20250801.BicepAuthenticationMethodBasicAuth
-			resp.SetResponse(http.StatusOK, v20250801.BicepConfigsClientGetResponse{
-				BicepConfigResource: v20250801.BicepConfigResource{
+			resp.SetResponse(http.StatusOK, v20250801.BicepSettingsClientGetResponse{
+				BicepSettingsResource: v20250801.BicepSettingsResource{
 					ID:       to.Ptr(bcConfigID),
 					Name:     to.Ptr(bcConfigName),
-					Type:     to.Ptr("Radius.Core/bicepConfigs"),
+					Type:     to.Ptr("Radius.Core/bicepSettings"),
 					Location: to.Ptr("global"),
-					Properties: &v20250801.BicepConfigProperties{
+					Properties: &v20250801.BicepSettingsProperties{
 						RegistryAuthentications: map[string]*v20250801.BicepRegistryAuthentication{
 							"corp.acr.io": {
 								AuthenticationMethod: &method,
@@ -155,10 +155,10 @@ func TestGetConfigurationV20250801_BicepBasicAuthMapped(t *testing.T) {
 		},
 	}
 
-	armOpts := fakeArmOptions(fake.TerraformConfigsServer{}, bcSrv)
+	armOpts := fakeArmOptions(fake.TerraformSettingsServer{}, bcSrv)
 
 	env := minimalEnv("", bcConfigID)
-	env.Properties.TerraformConfig = nil
+	env.Properties.TerraformSettings = nil
 
 	cfg, err := getConfigurationV20250801(context.Background(), env, armOpts)
 	require.NoError(t, err)
@@ -172,18 +172,18 @@ func TestGetConfigurationV20250801_BicepEntriesWithoutBasicAuthSecretAreSkipped(
 	// by the schema but not yet wired into the driver, so they never reach
 	// RecipeConfig.Bicep.Authentication. Only entries with a non-empty
 	// BasicAuthSecretId survive the bridge.
-	bcSrv := fake.BicepConfigsServer{
-		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepConfigsClientGetOptions) (resp azfake.Responder[v20250801.BicepConfigsClientGetResponse], errResp azfake.ErrorResponder) {
+	bcSrv := fake.BicepSettingsServer{
+		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepSettingsClientGetOptions) (resp azfake.Responder[v20250801.BicepSettingsClientGetResponse], errResp azfake.ErrorResponder) {
 			basic := v20250801.BicepAuthenticationMethodBasicAuth
 			azure := v20250801.BicepAuthenticationMethodAzureWI
 			aws := v20250801.BicepAuthenticationMethodAwsIrsa
-			resp.SetResponse(http.StatusOK, v20250801.BicepConfigsClientGetResponse{
-				BicepConfigResource: v20250801.BicepConfigResource{
+			resp.SetResponse(http.StatusOK, v20250801.BicepSettingsClientGetResponse{
+				BicepSettingsResource: v20250801.BicepSettingsResource{
 					ID:       to.Ptr(bcConfigID),
 					Name:     to.Ptr(bcConfigName),
-					Type:     to.Ptr("Radius.Core/bicepConfigs"),
+					Type:     to.Ptr("Radius.Core/bicepSettings"),
 					Location: to.Ptr("global"),
-					Properties: &v20250801.BicepConfigProperties{
+					Properties: &v20250801.BicepSettingsProperties{
 						RegistryAuthentications: map[string]*v20250801.BicepRegistryAuthentication{
 							"basic.acr.io": {
 								AuthenticationMethod: &basic,
@@ -206,10 +206,10 @@ func TestGetConfigurationV20250801_BicepEntriesWithoutBasicAuthSecretAreSkipped(
 		},
 	}
 
-	armOpts := fakeArmOptions(fake.TerraformConfigsServer{}, bcSrv)
+	armOpts := fakeArmOptions(fake.TerraformSettingsServer{}, bcSrv)
 
 	env := minimalEnv("", bcConfigID)
-	env.Properties.TerraformConfig = nil
+	env.Properties.TerraformSettings = nil
 
 	cfg, err := getConfigurationV20250801(context.Background(), env, armOpts)
 	require.NoError(t, err)
@@ -226,16 +226,16 @@ func TestGetConfigurationV20250801_BicepEntriesWithoutBasicAuthSecretAreSkipped(
 func TestGetConfigurationV20250801_BicepAllEntriesSkipped_LeavesAuthNil(t *testing.T) {
 	// When every entry lacks BasicAuthSecretId the bridge must not synthesize an
 	// empty Authentication map (the legacy code only sets Bicep when authMap > 0).
-	bcSrv := fake.BicepConfigsServer{
-		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepConfigsClientGetOptions) (resp azfake.Responder[v20250801.BicepConfigsClientGetResponse], errResp azfake.ErrorResponder) {
+	bcSrv := fake.BicepSettingsServer{
+		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepSettingsClientGetOptions) (resp azfake.Responder[v20250801.BicepSettingsClientGetResponse], errResp azfake.ErrorResponder) {
 			azure := v20250801.BicepAuthenticationMethodAzureWI
-			resp.SetResponse(http.StatusOK, v20250801.BicepConfigsClientGetResponse{
-				BicepConfigResource: v20250801.BicepConfigResource{
+			resp.SetResponse(http.StatusOK, v20250801.BicepSettingsClientGetResponse{
+				BicepSettingsResource: v20250801.BicepSettingsResource{
 					ID:       to.Ptr(bcConfigID),
 					Name:     to.Ptr(bcConfigName),
-					Type:     to.Ptr("Radius.Core/bicepConfigs"),
+					Type:     to.Ptr("Radius.Core/bicepSettings"),
 					Location: to.Ptr("global"),
-					Properties: &v20250801.BicepConfigProperties{
+					Properties: &v20250801.BicepSettingsProperties{
 						RegistryAuthentications: map[string]*v20250801.BicepRegistryAuthentication{
 							"azure.acr.io": {
 								AuthenticationMethod: &azure,
@@ -250,10 +250,10 @@ func TestGetConfigurationV20250801_BicepAllEntriesSkipped_LeavesAuthNil(t *testi
 		},
 	}
 
-	armOpts := fakeArmOptions(fake.TerraformConfigsServer{}, bcSrv)
+	armOpts := fakeArmOptions(fake.TerraformSettingsServer{}, bcSrv)
 
 	env := minimalEnv("", bcConfigID)
-	env.Properties.TerraformConfig = nil
+	env.Properties.TerraformSettings = nil
 
 	cfg, err := getConfigurationV20250801(context.Background(), env, armOpts)
 	require.NoError(t, err)
@@ -262,39 +262,39 @@ func TestGetConfigurationV20250801_BicepAllEntriesSkipped_LeavesAuthNil(t *testi
 }
 
 func TestGetConfigurationV20250801_TerraformFetchError_IsWrapped(t *testing.T) {
-	tfSrv := fake.TerraformConfigsServer{
-		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.TerraformConfigsClientGetOptions) (resp azfake.Responder[v20250801.TerraformConfigsClientGetResponse], errResp azfake.ErrorResponder) {
+	tfSrv := fake.TerraformSettingsServer{
+		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.TerraformSettingsClientGetOptions) (resp azfake.Responder[v20250801.TerraformSettingsClientGetResponse], errResp azfake.ErrorResponder) {
 			errResp.SetError(errors.New("network unreachable"))
 			return
 		},
 	}
 
-	armOpts := fakeArmOptions(tfSrv, fake.BicepConfigsServer{})
+	armOpts := fakeArmOptions(tfSrv, fake.BicepSettingsServer{})
 
 	env := minimalEnv(tfConfigID, "")
-	env.Properties.BicepConfig = nil
+	env.Properties.BicepSettings = nil
 
 	_, err := getConfigurationV20250801(context.Background(), env, armOpts)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to fetch terraformConfig")
+	require.Contains(t, err.Error(), "failed to fetch terraformSettings")
 	require.Contains(t, err.Error(), tfConfigID)
 }
 
 func TestGetConfigurationV20250801_BicepFetchError_IsWrapped(t *testing.T) {
-	bcSrv := fake.BicepConfigsServer{
-		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepConfigsClientGetOptions) (resp azfake.Responder[v20250801.BicepConfigsClientGetResponse], errResp azfake.ErrorResponder) {
-			errResp.SetError(fmt.Errorf("bicepConfig not reachable"))
+	bcSrv := fake.BicepSettingsServer{
+		Get: func(ctx context.Context, rootScope string, name string, opts *v20250801.BicepSettingsClientGetOptions) (resp azfake.Responder[v20250801.BicepSettingsClientGetResponse], errResp azfake.ErrorResponder) {
+			errResp.SetError(fmt.Errorf("bicepSettings not reachable"))
 			return
 		},
 	}
 
-	armOpts := fakeArmOptions(fake.TerraformConfigsServer{}, bcSrv)
+	armOpts := fakeArmOptions(fake.TerraformSettingsServer{}, bcSrv)
 
 	env := minimalEnv("", bcConfigID)
-	env.Properties.TerraformConfig = nil
+	env.Properties.TerraformSettings = nil
 
 	_, err := getConfigurationV20250801(context.Background(), env, armOpts)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "failed to fetch bicepConfig")
+	require.Contains(t, err.Error(), "failed to fetch bicepSettings")
 	require.Contains(t, err.Error(), bcConfigID)
 }

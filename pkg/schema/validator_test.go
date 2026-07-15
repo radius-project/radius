@@ -1639,6 +1639,31 @@ func TestValidator_checkReservedProperties(t *testing.T) {
 		require.Contains(t, validationErrors.Errors[0].Message, "property 'environment' must be a string")
 	})
 
+	t.Run("codeReference property must be string", func(t *testing.T) {
+		schema := &openapi3.Schema{
+			Type: &openapi3.Types{"object"},
+			Properties: openapi3.Schemas{
+				"codeReference": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"integer"},
+					},
+				},
+				"environment": &openapi3.SchemaRef{
+					Value: &openapi3.Schema{
+						Type: &openapi3.Types{"string"},
+					},
+				},
+			},
+		}
+		err := validator.checkReservedProperties(schema)
+		require.Error(t, err)
+		validationErrors, ok := err.(*ValidationErrors)
+		require.True(t, ok)
+		require.Len(t, validationErrors.Errors, 1)
+		require.Equal(t, "codeReference", validationErrors.Errors[0].Field)
+		require.Contains(t, validationErrors.Errors[0].Message, "property 'codeReference' must be a string")
+	})
+
 	t.Run("valid environment property as string", func(t *testing.T) {
 		schema := &openapi3.Schema{
 			Type: &openapi3.Types{"object"},

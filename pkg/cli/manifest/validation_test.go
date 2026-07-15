@@ -495,3 +495,242 @@ func TestValidateManifestSchemas(t *testing.T) {
 		require.Len(t, validationErrors.Errors, 2)
 	})
 }
+
+func TestApplyBaseResourceManifest(t *testing.T) {
+	t.Run("nil provider", func(t *testing.T) {
+		require.NoError(t, applyBaseResourceManifest(nil))
+	})
+
+	t.Run("merges base properties into a bare schema", func(t *testing.T) {
+		provider := &ResourceProvider{
+			Namespace: "Test.Provider",
+			Types: map[string]*ResourceType{
+				"widgets": {
+					APIVersions: map[string]*ResourceTypeAPIVersion{
+						"2025-01-01": {
+							Schema: map[string]any{
+								"type": "object",
+								"properties": map[string]any{
+									"size": map[string]any{"type": "string"},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		require.NoError(t, applyBaseResourceManifest(provider))
+
+		schemaMap := provider.Types["widgets"].APIVersions["2025-01-01"].Schema.(map[string]any)
+		props := schemaMap["properties"].(map[string]any)
+		// Type-specific property preserved.
+		require.Contains(t, props, "size")
+		// Base properties injected.
+		require.Contains(t, props, "application")
+		require.Contains(t, props, "environment")
+		require.Contains(t, props, "connections")
+		require.Contains(t, props, "codeReference")
+		// Base required injected.
+		require.Contains(t, schemaMap["required"], "environment")
+	})
+
+	t.Run("preserves the author's declaration when a base property is redeclared", func(t *testing.T) {
+		// resource-types-contrib manifests currently redeclare base properties
+		// (environment, application, etc.) explicitly under "properties".
+		// Apply uses per-type-wins precedence so those manifests keep working
+		// without a coordinated cross-repo release: the author's declaration
+		// survives the merge unchanged, and the base value is not copied over
+		// it. Only properties the author omits are injected from the base.
+		custom := map[string]any{
+			"type":        "string",
+			"description": "author's own environment shape",
+		}
+		provider := &ResourceProvider{
+			Namespace: "Test.Provider",
+			Types: map[string]*ResourceType{
+				"widgets": {
+					APIVersions: map[string]*ResourceTypeAPIVersion{
+						"2025-01-01": {
+							Schema: map[string]any{
+								"type": "object",
+								"properties": map[string]any{
+									"environment": custom,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		require.NoError(t, applyBaseResourceManifest(provider))
+
+		schemaMap := provider.Types["widgets"].APIVersions["2025-01-01"].Schema.(map[string]any)
+		props := schemaMap["properties"].(map[string]any)
+		// Author's declaration survives the merge.
+		require.Equal(t, custom, props["environment"])
+		// Base properties the author did not declare are still injected.
+		require.Contains(t, props, "application")
+		require.Contains(t, props, "connections")
+		require.Contains(t, props, "codeReference")
+		require.Contains(t, schemaMap["required"], "environment")
+	})
+
+	t.Run("allows a base property listed only under required", func(t *testing.T) {
+		provider := &ResourceProvider{
+			Namespace: "Test.Provider",
+			Types: map[string]*ResourceType{
+				"widgets": {
+					APIVersions: map[string]*ResourceTypeAPIVersion{
+						"2025-01-01": {
+							Schema: map[string]any{
+								"type":     "object",
+								"required": []any{"application"},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		require.NoError(t, applyBaseResourceManifest(provider))
+
+		schemaMap := provider.Types["widgets"].APIVersions["2025-01-01"].Schema.(map[string]any)
+		require.Contains(t, schemaMap["properties"].(map[string]any), "application")
+		require.Contains(t, schemaMap["required"], "application")
+		require.Contains(t, schemaMap["required"], "environment")
+	})
+
+	t.Run("merges base properties when author declares no properties", func(t *testing.T) {
+		// Two equally valid empty-schema shapes: an object with no properties
+		// block, and a totally empty schema mapping. Both should end up with
+		// just the four merged base properties and environment required.
+		cases := []struct {
+			name   string
+			schema map[string]any
+		}{
+			{"object with no properties block", map[string]any{"type": "object"}},
+			{"totally empty schema", map[string]any{}},
+		}
+
+		for _, c := range cases {
+			t.Run(c.name, func(t *testing.T) {
+				provider := &ResourceProvider{
+					Namespace: "Demo.Examples",
+					Types: map[string]*ResourceType{
+						"emptyWidget": {
+							APIVersions: map[string]*ResourceTypeAPIVersion{
+								"2026-06-01-preview": {Schema: c.schema},
+							},
+						},
+					},
+				}
+
+				require.NoError(t, applyBaseResourceManifest(provider))
+
+				schemaMap := provider.Types["emptyWidget"].APIVersions["2026-06-01-preview"].Schema.(map[string]any)
+				props, ok := schemaMap["properties"].(map[string]any)
+				require.True(t, ok, "expected properties block to be created during merge")
+				require.Len(t, props, 4, "expected exactly the four merged base properties, got %v", props)
+				for _, name := range []string{"application", "environment", "connections", "codeReference"} {
+					require.Contains(t, props, name)
+				}
+				require.Contains(t, schemaMap["required"], "environment")
+			})
+		}
+	})
+
+	t.Run("skips nil and non-object schemas", func(t *testing.T) {
+		provider := &ResourceProvider{
+			Namespace: "Test.Provider",
+			Types: map[string]*ResourceType{
+				"widgets": {
+					APIVersions: map[string]*ResourceTypeAPIVersion{
+						"2025-01-01": {Schema: nil},
+						"2025-02-01": {Schema: "not-a-map"},
+					},
+				},
+			},
+		}
+
+		require.NoError(t, applyBaseResourceManifest(provider))
+		require.Nil(t, provider.Types["widgets"].APIVersions["2025-01-01"].Schema)
+		require.Equal(t, "not-a-map", provider.Types["widgets"].APIVersions["2025-02-01"].Schema)
+	})
+
+	t.Run("merges base properties across multiple types and api versions", func(t *testing.T) {
+		// Mirrors the bicep-tools TestConvert_MultipleTypesAndAPIVersions
+		// fixture: one type with one API version that lists base properties
+		// only under "required", and a second type with two API versions whose
+		// schemas declare nothing but a type-specific property. After Apply,
+		// every (type, apiVersion) pair must have all four base properties
+		// merged in, and "environment" must be in each required list.
+		provider := &ResourceProvider{
+			Namespace: "Demo.Examples",
+			Types: map[string]*ResourceType{
+				"widgets": {
+					Capabilities: []string{"ManualResourceProvisioning"},
+					APIVersions: map[string]*ResourceTypeAPIVersion{
+						"2026-06-01-preview": {
+							Schema: map[string]any{
+								"type": "object",
+								"properties": map[string]any{
+									"size":  map[string]any{"type": "integer", "description": "Widget size."},
+									"color": map[string]any{"type": "string", "description": "Widget color."},
+								},
+								"required": []any{"size", "application", "environment"},
+							},
+						},
+					},
+				},
+				"widgets1": {
+					Capabilities: []string{"ManualResourceProvisioning"},
+					APIVersions: map[string]*ResourceTypeAPIVersion{
+						"2026-06-01-preview": {
+							Schema: map[string]any{
+								"type": "object",
+								"properties": map[string]any{
+									"size": map[string]any{"type": "integer", "description": "Widget size."},
+								},
+							},
+						},
+						"2025-06-01-preview": {
+							Schema: map[string]any{
+								"type": "object",
+								"properties": map[string]any{
+									"size": map[string]any{"type": "integer", "description": "Widget size."},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		require.NoError(t, applyBaseResourceManifest(provider))
+
+		cases := []struct {
+			resourceType string
+			apiVersion   string
+			typeOwnProps []string
+		}{
+			{"widgets", "2026-06-01-preview", []string{"size", "color"}},
+			{"widgets1", "2026-06-01-preview", []string{"size"}},
+			{"widgets1", "2025-06-01-preview", []string{"size"}},
+		}
+
+		for _, c := range cases {
+			schemaMap := provider.Types[c.resourceType].APIVersions[c.apiVersion].Schema.(map[string]any)
+			props := schemaMap["properties"].(map[string]any)
+
+			for _, name := range c.typeOwnProps {
+				require.Contains(t, props, name, "%s@%s missing author property %q", c.resourceType, c.apiVersion, name)
+			}
+			for _, name := range []string{"application", "environment", "connections", "codeReference"} {
+				require.Contains(t, props, name, "%s@%s missing merged base property %q", c.resourceType, c.apiVersion, name)
+			}
+			require.Contains(t, schemaMap["required"], "environment", "%s@%s missing base required entry", c.resourceType, c.apiVersion)
+		}
+	})
+}

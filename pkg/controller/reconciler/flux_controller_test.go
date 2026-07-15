@@ -162,10 +162,11 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 	require.NoError(t, err)
 
 	mgrCtx, mgrCancel := context.WithCancel(ctx)
-	t.Cleanup(mgrCancel)
 
 	managerErr := make(chan error, 1)
+	managerStopped := make(chan struct{})
 	go func() {
+		defer close(managerStopped)
 		t.Log("Starting manager...")
 		if err := mgr.Start(mgrCtx); err != nil {
 			if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
@@ -174,6 +175,15 @@ func setupFluxControllerTest(t *testing.T, opts setupFluxControllerTestOptions, 
 		}
 		t.Log("Manager stopped.")
 	}()
+
+	// Cancel the manager context and wait for the manager goroutine to fully exit before the test
+	// completes, so it does not leak into subsequent tests or into package teardown. The wait is
+	// bounded so a manager that fails to stop fails the test instead of hanging until the global
+	// `go test` timeout.
+	t.Cleanup(func() {
+		mgrCancel()
+		waitForManagerShutdown(t, managerStopped)
+	})
 
 	t.Log("Waiting for cache to be ready")
 	waitCtx, waitCancel := context.WithTimeout(ctx, 30*time.Second)

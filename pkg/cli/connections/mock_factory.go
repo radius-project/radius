@@ -42,6 +42,12 @@ func (f *MockFactory) CreateDiagnosticsClient(ctx context.Context, workspace wor
 	return f.DiagnosticsClient, nil
 }
 
+// CreateDiagnosticsClientPreview function takes in a context and a workspace and returns a DiagnosticsClient (for the
+// preview resource types) without any errors.
+func (f *MockFactory) CreateDiagnosticsClientPreview(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error) {
+	return f.DiagnosticsClient, nil
+}
+
 // CreateApplicationsManagementClient function takes in a context and a workspace and returns an ApplicationsManagementClient
 // and an error if one occurs.
 func (f *MockFactory) CreateApplicationsManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.ApplicationsManagementClient, error) {

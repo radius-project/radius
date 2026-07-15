@@ -4,12 +4,12 @@ extension radius
 param location string = 'global'
 
 @description('Specifies the environment for resources.')
-param environment string = 'test'
+param environment string
 
 @description('Specifies the image to be deployed.')
 param magpieimage string
 
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'kubernetes-cli'
   location: location
   properties: {
@@ -17,24 +17,30 @@ resource app 'Applications.Core/applications@2023-10-01-preview' = {
   }
 }
 
-resource containera 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'containerA'
+resource containera 'Radius.Compute/containers@2025-08-01-preview' = {
+  name: 'containera'
   location: location
   properties: {
     application: app.id
-    container: {
-      image: magpieimage
+    environment: environment
+    containers: {
+      main: {
+        image: magpieimage
+      }
     }
   }
 }
 
-resource containerb 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'containerB'
+resource containerb 'Radius.Compute/containers@2025-08-01-preview' = {
+  name: 'containerb'
   location: location
   properties: {
     application: app.id
-    container: {
-      image: magpieimage
+    environment: environment
+    containers: {
+      main: {
+        image: magpieimage
+      }
     }
   }
 }

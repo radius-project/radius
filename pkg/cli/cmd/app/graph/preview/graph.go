@@ -34,6 +34,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -47,7 +48,10 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Args:  cobra.MaximumNArgs(1),
 		Example: `
 # Show graph for specified application
-rad app graph my-application --preview`,
+rad app graph my-application --preview
+
+# Include icon SVG bytes inline in the JSON output
+rad app graph my-application --preview -o json --include-icons`,
 		RunE: framework.RunCommand(runner),
 	}
 
@@ -55,6 +59,7 @@ rad app graph my-application --preview`,
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddApplicationNameFlag(cmd)
 	commonflags.AddOutputFlag(cmd)
+	cmd.Flags().Bool("include-icons", false, "When set, embeds each referenced resource type icon's SVG bytes in the response.")
 
 	return cmd, runner
 }
@@ -68,6 +73,7 @@ type Runner struct {
 
 	ApplicationName string
 	Format          string
+	IncludeIcons    bool
 }
 
 // NewRunner creates a new instance of the preview graph runner.
@@ -101,6 +107,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	r.IncludeIcons, err = cmd.Flags().GetBool("include-icons")
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -116,8 +127,11 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	appClient := r.RadiusCoreClientFactory.NewApplicationsClient()
 
-	// Fetch the application graph — GetGraph returns 404 if the application does not exist.
-	graphResponse, err := appClient.GetGraph(ctx, r.Workspace.Scope, r.ApplicationName, corerpv20250801.GetGraphRequest{}, &corerpv20250801.ApplicationsClientGetGraphOptions{})
+	body := corerpv20250801.GetGraphRequest{}
+	if r.IncludeIcons {
+		body.IncludeIcons = to.Ptr(true)
+	}
+	graphResponse, err := appClient.GetGraph(ctx, r.Workspace.Scope, r.ApplicationName, body, &corerpv20250801.ApplicationsClientGetGraphOptions{})
 	if clients.Is404Error(err) {
 		return clierrors.Message("Application %q does not exist or has been deleted.", r.ApplicationName)
 	} else if err != nil {
@@ -206,5 +220,5 @@ func display(applicationResources []*corerpv20250801.ApplicationGraphResource, a
 }
 
 func makeHyperlink(resource *corerpv20250801.ApplicationGraphOutputResource) string {
-	return graph.MakeResourceHyperlink(*resource.ID, *resource.Name)
+	return graph.MakeResourceHyperlink(resource.PortalURL, *resource.Name)
 }

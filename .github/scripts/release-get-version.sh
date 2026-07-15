@@ -48,7 +48,7 @@ RELEASE_VERSION=""
 RELEASE_BRANCH_NAME=""
 
 pushd $REPOSITORY
-for VERSION in $(echo $VERSIONS | sed "s/,/ /g"); do
+for VERSION in ${VERSIONS//,/ }; do
   # VERSION_NUMBER is the version number without the 'v' prefix (e.g. 0.1.0)
   VERSION_NUMBER=$(echo $VERSION | cut -d 'v' -f 2)
 
@@ -91,6 +91,8 @@ fi
 echo "Release version: ${RELEASE_VERSION}"
 echo "Release branch name: ${RELEASE_BRANCH_NAME}"
 echo "Release channel: ${REL_CHANNEL}"
-echo "release-version=$RELEASE_VERSION" >>$GITHUB_OUTPUT
-echo "release-branch-name=$RELEASE_BRANCH_NAME" >>$GITHUB_OUTPUT
-echo "release-channel=$REL_CHANNEL" >>$GITHUB_OUTPUT
+{
+  echo "release-version=$RELEASE_VERSION"
+  echo "release-branch-name=$RELEASE_BRANCH_NAME"
+  echo "release-channel=$REL_CHANNEL"
+} >>$GITHUB_OUTPUT

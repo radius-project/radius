@@ -497,6 +497,89 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 	}
 }
 
+func TestCreateOrUpdateResource_Run_RecipeErrorSurfacedWhenStatusSaveFails(t *testing.T) {
+	// Regression test: when a recipe fails with a RecipeError and the best-effort
+	// persistence of the failure status then also fails, the controller must surface
+	// the real recipe error to the caller, not the save error. Previously the save
+	// error (e.g. a spurious ErrConcurrency from the Postgres backend) masked the
+	// actionable recipe failure, so users saw "the operation failed due to a
+	// concurrency conflict" instead of the underlying recipe error.
+	mctrl := gomock.NewController(t)
+	msc := database.NewMockClient(mctrl)
+	eng := engine.NewMockEngine(mctrl)
+	cfg := configloader.NewMockConfigurationLoader(mctrl)
+
+	// No updatedApiVersion => the sensitive-field detection path is skipped and no
+	// UCP client/schema is required.
+	data := map[string]any{
+		"name":     "tr",
+		"type":     TestResourceType,
+		"id":       TestResourceID,
+		"location": v1.LocationGlobal,
+		"properties": map[string]any{
+			"application":       TestApplicationID,
+			"environment":       TestEnvironmentID,
+			"provisioningState": "Accepted",
+			"status": map[string]any{
+				"outputResources": []map[string]any{},
+			},
+			"recipe": map[string]any{
+				"name": "test-recipe",
+			},
+		},
+	}
+
+	msc.EXPECT().
+		Get(gomock.Any(), TestResourceID).
+		Return(&database.Object{Metadata: database.Metadata{ID: TestResourceID, ETag: "etag-1"}, Data: data}, nil).
+		Times(1)
+
+	configuration := &recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{
+				Namespace:            "test-namespace",
+				EnvironmentNamespace: "test-env-namespace",
+			},
+		},
+	}
+	cfg.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).Return(configuration, nil).Times(1)
+
+	recipeErr := &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    "RecipeDeploymentFailed",
+			Message: `terraform apply failure: secrets "dbsecret" already exists`,
+		},
+	}
+	eng.EXPECT().Execute(gomock.Any(), gomock.Any()).Return(&recipes.RecipeOutput{}, recipeErr).Times(1)
+
+	// The best-effort status-persistence save fails with a conflict; this must NOT
+	// mask the recipe error.
+	msc.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(&database.ErrConcurrency{}).Times(1)
+
+	opts := ctrl.Options{DatabaseClient: msc}
+	recipeCfg := &controllerconfig.RecipeControllerConfig{Engine: eng, ConfigLoader: cfg}
+
+	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
+	require.NoError(t, err)
+
+	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+		OperationID:      uuid.New(),
+		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
+		ResourceID:       TestResourceID,
+		CorrelationID:    uuid.NewString(),
+		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
+	})
+
+	// The operation is terminal (no returned error to trigger a requeue), and the
+	// surfaced error must be the recipe error, not the save conflict.
+	require.NoError(t, err)
+	require.Equal(t, v1.ProvisioningStateFailed, res.ProvisioningState())
+	require.False(t, res.Requeue)
+	require.NotNil(t, res.Error)
+	require.Equal(t, recipeErr.ErrorDetails.Code, res.Error.Code)
+	require.Equal(t, recipeErr.ErrorDetails.Message, res.Error.Message)
+}
+
 func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	msc := database.NewMockClient(mctrl)

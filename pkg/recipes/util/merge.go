@@ -16,6 +16,8 @@ limitations under the License.
 
 package util
 
+import "maps"
+
 // ShallowMergeParameters merges two parameter maps with top-level key precedence from override.
 // Nested objects are replaced entirely, not deep-merged (per the direct module support design).
 func ShallowMergeParameters(base map[string]any, override map[string]any) map[string]any {
@@ -25,12 +27,8 @@ func ShallowMergeParameters(base map[string]any, override map[string]any) map[st
 
 	result := make(map[string]any)
 
-	for k, v := range base {
-		result[k] = v
-	}
-	for k, v := range override {
-		result[k] = v
-	}
+	maps.Copy(result, base)
+	maps.Copy(result, override)
 
 	return result
 }

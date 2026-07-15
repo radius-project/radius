@@ -1,35 +1,31 @@
 extension radius
 extension testresources
 
-param  environment string
+@description('The ID of the shared environment that owns the existing postgres resource.')
+param environment string
 
-resource udtapp 'Applications.Core/applications@2023-10-01-preview' = {
+resource udtapp 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'dynamicrp-postgres-existing'
   location: 'global'
   properties: {
     environment: environment
-    extensions: [
-      {
-        kind: 'kubernetesNamespace'
-        namespace: 'dynamicrp-postgres-existing-app'
-      }
-    ]
   }
 }
 
-
-resource udtcntr 'Applications.Core/containers@2023-10-01-preview' = {
-    name: 'postgres-cntr'
-    properties: {
-      application: udtapp.id
-      container: {
+resource udtcntr 'Radius.Compute/containers@2025-08-01-preview' = {
+  name: 'postgres-cntr'
+  location: 'global'
+  properties: {
+    application: udtapp.id
+    environment: environment
+    containers: {
+      'postgres-cntr': {
         image: 'ghcr.io/radius-project/samples/demo:latest'
         ports: {
           web: {
             containerPort: 3000
           }
         }
-  
         env: {
           CONNECTION_POSTGRES_HOST: {
             value: udtpgexisting.properties.host
@@ -47,11 +43,13 @@ resource udtcntr 'Applications.Core/containers@2023-10-01-preview' = {
             value: udtpgexisting.properties.password
           }
         }
+      }
     }
-  
-    }
+  }
 }
 
-resource udtpgexisting 'Test.Resources/postgres@2025-01-01-preview' existing= {
+// Reference the env-scoped postgres resource provisioned by
+// postgres-env-scoped-resource.bicep using the 'existing' keyword.
+resource udtpgexisting 'Test.Resources/postgres@2025-01-01-preview' existing = {
   name: 'existing-postgres'
 }

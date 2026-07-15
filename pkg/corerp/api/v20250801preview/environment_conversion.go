@@ -69,14 +69,14 @@ func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 		converted.Properties.Simulated = true
 	}
 
-	// Convert TerraformConfig
-	if src.Properties.TerraformConfig != nil {
-		converted.Properties.TerraformConfig = to.String(src.Properties.TerraformConfig)
+	// Convert TerraformSettings
+	if src.Properties.TerraformSettings != nil {
+		converted.Properties.TerraformSettings = to.String(src.Properties.TerraformSettings)
 	}
 
-	// Convert BicepConfig
-	if src.Properties.BicepConfig != nil {
-		converted.Properties.BicepConfig = to.String(src.Properties.BicepConfig)
+	// Convert BicepSettings
+	if src.Properties.BicepSettings != nil {
+		converted.Properties.BicepSettings = to.String(src.Properties.BicepSettings)
 	}
 
 	return converted, nil
@@ -122,14 +122,14 @@ func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 		dst.Properties.Simulated = new(env.Properties.Simulated)
 	}
 
-	// Convert TerraformConfig
-	if env.Properties.TerraformConfig != "" {
-		dst.Properties.TerraformConfig = &env.Properties.TerraformConfig
+	// Convert TerraformSettings
+	if env.Properties.TerraformSettings != "" {
+		dst.Properties.TerraformSettings = &env.Properties.TerraformSettings
 	}
 
-	// Convert BicepConfig
-	if env.Properties.BicepConfig != "" {
-		dst.Properties.BicepConfig = &env.Properties.BicepConfig
+	// Convert BicepSettings
+	if env.Properties.BicepSettings != "" {
+		dst.Properties.BicepSettings = &env.Properties.BicepSettings
 	}
 
 	return nil

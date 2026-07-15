@@ -32,4 +32,4 @@ jobs:
       issues: read
       pull-requests: read
     with:
-      report-type: ${{ (github.event_name == 'workflow_dispatch' && inputs.report_type) || (github.event.schedule == '0 8 1 * *' && 'monthly') || 'weekly' }}
+      report-type: ${{ (github.event_name == 'workflow_dispatch' && inputs.report_type) || (github.event.schedule == '0 7 1 * *' && 'monthly') || 'weekly' }}

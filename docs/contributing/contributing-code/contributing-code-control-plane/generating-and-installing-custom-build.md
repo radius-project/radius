@@ -22,7 +22,7 @@ Note that installing a custom build could corrupt existing data or installation.
 
 2. Log into your container registry and make sure you have permission to push images.
 
-3. [Build Radius containers](../../contributing-code/contributing-code-building/README.md#building-containers) and push them to your registry.
+3. [Build Radius containers](../../contributing-code/contributing-code-building/README.md#build-the-container-images) and push them to your registry.
 
    ```console
    make docker-build docker-push

@@ -32,7 +32,7 @@ import (
 func Test_Deployment_SimulatedEnv(t *testing.T) {
 	template := "testdata/corerp-resources-simulatedenv.bicep"
 	name := "corerp-resources-simulatedenv"
-	appNamespace := "default-corerp-resources-simulatedenv"
+	appNamespace := "corerp-resources-simulatedenv"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
@@ -41,21 +41,20 @@ func Test_Deployment_SimulatedEnv(t *testing.T) {
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
-						Name: "http-gtwy-gtwy-simulatedenv",
-						Type: validation.GatewaysResource,
-						App:  name,
+						Name: "corerp-resources-simulatedenv-env",
+						Type: validation.CoreEnvironmentsResource,
 					},
 					{
 						Name: "http-gtwy-front-ctnr-simulatedenv",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 					{
 						Name: "http-gtwy-back-ctnr-simulatedenv",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},

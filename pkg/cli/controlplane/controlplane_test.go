@@ -18,12 +18,15 @@ package controlplane
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes/fake"
 	ktesting "k8s.io/client-go/testing"
 )
@@ -45,6 +48,9 @@ func deployment(name string, replicas int32) *appsv1.Deployment {
 // status to match a scale request and the scaler's status-based waits would never converge.
 func newReconcilingClientset(objs ...runtime.Object) *fake.Clientset {
 	clientset := fake.NewSimpleClientset(objs...)
+	clientset.Discovery().(*fakediscovery.FakeDiscovery).Resources = []*metav1.APIResourceList{
+		{GroupVersion: radiusAPIGroupVersion},
+	}
 	reconcile := func(action ktesting.Action) (bool, runtime.Object, error) {
 		obj := action.(interface{ GetObject() runtime.Object }).GetObject()
 		dep, ok := obj.(*appsv1.Deployment)
@@ -69,12 +75,12 @@ func Test_ScaleDown_RecordsReplicasAndZeroes(t *testing.T) {
 	)
 	scaler := NewScaler(clientset, testNamespace)
 
-	saved, err := scaler.ScaleDown(context.Background())
+	saved, err := scaler.ScaleDown(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, map[string]int32{"ucp": 1, "applications-rp": 2, "dynamic-rp": 1}, saved)
 
 	for _, name := range Deployments {
-		d, err := clientset.AppsV1().Deployments(testNamespace).Get(context.Background(), name, metav1.GetOptions{})
+		d, err := clientset.AppsV1().Deployments(testNamespace).Get(t.Context(), name, metav1.GetOptions{})
 		require.NoError(t, err)
 		require.Equal(t, int32(0), *d.Spec.Replicas, "deployment %q should be scaled to zero", name)
 	}
@@ -85,7 +91,7 @@ func Test_ScaleDown_SkipsMissingDeployments(t *testing.T) {
 	clientset := newReconcilingClientset(deployment("ucp", 1))
 	scaler := NewScaler(clientset, testNamespace)
 
-	saved, err := scaler.ScaleDown(context.Background())
+	saved, err := scaler.ScaleDown(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, map[string]int32{"ucp": 1}, saved)
 }
@@ -97,16 +103,50 @@ func Test_ScaleUp_RestoresSavedReplicas(t *testing.T) {
 	)
 	scaler := NewScaler(clientset, testNamespace)
 
-	err := scaler.ScaleUp(context.Background(), map[string]int32{"ucp": 1, "applications-rp": 3})
+	err := scaler.ScaleUp(t.Context(), map[string]int32{"ucp": 1, "applications-rp": 3})
 	require.NoError(t, err)
 
-	ucp, err := clientset.AppsV1().Deployments(testNamespace).Get(context.Background(), "ucp", metav1.GetOptions{})
+	ucp, err := clientset.AppsV1().Deployments(testNamespace).Get(t.Context(), "ucp", metav1.GetOptions{})
 	require.NoError(t, err)
 	require.Equal(t, int32(1), *ucp.Spec.Replicas)
 
-	rp, err := clientset.AppsV1().Deployments(testNamespace).Get(context.Background(), "applications-rp", metav1.GetOptions{})
+	rp, err := clientset.AppsV1().Deployments(testNamespace).Get(t.Context(), "applications-rp", metav1.GetOptions{})
 	require.NoError(t, err)
 	require.Equal(t, int32(3), *rp.Spec.Replicas)
+}
+
+func Test_ScaleUp_RetriesUntilRadiusAPIServiceAvailable(t *testing.T) {
+	clientset := newReconcilingClientset(deployment("ucp", 0))
+	attempts := 0
+	clientset.PrependReactor("get", "resource", func(ktesting.Action) (bool, runtime.Object, error) {
+		attempts++
+		if attempts == 1 {
+			return true, nil, errors.New("service unavailable")
+		}
+		return false, nil, nil
+	})
+
+	scaler := NewScaler(clientset, testNamespace)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	err := scaler.ScaleUp(ctx, map[string]int32{"ucp": 1})
+	require.NoError(t, err)
+	require.Equal(t, 2, attempts)
+}
+
+func Test_ScaleUp_SkipsAPIServiceWaitWhenUCPRemainsScaledDown(t *testing.T) {
+	clientset := newReconcilingClientset(deployment("ucp", 0))
+	attempts := 0
+	clientset.PrependReactor("get", "resource", func(ktesting.Action) (bool, runtime.Object, error) {
+		attempts++
+		return true, nil, errors.New("service unavailable")
+	})
+
+	scaler := NewScaler(clientset, testNamespace)
+	err := scaler.ScaleUp(t.Context(), map[string]int32{"ucp": 0})
+	require.NoError(t, err)
+	require.Zero(t, attempts)
 }
 
 func Test_ScaleDownThenUp_RoundTrip(t *testing.T) {
@@ -116,7 +156,7 @@ func Test_ScaleDownThenUp_RoundTrip(t *testing.T) {
 		deployment("dynamic-rp", 1),
 	)
 	scaler := NewScaler(clientset, testNamespace)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	saved, err := scaler.ScaleDown(ctx)
 	require.NoError(t, err)

@@ -1,74 +1,34 @@
 # Your first commit: Debugging the CLI
 
-## Debugging your changes
+This step shows you how to debug the `rad` CLI in VS Code using the change you made in the previous step. For the full debugging reference, see the **Debug rad in VS Code** section of the authoritative [Develop the Radius CLI](../../contributing-code-cli/README.md#debug-rad-in-vs-code) guide. If you use another editor, you can skip this step.
 
-The following sections describe the debugging in Visual Studio Code (VS Code). If you are using another editor you can skip the following sections.
+> 📝 **Tip:** The first time you debug on **macOS** with a given version of Go, you'll be prompted for your password, and the prompt can take 1–2 minutes to appear. This is expected.
 
->📝 **Tip** The first time you debug on **macOS** with a given version of Go you will be prompted to enter your password. It is normal for this to take 1-2 minutes for the prompt to appear the first time.
+## Debug rad with the predefined configuration
 
-## Predefined debug configurations
+The repository's `.vscode/launch.json` provides the **"Debug rad CLI (prompt for args)"** configuration, which launches `cmd/rad/main.go` and asks you which command-line arguments to run.
 
-You can debug your changes right from VS Code. The repository has a `.vscode` directory which contains several launch configurations containing debugging configurations. We describe the configurations in the following sections.
+1. Set a breakpoint on the line you added in `main.go` — click in the *gutter* to the left of the line numbers.
 
-### Debugging rad CLI
+   ![Placing a breakpoint in main.go](img/main-with-breakpoint.png)
 
-This section describes the configuration named **"Debug rad CLI"**. This is a basic Go debugger configuration that is set up to launch the `rad` CLI. To try it out, set a breakpoint in `main.go`. Set the breakpoint by clicking in the *gutter* to the left of the line numbers in you editor. Place the breakpoint on the new line you added in `main.go`.
+2. Open the debug pane and select **"Debug rad CLI (prompt for args)"** from the drop-down.
 
-<img src="img/main-with-breakpoint.png" alt="Placing a breakpoint in main.go" width="600" height="auto">
+   ![Selecting the debug configuration](img/vscode-debug-config-selection-with-args.png)
 
-The debugger will stop the program prior to crossing over your breakpoint. Execute the following steps to launch the CLI in the debugger:
+3. Click the green triangle to start. The project builds first, which may take a moment.
 
-- Open the debug pane.
+   ![Starting the debug configuration](img/vscode-debug-start-version-with-args.png)
 
-  <img src="img/vscode-debug-pane.png" alt="VS Code debug pane" width="600" height="auto">
+4. When prompted, enter the arguments to run (for example `version`) and confirm.
 
-- Select the **"Debug rad CLI"** entry from the drop down list.
+   ![Entering the rad command to debug](img/vscode-debug-prompt-cmd.png)
 
-  <img src="img/vscode-debug-config-selection.png" alt="VS Code debug configuration selection" width="600" height="auto">
+Execution stops at your breakpoint, where you can step through the code:
 
-- Click the icon with the green triangle to launch the debugging session.
+![Hitting a breakpoint in main.go](img/main-breakpoint-hit.png)
 
-  <img src="img/vscode-debug-start.png" alt="VS Code start selected debug configuration" width="600" height="auto">
-
-Before the debugging will start the project is build in the background. This might take some time. After the build is completed the program will start and the breakpoint should be hit.
-
-<img src="img/main-breakpoint-hit.png" alt="Hitting a breakpoint in main.go" width="600" height="auto">
-
-You can play around with the various debugger features, like stepping into code. When you're done, hit the red square *stop* icon in the debugger tools to end the debugging session.
-
-> 📝 **Tip** - You can create definitions for any set of debug settings you want to keep handy.
-
-### Debug rad CLI - prompt for args
-
-This section describes the configuration named **"Debug rad CLI (prompt for args)"**. In contrast to the previous generic one this one uses the specific `rad CLI` commands to kick of the debugger.  
-
-Let us test this setup by checking debugging the `rad version` command. The file is located at `cmd/rad/cmd/version.go`. Set a breakpoint at the beginning of the function `writeVersionString`:
-
-<img src="img/version-with-breakpoint.png" alt="Placing a breakpoint in version.go" width="600" height="auto">
-
-The debugger will stop the program prior to crossing over your breakpoint. Execute the following steps to launch the CLI command in the debugger:
-
-- Open the debug pane.
-
-  <img src="img/vscode-debug-pane.png" alt="VS Code debug pane" width="600" height="auto">
-
-- Select the **"Debug rad CLI (prompt for args)"** entry from the drop down list.
-
-  <img src="img/vscode-debug-config-selection-with-args.png" alt="VS Code debug configuration selection with arguments" width="600" height="auto">
-
-- Click the icon with the green triangle to launch the debugging session.
-
-  <img src="img/vscode-debug-start-version-with-args.png" alt="VS Code start selected debug configuration with arguments" width="600" height="auto">
-
-- The system will open up the command palette. Enter the command you want to debug i.e. `version` and confirm.  
-
-  <img src="img/vscode-debug-prompt-cmd.png" alt="VS Code debug command prompt" width="600" height="auto">
-
-Before the debugging will start the project is build in the background. This might take some time. After the build is completed the program will start and the breakpoint should be hit.
-
-<img src="img/version-breakpoint-hit.png" alt="Hitting a breakpoint in version.go" width="600" height="auto">
-
-You can play around with the various debugger features, like stepping into code. When you're done, hit the red square *stop* icon in the debugger tools to end the debugging session.
+When you're done, hit the red square *stop* icon to end the session.
 
 ## Next step
 

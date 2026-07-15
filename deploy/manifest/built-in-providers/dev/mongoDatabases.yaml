@@ -1,0 +1,78 @@
+namespace: Radius.Data
+types:
+  mongoDatabases:
+    description: |
+      The Radius.Data/mongoDatabases Resource Type deploys a Mongo-compatible
+      database. To deploy a Mongo database, add a mongoDatabases resource to the
+      application definition Bicep file. The Azure recipe uses Cosmos DB for
+      MongoDB and exposes its endpoint and connection string as resource
+      properties.
+      ```
+      resource database 'Radius.Data/mongoDatabases@2025-08-01-preview' = {
+        name: 'mongo'
+        properties: {
+          environment: environment
+          application: myApplication.id
+          database: 'mongo_db'
+        }
+      }
+      ```
+
+      To connect your container to the database, create a connection from the
+      Container resource to the database as shown below.
+      ```
+      resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
+        name: 'frontend'
+        properties: {
+          application: myApplication.id
+          environment: environment
+          container: {
+            image: 'frontend:1.25'
+          }
+          connections: {
+            mongo: {
+              source: database.id
+            }
+          }
+        }
+      }
+      ```
+
+      The connection automatically injects environment variables into the
+      container for all properties from the database. The environment variables
+      are named `CONNECTION_<CONNECTION-NAME>_<PROPERTY-NAME>`. In this example
+      the connection name is `mongo` so the environment variables will be:
+
+      - CONNECTION_MONGO_DATABASE
+      - CONNECTION_MONGO_ENDPOINT
+      - CONNECTION_MONGO_CONNECTIONSTRING
+
+      Portability note: this schema is platform-neutral so the same resource
+      type works with Azure AVM, AWS Terraform modules, and Kubernetes recipes.
+      Only the recipePack source plus parameters/outputs mapping change per
+      platform; the developer-facing database knob and read-only connection
+      surface stay identical.
+    apiVersions:
+      '2025-08-01-preview':
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+              description: "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`."
+            application:
+              type: string
+              description: "(Optional) The Radius Application ID. `myApplication.id` for example."
+            database:
+              type: string
+              default: mongo_db
+              description: "(Optional) The Mongo database name. Defaults to `mongo_db` if not provided."
+            endpoint:
+              type: string
+              description: The endpoint used to connect to the database. Mapped from the recipe module's output.
+              readOnly: true
+            connectionString:
+              type: string
+              description: The connection string used to connect to the database. Mapped from the recipe module's output.
+              readOnly: true
+          required: [environment]

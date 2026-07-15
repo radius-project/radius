@@ -78,6 +78,12 @@ type ResourceProviderSummaryPropertiesResourceType struct {
 	//Description of the resource type.
 	Description *string `json:"description,omitempty"`
 
+	// Icon is the verbatim SVG icon content associated with the resource type.
+	Icon *string `json:"icon,omitempty"`
+
+	// IconHash is the SHA-256 hash of the icon's SVG bytes, computed by the control plane.
+	IconHash *string `json:"iconHash,omitempty"`
+
 	// APIVersions is the list of API versions available for the resource type.
 	APIVersions map[string]ResourceProviderSummaryPropertiesAPIVersion `json:"apiVersions,omitempty"`
 }

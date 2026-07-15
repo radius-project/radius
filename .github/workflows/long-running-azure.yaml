@@ -94,7 +94,7 @@ jobs:
     if: github.repository == vars.RADIUS_REPOSITORY
     name: Run functional tests
     runs-on: ubuntu-24.04
-    timeout-minutes: 120
+    timeout-minutes: 210
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for actions/checkout
@@ -160,7 +160,7 @@ jobs:
           ./.github/scripts/checkout-release-codebase.sh
 
       - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: ${{ steps.checkout-release-codebase.outputs.release-dir }}/go.mod
           cache-dependency-path: ${{ steps.checkout-release-codebase.outputs.release-dir }}/go.sum
@@ -174,7 +174,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -204,7 +204,7 @@ jobs:
 
       - name: Restore skip-delete-resources-list
         if: always()
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: skip-delete-resources-list.txt
           key: skip-delete-resources-list-${{ steps.gen-id.outputs.UNIQUE_ID || github.run_id }}
@@ -269,7 +269,7 @@ jobs:
           ./.github/scripts/manage-radius-installation.sh
 
       - name: Save list of resources not to be deleted
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: skip-delete-resources-list.txt
           key: skip-delete-resources-list-${{ steps.gen-id.outputs.UNIQUE_ID || github.run_id }}
@@ -281,8 +281,7 @@ jobs:
           AZURE_SP_TESTS_APPID: ${{ secrets.AZURE_SP_TESTS_APPID }}
           AZURE_SP_TESTS_TENANTID: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
           FUNCTEST_AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
-          FUNCTEST_AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
-          FUNCTEST_AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
+          FUNC_TEST_RAD_IRSA_ROLE: ${{ secrets.FUNC_TEST_RAD_IRSA_ROLE }}
         run: |
           set -x
 
@@ -307,8 +306,12 @@ jobs:
 
           echo "*** Configuring AWS provider ***"
           rad env update "${RADIUS_TEST_ENVIRONMENT_NAME}" --aws-region "${AWS_REGION}" --aws-account-id "${FUNCTEST_AWS_ACCOUNT_ID}"
-          rad credential register aws access-key \
-            --access-key-id "${FUNCTEST_AWS_ACCESS_KEY_ID}" --secret-access-key "${FUNCTEST_AWS_SECRET_ACCESS_KEY}"
+          # Register AWS credentials using IRSA (IAM Roles for Service Accounts).
+          # The Radius pods on the AKS cluster assume this role via their
+          # projected service account tokens (workload identity), so no static
+          # access keys are stored in the control plane.
+          rad credential register aws irsa \
+            --iam-role "${FUNC_TEST_RAD_IRSA_ROLE}"
 
       - name: Log radius installation status (failure)
         if: failure()
@@ -373,14 +376,26 @@ jobs:
         env:
           RELEASE_DIR: ${{ steps.checkout-release-codebase.outputs.release-dir }}
 
+      - name: Configure AWS credentials using assumed role
+        # The test verification code constructs an AWS Cloud Control client via
+        # the default credential chain to check and clean up AWS resources. Use
+        # federated OIDC to assume a role instead of static access keys; the
+        # action exports short-lived AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY /
+        # AWS_SESSION_TOKEN into the environment for the test step below.
+        uses: aws-actions/configure-aws-credentials@517a711dbcd0e402f90c77e7e2f81e849156e31d # v6.2.2
+        with:
+          role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
+          role-session-name: ${{ github.run_id }}
+          role-duration-seconds: 5400
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Run functional tests
+        timeout-minutes: 120
         env:
           AZURE_TEST_RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
           UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
           TEST_TIMEOUT: ${{ env.FUNCTIONALTEST_TIMEOUT }}
           RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.FUNCTEST_AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.FUNCTEST_AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ env.AWS_REGION }}
           AWS_ACCOUNT_ID: ${{ secrets.FUNCTEST_AWS_ACCOUNT_ID }}
           RADIUS_SAMPLES_REPO_ROOT: ${{ github.workspace }}/samples
@@ -394,6 +409,16 @@ jobs:
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
+          # The released v0.59 test code predates two incompatibilities with main:
+          #   - Test_ACI: tracked in #12044 (cleanup timeout flake).
+          #   - Test_RecipePack, Test_RadiusCoreEnv: the v0.59 recipe-pack fixture
+          #     uses the old recipeKind/recipeLocation properties that were renamed
+          #     to kind/source in PR #12104 (merged 2026-06-22), four days after the
+          #     v0.59.0 release (2026-06-18). The old names produce a BCP037 compile
+          #     error against the mutable latest Bicep extension.
+          # Skip these exact tests until a release that includes the fixes is cut.
+          # See #12044, #12104, #12163, #12247, and #12392.
+          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RecipePack|Test_RadiusCoreEnv)$$'"
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
         run: |
           set -euo pipefail
@@ -420,7 +445,11 @@ jobs:
           export AZURE_MSSQL_USERNAME="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_USERNAME')"
           export AZURE_MSSQL_PASSWORD="$(echo "${PREPROVISIONED_JSON}" | jq -er '.AZURE_MSSQL_PASSWORD')"
 
-          make test-functional-all
+          # Run quota-dependent suites first so cloud failures leave enough time for
+          # diagnostics and cleanup. These two targets cover the same suites as
+          # test-functional-all without rerunning the Kubernetes aggregate target.
+          make test-functional-all-cloud
+          make test-functional-all-noncloud
 
       - name: Collect Pod details
         if: always()
@@ -463,6 +492,16 @@ jobs:
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
 
+      - name: Release ACI quota before async resource group delete
+        if: always()
+        env:
+          AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+          AZURE_TEST_RESOURCE_GROUP: ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
+        run: |
+          ./.github/scripts/release-aci-quota.sh \
+            "${AZURE_SUBSCRIPTIONID_TESTS}" \
+            "${AZURE_TEST_RESOURCE_GROUP}"
+
       - name: Delete azure resource group - ${{ steps.gen-id.outputs.AZURE_TEST_RESOURCE_GROUP }}
         if: always()
         env:
@@ -477,7 +516,7 @@ jobs:
 
       - name: Restore skip-delete-resources-list
         if: always()
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: skip-delete-resources-list.txt
           key: skip-delete-resources-list-${{ steps.gen-id.outputs.UNIQUE_ID || github.run_id }}
@@ -496,22 +535,26 @@ jobs:
           ./.github/scripts/cleanup-long-running-cluster.sh skip-delete-resources-list.txt
 
   report-failure:
-    if: failure() && github.repository == vars.RADIUS_REPOSITORY && github.event_name == 'schedule'
-    name: Report test failure
+    if: |
+      always() &&
+      (needs.tests.result == 'failure' || needs.tests.result == 'cancelled') &&
+      github.repository == vars.RADIUS_REPOSITORY &&
+      github.event_name == 'schedule'
+    name: Report unsuccessful test run
     needs: [tests]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       issues: write # Required to create an issue when the scheduled run fails
     steps:
-      - name: Create failure issue for failing long running test run
+      - name: Create issue for unsuccessful long running test run
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           github-token: ${{ github.token }}
           script: |
             github.rest.issues.create({
               ...context.repo,
-              title: `Scheduled long running test failed - Run ID: ${context.runId}`,
+              title: `Scheduled long running test did not complete successfully - Run ID: ${context.runId}`,
               labels: ['test-failure'],
-              body: `## Bug information \n\nThis issue is automatically generated if the scheduled long running test fails. The Radius long running test operates on a schedule of once per day. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For the further investigation, please visit [here](${process.env.ACTION_LINK}).`
+              body: `## Bug information \n\nThis issue is automatically generated if the scheduled long running test fails or is cancelled. The Radius long running test operates on a schedule of once per day. It's important to understand that the test may fail due to workflow infrastructure issues, like network problems, rather than the flakiness of the test itself. For further investigation, visit [the workflow run](${process.env.ACTION_LINK}).`
             })

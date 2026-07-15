@@ -89,22 +89,21 @@ func runRecipePacksDeploymentTest(t *testing.T, template, appName, appNamespace,
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
-						Name: recipePackResourceName,
-						Type: "radius.core/recipepacks",
-					},
-					{
-						Name: environmentResourceName,
-						Type: "radius.core/environments",
-					},
-					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
-						App:  appName,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: rrtResourceName,
 						Type: "test.resources/usertypealpha",
 						App:  appName,
+					},
+					{
+						Name: environmentResourceName,
+						Type: validation.CoreEnvironmentsResource,
+					},
+					{
+						Name: recipePackResourceName,
+						Type: validation.CoreRecipePacksResource,
 					},
 				},
 			},

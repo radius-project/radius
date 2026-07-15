@@ -47,8 +47,12 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
+
+.PHONY: test-manage-radius-installation
+test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
+	@bash ./.github/scripts/manage-radius-installation_test.sh
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
@@ -147,6 +151,13 @@ test-functional-multicluster-noncloud: ## Runs multi-cluster functional tests th
 	# recipe-created resources land there. Not part of test-functional-all-noncloud
 	# because of that extra setup.
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/multicluster/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
+
+.PHONY: test-functional-statestore-noncloud
+test-functional-statestore-noncloud: ## Runs the rad startup/shutdown state-storage lifecycle test
+	# Destructive: the test installs, uninstalls (--purge), and reinstalls Radius
+	# to simulate an ephemeral control plane, so it must run on a dedicated cluster
+	# and never alongside other functional legs. Not part of test-functional-all-noncloud.
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/statestore/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
 .PHONY: test-functional-upgrade
 test-functional-upgrade: test-functional-upgrade-noncloud ## Runs all Upgrade functional tests

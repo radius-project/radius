@@ -180,36 +180,39 @@ type ARMRequestContext struct {
 // FromARMRequest extracts proxy request headers from http.Request.
 func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestContext, error) {
 	log := ucplog.FromContextOrDiscard(r.Context())
-	refererUri := r.Header.Get(RefererHeader)
-	refererURL, err := url.Parse(refererUri)
-	if refererUri == "" || err != nil {
-		refererURL = r.URL
+	requestPathBase := pathBase
+	if requestPathBase == "" {
+		requestPathBase = ParsePathBase(r.URL.Path)
 	}
-
-	if pathBase == "" {
-		pathBase = ParsePathBase(refererURL.Path)
-	}
-	path := strings.TrimPrefix(refererURL.Path, pathBase)
-	rID, err := resources.ParseByMethod(path, r.Method)
-	if err != nil {
-		log.V(ucplog.LevelDebug).Info(fmt.Sprintf("URL was not a valid resource id: %v", refererURL.Path))
+	requestPath := strings.TrimPrefix(r.URL.Path, requestPathBase)
+	rID, resourceIDErr := resources.ParseByMethod(requestPath, r.Method)
+	if resourceIDErr != nil {
+		log.V(ucplog.LevelDebug).Info(fmt.Sprintf("URL was not a valid resource id: %v", r.URL.Path))
 		// do not stop extracting headers. handler needs to care invalid resource id.
 	}
 
-	// Radius (like ARM) uses the Referer header to recover the original resource path when a request
-	// has been proxied or its URL path was case-normalized, so a well-formed Referer normally refers
-	// to the same resource as the request URL, differing only by casing or path base. Keep the two
-	// consistent: if a well-formed Referer refers to a different resource than the request URL, use
-	// the URL so the resource id used for storage, scope, and downstream routing matches the request
-	// path.
-	if refererUri != "" && err == nil {
-		// Strip the URL's own path base before comparing: a proxied request can carry a routing
-		// prefix on the URL that the Referer does not, and that prefix is not a resource difference.
-		urlPath := strings.TrimPrefix(r.URL.Path, ParsePathBase(r.URL.Path))
-		if urlID, urlErr := resources.ParseByMethod(urlPath, r.Method); urlErr == nil && !strings.EqualFold(rID.String(), urlID.String()) {
-			log.Info("Referer header refers to a different resource than the request URL; using the request URL.",
-				"refererResourceID", rID.String(), "urlResourceID", urlID.String())
-			rID = urlID
+	// Radius (like ARM) uses the Referer header to recover original resource ID casing after a
+	// request has been proxied or its URL path was case-normalized. The request URL remains the
+	// authoritative source of identity: only use the Referer ID when both IDs identify the same
+	// resource.
+	refererURI := r.Header.Get(RefererHeader)
+	if refererURI != "" && resourceIDErr == nil {
+		refererURL, refererURLErr := url.Parse(refererURI)
+		if refererURLErr == nil {
+			refererPathBase := pathBase
+			if refererPathBase == "" {
+				refererPathBase = ParsePathBase(refererURL.Path)
+			}
+			refererPath := strings.TrimPrefix(refererURL.Path, refererPathBase)
+			refererID, refererIDErr := resources.ParseByMethod(refererPath, r.Method)
+			if refererIDErr == nil {
+				if resources.IDEquals(rID, refererID) {
+					rID = refererID
+				} else {
+					log.Info("Referer header refers to a different resource than the request URL; using the request URL.",
+						"refererResourceID", refererID.String(), "urlResourceID", rID.String())
+				}
+			}
 		}
 	}
 

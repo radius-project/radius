@@ -344,7 +344,7 @@ WITH updated AS (
 	INSERT INTO resources (id, original_id, resource_type, root_scope, routing_scope, etag, resource_data)
 	VALUES ($1, $2, $3, $4, $5, $6, $7)
 	ON CONFLICT (id) 
-	DO UPDATE SET resource_data = $7
+	DO UPDATE SET resource_data = $7, etag = $6
 	RETURNING id
 )
 SELECT
@@ -369,7 +369,7 @@ END AS result;`
 		// NOTE: we want to report ErrConcurrency for all failure cases here. This is what the tests do.
 		sql = `
 WITH updated AS (
-	UPDATE resources SET resource_data = $2
+	UPDATE resources SET resource_data = $2, etag = $4
 	WHERE id = $1 AND etag = $3
 	RETURNING id
 )
@@ -380,7 +380,7 @@ CASE
 	ELSE 'ErrConcurrency'
 END AS result;`
 
-		args = []any{databaseutil.NormalizePart(converted.String()), obj.Data, config.ETag}
+		args = []any{databaseutil.NormalizePart(converted.String()), obj.Data, config.ETag, obj.ETag}
 	}
 
 	result := ""

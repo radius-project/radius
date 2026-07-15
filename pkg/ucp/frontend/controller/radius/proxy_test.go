@@ -118,6 +118,30 @@ func Test_Run(t *testing.T) {
 		},
 	}
 
+	t.Run("failure (invalid resource ID)", func(t *testing.T) {
+		p, _, _, _, _ := createController(t)
+
+		svcContext := &v1.ARMRequestContext{
+			APIVersion: apiVersion,
+		}
+		ctx := testcontext.New(t)
+		ctx = v1.WithARMRequestContext(ctx, svcContext)
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Test//my-resource?api-version="+apiVersion, nil)
+
+		expected := rest.NewBadRequestARMResponse(v1.ErrorResponse{
+			Error: &v1.ErrorDetails{
+				Code:    v1.CodeInvalid,
+				Message: "the request URL does not contain a valid resource ID",
+			},
+		})
+
+		response, err := p.Run(ctx, w, req.WithContext(ctx))
+		require.NoError(t, err)
+		require.Equal(t, expected, response)
+	})
+
 	t.Run("success (non-tracked)", func(t *testing.T) {
 		p, databaseClient, _, roundTripper, _ := createController(t)
 

@@ -23,6 +23,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/sdk"
@@ -41,6 +42,19 @@ const (
 // returns it wrapped in an OK rest.Response. It is shared by the Applications.Core and Radius.Core
 // implementations of the getGraph custom action.
 func ComputeGraphResponse(ctx context.Context, applicationID resources.ID, environmentID string, connection sdk.Connection) (rest.Response, error) {
+	graph, err := ComputeGraphPayload(ctx, applicationID, environmentID, connection)
+	if err != nil {
+		return nil, err
+	}
+	return rest.NewOKResponse(graph), nil
+}
+
+// ComputeGraphPayload computes the application graph for the given application and environment IDs
+// and returns the raw payload without wrapping it in a rest.Response. Callers that need to enrich
+// the payload before serializing it (for example, the v20250801preview handler that attaches
+// per-node iconHash values from the resource-type registry) should call this
+// helper directly.
+func ComputeGraphPayload(ctx context.Context, applicationID resources.ID, environmentID string, connection sdk.Connection) (*corerpv20231001preview.ApplicationGraphResponse, error) {
 	// An application **MUST** have an environment id
 	parsedEnvironmentID, err := resources.ParseResource(environmentID)
 	if err != nil {
@@ -69,8 +83,14 @@ func ComputeGraphResponse(ctx context.Context, applicationID resources.ID, envir
 		return nil, err
 	}
 
-	graph := computeGraph(applicationResources, environmentResources)
-	return rest.NewOKResponse(graph), nil
+	// Only look up the registered Azure tenant when the fetched resources actually contain at
+	// least one Azure output resource. Pure-Kubernetes graphs skip the extra UCP credential Get.
+	tenantID := ""
+	if containsAzureOutputResource(applicationResources) || containsAzureOutputResource(environmentResources) {
+		tenantID = azureTenantID(ctx, clientOptions)
+	}
+
+	return computeGraph(applicationResources, environmentResources, tenantID), nil
 }
 
 var _ ctrl.Controller = (*GetGraph)(nil)

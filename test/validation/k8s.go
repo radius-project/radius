@@ -99,6 +99,36 @@ func NewK8sHTTPProxyForResource(application string, name string) K8sObject {
 	}
 }
 
+// NewK8sHTTPRouteForResource creates a K8sObject for a Gateway API HTTPRoute with the Labels set to the
+// application and name provided. This is the Gateway API replacement for Contour HTTPProxy objects used by
+// the legacy Applications.Core/gateways type; the Radius.Compute/routes recipe renders HTTPRoute objects.
+func NewK8sHTTPRouteForResource(application string, name string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "gateway.networking.k8s.io",
+			Version:  "v1",
+			Resource: "httproutes",
+		},
+		Kind:   "HTTPRoute",
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}
+
+// NewK8sTLSRouteForResource creates a K8sObject for a Gateway API TLSRoute with the Labels set to the
+// application and name provided. The Radius.Compute/routes recipe renders a TLSRoute when the route kind is
+// TLS (SNI-based passthrough), which is the replacement for legacy gateway TLS passthrough.
+func NewK8sTLSRouteForResource(application string, name string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "gateway.networking.k8s.io",
+			Version:  "v1alpha2",
+			Resource: "tlsroutes",
+		},
+		Kind:   "TLSRoute",
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}
+
 // NewK8sServiceForResource creates a new K8sObject for a service with the Labels set to the application and name.
 func NewK8sServiceForResource(application string, name string) K8sObject {
 	return K8sObject{
@@ -509,8 +539,6 @@ func matchesActualLabels(t *testing.T, expectedResources []K8sObject, actualReso
 					resourceExists = true
 					actualResources = append(actualResources[:idx], actualResources[idx+1:]...)
 					break
-				} else {
-					t.Logf("Resource: %s Expected labels %v, got %v", actualResource.GetName(), expectedResource.Labels, actualResource.GetLabels())
 				}
 			}
 		}

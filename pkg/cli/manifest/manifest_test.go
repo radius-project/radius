@@ -19,7 +19,10 @@ package manifest
 import (
 	"testing"
 
+	yaml "github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/require"
+
+	"github.com/radius-project/radius/pkg/to"
 )
 
 func TestReadFileYAML(t *testing.T) {
@@ -90,6 +93,35 @@ func TestReadFileJSON(t *testing.T) {
 func TestReadFile_MissingRequiredFieldJSON(t *testing.T) {
 	// Errors in the yaml library are non-exported, so it's hard to test the exact error.
 	result, err := ReadFile("testdata/missing-required-field.json")
+	require.Error(t, err)
+	require.Nil(t, result)
+}
+
+func TestResourceType_IconOmittedFromYAML(t *testing.T) {
+	svg := "<svg xmlns=\"http://www.w3.org/2000/svg\"><rect/></svg>"
+	rt := ResourceType{
+		Description: to.Ptr("desc"),
+		Icon:        to.Ptr(svg),
+	}
+
+	out, err := yaml.Marshal(rt)
+	require.NoError(t, err)
+	require.NotContains(t, string(out), "icon:", "Icon must not be serialized to YAML")
+	require.NotContains(t, string(out), "<svg", "SVG bytes must not leak into YAML output")
+}
+
+func TestReadFile_IconKeyInYAMLRejected(t *testing.T) {
+	data := []byte(`namespace: MyCompany.Resources
+types:
+  testResources:
+    icon: "<svg/>"
+    apiVersions:
+      '2025-01-01-preview':
+        schema: {}
+    capabilities: ["ManualResourceProvisioning"]
+`)
+
+	result, err := ReadBytes(data)
 	require.Error(t, err)
 	require.Nil(t, result)
 }

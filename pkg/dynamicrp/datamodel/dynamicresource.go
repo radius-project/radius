@@ -150,17 +150,14 @@ func (d *DynamicResource) ApplyDeploymentOutput(deploymentOutput rpv1.Deployment
 		status["outputResources"] = outputResources
 	}
 
-	// Store computed values and secrets as separate maps under status.
+	// Store computed values under status. Secret values are intentionally NOT stored here: recipe secret
+	// outputs are materialized into a managed Radius.Security/secrets resource by the dynamic processor,
+	// and only a reference to that resource is exposed on the owner. Persisting secret plaintext (or
+	// ciphertext) on the owner resource is never allowed.
 	computedValues := map[string]any{}
 	maps.Copy(computedValues, deploymentOutput.ComputedValues)
 	if len(computedValues) > 0 {
 		status["computedValues"] = computedValues
-	}
-
-	secrets := map[string]rpv1.SecretValueReference{}
-	maps.Copy(secrets, deploymentOutput.SecretValues)
-	if len(secrets) > 0 {
-		status["secrets"] = secrets
 	}
 
 	return nil
@@ -208,6 +205,27 @@ func (d *dynamicResourceBasicPropertiesAdapter) EnvironmentID() string {
 	}
 
 	obj, ok := d.resource.Properties["environment"]
+	if !ok {
+		return ""
+	}
+
+	str, ok := obj.(string)
+	if !ok {
+		return ""
+	}
+
+	return str
+}
+
+// CodeReference returns the codeReference property of the resource, or an empty
+// string if it is absent or not a string. codeReference is a common base
+// property and mirrors ApplicationID / EnvironmentID.
+func (d *dynamicResourceBasicPropertiesAdapter) CodeReference() string {
+	if d.resource.Properties == nil {
+		return ""
+	}
+
+	obj, ok := d.resource.Properties["codeReference"]
 	if !ok {
 		return ""
 	}

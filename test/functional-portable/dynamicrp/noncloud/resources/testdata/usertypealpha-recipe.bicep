@@ -1,52 +1,28 @@
 extension testresources
 extension radius
 
-param registry string
-
-param version string
+@description('The ID of the environment to deploy into.')
+param environment string
 
 @description('Specifies the location for resources.')
 param location string = 'global'
 
-@description('Specifies the port the container listens on.')
-param port int = 8080
-
-resource env 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'usertypealpha-recipe-env'
-  location: location
-  properties: {
-    compute: {
-      kind: 'kubernetes'
-      resourceId: 'self'
-      namespace: 'usertypealpha-recipe-env'
-    }
-    recipes: {
-      'Test.Resources/userTypeAlpha': {
-        default: {
-          templateKind: 'bicep'
-          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'
-          parameters: {
-            port: port
-          }
-        }
-      }
-    }
-  }
-}
-
-resource app 'Applications.Core/applications@2023-10-01-preview' = {
+resource app 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'usertypealpha-recipe-app'
   location: location
   properties: {
-    environment: env.id
+    environment: environment
   }
 }
 
-resource usertypealphacntr 'Applications.Core/containers@2023-10-01-preview' = {
-    name: 'usertypealphacntr'
-    properties: {
-      application: app.id
-      container: {
+resource usertypealphacntr 'Radius.Compute/containers@2025-08-01-preview' = {
+  name: 'usertypealphacntr'
+  location: location
+  properties: {
+    application: app.id
+    environment: environment
+    containers: {
+      usertypealphacntr: {
         image: 'ghcr.io/radius-project/mirror/debian:latest'
         command: ['/bin/sh']
         args: ['-c', 'while true; do echo hello; sleep 10;done']
@@ -57,6 +33,7 @@ resource usertypealphacntr 'Applications.Core/containers@2023-10-01-preview' = {
         }
       }
     }
+  }
 }
 
 resource usertypealpha 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
@@ -64,7 +41,7 @@ resource usertypealpha 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
   location: location
   properties: {
     application: app.id
-    environment: env.id
+    environment: environment
   }
 }
 
@@ -73,6 +50,6 @@ resource usertypealphalatest 'Test.Resources/userTypeAlpha@2025-01-01-preview' =
   location: location
   properties: {
     application: app.id
-    environment: env.id
+    environment: environment
   }
 }

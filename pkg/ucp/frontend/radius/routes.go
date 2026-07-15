@@ -130,6 +130,10 @@ func (m *Module) Initialize(ctx context.Context) (http.Handler, error) {
 											r.With(apiValidator).Delete("/", capture(apiVersionDeleteHandler(ctx, ctrlOptions)))
 										})
 									})
+
+									r.Route("/icons", func(r chi.Router) {
+										r.Get("/{hash}", capture(resourceTypeIconGetHandler(ctx, ctrlOptions)))
+									})
 								})
 							})
 						})
@@ -333,6 +337,12 @@ func apiVersionPutHandler(ctx context.Context, ctrlOptions controller.Options) (
 func apiVersionDeleteHandler(ctx context.Context, ctrlOptions controller.Options) (http.HandlerFunc, error) {
 	return server.CreateHandler(ctx, datamodel.APIVersionResourceType, v1.OperationDelete, ctrlOptions, func(opts controller.Options) (controller.Controller, error) {
 		return defaultoperation.NewDefaultAsyncDelete(opts, apiVersionResourceOptions)
+	})
+}
+
+func resourceTypeIconGetHandler(ctx context.Context, ctrlOptions controller.Options) (http.HandlerFunc, error) {
+	return server.CreateHandler(ctx, datamodel.ResourceTypeResourceType, v1.OperationGet, ctrlOptions, func(opts controller.Options) (controller.Controller, error) {
+		return resourceproviders_ctrl.NewGetIcon(opts)
 	})
 }
 

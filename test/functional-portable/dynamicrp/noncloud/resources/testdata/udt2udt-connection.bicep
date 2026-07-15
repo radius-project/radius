@@ -1,9 +1,5 @@
 extension radius
 extension testresources
-extension kubernetes with {
-  kubeConfig: ''
-  namespace: 'udttoudtapp'
-} as kubernetes
 param registry string
 
 param version string
@@ -11,58 +7,57 @@ param version string
 @description('Specifies the port the container listens on.')
 param port int = 8080
 
-resource udttoudtenv 'Applications.Core/environments@2023-10-01-preview' = {
-  name: 'udttoudtenv'
+resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
+  name: 'udt2udt-recipe-pack'
   location: 'global'
   properties: {
-    compute: {
-      kind: 'kubernetes'
-      resourceId: 'self'
-      namespace: 'udttoudtenv'
-    }
     recipes: {
       'Test.Resources/userTypeAlpha': {
-        default: {
-          templateKind: 'bicep'
-          templatePath: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'
-          parameters: {
-            port: port
-          }
+        kind: 'bicep'
+        source: '${registry}/test/testrecipes/test-bicep-recipes/dynamicrp_recipe:${version}'
+        parameters: {
+          port: port
         }
       }
     }
   }
 }
 
-resource udttoudtapp 'Applications.Core/applications@2023-10-01-preview' = {
+resource udttoudtenv 'Radius.Core/environments@2025-08-01-preview' = {
+  name: 'udttoudtenv'
+  location: 'global'
+  properties: {
+    recipePacks: [
+      recipepack.id
+    ]
+    providers: {
+      kubernetes: {
+        namespace: 'dynamicrp-udt2udt'
+      }
+    }
+  }
+}
+
+resource udttoudtapp 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'udttoudtapp'
   location: 'global'
   properties: {
     environment: udttoudtenv.id
-    extensions: [
-      {
-        kind: 'kubernetesNamespace'
-        namespace: 'udttoudtapp'
-      }
-    ]
   }
 }
 
-
 resource udttoudtparent 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
-    name: 'udttoudtparent'
-    properties: {
-      environment: udttoudtenv.id
-      application: udttoudtapp.id
-      connections: {
+  name: 'udttoudtparent'
+  properties: {
+    environment: udttoudtenv.id
+    application: udttoudtapp.id
+    connections: {
       externalresource: {
         source: udttoudtchild.id
       }
     }
   }
-    
 }
-
 
 resource udttoudtchild 'Test.Resources/externalResource@2023-10-01-preview' = {
   name: 'udttoudtchild'

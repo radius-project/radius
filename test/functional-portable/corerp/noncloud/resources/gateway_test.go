@@ -49,30 +49,33 @@ type GatewayTestConfig struct {
 func Test_GatewayDNS(t *testing.T) {
 	template := "testdata/corerp-resources-gateway-dns.bicep"
 	name := "corerp-resources-gateway-dns"
-	appNamespace := "default-corerp-resources-gateway-dns"
+	appNamespace := name
+
+	// The migrated Radius.Compute/routes HTTPRoute is created without hostnames, so it matches all hosts;
+	// any Host header reaches the route via the shared managed Gateway. The value is not used for matching.
+	hostname := "corerp-resources-gateway-dns.example.com"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "http-gtwy-gtwy-dns",
-						Type: validation.GatewaysResource,
+						Type: validation.ComputeRoutesResource,
 						App:  name,
 					},
 					{
 						Name: "frontendcontainerdns",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 					{
 						Name: "backendcontainerdns",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -84,33 +87,22 @@ func Test_GatewayDNS(t *testing.T) {
 						validation.NewK8sPodForResource(name, "backendcontainerdns"),
 						validation.NewK8sServiceForResource(name, "frontendcontainerdns"),
 						validation.NewK8sServiceForResource(name, "backendcontainerdns"),
-						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-gtwy-dns"),
-						validation.NewK8sHTTPProxyForResource(name, "frontendcontainerdns"),
-						validation.NewK8sHTTPProxyForResource(name, "backendcontainerdns"),
+						validation.NewK8sHTTPRouteForResource(name, "http-gtwy-gtwy-dns"),
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
-				// Get hostname from root HTTPProxy in application namespace
-				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
-				require.NoError(t, err)
-				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
-
-				// Set up pod port-forwarding for contour-envoy
+				// Set up pod port-forwarding for the shared Gateway API envoy
 				t.Logf("Setting up portforward")
 
-				err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, httpRemotePort, false, []GatewayTestConfig{
-					// /healthz is exposed on frontend container
+				err := testGatewayWithPortForward(t, ctx, ct, hostname, httpRemotePort, false, []GatewayTestConfig{
+					// /healthz is exposed on the frontend container, reached via the '/' rule
 					{
 						Path:               "healthz",
 						ExpectedStatusCode: http.StatusOK,
 					},
-					// /backend2 uses 'replacePrefix', so it can access /healthz on backend container
-					{
-						Path:               "backend2/healthz",
-						ExpectedStatusCode: http.StatusOK,
-					},
-					// since /backend1/healthz is not exposed on frontend container, it should return 404
+					// /backend1 routes to the backend container; Radius.Compute/routes has no path
+					// rewrite, the backend receives '/backend1/healthz' (which it does not serve).
 					{
 						Path:               "backend1/healthz",
 						ExpectedStatusCode: http.StatusNotFound,
@@ -122,31 +114,38 @@ func Test_GatewayDNS(t *testing.T) {
 		},
 	})
 
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+
 	test.Test(t)
 }
 
 func Test_Gateway_SSLPassthrough(t *testing.T) {
 	template := "testdata/corerp-resources-gateway-sslpassthrough.bicep"
 	name := "corerp-resources-gateway-sslpassthrough"
-	appNamespace := "default-corerp-resources-gateway-sslpassthrough"
+	appNamespace := name
+
+	// The TLSRoute matches on SNI; this hostname must equal the route's `hostnames` entry in the bicep and
+	// is used as the TLS ServerName (SNI) by the test client.
+	hostname := "ssl-gtwy.example.com"
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), "@testdata/parameters/test-tls-cert.parameters.json"),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "ssl-gtwy-gtwy",
-						Type: validation.GatewaysResource,
+						Type: validation.ComputeRoutesResource,
 						App:  name,
 					},
 					{
 						Name: "ssl-gtwy-front-ctnr",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -155,22 +154,16 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "ssl-gtwy-front-ctnr"),
-						validation.NewK8sHTTPProxyForResource(name, "ssl-gtwy-front-ctnr"),
-						validation.NewK8sHTTPProxyForResource(name, "ssl-gtwy-gtwy"),
+						validation.NewK8sTLSRouteForResource(name, "ssl-gtwy-gtwy"),
 						validation.NewK8sServiceForResource(name, "ssl-gtwy-front-ctnr"),
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
-				// Get hostname from root HTTPProxy in application namespace
-				metadata, err := testutil.GetHTTPProxyMetadata(ctx, ct.Options.Client, appNamespace, name)
-				require.NoError(t, err)
-				t.Logf("found root proxy with hostname: {%s} and status: {%s}", metadata.Hostname, metadata.Status)
-
-				// Set up pod port-forwarding for contour-envoy
+				// Set up pod port-forwarding for the shared Gateway API envoy
 				t.Logf("Setting up portforward")
-				err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, httpsRemotePort, true, []GatewayTestConfig{
-					// /healthz is exposed on frontend container
+				err := testGatewayWithPortForward(t, ctx, ct, hostname, httpsRemotePort, true, []GatewayTestConfig{
+					// /healthz is exposed on frontend container (which terminates TLS itself)
 					{
 						Path:               "healthz",
 						ExpectedStatusCode: http.StatusOK,
@@ -187,6 +180,10 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 			},
 		},
 	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), "@testdata/parameters/test-tls-cert.parameters.json", fmt.Sprintf("environment=%s", previewEnvID))
 
 	test.Test(t)
 }
@@ -472,44 +469,67 @@ func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expec
 
 	client := newTestHTTPClient(isHttps, hostname)
 
-	retries := 2
+	// A freshly-deployed gateway can briefly return errors (e.g. HTTP 503 from Envoy) while
+	// Contour programs the xDS route/cluster for the new route. Poll over a realistic window
+	// instead of failing after only a couple of attempts. See radius-project/radius#12298.
 	retryBackoff := 5 * time.Second
-	for i := 1; i <= retries; i++ {
+	timeout := 90 * time.Second
+	deadline := time.Now().Add(timeout)
+
+	var lastRes *http.Response
+	var lastErr error
+	attempts := 0
+	for {
+		attempts++
 		res, err := client.Do(req)
 		if err == nil && res.StatusCode == expectedStatusCode {
-			// Got expected status code, return
+			// Got expected status code, close the body and return.
+			res.Body.Close()
 			return nil
 		}
 
-		// If we got an error, or the status code was not what we expected, log the error and retry
-		// Logging the request and response will help with debugging the issue
+		// Close the previously retained response body before overwriting it so we don't
+		// accumulate open bodies/connections across the widened poll budget.
+		if lastRes != nil {
+			lastRes.Body.Close()
+		}
+		lastRes, lastErr = res, err
 
-		t.Logf("failed to make request to %s with error: %s", urlPath, err)
-		requestDump, err := httputil.DumpRequestOut(req, true)
+		// Log a concise message per attempt; the full request/response dump is emitted once
+		// below when the poll budget is exhausted to avoid flooding the test log.
 		if err != nil {
-			t.Logf("failed to dump request with error: %s", err)
-		}
-		t.Logf("request dump: %s", string(requestDump))
-
-		if res == nil {
-			t.Logf("response is nil")
+			t.Logf("attempt %d: failed to make request to %s with error: %s", attempts, urlPath, err)
+		} else {
+			t.Logf("attempt %d: expected status code %d, got %d from %s", attempts, expectedStatusCode, res.StatusCode, urlPath)
 		}
 
-		if res != nil && res.StatusCode != expectedStatusCode {
-			t.Logf("expected status code %d, got %d", expectedStatusCode, res.StatusCode)
-			responseDump, err := httputil.DumpResponse(res, true)
-			if err != nil {
-				t.Logf("failed to dump response with error: %s", err)
-			}
-			t.Logf("response dump: %s", string(responseDump))
+		if time.Now().After(deadline) {
+			break
 		}
 
 		// Wait for retryBackoff before trying again
 		time.Sleep(retryBackoff)
-		continue
 	}
 
-	return fmt.Errorf("failed to make request to %s after %d retries", urlPath, retries)
+	// The poll budget is exhausted; dump the last request and response to help with debugging.
+	requestDump, dumpErr := httputil.DumpRequestOut(req, true)
+	if dumpErr != nil {
+		t.Logf("failed to dump request with error: %s", dumpErr)
+	}
+	t.Logf("request dump: %s", string(requestDump))
+
+	if lastRes == nil {
+		t.Logf("last response is nil (last error: %v)", lastErr)
+	} else {
+		responseDump, dumpErr := httputil.DumpResponse(lastRes, true)
+		if dumpErr != nil {
+			t.Logf("failed to dump response with error: %s", dumpErr)
+		}
+		t.Logf("response dump: %s", string(responseDump))
+		lastRes.Body.Close()
+	}
+
+	return fmt.Errorf("failed to make request to %s after %d attempts over %s", urlPath, attempts, timeout)
 }
 
 func newTestHTTPClient(isHttps bool, hostname string) *http.Client {

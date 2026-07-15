@@ -35,13 +35,12 @@ import (
 
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/radius-project/radius/pkg/cli/bicep"
-	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
+	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/version"
 
@@ -52,8 +51,6 @@ import (
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
-
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 )
 
 const (
@@ -162,16 +159,16 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	appName := test.Name
-	containerName := "containerA"
+	containerName := "containera"
 	if strings.EqualFold(appName, "kubernetes-cli-json") {
-		containerName = "containerA-json"
+		containerName = "containera-json"
 	}
 
 	scope, err := resources.ParseScope(options.Workspace.Scope)
 	require.NoError(t, err)
 
 	t.Run("Validate rad application show", func(t *testing.T) {
-		actualOutput, err := cli.ApplicationShow(ctx, appName)
+		actualOutput, err := cli.ApplicationShow(ctx, appName, radcli.ShowOptions{Preview: true})
 		require.NoError(t, err)
 
 		lines := strings.Split(actualOutput, "\n")
@@ -185,27 +182,27 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 
 		values := strings.Fields(lines[1])
 		require.Equal(t, appName, values[0], "First value should be %s", appName)
-		require.Equal(t, "Applications.Core/applications", values[1], "Second value should be Applications.Core/applications")
+		require.Equal(t, "Radius.Core/applications", values[1], "Second value should be Radius.Core/applications")
 		require.Equal(t, scope.Name(), values[2], "Third value should be %s", scope.Name())
 		require.Equal(t, "Succeeded", values[3], "Fourth value should be Succeeded")
 	})
 
 	t.Run("Validate rad resource list", func(t *testing.T) {
-		output, err := cli.ResourceList(ctx, appName)
+		output, err := cli.ResourceList(ctx, "Radius.Compute/containers", "")
 		require.NoError(t, err)
 
 		// Resource ordering can vary so we don't assert exact output.
 		if strings.EqualFold(appName, "kubernetes-cli") {
-			require.Regexp(t, `containerA`, output)
-			require.Regexp(t, `containerB`, output)
+			require.Regexp(t, `containera`, output)
+			require.Regexp(t, `containerb`, output)
 		} else {
-			require.Regexp(t, `containerA-json`, output)
-			require.Regexp(t, `containerB-json`, output)
+			require.Regexp(t, `containera-json`, output)
+			require.Regexp(t, `containerb-json`, output)
 		}
 	})
 
 	t.Run("Validate rad resource show", func(t *testing.T) {
-		actualOutput, err := cli.ResourceShow(ctx, "Applications.Core/containers", containerName)
+		actualOutput, err := cli.ResourceShow(ctx, "Radius.Compute/containers", containerName)
 		require.NoError(t, err)
 
 		lines := strings.Split(actualOutput, "\n")
@@ -219,13 +216,13 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 
 		values := strings.Fields(lines[1])
 		require.Equal(t, containerName, values[0], "First value should be %s", containerName)
-		require.Equal(t, "Applications.Core/containers", values[1], "Second value should be Applications.Core/applications")
+		require.Equal(t, "Radius.Compute/containers", values[1], "Second value should be Radius.Compute/containers")
 		require.Equal(t, scope.Name(), values[2], "Third value should be %s", scope.Name())
 		require.Equal(t, "Succeeded", values[3], "Fourth value should be Succeeded")
 	})
 
-	t.Run("Validate rad resoure logs containers", func(t *testing.T) {
-		output, err := cli.ResourceLogs(ctx, appName, containerName)
+	t.Run("Validate rad resource logs containers", func(t *testing.T) {
+		output, err := cli.ResourceLogs(ctx, "Radius.Compute/containers", appName, containerName, true)
 		require.NoError(t, err)
 
 		// We don't want to be too fragile so we're not validating the logs in depth
@@ -241,7 +238,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test rp.RPTest) {
 
 		done := make(chan error)
 		go func() {
-			output, err := cli.ResourceExpose(child, appName, containerName, port, 3000)
+			output, err := cli.ResourceExpose(child, "Radius.Compute/containers", appName, containerName, port, 3000, true)
 			t.Logf("ResourceExpose - output: %s", output)
 			done <- err
 		}()
@@ -458,28 +455,27 @@ func Test_CLI(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: "kubernetes-cli",
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
-						Name: "containerA",
-						Type: validation.ContainersResource,
+						Name: "containera",
+						Type: validation.ComputeContainersResource,
 						App:  "kubernetes-cli",
 					},
 					{
-						Name: "containerB",
-						Type: validation.ContainersResource,
+						Name: "containerb",
+						Type: validation.ComputeContainersResource,
 						App:  "kubernetes-cli",
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default-kubernetes-cli": {
+					"kubernetes-cli": {
 						validation.NewK8sPodForResource(name, "containera"),
 						validation.NewK8sPodForResource(name, "containerb"),
 					},
@@ -488,6 +484,10 @@ func Test_CLI(t *testing.T) {
 			PostStepVerify: verifyCLIBasics,
 		},
 	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, name)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
 
 	test.Test(t)
 }
@@ -498,28 +498,27 @@ func Test_CLI_JSON(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: "kubernetes-cli-json",
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
-						Name: "containerA-json",
-						Type: validation.ContainersResource,
+						Name: "containera-json",
+						Type: validation.ComputeContainersResource,
 						App:  "kubernetes-cli-json",
 					},
 					{
-						Name: "containerB-json",
-						Type: validation.ContainersResource,
+						Name: "containerb-json",
+						Type: validation.ComputeContainersResource,
 						App:  "kubernetes-cli-json",
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default-kubernetes-cli-json": {
+					"kubernetes-cli-json": {
 						validation.NewK8sPodForResource(name, "containera-json"),
 						validation.NewK8sPodForResource(name, "containerb-json"),
 					},
@@ -528,6 +527,10 @@ func Test_CLI_JSON(t *testing.T) {
 			PostStepVerify: verifyCLIBasics,
 		},
 	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, name)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
 
 	test.Test(t)
 }
@@ -555,71 +558,89 @@ func Test_CLI_Delete(t *testing.T) {
 
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
+	// Set up a preview environment with a Kubernetes namespace so the recipe-based
+	// Radius.Compute/containers resources have somewhere to deploy.
+	namespace := "kubernetes-cli-delete"
+	envName := namespace + "-env"
+	envID := fmt.Sprintf("%s/providers/Radius.Core/environments/%s", options.Workspace.Scope, envName)
+
+	require.NoError(t, kubernetes.EnsureNamespace(ctx, options.K8sClient, namespace), "failed to create namespace")
+	_, err = cli.EnvironmentCreatePreview(ctx, envName, "", namespace)
+	require.NoError(t, err, "failed to create preview environment")
+	t.Cleanup(func() {
+		_, err := cli.EnvironmentDeletePreview(ctx, envName, "")
+		if err != nil {
+			t.Logf("failed to delete preview environment %s: %v", envName, err)
+		}
+	})
+
+	envParam := fmt.Sprintf("environment=%s", envID)
+
 	t.Run("Validate rad app delete with non empty resources", func(t *testing.T) {
 		t.Logf("deploying %s from file %s", appName, templateWithResources)
 
-		err = cli.Deploy(ctx, templateFilePathWithResources, "", appName, testutil.GetMagpieImage())
+		err = cli.Deploy(ctx, templateFilePathWithResources, "", "", testutil.GetMagpieImage(), envParam)
 		require.NoErrorf(t, err, "failed to deploy %s", appName)
 
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
-				"default-kubernetes-cli-with-resources": {
+				namespace: {
 					validation.NewK8sPodForResource(appName, "containera-app-with-resources"),
 					validation.NewK8sPodForResource(appName, "containerb-app-with-resources"),
 				},
 			},
 		})
 
-		err = cli.ApplicationDelete(ctx, appName)
+		_, err = cli.ApplicationDeletePreview(ctx, appName, "")
 		require.NoErrorf(t, err, "failed to delete %s", appName)
 	})
 
 	t.Run("Validate rad app delete with empty resources", func(t *testing.T) {
 		t.Logf("deploying %s from file %s", appNameEmptyResources, templateEmptyResources)
 
-		err = cli.Deploy(ctx, templateFilePathEmptyResources, "", appNameEmptyResources)
+		err = cli.Deploy(ctx, templateFilePathEmptyResources, "", "", envParam)
 		require.NoErrorf(t, err, "failed to deploy %s", appNameEmptyResources)
 
-		err = cli.ApplicationDelete(ctx, appNameEmptyResources)
+		_, err = cli.ApplicationDeletePreview(ctx, appNameEmptyResources, "")
 		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
 	})
 
 	t.Run("Validate rad app delete with non existent app", func(t *testing.T) {
-		err = cli.ApplicationDelete(ctx, appName)
+		_, err = cli.ApplicationDeletePreview(ctx, appName, "")
 		require.NoErrorf(t, err, "failed to delete %s", appName)
 	})
 
 	t.Run("Validate rad app delete with resources not associated with any application", func(t *testing.T) {
-		t.Logf("deploying from file %s", templateWithResources)
+		t.Logf("deploying from file %s", templateWithResourcesUnassociated)
 
-		err := cli.Deploy(ctx, templateFilePathWithResourcesUnassociated, "", appNameUnassociatedResources, testutil.GetMagpieImage())
+		err := cli.Deploy(ctx, templateFilePathWithResourcesUnassociated, "", "", testutil.GetMagpieImage(), envParam)
 		require.NoErrorf(t, err, "failed to deploy %s", appNameUnassociatedResources)
 
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
-				"default-kubernetes-cli-with-unassociated-resources": {
-					validation.NewK8sPodForResource(appNameUnassociatedResources, "containerX"),
-					validation.NewK8sPodForResource(appNameUnassociatedResources, "containerY"),
+				namespace: {
+					validation.NewK8sPodForResource(appNameUnassociatedResources, "containerx"),
+					validation.NewK8sPodForResource(appNameUnassociatedResources, "containery"),
 				},
 			},
 		})
 
 		//ignore response for tests
-		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerY", false)
-		require.NoErrorf(t, err, "failed to delete resource containerY")
+		_, err = options.ManagementClient.DeleteResource(ctx, "Radius.Compute/containers", "containery", false)
+		require.NoErrorf(t, err, "failed to delete resource containery")
 		err = DeleteAppWithoutDeletingResources(t, ctx, options, appNameUnassociatedResources)
 		require.NoErrorf(t, err, "failed to delete application %s", appNameUnassociatedResources)
 
 		t.Logf("deploying from file %s", templateEmptyResources)
-		err = cli.Deploy(ctx, templateFilePathEmptyResources, "", appNameEmptyResources)
+		err = cli.Deploy(ctx, templateFilePathEmptyResources, "", "", envParam)
 		require.NoErrorf(t, err, "failed to deploy %s", appNameEmptyResources)
 
-		err = cli.ApplicationDelete(ctx, appNameEmptyResources)
+		_, err = cli.ApplicationDeletePreview(ctx, appNameEmptyResources, "")
 		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
 
 		//ignore response for tests
-		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerX", false)
-		require.NoErrorf(t, err, "failed to delete resource containerX")
+		_, err = options.ManagementClient.DeleteResource(ctx, "Radius.Compute/containers", "containerx", false)
+		require.NoErrorf(t, err, "failed to delete resource containerx")
 
 	})
 }
@@ -636,28 +657,27 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, "@"+parameterFilePath, testutil.GetMagpieTag()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: "kubernetes-cli-params",
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
-						Name: "containerC",
-						Type: validation.ContainersResource,
+						Name: "containerc",
+						Type: validation.ComputeContainersResource,
 						App:  "kubernetes-cli-params",
 					},
 					{
-						Name: "containerD",
-						Type: validation.ContainersResource,
+						Name: "containerd",
+						Type: validation.ComputeContainersResource,
 						App:  "kubernetes-cli-params",
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default-kubernetes-cli-params": {
+					"kubernetes-cli-params": {
 						validation.NewK8sPodForResource(name, "containerc"),
 						validation.NewK8sPodForResource(name, "containerd"),
 					},
@@ -665,6 +685,10 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 			},
 		},
 	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, name)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, "@"+parameterFilePath, testutil.GetMagpieTag(), fmt.Sprintf("environment=%s", previewEnvID))
 
 	test.Test(t)
 }
@@ -798,16 +822,12 @@ func GetAvailablePort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
-// DeleteAppWithoutDeletingResources creates a client to delete an application without deleting its resources and returns
-// an error if one occurs.
+// DeleteAppWithoutDeletingResources deletes only the application resource (non-cascading) so its
+// resources remain, returning an error if one occurs.
 func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, options rp.RPTestOptions, applicationName string) error {
-	client := options.ManagementClient
-	require.IsType(t, client, &clients.UCPApplicationsManagementClient{})
-	appManagementClient := client.(*clients.UCPApplicationsManagementClient)
-	appDeleteClient, err := v20231001preview.NewApplicationsClient(&aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
-	require.NoError(t, err)
-	// We don't care about the response for tests
-	_, err = appDeleteClient.Delete(ctx, appManagementClient.RootScope, applicationName, nil)
+	// Deleting the Radius.Core/applications resource directly removes only the application,
+	// leaving its associated resources in place (unlike "rad app delete --preview" which cascades).
+	_, err := options.ManagementClient.DeleteResource(ctx, "Radius.Core/applications", applicationName, false)
 	return err
 }
 

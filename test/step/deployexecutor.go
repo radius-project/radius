@@ -18,6 +18,7 @@ package step
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -57,14 +58,16 @@ type DeployExecutor struct {
 	ShouldRetry func(error) bool
 }
 
-// Default retry behavior applied by NewDeployExecutor for transient container
-// image pull failures. Functional tests pull images from shared registries (for
-// example the ghcr.io/radius-project/* images), which occasionally fail to pull
-// due to registry or network blips in CI. Callers can override these defaults
-// with WithRetry.
+// Default retry behavior applied by NewDeployExecutor for transient deployment
+// failures. Functional tests hit two classes of environmental flake in CI:
+// container image pulls from shared registries (for example the
+// ghcr.io/radius-project/* images) that occasionally fail due to registry or
+// network blips, and UCP connection resets/EOFs when the kind control-plane
+// restarts under runner resource pressure and drops the port-forward tunnel.
+// Callers can override these defaults with WithRetry.
 const (
-	defaultImagePullMaxRetries = 2
-	defaultImagePullRetryDelay = 30 * time.Second
+	defaultTransientMaxRetries = 2
+	defaultTransientRetryDelay = 30 * time.Second
 )
 
 // transientImagePullErrorMarkers are substrings that indicate a container image
@@ -87,8 +90,7 @@ var transientImagePullErrorMarkers = []string{
 }
 
 // IsTransientImagePullError reports whether err was caused by a transient
-// container image pull failure that is likely to succeed on retry. It is the
-// default ShouldRetry predicate for DeployExecutor (see NewDeployExecutor), used
+// container image pull failure that is likely to succeed on retry. It is used
 // by tests that pull images from a shared registry (for example the
 // ghcr.io/radius-project/mirror images), which occasionally fail to pull due to
 // registry or network blips in CI.
@@ -96,19 +98,72 @@ func IsTransientImagePullError(err error) bool {
 	return ErrorContainsAny(err, transientImagePullErrorMarkers...)
 }
 
+// transientConnectionErrorMarkers are substrings that indicate a deployment
+// failed because the connection between rad and the UCP API server was reset or
+// closed mid-request, rather than because the deployment itself was invalid.
+//
+// In CI the Radius workspace reaches UCP through a local `kubectl port-forward`
+// tunnel that proxies through the kind cluster's kube-apiserver. When the
+// GitHub-hosted runner is under resource pressure the kind static control-plane
+// pods (kube-apiserver/controller-manager/scheduler) restart, which drops every
+// in-flight port-forward tunnel at once and resets all parallel `rad deploy`
+// connections simultaneously. UCP and the Radius pods do not crash, so
+// re-running the deployment once the control-plane recovers typically succeeds.
+var transientConnectionErrorMarkers = []string{
+	// The socket to the port-forward tunnel was reset when the kube-apiserver
+	// (which the tunnel proxies through) bounced, e.g.
+	// `read tcp 127.0.0.1:38764->127.0.0.1:37481: read: connection reset by peer`.
+	"connection reset by peer",
+	// rad's HTTP client observed a clean close of the tunnel mid-response, e.g.
+	// `Get "https://127.0.0.1:37481/.../operationStatuses/...": EOF`.
+	": EOF",
+	// The pod log-stream tailers and larger response bodies surface this variant
+	// when the tunnel closes partway through a read.
+	"unexpected EOF",
+	// The write side of the tunnel was torn down while rad was still sending.
+	"broken pipe",
+}
+
+// IsTransientConnectionError reports whether err was caused by a transient
+// network disruption between rad and the UCP API server (a reset or closed
+// port-forward tunnel) that is likely to succeed on retry. See
+// transientConnectionErrorMarkers for the environmental root cause.
+//
+// A connection reset/EOF is a transport-level failure that rad surfaces as a
+// non-structured exit error, never as a structured ARM error. It therefore
+// never matches a *radcli.CLIError: guarding on the concrete type ensures a
+// genuine deployment failure whose flattened ARM message happens to contain a
+// marker such as "unexpected EOF" is not misclassified as retryable.
+func IsTransientConnectionError(err error) bool {
+	if _, ok := errors.AsType[*radcli.CLIError](err); ok {
+		return false
+	}
+	return ErrorContainsAny(err, transientConnectionErrorMarkers...)
+}
+
+// IsTransientDeployError reports whether err was caused by any transient failure
+// that a deployment is likely to recover from on retry - either a container
+// image pull blip (IsTransientImagePullError) or a UCP connection reset/EOF
+// (IsTransientConnectionError). It is the default ShouldRetry predicate for
+// DeployExecutor (see NewDeployExecutor).
+func IsTransientDeployError(err error) bool {
+	return IsTransientImagePullError(err) || IsTransientConnectionError(err)
+}
+
 // NewDeployExecutor creates a new DeployExecutor instance with the given template and parameters.
 //
 // By default the executor retries a deployment that fails with a transient
-// container image pull error (see IsTransientImagePullError). Use WithRetry to
-// override the retry count, delay, and predicate.
+// error - either a container image pull blip or a UCP connection reset/EOF (see
+// IsTransientDeployError). Use WithRetry to override the retry count, delay, and
+// predicate.
 func NewDeployExecutor(template string, parameters ...string) *DeployExecutor {
 	return &DeployExecutor{
 		Description: fmt.Sprintf("deploy %s", template),
 		Template:    template,
 		Parameters:  parameters,
-		MaxRetries:  defaultImagePullMaxRetries,
-		RetryDelay:  defaultImagePullRetryDelay,
-		ShouldRetry: IsTransientImagePullError,
+		MaxRetries:  defaultTransientMaxRetries,
+		RetryDelay:  defaultTransientRetryDelay,
+		ShouldRetry: IsTransientDeployError,
 	}
 }
 

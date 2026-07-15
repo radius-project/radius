@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -116,7 +116,7 @@ debug-check-prereqs: ## Check if all required tools are installed for debugging
 		echo ""; \
 		echo "Installation instructions:"; \
 		echo "  go: https://golang.org/doc/install"; \
-		echo "  dlv: go install github.com/go-delve/delve/cmd/dlv@latest"; \
+		echo "  dlv: make install-dlv"; \
 		echo "  k3d: https://k3d.io/v5.6.0/#installation"; \
 		echo "  kubectl: https://kubernetes.io/docs/tasks/tools/"; \
 		echo "  terraform: https://learn.hashicorp.com/tutorials/terraform/install-cli"; \

@@ -183,6 +183,77 @@ func Test_Run(t *testing.T) {
 		require.Equal(t, "json", formatted.Format)
 	})
 
+	// Assert the --include-icons flag threads through into GetGraphRequest.IncludeIcons.
+	// The default (flag not set) must send nil so the server treats it as false.
+	t.Run("Success: IncludeIcons defaults to nil on request body", func(t *testing.T) {
+		var received corerpv20250801.GetGraphRequest
+		observeServer := func() fake.ApplicationsServer {
+			srv := test_client_factory.WithApplicationsServerNoError()
+			srv.GetGraph = func(
+				ctx context.Context,
+				rootScope string,
+				applicationName string,
+				body corerpv20250801.GetGraphRequest,
+				options *corerpv20250801.ApplicationsClientGetGraphOptions,
+			) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
+				received = body
+				resp.SetResponse(http.StatusOK, corerpv20250801.ApplicationsClientGetGraphResponse{}, nil)
+				return
+			}
+			return srv
+		}
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, observeServer)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			ApplicationName:         "test-app",
+			Format:                  "table",
+			IncludeIcons:            false,
+			Output:                  &output.MockOutput{},
+		}
+
+		require.NoError(t, runner.Run(context.Background()))
+		require.Nil(t, received.IncludeIcons, "IncludeIcons must be nil by default (opt-in only)")
+	})
+
+	t.Run("Success: --include-icons forwards includeIcons=true", func(t *testing.T) {
+		var received corerpv20250801.GetGraphRequest
+		observeServer := func() fake.ApplicationsServer {
+			srv := test_client_factory.WithApplicationsServerNoError()
+			srv.GetGraph = func(
+				ctx context.Context,
+				rootScope string,
+				applicationName string,
+				body corerpv20250801.GetGraphRequest,
+				options *corerpv20250801.ApplicationsClientGetGraphOptions,
+			) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetGraphResponse], errResp azfake.ErrorResponder) {
+				received = body
+				resp.SetResponse(http.StatusOK, corerpv20250801.ApplicationsClientGetGraphResponse{}, nil)
+				return
+			}
+			return srv
+		}
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, observeServer)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Workspace:               workspace,
+			ApplicationName:         "test-app",
+			Format:                  "json",
+			IncludeIcons:            true,
+			Output:                  &output.MockOutput{},
+		}
+
+		require.NoError(t, runner.Run(context.Background()))
+		require.NotNil(t, received.IncludeIcons)
+		require.True(t, *received.IncludeIcons)
+	})
+
 	t.Run("Error: application not found (404)", func(t *testing.T) {
 		notFoundServer := func() fake.ApplicationsServer {
 			return fake.ApplicationsServer{

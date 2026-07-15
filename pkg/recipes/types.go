@@ -86,6 +86,10 @@ type EnvironmentDefinition struct {
 	// Outputs maps resource property names to module output names for direct module support.
 	// When nil or empty, all module outputs pass through with their original names.
 	Outputs map[string]string
+	// SecretOutputs maps secret resource property names to module output names for direct module
+	// support. Unlike Outputs, a SecretOutputs entry always routes its module output to the recipe's
+	// secret outputs regardless of how the module itself classified it.
+	SecretOutputs map[string]string
 }
 
 // ResourceMetadata represents recipe details provided while deploying a portable or a user-defined resource.
@@ -164,6 +168,9 @@ type RecipeDefinition struct {
 	// Outputs maps resource property names to module output names for direct module support.
 	// When nil or empty, all module outputs pass through with their original names.
 	Outputs map[string]string
+	// SecretOutputs maps secret resource property names to module output names for direct module
+	// support. A SecretOutputs entry always routes its module output to the recipe's secret outputs.
+	SecretOutputs map[string]string
 	// PlainHTTP connects to the source using HTTP (not-HTTPS)
 	PlainHTTP bool
 }

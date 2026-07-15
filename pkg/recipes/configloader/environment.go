@@ -31,7 +31,6 @@ import (
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/kube"
 	"github.com/radius-project/radius/pkg/rp/util"
-	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/resources/radius"
 )
@@ -191,19 +190,19 @@ func getConfigurationV20250801(ctx context.Context, environment *v20250801previe
 		config.Simulated = true
 	}
 
-	// Resolve TerraformConfig resource if referenced.
-	if envDatamodel.Properties.TerraformConfig != "" {
-		tfConfig, err := util.FetchTerraformConfig(ctx, envDatamodel.Properties.TerraformConfig, armOptions)
+	// Resolve TerraformSettings resource if referenced.
+	if envDatamodel.Properties.TerraformSettings != "" {
+		tfConfig, err := util.FetchTerraformSettings(ctx, envDatamodel.Properties.TerraformSettings, armOptions)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch terraformConfig %q: %w", envDatamodel.Properties.TerraformConfig, err)
+			return nil, fmt.Errorf("failed to fetch terraformSettings %q: %w", envDatamodel.Properties.TerraformSettings, err)
 		}
 
 		tfDM, err := tfConfig.ConvertTo()
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert terraformConfig: %w", err)
+			return nil, fmt.Errorf("failed to convert terraformSettings: %w", err)
 		}
 
-		tfProps := tfDM.(*datamodel.TerraformConfig).Properties
+		tfProps := tfDM.(*datamodel.TerraformSettings).Properties
 
 		// Pass terraformrc.credentials through to the shared driver. The driver
 		// renders these as native `credentials "host" {}` blocks in the generated
@@ -231,33 +230,43 @@ func getConfigurationV20250801(ctx context.Context, environment *v20250801previe
 		}
 	}
 
-	// Resolve BicepConfig resource if referenced.
-	if envDatamodel.Properties.BicepConfig != "" {
-		bcConfig, err := util.FetchBicepConfig(ctx, envDatamodel.Properties.BicepConfig, armOptions)
+	// Resolve BicepSettings resource if referenced.
+	if envDatamodel.Properties.BicepSettings != "" {
+		bcConfig, err := util.FetchBicepSettings(ctx, envDatamodel.Properties.BicepSettings, armOptions)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch bicepConfig %q: %w", envDatamodel.Properties.BicepConfig, err)
+			return nil, fmt.Errorf("failed to fetch bicepSettings %q: %w", envDatamodel.Properties.BicepSettings, err)
 		}
 
 		bcDM, err := bcConfig.ConvertTo()
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert bicepConfig: %w", err)
+			return nil, fmt.Errorf("failed to convert bicepSettings: %w", err)
 		}
 
-		bcProps := bcDM.(*datamodel.BicepConfig).Properties
+		bcProps := bcDM.(*datamodel.BicepSettings).Properties
 
 		// Map the new host-keyed map into the legacy BicepConfigProperties shape.
 		// The Bicep driver looks up credentials by the host parsed from the recipe
-		// template path, so the map key (registry hostname) is what matters.
-		// Only BasicAuth is wired today; AzureWI and AwsIrsa are accepted by the
-		// schema but not yet threaded into the driver (see follow-up).
+		// template path, so the map key (registry hostname) is what matters. The
+		// authenticationMethod is threaded through so the driver selects the auth
+		// client from the bicepSettings configuration rather than the referenced
+		// secret's kind; this lets a Radius.Security/secrets carry only credential
+		// data (e.g. username/password) without a matching kind. Only BasicAuth is
+		// wired today; AzureWI and AwsIrsa are accepted by the schema but their
+		// (non-secret) inputs are not yet propagated.
 		if len(bcProps.RegistryAuthentications) > 0 {
 			authMap := make(map[string]datamodel.RegistrySecretConfig, len(bcProps.RegistryAuthentications))
 			for host, auth := range bcProps.RegistryAuthentications {
 				if auth.BasicAuthSecretId == "" {
 					continue
 				}
+				// authenticationMethod is optional; basicAuthSecretId implies BasicAuth.
+				method := auth.AuthenticationMethod
+				if method == "" {
+					method = "BasicAuth"
+				}
 				authMap[host] = datamodel.RegistrySecretConfig{
-					Secret: auth.BasicAuthSecretId,
+					Secret:               auth.BasicAuthSecretId,
+					AuthenticationMethod: method,
 				}
 			}
 			if len(authMap) > 0 {
@@ -385,6 +394,7 @@ func getRecipeDefinitionFromEnvironmentV20250801(ctx context.Context, environmen
 			TemplateVersion: templateVersion,
 			PlainHTTP:       recipeDefinition.PlainHTTP,
 			Outputs:         recipeDefinition.Outputs,
+			SecretOutputs:   recipeDefinition.SecretOutputs,
 		}
 		return definition, nil
 	}
@@ -471,12 +481,14 @@ func fetchRecipeDefinition(ctx context.Context, recipePackIDs []string, armOptio
 				if definition.PlainHTTP != nil {
 					plainHTTP = *definition.PlainHTTP
 				}
+				outputs, secretOutputs := v20250801preview.SplitRecipeOutputs(definition.Outputs)
 				return &recipes.RecipeDefinition{
-					Kind:       string(*definition.Kind),
-					Source:     string(*definition.Source),
-					Parameters: definition.Parameters,
-					PlainHTTP:  plainHTTP,
-					Outputs:    to.StringMap(definition.Outputs),
+					Kind:          string(*definition.Kind),
+					Source:        string(*definition.Source),
+					Parameters:    definition.Parameters,
+					PlainHTTP:     plainHTTP,
+					Outputs:       outputs,
+					SecretOutputs: secretOutputs,
 				}, nil
 			}
 		}

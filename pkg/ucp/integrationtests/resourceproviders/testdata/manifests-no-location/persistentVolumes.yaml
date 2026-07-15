@@ -5,9 +5,5 @@ types:
       "2025-08-01-preview":
         schema:
           type: object
-          properties:
-            environment:
-              type: string
-            application:
-              type: string
+          properties: {}
           required: [environment, application]

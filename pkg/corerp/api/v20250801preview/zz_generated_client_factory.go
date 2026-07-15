@@ -35,9 +35,9 @@ func (c *ClientFactory) NewApplicationsClient() *ApplicationsClient {
 	}
 }
 
-// NewBicepConfigsClient creates a new instance of BicepConfigsClient.
-func (c *ClientFactory) NewBicepConfigsClient() *BicepConfigsClient {
-	return &BicepConfigsClient{
+// NewBicepSettingsClient creates a new instance of BicepSettingsClient.
+func (c *ClientFactory) NewBicepSettingsClient() *BicepSettingsClient {
+	return &BicepSettingsClient{
 		internal: c.internal,
 	}
 }
@@ -63,9 +63,9 @@ func (c *ClientFactory) NewRecipePacksClient() *RecipePacksClient {
 	}
 }
 
-// NewTerraformConfigsClient creates a new instance of TerraformConfigsClient.
-func (c *ClientFactory) NewTerraformConfigsClient() *TerraformConfigsClient {
-	return &TerraformConfigsClient{
+// NewTerraformSettingsClient creates a new instance of TerraformSettingsClient.
+func (c *ClientFactory) NewTerraformSettingsClient() *TerraformSettingsClient {
+	return &TerraformSettingsClient{
 		internal: c.internal,
 	}
 }

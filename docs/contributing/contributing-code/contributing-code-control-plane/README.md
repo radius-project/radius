@@ -20,7 +20,7 @@ You might hear these components referred to as:
 - [Architecture docs](../../../architecture/README.md)
 - [Configuration](./configSettings.md)
 - [Logging](logging.md)
-- [Running the control-plane locally](./running-controlplane-locally.md)
+- [Running and debugging the control-plane locally](../contributing-code-debugging/radius-os-processes-debugging.md)
 - [Generating and installing a custom build](./generating-and-installing-custom-build.md)
 - [Troubleshooting the installation](./troubleshooting-installation.md)
 

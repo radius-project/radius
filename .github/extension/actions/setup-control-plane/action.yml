@@ -1,0 +1,98 @@
+# Provider-agnostic control-plane setup shared by run-rad-commands-aws.yml and
+# run-rad-commands-azure.yml. Installs the runner tooling, stands up the ephemeral
+# k3d control-plane cluster, stores the target-cluster kubeconfig as a Secret, and
+# installs Radius. Reads RADIUS_TARGET_KUBECONFIG from the job environment (exported
+# via $GITHUB_ENV by the caller), so it needs no inputs.
+name: Radius - Set up control plane
+description: Install tooling, create the ephemeral k3d control plane, and install Radius.
+
+runs:
+  using: composite
+  steps:
+    - name: Install k3d
+      shell: bash
+      env:
+        # Pin the k3d install script to a released tag and pin the k3d version it
+        # installs, then verify the script checksum before executing. Avoids piping
+        # a script from a moving branch (main) straight into bash, so the step is
+        # deterministic and safe to run in arbitrary repositories.
+        K3D_VERSION: v5.9.0
+        K3D_INSTALL_SHA256: 0f6bd9a3ab8ea8625843b21657a6538f117975bb2823b73200dc8b92ccc626de
+      run: |
+        curl -sSL "https://raw.githubusercontent.com/k3d-io/k3d/${K3D_VERSION}/install.sh" -o install-k3d.sh
+        echo "${K3D_INSTALL_SHA256}  install-k3d.sh" | sha256sum -c -
+        TAG="${K3D_VERSION}" bash install-k3d.sh
+        rm -f install-k3d.sh
+
+    - name: Create ephemeral Radius control plane cluster
+      shell: bash
+      env:
+        GITHUB_WORKSPACE_SAFE: ${{ github.workspace }}
+      run: |
+        k3d cluster create radius-cp \
+          --volume /var/run/docker.sock:/var/run/docker.sock \
+          --volume "${GITHUB_WORKSPACE_SAFE}/:/app/demo" \
+          --k3s-arg "--disable=traefik@server:*" \
+          --wait
+        kubectl wait --for=condition=Ready node --all --timeout=120s
+
+    - name: Install oras
+      uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1
+
+    - name: Install Radius CLI
+      shell: bash
+      env:
+        # Pin the Radius install script to a released tag and verify its checksum
+        # before running it, rather than piping from main. The CLI channel stays
+        # `edge` so the workflow still exercises the latest control-plane build.
+        RADIUS_INSTALL_REF: v0.59.0
+        RADIUS_INSTALL_SHA256: cf96794af522b266f56985f195e9c2bdd4f7e8d9e5267ae0595b9d37cb225e7b
+      run: |
+        curl -sSL "https://raw.githubusercontent.com/radius-project/radius/${RADIUS_INSTALL_REF}/deploy/install.sh" -o install-rad.sh
+        echo "${RADIUS_INSTALL_SHA256}  install-rad.sh" | sha256sum -c -
+        /bin/bash install-rad.sh edge
+        rm -f install-rad.sh
+        rad version
+
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+      with:
+        terraform_wrapper: false
+
+    - name: Create target-kubeconfig secret
+      # The chart's targetCluster seam mounts this secret into applications-rp,
+      # dynamic-rp, and bicep-de at install time and sets RADIUS_TARGET_KUBECONFIG,
+      # so the secret must exist before `rad install`.
+      shell: bash
+      run: |
+        if [ ! -f "$RADIUS_TARGET_KUBECONFIG" ]; then
+          echo "No target kubeconfig; resources will deploy to the control-plane cluster."
+          exit 0
+        fi
+        kubectl create namespace radius-system --dry-run=client -o yaml | kubectl apply -f -
+        kubectl create secret generic target-kubeconfig \
+          --namespace radius-system \
+          --from-file=kubeconfig="$RADIUS_TARGET_KUBECONFIG" \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Install Radius on control plane
+      shell: bash
+      run: |
+        # When a target kubeconfig is present, enable the chart's targetCluster
+        # seam. It mounts the target-kubeconfig secret into applications-rp,
+        # dynamic-rp, and bicep-de and sets RADIUS_TARGET_KUBECONFIG so recipe
+        # execution and directly-rendered resources target the external cluster.
+        # The Terraform state backend deliberately stays on the control plane.
+        #
+        # database.enabled=true installs the control-plane PostgreSQL so durable
+        # Radius state can be backed up and restored by `rad shutdown`/`rad startup`.
+        TARGET_FLAGS=()
+        if [ -f "$RADIUS_TARGET_KUBECONFIG" ]; then
+          TARGET_FLAGS+=(--set global.targetCluster.enabled=true)
+        fi
+        rad install kubernetes \
+          --set database.enabled=true \
+          --set rp.publicEndpointOverride=localhost \
+          --set dynamicrp.buildkit.enabled=true \
+          "${TARGET_FLAGS[@]}"
+        kubectl wait --for=condition=Available deployment --all -n radius-system --timeout=300s

@@ -159,5 +159,33 @@ func GetRegistrySecrets(definition recipes.Configuration, templatePath string, s
 		return recipes.SecretData{}, err
 	}
 
-	return secrets[definition.RecipeConfig.Bicep.Authentication[parsedURL.Host].Secret], nil
+	authConfig := definition.RecipeConfig.Bicep.Authentication[parsedURL.Host]
+	secretData := secrets[authConfig.Secret]
+
+	// When the environment's bicepSettings specify an explicit authentication method, it is the
+	// source of truth for selecting the registry auth client (see authclient.GetNewRegistryAuthClient).
+	// This lets a Radius.Security/secrets resource carry only the credential data without a kind that
+	// matches the auth scheme. The legacy Applications.Core/secretStores path leaves the method empty,
+	// so the secret store's own type is used unchanged.
+	if t := secretTypeForAuthMethod(authConfig.AuthenticationMethod); t != "" {
+		secretData.Type = t
+	}
+
+	return secretData, nil
+}
+
+// secretTypeForAuthMethod maps a bicepSettings authenticationMethod to the SecretData.Type expected
+// by authclient.GetNewRegistryAuthClient. It returns "" when the method is unset or unrecognized, in
+// which case the secret's own type is used.
+func secretTypeForAuthMethod(method string) string {
+	switch method {
+	case "BasicAuth":
+		return "basicAuthentication"
+	case "AzureWI":
+		return "azureWorkloadIdentity"
+	case "AwsIrsa":
+		return "awsIRSA"
+	default:
+		return ""
+	}
 }

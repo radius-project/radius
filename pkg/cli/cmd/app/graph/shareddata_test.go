@@ -33,6 +33,3 @@ var containerResourceID = "/planes/radius/local/resourceGroups/test-group/provid
 var redisResourceID = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/redis"
 var containerResourceName = "webapp"
 var redisResourceName = "redis"
-
-var awsMemoryDBResourceID = "/planes/aws/aws/accounts/00000000/regions/us-west-2/providers/AWS.MemoryDB/Cluster/redis-aqbjixghynqgg"
-var azureRedisCacheResourceID = "/planes/azure/azure/subscriptions/00000000/resourceGroups/azure-group/providers/Microsoft.Cache/Redis/redis"

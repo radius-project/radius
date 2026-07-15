@@ -268,7 +268,7 @@ For local Kubernetes testing in radius repo, prefer **k3d** as the primary tool.
 **For Go code (radius repo)**:
 
 - **Formatting**: All Go code MUST be formatted with `gofmt` (enforced by `make format-check`)
-- **Linting**: All code MUST pass `golangci-lint` checks (run via `make lint`)
+- **Linting**: All code MUST pass `golangci-lint` checks (run via `make lint-go`)
 - **Documentation**: All exported Go packages, types, variables, constants, and functions MUST have godoc comments
 
 **For TypeScript code (dashboard repo)**:
