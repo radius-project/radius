@@ -16,12 +16,19 @@ limitations under the License.
 
 package util
 
-// ApplyOutputsMapping maps module output names to resource property names using the provided outputs map.
-// Keys in outputsMap are resource property names, values are module output names.
-// When outputsMap is nil or empty, the original values and secrets are returned (nil maps are
-// normalized to empty maps so callers always receive non-nil maps).
-func ApplyOutputsMapping(values map[string]any, secrets map[string]any, outputsMap map[string]string) (map[string]any, map[string]any) {
-	if len(outputsMap) == 0 {
+// ApplyOutputsMapping renames a direct module's outputs onto resource property names.
+//
+// Keys in outputsMap and secretOutputsMap are resource property names; values are module output names.
+//   - outputsMap entries route a module output to a value or a secret depending on how the module itself
+//     classified it (a secure Bicep output / sensitive Terraform output lands in secrets, otherwise values).
+//   - secretOutputsMap entries always route the referenced module output to secrets, regardless of how the
+//     module classified it. This lets a recipe pack force an output (for example an AVM module's
+//     `primaryConnectionString`, which the module declares as a plain string) to be treated as a secret.
+//
+// When both maps are empty, the original values and secrets are returned unchanged (nil maps are normalized
+// to empty maps so callers always receive non-nil maps).
+func ApplyOutputsMapping(values map[string]any, secrets map[string]any, outputsMap map[string]string, secretOutputsMap map[string]string) (map[string]any, map[string]any) {
+	if len(outputsMap) == 0 && len(secretOutputsMap) == 0 {
 		if values == nil {
 			values = map[string]any{}
 		}
@@ -34,11 +41,21 @@ func ApplyOutputsMapping(values map[string]any, secrets map[string]any, outputsM
 	mappedValues := make(map[string]any)
 	mappedSecrets := make(map[string]any)
 
+	// outputsMap: preserve the module's own value/secret classification.
 	for propertyName, outputName := range outputsMap {
 		if val, ok := values[outputName]; ok {
 			mappedValues[propertyName] = val
 		}
 		if val, ok := secrets[outputName]; ok {
+			mappedSecrets[propertyName] = val
+		}
+	}
+
+	// secretOutputsMap: always emit as a secret, whether the module declared the output sensitive or not.
+	for propertyName, outputName := range secretOutputsMap {
+		if val, ok := secrets[outputName]; ok {
+			mappedSecrets[propertyName] = val
+		} else if val, ok := values[outputName]; ok {
 			mappedSecrets[propertyName] = val
 		}
 	}

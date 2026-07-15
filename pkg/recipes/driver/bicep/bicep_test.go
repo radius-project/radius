@@ -689,6 +689,28 @@ func Test_Bicep_PrepareRecipeResponse_DirectModule(t *testing.T) {
 			},
 		},
 		{
+			desc: "direct module with secretOutputs mapping - plain output forced to secret (AVM)",
+			definition: recipes.EnvironmentDefinition{
+				TemplatePath:  "br:mcr.microsoft.com/bicep/avm/res/event-hub/namespace:0.14.2",
+				Outputs:       map[string]string{"host": "name"},
+				SecretOutputs: map[string]string{"connectionString": "primaryConnectionString"},
+			},
+			outputs: map[string]any{
+				// The AVM module declares primaryConnectionString as a plain string output, not securestring.
+				"name":                    map[string]any{"type": "string", "value": "myhub"},
+				"primaryConnectionString": map[string]any{"type": "string", "value": "Endpoint=sb://myhub/;SharedAccessKey=abc"},
+			},
+			resources: nil,
+			expectedResponse: &recipes.RecipeOutput{
+				Values:  map[string]any{"host": "myhub"},
+				Secrets: map[string]any{"connectionString": "Endpoint=sb://myhub/;SharedAccessKey=abc"},
+				Status: &rpv1.RecipeStatus{
+					TemplateKind: recipes.TemplateKindBicep,
+					TemplatePath: "br:mcr.microsoft.com/bicep/avm/res/event-hub/namespace:0.14.2",
+				},
+			},
+		},
+		{
 			desc: "module with result and no outputs mapping - wrapped behavior",
 			definition: recipes.EnvironmentDefinition{
 				TemplatePath: "radiusdev.azurecr.io/recipes/mongo:1.0",

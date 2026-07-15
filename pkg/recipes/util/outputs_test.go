@@ -24,12 +24,13 @@ import (
 
 func Test_ApplyOutputsMapping(t *testing.T) {
 	tests := []struct {
-		name            string
-		values          map[string]any
-		secrets         map[string]any
-		outputsMap      map[string]string
-		expectedValues  map[string]any
-		expectedSecrets map[string]any
+		name             string
+		values           map[string]any
+		secrets          map[string]any
+		outputsMap       map[string]string
+		secretOutputsMap map[string]string
+		expectedValues   map[string]any
+		expectedSecrets  map[string]any
 	}{
 		{
 			name:            "nil outputs map passes through values",
@@ -95,11 +96,36 @@ func Test_ApplyOutputsMapping(t *testing.T) {
 			expectedValues:  map[string]any{},
 			expectedSecrets: map[string]any{},
 		},
+		{
+			name:             "secretOutputs forces a plain value output to a secret (AVM case)",
+			values:           map[string]any{"name": "myhub", "primaryConnectionString": "Endpoint=sb://..."},
+			secrets:          map[string]any{},
+			outputsMap:       map[string]string{"host": "name"},
+			secretOutputsMap: map[string]string{"connectionString": "primaryConnectionString"},
+			expectedValues:   map[string]any{"host": "myhub"},
+			expectedSecrets:  map[string]any{"connectionString": "Endpoint=sb://..."},
+		},
+		{
+			name:             "secretOutputs maps a module-classified secret output",
+			values:           map[string]any{},
+			secrets:          map[string]any{"primaryKey": "abc123"},
+			secretOutputsMap: map[string]string{"accessKey": "primaryKey"},
+			expectedValues:   map[string]any{},
+			expectedSecrets:  map[string]any{"accessKey": "abc123"},
+		},
+		{
+			name:             "secretOutputs with missing module output is skipped",
+			values:           map[string]any{"name": "myhub"},
+			secrets:          map[string]any{},
+			secretOutputsMap: map[string]string{"connectionString": "nonexistent"},
+			expectedValues:   map[string]any{},
+			expectedSecrets:  map[string]any{},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			values, secrets := ApplyOutputsMapping(tt.values, tt.secrets, tt.outputsMap)
+			values, secrets := ApplyOutputsMapping(tt.values, tt.secrets, tt.outputsMap, tt.secretOutputsMap)
 			assert.Equal(t, tt.expectedValues, values)
 			assert.Equal(t, tt.expectedSecrets, secrets)
 		})

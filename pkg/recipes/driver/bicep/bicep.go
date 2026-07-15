@@ -404,7 +404,7 @@ func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefini
 	recipeResponse := &recipes.RecipeOutput{}
 	out, ok := outputs.(map[string]any)
 	if ok && len(out) > 0 {
-		hasOutputsMapping := len(definition.Outputs) > 0
+		hasOutputsMapping := len(definition.Outputs) > 0 || len(definition.SecretOutputs) > 0
 		_, hasResultOutput := out[recipes.ResultPropertyName]
 
 		switch {
@@ -412,7 +412,7 @@ func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefini
 			// Direct module with an outputs mapping — collect all ARM outputs flat (splitting
 			// secure-typed outputs into secrets), then apply the mapping.
 			values, secrets := collectARMOutputs(out)
-			recipeResponse.Values, recipeResponse.Secrets = recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs)
+			recipeResponse.Values, recipeResponse.Secrets = recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs, definition.SecretOutputs)
 		case hasResultOutput:
 			// Wrapped recipe — use the existing 'result' output parsing.
 			if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {

@@ -25,6 +25,7 @@ import (
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/dynamicrp"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend/controller"
+	"github.com/radius-project/radius/pkg/dynamicrp/backend/secret"
 	"github.com/radius-project/radius/pkg/recipes/engine"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -107,7 +108,11 @@ func (w *Service) registerControllers() error {
 		return err
 	}
 
+	// The materializer talks back to UCP to create/delete the managed Radius.Security/secrets resources
+	// that back recipe secret outputs.
+	secretMaterializer := secret.NewMaterializer(sdk.NewClientOptions(w.options.UCP))
+
 	return w.Service.Controllers().RegisterDefault(func(opts ctrl.Options) (ctrl.Controller, error) {
-		return controller.NewDynamicResourceController(opts, ucp, w.recipes, w.options.Recipes.ConfigurationLoader)
+		return controller.NewDynamicResourceController(opts, ucp, secretMaterializer, w.recipes, w.options.Recipes.ConfigurationLoader)
 	}, options)
 }
