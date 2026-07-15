@@ -328,7 +328,7 @@ types:
 		expectedDescriptionPrefixes := map[string]string{
 			"applications":      "The Radius.Core/applications Resource Type represents a Radius Application",
 			"bicepSettings":     "The Bicep configuration resource, providing reusable Bicep recipe settings for environments.",
-			"environments":      "The environment resource",
+			"environments":      "The Radius.Core/environments Resource Type represents a Radius Environment",
 			"recipePacks":       "The recipe pack resource",
 			"terraformSettings": "The Terraform configuration resource, providing reusable Terraform recipe settings for environments.",
 		}
