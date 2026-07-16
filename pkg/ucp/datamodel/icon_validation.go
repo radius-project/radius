@@ -39,10 +39,22 @@ const MaxIconSizeBytes = 32 * 1024
 //   - no on* event-handler attributes
 //   - no style attributes (same CSS-based exfiltration surface as <style>)
 //   - no <foreignObject> elements
+//   - no SMIL animation elements: <animate>, <animateMotion>,
+//     <animateTransform>, <set>, <discard>. Animations can mutate an
+//     attribute at render time — e.g. `<set attributeName="href" to="https://evil"/>`
+//     turns an initially safe fragment reference into an external fetch
+//     after ValidateIcon has already accepted the SVG. Icons are static
+//     assets, so rejecting animation elements wholesale is safer than
+//     trying to validate every from/to/by/values mutation path.
 //   - href / xlink:href values are either data: URLs or intra-document fragments (starting with '#')
 //   - fill / stroke / filter / mask / clip-path values may reference paint
 //     servers only via intra-document fragments (url(#foo)); external
 //     url(...) targets are rejected
+//   - marker / marker-start / marker-mid / marker-end and cursor follow
+//     the same url(#foo)-only rule as the paint-server family
+//   - CSS escape sequences (backslashes) are rejected in href and
+//     URL-bearing attribute values, because SVG 2 processes presentation-
+//     attribute values through the CSS parser at render time
 //
 // The <style>/style= rejection is intentionally strict: authors that need
 // styling should inline it via presentation attributes (fill, stroke, etc.)
@@ -100,6 +112,9 @@ func ValidateIcon(icon []byte) error {
 		}
 		if strings.EqualFold(local, "foreignObject") {
 			return fmt.Errorf("icon contains a <foreignObject> element, which is not allowed")
+		}
+		if isSMILAnimationElement(local) {
+			return fmt.Errorf("icon contains a <%s> animation element, which is not allowed (SMIL can mutate attributes at render time and defeat this validator)", local)
 		}
 
 		for _, attr := range start.Attr {
@@ -170,6 +185,35 @@ func isURLBearingAttr(name string) bool {
 	case "fill", "stroke", "filter", "mask", "clip-path",
 		"marker", "marker-start", "marker-mid", "marker-end",
 		"cursor":
+		return true
+	}
+	return false
+}
+
+// isSMILAnimationElement reports whether the given SVG element name is a
+// SMIL animation element. Animation elements mutate an attribute of a
+// target element at render time — for example,
+//
+//	<image href="#safe"><set attributeName="href" to="https://evil"/></image>
+//
+// turns an initially safe fragment reference into an external fetch
+// after ValidateIcon has already accepted the SVG. Rather than validate
+// every from / to / by / values / keyTimes / keySplines mutation path
+// (and the further subtleties of additive="sum" and accumulate="sum"),
+// we reject animation elements wholesale. Icons are static assets and
+// don't need SMIL.
+//
+// The five names below are the complete SMIL animation element set:
+//
+//   - <animate>          — animates any attribute or CSS property.
+//   - <animateMotion>    — moves an element along a path.
+//   - <animateTransform> — animates a transform attribute.
+//   - <set>              — one-shot value change (the classic bypass).
+//   - <discard>          — removes an element from the document at a
+//     given time (can strip a guard element that other validation relied on).
+func isSMILAnimationElement(name string) bool {
+	switch strings.ToLower(name) {
+	case "animate", "animatemotion", "animatetransform", "set", "discard":
 		return true
 	}
 	return false

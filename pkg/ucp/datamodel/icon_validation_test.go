@@ -86,6 +86,39 @@ func TestValidateIcon(t *testing.T) {
 			wantErr: "<foreignObject>",
 		},
 		{
+			// SMIL <set> targeting href — the classic bypass. The
+			// <image> element passes href validation at parse time
+			// (fragment reference), but SMIL would mutate it to an
+			// external URL at render time. Reject the whole SVG.
+			name:    "SMIL set element targeting href",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><image href="#safe"><set attributeName="href" to="https://evil.example/x"/></image></svg>`,
+			wantErr: "<set> animation element",
+		},
+		{
+			// SMIL <animate> targeting a URL-bearing presentation
+			// attribute (fill). Even though the initial fill is
+			// safe, the animation would mutate it to reference an
+			// external paint server.
+			name:    "SMIL animate element targeting url-bearing attribute",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="red"><animate attributeName="fill" to="url(https://evil.example/g)"/></rect></svg>`,
+			wantErr: "<animate> animation element",
+		},
+		{
+			name:    "SMIL animateMotion element",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect><animateMotion path="M0,0 L100,100"/></rect></svg>`,
+			wantErr: "<animateMotion> animation element",
+		},
+		{
+			name:    "SMIL animateTransform element",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect><animateTransform attributeName="transform" type="rotate" from="0" to="360"/></rect></svg>`,
+			wantErr: "<animateTransform> animation element",
+		},
+		{
+			name:    "SMIL discard element",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect><discard begin="0s"/></rect></svg>`,
+			wantErr: "<discard> animation element",
+		},
+		{
 			name:    "style element",
 			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><style>@import url('https://evil/x.css');</style></svg>`,
 			wantErr: "<style>",

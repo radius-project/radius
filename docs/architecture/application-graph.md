@@ -502,11 +502,16 @@ rad app graph my-app --preview -o json --include-icons
 
 The control plane validates every icon at ingress
 ([`ValidateIcon`](../../pkg/ucp/datamodel/icon_validation.go) — rejects
-`<script>`, `<style>`, `<foreignObject>`, `on*` handlers, `style=`
-attributes, external `href` / `xlink:href`, external `url(...)` in
-`fill` / `stroke` / `filter` / `mask` / `clip-path` (only intra-document
-`url(#foo)` fragments accepted), non-`<svg>` roots, malformed XML, and
-payloads larger than 32 KiB) and serves the direct icon endpoint with
+`<script>`, `<style>`, `<foreignObject>`, SMIL animation elements
+(`<animate>`, `<animateMotion>`, `<animateTransform>`, `<set>`,
+`<discard>`), `on*` handlers, `style=` attributes, external
+`href` / `xlink:href`, external `url(...)` in
+`fill` / `stroke` / `filter` / `mask` / `clip-path` /
+`marker` / `marker-start` / `marker-mid` / `marker-end` / `cursor`
+(only intra-document `url(#foo)` fragments accepted), CSS escape
+sequences (backslashes) in any URL-bearing attribute value,
+non-`<svg>` roots, malformed XML, and payloads larger than 32 KiB) and
+serves the direct icon endpoint with
 `X-Content-Type-Options: nosniff` and a strict CSP
 (`default-src 'none'; style-src 'unsafe-inline'; sandbox`). Those headers
 neutralize active content in the browser _only when the SVG is loaded as
