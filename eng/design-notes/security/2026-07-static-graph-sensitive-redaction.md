@@ -45,7 +45,7 @@ Bicep's `@secure()` decorator applies to both string and object parameters and c
 }
 ```
 
-Both types are treated identically as sensitive sources — the redaction contract does not distinguish scalar from structured secrets, and mixing the two rules would let a `secureObject` field like `credentialsBlob.password` flow through the graph unredacted. This mirrors how [pkg/recipes/driver/bicep/bicep.go](../../../pkg/recipes/driver/bicep/bicep.go) treats `securestring` / `secureobject` outputs identically for recipe-response secret routing.
+Both types are treated identically as sensitive sources — the redaction contract does not distinguish scalar from structured secrets, and treating them differently would let a `secureObject` field like `credentialsBlob.password` flow through the graph without being nulled. This mirrors how [pkg/recipes/driver/bicep/bicep.go](../../../pkg/recipes/driver/bicep/bicep.go) treats `securestring` / `secureobject` outputs identically for recipe-response secret routing.
 
 Any resource property value that draws from a secure param appears in the compiled template as an ARM expression referencing `parameters('name')` — either directly, e.g. `"password": "[parameters('adminPassword')]"`, or nested inside another function, e.g. `"connectionString": "[format('server=x;pwd={0}', parameters('adminPassword'))]"`, or via property access on a secureObject, e.g. `"clientId": "[parameters('credentialsBlob').clientId]"`.
 
@@ -84,7 +84,7 @@ sasToken
 - Applies to keys in maps at every depth, including inside arrays' object items.
 - The value is set to `nil` regardless of its type (string, object, number, array).
 
-**False-positive tolerance.** Occasionally a legitimate non-sensitive property will collide (e.g. a hypothetical `password` field on a rate-limiter config that stores the number of password attempts). We accept that risk. The list is short, curated, and conservative; a false positive redacts one graph cell but never leaks a real secret. The alternative — no naming rule — would let hard-coded plaintext secrets flow through unredacted.
+**False-positive tolerance.** Occasionally a legitimate non-sensitive property will collide (e.g. a hypothetical `password` field on a rate-limiter config that stores the number of password attempts). We accept that risk. The list is short, curated, and conservative; a false positive redacts one graph cell but never leaks a real secret. The alternative — no naming rule — would let hard-coded plaintext secrets flow through as-is.
 
 ### Order
 
