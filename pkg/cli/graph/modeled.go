@@ -245,6 +245,22 @@ func collectStaticGraphIcons(resources []*corerpv20250801preview.ApplicationGrap
 	return out
 }
 
+// resolveIconHash returns the icon hash to stamp on a modeled resource
+// node. It prefers a per-type icon shipped in the built-in provider
+// manifest (radius-project/resource-types-contrib mirror at
+// deploy/manifest/built-in-providers/self-hosted), and falls back to
+// the product default icon when the type is not registered. Returns
+// nil if the default itself is unavailable (embedded asset broken),
+// which the wire model represents as "no icon" and downstream
+// consumers render without decoration.
+func resolveIconHash(resourceType string) *string {
+	if icon, ok := productmanifest.Lookup(resourceType); ok {
+		h := icon.Hash
+		return &h
+	}
+	return productmanifest.DefaultHash()
+}
+
 // collectResources normalizes the "resources" section of an ARM JSON
 // template into a slice of resource entries in the classic (flat) shape
 // expected by buildModeledResource. Bicep emits two layouts:
@@ -449,6 +465,7 @@ func buildModeledResource(entry map[string]any, secureParams map[string]struct{}
 		Connections:       outboundConnections(properties),
 		OutputResources:   []*corerpv20250801preview.ApplicationGraphOutputResource{},
 		DiffHash:          to.Ptr(hash),
+		IconHash:          resolveIconHash(resourceType),
 		Properties:        resolveGraphProperties(properties, secureParams),
 	}, nil
 }
