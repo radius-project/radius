@@ -47,7 +47,11 @@ types:
 
       - CONNECTION_REDIS_HOST
       - CONNECTION_REDIS_PORT
-      - CONNECTION_REDIS_URL
+
+      The `url` secret is NOT injected via the connection — it is materialized into
+      a managed `Radius.Security/secrets` resource. Bind it into a container env var
+      with a `secretKeyRef`, using `redis.properties.secrets.name` as the `secretName`
+      and key `url` (see the `secrets` property).
 
     apiVersions:
       '2025-08-01-preview':
@@ -72,9 +76,21 @@ types:
               type: integer
               description: "(Read Only) The TLS port number used to connect to the cache. Mapped from the recipe module's `port` output (Azure Managed Redis uses 10000)."
               readOnly: true
-            url:
-              type: string
-              description: "(Read Only) The full TLS connection URL (`rediss://:<access-key>@<host>:<port>`) used to connect to the cache, including the access key. Mapped from the recipe module's `primaryConnectionString` output."
-              x-radius-sensitive: true
-              readOnly: true
+            secrets:
+              type: object
+              description: >-
+                (Read-only) Recipe secrets. The reserved `name` sub-property references the managed
+                Radius.Security/secrets resource Radius materializes from the recipe's `outputs.secrets`;
+                the other sub-properties declare secret keys whose values are written only into that
+                managed secret (never onto this resource). Consumers bind a key into a container env var
+                via `secretKeyRef`, using `<resource>.properties.secrets.name` as `secretName`.
+              properties:
+                name:
+                  type: string
+                  readOnly: true
+                  description: (Reserved) Name of the managed Radius.Security/secrets resource. Use as `secretName` in a container `secretKeyRef`.
+                url:
+                  type: string
+                  readOnly: true
+                  description: "(Read Only) The full TLS connection URL (`rediss://:<access-key>@<host>:<port>`) used to connect to the cache, including the access key. Mapped from the recipe module's `primaryConnectionString` output; delivered via the managed secret."
           required: [environment]

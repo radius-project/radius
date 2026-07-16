@@ -1,0 +1,15 @@
+<svg width="500" height="500" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M289.062 171.875H210.938C189.364 171.875 171.875 189.364 171.875 210.938V289.062C171.875 310.636 189.364 328.125 210.938 328.125H289.062C310.636 328.125 328.125 310.636 328.125 289.062V210.938C328.125 189.364 310.636 171.875 289.062 171.875Z" fill="white" stroke="black" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M250 171.875V109.375" stroke="black" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M171.875 210.938H109.375V156.25" stroke="black" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M328.125 210.938H390.625V156.25" stroke="black" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M250 328.125V390.625" stroke="black" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M171.875 289.062H109.375V343.75" stroke="black" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M328.125 289.062H390.625V343.75" stroke="black" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M250 109.375C267.259 109.375 281.25 95.3839 281.25 78.125C281.25 60.8661 267.259 46.875 250 46.875C232.741 46.875 218.75 60.8661 218.75 78.125C218.75 95.3839 232.741 109.375 250 109.375Z" fill="white" stroke="black" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M109.375 156.25C126.634 156.25 140.625 142.259 140.625 125C140.625 107.741 126.634 93.75 109.375 93.75C92.1161 93.75 78.125 107.741 78.125 125C78.125 142.259 92.1161 156.25 109.375 156.25Z" fill="white" stroke="black" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M390.625 156.25C407.884 156.25 421.875 142.259 421.875 125C421.875 107.741 407.884 93.75 390.625 93.75C373.366 93.75 359.375 107.741 359.375 125C359.375 142.259 373.366 156.25 390.625 156.25Z" fill="white" stroke="black" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M250 453.125C267.259 453.125 281.25 439.134 281.25 421.875C281.25 404.616 267.259 390.625 250 390.625C232.741 390.625 218.75 404.616 218.75 421.875C218.75 439.134 232.741 453.125 250 453.125Z" fill="white" stroke="black" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M109.375 406.25C126.634 406.25 140.625 392.259 140.625 375C140.625 357.741 126.634 343.75 109.375 343.75C92.1161 343.75 78.125 357.741 78.125 375C78.125 392.259 92.1161 406.25 109.375 406.25Z" fill="white" stroke="black" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M390.625 406.25C407.884 406.25 421.875 392.259 421.875 375C421.875 357.741 407.884 343.75 390.625 343.75C373.366 343.75 359.375 357.741 359.375 375C359.375 392.259 373.366 406.25 390.625 406.25Z" fill="white" stroke="black" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
