@@ -81,7 +81,7 @@ rad app graph ./app.bicep`,
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddApplicationNameFlag(cmd)
 	commonflags.AddOutputFlag(cmd)
-	cmd.Flags().Bool("include-icons", false, "When set with --preview, embeds each referenced resource type icon's SVG bytes in the response.")
+	cmd.Flags().Bool("include-icons", false, "When set with --preview (deployed) or with a bicep-file argument (modeled), embeds each referenced resource type icon's SVG bytes in the response's icons map.")
 
 	return cmd, runner
 }
@@ -99,6 +99,13 @@ type Runner struct {
 
 	// Modeled-graph mode field.
 	BicepFilePath string
+
+	// IncludeIcons, when true, causes the modeled graph response to carry a
+	// deduped `icons` map of hash → SVG bytes. When false the response has
+	// only per-node `iconHash` values and consumers content-address the
+	// bytes themselves. Mirrors the runtime `rad app graph --preview
+	// --include-icons` flag.
+	IncludeIcons bool
 
 	Format string
 
@@ -157,6 +164,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	if len(args) == 1 && isModeledGraphArg(args[0]) {
 		r.BicepFilePath = args[0]
+		includeIcons, err := cmd.Flags().GetBool("include-icons")
+		if err != nil {
+			return err
+		}
+		r.IncludeIcons = includeIcons
 		return nil
 	}
 	return r.validateDeployed(cmd, args)
@@ -242,7 +254,7 @@ func (r *Runner) runModeled(ctx context.Context) error {
 		return clierrors.Message("Failed to compile %q: %v", r.BicepFilePath, err)
 	}
 
-	graph, err := cligraph.BuildModeledGraph(template)
+	graph, err := cligraph.BuildModeledGraph(template, r.IncludeIcons)
 	if err != nil {
 		return clierrors.Message("Failed to build modeled graph: %v", err)
 	}

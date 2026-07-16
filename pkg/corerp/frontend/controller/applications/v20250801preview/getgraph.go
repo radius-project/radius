@@ -27,9 +27,10 @@ import (
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
-	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
+
+	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 var _ ctrl.Controller = (*GetGraphv20250801preview)(nil)
@@ -78,7 +79,7 @@ func (ctrl *GetGraphv20250801preview) Run(ctx context.Context, w http.ResponseWr
 		return nil, err
 	}
 
-	payload, err := app_ctrl.ComputeGraphPayload(ctx, applicationID, applicationResource.Properties.Environment, ctrl.connection)
+	payload, err := computeGraphPayload(ctx, applicationID, applicationResource.Properties.Environment, ctrl.connection)
 	if err != nil {
 		return nil, err
 	}
@@ -93,15 +94,15 @@ func (ctrl *GetGraphv20250801preview) Run(ctx context.Context, w http.ResponseWr
 		return nil, err
 	}
 
-	response := convertGraphResponseWithIcons(payload, icons)
+	attachIconHashes(payload, icons)
 
 	// When the caller opted in with includeIcons=true, dedupe by hash and
 	// emit the icons map alongside the resources.
 	if includeIcons {
-		response.Icons = buildIconsMap(response.Resources, icons)
+		payload.Icons = buildIconsMap(payload.Resources, icons)
 	}
 
-	return rest.NewOKResponse(response), nil
+	return rest.NewOKResponse(payload), nil
 }
 
 // readIncludeIcons parses the optional GetGraphRequest body and returns the
@@ -139,11 +140,24 @@ func readIncludeIcons(req *http.Request) (bool, error) {
 
 // buildIconsMap returns the deduped icons map keyed by iconHash, containing the
 // verbatim SVG bytes for every distinct hash referenced by the response's
-// resources. Nodes whose type has no registered icon are skipped.
+// resources. Two byte sources feed into the map:
+//
+//  1. `icons` — the per-type entries returned by fetchIcons, which carry
+//     bytes fetched from the resource-type registry when the caller opted in
+//     via includeIcons=true.
+//  2. The product default icon embedded in the deploy/manifest package, used
+//     for any node whose hash matches the default (types registered without
+//     an icon get the default hash at registration time; external nodes such
+//     as Microsoft.Storage/storageAccounts get the default hash from
+//     attachIconHashes). Registered types do not carry the
+//     default bytes on their storage record, so this substitution is what
+//     makes the response self-contained.
 func buildIconsMap(resources []*corerpv20250801preview.ApplicationGraphResource, icons map[string]resourceTypeIcon) map[string]*string {
-	if len(resources) == 0 || len(icons) == 0 {
+	if len(resources) == 0 {
 		return nil
 	}
+	defaultIcon := productmanifest.Default()
+	hasDefault := defaultIcon.Hash != "" && len(defaultIcon.Bytes) > 0
 	out := map[string]*string{}
 	for _, r := range resources {
 		if r == nil || r.IconHash == nil {
@@ -151,6 +165,11 @@ func buildIconsMap(resources []*corerpv20250801preview.ApplicationGraphResource,
 		}
 		hash := *r.IconHash
 		if _, already := out[hash]; already {
+			continue
+		}
+		if hasDefault && hash == defaultIcon.Hash {
+			bytes := string(defaultIcon.Bytes)
+			out[hash] = &bytes
 			continue
 		}
 		icon, ok := icons[to.String(r.Type)]

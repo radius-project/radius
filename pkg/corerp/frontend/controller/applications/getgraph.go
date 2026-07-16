@@ -50,10 +50,11 @@ func ComputeGraphResponse(ctx context.Context, applicationID resources.ID, envir
 }
 
 // ComputeGraphPayload computes the application graph for the given application and environment IDs
-// and returns the raw payload without wrapping it in a rest.Response. Callers that need to enrich
-// the payload before serializing it (for example, the v20250801preview handler that attaches
-// per-node iconHash values from the resource-type registry) should call this
-// helper directly.
+// and returns the raw payload without wrapping it in a rest.Response. Used by
+// ComputeGraphResponse (Applications.Core/applications/getGraph). The
+// Radius.Core/applications/getGraph handler under v20250801preview owns its own
+// copy of the graph pipeline; each API version keeps its own model types
+// end-to-end so the two versions can evolve independently.
 func ComputeGraphPayload(ctx context.Context, applicationID resources.ID, environmentID string, connection sdk.Connection) (*corerpv20231001preview.ApplicationGraphResponse, error) {
 	// An application **MUST** have an environment id
 	parsedEnvironmentID, err := resources.ParseResource(environmentID)

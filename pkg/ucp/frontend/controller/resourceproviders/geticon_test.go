@@ -31,6 +31,8 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+
+	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 const (
@@ -123,9 +125,16 @@ func TestGetIcon_NoIcon(t *testing.T) {
 		icon *string
 		hash *string
 	}{
+		// A record with no hash always 404's, regardless of what bytes exist.
+		// After registration-time hash substitution this shape shouldn't occur
+		// for freshly registered types, but the endpoint still rejects it
+		// defensively.
 		{name: "both nil", icon: nil, hash: nil},
-		{name: "icon nil", icon: nil, hash: to.Ptr(testIconHash)},
 		{name: "hash nil", icon: to.Ptr(testIconSVG), hash: nil},
+		// Hash set but no bytes and the hash is NOT the product default —
+		// nothing to serve, so still 404. The default-hash case is exercised
+		// by TestGetIcon_DefaultHashServesEmbeddedBytes below.
+		{name: "icon nil, non-default hash", icon: nil, hash: to.Ptr(testIconHash)},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -148,6 +157,39 @@ func TestGetIcon_NoIcon(t *testing.T) {
 			require.Contains(t, notFound.Body.Error.Message, "resource type has no icon")
 		})
 	}
+}
+
+// TestGetIcon_DefaultHashServesEmbeddedBytes exercises the default-hash
+// fallback: resource types registered without an icon are stored with the
+// product default's hash but no bytes on the record; a GET for the default
+// hash on such a record must still succeed by serving the embedded default
+// SVG.
+func TestGetIcon_DefaultHashServesEmbeddedBytes(t *testing.T) {
+	defaultIcon := productmanifest.Default()
+
+	ctrl, mockDB := newGetIconController(t)
+
+	rt := &datamodel.ResourceType{
+		Properties: datamodel.ResourceTypeProperties{
+			// Icon stays nil — registration-time substitution stores only the
+			// hash, not the bytes.
+			Icon:     nil,
+			IconHash: to.Ptr(defaultIcon.Hash),
+		},
+	}
+	mockDB.EXPECT().Get(gomock.Any(), testIconResourceTypeID).Return(&database.Object{Data: rt}, nil)
+
+	req := newIconRequest(t, defaultIcon.Hash)
+	resp, err := ctrl.Run(context.Background(), nil, req)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+
+	rec := httptest.NewRecorder()
+	require.NoError(t, resp.Apply(context.Background(), rec, req))
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, "image/svg+xml; charset=utf-8", rec.Header().Get("Content-Type"))
+	require.Equal(t, string(defaultIcon.Bytes), rec.Body.String())
 }
 
 func TestGetIcon_ResourceTypeNotFound(t *testing.T) {

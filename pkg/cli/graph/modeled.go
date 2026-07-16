@@ -25,6 +25,8 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
+
+	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 // Default scope segments used when constructing fully-qualified Radius
@@ -102,6 +104,15 @@ var sensitiveKeyBlocklist = map[string]struct{}{
 // pointless work on the majority of property values.
 var armExpressionPattern = regexp.MustCompile(`^\[.*\]$`)
 
+// excludeResourceTypes are the resource types that are not graph members.
+var excludeResourceTypes = map[string]struct{}{
+	"Applications.Core/applications": {},
+	"Applications.Core/environments": {},
+	"Radius.Core/applications":       {},
+	"Radius.Core/environments":       {},
+	"Radius.Core/recipePacks":        {},
+}
+
 // resourceIDExpression matches an ARM template resourceId() expression
 // produced by `bicep build` for Radius resource references, e.g.
 //
@@ -134,7 +145,7 @@ var resourceIDExpression = regexp.MustCompile(`^\[resourceId\(([^)]*)\)\]$`)
 //
 // See eng/design-notes/security/2026-07-static-graph-sensitive-redaction.md
 // for the full contract.
-func BuildModeledGraph(template map[string]any) (*corerpv20250801preview.ApplicationGraphResponse, error) {
+func BuildModeledGraph(template map[string]any, includeIcons bool) (*corerpv20250801preview.ApplicationGraphResponse, error) {
 	rawResources := collectResources(template["resources"])
 	if rawResources == nil {
 		return emptyGraph(), nil
@@ -156,6 +167,9 @@ func BuildModeledGraph(template map[string]any) (*corerpv20250801preview.Applica
 
 	graph := &corerpv20250801preview.ApplicationGraphResponse{Resources: graphResources}
 	addInboundConnections(graph)
+	if includeIcons {
+		graph.Icons = collectStaticGraphIcons(graphResources)
+	}
 	return graph, nil
 }
 
@@ -185,6 +199,48 @@ func sensitiveParamNames(template map[string]any) map[string]struct{} {
 		if strings.EqualFold(t, secureStringParameterType) || strings.EqualFold(t, secureObjectParameterType) {
 			out[name] = struct{}{}
 		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// collectStaticGraphIcons walks the modeled-graph resources and returns a
+// deduped `iconHash -> SVG bytes` map that mirrors the shape used by the
+// runtime graph. Every distinct hash referenced by the resources is included:
+// built-in types resolve to their per-type SVG from the embedded product
+// manifest, and everything else (user-defined types, external cloud types,
+// or built-in types whose SVG has not yet been shipped in resource-types-contrib)
+// falls through to the product default icon. The CLI has no control plane to
+// query, so this map is the sole byte source for a static graph consumer.
+func collectStaticGraphIcons(resources []*corerpv20250801preview.ApplicationGraphResource) map[string]*string {
+	if len(resources) == 0 {
+		return nil
+	}
+	defaultIcon := productmanifest.Default()
+	hasDefault := defaultIcon.Hash != "" && len(defaultIcon.Bytes) > 0
+	out := map[string]*string{}
+	for _, r := range resources {
+		if r == nil || r.IconHash == nil {
+			continue
+		}
+		hash := *r.IconHash
+		if _, already := out[hash]; already {
+			continue
+		}
+		if hasDefault && hash == defaultIcon.Hash {
+			bytes := string(defaultIcon.Bytes)
+			out[hash] = &bytes
+			continue
+		}
+		if icon, ok := productmanifest.Lookup(to.String(r.Type)); ok {
+			bytes := string(icon.Bytes)
+			out[hash] = &bytes
+		}
+	}
+	if len(out) == 0 {
+		return nil
 	}
 	return out
 }
@@ -367,9 +423,7 @@ func buildModeledResource(entry map[string]any, secureParams map[string]struct{}
 	if resourceType == "" || name == "" {
 		return nil, nil
 	}
-	if strings.EqualFold(resourceType, applicationsResourceType) ||
-		strings.EqualFold(resourceType, environmentsResourceType) ||
-		strings.EqualFold(resourceType, recipePacksResourceType) {
+	if isExcludedResourceType(resourceType) {
 		return nil, nil
 	}
 
@@ -667,6 +721,17 @@ func splitResourceIDArgs(s string) []string {
 // default plane and resource group used for modeled graphs.
 func buildResourceID(resourceType, name string) string {
 	return fmt.Sprintf("/planes/radius/%s/resourcegroups/%s/providers/%s/%s", defaultPlane, defaultResourceGroup, resourceType, name)
+}
+
+// isExcludedResourceType reports whether the given resource type is one of
+// the app/env/recipe-pack types that must be excluded from the graph.
+func isExcludedResourceType(resourceType string) bool {
+	for excluded := range excludeResourceTypes {
+		if strings.EqualFold(resourceType, excluded) {
+			return true
+		}
+	}
+	return false
 }
 
 // emptyGraph returns a fresh graph with an empty (non-nil) Resources slice

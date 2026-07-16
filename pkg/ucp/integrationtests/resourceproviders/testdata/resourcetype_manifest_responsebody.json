@@ -3,7 +3,8 @@
   "name": "testResourcesAbc",
   "properties": {
     "provisioningState": "Succeeded",
-    "capabilities": []
+    "capabilities": [],
+    "iconHash": "98fde6b7efcad66b37ad3014e63b3965f13d82a524a07cb53e690ef5287cb037"
   },
   "type": "System.Resources/resourceProviders/resourceTypes"
 }

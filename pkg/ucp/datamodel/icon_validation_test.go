@@ -86,6 +86,81 @@ func TestValidateIcon(t *testing.T) {
 			wantErr: "<foreignObject>",
 		},
 		{
+			name:    "style element",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><style>@import url('https://evil/x.css');</style></svg>`,
+			wantErr: "<style>",
+		},
+		{
+			name:    "style attribute on child",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect style="background:url(https://evil/x.png)"/></svg>`,
+			wantErr: "style attribute",
+		},
+		{
+			name:    "style attribute on root",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg" style="fill:red"/>`,
+			wantErr: "style attribute",
+		},
+		{
+			name: "paint server fill with fragment url",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g"><stop/></linearGradient></defs><rect fill="url(#g)"/></svg>`,
+		},
+		{
+			name: "paint server fill with fragment url and literal fallback",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(#g) red"/></svg>`,
+		},
+		{
+			name: "paint server clip-path with fragment url and quotes",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><rect clip-path="url('#c1')"/></svg>`,
+		},
+		{
+			name: "paint server literal color unchanged",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="#ff0000" stroke="currentColor"/></svg>`,
+		},
+		{
+			name: "paint server none unchanged",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="none" filter="none" mask="none" clip-path="none"/></svg>`,
+		},
+		{
+			name:    "external fill url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(https://evil.example/track.png)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external stroke url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect stroke="url(//evil.example/x)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external filter url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect filter="url(https://evil.example/f)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external mask url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect mask="url(https://evil.example/m)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external clip-path url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect clip-path="url(https://evil.example/c)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "data url in fill rejected",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(data:image/svg+xml;base64,PHN2Zy8+)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "malformed url in fill rejected",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(#g"/></svg>`,
+			wantErr: "malformed url",
+		},
+		{
+			name:    "paint server fallback with external in second slot",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(#g) url(https://evil.example/x)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
 			name:    "external href",
 			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.com/x.png"/></svg>`,
 			wantErr: "references external resource",

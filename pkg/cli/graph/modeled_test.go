@@ -27,11 +27,43 @@ import (
 func TestBuildModeledGraph_EmptyTemplate(t *testing.T) {
 	t.Parallel()
 
-	graph, err := BuildModeledGraph(map[string]any{})
+	graph, err := BuildModeledGraph(map[string]any{}, false)
 	require.NoError(t, err)
 	require.NotNil(t, graph)
 	require.NotNil(t, graph.Resources)
 	require.Empty(t, graph.Resources)
+}
+
+// TestBuildModeledGraph_IncludeIconsControlsIconsMap verifies that the
+// includeIcons flag mirrors the runtime graph's --include-icons semantics:
+// per-node iconHash values are always populated, but the deduped icons
+// bytes map is only present when the caller opts in. This keeps the
+// modeled and runtime graphs' default JSON shape identical.
+func TestBuildModeledGraph_IncludeIconsControlsIconsMap(t *testing.T) {
+	t.Parallel()
+
+	template := map[string]any{
+		"resources": []any{
+			map[string]any{
+				"type":       "Applications.Core/containers",
+				"name":       "frontend",
+				"properties": map[string]any{"image": "nginx"},
+			},
+		},
+	}
+
+	off, err := BuildModeledGraph(template, false)
+	require.NoError(t, err)
+	require.Len(t, off.Resources, 1)
+	require.NotNil(t, off.Resources[0].IconHash, "iconHash must be set on every node regardless of includeIcons")
+	require.Nil(t, off.Icons, "icons map must be nil when includeIcons=false")
+
+	on, err := BuildModeledGraph(template, true)
+	require.NoError(t, err)
+	require.Len(t, on.Resources, 1)
+	require.NotNil(t, on.Resources[0].IconHash)
+	require.NotEmpty(t, on.Icons, "icons map must carry at least one entry when includeIcons=true")
+	require.Contains(t, on.Icons, *on.Resources[0].IconHash)
 }
 
 func TestBuildModeledGraph_SkipsContainersAndRecipePacks(t *testing.T) {
@@ -39,15 +71,21 @@ func TestBuildModeledGraph_SkipsContainersAndRecipePacks(t *testing.T) {
 
 	template := map[string]any{
 		"resources": []any{
+			// Legacy Applications.Core spellings.
 			map[string]any{"type": "Applications.Core/applications", "name": "myapp"},
 			map[string]any{"type": "Applications.Core/environments", "name": "myenv"},
+			// New Radius.Core spellings — same containers, must also be excluded.
+			map[string]any{"type": "Radius.Core/applications", "name": "myhotapp"},
+			map[string]any{"type": "Radius.Core/environments", "name": "myradenv"},
+			// Recipe catalog resource — never a graph member.
 			map[string]any{"type": "Radius.Core/recipePacks", "name": "mypack"},
+			// The one resource that should appear.
 			map[string]any{"type": "Applications.Core/containers", "name": "frontend",
 				"properties": map[string]any{"image": "nginx"}},
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	require.Len(t, graph.Resources, 1)
 	require.Equal(t, "frontend", *graph.Resources[0].Name)
@@ -67,7 +105,7 @@ func TestBuildModeledGraph_BuildsResourceID(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	require.Len(t, graph.Resources, 1)
 	require.Equal(t,
@@ -103,7 +141,7 @@ func TestBuildModeledGraph_OutboundConnectionsResolved(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	require.Len(t, graph.Resources, 2)
 
@@ -140,7 +178,7 @@ func TestBuildModeledGraph_InboundConnectionsAreReciprocal(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	cache := findResource(t, graph, "cache")
 	require.Len(t, cache.Connections, 1)
@@ -168,7 +206,7 @@ func TestBuildModeledGraph_DropsUnresolvableConnections(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	require.Empty(t, graph.Resources[0].Connections)
 }
@@ -196,9 +234,9 @@ func TestBuildModeledGraph_DependsOnAffectsDiffHash(t *testing.T) {
 		},
 	}
 
-	g1, err := BuildModeledGraph(withDep)
+	g1, err := BuildModeledGraph(withDep, false)
 	require.NoError(t, err)
-	g2, err := BuildModeledGraph(withoutDep)
+	g2, err := BuildModeledGraph(withoutDep, false)
 	require.NoError(t, err)
 
 	require.NotEqual(t, *g1.Resources[0].DiffHash, *g2.Resources[0].DiffHash)

@@ -23,47 +23,23 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
-// Test_splitResourceType covers the fully-qualified resource-type parser used
-// to bucket graph nodes by their provider namespace before we call
-// GetProviderSummary.
-func Test_splitResourceType(t *testing.T) {
-	cases := []struct {
-		in          string
-		namespace   string
-		typeName    string
-		ok          bool
-		explanation string
-	}{
-		{"Radius.Compute/containers", "Radius.Compute", "containers", true, "well-formed"},
-		{"Radius.Core/applications", "Radius.Core", "applications", true, "well-formed built-in"},
-		{"", "", "", false, "empty input"},
-		{"NoSlash", "", "", false, "missing separator"},
-		{"/containers", "", "", false, "empty namespace"},
-		{"Radius.Compute/", "", "", false, "empty type name"},
-	}
-	for _, c := range cases {
-		t.Run(c.explanation, func(t *testing.T) {
-			ns, tn, ok := splitResourceType(c.in)
-			assert.Equal(t, c.ok, ok)
-			assert.Equal(t, c.namespace, ns)
-			assert.Equal(t, c.typeName, tn)
-		})
-	}
-}
-
-// Test_convertGraphResponseWithIcons_AttachesIconHashPerNode verifies that the
-// v20231001preview → v20250801preview conversion attaches iconHash to the
-// matching node and leaves it nil for types that have no icon in the lookup.
-func Test_convertGraphResponseWithIcons_AttachesIconHashPerNode(t *testing.T) {
-	payload := &corerpv20231001preview.ApplicationGraphResponse{
-		Resources: []*corerpv20231001preview.ApplicationGraphResource{
+// Test_attachIconHashes_AttachesIconHashPerNode verifies the enricher
+// attaches iconHash to every node. Types present in the fetched lookup
+// contribute their per-type hash; types absent from the lookup (external
+// cloud namespaces, unregistered types) fall back to the product default
+// icon's hash.
+func Test_attachIconHashes_AttachesIconHashPerNode(t *testing.T) {
+	payload := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
 			{ID: to.Ptr("/planes/radius/local/.../containers/web"), Type: to.Ptr("Radius.Compute/containers"), Name: to.Ptr("web")},
 			{ID: to.Ptr("/planes/radius/local/.../mySqlDatabases/db"), Type: to.Ptr("Radius.Data/mySqlDatabases"), Name: to.Ptr("db")},
 			{ID: to.Ptr("/planes/radius/local/.../someType/none"), Type: to.Ptr("MyCompany.Test/widgets"), Name: to.Ptr("none")},
@@ -74,32 +50,38 @@ func Test_convertGraphResponseWithIcons_AttachesIconHashPerNode(t *testing.T) {
 		"Radius.Data/mySqlDatabases": {hash: "hash-mysql"},
 	}
 
-	out := convertGraphResponseWithIcons(payload, icons)
-	require.Len(t, out.Resources, 3)
+	attachIconHashes(payload, icons)
+	require.Len(t, payload.Resources, 3)
 
-	require.NotNil(t, out.Resources[0].IconHash)
-	assert.Equal(t, "hash-containers", *out.Resources[0].IconHash)
+	require.NotNil(t, payload.Resources[0].IconHash)
+	assert.Equal(t, "hash-containers", *payload.Resources[0].IconHash)
 
-	require.NotNil(t, out.Resources[1].IconHash)
-	assert.Equal(t, "hash-mysql", *out.Resources[1].IconHash)
+	require.NotNil(t, payload.Resources[1].IconHash)
+	assert.Equal(t, "hash-mysql", *payload.Resources[1].IconHash)
 
-	// Type not in the lookup gets a nil hash — never a placeholder or empty string.
-	assert.Nil(t, out.Resources[2].IconHash)
+	// Type not in the lookup falls back to the product default icon's hash
+	// so every node in the response carries a resolvable icon.
+	require.NotNil(t, payload.Resources[2].IconHash)
+	assert.Equal(t, productmanifest.Default().Hash, *payload.Resources[2].IconHash)
 }
 
-// Test_convertGraphResponseWithIcons_NilIconsLookup asserts the converter is a
-// pure passthrough when no icon lookup is available.
-func Test_convertGraphResponseWithIcons_NilIconsLookup(t *testing.T) {
-	payload := &corerpv20231001preview.ApplicationGraphResponse{
-		Resources: []*corerpv20231001preview.ApplicationGraphResource{
+// Test_attachIconHashes_NilIconsLookup asserts that when no per-type icons
+// are available (nil map) every node still receives the product default
+// icon's hash. The response's Icons map is populated only by buildIconsMap
+// in the getGraph handler when includeIcons=true, so the enricher itself
+// leaves it nil.
+func Test_attachIconHashes_NilIconsLookup(t *testing.T) {
+	payload := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
 			{ID: to.Ptr("id"), Type: to.Ptr("Radius.Compute/containers"), Name: to.Ptr("web")},
 		},
 	}
 
-	out := convertGraphResponseWithIcons(payload, nil)
-	require.Len(t, out.Resources, 1)
-	assert.Nil(t, out.Resources[0].IconHash)
-	assert.Nil(t, out.Icons)
+	attachIconHashes(payload, nil)
+	require.Len(t, payload.Resources, 1)
+	require.NotNil(t, payload.Resources[0].IconHash)
+	assert.Equal(t, productmanifest.Default().Hash, *payload.Resources[0].IconHash)
+	assert.Nil(t, payload.Icons)
 }
 
 // Test_fetchIcons_HashOnly stands up a fake UCP provider-summary server, asks
@@ -135,8 +117,8 @@ func Test_fetchIcons_HashOnly(t *testing.T) {
 	conn, err := sdk.NewDirectConnection(server.URL)
 	require.NoError(t, err)
 
-	graph := &corerpv20231001preview.ApplicationGraphResponse{
-		Resources: []*corerpv20231001preview.ApplicationGraphResource{
+	graph := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
 			{Type: to.Ptr("Radius.Compute/containers")},
 			{Type: to.Ptr("Radius.Data/mySqlDatabases")},
 		},
@@ -166,7 +148,7 @@ func Test_fetchIcons_EmptyGraph(t *testing.T) {
 	conn, err := sdk.NewDirectConnection(server.URL)
 	require.NoError(t, err)
 
-	icons, err := fetchIcons(context.Background(), conn, &corerpv20231001preview.ApplicationGraphResponse{}, false)
+	icons, err := fetchIcons(context.Background(), conn, &corerpv20250801preview.ApplicationGraphResponse{}, false)
 	require.NoError(t, err)
 	assert.Nil(t, icons)
 }
@@ -199,8 +181,8 @@ func Test_fetchIcons_ExternalProviderNotFound(t *testing.T) {
 	conn, err := sdk.NewDirectConnection(server.URL)
 	require.NoError(t, err)
 
-	graph := &corerpv20231001preview.ApplicationGraphResponse{
-		Resources: []*corerpv20231001preview.ApplicationGraphResource{
+	graph := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
 			{Type: to.Ptr("Radius.Compute/containers")},
 			{Type: to.Ptr("Microsoft.Storage/storageAccounts")},
 		},

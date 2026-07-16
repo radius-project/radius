@@ -28,6 +28,8 @@ import (
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+
+	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 var _ controller.Controller = (*GetIcon)(nil)
@@ -77,16 +79,30 @@ func (r *GetIcon) Run(ctx context.Context, w http.ResponseWriter, req *http.Requ
 		return nil, err
 	}
 
-	// Verify the hash matches what is stored
-	if rt.Properties.IconHash == nil || rt.Properties.Icon == nil {
+	// The stored IconHash must exist and match the requested hash. After
+	// registration-time hash substitution, IconHash is normally non-nil for
+	// a registered type, but the defensive check stays for older records or
+	// malformed writes.
+	if rt.Properties.IconHash == nil {
 		return armrpc_rest.NewNotFoundResponseWithCause(id, "resource type has no icon"), nil
 	}
 	if *rt.Properties.IconHash != hash {
 		return armrpc_rest.NewNotFoundResponseWithCause(id, fmt.Sprintf("icon with hash %q was not found", hash)), nil
 	}
 
-	// Return the verbatim SVG bytes with the correct content type (FR-018)
-	return &iconResponse{content: *rt.Properties.Icon}, nil
+	// Hash matched. Prefer bytes stored on the record; otherwise serve the
+	// embedded product default. Registration-time substitution stores the
+	// default hash on types authored without an icon and does NOT store
+	// bytes on the record (they live in the deploy/manifest binary asset), so
+	// this fallback is what makes the icon endpoint resolvable for defaulted
+	// types.
+	if rt.Properties.Icon != nil {
+		return &iconResponse{content: *rt.Properties.Icon}, nil
+	}
+	if productmanifest.IsDefault(hash) {
+		return &iconResponse{content: string(productmanifest.Default().Bytes)}, nil
+	}
+	return armrpc_rest.NewNotFoundResponseWithCause(id, "resource type has no icon"), nil
 }
 
 type iconResponse struct {

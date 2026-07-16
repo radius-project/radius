@@ -21,15 +21,15 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
-	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+
+	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 // resourceTypeIcon captures the icon metadata for a single resource type as
@@ -50,7 +50,7 @@ type resourceTypeIcon struct {
 // verbatim SVG bytes; when false only the hash is populated. Batching by
 // namespace means we make one GetProviderSummary call per distinct provider in
 // the graph rather than one per resource type.
-func fetchIcons(ctx context.Context, connection sdk.Connection, graph *corerpv20231001preview.ApplicationGraphResponse, includeBytes bool) (map[string]resourceTypeIcon, error) {
+func fetchIcons(ctx context.Context, connection sdk.Connection, graph *corerpv20250801preview.ApplicationGraphResponse, includeBytes bool) (map[string]resourceTypeIcon, error) {
 	if graph == nil {
 		return nil, nil
 	}
@@ -59,7 +59,7 @@ func fetchIcons(ctx context.Context, connection sdk.Connection, graph *corerpv20
 	// issue at most one GetProviderSummary per provider.
 	namespaces := map[string]struct{}{}
 	for _, resource := range graph.Resources {
-		namespace, _, ok := splitResourceType(to.String(resource.Type))
+		namespace, _, ok := productmanifest.SplitResourceType(to.String(resource.Type))
 		if !ok {
 			continue
 		}
@@ -113,83 +113,25 @@ func fetchIcons(ctx context.Context, connection sdk.Connection, graph *corerpv20
 	return icons, nil
 }
 
-// splitResourceType splits a fully qualified resource type of the form
-// "<namespace>/<typeName>" (e.g. "Radius.Compute/containers"). It returns
-// (namespace, typeName, true) on success, or ("", "", false) if the input does
-// not match the expected shape.
-func splitResourceType(resourceType string) (string, string, bool) {
-	slash := strings.Index(resourceType, "/")
-	if slash <= 0 || slash == len(resourceType)-1 {
-		return "", "", false
+// attachIconHashes stamps iconHash on every resource in payload, using the
+// per-type entries in icons and falling back to the product default (or nil
+// if that's unavailable too).
+func attachIconHashes(payload *corerpv20250801preview.ApplicationGraphResponse, icons map[string]resourceTypeIcon) {
+	if payload == nil {
+		return
 	}
-	return resourceType[:slash], resourceType[slash+1:], true
-}
-
-// convertGraphResponseWithIcons converts a graph payload produced by the shared
-// v20231001preview computation into the v20250801preview wire shape and, when
-// icons is non-nil, attaches per-node `iconHash` values from the lookup. The
-// two struct types share the same JSON contract for existing fields; this
-// conversion exists so we can additionally set the v20250801preview-only
-// `IconHash` and `Icons` fields without polluting the older API surface.
-func convertGraphResponseWithIcons(payload *corerpv20231001preview.ApplicationGraphResponse, icons map[string]resourceTypeIcon) *corerpv20250801preview.ApplicationGraphResponse {
-	out := &corerpv20250801preview.ApplicationGraphResponse{
-		Resources: make([]*corerpv20250801preview.ApplicationGraphResource, 0, len(payload.Resources)),
-	}
-	for _, src := range payload.Resources {
-		if src == nil {
-			continue
-		}
-		dst := &corerpv20250801preview.ApplicationGraphResource{
-			ID:                src.ID,
-			Name:              src.Name,
-			Type:              src.Type,
-			ProvisioningState: src.ProvisioningState,
-			DiffHash:          src.DiffHash,
-			Properties:        src.Properties,
-			Connections:       convertConnections(src.Connections),
-			OutputResources:   convertOutputResources(src.OutputResources),
-		}
-		if icon, ok := icons[to.String(src.Type)]; ok && icon.hash != "" {
-			dst.IconHash = to.Ptr(icon.hash)
-		}
-		out.Resources = append(out.Resources, dst)
-	}
-	return out
-}
-
-func convertConnections(in []*corerpv20231001preview.ApplicationGraphConnection) []*corerpv20250801preview.ApplicationGraphConnection {
-	if len(in) == 0 {
-		return nil
-	}
-	out := make([]*corerpv20250801preview.ApplicationGraphConnection, 0, len(in))
-	for _, c := range in {
-		if c == nil {
-			continue
-		}
-		converted := &corerpv20250801preview.ApplicationGraphConnection{ID: c.ID}
-		if c.Direction != nil {
-			converted.Direction = to.Ptr(corerpv20250801preview.Direction(*c.Direction))
-		}
-		out = append(out, converted)
-	}
-	return out
-}
-
-func convertOutputResources(in []*corerpv20231001preview.ApplicationGraphOutputResource) []*corerpv20250801preview.ApplicationGraphOutputResource {
-	if len(in) == 0 {
-		return nil
-	}
-	out := make([]*corerpv20250801preview.ApplicationGraphOutputResource, 0, len(in))
-	for _, r := range in {
+	for _, r := range payload.Resources {
 		if r == nil {
 			continue
 		}
-		out = append(out, &corerpv20250801preview.ApplicationGraphOutputResource{
-			ID:        r.ID,
-			Name:      r.Name,
-			Type:      r.Type,
-			PortalURL: r.PortalURL,
-		})
+		if icon, ok := icons[to.String(r.Type)]; ok && icon.hash != "" {
+			r.IconHash = to.Ptr(icon.hash)
+			continue
+		}
+		// Missing lookup (external 404, unregistered type, or no icon at
+		// registration time) — fall back to the product default.
+		// DefaultHash returns nil when the embedded default is unavailable,
+		// leaving IconHash unset for the node.
+		r.IconHash = productmanifest.DefaultHash()
 	}
-	return out
 }
