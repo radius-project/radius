@@ -1,0 +1,18 @@
+<svg width="500" height="500" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M369.5 311.656C412.469 311.656 421.75 280.406 421.75 241.344C421.75 202.281 394.406 171.031 355.344 167.125C343.625 120.25 304.562 89 257.688 89C206.906 89 163.938 124.156 156.125 174.938C113.156 178.844 78 210.094 78 253.062C78 284.312 109.25 311.656 148.312 311.656H369.5Z" fill="white" stroke="black" stroke-width="15" stroke-linejoin="round"/>
+<path d="M291 379C336.84 379 374 341.84 374 296C374 250.16 336.84 213 291 213C245.16 213 208 250.16 208 296C208 341.84 245.16 379 291 379Z" fill="white" stroke="black" stroke-width="15"/>
+<path d="M355.938 360.312L406.719 411.094" stroke="black" stroke-width="15" stroke-linecap="round"/>
+<path d="M299.75 277H281.25C276.141 277 272 281.141 272 286.25V304.75C272 309.859 276.141 314 281.25 314H299.75C304.859 314 309 309.859 309 304.75V286.25C309 281.141 304.859 277 299.75 277Z" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M291 277V263" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M272 286H257V274" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M309 286H324V274" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M291 314V329" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M272 305H257V318" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M309 305H324V318" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M290.5 263C294.642 263 298 259.642 298 255.5C298 251.358 294.642 248 290.5 248C286.358 248 283 251.358 283 255.5C283 259.642 286.358 263 290.5 263Z" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M257.5 274C261.642 274 265 270.642 265 266.5C265 262.358 261.642 259 257.5 259C253.358 259 250 262.358 250 266.5C250 270.642 253.358 274 257.5 274Z" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M323.5 274C327.642 274 331 270.642 331 266.5C331 262.358 327.642 259 323.5 259C319.358 259 316 262.358 316 266.5C316 270.642 319.358 274 323.5 274Z" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M290.5 343C294.642 343 298 339.866 298 336C298 332.134 294.642 329 290.5 329C286.358 329 283 332.134 283 336C283 339.866 286.358 343 290.5 343Z" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M257.5 332C261.642 332 265 328.866 265 325C265 321.134 261.642 318 257.5 318C253.358 318 250 321.134 250 325C250 328.866 253.358 332 257.5 332Z" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M323.5 332C327.642 332 331 328.866 331 325C331 321.134 327.642 318 323.5 318C319.358 318 316 321.134 316 325C316 328.866 319.358 332 323.5 332Z" stroke="black" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

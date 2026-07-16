@@ -1,7 +1,7 @@
 {
   "resources": {
     "Radius.Storage/objectStorage@2025-08-01-preview": {
-      "$ref": "types.json#/19"
+      "$ref": "types.json#/21"
     }
   },
   "resourceFunctions": {},

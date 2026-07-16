@@ -29,7 +29,11 @@ types:
       For a connection named `rabbitmq`, the variables are:
 
       - CONNECTION_RABBITMQ_HOST
-      - CONNECTION_RABBITMQ_CONNECTIONSTRING
+
+      The `connectionString` secret is NOT injected via the connection — it is
+      materialized into a managed `Radius.Security/secrets` resource. Bind it into
+      a container env var with a `secretKeyRef`, using `rabbitmq.properties.secrets.name`
+      as the `secretName` and key `connectionString` (see the `secrets` property).
 
     apiVersions:
       '2025-08-01-preview':
@@ -50,8 +54,21 @@ types:
               type: string
               description: The host or namespace name used to connect to the queue. Mapped from the recipe module's output.
               readOnly: true
-            connectionString:
-              type: string
-              description: The primary connection string used to connect to the queue. Mapped from the recipe module's output.
-              readOnly: true
+            secrets:
+              type: object
+              description: >-
+                (Read-only) Recipe secrets. The reserved `name` sub-property references the managed
+                Radius.Security/secrets resource Radius materializes from the recipe's `outputs.secrets`;
+                the other sub-properties declare secret keys whose values are written only into that
+                managed secret (never onto this resource). Consumers bind a key into a container env var
+                via `secretKeyRef`, using `<resource>.properties.secrets.name` as `secretName`.
+              properties:
+                name:
+                  type: string
+                  readOnly: true
+                  description: (Reserved) Name of the managed Radius.Security/secrets resource. Use as `secretName` in a container `secretKeyRef`.
+                connectionString:
+                  type: string
+                  readOnly: true
+                  description: The primary connection string used to connect to the queue. Mapped from the recipe module's output; delivered via the managed secret.
           required: [environment]

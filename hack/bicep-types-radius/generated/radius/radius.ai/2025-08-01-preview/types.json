@@ -6,9 +6,6 @@
     "$type": "StringType"
   },
   {
-    "$type": "StringType"
-  },
-  {
     "$type": "BooleanType"
   },
   {
@@ -22,14 +19,14 @@
         "description": "Disables the automatic injection of environment variables from the connected resource's properties.",
         "flags": 0,
         "type": {
-          "$ref": "#/3"
+          "$ref": "#/2"
         }
       },
       "source": {
         "description": "Resource ID of the source resource for this connection.",
         "flags": 1,
         "type": {
-          "$ref": "#/4"
+          "$ref": "#/3"
         }
       }
     }
@@ -37,7 +34,7 @@
   {
     "$type": "ObjectType",
     "additionalProperties": {
-      "$ref": "#/5"
+      "$ref": "#/4"
     },
     "name": "connections",
     "properties": {}
@@ -52,56 +49,82 @@
     "$type": "StringType"
   },
   {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "secrets",
+    "properties": {
+      "apiKey": {
+        "description": "(Read Only) The API key used to call the model inference endpoint. Mapped from the recipe module's `primaryKey` output; delivered via the managed secret.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/9"
+        }
+      },
+      "name": {
+        "description": "(Reserved) Name of the managed Radius.Security/secrets resource. Use as `secretName` in a container `secretKeyRef`.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/10"
+        }
+      }
+    }
+  },
+  {
     "$type": "ObjectType",
     "name": "modelsProperties",
     "properties": {
-      "apiKey": {
-        "description": "(Read Only) The API key used to call the model inference endpoint. Mapped from the recipe module's `primaryKey` output.",
-        "flags": 2,
-        "type": {
-          "$ref": "#/0"
-        }
-      },
       "application": {
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 0,
         "type": {
-          "$ref": "#/1"
+          "$ref": "#/0"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 0,
         "type": {
-          "$ref": "#/2"
+          "$ref": "#/1"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 0,
         "type": {
-          "$ref": "#/6"
+          "$ref": "#/5"
         }
       },
       "endpoint": {
         "description": "(Read Only) The base URL used to call the model inference endpoint. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/7"
+          "$ref": "#/6"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 1,
         "type": {
-          "$ref": "#/8"
+          "$ref": "#/7"
         }
       },
       "model": {
         "description": "(Optional) The model deployment to provision. Defaults to `gpt-5-mini` if not provided.",
         "flags": 0,
         "type": {
-          "$ref": "#/9"
+          "$ref": "#/8"
+        }
+      },
+      "secrets": {
+        "description": "(Read-only) Recipe secrets. The reserved `name` sub-property references the managed Radius.Security/secrets resource Radius materializes from the recipe's `outputs.secrets`; the other sub-properties declare secret keys whose values are written only into that managed secret (never onto this resource). Consumers bind a key into a container env var via `secretKeyRef`, using `\u003cresource\u003e.properties.secrets.name` as `secretName`.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/11"
         }
       }
     }
@@ -127,95 +150,95 @@
     "$type": "ObjectType",
     "name": "Radius.AI/models@2025-08-01-preview",
     "properties": {
-      "apiKey": {
-        "description": "(Read Only) The API key used to call the model inference endpoint. Mapped from the recipe module's `primaryKey` output.",
-        "flags": 2,
-        "type": {
-          "$ref": "#/0"
-        }
-      },
       "apiVersion": {
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/13"
+          "$ref": "#/15"
         }
       },
       "application": {
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 2,
         "type": {
-          "$ref": "#/1"
+          "$ref": "#/0"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 2,
         "type": {
-          "$ref": "#/2"
+          "$ref": "#/1"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 2,
         "type": {
-          "$ref": "#/6"
+          "$ref": "#/5"
         }
       },
       "endpoint": {
         "description": "(Read Only) The base URL used to call the model inference endpoint. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/7"
+          "$ref": "#/6"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 2,
         "type": {
-          "$ref": "#/8"
+          "$ref": "#/7"
         }
       },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/15"
+          "$ref": "#/17"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/12"
+          "$ref": "#/14"
         }
       },
       "model": {
         "description": "(Optional) The model deployment to provision. Defaults to `gpt-5-mini` if not provided.",
         "flags": 2,
         "type": {
-          "$ref": "#/9"
+          "$ref": "#/8"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/11"
+          "$ref": "#/13"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/10"
+          "$ref": "#/12"
+        }
+      },
+      "secrets": {
+        "description": "(Read-only) Recipe secrets. The reserved `name` sub-property references the managed Radius.Security/secrets resource Radius materializes from the recipe's `outputs.secrets`; the other sub-properties declare secret keys whose values are written only into that managed secret (never onto this resource). Consumers bind a key into a container env var via `secretKeyRef`, using `\u003cresource\u003e.properties.secrets.name` as `secretName`.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/11"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/14"
+          "$ref": "#/16"
         }
       }
     }
@@ -223,14 +246,11 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/16"
+      "$ref": "#/18"
     },
     "name": "Radius.AI/models@2025-08-01-preview",
     "readableScopes": 0,
     "writableScopes": 0
-  },
-  {
-    "$type": "StringType"
   },
   {
     "$type": "StringType"
@@ -249,14 +269,14 @@
         "description": "Disables the automatic injection of environment variables from the connected resource's properties.",
         "flags": 0,
         "type": {
-          "$ref": "#/3"
+          "$ref": "#/2"
         }
       },
       "source": {
         "description": "Resource ID of the source resource for this connection.",
         "flags": 1,
         "type": {
-          "$ref": "#/21"
+          "$ref": "#/22"
         }
       }
     }
@@ -264,7 +284,7 @@
   {
     "$type": "ObjectType",
     "additionalProperties": {
-      "$ref": "#/22"
+      "$ref": "#/23"
     },
     "name": "connections",
     "properties": {}
@@ -276,49 +296,75 @@
     "$type": "StringType"
   },
   {
+    "$type": "StringType"
+  },
+  {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "secrets",
+    "properties": {
+      "apiKey": {
+        "description": "The admin API key used to connect to the search service. Mapped from the recipe module's output; delivered via the managed secret.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/27"
+        }
+      },
+      "name": {
+        "description": "(Reserved) Name of the managed Radius.Security/secrets resource. Use as `secretName` in a container `secretKeyRef`.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/28"
+        }
+      }
+    }
+  },
+  {
     "$type": "ObjectType",
     "name": "searchProperties",
     "properties": {
-      "apiKey": {
-        "description": "The admin API key used to connect to the search service. Mapped from the recipe module's output.",
-        "flags": 2,
-        "type": {
-          "$ref": "#/18"
-        }
-      },
       "application": {
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 0,
         "type": {
-          "$ref": "#/19"
+          "$ref": "#/20"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 0,
         "type": {
-          "$ref": "#/20"
+          "$ref": "#/21"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 0,
         "type": {
-          "$ref": "#/23"
+          "$ref": "#/24"
         }
       },
       "endpoint": {
         "description": "The endpoint used to connect to the search service. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/24"
+          "$ref": "#/25"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 1,
         "type": {
-          "$ref": "#/25"
+          "$ref": "#/26"
+        }
+      },
+      "secrets": {
+        "description": "(Read-only) Recipe secrets. The reserved `name` sub-property references the managed Radius.Security/secrets resource Radius materializes from the recipe's `outputs.secrets`; the other sub-properties declare secret keys whose values are written only into that managed secret (never onto this resource). Consumers bind a key into a container env var via `secretKeyRef`, using `\u003cresource\u003e.properties.secrets.name` as `secretName`.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/29"
         }
       }
     }
@@ -344,88 +390,88 @@
     "$type": "ObjectType",
     "name": "Radius.AI/search@2025-08-01-preview",
     "properties": {
-      "apiKey": {
-        "description": "The admin API key used to connect to the search service. Mapped from the recipe module's output.",
-        "flags": 2,
-        "type": {
-          "$ref": "#/18"
-        }
-      },
       "apiVersion": {
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/29"
+          "$ref": "#/33"
         }
       },
       "application": {
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 2,
         "type": {
-          "$ref": "#/19"
+          "$ref": "#/20"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 2,
         "type": {
-          "$ref": "#/20"
+          "$ref": "#/21"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 2,
         "type": {
-          "$ref": "#/23"
+          "$ref": "#/24"
         }
       },
       "endpoint": {
         "description": "The endpoint used to connect to the search service. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/24"
+          "$ref": "#/25"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 2,
         "type": {
-          "$ref": "#/25"
+          "$ref": "#/26"
         }
       },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/35"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/28"
+          "$ref": "#/32"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/27"
+          "$ref": "#/31"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/26"
+          "$ref": "#/30"
+        }
+      },
+      "secrets": {
+        "description": "(Read-only) Recipe secrets. The reserved `name` sub-property references the managed Radius.Security/secrets resource Radius materializes from the recipe's `outputs.secrets`; the other sub-properties declare secret keys whose values are written only into that managed secret (never onto this resource). Consumers bind a key into a container env var via `secretKeyRef`, using `\u003cresource\u003e.properties.secrets.name` as `secretName`.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/29"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/34"
         }
       }
     }
@@ -433,7 +479,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/32"
+      "$ref": "#/36"
     },
     "name": "Radius.AI/search@2025-08-01-preview",
     "readableScopes": 0,
