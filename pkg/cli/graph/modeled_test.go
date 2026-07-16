@@ -614,9 +614,10 @@ func TestBuildModeledGraph_AuthoredMapNotMutated(t *testing.T) {
 }
 
 // TestSensitiveParamNames covers the compiled-template scanner in
-// isolation: only string-typed `secureString` entries are surfaced;
-// malformed or missing parameter blocks return an empty set without
-// error so downstream lookups (`_, ok := set[name]`) are safe.
+// isolation: only `secureString` and `secureObject` entries are surfaced
+// (case-insensitively); malformed or missing parameter blocks return an
+// empty set without error so downstream lookups (`_, ok := set[name]`)
+// are safe.
 func TestSensitiveParamNames(t *testing.T) {
 	t.Parallel()
 
