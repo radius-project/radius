@@ -41,7 +41,7 @@ func NewBicepSettingsClient(credential azcore.TokenCredential, options *arm.Clie
 // If the operation fails it returns an *azcore.ResponseError type.
 //   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
 //     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - bicepSettingsName - Bicep configuration name
+//   - bicepSettingsName - Bicep settings name
 //   - resource - Resource create parameters.
 //   - options - BicepSettingsClientCreateOrUpdateOptions contains the optional parameters for the BicepSettingsClient.CreateOrUpdate
 //     method.
@@ -103,7 +103,7 @@ func (client *BicepSettingsClient) createOrUpdateHandleResponse(resp *http.Respo
 // If the operation fails it returns an *azcore.ResponseError type.
 //   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
 //     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - bicepSettingsName - Bicep configuration name
+//   - bicepSettingsName - Bicep settings name
 //   - options - BicepSettingsClientDeleteOptions contains the optional parameters for the BicepSettingsClient.Delete method.
 func (client *BicepSettingsClient) Delete(ctx context.Context, rootScope string, bicepSettingsName string, options *BicepSettingsClientDeleteOptions) (BicepSettingsClientDeleteResponse, error) {
 	var err error
@@ -148,7 +148,7 @@ func (client *BicepSettingsClient) deleteCreateRequest(ctx context.Context, root
 // If the operation fails it returns an *azcore.ResponseError type.
 //   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
 //     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - bicepSettingsName - Bicep configuration name
+//   - bicepSettingsName - Bicep settings name
 //   - options - BicepSettingsClientGetOptions contains the optional parameters for the BicepSettingsClient.Get method.
 func (client *BicepSettingsClient) Get(ctx context.Context, rootScope string, bicepSettingsName string, options *BicepSettingsClientGetOptions) (BicepSettingsClientGetResponse, error) {
 	var err error
@@ -258,7 +258,7 @@ func (client *BicepSettingsClient) listByScopeHandleResponse(resp *http.Response
 // If the operation fails it returns an *azcore.ResponseError type.
 //   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
 //     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - bicepSettingsName - Bicep configuration name
+//   - bicepSettingsName - Bicep settings name
 //   - properties - The resource properties to be updated.
 //   - options - BicepSettingsClientUpdateOptions contains the optional parameters for the BicepSettingsClient.Update method.
 func (client *BicepSettingsClient) Update(ctx context.Context, rootScope string, bicepSettingsName string, properties BicepSettingsResource, options *BicepSettingsClientUpdateOptions) (BicepSettingsClientUpdateResponse, error) {

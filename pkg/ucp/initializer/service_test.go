@@ -328,10 +328,10 @@ types:
 
 		expectedDescriptionPrefixes := map[string]string{
 			"applications":      "The `Radius.Core/applications` Resource Type represents a Radius Application",
-			"bicepSettings":     "The `Radius.Core/bicepSettings` Resource Type holds reusable Bicep engine configuration",
+			"bicepSettings":     "The `Radius.Core/bicepSettings` Resource Type holds reusable Bicep engine settings",
 			"environments":      "The `Radius.Core/environments` Resource Type represents a Radius Environment",
 			"recipePacks":       "The `Radius.Core/recipePacks` Resource Type represents a Recipe Pack",
-			"terraformSettings": "The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI configuration",
+			"terraformSettings": "The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI settings",
 		}
 		require.Len(t, expectedDescriptionPrefixes, len(radiusCoreTypeOpenAPIDefinitions))
 		for typeName, expectedDescriptionPrefix := range expectedDescriptionPrefixes {

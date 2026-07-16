@@ -97,14 +97,14 @@ model ApplicationResource
 
 @doc("Application properties")
 model ApplicationProperties {
-  @doc("The status of the asynchronous operation.")
+  @doc("(Read Only) The status of the Application resource within the Radius control plane. Does not include the other resources that compose the Application.")
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
-  @doc("Fully qualified resource ID for the environment that the application is linked to")
+  @doc("(Required) Fully qualified resource ID of the environment the application is deployed to")
   environment: string;
 
-  @doc("Status of a resource.")
+  @doc("(Read Only) Deployment details for the Application, including any output resources Radius created for it.")
   @visibility(Lifecycle.Read)
   status?: ResourceStatus;
 }

@@ -36,7 +36,7 @@ using OpenAPI;
 namespace Radius.Core;
 
 @doc("""
-  The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI configuration that Environments apply when running Terraform Recipes. Its primary use is authenticating to private Terraform registries that host the modules referenced by a Recipe Pack, along with configuring provider installation and injecting environment variables during Recipe execution.
+  The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI settings that Environments apply when running Terraform Recipes. Its primary use is authenticating to private Terraform registries that host the modules referenced by a Recipe Pack, along with configuring provider installation and injecting environment variables during Recipe execution.
   
   Platform engineers define a `Radius.Core/terraformSettings` resource once and reference it from any Environment whose Recipes pull modules from a private registry.
   
@@ -146,72 +146,72 @@ namespace Radius.Core;
   """)
 model TerraformSettingsResource
   is TrackedResourceRequired<TerraformSettingsProperties, "terraformSettings"> {
-  @doc("Terraform configuration name")
+  @doc("Terraform settings name")
   @key("terraformSettingsName")
   @path
   @segment("terraformSettings")
   name: ResourceNameString;
 }
 
-@doc("Terraform configuration properties.")
+@doc("Terraform settings properties.")
 model TerraformSettingsProperties {
-  @doc("The status of the asynchronous operation.")
+  @doc("(Read Only) The status of the Terraform settings resource within the Radius control plane.")
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
-  @doc("Environments that reference this Terraform configuration.")
+  @doc("(Read Only) Resource IDs of the Environments that reference this Terraform settings resource.")
   @visibility(Lifecycle.Read)
   referencedBy?: string[];
 
-  @doc("Terraform CLI configuration file settings. Maps directly to the Terraform CLI configuration file (.terraformrc).")
+  @doc("(Optional) Settings for the Terraform CLI configuration file. Radius renders these into a `.terraformrc` file used when running Terraform Recipes.")
   terraformrc?: TerraformrcConfig;
 
-  @doc("Environment variables injected during Terraform recipe execution.")
+  @doc("(Optional) Environment variables injected into the Terraform process during Recipe execution.")
   env?: Record<string>;
 }
 
 @doc("Terraform CLI configuration file (.terraformrc) settings. See https://developer.hashicorp.com/terraform/cli/config for details.")
 model TerraformrcConfig {
-  @doc("Provider installation configuration. Specifies the location of providers via network mirrors or direct downloads.")
+  @doc("(Optional) Controls where Terraform installs providers from, such as a network mirror instead of the public registry.")
   providerInstallation?: TerraformProviderInstallation;
 
-  @doc("Credentials for authenticating to private Terraform registries (HTTP-based, e.g. app.terraform.io). Map of registry hostname to credential configuration. Rendered as native `credentials \"hostname\" {}` blocks in the generated .terraformrc. Note: this is for Terraform CLI registry auth (HTTP), not for Git-based module sources; Git auth is a separate mechanism.")
+  @doc("(Optional) Credentials for authenticating to private Terraform registries such as `app.terraform.io`. Maps a registry hostname to its credential configuration. This authenticates to Terraform CLI registries over HTTP and does not authenticate Git-based module sources, which use a separate mechanism.")
   credentials?: Record<TerraformCredentialConfig>;
 }
 
 @doc("Provider installation configuration for Terraform CLI.")
 model TerraformProviderInstallation {
-  @doc("Network mirror configuration for downloading providers.")
+  @doc("(Optional) A network mirror to install providers from instead of the public registry.")
   networkMirror?: TerraformProviderMirror;
 
-  @doc("Direct provider installation configuration.")
+  @doc("(Optional) Providers to install directly from the public registry rather than a mirror.")
   direct?: TerraformProviderDirect;
 }
 
 @doc("Network mirror configuration for Terraform providers.")
 model TerraformProviderMirror {
-  @doc("The URL of the provider mirror.")
+  @doc("(Optional) The URL of the provider mirror.")
   url?: string;
 
-  @doc("Provider address patterns to include from this mirror.")
+  @doc("(Optional) Provider address patterns to include from this mirror.")
   include?: string[];
 
-  @doc("Provider address patterns to exclude from this mirror.")
+  @doc("(Optional) Provider address patterns to exclude from this mirror.")
   exclude?: string[];
 }
 
 @doc("Direct provider installation configuration.")
 model TerraformProviderDirect {
-  @doc("Provider address patterns to include for direct installation.")
+  @doc("(Optional) Provider address patterns to include for direct installation.")
   include?: string[];
 
-  @doc("Provider address patterns to exclude from direct installation.")
+  @doc("(Optional) Provider address patterns to exclude from direct installation.")
   exclude?: string[];
 }
 
 @doc("Credential configuration for a Terraform registry or module source host.")
 model TerraformCredentialConfig {
-  @doc("The ID of a secret resource containing the authentication token. Supported types: Radius.Security/secrets (recommended) or Applications.Core/secretStores. The secret must have a key named 'token'.")
+  @doc("(Optional) The ID of a `Radius.Security/secrets` resource containing the authentication token. The secret must have a key named `token`.")
   secret?: string;
 }
 

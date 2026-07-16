@@ -132,33 +132,33 @@ model RecipePackResource
 
 @doc("Recipe Pack properties")
 model RecipePackProperties {
-  @doc("The status of the asynchronous operation")
+  @doc("(Read Only) The status of the Recipe Pack resource within the Radius control plane.")
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
-  @doc("List of environment IDs that reference this recipe pack")
+  @doc("(Read Only) Resource IDs of the Environments that reference this Recipe Pack.")
   @visibility(Lifecycle.Read)
   referencedBy?: string[];
 
-  @doc("Map of resource types to their recipe configurations")
+  @doc("(Required) The Recipes in this pack, keyed by the resource type each Recipe provisions. Each key is a resource type such as `Radius.Data/redisCaches`.")
   recipes: Record<RecipeDefinition>;
 }
 
 @doc("Recipe definition for a specific resource type")
 model RecipeDefinition {
-  @doc("The type of recipe (e.g., Terraform, Bicep)")
+  @doc("(Required) The kind of Recipe, which determines how Radius runs it.")
   kind: RecipeKind;
 
-  @doc("Connect to the source using HTTP (not HTTPS). This should be used when the source is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)")
+  @doc("(Optional) Connect to the source using HTTP instead of HTTPS. Use this only when the source does not support HTTPS such as a locally hosted registry for Bicep recipes. Defaults to `false` if not specified.")
   plainHttp?: boolean;
 
-  @doc("The source of the recipe. For Bicep recipes this is the OCI registry reference. For Terraform recipes this is the module source.")
+  @doc("(Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes this is the module source such as a Git URL or a Terraform registry module.")
   source: string;
 
-  @doc("Parameters to pass to the recipe")
+  @doc("(Optional) Default parameter values passed to the Recipe when it runs. An Environment can override these per resource type through its `recipeParameters` property.")
   parameters?: Record<unknown>;
 
-  @doc("Maps the module's outputs onto the resource type's properties, for recipes that point directly at a Bicep or Terraform module. Each entry's value is either a string (the module output name for a non-secret property) or, under the reserved `secrets` key, a nested object mapping secret property names to module output names. A `secrets` entry always routes its module output to the resource's secret outputs regardless of how the module classified it (for example an AVM module's `primaryConnectionString`). Example: `{ host: 'name', secrets: { connectionString: 'primaryConnectionString' } }`.")
+  @doc("(Optional) Maps the module outputs onto the resource type properties for recipes that point directly at a Bicep or Terraform module. Each value is the module output name for a non-secret property. Under the reserved `secrets` key a nested object maps secret property names to module output names and always routes those outputs to the resource secret outputs.")
   outputs?: Record<unknown>;
 }
 

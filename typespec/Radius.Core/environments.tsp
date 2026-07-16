@@ -134,7 +134,7 @@ namespace Radius.Core;
   
   ## Advanced Terraform and Bicep settings
   
-  For advanced Terraform and Bicep configuration, such as private module sources and registry authentication, reference a `Radius.Core/terraformSettings` or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings` properties.
+  For advanced Terraform and Bicep settings, such as private module sources and registry authentication, reference a `Radius.Core/terraformSettings` or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings` properties.
   
   For more information, see the Radius documentation at https://docs.radapp.io.
   """)
@@ -149,26 +149,26 @@ model EnvironmentResource
 
 @doc("Environment properties")
 model EnvironmentProperties {
-  @doc("The status of the asynchronous operation.")
+  @doc("(Read Only) The status of the Environment resource within the Radius control plane. Does not include the resources deployed to the Environment.")
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
-  @doc("List of Recipe Pack resource IDs linked to this environment.")
+  @doc("(Optional) Resource IDs of the Recipe Packs this Environment uses to provision infrastructure for application resources. Defaults to the `default` Recipe Pack in the `default` resource group if not specified.")
   recipePacks?: string[];
 
-  @doc("Recipe specific parameters that apply to all resources of a given type in this environment.")
+  @doc("(Optional) Parameters passed to Recipes when they run, keyed by resource type. Values here override the default parameters defined in the Recipe Pack for every resource of that type deployed to this Environment.")
   recipeParameters?: Record<RecipeParameterValue>;
 
-  @doc("Cloud provider configuration for the environment.")
+  @doc("(Optional) Target compute platform and cloud provider accounts that resources are deployed into. Defaults to Kubernetes in the `default` namespace if not specified.")
   providers?: Providers;
 
-  @doc("Resource ID of a Radius.Core/terraformSettings resource providing Terraform recipe settings.")
+  @doc("(Optional) Resource ID of a `Radius.Core/terraformSettings` resource that supplies Terraform CLI settings, such as private registry credentials, used when running Terraform Recipes in this Environment.")
   terraformSettings?: string;
 
-  @doc("Resource ID of a Radius.Core/bicepSettings resource providing Bicep recipe settings.")
+  @doc("(Optional) Resource ID of a `Radius.Core/bicepSettings` resource that supplies Bicep engine settings, such as private registry authentication, used when running Bicep Recipes in this Environment.")
   bicepSettings?: string;
 
-  @doc("Simulated environment.")
+  @doc("(Optional) When true, the Environment is simulated and does not deploy real infrastructure. Recipes are evaluated but no resources are provisioned, which is useful for validating application definitions. Defaults to `false` if not specified.")
   simulated?: boolean;
 }
 
@@ -179,38 +179,38 @@ model RecipeParameterValue {
 
 @doc("The Azure cloud provider definition.")
 model ProvidersAzure {
-  @doc("Azure subscription ID hosting deployed resources.")
+  @doc("(Required) ID of the Azure subscription that resources are deployed into.")
   subscriptionId: string;
 
-  @doc("Optional resource group name.")
+  @doc("(Optional) Name of the Azure resource group that resources are deployed into. Most Bicep and Terraform Recipes expect a resource group in the deployment context, so set this whenever deploying Azure resources.")
   resourceGroupName?: string;
 
-  @doc("External identity settings (moved from compute).")
+  @doc("(Optional) Managed or workload identity Radius uses to authenticate to Azure when deploying resources.")
   identity?: IdentitySettings;
 }
 
 model ProvidersKubernetes {
-  @doc("Kubernetes namespace to deploy workloads into.")
+  @doc("(Required) Kubernetes namespace that workloads are deployed into.")
   `namespace`: string;
 }
 
 @doc("The AWS cloud provider definition.")
 model ProvidersAws {
-  @doc("AWS account ID for AWS resources to be deployed into.")
+  @doc("(Required) ID of the AWS account that resources are deployed into.")
   accountId: string;
 
-  @doc("AWS region for AWS resources to be deployed into.")
+  @doc("(Required) AWS region that resources are deployed into.")
   region: string;
 }
 
 model Providers {
-  @doc("The Azure cloud provider configuration.")
+  @doc("(Optional) Configuration for deploying resources to Azure.")
   azure?: ProvidersAzure;
 
-  @doc("The Kubernetes provider configuration.")
+  @doc("(Optional) Configuration for deploying resources to Kubernetes.")
   kubernetes?: ProvidersKubernetes;
 
-  @doc("The AWS cloud provider configuration.")
+  @doc("(Optional) Configuration for deploying resources to AWS.")
   aws?: ProvidersAws;
 }
 

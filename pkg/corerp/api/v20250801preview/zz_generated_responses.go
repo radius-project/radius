@@ -166,7 +166,7 @@ type ApplicationsClientUpdateResponse struct {
 
 // BicepSettingsClientCreateOrUpdateResponse contains the response from method BicepSettingsClient.CreateOrUpdate.
 type BicepSettingsClientCreateOrUpdateResponse struct {
-	// The `Radius.Core/bicepSettings` Resource Type holds reusable Bicep engine configuration that Environments apply when running
+	// The `Radius.Core/bicepSettings` Resource Type holds reusable Bicep engine settings that Environments apply when running
 	// Bicep Recipes. Its primary use is authenticating to private Bicep registries: OCI registries, such as Azure Container Registry,
 	// that host the Recipe templates referenced by a Recipe Pack.
 	// Platform engineers define a `Radius.Core/bicepSettings` resource once and reference it from any Environment whose Recipes
@@ -234,7 +234,7 @@ type BicepSettingsClientDeleteResponse struct {
 
 // BicepSettingsClientGetResponse contains the response from method BicepSettingsClient.Get.
 type BicepSettingsClientGetResponse struct {
-	// The `Radius.Core/bicepSettings` Resource Type holds reusable Bicep engine configuration that Environments apply when running
+	// The `Radius.Core/bicepSettings` Resource Type holds reusable Bicep engine settings that Environments apply when running
 	// Bicep Recipes. Its primary use is authenticating to private Bicep registries: OCI registries, such as Azure Container Registry,
 	// that host the Recipe templates referenced by a Recipe Pack.
 	// Platform engineers define a `Radius.Core/bicepSettings` resource once and reference it from any Environment whose Recipes
@@ -303,7 +303,7 @@ type BicepSettingsClientListByScopeResponse struct {
 
 // BicepSettingsClientUpdateResponse contains the response from method BicepSettingsClient.Update.
 type BicepSettingsClientUpdateResponse struct {
-	// The `Radius.Core/bicepSettings` Resource Type holds reusable Bicep engine configuration that Environments apply when running
+	// The `Radius.Core/bicepSettings` Resource Type holds reusable Bicep engine settings that Environments apply when running
 	// Bicep Recipes. Its primary use is authenticating to private Bicep registries: OCI registries, such as Azure Container Registry,
 	// that host the Recipe templates referenced by a Recipe Pack.
 	// Platform engineers define a `Radius.Core/bicepSettings` resource once and reference it from any Environment whose Recipes
@@ -449,9 +449,8 @@ type EnvironmentsClientCreateOrUpdateResponse struct {
 	// Use `recipeParameters` to pass environment-specific parameters to the Recipes defined in the referenced Recipe Packs, for
 	// example to standardize configuration such as SKUs or instance sizes across an Environment.
 	// ## Advanced Terraform and Bicep settings
-	// For advanced Terraform and Bicep configuration, such as private module sources and registry authentication, reference a
-	// `Radius.Core/terraformSettings` or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings`
-	// properties.
+	// For advanced Terraform and Bicep settings, such as private module sources and registry authentication, reference a `Radius.Core/terraformSettings`
+	// or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings` properties.
 	// For more information, see the Radius documentation at https://docs.radapp.io.
 	EnvironmentResource
 }
@@ -546,9 +545,8 @@ type EnvironmentsClientGetResponse struct {
 	// Use `recipeParameters` to pass environment-specific parameters to the Recipes defined in the referenced Recipe Packs, for
 	// example to standardize configuration such as SKUs or instance sizes across an Environment.
 	// ## Advanced Terraform and Bicep settings
-	// For advanced Terraform and Bicep configuration, such as private module sources and registry authentication, reference a
-	// `Radius.Core/terraformSettings` or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings`
-	// properties.
+	// For advanced Terraform and Bicep settings, such as private module sources and registry authentication, reference a `Radius.Core/terraformSettings`
+	// or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings` properties.
 	// For more information, see the Radius documentation at https://docs.radapp.io.
 	EnvironmentResource
 }
@@ -644,9 +642,8 @@ type EnvironmentsClientUpdateResponse struct {
 	// Use `recipeParameters` to pass environment-specific parameters to the Recipes defined in the referenced Recipe Packs, for
 	// example to standardize configuration such as SKUs or instance sizes across an Environment.
 	// ## Advanced Terraform and Bicep settings
-	// For advanced Terraform and Bicep configuration, such as private module sources and registry authentication, reference a
-	// `Radius.Core/terraformSettings` or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings`
-	// properties.
+	// For advanced Terraform and Bicep settings, such as private module sources and registry authentication, reference a `Radius.Core/terraformSettings`
+	// or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings` properties.
 	// For more information, see the Radius documentation at https://docs.radapp.io.
 	EnvironmentResource
 }
@@ -922,9 +919,9 @@ type RecipePacksClientUpdateResponse struct {
 
 // TerraformSettingsClientCreateOrUpdateResponse contains the response from method TerraformSettingsClient.CreateOrUpdate.
 type TerraformSettingsClientCreateOrUpdateResponse struct {
-	// The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI configuration that Environments apply when
-	// running Terraform Recipes. Its primary use is authenticating to private Terraform registries that host the modules referenced
-	// by a Recipe Pack, along with configuring provider installation and injecting environment variables during Recipe execution.
+	// The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI settings that Environments apply when running
+	// Terraform Recipes. Its primary use is authenticating to private Terraform registries that host the modules referenced by
+	// a Recipe Pack, along with configuring provider installation and injecting environment variables during Recipe execution.
 	// Platform engineers define a `Radius.Core/terraformSettings` resource once and reference it from any Environment whose Recipes
 	// pull modules from a private registry.
 	// ## Defining Terraform settings
@@ -1024,9 +1021,9 @@ type TerraformSettingsClientDeleteResponse struct {
 
 // TerraformSettingsClientGetResponse contains the response from method TerraformSettingsClient.Get.
 type TerraformSettingsClientGetResponse struct {
-	// The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI configuration that Environments apply when
-	// running Terraform Recipes. Its primary use is authenticating to private Terraform registries that host the modules referenced
-	// by a Recipe Pack, along with configuring provider installation and injecting environment variables during Recipe execution.
+	// The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI settings that Environments apply when running
+	// Terraform Recipes. Its primary use is authenticating to private Terraform registries that host the modules referenced by
+	// a Recipe Pack, along with configuring provider installation and injecting environment variables during Recipe execution.
 	// Platform engineers define a `Radius.Core/terraformSettings` resource once and reference it from any Environment whose Recipes
 	// pull modules from a private registry.
 	// ## Defining Terraform settings
@@ -1127,9 +1124,9 @@ type TerraformSettingsClientListByScopeResponse struct {
 
 // TerraformSettingsClientUpdateResponse contains the response from method TerraformSettingsClient.Update.
 type TerraformSettingsClientUpdateResponse struct {
-	// The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI configuration that Environments apply when
-	// running Terraform Recipes. Its primary use is authenticating to private Terraform registries that host the modules referenced
-	// by a Recipe Pack, along with configuring provider installation and injecting environment variables during Recipe execution.
+	// The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI settings that Environments apply when running
+	// Terraform Recipes. Its primary use is authenticating to private Terraform registries that host the modules referenced by
+	// a Recipe Pack, along with configuring provider installation and injecting environment variables during Recipe execution.
 	// Platform engineers define a `Radius.Core/terraformSettings` resource once and reference it from any Environment whose Recipes
 	// pull modules from a private registry.
 	// ## Defining Terraform settings
