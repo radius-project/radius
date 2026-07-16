@@ -159,6 +159,8 @@ In every case, the frontend is responsible for surfacing the outcome and its rem
 
 With the application already modeled in `app.bicep`, the developer asks the frontend to deploy it. Repo Radius runs on demand inside a GitHub Actions runner, provisions the resources defined in `app.bicep` and shuts down. The developer never installs or configures Radius or learns each provider's resource types and arguments.
 
+This is the same standard deployment Radius performs today; Repo Radius does not change how Radius deploys applications. The only potential change to core Radius is adjusting the output of the `rad deploy` command so the frontend can collect incremental deployment progress updates.
+
 #### User Experience
 
 The developer asks the frontend to deploy an application:
@@ -196,8 +198,6 @@ Only commands from an allowed set are accepted; each entry in `rad_commands` is 
 On dispatch, the action checks out the repository at the requested `ref` (or the latest commit if not specified) to obtain the application definition, authenticates to the cloud provider using the environment's OIDC variables, then creates a fresh ephemeral Radius control plane on the runner and loads the persisted data store into it. The control plane hosts Radius only; the application is deployed to the environment's own EKS or AKS cluster. The action uses the default recipe pack so the application's resources resolve without the developer authoring recipes, runs the requested `rad` commands in order (stopping at the first failure), and writes the updated data store back so the next operation resumes from it. This per-run control plane lifecycle is common to every `run-rad-commands` operation.
 
 The run performs two commands: `rad deploy` provisions the resources, and `rad app graph` returns the application graph. The `rad app graph` output provides each resource's cloud provider resource ID, the connections between components, and the reachable endpoints, which the frontend surfaces so the developer can confirm everything was wired as modeled (User Experience step 4). On success, the action uploads a single `run-rad-commands-result` artifact whose `commands` array holds the output of the deployment and the application graph JSON (see Appendix 4 for an example). On a successful deployment, the action also records a GitHub Deployment for the environment at the deployed commit, so the version running in each environment is tracked in GitHub and can later be promoted to another environment (User Story 3.1). The frontend uses the streaming workflow logs to report incremental progress and the `run-rad-commands-result` artifact to report the final outcome to the developer.
-
-This is the same standard deployment Radius performs today; Repo Radius does not change how Radius deploys applications. The only potential change to core Radius is adjusting the output of the `rad deploy` command so the frontend can collect incremental deployment progress updates.
 
 #### Exceptions
 
@@ -348,7 +348,7 @@ A breaking change (to the workflow inputs, the allowed command set, or the resul
 
 > As a developer, I want to move my application from Repo Radius to a self-hosted Radius installation, so that I can grow beyond Repo Radius without rewriting my application.
 
-Repo Radius runs the same Radius as a self-hosted installation and uses only the standard resource types that ship with Radius. Therefore an application definition is fully portable. A team that outgrows Repo Radius can deploy the same definition to a self-hosted Radius installation without modification. Limiting Repo Radius to only using the standard resource types is a limitation that is accepted to guarantee portability (this is a two-way door that can be revisited in the future).
+Repo Radius runs the same Radius as a self-hosted installation, so an application definition is fully portable. When an application needs a resource type beyond the standard types that ship with Radius, the frontend creates the custom resource type and stores its definition in the repository's `.radius` directory alongside the application definition. Because both the application definition and any custom resource types live in the repository, nothing is locked inside Repo Radius. A team that outgrows Repo Radius migrates by taking their `app.bicep` and any custom resource types created under `.radius`, registering those resource types in their self-hosted Radius control plane, and deploying the same application definition without modification.
 
 ## User Journey 5: Tailor Repo Radius for a team
 
@@ -360,7 +360,7 @@ User Journey 5 covers the platform engineer, not the developer. Both stories are
 
 The platform engineer wants a developer asking for a database, cache, or queue to get infrastructure that meets organizational standards for naming, tagging, network and security baselines, approved services and SKUs, and cost controls, rather than the out-of-the-box defaults. This requires replacing or extending the recipe pack Repo Radius registers on each run.
 
-Customizing the recipe pack is out of scope for the initial release (see Non-goals). Every run uses the default AWS and Azure recipe pack that ships with Radius. In the future we imagine a platform engineer specifying an organization-wide recipe pack that Repo Radius applies in place of the default, so a developer's resource request is provisioned to the organization's standards without the developer doing anything differently. Because self-hosted Radius already supports custom recipes, this is mainly a matter of giving Repo Radius a place to reference the platform engineer's recipe pack.
+Customizing the recipe pack is out of scope for the initial release (see Non-goals). Every run uses the default recipe pack that ships with Radius. In the future we imagine a platform engineer specifying an organization-wide recipe pack that Repo Radius applies in place of the default, so a developer's resource request is provisioned to the organization's standards without the developer doing anything differently. Because self-hosted Radius already supports custom recipes, this is mainly a matter of giving Repo Radius a place to reference the platform engineer's recipe pack.
 
 ### User Story 5.2: Predefine environments for developers
 
@@ -369,6 +369,8 @@ Customizing the recipe pack is out of scope for the initial release (see Non-goa
 The platform engineer wants to define the environments teams are allowed to deploy to once, with the correct cloud accounts, clusters, and guardrails, and have developers simply select from them rather than each configuring their own identity federation and cloud targets (User Story 1.1).
 
 Because Repo Radius models each environment as a GitHub Environment (User Story 1.1), a platform engineer can already create and govern these environments using GitHub's native environment management and protection rules, and developers deploy to the ones that exist. A first-class experience for predefining a catalog of approved environments that developers select from, with organization-wide governance, is deferred and out of scope for this specification.
+
+We considered a Radius-specific solution for platform engineers to define multiple environments via an `env.bicep` file in the repository instead of modeling each environment as a GitHub Environment. The drawback is that this approach duplicates a concept GitHub already provides. Cloud credentials must still be stored as GitHub Environment secrets, so an `env.bicep` would split related configuration across two locations: non-secret details in the file and secrets in the GitHub Environment. See Appendix 3: Alternatives considered for a deeper discussion.
 
 ## Appendix 1: Requirements
 
