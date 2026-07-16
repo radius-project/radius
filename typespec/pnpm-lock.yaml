@@ -21,8 +21,8 @@ importers:
         specifier: ^0.69.2
         version: 0.69.2(543940a89faa097d53924f703e0b70ff)
       '@azure-tools/typespec-go':
-        specifier: ^0.14.2
-        version: 0.14.2(@azure-tools/typespec-client-generator-core@0.69.2(543940a89faa097d53924f703e0b70ff))(@typespec/compiler@1.13.0(@types/node@25.9.3))(@typespec/http@1.13.0(@typespec/compiler@1.13.0(@types/node@25.9.3))(@typespec/streams@0.83.0(@typespec/compiler@1.13.0(@types/node@25.9.3))))
+        specifier: ^0.14.3
+        version: 0.14.3(@azure-tools/typespec-client-generator-core@0.69.2(543940a89faa097d53924f703e0b70ff))(@typespec/compiler@1.13.0(@types/node@25.9.3))(@typespec/http@1.13.0(@typespec/compiler@1.13.0(@types/node@25.9.3))(@typespec/streams@0.83.0(@typespec/compiler@1.13.0(@types/node@25.9.3))))
       '@typespec/compiler':
         specifier: ^1.13.0
         version: 1.13.0(@types/node@25.9.3)
@@ -118,13 +118,13 @@ packages:
       '@typespec/versioning': ^0.83.0
       '@typespec/xml': ^0.83.0
 
-  '@azure-tools/typespec-go@0.14.2':
-    resolution: {integrity: sha512-+JPy3SkxzDL88z4PvBoO4jBO5fOY6iGgmUZ6HArEPYn4aOLnXLTCdpuoRIb/iEvx4e4dzTfCtgmdsQBcH+2pww==}
+  '@azure-tools/typespec-go@0.14.3':
+    resolution: {integrity: sha512-6RLrqg7Du299Rp5rtL1us20filNStcmlIPVK79p2ryCGeaPP4ip4alJqUcg8WmOjqzwNND7MkePwGusYuQXkSA==}
     engines: {node: '>=22.0.0'}
     peerDependencies:
-      '@azure-tools/typespec-client-generator-core': ^0.68.3
-      '@typespec/compiler': ^1.12.0
-      '@typespec/http': ^1.12.0
+      '@azure-tools/typespec-client-generator-core': ^0.69.0
+      '@typespec/compiler': ^1.13.0
+      '@typespec/http': ^1.13.0
 
   '@azure/openapi-markdown@0.9.4':
     resolution: {integrity: sha512-QBxabmf+64mQuyWRLsBoLKdvB7PH2U9RsyQMekorl17DOVEkgQxMsQdL/WMlz/V2wMyiI433FlrbdUiiFapfKg==}
@@ -912,6 +912,11 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  semver@7.8.5:
+    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
+    engines: {node: '>=10'}
+    hasBin: true
+
   set-blocking@2.0.0:
     resolution: {integrity: sha512-KiKBS8AnWGEyLzofFfmvKwpdPzqiy16LvQfK3yv/fVH7Bj13/wl3JSR1J+rfgRE9q7xUJK4qvgS8raSOeLUehw==}
 
@@ -1148,12 +1153,12 @@ snapshots:
       pluralize: 8.0.0
       yaml: 2.9.0
 
-  '@azure-tools/typespec-go@0.14.2(@azure-tools/typespec-client-generator-core@0.69.2(543940a89faa097d53924f703e0b70ff))(@typespec/compiler@1.13.0(@types/node@25.9.3))(@typespec/http@1.13.0(@typespec/compiler@1.13.0(@types/node@25.9.3))(@typespec/streams@0.83.0(@typespec/compiler@1.13.0(@types/node@25.9.3))))':
+  '@azure-tools/typespec-go@0.14.3(@azure-tools/typespec-client-generator-core@0.69.2(543940a89faa097d53924f703e0b70ff))(@typespec/compiler@1.13.0(@types/node@25.9.3))(@typespec/http@1.13.0(@typespec/compiler@1.13.0(@types/node@25.9.3))(@typespec/streams@0.83.0(@typespec/compiler@1.13.0(@types/node@25.9.3))))':
     dependencies:
       '@azure-tools/typespec-client-generator-core': 0.69.2(543940a89faa097d53924f703e0b70ff)
       '@typespec/compiler': 1.13.0(@types/node@25.9.3)
       '@typespec/http': 1.13.0(@typespec/compiler@1.13.0(@types/node@25.9.3))(@typespec/streams@0.83.0(@typespec/compiler@1.13.0(@types/node@25.9.3)))
-      semver: 7.8.4
+      semver: 7.8.5
       source-map-support: 0.5.21
 
   '@azure/openapi-markdown@0.9.4':
@@ -1913,6 +1918,8 @@ snapshots:
   safer-buffer@2.1.2: {}
 
   semver@7.8.4: {}
+
+  semver@7.8.5: {}
 
   set-blocking@2.0.0: {}
 
