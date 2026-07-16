@@ -146,6 +146,59 @@ func TestValidateIcon(t *testing.T) {
 			wantErr: "references external resource",
 		},
 		{
+			name:    "external marker-start url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><line marker-start="url(https://evil.example/m)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external marker-mid url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><line marker-mid="url(https://evil.example/m)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external marker-end url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><line marker-end="url(https://evil.example/m)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external marker shorthand url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><line marker="url(https://evil.example/m)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external cursor url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect cursor="url(https://evil.example/c.cur)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name: "marker-start with intra-document fragment is fine",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><defs><marker id="arrow"/></defs><line marker-start="url(#arrow)"/></svg>`,
+		},
+		{
+			name: "cursor with intra-document fragment is fine",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><rect cursor="url(#custom)"/></svg>`,
+		},
+		{
+			name:    "css escape bypass in fill (backslash unescapes to url() at render time)",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="u\72l(https://evil.example/b)"/></svg>`,
+			wantErr: "backslash escape",
+		},
+		{
+			name:    "css escape bypass anywhere in the value",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect stroke="\75rl(#g)"/></svg>`,
+			wantErr: "backslash escape",
+		},
+		{
+			name:    "css escape in marker-start",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><line marker-start="u\72l(https://evil.example/m)"/></svg>`,
+			wantErr: "backslash escape",
+		},
+		{
+			name:    "css escape in href",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><image href="\68ttps://evil.example/x.png"/></svg>`,
+			wantErr: "backslash escape",
+		},
+		{
 			name:    "data url in fill rejected",
 			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(data:image/svg+xml;base64,PHN2Zy8+)"/></svg>`,
 			wantErr: "references external resource",

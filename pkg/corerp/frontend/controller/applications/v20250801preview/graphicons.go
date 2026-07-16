@@ -18,6 +18,8 @@ package v20250801preview
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -28,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
@@ -83,6 +86,7 @@ func fetchIcons(ctx context.Context, connection sdk.Connection, graph *corerpv20
 	}
 
 	icons := map[string]resourceTypeIcon{}
+	logger := ucplog.FromContextOrDiscard(ctx)
 	for namespace := range namespaces {
 		summary, err := client.GetProviderSummary(ctx, "local", namespace, opts)
 		if err != nil {
@@ -103,14 +107,66 @@ func fetchIcons(ctx context.Context, connection sdk.Connection, graph *corerpv20
 			if rt == nil || rt.IconHash == nil {
 				continue
 			}
+			fullType := namespace + "/" + typeName
 			entry := resourceTypeIcon{hash: to.String(rt.IconHash)}
 			if includeBytes {
-				entry.bytes = to.String(rt.Icon)
+				bytes := to.String(rt.Icon)
+				// Integrity check: the registry returned both an
+				// `iconHash` (canonical, computed at write time by the
+				// server's encryption/ingest pipeline) and `Icon` bytes
+				// for the same resource type. If the bytes do not hash
+				// back to the advertised hash, storage or transport has
+				// diverged them and the bytes are not authoritative. In
+				// that case treat the type as if it had no icon
+				// registered — leaving `entry.hash` empty triggers the
+				// existing default-fallback path in `attachIconHashes`
+				// and `buildIconsMap`, so the affected nodes get the
+				// product default icon rather than blank tiles, and
+				// consumers never receive bytes that do not match their
+				// advertised hash. Only performed when bytes were
+				// requested (includeBytes=true); the hash-only path
+				// forwards the advertised hash unchanged.
+				if !bytesMatchHash(bytes, entry.hash) {
+					logger.Info("icon integrity check failed; falling back to product default",
+						"resourceType", fullType,
+						"advertisedHash", entry.hash)
+					continue
+				}
+				entry.bytes = bytes
 			}
-			icons[namespace+"/"+typeName] = entry
+			icons[fullType] = entry
 		}
 	}
 	return icons, nil
+}
+
+// bytesMatchHash reports whether SHA-256(bytes) hex-encoded equals
+// advertisedHash. Comparison is case-insensitive on the hex encoding to
+// tolerate producers that emit uppercase hex. An empty advertisedHash
+// never matches — callers should treat that as "no icon" rather than
+// "authoritative empty icon."
+func bytesMatchHash(bytes, advertisedHash string) bool {
+	if advertisedHash == "" {
+		return false
+	}
+	sum := sha256.Sum256([]byte(bytes))
+	return hex.EncodeToString(sum[:]) == advertisedHash ||
+		hex.EncodeToString(sum[:]) == toLower(advertisedHash)
+}
+
+// toLower is a byte-wise ASCII lowercase for hex strings. Avoids pulling
+// in the strings package's Unicode-aware ToLower for a compare that only
+// needs to normalize [A-F] -> [a-f].
+func toLower(s string) string {
+	out := make([]byte, len(s))
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'F' {
+			c += 'a' - 'A'
+		}
+		out[i] = c
+	}
+	return string(out)
 }
 
 // attachIconHashes stamps iconHash on every resource in payload, using the

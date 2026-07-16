@@ -200,3 +200,80 @@ func Test_fetchIcons_ExternalProviderNotFound(t *testing.T) {
 	assert.Equal(t, "hash-containers", icons["Radius.Compute/containers"].hash)
 	assert.NotContains(t, icons, "Microsoft.Storage/storageAccounts")
 }
+
+// Test_fetchIcons_IntegrityCheck exercises the content-addressed
+// integrity check on per-type icon bytes when includeBytes=true. Two
+// types share the same graph:
+//
+//   - Radius.Compute/containers advertises hash H1 and returns bytes B1
+//     where sha256(B1) == H1 — the entry survives with both hash and
+//     bytes populated.
+//   - Radius.Data/mySqlDatabases advertises hash H2 but returns bytes B2
+//     where sha256(B2) != H2 — the entry is dropped entirely so
+//     downstream code (attachIconHashes) falls back to the product
+//     default for that type's nodes.
+//
+// The test also asserts fetchIcons does not fail the whole request on
+// integrity mismatch — the graph must still render, just without an
+// authoritative icon for the corrupted type.
+func Test_fetchIcons_IntegrityCheck(t *testing.T) {
+	const goodBytes = `<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>`
+	const goodHash = "cf34eb5c0999c5fce90abb88ee2a9afa9d71ac5ecd613169fb1d4d692441cb48"
+	const corruptedBytes = "not the real svg"
+	const advertisedHashOfCorrupted = "0000000000000000000000000000000000000000000000000000000000000000"
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/planes/radius/local/providers/Radius.Compute", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"name": "Radius.Compute",
+			"resourceTypes": map[string]any{
+				"containers": map[string]any{
+					"iconHash": goodHash,
+					"icon":     goodBytes,
+				},
+			},
+		})
+	})
+	mux.HandleFunc("/planes/radius/local/providers/Radius.Data", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"name": "Radius.Data",
+			"resourceTypes": map[string]any{
+				"mySqlDatabases": map[string]any{
+					"iconHash": advertisedHashOfCorrupted,
+					"icon":     corruptedBytes,
+				},
+			},
+		})
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	conn, err := sdk.NewDirectConnection(server.URL)
+	require.NoError(t, err)
+
+	graph := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
+			{Type: to.Ptr("Radius.Compute/containers")},
+			{Type: to.Ptr("Radius.Data/mySqlDatabases")},
+		},
+	}
+
+	icons, err := fetchIcons(context.Background(), conn, graph, true)
+	require.NoError(t, err, "integrity failure must not fail the whole request")
+	require.NotNil(t, icons)
+
+	// Healthy type survives with hash and bytes.
+	require.Contains(t, icons, "Radius.Compute/containers")
+	assert.Equal(t, goodHash, icons["Radius.Compute/containers"].hash)
+	assert.Equal(t, goodBytes, icons["Radius.Compute/containers"].bytes)
+
+	// Corrupted type is absent from the map. Downstream attachIconHashes
+	// will fall through to productmanifest.DefaultHash() for nodes of
+	// this type, and buildIconsMap will emit the default bytes under the
+	// default hash — exactly the fallback path that already handles
+	// "type registered without an icon."
+	assert.NotContains(t, icons, "Radius.Data/mySqlDatabases",
+		"integrity check must drop the corrupted entry so the default fallback fires")
+}

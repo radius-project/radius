@@ -115,8 +115,8 @@ func ValidateIcon(icon []byte) error {
 					return err
 				}
 			}
-			if isPaintServerAttr(name) {
-				if err := validatePaintServerValue(local, name, attr.Value); err != nil {
+			if isURLBearingAttr(name) {
+				if err := validateURLBearingValue(local, name, attr.Value); err != nil {
 					return err
 				}
 			}
@@ -131,11 +131,18 @@ func ValidateIcon(icon []byte) error {
 
 // validateHrefValue rejects href / xlink:href values that would let an SVG
 // pull an external resource. Fragment references (#foo) and data: URLs are
-// the only accepted forms.
+// the only accepted forms. Values containing a backslash are rejected
+// because SVG 2 processes presentation-attribute values through the CSS
+// parser, which unescapes `\XX` hex sequences at render time — so a
+// value like `\68ttps://evil/x` would smuggle an external URL past a
+// literal substring check.
 func validateHrefValue(elementName, value string) error {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
 		return nil
+	}
+	if strings.ContainsRune(trimmed, '\\') {
+		return fmt.Errorf("icon <%s> element href value %q contains a backslash escape; CSS escape sequences are not allowed", elementName, value)
 	}
 	if strings.HasPrefix(trimmed, "#") {
 		return nil
@@ -146,40 +153,59 @@ func validateHrefValue(elementName, value string) error {
 	return fmt.Errorf("icon <%s> element references external resource %q via href; only data: URLs and intra-document fragments are allowed", elementName, value)
 }
 
-// isPaintServerAttr reports whether the given SVG attribute name accepts a
-// paint-server url(...) reference. SVG defines this narrow family — fill,
-// stroke, filter, mask, and clip-path — as the set of presentation
-// attributes whose value can point at another element (a <linearGradient>,
-// <pattern>, <filter>, <mask>, or <clipPath>) via url(...). All other
-// SVG attributes are either colors, path data, dimensions, or opaque
-// literals that do not carry URLs, so scanning them for url(...) would
-// produce false positives.
-func isPaintServerAttr(name string) bool {
+// isURLBearingAttr reports whether the given SVG attribute name accepts a
+// url(...) reference. Covers the paint-server family (fill / stroke /
+// filter / mask / clip-path) plus other presentation attributes that can
+// point at either an intra-document element or an external URL:
+//
+//   - marker, marker-start, marker-mid, marker-end — accept url(#markerId).
+//   - cursor — accepts url(cursor.png), inherently URL-bearing.
+//
+// Any of these attributes carrying a url(...) value must be scanned for
+// external references; other SVG attributes are colors, path data,
+// dimensions, or opaque literals that do not carry URLs and are skipped
+// to avoid false positives.
+func isURLBearingAttr(name string) bool {
 	switch strings.ToLower(name) {
-	case "fill", "stroke", "filter", "mask", "clip-path":
+	case "fill", "stroke", "filter", "mask", "clip-path",
+		"marker", "marker-start", "marker-mid", "marker-end",
+		"cursor":
 		return true
 	}
 	return false
 }
 
-// validatePaintServerValue rejects url(...) values on paint-server
-// attributes that reference anything other than an intra-document fragment
-// (#foo). Non-url values (colors, "none", "currentColor", CSS basic shapes
-// like inset()/circle()/polygon() on clip-path) pass through unchanged.
+// validateURLBearingValue rejects url(...) values on URL-bearing
+// attributes that reference anything other than an intra-document
+// fragment (#foo). Non-url values (colors, "none", "currentColor", CSS
+// basic shapes like inset()/circle()/polygon() on clip-path) pass
+// through unchanged.
 //
-// The rule mirrors validateHrefValue for the paint-server family: an icon
-// that passes validation is a closed document whose gradients, patterns,
-// filters, masks, and clip paths are all defined inside the same <svg>.
-// A rendering client therefore never triggers a network fetch on the icon
+// The rule mirrors validateHrefValue for the wider paint-server /
+// marker / cursor family: an icon that passes validation is a closed
+// document whose gradients, patterns, filters, masks, clip paths,
+// markers, and cursors are all defined inside the same <svg>. A
+// rendering client therefore never triggers a network fetch on the icon
 // author's behalf, even when it inlines the bytes into the DOM outside
 // the icon endpoint's CSP.
 //
-// The scan is deliberately conservative: we walk every url(...) occurrence
-// in the value (fill supports a "url(#g) red" fallback form, filter
-// supports space-separated filter lists) and require each target to start
-// with '#'. Malformed url(...) values with no closing paren are rejected
-// rather than accepted-by-omission.
-func validatePaintServerValue(elementName, attrName, value string) error {
+// The scan is deliberately conservative:
+//
+//   - Any backslash in the value is rejected, because SVG 2 processes
+//     presentation-attribute values through the CSS parser (which
+//     unescapes `\XX` hex sequences at render time). A value like
+//     `u\72l(https://evil)` would appear to a literal substring check as
+//     non-url content but be rendered as url(https://evil). Legitimate
+//     icons never need CSS escapes in URL-bearing attribute values.
+//   - Every url(...) occurrence in the value is walked (fill supports a
+//     "url(#g) red" fallback form, filter supports space-separated
+//     filter lists) and each target must start with '#'.
+//   - Malformed url(...) values with no closing paren are rejected
+//     rather than accepted-by-omission.
+func validateURLBearingValue(elementName, attrName, value string) error {
+	if strings.ContainsRune(value, '\\') {
+		return fmt.Errorf("icon <%s> element attribute %q contains a backslash escape %q; CSS escape sequences are not allowed in URL-bearing attribute values", elementName, attrName, value)
+	}
 	remaining := value
 	for {
 		lower := strings.ToLower(remaining)

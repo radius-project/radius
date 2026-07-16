@@ -40,8 +40,11 @@ const (
 	testIconResourceProvider = "MyCompany.Resources"
 	testIconResourceType     = "testResources"
 	testIconSVG              = `<svg xmlns="http://www.w3.org/2000/svg"><circle/></svg>`
-	testIconHash             = "6c4b7fa177f3ee83b7f81769f55048a2be419ebf024f5784b07b00198f0984c1"
-	testIconResourceTypeID   = "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources/resourceTypes/testResources"
+	// testIconHash is sha256(testIconSVG) hex-encoded — must match the
+	// bytes because the icon endpoint now performs a content-integrity
+	// check on the served body before writing the response.
+	testIconHash           = "7f9d93106668218aa422f68b0570c4d8676fb271a89d27a7e561da7517f3d9f5"
+	testIconResourceTypeID = "/planes/radius/local/providers/System.Resources/resourceProviders/MyCompany.Resources/resourceTypes/testResources"
 )
 
 func newIconRequest(t *testing.T, hash string) *http.Request {
@@ -117,6 +120,35 @@ func TestGetIcon_HashMismatch(t *testing.T) {
 	require.True(t, ok, "expected NotFoundResponse, got %T", resp)
 	require.Equal(t, v1.CodeNotFound, notFound.Body.Error.Code)
 	require.Contains(t, notFound.Body.Error.Message, `icon with hash "deadbeef" was not found`)
+}
+
+// TestGetIcon_IntegrityCheckFails covers the content-addressed integrity
+// contract: even when the URL-path hash matches the record's advertised
+// IconHash, the endpoint re-computes sha256(body) before writing and
+// returns 404 with cause "icon integrity check failed" if the body does
+// not hash back to the requested hash. Simulates a data-tier corruption
+// where the advertised hash and the stored bytes have diverged.
+func TestGetIcon_IntegrityCheckFails(t *testing.T) {
+	ctrl, mockDB := newGetIconController(t)
+
+	// Record advertises testIconHash but the stored bytes are unrelated
+	// content — sha256 of those bytes will not match testIconHash.
+	rt := &datamodel.ResourceType{
+		Properties: datamodel.ResourceTypeProperties{
+			Icon:     to.Ptr(`<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>`),
+			IconHash: to.Ptr(testIconHash),
+		},
+	}
+	mockDB.EXPECT().Get(gomock.Any(), testIconResourceTypeID).Return(&database.Object{Data: rt}, nil)
+
+	req := newIconRequest(t, testIconHash)
+	resp, err := ctrl.Run(context.Background(), nil, req)
+	require.NoError(t, err)
+
+	notFound, ok := resp.(*armrpc_rest.NotFoundResponse)
+	require.True(t, ok, "expected NotFoundResponse, got %T", resp)
+	require.Equal(t, v1.CodeNotFound, notFound.Body.Error.Code)
+	require.Contains(t, notFound.Body.Error.Message, "icon integrity check failed")
 }
 
 func TestGetIcon_NoIcon(t *testing.T) {
