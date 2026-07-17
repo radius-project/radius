@@ -16,7 +16,7 @@ limitations under the License.
 
 // Package shutdown implements the `rad shutdown` command, which backs up all durable Radius state
 // (PostgreSQL control-plane databases and Terraform state Secrets) for the current workspace to a
-// git orphan branch. It is the counterpart of `rad startup`.
+// state archive. It is the counterpart of `rad startup`.
 //
 // The command does not delete clusters or uninstall Radius; cluster lifecycle is the caller's
 // responsibility. This keeps the command usable in any context and independent of any particular
@@ -26,6 +26,7 @@ package shutdown
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -37,7 +38,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/pgbackup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/statearchive"
-	archivegit "github.com/radius-project/radius/pkg/statearchive/git"
+	archivefactory "github.com/radius-project/radius/pkg/statearchive/factory"
 )
 
 // NewCommand creates an instance of the `rad shutdown` command and runner.
@@ -50,8 +51,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Long: `Back up all durable Radius state for the current workspace.
 
 Dumps the control-plane PostgreSQL databases and exports the Terraform recipe state Secrets,
-commits them to the radius-state git orphan branch, and pushes to the remote when one is
-configured. The state can be restored into a fresh control plane with 'rad startup'.
+commits them to the radius-state archive. The state can be restored into a fresh control plane
+with 'rad startup'.
 
 This command does not delete the cluster or uninstall Radius.`,
 		Example: `
@@ -76,8 +77,7 @@ type Runner struct {
 	Workspace    *workspaces.Workspace
 	StateClient  StateBackupClient
 
-	// Archive is the durable state archive that state is committed to. Defaults to the git
-	// orphan-branch implementation; tests inject a mock.
+	// Archive is the durable state archive that state is committed to. Tests inject a mock.
 	Archive statearchive.Archive
 }
 
@@ -87,7 +87,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigHolder: factory.GetConfigHolder(),
 		Output:       factory.GetOutput(),
 		StateClient:  NewStateBackupClient(),
-		Archive:      archivegit.NewGitArchive(),
+		Archive:      archivefactory.NewStateArchive(os.Getenv(archivefactory.StateRegistryEnvVar)),
 	}
 }
 
@@ -113,7 +113,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return clierrors.Message("Could not determine the Kubernetes context for workspace %q.", r.Workspace.Name)
 	}
 
-	session, err := r.Archive.Open(ctx, pgbackup.StateBranchName())
+	session, err := r.Archive.Open(ctx, pgbackup.StateArchiveName())
 	if err != nil {
 		return fmt.Errorf("failed to open state archive: %w", err)
 	}
@@ -131,7 +131,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to back up Terraform state: %w", err)
 	}
 
-	r.Output.LogInfo("Committing state to branch %q...", pgbackup.StateBranchName())
+	r.Output.LogInfo("Committing state to archive %q...", pgbackup.StateArchiveName())
 	if err := session.Commit(ctx, "radius: shutdown backup"); err != nil {
 		return fmt.Errorf("failed to commit and push state: %w", err)
 	}

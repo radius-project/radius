@@ -1,10 +1,10 @@
 {
   "resources": {
     "Radius.Messaging/kafka@2025-08-01-preview": {
-      "$ref": "types.json#/17"
+      "$ref": "types.json#/19"
     },
     "Radius.Messaging/rabbitMQ@2025-08-01-preview": {
-      "$ref": "types.json#/34"
+      "$ref": "types.json#/38"
     }
   },
   "resourceFunctions": {},

@@ -32,16 +32,21 @@ package statestore
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/radius-project/radius/pkg/statearchive/factory"
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/functional-portable/corerp"
 	"github.com/radius-project/radius/test/radcli"
@@ -65,8 +70,8 @@ const (
 	redisRecipeTemplate = "../../corerp/noncloud/resources/testdata/corerp-resources-terraform-redis.bicep"
 
 	// controlPlaneTimeout is how long to wait for the control plane API to become available after an
-	// install. It is generous because the UCP aggregated APIService may briefly return 503 while the
-	// pods roll. (Lesson from the flaky upgrade test, PR #12245.)
+	// install or startup. It is generous because the UCP aggregated APIService may briefly return
+	// 503 while the pods roll. (Lesson from the flaky upgrade test, PR #12245.)
 	controlPlaneTimeout      = 5 * time.Minute
 	controlPlanePollInterval = 5 * time.Second
 
@@ -82,6 +87,8 @@ const (
 	podTerminationPoll    = 5 * time.Second
 	radiusPodSelector     = "app.kubernetes.io/part-of=radius"
 )
+
+var registryHTTPClient = &http.Client{Timeout: 5 * time.Second}
 
 // installRadius installs Radius with the PostgreSQL state backend enabled, using the images and
 // chart of the build under test. In CI the registry/tag come from DOCKER_REGISTRY/REL_VERSION and
@@ -127,7 +134,7 @@ func uninstallRadius(ctx context.Context, t *testing.T, cli *radcli.CLI) {
 // waitForControlPlane polls until every Radius control-plane deployment in radius-system reports
 // Available, treating transient API errors (including 503 from the aggregated APIService while
 // pods roll) as retryable. It is deliberately workspace-independent: it talks to Kubernetes
-// directly, so it can run immediately after install and before any rad workspace exists.
+// directly, so it can run immediately after install or startup and before any rad workspace exists.
 func waitForControlPlane(t *testing.T, ctx context.Context) {
 	t.Helper()
 	k8s := test.NewTestOptions(t).K8sClient
@@ -194,26 +201,70 @@ func waitForCleanTeardown(t *testing.T, ctx context.Context) {
 	}, apiServiceDeregistrationTimeout, apiServiceDeregistrationInterval, "aggregated APIService did not deregister within timeout")
 }
 
-// newStateRepo creates a throwaway git repository with no remote for `rad shutdown` / `rad startup`
-// to persist state into. gitstate resolves the repo from the rad process's working directory and
-// pushes to `origin` when a remote exists; running from this remote-less repo exercises the
-// design's supported local/test case (commit-only, no push) instead of trying to push to the
-// checkout's GitHub origin, which has no credentials in CI.
-func newStateRepo(t *testing.T) string {
+func startLocalRegistry(t *testing.T) string {
 	t.Helper()
-	dir := t.TempDir()
-	for _, args := range [][]string{
-		{"init"},
-		{"config", "user.email", "statestore-test@radapp.io"},
-		{"config", "user.name", "statestore-test"},
-		{"commit", "--allow-empty", "-m", "init"},
-	} {
-		cmd := exec.Command("git", args...)
-		cmd.Dir = dir
-		out, err := cmd.CombinedOutput()
-		require.NoErrorf(t, err, "git %v failed: %s", args, out)
+
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("Docker is required for the OCI state archive functional test")
 	}
-	return dir
+
+	cmd := exec.Command("docker", "run", "--detach", "--rm", "--publish", "127.0.0.1::5000", "registry:2")
+	out, err := cmd.CombinedOutput()
+	require.NoErrorf(t, err, "start local OCI registry: %s", out)
+	containerID := strings.TrimSpace(string(out))
+	t.Cleanup(func() {
+		cleanup := exec.Command("docker", "rm", "--force", containerID)
+		cleanupOut, cleanupErr := cleanup.CombinedOutput()
+		if cleanupErr != nil {
+			t.Logf("remove local OCI registry: %v: %s", cleanupErr, cleanupOut)
+		}
+	})
+
+	portCmd := exec.Command("docker", "inspect", "--format", "{{(index (index .NetworkSettings.Ports \"5000/tcp\") 0).HostPort}}", containerID)
+	portOut, err := portCmd.CombinedOutput()
+	require.NoErrorf(t, err, "get local OCI registry port: %s", portOut)
+	address := "127.0.0.1:" + strings.TrimSpace(string(portOut))
+
+	require.Eventually(t, func() bool {
+		response, requestErr := registryHTTPClient.Get("http://" + address + "/v2/")
+		if requestErr != nil {
+			return false
+		}
+		defer response.Body.Close()
+		return response.StatusCode == http.StatusOK
+	}, time.Minute, time.Second, "local OCI registry did not become ready")
+	return address
+}
+
+func registryManifestExists(ctx context.Context, registry, repository, reference string) bool {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://%s/v2/%s/manifests/%s", registry, repository, reference), nil)
+	if err != nil {
+		return false
+	}
+	// Distribution rejects OCI manifests unless clients explicitly accept the OCI media type.
+	request.Header.Set("Accept", ocispec.MediaTypeImageManifest)
+
+	response, err := registryHTTPClient.Do(request)
+	if err != nil {
+		return false
+	}
+	defer response.Body.Close()
+
+	return response.StatusCode == http.StatusOK
+}
+
+func TestRegistryManifestExists(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/v2/radius-state/manifests/radius-state" && request.Header.Get("Accept") == ocispec.MediaTypeImageManifest {
+			response.WriteHeader(http.StatusOK)
+			return
+		}
+		response.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+
+	registry := strings.TrimPrefix(server.URL, "http://")
+	require.True(t, registryManifestExists(context.Background(), registry, "radius-state", "radius-state"))
 }
 
 // Test_StateStore_ShutdownStartup_TerraformCrossDeploy exercises every state path:
@@ -224,12 +275,12 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	defer cancel()
 
 	cli := radcli.NewCLI(t, "")
+	registry := startLocalRegistry(t)
+	t.Setenv(factory.BackendEnvVar, "oci")
+	t.Setenv(factory.StateRegistryEnvVar, registry+"/radius-state")
+	t.Setenv(factory.ArchivePlainHTTPEnvVar, "true")
 
-	// shutdown/startup persist state into a remote-less git repo so the backup commits locally
-	// without trying to push to the checkout's GitHub origin (no credentials in CI). Both commands
-	// must use the same repo so the state committed by shutdown survives into startup.
 	stateCLI := radcli.NewCLI(t, "")
-	stateCLI.WorkingDirectory = newStateRepo(t)
 
 	appName := "statestore-tf-redis-app"
 	envName := "statestore-tf-redis-env"
@@ -281,6 +332,9 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	// 3. Back up all durable state.
 	out, err = stateCLI.RunCommand(ctx, []string{"shutdown"})
 	require.NoErrorf(t, err, "rad shutdown failed: %s", out)
+	require.Eventually(t, func() bool {
+		return registryManifestExists(ctx, registry, "radius-state", "radius-state")
+	}, time.Minute, time.Second, "state archive was not pushed to the local OCI registry")
 
 	// 4. Tear the control plane down completely (ephemeral teardown).
 	uninstallRadius(ctx, t, cli)
@@ -292,6 +346,7 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	// 6. Restore the saved state.
 	out, err = stateCLI.RunCommand(ctx, []string{"startup"})
 	require.NoErrorf(t, err, "rad startup failed: %s", out)
+	waitForControlPlane(t, ctx)
 
 	// 7. Both stores must be restored: the Terraform state Secret is back, and the control-plane
 	//    resource is queryable again.

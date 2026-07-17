@@ -46,10 +46,10 @@
       "$ref": "applications/applications.messaging/2023-10-01-preview/types.json#/69"
     },
     "Radius.AI/models@2025-08-01-preview": {
-      "$ref": "radius/radius.ai/2025-08-01-preview/types.json#/17"
+      "$ref": "radius/radius.ai/2025-08-01-preview/types.json#/19"
     },
     "Radius.AI/search@2025-08-01-preview": {
-      "$ref": "radius/radius.ai/2025-08-01-preview/types.json#/33"
+      "$ref": "radius/radius.ai/2025-08-01-preview/types.json#/37"
     },
     "Radius.Compute/containerImages@2025-08-01-preview": {
       "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/23"
@@ -79,31 +79,31 @@
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/206"
     },
     "Radius.Data/mongoDatabases@2025-08-01-preview": {
-      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/17"
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/19"
     },
     "Radius.Data/mySqlDatabases@2025-08-01-preview": {
-      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/40"
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/42"
     },
     "Radius.Data/postgreSqlDatabases@2025-08-01-preview": {
-      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/64"
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/66"
     },
     "Radius.Data/redisCaches@2025-08-01-preview": {
-      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/85"
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/89"
     },
     "Radius.Data/sqlServerDatabases@2025-08-01-preview": {
-      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/104"
+      "$ref": "radius/radius.data/2025-08-01-preview/types.json#/108"
     },
     "Radius.Messaging/kafka@2025-08-01-preview": {
-      "$ref": "radius/radius.messaging/2025-08-01-preview/types.json#/17"
+      "$ref": "radius/radius.messaging/2025-08-01-preview/types.json#/19"
     },
     "Radius.Messaging/rabbitMQ@2025-08-01-preview": {
-      "$ref": "radius/radius.messaging/2025-08-01-preview/types.json#/34"
+      "$ref": "radius/radius.messaging/2025-08-01-preview/types.json#/38"
     },
     "Radius.Security/secrets@2025-08-01-preview": {
       "$ref": "radius/radius.security/2025-08-01-preview/types.json#/27"
     },
     "Radius.Storage/objectStorage@2025-08-01-preview": {
-      "$ref": "radius/radius.storage/2025-08-01-preview/types.json#/19"
+      "$ref": "radius/radius.storage/2025-08-01-preview/types.json#/21"
     }
   },
   "resourceFunctions": {},
