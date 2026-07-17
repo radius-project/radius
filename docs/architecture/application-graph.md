@@ -46,7 +46,7 @@ sequenceDiagram
 | Component | Location | Responsibility |
 |---|---|---|
 | `rad app graph` command | `pkg/cli/cmd/app/graph/graph.go` | CLI entry point; dispatches between the stable Applications.Core path and the `--preview` Radius.Core path |
-| `rad app graph --preview` runner | `pkg/cli/cmd/app/graph/preview/graph.go` | Preview runner; owns the `--include-icons` flag and calls the Radius.Core preview client |
+| `rad app graph --preview` runner | `pkg/cli/cmd/app/graph/preview/graph.go` | Preview runner; owns the `--include-icons` flag, accepts an optional `app.bicep` path for enriched mode, and calls the Radius.Core preview client |
 | `display()` | `pkg/cli/cmd/app/graph/display.go` | Formats graph resources into human-readable text |
 | `UCPApplicationsManagementClient` | `pkg/cli/clients/management.go` | CLI SDK wrapper; calls `ApplicationsClient.GetGraph()` |
 | `ApplicationsClient.GetGraph()` | `pkg/corerp/api/v20231001preview/zz_generated_applications_client.go`, `pkg/corerp/api/v20250801preview/zz_generated_applications_client.go` | Auto-generated ARM clients (one per API version); build the HTTP POST request |
@@ -224,8 +224,11 @@ Today the two producers differ in which sources they consume:
 
 - **Server-side runtime handler**
   (`pkg/corerp/frontend/controller/applications/v20250801preview/graph_util.go`)
-  — sees only `properties.connections` (deployed resources do not carry
-  Bicep's `dependsOn`). Every edge it emits is `Kind: Connection`.
+  — sees `properties.connections` on stored resources and emits every
+  resulting edge as `Kind: Connection`. It also accepts an optional
+  `dependsOnEdges` map on `GetGraphRequest` (see below) and merges those
+  edges as `Kind: Dependency` through the shared
+  [`edges.MergeDependencyEdges`](../../pkg/graph/edges/edges.go) helper.
   Applications.Core (stable) is unchanged and does not carry `kind` on
   the wire.
 - **CLI static-graph builder** (`rad app graph app.bicep`,
@@ -234,6 +237,13 @@ Today the two producers differ in which sources they consume:
   `Kind: Dependency` edges. Templates that reference another resource
   only via `secretKeyRef` (no `properties.connections` block) still
   surface an implicit dependency edge.
+- **CLI enriched deployed mode** (`rad app graph -a <name> --preview
+  <path>.bicep`) — combines the two: the CLI compiles the Bicep file,
+  extracts its `dependsOn` edges via
+  [`cligraph.ExtractDependsOnEdges`](../../pkg/cli/graph/modeled.go), and
+  attaches the map to `GetGraphRequest.DependsOnEdges`. The server
+  computes the connection-only deployed graph as usual, then merges the
+  caller-supplied edges as `Kind: Dependency`.
 
 Both producers share the same extraction primitive
 ([`pkg/graph/edges/`](../../pkg/graph/edges/)): exclusion of
@@ -241,11 +251,11 @@ control-plane types (`Radius.Core/applications`, `Radius.Core/environments`,
 `Radius.Core/recipePacks`, plus the legacy `Applications.Core/applications`
 and `Applications.Core/environments`), Connection-wins de-duplication, and
 reciprocal `Outbound`/`Inbound` mirroring. Excluded types are neither
-graph nodes nor edge targets. Phase 2 will bring `Kind: Dependency` to
-the server by adding an optional `dependsOnEdges` field to
-`GetGraphRequest` — callers who ran `bicep build` locally send the
-compiled dependency list, and the server merges it into the graph
-through the same primitive.
+graph nodes nor edge targets. The server-side exclusion set lives on
+`dependsOnExclusionSet` in
+[`graph_util.go`](../../pkg/corerp/frontend/controller/applications/v20250801preview/graph_util.go)
+and is kept in sync with the CLI-side `excludeResourceTypes` in
+[`modeled.go`](../../pkg/cli/graph/modeled.go) by a pinning test.
 
 #### Breadth-First Expansion
 
@@ -383,7 +393,7 @@ RP handler based on the registered resource provider.
 |---|---|
 | HTTP Method | `POST` |
 | URL | `{rootScope}/providers/Radius.Core/applications/{name}/getGraph?api-version=2025-08-01-preview` |
-| Request Body | `GetGraphRequest` — `{ "includeIcons": false }` (both the object and the field are optional; missing or empty bodies resolve to `false`) |
+| Request Body | `GetGraphRequest` — `{ "includeIcons": false, "dependsOnEdges": null }` (both fields and the object itself are optional; missing or empty bodies are equivalent to a zero-value request). `dependsOnEdges` is a map keyed by source resource ID, each entry a list of outbound `Kind: Dependency` edges; when present, the server merges them onto the connection-only deployed graph. |
 | Response | `ApplicationGraphResponse` (200 OK) — same resources/connections/output-resources as the stable version, plus per-node `iconHash` and (when `includeIcons: true`) a top-level `icons` map from hash to verbatim SVG bytes. Every `ApplicationGraphConnection` also carries a `kind` discriminator (`Connection` or `Dependency`) not present on the Applications.Core wire; see [Edge Sources and Kind](#edge-sources-and-kind). |
 
 ## Radius.Core Preview: Icon Enrichment
@@ -394,8 +404,9 @@ returning the response.
 
 ```mermaid
 graph TD
-    Request["POST getGraph<br/>body: { includeIcons: bool }"] --> Compute["computeGraphPayload<br/>(local to v20250801preview)"]
-    Compute --> Namespaces["Collect distinct namespaces<br/>from graph.Resources[].type"]
+    Request["POST getGraph<br/>body: { includeIcons: bool,<br/>dependsOnEdges?: map }"] --> Compute["computeGraphPayload<br/>(local to v20250801preview)"]
+    Compute --> Merge["edges.MergeDependencyEdges<br/>(merges dependsOnEdges as<br/>Kind: Dependency, filtered by<br/>dependsOnExclusionSet)"]
+    Merge --> Namespaces["Collect distinct namespaces<br/>from graph.Resources[].type"]
     Namespaces --> ForEachNS["For each namespace"]
     ForEachNS --> GPS["UCP GetProviderSummary<br/>/planes/radius/local/providers/&lt;ns&gt;"]
     GPS -->|"200 with iconHash"| BuildLookup["Build lookup<br/>&lt;ns&gt;/&lt;typeName&gt; → { hash, bytes? }"]
@@ -507,6 +518,7 @@ and the static graph builder
 classDiagram
     class GetGraphRequest {
         +includeIcons?: bool
+        +dependsOnEdges?: Map~string,ApplicationGraphConnection[]~
     }
     class ApplicationGraphResponse {
         +resources: ApplicationGraphResource[]
@@ -541,12 +553,22 @@ threads through to `GetGraphRequest.IncludeIcons`; without it the CLI sends
 `nil` and the server defaults to `false`. Text output does not render SVGs;
 the flag is intended for programmatic consumers using `-o json`.
 
+An optional positional argument — the application's `app.bicep` path —
+switches the command into **enriched deployed mode**: the CLI compiles the
+template locally, extracts its `dependsOn` edges, and attaches them to
+`GetGraphRequest.DependsOnEdges`. The server merges them onto the
+deployed graph as `Kind: Dependency`. `-a/--application` is required in
+this shape because the positional slot has been claimed by the file path.
+
 ```bash
 # Hash-only: nodes carry iconHash; clients fetch bytes separately by hash.
 rad app graph my-app --preview -o json
 
 # Bytes inline: response also includes a deduped icons map (hash → SVG bytes).
 rad app graph my-app --preview -o json --include-icons
+
+# Enriched: deployed graph plus dependsOn edges from a local app.bicep.
+rad app graph -a my-app --preview ./app.bicep
 ```
 
 ### Client-side rendering and sanitization boundary
