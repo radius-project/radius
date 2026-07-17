@@ -44,6 +44,17 @@ jobs:
     name: Deploy with Radius
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    # OCI-backed Radius control-plane state, provisioned per-environment by the
+    # deploy tooling (canvas extension) as environment variables. Set at job
+    # level (not workflow level) so environment-scoped vars.* resolve, and so the
+    # shared restore-state (rad startup) and teardown (rad shutdown) actions —
+    # plus the deploy/app-graph commands — inherit them and can open the state
+    # archive. Without these, rad startup fails with "OCI archive repository is
+    # not configured; set RADIUS_STATE_REGISTRY or RADIUS_GRAPH_REGISTRY".
+    env:
+      RADIUS_STATE_BACKEND: ${{ vars.RADIUS_STATE_BACKEND }}
+      RADIUS_STATE_REGISTRY: ${{ vars.RADIUS_STATE_REGISTRY }}
+      RADIUS_STATE_ARCHIVE: ${{ vars.RADIUS_STATE_ARCHIVE }}
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
