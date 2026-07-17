@@ -19,217 +19,268 @@ package edges
 import (
 	"testing"
 
+	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 )
 
-// Test IDs. Short strings; the extractor is agnostic to their shape as
-// long as they compare equal.
 const (
-	containerAID    = "/planes/radius/local/resourcegroups/default/providers/Radius.Compute/containers/a"
-	containerBID    = "/planes/radius/local/resourcegroups/default/providers/Radius.Compute/containers/b"
-	queueID         = "/planes/radius/local/resourcegroups/default/providers/Radius.Messaging/rabbitMQ/q"
-	appScopeID      = "/planes/radius/local/resourcegroups/default/providers/Radius.Core/applications/scope"
-	unknownID       = "/planes/radius/local/resourcegroups/default/providers/Unknown.Ns/things/x"
-	containerType   = "Radius.Compute/containers"
-	queueType       = "Radius.Messaging/rabbitMQ"
-	appScopeType    = "Radius.Core/applications"
-	radiusCoreScope = "Radius.Core/applications"
+	consumerID  = "/planes/radius/local/resourcegroups/default/providers/Radius.Compute/containers/consumer"
+	rabbitmqID  = "/planes/radius/local/resourcegroups/default/providers/Radius.Messaging/rabbitMQ/rabbitmq"
+	appsecretID = "/planes/radius/local/resourcegroups/default/providers/Radius.Security/secrets/appsecret"
+	appScopeID  = "/planes/radius/local/resourcegroups/default/providers/Radius.Core/applications/rabbitmq-app"
+
+	containerType = "Radius.Compute/containers"
+	queueType     = "Radius.Messaging/rabbitMQ"
+	secretType    = "Radius.Security/secrets"
+	appScopeType  = "Radius.Core/applications"
 )
 
-// TestExtractEdges is the exhaustive table-driven test for the extractor.
-// Each case sets up a small resource graph, calls ExtractEdges, and
-// asserts on the exact returned edge slice (already sorted
-// deterministically by (Source, Target, Direction, Kind)).
-func TestExtractEdges(t *testing.T) {
-	t.Parallel()
-
-	excluded := map[string]struct{}{
-		radiusCoreScope: {},
-	}
-
-	tests := []struct {
-		name      string
-		resources []Resource
-		excluded  map[string]struct{}
-		want      []Edge
-	}{
-		{
-			name:      "empty input produces empty output",
-			resources: nil,
-			excluded:  excluded,
-			want:      []Edge{},
-		},
-		{
-			name: "single Connection edge produces outbound plus mirrored inbound",
-			resources: []Resource{
-				{
-					ID:          containerAID,
-					Type:        containerType,
-					Connections: []string{queueID},
-				},
-				{ID: queueID, Type: queueType},
-			},
-			excluded: excluded,
-			want: []Edge{
-				{Source: containerAID, Target: queueID, Direction: DirectionInbound, Kind: KindConnection},
-				{Source: containerAID, Target: queueID, Direction: DirectionOutbound, Kind: KindConnection},
-			},
-		},
-		{
-			name: "single Dependency edge produces outbound plus mirrored inbound",
-			resources: []Resource{
-				{
-					ID:        containerAID,
-					Type:      containerType,
-					DependsOn: []string{queueID},
-				},
-				{ID: queueID, Type: queueType},
-			},
-			excluded: excluded,
-			want: []Edge{
-				{Source: containerAID, Target: queueID, Direction: DirectionInbound, Kind: KindDependency},
-				{Source: containerAID, Target: queueID, Direction: DirectionOutbound, Kind: KindDependency},
-			},
-		},
-		{
-			name: "same pair from both sources: Connection wins over Dependency",
-			resources: []Resource{
-				{
-					ID:          containerAID,
-					Type:        containerType,
-					Connections: []string{queueID},
-					DependsOn:   []string{queueID},
-				},
-				{ID: queueID, Type: queueType},
-			},
-			excluded: excluded,
-			want: []Edge{
-				{Source: containerAID, Target: queueID, Direction: DirectionInbound, Kind: KindConnection},
-				{Source: containerAID, Target: queueID, Direction: DirectionOutbound, Kind: KindConnection},
-			},
-		},
-		{
-			name: "multiple dependsOn tokens to same target collapse to one edge",
-			resources: []Resource{
-				{
-					ID:        containerAID,
-					Type:      containerType,
-					DependsOn: []string{queueID, queueID, queueID},
-				},
-				{ID: queueID, Type: queueType},
-			},
-			excluded: excluded,
-			want: []Edge{
-				{Source: containerAID, Target: queueID, Direction: DirectionInbound, Kind: KindDependency},
-				{Source: containerAID, Target: queueID, Direction: DirectionOutbound, Kind: KindDependency},
-			},
-		},
-		{
-			name: "fan-in with mixed kinds preserves each source's kind on the target",
-			resources: []Resource{
-				{
-					ID:          containerAID,
-					Type:        containerType,
-					Connections: []string{queueID},
-				},
-				{
-					ID:        containerBID,
-					Type:      containerType,
-					DependsOn: []string{queueID},
-				},
-				{ID: queueID, Type: queueType},
-			},
-			excluded: excluded,
-			want: []Edge{
-				{Source: containerAID, Target: queueID, Direction: DirectionInbound, Kind: KindConnection},
-				{Source: containerAID, Target: queueID, Direction: DirectionOutbound, Kind: KindConnection},
-				{Source: containerBID, Target: queueID, Direction: DirectionInbound, Kind: KindDependency},
-				{Source: containerBID, Target: queueID, Direction: DirectionOutbound, Kind: KindDependency},
-			},
-		},
-		{
-			name: "edge target of excluded type is dropped (no node, no edge, no mirror)",
-			resources: []Resource{
-				{
-					ID:        containerAID,
-					Type:      containerType,
-					DependsOn: []string{appScopeID},
-				},
-				// Excluded resource is present in the input list.
-				// The extractor must not treat it as a valid target.
-				{ID: appScopeID, Type: appScopeType},
-			},
-			excluded: excluded,
-			want:     []Edge{},
-		},
-		{
-			name: "edge target not in the resource set is dropped",
-			resources: []Resource{
-				{
-					ID:        containerAID,
-					Type:      containerType,
-					DependsOn: []string{unknownID},
-				},
-			},
-			excluded: excluded,
-			want:     []Edge{},
-		},
-		{
-			name: "excluded source emits no edges even if it has connections",
-			resources: []Resource{
-				{
-					ID:          appScopeID,
-					Type:        appScopeType,
-					Connections: []string{queueID},
-				},
-				{ID: queueID, Type: queueType},
-			},
-			excluded: excluded,
-			want:     []Edge{},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			got := ExtractEdges(tc.resources, tc.excluded)
-			if got == nil {
-				got = []Edge{}
-			}
-			require.Equal(t, tc.want, got)
-		})
+// excluded returns the standard exclusion set used by both the CLI
+// static builder and the Radius.Core preview runtime handler.
+func excluded() map[string]struct{} {
+	return map[string]struct{}{
+		appScopeType:                     {},
+		"Radius.Core/environments":       {},
+		"Radius.Core/recipePacks":        {},
+		"Applications.Core/applications": {},
+		"Applications.Core/environments": {},
 	}
 }
 
-// TestExtractEdges_OwnerPeer verifies the Edge.Owner / Edge.Peer helpers
-// used by callers when materializing wire-model entries.
-func TestExtractEdges_OwnerPeer(t *testing.T) {
-	t.Parallel()
-
-	out := Edge{Source: "a", Target: "b", Direction: DirectionOutbound, Kind: KindConnection}
-	require.Equal(t, "a", out.Owner())
-	require.Equal(t, "b", out.Peer())
-
-	in := Edge{Source: "a", Target: "b", Direction: DirectionInbound, Kind: KindConnection}
-	require.Equal(t, "b", in.Owner())
-	require.Equal(t, "a", in.Peer())
+// resource is a small test helper that builds an ApplicationGraphResource
+// with the given ID, Type, and pre-populated Connections.
+func resource(id, typ string, conns ...*corerpv20250801preview.ApplicationGraphConnection) *corerpv20250801preview.ApplicationGraphResource {
+	if conns == nil {
+		conns = []*corerpv20250801preview.ApplicationGraphConnection{}
+	}
+	return &corerpv20250801preview.ApplicationGraphResource{
+		ID:          to.Ptr(id),
+		Type:        to.Ptr(typ),
+		Connections: conns,
+	}
 }
 
-// TestExtractEdges_SortDeterminism confirms the returned edge slice is
-// deterministic across input orderings: shuffling the input resources
-// must not change the output.
-func TestExtractEdges_SortDeterminism(t *testing.T) {
+// dep constructs a caller-supplied outbound Dependency entry pointing at
+// the given target. Matches what the wire schema requires.
+func dep(target string) *corerpv20250801preview.ApplicationGraphConnection {
+	return &corerpv20250801preview.ApplicationGraphConnection{
+		ID:        to.Ptr(target),
+		Direction: to.Ptr(corerpv20250801preview.DirectionOutbound),
+		Kind:      to.Ptr(corerpv20250801preview.ConnectionKindDependency),
+	}
+}
+
+// connOut constructs an outbound Kind: Connection edge, useful for
+// seeding the graph before merging Dependency edges (Connection wins
+// tests).
+func connOut(target string) *corerpv20250801preview.ApplicationGraphConnection {
+	return &corerpv20250801preview.ApplicationGraphConnection{
+		ID:        to.Ptr(target),
+		Direction: to.Ptr(corerpv20250801preview.DirectionOutbound),
+		Kind:      to.Ptr(corerpv20250801preview.ConnectionKindConnection),
+	}
+}
+
+func findResource(t *testing.T, graph *corerpv20250801preview.ApplicationGraphResponse, id string) *corerpv20250801preview.ApplicationGraphResource {
+	t.Helper()
+	for _, r := range graph.Resources {
+		if r != nil && r.ID != nil && *r.ID == id {
+			return r
+		}
+	}
+	t.Fatalf("resource %s not in graph", id)
+	return nil
+}
+
+func TestMergeDependencyEdges_NilGraphOrEmptyInputIsNoOp(t *testing.T) {
 	t.Parallel()
 
-	base := []Resource{
-		{ID: containerAID, Type: containerType, DependsOn: []string{queueID}},
-		{ID: containerBID, Type: containerType, DependsOn: []string{queueID}},
-		{ID: queueID, Type: queueType},
-	}
-	shuffled := []Resource{base[2], base[0], base[1]}
+	// Nil graph — no panic.
+	MergeDependencyEdges(nil, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
+		consumerID: {dep(rabbitmqID)},
+	}, excluded())
 
-	require.Equal(t,
-		ExtractEdges(base, nil),
-		ExtractEdges(shuffled, nil),
-	)
+	// Empty incoming — no changes.
+	graph := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
+			resource(consumerID, containerType),
+			resource(rabbitmqID, queueType),
+		},
+	}
+	MergeDependencyEdges(graph, nil, excluded())
+	require.Empty(t, findResource(t, graph, consumerID).Connections)
+	require.Empty(t, findResource(t, graph, rabbitmqID).Connections)
+}
+
+func TestMergeDependencyEdges_HappyPath(t *testing.T) {
+	t.Parallel()
+
+	graph := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
+			resource(consumerID, containerType),
+			resource(rabbitmqID, queueType),
+			resource(appsecretID, secretType),
+		},
+	}
+	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
+		consumerID: {dep(rabbitmqID), dep(appsecretID)},
+	}, excluded())
+
+	// consumer has two outbound Dependency edges (sorted by target).
+	consumer := findResource(t, graph, consumerID)
+	require.Len(t, consumer.Connections, 2)
+	for _, c := range consumer.Connections {
+		require.Equal(t, corerpv20250801preview.DirectionOutbound, *c.Direction)
+		require.Equal(t, corerpv20250801preview.ConnectionKindDependency, *c.Kind)
+	}
+	// Deterministic sort by ID: rabbitmq before appsecret because
+	// "Radius.Messaging" sorts before "Radius.Security" lexically.
+	require.Equal(t, rabbitmqID, *consumer.Connections[0].ID)
+	require.Equal(t, appsecretID, *consumer.Connections[1].ID)
+
+	// Each target has one inbound Dependency mirror.
+	for _, targetID := range []string{rabbitmqID, appsecretID} {
+		target := findResource(t, graph, targetID)
+		require.Len(t, target.Connections, 1)
+		require.Equal(t, corerpv20250801preview.DirectionInbound, *target.Connections[0].Direction)
+		require.Equal(t, corerpv20250801preview.ConnectionKindDependency, *target.Connections[0].Kind)
+		require.Equal(t, consumerID, *target.Connections[0].ID)
+	}
+}
+
+func TestMergeDependencyEdges_ExcludedSourceDropsAllOutgoing(t *testing.T) {
+	t.Parallel()
+
+	graph := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
+			resource(appScopeID, appScopeType),
+			resource(rabbitmqID, queueType),
+		},
+	}
+	// Caller nonsensically claims the app scope depends on rabbitmq.
+	// The excluded-source rule silently drops it.
+	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
+		appScopeID: {dep(rabbitmqID)},
+	}, excluded())
+	require.Empty(t, findResource(t, graph, appScopeID).Connections)
+	require.Empty(t, findResource(t, graph, rabbitmqID).Connections)
+}
+
+func TestMergeDependencyEdges_ExcludedTargetDropsEdge(t *testing.T) {
+	t.Parallel()
+
+	graph := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
+			resource(consumerID, containerType),
+			resource(appScopeID, appScopeType),
+			resource(rabbitmqID, queueType),
+		},
+	}
+	// consumer -> app (excluded) is dropped, consumer -> rabbitmq is
+	// kept. Common shape in real Bicep templates.
+	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
+		consumerID: {dep(appScopeID), dep(rabbitmqID)},
+	}, excluded())
+	consumer := findResource(t, graph, consumerID)
+	require.Len(t, consumer.Connections, 1)
+	require.Equal(t, rabbitmqID, *consumer.Connections[0].ID)
+	require.Empty(t, findResource(t, graph, appScopeID).Connections,
+		"excluded target must not receive a mirrored inbound entry")
+}
+
+func TestMergeDependencyEdges_UnknownEndpointIsDropped(t *testing.T) {
+	t.Parallel()
+
+	graph := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
+			resource(consumerID, containerType),
+			resource(rabbitmqID, queueType),
+		},
+	}
+	// Source not in graph.
+	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
+		"/planes/radius/local/resourcegroups/default/providers/Nowhere/things/x": {dep(rabbitmqID)},
+	}, excluded())
+	require.Empty(t, findResource(t, graph, consumerID).Connections)
+	require.Empty(t, findResource(t, graph, rabbitmqID).Connections)
+
+	// Target not in graph.
+	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
+		consumerID: {dep("/planes/radius/local/resourcegroups/default/providers/Nowhere/things/x")},
+	}, excluded())
+	require.Empty(t, findResource(t, graph, consumerID).Connections)
+}
+
+func TestMergeDependencyEdges_ConnectionWinsOverDependency(t *testing.T) {
+	t.Parallel()
+
+	// The graph already has a Kind: Connection outbound from consumer
+	// to rabbitmq (mirrored inbound on rabbitmq). A caller-supplied
+	// Dependency edge for the same pair MUST be dropped.
+	graph := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
+			resource(consumerID, containerType, connOut(rabbitmqID)),
+			resource(rabbitmqID, queueType, &corerpv20250801preview.ApplicationGraphConnection{
+				ID:        to.Ptr(consumerID),
+				Direction: to.Ptr(corerpv20250801preview.DirectionInbound),
+				Kind:      to.Ptr(corerpv20250801preview.ConnectionKindConnection),
+			}),
+		},
+	}
+	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
+		consumerID: {dep(rabbitmqID)},
+	}, excluded())
+
+	// consumer still has exactly one outbound entry, tagged Connection.
+	consumer := findResource(t, graph, consumerID)
+	require.Len(t, consumer.Connections, 1)
+	require.Equal(t, corerpv20250801preview.ConnectionKindConnection, *consumer.Connections[0].Kind)
+
+	// rabbitmq still has exactly one inbound entry, tagged Connection.
+	rabbitmq := findResource(t, graph, rabbitmqID)
+	require.Len(t, rabbitmq.Connections, 1)
+	require.Equal(t, corerpv20250801preview.ConnectionKindConnection, *rabbitmq.Connections[0].Kind)
+}
+
+func TestMergeDependencyEdges_DuplicateIncomingPairsCollapse(t *testing.T) {
+	t.Parallel()
+
+	graph := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
+			resource(consumerID, containerType),
+			resource(rabbitmqID, queueType),
+		},
+	}
+	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
+		consumerID: {dep(rabbitmqID), dep(rabbitmqID), dep(rabbitmqID)},
+	}, excluded())
+
+	require.Len(t, findResource(t, graph, consumerID).Connections, 1,
+		"repeated (source, target) pair in the same batch must collapse")
+	require.Len(t, findResource(t, graph, rabbitmqID).Connections, 1)
+}
+
+func TestMergeDependencyEdges_MalformedInputEntriesAreSkipped(t *testing.T) {
+	t.Parallel()
+
+	graph := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
+			resource(consumerID, containerType),
+			resource(rabbitmqID, queueType),
+		},
+	}
+	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
+		consumerID: {
+			nil, // nil entry
+			{ID: to.Ptr(rabbitmqID)}, // missing Direction and Kind
+			{ID: to.Ptr(rabbitmqID), Direction: to.Ptr(corerpv20250801preview.DirectionInbound), Kind: to.Ptr(corerpv20250801preview.ConnectionKindDependency)},  // wrong Direction
+			{ID: to.Ptr(rabbitmqID), Direction: to.Ptr(corerpv20250801preview.DirectionOutbound), Kind: to.Ptr(corerpv20250801preview.ConnectionKindConnection)}, // wrong Kind
+			dep(rabbitmqID), // valid — this one is emitted
+		},
+	}, excluded())
+
+	consumer := findResource(t, graph, consumerID)
+	require.Len(t, consumer.Connections, 1, "only the valid entry must be emitted")
+	require.Equal(t, corerpv20250801preview.ConnectionKindDependency, *consumer.Connections[0].Kind)
 }

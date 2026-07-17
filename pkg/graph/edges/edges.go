@@ -16,259 +16,172 @@ limitations under the License.
 
 package edges
 
-import "sort"
+import (
+	"sort"
 
-// Edge kind constants. Values match the ConnectionKind enum on the
-// Radius.Core/2025-08-01-preview wire model; keeping them as untyped
-// strings here avoids importing the generated API package into this
-// otherwise dependency-free package. Callers convert Edge.Kind into the
-// generated ConnectionKind pointer when materializing the wire model.
-const (
-	// KindConnection tags edges derived from a resource's
-	// properties.connections block (author-declared).
-	KindConnection = "Connection"
-
-	// KindDependency tags edges derived from a resource's dependsOn
-	// list (implicit, inferred from Bicep's compiled template or the
-	// caller-supplied dependsOnEdges on the runtime GetGraphRequest
-	// wire).
-	KindDependency = "Dependency"
+	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/to"
 )
 
-// Edge direction constants. Values match the Direction enum on the
-// Radius.Core/2025-08-01-preview wire model.
-const (
-	// DirectionOutbound identifies the source resource's view of an
-	// edge: "I depend on / connect to Target".
-	DirectionOutbound = "Outbound"
-
-	// DirectionInbound identifies the target resource's view of the
-	// same edge: "Source depends on / connects to me". Every outbound
-	// edge is mirrored by an inbound edge on the target with the same
-	// Kind.
-	DirectionInbound = "Inbound"
-)
-
-// Resource is a graph-eligible Radius resource as seen by the edge
-// extractor. Callers convert their own representation (ARM JSON entry,
-// stored resource record, etc.) into this shape before calling
-// ExtractEdges.
+// MergeDependencyEdges overlays a set of caller-supplied Dependency
+// edges onto an already-built ApplicationGraphResponse. The graph is
+// assumed to carry only Kind: Connection edges when this function is
+// called; on return, each accepted incoming edge is present as
+// Direction: Outbound on the source resource and mirrored as
+// Direction: Inbound on the target, both tagged Kind: Dependency.
 //
-// Both Connections and DependsOn hold pre-resolved canonical Radius
-// resource IDs. Callers own the resolution: the static caller parses
-// ARM "[resourceId('T','N')]" expressions before calling the
-// extractor; the runtime caller (Phase 2) receives already-resolved
-// IDs from stored properties and from caller-supplied dependsOnEdges
-// on the GetGraphRequest wire. Keeping the primitive free of ARM /
-// storage / HTTP concerns is what makes it callable from both
-// contexts.
-type Resource struct {
-	// ID is the canonical Radius resource ID
-	// ("/planes/radius/local/resourcegroups/…/providers/{ns}/{type}/{name}").
-	ID string
-
-	// Type is the Radius resource type ("Radius.Compute/containers").
-	Type string
-
-	// Connections is the list of canonical Radius resource IDs this
-	// resource author-declared under properties.connections[*].source.
-	// Each entry produces a Kind=Connection edge (subject to exclusion
-	// and de-duplication). Duplicates are collapsed silently.
-	Connections []string
-
-	// DependsOn is the list of canonical Radius resource IDs the
-	// resource declares as build-time dependencies. Each entry not
-	// already covered by Connections produces a Kind=Dependency edge.
-	// The static caller populates this from resolveDependsOn on the
-	// ARM template's dependsOn array. The runtime caller populates it
-	// from caller-supplied dependsOnEdges on the GetGraphRequest wire.
-	DependsOn []string
-}
-
-// Edge is a single directed edge in the application graph.
+// The incoming map is keyed by source resource ID; the value is the
+// list of outbound edges leaving that source. This matches the wire
+// shape of GetGraphRequest.dependsOnEdges on
+// Radius.Core/2025-08-01-preview, so the server can pass the request
+// input directly. The CLI static-graph builder constructs an equivalent
+// map from Bicep's compiled dependsOn list.
 //
-// Source and Target describe the fixed orientation of the underlying
-// edge concept ("Source depends on / connects to Target"). Direction
-// selects which side of that edge this entry describes: an Outbound
-// entry lives on Source's Connections slice; an Inbound entry lives on
-// Target's Connections slice.
+// Filtering rules applied to every incoming edge:
 //
-// Use Owner and Peer to translate an Edge into a wire-model
-// ApplicationGraphConnection entry without having to check Direction
-// yourself.
-type Edge struct {
-	// Source is the canonical resource ID of the edge's source node
-	// (the resource that depends on or connects to Target).
-	Source string
-
-	// Target is the canonical resource ID of the edge's target node.
-	Target string
-
-	// Direction is DirectionOutbound or DirectionInbound. Every
-	// outbound edge Source→Target is mirrored by an inbound edge on
-	// Target with the same Kind.
-	Direction string
-
-	// Kind is KindConnection (from properties.connections) or
-	// KindDependency (from DependsOn). Case-sensitive; matches the
-	// wire enum values on Radius.Core/2025-08-01-preview.
-	Kind string
-}
-
-// Owner returns the canonical ID of the resource whose Connections
-// slice owns this Edge entry: Source for an Outbound edge, Target for
-// an Inbound edge.
-func (e Edge) Owner() string {
-	if e.Direction == DirectionInbound {
-		return e.Target
-	}
-	return e.Source
-}
-
-// Peer returns the canonical ID of the other end of the edge — the
-// value stored in the wire entry's `id` field on the owning resource's
-// Connections slice.
-func (e Edge) Peer() string {
-	if e.Direction == DirectionInbound {
-		return e.Source
-	}
-	return e.Target
-}
-
-// ExtractEdges returns the deduplicated, mirrored edge list for the
-// given resources, dropping any edge whose source or target type is
-// present in the excluded set.
+//   - The edge is dropped if source or target is not present in
+//     graph.Resources (unknown IDs are never rendered).
+//   - The edge is dropped if source or target has a Type present in
+//     excluded (control-plane containment types are never edge
+//     endpoints).
+//   - The edge is dropped if the (source, target) pair already has a
+//     Kind: Connection outbound entry on source (Connection wins).
+//   - Incoming entries whose Direction is not Outbound or whose Kind is
+//     not Dependency are ignored — the wire contract requires those
+//     values and the server refuses to trust caller-supplied Inbound or
+//     Connection entries.
+//   - The same (source, target) pair appearing multiple times in the
+//     input collapses to a single edge (dependsOn de-duplication).
 //
-// excluded holds canonical "Namespace/type" strings that MUST NOT
-// appear as graph nodes or edge targets. Callers control membership so
-// the same primitive can be used with different exclusion sets (static
-// vs runtime).
+// After merging, each resource's Connections slice is sorted
+// deterministically by (Direction, Kind, ID) so goldens and diffs
+// stay stable.
 //
-// The output is sorted deterministically by (Source, Target,
-// Direction, Kind) so callers can compare or diff it.
-//
-// ExtractEdges never returns an error: unresolvable DependsOn entries
-// and edges targeting excluded types are silently dropped. See the
-// spec's edge-cases section for the exhaustive rules.
-//
-// # Callers
-//
-// Two callers consume this primitive today, both by converting their
-// own input into []Resource and interpreting the returned []Edge via
-// Edge.Owner / Edge.Peer when materializing wire entries:
-//
-//   - Static graph builder — [pkg/cli/graph.BuildModeledGraph]. Resolves
-//     ARM "[resourceId('T','N')]" expressions in
-//     properties.connections and dependsOn before calling ExtractEdges.
-//   - Runtime graph handler (Phase 2) —
-//     pkg/corerp/frontend/controller/applications/v20250801preview.
-//     Populates Resource.DependsOn from the caller-supplied
-//     dependsOnEdges field on the GetGraphRequest wire (NOT from a
-//     server-side property scan). Resource.Connections comes from the
-//     resource's stored properties.connections[*].source, which is
-//     already a canonical Radius resource ID at that point. Everything
-//     else — exclusion, Connection-wins de-dup, mirroring — is reused
-//     verbatim.
-//
-// The package intentionally imports nothing from pkg/cli/, pkg/corerp/,
-// or net/http. Verified with `go list -deps ./pkg/graph/edges/...`.
-// Keeping the primitive dependency-free is what makes Phase 2 a wiring
-// change rather than a re-implementation (FR-017..FR-019).
-//
-// Future extensibility: if a second configuration knob becomes
-// necessary (for example, an option to emit diagnostic reasons for
-// dropped edges), promote both arguments into an ExtractOptions
-// struct. Keeping a single positional argument today (Constitution
-// VII, Simplicity Over Cleverness) avoids paying that cost until a
-// real need materializes.
-func ExtractEdges(resources []Resource, excluded map[string]struct{}) []Edge {
-	// Build a canonical-ID → Type map for O(1) target validation.
-	// Every candidate target must resolve to a Resource in this map;
-	// unresolved targets and targets whose type is excluded are
-	// silently dropped.
-	byID := make(map[string]string, len(resources))
-	for i := range resources {
-		byID[resources[i].ID] = resources[i].Type
+// MergeDependencyEdges is a no-op when graph is nil, when incoming is
+// empty, or when every incoming edge is filtered out.
+func MergeDependencyEdges(
+	graph *corerpv20250801preview.ApplicationGraphResponse,
+	incoming map[string][]*corerpv20250801preview.ApplicationGraphConnection,
+	excluded map[string]struct{},
+) {
+	if graph == nil || len(incoming) == 0 {
+		return
 	}
 
-	validTarget := func(id string) bool {
-		typ, ok := byID[id]
-		if !ok {
-			return false
+	byID := make(map[string]*corerpv20250801preview.ApplicationGraphResource, len(graph.Resources))
+	for _, r := range graph.Resources {
+		if r != nil && r.ID != nil {
+			byID[*r.ID] = r
 		}
-		_, isExcluded := excluded[typ]
-		return !isExcluded
+	}
+	if len(byID) == 0 {
+		return
 	}
 
-	// Collect outbound edges keyed by (source, target) → Kind so that
-	// a Connection recorded first is never downgraded to a Dependency
-	// by a same-pair dependsOn entry (Connection-wins, FR-011). Also
-	// collapses multiple dependsOn tokens targeting the same resource
-	// to one edge (FR-012).
+	// (source, target) pairs that already have an outbound Connection
+	// on source. Populated on demand as we walk incoming edges to
+	// avoid touching every resource when incoming is small.
 	type pair struct{ src, tgt string }
-	outbound := make(map[pair]string)
-
-	for _, r := range resources {
-		if _, isExcluded := excluded[r.Type]; isExcluded {
-			continue // excluded types are never sources
-		}
-
-		// Connection edges from author-declared Connections.
-		for _, target := range r.Connections {
-			if !validTarget(target) {
+	connectionPairs := map[pair]struct{}{}
+	for sourceID, res := range byID {
+		for _, c := range res.Connections {
+			if c == nil || c.ID == nil || c.Direction == nil {
 				continue
 			}
-			// Connection wins: overwrite any pre-existing entry (there
-			// shouldn't be one from Connection, but this makes the
-			// invariant explicit).
-			outbound[pair{r.ID, target}] = KindConnection
-		}
-
-		// Dependency edges from DependsOn. Skip if the pair is already
-		// a Connection (Connection-wins). Collapse duplicate tokens.
-		for _, dep := range r.DependsOn {
-			if !validTarget(dep) {
+			if *c.Direction != corerpv20250801preview.DirectionOutbound {
 				continue
 			}
-			k := pair{r.ID, dep}
-			if _, exists := outbound[k]; exists {
-				continue
-			}
-			outbound[k] = KindDependency
+			connectionPairs[pair{sourceID, *c.ID}] = struct{}{}
 		}
 	}
 
-	// Emit outbound edges + mirrored inbound edges. Mirroring preserves
-	// Kind per FR-010.
-	out := make([]Edge, 0, len(outbound)*2)
-	for p, kind := range outbound {
-		out = append(out, Edge{
-			Source:    p.src,
-			Target:    p.tgt,
-			Direction: DirectionOutbound,
-			Kind:      kind,
-		})
-		out = append(out, Edge{
-			Source:    p.src,
-			Target:    p.tgt,
-			Direction: DirectionInbound,
-			Kind:      kind,
-		})
+	// De-dup incoming pairs before emitting anything, so the same
+	// (source, target) sent twice by a sloppy caller becomes one edge.
+	emitted := map[pair]struct{}{}
+	touched := map[string]struct{}{}
+
+	for sourceID, entries := range incoming {
+		sourceRes, ok := byID[sourceID]
+		if !ok {
+			continue
+		}
+		if _, isExcluded := excluded[to.String(sourceRes.Type)]; isExcluded {
+			continue
+		}
+
+		for _, entry := range entries {
+			if entry == nil || entry.ID == nil || entry.Direction == nil || entry.Kind == nil {
+				continue
+			}
+			if *entry.Direction != corerpv20250801preview.DirectionOutbound {
+				continue
+			}
+			if *entry.Kind != corerpv20250801preview.ConnectionKindDependency {
+				continue
+			}
+			targetID := *entry.ID
+			targetRes, ok := byID[targetID]
+			if !ok {
+				continue
+			}
+			if _, isExcluded := excluded[to.String(targetRes.Type)]; isExcluded {
+				continue
+			}
+			p := pair{sourceID, targetID}
+			if _, wins := connectionPairs[p]; wins {
+				continue // Connection wins over Dependency for the same pair.
+			}
+			if _, dup := emitted[p]; dup {
+				continue
+			}
+			emitted[p] = struct{}{}
+
+			sourceRes.Connections = append(sourceRes.Connections,
+				&corerpv20250801preview.ApplicationGraphConnection{
+					ID:        to.Ptr(targetID),
+					Direction: to.Ptr(corerpv20250801preview.DirectionOutbound),
+					Kind:      to.Ptr(corerpv20250801preview.ConnectionKindDependency),
+				})
+			targetRes.Connections = append(targetRes.Connections,
+				&corerpv20250801preview.ApplicationGraphConnection{
+					ID:        to.Ptr(sourceID),
+					Direction: to.Ptr(corerpv20250801preview.DirectionInbound),
+					Kind:      to.Ptr(corerpv20250801preview.ConnectionKindDependency),
+				})
+			touched[sourceID] = struct{}{}
+			touched[targetID] = struct{}{}
+		}
 	}
 
-	// Deterministic sort so callers can compare or diff the output.
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].Source != out[j].Source {
-			return out[i].Source < out[j].Source
+	// Sort every touched resource's Connections deterministically so
+	// downstream diff/hash consumers see a stable order.
+	for id := range touched {
+		res := byID[id]
+		sortConnections(res.Connections)
+	}
+}
+
+// sortConnections orders a Connections slice deterministically by
+// (Direction, Kind, ID). Nil pointers are pushed to the end.
+func sortConnections(conns []*corerpv20250801preview.ApplicationGraphConnection) {
+	sort.Slice(conns, func(i, j int) bool {
+		a, b := conns[i], conns[j]
+		if a == nil || b == nil {
+			return a != nil && b == nil
 		}
-		if out[i].Target != out[j].Target {
-			return out[i].Target < out[j].Target
+		if ad, bd := stringOrEmpty((*string)(a.Direction)), stringOrEmpty((*string)(b.Direction)); ad != bd {
+			return ad < bd
 		}
-		if out[i].Direction != out[j].Direction {
-			return out[i].Direction < out[j].Direction
+		if ak, bk := stringOrEmpty((*string)(a.Kind)), stringOrEmpty((*string)(b.Kind)); ak != bk {
+			return ak < bk
 		}
-		return out[i].Kind < out[j].Kind
+		return to.String(a.ID) < to.String(b.ID)
 	})
+}
 
-	return out
+func stringOrEmpty(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
 }
