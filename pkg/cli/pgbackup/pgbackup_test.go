@@ -66,3 +66,14 @@ func Test_StateBranchName_HonorsOverride(t *testing.T) {
 	t.Setenv(StateBranchEnvVar, "radius-state-pr-42")
 	require.Equal(t, "radius-state-pr-42", StateBranchName(), "%s must override the default branch", StateBranchEnvVar)
 }
+
+func Test_StateArchiveName_HonorsArchiveOverride(t *testing.T) {
+	t.Setenv(StateArchiveEnvVar, "radius-state-pr-42")
+	require.Equal(t, "radius-state-pr-42", StateArchiveName())
+}
+
+func Test_StateArchiveName_PrefersArchiveOverride(t *testing.T) {
+	t.Setenv(StateArchiveEnvVar, "radius-state-archive")
+	t.Setenv(StateBranchEnvVar, "radius-state-branch")
+	require.Equal(t, "radius-state-archive", StateArchiveName())
+}
