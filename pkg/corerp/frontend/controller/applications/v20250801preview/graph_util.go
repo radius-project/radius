@@ -447,6 +447,12 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 				connectionInbound := corerpv20250801preview.ApplicationGraphConnection{
 					ID:        new(id),
 					Direction: to.Ptr(corerpv20250801preview.DirectionInbound), //Direction is set with respect to Resource defining this connection
+					// Every edge produced by the runtime graph is a Connection
+					// in Phase 1. Dependency edges are surfaced only on the
+					// static graph (Bicep dependsOn); runtime dependency
+					// extraction is Phase 2 and arrives via caller-supplied
+					// dependsOnEdges on GetGraphRequest.
+					Kind: to.Ptr(corerpv20250801preview.ConnectionKindConnection),
 				}
 				connectionsByDestination[otherID] = append(connectionsByDestination[otherID], connectionInbound)
 			} else {
@@ -755,6 +761,10 @@ func resolveConnections(resource generated.GenericResource, jsonRefPath string, 
 			entries = append(entries, &corerpv20250801preview.ApplicationGraphConnection{
 				ID:        new(sourceID),
 				Direction: new(dir),
+				// Every edge produced by the runtime graph is Kind:
+				// Connection in Phase 1 (see companion inbound-emission
+				// site above).
+				Kind: to.Ptr(corerpv20250801preview.ConnectionKindConnection),
 			})
 		}
 	}

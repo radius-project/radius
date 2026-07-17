@@ -206,6 +206,47 @@ The `findSourceResource()` helper supports three resolution strategies:
    resource name)
 3. Fallback to the raw string (marked as `ErrInvalidSource`)
 
+#### Edge Sources and `Kind`
+
+Every edge on the `Radius.Core/2025-08-01-preview` wire carries a `kind`
+discriminator (`ApplicationGraphConnection.kind`, values `Connection` or
+`Dependency`). Two sources feed it:
+
+- **`properties.connections`** — author-declared. Every edge emitted from
+  this source is tagged `Kind: Connection`.
+- **`dependsOn`** — implicit dependencies inferred from Bicep's compiled
+  `dependsOn` list. Every edge emitted from this source is tagged `Kind:
+  Dependency`. When the same `(source, target)` pair is signaled by both
+  the connections block and `dependsOn`, **Connection wins** — exactly
+  one edge is emitted, tagged `Connection`.
+
+Today the two producers differ in which sources they consume:
+
+- **Server-side runtime handler**
+  (`pkg/corerp/frontend/controller/applications/v20250801preview/graph_util.go`)
+  — sees only `properties.connections` (deployed resources do not carry
+  Bicep's `dependsOn`). Every edge it emits is `Kind: Connection`.
+  Applications.Core (stable) is unchanged and does not carry `kind` on
+  the wire.
+- **CLI static-graph builder** (`rad app graph app.bicep`,
+  [`pkg/cli/graph/modeled.go`](../../pkg/cli/graph/modeled.go)) — also
+  reads Bicep's `dependsOn`, so it emits both `Kind: Connection` and
+  `Kind: Dependency` edges. Templates that reference another resource
+  only via `secretKeyRef` (no `properties.connections` block) still
+  surface an implicit dependency edge.
+
+Both producers share the same extraction primitive
+([`pkg/graph/edges/`](../../pkg/graph/edges/)): exclusion of
+control-plane types (`Radius.Core/applications`, `Radius.Core/environments`,
+`Radius.Core/recipePacks`, plus the legacy `Applications.Core/applications`
+and `Applications.Core/environments`), Connection-wins de-duplication, and
+reciprocal `Outbound`/`Inbound` mirroring. Excluded types are neither
+graph nodes nor edge targets. Phase 2 will bring `Kind: Dependency` to
+the server by adding an optional `dependsOnEdges` field to
+`GetGraphRequest` — callers who ran `bicep build` locally send the
+compiled dependency list, and the server merges it into the graph
+through the same primitive.
+
 #### Breadth-First Expansion
 
 The algorithm starts with resources known to be in the application and
@@ -245,6 +286,7 @@ classDiagram
     class ApplicationGraphConnection {
         +id: string
         +direction: Direction
+        +kind: ConnectionKind
     }
     class ApplicationGraphOutputResource {
         +id: string
@@ -256,15 +298,24 @@ classDiagram
         Outbound
         Inbound
     }
+    class ConnectionKind {
+        <<enum>>
+        Connection
+        Dependency
+    }
 
     ApplicationGraphResponse "1" --> "*" ApplicationGraphResource : resources
     ApplicationGraphResource "1" --> "*" ApplicationGraphConnection : connections
     ApplicationGraphResource "1" --> "*" ApplicationGraphOutputResource : outputResources
     ApplicationGraphConnection --> Direction : direction
+    ApplicationGraphConnection --> ConnectionKind : kind
 ```
 
 The types are defined in TypeSpec at `typespec/Radius.Core/applications.tsp`
-and generated into `pkg/corerp/api/v20231001preview/`.
+and generated into `pkg/corerp/api/v20231001preview/` (stable Applications.Core)
+and `pkg/corerp/api/v20250801preview/` (Radius.Core preview). The `kind`
+field and the `ConnectionKind` enum only exist on the Radius.Core preview
+surface; the stable Applications.Core wire is unchanged.
 
 ## CLI Display
 
@@ -333,7 +384,7 @@ RP handler based on the registered resource provider.
 | HTTP Method | `POST` |
 | URL | `{rootScope}/providers/Radius.Core/applications/{name}/getGraph?api-version=2025-08-01-preview` |
 | Request Body | `GetGraphRequest` — `{ "includeIcons": false }` (both the object and the field are optional; missing or empty bodies resolve to `false`) |
-| Response | `ApplicationGraphResponse` (200 OK) — same resources/connections/output-resources as the stable version, plus per-node `iconHash` and (when `includeIcons: true`) a top-level `icons` map from hash to verbatim SVG bytes |
+| Response | `ApplicationGraphResponse` (200 OK) — same resources/connections/output-resources as the stable version, plus per-node `iconHash` and (when `includeIcons: true`) a top-level `icons` map from hash to verbatim SVG bytes. Every `ApplicationGraphConnection` also carries a `kind` discriminator (`Connection` or `Dependency`) not present on the Applications.Core wire; see [Edge Sources and Kind](#edge-sources-and-kind). |
 
 ## Radius.Core Preview: Icon Enrichment
 

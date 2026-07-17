@@ -13,6 +13,11 @@ type ApplicationGraphConnection struct {
 
 	// REQUIRED; The resource ID
 	ID *string
+
+	// REQUIRED; Discriminator identifying the origin of this edge. 'Connection' edges are author-declared entries under properties.connections.
+	// 'Dependency' edges are implicit dependencies derived from Bicep's dependsOn list (static graph only in Phase 1). Every
+	// emitted edge carries a kind.
+	Kind *ConnectionKind
 }
 
 // ApplicationGraphOutputResource - Describes an output resource that comprises an application graph resource.

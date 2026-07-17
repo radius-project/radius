@@ -17,6 +17,7 @@ func (a ApplicationGraphConnection) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "direction", a.Direction)
 	populate(objectMap, "id", a.ID)
+	populate(objectMap, "kind", a.Kind)
 	return json.Marshal(objectMap)
 }
 
@@ -34,6 +35,9 @@ func (a *ApplicationGraphConnection) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "id":
 			err = unpopulate(val, "ID", &a.ID)
+			delete(rawMsg, key)
+		case "kind":
+			err = unpopulate(val, "Kind", &a.Kind)
 			delete(rawMsg, key)
 		}
 		if err != nil {

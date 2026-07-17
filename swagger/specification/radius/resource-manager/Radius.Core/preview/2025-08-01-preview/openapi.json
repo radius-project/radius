@@ -1266,11 +1266,16 @@
         "direction": {
           "$ref": "#/definitions/Direction",
           "description": "The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and 'Inbound' indicates indicates this connection specifies the ID of the source."
+        },
+        "kind": {
+          "$ref": "#/definitions/ConnectionKind",
+          "description": "Discriminator identifying the origin of this edge. 'Connection' edges are author-declared entries under properties.connections. 'Dependency' edges are implicit dependencies derived from Bicep's dependsOn list (static graph only in Phase 1). Every emitted edge carries a kind."
         }
       },
       "required": [
         "id",
-        "direction"
+        "direction",
+        "kind"
       ]
     },
     "ApplicationGraphOutputResource": {
@@ -1632,6 +1637,30 @@
           "$ref": "#/definitions/Azure.ResourceManager.CommonTypes.TrackedResourceUpdate"
         }
       ]
+    },
+    "ConnectionKind": {
+      "type": "string",
+      "description": "The origin of a connection: 'Connection' for author-declared entries in properties.connections, 'Dependency' for implicit entries derived from Bicep's dependsOn list.",
+      "enum": [
+        "Connection",
+        "Dependency"
+      ],
+      "x-ms-enum": {
+        "name": "ConnectionKind",
+        "modelAsString": false,
+        "values": [
+          {
+            "name": "Connection",
+            "value": "Connection",
+            "description": "The edge was declared by the author in properties.connections."
+          },
+          {
+            "name": "Dependency",
+            "value": "Dependency",
+            "description": "The edge was inferred from a Bicep dependsOn entry (implicit dependency). Not emitted by the runtime graph in Phase 1 — runtime dependency extraction is Phase 2."
+          }
+        ]
+      }
     },
     "Direction": {
       "type": "string",

@@ -24,6 +24,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/graph/edges"
 	"github.com/radius-project/radius/pkg/to"
 
 	productmanifest "github.com/radius-project/radius/deploy/manifest"
@@ -154,6 +155,7 @@ func BuildModeledGraph(template map[string]any, includeIcons bool) (*corerpv2025
 	secureParams := sensitiveParamNames(template)
 
 	graphResources := make([]*corerpv20250801preview.ApplicationGraphResource, 0, len(rawResources))
+	extractInputs := make([]edges.Resource, 0, len(rawResources))
 	for _, entry := range rawResources {
 		resource, err := buildModeledResource(entry, secureParams)
 		if err != nil {
@@ -163,14 +165,58 @@ func BuildModeledGraph(template map[string]any, includeIcons bool) (*corerpv2025
 			continue
 		}
 		graphResources = append(graphResources, resource)
+
+		// Feed the pure-Go extractor with pre-resolved canonical IDs.
+		// The static graph is the only Kind: Dependency producer today
+		// (Bicep dependsOn). Runtime dependency edges arrive via
+		// caller-supplied dependsOnEdges on GetGraphRequest in Phase 2.
+		properties, _ := entry["properties"].(map[string]any)
+		rawDependsOn, _ := entry["dependsOn"].([]any)
+		extractInputs = append(extractInputs, edges.Resource{
+			ID:          to.String(resource.ID),
+			Type:        to.String(resource.Type),
+			Connections: resolveConnectionSources(properties),
+			DependsOn:   resolveDependsOn(rawDependsOn),
+		})
 	}
 
 	graph := &corerpv20250801preview.ApplicationGraphResponse{Resources: graphResources}
-	addInboundConnections(graph)
+	applyEdges(graph, edges.ExtractEdges(extractInputs, excludeResourceTypes))
 	if includeIcons {
 		graph.Icons = collectStaticGraphIcons(graphResources)
 	}
 	return graph, nil
+}
+
+// applyEdges attaches each Edge returned by the extractor to the
+// Connections slice of the resource that owns it (Source for Outbound,
+// Target for Inbound). ExtractEdges returns entries sorted
+// deterministically, so the resulting Connections slices are ordered
+// stably across runs. Excluded resources are already absent from
+// graph.Resources (buildModeledResource returns nil for them), so byID
+// lookups for excluded owners silently drop mirror edges — the extractor
+// also refuses to emit edges whose target type is excluded.
+func applyEdges(graph *corerpv20250801preview.ApplicationGraphResponse, extracted []edges.Edge) {
+	if graph == nil || len(extracted) == 0 {
+		return
+	}
+	byID := make(map[string]*corerpv20250801preview.ApplicationGraphResource, len(graph.Resources))
+	for _, r := range graph.Resources {
+		if r != nil && r.ID != nil {
+			byID[*r.ID] = r
+		}
+	}
+	for _, e := range extracted {
+		owner, ok := byID[e.Owner()]
+		if !ok {
+			continue
+		}
+		owner.Connections = append(owner.Connections, &corerpv20250801preview.ApplicationGraphConnection{
+			ID:        to.Ptr(e.Peer()),
+			Direction: to.Ptr(corerpv20250801preview.Direction(e.Direction)),
+			Kind:      to.Ptr(corerpv20250801preview.ConnectionKind(e.Kind)),
+		})
+	}
 }
 
 // sensitiveParamNames returns the set of parameter names declared with
@@ -462,7 +508,7 @@ func buildModeledResource(entry map[string]any, secureParams map[string]struct{}
 		Name:              to.Ptr(name),
 		Type:              to.Ptr(resourceType),
 		ProvisioningState: to.Ptr(string(v1.ProvisioningStateNotSpecified)),
-		Connections:       outboundConnections(properties),
+		Connections:       []*corerpv20250801preview.ApplicationGraphConnection{},
 		OutputResources:   []*corerpv20250801preview.ApplicationGraphOutputResource{},
 		DiffHash:          to.Ptr(hash),
 		IconHash:          resolveIconHash(resourceType),
@@ -601,19 +647,20 @@ func deepCloneValue(v any) any {
 	}
 }
 
-// outboundConnections extracts the resource's `connections` map and emits
-// one outbound graph edge per entry whose source can be resolved to a
-// Radius resource ID.
-func outboundConnections(properties map[string]any) []*corerpv20250801preview.ApplicationGraphConnection {
+// resolveConnectionSources walks the resource's properties.connections
+// map and returns each entry's `source` after resolving it from an ARM
+// [resourceId(...)] expression to a fully-qualified Radius resource ID.
+// Unresolvable sources are dropped; the caller sees a Connections
+// slice of pre-resolved canonical IDs suitable for edges.ExtractEdges.
+func resolveConnectionSources(properties map[string]any) []string {
 	if properties == nil {
-		return []*corerpv20250801preview.ApplicationGraphConnection{}
+		return nil
 	}
 	connections, ok := properties["connections"].(map[string]any)
 	if !ok {
-		return []*corerpv20250801preview.ApplicationGraphConnection{}
+		return nil
 	}
-
-	result := make([]*corerpv20250801preview.ApplicationGraphConnection, 0, len(connections))
+	out := make([]string, 0, len(connections))
 	for _, raw := range connections {
 		entry, ok := raw.(map[string]any)
 		if !ok {
@@ -624,47 +671,17 @@ func outboundConnections(properties map[string]any) []*corerpv20250801preview.Ap
 		if resolved == "" {
 			continue
 		}
-		result = append(result, &corerpv20250801preview.ApplicationGraphConnection{
-			ID:        to.Ptr(resolved),
-			Direction: to.Ptr(corerpv20250801preview.DirectionOutbound),
-		})
+		out = append(out, resolved)
 	}
-	return result
+	return out
 }
 
-// addInboundConnections walks every outbound edge in the graph and inserts
-// the reciprocal inbound edge on the destination resource so each resource
-// surfaces both sides of its relationships.
-func addInboundConnections(graph *corerpv20250801preview.ApplicationGraphResponse) {
-	byID := make(map[string]*corerpv20250801preview.ApplicationGraphResource, len(graph.Resources))
-	for _, r := range graph.Resources {
-		if r != nil && r.ID != nil {
-			byID[*r.ID] = r
-		}
-	}
-
-	for _, src := range graph.Resources {
-		if src == nil || src.ID == nil {
-			continue
-		}
-		for _, conn := range src.Connections {
-			if conn == nil || conn.ID == nil || conn.Direction == nil {
-				continue
-			}
-			if *conn.Direction != corerpv20250801preview.DirectionOutbound {
-				continue
-			}
-			dest, ok := byID[*conn.ID]
-			if !ok {
-				continue
-			}
-			dest.Connections = append(dest.Connections, &corerpv20250801preview.ApplicationGraphConnection{
-				ID:        src.ID,
-				Direction: to.Ptr(corerpv20250801preview.DirectionInbound),
-			})
-		}
-	}
-}
+// outboundConnections and addInboundConnections have been superseded by
+// the pkg/graph/edges shared extractor. BuildModeledGraph now feeds
+// []edges.Resource into edges.ExtractEdges and hands the result to
+// applyEdges, which handles both properties.connections and Bicep
+// dependsOn as edge sources with Connection-wins de-duplication and
+// reciprocal mirroring.
 
 // resolveDependsOn resolves each ARM expression in an ARM JSON dependsOn
 // list to a fully-qualified Radius resource ID. Unresolvable entries are
