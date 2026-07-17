@@ -312,6 +312,23 @@ cluster_exists() {
         | grep -Fxq "${cluster}"
 }
 
+wait_for_kubernetes_api() {
+    local -a kubectl_args=("$@")
+    local deadline=$((SECONDS + 60))
+
+    while ((SECONDS < deadline)); do
+        if kubectl "${kubectl_args[@]}" --request-timeout=5s \
+            get --raw=/readyz \
+            >/dev/null 2>&1; then
+            return 0
+        fi
+        sleep 1
+    done
+
+    echo "Kubernetes API did not become ready." >&2
+    return 1
+}
+
 write_registry_config() {
     cat >"${REGISTRY_CONFIG}" <<EOF
 mirrors:
@@ -373,6 +390,7 @@ create_workload_cluster() {
         >"${HOST_WORKLOAD_KUBECONFIG}"
     cp "${HOST_WORKLOAD_KUBECONFIG}" \
         "${INTERNAL_WORKLOAD_KUBECONFIG}"
+    wait_for_kubernetes_api --kubeconfig "${HOST_WORKLOAD_KUBECONFIG}"
 
     local cluster_key
     local workload_ip
@@ -426,6 +444,7 @@ install_control_plane() {
         --registry-config "${REGISTRY_CONFIG}" \
         --k3s-arg "--disable=traefik@server:*" \
         --wait
+    wait_for_kubernetes_api --context "k3d-${cluster}"
     kubectl config use-context "k3d-${cluster}" >/dev/null
 
     kubectl create namespace radius-system
