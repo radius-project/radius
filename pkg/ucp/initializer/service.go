@@ -34,6 +34,8 @@ import (
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+
+	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 // Service implements the hosting.Service interface for registering manifests.
@@ -218,6 +220,12 @@ func registerResourceProviderDirect(ctx context.Context, dbClient database.Clien
 		if resourceType.Icon != nil {
 			sum := sha256.Sum256([]byte(*resourceType.Icon))
 			iconHash = to.Ptr(hex.EncodeToString(sum[:]))
+		} else {
+			// Substitute the product default icon's hash so every type in the
+			// registry has a non-nil iconHash.  DefaultHash returns nil
+			// when the embedded default failed to load — Icons are cosmetic,
+			// so we leave iconHash unset rather than fail registration.
+			iconHash = productmanifest.DefaultHash()
 		}
 
 		typeModel := &datamodel.ResourceType{

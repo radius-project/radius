@@ -24,6 +24,8 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
+
+	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 func Test_ResourceProviderSummary_Lifecycle(t *testing.T) {
@@ -65,6 +67,9 @@ func Test_ResourceProviderSummary_Lifecycle(t *testing.T) {
 		APIVersions:       map[string]*v20231001preview.ResourceTypeSummaryResultAPIVersion{},
 		Capabilities:      []*string{},
 		DefaultAPIVersion: new("2025-01-01"),
+		// Resource types created without an icon receive the product default
+		// icon's hash at registration time; the summary reflects that.
+		IconHash: new(productmanifest.Default().Hash),
 	}
 
 	response = server.MakeRequest(http.MethodGet, resourceProviderSummaryURL, nil)

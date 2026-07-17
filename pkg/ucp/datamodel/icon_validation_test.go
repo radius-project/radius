@@ -86,6 +86,167 @@ func TestValidateIcon(t *testing.T) {
 			wantErr: "<foreignObject>",
 		},
 		{
+			// SMIL <set> targeting href — the classic bypass. The
+			// <image> element passes href validation at parse time
+			// (fragment reference), but SMIL would mutate it to an
+			// external URL at render time. Reject the whole SVG.
+			name:    "SMIL set element targeting href",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><image href="#safe"><set attributeName="href" to="https://evil.example/x"/></image></svg>`,
+			wantErr: "<set> animation element",
+		},
+		{
+			// SMIL <animate> targeting a URL-bearing presentation
+			// attribute (fill). Even though the initial fill is
+			// safe, the animation would mutate it to reference an
+			// external paint server.
+			name:    "SMIL animate element targeting url-bearing attribute",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="red"><animate attributeName="fill" to="url(https://evil.example/g)"/></rect></svg>`,
+			wantErr: "<animate> animation element",
+		},
+		{
+			name:    "SMIL animateMotion element",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect><animateMotion path="M0,0 L100,100"/></rect></svg>`,
+			wantErr: "<animateMotion> animation element",
+		},
+		{
+			name:    "SMIL animateTransform element",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect><animateTransform attributeName="transform" type="rotate" from="0" to="360"/></rect></svg>`,
+			wantErr: "<animateTransform> animation element",
+		},
+		{
+			name:    "SMIL discard element",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect><discard begin="0s"/></rect></svg>`,
+			wantErr: "<discard> animation element",
+		},
+		{
+			name:    "style element",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><style>@import url('https://evil/x.css');</style></svg>`,
+			wantErr: "<style>",
+		},
+		{
+			name:    "style attribute on child",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect style="background:url(https://evil/x.png)"/></svg>`,
+			wantErr: "style attribute",
+		},
+		{
+			name:    "style attribute on root",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg" style="fill:red"/>`,
+			wantErr: "style attribute",
+		},
+		{
+			name: "paint server fill with fragment url",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g"><stop/></linearGradient></defs><rect fill="url(#g)"/></svg>`,
+		},
+		{
+			name: "paint server fill with fragment url and literal fallback",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(#g) red"/></svg>`,
+		},
+		{
+			name: "paint server clip-path with fragment url and quotes",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><rect clip-path="url('#c1')"/></svg>`,
+		},
+		{
+			name: "paint server literal color unchanged",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="#ff0000" stroke="currentColor"/></svg>`,
+		},
+		{
+			name: "paint server none unchanged",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="none" filter="none" mask="none" clip-path="none"/></svg>`,
+		},
+		{
+			name:    "external fill url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(https://evil.example/track.png)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external stroke url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect stroke="url(//evil.example/x)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external filter url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect filter="url(https://evil.example/f)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external mask url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect mask="url(https://evil.example/m)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external clip-path url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect clip-path="url(https://evil.example/c)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external marker-start url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><line marker-start="url(https://evil.example/m)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external marker-mid url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><line marker-mid="url(https://evil.example/m)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external marker-end url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><line marker-end="url(https://evil.example/m)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external marker shorthand url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><line marker="url(https://evil.example/m)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "external cursor url",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect cursor="url(https://evil.example/c.cur)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name: "marker-start with intra-document fragment is fine",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><defs><marker id="arrow"/></defs><line marker-start="url(#arrow)"/></svg>`,
+		},
+		{
+			name: "cursor with intra-document fragment is fine",
+			icon: `<svg xmlns="http://www.w3.org/2000/svg"><rect cursor="url(#custom)"/></svg>`,
+		},
+		{
+			name:    "css escape bypass in fill (backslash unescapes to url() at render time)",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="u\72l(https://evil.example/b)"/></svg>`,
+			wantErr: "backslash escape",
+		},
+		{
+			name:    "css escape bypass anywhere in the value",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect stroke="\75rl(#g)"/></svg>`,
+			wantErr: "backslash escape",
+		},
+		{
+			name:    "css escape in marker-start",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><line marker-start="u\72l(https://evil.example/m)"/></svg>`,
+			wantErr: "backslash escape",
+		},
+		{
+			name:    "css escape in href",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><image href="\68ttps://evil.example/x.png"/></svg>`,
+			wantErr: "backslash escape",
+		},
+		{
+			name:    "data url in fill rejected",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(data:image/svg+xml;base64,PHN2Zy8+)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
+			name:    "malformed url in fill rejected",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(#g"/></svg>`,
+			wantErr: "malformed url",
+		},
+		{
+			name:    "paint server fallback with external in second slot",
+			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(#g) url(https://evil.example/x)"/></svg>`,
+			wantErr: "references external resource",
+		},
+		{
 			name:    "external href",
 			icon:    `<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.com/x.png"/></svg>`,
 			wantErr: "references external resource",

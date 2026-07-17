@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	productmanifest "github.com/radius-project/radius/deploy/manifest"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/stretchr/testify/require"
 )
@@ -27,11 +28,57 @@ import (
 func TestBuildModeledGraph_EmptyTemplate(t *testing.T) {
 	t.Parallel()
 
-	graph, err := BuildModeledGraph(map[string]any{})
+	graph, err := BuildModeledGraph(map[string]any{}, false)
 	require.NoError(t, err)
 	require.NotNil(t, graph)
 	require.NotNil(t, graph.Resources)
 	require.Empty(t, graph.Resources)
+}
+
+// TestBuildModeledGraph_IncludeIconsControlsIconsMap verifies that the
+// includeIcons flag mirrors the runtime graph's --include-icons semantics:
+// per-node iconHash values are always populated, but the deduped icons
+// bytes map is only present when the caller opts in. This keeps the
+// modeled and runtime graphs' default JSON shape identical.
+//
+// The test uses `Applications.Core/containers` — a type that ships no
+// per-type SVG in the built-in-providers manifest — so its iconHash
+// must be the product default (see productmanifest.Lookup vs
+// productmanifest.DefaultHash in resolveIconHash). Asserting the exact
+// default hash — rather than merely non-nil — locks in the fallback
+// path and would catch a regression that quietly stops populating
+// IconHash for types without their own SVG.
+func TestBuildModeledGraph_IncludeIconsControlsIconsMap(t *testing.T) {
+	t.Parallel()
+
+	defaultHash := productmanifest.DefaultHash()
+	require.NotNil(t, defaultHash, "product default icon must be embedded for this test to be meaningful")
+
+	template := map[string]any{
+		"resources": []any{
+			map[string]any{
+				"type":       "Applications.Core/containers",
+				"name":       "frontend",
+				"properties": map[string]any{"image": "nginx"},
+			},
+		},
+	}
+
+	off, err := BuildModeledGraph(template, false)
+	require.NoError(t, err)
+	require.Len(t, off.Resources, 1)
+	require.NotNil(t, off.Resources[0].IconHash, "iconHash must be set on every node regardless of includeIcons")
+	require.Equal(t, *defaultHash, *off.Resources[0].IconHash,
+		"types with no per-type icon must resolve to the product default hash")
+	require.Nil(t, off.Icons, "icons map must be nil when includeIcons=false")
+
+	on, err := BuildModeledGraph(template, true)
+	require.NoError(t, err)
+	require.Len(t, on.Resources, 1)
+	require.NotNil(t, on.Resources[0].IconHash)
+	require.Equal(t, *defaultHash, *on.Resources[0].IconHash)
+	require.NotEmpty(t, on.Icons, "icons map must carry at least one entry when includeIcons=true")
+	require.Contains(t, on.Icons, *on.Resources[0].IconHash)
 }
 
 func TestBuildModeledGraph_SkipsContainersAndRecipePacks(t *testing.T) {
@@ -39,15 +86,21 @@ func TestBuildModeledGraph_SkipsContainersAndRecipePacks(t *testing.T) {
 
 	template := map[string]any{
 		"resources": []any{
+			// Legacy Applications.Core spellings.
 			map[string]any{"type": "Applications.Core/applications", "name": "myapp"},
 			map[string]any{"type": "Applications.Core/environments", "name": "myenv"},
+			// New Radius.Core spellings — same containers, must also be excluded.
+			map[string]any{"type": "Radius.Core/applications", "name": "myhotapp"},
+			map[string]any{"type": "Radius.Core/environments", "name": "myradenv"},
+			// Recipe catalog resource — never a graph member.
 			map[string]any{"type": "Radius.Core/recipePacks", "name": "mypack"},
+			// The one resource that should appear.
 			map[string]any{"type": "Applications.Core/containers", "name": "frontend",
 				"properties": map[string]any{"image": "nginx"}},
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	require.Len(t, graph.Resources, 1)
 	require.Equal(t, "frontend", *graph.Resources[0].Name)
@@ -67,7 +120,7 @@ func TestBuildModeledGraph_BuildsResourceID(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	require.Len(t, graph.Resources, 1)
 	require.Equal(t,
@@ -103,7 +156,7 @@ func TestBuildModeledGraph_OutboundConnectionsResolved(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	require.Len(t, graph.Resources, 2)
 
@@ -140,7 +193,7 @@ func TestBuildModeledGraph_InboundConnectionsAreReciprocal(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	cache := findResource(t, graph, "cache")
 	require.Len(t, cache.Connections, 1)
@@ -168,7 +221,7 @@ func TestBuildModeledGraph_DropsUnresolvableConnections(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	require.Empty(t, graph.Resources[0].Connections)
 }
@@ -196,9 +249,9 @@ func TestBuildModeledGraph_DependsOnAffectsDiffHash(t *testing.T) {
 		},
 	}
 
-	g1, err := BuildModeledGraph(withDep)
+	g1, err := BuildModeledGraph(withDep, false)
 	require.NoError(t, err)
-	g2, err := BuildModeledGraph(withoutDep)
+	g2, err := BuildModeledGraph(withoutDep, false)
 	require.NoError(t, err)
 
 	require.NotEqual(t, *g1.Resources[0].DiffHash, *g2.Resources[0].DiffHash)
@@ -260,7 +313,7 @@ func TestBuildModeledGraph_PopulatesPropertiesAndDropsRuntimeKeys(t *testing.T) 
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	require.Len(t, graph.Resources, 1)
 	props := graph.Resources[0].Properties
@@ -289,7 +342,7 @@ func TestBuildModeledGraph_NilPropertiesWhenAuthoredIsEmpty(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	require.Nil(t, graph.Resources[0].Properties)
 }
@@ -318,7 +371,7 @@ func TestBuildModeledGraph_SecureStringDirectReference(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	props := graph.Resources[0].Properties
 	require.Nil(t, props["credentials"], "secureString-derived value must be nulled")
@@ -349,7 +402,7 @@ func TestBuildModeledGraph_SecureStringNestedInsideExpression(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	require.Nil(t, graph.Resources[0].Properties["connectionURL"])
 }
@@ -383,7 +436,7 @@ func TestBuildModeledGraph_SecureStringInNestedObjectAndArray(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	auth := graph.Resources[0].Properties["auth"].(map[string]any)
 	headers := auth["headers"].([]any)
@@ -422,7 +475,7 @@ func TestBuildModeledGraph_SecureObjectReferenceAndFieldAccess(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	props := graph.Resources[0].Properties
 	require.Nil(t, props["credentials"], "whole secureObject reference must be nulled")
@@ -463,7 +516,7 @@ func TestBuildModeledGraph_NameBlocklistTopLevelAndNested(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	props := graph.Resources[0].Properties
 	require.Nil(t, props["password"])
@@ -503,7 +556,7 @@ func TestBuildModeledGraph_NameBlocklistIsExactMatch(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	props := graph.Resources[0].Properties
 	require.Equal(t, "argon2-hash", props["passwordHash"])
@@ -531,7 +584,7 @@ func TestBuildModeledGraph_NameBlocklistNullsAnyValueType(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	props := graph.Resources[0].Properties
 	require.Nil(t, props["secret"])
@@ -565,9 +618,9 @@ func TestBuildModeledGraph_DiffHashIndependentOfRedaction(t *testing.T) {
 		"resources":  []any{baseResource},
 	}
 
-	g1, err := BuildModeledGraph(withSecure)
+	g1, err := BuildModeledGraph(withSecure, false)
 	require.NoError(t, err)
-	g2, err := BuildModeledGraph(withoutSecure)
+	g2, err := BuildModeledGraph(withoutSecure, false)
 	require.NoError(t, err)
 
 	require.Equal(t, *g1.Resources[0].DiffHash, *g2.Resources[0].DiffHash,
@@ -603,7 +656,7 @@ func TestBuildModeledGraph_AuthoredMapNotMutated(t *testing.T) {
 		},
 	}
 
-	graph, err := BuildModeledGraph(template)
+	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	// Graph copy is redacted...
 	require.Nil(t, graph.Resources[0].Properties["password"])

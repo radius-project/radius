@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package applications
+package v20250801preview
 
 import (
 	"context"
@@ -32,8 +32,11 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -47,13 +50,61 @@ var (
 )
 
 const (
+	radiusPlane = "/planes/radius/"
+	planeName   = "local"
+
 	connectionsPath = "/properties/connections"
 	routesPath      = "/properties/routes"
 	portsPath       = "/properties/container/ports"
 )
 
+// computeGraphPayload computes the v20250801preview application graph for the
+// given application and environment IDs. It is the version-typed counterpart
+// to the Applications.Core-owned pipeline in
+// ../getgraph.go — this package keeps its own copy so the
+// two API versions do not share a versioned model type.
+func computeGraphPayload(ctx context.Context, applicationID resources.ID, environmentID string, connection sdk.Connection) (*corerpv20250801preview.ApplicationGraphResponse, error) {
+	// An application **MUST** have an environment id
+	parsedEnvironmentID, err := resources.ParseResource(environmentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse environment ID %q: %w", environmentID, err)
+	}
+
+	clientOptions := sdk.NewClientOptions(connection)
+
+	ucpApplicationsManagementClient := &clients.UCPApplicationsManagementClient{
+		RootScope:     radiusPlane + planeName,
+		ClientOptions: clientOptions,
+	}
+
+	resourceTypes, err := ucpApplicationsManagementClient.ListAllResourceTypesNames(ctx, "local")
+	if err != nil {
+		return nil, err
+	}
+
+	applicationResources, err := listAllResourcesByApplication(ctx, applicationID, resourceTypes, clientOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	environmentResources, err := listAllResourcesByEnvironment(ctx, parsedEnvironmentID, resourceTypes, clientOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only look up the registered Azure tenant when the fetched resources
+	// actually contain at least one Azure output resource. Pure-Kubernetes
+	// graphs skip the extra UCP credential Get.
+	tenantID := ""
+	if containsAzureOutputResource(applicationResources) || containsAzureOutputResource(environmentResources) {
+		tenantID = azureTenantID(ctx, clientOptions)
+	}
+
+	return computeGraph(applicationResources, environmentResources, tenantID), nil
+}
+
 // resolver is a function type to resolve appgraph connection.
-type resolver func(any) (string, corerpv20231001preview.Direction, error)
+type resolver func(any) (string, corerpv20250801preview.Direction, error)
 
 // listAllResourcesByApplication takes a context, applicationID, list of resource types and clientOptions
 // and returns a slice of GenericResources in the application and also an error if one occurs.
@@ -251,9 +302,9 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentName
 // will display the results to a human user, so rather than failing to computeGraph the graph, we will return partial
 // results. Each ApplicationGraphResource will have a provisioning state that indicates whether the resource
 // was successfully processed or not.
-func computeGraph(applicationResources []generated.GenericResource, environmentResources []generated.GenericResource, tenantID string) *corerpv20231001preview.ApplicationGraphResponse {
+func computeGraph(applicationResources []generated.GenericResource, environmentResources []generated.GenericResource, tenantID string) *corerpv20250801preview.ApplicationGraphResponse {
 	if applicationResources == nil && environmentResources == nil {
-		return &corerpv20231001preview.ApplicationGraphResponse{Resources: []*corerpv20231001preview.ApplicationGraphResource{}}
+		return &corerpv20250801preview.ApplicationGraphResponse{Resources: []*corerpv20250801preview.ApplicationGraphResource{}}
 	}
 
 	// The first step is to figure out what resources are part of the application.
@@ -294,7 +345,7 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 	}
 
 	// Next we need to process each entry in the resources list and build up the application graph.
-	applicationGraphResourcesByID := map[string]corerpv20231001preview.ApplicationGraphResource{}
+	applicationGraphResourcesByID := map[string]corerpv20250801preview.ApplicationGraphResource{}
 	for _, resource := range resources {
 		applicationGraphResource := applicationGraphResourceFromID(*resource.ID)
 		if applicationGraphResource == nil {
@@ -341,8 +392,8 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 
 	// While we do this we'll also build up a bi-directional adjency map of connections so we can resolve in-bound
 	// connections.
-	connectionsBySource := map[string][]corerpv20231001preview.ApplicationGraphConnection{}
-	connectionsByDestination := map[string][]corerpv20231001preview.ApplicationGraphConnection{}
+	connectionsBySource := map[string][]corerpv20250801preview.ApplicationGraphConnection{}
+	connectionsByDestination := map[string][]corerpv20250801preview.ApplicationGraphConnection{}
 
 	// First process add resources we *know* are in the application to the queue. As we explore the graph we'll
 	// visit resources outside the application if necessary.
@@ -390,12 +441,12 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 
 			// Note the connection in both directions.
 			//id is the source from which the connections in connectionsBySource go out
-			if *direction == corerpv20231001preview.DirectionOutbound { // we are dealing with a relation formed by "connection"
+			if *direction == corerpv20250801preview.DirectionOutbound { // we are dealing with a relation formed by "connection"
 				connectionsBySource[id] = append(connectionsBySource[id], *connection)
 				//otherID is the destination to the connections in connectionsByDestination
-				connectionInbound := corerpv20231001preview.ApplicationGraphConnection{
+				connectionInbound := corerpv20250801preview.ApplicationGraphConnection{
 					ID:        new(id),
-					Direction: to.Ptr(corerpv20231001preview.DirectionInbound), //Direction is set with respect to Resource defining this connection
+					Direction: to.Ptr(corerpv20250801preview.DirectionInbound), //Direction is set with respect to Resource defining this connection
 				}
 				connectionsByDestination[otherID] = append(connectionsByDestination[otherID], connectionInbound)
 			} else {
@@ -406,7 +457,7 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 	}
 
 	// Now we know *fully* the set of resources in the application. We can build the final graph.
-	graph := corerpv20231001preview.ApplicationGraphResponse{Resources: []*corerpv20231001preview.ApplicationGraphResource{}}
+	graph := corerpv20250801preview.ApplicationGraphResponse{Resources: []*corerpv20250801preview.ApplicationGraphResource{}}
 
 	for id, inApplication := range resourcesByIDInApplication {
 		if !inApplication {
@@ -418,7 +469,7 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 		entry := applicationGraphResourcesByID[id]
 		connectionsIn := connectionsByDestination[id]
 
-		entryConnections := make([]*corerpv20231001preview.ApplicationGraphConnection, len(connectionsIn))
+		entryConnections := make([]*corerpv20250801preview.ApplicationGraphConnection, len(connectionsIn))
 		for i := range connectionsIn {
 			entryConnections[i] = &connectionsIn[i]
 		}
@@ -436,13 +487,13 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 }
 
 // applicationGraphResourceFromID creates a applicationGraphResource from a resource ID.
-func applicationGraphResourceFromID(id string) *corerpv20231001preview.ApplicationGraphResource {
+func applicationGraphResourceFromID(id string) *corerpv20250801preview.ApplicationGraphResource {
 	application, err := resources.ParseResource(id)
 	if err != nil {
 		return nil // Invalid resource ID, skip
 	}
 
-	return &corerpv20231001preview.ApplicationGraphResource{
+	return &corerpv20250801preview.ApplicationGraphResource{
 		ID:                new(id),
 		Name:              new(application.Name()),
 		Type:              new(application.Type()),
@@ -502,8 +553,8 @@ func getResourceTypeSpecificProperties(properties map[string]any) map[string]any
 
 // outputResourceEntryFromID creates a outputResourceEntry from a resource ID. When tenantID
 // is non-empty and the ID is an Azure ARM resource, the entry is decorated with a portal URL.
-func outputResourceEntryFromID(id resources.ID, tenantID string) corerpv20231001preview.ApplicationGraphOutputResource {
-	entry := corerpv20231001preview.ApplicationGraphOutputResource{
+func outputResourceEntryFromID(id resources.ID, tenantID string) corerpv20250801preview.ApplicationGraphOutputResource {
+	entry := corerpv20250801preview.ApplicationGraphOutputResource{
 		ID:   new(id.String()),
 		Name: new(id.Name()),
 		Type: new(id.Type()),
@@ -623,9 +674,9 @@ func azureTenantID(ctx context.Context, clientOptions *policy.ClientOptions) str
 
 // outputResourcesFromAPIData processes the generic resource representation returned by the Radius API
 // and produces a list of output resources.
-func outputResourcesFromAPIData(resource generated.GenericResource, tenantID string) []*corerpv20231001preview.ApplicationGraphOutputResource {
+func outputResourcesFromAPIData(resource generated.GenericResource, tenantID string) []*corerpv20250801preview.ApplicationGraphOutputResource {
 	ids := outputResourceIDs(resource)
-	entries := make([]*corerpv20231001preview.ApplicationGraphOutputResource, 0, len(ids))
+	entries := make([]*corerpv20250801preview.ApplicationGraphOutputResource, 0, len(ids))
 	for _, id := range ids {
 		entry := outputResourceEntryFromID(id, tenantID)
 		entries = append(entries, &entry)
@@ -646,7 +697,7 @@ func outputResourcesFromAPIData(resource generated.GenericResource, tenantID str
 	return entries
 }
 
-func resolveConnections(resource generated.GenericResource, jsonRefPath string, converter resolver) []*corerpv20231001preview.ApplicationGraphConnection {
+func resolveConnections(resource generated.GenericResource, jsonRefPath string, converter resolver) []*corerpv20250801preview.ApplicationGraphConnection {
 	// Access data directly from the property bag instead of using jsonpointer on the struct.
 	// The jsonpointer approach failed to locate '/properties/...' because the struct field is
 	// named 'Properties' and does not serialize to a lowercase key until marshalled. Tests
@@ -671,7 +722,7 @@ func resolveConnections(resource generated.GenericResource, jsonRefPath string, 
 
 	if raw == nil {
 		// Not found, this is fine.
-		return []*corerpv20231001preview.ApplicationGraphConnection{}
+		return []*corerpv20250801preview.ApplicationGraphConnection{}
 	}
 
 	items := []any{}
@@ -685,23 +736,23 @@ func resolveConnections(resource generated.GenericResource, jsonRefPath string, 
 			items = append(items, v)
 		}
 	default:
-		return []*corerpv20231001preview.ApplicationGraphConnection{}
+		return []*corerpv20250801preview.ApplicationGraphConnection{}
 	}
 
 	if len(items) == 0 {
 		// Not a map of objects, this is fine.
-		return []*corerpv20231001preview.ApplicationGraphConnection{}
+		return []*corerpv20250801preview.ApplicationGraphConnection{}
 	}
 
 	// The data is returned as a map of JSON objects. We need to convert each object from a map[string]any
 	// to the strongly-typed format we understand.
 	//
 	// If we encounter an error processing this data, just skip "invalid" connection entry.
-	entries := []*corerpv20231001preview.ApplicationGraphConnection{}
+	entries := []*corerpv20250801preview.ApplicationGraphConnection{}
 	for _, item := range items {
 		sourceID, dir, err := converter(item)
 		if err == nil && sourceID != "" {
-			entries = append(entries, &corerpv20231001preview.ApplicationGraphConnection{
+			entries = append(entries, &corerpv20250801preview.ApplicationGraphConnection{
 				ID:        new(sourceID),
 				Direction: new(dir),
 			})
@@ -755,7 +806,7 @@ func findSourceResource(source string, allResources []generated.GenericResource)
 // to other resources like databases. Conversely if the resource is a database then this function
 // will not find any connections (because they are inbound). Inbound connections are processed later.
 func connectionsResolver(resources []generated.GenericResource) resolver {
-	return func(item any) (string, corerpv20231001preview.Direction, error) {
+	return func(item any) (string, corerpv20250801preview.Direction, error) {
 		data := &corerpv20231001preview.ConnectionProperties{}
 		err := toStronglyTypedData(item, data)
 		if err != nil {
@@ -765,13 +816,13 @@ func connectionsResolver(resources []generated.GenericResource) resolver {
 		if err != nil {
 			return "", "", err
 		}
-		return sourceID, corerpv20231001preview.DirectionOutbound, nil
+		return sourceID, corerpv20250801preview.DirectionOutbound, nil
 	}
 }
 
 // routesPathResolver resolves the outbound connections of Applications.Core/gateway resource.
 func routesPathResolver(resources []generated.GenericResource) resolver {
-	return func(item any) (string, corerpv20231001preview.Direction, error) {
+	return func(item any) (string, corerpv20250801preview.Direction, error) {
 		data := &corerpv20231001preview.GatewayRoute{}
 		err := toStronglyTypedData(item, data)
 		if err != nil {
@@ -781,7 +832,7 @@ func routesPathResolver(resources []generated.GenericResource) resolver {
 		if err != nil {
 			return "", "", err
 		}
-		return sourceID, corerpv20231001preview.DirectionOutbound, nil
+		return sourceID, corerpv20250801preview.DirectionOutbound, nil
 	}
 }
 
