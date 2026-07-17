@@ -36,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/graph/edges"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -58,12 +59,34 @@ const (
 	portsPath       = "/properties/container/ports"
 )
 
+// dependsOnExclusionSet is the resource-type filter applied to caller-supplied
+// dependsOnEdges before they are merged into the server-computed graph. It
+// mirrors excludeResourceTypes in pkg/cli/graph/modeled.go and is duplicated
+// here rather than shared so the server keeps a self-contained policy — a CLI
+// version that starts sending a superset of edge sources must not silently
+// change what the server accepts.
+//
+// Kept in sync with pkg/cli/graph/modeled.go excludeResourceTypes.
+var dependsOnExclusionSet = map[string]struct{}{
+	"Applications.Core/applications": {},
+	"Applications.Core/environments": {},
+	"Radius.Core/applications":       {},
+	"Radius.Core/environments":       {},
+	"Radius.Core/recipePacks":        {},
+}
+
 // computeGraphPayload computes the v20250801preview application graph for the
 // given application and environment IDs. It is the version-typed counterpart
 // to the Applications.Core-owned pipeline in
 // ../getgraph.go — this package keeps its own copy so the
 // two API versions do not share a versioned model type.
-func computeGraphPayload(ctx context.Context, applicationID resources.ID, environmentID string, connection sdk.Connection) (*corerpv20250801preview.ApplicationGraphResponse, error) {
+//
+// dependsOnEdges carries the optional caller-supplied Kind: Dependency edges
+// from GetGraphRequest.DependsOnEdges. They are merged onto the connection-only
+// graph after computeGraph returns, subject to dependsOnExclusionSet and the
+// Connection-wins policy in edges.MergeDependencyEdges. Passing a nil or empty
+// map leaves the graph unchanged.
+func computeGraphPayload(ctx context.Context, applicationID resources.ID, environmentID string, connection sdk.Connection, dependsOnEdges map[string][]*corerpv20250801preview.ApplicationGraphConnection) (*corerpv20250801preview.ApplicationGraphResponse, error) {
 	// An application **MUST** have an environment id
 	parsedEnvironmentID, err := resources.ParseResource(environmentID)
 	if err != nil {
@@ -100,7 +123,7 @@ func computeGraphPayload(ctx context.Context, applicationID resources.ID, enviro
 		tenantID = azureTenantID(ctx, clientOptions)
 	}
 
-	return computeGraph(applicationResources, environmentResources, tenantID), nil
+	return computeGraph(applicationResources, environmentResources, tenantID, dependsOnEdges), nil
 }
 
 // resolver is a function type to resolve appgraph connection.
@@ -302,7 +325,7 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentName
 // will display the results to a human user, so rather than failing to computeGraph the graph, we will return partial
 // results. Each ApplicationGraphResource will have a provisioning state that indicates whether the resource
 // was successfully processed or not.
-func computeGraph(applicationResources []generated.GenericResource, environmentResources []generated.GenericResource, tenantID string) *corerpv20250801preview.ApplicationGraphResponse {
+func computeGraph(applicationResources []generated.GenericResource, environmentResources []generated.GenericResource, tenantID string, dependsOnEdges map[string][]*corerpv20250801preview.ApplicationGraphConnection) *corerpv20250801preview.ApplicationGraphResponse {
 	if applicationResources == nil && environmentResources == nil {
 		return &corerpv20250801preview.ApplicationGraphResponse{Resources: []*corerpv20250801preview.ApplicationGraphResource{}}
 	}
@@ -489,6 +512,15 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 
 		graph.Resources = append(graph.Resources, &entry)
 	}
+
+	// Merge caller-supplied Kind: Dependency edges onto the
+	// connection-only graph. Excluded types, unknown endpoints, and any
+	// pair already present as Kind: Connection are dropped by the helper;
+	// a nil or empty dependsOnEdges leaves the graph unchanged. Runs after
+	// the per-resource connection sort so MergeDependencyEdges re-sorts any
+	// resource whose Connections slice it touches.
+	edges.MergeDependencyEdges(&graph, dependsOnEdges, dependsOnExclusionSet)
+
 	return &graph
 }
 

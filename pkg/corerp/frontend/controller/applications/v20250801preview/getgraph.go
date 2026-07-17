@@ -74,12 +74,13 @@ func (ctrl *GetGraphv20250801preview) Run(ctx context.Context, w http.ResponseWr
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 
-	includeIcons, err := readIncludeIcons(req)
+	graphReq, err := readGraphRequest(req)
 	if err != nil {
 		return nil, err
 	}
+	includeIcons := to.Bool(graphReq.IncludeIcons)
 
-	payload, err := computeGraphPayload(ctx, applicationID, applicationResource.Properties.Environment, ctrl.connection)
+	payload, err := computeGraphPayload(ctx, applicationID, applicationResource.Properties.Environment, ctrl.connection, graphReq.DependsOnEdges)
 	if err != nil {
 		return nil, err
 	}
@@ -105,18 +106,20 @@ func (ctrl *GetGraphv20250801preview) Run(ctx context.Context, w http.ResponseWr
 	return rest.NewOKResponse(payload), nil
 }
 
-// readIncludeIcons parses the optional GetGraphRequest body and returns the
-// value of its includeIcons field. Missing bodies, empty bodies, and bodies
-// posted without a JSON content type (typical for existing clients that pre-date
-// the flag) all resolve to the default value false so this feature stays
-// additive on the wire.
-func readIncludeIcons(req *http.Request) (bool, error) {
+// readGraphRequest parses the optional GetGraphRequest body once and returns
+// the parsed struct. Missing bodies, empty bodies, and bodies posted without a
+// JSON content type (typical for existing clients that pre-date the additive
+// fields on this shape) all resolve to a zero-value struct rather than an
+// error, so both includeIcons and dependsOnEdges stay additive on the wire.
+// The returned pointer is never nil, letting callers use zero-value fields
+// directly without another nil check.
+func readGraphRequest(req *http.Request) (*corerpv20250801preview.GetGraphRequest, error) {
+	parsed := &corerpv20250801preview.GetGraphRequest{}
 	if req.Body == nil || req.ContentLength == 0 {
-		return false, nil
+		return parsed, nil
 	}
-	contentType := req.Header.Get("Content-Type")
-	if contentType == "" {
-		return false, nil
+	if req.Header.Get("Content-Type") == "" {
+		return parsed, nil
 	}
 	body, err := ctrl.ReadJSONBody(req)
 	if err != nil {
@@ -124,18 +127,17 @@ func readIncludeIcons(req *http.Request) (bool, error) {
 		// body is optional. Any other read failure is real and should bubble
 		// up.
 		if err == ctrl.ErrUnsupportedContentType {
-			return false, nil
+			return parsed, nil
 		}
-		return false, err
+		return nil, err
 	}
 	if len(body) == 0 {
-		return false, nil
+		return parsed, nil
 	}
-	parsed := corerpv20250801preview.GetGraphRequest{}
-	if err := json.Unmarshal(body, &parsed); err != nil {
-		return false, err
+	if err := json.Unmarshal(body, parsed); err != nil {
+		return nil, err
 	}
-	return to.Bool(parsed.IncludeIcons), nil
+	return parsed, nil
 }
 
 // buildIconsMap returns the deduped icons map keyed by iconHash, containing the
