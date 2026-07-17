@@ -1809,6 +1809,16 @@
         "includeIcons": {
           "type": "boolean",
           "description": "When true, `ApplicationGraphResponse.icons` is populated with the SVG bytes for every distinct `iconHash` referenced by the response's resources. When false or omitted, only per-resource `iconHash` values are returned."
+        },
+        "dependsOnEdges": {
+          "type": "object",
+          "description": "Optional caller-supplied dependency edges, grouped by source resource ID. Each entry maps a source Radius resource ID to the list of outbound Kind: Dependency edges leaving that source. Every entry MUST have direction: Outbound and kind: Dependency; entries that don't are ignored. The server merges these onto the connection-only graph it computes from stored resources: excluded types are dropped, unknown endpoints are dropped, and any pair already present as Kind: Connection wins over the caller-supplied Dependency. Typically populated by `rad app graph -a <name> <app.bicep>` after compiling the Bicep template locally.",
+          "additionalProperties": {
+            "items": {
+              "$ref": "#/definitions/ApplicationGraphConnection"
+            },
+            "type": "array"
+          }
         }
       }
     },
