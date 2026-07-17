@@ -1,0 +1,165 @@
+# ------------------------------------------------------------
+# Copyright 2023 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: Repo Radius GHCR State E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      state_package:
+        description: Existing private GHCR package used for Radius state
+        required: false
+        default: radius-repo-state-e2e
+  schedule:
+    # Run daily at 04:17 UTC, outside the non-cloud functional-test schedule.
+    - cron: 17 4 * * *
+
+permissions:
+  contents: read
+  packages: write # Push and delete this repository's GHCR state package.
+
+concurrency:
+  group: repo-radius-state-e2e-${{ inputs.state_package || 'radius-repo-state-e2e' }}
+  cancel-in-progress: false
+
+env:
+  ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  LOCAL_DOCKER_REGISTRY: localhost:5000
+  DOCKER_TAG_VERSION: repo-radius-${{ github.run_id }}-${{ github.run_attempt }}
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  RADIUS_STATE_BACKEND: oci
+  RADIUS_STATE_ARCHIVE: repo-radius-state-e2e-${{ github.run_id }}-${{ github.run_attempt }}
+  RADIUS_STATE_REGISTRY: ghcr.io/${{ github.repository_owner }}/${{ inputs.state_package || 'radius-repo-state-e2e' }}
+
+jobs:
+  state-rehydration:
+    name: Persist and rehydrate Radius state
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    if: github.event_name == 'workflow_dispatch' || github.repository == 'radius-project/radius'
+    steps:
+      - name: Checkout dispatched ref
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # v4.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install k3d
+        run: make install-k3d
+
+      - name: Install ORAS
+        uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1
+
+      - name: Install Bicep
+        run: |
+          make install-bicep BICEP_INSTALL_DIR="${HOME}/.rad/bin"
+          echo "${HOME}/.rad/bin" >> "${GITHUB_PATH}"
+
+      - name: Validate private state package
+        run: bash ./.github/scripts/test-repo-radius-state-e2e.sh validate-state-package
+
+      - name: Build Repo Radius test artifacts
+        env:
+          DOCKER_REGISTRY: ${{ env.LOCAL_DOCKER_REGISTRY }}
+        run: |
+          make copy-manifests \
+            build-rad \
+            docker-build-ucpd \
+            docker-build-applications-rp \
+            docker-build-dynamic-rp \
+            docker-build-controller \
+            docker-build-bicep
+
+      - name: Install branch CLI
+        run: |
+          install -D -m 0755 \
+            ./dist/linux_amd64/release/rad \
+            "${HOME}/.local/bin/rad"
+          echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
+
+      - name: Prepare target workload cluster
+        run: bash ./.github/scripts/test-repo-radius-state-e2e.sh prepare-workload
+
+      - name: Install first Radius control plane
+        run: bash ./.github/scripts/test-repo-radius-state-e2e.sh install-initial-control-plane
+
+      - name: Deploy and verify initial application
+        run: bash ./.github/scripts/test-repo-radius-state-e2e.sh deploy-initial
+
+      - name: Persist Radius state to GHCR
+        run: bash ./.github/scripts/test-repo-radius-state-e2e.sh persist-state
+
+      - name: Replace Radius control plane
+        run: bash ./.github/scripts/test-repo-radius-state-e2e.sh replace-control-plane
+
+      - name: Restore and verify Radius state
+        run: bash ./.github/scripts/test-repo-radius-state-e2e.sh restore-state
+
+      - name: Update and verify existing workload
+        run: bash ./.github/scripts/test-repo-radius-state-e2e.sh update-workload
+
+      - name: Collect failure diagnostics
+        if: failure()
+        run: bash ./.github/scripts/test-repo-radius-state-e2e.sh diagnostics
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: repo-radius-state-e2e-diagnostics
+          path: dist/repo-radius-state-e2e/
+          if-no-files-found: ignore
+          retention-days: 3
+
+      - name: Clean up state version and clusters
+        if: always()
+        run: bash ./.github/scripts/test-repo-radius-state-e2e.sh cleanup
+
+  report-failure:
+    name: Report test failure
+    needs: state-rehydration
+    if: failure() && github.event_name == 'schedule' && github.repository == vars.RADIUS_REPOSITORY
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Create failure issue for failing scheduled run
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            github.rest.issues.create({
+              ...context.repo,
+              title: `Scheduled Repo Radius GHCR state test failed - Run ID: ${context.runId}`,
+              labels: ['test-failure'],
+              body: `## Bug information\n\nThe scheduled Repo Radius GHCR state lifecycle failed. Review the failed lifecycle step and download the \`repo-radius-state-e2e-diagnostics\` artifact from [the workflow run](${process.env.ACTION_LINK}).`
+            })
