@@ -96,7 +96,7 @@ Single Go module `github.com/radius-project/radius`; feature-specific paths per 
 
 - [ ] T014 [US1] Implement `ExtractEdges` in `pkg/graph/edges/edges.go` per [data-model.md](data-model.md):
   - Iterate `resources`; skip those whose `Type` is in `excluded`.
-  - Collect `Connection` edges from `properties.connections[*].source` (canonical Radius IDs; drop unparseable, drop excluded targets, drop targets not in the resource-ID set).
+  - Collect `Connection` edges from `properties.connections[*].source` (canonical Radius IDs; drop what cannot be parsed, drop excluded targets, drop targets not in the resource-ID set).
   - Collect `Dependency` edges from `DependsOn` (drop excluded targets, drop targets not in the resource-ID set).
   - Connection-wins de-dup on `(Source, Target)` per source resource (FR-011); collapse duplicate `Dependency` tokens (FR-012).
   - Mirror every outbound edge as inbound on the target with the same `Kind` (FR-010).
