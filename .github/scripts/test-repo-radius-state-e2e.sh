@@ -60,6 +60,7 @@ Phases:
   restore-state
   update-workload
   diagnostics
+  cleanup-state-version
   cleanup
   all
 EOF
@@ -750,6 +751,11 @@ phase_diagnostics() {
     collect_diagnostics
 }
 
+phase_cleanup_state_version() {
+    delete_state_manifest
+    append_summary "- Remote state version cleanup: succeeded"
+}
+
 run_all() {
     trap cleanup EXIT
     phase_validate_state_package
@@ -778,6 +784,7 @@ main() {
         restore-state) phase_restore_state ;;
         update-workload) phase_update_workload ;;
         diagnostics) phase_diagnostics ;;
+        cleanup-state-version) phase_cleanup_state_version ;;
         cleanup) cleanup ;;
         all) run_all ;;
         -h | --help) usage ;;

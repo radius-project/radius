@@ -143,9 +143,38 @@ jobs:
         if: always()
         run: bash ./.github/scripts/test-repo-radius-state-e2e.sh cleanup
 
+  cleanup-state-version:
+    name: Ensure state version cleanup
+    needs: state-rehydration
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout workflow revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4 # v4.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install ORAS
+        uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1
+
+      - name: Ensure run-specific state version is deleted
+        run: bash ./.github/scripts/test-repo-radius-state-e2e.sh cleanup-state-version
+
   report-failure:
     name: Report test failure
-    needs: state-rehydration
+    needs: [state-rehydration, cleanup-state-version]
     if: failure() && github.event_name == 'schedule' && github.repository == vars.RADIUS_REPOSITORY
     runs-on: ubuntu-24.04
     timeout-minutes: 5

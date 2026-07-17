@@ -43,7 +43,7 @@ $ gh workflow run repo-radius-state-e2e.yaml \
     -f state_package=<package-name>
 ```
 
-Each lifecycle phase is a separate workflow step. On failure, inspect the failed step first, then download the `repo-radius-state-e2e-diagnostics` artifact. Scheduled failures in the upstream repository also create an issue labeled `test-failure`; manual and fork runs do not. Successful runs record the saved/restored digest in the job summary and delete only their run-specific state version; the private package and bootstrap version remain.
+Each lifecycle phase is a separate workflow step. On failure, inspect the failed step first, then download the `repo-radius-state-e2e-diagnostics` artifact. A separate post-lifecycle job retries run-specific state cleanup even if the main job times out. Scheduled failures in the upstream repository also create an issue labeled `test-failure`; manual and fork runs do not. Successful runs record the saved/restored digest in the job summary; the private package and bootstrap version remain.
 
 ## Steps
 
