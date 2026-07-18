@@ -214,6 +214,21 @@ they have separate lifecycles and access requirements.
 - **Local testing** can use `RADIUS_ARCHIVE_PLAIN_HTTP=true` with a local OCI
   registry.
 
+## End-to-End Test
+
+The OCI state archive has a dedicated end-to-end test that exercises the full
+save/restore lifecycle against a real GHCR package. It deploys an application
+through one ephemeral Radius control plane to a separate persistent target
+cluster, saves state to a private GHCR package, replaces the control plane,
+restores the saved state, and confirms the replacement control plane still
+manages the existing workload. This validates the round-trip durability
+contract and the GHCR visibility guard end to end, including the bootstrap-tag
+behavior used when the package does not yet exist. It runs on a schedule rather
+than in the per-PR matrix because it needs `packages: write` and a precreated
+private package. See
+[Repo Radius GHCR state end-to-end test](../contributing/contributing-code/contributing-code-tests/repo-radius-state-e2e.md)
+for how to provision, run, and troubleshoot it.
+
 ## How Consumers Stay Decoupled
 
 Every consumer stores a `statearchive.Archive` (the interface) and accepts any
