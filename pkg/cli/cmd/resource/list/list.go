@@ -35,9 +35,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad resource list` command.
-//
-
 // NewCommand creates a new Cobra command and a Runner to list resources of a specified type, or all resources
 // regardless of type, in an application or the default environment. It adds flags for application name,
 // environment name, resource group, output and workspace.
@@ -61,6 +58,9 @@ rad resource list Applications.Core/containers --application icecream-store
 
 # list all resources of a specified type in an application (shorthand flag)
 rad resource list Applications.Core/containers -a icecream-store
+
+# list all resources of a specified type in a specified environment
+rad resource list Applications.Core/containers -e not-default-env
 
 # list all resources of any type in the default environment
 rad resource list
@@ -114,7 +114,6 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate checks the command line args, workspace, scope, application name, resource type and output format, and
 // returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	// Validate command line args and
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
@@ -133,12 +132,29 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.ApplicationName = applicationName
 
+	environmentFlag, err := cmd.Flags().GetString("environment")
+	if err != nil {
+		return err
+	}
+
+	if r.ApplicationName != "" && environmentFlag != "" {
+		return clierrors.Message("The '-e/--environment' flag cannot be combined with '-a/--application'. An application belongs to a single environment.")
+	}
+
 	if len(args) > 0 {
 		r.ResourceProviderNamespace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
 		if err != nil {
 			return err
 		}
 		r.ResourceType = r.ResourceProviderNamespace + "/" + r.ResourceTypeSuffix
+
+		if environmentFlag != "" {
+			// A resource type was given along with the environment flag, so scope the typed list to that environment.
+			r.EnvironmentName, err = cli.RequireEnvironmentName(cmd, args, *workspace)
+			if err != nil {
+				return err
+			}
+		}
 	} else if r.ApplicationName == "" {
 		// No resource type or application was given, so list all resources (of any type) in an environment.
 		r.EnvironmentName, err = cli.RequireEnvironmentName(cmd, args, *workspace)
@@ -196,13 +212,16 @@ func (r *Runner) Run(ctx context.Context) error {
 			return err
 		}
 
-		if r.ApplicationName == "" {
-			resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)
-		} else {
+		switch {
+		case r.ApplicationName != "":
 			err = r.requireApplicationExists(ctx, client)
 			if err == nil {
 				resourceList, err = client.ListResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
 			}
+		case r.EnvironmentName != "":
+			resourceList, err = client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentName, r.ResourceType)
+		default:
+			resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)
 		}
 	}
 	if err != nil {
