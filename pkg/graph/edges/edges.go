@@ -47,9 +47,8 @@ import (
 //   - The edge is dropped if the (source, target) pair already has a
 //     Kind: Connection outbound entry on source (Connection wins).
 //   - Incoming entries whose Direction is not Outbound or whose Kind is
-//     not Dependency are ignored — the wire contract requires those
-//     values and the server refuses to trust caller-supplied Inbound or
-//     Connection entries.
+//     not Dependency are ignored — the server refuses
+//     to trust caller-supplied Connection entries.
 //   - The same (source, target) pair appearing multiple times in the
 //     input collapses to a single edge (dependsOn de-duplication).
 //

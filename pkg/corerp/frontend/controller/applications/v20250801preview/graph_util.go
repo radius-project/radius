@@ -470,11 +470,9 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 				connectionInbound := corerpv20250801preview.ApplicationGraphConnection{
 					ID:        new(id),
 					Direction: to.Ptr(corerpv20250801preview.DirectionInbound), //Direction is set with respect to Resource defining this connection
-					// Every edge produced by the runtime graph is a Connection
-					// in Phase 1. Dependency edges are surfaced only on the
-					// static graph (Bicep dependsOn); runtime dependency
-					// extraction is Phase 2 and arrives via caller-supplied
-					// dependsOnEdges on GetGraphRequest.
+					// Every edge produced so far is of Kind: Connection.
+					// Later we will merge the edges supplied as argument to this function,
+					// which are of Kind: Dependency
 					Kind: to.Ptr(corerpv20250801preview.ConnectionKindConnection),
 				}
 				connectionsByDestination[otherID] = append(connectionsByDestination[otherID], connectionInbound)
@@ -514,11 +512,9 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 	}
 
 	// Merge caller-supplied Kind: Dependency edges onto the
-	// connection-only graph. Excluded types, unknown endpoints, and any
-	// pair already present as Kind: Connection are dropped by the helper;
-	// a nil or empty dependsOnEdges leaves the graph unchanged. Runs after
-	// the per-resource connection sort so MergeDependencyEdges re-sorts any
-	// resource whose Connections slice it touches.
+	// graph. Excluded types and any
+	// edge already present as Kind: Connection are redundant and dropped by the helper;
+	// a nil or empty dependsOnEdges leaves the graph unchanged.
 	edges.MergeDependencyEdges(&graph, dependsOnEdges, dependsOnExclusionSet)
 
 	return &graph
@@ -794,8 +790,7 @@ func resolveConnections(resource generated.GenericResource, jsonRefPath string, 
 				ID:        new(sourceID),
 				Direction: new(dir),
 				// Every edge produced by the runtime graph is Kind:
-				// Connection in Phase 1 (see companion inbound-emission
-				// site above).
+				// Connection
 				Kind: to.Ptr(corerpv20250801preview.ConnectionKindConnection),
 			})
 		}
