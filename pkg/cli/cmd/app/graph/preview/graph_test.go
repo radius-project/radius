@@ -367,8 +367,8 @@ func Test_Run_EnrichedMode(t *testing.T) {
 		},
 	}
 	const (
-		consumerID = "/planes/radius/local/resourcegroups/default/providers/Radius.Compute/containers/consumer"
-		queueID    = "/planes/radius/local/resourcegroups/default/providers/Radius.Messaging/rabbitMQQueues/queue"
+		consumerID = "/planes/radius/local/resourceGroups/test-group/providers/Radius.Compute/containers/consumer"
+		queueID    = "/planes/radius/local/resourceGroups/test-group/providers/Radius.Messaging/rabbitMQQueues/queue"
 	)
 
 	ctrl := gomock.NewController(t)

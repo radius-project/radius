@@ -383,7 +383,7 @@ func TestResolveResourceIDExpression(t *testing.T) {
 		{"missing args", "[resourceId('only-one')]", ""},
 	}
 	for _, tc := range cases {
-		got := resolveResourceIDExpression(tc.in)
+		got := resolveResourceIDExpression(tc.in, "")
 		require.Equal(t, tc.want, got, tc.name)
 	}
 }

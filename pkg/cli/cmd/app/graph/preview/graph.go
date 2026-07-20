@@ -186,7 +186,11 @@ func (r *Runner) Run(ctx context.Context) error {
 		// ExtractDependsOnEdges returns nil when the template has no
 		// eligible dependsOn edges, leaving body.DependsOnEdges nil so
 		// the server sees the field as absent rather than an empty map.
-		body.DependsOnEdges = cligraph.ExtractDependsOnEdges(template)
+		//
+		// Pass the workspace scope so the extracted source and target
+		// IDs match the deployed-graph IDs the server will merge them
+		// against.
+		body.DependsOnEdges = cligraph.ExtractDependsOnEdges(template, r.Workspace.Scope)
 	}
 	graphResponse, err := appClient.GetGraph(ctx, r.Workspace.Scope, r.ApplicationName, body, &corerpv20250801.ApplicationsClientGetGraphOptions{})
 	if clients.Is404Error(err) {

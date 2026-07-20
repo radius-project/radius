@@ -179,7 +179,12 @@ func BuildModeledGraph(template map[string]any, includeIcons bool) (*corerpv2025
 	// only Kind: Dependency producer today; runtime dependency edges
 	// arrive via caller-supplied dependsOnEdges on GetGraphRequest and
 	// go through the same MergeDependencyEdges primitive server-side.
-	edges.MergeDependencyEdges(graph, ExtractDependsOnEdges(template), excludeResourceTypes)
+	//
+	// The modeled graph is standalone (no control plane), so we build
+	// IDs under the default plane / resource group used elsewhere in
+	// this file. Callers targeting a specific workspace scope should use
+	// ExtractDependsOnEdges directly with their scope instead.
+	edges.MergeDependencyEdges(graph, ExtractDependsOnEdges(template, ""), excludeResourceTypes)
 
 	if includeIcons {
 		graph.Icons = collectStaticGraphIcons(graphResources)
@@ -195,13 +200,23 @@ func BuildModeledGraph(template map[string]any, includeIcons bool) (*corerpv2025
 // directly to a deployed-graph request to enrich it with the same
 // implicit dependencies the static graph would surface.
 //
+// rootScope selects the plane / resource-group prefix used when
+// constructing source and target resource IDs. It must match the
+// scope of the deployed graph the extracted edges will be merged
+// against, because MergeDependencyEdges performs exact-string ID
+// matching. Callers targeting the current workspace should pass
+// workspace.Scope (typically "/planes/radius/local/resourceGroups/<rg>").
+// An empty rootScope falls back to the modeled-graph default plane
+// and resource group, which is only appropriate when the extracted
+// edges are merged into a modeled graph built by BuildModeledGraph.
+//
 // Resources whose type is in excludeResourceTypes are omitted as
 // sources (they are never edge sources anyway). Individual dependsOn
 // entries that resolve to a canonical ID are included regardless of
 // target type; edges.MergeDependencyEdges applies the target-type
 // exclusion server- and CLI-side. Unresolvable entries (dynamic
 // resourceId expressions, non-Radius symbolic references) are dropped.
-func ExtractDependsOnEdges(template map[string]any) map[string][]*corerpv20250801preview.ApplicationGraphConnection {
+func ExtractDependsOnEdges(template map[string]any, rootScope string) map[string][]*corerpv20250801preview.ApplicationGraphConnection {
 	rawResources := collectResources(template["resources"])
 	if rawResources == nil {
 		return nil
@@ -217,11 +232,11 @@ func ExtractDependsOnEdges(template map[string]any) map[string][]*corerpv2025080
 			continue
 		}
 		rawDependsOn, _ := entry["dependsOn"].([]any)
-		resolved := resolveDependsOn(rawDependsOn)
+		resolved := resolveDependsOn(rawDependsOn, rootScope)
 		if len(resolved) == 0 {
 			continue
 		}
-		sourceID := buildResourceID(resourceType, name)
+		sourceID := buildResourceIDInScope(rootScope, resourceType, name)
 		entries := make([]*corerpv20250801preview.ApplicationGraphConnection, 0, len(resolved))
 		for _, target := range resolved {
 			entries = append(entries, &corerpv20250801preview.ApplicationGraphConnection{
@@ -510,7 +525,7 @@ func buildModeledResource(entry map[string]any, secureParams map[string]struct{}
 
 	properties, _ := entry["properties"].(map[string]any)
 	rawDependsOn, _ := entry["dependsOn"].([]any)
-	dependsOn := resolveDependsOn(rawDependsOn)
+	dependsOn := resolveDependsOn(rawDependsOn, "")
 
 	// DiffHash is computed over the authored properties (pre-redaction)
 	// so the hash detects authored changes — including changes to
@@ -690,7 +705,7 @@ func outboundConnections(properties map[string]any) []*corerpv20250801preview.Ap
 			continue
 		}
 		source, _ := entry["source"].(string)
-		resolved := resolveResourceIDExpression(source)
+		resolved := resolveResourceIDExpression(source, "")
 		if resolved == "" {
 			continue
 		}
@@ -741,16 +756,17 @@ func addInboundConnections(graph *corerpv20250801preview.ApplicationGraphRespons
 }
 
 // resolveDependsOn resolves each ARM expression in an ARM JSON dependsOn
-// list to a fully-qualified Radius resource ID. Unresolvable entries are
-// dropped so the diffHash remains stable across builds.
-func resolveDependsOn(in []any) []string {
+// list to a fully-qualified Radius resource ID under rootScope.
+// Unresolvable entries are dropped so the diffHash remains stable
+// across builds.
+func resolveDependsOn(in []any, rootScope string) []string {
 	out := make([]string, 0, len(in))
 	for _, v := range in {
 		expr, ok := v.(string)
 		if !ok {
 			continue
 		}
-		if resolved := resolveResourceIDExpression(expr); resolved != "" {
+		if resolved := resolveResourceIDExpression(expr, rootScope); resolved != "" {
 			out = append(out, resolved)
 		}
 	}
@@ -758,10 +774,10 @@ func resolveDependsOn(in []any) []string {
 }
 
 // resolveResourceIDExpression converts an ARM expression of the form
-// [resourceId('TYPE', 'NAME')] into a fully-qualified Radius resource ID.
-// Returns an empty string if the input is not a recognised literal-argument
-// resourceId expression.
-func resolveResourceIDExpression(expr string) string {
+// [resourceId('TYPE', 'NAME')] into a fully-qualified Radius resource ID
+// under rootScope. Returns an empty string if the input is not a
+// recognised literal-argument resourceId expression.
+func resolveResourceIDExpression(expr string, rootScope string) string {
 	if expr == "" {
 		return ""
 	}
@@ -778,7 +794,7 @@ func resolveResourceIDExpression(expr string) string {
 	if resourceType == "" || name == "" {
 		return ""
 	}
-	return buildResourceID(resourceType, name)
+	return buildResourceIDInScope(rootScope, resourceType, name)
 }
 
 // splitResourceIDArgs splits the comma-separated argument list of an ARM
@@ -811,7 +827,18 @@ func splitResourceIDArgs(s string) []string {
 // buildResourceID returns the fully-qualified Radius resource ID under the
 // default plane and resource group used for modeled graphs.
 func buildResourceID(resourceType, name string) string {
-	return fmt.Sprintf("/planes/radius/%s/resourcegroups/%s/providers/%s/%s", defaultPlane, defaultResourceGroup, resourceType, name)
+	return buildResourceIDInScope("", resourceType, name)
+}
+
+// buildResourceIDInScope returns the fully-qualified Radius resource ID
+// under the given root scope (for example "/planes/radius/local/resourceGroups/my-rg").
+// An empty rootScope falls back to the modeled-graph default plane
+// and resource group.
+func buildResourceIDInScope(rootScope, resourceType, name string) string {
+	if rootScope == "" {
+		return fmt.Sprintf("/planes/radius/%s/resourcegroups/%s/providers/%s/%s", defaultPlane, defaultResourceGroup, resourceType, name)
+	}
+	return fmt.Sprintf("%s/providers/%s/%s", strings.TrimSuffix(rootScope, "/"), resourceType, name)
 }
 
 // isExcludedResourceType reports whether the given resource type is one of
