@@ -23,7 +23,7 @@ on:
 permissions:
   id-token: write
   contents: write
-  packages: read
+  packages: write
 
 jobs:
   # Bind to the GitHub Environment so environment-scoped variables are visible, then
