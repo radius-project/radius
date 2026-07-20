@@ -165,7 +165,7 @@ func getConfigurationV20250801(ctx context.Context, environment *v20250801previe
 	if envDatamodel.Properties.Providers != nil {
 		if envDatamodel.Properties.Providers.Azure != nil {
 			if envDatamodel.Properties.Providers.Azure.ResourceGroupName == "" {
-				return nil, fmt.Errorf("resourceGroupName is required when the Azure provider is configured")
+				return nil, fmt.Errorf("providers.azure.resourceGroupName is required when the Azure provider is configured")
 			}
 			scope := "/subscriptions/" + envDatamodel.Properties.Providers.Azure.SubscriptionId +
 				"/resourceGroups/" + envDatamodel.Properties.Providers.Azure.ResourceGroupName

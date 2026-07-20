@@ -414,7 +414,7 @@ func TestGetConfigurationV20250801(t *testing.T) {
 				},
 			},
 			appResource: nil,
-			errString:   "resourceGroupName is required when the Azure provider is configured",
+			errString:   "providers.azure.resourceGroupName is required when the Azure provider is configured",
 		},
 		{
 			name: "azure provider with subscription and resource group v20250801",
