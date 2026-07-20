@@ -75,8 +75,8 @@ type ProvidersAzure_v20250801preview struct {
 	// SubscriptionId is the Azure subscription ID hosting deployed resources.
 	SubscriptionId string `json:"subscriptionId"`
 
-	// ResourceGroupName is the optional resource group name.
-	ResourceGroupName string `json:"resourceGroupName,omitempty"`
+	// ResourceGroupName is the Azure resource group hosting deployed resources.
+	ResourceGroupName string `json:"resourceGroupName"`
 
 	// Identity contains external identity settings.
 	Identity *rpv1.IdentitySettings `json:"identity,omitempty"`

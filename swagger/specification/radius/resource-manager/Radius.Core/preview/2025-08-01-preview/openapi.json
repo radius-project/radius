@@ -1935,7 +1935,7 @@
         },
         "resourceGroupName": {
           "type": "string",
-          "description": "Optional resource group name."
+          "description": "Azure resource group hosting deployed resources."
         },
         "identity": {
           "$ref": "#/definitions/IdentitySettings",
@@ -1943,7 +1943,8 @@
         }
       },
       "required": [
-        "subscriptionId"
+        "subscriptionId",
+        "resourceGroupName"
       ]
     },
     "ProvidersKubernetes": {

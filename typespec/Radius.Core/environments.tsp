@@ -80,8 +80,8 @@ model ProvidersAzure {
   @doc("Azure subscription ID hosting deployed resources.")
   subscriptionId: string;
 
-  @doc("Optional resource group name.")
-  resourceGroupName?: string;
+  @doc("Azure resource group hosting deployed resources.")
+  resourceGroupName: string;
 
   @doc("External identity settings (moved from compute).")
   identity?: IdentitySettings;
