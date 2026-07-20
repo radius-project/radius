@@ -28,7 +28,7 @@ on:
 permissions:
   id-token: write
   contents: write
-  packages: read
+  packages: write
 
 env:
   ENVIRONMENT: ${{ inputs.environment }}
@@ -38,6 +38,17 @@ jobs:
     name: Delete with Radius
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    # OCI-backed Radius control-plane state, provisioned per-environment by the
+    # deploy tooling (canvas extension) as environment variables. Set at job
+    # level (not workflow level) so environment-scoped vars.* resolve, and so the
+    # shared restore-state (rad startup) and teardown (rad shutdown) actions —
+    # plus the delete commands — inherit them and can open the state archive.
+    # Without these, rad startup fails with "OCI archive repository is not
+    # configured; set RADIUS_STATE_REGISTRY or RADIUS_GRAPH_REGISTRY".
+    env:
+      RADIUS_STATE_BACKEND: ${{ vars.RADIUS_STATE_BACKEND }}
+      RADIUS_STATE_REGISTRY: ${{ vars.RADIUS_STATE_REGISTRY }}
+      RADIUS_STATE_ARCHIVE: ${{ vars.RADIUS_STATE_ARCHIVE }}
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -48,6 +59,21 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Log in to GHCR for the state archive
+        # The OCI-backed Radius state archive authenticates to GHCR using the
+        # runner's Docker credential store (~/.docker/config.json). rad startup
+        # (restore-state) and rad shutdown (teardown) open that archive, so the
+        # runner must be logged in BEFORE those steps run -- otherwise the pull
+        # is anonymous and GHCR rejects the private radius-state package with a
+        # 401. docker login persists for the whole job, covering teardown too.
+        # GITHUB_TOKEN has packages: write (set at job level) for repo-linked
+        # packages; a PAT can be supplied instead for other-owner packages.
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get target cluster kubeconfig
         run: |
