@@ -6,7 +6,7 @@
 
 This document describes the error and exception scenarios for the Radius integration in the GitHub Copilot app, the user experience when each occurs, and how the user recovers or corrects the problem. It is scoped to the MVP (the initial public preview) of the integration.
 
-It is organized around the parts of the end-to-end user flow already defined in the companion document, [Radius Integration in GitHub Copilot App](radius-copilot-app-integration.md). For each part, this document enumerates the possible errors and exceptions, what the user sees, and the path back to a good state.
+It is organized around the parts of the end-to-end user flow already defined in the Radius Integration in GitHub Copilot App document (stored outside this repository). For each part, this document enumerates the possible errors and exceptions, what the user sees, and the path back to a good state.
 
 The integration has three components, defined in the terms below: the **Radius skill** (in the Copilot chat), the **Radius side panel** (in the sidebar), and **Repo Radius** (which runs each operation as a GitHub Actions workflow). Where a failure originates in Repo Radius, this document references the Repo Radius outcome the skill or side panel surfaces rather than redefining it.
 
@@ -27,7 +27,7 @@ The MVP does not support repositories without a containerized workload, preview 
   - **Deployed application graph view**: Shows the resources actually deployed to the target environment.
   - **Planned application graph view**: A preview (what-if) of changes before deploying. Deferred for the MVP.
 
-## Exceptions handling principles
+## Exception handling principles
 
 These principles apply to all exception scenarios:
 
@@ -94,7 +94,7 @@ The Radius skill runs and responds in chat, but the Radius side panel never appe
 - **What the user sees:** The sidebar shows no Radius side panel, or the panel shows a load error, and Copilot responds in chat: "The Radius plugin didn't load completely, so I can't show its view in the sidebar. Reinstalling usually fixes this: remove the Radius plugin from the Plugins settings page, add it again, then restart the Copilot app."
 - **Recovery:** The user restarts the Copilot app to give the extension another chance to load. If it still does not appear, they re-enable it (if disabled) or reinstall the Radius plugin for a clean build of both the skill and the extension.
 
-**Implementation Note:** Ideally, the user does can simply reload the extension. However, there does not seem to be a way to do this today in the Copilot app. If there is a technical solution for enabling the user to simple reload the extension, rather than reinstalling, that is highly preferred.
+**Implementation Note:** Ideally, the user can simply reload the extension. However, there does not seem to be a way to do this today in the Copilot app. If there is a technical solution for enabling the user to simply reload the extension, rather than reinstalling, that is highly preferred.
 
 ## Part 2: Create the resource types and application definition
 
@@ -157,7 +157,7 @@ The Assembly analysis completed successfully, so `app.bicep` and the modeled app
 The user opens the Radius side panel and the modeled application graph view loads, but it contains no resources, so the side panel renders an empty graph.
 
 - **What the user sees:** The Radius side panel renders but shows no resources on the graph. There are no error messages or buttons for the user to click.
-- **Recovery:** The asks Copilot to troubleshoot why there are no resources on the application graph and/or asks Copilot to perform the Assembly analysis again and recreate the application definition and application graph.
+- **Recovery:** The user asks Copilot to troubleshoot why there are no resources on the application graph and/or asks Copilot to perform the Assembly analysis again and recreate the application definition and application graph.
 
 ### Exception 3.3: Radius side panel render error
 
