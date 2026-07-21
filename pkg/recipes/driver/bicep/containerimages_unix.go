@@ -23,9 +23,8 @@ import (
 	"syscall"
 )
 
-// configureScriptProcessGroup runs the script in its own process group and kills the whole
-// group on cancellation, so processes the script spawned (e.g. buildctl) do not outlive the
-// shell when the operation times out or is canceled.
+// configureScriptProcessGroup runs the script in its own process group and kills the group on
+// cancellation, so spawned processes (e.g. buildctl) don't outlive the shell.
 func configureScriptProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Cancel = func() error {

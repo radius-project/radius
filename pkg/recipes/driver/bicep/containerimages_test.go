@@ -17,6 +17,7 @@ limitations under the License.
 package bicep
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -77,13 +78,12 @@ func Test_ExtractImageBuild_Absent(t *testing.T) {
 }
 
 func Test_ExtractImageBuild_Valid(t *testing.T) {
-	// The driver returns the imageBuild object verbatim. It does not model the field set, so the
-	// recipe and its build script own the schema and can evolve it without a driver change.
+	// The driver returns the imageBuild object verbatim; the recipe and its script own the schema.
 	imageBuild, err := extractImageBuild(imageBuildOutputs(validImageBuildValue()))
 	require.NoError(t, err)
 	require.Equal(t, validImageBuildValue(), imageBuild)
 
-	// Additional fields flow through untouched instead of being rejected.
+	// Extra fields flow through untouched instead of being rejected.
 	extended := validImageBuildValue()
 	extended["newBuildField"] = "future"
 	imageBuild, err = extractImageBuild(imageBuildOutputs(extended))
@@ -147,8 +147,7 @@ func Test_SupportsImageBuildHook(t *testing.T) {
 }
 
 func Test_ImageBuildArguments_AreGenericAndDeterministic(t *testing.T) {
-	// Flags are derived from the property keys and ordered, so the driver has no per-field
-	// knowledge and adding a build field never requires a driver change.
+	// Flags are derived from property keys and ordered, so adding a build field needs no driver change.
 	args, err := imageBuildArguments(map[string]any{
 		"resourceName": "testimage",
 		"registry":     "ghcr.io/radius-project",
@@ -219,14 +218,27 @@ func Test_ImageBuildEnvironment_ReplacesControlledValues(t *testing.T) {
 	}, env)
 }
 
-func Test_ExecuteImageBuildHook_IgnoresOtherResourceTypes(t *testing.T) {
+func Test_HasImageBuildProperty_IgnoresOtherResourceTypes(t *testing.T) {
 	d := &bicepDriver{}
-	response := &recipes.RecipeOutput{Values: map[string]any{imageBuildOutputName: "ordinary"}}
-	err := d.executeImageBuildHook(testcontext.New(t), map[string]any{}, imageBuildOutputs("invalid"), response, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{Definition: recipes.EnvironmentDefinition{ResourceType: "Radius.Compute/containers"}},
-	})
+	should, err := d.hasImageBuildProperty("Radius.Compute/containers", imageBuildOutputs("invalid"))
 	require.NoError(t, err)
-	require.Equal(t, "ordinary", response.Values[imageBuildOutputName])
+	require.False(t, should)
+}
+
+func Test_HasImageBuildProperty(t *testing.T) {
+	d := &bicepDriver{}
+
+	should, err := d.hasImageBuildProperty(containerImagesResourceType, imageBuildOutputs(validImageBuildValue()))
+	require.NoError(t, err)
+	require.True(t, should)
+
+	should, err = d.hasImageBuildProperty(containerImagesResourceType, map[string]any{"result": map[string]any{}})
+	require.NoError(t, err)
+	require.False(t, should)
+
+	should, err = d.hasImageBuildProperty(containerImagesResourceType, imageBuildOutputs("invalid"))
+	require.Error(t, err)
+	require.False(t, should)
 }
 
 func Test_ExecuteImageBuildHook_PassesBuildContractWithOperatorRegistry(t *testing.T) {
@@ -578,9 +590,9 @@ func Test_DrainScriptStream_LongLineBoundsLoggingAndTail(t *testing.T) {
 	logger := funcr.New(func(prefix, args string) {
 		messages = append(messages, prefix+args)
 	}, funcr.Options{LogInfoLevel: &logInfoLevel})
-	tail := &tailBuffer{limit: stderrTailLimit}
+	tail := &bytes.Buffer{}
 
-	err := drainScriptStream(strings.NewReader(strings.Repeat("x", 1_100_000)), "imageBuild(stderr): ", logger, tail)
+	err := drainScriptStream(strings.NewReader(strings.Repeat("x", 1_100_000)), "imageBuild(stderr): ", logger, tail, stderrTailLimit)
 	require.NoError(t, err)
 	require.Len(t, messages, 1)
 	require.Contains(t, messages[0], scriptLogTruncationMarker)

@@ -189,12 +189,16 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
-	// Radius.Compute/containerImages may declare the reserved imageBuild output. When present,
-	// run its statically embedded script inside this container (blocking) and merge the script's
-	// reported image reference into the recipe output.
-	err = d.executeImageBuildHook(ctx, recipeData, resp.Properties.Outputs, recipeResponse, opts)
+	// containerImages recipes may declare an imageBuild output. Check for it first, then run the
+	// embedded build script and merge the resulting image reference into the recipe output.
+	shouldExecuteImageBuildHook, err := d.hasImageBuildProperty(opts.BaseOptions.Definition.ResourceType, resp.Properties.Outputs)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+	}
+	if shouldExecuteImageBuildHook {
+		if err := d.executeImageBuildHook(ctx, recipeData, resp.Properties.Outputs, recipeResponse, opts); err != nil {
+			return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+		}
 	}
 
 	// When a Radius portable resource consuming a recipe is redeployed, Garbage collection of the recipe resources that aren't included

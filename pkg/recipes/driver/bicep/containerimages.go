@@ -60,7 +60,7 @@ func supportsImageBuildHook(resourceType string) bool {
 	return strings.EqualFold(resourceType, containerImagesResourceType)
 }
 
-// extractImageBuild returns the optional imageBuild object without imposing a field schema.
+// extractImageBuild returns the optional imageBuild output, or nil if absent.
 func extractImageBuild(outputs any) (map[string]any, error) {
 	out, ok := outputs.(map[string]any)
 	if !ok {
@@ -84,7 +84,7 @@ func extractImageBuild(outputs any) (map[string]any, error) {
 	return value, nil
 }
 
-// extractImageBuildScript accepts only static content from the compiled-template variable.
+// extractImageBuildScript returns the static build script from the compiled template.
 func extractImageBuildScript(template map[string]any) (string, error) {
 	variables, ok := template["variables"].(map[string]any)
 	if !ok {
@@ -100,22 +100,36 @@ func extractImageBuildScript(template map[string]any) (string, error) {
 	return script, nil
 }
 
-// executeImageBuildHook runs only for Radius.Compute/containerImages.
-func (d *bicepDriver) executeImageBuildHook(ctx context.Context, recipeData map[string]any, outputs any, recipeResponse *recipes.RecipeOutput, opts driver.ExecuteOptions) error {
-	if !supportsImageBuildHook(opts.BaseOptions.Definition.ResourceType) {
-		return nil
+// hasImageBuildProperty reports whether a containerImages recipe declared the imageBuild output.
+// It is read-only, so callers can use it to decide whether to run executeImageBuildHook.
+func (d *bicepDriver) hasImageBuildProperty(resourceType string, outputs any) (bool, error) {
+	if !supportsImageBuildHook(resourceType) {
+		return false, nil
 	}
 
 	imageBuild, err := extractImageBuild(outputs)
-	if err != nil || imageBuild == nil {
+	if err != nil {
+		return false, err
+	}
+	return imageBuild != nil, nil
+}
+
+// executeImageBuildHook builds and pushes the image from a containerImages recipe's imageBuild output.
+// Call hasImageBuildProperty first to confirm the hook applies.
+func (d *bicepDriver) executeImageBuildHook(ctx context.Context, recipeData map[string]any, outputs any, recipeResponse *recipes.RecipeOutput, opts driver.ExecuteOptions) error {
+	imageBuild, err := extractImageBuild(outputs)
+	if err != nil {
 		return err
+	}
+	if imageBuild == nil {
+		return nil
 	}
 	registry, registrySecretName, err := operatorRegistryParameters(opts.Definition.Parameters)
 	if err != nil {
 		return err
 	}
 	buildInputs := maps.Clone(imageBuild)
-	// Preserve the deployment output while enforcing the operator-owned registry.
+	// Force the operator-owned registry, ignoring any developer-supplied value.
 	buildInputs[registryParameterName] = registry
 
 	script, err := extractImageBuildScript(recipeData)
@@ -135,7 +149,7 @@ func (d *bicepDriver) executeImageBuildHook(ctx context.Context, recipeData map[
 	return nil
 }
 
-// operatorRegistryParameters avoids developer overrides by reading the registered definition.
+// operatorRegistryParameters reads the registry settings from the recipe registration.
 func operatorRegistryParameters(parameters map[string]any) (registry string, registrySecretName string, err error) {
 	value, ok := parameters[registryParameterName]
 	if !ok {
@@ -156,8 +170,8 @@ func operatorRegistryParameters(parameters map[string]any) (registry string, reg
 	return registry, registrySecretName, nil
 }
 
-// imageBuildArguments converts supported JSON values into deterministic field-derived flags.
-// The script owns field semantics; false booleans and empty collections emit no arguments.
+// imageBuildArguments turns build inputs into script flags.
+// False booleans and empty collections emit no arguments.
 func imageBuildArguments(buildInputs map[string]any) ([]string, error) {
 	keys := make([]string, 0, len(buildInputs))
 	for key := range buildInputs {
@@ -243,7 +257,7 @@ func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, buil
 	}
 
 	resultPath := filepath.Join(tempDir, "result.json")
-	// Do not let ambient dynamic-rp paths or credentials reach the build.
+	// Isolate the build from dynamic-rp's own environment and credentials.
 	env := imageBuildEnvironment(os.Environ(), dockerConfigDir, resultPath)
 	stderrTail, err := runScript(ctx, script, args, env, tempDir, logger)
 	if err != nil {
@@ -256,7 +270,7 @@ func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, buil
 	return readScriptResult(resultPath)
 }
 
-// writeDockerConfig materializes registry credentials without logging Secret values.
+// writeDockerConfig writes registry credentials to a docker config file.
 func (d *bicepDriver) writeDockerConfig(ctx context.Context, registry, registrySecretName, dir string, opts driver.ExecuteOptions) error {
 	runtime := opts.Configuration.Runtime.Kubernetes
 	if runtime == nil || runtime.Namespace == "" {
@@ -317,8 +331,8 @@ func dockerConfigAuthKey(registry string) (string, error) {
 	}
 }
 
-// runScript streams both output pipes so buildctl cannot deadlock on a full pipe. The context
-// bounds execution and the platform-specific process-group setup also terminates child processes.
+// runScript runs the build script, streaming both output pipes so buildctl cannot deadlock.
+// The context bounds execution; process-group setup also kills child processes.
 func runScript(ctx context.Context, script string, args, env []string, workDir string, logger logr.Logger) (string, error) {
 	commandArgs := []string{"-c", script, scriptName}
 	commandArgs = append(commandArgs, args...)
@@ -339,10 +353,10 @@ func runScript(ctx context.Context, script string, args, env []string, workDir s
 		return "", fmt.Errorf("failed to start %s: %w", scriptShell, err)
 	}
 
-	tail := &tailBuffer{limit: stderrTailLimit}
+	tail := &bytes.Buffer{}
 	done := make(chan error, 2)
-	go func() { done <- drainScriptStream(stdout, "imageBuild: ", logger, nil) }()
-	go func() { done <- drainScriptStream(stderr, "imageBuild(stderr): ", logger, tail) }()
+	go func() { done <- drainScriptStream(stdout, "imageBuild: ", logger, nil, 0) }()
+	go func() { done <- drainScriptStream(stderr, "imageBuild(stderr): ", logger, tail, stderrTailLimit) }()
 	streamErr := errors.Join(<-done, <-done)
 
 	err = cmd.Wait()
@@ -358,7 +372,10 @@ func runScript(ctx context.Context, script string, args, env []string, workDir s
 	return tail.String(), nil
 }
 
-func drainScriptStream(stream io.Reader, logPrefix string, logger logr.Logger, tail *tailBuffer) error {
+// drainScriptStream logs each line of the stream. If tail is non-nil, it also retains the
+// last tailLimit bytes there (dropping older bytes) so callers can surface a bounded stderr
+// tail in errors without buffering the entire stream.
+func drainScriptStream(stream io.Reader, logPrefix string, logger logr.Logger, tail *bytes.Buffer, tailLimit int) error {
 	reader := bufio.NewReaderSize(stream, scriptLogLineLimit)
 	line := make([]byte, 0, scriptLogLineLimit)
 	lineStarted := false
@@ -369,7 +386,10 @@ func drainScriptStream(stream io.Reader, logPrefix string, logger logr.Logger, t
 		if len(fragment) > 0 {
 			lineStarted = true
 			if tail != nil {
-				tail.appendBytes(fragment)
+				tail.Write(fragment)
+				if excess := tail.Len() - tailLimit; excess > 0 {
+					tail.Next(excess)
+				}
 			}
 		}
 
@@ -414,7 +434,7 @@ func logScriptLine(logger logr.Logger, prefix string, line []byte, truncated boo
 	logger.Info(message)
 }
 
-// readScriptResult requires exactly one non-empty imageReference string.
+// readScriptResult reads the single imageReference the script wrote.
 func readScriptResult(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
@@ -440,25 +460,4 @@ func readScriptResult(path string) (string, error) {
 		return "", fmt.Errorf("the %s result file must contain a non-empty %q string", execOutputEnvName, imageReferenceValueName)
 	}
 	return imageReference, nil
-}
-
-type tailBuffer struct {
-	limit int
-	data  []byte
-}
-
-func (t *tailBuffer) appendBytes(data []byte) {
-	if len(data) >= t.limit {
-		t.data = append(t.data[:0], data[len(data)-t.limit:]...)
-		return
-	}
-	if overflow := len(t.data) + len(data) - t.limit; overflow > 0 {
-		copy(t.data, t.data[overflow:])
-		t.data = t.data[:len(t.data)-overflow]
-	}
-	t.data = append(t.data, data...)
-}
-
-func (t *tailBuffer) String() string {
-	return string(t.data)
 }

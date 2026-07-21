@@ -20,6 +20,6 @@ package bicep
 
 import "os/exec"
 
-// configureScriptProcessGroup is a no-op on Windows: the imageBuild hook only runs inside
-// the Linux dynamic-rp container, and this stub exists so the package cross-compiles.
+// configureScriptProcessGroup is a no-op on Windows; the hook only runs in the Linux container.
+// This stub exists so the package cross-compiles.
 func configureScriptProcessGroup(cmd *exec.Cmd) {}
