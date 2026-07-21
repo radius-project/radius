@@ -112,6 +112,7 @@ func Test_ApplicationGraph(t *testing.T) {
 
 				actualByName := make(map[string]*v20250801preview.ApplicationGraphResource, len(res.Resources))
 				for _, r := range res.Resources {
+					require.NotNil(t, r)
 					require.NotNil(t, r.Name)
 					require.NotNil(t, r.Type)
 					actualByName[*r.Name] = r
@@ -138,18 +139,24 @@ func Test_ApplicationGraph(t *testing.T) {
 				require.Equal(t, "Radius.Compute/containers", *back.Type)
 
 				require.Len(t, front.Connections, 1, "front container should have one outbound connection")
+				require.NotNil(t, front.Connections[0])
 				require.NotNil(t, front.Connections[0].Direction)
 				require.NotNil(t, front.Connections[0].ID)
 				require.NotNil(t, back.ID)
 				require.Equal(t, v20250801preview.DirectionOutbound, *front.Connections[0].Direction)
 				require.Equal(t, *back.ID, *front.Connections[0].ID)
+				require.NotNil(t, front.Connections[0].Kind)
+				require.Equal(t, v20250801preview.ConnectionKindConnection, *front.Connections[0].Kind)
 
 				require.Len(t, back.Connections, 1, "back container should have one inbound connection")
+				require.NotNil(t, back.Connections[0])
 				require.NotNil(t, back.Connections[0].Direction)
 				require.NotNil(t, back.Connections[0].ID)
 				require.NotNil(t, front.ID)
 				require.Equal(t, v20250801preview.DirectionInbound, *back.Connections[0].Direction)
 				require.Equal(t, *front.ID, *back.Connections[0].ID)
+				require.NotNil(t, back.Connections[0].Kind)
+				require.Equal(t, v20250801preview.ConnectionKindConnection, *back.Connections[0].Kind)
 			},
 		},
 	})
