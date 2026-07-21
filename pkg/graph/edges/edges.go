@@ -18,6 +18,7 @@ package edges
 
 import (
 	"sort"
+	"strings"
 
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
@@ -36,6 +37,14 @@ import (
 // Radius.Core/2025-08-01-preview, so the server can pass the request
 // input directly. The CLI static-graph builder constructs an equivalent
 // map from Bicep's compiled dependsOn list.
+//
+// ID matching is case-insensitive: Radius/ARM resource IDs are
+// canonically case-insensitive, but casing varies in practice (for
+// example server-returned IDs use "resourcegroups" while
+// cli.RequireScope produces "resourceGroups"). Emitted edges reference
+// the canonical ID form carried on graph.Resources so downstream
+// consumers can look up either endpoint by exact-string match against
+// the resources list.
 //
 // Filtering rules applied to every incoming edge:
 //
@@ -67,10 +76,17 @@ func MergeDependencyEdges(
 		return
 	}
 
+	// canonicalID resolves any casing of an incoming ID to the exact
+	// string form that appears on graph.Resources. Populated once from
+	// the resources list; all lookups below go through this map so
+	// case-only differences (resourceGroups vs resourcegroups, mixed
+	// provider casing, etc.) do not silently drop edges.
+	canonicalID := make(map[string]string, len(graph.Resources))
 	byID := make(map[string]*corerpv20250801preview.ApplicationGraphResource, len(graph.Resources))
 	for _, r := range graph.Resources {
 		if r != nil && r.ID != nil {
 			byID[*r.ID] = r
+			canonicalID[strings.ToLower(*r.ID)] = *r.ID
 		}
 	}
 	if len(byID) == 0 {
@@ -78,8 +94,8 @@ func MergeDependencyEdges(
 	}
 
 	// (source, target) pairs that already have an outbound Connection
-	// on source. Populated on demand as we walk incoming edges to
-	// avoid touching every resource when incoming is small.
+	// on source. Keyed by canonical IDs so the "Connection wins" check
+	// works regardless of the casing the incoming edge uses.
 	type pair struct{ src, tgt string }
 	connectionPairs := map[pair]struct{}{}
 	for sourceID, res := range byID {
@@ -90,7 +106,15 @@ func MergeDependencyEdges(
 			if *c.Direction != corerpv20250801preview.DirectionOutbound {
 				continue
 			}
-			connectionPairs[pair{sourceID, *c.ID}] = struct{}{}
+			targetID, ok := canonicalID[strings.ToLower(*c.ID)]
+			if !ok {
+				// Existing Connection points outside the resources
+				// list; keep the pair keyed by the raw target so a
+				// future incoming Dependency with the same raw target
+				// still loses to it.
+				targetID = *c.ID
+			}
+			connectionPairs[pair{sourceID, targetID}] = struct{}{}
 		}
 	}
 
@@ -100,10 +124,11 @@ func MergeDependencyEdges(
 	touched := map[string]struct{}{}
 
 	for sourceID, entries := range incoming {
-		sourceRes, ok := byID[sourceID]
+		canonicalSourceID, ok := canonicalID[strings.ToLower(sourceID)]
 		if !ok {
 			continue
 		}
+		sourceRes := byID[canonicalSourceID]
 		if _, isExcluded := excluded[to.String(sourceRes.Type)]; isExcluded {
 			continue
 		}
@@ -118,15 +143,15 @@ func MergeDependencyEdges(
 			if *entry.Kind != corerpv20250801preview.ConnectionKindDependency {
 				continue
 			}
-			targetID := *entry.ID
-			targetRes, ok := byID[targetID]
+			canonicalTargetID, ok := canonicalID[strings.ToLower(*entry.ID)]
 			if !ok {
 				continue
 			}
+			targetRes := byID[canonicalTargetID]
 			if _, isExcluded := excluded[to.String(targetRes.Type)]; isExcluded {
 				continue
 			}
-			p := pair{sourceID, targetID}
+			p := pair{canonicalSourceID, canonicalTargetID}
 			if _, wins := connectionPairs[p]; wins {
 				continue // Connection wins over Dependency for the same pair.
 			}
@@ -137,18 +162,18 @@ func MergeDependencyEdges(
 
 			sourceRes.Connections = append(sourceRes.Connections,
 				&corerpv20250801preview.ApplicationGraphConnection{
-					ID:        to.Ptr(targetID),
+					ID:        to.Ptr(canonicalTargetID),
 					Direction: to.Ptr(corerpv20250801preview.DirectionOutbound),
 					Kind:      to.Ptr(corerpv20250801preview.ConnectionKindDependency),
 				})
 			targetRes.Connections = append(targetRes.Connections,
 				&corerpv20250801preview.ApplicationGraphConnection{
-					ID:        to.Ptr(sourceID),
+					ID:        to.Ptr(canonicalSourceID),
 					Direction: to.Ptr(corerpv20250801preview.DirectionInbound),
 					Kind:      to.Ptr(corerpv20250801preview.ConnectionKindDependency),
 				})
-			touched[sourceID] = struct{}{}
-			touched[targetID] = struct{}{}
+			touched[canonicalSourceID] = struct{}{}
+			touched[canonicalTargetID] = struct{}{}
 		}
 	}
 
