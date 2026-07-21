@@ -44,6 +44,8 @@ const (
 	containerImagesBuildScriptVariableName = "radiusContainerImagesBuildScript"
 	imageBuildOutputName                   = "imageBuild"
 	imageReferenceValueName                = "imageReference"
+	registryParameterName                  = "registry"
+	registrySecretNameParameterName        = "registrySecretName"
 	execOutputEnvName                      = "RADIUS_EXEC_OUTPUT"
 	dockerConfigEnvName                    = "DOCKER_CONFIG"
 	scriptShell                            = "/bin/sh"
@@ -55,6 +57,7 @@ const (
 // dynamic-rp. The recipe maps the public resource schema into this build-specific shape.
 // The build script is deliberately not part of this evaluated output: it is read from a
 // static compiled-template variable instead, so developer-controlled parameters can only be data.
+// Registry settings are replaced with operator-owned recipe definition parameters before use.
 type imageBuildSpec struct {
 	ResourceName       string            `json:"resourceName"`
 	Registry           string            `json:"registry"`
@@ -164,6 +167,9 @@ func (d *bicepDriver) executeImageBuildHook(ctx context.Context, recipeData map[
 	if err != nil || spec == nil {
 		return err
 	}
+	if err := applyOperatorImageBuildParameters(spec, opts.Definition.Parameters); err != nil {
+		return err
+	}
 	script, err := extractImageBuildScript(recipeData)
 	if err != nil {
 		return err
@@ -178,6 +184,34 @@ func (d *bicepDriver) executeImageBuildHook(ctx context.Context, recipeData map[
 	}
 	recipeResponse.Values[imageReferenceValueName] = imageReference
 	delete(recipeResponse.Values, imageBuildOutputName)
+	return nil
+}
+
+// applyOperatorImageBuildParameters replaces the registry settings emitted by the deployment
+// with the values from the registered recipe definition. Resource parameters can override ARM
+// template parameters, so evaluated deployment outputs are not a safe source for credentials or
+// the registry host that receives those credentials.
+func applyOperatorImageBuildParameters(spec *imageBuildSpec, parameters map[string]any) error {
+	registry, ok := parameters[registryParameterName]
+	if !ok {
+		return fmt.Errorf("containerImages recipe definition is missing required parameter %q", registryParameterName)
+	}
+	registryValue, ok := registry.(string)
+	if !ok || registryValue == "" {
+		return fmt.Errorf("containerImages recipe definition parameter %q must be a non-empty string", registryParameterName)
+	}
+
+	registrySecretNameValue := ""
+	if registrySecretName, ok := parameters[registrySecretNameParameterName]; ok {
+		var valid bool
+		registrySecretNameValue, valid = registrySecretName.(string)
+		if !valid {
+			return fmt.Errorf("containerImages recipe definition parameter %q must be a string", registrySecretNameParameterName)
+		}
+	}
+
+	spec.Registry = registryValue
+	spec.RegistrySecretName = registrySecretNameValue
 	return nil
 }
 

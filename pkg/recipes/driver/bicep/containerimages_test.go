@@ -204,25 +204,148 @@ func Test_ExecuteImageBuildHook_IgnoresOtherResourceTypes(t *testing.T) {
 	require.Equal(t, "ordinary", response.Values[imageBuildOutputName])
 }
 
-func Test_ExecuteImageBuildHook_MergesImageReference(t *testing.T) {
+func Test_ExecuteImageBuildHook_UsesOperatorOwnedRegistryParameters(t *testing.T) {
 	script := `set -eu
 [ "$1" = "--resource-name" ]
 [ "$2" = "testimage" ]
 [ "$3" = "--registry" ]
 printf '{"imageReference":"%s/%s:built"}' "$4" "$2" > "$RADIUS_EXEC_OUTPUT"`
 	value := validImageBuildValue()
-	value["registrySecretName"] = ""
+	value["registry"] = "attacker.example/exfiltration"
+	value["registrySecretName"] = "attacker-controlled-secret"
 	response := &recipes.RecipeOutput{Values: map[string]any{imageBuildOutputName: "plumbing"}}
 	err := (&bicepDriver{}).executeImageBuildHook(
 		testcontext.New(t),
 		map[string]any{"variables": map[string]any{containerImagesBuildScriptVariableName: script}},
 		imageBuildOutputs(value),
 		response,
-		driver.ExecuteOptions{BaseOptions: driver.BaseOptions{Definition: recipes.EnvironmentDefinition{ResourceType: "radius.compute/containerimages"}}},
+		driver.ExecuteOptions{BaseOptions: driver.BaseOptions{Definition: recipes.EnvironmentDefinition{
+			ResourceType: "radius.compute/containerimages",
+			Parameters:   map[string]any{registryParameterName: "ghcr.io/radius-project"},
+		}}},
 	)
 	require.NoError(t, err)
 	require.Equal(t, "ghcr.io/radius-project/testimage:built", response.Values[imageReferenceValueName])
 	require.NotContains(t, response.Values, imageBuildOutputName)
+}
+
+func Test_ExecuteImageBuildHook_UsesOnlyOperatorOwnedCredentials(t *testing.T) {
+	secret := &corev1.Secret{
+		TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
+		ObjectMeta: metav1.ObjectMeta{Name: "operator-secret", Namespace: "testapp"},
+		Data: map[string][]byte{
+			"username": []byte("operator"),
+			"password": []byte("s3cret"),
+		},
+	}
+	secretJSON, err := json.Marshal(secret)
+	require.NoError(t, err)
+
+	requestPaths := make(chan string, 1)
+	targetCluster := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestPaths <- r.URL.Path
+		if r.URL.Path != "/api/v1/namespaces/testapp/secrets/operator-secret" {
+			http.NotFound(w, r)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(secretJSON)
+	}))
+	defer targetCluster.Close()
+
+	kubeconfigPath := filepath.Join(t.TempDir(), "target.kubeconfig")
+	kubeconfig := fmt.Sprintf(`apiVersion: v1
+kind: Config
+clusters:
+- name: target
+  cluster:
+    server: %s
+contexts:
+- name: target
+  context:
+    cluster: target
+    user: target
+current-context: target
+users:
+- name: target
+  user: {}
+`, targetCluster.URL)
+	require.NoError(t, os.WriteFile(kubeconfigPath, []byte(kubeconfig), 0o600))
+	t.Setenv(clusteraccess.TargetKubeconfigEnvVar, kubeconfigPath)
+
+	script := `set -eu
+[ "$4" = "operator.example/team" ]
+grep -F '"operator.example"' "$DOCKER_CONFIG/config.json" >/dev/null
+if grep -F 'attacker.example' "$DOCKER_CONFIG/config.json" >/dev/null; then exit 1; fi
+printf '{"imageReference":"operator.example/team/testimage:v1"}' > "$RADIUS_EXEC_OUTPUT"`
+	value := validImageBuildValue()
+	value["registry"] = "attacker.example/exfiltration"
+	value["registrySecretName"] = "attacker-controlled-secret"
+	response := &recipes.RecipeOutput{}
+	d := &bicepDriver{clusterAccessResolver: clusteraccess.NewResolver()}
+	err = d.executeImageBuildHook(
+		testcontext.New(t),
+		map[string]any{"variables": map[string]any{containerImagesBuildScriptVariableName: script}},
+		imageBuildOutputs(value),
+		response,
+		driver.ExecuteOptions{BaseOptions: driver.BaseOptions{
+			Configuration: recipes.Configuration{Runtime: recipes.RuntimeConfiguration{
+				Kubernetes: &recipes.KubernetesRuntime{Namespace: "testapp"},
+			}},
+			Definition: recipes.EnvironmentDefinition{
+				ResourceType: containerImagesResourceType,
+				Parameters: map[string]any{
+					registryParameterName:           "operator.example/team",
+					registrySecretNameParameterName: "operator-secret",
+				},
+			},
+		}},
+	)
+	require.NoError(t, err)
+	require.Equal(t, "/api/v1/namespaces/testapp/secrets/operator-secret", <-requestPaths)
+	require.Equal(t, "operator.example/team/testimage:v1", response.Values[imageReferenceValueName])
+}
+
+func Test_ApplyOperatorImageBuildParameters(t *testing.T) {
+	spec := &imageBuildSpec{
+		Registry:           "attacker.example/exfiltration",
+		RegistrySecretName: "attacker-controlled-secret",
+	}
+	err := applyOperatorImageBuildParameters(spec, map[string]any{
+		registryParameterName:           "ghcr.io/radius-project",
+		registrySecretNameParameterName: "operator-secret",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "ghcr.io/radius-project", spec.Registry)
+	require.Equal(t, "operator-secret", spec.RegistrySecretName)
+
+	// Omitting the optional operator parameter must clear an output value supplied by a developer.
+	spec.RegistrySecretName = "attacker-controlled-secret"
+	err = applyOperatorImageBuildParameters(spec, map[string]any{
+		registryParameterName: "ttl.sh/radius-project",
+	})
+	require.NoError(t, err)
+	require.Equal(t, "", spec.RegistrySecretName)
+}
+
+func Test_ApplyOperatorImageBuildParameters_RejectsInvalidDefinition(t *testing.T) {
+	tests := []struct {
+		name       string
+		parameters map[string]any
+		errPart    string
+	}{
+		{"missing registry", nil, `missing required parameter "registry"`},
+		{"empty registry", map[string]any{registryParameterName: ""}, `parameter "registry" must be a non-empty string`},
+		{"wrong registry type", map[string]any{registryParameterName: 42}, `parameter "registry" must be a non-empty string`},
+		{"wrong secret name type", map[string]any{registryParameterName: "ghcr.io/radius-project", registrySecretNameParameterName: []any{"secret"}}, `parameter "registrySecretName" must be a string`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := applyOperatorImageBuildParameters(&imageBuildSpec{}, tc.parameters)
+			require.ErrorContains(t, err, tc.errPart)
+		})
+	}
 }
 
 func Test_ExecuteImageBuild_FailureSurfacesStderr(t *testing.T) {
