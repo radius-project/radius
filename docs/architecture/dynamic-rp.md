@@ -18,7 +18,7 @@ generic provider model.
 ## Quick Reference
 
 | Topic | Start Here |
-|------|------------|
+| --- | --- |
 | Startup | `cmd/dynamic-rp/cmd/root.go` |
 | Host composition | `pkg/dynamicrp/server/server.go` |
 | API service | `pkg/dynamicrp/frontend/service.go` |
@@ -26,7 +26,7 @@ generic provider model.
 | Async backend | `pkg/dynamicrp/backend/service.go` |
 
 | Test Focus | Packages |
-|-----------|----------|
+| --- | --- |
 | Frontend/read-path behavior | `./pkg/dynamicrp/frontend/...` |
 | Backend/processor behavior | `./pkg/dynamicrp/backend/...` |
 | Integration coverage | `./pkg/dynamicrp/integrationtest/...` |
@@ -35,7 +35,7 @@ generic provider model.
 ## Core Packages
 
 | Package | Responsibility |
-|--------|----------------|
+| --- | --- |
 | `pkg/dynamicrp/frontend` | request handling and API surface |
 | `pkg/dynamicrp/backend` | backend processing and async work |
 | `pkg/dynamicrp/datamodel` | dynamic resource persistence model |
@@ -65,6 +65,12 @@ type authoring patterns.
   than business logic destinations.
 
 ## Change This Safely
+
+### Scoped `containerImages` Bicep Hook
+
+The Bicep recipe driver has one deliberately type-scoped execution hook for `Radius.Compute/containerImages`. For that resource type only, the driver recognizes the private `imageBuild` output, loads a statically embedded build script from the compiled recipe template, passes the typed output fields as process arguments, and waits for the script to push the image before returning `imageReference`. Templates cannot supply executable script content through recipe parameters, and an `imageBuild` output on any other resource type is ignored.
+
+This hook exists because the in-Pod BuildKit endpoint is reachable from `dynamic-rp`, while an ARM/Bicep deployment cannot invoke it or return the result of an imperative image push. Registry credentials are read from the recipe runtime namespace on the cluster selected by the shared recipe cluster-access resolver, including `RADIUS_TARGET_KUBECONFIG`; an invalid configured target fails without falling back to the control-plane cluster. The hook keeps no build receipt or other persistent state and runs the build on every Bicep recipe execution.
 
 ### Packages That Usually Move Together
 

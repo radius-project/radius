@@ -37,6 +37,7 @@ import (
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/kubernetes/clusteraccess"
 	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
@@ -60,10 +61,11 @@ var _ driver.Driver = (*bicepDriver)(nil)
 // NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client, resource client, and options.
 func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient clients.ResourceDeploymentsClient, client processors.ResourceClient, options BicepOptions) driver.Driver {
 	return &bicepDriver{
-		ArmClientOptions: armOptions,
-		DeploymentClient: deploymentClient,
-		ResourceClient:   client,
-		options:          options,
+		ArmClientOptions:      armOptions,
+		DeploymentClient:      deploymentClient,
+		ResourceClient:        client,
+		options:               options,
+		clusterAccessResolver: clusteraccess.NewResolver(),
 	}
 }
 
@@ -73,10 +75,11 @@ type BicepOptions struct {
 }
 
 type bicepDriver struct {
-	ArmClientOptions *arm.ClientOptions
-	DeploymentClient clients.ResourceDeploymentsClient
-	ResourceClient   processors.ResourceClient
-	options          BicepOptions
+	ArmClientOptions      *arm.ClientOptions
+	DeploymentClient      clients.ResourceDeploymentsClient
+	ResourceClient        processors.ResourceClient
+	options               BicepOptions
+	clusterAccessResolver clusteraccess.ClusterAccessResolver
 
 	// RegistryClient is the optional client used to interact with the container registry.
 	RegistryClient remote.Client
@@ -184,6 +187,14 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+	}
+
+	// Radius.Compute/containerImages may declare the reserved imageBuild output. When present,
+	// run its statically verified script inside this container (blocking) and merge the script's
+	// reported image reference into the recipe output.
+	err = d.executeImageBuildHook(ctx, recipeData, resp.Properties.Outputs, recipeResponse, opts)
+	if err != nil {
+		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
 	// When a Radius portable resource consuming a recipe is redeployed, Garbage collection of the recipe resources that aren't included
