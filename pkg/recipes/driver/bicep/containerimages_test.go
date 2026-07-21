@@ -179,6 +179,21 @@ func Test_ImageBuildArguments_AreTypedAndDeterministic(t *testing.T) {
 	require.NotContains(t, args, "--tag-provided")
 }
 
+func Test_ImageBuildEnvironment_ReplacesControlledValues(t *testing.T) {
+	env := imageBuildEnvironment([]string{
+		"PATH=/usr/bin",
+		dockerConfigEnvName + "=/ambient/first",
+		execOutputEnvName + "=/ambient/result",
+		dockerConfigEnvName + "=/ambient/second",
+	}, "/controlled/docker", "/controlled/result")
+
+	require.Equal(t, []string{
+		"PATH=/usr/bin",
+		dockerConfigEnvName + "=/controlled/docker",
+		execOutputEnvName + "=/controlled/result",
+	}, env)
+}
+
 func Test_ExecuteImageBuildHook_IgnoresOtherResourceTypes(t *testing.T) {
 	d := &bicepDriver{}
 	response := &recipes.RecipeOutput{Values: map[string]any{imageBuildOutputName: "ordinary"}}

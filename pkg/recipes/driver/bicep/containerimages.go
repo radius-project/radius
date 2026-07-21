@@ -51,10 +51,10 @@ const (
 	stderrTailLimit                        = 4096
 )
 
-// imageBuildSpec is the private contract between the containerImages Bicep recipe and the
-// dynamic-rp. The build script is deliberately not part of this evaluated output: it is read
-// from a static compiled-template variable instead, so developer-controlled parameters can
-// only be data.
+// imageBuildSpec is the private contract between the containerImages Bicep recipe and
+// dynamic-rp. The recipe maps the public resource schema into this build-specific shape.
+// The build script is deliberately not part of this evaluated output: it is read from a
+// static compiled-template variable instead, so developer-controlled parameters can only be data.
 type imageBuildSpec struct {
 	ResourceName       string            `json:"resourceName"`
 	Registry           string            `json:"registry"`
@@ -207,6 +207,21 @@ func imageBuildArguments(spec *imageBuildSpec) []string {
 	return args
 }
 
+func imageBuildEnvironment(env []string, dockerConfigDir, resultPath string) []string {
+	filtered := make([]string, 0, len(env)+2)
+	for _, value := range env {
+		name, _, _ := strings.Cut(value, "=")
+		if name == dockerConfigEnvName || name == execOutputEnvName {
+			continue
+		}
+		filtered = append(filtered, value)
+	}
+
+	return append(filtered,
+		dockerConfigEnvName+"="+dockerConfigDir,
+		execOutputEnvName+"="+resultPath)
+}
+
 func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, spec *imageBuildSpec, opts driver.ExecuteOptions) (string, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	tempDir, err := os.MkdirTemp("", "radius-imagebuild-")
@@ -215,20 +230,17 @@ func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, spec
 	}
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
-	env := os.Environ()
+	dockerConfigDir := ""
 	if spec.RegistrySecretName != "" {
-		dockerConfigDir := filepath.Join(tempDir, "docker")
+		dockerConfigDir = filepath.Join(tempDir, "docker")
 		if err := d.writeDockerConfig(ctx, spec, dockerConfigDir, opts); err != nil {
 			return "", err
 		}
-		env = append(env, dockerConfigEnvName+"="+dockerConfigDir)
-	} else {
-		// Do not let ambient dynamic-rp credentials reach an unauthenticated build.
-		env = append(env, dockerConfigEnvName+"=")
 	}
 
 	resultPath := filepath.Join(tempDir, "result.json")
-	env = append(env, execOutputEnvName+"="+resultPath)
+	// Do not let ambient dynamic-rp paths or credentials reach the build.
+	env := imageBuildEnvironment(os.Environ(), dockerConfigDir, resultPath)
 	stderrTail, err := runScript(ctx, script, imageBuildArguments(spec), env, tempDir, logger)
 	if err != nil {
 		message := fmt.Sprintf("recipe %q script failed: %s", imageBuildOutputName, err.Error())
