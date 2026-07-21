@@ -25,6 +25,7 @@ Repo Radius is a rethinking of how to deliver Radius to developers. It transform
 * Supporting non-GitHub source control platforms (GitLab, Bitbucket, Azure DevOps).
 * Running Repo Radius outside of GitHub Actions (e.g., locally on a developer's workstation as the primary mode).
 * Supporting multi-repo applications is deferred to a later date.
+* Defining the migration process for moving an application from Repo Radius to self-hosted Radius. Repo Radius does not inhibit migration (the application definition is standard, portable Radius), but the migration experience depends on the frontend and the solution Repo Radius is embedded in and requires its own feature specification (User Story 4.2).
 * Customizing, hardening, or expanding the recipe pack. The initial release uses the default AWS and Azure recipe pack that ships with Radius as-is.
 
 ## Definition of terms
@@ -78,7 +79,7 @@ I am a platform engineer supporting several teams. I want my developers to deplo
 
 ### Positive user outcome
 
-A developer can deploy to AWS or Azure without installing Kubernetes or self-hosted Radius. They create environments with their cloud account details and ask for their application to be deployed and Repo Radius provisions the exact infrastructure needed for the application in a secure and cost-efficient manner. As they modify their application, Repo Radius updates the deployed infrastructure to match the updated application. If they outgrow Repo Radius, the developer can migrate to self-hosted Radius without changing their application definition.
+A developer can deploy to AWS or Azure without installing Kubernetes or self-hosted Radius. They create environments with their cloud account details and ask for their application to be deployed and Repo Radius provisions the exact infrastructure needed for the application in a secure and cost-efficient manner. As they modify their application, Repo Radius updates the deployed infrastructure to match the updated application. Because Repo Radius runs standard Radius and the application definition lives in the developer's own repository, they are not locked in if they outgrow Repo Radius, though the migration process itself is out of scope for this specification.
 
 A platform engineer can define organization-wide recipes once and every team inherits them, and is able to programmatically create environments with cloud credentials so developers keep a fast, self-service experience while the platform engineer keeps the consistency, security, and governance they are accountable for.
 
@@ -346,9 +347,11 @@ A breaking change (to the workflow inputs, the allowed command set, or the resul
 
 ### User Story 4.2: Migrate to self-hosted Radius
 
-> As a developer, I want to move my application from Repo Radius to a self-hosted Radius installation, so that I can grow beyond Repo Radius without rewriting my application.
+> As a developer, I want to grow beyond Repo Radius to a self-hosted Radius installation without being locked in, so that outgrowing Repo Radius is not a dead end.
 
-Repo Radius runs the same Radius as a self-hosted installation, so an application definition is fully portable. When an application needs a resource type beyond the standard types that ship with Radius, the frontend creates the custom resource type and stores its definition in the repository's `.radius` directory alongside the application definition. Because both the application definition and any custom resource types live in the repository, nothing is locked inside Repo Radius. A team that outgrows Repo Radius migrates by taking their `app.bicep` and any custom resource types created under `.radius`, registering those resource types in their self-hosted Radius control plane, and deploying the same application definition without modification.
+Repo Radius runs the same Radius as a self-hosted installation, so it does nothing to inhibit migration: the application definition is standard Radius and fully portable, and the application definition (plus any custom resource types the frontend stores in the repository) lives in the user's own GitHub repository rather than inside Repo Radius. There is no proprietary format or hidden state that ties an application to Repo Radius.
+
+The migration *process*, however, is out of scope for this specification. A real migration has to account for more than the portable application definition: the externalized data store (see FR17), the already-provisioned cloud resources that a self-hosted control plane must adopt, and where the frontend chooses to keep application and custom-resource-type definitions. These depend heavily on the frontend and the solution Repo Radius is embedded in, so a dedicated feature specification is required to define the migration experience. It is called out here so the evolve journey reflects where migration belongs, and left undetailed pending that spec.
 
 ## User Journey 5: Tailor Repo Radius for a team
 
@@ -399,7 +402,7 @@ The requirements below are a first pass at what the initial release must deliver
 | FR17 | Radius data store | Shall be externalized to GitHub-native storage, loaded at the start of each run and saved at the end (resource data, application graphs, deployment history, Terraform state). |
 | FR18 | Radius CLI | `rad deploy` output shall be adjusted so the frontend can report resource-by-resource progress. |
 
-**Deferred to a later release:** preview planned changes / what-if (User Story 2.2), custom recipe packs (User Story 5.1), a predefined environment catalog (User Story 5.2), and state migration to self-hosted Radius (User Story 4.2).
+**Deferred to a later release:** preview planned changes / what-if (User Story 2.2), custom recipe packs (User Story 5.1), a predefined environment catalog (User Story 5.2), and a migration experience for moving to self-hosted Radius (User Story 4.2).
 
 ### Non-functional requirements
 
