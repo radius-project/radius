@@ -119,7 +119,7 @@ Once these steps are complete, the frontend asks Repo Radius to verify the conne
 
 Completing these steps produces the following, all stored in the developer's own GitHub account:
 
-* **Two committed workflows** in `.github/workflows/`. Each is a thin wrapper that invokes a published Repo Radius GitHub Action pinned to a major version tag (for example, `@v1`), so a committed workflow only changes when the repository adopts a new major version.
+* **Two committed workflows** in `.github/workflows`. Each is a thin wrapper that invokes a published Repo Radius GitHub Action pinned to an exact commit SHA, so a committed workflow runs one specific, verified version of the action until it is updated (User Story 4.1).
 
    | Workflow | Action | Purpose |
    | --- | --- | --- |
@@ -339,11 +339,31 @@ The developer asks the frontend to delete an application from an environment. Th
 
 ### User Story 4.1: Upgrade Repo Radius
 
-> As a developer, I want to keep Repo Radius up to date, so that I get fixes and improvements without performing manual upgrades.
+> As a developer, I want to keep Repo Radius up to date, so that I get fixes and improvements without managing versions by hand.
 
-Repo Radius ships as the two GitHub Actions (User Story 1.1), published to the GitHub Marketplace and versioned by major tag. The committed workflows reference each action by its major tag (for example, `radius-project/run-rad-commands@v1`), so every run automatically picks up the latest backward-compatible release of that major version without the developer changing anything.
+#### Summary
 
-A breaking change (to the workflow inputs, the allowed command set, or the result artifact schema) ships as a new major version (`@v2`). The existing `@v1` continues to work, so repositories are unaffected until they opt in. Adopting a new major version requires the user, or the frontend to update the tag in the workflow stored in the repository.
+Two independently versioned components are involved in an upgrade. Repo Radius itself is delivered as the two GitHub Actions (User Story 1.1) published to the GitHub Marketplace. The frontend that drives Repo Radius is a separate component, part of the solution Repo Radius is embedded in, installed and updated on its own. The workflows committed to the repository pin each Repo Radius action to an exact commit SHA, so a repository always runs one specific, verified version of each action rather than whatever a moving tag points at. Updating the frontend does not change those pinned workflows, so the frontend and the pinned actions can drift apart. Keeping them in sync is the frontend's responsibility, not Repo Radius's: because the frontend committed the workflows, it is the component that must update them. At deploy time, before dispatching the deployment workflow, the frontend checks the pinned action versions against the versions it requires, and when they are behind it updates the workflows with the developer's confirmation and through a path that respects the repository's branch protections. Repo Radius does nothing here; it only runs whatever version the workflow pins.
+
+#### User Experience
+
+Keeping Repo Radius up to date involves two things, only one of which the developer initiates directly:
+
+1. **Update the frontend.** The developer updates the frontend through its own update mechanism, which downloads the latest frontend to the local machine. This updates only the local frontend; it does not touch the workflows committed to any repository.
+
+2. **Confirm a workflow update at deploy time.** When the developer next asks to deploy (User Story 1.2), the frontend compares the action versions pinned in the repository's workflows against the versions the current frontend requires. If the workflows already satisfy the requirement, the deployment proceeds unchanged and the developer sees nothing. If the frontend requires a newer version of the actions, the frontend tells the developer the workflows must be updated and asks for confirmation before changing anything in the repository. On confirmation, the frontend updates the workflows by committing to the default branch, or by opening a pull request if the branch is protected (see Result), and once the update is in place the deployment proceeds with the up-to-date actions. If the workflows cannot be updated, the deployment does not proceed.
+
+#### Result
+
+When the developer creates an environment (User Story 1.1), the frontend writes the Repo Radius workflows to the repository's `.github/workflows` directory, with each `uses` statement pinned to an exact commit SHA. Pinning by SHA makes every run reproducible and prevents an upstream release from silently changing behavior.
+
+At deploy time, when the frontend determines the pinned actions are older than it requires and the developer confirms the update, it writes the updated SHAs into the workflows through whichever path the repository allows:
+
+* It attempts to commit the updated workflows directly to the default branch.
+* If the default branch is protected, it offers to open a pull request with the updated workflows instead.
+* If the developer lacks permission to open that pull request, the workflows cannot be updated and the deployment fails, because the required action version is not present in the repository.
+
+Once the updated workflows are present on the default branch (and merged into the branch being deployed, if a different `ref` is targeted), the deployment proceeds using the up-to-date actions. Because the version that runs is always the commit SHA committed to the repository, every upgrade is explicit and auditable, arriving through either a direct commit or a reviewed pull request.
 
 ### User Story 4.2: Migrate to self-hosted Radius
 
@@ -383,11 +403,11 @@ The requirements below are a first pass at what the initial release must deliver
 
 | ID | Component | Functional requirement |
 | --- | --- | --- |
-| FR1 | `verify-cloud-auth` action | Shall be published to the Marketplace, versioned by major tag. |
+| FR1 | `verify-cloud-auth` action | Shall be published to the Marketplace and released under immutable version tags that resolve to specific commit SHAs. |
 | FR2 | `verify-cloud-auth` action | Shall request a GitHub OIDC token, exchange it with AWS or Azure, confirm the short-lived credentials are valid, and verify the identity's permissions. |
 | FR3 | `verify-cloud-auth` action | Shall confirm the workload cluster's API server is reachable when a cluster name is present. |
 | FR4 | `verify-cloud-auth` action | Shall publish a `verify-cloud-auth-result` artifact with a versioned JSON schema (outcome, message, remediation) under a stable artifact name. |
-| FR5 | `run-rad-commands` action | Shall be published to the Marketplace, versioned by major tag. |
+| FR5 | `run-rad-commands` action | Shall be published to the Marketplace and released under immutable version tags that resolve to specific commit SHAs. |
 | FR6 | `run-rad-commands` action | Shall check out the repository at the requested `ref` commit or tag before running commands. |
 | FR7 | `run-rad-commands` action | Shall validate each entry in `rad_commands` against an allowed-command enum before executing anything. |
 | FR8 | `run-rad-commands` action | Shall authenticate to AWS or Azure using the environment's OIDC variables. |
@@ -398,7 +418,7 @@ The requirements below are a first pass at what the initial release must deliver
 | FR13 | `run-rad-commands` action | Shall record a GitHub Deployment on a successful deploy and mark it inactive on delete. |
 | FR14 | `run-rad-commands` action | Shall publish a `run-rad-commands-result` artifact with a versioned JSON schema and an ordered `commands` array under a stable artifact name. |
 | FR15 | `run-rad-commands` action | Shall report a failed data-store save distinctly (the "State could not be saved" outcome) so the developer knows the cloud may hold resources the persisted state does not reflect. |
-| FR16 | Slim workflows | Shall be provided as ready-to-commit `radius-verify-cloud-auth.yml` and `radius-run-rad-commands.yml` that invoke the actions at their major tag. |
+| FR16 | Slim workflows | Shall be provided as ready-to-commit `radius-verify-cloud-auth.yml` and `radius-run-rad-commands.yml`, written to `.github/workflows`, that pin each action to an exact commit SHA. |
 | FR17 | Radius data store | Shall be externalized to GitHub-native storage, loaded at the start of each run and saved at the end (resource data, application graphs, deployment history, Terraform state). |
 | FR18 | Radius CLI | `rad deploy` output shall be adjusted so the frontend can report resource-by-resource progress. |
 
