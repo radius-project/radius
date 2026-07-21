@@ -38,41 +38,22 @@ func Test_DeployEnvironmentTemplate(t *testing.T) {
 	t.Cleanup(cancel)
 
 	options := rp.NewRPTestOptions(t)
+	cli := newCLIWithoutDefaultEnvironment(t, options)
 
-	// Create a custom config file without a default environment to test the scenario.
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
 
-	// Get the connection details from the existing workspace
-	connectionKind := options.Workspace.Connection["kind"]
-	connectionContext := options.Workspace.Connection["context"]
-
-	// Create a temporary config file with workspace that has NO default environment
-	tempConfigFile, err := os.CreateTemp("", "rad-test-config-*.yaml")
-	require.NoError(t, err, "Failed to create temp config file")
-	defer os.Remove(tempConfigFile.Name())
-
-	// Build config YAML with workspace but NO environment field
-	configYAML := fmt.Sprintf(`workspaces:
-        default: test-workspace
-        items:
-          test-workspace:
-            connection:
-              kind: %v
-              context: %v
-        `, connectionKind, connectionContext)
-
-	_, err = tempConfigFile.WriteString(configYAML)
-	require.NoError(t, err, "Failed to write config file")
-	err = tempConfigFile.Close()
-	require.NoError(t, err, "Failed to close config file")
-
-	// Use CLI with the custom config that has no default environment
-	cli := radcli.NewCLI(t, tempConfigFile.Name())
-
-	// Generate a unique resource group name to avoid conflicts with parallel tests
-	uniqueGroupName := fmt.Sprintf("test-deploy-env-group-%s", uuid.New().String())
+	// Generate a unique suffix so the resource group and Kubernetes namespace do
+	// not collide with parallel, repeated, or stale runs against the same cluster.
+	uniqueSuffix := uuid.New().String()
+	uniqueGroupName := fmt.Sprintf("test-deploy-env-group-%s", uniqueSuffix)
 	envName := "test-deploy-env"
+	envNamespace := fmt.Sprintf("default-test-deploy-env-%s", uniqueSuffix)
 
 	// Ensure cleanup even if test fails
+	t.Cleanup(func() {
+		deleteKubernetesNamespace(context.Background(), t, options.K8sClient, envNamespace)
+	})
 	t.Cleanup(func() {
 		// Try to delete the test group if it still exists
 		// Ignore errors as the group might have been successfully deleted
@@ -84,20 +65,20 @@ func Test_DeployEnvironmentTemplate(t *testing.T) {
 	err = cli.GroupCreate(ctx, uniqueGroupName)
 	require.NoError(t, err, "Failed to create resource group")
 
+	createKubernetesNamespace(ctx, t, options.K8sClient, envNamespace)
+
 	// Get the template file path
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
 	templateFilePath := filepath.Join(cwd, "testdata/corerp-env-deploy-test.bicep")
 
 	// Deploy the environment template without specifying --environment flag
 	t.Logf("Deploying environment template to group: %s without --environment flag", uniqueGroupName)
-	err = cli.DeployWithGroup(ctx, templateFilePath, "", "", uniqueGroupName)
+	err = cli.DeployWithGroup(ctx, templateFilePath, "", "", uniqueGroupName, "envNamespace="+envNamespace)
 	require.NoError(t, err, "Failed to deploy environment template")
 
 	// Verify environment was created successfully
 	t.Logf("Verifying environment was created: %s", envName)
 	showOpts := radcli.ShowOptions{Group: uniqueGroupName}
-	output, err := cli.ResourceShow(ctx, "Applications.Core/environments", envName, showOpts)
+	output, err := cli.ResourceShow(ctx, "Radius.Core/environments", envName, showOpts)
 	require.NoError(t, err, "Failed to show environment %s", envName)
 	require.Contains(t, output, envName, "Environment %s should exist", envName)
 
