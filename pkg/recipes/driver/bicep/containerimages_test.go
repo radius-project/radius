@@ -23,12 +23,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,6 +40,13 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/kubernetes/clusteraccess"
 	"github.com/radius-project/radius/test/testcontext"
 )
+
+func requireScriptShell(t *testing.T) {
+	t.Helper()
+	if filepath.Separator == '\\' {
+		t.Skip("requires POSIX /bin/sh")
+	}
+}
 
 func validImageBuildValue() map[string]any {
 	return map[string]any{
@@ -221,6 +230,8 @@ func Test_ExecuteImageBuildHook_IgnoresOtherResourceTypes(t *testing.T) {
 }
 
 func Test_ExecuteImageBuildHook_PassesBuildContractWithOperatorRegistry(t *testing.T) {
+	requireScriptShell(t)
+
 	script := `set -eu
 build_args=
 dockerfile=
@@ -282,6 +293,8 @@ printf '{"imageReference":"%s/%s:built"}' "$registry" "$resource_name" > "$RADIU
 }
 
 func Test_ExecuteImageBuildHook_UsesOnlyOperatorOwnedCredentials(t *testing.T) {
+	requireScriptShell(t)
+
 	secret := &corev1.Secret{
 		TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
 		ObjectMeta: metav1.ObjectMeta{Name: "operator-secret", Namespace: "testapp"},
@@ -410,13 +423,20 @@ func Test_OperatorRegistryParameters_RejectsInvalidDefinition(t *testing.T) {
 }
 
 func Test_ExecuteImageBuild_FailureSurfacesStderr(t *testing.T) {
+	requireScriptShell(t)
+
 	_, err := (&bicepDriver{}).executeImageBuild(testcontext.New(t), `echo "registry unreachable" >&2; exit 7`, map[string]any{}, "", "", driver.ExecuteOptions{})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "exit status 7")
 	require.Contains(t, err.Error(), "registry unreachable")
+	var exitErr *exec.ExitError
+	require.ErrorAs(t, err, &exitErr)
+	require.Equal(t, 7, exitErr.ExitCode())
 }
 
 func Test_ExecuteImageBuild_StrictResultContract(t *testing.T) {
+	requireScriptShell(t)
+
 	tests := []struct {
 		name    string
 		script  string
@@ -438,6 +458,8 @@ func Test_ExecuteImageBuild_StrictResultContract(t *testing.T) {
 }
 
 func Test_ExecuteImageBuild_UnauthenticatedBlanksDockerConfig(t *testing.T) {
+	requireScriptShell(t)
+
 	t.Setenv(dockerConfigEnvName, "/ambient/docker")
 	script := `printf '{"imageReference":"probe%s"}' "${DOCKER_CONFIG-unset}" > "$RADIUS_EXEC_OUTPUT"`
 	imageReference, err := (&bicepDriver{}).executeImageBuild(testcontext.New(t), script, map[string]any{}, "", "", driver.ExecuteOptions{})
@@ -550,20 +572,31 @@ func Test_WriteDockerConfig_SecretFailures(t *testing.T) {
 	require.ErrorContains(t, err, missingPath)
 }
 
-func Test_RunScript_LongOutputLineDoesNotHang(t *testing.T) {
-	ctx, cancel := context.WithTimeout(testcontext.New(t), 10*time.Second)
-	defer cancel()
-	stderrTail, err := runScript(ctx, "head -c 1100000 /dev/zero | tr '\\0' x >&2", nil, os.Environ(), t.TempDir(), logr.Discard())
+func Test_DrainScriptStream_LongLineBoundsLoggingAndTail(t *testing.T) {
+	var messages []string
+	logInfoLevel := ""
+	logger := funcr.New(func(prefix, args string) {
+		messages = append(messages, prefix+args)
+	}, funcr.Options{LogInfoLevel: &logInfoLevel})
+	tail := &tailBuffer{limit: stderrTailLimit}
+
+	err := drainScriptStream(strings.NewReader(strings.Repeat("x", 1_100_000)), "imageBuild(stderr): ", logger, tail)
 	require.NoError(t, err)
-	require.Equal(t, strings.Repeat("x", stderrTailLimit), stderrTail)
+	require.Len(t, messages, 1)
+	require.Contains(t, messages[0], scriptLogTruncationMarker)
+	require.LessOrEqual(t, len(messages[0]), scriptLogLineLimit+128)
+	require.Equal(t, strings.Repeat("x", stderrTailLimit), tail.String())
 }
 
 func Test_RunScript_CancelKillsSpawnedProcesses(t *testing.T) {
+	requireScriptShell(t)
+
 	ctx, cancel := context.WithTimeout(testcontext.New(t), 500*time.Millisecond)
 	defer cancel()
 	start := time.Now()
 	_, err := runScript(ctx, "sleep 30 & wait", nil, os.Environ(), t.TempDir(), logr.Discard())
 	require.Error(t, err)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
 	require.Contains(t, err.Error(), "canceled or timed out")
 	require.Less(t, time.Since(start), 10*time.Second)
 }

@@ -18,6 +18,7 @@ package bicep
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -51,6 +52,8 @@ const (
 	scriptShell                            = "/bin/sh"
 	scriptName                             = "radius-container-images-build"
 	stderrTailLimit                        = 4096
+	scriptLogLineLimit                     = 4096
+	scriptLogTruncationMarker              = " [truncated]"
 )
 
 func supportsImageBuildHook(resourceType string) bool {
@@ -244,11 +247,10 @@ func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, buil
 	env := imageBuildEnvironment(os.Environ(), dockerConfigDir, resultPath)
 	stderrTail, err := runScript(ctx, script, args, env, tempDir, logger)
 	if err != nil {
-		message := fmt.Sprintf("recipe %q script failed: %s", imageBuildOutputName, err.Error())
 		if stderrTail != "" {
-			message += "\nstderr (tail):\n" + stderrTail
+			return "", fmt.Errorf("recipe %q script failed: %w\nstderr (tail):\n%s", imageBuildOutputName, err, stderrTail)
 		}
-		return "", errors.New(message)
+		return "", fmt.Errorf("recipe %q script failed: %w", imageBuildOutputName, err)
 	}
 
 	return readScriptResult(resultPath)
@@ -357,22 +359,59 @@ func runScript(ctx context.Context, script string, args, env []string, workDir s
 }
 
 func drainScriptStream(stream io.Reader, logPrefix string, logger logr.Logger, tail *tailBuffer) error {
-	reader := bufio.NewReader(stream)
+	reader := bufio.NewReaderSize(stream, scriptLogLineLimit)
+	line := make([]byte, 0, scriptLogLineLimit)
+	lineStarted := false
+	lineTruncated := false
+
 	for {
-		text, err := reader.ReadString('\n')
-		if text != "" {
-			logger.Info(logPrefix + strings.TrimRight(text, "\r\n"))
+		fragment, err := reader.ReadSlice('\n')
+		if len(fragment) > 0 {
+			lineStarted = true
 			if tail != nil {
-				tail.appendText(text)
+				tail.appendBytes(fragment)
 			}
 		}
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
-			return err
+
+		logFragment := fragment
+		if err == nil {
+			logFragment = bytes.TrimRight(logFragment, "\r\n")
 		}
+		if len(logFragment) > 0 {
+			remaining := scriptLogLineLimit - len(line)
+			if remaining > len(logFragment) {
+				remaining = len(logFragment)
+			}
+			line = append(line, logFragment[:remaining]...)
+			lineTruncated = lineTruncated || remaining < len(logFragment)
+		}
+
+		if err == nil {
+			logScriptLine(logger, logPrefix, line, lineTruncated)
+			line = line[:0]
+			lineStarted = false
+			lineTruncated = false
+			continue
+		}
+		if errors.Is(err, bufio.ErrBufferFull) {
+			continue
+		}
+		if lineStarted {
+			logScriptLine(logger, logPrefix, line, lineTruncated)
+		}
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		return err
 	}
+}
+
+func logScriptLine(logger logr.Logger, prefix string, line []byte, truncated bool) {
+	message := prefix + string(line)
+	if truncated {
+		message += scriptLogTruncationMarker
+	}
+	logger.Info(message)
 }
 
 // readScriptResult requires exactly one non-empty imageReference string.
@@ -408,11 +447,16 @@ type tailBuffer struct {
 	data  []byte
 }
 
-func (t *tailBuffer) appendText(text string) {
-	t.data = append(t.data, []byte(text)...)
-	if len(t.data) > t.limit {
-		t.data = t.data[len(t.data)-t.limit:]
+func (t *tailBuffer) appendBytes(data []byte) {
+	if len(data) >= t.limit {
+		t.data = append(t.data[:0], data[len(data)-t.limit:]...)
+		return
 	}
+	if overflow := len(t.data) + len(data) - t.limit; overflow > 0 {
+		copy(t.data, t.data[overflow:])
+		t.data = t.data[:len(t.data)-overflow]
+	}
+	t.data = append(t.data, data...)
 }
 
 func (t *tailBuffer) String() string {
