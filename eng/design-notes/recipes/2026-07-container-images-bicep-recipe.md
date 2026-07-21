@@ -14,6 +14,7 @@ This design extends the [`Radius.Compute/containerImages` resource type design](
 
 | Term                     | Definition                                                                                                                                                                          |
 |--------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Build hook               | The post-deploy build step inside the Radius Bicep driver (`dynamic-rp`) that runs after the normal Bicep deployment, only for `Radius.Compute/containerImages`. Radius owns this step; the platform engineer supplies only the embedded `build.sh` it runs, not the hook itself.       |
 | `imageBuild`             | Internal Bicep output that tells the Radius Bicep driver what image to build. The driver injects registry settings from the registered Recipe definition.                           |
 | Build script             | `build.sh` published by the platform engineer and embedded into the compiled Bicep template by `loadTextContent`. This lets the platform engineer customize how images are built.                                                                   |
 | BuildKit                 | The image build engine running as an opt-in rootless sidecar in the `dynamic-rp` Pod.                                                                                               |
@@ -164,13 +165,13 @@ The Bicep recipe evaluates inputs, and Radius runs the image build:
 
 1. `dynamic-rp` downloads the compiled Bicep recipe and adds the Radius recipe context.
 2. UCP deploys the Bicep template and returns `result` plus the private `imageBuild` output.
-3. The Bicep driver checks the resource type. Only `Radius.Compute/containerImages` uses this hook.
+3. The Bicep driver checks the resource type. Only `Radius.Compute/containerImages` runs this build hook (see [Terms and definitions](#terms-and-definitions)).
 4. The driver validates `imageBuild`, injects `registry` and optional `registrySecretName` from the registered Recipe definition, and reads the embedded `radiusContainerImagesBuildScript`.
 5. If the registered `registrySecretName` is set, the driver reads the Kubernetes Secret and writes a temporary Docker config.
 6. The driver runs the script with typed arguments. The script validates inputs, computes a tag, calls `buildctl`, and writes `imageReference`.
 7. After the script succeeds, the driver merges `imageReference` into the recipe output and continues normal cleanup and persistence.
 
-The hook is optional. A `Radius.Compute/containerImages` recipe without `imageBuild` follows the normal Bicep driver path.
+The build hook is part of the Radius Bicep driver, not something the developer supplies; the developer only declares the `containerImages` resource, and the platform engineer supplies the `build.sh` the hook runs. The hook is optional in that a `Radius.Compute/containerImages` recipe without an `imageBuild` output follows the normal Bicep driver path.
 
 ### Architecture Diagram
 
@@ -304,7 +305,7 @@ When `registrySecretName` is empty, the driver sets `DOCKER_CONFIG` to an empty 
 
 #### Reconciliation and generated tags
 
-Because Bicep has no equivalent to Terraform's `triggers_replace` state, the Bicep recipe rebuilds and pushes on every execution, even when identical inputs produce the same image reference. Generated tags for Git sources hash the source URL, ref, and subdirectory rather than the resolved commit, so a moving ref like `main` keeps the same tag while its content changes; platform engineers should use immutable refs when they need stable content. Terraform and Bicep hash the same inputs with different algorithms, so switching recipe kinds can change a generated tag once, which an explicit `tag` avoids.
+Because Bicep has no equivalent to Terraform's `triggers_replace` state, the Bicep recipe rebuilds and pushes on every execution, even when identical inputs produce the same image reference. Generated tags for Git sources hash the source URL, ref, and subdirectory rather than the resolved commit, so a moving ref like `main` keeps the same tag while its content changes; developers should pin an immutable ref through `build.source` (or set an explicit `tag`) when they need stable content. Terraform and Bicep hash the same inputs with different algorithms, so switching recipe kinds can change a generated tag once, which an explicit `tag` avoids.
 
 #### Advantages
 
@@ -313,6 +314,7 @@ Because Bicep has no equivalent to Terraform's `triggers_replace` state, the Bic
 - Waits for a successful push before publishing `imageReference`.
 - Keeps developer-controlled values out of shell source.
 - Lets platform engineers customize build behavior by publishing a modified script with the recipe.
+- Runs the build from the control-plane `dynamic-rp`, so it works in multi-cluster scenarios without a per-cluster build service.
 - Limits behavior changes for other Bicep recipes through a resource-type gate.
 
 #### Disadvantages
@@ -361,6 +363,8 @@ BuildKit remains an install-time opt-in:
 ```sh
 rad install kubernetes --set dynamicrp.buildkit.enabled=true
 ```
+
+The build hook itself is always present in the driver regardless of this flag; the flag only provisions the BuildKit sidecar the hook needs, so a build fails cleanly if the hook runs without BuildKit enabled.
 
 ### Implementation Details
 
@@ -489,8 +493,10 @@ No dedicated build duration, push duration, cache, failure-reason, or image-size
 
 The following decisions still require confirmation:
 
-- Should recipe registration pin recipes to a digest instead of a mutable tag, so a swapped registry artifact can't silently run new code on the control plane? This is the main residual security risk and is shared with Terraform. The Recipe Packs design proposes `recipeDigest`, but current APIs don't expose it.
-- Should the driver constrain the build script's execution beyond passing developer input as arguments, for example by resetting the environment to an allowlist rather than inheriting all of `dynamic-rp`'s variables, or by pointing `DOCKER_CONFIG` at a controlled empty directory for unauthenticated builds?
+- How should Radius keep the Bicep and Terraform `containerImages` recipes in sync as they evolve? This is a general problem shared across recipes that ship in more than one engine, so it is out of scope here and should be addressed together with the Terraform recipe.
+- Should recipe registration pin recipes to a digest instead of a mutable tag, so a swapped registry artifact can't silently run new code on the control plane? This is the main residual security risk and is shared with Terraform. The Recipe Packs design proposes `recipeDigest`, but current APIs don't expose it. Treated as a future enhancement, not a blocker for this design.
+- Should the driver constrain the build script's execution beyond passing developer input as arguments, for example by resetting the environment to an allowlist rather than inheriting all of `dynamic-rp`'s variables, or by pointing `DOCKER_CONFIG` at a controlled empty directory for unauthenticated builds? Deferred as a future enhancement.
+- In multi-cluster scenarios, how should the control plane access registry credentials that live on the target cluster? This gap was seen with the Terraform recipe too; it is out of scope for this design and something to resolve as multi-cluster support matures.
 - Which environment validates the Bicep path, and are both unauthenticated and authenticated registry flows release gates?
 - Should recipe registration enforce or document a minimum compatible Radius version before default recipe packs switch from Terraform to Bicep?
 - Should relative local source paths be rejected explicitly, given each engine resolves them from a different transient working directory?
