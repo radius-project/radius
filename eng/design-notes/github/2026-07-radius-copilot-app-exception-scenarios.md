@@ -57,7 +57,7 @@ The Radius plugin is already installed and working, and the user starts an updat
 
 ## Part 1: Clone the repo, invoke the Radius skill, and open the Radius side panel
 
-Before any Assembly analysis can begin, the repository must be brought into the session and checked out as a worktree, the Radius skill must fire and enable the repository for Radius, and the Radius side panel must come up in the sidebar. Bringing the repository in is a Copilot app prerequisite. Committing the Repo Radius workflow files into `.github/workflows` is what enables the repository for Radius, since Repo Radius runs every operation as a GitHub Actions workflow that must be committed before it can run; that commit happens as part of the deployment step rather than at skill invocation. The exceptions here are the repository not being available (1.1), the skill not being invoked (1.2), enablement failing for lack of write permission (1.3), the worktree branch on the remote being protected (1.4), and the Radius side panel not coming up (1.5). All are pre-flight, so nothing has been analyzed or deployed yet, and the user recovers by correcting the cause and re-invoking the skill with no cleanup.
+Before any Assembly analysis can begin, the repository must be brought into the session and checked out as a worktree, the Radius skill must fire and enable the repository for Radius, and the Radius side panel must come up in the sidebar. Bringing the repository in is a Copilot app prerequisite. Committing the Repo Radius workflow files into `.github/workflows` is what enables the repository for Radius, since Repo Radius runs every operation as a GitHub Actions workflow that must be committed before it can run; that commit happens as part of the deployment step. The exceptions here are the repository not being available (1.1), the skill not being invoked (1.2), the enablement workflow files not committing to the default branch (1.3), and the Radius side panel not coming up (1.4). All are pre-flight, so nothing has been analyzed or deployed yet, and the user recovers by correcting the cause and re-invoking the skill with no cleanup.
 
 ### Exception 1.1: Repository not available in the session
 
@@ -73,21 +73,14 @@ The session is ready with a repository attached, and the user asks Copilot somet
 - **What the user sees:** A generic Copilot chat response with no Radius side panel and no application graph.
 - **Recovery:** The user invokes the skill explicitly with the `/app-modeling` command (named after the plugin the user enabled), which is the deterministic entry point.
 
-### Exception 1.3: Repository cannot be enabled for Radius
+### Exception 1.3: Cannot commit the enablement workflow files to the default branch
 
-Enabling the repository is the first write to the repository. If the user lacks write permission, committing the workflow files fails and Radius cannot proceed. This only affects a repository that has not been enabled yet: one enabled on an earlier session already has the workflow files (and its `app.bicep` application definition), so a read-only user working with an already-enabled repository never reaches this exception.
+The Repo Radius workflow files must be on the default branch before Repo Radius can run them, so the Radius extension attempts to commit them straight to the default branch during environment creation. It writes them server-side through the GitHub API, so this never touches the local worktree. When it cannot push directly to the default branch, because the session lacks write permission or the branch is protected, it falls back to committing the files to a new remote branch and offering to open a pull request for the user to merge. This only affects a repository that has not been enabled yet; one enabled on an earlier session already has the workflow files, so a read-only user working with an already-enabled repository never reaches this exception.
 
-- **What the user sees:** Copilot responds in chat: "To set this repository up I need to add a couple of workflow files, but I don't have write access to <repository> in this session. If you fork the repository or get write access and add it here, I can pick up where we left off."
-- **Recovery:** The user forks the repository or gets write access, adds it to the session, and re-invokes the Radius skill.
+- **What the user sees:** In the normal case the commit to the default branch succeeds silently. If the extension cannot push directly, it commits the files to a new branch and opens a pull request, responding in chat: "I couldn't push the workflow files to the default branch of <repository> directly, so I committed them to <branch> and opened a pull request: <pull request link>. Merge it to finish setting up the repository."
+- **Recovery:** The user merges the pull request the extension opened. If the extension could not open the pull request either (for example, no write access to the repository at all), the user forks the repository or gets write access, adds it to the session, and re-invokes the skill.
 
-### Exception 1.4: Worktree branch on the remote is protected
-
-The skill never commits directly to the default branch. It commits the Repo Radius workflow files to the working-tree branch, pushes that branch to the remote, and asks the user whether to open a pull request that adds them to the default branch. The exception arises only when the worktree branch on the remote is itself protected, so the skill cannot push the workflow files to it.
-
-- **What the user sees:** Copilot responds in chat: "I couldn't push the workflow files to <branch> on <repository> because that branch is protected. Let me push to an unprotected branch, or adjust the branch protection, and I'll pick up where we left off."
-- **Recovery:** The user works from or pushes to an unprotected worktree branch (or relaxes the branch protection), then re-invokes the skill.
-
-### Exception 1.5: Radius side panel does not open in the sidebar
+### Exception 1.4: Radius side panel does not open in the sidebar
 
 The Radius skill runs and responds in chat, but the Radius side panel never appears in the sidebar. The plugin installs the skill and the Radius Canvas extension together, so the extension is present but failed to load (a crash on startup, a user modification, or an incompatible or corrupted build), and cannot build the side panel. The skill must detect the unavailable extension and report it clearly rather than appearing broken.
 
@@ -98,7 +91,7 @@ The Radius skill runs and responds in chat, but the Radius side panel never appe
 
 ## Part 2: Create the resource types and application definition
 
-Part 2 is authoring: Copilot runs the Assembly analysis on the repository and writes `app.bicep`, `custom-types.yaml`, and `bicepconfig.json` into a new `.radius` directory. The most important pre-flight check is the presence of a Dockerfile, because a repository without a containerized workload is out of scope for the MVP.
+Part 2 is authoring: Copilot runs the Assembly analysis on the repository and writes `app.bicep`, `custom-types.yaml`, and `bicepconfig.json` into a new `.radius` directory on the worktree branch of the local clone and stages them, without committing, pushing, or opening a pull request. The modeled application graph view is compiled from these on-disk files, so previewing it needs no push, but deploying does: Repo Radius runs each operation as a GitHub Actions workflow dispatched against a branch, so the user must push the branch carrying `.radius/app.bicep` before deploying. A branch that was never pushed, or a selected branch that does not contain the file, fails at deploy time (Exception 5.5), not here.
 
 ### Exception 2.1: No Dockerfile present
 
@@ -128,12 +121,12 @@ The user starts the Assembly analysis on a repository, but it does not successfu
 - **What the user sees:** Copilot responds in chat: "I wasn't able to finish analyzing the repository this time. Want me to try again?"
 - **Recovery:** The user retries; the Assembly analysis is re-runnable and safe to repeat because nothing is written until it succeeds.
 
-### Exception 2.5: Publishing the `.radius` files and opening a pull request
+### Exception 2.5: Cannot write the `.radius` files to the worktree
 
-Copilot works off a worktree branch in a local clone, so writing the generated files to that branch always succeeds and the `.radius` directory is created there. When the prompt is initiated from a new Copilot session, Copilot publishes `app.bicep` and the other artifacts to a remote branch that matches the user's worktree branch, then prompts the user to open a pull request against the default branch. The skill never commits directly to the default branch. The only failure case is a worktree branch on the remote that is protected, so Copilot cannot push the generated files to it.
+The only failure in this part is that the local write of the `.radius` files to the worktree does not complete, so nothing is written. Whether the branch is later pushed so it can be deployed is a separate concern that surfaces at deploy time (Exception 5.5), not here.
 
-- **What the user sees:** Copilot responds in chat: "I generated the `.radius` files on the worktree branch. Would you like me to open a pull request that adds them: <pull request link> to the default branch of <repository>."
-- **Recovery:** The user accepts the pull request Copilot offers to add the `.radius` directory to the default branch. If the worktree branch itself is protected, the user works from an unprotected branch, then asks Copilot to publish again.
+- **What the user sees:** In the normal case the write succeeds, the `.radius` directory appears on the worktree, and Copilot responds in chat: "I've written the application definition to the `.radius` directory." If the write fails, Copilot retries it silently with backoff. Only if every retry is exhausted does it surface the failure in chat: "I generated the application definition but couldn't write it to the `.radius` directory. Want me to try again?"
+- **Recovery:** None is required while the retries succeed. If they are exhausted, the user asks Copilot to try again; because nothing is written until the write succeeds, no partial `.radius` directory is left behind.
 
 ### Exception 2.6: Generated `app.bicep` is invalid
 
@@ -207,7 +200,7 @@ If the cloud provider or the named Kubernetes cluster (AKS on Azure or EKS on AW
 
 ## Part 5: Deploy the application to the cloud
 
-When the user is deploying an application to AWS or Azure, they are shown an animated application graph with each cloud resource moving through queued, in progress, success, or failure. Exceptions 5.1 through 5.4 are the Repo Radius outcomes surfaced to the user on the Radius side panel.
+When the user is deploying an application to AWS or Azure, they are shown an animated application graph with each cloud resource moving through queued, in progress, success, or failure. Exception 5.5 is a pre-flight check that runs before the deployment is dispatched: the branch being deployed must already carry a pushed `.radius/app.bicep`. Exceptions 5.1 through 5.4 are the Repo Radius outcomes surfaced to the user on the Radius side panel once the deployment is running.
 
 ### Exception 5.1: Deployment failed, cancelled, or timed out
 
@@ -238,6 +231,13 @@ The deployment ran to completion and provisioned resources, but afterward the re
 - **What the user sees:** Nothing while the retries run; the save usually succeeds on a later attempt. Only if the retries are exhausted does the Radius side panel warn that the deployment ran but its recorded state could not be saved, and that orphaned resources may exist.
 - **Resulting state:** After exhausted retries, cloud resources exist but the recorded state is stale, so orphaned resources may exist.
 - **Recovery:** None is required while retries succeed. If the save ultimately fails, the user must redeploy the application. A redeploy re-runs the deployment and writes the state again, reconciling the recorded state with the resources already in the cloud. If a redeploy still cannot reconcile the two, the user deletes the application and redeploys it fresh (Part 8, then Part 5).
+
+### Exception 5.5: Application definition not found on the deploy branch
+
+Deploying dispatches a GitHub Actions workflow against a branch and reads `.radius/app.bicep` from that branch on the remote, so the file must already be pushed there. Because the Assembly analysis only writes and stages the file on the local worktree (Exception 2.5), the deploy cannot find it when the worktree branch was never pushed, or when the user selects a branch that does not contain `.radius/app.bicep`. This is a pre-flight check that fails before any cloud resource is touched, so nothing is provisioned.
+
+- **What the user sees:** The deployment does not start, and Copilot responds in chat. When the branch was never pushed: "The branch \"<branch>\" hasn't been pushed to <repository> yet, so there's nothing on GitHub to deploy. Push it and try again." When the selected branch does not contain the definition: "I couldn't find `.radius/app.bicep` on the branch \"<branch>\". Push the branch that has your application definition, or pick the branch that contains it, and try again."
+- **Recovery:** The user pushes the worktree branch that carries `.radius/app.bicep` (`git push`), or selects the branch that already contains it, then deploys again.
 
 ## Part 6: Modify the app to add a cache and open a PR
 
