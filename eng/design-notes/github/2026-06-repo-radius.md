@@ -253,7 +253,7 @@ If the named application has not been deployed to the environment, the `rad app 
 
 Before redeploying (User Story 2.3), the developer wants to see what a deployment will change: which resources it will add, change, or remove. This is analogous to `terraform plan` or `az deployment group what-if`. Producing a trustworthy plan means comparing the application's desired state (the edited `app.bicep`) against its actual deployed state and predicting how the deployment engine and recipes would resolve the difference between the two, including provider-level effects such as whether a change forces a resource to be replaced. The frontend cannot do this on its own; only Radius, which owns the deployment engine and recipe resolution, can produce an accurate what-if.
 
-This preview-before-apply capability is central to deploying with confidence, and it is a significant new feature that is not specific to Repo Radius—self-hosted Radius needs the same what-if, and both versions of Radius would use it. Because it is a generalized feature, a standalone feature specification is required that defines the user experience and functionality. It is called out here so the iterate journey reflects where it belongs, and left undetailed pending that dedicated spec.
+This preview-before-apply capability is central to deploying with confidence, and it is a significant new feature that is not specific to Repo Radius—self-hosted Radius needs the same what-if, and both versions of Radius would use it. Because it is a generalized feature, a standalone feature specification is required that defines the user experience and functionality. It is called out here so the iterate journey reflects where it belongs, and left unspecified pending that dedicated spec.
 
 ### User Story 2.3: Change my application and redeploy
 
@@ -431,7 +431,7 @@ The requirements below are a first pass at what the initial release must deliver
 | NFR1 | Performance | Control plane startup shall be fast enough that per-run latency is acceptable, since startup is on the critical path for every operation. |
 | NFR2 | Security | Deployments shall authenticate with short-lived, OIDC-issued cloud credentials and shall not store long-lived cloud secrets. |
 | NFR3 | Security | The cloud identity shall be scoped to the least privilege required and isolated per repository (and per cloud account or subscription to separate production from non-production) to limit blast radius. |
-| NFR4 | Reliability | The data store load and save around each run shall be reliable and atomic, so a failed run does not silently corrupt or desync state. |
+| NFR4 | Reliability | The data store load and save around each run shall be reliable and atomic, so a failed run does not silently corrupt or make the state not in sync. |
 
 ## Appendix 2: Dependencies and risks
 
