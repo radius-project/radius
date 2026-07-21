@@ -24,6 +24,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/graph/edges"
 	"github.com/radius-project/radius/pkg/to"
 
 	productmanifest "github.com/radius-project/radius/deploy/manifest"
@@ -104,15 +105,6 @@ var sensitiveKeyBlocklist = map[string]struct{}{
 // pointless work on the majority of property values.
 var armExpressionPattern = regexp.MustCompile(`^\[.*\]$`)
 
-// excludeResourceTypes are the resource types that are not graph members.
-var excludeResourceTypes = map[string]struct{}{
-	"Applications.Core/applications": {},
-	"Applications.Core/environments": {},
-	"Radius.Core/applications":       {},
-	"Radius.Core/environments":       {},
-	"Radius.Core/recipePacks":        {},
-}
-
 // resourceIDExpression matches an ARM template resourceId() expression
 // produced by `bicep build` for Radius resource references, e.g.
 //
@@ -166,11 +158,90 @@ func BuildModeledGraph(template map[string]any, includeIcons bool) (*corerpv2025
 	}
 
 	graph := &corerpv20250801preview.ApplicationGraphResponse{Resources: graphResources}
+
+	// Mirror the author-declared Connection outbound edges (populated on
+	// each resource by buildModeledResource via outboundConnections) as
+	// inbound entries on their targets. This gives us a complete
+	// Connection-only graph before we merge in the Bicep dependsOn edges.
 	addInboundConnections(graph)
+
+	// Overlay Bicep dependsOn edges as Kind: Dependency, subject to the
+	// exclusion set and Connection-wins de-dup. The static graph is the
+	// only Kind: Dependency producer today; runtime dependency edges
+	// arrive via caller-supplied dependsOnEdges on GetGraphRequest and
+	// go through the same MergeDependencyEdges primitive server-side.
+	//
+	// The modeled graph is standalone (no control plane), so we build
+	// IDs under the default plane / resource group used elsewhere in
+	// this file. Callers targeting a specific workspace scope should use
+	// ExtractDependsOnEdges directly with their scope instead.
+	edges.MergeDependencyEdges(graph, ExtractDependsOnEdges(template, ""))
+
 	if includeIcons {
 		graph.Icons = collectStaticGraphIcons(graphResources)
 	}
 	return graph, nil
+}
+
+// ExtractDependsOnEdges walks a compiled ARM JSON template and returns
+// a map from each resource's canonical Radius ID to the list of
+// outbound Kind: Dependency edges implied by that resource's dependsOn.
+// The shape matches GetGraphRequest.dependsOnEdges on
+// Radius.Core/2025-08-01-preview, so callers can attach the result
+// directly to a deployed-graph request to enrich it with the same
+// implicit dependencies the static graph would surface.
+//
+// rootScope selects the plane / resource-group prefix used when
+// constructing source and target resource IDs. It must match the
+// scope of the deployed graph the extracted edges will be merged
+// against, because MergeDependencyEdges performs exact-string ID
+// matching. Callers targeting the current workspace should pass
+// workspace.Scope (typically "/planes/radius/local/resourceGroups/<rg>").
+// An empty rootScope falls back to the modeled-graph default plane
+// and resource group, which is only appropriate when the extracted
+// edges are merged into a modeled graph built by BuildModeledGraph.
+//
+// Resources whose type is in edges.ExcludedResourceTypes are omitted as
+// sources (they are never edge sources anyway). Individual dependsOn
+// entries that resolve to a canonical ID are included regardless of
+// target type; edges.MergeDependencyEdges applies the target-type
+// exclusion server- and CLI-side. Unresolvable entries (dynamic
+// resourceId expressions, non-Radius symbolic references) are dropped.
+func ExtractDependsOnEdges(template map[string]any, rootScope string) map[string][]*corerpv20250801preview.ApplicationGraphConnection {
+	rawResources := collectResources(template["resources"])
+	if rawResources == nil {
+		return nil
+	}
+	out := map[string][]*corerpv20250801preview.ApplicationGraphConnection{}
+	for _, entry := range rawResources {
+		resourceType, _ := entry["type"].(string)
+		name, _ := entry["name"].(string)
+		if resourceType == "" || name == "" {
+			continue
+		}
+		if isExcludedResourceType(resourceType) {
+			continue
+		}
+		rawDependsOn, _ := entry["dependsOn"].([]any)
+		resolved := resolveDependsOn(rawDependsOn, rootScope)
+		if len(resolved) == 0 {
+			continue
+		}
+		sourceID := buildResourceIDInScope(rootScope, resourceType, name)
+		entries := make([]*corerpv20250801preview.ApplicationGraphConnection, 0, len(resolved))
+		for _, target := range resolved {
+			entries = append(entries, &corerpv20250801preview.ApplicationGraphConnection{
+				ID:        to.Ptr(target),
+				Direction: to.Ptr(corerpv20250801preview.DirectionOutbound),
+				Kind:      to.Ptr(corerpv20250801preview.ConnectionKindDependency),
+			})
+		}
+		out[sourceID] = entries
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // sensitiveParamNames returns the set of parameter names declared with
@@ -445,7 +516,7 @@ func buildModeledResource(entry map[string]any, secureParams map[string]struct{}
 
 	properties, _ := entry["properties"].(map[string]any)
 	rawDependsOn, _ := entry["dependsOn"].([]any)
-	dependsOn := resolveDependsOn(rawDependsOn)
+	dependsOn := resolveDependsOn(rawDependsOn, "")
 
 	// DiffHash is computed over the authored properties (pre-redaction)
 	// so the hash detects authored changes — including changes to
@@ -601,9 +672,15 @@ func deepCloneValue(v any) any {
 	}
 }
 
-// outboundConnections extracts the resource's `connections` map and emits
-// one outbound graph edge per entry whose source can be resolved to a
-// Radius resource ID.
+// resolveConnectionSources removed — superseded by inline
+// outboundConnections (below) which builds ApplicationGraphConnection
+// entries directly with Kind: Connection.
+
+// outboundConnections extracts the resource's `connections` map and
+// emits one outbound Kind: Connection edge per entry whose source can
+// be resolved to a Radius resource ID. The reciprocal inbound entries
+// on the target resources are added by addInboundConnections after all
+// resources have been built.
 func outboundConnections(properties map[string]any) []*corerpv20250801preview.ApplicationGraphConnection {
 	if properties == nil {
 		return []*corerpv20250801preview.ApplicationGraphConnection{}
@@ -612,7 +689,6 @@ func outboundConnections(properties map[string]any) []*corerpv20250801preview.Ap
 	if !ok {
 		return []*corerpv20250801preview.ApplicationGraphConnection{}
 	}
-
 	result := make([]*corerpv20250801preview.ApplicationGraphConnection, 0, len(connections))
 	for _, raw := range connections {
 		entry, ok := raw.(map[string]any)
@@ -620,21 +696,25 @@ func outboundConnections(properties map[string]any) []*corerpv20250801preview.Ap
 			continue
 		}
 		source, _ := entry["source"].(string)
-		resolved := resolveResourceIDExpression(source)
+		resolved := resolveResourceIDExpression(source, "")
 		if resolved == "" {
 			continue
 		}
 		result = append(result, &corerpv20250801preview.ApplicationGraphConnection{
 			ID:        to.Ptr(resolved),
 			Direction: to.Ptr(corerpv20250801preview.DirectionOutbound),
+			Kind:      to.Ptr(corerpv20250801preview.ConnectionKindConnection),
 		})
 	}
 	return result
 }
 
-// addInboundConnections walks every outbound edge in the graph and inserts
-// the reciprocal inbound edge on the destination resource so each resource
-// surfaces both sides of its relationships.
+// addInboundConnections walks every outbound Kind: Connection edge on
+// the graph and inserts the reciprocal Direction: Inbound entry on the
+// destination resource so each resource surfaces both sides of its
+// author-declared connections. Only Kind: Connection edges are
+// mirrored here — Kind: Dependency edges are added later by
+// edges.MergeDependencyEdges which does its own mirroring.
 func addInboundConnections(graph *corerpv20250801preview.ApplicationGraphResponse) {
 	byID := make(map[string]*corerpv20250801preview.ApplicationGraphResource, len(graph.Resources))
 	for _, r := range graph.Resources {
@@ -642,7 +722,6 @@ func addInboundConnections(graph *corerpv20250801preview.ApplicationGraphRespons
 			byID[*r.ID] = r
 		}
 	}
-
 	for _, src := range graph.Resources {
 		if src == nil || src.ID == nil {
 			continue
@@ -661,22 +740,24 @@ func addInboundConnections(graph *corerpv20250801preview.ApplicationGraphRespons
 			dest.Connections = append(dest.Connections, &corerpv20250801preview.ApplicationGraphConnection{
 				ID:        src.ID,
 				Direction: to.Ptr(corerpv20250801preview.DirectionInbound),
+				Kind:      to.Ptr(corerpv20250801preview.ConnectionKindConnection),
 			})
 		}
 	}
 }
 
 // resolveDependsOn resolves each ARM expression in an ARM JSON dependsOn
-// list to a fully-qualified Radius resource ID. Unresolvable entries are
-// dropped so the diffHash remains stable across builds.
-func resolveDependsOn(in []any) []string {
+// list to a fully-qualified Radius resource ID under rootScope.
+// Unresolvable entries are dropped so the diffHash remains stable
+// across builds.
+func resolveDependsOn(in []any, rootScope string) []string {
 	out := make([]string, 0, len(in))
 	for _, v := range in {
 		expr, ok := v.(string)
 		if !ok {
 			continue
 		}
-		if resolved := resolveResourceIDExpression(expr); resolved != "" {
+		if resolved := resolveResourceIDExpression(expr, rootScope); resolved != "" {
 			out = append(out, resolved)
 		}
 	}
@@ -684,10 +765,10 @@ func resolveDependsOn(in []any) []string {
 }
 
 // resolveResourceIDExpression converts an ARM expression of the form
-// [resourceId('TYPE', 'NAME')] into a fully-qualified Radius resource ID.
-// Returns an empty string if the input is not a recognised literal-argument
-// resourceId expression.
-func resolveResourceIDExpression(expr string) string {
+// [resourceId('TYPE', 'NAME')] into a fully-qualified Radius resource ID
+// under rootScope. Returns an empty string if the input is not a
+// recognised literal-argument resourceId expression.
+func resolveResourceIDExpression(expr string, rootScope string) string {
 	if expr == "" {
 		return ""
 	}
@@ -704,7 +785,7 @@ func resolveResourceIDExpression(expr string) string {
 	if resourceType == "" || name == "" {
 		return ""
 	}
-	return buildResourceID(resourceType, name)
+	return buildResourceIDInScope(rootScope, resourceType, name)
 }
 
 // splitResourceIDArgs splits the comma-separated argument list of an ARM
@@ -737,13 +818,24 @@ func splitResourceIDArgs(s string) []string {
 // buildResourceID returns the fully-qualified Radius resource ID under the
 // default plane and resource group used for modeled graphs.
 func buildResourceID(resourceType, name string) string {
-	return fmt.Sprintf("/planes/radius/%s/resourcegroups/%s/providers/%s/%s", defaultPlane, defaultResourceGroup, resourceType, name)
+	return buildResourceIDInScope("", resourceType, name)
+}
+
+// buildResourceIDInScope returns the fully-qualified Radius resource ID
+// under the given root scope (for example "/planes/radius/local/resourceGroups/my-rg").
+// An empty rootScope falls back to the modeled-graph default plane
+// and resource group.
+func buildResourceIDInScope(rootScope, resourceType, name string) string {
+	if rootScope == "" {
+		return fmt.Sprintf("/planes/radius/%s/resourcegroups/%s/providers/%s/%s", defaultPlane, defaultResourceGroup, resourceType, name)
+	}
+	return fmt.Sprintf("%s/providers/%s/%s", strings.TrimSuffix(rootScope, "/"), resourceType, name)
 }
 
 // isExcludedResourceType reports whether the given resource type is one of
 // the app/env/recipe-pack types that must be excluded from the graph.
 func isExcludedResourceType(resourceType string) bool {
-	for excluded := range excludeResourceTypes {
+	for excluded := range edges.ExcludedResourceTypes {
 		if strings.EqualFold(resourceType, excluded) {
 			return true
 		}

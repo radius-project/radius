@@ -36,6 +36,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/graph/edges"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -63,7 +64,13 @@ const (
 // to the Applications.Core-owned pipeline in
 // ../getgraph.go — this package keeps its own copy so the
 // two API versions do not share a versioned model type.
-func computeGraphPayload(ctx context.Context, applicationID resources.ID, environmentID string, connection sdk.Connection) (*corerpv20250801preview.ApplicationGraphResponse, error) {
+//
+// dependsOnEdges carries the optional caller-supplied Kind: Dependency edges
+// from GetGraphRequest.DependsOnEdges. They are merged onto the connection-only
+// graph after computeGraph returns, subject to edges.ExcludedResourceTypes and
+// the Connection-wins policy in edges.MergeDependencyEdges. Passing a nil or
+// empty map leaves the graph unchanged.
+func computeGraphPayload(ctx context.Context, applicationID resources.ID, environmentID string, connection sdk.Connection, dependsOnEdges map[string][]*corerpv20250801preview.ApplicationGraphConnection) (*corerpv20250801preview.ApplicationGraphResponse, error) {
 	// An application **MUST** have an environment id
 	parsedEnvironmentID, err := resources.ParseResource(environmentID)
 	if err != nil {
@@ -100,7 +107,7 @@ func computeGraphPayload(ctx context.Context, applicationID resources.ID, enviro
 		tenantID = azureTenantID(ctx, clientOptions)
 	}
 
-	return computeGraph(applicationResources, environmentResources, tenantID), nil
+	return computeGraph(applicationResources, environmentResources, tenantID, dependsOnEdges), nil
 }
 
 // resolver is a function type to resolve appgraph connection.
@@ -302,7 +309,7 @@ func isResourceInEnvironment(resource generated.GenericResource, environmentName
 // will display the results to a human user, so rather than failing to computeGraph the graph, we will return partial
 // results. Each ApplicationGraphResource will have a provisioning state that indicates whether the resource
 // was successfully processed or not.
-func computeGraph(applicationResources []generated.GenericResource, environmentResources []generated.GenericResource, tenantID string) *corerpv20250801preview.ApplicationGraphResponse {
+func computeGraph(applicationResources []generated.GenericResource, environmentResources []generated.GenericResource, tenantID string, dependsOnEdges map[string][]*corerpv20250801preview.ApplicationGraphConnection) *corerpv20250801preview.ApplicationGraphResponse {
 	if applicationResources == nil && environmentResources == nil {
 		return &corerpv20250801preview.ApplicationGraphResponse{Resources: []*corerpv20250801preview.ApplicationGraphResource{}}
 	}
@@ -447,6 +454,10 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 				connectionInbound := corerpv20250801preview.ApplicationGraphConnection{
 					ID:        new(id),
 					Direction: to.Ptr(corerpv20250801preview.DirectionInbound), //Direction is set with respect to Resource defining this connection
+					// Every edge produced so far is of Kind: Connection.
+					// Later we will merge the edges supplied as argument to this function,
+					// which are of Kind: Dependency
+					Kind: to.Ptr(corerpv20250801preview.ConnectionKindConnection),
 				}
 				connectionsByDestination[otherID] = append(connectionsByDestination[otherID], connectionInbound)
 			} else {
@@ -483,6 +494,13 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 
 		graph.Resources = append(graph.Resources, &entry)
 	}
+
+	// Merge caller-supplied Kind: Dependency edges onto the
+	// graph. Excluded types and any
+	// edge already present as Kind: Connection are redundant and dropped by the helper;
+	// a nil or empty dependsOnEdges leaves the graph unchanged.
+	edges.MergeDependencyEdges(&graph, dependsOnEdges)
+
 	return &graph
 }
 
@@ -755,6 +773,9 @@ func resolveConnections(resource generated.GenericResource, jsonRefPath string, 
 			entries = append(entries, &corerpv20250801preview.ApplicationGraphConnection{
 				ID:        new(sourceID),
 				Direction: new(dir),
+				// Every edge produced by the runtime graph is Kind:
+				// Connection
+				Kind: to.Ptr(corerpv20250801preview.ConnectionKindConnection),
 			})
 		}
 	}

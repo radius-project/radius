@@ -74,6 +74,9 @@ model ApplicationGraphResponse {
 model GetGraphRequest {
   @doc("When true, `ApplicationGraphResponse.icons` is populated with the SVG bytes for every distinct `iconHash` referenced by the response's resources. When false or omitted, only per-resource `iconHash` values are returned.")
   includeIcons?: boolean;
+
+  @doc("Optional caller-supplied dependency edges, grouped by source resource ID. Each entry maps a source Radius resource ID to the list of outbound Kind: Dependency edges leaving that source. Every entry MUST have direction: Outbound and kind: Dependency; entries that don't are ignored. The server merges these onto the connection-only graph it computes from stored resources: excluded types are dropped, unknown endpoints are dropped, and any pair already present as Kind: Connection wins over the caller-supplied Dependency. Typically populated by `rad app graph -a <name> <app.bicep>` after compiling the Bicep template locally.")
+  dependsOnEdges?: Record<Array<ApplicationGraphConnection>>;
 }
 
 @doc("Describes the connection between two resources.")
@@ -83,6 +86,9 @@ model ApplicationGraphConnection {
 
   @doc("The direction of the connection. 'Outbound' indicates this connection specifies the ID of the destination and 'Inbound' indicates indicates this connection specifies the ID of the source.")
   direction: Direction;
+
+  @doc("Discriminator identifying the origin of this edge. 'Connection' edges are author-declared entries under properties.connections. 'Dependency' edges are implicit dependencies derived from Bicep's dependsOn list (static graph only in Phase 1). Every emitted edge carries a kind.")
+  kind: ConnectionKind;
 }
 
 @doc("The direction of a connection.")
@@ -92,6 +98,15 @@ enum Direction {
 
   @doc("The resource defining this connection accepts inbound connections from the resource specified by this id.")
   Inbound,
+}
+
+@doc("The origin of a connection: 'Connection' for author-declared entries in properties.connections, 'Dependency' for implicit entries derived from Bicep's dependsOn list.")
+enum ConnectionKind {
+  @doc("The edge was declared by the author in properties.connections.")
+  Connection,
+
+  @doc("The edge was inferred from a Bicep dependsOn entry (implicit dependency). Not emitted by the runtime graph in Phase 1 — runtime dependency extraction is Phase 2.")
+  Dependency,
 }
 
 @doc("Describes a resource in the application graph.")
