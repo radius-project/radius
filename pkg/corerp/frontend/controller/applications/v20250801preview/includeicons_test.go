@@ -28,10 +28,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test_readIncludeIcons enumerates the request-body shapes getGraph must
-// tolerate. The flag is additive on the wire, so absent /
-// empty / non-JSON bodies must resolve to the default false rather than error.
-func Test_readIncludeIcons(t *testing.T) {
+// Test_readGraphRequest enumerates the request-body shapes getGraph must
+// tolerate. Both includeIcons and dependsOnEdges are additive on the wire, so
+// absent / empty / non-JSON bodies must resolve to a zero-value struct rather
+// than error. The returned pointer is always non-nil so callers can dereference
+// fields without another nil check.
+func Test_readGraphRequest(t *testing.T) {
 	newRequest := func(body string, contentType string) *http.Request {
 		var reader io.ReadCloser
 		if body == "" {
@@ -50,46 +52,66 @@ func Test_readIncludeIcons(t *testing.T) {
 		return req
 	}
 
-	t.Run("nil body defaults to false", func(t *testing.T) {
+	t.Run("nil body returns zero-value request", func(t *testing.T) {
 		req, err := http.NewRequest(http.MethodPost, "http://localhost/", nil)
 		require.NoError(t, err)
-		got, err := readIncludeIcons(req)
+		got, err := readGraphRequest(req)
 		require.NoError(t, err)
-		assert.False(t, got)
+		require.NotNil(t, got)
+		assert.False(t, to.Bool(got.IncludeIcons))
+		assert.Nil(t, got.DependsOnEdges)
 	})
 
-	t.Run("empty body defaults to false", func(t *testing.T) {
-		got, err := readIncludeIcons(newRequest("", ""))
+	t.Run("empty body returns zero-value request", func(t *testing.T) {
+		got, err := readGraphRequest(newRequest("", ""))
 		require.NoError(t, err)
-		assert.False(t, got)
+		require.NotNil(t, got)
+		assert.False(t, to.Bool(got.IncludeIcons))
+		assert.Nil(t, got.DependsOnEdges)
 	})
 
-	t.Run("body without JSON content type defaults to false", func(t *testing.T) {
-		got, err := readIncludeIcons(newRequest(`{"includeIcons":true}`, "text/plain"))
+	t.Run("body without JSON content type is ignored", func(t *testing.T) {
+		got, err := readGraphRequest(newRequest(`{"includeIcons":true}`, "text/plain"))
 		require.NoError(t, err)
-		assert.False(t, got)
+		require.NotNil(t, got)
+		assert.False(t, to.Bool(got.IncludeIcons))
 	})
 
-	t.Run("empty JSON object defaults to false", func(t *testing.T) {
-		got, err := readIncludeIcons(newRequest(`{}`, "application/json"))
+	t.Run("empty JSON object returns zero-value request", func(t *testing.T) {
+		got, err := readGraphRequest(newRequest(`{}`, "application/json"))
 		require.NoError(t, err)
-		assert.False(t, got)
+		require.NotNil(t, got)
+		assert.False(t, to.Bool(got.IncludeIcons))
+		assert.Nil(t, got.DependsOnEdges)
 	})
 
 	t.Run("includeIcons=true is honored", func(t *testing.T) {
-		got, err := readIncludeIcons(newRequest(`{"includeIcons":true}`, "application/json"))
+		got, err := readGraphRequest(newRequest(`{"includeIcons":true}`, "application/json"))
 		require.NoError(t, err)
-		assert.True(t, got)
+		assert.True(t, to.Bool(got.IncludeIcons))
 	})
 
 	t.Run("includeIcons=false is honored", func(t *testing.T) {
-		got, err := readIncludeIcons(newRequest(`{"includeIcons":false}`, "application/json"))
+		got, err := readGraphRequest(newRequest(`{"includeIcons":false}`, "application/json"))
 		require.NoError(t, err)
-		assert.False(t, got)
+		assert.False(t, to.Bool(got.IncludeIcons))
+	})
+
+	t.Run("dependsOnEdges is parsed", func(t *testing.T) {
+		body := `{"dependsOnEdges":{"/planes/radius/local/resourceGroups/default/providers/Radius.Compute/containers/consumer":[{"id":"/planes/radius/local/resourceGroups/default/providers/Radius.Messaging/rabbitMQQueues/queue","direction":"Outbound","kind":"Dependency"}]}}`
+		got, err := readGraphRequest(newRequest(body, "application/json"))
+		require.NoError(t, err)
+		require.NotNil(t, got.DependsOnEdges)
+		require.Len(t, got.DependsOnEdges, 1)
+		for _, entries := range got.DependsOnEdges {
+			require.Len(t, entries, 1)
+			assert.Equal(t, corerpv20250801preview.DirectionOutbound, *entries[0].Direction)
+			assert.Equal(t, corerpv20250801preview.ConnectionKindDependency, *entries[0].Kind)
+		}
 	})
 
 	t.Run("malformed JSON returns error", func(t *testing.T) {
-		_, err := readIncludeIcons(newRequest(`{`, "application/json"))
+		_, err := readGraphRequest(newRequest(`{`, "application/json"))
 		require.Error(t, err)
 	})
 }

@@ -43,6 +43,26 @@ func PossibleBicepAuthenticationMethodValues() []BicepAuthenticationMethod {
 	}
 }
 
+// ConnectionKind - The origin of a connection: 'Connection' for author-declared entries in properties.connections, 'Dependency'
+// for implicit entries derived from Bicep's dependsOn list.
+type ConnectionKind string
+
+const (
+	// ConnectionKindConnection - The edge was declared by the author in properties.connections.
+	ConnectionKindConnection ConnectionKind = "Connection"
+	// ConnectionKindDependency - The edge was inferred from a Bicep dependsOn entry (implicit dependency). Not emitted by the
+	// runtime graph in Phase 1 — runtime dependency extraction is Phase 2.
+	ConnectionKindDependency ConnectionKind = "Dependency"
+)
+
+// PossibleConnectionKindValues returns the possible values for the ConnectionKind const type.
+func PossibleConnectionKindValues() []ConnectionKind {
+	return []ConnectionKind{
+		ConnectionKindConnection,
+		ConnectionKindDependency,
+	}
+}
+
 // CreatedByType - The kind of entity that created the resource.
 type CreatedByType string
 
