@@ -41,15 +41,13 @@ import (
 
 func validImageBuildValue() map[string]any {
 	return map[string]any{
-		"resourceName":       "testimage",
-		"registry":           "ghcr.io/radius-project",
-		"registrySecretName": "ghcr-creds",
-		"tag":                "v1",
-		"tagProvided":        true,
-		"source":             "git::https://github.com/radius-project/samples.git?ref=main",
-		"dockerfile":         "samples/demo/Dockerfile",
-		"platforms":          []any{"linux/amd64", "linux/arm64"},
-		"buildArgs":          map[string]any{"MODE": "release", "VERSION": "1"},
+		"resourceName": "testimage",
+		"tag":          "v1",
+		"tagProvided":  true,
+		"source":       "git::https://github.com/radius-project/samples.git?ref=main",
+		"dockerfile":   "samples/demo/Dockerfile",
+		"platforms":    []any{"linux/amd64", "linux/arm64"},
+		"buildArgs":    map[string]any{"MODE": "release", "VERSION": "1"},
 	}
 }
 
@@ -73,15 +71,13 @@ func Test_ExtractImageBuildSpec_Valid(t *testing.T) {
 	spec, err := extractImageBuildSpec(imageBuildOutputs(validImageBuildValue()))
 	require.NoError(t, err)
 	require.Equal(t, &imageBuildSpec{
-		ResourceName:       "testimage",
-		Registry:           "ghcr.io/radius-project",
-		RegistrySecretName: "ghcr-creds",
-		Tag:                "v1",
-		TagProvided:        true,
-		Source:             "git::https://github.com/radius-project/samples.git?ref=main",
-		Dockerfile:         "samples/demo/Dockerfile",
-		Platforms:          []string{"linux/amd64", "linux/arm64"},
-		BuildArgs:          map[string]string{"MODE": "release", "VERSION": "1"},
+		ResourceName: "testimage",
+		Tag:          "v1",
+		TagProvided:  true,
+		Source:       "git::https://github.com/radius-project/samples.git?ref=main",
+		Dockerfile:   "samples/demo/Dockerfile",
+		Platforms:    []string{"linux/amd64", "linux/arm64"},
+		BuildArgs:    map[string]string{"MODE": "release", "VERSION": "1"},
 	}, spec)
 }
 
@@ -93,8 +89,10 @@ func Test_ExtractImageBuildSpec_Invalid(t *testing.T) {
 	}{
 		{"non-object", func(map[string]any) any { return "value" }, "must evaluate to an object"},
 		{"unknown property", func(v map[string]any) any { v["script"] = "echo"; return v }, `unknown field "script"`},
-		{"missing property", func(v map[string]any) any { delete(v, "registry"); return v }, `missing required property "registry"`},
-		{"null property", func(v map[string]any) any { v["registry"] = nil; return v }, `property "registry" must not be null`},
+		{"legacy registry property", func(v map[string]any) any { v["registry"] = "ghcr.io/radius-project"; return v }, `unknown field "registry"`},
+		{"legacy registry secret property", func(v map[string]any) any { v["registrySecretName"] = "ghcr-creds"; return v }, `unknown field "registrySecretName"`},
+		{"missing property", func(v map[string]any) any { delete(v, "source"); return v }, `missing required property "source"`},
+		{"null property", func(v map[string]any) any { v["source"] = nil; return v }, `property "source" must not be null`},
 		{"wrong string type", func(v map[string]any) any { v["tag"] = 42; return v }, "cannot unmarshal number"},
 		{"wrong boolean type", func(v map[string]any) any { v["tagProvided"] = "true"; return v }, "cannot unmarshal string"},
 		{"platforms not array", func(v map[string]any) any { v["platforms"] = "linux/amd64"; return v }, "cannot unmarshal string"},
@@ -102,7 +100,7 @@ func Test_ExtractImageBuildSpec_Invalid(t *testing.T) {
 		{"build args not object", func(v map[string]any) any { v["buildArgs"] = []any{}; return v }, "cannot unmarshal array"},
 		{"build arg not string", func(v map[string]any) any { v["buildArgs"] = map[string]any{"PORT": 8080}; return v }, "cannot unmarshal number"},
 		{"case mismatch", func(v map[string]any) any { delete(v, "tag"); v["Tag"] = "v1"; return v }, `missing required property "tag"`},
-		{"duplicate case alias", func(v map[string]any) any { v["Tag"] = "v2"; return v }, "must contain exactly 9 properties"},
+		{"duplicate case alias", func(v map[string]any) any { v["Tag"] = "v2"; return v }, "must contain exactly 7 properties"},
 	}
 
 	for _, tc := range tests {
@@ -211,8 +209,6 @@ func Test_ExecuteImageBuildHook_UsesOperatorOwnedRegistryParameters(t *testing.T
 [ "$3" = "--registry" ]
 printf '{"imageReference":"%s/%s:built"}' "$4" "$2" > "$RADIUS_EXEC_OUTPUT"`
 	value := validImageBuildValue()
-	value["registry"] = "attacker.example/exfiltration"
-	value["registrySecretName"] = "attacker-controlled-secret"
 	response := &recipes.RecipeOutput{Values: map[string]any{imageBuildOutputName: "plumbing"}}
 	err := (&bicepDriver{}).executeImageBuildHook(
 		testcontext.New(t),
@@ -279,8 +275,6 @@ grep -F '"operator.example"' "$DOCKER_CONFIG/config.json" >/dev/null
 if grep -F 'attacker.example' "$DOCKER_CONFIG/config.json" >/dev/null; then exit 1; fi
 printf '{"imageReference":"operator.example/team/testimage:v1"}' > "$RADIUS_EXEC_OUTPUT"`
 	value := validImageBuildValue()
-	value["registry"] = "attacker.example/exfiltration"
-	value["registrySecretName"] = "attacker-controlled-secret"
 	response := &recipes.RecipeOutput{}
 	d := &bicepDriver{clusterAccessResolver: clusteraccess.NewResolver()}
 	err = d.executeImageBuildHook(
@@ -326,6 +320,15 @@ func Test_ApplyOperatorImageBuildParameters(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, "", spec.RegistrySecretName)
+
+	// JSON null from recipe registration is equivalent to omitting the optional parameter.
+	spec.RegistrySecretName = "attacker-controlled-secret"
+	err = applyOperatorImageBuildParameters(spec, map[string]any{
+		registryParameterName:           "ttl.sh/radius-project",
+		registrySecretNameParameterName: nil,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "", spec.RegistrySecretName)
 }
 
 func Test_ApplyOperatorImageBuildParameters_RejectsInvalidDefinition(t *testing.T) {
@@ -334,9 +337,9 @@ func Test_ApplyOperatorImageBuildParameters_RejectsInvalidDefinition(t *testing.
 		parameters map[string]any
 		errPart    string
 	}{
-		{"missing registry", nil, `missing required parameter "registry"`},
-		{"empty registry", map[string]any{registryParameterName: ""}, `parameter "registry" must be a non-empty string`},
-		{"wrong registry type", map[string]any{registryParameterName: 42}, `parameter "registry" must be a non-empty string`},
+		{"missing registry", nil, `recipe registration to set a non-empty "registry" parameter`},
+		{"empty registry", map[string]any{registryParameterName: ""}, `recipe registration to set a non-empty "registry" parameter`},
+		{"wrong registry type", map[string]any{registryParameterName: 42}, `recipe registration to set a non-empty "registry" parameter`},
 		{"wrong secret name type", map[string]any{registryParameterName: "ghcr.io/radius-project", registrySecretNameParameterName: []any{"secret"}}, `parameter "registrySecretName" must be a string`},
 	}
 
@@ -445,6 +448,34 @@ users:
 	var config map[string]map[string]map[string]string
 	require.NoError(t, json.Unmarshal(data, &config))
 	require.Equal(t, "b2N0b2NhdDpzM2NyZXQ=", config["auths"]["ghcr.io"]["auth"])
+}
+
+func Test_DockerConfigAuthKey(t *testing.T) {
+	tests := []struct {
+		name     string
+		registry string
+		want     string
+		wantErr  bool
+	}{
+		{"ghcr path", "ghcr.io/radius-project", "ghcr.io", false},
+		{"docker hub", "docker.io/radius-project", "https://index.docker.io/v1/", false},
+		{"docker hub index alias", "index.docker.io/radius-project", "https://index.docker.io/v1/", false},
+		{"docker hub registry alias", "registry-1.docker.io/radius-project", "https://index.docker.io/v1/", false},
+		{"localhost port", "localhost:5000/radius-project", "localhost:5000", false},
+		{"empty", "", "", true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := dockerConfigAuthKey(tc.registry)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
 }
 
 func Test_WriteDockerConfig_SecretFailures(t *testing.T) {

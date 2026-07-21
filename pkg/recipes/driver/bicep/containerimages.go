@@ -57,11 +57,11 @@ const (
 // dynamic-rp. The recipe maps the public resource schema into this build-specific shape.
 // The build script is deliberately not part of this evaluated output: it is read from a
 // static compiled-template variable instead, so developer-controlled parameters can only be data.
-// Registry settings are replaced with operator-owned recipe definition parameters before use.
+// Registry settings are injected from operator-owned recipe definition parameters before use.
 type imageBuildSpec struct {
 	ResourceName       string            `json:"resourceName"`
-	Registry           string            `json:"registry"`
-	RegistrySecretName string            `json:"registrySecretName"`
+	Registry           string            `json:"-"`
+	RegistrySecretName string            `json:"-"`
 	Tag                string            `json:"tag"`
 	TagProvided        bool              `json:"tagProvided"`
 	Source             string            `json:"source"`
@@ -72,8 +72,6 @@ type imageBuildSpec struct {
 
 var imageBuildSpecProperties = [...]string{
 	"resourceName",
-	"registry",
-	"registrySecretName",
 	"tag",
 	"tagProvided",
 	"source",
@@ -187,22 +185,22 @@ func (d *bicepDriver) executeImageBuildHook(ctx context.Context, recipeData map[
 	return nil
 }
 
-// applyOperatorImageBuildParameters replaces the registry settings emitted by the deployment
-// with the values from the registered recipe definition. Resource parameters can override ARM
-// template parameters, so evaluated deployment outputs are not a safe source for credentials or
-// the registry host that receives those credentials.
+// applyOperatorImageBuildParameters injects registry settings from the registered recipe
+// definition. Resource parameters can override ARM template parameters, so evaluated deployment
+// outputs are not a safe source for credentials or the registry host that receives those
+// credentials.
 func applyOperatorImageBuildParameters(spec *imageBuildSpec, parameters map[string]any) error {
 	registry, ok := parameters[registryParameterName]
 	if !ok {
-		return fmt.Errorf("containerImages recipe definition is missing required parameter %q", registryParameterName)
+		return fmt.Errorf("containerImages requires the recipe registration to set a non-empty %q parameter; developer resource parameters are intentionally not used for registry settings", registryParameterName)
 	}
 	registryValue, ok := registry.(string)
 	if !ok || registryValue == "" {
-		return fmt.Errorf("containerImages recipe definition parameter %q must be a non-empty string", registryParameterName)
+		return fmt.Errorf("containerImages requires the recipe registration to set a non-empty %q parameter; developer resource parameters are intentionally not used for registry settings", registryParameterName)
 	}
 
 	registrySecretNameValue := ""
-	if registrySecretName, ok := parameters[registrySecretNameParameterName]; ok {
+	if registrySecretName, ok := parameters[registrySecretNameParameterName]; ok && registrySecretName != nil {
 		var valid bool
 		registrySecretNameValue, valid = registrySecretName.(string)
 		if !valid {
@@ -319,13 +317,13 @@ func (d *bicepDriver) writeDockerConfig(ctx context.Context, spec *imageBuildSpe
 		return fmt.Errorf("registry Secret '%s/%s' has no 'password' key", runtime.Namespace, spec.RegistrySecretName)
 	}
 
-	registryHost := strings.SplitN(spec.Registry, "/", 2)[0]
-	if registryHost == "" {
+	authKey, err := dockerConfigAuthKey(spec.Registry)
+	if err != nil {
 		return fmt.Errorf("output %q has an empty registry host", imageBuildOutputName)
 	}
 	auth := base64.StdEncoding.EncodeToString([]byte(string(username) + ":" + string(password)))
 	configBytes, err := json.Marshal(map[string]any{
-		"auths": map[string]any{registryHost: map[string]any{"auth": auth}},
+		"auths": map[string]any{authKey: map[string]any{"auth": auth}},
 	})
 	if err != nil {
 		return err
@@ -334,6 +332,19 @@ func (d *bicepDriver) writeDockerConfig(ctx context.Context, spec *imageBuildSpe
 		return err
 	}
 	return os.WriteFile(filepath.Join(dir, "config.json"), configBytes, 0o600)
+}
+
+func dockerConfigAuthKey(registry string) (string, error) {
+	registryHost := strings.SplitN(registry, "/", 2)[0]
+	if registryHost == "" {
+		return "", fmt.Errorf("empty registry host")
+	}
+	switch registryHost {
+	case "docker.io", "index.docker.io", "registry-1.docker.io":
+		return "https://index.docker.io/v1/", nil
+	default:
+		return registryHost, nil
+	}
 }
 
 // runScript streams both output pipes so buildctl cannot deadlock on a full pipe. The context
