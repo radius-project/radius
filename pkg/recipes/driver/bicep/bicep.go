@@ -190,7 +190,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	}
 
 	// Radius.Compute/containerImages may declare the reserved imageBuild output. When present,
-	// run its statically verified script inside this container (blocking) and merge the script's
+	// run its statically embedded script inside this container (blocking) and merge the script's
 	// reported image reference into the recipe output.
 	err = d.executeImageBuildHook(ctx, recipeData, resp.Properties.Outputs, recipeResponse, opts)
 	if err != nil {

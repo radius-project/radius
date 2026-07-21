@@ -18,13 +18,13 @@ package bicep
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -53,40 +53,12 @@ const (
 	stderrTailLimit                        = 4096
 )
 
-// imageBuildSpec is the private contract between the containerImages Bicep recipe and
-// dynamic-rp. The recipe maps the public resource schema into this build-specific shape.
-// The build script is deliberately not part of this evaluated output: it is read from a
-// static compiled-template variable instead, so developer-controlled parameters can only be data.
-// Registry settings are injected from operator-owned recipe definition parameters before use.
-type imageBuildSpec struct {
-	ResourceName       string            `json:"resourceName"`
-	Registry           string            `json:"-"`
-	RegistrySecretName string            `json:"-"`
-	Tag                string            `json:"tag"`
-	TagProvided        bool              `json:"tagProvided"`
-	Source             string            `json:"source"`
-	Dockerfile         string            `json:"dockerfile"`
-	Platforms          []string          `json:"platforms"`
-	BuildArgs          map[string]string `json:"buildArgs"`
-}
-
-var imageBuildSpecProperties = [...]string{
-	"resourceName",
-	"tag",
-	"tagProvided",
-	"source",
-	"dockerfile",
-	"platforms",
-	"buildArgs",
-}
-
 func supportsImageBuildHook(resourceType string) bool {
 	return strings.EqualFold(resourceType, containerImagesResourceType)
 }
 
-// extractImageBuildSpec parses the reserved imageBuild deployment output. A missing output is
-// allowed so existing Bicep recipes for containerImages remain unaffected.
-func extractImageBuildSpec(outputs any) (*imageBuildSpec, error) {
+// extractImageBuild returns the optional imageBuild object without imposing a field schema.
+func extractImageBuild(outputs any) (map[string]any, error) {
 	out, ok := outputs.(map[string]any)
 	if !ok {
 		return nil, nil
@@ -106,39 +78,10 @@ func extractImageBuildSpec(outputs any) (*imageBuildSpec, error) {
 		return nil, fmt.Errorf("output %q must evaluate to an object", imageBuildOutputName)
 	}
 
-	for _, name := range imageBuildSpecProperties {
-		rawValue, ok := value[name]
-		if !ok {
-			return nil, fmt.Errorf("output %q is missing required property %q", imageBuildOutputName, name)
-		}
-		if rawValue == nil {
-			return nil, fmt.Errorf("output %q property %q must not be null", imageBuildOutputName, name)
-		}
-	}
-
-	data, err := json.Marshal(value)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode output %q: %w", imageBuildOutputName, err)
-	}
-
-	spec := &imageBuildSpec{}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(spec); err != nil {
-		return nil, fmt.Errorf("output %q has an invalid value: %w", imageBuildOutputName, err)
-	}
-	// encoding/json matches struct fields case-insensitively. The canonical-key checks above
-	// plus an exact property count reject duplicate aliases such as both "tag" and "Tag".
-	if len(value) != len(imageBuildSpecProperties) {
-		return nil, fmt.Errorf("output %q must contain exactly %d properties", imageBuildOutputName, len(imageBuildSpecProperties))
-	}
-
-	return spec, nil
+	return value, nil
 }
 
-// extractImageBuildScript reads the platform-engineer-controlled script from one specifically
-// named compiled-template variable. Bicep's loadTextContent embeds this value at compile time;
-// ARM expressions are rejected as a defense in depth for templates authored without Bicep.
+// extractImageBuildScript accepts only static content from the compiled-template variable.
 func extractImageBuildScript(template map[string]any) (string, error) {
 	variables, ok := template["variables"].(map[string]any)
 	if !ok {
@@ -154,26 +97,30 @@ func extractImageBuildScript(template map[string]any) (string, error) {
 	return script, nil
 }
 
-// executeImageBuildHook runs only for Radius.Compute/containerImages. Other Bicep recipes are
-// unaffected even if they happen to declare an output named imageBuild.
+// executeImageBuildHook runs only for Radius.Compute/containerImages.
 func (d *bicepDriver) executeImageBuildHook(ctx context.Context, recipeData map[string]any, outputs any, recipeResponse *recipes.RecipeOutput, opts driver.ExecuteOptions) error {
 	if !supportsImageBuildHook(opts.BaseOptions.Definition.ResourceType) {
 		return nil
 	}
 
-	spec, err := extractImageBuildSpec(outputs)
-	if err != nil || spec == nil {
+	imageBuild, err := extractImageBuild(outputs)
+	if err != nil || imageBuild == nil {
 		return err
 	}
-	if err := applyOperatorImageBuildParameters(spec, opts.Definition.Parameters); err != nil {
+	registry, registrySecretName, err := operatorRegistryParameters(opts.Definition.Parameters)
+	if err != nil {
 		return err
 	}
+	buildInputs := maps.Clone(imageBuild)
+	// Preserve the deployment output while enforcing the operator-owned registry.
+	buildInputs[registryParameterName] = registry
+
 	script, err := extractImageBuildScript(recipeData)
 	if err != nil {
 		return err
 	}
 
-	imageReference, err := d.executeImageBuild(ctx, script, spec, opts)
+	imageReference, err := d.executeImageBuild(ctx, script, buildInputs, registry, registrySecretName, opts)
 	if err != nil {
 		return err
 	}
@@ -185,58 +132,74 @@ func (d *bicepDriver) executeImageBuildHook(ctx context.Context, recipeData map[
 	return nil
 }
 
-// applyOperatorImageBuildParameters injects registry settings from the registered recipe
-// definition. Resource parameters can override ARM template parameters, so evaluated deployment
-// outputs are not a safe source for credentials or the registry host that receives those
-// credentials.
-func applyOperatorImageBuildParameters(spec *imageBuildSpec, parameters map[string]any) error {
-	registry, ok := parameters[registryParameterName]
+// operatorRegistryParameters avoids developer overrides by reading the registered definition.
+func operatorRegistryParameters(parameters map[string]any) (registry string, registrySecretName string, err error) {
+	value, ok := parameters[registryParameterName]
 	if !ok {
-		return fmt.Errorf("containerImages requires the recipe registration to set a non-empty %q parameter; developer resource parameters are intentionally not used for registry settings", registryParameterName)
+		return "", "", fmt.Errorf("containerImages requires the recipe registration to set a non-empty %q parameter; developer resource parameters are intentionally not used for registry settings", registryParameterName)
 	}
-	registryValue, ok := registry.(string)
-	if !ok || registryValue == "" {
-		return fmt.Errorf("containerImages requires the recipe registration to set a non-empty %q parameter; developer resource parameters are intentionally not used for registry settings", registryParameterName)
+	registry, ok = value.(string)
+	if !ok || registry == "" {
+		return "", "", fmt.Errorf("containerImages requires the recipe registration to set a non-empty %q parameter; developer resource parameters are intentionally not used for registry settings", registryParameterName)
 	}
 
-	registrySecretNameValue := ""
-	if registrySecretName, ok := parameters[registrySecretNameParameterName]; ok && registrySecretName != nil {
-		var valid bool
-		registrySecretNameValue, valid = registrySecretName.(string)
-		if !valid {
-			return fmt.Errorf("containerImages recipe definition parameter %q must be a string", registrySecretNameParameterName)
+	if secretName, ok := parameters[registrySecretNameParameterName]; ok && secretName != nil {
+		registrySecretName, ok = secretName.(string)
+		if !ok {
+			return "", "", fmt.Errorf("containerImages recipe definition parameter %q must be a string", registrySecretNameParameterName)
 		}
 	}
 
-	spec.Registry = registryValue
-	spec.RegistrySecretName = registrySecretNameValue
-	return nil
+	return registry, registrySecretName, nil
 }
 
-func imageBuildArguments(spec *imageBuildSpec) []string {
-	args := []string{
-		"--resource-name", spec.ResourceName,
-		"--registry", spec.Registry,
-		"--tag", spec.Tag,
-		"--source", spec.Source,
-		"--dockerfile", spec.Dockerfile,
+// imageBuildArguments converts supported JSON values into deterministic field-derived flags.
+// The script owns field semantics; false booleans and empty collections emit no arguments.
+func imageBuildArguments(buildInputs map[string]any) ([]string, error) {
+	keys := make([]string, 0, len(buildInputs))
+	for key := range buildInputs {
+		keys = append(keys, key)
 	}
-	if spec.TagProvided {
-		args = append(args, "--tag-provided")
-	}
-	for _, platform := range spec.Platforms {
-		args = append(args, "--platform", platform)
-	}
+	slices.Sort(keys)
 
-	names := make([]string, 0, len(spec.BuildArgs))
-	for name := range spec.BuildArgs {
-		names = append(names, name)
+	args := make([]string, 0, len(keys)*2)
+	for _, key := range keys {
+		flag := "--" + key
+		switch value := buildInputs[key].(type) {
+		case string:
+			args = append(args, flag, value)
+		case bool:
+			if value {
+				args = append(args, flag)
+			}
+		case []any:
+			for _, item := range value {
+				text, ok := item.(string)
+				if !ok {
+					return nil, fmt.Errorf("output %q property %q must contain only string values", imageBuildOutputName, key)
+				}
+				args = append(args, flag, text)
+			}
+		case map[string]any:
+			subKeys := make([]string, 0, len(value))
+			for subKey := range value {
+				subKeys = append(subKeys, subKey)
+			}
+			slices.Sort(subKeys)
+			for _, subKey := range subKeys {
+				text, ok := value[subKey].(string)
+				if !ok {
+					return nil, fmt.Errorf("output %q property %q entry %q must be a string", imageBuildOutputName, key, subKey)
+				}
+				args = append(args, flag, subKey, text)
+			}
+		case nil:
+			return nil, fmt.Errorf("output %q property %q must not be null", imageBuildOutputName, key)
+		default:
+			return nil, fmt.Errorf("output %q property %q has an unsupported type %T", imageBuildOutputName, key, value)
+		}
 	}
-	slices.Sort(names)
-	for _, name := range names {
-		args = append(args, "--build-arg", name, spec.BuildArgs[name])
-	}
-	return args
+	return args, nil
 }
 
 func imageBuildEnvironment(env []string, dockerConfigDir, resultPath string) []string {
@@ -254,8 +217,14 @@ func imageBuildEnvironment(env []string, dockerConfigDir, resultPath string) []s
 		execOutputEnvName+"="+resultPath)
 }
 
-func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, spec *imageBuildSpec, opts driver.ExecuteOptions) (string, error) {
+func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, buildInputs map[string]any, registry, registrySecretName string, opts driver.ExecuteOptions) (string, error) {
 	logger := logr.FromContextOrDiscard(ctx)
+
+	args, err := imageBuildArguments(buildInputs)
+	if err != nil {
+		return "", err
+	}
+
 	tempDir, err := os.MkdirTemp("", "radius-imagebuild-")
 	if err != nil {
 		return "", fmt.Errorf("failed to create working directory for %q script: %w", imageBuildOutputName, err)
@@ -263,9 +232,9 @@ func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, spec
 	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	dockerConfigDir := ""
-	if spec.RegistrySecretName != "" {
+	if registrySecretName != "" {
 		dockerConfigDir = filepath.Join(tempDir, "docker")
-		if err := d.writeDockerConfig(ctx, spec, dockerConfigDir, opts); err != nil {
+		if err := d.writeDockerConfig(ctx, registry, registrySecretName, dockerConfigDir, opts); err != nil {
 			return "", err
 		}
 	}
@@ -273,7 +242,7 @@ func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, spec
 	resultPath := filepath.Join(tempDir, "result.json")
 	// Do not let ambient dynamic-rp paths or credentials reach the build.
 	env := imageBuildEnvironment(os.Environ(), dockerConfigDir, resultPath)
-	stderrTail, err := runScript(ctx, script, imageBuildArguments(spec), env, tempDir, logger)
+	stderrTail, err := runScript(ctx, script, args, env, tempDir, logger)
 	if err != nil {
 		message := fmt.Sprintf("recipe %q script failed: %s", imageBuildOutputName, err.Error())
 		if stderrTail != "" {
@@ -285,39 +254,38 @@ func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, spec
 	return readScriptResult(resultPath)
 }
 
-// writeDockerConfig materializes registry credentials from the recipe runtime namespace. The
-// Secret values are already decoded by client-go and are never logged.
-func (d *bicepDriver) writeDockerConfig(ctx context.Context, spec *imageBuildSpec, dir string, opts driver.ExecuteOptions) error {
+// writeDockerConfig materializes registry credentials without logging Secret values.
+func (d *bicepDriver) writeDockerConfig(ctx context.Context, registry, registrySecretName, dir string, opts driver.ExecuteOptions) error {
 	runtime := opts.Configuration.Runtime.Kubernetes
 	if runtime == nil || runtime.Namespace == "" {
-		return fmt.Errorf("output %q references Secret %q but the recipe has no Kubernetes runtime namespace", imageBuildOutputName, spec.RegistrySecretName)
+		return fmt.Errorf("output %q references Secret %q but the recipe has no Kubernetes runtime namespace", imageBuildOutputName, registrySecretName)
 	}
 	if d.clusterAccessResolver == nil {
-		return fmt.Errorf("output %q references Secret %q but the driver has no cluster access resolver configured", imageBuildOutputName, spec.RegistrySecretName)
+		return fmt.Errorf("output %q references Secret %q but the driver has no cluster access resolver configured", imageBuildOutputName, registrySecretName)
 	}
 
 	config, err := d.clusterAccessResolver.Resolve(ctx, &opts.Configuration)
 	if err != nil {
-		return fmt.Errorf("failed to resolve the target cluster for registry Secret '%s/%s': %w", runtime.Namespace, spec.RegistrySecretName, err)
+		return fmt.Errorf("failed to resolve the target cluster for registry Secret '%s/%s': %w", runtime.Namespace, registrySecretName, err)
 	}
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		return fmt.Errorf("failed to create a target-cluster client for registry Secret '%s/%s': %w", runtime.Namespace, spec.RegistrySecretName, err)
+		return fmt.Errorf("failed to create a target-cluster client for registry Secret '%s/%s': %w", runtime.Namespace, registrySecretName, err)
 	}
-	secret, err := clientset.CoreV1().Secrets(runtime.Namespace).Get(ctx, spec.RegistrySecretName, metav1.GetOptions{})
+	secret, err := clientset.CoreV1().Secrets(runtime.Namespace).Get(ctx, registrySecretName, metav1.GetOptions{})
 	if err != nil {
-		return fmt.Errorf("failed to read registry Secret '%s/%s': %w", runtime.Namespace, spec.RegistrySecretName, err)
+		return fmt.Errorf("failed to read registry Secret '%s/%s': %w", runtime.Namespace, registrySecretName, err)
 	}
 	username, ok := secret.Data["username"]
 	if !ok {
-		return fmt.Errorf("registry Secret '%s/%s' has no 'username' key", runtime.Namespace, spec.RegistrySecretName)
+		return fmt.Errorf("registry Secret '%s/%s' has no 'username' key", runtime.Namespace, registrySecretName)
 	}
 	password, ok := secret.Data["password"]
 	if !ok {
-		return fmt.Errorf("registry Secret '%s/%s' has no 'password' key", runtime.Namespace, spec.RegistrySecretName)
+		return fmt.Errorf("registry Secret '%s/%s' has no 'password' key", runtime.Namespace, registrySecretName)
 	}
 
-	authKey, err := dockerConfigAuthKey(spec.Registry)
+	authKey, err := dockerConfigAuthKey(registry)
 	if err != nil {
 		return fmt.Errorf("output %q has an empty registry host", imageBuildOutputName)
 	}
@@ -407,8 +375,7 @@ func drainScriptStream(stream io.Reader, logPrefix string, logger logr.Logger, t
 	}
 }
 
-// readScriptResult enforces the complete public result contract. The file must contain only a
-// non-empty imageReference string and is read only after the script exits successfully.
+// readScriptResult requires exactly one non-empty imageReference string.
 func readScriptResult(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if os.IsNotExist(err) {

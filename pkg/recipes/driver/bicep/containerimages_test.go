@@ -57,55 +57,44 @@ func imageBuildOutputs(value any) map[string]any {
 	}
 }
 
-func Test_ExtractImageBuildSpec_Absent(t *testing.T) {
-	spec, err := extractImageBuildSpec(map[string]any{"result": map[string]any{}})
+func Test_ExtractImageBuild_Absent(t *testing.T) {
+	imageBuild, err := extractImageBuild(map[string]any{"result": map[string]any{}})
 	require.NoError(t, err)
-	require.Nil(t, spec)
+	require.Nil(t, imageBuild)
 
-	spec, err = extractImageBuildSpec(nil)
+	imageBuild, err = extractImageBuild(nil)
 	require.NoError(t, err)
-	require.Nil(t, spec)
+	require.Nil(t, imageBuild)
 }
 
-func Test_ExtractImageBuildSpec_Valid(t *testing.T) {
-	spec, err := extractImageBuildSpec(imageBuildOutputs(validImageBuildValue()))
+func Test_ExtractImageBuild_Valid(t *testing.T) {
+	// The driver returns the imageBuild object verbatim. It does not model the field set, so the
+	// recipe and its build script own the schema and can evolve it without a driver change.
+	imageBuild, err := extractImageBuild(imageBuildOutputs(validImageBuildValue()))
 	require.NoError(t, err)
-	require.Equal(t, &imageBuildSpec{
-		ResourceName: "testimage",
-		Tag:          "v1",
-		TagProvided:  true,
-		Source:       "git::https://github.com/radius-project/samples.git?ref=main",
-		Dockerfile:   "samples/demo/Dockerfile",
-		Platforms:    []string{"linux/amd64", "linux/arm64"},
-		BuildArgs:    map[string]string{"MODE": "release", "VERSION": "1"},
-	}, spec)
+	require.Equal(t, validImageBuildValue(), imageBuild)
+
+	// Additional fields flow through untouched instead of being rejected.
+	extended := validImageBuildValue()
+	extended["newBuildField"] = "future"
+	imageBuild, err = extractImageBuild(imageBuildOutputs(extended))
+	require.NoError(t, err)
+	require.Equal(t, "future", imageBuild["newBuildField"])
 }
 
-func Test_ExtractImageBuildSpec_Invalid(t *testing.T) {
+func Test_ExtractImageBuild_Invalid(t *testing.T) {
 	tests := []struct {
 		name    string
-		mutate  func(map[string]any) any
+		outputs any
 		errPart string
 	}{
-		{"non-object", func(map[string]any) any { return "value" }, "must evaluate to an object"},
-		{"unknown property", func(v map[string]any) any { v["script"] = "echo"; return v }, `unknown field "script"`},
-		{"legacy registry property", func(v map[string]any) any { v["registry"] = "ghcr.io/radius-project"; return v }, `unknown field "registry"`},
-		{"legacy registry secret property", func(v map[string]any) any { v["registrySecretName"] = "ghcr-creds"; return v }, `unknown field "registrySecretName"`},
-		{"missing property", func(v map[string]any) any { delete(v, "source"); return v }, `missing required property "source"`},
-		{"null property", func(v map[string]any) any { v["source"] = nil; return v }, `property "source" must not be null`},
-		{"wrong string type", func(v map[string]any) any { v["tag"] = 42; return v }, "cannot unmarshal number"},
-		{"wrong boolean type", func(v map[string]any) any { v["tagProvided"] = "true"; return v }, "cannot unmarshal string"},
-		{"platforms not array", func(v map[string]any) any { v["platforms"] = "linux/amd64"; return v }, "cannot unmarshal string"},
-		{"platform not string", func(v map[string]any) any { v["platforms"] = []any{42}; return v }, "cannot unmarshal number"},
-		{"build args not object", func(v map[string]any) any { v["buildArgs"] = []any{}; return v }, "cannot unmarshal array"},
-		{"build arg not string", func(v map[string]any) any { v["buildArgs"] = map[string]any{"PORT": 8080}; return v }, "cannot unmarshal number"},
-		{"case mismatch", func(v map[string]any) any { delete(v, "tag"); v["Tag"] = "v1"; return v }, `missing required property "tag"`},
-		{"duplicate case alias", func(v map[string]any) any { v["Tag"] = "v2"; return v }, "must contain exactly 7 properties"},
+		{"output not object", imageBuildOutputs("value"), "must evaluate to an object"},
+		{"imageBuild not object", map[string]any{imageBuildOutputName: "scalar"}, "must be an object output"},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := extractImageBuildSpec(imageBuildOutputs(tc.mutate(validImageBuildValue())))
+			_, err := extractImageBuild(tc.outputs)
 			require.Error(t, err)
 			require.Contains(t, err.Error(), tc.errPart)
 		})
@@ -148,33 +137,62 @@ func Test_SupportsImageBuildHook(t *testing.T) {
 	require.False(t, supportsImageBuildHook("Radius.Compute/containers"))
 }
 
-func Test_ImageBuildArguments_AreTypedAndDeterministic(t *testing.T) {
-	args := imageBuildArguments(&imageBuildSpec{
-		ResourceName:       "testimage",
-		Registry:           "ghcr.io/radius-project",
-		RegistrySecretName: "creds",
-		Tag:                "",
-		TagProvided:        true,
-		Source:             "git::https://example.com/repo.git?ref=main&submodules=true",
-		Dockerfile:         "Dockerfile",
-		Platforms:          []string{"linux/arm64", "linux/amd64"},
-		BuildArgs:          map[string]string{"Z_ARG": "last", "A_ARG": "value; $(false)"},
+func Test_ImageBuildArguments_AreGenericAndDeterministic(t *testing.T) {
+	// Flags are derived from the property keys and ordered, so the driver has no per-field
+	// knowledge and adding a build field never requires a driver change.
+	args, err := imageBuildArguments(map[string]any{
+		"resourceName": "testimage",
+		"registry":     "ghcr.io/radius-project",
+		"tag":          "",
+		"tagProvided":  true,
+		"source":       "git::https://example.com/repo.git?ref=main&submodules=true",
+		"dockerfile":   "Dockerfile",
+		"platforms":    []any{"linux/arm64", "linux/amd64"},
+		"buildArgs":    map[string]any{"Z_ARG": "last", "A_ARG": "value; $(false)"},
 	})
+	require.NoError(t, err)
 	require.Equal(t, []string{
-		"--resource-name", "testimage",
-		"--registry", "ghcr.io/radius-project",
-		"--tag", "",
-		"--source", "git::https://example.com/repo.git?ref=main&submodules=true",
+		"--buildArgs", "A_ARG", "value; $(false)",
+		"--buildArgs", "Z_ARG", "last",
 		"--dockerfile", "Dockerfile",
-		"--tag-provided",
-		"--platform", "linux/arm64",
-		"--platform", "linux/amd64",
-		"--build-arg", "A_ARG", "value; $(false)",
-		"--build-arg", "Z_ARG", "last",
+		"--platforms", "linux/arm64",
+		"--platforms", "linux/amd64",
+		"--registry", "ghcr.io/radius-project",
+		"--resourceName", "testimage",
+		"--source", "git::https://example.com/repo.git?ref=main&submodules=true",
+		"--tag", "",
+		"--tagProvided",
 	}, args)
+}
 
-	args = imageBuildArguments(&imageBuildSpec{Tag: "", TagProvided: false})
-	require.NotContains(t, args, "--tag-provided")
+func Test_ImageBuildArguments_OmitsFalseAndEmptyCollections(t *testing.T) {
+	args, err := imageBuildArguments(map[string]any{
+		"disabled":    false,
+		"emptyArray":  []any{},
+		"emptyObject": map[string]any{},
+	})
+	require.NoError(t, err)
+	require.Empty(t, args)
+}
+
+func Test_ImageBuildArguments_RejectsUnsupportedValues(t *testing.T) {
+	tests := []struct {
+		name        string
+		buildInputs map[string]any
+		errPart     string
+	}{
+		{"null value", map[string]any{"source": nil}, `property "source" must not be null`},
+		{"array item not string", map[string]any{"platforms": []any{42}}, `property "platforms" must contain only string values`},
+		{"object entry not string", map[string]any{"buildArgs": map[string]any{"PORT": 8080}}, `property "buildArgs" entry "PORT" must be a string`},
+		{"unsupported type", map[string]any{"tag": 42}, `property "tag" has an unsupported type`},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := imageBuildArguments(tc.buildInputs)
+			require.ErrorContains(t, err, tc.errPart)
+		})
+	}
 }
 
 func Test_ImageBuildEnvironment_ReplacesControlledValues(t *testing.T) {
@@ -202,13 +220,50 @@ func Test_ExecuteImageBuildHook_IgnoresOtherResourceTypes(t *testing.T) {
 	require.Equal(t, "ordinary", response.Values[imageBuildOutputName])
 }
 
-func Test_ExecuteImageBuildHook_UsesOperatorOwnedRegistryParameters(t *testing.T) {
+func Test_ExecuteImageBuildHook_PassesBuildContractWithOperatorRegistry(t *testing.T) {
 	script := `set -eu
-[ "$1" = "--resource-name" ]
-[ "$2" = "testimage" ]
-[ "$3" = "--registry" ]
-printf '{"imageReference":"%s/%s:built"}' "$4" "$2" > "$RADIUS_EXEC_OUTPUT"`
+build_args=
+dockerfile=
+platforms=
+registry=
+resource_name=
+source=
+tag=
+tag_provided=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --buildArgs)
+      pair="$2=$3"
+      if [ -z "$build_args" ]; then build_args=$pair; else build_args="$build_args,$pair"; fi
+      shift 3
+      ;;
+    --dockerfile) dockerfile=$2; shift 2 ;;
+    --platforms)
+      if [ -z "$platforms" ]; then platforms=$2; else platforms="$platforms,$2"; fi
+      shift 2
+      ;;
+    --registry) registry=$2; shift 2 ;;
+    --resourceName) resource_name=$2; shift 2 ;;
+    --source) source=$2; shift 2 ;;
+    --tag) tag=$2; shift 2 ;;
+    --tagProvided) tag_provided=1; shift ;;
+    *) exit 9 ;;
+  esac
+done
+[ "$build_args" = "MODE=release,VERSION=1" ]
+[ "$dockerfile" = "samples/demo/Dockerfile" ]
+[ "$platforms" = "linux/amd64,linux/arm64" ]
+[ "$registry" = "ghcr.io/radius-project" ]
+[ "$resource_name" = "testimage" ]
+[ "$source" = "git::https://github.com/radius-project/samples.git?ref=main" ]
+[ "$tag" = "v1" ]
+[ "$tag_provided" -eq 1 ]
+printf '{"imageReference":"%s/%s:built"}' "$registry" "$resource_name" > "$RADIUS_EXEC_OUTPUT"`
 	value := validImageBuildValue()
+	value[registryParameterName] = "developer.example/exfiltration"
+	value["disabled"] = false
+	value["emptyArray"] = []any{}
+	value["emptyObject"] = map[string]any{}
 	response := &recipes.RecipeOutput{Values: map[string]any{imageBuildOutputName: "plumbing"}}
 	err := (&bicepDriver{}).executeImageBuildHook(
 		testcontext.New(t),
@@ -223,6 +278,7 @@ printf '{"imageReference":"%s/%s:built"}' "$4" "$2" > "$RADIUS_EXEC_OUTPUT"`
 	require.NoError(t, err)
 	require.Equal(t, "ghcr.io/radius-project/testimage:built", response.Values[imageReferenceValueName])
 	require.NotContains(t, response.Values, imageBuildOutputName)
+	require.Equal(t, "developer.example/exfiltration", value[registryParameterName])
 }
 
 func Test_ExecuteImageBuildHook_UsesOnlyOperatorOwnedCredentials(t *testing.T) {
@@ -270,7 +326,14 @@ users:
 	t.Setenv(clusteraccess.TargetKubeconfigEnvVar, kubeconfigPath)
 
 	script := `set -eu
-[ "$4" = "operator.example/team" ]
+reg=
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --registry) reg=$2; shift 2 ;;
+    *) shift ;;
+  esac
+done
+[ "$reg" = "operator.example/team" ]
 grep -F '"operator.example"' "$DOCKER_CONFIG/config.json" >/dev/null
 if grep -F 'attacker.example' "$DOCKER_CONFIG/config.json" >/dev/null; then exit 1; fi
 printf '{"imageReference":"operator.example/team/testimage:v1"}' > "$RADIUS_EXEC_OUTPUT"`
@@ -300,38 +363,33 @@ printf '{"imageReference":"operator.example/team/testimage:v1"}' > "$RADIUS_EXEC
 	require.Equal(t, "operator.example/team/testimage:v1", response.Values[imageReferenceValueName])
 }
 
-func Test_ApplyOperatorImageBuildParameters(t *testing.T) {
-	spec := &imageBuildSpec{
-		Registry:           "attacker.example/exfiltration",
-		RegistrySecretName: "attacker-controlled-secret",
-	}
-	err := applyOperatorImageBuildParameters(spec, map[string]any{
+func Test_OperatorRegistryParameters(t *testing.T) {
+	registry, registrySecretName, err := operatorRegistryParameters(map[string]any{
 		registryParameterName:           "ghcr.io/radius-project",
 		registrySecretNameParameterName: "operator-secret",
 	})
 	require.NoError(t, err)
-	require.Equal(t, "ghcr.io/radius-project", spec.Registry)
-	require.Equal(t, "operator-secret", spec.RegistrySecretName)
+	require.Equal(t, "ghcr.io/radius-project", registry)
+	require.Equal(t, "operator-secret", registrySecretName)
 
-	// Omitting the optional operator parameter must clear an output value supplied by a developer.
-	spec.RegistrySecretName = "attacker-controlled-secret"
-	err = applyOperatorImageBuildParameters(spec, map[string]any{
+	// Omitting the optional operator parameter yields an empty secret name.
+	registry, registrySecretName, err = operatorRegistryParameters(map[string]any{
 		registryParameterName: "ttl.sh/radius-project",
 	})
 	require.NoError(t, err)
-	require.Equal(t, "", spec.RegistrySecretName)
+	require.Equal(t, "ttl.sh/radius-project", registry)
+	require.Equal(t, "", registrySecretName)
 
 	// JSON null from recipe registration is equivalent to omitting the optional parameter.
-	spec.RegistrySecretName = "attacker-controlled-secret"
-	err = applyOperatorImageBuildParameters(spec, map[string]any{
+	_, registrySecretName, err = operatorRegistryParameters(map[string]any{
 		registryParameterName:           "ttl.sh/radius-project",
 		registrySecretNameParameterName: nil,
 	})
 	require.NoError(t, err)
-	require.Equal(t, "", spec.RegistrySecretName)
+	require.Equal(t, "", registrySecretName)
 }
 
-func Test_ApplyOperatorImageBuildParameters_RejectsInvalidDefinition(t *testing.T) {
+func Test_OperatorRegistryParameters_RejectsInvalidDefinition(t *testing.T) {
 	tests := []struct {
 		name       string
 		parameters map[string]any
@@ -345,14 +403,14 @@ func Test_ApplyOperatorImageBuildParameters_RejectsInvalidDefinition(t *testing.
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := applyOperatorImageBuildParameters(&imageBuildSpec{}, tc.parameters)
+			_, _, err := operatorRegistryParameters(tc.parameters)
 			require.ErrorContains(t, err, tc.errPart)
 		})
 	}
 }
 
 func Test_ExecuteImageBuild_FailureSurfacesStderr(t *testing.T) {
-	_, err := (&bicepDriver{}).executeImageBuild(testcontext.New(t), `echo "registry unreachable" >&2; exit 7`, &imageBuildSpec{}, driver.ExecuteOptions{})
+	_, err := (&bicepDriver{}).executeImageBuild(testcontext.New(t), `echo "registry unreachable" >&2; exit 7`, map[string]any{}, "", "", driver.ExecuteOptions{})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "exit status 7")
 	require.Contains(t, err.Error(), "registry unreachable")
@@ -372,7 +430,7 @@ func Test_ExecuteImageBuild_StrictResultContract(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := (&bicepDriver{}).executeImageBuild(testcontext.New(t), tc.script, &imageBuildSpec{}, driver.ExecuteOptions{})
+			_, err := (&bicepDriver{}).executeImageBuild(testcontext.New(t), tc.script, map[string]any{}, "", "", driver.ExecuteOptions{})
 			require.Error(t, err)
 			require.Contains(t, err.Error(), tc.errPart)
 		})
@@ -382,7 +440,7 @@ func Test_ExecuteImageBuild_StrictResultContract(t *testing.T) {
 func Test_ExecuteImageBuild_UnauthenticatedBlanksDockerConfig(t *testing.T) {
 	t.Setenv(dockerConfigEnvName, "/ambient/docker")
 	script := `printf '{"imageReference":"probe%s"}' "${DOCKER_CONFIG-unset}" > "$RADIUS_EXEC_OUTPUT"`
-	imageReference, err := (&bicepDriver{}).executeImageBuild(testcontext.New(t), script, &imageBuildSpec{}, driver.ExecuteOptions{})
+	imageReference, err := (&bicepDriver{}).executeImageBuild(testcontext.New(t), script, map[string]any{}, "", "", driver.ExecuteOptions{})
 	require.NoError(t, err)
 	require.Equal(t, "probe", imageReference)
 }
@@ -428,10 +486,7 @@ users:
 
 	d := &bicepDriver{clusterAccessResolver: clusteraccess.NewResolver()}
 	dir := filepath.Join(t.TempDir(), "docker")
-	err = d.writeDockerConfig(testcontext.New(t), &imageBuildSpec{
-		Registry:           "ghcr.io/radius-project",
-		RegistrySecretName: "ghcr-creds",
-	}, dir, driver.ExecuteOptions{BaseOptions: driver.BaseOptions{Configuration: recipes.Configuration{
+	err = d.writeDockerConfig(testcontext.New(t), "ghcr.io/radius-project", "ghcr-creds", dir, driver.ExecuteOptions{BaseOptions: driver.BaseOptions{Configuration: recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{Kubernetes: &recipes.KubernetesRuntime{Namespace: "testapp"}},
 	}}})
 	require.NoError(t, err)
@@ -479,18 +534,18 @@ func Test_DockerConfigAuthKey(t *testing.T) {
 }
 
 func Test_WriteDockerConfig_SecretFailures(t *testing.T) {
-	spec := &imageBuildSpec{Registry: "ghcr.io/org", RegistrySecretName: "missing"}
+	registry, registrySecretName := "ghcr.io/org", "missing"
 	opts := driver.ExecuteOptions{BaseOptions: driver.BaseOptions{Configuration: recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{Kubernetes: &recipes.KubernetesRuntime{Namespace: "testapp"}},
 	}}}
 
-	err := (&bicepDriver{}).writeDockerConfig(testcontext.New(t), spec, t.TempDir(), opts)
+	err := (&bicepDriver{}).writeDockerConfig(testcontext.New(t), registry, registrySecretName, t.TempDir(), opts)
 	require.ErrorContains(t, err, "no cluster access resolver configured")
 
 	missingPath := filepath.Join(t.TempDir(), "missing-target.kubeconfig")
 	t.Setenv(clusteraccess.TargetKubeconfigEnvVar, missingPath)
 	d := &bicepDriver{clusterAccessResolver: clusteraccess.NewResolver()}
-	err = d.writeDockerConfig(testcontext.New(t), spec, t.TempDir(), opts)
+	err = d.writeDockerConfig(testcontext.New(t), registry, registrySecretName, t.TempDir(), opts)
 	require.ErrorContains(t, err, clusteraccess.TargetKubeconfigEnvVar)
 	require.ErrorContains(t, err, missingPath)
 }
