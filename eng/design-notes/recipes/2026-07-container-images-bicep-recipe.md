@@ -14,7 +14,7 @@ This design extends the [`Radius.Compute/containerImages` resource type design](
 
 | Term                     | Definition                                                                                                                                                                          |
 |--------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `imageBuild`             | Internal Bicep output that tells the Radius Bicep driver what image to build and where to push it.                                                                                  |
+| `imageBuild`             | Internal Bicep output that tells the Radius Bicep driver what image to build. The driver injects registry settings from the registered Recipe definition.                           |
 | Build script             | `build.sh` published by the platform engineer and embedded into the compiled Bicep template by `loadTextContent`.                                                                   |
 | BuildKit                 | The image build engine running as an opt-in rootless sidecar in the `dynamic-rp` Pod.                                                                                               |
 | `buildctl`               | BuildKit CLI staged into the `dynamic-rp` container and connected to the sidecar through `BUILDKIT_HOST`.                                                                           |
@@ -32,7 +32,7 @@ This design extends the [`Radius.Compute/containerImages` resource type design](
 - Use the BuildKit sidecar already provided by the Radius Helm chart.
 - Wait for `buildctl --push` to complete before returning `properties.imageReference`.
 - Preserve the existing public resource properties and recipe parameters: `registry`, `registrySecretName`, `tag`, and `build`.
-- Run only the build script published by the platform engineer. Developer resource properties (source, Dockerfile, platforms, build arguments, tag) and operator recipe parameters (registry, registry Secret name) are passed to that script as command-line arguments instead of being inserted into shell code.
+- Run only the build script published by the platform engineer. Developer resource properties (source, Dockerfile, platforms, build arguments, tag) and operator recipe parameters resolved by the driver (registry, registry Secret name) are passed to that script as command-line arguments instead of being inserted into shell code.
 - Support unauthenticated registries and username/password authentication from a Kubernetes Secret in the recipe runtime namespace.
 - Run the extra build hook only for `Radius.Compute/containerImages`.
 - Preserve the Terraform recipe and fix its omitted-tag validation error described by [resource-types-contrib#209](https://github.com/radius-project/resource-types-contrib/issues/209).
@@ -120,9 +120,11 @@ resource image 'Radius.Compute/containerImages@2025-08-01-preview' = {
 param context object
 
 @description('Registry prefix (e.g. `ghcr.io/myorg`) into which images are pushed. The recipe appends `/<resource-name>:<tag>`.')
+#disable-next-line no-unused-params // Consumed by the Radius Bicep driver from the registered recipe definition.
 param registry string
 
 @description('Name of the Kubernetes Secret containing `username` and `password`. Leave empty for an unauthenticated registry.')
+#disable-next-line no-unused-params // Consumed by the Radius Bicep driver from the registered recipe definition.
 param registrySecretName string = ''
 
 #disable-next-line no-unused-vars // Consumed by the Radius Bicep driver from the compiled template.
@@ -133,8 +135,6 @@ var build = properties.build
 
 output imageBuild object = {
   resourceName: context.resource.name
-  registry: registry
-  registrySecretName: registrySecretName
   tag: properties.?tag ?? ''
   tagProvided: properties.?tag != null
   source: build.source
@@ -167,8 +167,8 @@ The Bicep recipe evaluates inputs, and Radius runs the image build:
 1. `dynamic-rp` downloads the compiled Bicep recipe and adds the Radius recipe context.
 2. UCP deploys the Bicep template and returns `result` plus the private `imageBuild` output.
 3. The Bicep driver checks the resource type. Only `Radius.Compute/containerImages` uses this hook.
-4. The driver validates `imageBuild` and reads the embedded `radiusContainerImagesBuildScript`.
-5. If `registrySecretName` is set, the driver reads the Kubernetes Secret and writes a temporary Docker config.
+4. The driver validates `imageBuild`, injects `registry` and optional `registrySecretName` from the registered Recipe definition, and reads the embedded `radiusContainerImagesBuildScript`.
+5. If the registered `registrySecretName` is set, the driver reads the Kubernetes Secret and writes a temporary Docker config.
 6. The driver runs the script with typed arguments. The script validates inputs, computes a tag, calls `buildctl`, and writes `imageReference`.
 7. After the script succeeds, the driver merges `imageReference` into the recipe output and continues normal cleanup and persistence.
 
@@ -188,7 +188,8 @@ sequenceDiagram
   DRP->>UCP: Deploy compiled Bicep template
   UCP-->>DRP: result and imageBuild outputs
   DRP->>DRP: Validate resource type, output, and static script
-  opt registrySecretName is set
+  DRP->>DRP: Inject registry settings from Recipe definition
+  opt registered registrySecretName is set
     DRP->>K8s: Get Secret in runtime namespace
     K8s-->>DRP: username and password
     DRP->>DRP: Write temporary Docker config
@@ -217,7 +218,7 @@ This port follows existing recipe decisions:
 | [Rootless BuildKit sidecar](https://github.com/radius-project/radius/pull/11882)              | Reuses the existing opt-in `buildkitd` sidecar, staged `buildctl`, `BUILDKIT_HOST`, in-Pod BuildKit state, and PSA constraints.                                                        |
 | [Multi-cluster environments](../environments/2026-06-multi-cluster.md)                        | Kubernetes access must use the shared target-cluster resolver and honor `RADIUS_TARGET_KUBECONFIG`. It must not fall back to the control-plane cluster.                                |
 | [Bicep recipe garbage collection](./2023-08-garbage-collection.md)                            | The hook runs after output processing and before garbage collection. Both recipe kinds return no managed resources, so this ordering doesn't change `containerImages` behavior.        |
-| [Sensitive resource data](../security/2025-11-secrets-redactdata.md)                          | `imageBuild` carries only the Secret name. Registry credentials stay in the runtime-namespace Secret and aren't copied into recipe outputs or resource status.                         |
+| [Sensitive resource data](../security/2025-11-secrets-redactdata.md)                          | `imageBuild` carries no registry Secret data. Registry credentials stay in the runtime-namespace Secret and aren't copied into recipe outputs or resource status.                      |
 | [Applications RP threat model](../security/2024-08-applications-rp-component-threat-model.md) | Uses the same recipe-execution trust boundary as Terraform `local-exec`, which already runs `buildctl` from the `dynamic-rp` container.                                                |
 
 #### Resource-type gate
@@ -228,13 +229,11 @@ This limits the behavior change to one resource type. Other resource types keep 
 
 #### Private Bicep-to-driver contract
 
-The `imageBuild` output must be an object with exactly 9 properties:
+The `imageBuild` output must be an object with exactly 7 properties:
 
 | Property             | Type         | Source                                                                |
 |----------------------|--------------|-----------------------------------------------------------------------|
 | `resourceName`       | string       | `context.resource.name`                                               |
-| `registry`           | string       | Operator recipe parameter                                             |
-| `registrySecretName` | string       | Operator recipe parameter                                             |
 | `tag`                | string       | Developer property, or empty string when absent                       |
 | `tagProvided`        | boolean      | Whether `tag` is present and non-null in the evaluated context        |
 | `source`             | string       | `properties.build.source`                                             |
@@ -242,7 +241,7 @@ The `imageBuild` output must be an object with exactly 9 properties:
 | `platforms`          | string array | `properties.build.platforms`, default `linux/amd64` and `linux/arm64` |
 | `buildArgs`          | string map   | `properties.build.args`, default empty                                |
 
-The driver rejects missing, null, unknown, mis-cased, or incorrectly typed fields. It sorts build argument keys before creating process arguments, and the committed `build.sh` additionally canonicalizes the received `--build-arg` pairs with a byte-wise `LC_ALL=C` sort before hashing and before building `buildctl` arguments. The script's sort runs last, so the generated tag doesn't depend on the caller's argument order. The two sort criteria differ for keys that are prefixes of other keys (the script compares whole `key=value` lines), which changes only the internal ordering, not determinism.
+The driver rejects missing, null, unknown, mis-cased, or incorrectly typed fields. The driver sorts build argument keys before creating process arguments, and the committed `build.sh` additionally canonicalizes the received `--build-arg` pairs with a byte-wise `LC_ALL=C` sort before hashing and before building `buildctl` arguments. The script's sort runs last, so the generated tag doesn't depend on the caller's argument order. The two sort criteria differ for keys that are prefixes of other keys (the script compares whole `key=value` lines), which changes only the internal ordering, not determinism.
 
 The executable script is stored in the compiled template variable `radiusContainerImagesBuildScript`. Bicep's `loadTextContent` embeds the file at compile or publish time as a hard-coded string, with a maximum size of 131,072 characters including line endings. The driver requires a non-empty literal string and rejects any compiled value beginning with `[`. That blocks ARM expressions, but it also rejects a literal script that starts with `[`, including Bicep's `[[` escape form. The published script starts with a shebang and isn't affected. Resource properties and recipe parameters can't replace the script.
 
@@ -269,13 +268,13 @@ The result file must be a JSON object with exactly one non-empty string property
 1. Parses and validates every argument.
 2. Lowercases the Radius resource name to form the image repository name.
 3. Converts `git::https://host/repository.git//subdir?ref=<ref>` into the BuildKit `https://host/repository.git#<ref>:<subdir>` context form.
-4. Uses an existing local directory directly when `build.source` is a filesystem path.
+4. Uses an operator-managed local directory when `build.source` is a filesystem path. The default root is `/var/radius/build-contexts`, overridable for tests with `RADIUS_CONTAINER_IMAGES_LOCAL_CONTEXT_ROOT`.
 5. Uses an explicit `properties.tag` when present.
-6. Computes `sha256-<16 hex characters>` from the Git context or local file tree plus Dockerfile path, platform order, and build arguments when the tag is absent. The script sorts the received build-argument pairs itself, so the tag doesn't depend on caller ordering. Local file enumeration pipes `find` into `sort`, so a `find` failure (for example an unreadable subdirectory) is masked by the pipeline and produces a partial-tree tag instead of an error; Terraform's `fileset` also silently skips unreadable entries, so this isn't a parity break, but the script could detect it cheaply.
+6. Computes `sha256-<16 hex characters>` from the Git context or local file tree plus Dockerfile path, platform order, and build arguments when the tag is absent. The script sorts the received build-argument pairs itself, so the tag doesn't depend on caller ordering. Local file enumeration, sorting, and hashing are checked separately; a failure stops the build instead of producing a partial-tree tag.
 7. Calls `buildctl build` with `dockerfile.v0`, requested platforms, build arguments, and `--output type=image,name=<reference>,push=true`.
 8. Writes `imageReference` only after `buildctl` succeeds.
 
-The script keeps the Terraform recipe's input categories and validation rules. It rejects empty explicit tags, invalid registry paths, invalid platform strings, local filesystem sources or Dockerfile paths containing `..` (git URLs are constrained by a character allowlist instead, matching Terraform), malformed build argument names, and build argument values containing whitespace, quotes, backticks, dollar signs, or backslashes. Other shell punctuation such as `&`, `<`, and `>` is allowed because values are passed as process arguments instead of shell source.
+The script keeps the Terraform recipe's input categories and most validation rules. It rejects empty explicit tags, invalid registry paths, invalid platform strings, local filesystem sources or Dockerfile paths containing `..` (git URLs are constrained by a character allowlist instead, matching Terraform), malformed build argument names, and build argument values containing whitespace, quotes, backticks, dollar signs, or backslashes. Bicep local filesystem sources add stricter confinement: the root must exist, the root must not resolve to `/`, the source must resolve beneath the operator-managed root, the source and Dockerfile must not be symbolic links, and the build context must not contain symbolic links. Other shell punctuation such as `&`, `<`, and `>` is allowed because values are passed as process arguments instead of shell source.
 
 #### Behavioral parity with the Terraform recipe
 
@@ -287,14 +286,14 @@ The Terraform recipe is the baseline. The Bicep port keeps the same public behav
 | Recipe parameters       | `registry`, optional `registrySecretName`                                                          | Same parameters                                              | Exact                                 |
 | Image repository        | Lowercased resource name                                                                           | Lowercased resource name                                     | Exact                                 |
 | Defaults                | `Dockerfile`; `linux/amd64`, `linux/arm64`                                                         | Same defaults                                                | Exact                                 |
-| Input validation        | Registry, tag, source, Dockerfile, platforms, and build arguments                                  | Same rules                                                   | Exact                                 |
+| Input validation        | Registry, tag, source, Dockerfile, platforms, and build arguments                                  | Same categories, with stricter local-source confinement      | Semantic                              |
 | Git source              | Translate go-getter `git::https://...//subdir?ref=...` to a BuildKit Git context                   | Same translation                                             | Exact                                 |
-| Absolute local source   | Read a directory already available inside `dynamic-rp`                                             | Same behavior                                                | Exact                                 |
-| Relative local source   | Resolve from Terraform's transient execution directory                                             | Resolve from the hook's separate temporary working directory | Engine difference; use absolute paths |
+| Absolute local source   | Read a directory already available inside `dynamic-rp`                                             | Must resolve beneath `/var/radius/build-contexts` by default | Engine difference                     |
+| Relative local source   | Resolve from Terraform's transient execution directory                                             | Also confined to the operator-managed root after resolution  | Engine difference                     |
 | Explicit tag            | Use the non-empty value as supplied                                                                | Same behavior                                                | Exact                                 |
 | Generated tag inputs    | Source content or Git source string, Dockerfile, platform order, and build arguments               | Same categories; the script canonicalizes argument order     | Semantic                              |
 | Generated tag bytes     | Terraform serialization and local-file digest                                                      | Shell serialization and `sha256sum` file-tree digest         | Engine difference                     |
-| Registry authentication | Read `username` and `password` from the runtime-namespace Secret and write temporary Docker config | Same Secret contract and Docker config                       | Exact                                 |
+| Registry authentication | Read `username` and `password` from the runtime-namespace Secret and write temporary Docker config | Same Secret contract and Docker config, with registry settings injected from the Recipe definition | Semantic |
 | Cluster selection       | Shared recipe Kubernetes provider configuration                                                    | Shared target-cluster resolver                               | Exact                                 |
 | Build execution         | Synchronous `buildctl build --push`                                                                | Same command semantics                                       | Exact                                 |
 | Recipe result           | Empty resources and `imageReference` after a successful push                                       | Same public result                                           | Exact                                 |
@@ -306,9 +305,11 @@ Generated tags are deterministic within each recipe kind when Bicep runs through
 
 When `registrySecretName` is empty, the driver removes any inherited `DOCKER_CONFIG` entry and sets it to an empty value. Docker-compatible clients can treat an empty value like an unset value and fall back to `$HOME/.docker/config.json`. The current `dynamic-rp` image doesn't create that file, and the Terraform recipe's `local-exec` uses the same empty-string convention, but setting `DOCKER_CONFIG` to a controlled empty temporary directory would be stronger.
 
-Both recipes key the written credential on the first path segment of `registry`. For Docker Hub (`docker.io/...`), BuildKit's Docker auth provider looks credentials up under `https://index.docker.io/v1/` rather than `docker.io`, so an authenticated Docker Hub push likely fails in both recipes. This is a pre-existing baseline behavior, not a difference introduced by the port; fixing it should normalize the host key in both recipes together.
+Both recipes key the written credential on the first path segment of `registry`, with Docker Hub aliases normalized to `https://index.docker.io/v1/` for BuildKit compatibility.
 
-When `registrySecretName` is set, the driver uses `pkg/recipes/kubernetes/clusteraccess` to resolve the cluster selected by the recipe configuration. It reads the Secret from `opts.Configuration.Runtime.Kubernetes.Namespace`, requires `username` and `password` data keys, and creates:
+For the Bicep recipe, `registry` and `registrySecretName` come from `opts.Definition.Parameters`, the registered Recipe definition. Developer resource parameters aren't used for registry settings. Terraform still follows the standard recipe-parameter merge behavior, where resource-level parameters can override environment-level parameters.
+
+When the registered `registrySecretName` is set, the driver uses `pkg/recipes/kubernetes/clusteraccess` to resolve the cluster selected by the recipe configuration. It reads the Secret from `opts.Configuration.Runtime.Kubernetes.Namespace`, requires `username` and `password` data keys, and creates:
 
 ```json
 {
@@ -320,7 +321,7 @@ When `registrySecretName` is set, the driver uses `pkg/recipes/kubernetes/cluste
 }
 ```
 
-The Docker configuration directory is mode `0700`; `config.json` is mode `0600`. The registry host is the first path segment of the `registry` parameter.
+The Docker configuration directory is mode `0700`; `config.json` is mode `0600`. The registry auth key is the first path segment of the `registry` parameter, except Docker Hub aliases normalize to `https://index.docker.io/v1/`.
 
 #### Reconciliation and generated tags
 
@@ -335,27 +336,25 @@ Terraform and Bicep hash the same categories of inputs with different serializat
 The reviewed sources have these mismatches:
 
 - [resource-types-contrib#220](https://github.com/radius-project/resource-types-contrib/issues/220) asks for an idempotent Bicep recipe with `test/app.bicep` and `make test-recipe` coverage. The proposed Bicep recipe returns the same reference for unchanged inputs but still rebuilds and pushes every time. `Compute/containerImages/test/app.bicep` doesn't exist. [resource-types-contrib#154](https://github.com/radius-project/resource-types-contrib/issues/154) is closed, but the containerImages-specific test and required `registry` configuration are still absent.
-- This design note isn't committed to the [radius#12361](https://github.com/radius-project/radius/pull/12361) branch. If it's meant to ship with the PR, it must be added to `eng/design-notes/recipes/` on that branch.
-- The `Compute/containerImages/README.md` example registers `ghcr.io/radius-project/kube-recipes/containerimages:latest`. That artifact doesn't exist until a maintainer runs the manual publish workflow, and a mutable `latest` tag contradicts this note's own immutable-reference guidance. The example should use a versioned tag once one is published.
 
-#### Advantages (of each option considered)
+#### Advantages
 
 - Keeps the public `containerImages` schema and recipe parameters stable.
 - Uses the existing in-Pod BuildKit endpoint and avoids another build service.
 - Waits for a successful push before publishing `imageReference`.
 - Keeps developer-controlled values out of shell source.
 - Lets platform engineers customize build behavior by publishing a modified script with the recipe.
-- Limits behavior changes for all other Bicep recipes through a resource-type gate.
+- Limits behavior changes for other Bicep recipes through a resource-type gate.
 
-#### Disadvantages (of each option considered)
+#### Disadvantages
 
 - Adds a resource-type special case to the generic Bicep driver.
 - Runs platform-engineer-authored shell code inside `dynamic-rp`, with that container's environment, filesystem, network access, and Kubernetes identity.
 - Rebuilds and pushes on every Bicep recipe execution.
-- Requires a compatible Radius control plane, but doesn't enforce a minimum version in recipe registration.
+- Requires a Radius control plane with the `imageBuild` hook; recipe registration does not enforce that capability.
 - Creates a private contract based on exact Bicep output and compiled-variable names.
-- Keeps the BuildKit sidecar's resource cost and PSA `privileged` namespace requirement.
-- Has no end-to-end test in the proposed contrib changes.
+- Requires the opt-in BuildKit sidecar and a namespace policy that permits its rootless BuildKit security profile.
+- End-to-end Bicep recipe coverage is still missing.
 
 #### Proposed Option
 
@@ -447,10 +446,11 @@ The contrib repository also updates:
 The Radius PR adds unit coverage for:
 
 - Resource-type gating.
-- Strict `imageBuild` decoding.
+- Strict 7-field `imageBuild` decoding.
 - Static script extraction.
 - Deterministic process arguments.
 - Hook result merging.
+- Registry and registry Secret injection from the Recipe definition, including `registrySecretName: null` as unauthenticated.
 - Script failure and stderr propagation.
 - Strict result-file parsing.
 - Controlled environment construction: inherited `DOCKER_CONFIG` and `RADIUS_EXEC_OUTPUT` entries are removed and each controlled key appears exactly once. The unauthenticated test doesn't cover Docker's default-config fallback.
@@ -462,6 +462,7 @@ The contrib PR adds a shell smoke test for:
 - Exact generated tag behavior for one Git input and one local-source input.
 - Build-argument canonicalization: a shuffled argument order produces the same tag and sorted `buildctl` arguments.
 - Rebuilding on a second execution.
+- Local-source confinement to the operator-managed root, including symlink rejection.
 - Explicit tags.
 - BuildKit failure without a result.
 - Newline, build argument, platform, tag, and registry validation.
@@ -483,6 +484,8 @@ Registry credentials are read from a Kubernetes Secret in the selected target cl
 
 The Applications RP threat model already treats Terraform providers as code that can access the RP network, filesystem, environment, and process boundary. The Terraform containerImages recipe also runs `buildctl` through `local-exec` in the same container. The embedded Bicep script runs with the `dynamic-rp` identity and inherits its process environment. It can access the same files, network endpoints, environment variables, and Kubernetes permissions as `dynamic-rp`. Compromise of the recipe registry or publication pipeline can therefore become control-plane code execution.
 
+The arbitrary shell is acceptable here because platform engineers author and publish the recipe code. Developer application input can only supply build data. Platform engineers already choose Terraform modules and providers that execute in the recipe driver boundary, including the existing `containerImages` Terraform recipe's `local-exec` build step. The Bicep hook keeps that same trust model while narrowing where the shell can enter: only `Radius.Compute/containerImages`, only from a static `loadTextContent` value embedded in the published recipe artifact, and only after the driver rejects dynamic script expressions. Developer-controlled fields are passed as typed process arguments and are validated before they become `buildctl` flags.
+
 This port doesn't add a Bicep-only sandbox or environment allowlist because that would make Bicep behave differently from Terraform. Shared recipe hardening should cover both engines. Operators should use trusted registries, immutable references, artifact provenance, and access controls. Radius resolves a Bicep artifact tag to a registry digest for the current pull, but that doesn't pin a mutable tag across deployments. The Recipe Packs design proposes an explicit `recipeDigest`; current Recipe Pack APIs don't expose that field.
 
 For an unauthenticated build, the hook overrides an inherited `DOCKER_CONFIG` value with an empty string, but Docker-compatible clients can still read `$HOME/.docker/config.json`. The current `dynamic-rp` image doesn't create or mount that file. Pointing `DOCKER_CONFIG` at a controlled empty temporary directory would make the no-ambient-credentials guarantee independent of the container image.
@@ -496,14 +499,14 @@ The BuildKit sidecar remains opt-in and uses rootless BuildKit without host moun
 - Existing Terraform recipe registrations continue to work. PR #228 changes only Terraform's omitted-tag validation and Secret documentation.
 - Existing Bicep recipes for other resource types are unaffected.
 - Existing `Radius.Compute/containerImages` Bicep recipes without `imageBuild` skip the hook.
-- The new Bicep recipe requires a Radius control plane that contains the hook. On an older control plane, UCP can deploy the template but the standard `result` contains no `imageReference`, so the resource won't produce the documented output.
+- The Bicep recipe requires a Radius control plane that contains the hook. Without the hook, UCP can deploy the template but the standard `result` contains no `imageReference`, so the resource won't produce the documented output.
 - The AKS recipe pack stays on Terraform until a compatible Radius release is available.
 - Switching from Terraform to Bicep can change a generated image tag once because the two recipes serialize hash inputs differently.
 - The Bicep recipe rebuilds on every execution, while Terraform skips unchanged builds through state and `triggers_replace`.
-- Absolute local paths already visible inside `dynamic-rp` work in both recipes. Relative paths resolve from different transient working directories and aren't portable across recipe kinds.
+- Bicep local paths must resolve beneath the operator-managed build-context root. Terraform retains its existing local-path behavior.
 - A moving Git ref is rebuilt by Bicep on a later recipe execution but can be skipped by Terraform because neither the generated tag nor `triggers_replace` inputs include the resolved commit.
 
-The known migration differences are generated-tag bytes, repeated execution, relative local-path resolution, and moving-ref reconciliation. An explicit tag avoids only the generated-tag byte difference. It doesn't suppress Bicep rebuilds.
+The known migration differences are generated-tag bytes, repeated execution, local-source confinement, relative local-path resolution, and moving-ref reconciliation. An explicit tag avoids only the generated-tag byte difference. It doesn't suppress Bicep rebuilds.
 
 ## Monitoring and Logging
 
@@ -523,18 +526,25 @@ No dedicated build duration, push duration, cache, failure-reason, or image-size
 
 ## Open Questions
 
-The public API and hook design are settled. The two defense-in-depth review requests from the previous round (filter inherited controlled environment keys; sort build arguments inside `build.sh`) are implemented in heads `9f2ec0e49` and `8523f5a`. The following merge and release decisions still require confirmation:
+The public API and hook design are settled. The following merge and release decisions still require confirmation:
 
 - Whether the driver should require a non-empty `imageReference` in the final recipe values for `Radius.Compute/containerImages`, so a recipe that omits or misnames `imageBuild` fails instead of reporting an empty success. Today a missing output silently skips the hook.
 - Whether unauthenticated execution must set `DOCKER_CONFIG` to a controlled empty directory rather than an empty string to prevent default-path credential fallback. The Terraform recipe uses the same empty-string approach, so this is shared hardening, not a port gap.
 - Whether the script extractor should accept Bicep-escaped literal strings beginning with `[[`; the current published shebang avoids the limitation.
 - Which end-to-end environment will validate the Bicep path, and whether both unauthenticated and authenticated registry flows are release gates.
 - Whether recipe registration should enforce or document a minimum compatible Radius version before the default recipe pack changes.
-- Whether relative local source paths should be rejected explicitly; current documentation recommends absolute paths because each engine uses a different transient working directory.
+- Whether relative local source paths should be rejected explicitly; current documentation recommends operator-managed local sources because each engine uses a different transient working directory.
 
 Persistent Bicep build receipts, user-supplied recipe digest enforcement, control-plane capability negotiation, and a general recipe action contract remain separate platform features. Any stronger process or environment isolation should apply consistently to Terraform and Bicep recipe execution.
 
 ## Alternatives considered
+
+The resource-types-contrib PR considered 4 execution approaches before choosing the scoped `dynamic-rp` hook:
+
+- **Kubernetes Job from Bicep**: rejected because Radius would finish after creating the Job, before knowing whether build and push succeeded. The Job also runs in a different Pod, so it can't use the existing Pod-local BuildKit sidecar.
+- **Azure Deployment Script**: rejected because it depends on Azure Container Instances, creates Azure support resources, and can't reach the `dynamic-rp` BuildKit sidecar. It would make the recipe Azure-specific or require a separate image build service.
+- **Bicep Local Deploy**: rejected because Radius recipes execute compiled JSON through UCP. Local Deploy needs source, parameters, a custom extension process, and a separate execution path for input and output plumbing.
+- **Embedded script in `dynamic-rp`**: chosen because it can use the existing BuildKit sidecar, wait for `buildctl --push`, handle registry credentials, and return `imageReference` synchronously. The script is selected by the platform engineer through the recipe artifact.
 
 | Alternative                                     | Advantages                                                                                                                   | Disadvantages                                                                                                                                                                                                                                                                                                                                                                                  | Decision                                                               |
 |-------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------|
@@ -548,6 +558,4 @@ Persistent Bicep build receipts, user-supplied recipe digest enforcement, contro
 
 ## Design Review Notes
 
-First reviewed on July 10, 2026 against Radius PR head `20e47de16f4efd3abe2fd0ef3dcea012d5bacef6` and resource-types-contrib PR head `7860c370dd50c7868a7b7761a8b83adbae8d9bdb`. That review confirmed the public field contract and synchronous push behavior, corrected the engine-specific differences and historical claims above, and found no Bicep end-to-end coverage.
-
-Updated after a second review round against Radius PR head `9f2ec0e4930a3b6a4204855dc832703b38f5ba2d` and resource-types-contrib PR head `8523f5abc7f7709542c4e841c047830155807ac1`, which added `imageBuildEnvironment` filtering of the controlled environment keys and in-script build-argument canonicalization. The second round re-verified the driver unit tests (race-enabled), the Windows cross-compile, the shell smoke test, ShellCheck, Bicep compilation of the recipe (script embedded as a 9,195-character literal, exactly the 9-property `imageBuild` output), and the Terraform omitted-tag fix at plan level. The fail-open behavior for a missing `imageBuild` output, the rebuild-on-every-execution difference, and the absence of committed end-to-end coverage remain the open items; see [Open Questions](#open-questions).
+The current design has been checked against the Radius Bicep driver and the resource-types-contrib Bicep recipe. Local verification covered the focused Go build/test, the shell smoke test, ShellCheck, and Bicep compilation of the recipe to a 7-field `imageBuild` output. The fail-open behavior for a missing `imageBuild` output, the rebuild-on-every-execution difference, and the absence of committed end-to-end coverage remain open; see [Open Questions](#open-questions).
