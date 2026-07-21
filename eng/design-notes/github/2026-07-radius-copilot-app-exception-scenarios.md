@@ -16,7 +16,7 @@ The MVP does not support repositories without a containerized workload, preview 
 
 - **Canvas**: The GitHub Copilot app's extension framework, which renders extensions in the sidebar. Canvas is a Copilot capability, not a Radius component.
 - **Radius Canvas extension**: The Radius extension, built on the Canvas framework, that powers the Radius side panel.
-- **Radius skill**: The Copilot skill that runs in the Copilot chat and drives the Radius flow. Invoked from a natural-language prompt or explicitly with the `/radius` command.
+- **Radius skill**: The Copilot skill that runs in the Copilot chat and drives the Radius flow. Invoked from a natural-language prompt or explicitly with the `/app-modeling` command.
 - **Radius plugin**: The GitHub Copilot app plugin that packages and versions the Radius skill and the Radius Canvas extension as one unit. Installed and updated from the Copilot app Plugins settings page.
 - **Radius side panel**: The GUI for Radius, built using the Radius Canvas extension and shown in the Copilot app sidebar. It displays the application graph, forms, and operation status, and is the surface the user opens, views, and interacts with.
 - **Repo Radius**: The component that runs each Radius operation as a GitHub Actions workflow and returns results as artifacts (for example, `run-rad-commands-result`, `verify-cloud-auth-result`). Defined in the [Repo Radius feature specification](https://github.com/radius-project/radius/pull/12078).
@@ -57,7 +57,7 @@ The Radius plugin is already installed and working, and the user starts an updat
 
 ## Part 1: Clone the repo, invoke the Radius skill, and open the Radius side panel
 
-Before any Assembly analysis can begin, the repository must be brought into the session and checked out as a worktree, the Radius skill must fire and enable the repository for Radius, and the Radius side panel must come up in the sidebar. Bringing the repository in is a Copilot app prerequisite; once it is available, the first thing the skill does is enable the repository by committing the Repo Radius workflow files into `.github/workflows`, because Repo Radius runs every operation as a GitHub Actions workflow that must be committed before it can run. The exceptions here are the repository not being available (1.1), the skill not being invoked (1.2), enablement failing for lack of write permission (1.3), the default branch being protected (1.4), and the Radius side panel not coming up (1.5). All are pre-flight, so nothing has been analyzed or deployed yet, and the user recovers by correcting the cause and re-invoking the skill with no cleanup.
+Before any Assembly analysis can begin, the repository must be brought into the session and checked out as a worktree, the Radius skill must fire and enable the repository for Radius, and the Radius side panel must come up in the sidebar. Bringing the repository in is a Copilot app prerequisite. Committing the Repo Radius workflow files into `.github/workflows` is what enables the repository for Radius, since Repo Radius runs every operation as a GitHub Actions workflow that must be committed before it can run; that commit happens as part of the deployment step rather than at skill invocation. The exceptions here are the repository not being available (1.1), the skill not being invoked (1.2), enablement failing for lack of write permission (1.3), the worktree branch on the remote being protected (1.4), and the Radius side panel not coming up (1.5). All are pre-flight, so nothing has been analyzed or deployed yet, and the user recovers by correcting the cause and re-invoking the skill with no cleanup.
 
 ### Exception 1.1: Repository not available in the session
 
@@ -71,7 +71,7 @@ The Radius skill needs the repository checked out before it can do anything. Bri
 The session is ready with a repository attached, and the user asks Copilot something that should invoke the Radius skill, such as asking to see the application graph. Copilot answers generally and never invokes the Radius skill, so none of the Radius flow runs and the Radius side panel never appears.
 
 - **What the user sees:** A generic Copilot chat response with no Radius side panel and no application graph.
-- **Recovery:** The user invokes the skill explicitly with the `/radius` command (named after the plugin the user enabled), which is the deterministic entry point.
+- **Recovery:** The user invokes the skill explicitly with the `/app-modeling` command (named after the plugin the user enabled), which is the deterministic entry point.
 
 ### Exception 1.3: Repository cannot be enabled for Radius
 
@@ -80,12 +80,12 @@ Enabling the repository is the first write to the repository. If the user lacks 
 - **What the user sees:** Copilot responds in chat: "To set this repository up I need to add a couple of workflow files, but I don't have write access to <repository> in this session. If you fork the repository or get write access and add it here, I can pick up where we left off."
 - **Recovery:** The user forks the repository or gets write access, adds it to the session, and re-invokes the Radius skill.
 
-### Exception 1.4: Default branch is protected
+### Exception 1.4: Worktree branch on the remote is protected
 
-The user has write access, but the default branch (typically `main`) has branch protection that forbids committing directly to it. The skill cannot push the workflow files straight to the default branch, so instead of failing it opens a pull request that adds the Repo Radius workflow files and asks the user to merge it. The repository is not enabled until that pull request merges, because Repo Radius cannot run workflows that are not yet on the default branch.
+The skill never commits directly to the default branch. It commits the Repo Radius workflow files to the working-tree branch, pushes that branch to the remote, and asks the user whether to open a pull request that adds them to the default branch. The exception arises only when the worktree branch on the remote is itself protected, so the skill cannot push the workflow files to it.
 
-- **What the user sees:** Copilot responds in chat: "The default branch of <repository> is protected, so I couldn't commit the workflow files directly. I opened a pull request that adds them: <pull request link>. Merge it and I'll pick up where we left off."
-- **Recovery:** The user merges the pull request that adds the Radius workflow files into the default branch, then re-invokes the Radius skill.
+- **What the user sees:** Copilot responds in chat: "I couldn't push the workflow files to <branch> on <repository> because that branch is protected. Let me push to an unprotected branch, or adjust the branch protection, and I'll pick up where we left off."
+- **Recovery:** The user works from or pushes to an unprotected worktree branch (or relaxes the branch protection), then re-invokes the skill.
 
 ### Exception 1.5: Radius side panel does not open in the sidebar
 
@@ -128,12 +128,12 @@ The user starts the Assembly analysis on a repository, but it does not successfu
 - **What the user sees:** Copilot responds in chat: "I wasn't able to finish analyzing the repository this time. Want me to try again?"
 - **Recovery:** The user retries; the Assembly analysis is re-runnable and safe to repeat because nothing is written until it succeeds.
 
-### Exception 2.5: Cannot merge the `.radius` files into a protected branch
+### Exception 2.5: Publishing the `.radius` files and opening a pull request
 
-Copilot works off a worktree branch in a local clone, so writing the generated files to that branch always succeeds and the `.radius` directory is created there. The exception arises when those files need to land on the default branch (typically `main`) and that branch is protected: Copilot cannot commit to it directly, so instead of failing it opens a pull request that adds the `.radius` directory and asks the user to merge it.
+Copilot works off a worktree branch in a local clone, so writing the generated files to that branch always succeeds and the `.radius` directory is created there. When the prompt is initiated from a new Copilot session, Copilot publishes `app.bicep` and the other artifacts to a remote branch that matches the user's worktree branch, then prompts the user to open a pull request against the default branch. The skill never commits directly to the default branch. The only failure case is a worktree branch on the remote that is protected, so Copilot cannot push the generated files to it.
 
-- **What the user sees:** Copilot responds in chat: "I generated the `.radius` files on the worktree branch, but the default branch of <repository> is protected, so I couldn't commit them there directly. I opened a pull request that adds them: <pull request link>. Merge it and the application definition will be on <branch>."
-- **Recovery:** The user merges the pull request that adds the `.radius` directory into the default branch.
+- **What the user sees:** Copilot responds in chat: "I generated the `.radius` files on the worktree branch. Would you like me to open a pull request that adds them: <pull request link> to the default branch of <repository>."
+- **Recovery:** The user accepts the pull request Copilot offers to add the `.radius` directory to the default branch. If the worktree branch itself is protected, the user works from an unprotected branch, then asks Copilot to publish again.
 
 ### Exception 2.6: Generated `app.bicep` is invalid
 
