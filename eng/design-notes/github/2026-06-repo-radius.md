@@ -25,7 +25,7 @@ Repo Radius is a rethinking of how to deliver Radius to developers. It transform
 * Supporting non-GitHub source control platforms (GitLab, Bitbucket, Azure DevOps).
 * Running Repo Radius outside of GitHub Actions (e.g., locally on a developer's workstation as the primary mode).
 * Supporting multi-repo applications is deferred to a later date.
-* Defining the migration process for moving an application from Repo Radius to self-hosted Radius. Repo Radius does not inhibit migration (the application definition is standard, portable Radius), but the migration experience depends on the frontend and the solution Repo Radius is embedded in and requires its own feature specification (User Story 4.2).
+* Defining the migration process for moving an application from Repo Radius to self-hosted Radius. Repo Radius does not inhibit migration, but the migration experience requires its own feature specification.
 * Customizing, hardening, or expanding the recipe pack. The initial release uses the default AWS and Azure recipe pack that ships with Radius as-is.
 
 ## Definition of terms
@@ -343,35 +343,27 @@ The developer asks the frontend to delete an application from an environment. Th
 
 #### Summary
 
-Two independently versioned components are involved in an upgrade. Repo Radius itself is delivered as the two GitHub Actions (User Story 1.1) published to the GitHub Marketplace. The frontend that drives Repo Radius is a separate component, part of the solution Repo Radius is embedded in, installed and updated on its own. The workflows committed to the repository pin each Repo Radius action to an exact commit SHA, so a repository always runs one specific, verified version of each action rather than whatever a moving tag points at. Updating the frontend does not change those pinned workflows, so the frontend and the pinned actions can drift apart. Keeping them in sync is the frontend's responsibility, not Repo Radius's: because the frontend committed the workflows, it is the component that must update them. At deploy time, before dispatching the deployment workflow, the frontend checks the pinned action versions against the versions it requires, and when they are behind it updates the workflows with the developer's confirmation and through a path that respects the repository's branch protections. Repo Radius does nothing here; it only runs whatever version the workflow pins.
+An upgrade involves two independently versioned components: Repo Radius, delivered as the two GitHub Actions (User Story 1.1) published to the Marketplace, and the frontend that drives it, installed and updated on its own. The committed workflows pin each action to an exact commit SHA, so a repository runs one specific, verified version until the pin changes. Updating the frontend does not touch those pinned workflows, so keeping them in sync is the frontend's job: because it committed the workflows, it is the component that updates them. Repo Radius only runs whatever version the workflow pins.
 
 #### User Experience
 
 Keeping Repo Radius up to date involves two things, only one of which the developer initiates directly:
 
-1. **Update the frontend.** The developer updates the frontend through its own update mechanism, which downloads the latest frontend to the local machine. This updates only the local frontend; it does not touch the workflows committed to any repository.
+1. **Update the frontend.** The developer updates the frontend through its own update mechanism. This does not touch the workflows committed to any repository.
 
-2. **Confirm a workflow update at deploy time.** When the developer next asks to deploy (User Story 1.2), the frontend compares the action versions pinned in the repository's workflows against the versions the current frontend requires. If the workflows already satisfy the requirement, the deployment proceeds unchanged and the developer sees nothing. If the frontend requires a newer version of the actions, the frontend tells the developer the workflows must be updated and asks for confirmation before changing anything in the repository. On confirmation, the frontend updates the workflows by committing to the default branch, or by opening a pull request if the branch is protected (see Result), and once the update is in place the deployment proceeds with the up-to-date actions. If the workflows cannot be updated, the deployment does not proceed.
+2. **Confirm a workflow update at deploy time.** The next time the developer deploys (User Story 1.2), the frontend compares the pinned action versions against the versions it requires. If they already match, the deployment proceeds and the developer sees nothing. If a newer version is required, the frontend asks for confirmation and updates the workflows before deploying. If the workflows cannot be updated, the deployment does not proceed.
 
 #### Result
 
-When the developer creates an environment (User Story 1.1), the frontend writes the Repo Radius workflows to the repository's `.github/workflows` directory, with each `uses` statement pinned to an exact commit SHA. Pinning by SHA makes every run reproducible and prevents an upstream release from silently changing behavior.
-
-At deploy time, when the frontend determines the pinned actions are older than it requires and the developer confirms the update, it writes the updated SHAs into the workflows through whichever path the repository allows:
-
-* It attempts to commit the updated workflows directly to the default branch.
-* If the default branch is protected, it offers to open a pull request with the updated workflows instead.
-* If the developer lacks permission to open that pull request, the workflows cannot be updated and the deployment fails, because the required action version is not present in the repository.
-
-Once the updated workflows are present on the default branch (and merged into the branch being deployed, if a different `ref` is targeted), the deployment proceeds using the up-to-date actions. Because the version that runs is always the commit SHA committed to the repository, every upgrade is explicit and auditable, arriving through either a direct commit or a reviewed pull request.
+The frontend writes the workflows to `.github/workflows` with each `uses` statement pinned to an exact commit SHA, so every run is reproducible. When an update is needed and confirmed, it writes the new SHAs through whichever path the repository allows: a direct commit to the default branch, or a pull request if the branch is protected. If the developer cannot open that pull request, the workflows cannot be updated and the deployment fails. Because the version that runs is always the SHA committed to the repository, every upgrade is explicit and auditable.
 
 ### User Story 4.2: Migrate to self-hosted Radius
 
-> As a developer, I want to grow beyond Repo Radius to a self-hosted Radius installation without being locked in, so that outgrowing Repo Radius is not a dead end.
+> As a developer, I want to move my application from Repo Radius to a self-hosted Radius installation, so that I can grow beyond Repo Radius without rewriting my application.
 
 Repo Radius runs the same Radius as a self-hosted installation, so it does nothing to inhibit migration: the application definition is standard Radius and fully portable, and the application definition (plus any custom resource types the frontend stores in the repository) lives in the user's own GitHub repository rather than inside Repo Radius. There is no proprietary format or hidden state that ties an application to Repo Radius.
 
-The migration *process*, however, is out of scope for this specification. A real migration has to account for more than the portable application definition: the externalized data store (see FR17), the already-provisioned cloud resources that a self-hosted control plane must adopt, and where the frontend chooses to keep application and custom-resource-type definitions. These depend heavily on the frontend and the solution Repo Radius is embedded in, so a dedicated feature specification is required to define the migration experience. It is called out here so the evolve journey reflects where migration belongs, and left undetailed pending that spec.
+The migration *process*, however, is out of scope for this specification. A real migration has to account for more than the portable application definition: the externalized data store (see FR17), the already-provisioned cloud resources that a self-hosted control plane must adopt, and where the frontend chooses to keep application and custom-resource-type definitions. These depend heavily on the frontend and the solution Repo Radius is embedded in, so a dedicated feature specification is required to define the migration experience. It is called out here so the evolve journey reflects where migration belongs, and left unspecified pending that spec.
 
 ## User Journey 5: Tailor Repo Radius for a team
 
