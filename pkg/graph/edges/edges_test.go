@@ -36,17 +36,7 @@ const (
 	appScopeType  = "Radius.Core/applications"
 )
 
-// excluded returns the standard exclusion set used by both the CLI
 // static builder and the Radius.Core preview runtime handler.
-func excluded() map[string]struct{} {
-	return map[string]struct{}{
-		appScopeType:                     {},
-		"Radius.Core/environments":       {},
-		"Radius.Core/recipePacks":        {},
-		"Applications.Core/applications": {},
-		"Applications.Core/environments": {},
-	}
-}
 
 // resource is a small test helper that builds an ApplicationGraphResource
 // with the given ID, Type, and pre-populated Connections.
@@ -99,7 +89,7 @@ func TestMergeDependencyEdges_NilGraphOrEmptyInputIsNoOp(t *testing.T) {
 	// Nil graph — no panic.
 	MergeDependencyEdges(nil, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
 		consumerID: {dep(rabbitmqID)},
-	}, excluded())
+	})
 
 	// Empty incoming — no changes.
 	graph := &corerpv20250801preview.ApplicationGraphResponse{
@@ -108,7 +98,7 @@ func TestMergeDependencyEdges_NilGraphOrEmptyInputIsNoOp(t *testing.T) {
 			resource(rabbitmqID, queueType),
 		},
 	}
-	MergeDependencyEdges(graph, nil, excluded())
+	MergeDependencyEdges(graph, nil)
 	require.Empty(t, findResource(t, graph, consumerID).Connections)
 	require.Empty(t, findResource(t, graph, rabbitmqID).Connections)
 }
@@ -125,7 +115,7 @@ func TestMergeDependencyEdges_HappyPath(t *testing.T) {
 	}
 	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
 		consumerID: {dep(rabbitmqID), dep(appsecretID)},
-	}, excluded())
+	})
 
 	// consumer has two outbound Dependency edges (sorted by target).
 	consumer := findResource(t, graph, consumerID)
@@ -162,7 +152,7 @@ func TestMergeDependencyEdges_ExcludedSourceDropsAllOutgoing(t *testing.T) {
 	// The excluded-source rule silently drops it.
 	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
 		appScopeID: {dep(rabbitmqID)},
-	}, excluded())
+	})
 	require.Empty(t, findResource(t, graph, appScopeID).Connections)
 	require.Empty(t, findResource(t, graph, rabbitmqID).Connections)
 }
@@ -181,7 +171,7 @@ func TestMergeDependencyEdges_ExcludedTargetDropsEdge(t *testing.T) {
 	// kept. Common shape in real Bicep templates.
 	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
 		consumerID: {dep(appScopeID), dep(rabbitmqID)},
-	}, excluded())
+	})
 	consumer := findResource(t, graph, consumerID)
 	require.Len(t, consumer.Connections, 1)
 	require.Equal(t, rabbitmqID, *consumer.Connections[0].ID)
@@ -201,14 +191,14 @@ func TestMergeDependencyEdges_UnknownEndpointIsDropped(t *testing.T) {
 	// Source not in graph.
 	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
 		"/planes/radius/local/resourcegroups/default/providers/Nowhere/things/x": {dep(rabbitmqID)},
-	}, excluded())
+	})
 	require.Empty(t, findResource(t, graph, consumerID).Connections)
 	require.Empty(t, findResource(t, graph, rabbitmqID).Connections)
 
 	// Target not in graph.
 	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
 		consumerID: {dep("/planes/radius/local/resourcegroups/default/providers/Nowhere/things/x")},
-	}, excluded())
+	})
 	require.Empty(t, findResource(t, graph, consumerID).Connections)
 }
 
@@ -230,7 +220,7 @@ func TestMergeDependencyEdges_ConnectionWinsOverDependency(t *testing.T) {
 	}
 	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
 		consumerID: {dep(rabbitmqID)},
-	}, excluded())
+	})
 
 	// consumer still has exactly one outbound entry, tagged Connection.
 	consumer := findResource(t, graph, consumerID)
@@ -254,7 +244,7 @@ func TestMergeDependencyEdges_DuplicateIncomingPairsCollapse(t *testing.T) {
 	}
 	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
 		consumerID: {dep(rabbitmqID), dep(rabbitmqID), dep(rabbitmqID)},
-	}, excluded())
+	})
 
 	require.Len(t, findResource(t, graph, consumerID).Connections, 1,
 		"repeated (source, target) pair in the same batch must collapse")
@@ -278,7 +268,7 @@ func TestMergeDependencyEdges_MalformedInputEntriesAreSkipped(t *testing.T) {
 			{ID: to.Ptr(rabbitmqID), Direction: to.Ptr(corerpv20250801preview.DirectionOutbound), Kind: to.Ptr(corerpv20250801preview.ConnectionKindConnection)}, // wrong Kind
 			dep(rabbitmqID), // valid — this one is emitted
 		},
-	}, excluded())
+	})
 
 	consumer := findResource(t, graph, consumerID)
 	require.Len(t, consumer.Connections, 1, "only the valid entry must be emitted")

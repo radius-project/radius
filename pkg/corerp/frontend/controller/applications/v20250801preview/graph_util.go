@@ -59,22 +59,6 @@ const (
 	portsPath       = "/properties/container/ports"
 )
 
-// dependsOnExclusionSet is the resource-type filter applied to caller-supplied
-// dependsOnEdges before they are merged into the server-computed graph. It
-// mirrors excludeResourceTypes in pkg/cli/graph/modeled.go and is duplicated
-// here rather than shared so the server keeps a self-contained policy — a CLI
-// version that starts sending a superset of edge sources must not silently
-// change what the server accepts.
-//
-// Kept in sync with pkg/cli/graph/modeled.go excludeResourceTypes.
-var dependsOnExclusionSet = map[string]struct{}{
-	"Applications.Core/applications": {},
-	"Applications.Core/environments": {},
-	"Radius.Core/applications":       {},
-	"Radius.Core/environments":       {},
-	"Radius.Core/recipePacks":        {},
-}
-
 // computeGraphPayload computes the v20250801preview application graph for the
 // given application and environment IDs. It is the version-typed counterpart
 // to the Applications.Core-owned pipeline in
@@ -83,9 +67,9 @@ var dependsOnExclusionSet = map[string]struct{}{
 //
 // dependsOnEdges carries the optional caller-supplied Kind: Dependency edges
 // from GetGraphRequest.DependsOnEdges. They are merged onto the connection-only
-// graph after computeGraph returns, subject to dependsOnExclusionSet and the
-// Connection-wins policy in edges.MergeDependencyEdges. Passing a nil or empty
-// map leaves the graph unchanged.
+// graph after computeGraph returns, subject to edges.ExcludedResourceTypes and
+// the Connection-wins policy in edges.MergeDependencyEdges. Passing a nil or
+// empty map leaves the graph unchanged.
 func computeGraphPayload(ctx context.Context, applicationID resources.ID, environmentID string, connection sdk.Connection, dependsOnEdges map[string][]*corerpv20250801preview.ApplicationGraphConnection) (*corerpv20250801preview.ApplicationGraphResponse, error) {
 	// An application **MUST** have an environment id
 	parsedEnvironmentID, err := resources.ParseResource(environmentID)
@@ -515,7 +499,7 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 	// graph. Excluded types and any
 	// edge already present as Kind: Connection are redundant and dropped by the helper;
 	// a nil or empty dependsOnEdges leaves the graph unchanged.
-	edges.MergeDependencyEdges(&graph, dependsOnEdges, dependsOnExclusionSet)
+	edges.MergeDependencyEdges(&graph, dependsOnEdges)
 
 	return &graph
 }

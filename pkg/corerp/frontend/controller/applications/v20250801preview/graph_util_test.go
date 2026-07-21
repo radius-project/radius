@@ -32,8 +32,8 @@ import (
 // plumbing:
 //
 //  1. computeGraph forwards dependsOnEdges to edges.MergeDependencyEdges.
-//  2. dependsOnExclusionSet drops caller-supplied edges from application and
-//     environment sources, matching the CLI-side excludeResourceTypes.
+//  2. edges.ExcludedResourceTypes drops caller-supplied edges from application
+//     and environment sources.
 //  3. Missing / nil dependsOnEdges is a no-op.
 func Test_computeGraph_MergesDependsOnEdges(t *testing.T) {
 	const (
@@ -139,7 +139,7 @@ func Test_computeGraph_MergesDependsOnEdges(t *testing.T) {
 	})
 
 	t.Run("edges sourced from excluded types are dropped", func(t *testing.T) {
-		// Radius.Core/applications is in dependsOnExclusionSet, so a
+		// Radius.Core/applications is in edges.ExcludedResourceTypes, so a
 		// caller-supplied edge sourced from it must not land on the graph.
 		graph := computeGraph(
 			[]generated.GenericResource{container, queue, appResource},
@@ -162,18 +162,4 @@ func Test_computeGraph_MergesDependsOnEdges(t *testing.T) {
 			assert.NotEqual(t, appID, *c.ID, "excluded-source Dependency edge should not be merged")
 		}
 	})
-}
-
-// Test_dependsOnExclusionSet pins the server-side exclusion policy so it stays
-// in sync with excludeResourceTypes in pkg/cli/graph/modeled.go. If either side
-// changes, both this assertion and the CLI-side one must be updated together.
-func Test_dependsOnExclusionSet(t *testing.T) {
-	want := map[string]struct{}{
-		"Applications.Core/applications": {},
-		"Applications.Core/environments": {},
-		"Radius.Core/applications":       {},
-		"Radius.Core/environments":       {},
-		"Radius.Core/recipePacks":        {},
-	}
-	assert.Equal(t, want, dependsOnExclusionSet)
 }

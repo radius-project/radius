@@ -105,15 +105,6 @@ var sensitiveKeyBlocklist = map[string]struct{}{
 // pointless work on the majority of property values.
 var armExpressionPattern = regexp.MustCompile(`^\[.*\]$`)
 
-// excludeResourceTypes are the resource types that are not graph members.
-var excludeResourceTypes = map[string]struct{}{
-	"Applications.Core/applications": {},
-	"Applications.Core/environments": {},
-	"Radius.Core/applications":       {},
-	"Radius.Core/environments":       {},
-	"Radius.Core/recipePacks":        {},
-}
-
 // resourceIDExpression matches an ARM template resourceId() expression
 // produced by `bicep build` for Radius resource references, e.g.
 //
@@ -184,7 +175,7 @@ func BuildModeledGraph(template map[string]any, includeIcons bool) (*corerpv2025
 	// IDs under the default plane / resource group used elsewhere in
 	// this file. Callers targeting a specific workspace scope should use
 	// ExtractDependsOnEdges directly with their scope instead.
-	edges.MergeDependencyEdges(graph, ExtractDependsOnEdges(template, ""), excludeResourceTypes)
+	edges.MergeDependencyEdges(graph, ExtractDependsOnEdges(template, ""))
 
 	if includeIcons {
 		graph.Icons = collectStaticGraphIcons(graphResources)
@@ -210,7 +201,7 @@ func BuildModeledGraph(template map[string]any, includeIcons bool) (*corerpv2025
 // and resource group, which is only appropriate when the extracted
 // edges are merged into a modeled graph built by BuildModeledGraph.
 //
-// Resources whose type is in excludeResourceTypes are omitted as
+// Resources whose type is in edges.ExcludedResourceTypes are omitted as
 // sources (they are never edge sources anyway). Individual dependsOn
 // entries that resolve to a canonical ID are included regardless of
 // target type; edges.MergeDependencyEdges applies the target-type
@@ -844,7 +835,7 @@ func buildResourceIDInScope(rootScope, resourceType, name string) string {
 // isExcludedResourceType reports whether the given resource type is one of
 // the app/env/recipe-pack types that must be excluded from the graph.
 func isExcludedResourceType(resourceType string) bool {
-	for excluded := range excludeResourceTypes {
+	for excluded := range edges.ExcludedResourceTypes {
 		if strings.EqualFold(resourceType, excluded) {
 			return true
 		}
