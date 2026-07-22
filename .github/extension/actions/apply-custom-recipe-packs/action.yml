@@ -58,9 +58,6 @@ runs:
           exit 0
         fi
 
-        echo "Custom recipe pack file:"
-        cat "$RECIPE_PACK_BICEP"
-        echo ""
         echo "Deploying custom recipe pack from $RECIPE_PACK_BICEP..."
         rad deploy "$RECIPE_PACK_BICEP"
 
@@ -68,8 +65,10 @@ runs:
         # provider pack created earlier plus the custom pack just deployed) and
         # collect their full resource IDs. IDs are used rather than names so the
         # env update resolves each pack unambiguously regardless of its scope.
+        # select() drops any entry whose .id is missing, null, or non-string so a
+        # malformed pack cannot abort jq or inject an empty element into the list.
         echo "Listing recipe packs..."
-        PACK_IDS=$(rad recipe-pack list -o json | jq -r '(if type == "array" then . else [.] end) | map(.id) | join(",")')
+        PACK_IDS=$(rad recipe-pack list -o json | jq -r '(if type == "array" then . else [.] end) | map(.id) | map(select(type == "string" and . != "")) | join(",")')
 
         if [ -z "$PACK_IDS" ]; then
           echo "No recipe packs found to attach to environment '$ENVIRONMENT'." >&2

@@ -71,8 +71,11 @@ runs:
         # --yes bypasses the interactive confirmation prompt; --preview selects the
         # Radius.Core implementation the deploy workflow provisions (without it the
         # base command dispatches to the legacy, non-Radius.Core surface).
+        # Keep the group label constant: RESOURCE_NAME is untrusted and a newline
+        # or workflow-command-like text in it could corrupt log rendering or inject
+        # workflow commands. The actual `rad` invocation below still carries the name.
         outfile=$(mktemp)
-        echo "::group::rad ${VERB[*]} $RESOURCE_NAME --yes --preview"
+        echo "::group::rad ${VERB[*]} --yes --preview"
         rad "${VERB[@]}" "$RESOURCE_NAME" --yes --preview 2>&1 | tee "$outfile"
         EXIT=${PIPESTATUS[0]}
         echo "::endgroup::"
