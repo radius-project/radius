@@ -17,6 +17,7 @@ func (a ApplicationGraphConnection) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
 	populate(objectMap, "direction", a.Direction)
 	populate(objectMap, "id", a.ID)
+	populate(objectMap, "kind", a.Kind)
 	return json.Marshal(objectMap)
 }
 
@@ -34,6 +35,9 @@ func (a *ApplicationGraphConnection) UnmarshalJSON(data []byte) error {
 			delete(rawMsg, key)
 		case "id":
 			err = unpopulate(val, "ID", &a.ID)
+			delete(rawMsg, key)
+		case "kind":
+			err = unpopulate(val, "Kind", &a.Kind)
 			delete(rawMsg, key)
 		}
 		if err != nil {
@@ -659,6 +663,7 @@ func (e *EnvironmentResourceListResult) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type GetGraphRequest.
 func (g GetGraphRequest) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]any)
+	populate(objectMap, "dependsOnEdges", g.DependsOnEdges)
 	populate(objectMap, "includeIcons", g.IncludeIcons)
 	return json.Marshal(objectMap)
 }
@@ -672,6 +677,9 @@ func (g *GetGraphRequest) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "dependsOnEdges":
+			err = unpopulate(val, "DependsOnEdges", &g.DependsOnEdges)
+			delete(rawMsg, key)
 		case "includeIcons":
 			err = unpopulate(val, "IncludeIcons", &g.IncludeIcons)
 			delete(rawMsg, key)

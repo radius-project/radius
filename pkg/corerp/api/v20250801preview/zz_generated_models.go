@@ -13,6 +13,11 @@ type ApplicationGraphConnection struct {
 
 	// REQUIRED; The resource ID
 	ID *string
+
+	// REQUIRED; Discriminator identifying the origin of this edge. 'Connection' edges are author-declared entries under properties.connections.
+	// 'Dependency' edges are implicit dependencies derived from Bicep's dependsOn list (static graph only in Phase 1). Every
+	// emitted edge carries a kind.
+	Kind *ConnectionKind
 }
 
 // ApplicationGraphOutputResource - Describes an output resource that comprises an application graph resource.
@@ -289,6 +294,14 @@ type EnvironmentResourceListResult struct {
 
 // GetGraphRequest - Request body for the getGraph action.
 type GetGraphRequest struct {
+	// Optional caller-supplied dependency edges, grouped by source resource ID. Each entry maps a source Radius resource ID to
+	// the list of outbound Kind: Dependency edges leaving that source. Every entry MUST have direction: Outbound and kind: Dependency;
+	// entries that don't are ignored. The server merges these onto the connection-only graph it computes from stored resources:
+	// excluded types are dropped, unknown endpoints are dropped, and any pair already present as Kind: Connection wins over the
+	// caller-supplied Dependency. Typically populated by `rad app graph -a <name> <app.bicep>` after compiling the Bicep template
+	// locally.
+	DependsOnEdges map[string][]*ApplicationGraphConnection
+
 	// When true, `ApplicationGraphResponse.icons` is populated with the SVG bytes for every distinct `iconHash` referenced by
 	// the response's resources. When false or omitted, only per-resource `iconHash` values are returned.
 	IncludeIcons *bool
