@@ -11,7 +11,7 @@ This is intentionally scoped to runtime completion of the existing API contract.
 
 ## Context and Problem
 
-The checked-in architecture document already calls out this limitation as a follow-up. API validation accepts identity methods, but the environment-to-driver bridge currently only forwards entries containing `basicAuthSecretId`, which makes `AzureWI` and `AwsIrsa` no-ops at runtime.
+The checked-in architecture document ([docs/architecture/terraform-bicep-config.md](../../../docs/architecture/terraform-bicep-config.md), §Status and known limitations) already calls out this limitation as a follow-up. API validation accepts identity methods, but the environment-to-driver bridge currently only forwards entries containing `basicAuthSecretId`, which makes `AzureWI` and `AwsIrsa` no-ops at runtime.
 
 Current behavior creates a gap between accepted configuration and effective execution behavior:
 
