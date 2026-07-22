@@ -104,7 +104,7 @@ jobs:
 
       - name: Initialize CodeQL
         if: ${{ !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/init@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         with:
           config-file: .github/configs/.codeql.yml
           languages: ${{ matrix.language }}
@@ -112,7 +112,7 @@ jobs:
 
       - name: Auto build
         if: matrix.build-mode == 'autobuild'
-        uses: github/codeql-action/autobuild@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        uses: github/codeql-action/autobuild@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         with:
           working-directory: ${{ matrix.working-directory }}
 
@@ -135,14 +135,14 @@ jobs:
       # results are uploaded on `push`/`pull_request` against persistent refs.
       - name: Upload GoSec result
         if: ${{ always() && github.event_name != 'merge_group' && matrix.language == 'custom-gosec' }}
-        uses: github/codeql-action/upload-sarif@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         with:
           sarif_file: gosec-results.sarif
           wait-for-processing: true
 
       - name: Perform CodeQL Analysis
         if: ${{ !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/analyze@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         id: codeql-analyze
         with:
           category: /language:${{matrix.language}}
@@ -155,7 +155,7 @@ jobs:
       # results are uploaded on `push`/`pull_request` against persistent refs.
       - name: Upload CodeQL result
         if: ${{ always() && github.event_name != 'merge_group' && !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/upload-sarif@54f647b7e1bb85c95cddabcd46b0c578ec92bc1a # v4.36.3
+        uses: github/codeql-action/upload-sarif@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
         with:
           sarif_file: ${{ format('{0}/{1}.sarif', steps.codeql-analyze.outputs.sarif-output, matrix.language) }}
           wait-for-processing: true
