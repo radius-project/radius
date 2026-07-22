@@ -224,33 +224,41 @@ runs:
           for cmd in "${CLEAN[@]}"; do
             verb="${cmd%% *}"
             if [ "$verb" = "deploy" ]; then
-              # For deploy commands, append the image and the secret application
-              # parameters. Build an argv array so secret values with special
-              # characters are never word-split, and keep them out of the
+              # For deploy commands, build an argv array so secret values with
+              # special characters are never word-split, and keep them out of the
               # recorded command string (only the non-secret `$cmd` is recorded).
               # shellcheck disable=SC2086
               read -ra CMD_ARGV <<< "$cmd"
               EXTRA_PARAMS=()
-              if [ -n "$APP_IMAGE" ]; then
-                EXTRA_PARAMS+=(--parameters "image=$APP_IMAGE")
-              fi
-              if [ -n "${RADIUS_DEPLOY_PARAMS//[[:space:]]/}" ]; then
-                while IFS= read -r _pname; do
-                  [ -z "$_pname" ] && continue
-                  _pval=$(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r --arg k "$_pname" '.[$k]')
-                  EXTRA_PARAMS+=(--parameters "$_pname=$_pval")
-                done < <(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r 'keys_unsorted[]')
-              fi
-              # Registry credentials for the app's Radius.Security/secrets
-              # resource. Appended to the argv array so the secret value is never
-              # word-split or written into the recorded command string. Skipped
-              # when the params secret already supplies the key, so the same
-              # --parameters is never passed twice.
-              if [ -n "$REGISTRY_USERNAME" ] && ! deploy_params_has_key registryUsername; then
-                EXTRA_PARAMS+=(--parameters "registryUsername=$REGISTRY_USERNAME")
-              fi
-              if [ -n "$REGISTRY_PASSWORD" ] && ! deploy_params_has_key registryPassword; then
-                EXTRA_PARAMS+=(--parameters "registryPassword=$REGISTRY_PASSWORD")
+              # The image, application, and registry parameters belong to the app
+              # only. `rad deploy` rejects unknown parameters, so a custom command
+              # that deploys a different template (e.g. an environment/recipe-pack
+              # bicep) must not receive them. The deploy target is the first
+              # positional argument after the `deploy` verb; inject the app-only
+              # parameters only when it is APP_FILE.
+              DEPLOY_TARGET="${CMD_ARGV[1]:-}"
+              if [ "$DEPLOY_TARGET" = "$APP_FILE" ]; then
+                if [ -n "$APP_IMAGE" ]; then
+                  EXTRA_PARAMS+=(--parameters "image=$APP_IMAGE")
+                fi
+                if [ -n "${RADIUS_DEPLOY_PARAMS//[[:space:]]/}" ]; then
+                  while IFS= read -r _pname; do
+                    [ -z "$_pname" ] && continue
+                    _pval=$(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r --arg k "$_pname" '.[$k]')
+                    EXTRA_PARAMS+=(--parameters "$_pname=$_pval")
+                  done < <(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r 'keys_unsorted[]')
+                fi
+                # Registry credentials for the app's Radius.Security/secrets
+                # resource. Appended to the argv array so the secret value is never
+                # word-split or written into the recorded command string. Skipped
+                # when the params secret already supplies the key, so the same
+                # --parameters is never passed twice.
+                if [ -n "$REGISTRY_USERNAME" ] && ! deploy_params_has_key registryUsername; then
+                  EXTRA_PARAMS+=(--parameters "registryUsername=$REGISTRY_USERNAME")
+                fi
+                if [ -n "$REGISTRY_PASSWORD" ] && ! deploy_params_has_key registryPassword; then
+                  EXTRA_PARAMS+=(--parameters "registryPassword=$REGISTRY_PASSWORD")
+                fi
               fi
               if ! record "$idx" "$cmd" rad "${CMD_ARGV[@]}" "${EXTRA_PARAMS[@]}"; then
                 OVERALL_OUTCOME="command_failed"
