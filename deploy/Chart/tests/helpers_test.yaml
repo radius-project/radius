@@ -10,6 +10,7 @@ templates:
   - de/deployment.yaml
   - dashboard/deployment.yaml
   - database/statefulset.yaml
+  - pre-upgrade/job.yaml
 tests:
   - it: should use default ghcr.io registry when global.imageRegistry is not set
     set:
@@ -323,6 +324,30 @@ tests:
           path: spec.template.spec.containers[0].image
           value: internal.registry.io/mirror/postgres:14-alpine
         template: database/statefulset.yaml
+
+  - it: should not set imagePullPolicy on chart-managed containers
+    templates:
+      - controller/deployment.yaml
+      - dashboard/deployment.yaml
+      - database/statefulset.yaml
+      - pre-upgrade/job.yaml
+    set:
+      dashboard.enabled: true
+      database.enabled: true
+      preupgrade.enabled: true
+    asserts:
+      - isNull:
+          path: spec.template.spec.containers[0].imagePullPolicy
+        template: controller/deployment.yaml
+      - isNull:
+          path: spec.template.spec.containers[0].imagePullPolicy
+        template: dashboard/deployment.yaml
+      - isNull:
+          path: spec.template.spec.containers[0].imagePullPolicy
+        template: database/statefulset.yaml
+      - isNull:
+          path: spec.template.spec.containers[0].imagePullPolicy
+        template: pre-upgrade/job.yaml
 
   - it: should handle mixed scenario - some with full paths, some without
     set:
