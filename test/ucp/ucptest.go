@@ -28,7 +28,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/test"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
@@ -79,7 +78,7 @@ func NewUCPTest(t *testing.T, name string, runMethod TestRunMethod) UCPTest {
 }
 
 func (ucptest UCPTest) Test(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 
 	ucptest.CheckRequiredFeatures(ctx, t)
 

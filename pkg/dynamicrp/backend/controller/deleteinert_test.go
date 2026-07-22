@@ -21,7 +21,6 @@ import (
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/components/database"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -49,7 +48,7 @@ func Test_InertDeleteController_Run(t *testing.T) {
 	// Controller needs to call delete on the resource.
 	databaseClient.EXPECT().Delete(gomock.Any(), request.ResourceID).Return(nil).Times(1)
 
-	result, err := controller.Run(testcontext.New(t), request)
+	result, err := controller.Run(t.Context(), request)
 	require.NoError(t, err)
 	require.Equal(t, ctrl.Result{}, result)
 }

@@ -30,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -98,7 +97,7 @@ func Test_Update(t *testing.T) {
 			}).
 			Times(1)
 
-		err := updater.Update(testcontext.New(t), testURL.String(), testID, apiVersion)
+		err := updater.Update(t.Context(), testURL.String(), testID, apiVersion)
 		require.NoError(t, err)
 	})
 
@@ -144,7 +143,7 @@ func Test_Update(t *testing.T) {
 			}).
 			Times(1)
 
-		err := updater.Update(testcontext.New(t), testURL.String(), testID, apiVersion)
+		err := updater.Update(t.Context(), testURL.String(), testID, apiVersion)
 		require.NoError(t, err)
 	})
 
@@ -173,7 +172,7 @@ func Test_Update(t *testing.T) {
 		// Mock a successful (non-terminal) response from the downstream API.
 		roundTripper.RespondWithJSON(t, http.StatusOK, resource)
 
-		err := updater.Update(testcontext.New(t), testURL.String(), testID, apiVersion)
+		err := updater.Update(t.Context(), testURL.String(), testID, apiVersion)
 		require.Error(t, err)
 		require.ErrorIs(t, err, &InProgressErr{})
 	})
@@ -206,7 +205,7 @@ func Test_Update(t *testing.T) {
 		// Mock a successful (non-terminal) response from the downstream API.
 		roundTripper.RespondWithJSON(t, http.StatusOK, resource)
 
-		err := updater.Update(testcontext.New(t), testURL.String(), testID, apiVersion)
+		err := updater.Update(t.Context(), testURL.String(), testID, apiVersion)
 		require.Error(t, err)
 		require.ErrorIs(t, err, &InProgressErr{})
 	})
@@ -223,7 +222,7 @@ func Test_Update(t *testing.T) {
 			Return(nil, errors.New("this will be retried")).
 			Times(3)
 
-		err := updater.Update(testcontext.New(t), testURL.String(), testID, apiVersion)
+		err := updater.Update(t.Context(), testURL.String(), testID, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, "failed to update tracked resource after 3 attempts", err.Error())
 	})
@@ -267,7 +266,7 @@ func Test_run(t *testing.T) {
 			}).
 			Times(1)
 
-		err := updater.run(testcontext.New(t), testID, testURL, apiVersion)
+		err := updater.run(t.Context(), testID, testURL, apiVersion)
 		require.NoError(t, err)
 	})
 
@@ -313,7 +312,7 @@ func Test_run(t *testing.T) {
 			}).
 			Times(1)
 
-		err := updater.run(testcontext.New(t), testID, testURL, apiVersion)
+		err := updater.run(t.Context(), testID, testURL, apiVersion)
 		require.NoError(t, err)
 	})
 
@@ -352,7 +351,7 @@ func Test_run(t *testing.T) {
 			}).
 			Times(1)
 
-		err := updater.run(testcontext.New(t), testID, testURL, apiVersion)
+		err := updater.run(t.Context(), testID, testURL, apiVersion)
 		require.NoError(t, err)
 	})
 
@@ -376,7 +375,7 @@ func Test_run(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		err := updater.run(testcontext.New(t), testID, testURL, apiVersion)
+		err := updater.run(t.Context(), testID, testURL, apiVersion)
 		require.NoError(t, err)
 	})
 
@@ -404,7 +403,7 @@ func Test_run(t *testing.T) {
 		// Mock a successful (terminal) response from the downstream API.
 		roundTripper.RespondWithJSON(t, http.StatusOK, resource)
 
-		err := updater.run(testcontext.New(t), testID, testURL, apiVersion)
+		err := updater.run(t.Context(), testID, testURL, apiVersion)
 		require.Error(t, err)
 		require.ErrorIs(t, err, &InProgressErr{})
 	})
@@ -445,7 +444,7 @@ func Test_fetch(t *testing.T) {
 			},
 		}
 
-		state, err := updater.fetch(testcontext.New(t), testURL)
+		state, err := updater.fetch(t.Context(), testURL)
 		require.NoError(t, err)
 		require.Equal(t, expected, state)
 	})
@@ -456,7 +455,7 @@ func Test_fetch(t *testing.T) {
 		// We consider 404 a success case.
 		roundTripper.RespondWithJSON(t, http.StatusNotFound, errorResponse)
 
-		state, err := updater.fetch(testcontext.New(t), testURL)
+		state, err := updater.fetch(t.Context(), testURL)
 		require.NoError(t, err)
 		require.Nil(t, state)
 	})
@@ -470,7 +469,7 @@ func Test_fetch(t *testing.T) {
 		_, _ = w.Write([]byte("LOL here's some not-JSON"))
 		roundTripper.Response = w.Result()
 
-		state, err := updater.fetch(testcontext.New(t), testURL)
+		state, err := updater.fetch(t.Context(), testURL)
 		require.Error(t, err)
 		require.Equal(t, "response is not JSON. Content-Type: \"text/plain\"", err.Error())
 		require.Nil(t, state)
@@ -481,7 +480,7 @@ func Test_fetch(t *testing.T) {
 
 		roundTripper.RespondWithJSON(t, http.StatusBadRequest, errorResponse)
 
-		state, err := updater.fetch(testcontext.New(t), testURL)
+		state, err := updater.fetch(t.Context(), testURL)
 		require.Error(t, err)
 		require.Equal(t, "request failed with status code 400 Bad Request:\n"+errorResponseText, err.Error())
 		require.Nil(t, state)

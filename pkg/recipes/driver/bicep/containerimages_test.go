@@ -39,7 +39,6 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/kubernetes/clusteraccess"
-	"github.com/radius-project/radius/test/testcontext"
 )
 
 func requireScriptShell(t *testing.T) {
@@ -289,7 +288,7 @@ printf '{"imageReference":"%s/%s:built"}' "$registry" "$resource_name" > "$RADIU
 	value["emptyObject"] = map[string]any{}
 	response := &recipes.RecipeOutput{Values: map[string]any{imageBuildOutputName: "plumbing"}}
 	err := (&bicepDriver{}).executeImageBuildHook(
-		testcontext.New(t),
+		t.Context(),
 		map[string]any{"variables": map[string]any{containerImagesBuildScriptVariableName: script}},
 		imageBuildOutputs(value),
 		response,
@@ -366,7 +365,7 @@ printf '{"imageReference":"operator.example/team/testimage:v1"}' > "$RADIUS_EXEC
 	response := &recipes.RecipeOutput{}
 	d := &bicepDriver{clusterAccessResolver: clusteraccess.NewResolver()}
 	err = d.executeImageBuildHook(
-		testcontext.New(t),
+		t.Context(),
 		map[string]any{"variables": map[string]any{containerImagesBuildScriptVariableName: script}},
 		imageBuildOutputs(value),
 		response,
@@ -437,7 +436,7 @@ func Test_OperatorRegistryParameters_RejectsInvalidDefinition(t *testing.T) {
 func Test_ExecuteImageBuild_FailureSurfacesStderr(t *testing.T) {
 	requireScriptShell(t)
 
-	_, err := (&bicepDriver{}).executeImageBuild(testcontext.New(t), `echo "registry unreachable" >&2; exit 7`, map[string]any{}, "", "", driver.ExecuteOptions{})
+	_, err := (&bicepDriver{}).executeImageBuild(t.Context(), `echo "registry unreachable" >&2; exit 7`, map[string]any{}, "", "", driver.ExecuteOptions{})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "exit status 7")
 	require.Contains(t, err.Error(), "registry unreachable")
@@ -462,7 +461,7 @@ func Test_ExecuteImageBuild_StrictResultContract(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := (&bicepDriver{}).executeImageBuild(testcontext.New(t), tc.script, map[string]any{}, "", "", driver.ExecuteOptions{})
+			_, err := (&bicepDriver{}).executeImageBuild(t.Context(), tc.script, map[string]any{}, "", "", driver.ExecuteOptions{})
 			require.Error(t, err)
 			require.Contains(t, err.Error(), tc.errPart)
 		})
@@ -474,7 +473,7 @@ func Test_ExecuteImageBuild_UnauthenticatedBlanksDockerConfig(t *testing.T) {
 
 	t.Setenv(dockerConfigEnvName, "/ambient/docker")
 	script := `printf '{"imageReference":"probe%s"}' "${DOCKER_CONFIG-unset}" > "$RADIUS_EXEC_OUTPUT"`
-	imageReference, err := (&bicepDriver{}).executeImageBuild(testcontext.New(t), script, map[string]any{}, "", "", driver.ExecuteOptions{})
+	imageReference, err := (&bicepDriver{}).executeImageBuild(t.Context(), script, map[string]any{}, "", "", driver.ExecuteOptions{})
 	require.NoError(t, err)
 	require.Equal(t, "probe", imageReference)
 }
@@ -520,7 +519,7 @@ users:
 
 	d := &bicepDriver{clusterAccessResolver: clusteraccess.NewResolver()}
 	dir := filepath.Join(t.TempDir(), "docker")
-	err = d.writeDockerConfig(testcontext.New(t), "ghcr.io/radius-project", "ghcr-creds", dir, driver.ExecuteOptions{BaseOptions: driver.BaseOptions{Configuration: recipes.Configuration{
+	err = d.writeDockerConfig(t.Context(), "ghcr.io/radius-project", "ghcr-creds", dir, driver.ExecuteOptions{BaseOptions: driver.BaseOptions{Configuration: recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{Kubernetes: &recipes.KubernetesRuntime{Namespace: "testapp"}},
 	}}})
 	require.NoError(t, err)
@@ -573,13 +572,13 @@ func Test_WriteDockerConfig_SecretFailures(t *testing.T) {
 		Runtime: recipes.RuntimeConfiguration{Kubernetes: &recipes.KubernetesRuntime{Namespace: "testapp"}},
 	}}}
 
-	err := (&bicepDriver{}).writeDockerConfig(testcontext.New(t), registry, registrySecretName, t.TempDir(), opts)
+	err := (&bicepDriver{}).writeDockerConfig(t.Context(), registry, registrySecretName, t.TempDir(), opts)
 	require.ErrorContains(t, err, "no cluster access resolver configured")
 
 	missingPath := filepath.Join(t.TempDir(), "missing-target.kubeconfig")
 	t.Setenv(clusteraccess.TargetKubeconfigEnvVar, missingPath)
 	d := &bicepDriver{clusterAccessResolver: clusteraccess.NewResolver()}
-	err = d.writeDockerConfig(testcontext.New(t), registry, registrySecretName, t.TempDir(), opts)
+	err = d.writeDockerConfig(t.Context(), registry, registrySecretName, t.TempDir(), opts)
 	require.ErrorContains(t, err, clusteraccess.TargetKubeconfigEnvVar)
 	require.ErrorContains(t, err, missingPath)
 }
@@ -603,7 +602,7 @@ func Test_DrainScriptStream_LongLineBoundsLoggingAndTail(t *testing.T) {
 func Test_RunScript_CancelKillsSpawnedProcesses(t *testing.T) {
 	requireScriptShell(t)
 
-	ctx, cancel := context.WithTimeout(testcontext.New(t), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 500*time.Millisecond)
 	defer cancel()
 	start := time.Now()
 	_, err := runScript(ctx, "sleep 30 & wait", nil, os.Environ(), t.TempDir(), logr.Discard())
