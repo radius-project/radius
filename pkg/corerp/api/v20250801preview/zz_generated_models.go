@@ -409,8 +409,8 @@ type EnvironmentProperties struct {
 // rad deploy ./environment.bicep
 // ```
 // ## Cloud providers
-// By default an Environment deploys to Kubernetes. To deploy cloud resources, configure the `providers` property with your
-// cloud account. For AWS, set the account ID and region:
+// To use Recipes that provision resources in a cloud provider, you must configure that provider's account details on the
+// Environment by setting the `providers` property. For AWS, set the account ID and the region resources are deployed to:
 // ```bicep
 // extension radius
 // resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
@@ -425,7 +425,7 @@ type EnvironmentProperties struct {
 // }
 // }
 // ```
-// For Azure, set the subscription and resource group that resources are deployed into:
+// For Azure, set the subscription ID and the name of the resource group that resources are deployed to:
 // ```bicep
 // extension radius
 // resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
