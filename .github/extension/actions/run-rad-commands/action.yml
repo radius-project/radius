@@ -166,7 +166,18 @@ runs:
         add_secret() {
           [ -n "$1" ] || return 0
           SECRET_VALUES+=("$1")
-          echo "::add-mask::$1"
+          # Mask one line at a time. GitHub reliably masks a single-line value, but
+          # a multiline ::add-mask:: leaves the second and later lines unmasked (and
+          # prints them verbatim). Strip CR and escape '%' -- the workflow-command
+          # escape character -- so a value can neither break nor inject the command,
+          # then emit a mask for each non-empty line.
+          local _line
+          while IFS= read -r _line || [ -n "$_line" ]; do
+            _line=${_line//$'\r'/}
+            [ -n "$_line" ] || continue
+            _line=${_line//'%'/'%25'}
+            echo "::add-mask::$_line"
+          done <<< "$1"
         }
         add_secret "$REGISTRY_PASSWORD"
         if [ -n "${RADIUS_DEPLOY_PARAMS//[[:space:]]/}" ]; then
@@ -177,9 +188,11 @@ runs:
         fi
 
         # Replace every known secret value in the given file with *** in place, so
-        # the artifact never carries a credential that `rad` happened to echo. Uses
-        # bash literal substitution (no regex) so values with special characters are
-        # matched verbatim.
+        # the artifact never carries a credential that `rad` happened to echo. The
+        # search value is double-quoted inside the substitution, which disables
+        # pattern matching so it is compared as a literal string -- glob
+        # metacharacters (* ? [ ] \) in a secret are matched verbatim, not as
+        # patterns.
         scrub_secrets() {
           local file="$1" content value
           [ ${#SECRET_VALUES[@]} -eq 0 ] && return 0
