@@ -144,6 +144,14 @@ runs:
           return "$code"
         }
 
+        # True when RADIUS_DEPLOY_PARAMS (a JSON object) already carries the given
+        # key. Used to avoid passing a --parameters twice when an older environment
+        # still supplies registryUsername/registryPassword in the params secret.
+        deploy_params_has_key() {
+          [ -n "${RADIUS_DEPLOY_PARAMS//[[:space:]]/}" ] || return 1
+          printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -e --arg k "$1" 'has($k)' >/dev/null 2>&1
+        }
+
         if [ -n "${RAD_COMMANDS//[[:space:]]/}" ]; then
           # Caller-supplied commands: a single command string or a JSON array, run in
           # order with the `rad` prefix omitted.
@@ -196,11 +204,13 @@ runs:
               fi
               # Registry credentials for the app's Radius.Security/secrets
               # resource. Appended to the argv array so the secret value is never
-              # word-split or written into the recorded command string.
-              if [ -n "$REGISTRY_USERNAME" ]; then
+              # word-split or written into the recorded command string. Skipped
+              # when the params secret already supplies the key, so the same
+              # --parameters is never passed twice.
+              if [ -n "$REGISTRY_USERNAME" ] && ! deploy_params_has_key registryUsername; then
                 EXTRA_PARAMS+=(--parameters "registryUsername=$REGISTRY_USERNAME")
               fi
-              if [ -n "$REGISTRY_PASSWORD" ]; then
+              if [ -n "$REGISTRY_PASSWORD" ] && ! deploy_params_has_key registryPassword; then
                 EXTRA_PARAMS+=(--parameters "registryPassword=$REGISTRY_PASSWORD")
               fi
               if ! record "$idx" "$cmd" rad "${CMD_ARGV[@]}" "${EXTRA_PARAMS[@]}"; then
@@ -244,10 +254,12 @@ runs:
           # Registry credentials for the app's Radius.Security/secrets resource
           # (`ghcr-registry-creds`). Appended to the argv array so the secret
           # value is never word-split or written into the recorded command string.
-          if [ -n "$REGISTRY_USERNAME" ]; then
+          # Skipped when the params secret already supplies the key, so the same
+          # --parameters is never passed twice.
+          if [ -n "$REGISTRY_USERNAME" ] && ! deploy_params_has_key registryUsername; then
             DEPLOY_PARAMS+=(--parameters "registryUsername=$REGISTRY_USERNAME")
           fi
-          if [ -n "$REGISTRY_PASSWORD" ]; then
+          if [ -n "$REGISTRY_PASSWORD" ] && ! deploy_params_has_key registryPassword; then
             DEPLOY_PARAMS+=(--parameters "registryPassword=$REGISTRY_PASSWORD")
           fi
           # The recorded command string omits the parameters so secret values are
