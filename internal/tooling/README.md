@@ -8,11 +8,26 @@ The generated [`build/tools.generated.mk`](../../build/tools.generated.mk) file 
 
 ## Commands
 
-Run the updater through Make:
+### Update pinned versions
 
 ```sh
 make update-tools
 ```
+
+This command checks every configured release source, advances enabled tools to newer releases when available, refreshes platform checksums, synchronizes declared `versionFiles`, and regenerates the committed [`build/tools.generated.mk`](../../build/tools.generated.mk) file. Tools with `update: false` remain pinned at their current version.
+
+`make update-tools` reaches the network and modifies repository files. It does not install tools on the local machine.
+
+### Install a pinned tool
+
+```sh
+make install-yq
+make install-kubectl
+```
+
+Use `make install-<tool>` to download and install the version pinned in [`build/tools.yaml`](../../build/tools.yaml). Installer targets read versions and checksums from [`build/tools.generated.mk`](../../build/tools.generated.mk) and install into a user-owned binary directory. They do not update the manifest.
+
+### Run the updater binary directly
 
 Make builds the updater into `bin/` before executing it. This stable path is important on Windows, where security software may block the temporary executable created by `go run`.
 
@@ -27,6 +42,8 @@ Use `bin/tool-updater` instead of `bin/tool-updater.exe` on non-Windows systems.
 ```sh
 bin/tool-updater.exe generate-make --manifest build/tools.yaml --output build/tools.generated.mk
 ```
+
+There is no separate Make target for regeneration only. The `generate-make` subcommand is the binary-level equivalent, and Make runs it automatically when the committed generated include is stale.
 
 ## Manifest reference
 
