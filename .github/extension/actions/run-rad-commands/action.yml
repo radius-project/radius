@@ -132,6 +132,10 @@ runs:
           code=${PIPESTATUS[0]}
           echo "::endgroup::"
           RAN=$((RAN + 1))
+          # Redact any known secret values from the captured output before it is
+          # written into the uploaded artifact. GitHub's log masking does not apply
+          # to artifact file contents, so scrub them ourselves.
+          scrub_secrets "$outfile"
           COMMANDS_JSON=$(jq \
             --argjson index "$index" \
             --arg cmd "$display" \
@@ -150,6 +154,41 @@ runs:
         deploy_params_has_key() {
           [ -n "${RADIUS_DEPLOY_PARAMS//[[:space:]]/}" ] || return 1
           printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -e --arg k "$1" 'has($k)' >/dev/null 2>&1
+        }
+
+        # Secret values that must never reach the logs or the uploaded artifact:
+        # the registry password (the runner GITHUB_TOKEN) and every value in the
+        # RADIUS_DEPLOY_PARAMS secret. Register each with ::add-mask:: so GitHub
+        # redacts it from the live logs (defense in depth -- registered secrets are
+        # already masked, but values sourced from vars are not), and keep the list
+        # for scrub_secrets to strip from the captured output.
+        SECRET_VALUES=()
+        add_secret() {
+          [ -n "$1" ] || return 0
+          SECRET_VALUES+=("$1")
+          echo "::add-mask::$1"
+        }
+        add_secret "$REGISTRY_PASSWORD"
+        if [ -n "${RADIUS_DEPLOY_PARAMS//[[:space:]]/}" ]; then
+          while IFS= read -r _sname; do
+            [ -z "$_sname" ] && continue
+            add_secret "$(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r --arg k "$_sname" '.[$k]')"
+          done < <(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r 'keys_unsorted[]')
+        fi
+
+        # Replace every known secret value in the given file with *** in place, so
+        # the artifact never carries a credential that `rad` happened to echo. Uses
+        # bash literal substitution (no regex) so values with special characters are
+        # matched verbatim.
+        scrub_secrets() {
+          local file="$1" content value
+          [ ${#SECRET_VALUES[@]} -eq 0 ] && return 0
+          content=$(cat "$file")
+          for value in "${SECRET_VALUES[@]}"; do
+            [ -n "$value" ] || continue
+            content=${content//"$value"/***}
+          done
+          printf '%s' "$content" > "$file"
         }
 
         if [ -n "${RAD_COMMANDS//[[:space:]]/}" ]; then
