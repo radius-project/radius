@@ -209,10 +209,10 @@ jobs:
           # Registry and credentials for the Radius.Compute/containerImages recipe.
           # The recipe builds images with the in-pod BuildKit and pushes them to
           # $BUILD_REGISTRY, authenticating with the Kubernetes Secret named
-          # $REGISTRY_SECRET_NAME. Because the recipe loads that Secret via the
-          # in-cluster provider (the control-plane cluster where dynamic-rp/BuildKit
-          # run), the secret is provisioned directly onto the control plane by the
-          # run-and-teardown action. Only the secret NAME is wired here via the
+          # $REGISTRY_SECRET_NAME. That Secret is created on the target cluster by
+          # the app's Radius.Security/secrets resource during `rad deploy` (fed by
+          # the registryUsername/registryPassword parameters injected by the
+          # run-rad-commands action). Only the secret NAME is wired here via the
           # recipe pack's containerImagesRegistrySecretName. $BUILD_REGISTRY is
           # ghcr.io/<owner>/<repo> so images land under the repository's package
           # namespace; it must be lowercase.

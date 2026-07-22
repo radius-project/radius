@@ -1,10 +1,10 @@
 # Provider-agnostic deploy shared by run-rad-commands-aws.yml and
-# run-rad-commands-azure.yml. Provisions registry credentials on the control plane
-# and runs the requested rad commands (deploying by default), writing the combined
-# rad-commands-result artifact. Teardown (rad shutdown, log collection, k3d delete)
-# lives in the separate `teardown` action so it can run unconditionally.
+# run-rad-commands-azure.yml. Runs the requested rad commands (deploying by
+# default), writing the combined rad-commands-result artifact. Teardown (rad
+# shutdown, log collection, k3d delete) lives in the separate `teardown` action
+# so it can run unconditionally.
 name: Radius - Run rad commands
-description: Provision registry credentials and run the requested rad commands (deploying by default).
+description: Run the requested rad commands (deploying by default).
 
 inputs:
   environment:
@@ -30,10 +30,10 @@ inputs:
     required: false
     default: ""
   registry-username:
-    description: Username for the containerImages recipe's image-push registry secret.
+    description: Username passed to the app deploy as the registryUsername parameter (feeds the app's Radius.Security/secrets registry Secret).
     required: true
   registry-password:
-    description: Password/token for the containerImages recipe's image-push registry secret.
+    description: Password/token passed to the app deploy as the registryPassword parameter (feeds the app's Radius.Security/secrets registry Secret).
     required: true
 
 runs:
@@ -54,45 +54,22 @@ runs:
             kubectl --kubeconfig "$TARGET_KUBECONFIG" create namespace "$APP_NS"
         fi
 
-    - name: Provision registry credentials on control plane
-      shell: bash
-      env:
-        # The Radius.Compute/containerImages recipe authenticates its BuildKit
-        # image push by loading the Kubernetes Secret named by registrySecretName
-        # via the in-cluster provider -- i.e. from the CONTROL PLANE cluster where
-        # the dynamic-rp/BuildKit pods run, NOT the target cluster. Provision that
-        # secret here directly from the default GitHub token so no registry
-        # credentials need to live in the application bicep.
-        REGISTRY_USERNAME: ${{ inputs.registry-username }}
-        REGISTRY_PASSWORD: ${{ inputs.registry-password }}
-        ENV_NS: ${{ inputs.namespace }}
-      run: |
-        set -eu
-        REGISTRY_SECRET_NAME="ghcr-registry-creds"
-        BICEP_APP_NAME=$(grep -oP "name:\s*'\K[^']+" ".radius/app.bicep" 2>/dev/null | head -1)
-        [ -z "$BICEP_APP_NAME" ] && BICEP_APP_NAME="app"
-        APP_NS="default-$BICEP_APP_NAME"
-        # The recipe reads the secret from context.runtime.kubernetes.namespace on
-        # the control plane. Materialize it in both the environment namespace and
-        # the application namespace so the read resolves regardless of scope. These
-        # kubectl calls run against the default kubeconfig (the control plane), not
-        # the target cluster.
-        for NS in "$ENV_NS" "$APP_NS"; do
-          kubectl get namespace "$NS" >/dev/null 2>&1 || kubectl create namespace "$NS"
-          kubectl create secret generic "$REGISTRY_SECRET_NAME" \
-            --namespace "$NS" \
-            --from-literal=username="$REGISTRY_USERNAME" \
-            --from-literal=password="$REGISTRY_PASSWORD" \
-            --dry-run=client -o yaml | kubectl apply -f -
-          echo "Provisioned $REGISTRY_SECRET_NAME in control-plane namespace $NS"
-        done
-
     - name: Run rad commands
       shell: bash
       env:
         ENVIRONMENT: ${{ inputs.environment }}
         APP_FILE: ${{ inputs.app-file }}
         APP_IMAGE: ${{ inputs.app-image }}
+        # Registry push/pull credentials for the app deploy. These are passed to
+        # the app file's `rad deploy` as the registryUsername/registryPassword
+        # parameters, which feed the app's Radius.Security/secrets resource
+        # (`ghcr-registry-creds`). That resource materializes the registry Secret
+        # on the TARGET cluster, where the containerImages recipe reads it by the
+        # name the recipe pack registers. Read via the environment (not inlined
+        # into the script) so the secret value can't break the shell or be
+        # word-split, and is never written into the recorded command string.
+        REGISTRY_USERNAME: ${{ inputs.registry-username }}
+        REGISTRY_PASSWORD: ${{ inputs.registry-password }}
         # Pass caller input through the environment to avoid command injection.
         # Caller-supplied rad commands (falls back to the RADIUS_RAD_COMMANDS
         # variable upstream) so the command applies on both an explicit dispatch
@@ -217,6 +194,15 @@ runs:
                   EXTRA_PARAMS+=(--parameters "$_pname=$_pval")
                 done < <(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r 'keys_unsorted[]')
               fi
+              # Registry credentials for the app's Radius.Security/secrets
+              # resource. Appended to the argv array so the secret value is never
+              # word-split or written into the recorded command string.
+              if [ -n "$REGISTRY_USERNAME" ]; then
+                EXTRA_PARAMS+=(--parameters "registryUsername=$REGISTRY_USERNAME")
+              fi
+              if [ -n "$REGISTRY_PASSWORD" ]; then
+                EXTRA_PARAMS+=(--parameters "registryPassword=$REGISTRY_PASSWORD")
+              fi
               if ! record "$idx" "$cmd" rad "${CMD_ARGV[@]}" "${EXTRA_PARAMS[@]}"; then
                 OVERALL_OUTCOME="command_failed"
                 OVERALL_EXIT=1
@@ -254,6 +240,15 @@ runs:
               _pval=$(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r --arg k "$_pname" '.[$k]')
               DEPLOY_PARAMS+=(--parameters "$_pname=$_pval")
             done < <(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r 'keys_unsorted[]')
+          fi
+          # Registry credentials for the app's Radius.Security/secrets resource
+          # (`ghcr-registry-creds`). Appended to the argv array so the secret
+          # value is never word-split or written into the recorded command string.
+          if [ -n "$REGISTRY_USERNAME" ]; then
+            DEPLOY_PARAMS+=(--parameters "registryUsername=$REGISTRY_USERNAME")
+          fi
+          if [ -n "$REGISTRY_PASSWORD" ]; then
+            DEPLOY_PARAMS+=(--parameters "registryPassword=$REGISTRY_PASSWORD")
           fi
           # The recorded command string omits the parameters so secret values are
           # not written into the result artifact.
