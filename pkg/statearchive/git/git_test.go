@@ -49,6 +49,15 @@ func initTestRepo(t *testing.T) string {
 		t.Skip("skipping git-backed test: git binary not found in PATH")
 	}
 
+	// Isolate git from the developer's/CI's real global and system configuration. Without this,
+	// "git init" reads the ambient ~/.gitconfig, which makes these tests depend on external state
+	// and race with any other test process that writes the shared global config (for example via
+	// "git config --global"), producing intermittent "unknown error occurred while reading the
+	// configuration files" failures.
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+
 	root := t.TempDir()
 	runGit(t, root, "git", "init", "-b", "main")
 	runGit(t, root, "git", "config", "user.email", "test@example.com")

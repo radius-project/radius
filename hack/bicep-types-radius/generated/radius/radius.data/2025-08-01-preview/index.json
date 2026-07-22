@@ -1,19 +1,19 @@
 {
   "resources": {
     "Radius.Data/mongoDatabases@2025-08-01-preview": {
-      "$ref": "types.json#/17"
+      "$ref": "types.json#/19"
     },
     "Radius.Data/mySqlDatabases@2025-08-01-preview": {
-      "$ref": "types.json#/40"
+      "$ref": "types.json#/42"
     },
     "Radius.Data/postgreSqlDatabases@2025-08-01-preview": {
-      "$ref": "types.json#/64"
+      "$ref": "types.json#/66"
     },
     "Radius.Data/redisCaches@2025-08-01-preview": {
-      "$ref": "types.json#/85"
+      "$ref": "types.json#/89"
     },
     "Radius.Data/sqlServerDatabases@2025-08-01-preview": {
-      "$ref": "types.json#/104"
+      "$ref": "types.json#/108"
     }
   },
   "resourceFunctions": {},

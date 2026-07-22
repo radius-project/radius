@@ -42,7 +42,7 @@ import (
 )
 
 var (
-	// ErrInvalidSource reprents the error when the source is not a valid resource ID or URL.
+	// ErrInvalidSource represents the error when the source is not a valid resource ID or URL.
 	ErrInvalidSource = errors.New("source is not a valid resource ID or URL")
 )
 

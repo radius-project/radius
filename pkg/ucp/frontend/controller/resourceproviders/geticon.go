@@ -18,6 +18,8 @@ package resourceproviders
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -28,6 +30,8 @@ import (
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
+
+	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 var _ controller.Controller = (*GetIcon)(nil)
@@ -77,16 +81,73 @@ func (r *GetIcon) Run(ctx context.Context, w http.ResponseWriter, req *http.Requ
 		return nil, err
 	}
 
-	// Verify the hash matches what is stored
-	if rt.Properties.IconHash == nil || rt.Properties.Icon == nil {
+	// The stored IconHash must exist and match the requested hash. After
+	// registration-time hash substitution, IconHash is normally non-nil for
+	// a registered type, but the defensive check stays for older records or
+	// malformed writes.
+	if rt.Properties.IconHash == nil {
 		return armrpc_rest.NewNotFoundResponseWithCause(id, "resource type has no icon"), nil
 	}
 	if *rt.Properties.IconHash != hash {
 		return armrpc_rest.NewNotFoundResponseWithCause(id, fmt.Sprintf("icon with hash %q was not found", hash)), nil
 	}
 
-	// Return the verbatim SVG bytes with the correct content type (FR-018)
-	return &iconResponse{content: *rt.Properties.Icon}, nil
+	// Hash matched. Prefer bytes stored on the record; otherwise serve the
+	// embedded product default. Registration-time substitution stores the
+	// default hash on types authored without an icon and does NOT store
+	// bytes on the record (they live in the deploy/manifest binary asset), so
+	// this fallback is what makes the icon endpoint resolvable for defaulted
+	// types.
+	//
+	// Before serving, the bytes are hashed a second time and compared to
+	// the URL-path hash. This is content-addressed integrity: the endpoint
+	// is a promise that /icons/<h> returns bytes whose SHA-256 equals h.
+	// If storage ever diverged the hash and the bytes (data-tier
+	// corruption, a bug in a bulk-copy path), the check catches it and we
+	// return 404 rather than serving unverified bytes labeled as
+	// authoritative. The cost is one SHA-256 per icon fetch — negligible
+	// against typical <32 KiB payloads and the request's HTTPS overhead.
+	if rt.Properties.Icon != nil {
+		if !hashesToPathHash(*rt.Properties.Icon, hash) {
+			return armrpc_rest.NewNotFoundResponseWithCause(id, "icon integrity check failed"), nil
+		}
+		return &iconResponse{content: *rt.Properties.Icon}, nil
+	}
+	if productmanifest.IsDefault(hash) {
+		def := productmanifest.Default()
+		if !hashesToPathHash(string(def.Bytes), hash) {
+			return armrpc_rest.NewNotFoundResponseWithCause(id, "icon integrity check failed"), nil
+		}
+		return &iconResponse{content: string(def.Bytes)}, nil
+	}
+	return armrpc_rest.NewNotFoundResponseWithCause(id, "resource type has no icon"), nil
+}
+
+// hashesToPathHash reports whether SHA-256(body) hex-encoded equals the
+// URL-path hash. The comparison is deliberately case-insensitive on the
+// hex encoding to tolerate uppercase producers. An empty pathHash never
+// matches — the endpoint route guards against that at request-parse time,
+// but the defensive check here keeps the invariant "a match implies a
+// verified body" true regardless of caller.
+func hashesToPathHash(body, pathHash string) bool {
+	if pathHash == "" {
+		return false
+	}
+	sum := sha256.Sum256([]byte(body))
+	encoded := hex.EncodeToString(sum[:])
+	if encoded == pathHash {
+		return true
+	}
+	// Fold pathHash to lowercase and compare once more.
+	buf := make([]byte, len(pathHash))
+	for i := 0; i < len(pathHash); i++ {
+		c := pathHash[i]
+		if c >= 'A' && c <= 'F' {
+			c += 'a' - 'A'
+		}
+		buf[i] = c
+	}
+	return encoded == string(buf)
 }
 
 type iconResponse struct {

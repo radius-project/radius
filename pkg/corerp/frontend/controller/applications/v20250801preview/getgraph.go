@@ -27,9 +27,10 @@ import (
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
-	app_ctrl "github.com/radius-project/radius/pkg/corerp/frontend/controller/applications"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
+
+	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 var _ ctrl.Controller = (*GetGraphv20250801preview)(nil)
@@ -73,12 +74,13 @@ func (ctrl *GetGraphv20250801preview) Run(ctx context.Context, w http.ResponseWr
 		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 
-	includeIcons, err := readIncludeIcons(req)
+	graphReq, err := readGraphRequest(req)
 	if err != nil {
 		return nil, err
 	}
+	includeIcons := to.Bool(graphReq.IncludeIcons)
 
-	payload, err := app_ctrl.ComputeGraphPayload(ctx, applicationID, applicationResource.Properties.Environment, ctrl.connection)
+	payload, err := computeGraphPayload(ctx, applicationID, applicationResource.Properties.Environment, ctrl.connection, graphReq.DependsOnEdges)
 	if err != nil {
 		return nil, err
 	}
@@ -93,29 +95,31 @@ func (ctrl *GetGraphv20250801preview) Run(ctx context.Context, w http.ResponseWr
 		return nil, err
 	}
 
-	response := convertGraphResponseWithIcons(payload, icons)
+	attachIconHashes(payload, icons)
 
 	// When the caller opted in with includeIcons=true, dedupe by hash and
 	// emit the icons map alongside the resources.
 	if includeIcons {
-		response.Icons = buildIconsMap(response.Resources, icons)
+		payload.Icons = buildIconsMap(payload.Resources, icons)
 	}
 
-	return rest.NewOKResponse(response), nil
+	return rest.NewOKResponse(payload), nil
 }
 
-// readIncludeIcons parses the optional GetGraphRequest body and returns the
-// value of its includeIcons field. Missing bodies, empty bodies, and bodies
-// posted without a JSON content type (typical for existing clients that pre-date
-// the flag) all resolve to the default value false so this feature stays
-// additive on the wire.
-func readIncludeIcons(req *http.Request) (bool, error) {
+// readGraphRequest parses the optional GetGraphRequest body once and returns
+// the parsed struct. Missing bodies, empty bodies, and bodies posted without a
+// JSON content type (typical for existing clients that pre-date the additive
+// fields on this shape) all resolve to a zero-value struct rather than an
+// error, so both includeIcons and dependsOnEdges stay additive on the wire.
+// The returned pointer is never nil, letting callers use zero-value fields
+// directly without another nil check.
+func readGraphRequest(req *http.Request) (*corerpv20250801preview.GetGraphRequest, error) {
+	parsed := &corerpv20250801preview.GetGraphRequest{}
 	if req.Body == nil || req.ContentLength == 0 {
-		return false, nil
+		return parsed, nil
 	}
-	contentType := req.Header.Get("Content-Type")
-	if contentType == "" {
-		return false, nil
+	if req.Header.Get("Content-Type") == "" {
+		return parsed, nil
 	}
 	body, err := ctrl.ReadJSONBody(req)
 	if err != nil {
@@ -123,27 +127,39 @@ func readIncludeIcons(req *http.Request) (bool, error) {
 		// body is optional. Any other read failure is real and should bubble
 		// up.
 		if err == ctrl.ErrUnsupportedContentType {
-			return false, nil
+			return parsed, nil
 		}
-		return false, err
+		return nil, err
 	}
 	if len(body) == 0 {
-		return false, nil
+		return parsed, nil
 	}
-	parsed := corerpv20250801preview.GetGraphRequest{}
-	if err := json.Unmarshal(body, &parsed); err != nil {
-		return false, err
+	if err := json.Unmarshal(body, parsed); err != nil {
+		return nil, err
 	}
-	return to.Bool(parsed.IncludeIcons), nil
+	return parsed, nil
 }
 
 // buildIconsMap returns the deduped icons map keyed by iconHash, containing the
 // verbatim SVG bytes for every distinct hash referenced by the response's
-// resources. Nodes whose type has no registered icon are skipped.
+// resources. Two byte sources feed into the map:
+//
+//  1. `icons` — the per-type entries returned by fetchIcons, which carry
+//     bytes fetched from the resource-type registry when the caller opted in
+//     via includeIcons=true.
+//  2. The product default icon embedded in the deploy/manifest package, used
+//     for any node whose hash matches the default (types registered without
+//     an icon get the default hash at registration time; external nodes such
+//     as Microsoft.Storage/storageAccounts get the default hash from
+//     attachIconHashes). Registered types do not carry the
+//     default bytes on their storage record, so this substitution is what
+//     makes the response self-contained.
 func buildIconsMap(resources []*corerpv20250801preview.ApplicationGraphResource, icons map[string]resourceTypeIcon) map[string]*string {
-	if len(resources) == 0 || len(icons) == 0 {
+	if len(resources) == 0 {
 		return nil
 	}
+	defaultIcon := productmanifest.Default()
+	hasDefault := defaultIcon.Hash != "" && len(defaultIcon.Bytes) > 0
 	out := map[string]*string{}
 	for _, r := range resources {
 		if r == nil || r.IconHash == nil {
@@ -151,6 +167,11 @@ func buildIconsMap(resources []*corerpv20250801preview.ApplicationGraphResource,
 		}
 		hash := *r.IconHash
 		if _, already := out[hash]; already {
+			continue
+		}
+		if hasDefault && hash == defaultIcon.Hash {
+			bytes := string(defaultIcon.Bytes)
+			out[hash] = &bytes
 			continue
 		}
 		icon, ok := icons[to.String(r.Type)]

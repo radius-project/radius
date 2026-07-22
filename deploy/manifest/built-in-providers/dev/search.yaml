@@ -46,7 +46,11 @@ types:
       example the connection name is `search` so the environment variables will be:
 
       - CONNECTION_SEARCH_ENDPOINT
-      - CONNECTION_SEARCH_APIKEY
+
+      The `apiKey` secret is NOT injected via the connection — it is materialized
+      into a managed `Radius.Security/secrets` resource. Bind it into a container
+      env var with a `secretKeyRef`, using `search.properties.secrets.name` as the
+      `secretName` and key `apiKey` (see the `secrets` property).
 
     apiVersions:
       '2025-08-01-preview':
@@ -63,8 +67,21 @@ types:
               type: string
               description: The endpoint used to connect to the search service. Mapped from the recipe module's output.
               readOnly: true
-            apiKey:
-              type: string
-              description: The admin API key used to connect to the search service. Mapped from the recipe module's output.
-              readOnly: true
+            secrets:
+              type: object
+              description: >-
+                (Read-only) Recipe secrets. The reserved `name` sub-property references the managed
+                Radius.Security/secrets resource Radius materializes from the recipe's `outputs.secrets`;
+                the other sub-properties declare secret keys whose values are written only into that
+                managed secret (never onto this resource). Consumers bind a key into a container env var
+                via `secretKeyRef`, using `<resource>.properties.secrets.name` as `secretName`.
+              properties:
+                name:
+                  type: string
+                  readOnly: true
+                  description: (Reserved) Name of the managed Radius.Security/secrets resource. Use as `secretName` in a container `secretKeyRef`.
+                apiKey:
+                  type: string
+                  readOnly: true
+                  description: The admin API key used to connect to the search service. Mapped from the recipe module's output; delivered via the managed secret.
           required: [environment]

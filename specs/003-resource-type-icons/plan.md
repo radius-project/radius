@@ -9,7 +9,7 @@ reference the numbered requirements in `spec.md`.
 | Slice | Scope | Status |
 |---|---|---|
 | 1 | Wire contract + inline endpoint | In progress on branch `azlinks_pr` |
-| 2 | Default icon + FR-011 substitution | Not started |
+| 2 | Default icon + FR-011 substitution | Complete on branch `static-graph-icons` |
 | 3 | Full `--icon` grammar | Not started |
 | 4 | Built-in `Applications.Core/*` icons | Not started |
 | 5 | `rad app graph` + rendering integration | Not started |
@@ -44,15 +44,45 @@ FR-015, FR-018, NFR-001, NFR-002, NFR-003, NFR-004.
 ## Slice 2 — Default icon + FR-011 substitution
 
 **Delivers:** every registered type has a resolvable `iconHash`, even when the
-manifest arrives without an `icon` field.
+manifest arrives without an `icon` field. Same guarantee holds for the runtime
+graph (`Radius.Core/applications/getGraph`), the icon endpoint (FR-018), and
+the CLI-side modeled/static graph.
 
 **FRs covered:** FR-001, FR-006, FR-011 (fully).
 
-**Changes:**
+**Delivered on branch `static-graph-icons`:**
 
-- Ship a canonical default SVG in the Radius product repository and `go:embed` it into the control plane.
-- In the resource-type PUT path, if `icon` is nil after conversion, substitute the default's bytes + hash before storing.
-- Build fails loudly if the embedded default is missing or fails validation.
+- [deploy/manifest/default-icon.svg](../../deploy/manifest/default-icon.svg) —
+  canonical product default, hand-committed (sourced from
+  `resource-types-contrib/docs/generic-resource-type.svg`).
+- [deploy/manifest/icons.go](../../deploy/manifest/icons.go) — `package manifest`
+  exposing `Lookup(type)`, `Default()`, `IsDefault(hash)`. Uses `go:embed`
+  on the default plus the per-type SVGs synced by `make sync-resource-types`;
+  no separate mirror step. Tests in
+  [icons_test.go](../../deploy/manifest/icons_test.go) pin the invariants.
+- [pkg/ucp/initializer/service.go](../../pkg/ucp/initializer/service.go)
+  and [pkg/ucp/api/v20231001preview/resourcetype_conversion.go](../../pkg/ucp/api/v20231001preview/resourcetype_conversion.go)
+  substitute the default hash at registration time. Bytes are NOT stored on
+  the record — they live in the binary via the embed above.
+- [pkg/corerp/frontend/controller/applications/v20250801preview/graphicons.go](../../pkg/corerp/frontend/controller/applications/v20250801preview/graphicons.go)
+  and [getgraph.go](../../pkg/corerp/frontend/controller/applications/v20250801preview/getgraph.go)
+  make the runtime graph always attach `iconHash` per node (falling back to
+  default when a namespace 404s) and substitute default bytes into the
+  `icons` map when `includeIcons: true`.
+- [pkg/ucp/frontend/controller/resourceproviders/geticon.go](../../pkg/ucp/frontend/controller/resourceproviders/geticon.go)
+  serves the embedded default bytes when the requested URL hash matches the
+  stored `IconHash` and the record's `Icon` field is nil.
+- [pkg/cli/graph/modeled.go](../../pkg/cli/graph/modeled.go) resolves
+  per-node `iconHash` via the same package for the static/modeled graph;
+  the response's `icons` map is populated locally without a control-plane
+  call.
+- Doc: [docs/architecture/application-graph.md](../../docs/architecture/application-graph.md)
+  updated with the new "Default icon and FR-011 substitution" and "Static
+  (modeled) graph" sections; class diagram reflects the always-set
+  `iconHash`.
+
+**Deferred to a later slice:** build-time validation that the default SVG
+is valid per NFR-001 / NFR-002 (Slice 6 CI enforcement).
 
 ## Slice 3 — Full `--icon` grammar
 
