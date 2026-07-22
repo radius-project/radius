@@ -62,6 +62,10 @@ type RecipeDefinition struct {
 	// directly at a Bicep or Terraform module to map the module's outputs onto resource properties.
 	Outputs map[string]string `json:"outputs,omitempty"`
 
+	// SecretOutputs maps secret resource-type property names to module output names. Unlike Outputs, a
+	// SecretOutputs entry always routes its module output to the resource's secret outputs.
+	SecretOutputs map[string]string `json:"secretOutputs,omitempty"`
+
 	// PlainHTTP connects to the source using HTTP (not-HTTPS).
 	PlainHTTP bool `json:"plainHTTP,omitempty"`
 }

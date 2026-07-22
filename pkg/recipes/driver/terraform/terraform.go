@@ -198,13 +198,13 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 	recipeResponse := &recipes.RecipeOutput{}
 	if tfState.Values != nil && tfState.Values.Outputs != nil {
 		moduleOutputs := tfState.Values.Outputs
-		hasOutputsMapping := len(definition.Outputs) > 0
+		hasOutputsMapping := len(definition.Outputs) > 0 || len(definition.SecretOutputs) > 0
 		_, hasResultOutput := moduleOutputs[recipes.ResultPropertyName]
 
 		if hasOutputsMapping {
 			// Direct module with outputs mapping — collect all outputs flat, then apply mapping.
 			values, secrets := collectFlatOutputs(moduleOutputs)
-			recipeResponse.Values, recipeResponse.Secrets = recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs)
+			recipeResponse.Values, recipeResponse.Secrets = recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs, definition.SecretOutputs)
 		} else if hasResultOutput {
 			// Wrapped recipe — use existing result output parsing.
 			if result, ok := moduleOutputs[recipes.ResultPropertyName].Value.(map[string]any); ok {

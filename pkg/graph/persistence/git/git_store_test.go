@@ -36,7 +36,7 @@ func TestNewStore_DefaultsBranch(t *testing.T) {
 	s, err := NewStore(Options{})
 	require.NoError(t, err)
 	require.NotNil(t, s)
-	assert.Equal(t, DefaultGraphBranch, s.branch)
+	assert.Equal(t, DefaultGraphArchive, s.archiveName)
 }
 
 func TestNewStore_HonorsBranch(t *testing.T) {
@@ -44,7 +44,30 @@ func TestNewStore_HonorsBranch(t *testing.T) {
 
 	s, err := NewStore(Options{Branch: "custom"})
 	require.NoError(t, err)
-	assert.Equal(t, "custom", s.branch)
+	assert.Equal(t, "custom", s.archiveName)
+}
+
+func TestNewStore_HonorsArchiveName(t *testing.T) {
+	t.Parallel()
+
+	s, err := NewStore(Options{ArchiveName: "custom"})
+	require.NoError(t, err)
+	assert.Equal(t, "custom", s.archiveName)
+}
+
+func TestNewStore_RejectsConflictingArchiveNames(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewStore(Options{ArchiveName: "archive-name", Branch: "branch-name"})
+	require.ErrorContains(t, err, "conflicts with deprecated branch option")
+}
+
+func TestNewStore_AcceptsMatchingArchiveNames(t *testing.T) {
+	t.Parallel()
+
+	s, err := NewStore(Options{ArchiveName: "shared-name", Branch: "shared-name"})
+	require.NoError(t, err)
+	assert.Equal(t, "shared-name", s.archiveName)
 }
 
 func TestKeyFromPath(t *testing.T) {

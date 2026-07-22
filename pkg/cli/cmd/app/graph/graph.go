@@ -37,7 +37,7 @@ const (
 
 	// envGitHubActions is set to "true" by GitHub Actions for every step
 	// running inside a runner. When present, rad operates in repo-radius
-	// mode and persists graph artifacts to the radius-graph orphan branch.
+	// mode and saves graph artifacts to the radius-graph archive.
 	envGitHubActions = "GITHUB_ACTIONS"
 
 	// envGitHubHeadRef is the source branch of a pull request (e.g.
@@ -64,8 +64,8 @@ the command compiles the template and writes the resulting modeled graph to
 ./app-graph.json without contacting the control plane.
 
 If the command runs inside a GitHub Actions runner (GITHUB_ACTIONS=true), the
-modeled graph is committed to <source-branch>/app-graph.json on the radius-graph
-orphan branch instead of the local filesystem. This is auto-detected; no flag
+modeled graph is saved to <source-branch>/app-graph.json in the radius-graph
+archive instead of the local filesystem. This is auto-detected; no flag
 is required.`,
 		Args: cobra.MaximumNArgs(1),
 		Example: `
@@ -81,6 +81,7 @@ rad app graph ./app.bicep`,
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddApplicationNameFlag(cmd)
 	commonflags.AddOutputFlag(cmd)
+	cmd.Flags().Bool("include-icons", false, "When set with --preview (deployed) or with a bicep-file argument (modeled), embeds each referenced resource type icon's SVG bytes in the response's icons map.")
 
 	return cmd, runner
 }
@@ -99,9 +100,16 @@ type Runner struct {
 	// Modeled-graph mode field.
 	BicepFilePath string
 
+	// IncludeIcons, when true, causes the modeled graph response to carry a
+	// deduped `icons` map of hash → SVG bytes. When false the response has
+	// only per-node `iconHash` values and consumers content-address the
+	// bytes themselves. Mirrors the runtime `rad app graph --preview
+	// --include-icons` flag.
+	IncludeIcons bool
+
 	Format string
 
-	// GraphStore persists modeled graphs to the radius-graph orphan branch
+	// GraphStore persists modeled graphs to the radius-graph archive
 	// when running in repo-radius mode. Defaulted in NewRunner; tests may
 	// substitute a mock implementation.
 	GraphStore persistence.Store
@@ -129,14 +137,14 @@ func isModeledGraphArg(arg string) bool {
 }
 
 // inRepoRadiusMode returns true when running inside a GitHub Actions runner.
-// Per the design, this is the trigger for committing graph artifacts to the
-// radius-graph orphan branch instead of writing them to the local filesystem.
+// Per the design, this is the trigger for saving graph artifacts to the
+// radius-graph archive instead of writing them to the local filesystem.
 func inRepoRadiusMode() bool {
 	return strings.EqualFold(os.Getenv(envGitHubActions), "true")
 }
 
 // sourceBranch returns the source branch name to use as the namespace under
-// which the modeled graph is committed on the orphan branch. For
+// which the modeled graph is saved in the archive. For
 // pull_request events GITHUB_HEAD_REF carries the source branch; for push
 // events it falls back to GITHUB_REF_NAME.
 func sourceBranch() string {
@@ -156,6 +164,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	if len(args) == 1 && isModeledGraphArg(args[0]) {
 		r.BicepFilePath = args[0]
+		includeIcons, err := cmd.Flags().GetBool("include-icons")
+		if err != nil {
+			return err
+		}
+		r.IncludeIcons = includeIcons
 		return nil
 	}
 	return r.validateDeployed(cmd, args)
@@ -231,8 +244,8 @@ func (r *Runner) runDeployed(ctx context.Context) error {
 
 // runModeled compiles the supplied Bicep file, builds the modeled
 // application graph, and persists the result. When running inside a
-// GitHub Actions runner the graph is committed to the radius-graph orphan
-// branch under <source-branch>/app-graph.json; otherwise it is written to
+// GitHub Actions runner the graph is committed to the radius-graph archive
+// under <source-branch>/app-graph.json; otherwise it is written to
 // ./app-graph.json in the current working directory.
 func (r *Runner) runModeled(ctx context.Context) error {
 	r.Output.LogInfo("Compiling %s", r.BicepFilePath)
@@ -241,13 +254,13 @@ func (r *Runner) runModeled(ctx context.Context) error {
 		return clierrors.Message("Failed to compile %q: %v", r.BicepFilePath, err)
 	}
 
-	graph, err := cligraph.BuildModeledGraph(template)
+	graph, err := cligraph.BuildModeledGraph(template, r.IncludeIcons)
 	if err != nil {
 		return clierrors.Message("Failed to build modeled graph: %v", err)
 	}
 
 	if inRepoRadiusMode() {
-		return r.persistToOrphanBranch(ctx, graph)
+		return r.persistToArchive(ctx, graph)
 	}
 	return r.writeToLocalFile(graph)
 }
@@ -270,8 +283,8 @@ func (r *Runner) writeToLocalFile(graph *corerpv20250801preview.ApplicationGraph
 	return nil
 }
 
-// persistToOrphanBranch commits graph to <encoded-source-branch>/app-graph.json
-// on the radius-graph orphan branch via the git-backed persistence Store.
+// persistToArchive commits graph to <encoded-source-branch>/app-graph.json
+// in the radius-graph archive.
 //
 // The raw branch name is encoded with url.QueryEscape before being used as
 // the key namespace. Real PR branches routinely contain path separators
@@ -279,10 +292,10 @@ func (r *Runner) writeToLocalFile(graph *corerpv20250801preview.ApplicationGraph
 // single namespace segment. Percent-encoding collapses each branch to a
 // single safe segment while keeping distinct branches distinct (so
 // "feature/foo" and "feature-foo" do not collide).
-func (r *Runner) persistToOrphanBranch(ctx context.Context, graph *corerpv20250801preview.ApplicationGraphResponse) error {
+func (r *Runner) persistToArchive(ctx context.Context, graph *corerpv20250801preview.ApplicationGraphResponse) error {
 	branch := sourceBranch()
 	if branch == "" {
-		return clierrors.Message("Cannot determine source branch from GITHUB_HEAD_REF or GITHUB_REF_NAME; cannot persist modeled graph.")
+		return clierrors.Message("Cannot determine source branch from GITHUB_HEAD_REF or GITHUB_REF_NAME; cannot save modeled graph.")
 	}
 
 	if r.GraphStore == nil {
@@ -295,9 +308,9 @@ func (r *Runner) persistToOrphanBranch(ctx context.Context, graph *corerpv202508
 		Message: fmt.Sprintf("radius: update modeled graph for %s", branch),
 	}
 	if err := r.GraphStore.Save(ctx, key, graph, opts); err != nil {
-		return fmt.Errorf("commit modeled graph to %s branch: %w", gitstore.DefaultGraphBranch, err)
+		return fmt.Errorf("save modeled graph to %s archive: %w", gitstore.DefaultGraphArchive, err)
 	}
 
-	r.Output.LogInfo("Parsed %d resources. Committed %s/%s.json to branch %s", len(graph.Resources), namespace, modeledGraphKeyName, gitstore.DefaultGraphBranch)
+	r.Output.LogInfo("Parsed %d resources. Saved %s/%s.json to archive %s", len(graph.Resources), namespace, modeledGraphKeyName, gitstore.DefaultGraphArchive)
 	return nil
 }

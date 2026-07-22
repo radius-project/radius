@@ -33,6 +33,8 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 func Test_registerResourceProviderDirect(t *testing.T) {
@@ -734,9 +736,6 @@ func Test_Run_Icons(t *testing.T) {
 	t.Run("in a multi-type manifest, <typeName>.svg applies only to the matching type", func(t *testing.T) {
 		t.Parallel()
 
-		// Per spec 003 FR-002 / FR-002b, a bare icon cannot silently apply to
-		// every type of a multi-type manifest. The sibling-file flow mirrors
-		// that: a <typeName>.svg is scoped to that one type.
 		tempDir := t.TempDir()
 		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "types.yaml"), []byte(iconMultiTypeManifestYAML), 0600))
 		require.NoError(t, os.WriteFile(filepath.Join(tempDir, "widgets.svg"), validIconSVG, 0600))
@@ -757,16 +756,19 @@ func Test_Run_Icons(t *testing.T) {
 		require.NotNil(t, widgets.Properties.IconHash)
 		assert.Equal(t, expectedHashHex, *widgets.Properties.IconHash)
 
-		// gadgets did NOT get the icon.
+		// gadgets did NOT get the sibling icon bytes, but registration-time
+		// hash substitution fills in the product default icon's hash so every
+		// registered type has a non-nil IconHash.
 		obj, err = dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider/resourceTypes/gadgets")
 		require.NoError(t, err)
 		gadgets := &datamodel.ResourceType{}
 		require.NoError(t, obj.As(gadgets))
 		assert.Nil(t, gadgets.Properties.Icon)
-		assert.Nil(t, gadgets.Properties.IconHash)
+		require.NotNil(t, gadgets.Properties.IconHash)
+		assert.Equal(t, productmanifest.Default().Hash, *gadgets.Properties.IconHash)
 	})
 
-	t.Run("manifest without <typeName>.svg leaves icon and hash nil", func(t *testing.T) {
+	t.Run("manifest without <typeName>.svg substitutes the default icon hash", func(t *testing.T) {
 		t.Parallel()
 
 		tempDir := t.TempDir()
@@ -781,10 +783,14 @@ func Test_Run_Icons(t *testing.T) {
 		obj, err := dbClient.Get(context.Background(), "/planes/radius/local/providers/System.Resources/resourceProviders/Test.Provider/resourceTypes/widgets")
 		require.NoError(t, err)
 
+		// Icon bytes are not stored on the record (kept in the binary via
+		// deploy/manifest) but the hash is the product default, so consumers
+		// can render the default without a null check.
 		rt := &datamodel.ResourceType{}
 		require.NoError(t, obj.As(rt))
 		assert.Nil(t, rt.Properties.Icon)
-		assert.Nil(t, rt.Properties.IconHash)
+		require.NotNil(t, rt.Properties.IconHash)
+		assert.Equal(t, productmanifest.Default().Hash, *rt.Properties.IconHash)
 	})
 
 	t.Run("skips stray svg files during directory scan", func(t *testing.T) {

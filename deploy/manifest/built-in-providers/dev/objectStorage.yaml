@@ -48,8 +48,13 @@ types:
 
       - CONNECTION_STORAGE_CONTAINERNAME
       - CONNECTION_STORAGE_ENDPOINT
-      - CONNECTION_STORAGE_CONNECTIONSTRING
       - CONNECTION_STORAGE_ACCOUNTNAME
+
+      The `connectionString` and `accountKey` secrets are NOT injected via the
+      connection — they are materialized into a managed `Radius.Security/secrets`
+      resource. Bind them into container env vars with a `secretKeyRef`, using
+      `store.properties.secrets.name` as the `secretName` and the desired key
+      (`connectionString` or `accountKey`; see the `secrets` property).
 
       The schema is platform-neutral: the same developer-facing properties can be
       backed by Azure Blob Storage, AWS S3, or a Kubernetes object-store recipe by
@@ -74,16 +79,29 @@ types:
               type: string
               description: The object storage endpoint used to connect to the store. Mapped from the recipe module's `primaryBlobEndpoint` output.
               readOnly: true
-            connectionString:
-              type: string
-              description: The storage account connection string. Mapped from the recipe module's `primaryConnectionString` output.
-              readOnly: true
             accountName:
               type: string
               description: The Azure Storage account name. Mapped from the recipe module's `name` output.
               readOnly: true
-            accountKey:
-              type: string
-              description: The Azure Storage account access key. Mapped from the recipe module's `primaryAccessKey` output.
-              readOnly: true
+            secrets:
+              type: object
+              description: >-
+                (Read-only) Recipe secrets. The reserved `name` sub-property references the managed
+                Radius.Security/secrets resource Radius materializes from the recipe's `outputs.secrets`;
+                the other sub-properties declare secret keys whose values are written only into that
+                managed secret (never onto this resource). Consumers bind a key into a container env var
+                via `secretKeyRef`, using `<resource>.properties.secrets.name` as `secretName`.
+              properties:
+                name:
+                  type: string
+                  readOnly: true
+                  description: (Reserved) Name of the managed Radius.Security/secrets resource. Use as `secretName` in a container `secretKeyRef`.
+                connectionString:
+                  type: string
+                  readOnly: true
+                  description: The storage account connection string. Mapped from the recipe module's `primaryConnectionString` output; delivered via the managed secret.
+                accountKey:
+                  type: string
+                  readOnly: true
+                  description: The Azure Storage account access key. Mapped from the recipe module's `primaryAccessKey` output; delivered via the managed secret.
           required: [environment]

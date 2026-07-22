@@ -107,6 +107,7 @@ DaprSecretStorePropertiesMetadata
 DaprSidecarExtension
 DaprStateStoreProperties
 DaprStateStorePropertiesMetadata
+Dariusz
 DataModel
 Datadog
 DatastoresRP
@@ -288,6 +289,7 @@ ParseResource
 PascalCased
 PathBase
 PersistentVolumeClaims
+Porowski
 PostForm
 PowerShell
 PreflightCheck
@@ -359,6 +361,7 @@ SARIF
 SBOMs
 SDKs
 SKUs
+SMIL
 SNI
 SNS
 SQLServer
@@ -848,6 +851,7 @@ managedIdentity
 managedStore
 manualScaling
 mapstructure
+materializer
 maxLogRequests
 maxOperationConcurrency
 maxOperationRetryCount

@@ -26,13 +26,13 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/agnivade/levenshtein v1.2.1
 	github.com/aws/aws-sdk-go-v2 v1.42.1
-	github.com/aws/aws-sdk-go-v2/config v1.32.27
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.26
-	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.30.8
-	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.73.1
-	github.com/aws/aws-sdk-go-v2/service/ec2 v1.311.0
-	github.com/aws/aws-sdk-go-v2/service/ecr v1.58.6
-	github.com/aws/aws-sdk-go-v2/service/sts v1.43.5
+	github.com/aws/aws-sdk-go-v2/config v1.32.28
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.27
+	github.com/aws/aws-sdk-go-v2/service/cloudcontrol v1.31.0
+	github.com/aws/aws-sdk-go-v2/service/cloudformation v1.74.0
+	github.com/aws/aws-sdk-go-v2/service/ec2 v1.313.0
+	github.com/aws/aws-sdk-go-v2/service/ecr v1.59.0
+	github.com/aws/aws-sdk-go-v2/service/sts v1.44.0
 	github.com/aws/smithy-go v1.27.3
 	github.com/charmbracelet/x/ansi v0.11.7
 	github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20260615092313-b57e5e6d29bb
@@ -41,14 +41,14 @@ require (
 	github.com/fluxcd/pkg/apis/meta v1.31.0
 	github.com/fluxcd/pkg/http/fetch v0.25.0
 	github.com/fluxcd/pkg/tar v1.2.0
-	github.com/fluxcd/source-controller/api v1.9.1
+	github.com/fluxcd/source-controller/api v1.9.2
 	github.com/getkin/kin-openapi v0.140.0
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/go-logr/logr v1.4.3
 	github.com/go-logr/zapr v1.3.0
 	github.com/go-openapi/errors v0.22.8
-	github.com/go-openapi/jsonpointer v0.24.0
+	github.com/go-openapi/jsonpointer v1.0.0
 	github.com/go-openapi/loads v0.24.0
 	github.com/go-openapi/runtime v0.32.4
 	github.com/go-openapi/spec v0.22.6
@@ -76,7 +76,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/projectcontour/contour v1.33.5
 	github.com/prometheus/client_golang v1.23.2
-	github.com/radius-project/resource-types-contrib v0.0.0-20260708204524-ab9722ac7027
+	github.com/radius-project/resource-types-contrib v0.0.0-20260716195617-158be1959352
 	github.com/sanity-io/litter v1.5.8
 	github.com/sethvargo/go-retry v0.3.0
 	github.com/spf13/cobra v1.10.2
@@ -136,9 +136,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.31 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.30 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.2.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.31.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.8 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.3.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.32.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.37.0 // indirect
 	github.com/aymanbagabas/go-udiff v0.4.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect

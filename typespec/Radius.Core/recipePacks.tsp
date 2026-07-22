@@ -69,8 +69,8 @@ model RecipeDefinition {
   @doc("Parameters to pass to the recipe")
   parameters?: Record<unknown>;
 
-  @doc("Map of resource type property names to module output names. Used for recipes that point directly at a Bicep or Terraform module to map the module's outputs onto the resource's properties.")
-  outputs?: Record<string>;
+  @doc("Maps the module's outputs onto the resource type's properties, for recipes that point directly at a Bicep or Terraform module. Each entry's value is either a string (the module output name for a non-secret property) or, under the reserved `secrets` key, a nested object mapping secret property names to module output names. A `secrets` entry always routes its module output to the resource's secret outputs regardless of how the module classified it (for example an AVM module's `primaryConnectionString`). Example: `{ host: 'name', secrets: { connectionString: 'primaryConnectionString' } }`.")
+  outputs?: Record<unknown>;
 }
 
 @doc("The type of recipe")

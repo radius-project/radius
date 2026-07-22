@@ -101,7 +101,7 @@ func toRecipesDataModel(recipes map[string]*RecipeDefinition) map[string]*datamo
 				PlainHTTP:  to.Bool(recipe.PlainHTTP),
 			}
 			if recipe.Outputs != nil {
-				definition.Outputs = to.StringMap(recipe.Outputs)
+				definition.Outputs, definition.SecretOutputs = SplitRecipeOutputs(recipe.Outputs)
 			}
 			result[key] = definition
 		}
@@ -123,13 +123,77 @@ func fromRecipesDataModel(recipes map[string]*datamodel.RecipeDefinition) map[st
 				Parameters: recipe.Parameters,
 				PlainHTTP:  new(recipe.PlainHTTP),
 			}
-			if recipe.Outputs != nil {
-				definition.Outputs = *to.StringMapPtr(recipe.Outputs)
+			if outputs := mergeRecipeOutputs(recipe.Outputs, recipe.SecretOutputs); outputs != nil {
+				definition.Outputs = outputs
 			}
 			result[key] = definition
 		}
 	}
 	return result
+}
+
+// recipeOutputsSecretsKey is the reserved key inside a recipe definition's `outputs` map whose value is
+// a nested object mapping secret property names to module output names. Every other `outputs` entry maps
+// a non-secret property name to a module output name (a string value). `secrets` is safe to reserve
+// because it is the framework-owned secrets block name, so no resource type maps a real property named
+// `secrets` through `outputs`.
+const recipeOutputsSecretsKey = "secrets"
+
+// SplitRecipeOutputs separates the API `outputs` map (property->output strings, plus a nested `secrets`
+// object) into flat outputs and secret-outputs maps. It is exported so the recipe config loader, which
+// reads the versioned model directly, can interpret `outputs` the same way as the datamodel converter.
+func SplitRecipeOutputs(apiOutputs map[string]any) (map[string]string, map[string]string) {
+	var outputs map[string]string
+	var secretOutputs map[string]string
+	for k, v := range apiOutputs {
+		if k == recipeOutputsSecretsKey {
+			nested, ok := v.(map[string]any)
+			if !ok {
+				continue
+			}
+			for sk, sv := range nested {
+				s, ok := sv.(string)
+				if !ok {
+					continue
+				}
+				if secretOutputs == nil {
+					secretOutputs = map[string]string{}
+				}
+				secretOutputs[sk] = s
+			}
+			continue
+		}
+		s, ok := v.(string)
+		if !ok {
+			continue
+		}
+		if outputs == nil {
+			outputs = map[string]string{}
+		}
+		outputs[k] = s
+	}
+	return outputs, secretOutputs
+}
+
+// mergeRecipeOutputs combines the datamodel's flat Outputs and SecretOutputs maps back into the API
+// `outputs` map, nesting the secret mappings under the reserved `secrets` key. It returns nil when both
+// maps are empty.
+func mergeRecipeOutputs(outputs map[string]string, secretOutputs map[string]string) map[string]any {
+	if len(outputs) == 0 && len(secretOutputs) == 0 {
+		return nil
+	}
+	apiOutputs := map[string]any{}
+	for k, v := range outputs {
+		apiOutputs[k] = v
+	}
+	if len(secretOutputs) > 0 {
+		secrets := map[string]any{}
+		for k, v := range secretOutputs {
+			secrets[k] = v
+		}
+		apiOutputs[recipeOutputsSecretsKey] = secrets
+	}
+	return apiOutputs
 }
 
 func toRecipeKindDataModel(kind *RecipeKind) string {

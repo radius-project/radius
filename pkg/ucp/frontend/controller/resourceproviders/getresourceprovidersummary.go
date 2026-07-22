@@ -93,7 +93,7 @@ func (r *GetResourceProviderSummary) Run(ctx context.Context, w http.ResponseWri
 
 // includeIcons reports whether the caller opted into icon bytes via the
 // includeIcons=true query parameter. Absent or any other value means false, so
-// the response carries icon hashes only (FR-015 of the resource-type icons spec).
+// the response carries icon hashes only.
 func includeIcons(req *http.Request) bool {
 	return strings.EqualFold(req.URL.Query().Get("includeIcons"), "true")
 }
@@ -135,7 +135,7 @@ func (r *GetResourceProviderSummary) createResponse(ctx context.Context, result 
 
 	// Icon bytes are only returned when the caller opts in with includeIcons=true.
 	// The icon hash is always retained so consumers can content-address the icon
-	// via the icon endpoint (FR-015).
+	// via the icon endpoint.
 	if !includeIcons {
 		for name, resourceType := range summary.Properties.ResourceTypes {
 			resourceType.Icon = nil

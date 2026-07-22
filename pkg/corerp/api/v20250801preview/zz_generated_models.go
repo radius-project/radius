@@ -13,6 +13,11 @@ type ApplicationGraphConnection struct {
 
 	// REQUIRED; The resource ID
 	ID *string
+
+	// REQUIRED; Discriminator identifying the origin of this edge. 'Connection' edges are author-declared entries under properties.connections.
+	// 'Dependency' edges are implicit dependencies derived from Bicep's dependsOn list (static graph only in Phase 1). Every
+	// emitted edge carries a kind.
+	Kind *ConnectionKind
 }
 
 // ApplicationGraphOutputResource - Describes an output resource that comprises an application graph resource.
@@ -55,6 +60,11 @@ type ApplicationGraphResource struct {
 	// resources as added, removed, modified, or unchanged across graphs. Format: 'sha256:{hex}'.
 	DiffHash *string
 
+	// SHA-256 hex of the resource type's icon SVG, matching `iconHash` on the resource-type registry. Null when the type has
+	// no icon registered. The bytes themselves are delivered inline via `ApplicationGraphResponse.icons` when the request specifies
+	// `includeIcons: true`; otherwise clients fetch bytes by hash from the resource-type icon endpoint.
+	IconHash *string
+
 	// Resource-type-specific properties of the resource as returned by its resource provider. The shape of this map varies by
 	// `type` (e.g. a `Radius.Compute/containers` resource exposes different keys than `Radius.Datastores/redisCaches` or any
 	// user-defined resource type) and matches the `properties` returned by that resource's GET response. Top-level keys already
@@ -69,6 +79,10 @@ type ApplicationGraphResource struct {
 type ApplicationGraphResponse struct {
 	// REQUIRED; The resources in the application graph.
 	Resources []*ApplicationGraphResource
+
+	// Map from iconHash to the verbatim SVG UTF-8 bytes for every icon referenced by any resource in this response. Populated
+	// only when the request specifies `includeIcons: true`.
+	Icons map[string]*string
 }
 
 // ApplicationProperties - Application properties
@@ -278,7 +292,19 @@ type EnvironmentResourceListResult struct {
 	NextLink *string
 }
 
+// GetGraphRequest - Request body for the getGraph action.
 type GetGraphRequest struct {
+	// Optional caller-supplied dependency edges, grouped by source resource ID. Each entry maps a source Radius resource ID to
+	// the list of outbound Kind: Dependency edges leaving that source. Every entry MUST have direction: Outbound and kind: Dependency;
+	// entries that don't are ignored. The server merges these onto the connection-only graph it computes from stored resources:
+	// excluded types are dropped, unknown endpoints are dropped, and any pair already present as Kind: Connection wins over the
+	// caller-supplied Dependency. Typically populated by `rad app graph -a <name> <app.bicep>` after compiling the Bicep template
+	// locally.
+	DependsOnEdges map[string][]*ApplicationGraphConnection
+
+	// When true, `ApplicationGraphResponse.icons` is populated with the SVG bytes for every distinct `iconHash` referenced by
+	// the response's resources. When false or omitted, only per-resource `iconHash` values are returned.
+	IncludeIcons *bool
 }
 
 // IdentitySettings is the external identity setting.
@@ -430,9 +456,12 @@ type RecipeDefinition struct {
 	// the module source.
 	Source *string
 
-	// Map of resource type property names to module output names. Used for recipes that point directly at a Bicep or Terraform
-	// module to map the module's outputs onto the resource's properties.
-	Outputs map[string]*string
+	// Maps the module's outputs onto the resource type's properties, for recipes that point directly at a Bicep or Terraform
+	// module. Each entry's value is either a string (the module output name for a non-secret property) or, under the reserved
+	// `secrets` key, a nested object mapping secret property names to module output names. A `secrets` entry always routes its
+	// module output to the resource's secret outputs regardless of how the module classified it (for example an AVM module's
+	// `primaryConnectionString`). Example: `{ host: 'name', secrets: { connectionString: 'primaryConnectionString' } }`.
+	Outputs map[string]any
 
 	// Parameters to pass to the recipe
 	Parameters map[string]any
