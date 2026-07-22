@@ -106,6 +106,17 @@ func TestManifestValidationRejectsInvalidSourcesAndFormats(t *testing.T) {
 			want: "unsupported checksum format",
 		},
 		{
+			name: "GitHub checksum source without repository",
+			setup: func(manifest *Manifest) {
+				manifest.Tools[0].ChecksumSource = ChecksumSource{
+					Type:         "github-release-file",
+					FileTemplate: "checksums.txt",
+					Format:       "standard",
+				}
+			},
+			want: "repository is required for GitHub checksum source",
+		},
+		{
 			name: "yq format for URL checksum source",
 			setup: func(manifest *Manifest) {
 				manifest.Tools[0].ChecksumSource.Format = "yq"
@@ -323,5 +334,25 @@ tools:
 		if !strings.Contains(text, expected) {
 			t.Errorf("updated manifest does not contain %q:\n%s", expected, text)
 		}
+	}
+}
+
+func TestReplaceFilePreservesDestinationForUnrelatedRenameError(t *testing.T) {
+	directory := t.TempDir()
+	destination := filepath.Join(directory, "destination")
+	if err := os.WriteFile(destination, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := replaceFile(filepath.Join(directory, "missing"), destination)
+	if err == nil {
+		t.Fatal("replaceFile() error = nil, want rename error")
+	}
+	contents, readErr := os.ReadFile(destination)
+	if readErr != nil {
+		t.Fatalf("read destination after failed rename: %v", readErr)
+	}
+	if string(contents) != "keep" {
+		t.Fatalf("destination contents = %q, want %q", contents, "keep")
 	}
 }

@@ -80,7 +80,7 @@ jobs:
         with:
           bot-slug-name: ${{ steps.app-token.outputs.app-slug }}
 
-      - name: Commit and push update branch
+      - name: Commit updates and create or update pull request
         if: >-
           steps.changes.outputs.changed == 'true' &&
           github.repository == 'radius-project/radius'
@@ -88,46 +88,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GIT_USER_EMAIL: ${{ steps.bot-details.outputs.email }}
           GIT_USER_NAME: ${{ steps.bot-details.outputs.name }}
-        run: |
-          set -euo pipefail
-          git config user.name "${GIT_USER_NAME}"
-          git config user.email "${GIT_USER_EMAIL}"
-          git checkout -B "$PR_BRANCH"
-          git add -A
-          git commit --signoff -m "$PR_TITLE"
-          gh auth setup-git
-          git push --force origin "HEAD:${PR_BRANCH}"
-
-      - name: Create or update pull request
-        if: >-
-          steps.changes.outputs.changed == 'true' &&
-          github.repository == 'radius-project/radius'
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          set -euo pipefail
-          existing_pr="$(
-            gh pr list --state open --head "$PR_BRANCH" \
-              --json number --jq '.[0].number'
-          )"
-          body=$(cat <<'EOF'
-          This automated PR refreshes the pinned command-line tool versions and
-          SHA-256 checksums from the release sources declared in
-          `build/tools.yaml`.
-
-          `build/tools.generated.mk` is generated from the manifest and committed
-          with it. Bicep remains intentionally held at its compatibility-pinned
-          version until local `br:localhost` functional tests support a newer
-          release.
-          EOF
-          )
-          if [ -n "$existing_pr" ]; then
-            gh pr edit "$existing_pr" --title "$PR_TITLE" --body "$body"
-            echo "Updated PR #$existing_pr"
-          else
-            gh pr create --base main --head "$PR_BRANCH" \
-              --title "$PR_TITLE" --body "$body"
-          fi
+        run: make workflow-update-tools-pr
 
       - name: Report fork changes
         if: >-

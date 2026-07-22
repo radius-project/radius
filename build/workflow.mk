@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -29,3 +29,7 @@ workflow-enable-all: ## Enable all workflows in the current repo
 .PHONY: workflow-delete-all-runs
 workflow-delete-all-runs: ## Delete all workflow runs in the repository. NOTE: This is a destructive operation and cannot be undone.
 	@bash $(WORKFLOW_SCRIPT) delete-all-runs
+
+.PHONY: workflow-update-tools-pr
+workflow-update-tools-pr: ## Commit tool updates and create or update the automation pull request.
+	@bash ./.github/scripts/update-tools-pr.sh

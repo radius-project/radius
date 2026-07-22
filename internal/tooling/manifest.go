@@ -3,8 +3,10 @@ package tooling
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -251,6 +253,9 @@ func validateChecksumSource(tool Tool) error {
 	source := tool.ChecksumSource
 	switch source.Type {
 	case "github-release-file":
+		if strings.TrimSpace(tool.Source.Repository) == "" {
+			return fmt.Errorf("repository is required for GitHub checksum source %s", tool.Name)
+		}
 		if source.FileTemplate == "" || source.Format == "" {
 			return fmt.Errorf("GitHub checksum file and format are required for %s", tool.Name)
 		}
@@ -591,13 +596,22 @@ func writeIfChanged(path string, contents []byte) (bool, error) {
 	if err := temporary.Close(); err != nil {
 		return false, fmt.Errorf("close temporary file for %s: %w", path, err)
 	}
-	if err := os.Rename(temporaryPath, path); err != nil {
-		if removeErr := os.Remove(path); removeErr != nil && !os.IsNotExist(removeErr) {
-			return false, fmt.Errorf("replace %s: %w", path, err)
-		}
-		if retryErr := os.Rename(temporaryPath, path); retryErr != nil {
-			return false, fmt.Errorf("replace %s: %w", path, retryErr)
-		}
+	if err := replaceFile(temporaryPath, path); err != nil {
+		return false, fmt.Errorf("replace %s: %w", path, err)
 	}
 	return true, nil
+}
+
+func replaceFile(source, destination string) error {
+	err := os.Rename(source, destination)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, fs.ErrExist) {
+		return err
+	}
+	if removeErr := os.Remove(destination); removeErr != nil && !errors.Is(removeErr, fs.ErrNotExist) {
+		return fmt.Errorf("remove existing destination: %w", removeErr)
+	}
+	return os.Rename(source, destination)
 }
