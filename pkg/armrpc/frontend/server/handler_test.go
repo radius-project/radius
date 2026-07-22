@@ -34,7 +34,6 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -90,7 +89,7 @@ func Test_RegisterHandler_DeplicatedRoutes(t *testing.T) {
 		Middlewares:       chi.Middlewares{middleware.NormalizePath},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	err := RegisterHandler(ctx, opts, ctrlOpts)
 	require.NoError(t, err)
@@ -176,7 +175,7 @@ func Test_RegisterHandler(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := testcontext.New(t)
+			ctx := t.Context()
 
 			err := RegisterHandler(ctx, tc.opts, ctrlOpts)
 			if tc.err != nil {

@@ -26,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/dynamicrp/testhost"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,7 +33,7 @@ import (
 //
 // This test is synthetic because we don't have a real operation to test against.
 func Test_Dynamic_OperationResultAndStatus(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	dynamic, ucp := testhost.Start(t)
 
 	// Setup a plane & resource provider & location

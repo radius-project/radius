@@ -17,6 +17,7 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net"
@@ -25,7 +26,6 @@ import (
 	"time"
 
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
-	"github.com/radius-project/radius/test/testcontext"
 
 	"github.com/stretchr/testify/require"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
@@ -48,7 +48,7 @@ const (
 
 // Test_ValidateRecipe_Type tests a recipe with valid and invalid types.
 func Test_ValidateRecipe_Type(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	radius, client := setupWebhookTest(t)
 
 	// Environment is created.
@@ -217,7 +217,7 @@ func Test_Webhook_ValidateFunctions(t *testing.T) {
 	}
 	for _, tr := range tests {
 		t.Run(tr.name, func(t *testing.T) {
-			ctx := testcontext.New(t)
+			ctx := t.Context()
 			var err error
 			namespace := types.NamespacedName{Namespace: defaultNamespace, Name: tr.recipeName}
 			recipe := makeRecipe(namespace, tr.typeName)
@@ -247,15 +247,8 @@ func Test_Webhook_ValidateFunctions(t *testing.T) {
 func setupWebhookTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	SkipWithoutEnvironment(t)
 
-	// For debugging, you can set uncomment this to see logs from the controller. This will cause tests to fail
-	// because the logging will continue after the test completes.
-	//
-	// Add runtimelog "sigs.k8s.io/controller-runtime/pkg/log" to imports.
-	//
-	// runtimelog.SetLogger(ucplog.FromContextOrDiscard(testcontext.New(t)))
-
 	// Shut down the manager when the test exits.
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
@@ -321,7 +314,7 @@ func updateWebhookFailurePolicy(t *testing.T, webhookConfigName string, webhookf
 	SkipWithoutEnvironment(t)
 
 	// Shut down the manager when the test exits.
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	// Define the object key (name)
