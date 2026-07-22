@@ -396,7 +396,7 @@ func Test_Run(t *testing.T) {
 
 			err := runner.Run(context.Background())
 			require.Error(t, err)
-			require.IsType(t, err, clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", "test-app", radcli.TestWorkspaceName))
+			require.IsType(t, clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", "test-app", radcli.TestWorkspaceName), err)
 		})
 
 		t.Run("List resources in an application - Success", func(t *testing.T) {
