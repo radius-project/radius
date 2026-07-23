@@ -168,7 +168,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 
 	t.Cleanup(func() {
 		// Use a fresh context because t.Context() is cancelled before cleanup runs.
-		cleanupCtx := context.Background()
+		cleanupCtx := t.Context()
 
 		// Check if resource exists before issuing a delete because the AWS SDK async delete operation
 		// seems to fail if the resource does not exist

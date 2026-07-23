@@ -33,7 +33,7 @@ func TestFromContext(t *testing.T) {
 	require.NoError(t, err)
 	serviceCtx, err := v1.FromARMRequest(req, "", v1.LocationGlobal)
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 	newCtx := v1.WithARMRequestContext(ctx, serviceCtx)
 
 	sCtx := AWSRequestContextFromContext(newCtx)

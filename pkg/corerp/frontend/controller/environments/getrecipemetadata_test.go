@@ -42,7 +42,7 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 	defer mctrl.Finish()
 	databaseClient := database.NewMockClient(mctrl)
 	mEngine := engine.NewMockEngine(mctrl)
-	ctx := context.Background()
+	ctx := t.Context()
 	t.Parallel()
 	t.Run("get recipe metadata run", func(t *testing.T) {
 		envInput, envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20231001preview()

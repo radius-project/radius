@@ -195,7 +195,7 @@ func TestMakeEncryptionFilter_NestedSensitiveFields(t *testing.T) {
 // Helper functions
 
 func createTestContext() context.Context {
-	ctx := context.Background()
+	ctx := t.Context()
 	// Add ARM request context
 	armCtx := &v1.ARMRequestContext{
 		ResourceID: mustParseResourceID(testResourceID),

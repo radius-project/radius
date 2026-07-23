@@ -202,7 +202,7 @@ func TestCheckHTTPProxyStatus_ValidStatus(t *testing.T) {
 		dynamicClientSet: fakeClient,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	dynamicInformerFactory.Start(ctx.Done())
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 
@@ -320,7 +320,7 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRootProxy(t *testing.T) {
 		dynamicClientSet: fakeClient,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	dynamicInformerFactory.Start(ctx.Done())
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 
@@ -454,7 +454,7 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRouteProxy(t *testing.T) {
 		dynamicClientSet: fakeClient,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	dynamicInformerFactory.Start(ctx.Done())
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 
@@ -535,7 +535,7 @@ func TestCheckHTTPProxyStatus_WrongName(t *testing.T) {
 		dynamicClientSet: fakeClient,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	dynamicInformerFactory.Start(ctx.Done())
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 

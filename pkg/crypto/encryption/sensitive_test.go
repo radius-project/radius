@@ -408,7 +408,7 @@ func TestSensitiveDataHandler_RoundTrip_ComplexStructure(t *testing.T) {
 }
 
 func TestSensitiveDataHandler_FromProvider(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	key, err := GenerateKey()
 	require.NoError(t, err)
@@ -769,7 +769,7 @@ func TestGetSchemaForPath(t *testing.T) {
 
 // Test versioned key rotation support
 func TestSensitiveDataHandler_VersionedKeyRotation(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Generate two different keys
 	key1, err := GenerateKey()
@@ -828,7 +828,7 @@ func TestSensitiveDataHandler_VersionedKeyRotation(t *testing.T) {
 }
 
 func TestSensitiveDataHandler_DecryptWithOldKeyVersion(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Generate keys
 	key1, err := GenerateKey()
@@ -885,7 +885,7 @@ func TestSensitiveDataHandler_DecryptWithOldKeyVersion(t *testing.T) {
 }
 
 func TestSensitiveDataHandler_DecryptWithMissingKeyVersion(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Generate keys
 	key1, err := GenerateKey()

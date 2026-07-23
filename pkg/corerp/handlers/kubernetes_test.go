@@ -17,7 +17,6 @@ limitations under the License.
 package handlers
 
 import (
-	"context"
 	"errors"
 	"testing"
 	"time"
@@ -99,7 +98,7 @@ func TestPut(t *testing.T) {
 
 	for _, tc := range putTests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 
 			clientSet := fake.NewClientset(tc.in.Resource.CreateResource.Data.(runtime.Object))
 			handler := kubernetesHandler{
@@ -261,7 +260,7 @@ func TestPut_NonContourHTTPProxyBypassesWaiter(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
 		TypeMeta: metav1.TypeMeta{

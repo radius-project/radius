@@ -91,7 +91,7 @@ func TestGetResourceRun(t *testing.T) {
 	defer mctrl.Finish()
 
 	databaseClient := database.NewMockClient(mctrl)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	testResourceDataModel := &testDataModel{
 		Name: "ResourceName",

@@ -17,7 +17,6 @@ limitations under the License.
 package dynamic
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -360,7 +359,7 @@ func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
 }
 
 func createRadiusPlane(server *ucptesthost.TestHost) v20231001preview.RadiusPlanesClientCreateOrUpdateResponse {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	plane := v20231001preview.RadiusPlaneResource{
 		Location: to.Ptr(v1.LocationGlobal),
@@ -383,7 +382,7 @@ func createRadiusPlane(server *ucptesthost.TestHost) v20231001preview.RadiusPlan
 }
 
 func createResourceProvider(server *ucptesthost.TestHost) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resourceProvider := v20231001preview.ResourceProviderResource{
 		Location:   to.Ptr(v1.LocationGlobal),
@@ -399,7 +398,7 @@ func createResourceProvider(server *ucptesthost.TestHost) {
 }
 
 func createInertResourceType(server *ucptesthost.TestHost) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resourceType := v20231001preview.ResourceTypeResource{
 		Properties: &v20231001preview.ResourceTypeProperties{
@@ -418,7 +417,7 @@ func createInertResourceType(server *ucptesthost.TestHost) {
 }
 
 func createRecipeResourceType(server *ucptesthost.TestHost) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resourceType := v20231001preview.ResourceTypeResource{
 		Properties: &v20231001preview.ResourceTypeProperties{},
@@ -433,7 +432,7 @@ func createRecipeResourceType(server *ucptesthost.TestHost) {
 }
 
 func createAPIVersion(server *ucptesthost.TestHost, resourceType string, schema map[string]any) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	apiVersionResource := v20231001preview.APIVersionResource{
 		Properties: &v20231001preview.APIVersionProperties{
@@ -450,7 +449,7 @@ func createAPIVersion(server *ucptesthost.TestHost, resourceType string, schema 
 }
 
 func createLocation(server *ucptesthost.TestHost, resourceType string) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	location := v20231001preview.LocationResource{
 		Properties: &v20231001preview.LocationProperties{
@@ -473,7 +472,7 @@ func createLocation(server *ucptesthost.TestHost, resourceType string) {
 }
 
 func createResourceGroup(server *ucptesthost.TestHost) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	resourceGroup := v20231001preview.ResourceGroupResource{
 		Location:   to.Ptr(v1.LocationGlobal),

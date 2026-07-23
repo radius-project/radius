@@ -45,7 +45,7 @@ func TestKubernetesConnectivityCheck_WithClientset(t *testing.T) {
 }
 
 func TestKubernetesConnectivityCheck_Run(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("successful connection with permissions", func(t *testing.T) {
 		// Setup: namespace exists, deployments can be listed

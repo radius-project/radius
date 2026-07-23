@@ -78,7 +78,7 @@ func TestCertValidation(t *testing.T) {
 				Thumbprint:  tc.fakeCertThumbprint,
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			log := logr.FromContextOrDiscard(ctx)
 			armCertMgr := NewArmCertManager(metadataEndpoint, log)
 			ArmCertStore.Store(tc.fakeCertThumbprint, cert)
