@@ -74,9 +74,9 @@ func runBicepRaw(args ...string) ([]byte, error) {
 
 	var wg sync.WaitGroup
 	wg.Go(func() {
-    if _, err := io.Copy(os.Stderr, stderr); err != nil {
-        _, _ = io.Copy(io.Discard, stderr)
-    }
+		if _, err := io.Copy(os.Stderr, stderr); err != nil {
+			_, _ = io.Copy(io.Discard, stderr)
+		}
 	})
 
 	// copy to our buffer, we don't really need to observe
