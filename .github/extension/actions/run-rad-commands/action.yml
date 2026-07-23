@@ -162,11 +162,13 @@ runs:
         }
 
         # True when RADIUS_DEPLOY_PARAMS (a JSON object) already carries the given
-        # key. Used to avoid passing a --parameters twice when an older environment
-        # still supplies registryUsername/registryPassword in the params secret.
+        # key with a usable value. Used to avoid passing a --parameters twice when
+        # an older environment still supplies registryUsername/registryPassword in
+        # the params secret. A key whose value is null or an empty string is treated
+        # as absent, so the runner-provided credentials are still injected.
         deploy_params_has_key() {
           [ -n "$DEPLOY_PARAMS_JSON" ] || return 1
-          printf '%s' "$DEPLOY_PARAMS_JSON" | jq -e --arg k "$1" 'has($k)' >/dev/null 2>&1
+          printf '%s' "$DEPLOY_PARAMS_JSON" | jq -e --arg k "$1" 'has($k) and (.[$k] != null) and (.[$k] != "")' >/dev/null 2>&1
         }
 
         # Secret values that must never reach the logs or the uploaded artifact:
@@ -211,7 +213,9 @@ runs:
         if [ -n "$DEPLOY_PARAMS_JSON" ]; then
           while IFS= read -r _sname; do
             [ -z "$_sname" ] && continue
-            add_secret "$(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r --arg k "$_sname" '.[$k]' 2>/dev/null)"
+            # Emit nothing for a JSON null so add_secret is not asked to mask/scrub
+            # the literal string "null" (which would redact unrelated output).
+            add_secret "$(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r --arg k "$_sname" 'if .[$k] == null then empty else .[$k] end' 2>/dev/null)"
           done < <(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r 'keys_unsorted[]' 2>/dev/null)
         fi
 
