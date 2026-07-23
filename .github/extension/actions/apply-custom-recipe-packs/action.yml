@@ -5,13 +5,14 @@
 # types, this:
 #   1. registers those types from `.radius/custom-types.yaml` via
 #      `rad resource-type create --from-file` (skipped when the file is absent), and
-#   2. deploys `.radius/custom-recipe-pack.bicep`, then lists every recipe pack now
-#      known to the control plane and rewrites the environment's recipe pack list to
-#      reference all of them -- so the environment carries both the default provider
-#      pack and the user's custom pack (skipped when the file is absent).
+#   2. deploys `.radius/custom-recipe-pack.bicep`, then attaches only the pack(s)
+#      newly created by that deploy to the environment -- preserving the
+#      environment's existing recipe packs (e.g. the default provider pack) and
+#      adding the custom pack, without pulling in unrelated packs the control
+#      plane may know about (skipped when the file is absent).
 # When neither file exists the action is a no-op, leaving the default pack in place.
 name: Radius - Apply custom recipe packs
-description: Register the repo's custom resource types and recipe pack (if present) and attach every recipe pack to the environment.
+description: Register the repo's custom resource types and recipe pack (if present) and attach the new pack to the environment alongside its existing packs.
 
 inputs:
   environment:

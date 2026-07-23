@@ -94,20 +94,37 @@ jobs:
           ROLE_ARN="${{ vars.AWS_ROLE_ARN }}"
           TARGET="$RADIUS_TARGET_KUBECONFIG"
 
-          # Ensure the IAM role has access to the EKS cluster.
-          # Creates an access entry if one doesn't already exist.
+          # Ensure the IAM role has access to the EKS cluster. These calls are
+          # idempotent by intent: a ResourceInUseException means the entry/policy is
+          # already present, which is fine to ignore. Any other failure (auth,
+          # permissions, throttling) is surfaced with its stderr and fails the step
+          # rather than being masked behind an "already exists" message.
           echo "Ensuring EKS access entry for $ROLE_ARN..."
-          aws eks create-access-entry \
+          if ! err=$(aws eks create-access-entry \
             --cluster-name "$CLUSTER" \
             --principal-arn "$ROLE_ARN" \
             --type STANDARD \
-            --region "$REGION" 2>/dev/null || echo "Access entry already exists"
-          aws eks associate-access-policy \
+            --region "$REGION" 2>&1); then
+            if printf '%s' "$err" | grep -q 'ResourceInUseException'; then
+              echo "Access entry already exists"
+            else
+              printf '%s\n' "$err" >&2
+              exit 1
+            fi
+          fi
+          if ! err=$(aws eks associate-access-policy \
             --cluster-name "$CLUSTER" \
             --principal-arn "$ROLE_ARN" \
             --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
             --access-scope type=cluster \
-            --region "$REGION" 2>/dev/null || echo "Access policy already associated"
+            --region "$REGION" 2>&1); then
+            if printf '%s' "$err" | grep -q 'ResourceInUseException'; then
+              echo "Access policy already associated"
+            else
+              printf '%s\n' "$err" >&2
+              exit 1
+            fi
+          fi
 
           # Build a static kubeconfig with a bearer token instead of exec-based auth.
           # The exec-based config requires aws CLI inside the container, which Radius
