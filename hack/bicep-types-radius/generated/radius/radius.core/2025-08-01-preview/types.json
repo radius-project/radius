@@ -1436,7 +1436,7 @@
           "$ref": "#/134"
         },
         "flags": 0,
-        "description": "(Optional) Resource IDs of the Recipe Packs this Environment uses to provision infrastructure for application resources. Defaults to the `default` Recipe Pack in the `default` resource group if not specified."
+        "description": "(Optional) Resource IDs of the Recipe Packs this Environment uses to provision infrastructure for application resources. When created with the Radius CLI, defaults to the `default` Recipe Pack in the `default` resource group."
       },
       "recipeParameters": {
         "type": {
@@ -1450,7 +1450,7 @@
           "$ref": "#/120"
         },
         "flags": 0,
-        "description": "(Optional) Target compute platform and cloud provider accounts that resources are deployed into. Defaults to Kubernetes in the `default` namespace if not specified."
+        "description": "(Optional) Target compute platform and cloud provider accounts that resources are deployed into. When created with the Radius CLI, defaults to Kubernetes in the `default` namespace."
       },
       "terraformSettings": {
         "type": {
@@ -1610,7 +1610,7 @@
           "$ref": "#/117"
         },
         "flags": 2,
-        "description": "(Optional) Resource IDs of the Recipe Packs this Environment uses to provision infrastructure for application resources. Defaults to the `default` Recipe Pack in the `default` resource group if not specified."
+        "description": "(Optional) Resource IDs of the Recipe Packs this Environment uses to provision infrastructure for application resources. When created with the Radius CLI, defaults to the `default` Recipe Pack in the `default` resource group."
       },
       "recipeParameters": {
         "type": {
@@ -1624,7 +1624,7 @@
           "$ref": "#/120"
         },
         "flags": 2,
-        "description": "(Optional) Target compute platform and cloud provider accounts that resources are deployed into. Defaults to Kubernetes in the `default` namespace if not specified."
+        "description": "(Optional) Target compute platform and cloud provider accounts that resources are deployed into. When created with the Radius CLI, defaults to Kubernetes in the `default` namespace."
       },
       "terraformSettings": {
         "type": {

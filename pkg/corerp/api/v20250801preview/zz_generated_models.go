@@ -342,12 +342,12 @@ type EnvironmentProperties struct {
 	// authentication, used when running Bicep Recipes in this Environment.
 	BicepSettings *string
 
-	// (Optional) Target compute platform and cloud provider accounts that resources are deployed into. Defaults to Kubernetes
-	// in the `default` namespace if not specified.
+	// (Optional) Target compute platform and cloud provider accounts that resources are deployed into. When created with the
+	// Radius CLI, defaults to Kubernetes in the `default` namespace.
 	Providers *Providers
 
 	// (Optional) Resource IDs of the Recipe Packs this Environment uses to provision infrastructure for application resources.
-	// Defaults to the `default` Recipe Pack in the `default` resource group if not specified.
+	// When created with the Radius CLI, defaults to the `default` Recipe Pack in the `default` resource group.
 	RecipePacks []*string
 
 	// (Optional) Parameters passed to Recipes when they run, keyed by resource type. Values here override the default parameters
@@ -402,8 +402,9 @@ type EnvironmentProperties struct {
 // name: 'my-recipe-pack'
 // }
 // ```
-// Both properties have defaults. If `providers` is omitted, resources are deployed to Kubernetes in the `default` namespace.
-// If `recipePacks` is omitted, the Environment uses the `default` Recipe Pack in the `default` resource group.
+// Both properties are optional. When you create an Environment with the Radius CLI, an omitted `providers` defaults to Kubernetes
+// in the `default` namespace, and an omitted `recipePacks` defaults to the `default` Recipe Pack in the `default` resource
+// group.
 // ## Deploying an Environment
 // Deploy a defined Environment with the `rad deploy` command:
 // ```bash
@@ -752,8 +753,8 @@ type RecipePackProperties struct {
 // '/planes/radius/local/resourceGroups/shared/providers/Radius.Core/recipePacks/data-recipes'
 // ]
 // ```
-// Radius is installed with a `default` Recipe Pack in the `default` resource group, which an Environment uses when `recipePacks`
-// is not set.
+// Radius is installed with a `default` Recipe Pack in the `default` resource group. When you create an Environment with the
+// Radius CLI and do not set `recipePacks`, the Environment uses this `default` Recipe Pack.
 // Prebuilt Recipe Packs and the Recipes they reference are published in the [resource-types-contrib](https://github.com/radius-project/resource-types-contrib)
 // repository.
 // For more information, see the Radius documentation at https://docs.radapp.io.

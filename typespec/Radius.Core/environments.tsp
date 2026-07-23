@@ -76,7 +76,7 @@ namespace Radius.Core;
   }
   ```
   
-  Both properties have defaults. If `providers` is omitted, resources are deployed to Kubernetes in the `default` namespace. If `recipePacks` is omitted, the Environment uses the `default` Recipe Pack in the `default` resource group.
+  Both properties are optional. When you create an Environment with the Radius CLI, an omitted `providers` defaults to Kubernetes in the `default` namespace, and an omitted `recipePacks` defaults to the `default` Recipe Pack in the `default` resource group.
   
   ## Deploying an Environment
   
@@ -153,13 +153,13 @@ model EnvironmentProperties {
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
-  @doc("(Optional) Resource IDs of the Recipe Packs this Environment uses to provision infrastructure for application resources. Defaults to the `default` Recipe Pack in the `default` resource group if not specified.")
+  @doc("(Optional) Resource IDs of the Recipe Packs this Environment uses to provision infrastructure for application resources. When created with the Radius CLI, defaults to the `default` Recipe Pack in the `default` resource group.")
   recipePacks?: string[];
 
   @doc("(Optional) Parameters passed to Recipes when they run, keyed by resource type. Values here override the default parameters defined in the Recipe Pack for every resource of that type deployed to this Environment.")
   recipeParameters?: Record<RecipeParameterValue>;
 
-  @doc("(Optional) Target compute platform and cloud provider accounts that resources are deployed into. Defaults to Kubernetes in the `default` namespace if not specified.")
+  @doc("(Optional) Target compute platform and cloud provider accounts that resources are deployed into. When created with the Radius CLI, defaults to Kubernetes in the `default` namespace.")
   providers?: Providers;
 
   @doc("(Optional) Resource ID of a `Radius.Core/terraformSettings` resource that supplies Terraform CLI settings, such as private registry credentials, used when running Terraform Recipes in this Environment.")
