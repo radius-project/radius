@@ -327,21 +327,21 @@
           "$ref": "#/39"
         },
         "flags": 2,
-        "description": "The status of the asynchronous operation."
+        "description": "(Read Only) The status of the Application resource within the Radius control plane. Does not include the other resources that compose the Application."
       },
       "environment": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "Fully qualified resource ID for the environment that the application is linked to"
+        "description": "(Required) Fully qualified resource ID of the environment the application is deployed to"
       },
       "status": {
         "type": {
           "$ref": "#/12"
         },
         "flags": 2,
-        "description": "Status of a resource."
+        "description": "(Read Only) Deployment details for the Application, including any output resources Radius created for it."
       }
     }
   },
@@ -565,21 +565,21 @@
           "$ref": "#/11"
         },
         "flags": 2,
-        "description": "The status of the asynchronous operation."
+        "description": "(Read Only) The status of the Application resource within the Radius control plane. Does not include the other resources that compose the Application."
       },
       "environment": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 2,
-        "description": "Fully qualified resource ID for the environment that the application is linked to"
+        "description": "(Required) Fully qualified resource ID of the environment the application is deployed to"
       },
       "status": {
         "type": {
           "$ref": "#/12"
         },
         "flags": 2,
-        "description": "Status of a resource."
+        "description": "(Read Only) Deployment details for the Application, including any output resources Radius created for it."
       },
       "properties": {
         "type": {
@@ -973,35 +973,35 @@
           "$ref": "#/89"
         },
         "flags": 0,
-        "description": "The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa."
+        "description": "(Optional) How Radius authenticates to the registry."
       },
       "basicAuthSecretId": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "The ID of a secret resource containing username and password for BasicAuth. Supported types: Radius.Security/secrets (recommended) or Applications.Core/secretStores. Required when authenticationMethod is 'BasicAuth'."
+        "description": "(Optional) The ID of a `Radius.Security/secrets` resource containing the username and password. Required when `authenticationMethod` is `BasicAuth`."
       },
       "azureWiClientId": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "Azure Workload Identity client ID. Required when authenticationMethod is 'AzureWI'."
+        "description": "(Optional) Azure Workload Identity client ID. Required when `authenticationMethod` is `AzureWI`."
       },
       "azureWiTenantId": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "Azure Workload Identity tenant ID. Required when authenticationMethod is 'AzureWI'."
+        "description": "(Optional) Azure Workload Identity tenant ID. Required when `authenticationMethod` is `AzureWI`."
       },
       "awsIamRoleArn": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "AWS IAM Role ARN for IRSA authentication. Required when authenticationMethod is 'AwsIrsa'."
+        "description": "(Optional) AWS IAM Role ARN for IRSA authentication. Required when `authenticationMethod` is `AwsIrsa`."
       }
     }
   },
@@ -1048,21 +1048,21 @@
           "$ref": "#/100"
         },
         "flags": 2,
-        "description": "The status of the asynchronous operation."
+        "description": "(Read Only) The status of the Bicep settings resource within the Radius control plane."
       },
       "referencedBy": {
         "type": {
           "$ref": "#/101"
         },
         "flags": 2,
-        "description": "Environments that reference this Bicep configuration."
+        "description": "(Read Only) Resource IDs of the Environments that reference this Bicep settings resource."
       },
       "registryAuthentications": {
         "type": {
           "$ref": "#/102"
         },
         "flags": 0,
-        "description": "Authentication configuration for private Bicep registries, keyed by registry hostname (e.g. 'corp.acr.io'). The Bicep driver looks up credentials by the host parsed from the recipe template path."
+        "description": "(Optional) Authentication for private Bicep registries that host Recipe templates, keyed by registry hostname such as `corp.acr.io`. Radius matches a registry by the hostname in the Recipe source."
       }
     }
   },
@@ -1186,21 +1186,21 @@
           "$ref": "#/83"
         },
         "flags": 2,
-        "description": "The status of the asynchronous operation."
+        "description": "(Read Only) The status of the Bicep settings resource within the Radius control plane."
       },
       "referencedBy": {
         "type": {
           "$ref": "#/84"
         },
         "flags": 2,
-        "description": "Environments that reference this Bicep configuration."
+        "description": "(Read Only) Resource IDs of the Environments that reference this Bicep settings resource."
       },
       "registryAuthentications": {
         "type": {
           "$ref": "#/90"
         },
         "flags": 2,
-        "description": "Authentication configuration for private Bicep registries, keyed by registry hostname (e.g. 'corp.acr.io'). The Bicep driver looks up credentials by the host parsed from the recipe template path."
+        "description": "(Optional) Authentication for private Bicep registries that host Recipe templates, keyed by registry hostname such as `corp.acr.io`. Radius matches a registry by the hostname in the Recipe source."
       },
       "properties": {
         "type": {
@@ -1342,21 +1342,21 @@
           "$ref": "#/121"
         },
         "flags": 0,
-        "description": "The Azure cloud provider configuration."
+        "description": "(Optional) Configuration for deploying resources to Azure."
       },
       "kubernetes": {
         "type": {
           "$ref": "#/122"
         },
         "flags": 0,
-        "description": "The Kubernetes provider configuration."
+        "description": "(Optional) Configuration for deploying resources to Kubernetes."
       },
       "aws": {
         "type": {
           "$ref": "#/123"
         },
         "flags": 0,
-        "description": "The AWS cloud provider configuration."
+        "description": "(Optional) Configuration for deploying resources to AWS."
       }
     }
   },
@@ -1369,21 +1369,21 @@
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "Azure subscription ID hosting deployed resources."
+        "description": "(Required) ID of the Azure subscription that resources are deployed into."
       },
       "resourceGroupName": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "Optional resource group name."
+        "description": "(Optional) Name of the Azure resource group that resources are deployed into. Most Bicep and Terraform Recipes expect a resource group in the deployment context, so set this whenever deploying Azure resources."
       },
       "identity": {
         "type": {
           "$ref": "#/14"
         },
         "flags": 0,
-        "description": "External identity settings (moved from compute)."
+        "description": "(Optional) Managed or workload identity Radius uses to authenticate to Azure when deploying resources."
       }
     }
   },
@@ -1396,7 +1396,7 @@
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "Kubernetes namespace to deploy workloads into."
+        "description": "(Required) Kubernetes namespace that workloads are deployed into."
       }
     }
   },
@@ -1409,14 +1409,14 @@
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "AWS account ID for AWS resources to be deployed into."
+        "description": "(Required) ID of the AWS account that resources are deployed into."
       },
       "region": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "AWS region for AWS resources to be deployed into."
+        "description": "(Required) AWS region that resources are deployed into."
       }
     }
   },
@@ -1429,49 +1429,49 @@
           "$ref": "#/133"
         },
         "flags": 2,
-        "description": "The status of the asynchronous operation."
+        "description": "(Read Only) The status of the Environment resource within the Radius control plane. Does not include the resources deployed to the Environment."
       },
       "recipePacks": {
         "type": {
           "$ref": "#/134"
         },
         "flags": 0,
-        "description": "List of Recipe Pack resource IDs linked to this environment."
+        "description": "(Optional) Resource IDs of the Recipe Packs this Environment uses to provision infrastructure for application resources. When created with the Radius CLI, defaults to the `default` Recipe Pack in the `default` resource group."
       },
       "recipeParameters": {
         "type": {
           "$ref": "#/136"
         },
         "flags": 0,
-        "description": "Recipe specific parameters that apply to all resources of a given type in this environment."
+        "description": "(Optional) Parameters passed to Recipes when they run, keyed by resource type. Values here override the default parameters defined in the Recipe Pack for every resource of that type deployed to this Environment."
       },
       "providers": {
         "type": {
           "$ref": "#/120"
         },
         "flags": 0,
-        "description": "Cloud provider configuration for the environment."
+        "description": "(Optional) Target compute platform and cloud provider accounts that resources are deployed into. When created with the Radius CLI, defaults to Kubernetes in the `default` namespace."
       },
       "terraformSettings": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "Resource ID of a Radius.Core/terraformSettings resource providing Terraform recipe settings."
+        "description": "(Optional) Resource ID of a `Radius.Core/terraformSettings` resource that supplies Terraform CLI settings, such as private registry credentials, used when running Terraform Recipes in this Environment."
       },
       "bicepSettings": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "Resource ID of a Radius.Core/bicepSettings resource providing Bicep recipe settings."
+        "description": "(Optional) Resource ID of a `Radius.Core/bicepSettings` resource that supplies Bicep engine settings, such as private registry authentication, used when running Bicep Recipes in this Environment."
       },
       "simulated": {
         "type": {
           "$ref": "#/28"
         },
         "flags": 0,
-        "description": "Simulated environment."
+        "description": "(Optional) When true, the Environment is simulated and does not deploy real infrastructure. Recipes are evaluated but no resources are provisioned, which is useful for validating application definitions. Defaults to `false` if not specified."
       }
     }
   },
@@ -1603,49 +1603,49 @@
           "$ref": "#/116"
         },
         "flags": 2,
-        "description": "The status of the asynchronous operation."
+        "description": "(Read Only) The status of the Environment resource within the Radius control plane. Does not include the resources deployed to the Environment."
       },
       "recipePacks": {
         "type": {
           "$ref": "#/117"
         },
         "flags": 2,
-        "description": "List of Recipe Pack resource IDs linked to this environment."
+        "description": "(Optional) Resource IDs of the Recipe Packs this Environment uses to provision infrastructure for application resources. When created with the Radius CLI, defaults to the `default` Recipe Pack in the `default` resource group."
       },
       "recipeParameters": {
         "type": {
           "$ref": "#/119"
         },
         "flags": 2,
-        "description": "Recipe specific parameters that apply to all resources of a given type in this environment."
+        "description": "(Optional) Parameters passed to Recipes when they run, keyed by resource type. Values here override the default parameters defined in the Recipe Pack for every resource of that type deployed to this Environment."
       },
       "providers": {
         "type": {
           "$ref": "#/120"
         },
         "flags": 2,
-        "description": "Cloud provider configuration for the environment."
+        "description": "(Optional) Target compute platform and cloud provider accounts that resources are deployed into. When created with the Radius CLI, defaults to Kubernetes in the `default` namespace."
       },
       "terraformSettings": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 2,
-        "description": "Resource ID of a Radius.Core/terraformSettings resource providing Terraform recipe settings."
+        "description": "(Optional) Resource ID of a `Radius.Core/terraformSettings` resource that supplies Terraform CLI settings, such as private registry credentials, used when running Terraform Recipes in this Environment."
       },
       "bicepSettings": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 2,
-        "description": "Resource ID of a Radius.Core/bicepSettings resource providing Bicep recipe settings."
+        "description": "(Optional) Resource ID of a `Radius.Core/bicepSettings` resource that supplies Bicep engine settings, such as private registry authentication, used when running Bicep Recipes in this Environment."
       },
       "simulated": {
         "type": {
           "$ref": "#/28"
         },
         "flags": 2,
-        "description": "Simulated environment."
+        "description": "(Optional) When true, the Environment is simulated and does not deploy real infrastructure. Recipes are evaluated but no resources are provisioned, which is useful for validating application definitions. Defaults to `false` if not specified."
       },
       "properties": {
         "type": {
@@ -1771,35 +1771,35 @@
           "$ref": "#/155"
         },
         "flags": 1,
-        "description": "The type of recipe (e.g., Terraform, Bicep)"
+        "description": "(Required) The kind of Recipe, which determines how Radius runs it."
       },
       "plainHttp": {
         "type": {
           "$ref": "#/28"
         },
         "flags": 0,
-        "description": "Connect to the source using HTTP (not HTTPS). This should be used when the source is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)"
+        "description": "(Optional) Connect to the source using HTTP instead of HTTPS. Use this only when the source does not support HTTPS such as a locally hosted registry for Bicep recipes. Defaults to `false` if not specified."
       },
       "source": {
         "type": {
           "$ref": "#/0"
         },
         "flags": 1,
-        "description": "The source of the recipe. For Bicep recipes this is the OCI registry reference. For Terraform recipes this is the module source."
+        "description": "(Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes this is the module source such as a Git URL or a Terraform registry module."
       },
       "parameters": {
         "type": {
           "$ref": "#/156"
         },
         "flags": 0,
-        "description": "Parameters to pass to the recipe"
+        "description": "(Optional) Default parameter values passed to the Recipe when it runs. An Environment can override these per resource type through its `recipeParameters` property."
       },
       "outputs": {
         "type": {
           "$ref": "#/157"
         },
         "flags": 0,
-        "description": "Maps the module's outputs onto the resource type's properties, for recipes that point directly at a Bicep or Terraform module. Each entry's value is either a string (the module output name for a non-secret property) or, under the reserved `secrets` key, a nested object mapping secret property names to module output names. A `secrets` entry always routes its module output to the resource's secret outputs regardless of how the module classified it (for example an AVM module's `primaryConnectionString`). Example: `{ host: 'name', secrets: { connectionString: 'primaryConnectionString' } }`."
+        "description": "(Optional) Maps the module outputs onto the resource type properties for recipes that point directly at a Bicep or Terraform module. Each value is the module output name for a non-secret property. Under the reserved `secrets` key a nested object maps secret property names to module output names and always routes those outputs to the resource secret outputs."
       }
     }
   },
@@ -1855,21 +1855,21 @@
           "$ref": "#/168"
         },
         "flags": 2,
-        "description": "The status of the asynchronous operation"
+        "description": "(Read Only) The status of the Recipe Pack resource within the Radius control plane."
       },
       "referencedBy": {
         "type": {
           "$ref": "#/169"
         },
         "flags": 2,
-        "description": "List of environment IDs that reference this recipe pack"
+        "description": "(Read Only) Resource IDs of the Environments that reference this Recipe Pack."
       },
       "recipes": {
         "type": {
           "$ref": "#/170"
         },
         "flags": 1,
-        "description": "Map of resource types to their recipe configurations"
+        "description": "(Required) The Recipes in this pack, keyed by the resource type each Recipe provisions. Each key is a resource type such as `Radius.Data/redisCaches`."
       }
     }
   },
@@ -1993,21 +1993,21 @@
           "$ref": "#/150"
         },
         "flags": 2,
-        "description": "The status of the asynchronous operation"
+        "description": "(Read Only) The status of the Recipe Pack resource within the Radius control plane."
       },
       "referencedBy": {
         "type": {
           "$ref": "#/151"
         },
         "flags": 2,
-        "description": "List of environment IDs that reference this recipe pack"
+        "description": "(Read Only) Resource IDs of the Environments that reference this Recipe Pack."
       },
       "recipes": {
         "type": {
           "$ref": "#/158"
         },
         "flags": 2,
-        "description": "Map of resource types to their recipe configurations"
+        "description": "(Required) The Recipes in this pack, keyed by the resource type each Recipe provisions. Each key is a resource type such as `Radius.Data/redisCaches`."
       },
       "properties": {
         "type": {
@@ -2133,14 +2133,14 @@
           "$ref": "#/187"
         },
         "flags": 0,
-        "description": "Provider installation configuration. Specifies the location of providers via network mirrors or direct downloads."
+        "description": "(Optional) Controls where Terraform installs providers from, such as a network mirror instead of the public registry."
       },
       "credentials": {
         "type": {
           "$ref": "#/195"
         },
         "flags": 0,
-        "description": "Credentials for authenticating to private Terraform registries (HTTP-based, e.g. app.terraform.io). Map of registry hostname to credential configuration. Rendered as native `credentials \"hostname\" {}` blocks in the generated .terraformrc. Note: this is for Terraform CLI registry auth (HTTP), not for Git-based module sources; Git auth is a separate mechanism."
+        "description": "(Optional) Credentials for authenticating to private Terraform registries such as `app.terraform.io`. Maps a registry hostname to its credential configuration. This authenticates to Terraform CLI registries over HTTP and does not authenticate Git-based module sources, which use a separate mechanism."
       }
     }
   },
@@ -2153,14 +2153,14 @@
           "$ref": "#/188"
         },
         "flags": 0,
-        "description": "Network mirror configuration for downloading providers."
+        "description": "(Optional) A network mirror to install providers from instead of the public registry."
       },
       "direct": {
         "type": {
           "$ref": "#/191"
         },
         "flags": 0,
-        "description": "Direct provider installation configuration."
+        "description": "(Optional) Providers to install directly from the public registry rather than a mirror."
       }
     }
   },
@@ -2173,21 +2173,21 @@
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "The URL of the provider mirror."
+        "description": "(Optional) The URL of the provider mirror."
       },
       "include": {
         "type": {
           "$ref": "#/189"
         },
         "flags": 0,
-        "description": "Provider address patterns to include from this mirror."
+        "description": "(Optional) Provider address patterns to include from this mirror."
       },
       "exclude": {
         "type": {
           "$ref": "#/190"
         },
         "flags": 0,
-        "description": "Provider address patterns to exclude from this mirror."
+        "description": "(Optional) Provider address patterns to exclude from this mirror."
       }
     }
   },
@@ -2212,14 +2212,14 @@
           "$ref": "#/192"
         },
         "flags": 0,
-        "description": "Provider address patterns to include for direct installation."
+        "description": "(Optional) Provider address patterns to include for direct installation."
       },
       "exclude": {
         "type": {
           "$ref": "#/193"
         },
         "flags": 0,
-        "description": "Provider address patterns to exclude from direct installation."
+        "description": "(Optional) Provider address patterns to exclude from direct installation."
       }
     }
   },
@@ -2244,7 +2244,7 @@
           "$ref": "#/0"
         },
         "flags": 0,
-        "description": "The ID of a secret resource containing the authentication token. Supported types: Radius.Security/secrets (recommended) or Applications.Core/secretStores. The secret must have a key named 'token'."
+        "description": "(Optional) The ID of a `Radius.Security/secrets` resource containing the authentication token. The secret must have a key named `token`."
       }
     }
   },
@@ -2273,28 +2273,28 @@
           "$ref": "#/206"
         },
         "flags": 2,
-        "description": "The status of the asynchronous operation."
+        "description": "(Read Only) The status of the Terraform settings resource within the Radius control plane."
       },
       "referencedBy": {
         "type": {
           "$ref": "#/207"
         },
         "flags": 2,
-        "description": "Environments that reference this Terraform configuration."
+        "description": "(Read Only) Resource IDs of the Environments that reference this Terraform settings resource."
       },
       "terraformrc": {
         "type": {
           "$ref": "#/186"
         },
         "flags": 0,
-        "description": "Terraform CLI configuration file settings. Maps directly to the Terraform CLI configuration file (.terraformrc)."
+        "description": "(Optional) Settings for the Terraform CLI configuration file. Radius renders these into a `.terraformrc` file used when running Terraform Recipes."
       },
       "env": {
         "type": {
           "$ref": "#/208"
         },
         "flags": 0,
-        "description": "Environment variables injected during Terraform recipe execution."
+        "description": "(Optional) Environment variables injected into the Terraform process during Recipe execution."
       }
     }
   },
@@ -2418,28 +2418,28 @@
           "$ref": "#/184"
         },
         "flags": 2,
-        "description": "The status of the asynchronous operation."
+        "description": "(Read Only) The status of the Terraform settings resource within the Radius control plane."
       },
       "referencedBy": {
         "type": {
           "$ref": "#/185"
         },
         "flags": 2,
-        "description": "Environments that reference this Terraform configuration."
+        "description": "(Read Only) Resource IDs of the Environments that reference this Terraform settings resource."
       },
       "terraformrc": {
         "type": {
           "$ref": "#/186"
         },
         "flags": 2,
-        "description": "Terraform CLI configuration file settings. Maps directly to the Terraform CLI configuration file (.terraformrc)."
+        "description": "(Optional) Settings for the Terraform CLI configuration file. Radius renders these into a `.terraformrc` file used when running Terraform Recipes."
       },
       "env": {
         "type": {
           "$ref": "#/196"
         },
         "flags": 2,
-        "description": "Environment variables injected during Terraform recipe execution."
+        "description": "(Optional) Environment variables injected into the Terraform process during Recipe execution."
       },
       "properties": {
         "type": {

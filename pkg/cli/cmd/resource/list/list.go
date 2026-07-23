@@ -35,18 +35,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad resource list` command.
-//
-
-// NewCommand creates a new Cobra command and a Runner to list resources of a specified type in an application or the
-// default environment, and adds flags for application name, resource group, output and workspace.
+// NewCommand creates a new Cobra command and a Runner to list resources of a specified type, or all resources
+// regardless of type, in an application or the default environment. It adds flags for application name,
+// environment name, resource group, output and workspace.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
 		Use:   "list [resourceType]",
 		Short: "Lists resources",
-		Long:  "List all resources of specified type",
+		Long:  "List all resources of a specified type. If no resource type is given, lists all resources of any type in an environment or application.",
 		Example: `
 sample list of resourceType: Applications.Core/containers, Applications.Core/gateways, Applications.Dapr/daprPubSubBrokers, Applications.Core/extenders, Applications.Datastores/mongoDatabases, Applications.Messaging/rabbitMQMessageQueues, Applications.Datastores/redisCaches, Applications.Datastores/sqlDatabases, Applications.Dapr/daprStateStores, Applications.Dapr/daprSecretStores
 
@@ -60,12 +58,25 @@ rad resource list Applications.Core/containers --application icecream-store
 
 # list all resources of a specified type in an application (shorthand flag)
 rad resource list Applications.Core/containers -a icecream-store
+
+# list all resources of a specified type in a specified environment
+rad resource list Applications.Core/containers -e not-default-env
+
+# list all resources of any type in the default environment
+rad resource list
+
+# list all resources of any type in a specified environment
+rad resource list -e not-default-env
+
+# list all resources of any type in an application
+rad resource list -a icecream-store
 `,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddApplicationNameFlag(cmd)
+	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
@@ -81,6 +92,7 @@ type Runner struct {
 	Output                    output.Interface
 	Workspace                 *workspaces.Workspace
 	ApplicationName           string
+	EnvironmentName           string
 	Format                    string
 	ResourceType              string
 	ResourceTypeSuffix        string
@@ -102,7 +114,6 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate checks the command line args, workspace, scope, application name, resource type and output format, and
 // returns an error if any of these are invalid.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	// Validate command line args and
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
@@ -121,11 +132,36 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.ApplicationName = applicationName
 
-	r.ResourceProviderNamespace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
+	environmentFlag, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return err
 	}
-	r.ResourceType = r.ResourceProviderNamespace + "/" + r.ResourceTypeSuffix
+
+	if r.ApplicationName != "" && environmentFlag != "" {
+		return clierrors.Message("The '-e/--environment' flag cannot be combined with '-a/--application'. An application belongs to a single environment.")
+	}
+
+	if len(args) > 0 {
+		r.ResourceProviderNamespace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
+		if err != nil {
+			return err
+		}
+		r.ResourceType = r.ResourceProviderNamespace + "/" + r.ResourceTypeSuffix
+
+		if environmentFlag != "" {
+			// A resource type was given along with the environment flag, so scope the typed list to that environment.
+			r.EnvironmentName, err = cli.RequireEnvironmentName(cmd, args, *workspace)
+			if err != nil {
+				return err
+			}
+		}
+	} else if r.ApplicationName == "" {
+		// No resource type or application was given, so list all resources (of any type) in an environment.
+		r.EnvironmentName, err = cli.RequireEnvironmentName(cmd, args, *workspace)
+		if err != nil {
+			return err
+		}
+	}
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
@@ -141,47 +177,65 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run checks if an application name is provided and if so, checks if the application exists in the workspace, then
 // lists all resources of the specified type in the application, and finally writes the resources to the output in the
-// specified format. If no application name is provided, it lists all resources of the specified type. An error is
-// returned if the application does not exist in the workspace.
+// specified format. If no application name is provided, it lists all resources of the specified type in the
+// environment. If no resource type is given, all resources of any type are listed instead. An error is returned if
+// the application does not exist in the workspace.
 func (r *Runner) Run(ctx context.Context) error {
-	// Initialize the client factory if it hasn't been set externally.
-	// This allows for flexibility where a test UCPClientFactory can be set externally during testing.
-	if r.UCPClientFactory == nil {
-		clientFactory, err := cmd.InitializeClientFactory(ctx, r.Workspace)
-		if err != nil {
-			return err
-		}
-		r.UCPClientFactory = clientFactory
-	}
-
-	_, err := common.GetResourceTypeDetails(ctx, r.ResourceProviderNamespace, r.ResourceTypeSuffix, r.UCPClientFactory)
-	if err != nil {
-		return err
-	}
-
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
+
 	var resourceList []generated.GenericResource
-	if r.ApplicationName == "" {
-		resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)
-		if err != nil {
-			return err
+	if r.ResourceType == "" {
+		if r.ApplicationName == "" {
+			resourceList, err = client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
+		} else {
+			err = r.requireApplicationExists(ctx, client)
+			if err == nil {
+				resourceList, err = client.ListResourcesInApplication(ctx, r.ApplicationName)
+			}
 		}
 	} else {
-		_, err = client.GetApplication(ctx, r.ApplicationName)
-		if clients.Is404Error(err) {
-			return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", r.ApplicationName, r.Workspace.Name)
-		} else if err != nil {
+		// Initialize the client factory if it hasn't been set externally.
+		// This allows for flexibility where a test UCPClientFactory can be set externally during testing.
+		if r.UCPClientFactory == nil {
+			clientFactory, err := cmd.InitializeClientFactory(ctx, r.Workspace)
+			if err != nil {
+				return err
+			}
+			r.UCPClientFactory = clientFactory
+		}
+
+		_, err = common.GetResourceTypeDetails(ctx, r.ResourceProviderNamespace, r.ResourceTypeSuffix, r.UCPClientFactory)
+		if err != nil {
 			return err
 		}
 
-		resourceList, err = client.ListResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
-		if err != nil {
-			return err
+		switch {
+		case r.ApplicationName != "":
+			err = r.requireApplicationExists(ctx, client)
+			if err == nil {
+				resourceList, err = client.ListResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
+			}
+		case r.EnvironmentName != "":
+			resourceList, err = client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentName, r.ResourceType)
+		default:
+			resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)
 		}
+	}
+	if err != nil {
+		return err
 	}
 
 	return r.Output.WriteFormatted(r.Format, resourceList, objectformats.GetGenericResourceTableFormat())
+}
+
+// requireApplicationExists returns a user-facing error if r.ApplicationName does not exist in the workspace.
+func (r *Runner) requireApplicationExists(ctx context.Context, client clients.ApplicationsManagementClient) error {
+	_, err := client.GetApplication(ctx, r.ApplicationName)
+	if clients.Is404Error(err) {
+		return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", r.ApplicationName, r.Workspace.Name)
+	}
+	return err
 }
