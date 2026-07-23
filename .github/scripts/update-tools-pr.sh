@@ -51,7 +51,7 @@ git checkout -B "${PR_BRANCH}"
 git add -A
 git commit --signoff -m "${PR_TITLE}"
 gh auth setup-git
-git push --force origin "HEAD:${PR_BRANCH}"
+git push --force-with-lease origin "HEAD:${PR_BRANCH}"
 
 existing_pr="$(
     gh pr list --state open --head "${PR_BRANCH}" \
