@@ -62,7 +62,8 @@ func runBicepRaw(args ...string) ([]byte, error) {
 	// leaking the caller's handle to the grandchild.
 	stderr, err := c.StderrPipe()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create pipe: %w", err)
+		_ = stdout.Close()
+		return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
 	if err = c.Start(); err != nil {
