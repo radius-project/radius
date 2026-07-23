@@ -54,7 +54,7 @@ Then follow the run (`gh run watch` or the run URL) until it succeeds, fails, or
 3. Projects GitHub OIDC tokens into the pods and registers the cloud identity with `rad credential register`, so recipe deletes can reach the target cluster and cloud.
 4. Runs `rad startup` to restore the control-plane databases and Terraform recipe-state Secrets persisted by the previous run — this is what tells the delete which environment, recipe packs, resources, and Terraform state exist. Unlike deploy, it does **not** recreate the environment, recipe pack, or registry credentials.
 5. Runs `rad app delete <name> --yes --preview` or `rad env delete <name> --yes --preview` (`--preview` selects the Radius.Core surface) via the `delete-resource` action, which writes a `rad-delete-result` artifact (JSON: `outcome`, `exitCode`, `resourceType`, `name`, `output`).
-6. `rad shutdown` (`if: always()`) persists the post-delete control-plane databases and Terraform recipe-state Secrets back to the `radius-state` git orphan branch, so the next operation plans against the updated state. On failure, logs are uploaded as the `radius-logs` artifact; the k3d cluster is always deleted.
+6. `rad shutdown` (`if: always()`) persists the post-delete control-plane databases and Terraform recipe-state Secrets back to the state archive — the OCI-backed archive by default (pushed to GHCR, selected by the `RADIUS_STATE_*` variables), or the `radius-state` git orphan branch when `RADIUS_STATE_BACKEND=git` — so the next operation plans against the updated state. On failure, logs are uploaded as the `radius-logs` artifact; the k3d cluster is always deleted.
 
 ## After a successful delete
 

@@ -23,7 +23,7 @@ The workflow was originally a single file that branched on which provider variab
 Explicitly **out of scope**:
 
 - **Cloud-side OIDC / permission provisioning** — creating the AWS IAM role + trust policy or the Entra app registration + federated credential. The workflow *consumes* an environment that is already federated; standing that up is tracked separately.
-- **The state-storage mechanism** (`rad startup` / `rad shutdown`, the `radius-state` git orphan branch) — owned by the [state-storage design](../2026-06-repo-radius-state-storage.md).
+- **The state-storage mechanism** (`rad startup` / `rad shutdown`, the OCI-backed state archive or the `radius-state` git orphan branch) — owned by the [state-storage design](../2026-06-repo-radius-state-storage.md).
 - **The multi-cluster seam internals** (`global.targetCluster`, the cluster access resolver) — owned by the [multi-cluster design](2026-06-multi-cluster.md). This document only describes how the workflow *drives* that seam.
 - **Mid-run cloud-token refresh** beyond the single pre-deploy EKS refresh — a long Azure run may outlive the one-time token exchange; refreshing it mid-run is a deferred fast follow.
 
@@ -91,7 +91,7 @@ All **third-party actions** used anywhere in the generated workflows and shared 
 
 ### Permissions
 
-`id-token: write` (OIDC), `contents: write` (so `rad shutdown` can push the `radius-state` branch), and `packages: write` (so container-image recipes can push to GHCR). Declared on the dispatcher and, because reusable workflows run with the caller's grants, inherited by the provider workflows.
+`id-token: write` (OIDC), `contents: write` (so `rad shutdown` can push the `radius-state` branch when the git state backend is selected), and `packages: write` (so container-image recipes and the OCI-backed state archive can push to GHCR). Declared on the dispatcher and, because reusable workflows run with the caller's grants, inherited by the provider workflows.
 
 ## Workflow stages
 
@@ -109,7 +109,7 @@ flowchart TD
     J --> K[Create environment + recipe pack]
     K --> L[Provision registry creds on control plane]
     L --> M[Run rad_commands or default deploy<br/>upload rad-commands-result artifact]
-    M --> N[rad shutdown<br/>back up + push radius-state]
+    M --> N[rad shutdown<br/>back up + push state archive]
     N --> O[Delete k3d cluster]
 ```
 
@@ -150,7 +150,7 @@ The action contract hides which model is in use: the dispatch inputs and the res
 
 ### State persistence — `rad startup` / `rad shutdown`
 
-`rad startup` and `rad shutdown` are kind-agnostic CLI commands that back up and restore all durable Radius state (control-plane PostgreSQL + Terraform recipe-state Secrets) to a `radius-state` git orphan branch pushed to the repo's `origin`. They do not manage cluster lifecycle — the workflow owns creating and destroying the ephemeral control plane around them. The mechanism is the plan of record; see the [state-storage design](../2026-06-repo-radius-state-storage.md).
+`rad startup` and `rad shutdown` are kind-agnostic CLI commands that back up and restore all durable Radius state (control-plane PostgreSQL + Terraform recipe-state Secrets). These workflows use the OCI-backed state archive by default (the `RADIUS_STATE_*` variables select an OCI repository, pushed to GHCR after a docker login), falling back to a `radius-state` git orphan branch pushed to the repo's `origin` only when `RADIUS_STATE_BACKEND=git`. They do not manage cluster lifecycle — the workflow owns creating and destroying the ephemeral control plane around them. The mechanism is the plan of record; see the [state-storage design](../2026-06-repo-radius-state-storage.md).
 
 ### Recipe pack and environment
 
@@ -158,13 +158,13 @@ The workflow provisions a `Radius.Core/recipePacks` resource and a `Radius.Core/
 
 The `radius-env.bicep` that carries the pack is written to the app file's directory (e.g. `.radius/`) and deployed from there. bicep resolves `bicepconfig.json` nearest the `.bicep` file, so deploying from that directory picks up the repo's own `.radius/bicepconfig.json` — which declares the `radius` extension — rather than a (non-existent) config at the workspace root. The `Radius.Compute/containerImages` type ships with the published `radius` Bicep extension, so the workflow no longer registers resource types or wires a local Bicep extension at deploy time.
 
-**Custom resource types and recipe packs.** A repo that defines its own custom resource types places two files in the app's `.radius/` folder (next to `.radius/app.bicep`): a `custom-types.yaml` resource-type manifest and a `custom-recipe-pack.bicep` recipe pack. After the default provider pack and environment are created, the shared `apply-custom-recipe-packs` composite action registers the types with `rad resource-type create --from-file custom-types.yaml` (so the recipe pack's referenced types exist), then `rad deploy`s `custom-recipe-pack.bicep`, enumerates every pack with `rad recipe-pack list`, and runs `rad env update <env> --recipe-packs <all pack ids> --preview` so the environment references both the default provider pack and the custom pack (`--recipe-packs` replaces the list, so passing every pack id preserves the default). Each file is optional and independent: an absent `custom-types.yaml` skips registration, an absent `custom-recipe-pack.bicep` keeps the default pack. The recipe pack is deployed from `.radius/` for the same `bicepconfig.json` resolution reason as `radius-env.bicep`.
+**Custom resource types and recipe packs.** A repo that defines its own custom resource types places two files in the app's `.radius/` folder (next to `.radius/app.bicep`): a `custom-types.yaml` resource-type manifest and a `custom-recipe-pack.bicep` recipe pack. After the default provider pack and environment are created, the shared `apply-custom-recipe-packs` composite action registers the types with `rad resource-type create --from-file custom-types.yaml` (so the recipe pack's referenced types exist), then snapshots the recipe-pack IDs before and after `rad deploy`ing `custom-recipe-pack.bicep` to identify the newly-created pack(s), reads the environment's current `recipePacks` with `rad env show`, and runs `rad env update <env> --recipe-packs <existing ∪ new> --preview`. Because `--recipe-packs` replaces the list, the action computes the union of the environment's existing packs and only the newly-created pack(s) — it deliberately does **not** attach every pack from `rad recipe-pack list`, which spans all scopes and could pull unrelated packs (e.g. restored from prior state) into the environment and trip recipe-pack conflict validation. Each file is optional and independent: an absent `custom-types.yaml` skips registration, an absent `custom-recipe-pack.bicep` keeps the default pack. The recipe pack is deployed from `.radius/` for the same `bicepconfig.json` resolution reason as `radius-env.bicep`.
 
 ### Delete workflows
 
 Deleting an application or an environment reuses the deploy composition, minus the create stages. `delete-application.yml` and `delete-environment.yml` are thin dispatchers that mirror `run-rad-commands.yml`: a `detect` job binds the GitHub Environment, picks the provider from `AZURE_CLIENT_ID` / `AWS_ROLE_ARN`, and calls a reusable provider workflow (`delete-azure.yml` / `delete-aws.yml`) with `resource_type` (`application` or `environment`) and the target `name`. One provider workflow pair, parameterized by `resource_type`, keeps provider setup defined once per provider rather than once per resource type.
 
-The provider delete workflows run the same provider setup as deploy — OIDC login, cluster connection, cloud OIDC token projection, `rad credential register` — because `rad app delete` runs the resources' recipe delete path (e.g. `terraform destroy`) against the target cluster and cloud. They skip the deploy-only stages (create environment, deploy recipe pack, register registry credentials): the environment and its recipes come back from restored state, and deleting builds no images. The order is therefore restore state → delete → persist state. Restoring first (`rad startup`) is what makes the delete see the environment, recipe packs, resources, and Terraform state; persisting after (`rad shutdown`, run with `if: always()` in `teardown`) is what satisfies the requirement that the post-delete state is stored again, so the next operation plans against it.
+The provider delete workflows run the same provider setup as deploy — OIDC login, cluster connection, cloud OIDC token projection, `rad credential register` — because `rad app delete` runs the resources' recipe delete path (e.g. `terraform destroy`) against the target cluster and cloud. They skip the deploy-only stages (create environment, deploy recipe pack, register registry credentials): the environment and its recipes come back from restored state, and deleting builds no images. The order is therefore restore state → delete → persist state. Restoring first (`rad startup`) is what makes the delete see the environment, recipe packs, resources, and Terraform state; persisting after (`rad shutdown`, run with `if: always()` in `teardown`) is what satisfies the requirement that the post-delete state is stored again, so the next operation plans against it. Both use the state archive — OCI-backed by default (`RADIUS_STATE_*` + GHCR login), or the `radius-state` git orphan branch when `RADIUS_STATE_BACKEND=git`.
 
 The shared `delete-resource` composite action runs `rad app delete <name> --yes --preview` or `rad env delete <name> --yes --preview`. `--preview` is required: without it these commands fall through to the legacy implementation instead of the Radius.Core surface the deploy flow provisions. It writes a `rad-delete-result` artifact (JSON with `outcome`, `exitCode`, `resourceType`, `name`, `output`) so a frontend can report the result the same way it reads the deploy result. Deleting an application also deletes that application's resources; deleting an environment removes the environment and its recipe-pack associations.
 

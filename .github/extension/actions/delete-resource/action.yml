@@ -52,6 +52,14 @@ runs:
         }
         trap write_result EXIT
 
+        # Sanitize untrusted inputs for log output only: strip control characters
+        # (newlines/CR in particular) so a crafted resource type/name cannot start a
+        # new log line or inject GitHub Actions workflow commands (e.g. a name
+        # containing `\n::warning::`). The raw values are still passed verbatim to
+        # `rad` and to write_result (jq --arg JSON-encodes them safely).
+        SAFE_TYPE=$(printf '%s' "$RESOURCE_TYPE" | tr -d '[:cntrl:]')
+        SAFE_NAME=$(printf '%s' "$RESOURCE_NAME" | tr -d '[:cntrl:]')
+
         if [ -z "${RESOURCE_NAME//[[:space:]]/}" ]; then
           echo "No resource name supplied to delete." >&2
           OUTCOME="invalid_input"
@@ -65,7 +73,7 @@ runs:
           application) VERB=(app delete) ;;
           environment) VERB=(env delete) ;;
           *)
-            echo "Unsupported resource type: '$RESOURCE_TYPE' (expected 'application' or 'environment')." >&2
+            echo "Unsupported resource type: '$SAFE_TYPE' (expected 'application' or 'environment')." >&2
             OUTCOME="invalid_input"
             EXIT=2
             exit 2
@@ -93,10 +101,10 @@ runs:
 
         if [ "$EXIT" -ne 0 ]; then
           OUTCOME="failed"
-          echo "Failed to delete $RESOURCE_TYPE '$RESOURCE_NAME'." >&2
+          echo "Failed to delete $SAFE_TYPE '$SAFE_NAME'." >&2
           exit "$EXIT"
         fi
-        echo "✅ Deleted $RESOURCE_TYPE '$RESOURCE_NAME'."
+        echo "✅ Deleted $SAFE_TYPE '$SAFE_NAME'."
 
     - name: Upload delete result
       if: always()
