@@ -85,13 +85,18 @@ jobs:
       - name: Sync resource types from pinned ref
         run: make sync-resource-types
 
-      # If the regenerated files differ from what's committed, the PR has drift.
+      # If the regenerated tree differs from what's committed, the PR has drift.
+      # git status is required here because git diff ignores untracked files.
       - name: Check for drift
         run: |
-          if ! git diff --exit-code deploy/manifest/built-in-providers/; then
+          changes="$(git status --porcelain --untracked-files=all -- deploy/manifest/built-in-providers/)"
+          if [ -n "${changes}" ]; then
             echo ""
             echo "ERROR: Resource type manifest copies are out of sync with the pinned"
             echo "resource-types-contrib revisions (sources[].ref) in deploy/manifest/defaults.yaml."
+            echo ""
+            printf '%s\n' "${changes}"
+            git diff -- deploy/manifest/built-in-providers/
             echo ""
             echo "Run 'make sync-resource-types' and commit the updated files."
             exit 1
