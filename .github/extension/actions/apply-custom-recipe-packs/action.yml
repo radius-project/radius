@@ -58,27 +58,45 @@ runs:
           exit 0
         fi
 
+        # Capture the set of recipe-pack IDs before deploying so we can identify
+        # exactly which pack(s) this step creates. `rad recipe-pack list` returns
+        # every pack across scopes (including ones restored from prior state), so we
+        # must not blindly attach all of them -- that could pull unrelated packs into
+        # the environment and trip server-side recipe-pack conflict validation.
+        # ids_json emits a compact JSON array of the non-empty string IDs.
+        ids_json() {
+          rad recipe-pack list -o json \
+            | jq -c '(if type == "array" then . else [.] end) | map(.id) | map(select(type == "string" and . != ""))'
+        }
+
+        echo "Recording existing recipe packs..."
+        PACKS_BEFORE=$(ids_json)
+
         echo "Deploying custom recipe pack from $RECIPE_PACK_BICEP..."
         rad deploy "$RECIPE_PACK_BICEP"
 
-        # List every recipe pack the control plane now knows about (the default
-        # provider pack created earlier plus the custom pack just deployed) and
-        # collect their full resource IDs. IDs are used rather than names so the
-        # env update resolves each pack unambiguously regardless of its scope.
-        # select() drops any entry whose .id is missing, null, or non-string so a
-        # malformed pack cannot abort jq or inject an empty element into the list.
-        echo "Listing recipe packs..."
-        PACK_IDS=$(rad recipe-pack list -o json | jq -r '(if type == "array" then . else [.] end) | map(.id) | map(select(type == "string" and . != "")) | join(",")')
+        PACKS_AFTER=$(ids_json)
+
+        # New pack(s) = those present after the deploy but not before.
+        NEW_PACKS=$(jq -nc --argjson before "$PACKS_BEFORE" --argjson after "$PACKS_AFTER" '$after - $before')
+
+        # Preserve the environment's current recipe packs (e.g. the default provider
+        # pack attached when the environment was created) and add only the new pack(s).
+        # `rad env update --recipe-packs` REPLACES the list, so we compute the full
+        # desired set here rather than passing every pack the control plane knows.
+        EXISTING_PACKS=$(rad env show "$ENVIRONMENT" -o json | jq -c '(.properties.recipePacks // []) | map(select(type == "string" and . != ""))')
+
+        PACK_IDS=$(jq -nr --argjson existing "$EXISTING_PACKS" --argjson new "$NEW_PACKS" '($existing + $new) | unique | join(",")')
 
         if [ -z "$PACK_IDS" ]; then
           echo "No recipe packs found to attach to environment '$ENVIRONMENT'." >&2
           exit 1
         fi
 
-        # Replace the environment's recipe pack list with every pack so the custom
-        # types resolve alongside the default provider recipes. --preview selects the
-        # Radius.Core implementation; without it `rad env update` dispatches to the
-        # legacy command, which does not understand --recipe-packs.
+        # Replace the environment's recipe pack list with the preserved + new set so
+        # the custom types resolve alongside the default provider recipes. --preview
+        # selects the Radius.Core implementation; without it `rad env update`
+        # dispatches to the legacy command, which does not understand --recipe-packs.
         echo "Attaching recipe packs to environment '$ENVIRONMENT': $PACK_IDS"
         rad env update "$ENVIRONMENT" --recipe-packs "$PACK_IDS" --preview
-        echo "✅ Environment '$ENVIRONMENT' updated with all recipe packs."
+        echo "✅ Environment '$ENVIRONMENT' updated with recipe packs."
