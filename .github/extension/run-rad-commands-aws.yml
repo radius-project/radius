@@ -241,6 +241,19 @@ jobs:
           BUILD_REGISTRY=$(echo "${{ vars.RADIUS_BUILD_REGISTRY || format('ghcr.io/{0}', github.repository) }}" | tr '[:upper:]' '[:lower:]')
           REGISTRY_SECRET_NAME="radius-ghcr-registry-creds"
 
+          # Tag/digest of the Bicep containerImages recipe. Defaults to the mutable
+          # `latest` tag (as the Azure hosted pack uses), but is overridable via the
+          # RADIUS_KUBE_RECIPES_REF repo variable so the pack can be pinned to an
+          # immutable digest (e.g. sha256:...) for reproducible runs, matching how
+          # the Terraform recipes below are pinned to $REF. A digest ref is joined
+          # with '@', a tag with ':'.
+          KUBE_RECIPES_REF="${{ vars.RADIUS_KUBE_RECIPES_REF || 'latest' }}"
+          case "$KUBE_RECIPES_REF" in
+            sha256:*) _ci_sep="@" ;;
+            *) _ci_sep=":" ;;
+          esac
+          CONTAINERIMAGES_SOURCE="ghcr.io/radius-project/kube-recipes/containerimages${_ci_sep}${KUBE_RECIPES_REF}"
+
           # Select the provider-specific recipe pack. Both provider packs share the
           # Bicep containerImages recipe and the Kubernetes compute/data recipes,
           # and differ only in the mySQL database recipe and cloud provider config.
@@ -282,7 +295,7 @@ jobs:
               recipes: {
                 'Radius.Compute/containerImages': {
                   kind: 'bicep'
-                  source: 'ghcr.io/radius-project/kube-recipes/containerimages:latest'
+                  source: '$CONTAINERIMAGES_SOURCE'
                   parameters: {
                     registry: '$BUILD_REGISTRY'
                     registrySecretName: '$REGISTRY_SECRET_NAME'
