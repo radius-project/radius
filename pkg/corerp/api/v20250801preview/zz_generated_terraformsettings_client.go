@@ -41,7 +41,7 @@ func NewTerraformSettingsClient(credential azcore.TokenCredential, options *arm.
 // If the operation fails it returns an *azcore.ResponseError type.
 //   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
 //     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - terraformSettingsName - Terraform configuration name
+//   - terraformSettingsName - Terraform settings name
 //   - resource - Resource create parameters.
 //   - options - TerraformSettingsClientCreateOrUpdateOptions contains the optional parameters for the TerraformSettingsClient.CreateOrUpdate
 //     method.
@@ -103,7 +103,7 @@ func (client *TerraformSettingsClient) createOrUpdateHandleResponse(resp *http.R
 // If the operation fails it returns an *azcore.ResponseError type.
 //   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
 //     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - terraformSettingsName - Terraform configuration name
+//   - terraformSettingsName - Terraform settings name
 //   - options - TerraformSettingsClientDeleteOptions contains the optional parameters for the TerraformSettingsClient.Delete
 //     method.
 func (client *TerraformSettingsClient) Delete(ctx context.Context, rootScope string, terraformSettingsName string, options *TerraformSettingsClientDeleteOptions) (TerraformSettingsClientDeleteResponse, error) {
@@ -149,7 +149,7 @@ func (client *TerraformSettingsClient) deleteCreateRequest(ctx context.Context, 
 // If the operation fails it returns an *azcore.ResponseError type.
 //   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
 //     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - terraformSettingsName - Terraform configuration name
+//   - terraformSettingsName - Terraform settings name
 //   - options - TerraformSettingsClientGetOptions contains the optional parameters for the TerraformSettingsClient.Get method.
 func (client *TerraformSettingsClient) Get(ctx context.Context, rootScope string, terraformSettingsName string, options *TerraformSettingsClientGetOptions) (TerraformSettingsClientGetResponse, error) {
 	var err error
@@ -259,7 +259,7 @@ func (client *TerraformSettingsClient) listByScopeHandleResponse(resp *http.Resp
 // If the operation fails it returns an *azcore.ResponseError type.
 //   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
 //     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
-//   - terraformSettingsName - Terraform configuration name
+//   - terraformSettingsName - Terraform settings name
 //   - properties - The resource properties to be updated.
 //   - options - TerraformSettingsClientUpdateOptions contains the optional parameters for the TerraformSettingsClient.Update
 //     method.
