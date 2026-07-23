@@ -66,6 +66,8 @@ func runBicepRaw(args ...string) ([]byte, error) {
 	}
 
 	if err = c.Start(); err != nil {
+		_ = stdout.Close()
+		_ = stderr.Close()
 		return nil, fmt.Errorf("failed executing %q: %w", fullCmd, err)
 	}
 
