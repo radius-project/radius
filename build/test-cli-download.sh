@@ -26,19 +26,20 @@ EXT=${4:-""}
 MINIMUM_VERSION=${5:-""}
 
 version_is_at_least() {
-    local actual="${1#v}"
-    local minimum="${2#v}"
-    local version_pattern='^[0-9]+\.[0-9]+\.[0-9]+$'
+    local -r actual="${1#v}"
+    local -r minimum="${2#v}"
+    local -r version_pattern='^[0-9]+\.[0-9]+\.[0-9]+$'
     local -a actual_parts
     local -a minimum_parts
+    local index
 
     if [[ ! "${actual}" =~ ${version_pattern} ]]; then
-        echo "Invalid release version: $1" >&2
+        echo "Invalid release version: ${1}" >&2
         return 2
     fi
 
     if [[ ! "${minimum}" =~ ${version_pattern} ]]; then
-        echo "Invalid minimum version: $2" >&2
+        echo "Invalid minimum version: ${2}" >&2
         return 2
     fi
 
@@ -93,7 +94,8 @@ if [[ -n "${MINIMUM_VERSION}" ]]; then
             exit 1
         fi
 
-        echo "Skipping CLI download test for $OS/$ARCH: latest stable release $RAD_VERSION predates $MINIMUM_VERSION"
+        echo "Skipping CLI download test for ${OS}/${ARCH}: latest stable" \
+            "release ${RAD_VERSION} predates ${MINIMUM_VERSION}"
         exit 0
     fi
 fi

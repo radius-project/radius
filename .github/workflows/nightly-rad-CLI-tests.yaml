@@ -62,7 +62,13 @@ jobs:
           MATRIX_FILE: ${{ matrix.file }}
           MATRIX_EXT: ${{ matrix.ext }}
           MATRIX_MINIMUM_VERSION: ${{ matrix.minimum_version }}
-        run: make test-cli-download CLI_DOWNLOAD_OS="${MATRIX_OS}" CLI_DOWNLOAD_ARCH="${MATRIX_ARCH}" CLI_DOWNLOAD_FILE="${MATRIX_FILE}" CLI_DOWNLOAD_EXT="${MATRIX_EXT}" CLI_DOWNLOAD_MINIMUM_VERSION="${MATRIX_MINIMUM_VERSION}"
+        run: >-
+          make test-cli-download
+          CLI_DOWNLOAD_OS="${MATRIX_OS}"
+          CLI_DOWNLOAD_ARCH="${MATRIX_ARCH}"
+          CLI_DOWNLOAD_FILE="${MATRIX_FILE}"
+          CLI_DOWNLOAD_EXT="${MATRIX_EXT}"
+          CLI_DOWNLOAD_MINIMUM_VERSION="${MATRIX_MINIMUM_VERSION}"
 
       - name: Create GitHub issue on failure
         if: ${{ failure() }}
