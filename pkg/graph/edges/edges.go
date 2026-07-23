@@ -31,16 +31,24 @@ import (
 // this policy so the two graphs surface an identical set of edges for
 // the same input.
 //
-// The types listed here are structural containers (applications,
-// environments, recipe packs) — Bicep authors typically write
-// `dependsOn` against them incidentally, but they are not resources
-// the graph is meant to visualise as endpoints.
+// The types listed here fall into two buckets:
+//
+//   - Structural containers (applications, environments, recipe packs)
+//     — Bicep authors typically write `dependsOn` against them
+//     incidentally, but they are not resources the graph is meant to
+//     visualise as endpoints.
+//   - Build-time artifacts (container images) — resources that model an
+//     artifact produced by a recipe (e.g. a pushed OCI image) rather
+//     than a runtime component. Application containers reference the
+//     resulting `imageReference` string, not the artifact resource, so
+//     the artifact does not belong on the runtime graph.
 var ExcludedResourceTypes = map[string]struct{}{
 	"Applications.Core/applications": {},
 	"Applications.Core/environments": {},
 	"Radius.Core/applications":       {},
 	"Radius.Core/environments":       {},
 	"Radius.Core/recipePacks":        {},
+	"Radius.Compute/containerImages": {},
 }
 
 // MergeDependencyEdges overlays caller-supplied Dependency edges onto
