@@ -441,8 +441,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest,
 	// portChan will be populated with the assigned port once the port-forward connection is opened on it
 	portChan := make(chan int, 1)
 
-	// errorChan receives both startup and runtime failures. Buffer it so ExposeIngress
-	// can finish after this helper closes the session.
+	// errorChan receives the single startup or runtime failure while request probes are in flight.
 	errorChan := make(chan error, 1)
 
 	go testutil.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, remotePort, stopChan, portChan, errorChan)
