@@ -18,13 +18,13 @@ limitations under the License.
 package storetest
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/util/etag"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -191,7 +191,7 @@ func CompareObjectLists(t *testing.T, expected []database.Object, actual []datab
 // different IDs and scopes, and checks the results of various query scenarios with different filters and scopes. It also
 // checks that the expected objects are returned.
 func RunTest(t *testing.T, client database.Client, clear func(t *testing.T)) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	t.Run("get_not_found", func(t *testing.T) {

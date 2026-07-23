@@ -27,7 +27,6 @@ import (
 	recipedriver "github.com/radius-project/radius/pkg/recipes/driver"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -102,7 +101,7 @@ func Test_Engine_Execute_Success(t *testing.T) {
 		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -164,7 +163,7 @@ func Test_Engine_Execute_SimulatedEnv_Success(t *testing.T) {
 		Simulated: true,
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -214,7 +213,7 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -289,7 +288,7 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 		TemplateVersion: "1.1.0",
 		ResourceType:    "Applications.Datastores/mongoDatabases",
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, driverWithSecrets, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -409,7 +408,7 @@ func Test_Engine_Terraform_Failure(t *testing.T) {
 			prevState := []string{
 				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
 			}
-			ctx := testcontext.New(t)
+			ctx := t.Context()
 			engine, configLoader, _, driverWithSecrets, secretsLoader := setup(t)
 			configLoader.EXPECT().
 				LoadConfiguration(ctx, recipeMetadata).
@@ -491,7 +490,7 @@ func Test_Engine_Terraform_Failure(t *testing.T) {
 }
 
 func Test_Engine_InvalidDriver(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 
 	envConfig := &recipes.Configuration{
@@ -546,7 +545,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 }
 
 func Test_Engine_Lookup_Error(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 
 	envConfig := &recipes.Configuration{
@@ -595,7 +594,7 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 }
 
 func Test_Engine_Load_Error(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 
 	recipeMetadata := recipes.ResourceMetadata{
@@ -641,7 +640,7 @@ func Test_Engine_Delete_Success(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -692,7 +691,7 @@ func Test_Engine_Delete_SimulatedEnv_Success(t *testing.T) {
 		Simulated: true,
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -725,7 +724,7 @@ func Test_Engine_Delete_Error(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -764,7 +763,7 @@ func Test_Delete_InvalidDriver(t *testing.T) {
 	recipeMetadata, recipeDefinition, outputResources := getRecipeInputs()
 	recipeDefinition.Driver = "invalid"
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 
 	envConfig := &recipes.Configuration{
@@ -800,7 +799,7 @@ func Test_Delete_InvalidDriver(t *testing.T) {
 }
 
 func Test_Delete_Lookup_Error(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 	recipeMetadata, _, outputResources := getRecipeInputs()
 
@@ -849,7 +848,7 @@ func Test_Engine_GetRecipeMetadata_Success(t *testing.T) {
 			},
 		},
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, driver, _, _ := setup(t)
 	outputParams := map[string]any{"parameters": recipeDefinition.Parameters}
 
@@ -912,7 +911,7 @@ func Test_Engine_GetRecipeMetadata_Private_Module_Success(t *testing.T) {
 			},
 		},
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, driverWithSecrets, secretsLoader := setup(t)
 	outputParams := map[string]any{"parameters": recipeDefinition.Parameters}
 
@@ -958,7 +957,7 @@ func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
 			},
 		},
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -987,7 +986,7 @@ func Test_GetRecipeMetadata_Driver_InvalidDriver(t *testing.T) {
 	recipeMetadata := recipes.ResourceMetadata{
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 	envConfig := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
@@ -1093,7 +1092,7 @@ func Test_Engine_Execute_With_Secrets_Success(t *testing.T) {
 		TemplatePath: "git://https://dev.azure.com/mongo-recipe/recipe",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, driverWithSecrets, secretsLoader := setup(t)
 	configLoader.EXPECT().
 		LoadConfiguration(ctx, recipeMetadata).
@@ -1174,7 +1173,7 @@ func Test_Engine_Delete_With_Secrets_Success(t *testing.T) {
 		TemplatePath: "git://https://dev.azure.com/mongo-recipe/recipe",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, driverWithSecrets, secretsLoader := setup(t)
 
 	configLoader.EXPECT().

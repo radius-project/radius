@@ -49,7 +49,6 @@ import (
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/step"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
@@ -183,7 +182,7 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 	_, terraformRecipeModuleServerURL, _ := strings.Cut(testutil.GetTerraformRecipeModuleServerURL(), "=")
 	t.Logf("Using terraform recipe module server URL: %s - set TF_RECIPE_MODULE_SERVER_URL to override", terraformRecipeModuleServerURL)
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
@@ -429,7 +428,7 @@ func (ct RPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
 }
 
 func (ct RPTest) Test(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	ct.CheckRequiredFeatures(ctx, t)

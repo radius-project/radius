@@ -27,12 +27,11 @@ import (
 	"github.com/sanity-io/litter"
 	"github.com/stretchr/testify/require"
 
-	"github.com/radius-project/radius/test/testcontext"
 	shared "github.com/radius-project/radius/test/ucp/storetest"
 )
 
 func Test_PostgresClient(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	// You can get the right value for this by running the command: make db-init

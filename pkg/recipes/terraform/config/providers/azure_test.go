@@ -26,7 +26,6 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/sdk"
 	ucp_credentials "github.com/radius-project/radius/pkg/ucp/credentials"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -116,7 +115,7 @@ func TestAzureProvider_BuildConfig_InvalidScope_Error(t *testing.T) {
 		},
 	}
 	p := &azureProvider{}
-	config, err := p.BuildConfig(testcontext.New(t), envConfig)
+	config, err := p.BuildConfig(t.Context(), envConfig)
 	require.Nil(t, config)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "invalid Azure provider scope \"/test-sub/resourceGroups/test-rg\" is configured on the Environment, subscription is required in the scope")
@@ -190,7 +189,7 @@ func TestAzureProvider_ParseScope(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			p := &azureProvider{}
-			subscription, err := p.parseScope(testcontext.New(t), tt.envConfig)
+			subscription, err := p.parseScope(t.Context(), tt.envConfig)
 			if tt.expectedErrMsg != "" {
 				require.Error(t, err)
 				require.ErrorContains(t, err, tt.expectedErrMsg)
@@ -276,7 +275,7 @@ func TestAzureProvider_FetchCredentials(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			c, err := fetchAzureCredentials(testcontext.New(t), tt.credentialsProvider)
+			c, err := fetchAzureCredentials(t.Context(), tt.credentialsProvider)
 			if tt.expectedErr {
 				require.Error(t, err)
 				require.Nil(t, c)

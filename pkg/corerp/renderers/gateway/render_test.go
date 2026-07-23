@@ -30,7 +30,6 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 )
@@ -105,7 +104,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	}
 	resource := makeResource(properties)
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	radiusResourceIDs, resourceIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.NoError(t, err)

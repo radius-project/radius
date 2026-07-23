@@ -33,7 +33,6 @@ import (
 	clients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
-	"github.com/radius-project/radius/test/testcontext"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -394,7 +393,7 @@ func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClien
 }
 
 func Test_Bicep_Delete_Success(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	driverBicep, client := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{
 		{
@@ -428,7 +427,7 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 }
 
 func Test_Bicep_Delete_Error(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	driverBicep, client := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{
 		{
@@ -463,7 +462,7 @@ func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
 	ts := registrytest.NewFakeRegistryServer(t)
 	t.Cleanup(ts.CloseServer)
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	driverBicep := &bicepDriver{RegistryClient: ts.TestServer.Client()}
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Name:         "mongo-azure",
@@ -490,7 +489,7 @@ func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 	ts := registrytest.NewFakeRegistryServer(t)
 	t.Cleanup(ts.CloseServer)
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	driverBicep := &bicepDriver{RegistryClient: ts.TestServer.Client()}
 	recipeDefinition := recipes.EnvironmentDefinition{
 		Name:         "mongo-azure",
@@ -556,7 +555,7 @@ func Test_GetGCOutputResources_NoDiff(t *testing.T) {
 }
 
 func Test_Bicep_Delete_Success_AfterRetry(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	driverBicep, client := setupDeleteInputs(t)
 	driverBicep.options.DeleteRetryCount = 1
 

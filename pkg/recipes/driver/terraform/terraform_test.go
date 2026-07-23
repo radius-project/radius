@@ -34,7 +34,6 @@ import (
 
 	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -91,7 +90,7 @@ func verifyDirectoryCleanup(t *testing.T, tfRootDirPath string, armOperationID s
 }
 
 func Test_Terraform_Execute_Success(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -144,7 +143,7 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 }
 
 func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -174,7 +173,7 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 }
 
 func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -231,7 +230,7 @@ func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 		DeploymentStatus: "setupError",
 	}
 
-	_, err := tfDriver.Execute(testcontext.New(t), driver.ExecuteOptions{
+	_, err := tfDriver.Execute(t.Context(), driver.ExecuteOptions{
 		BaseOptions: driver.BaseOptions{
 			Configuration: envConfig,
 			Recipe:        recipeMetadata,
@@ -243,7 +242,7 @@ func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 }
 
 func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	ctx = v1.WithARMRequestContext(ctx, &v1.ARMRequestContext{})
 
 	tfExecutor, tfDriver := setup(t)
@@ -294,7 +293,7 @@ func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
 }
 
 func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	// Do not add ARMRequestContext to the context
 
 	_, tfDriver := setup(t)
@@ -312,7 +311,7 @@ func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
 }
 
 func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -349,7 +348,7 @@ func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
 		},
 	}
 
-	_, err := tfDriver.GetRecipeMetadata(testcontext.New(t), driver.BaseOptions{
+	_, err := tfDriver.GetRecipeMetadata(t.Context(), driver.BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
 		Definition: envRecipe,
 	})
@@ -358,7 +357,7 @@ func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
 }
 
 func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -385,7 +384,7 @@ func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
 }
 
 func Test_Terraform_Delete_Success(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -420,7 +419,7 @@ func Test_Terraform_Delete_EmptyPath(t *testing.T) {
 		},
 	}
 
-	err := tfDriver.Delete(testcontext.New(t), driver.DeleteOptions{
+	err := tfDriver.Delete(t.Context(), driver.DeleteOptions{
 		BaseOptions: driver.BaseOptions{
 			Configuration: envConfig,
 			Recipe:        recipeMetadata,
@@ -433,7 +432,7 @@ func Test_Terraform_Delete_EmptyPath(t *testing.T) {
 }
 
 func Test_Terraform_Delete_Failure(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}

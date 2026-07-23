@@ -26,7 +26,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,7 +34,7 @@ import (
 // pre-creating an environment or specifying the environment name via the
 // --environment flag.
 func Test_DeployEnvironmentTemplate(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	options := rp.NewRPTestOptions(t)

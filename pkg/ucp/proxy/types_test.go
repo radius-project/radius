@@ -24,7 +24,6 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -69,7 +68,7 @@ func Test_ReverseProxyBuilder_Build(t *testing.T) {
 			}
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost", nil)
-			req = req.WithContext(testcontext.New(t))
+			req = req.WithContext(t.Context())
 			w := httptest.NewRecorder()
 			real.ServeHTTP(w, req)
 
@@ -84,7 +83,7 @@ func Test_ReverseProxyBuilder_Build(t *testing.T) {
 			}
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost", nil)
-			req = req.WithContext(testcontext.New(t))
+			req = req.WithContext(t.Context())
 			w := httptest.NewRecorder()
 			real.ServeHTTP(w, req)
 
@@ -116,7 +115,7 @@ func Test_ReverseProxyBuilder_Build(t *testing.T) {
 			}
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost", nil)
-			req = req.WithContext(testcontext.New(t))
+			req = req.WithContext(t.Context())
 			w := httptest.NewRecorder()
 			real.ServeHTTP(w, req)
 
@@ -131,7 +130,7 @@ func Test_ReverseProxyBuilder_Build(t *testing.T) {
 			}
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost", nil)
-			req = req.WithContext(testcontext.New(t))
+			req = req.WithContext(t.Context())
 			w := httptest.NewRecorder()
 			real.ServeHTTP(w, req)
 
@@ -206,7 +205,7 @@ func Test_ReverseProxyBuilder_Build(t *testing.T) {
 			}
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost", nil)
-			req = req.WithContext(testcontext.New(t))
+			req = req.WithContext(t.Context())
 			w := httptest.NewRecorder()
 			real.ServeHTTP(w, req)
 
@@ -223,7 +222,7 @@ func Test_ReverseProxyBuilder_Build(t *testing.T) {
 			}
 
 			req := httptest.NewRequest(http.MethodGet, "http://localhost", nil)
-			req = req.WithContext(testcontext.New(t))
+			req = req.WithContext(t.Context())
 			w := httptest.NewRecorder()
 			real.ServeHTTP(w, req)
 

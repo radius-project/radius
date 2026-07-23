@@ -30,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -48,7 +47,7 @@ import (
 )
 
 func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	opts := rp.NewRPTestOptions(t)
 
 	namespace := "kubernetes-interop-tutorial"
@@ -88,7 +87,7 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 	})
 
 	t.Run("Check Recipe status", func(t *testing.T) {
-		ctx, cancel := testcontext.NewWithCancel(t)
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
 		// Get resource version
@@ -110,7 +109,7 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 	})
 
 	t.Run("Check Deployment status", func(t *testing.T) {
-		ctx, cancel := testcontext.NewWithCancel(t)
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
 		// Get resource version

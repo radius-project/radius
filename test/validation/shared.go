@@ -31,7 +31,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/radius-project/radius/test/radcli"
-	"github.com/radius-project/radius/test/testcontext"
 )
 
 const (
@@ -244,7 +243,7 @@ func ValidateRPResources(ctx context.Context, t *testing.T, expected *RPResource
 
 // AssertCredentialExists checks if the credential is registered in the workspace and returns a boolean value.
 func AssertCredentialExists(t *testing.T, credential string) bool {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")

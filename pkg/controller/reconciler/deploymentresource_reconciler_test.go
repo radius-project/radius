@@ -17,6 +17,7 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -25,7 +26,6 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -56,15 +56,8 @@ var (
 func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *sdkclients.MockResourceDeploymentsClient, k8sClient.Client) {
 	SkipWithoutEnvironment(t)
 
-	// For debugging, you can set uncomment this to see logs from the controller. This will cause tests to fail
-	// because the logging will continue after the test completes.
-	//
-	// Add runtimelog "sigs.k8s.io/controller-runtime/pkg/log" to imports.
-	//
-	// runtimelog.SetLogger(ucplog.FromContextOrDiscard(testcontext.New(t)))
-
 	// Shut down the manager when the test exits.
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
@@ -100,7 +93,7 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 }
 
 func Test_DeploymentResourceReconciler_Basic(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	_, _, k8sClient := SetupDeploymentTemplateTest(t)
 
 	name := types.NamespacedName{Namespace: TestDeploymentResourceNamespace, Name: TestDeploymentResourceName}
@@ -128,7 +121,7 @@ func Test_DeploymentResourceReconciler_DeleteRetryBackoff(t *testing.T) {
 	// rather than controller-runtime's exponential rate-limiter (which
 	// climbs to ~16 minutes).
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	_, mockDeploymentClient, k8sClient := SetupDeploymentResourceTest(t)
 
 	name := types.NamespacedName{Namespace: "deploymentresource-deleteretry", Name: TestDeploymentResourceName}
@@ -198,7 +191,7 @@ func Test_DeploymentResourceReconciler_SkipsDeleteOutsideTemplateScope(t *testin
 	// scope must NOT trigger a UCP delete: the controller only deletes resources it provisioned
 	// within the owning template's scope.
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	_, mockDeploymentClient, k8sClient := SetupDeploymentResourceTest(t)
 
 	name := types.NamespacedName{Namespace: "deploymentresource-outofscope", Name: "out-of-scope"}
@@ -299,7 +292,7 @@ func Test_resourceWithinScope(t *testing.T) {
 }
 
 func waitForDeploymentResourceStateReady(t *testing.T, client k8sClient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentResourceStatus {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	status := &radappiov1alpha3.DeploymentResourceStatus{}
@@ -320,7 +313,7 @@ func waitForDeploymentResourceStateReady(t *testing.T, client k8sClient.Client, 
 }
 
 func waitForDeploymentResourceStateDeleting(t *testing.T, client k8sClient.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentResourceStatus {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	status := &radappiov1alpha3.DeploymentResourceStatus{}
@@ -344,7 +337,7 @@ func waitForDeploymentResourceStateDeleting(t *testing.T, client k8sClient.Clien
 }
 
 func waitForDeploymentResourceDeleted(t *testing.T, client k8sClient.Client, name types.NamespacedName) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	require.Eventuallyf(t, func() bool {

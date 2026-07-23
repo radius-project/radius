@@ -32,7 +32,6 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/controller/reconciler"
 	"github.com/radius-project/radius/test/rp"
-	"github.com/radius-project/radius/test/testcontext"
 	corev1 "k8s.io/api/core/v1"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -137,7 +136,7 @@ func Test_Flux_Complex(t *testing.T) {
 
 // testFluxIntegration is a helper function that runs a test for the integration of Radius and Flux.
 func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, namespaces []string) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	opts := rp.NewRPTestOptions(t)
 
 	gitRepoName := fmt.Sprintf("%s-repo", testName)

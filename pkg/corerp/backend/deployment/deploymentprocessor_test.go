@@ -41,7 +41,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -308,7 +307,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 }
 
 func Test_Render(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	env := datamodel.Environment{
 		BaseResource: v1.BaseResource{
@@ -822,7 +821,7 @@ func setupDeployMocks(mocks SharedMocks, simulated bool) {
 
 func Test_Deploy(t *testing.T) {
 	t.Run("Verify deploy success", func(t *testing.T) {
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		mocks := setup(t)
 		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
 
@@ -862,7 +861,7 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Verify deploy success with simulated env", func(t *testing.T) {
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		mocks := setup(t)
 		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
 
@@ -880,7 +879,7 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Verify deploy failure", func(t *testing.T) {
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		mocks := setup(t)
 		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
 
@@ -897,7 +896,7 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Output resource dependency missing local ID", func(t *testing.T) {
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		mocks := setup(t)
 		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
 
@@ -915,7 +914,7 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Invalid output resource type", func(t *testing.T) {
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		mocks := setup(t)
 		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
 
@@ -933,7 +932,7 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Missing output resource identity", func(t *testing.T) {
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		mocks := setup(t)
 		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
 
@@ -959,7 +958,7 @@ func Test_Deploy(t *testing.T) {
 func Test_Delete(t *testing.T) {
 
 	t.Run("Verify delete success", func(t *testing.T) {
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		mocks := setup(t)
 		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
 
@@ -973,7 +972,7 @@ func Test_Delete(t *testing.T) {
 	})
 
 	t.Run("Verify delete failure", func(t *testing.T) {
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		mocks := setup(t)
 		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
 
@@ -987,7 +986,7 @@ func Test_Delete(t *testing.T) {
 	})
 
 	t.Run("Verify delete with no output resources", func(t *testing.T) {
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		mocks := setup(t)
 		dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
 
@@ -1003,7 +1002,7 @@ func Test_Delete(t *testing.T) {
 }
 
 func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, nil, nil, nil}
 
@@ -1068,7 +1067,7 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 }
 
 func Test_getResourceDataByID(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, mocks.databaseClient, nil, nil}
 
@@ -1111,7 +1110,7 @@ func Test_getResourceDataByID(t *testing.T) {
 }
 
 func Test_fetchSecrets(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, nil, nil, nil}
