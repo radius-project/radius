@@ -24,23 +24,46 @@ import (
 	"github.com/radius-project/radius/pkg/to"
 )
 
-// ExcludedResourceTypes lists resource types that are never valid
-// endpoints for a Dependency edge. Both the CLI static-graph builder
-// (pkg/cli/graph) and the Radius.Core preview runtime handler
-// (pkg/corerp/frontend/controller/applications/v20250801preview) share
-// this policy so the two graphs surface an identical set of edges for
-// the same input.
+// ExcludedResourceTypes lists resource types that must not appear as
+// graph nodes or as endpoints of any graph edge (Connection or
+// Dependency). It is consumed in two places:
 //
-// The types listed here are structural containers (applications,
-// environments, recipe packs) — Bicep authors typically write
-// `dependsOn` against them incidentally, but they are not resources
-// the graph is meant to visualise as endpoints.
+//   - Node emission. The CLI static-graph builder
+//     (pkg/cli/graph, isExcludedResourceType) skips resources of these
+//     types when materializing ApplicationGraphResource nodes, and the
+//     Radius.Core preview runtime handler
+//     (pkg/corerp/frontend/controller/applications/v20250801preview,
+//     computeGraph) applies the same rule to the application-scoped
+//     and environment-scoped resource lists it fetches from UCP.
+//   - Dependency edge merging. MergeDependencyEdges (this file) drops
+//     any Dependency edge whose source or target Type is on this list,
+//     so both graphs surface an identical set of edges for the same
+//     input.
+//
+// The types listed here fall into two buckets:
+//
+//   - Structural containers (applications, environments, recipe packs)
+//     — Bicep authors typically write `dependsOn` against them
+//     incidentally, but they are not resources the graph is meant to
+//     visualise as endpoints.
+//   - Build-time artifacts (container images) — resources that model an
+//     artifact produced by a recipe (e.g. a pushed OCI image) rather
+//     than a runtime component. Application containers reference the
+//     resulting `imageReference` string, not the artifact resource, so
+//     the artifact does not belong on the runtime graph.
+//
+// Add a new entry only when the type meets both criteria: it must not
+// belong on any application graph as a node, AND it must not be a
+// valid edge endpoint. Changing the semantics of this list (for
+// example, splitting it into node-only and edge-only sets) requires
+// updating every consumer above.
 var ExcludedResourceTypes = map[string]struct{}{
 	"Applications.Core/applications": {},
 	"Applications.Core/environments": {},
 	"Radius.Core/applications":       {},
 	"Radius.Core/environments":       {},
 	"Radius.Core/recipePacks":        {},
+	"Radius.Compute/containerImages": {},
 }
 
 // MergeDependencyEdges overlays caller-supplied Dependency edges onto

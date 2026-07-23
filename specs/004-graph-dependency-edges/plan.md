@@ -10,7 +10,7 @@
 Phase 1 of a two-phase change to the Radius application graph, scoped to the `Radius.Core/2025-08-01-preview` API surface.
 
 - **Static graph builder** (`pkg/cli/graph/modeled.go`) gains a second edge source: Bicep's compiled `dependsOn` array. Edges are tagged `kind: Connection` (from `properties.connections`) or `kind: Dependency` (from `dependsOn`). Connection wins when both sources signal the same source-target pair.
-- **Exclusion list**: `Radius.Core/applications`, `Radius.Core/environments`, `Radius.Core/recipePacks`, `Applications.Core/applications`, `Applications.Core/environments`. Members are never graph nodes and never edge targets.
+- **Exclusion list**: `Radius.Core/applications`, `Radius.Core/environments`, `Radius.Core/recipePacks`, `Radius.Compute/containerImages`, `Applications.Core/applications`, `Applications.Core/environments`. Members are never graph nodes and never edge targets.
 - **Wire model**: `ApplicationGraphConnection` on `Radius.Core/2025-08-01-preview` gains a `kind` field. `Applications.Core` TypeSpec, generated code, handlers, and tests are untouched.
 - **Runtime handler** (Radius.Core preview): sets `kind: Connection` on every edge it emits. `Dependency` edges at runtime are Phase 2.
 - **Shared primitives**: extraction, resolution, exclusion, mirroring, and Connection-wins de-dup live in a new neutral package `pkg/graph/edges/` so Phase 2's runtime dependency scan is a wiring change, not a re-implementation.

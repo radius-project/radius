@@ -29,11 +29,13 @@ const (
 	rabbitmqID  = "/planes/radius/local/resourcegroups/default/providers/Radius.Messaging/rabbitMQ/rabbitmq"
 	appsecretID = "/planes/radius/local/resourcegroups/default/providers/Radius.Security/secrets/appsecret"
 	appScopeID  = "/planes/radius/local/resourcegroups/default/providers/Radius.Core/applications/rabbitmq-app"
+	imageID     = "/planes/radius/local/resourcegroups/default/providers/Radius.Compute/containerImages/frontend"
 
 	containerType = "Radius.Compute/containers"
 	queueType     = "Radius.Messaging/rabbitMQ"
 	secretType    = "Radius.Security/secrets"
 	appScopeType  = "Radius.Core/applications"
+	imageType     = "Radius.Compute/containerImages"
 )
 
 // static builder and the Radius.Core preview runtime handler.
@@ -179,6 +181,37 @@ func TestMergeDependencyEdges_ExcludedTargetDropsEdge(t *testing.T) {
 		"excluded target must not receive a mirrored inbound entry")
 }
 
+// TestMergeDependencyEdges_ExcludedContainerImage covers the
+// Radius.Compute/containerImages entry in ExcludedResourceTypes. Container
+// images are build-time artifacts referenced by their imageReference
+// string, not runtime graph endpoints, so both directions of a
+// dependency edge involving one must be dropped.
+func TestMergeDependencyEdges_ExcludedContainerImage(t *testing.T) {
+	t.Parallel()
+
+	graph := &corerpv20250801preview.ApplicationGraphResponse{
+		Resources: []*corerpv20250801preview.ApplicationGraphResource{
+			resource(consumerID, containerType),
+			resource(imageID, imageType),
+			resource(rabbitmqID, queueType),
+		},
+	}
+	// Two nonsensical edges the caller might emit from a raw dependsOn
+	// scan: consumer -> image (excluded target) and image -> rabbitmq
+	// (excluded source). Both must vanish.
+	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
+		consumerID: {dep(imageID)},
+		imageID:    {dep(rabbitmqID)},
+	})
+
+	require.Empty(t, findResource(t, graph, consumerID).Connections,
+		"edge to excluded containerImages target must be dropped")
+	require.Empty(t, findResource(t, graph, imageID).Connections,
+		"edges sourced from excluded containerImages must be dropped and no mirror written")
+	require.Empty(t, findResource(t, graph, rabbitmqID).Connections,
+		"target of edge from excluded containerImages source must not receive a mirror")
+}
+
 func TestMergeDependencyEdges_UnknownEndpointIsDropped(t *testing.T) {
 	t.Parallel()
 
@@ -262,7 +295,7 @@ func TestMergeDependencyEdges_MalformedInputEntriesAreSkipped(t *testing.T) {
 	}
 	MergeDependencyEdges(graph, map[string][]*corerpv20250801preview.ApplicationGraphConnection{
 		consumerID: {
-			nil, // nil entry
+			nil,                      // nil entry
 			{ID: to.Ptr(rabbitmqID)}, // missing Direction and Kind
 			{ID: to.Ptr(rabbitmqID), Direction: to.Ptr(corerpv20250801preview.DirectionInbound), Kind: to.Ptr(corerpv20250801preview.ConnectionKindDependency)},  // wrong Direction
 			{ID: to.Ptr(rabbitmqID), Direction: to.Ptr(corerpv20250801preview.DirectionOutbound), Kind: to.Ptr(corerpv20250801preview.ConnectionKindConnection)}, // wrong Kind

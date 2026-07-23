@@ -94,6 +94,8 @@ func TestBuildModeledGraph_SkipsContainersAndRecipePacks(t *testing.T) {
 			map[string]any{"type": "Radius.Core/environments", "name": "myradenv"},
 			// Recipe catalog resource — never a graph member.
 			map[string]any{"type": "Radius.Core/recipePacks", "name": "mypack"},
+			// Container image — build-time artifact, never a graph node.
+			map[string]any{"type": "Radius.Compute/containerImages", "name": "frontendimage"},
 			// The one resource that should appear.
 			map[string]any{"type": "Applications.Core/containers", "name": "frontend",
 				"properties": map[string]any{"image": "nginx"}},
