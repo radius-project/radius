@@ -17,32 +17,30 @@
 # resource-types.mk provides targets for synchronizing default resource type
 # manifests from the resource-types-contrib repository.
 #
-# resource-types-contrib is added to go.mod as a Go module dependency. It
-# contains no executable Go code. We depend on it purely to leverage Go's
-# module system for versioned downloads of YAML manifest files.
+# resource-types-contrib contains only YAML manifests and HCL/Bicep recipes -
+# no executable Go code. Rather than vendoring it as a Go module, the manifests
+# are fetched directly from pinned upstream git revisions recorded per namespace
+# in deploy/manifest/defaults.yaml (sources[].repo / sources[].ref).
 #
-# A blank import in pkg/resourcetypescontrib/import.go keeps go mod tidy from
-# removing the dependency.
-#
-# How it works:
-#   1. defaults.yaml lists which resource types to ship as defaults, using
-#      <namespace>/<typeName> names (e.g. Radius.Compute/containers).
-#   2. Each entry is resolved to a file path in the Go module cache:
-#        Radius.Compute/containers → Compute/containers/containers.yaml
-#      (strip "Radius." prefix, then <namespace>/<typeName>/<typeName>.yaml)
-#   3. The resolved file is copied into both dev/ and self-hosted/ directories
-#      under deploy/manifest/built-in-providers/.
-#   4. At startup, UCP's RegisterDirectory loads these files. Manifests without
-#      a "location" field are routed via DefaultDownstreamEndpoint (dynamic-rp).
+# defaults.yaml pins each namespace independently under `sources` and lists the
+# default types under `defaultRegistration`. build/scripts/sync-resource-types.sh
+# resolves each default type to its namespace's source, fetches each distinct
+# (repo, ref) once, copies <namespace>/<typeName>/<typeName>.yaml (with the
+# "Radius." prefix stripped) into every destination directory, and prunes stale
+# managed files. At startup UCP's RegisterDirectory loads the committed files
+# unchanged; manifests without a "location" field are routed via
+# DefaultDownstreamEndpoint (dynamic-rp).
 #
 # Targets:
-#   update-resource-types  - Bump go.mod to the latest resource-types-contrib
-#                            version and copy the manifest files.
-#   sync-resource-types    - Copy manifest files from the version already pinned
-#                            in go.mod (no version bump). Used by CI to verify
-#                            that committed copies match the pinned version.
+#   update-resource-types  - Resolve each source's ref (RESOURCE_TYPES_REF,
+#                            default "main"; RESOURCE_TYPES_NAMESPACE limits to a
+#                            single namespace) to an immutable commit SHA, pin it
+#                            in defaults.yaml, and copy the manifest files.
+#   sync-resource-types    - Copy manifest files from the refs already pinned in
+#                            defaults.yaml (no ref bump). Used by CI to verify
+#                            that committed copies match the pinned refs.
 
-# Path to the file listing default resource types.
+# Path to the file listing default resource types and the per-namespace pins.
 DEFAULTS_YAML := deploy/manifest/defaults.yaml
 
 # Directories where manifest copies are placed. Both directories contain the
@@ -52,86 +50,42 @@ DEFAULTS_YAML := deploy/manifest/defaults.yaml
 # is only present in the manually maintained files (radius_core.yaml, etc.).
 MANIFEST_DEST_DIRS := deploy/manifest/built-in-providers/dev deploy/manifest/built-in-providers/self-hosted
 
-# The Go module path for resource-types-contrib.
-RESOURCE_TYPES_MODULE := github.com/radius-project/resource-types-contrib
-
 # Files in the manifest destination directories that are manually maintained
 # and should NOT be managed (created or deleted) by the sync target. These are
 # resource providers that require explicit location addresses and are not
 # sourced from resource-types-contrib.
 MANUAL_CORE_MANIFESTS := applications_core.yaml applications_dapr.yaml applications_datastores.yaml applications_messaging.yaml microsoft_resources.yaml radius_core.yaml
 
+# Ref (branch, tag, or commit SHA) that update-resource-types resolves to an
+# immutable commit SHA before pinning it in defaults.yaml. Defaults to "main"
+# (the moving latest/edge channel). RESOURCE_TYPES_NAMESPACE optionally limits
+# the update to a single namespace (e.g. Radius.Compute); empty updates every
+# namespace. RESOURCE_TYPES_PINS (a JSON array of {namespace, ref}) takes
+# precedence and pins several namespaces at once - it is how the
+# resource-types-contrib dispatch payload advances only the affected namespaces.
+# Examples:
+#   make update-resource-types
+#   make update-resource-types RESOURCE_TYPES_REF=v0.56.0
+#   make update-resource-types RESOURCE_TYPES_NAMESPACE=Radius.Compute RESOURCE_TYPES_REF=v0.56.0
+RESOURCE_TYPES_REF ?= main
+RESOURCE_TYPES_NAMESPACE ?=
+RESOURCE_TYPES_PINS ?=
+export RESOURCE_TYPES_REF RESOURCE_TYPES_NAMESPACE RESOURCE_TYPES_PINS
+
+# Config consumed by build/scripts/sync-resource-types.sh (which does the fetch,
+# copy, and prune). RESOURCE_TYPES_REF / RESOURCE_TYPES_NAMESPACE / RESOURCE_TYPES_PINS
+# reach the script through the environment via the export above.
+SYNC_RESOURCE_TYPES_ENV := \
+	DEFAULTS_YAML="$(DEFAULTS_YAML)" \
+	MANIFEST_DEST_DIRS="$(MANIFEST_DEST_DIRS)" \
+	MANUAL_CORE_MANIFESTS="$(MANUAL_CORE_MANIFESTS)"
+
 ##@ Resource Types
 
 .PHONY: update-resource-types
-update-resource-types: ## Bump resource-types-contrib to latest and sync manifest files
-	@echo "Updating $(RESOURCE_TYPES_MODULE) to latest version..."
-	# Update only the resource-types-contrib dependency in go.mod to the latest
-	# version. Using @latest (without -u) avoids upgrading transitive dependencies.
-	go get $(RESOURCE_TYPES_MODULE)@latest
-	go mod tidy
-	# Copy the manifest files from the newly pinned version.
-	$(MAKE) sync-resource-types
+update-resource-types: ## Resolve each namespace source ref (RESOURCE_TYPES_REF, default main) to a commit SHA, pin it in defaults.yaml, and sync
+	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh --update
 
 .PHONY: sync-resource-types
-sync-resource-types: ## Copy manifest files listed in defaults.yaml from the pinned resource-types-contrib version
-	@# Verify required tools are available before making any changes.
-	@command -v yq >/dev/null 2>&1 || { echo "ERROR: yq is required but not found. Install via: make install-yq"; exit 1; }
-	@command -v jq >/dev/null 2>&1 || { echo "ERROR: jq is required but not found. Install via: brew install jq (macOS) or apt-get install jq (Linux)"; exit 1; }
-	@echo "Syncing default resource types from resource-types-contrib..."
-	@# Resolve the module's local cache directory from the version pinned in
-	@# go.mod. "go mod download -json" outputs JSON with a "Dir" field pointing
-	@# to the cached module source on disk. Then iterate over each entry in
-	@# defaults.yaml, convert the resource type name to a module-relative path
-	@# (e.g. Radius.Compute/containers -> Compute/containers/containers.yaml),
-	@# and copy the file into each destination directory (dev/ and self-hosted/).
-	@MODULE_DIR=$$(go mod download -json $(RESOURCE_TYPES_MODULE) | jq -r '.Dir') && \
-	if [ -z "$$MODULE_DIR" ] || [ "$$MODULE_DIR" = "null" ]; then \
-		echo "ERROR: Could not resolve module directory for $(RESOURCE_TYPES_MODULE)."; \
-		echo "       Is the dependency present in go.mod?"; \
-		exit 1; \
-	fi && \
-	echo "  Module directory: $$MODULE_DIR" && \
-	for entry in $$(yq '.defaultRegistration[]' $(DEFAULTS_YAML)); do \
-		rel_path=$$(echo "$$entry" | sed 's/^Radius\.//') && \
-		type_name=$$(echo "$$rel_path" | cut -d'/' -f2) && \
-		src_path="$$MODULE_DIR/$$rel_path/$$type_name.yaml" && \
-		if [ ! -f "$$src_path" ]; then \
-			echo "ERROR: File not found: $$src_path (from entry '$$entry')"; \
-			echo "       Verify the entry in $(DEFAULTS_YAML) and the resource-types-contrib version."; \
-			exit 1; \
-		fi && \
-		for dest_dir in $(MANIFEST_DEST_DIRS); do \
-			cp "$$src_path" "$$dest_dir/$$type_name.yaml"; \
-		done && \
-		echo "  Copied $$entry"; \
-	done
-	@# Remove stale managed files: any YAML in the destination directories that
-	@# is NOT in MANUAL_CORE_MANIFESTS and NOT in the current defaults.yaml list.
-	@# This prevents previously-copied manifests from remaining registered after
-	@# their entry is removed from defaults.yaml.
-	@EXPECTED_FILES="" && \
-	for entry in $$(yq '.defaultRegistration[]' $(DEFAULTS_YAML)); do \
-		rel_path=$$(echo "$$entry" | sed 's/^Radius\.//') && \
-		type_name=$$(echo "$$rel_path" | cut -d'/' -f2) && \
-		EXPECTED_FILES="$$EXPECTED_FILES $$type_name.yaml"; \
-	done && \
-	for dest_dir in $(MANIFEST_DEST_DIRS); do \
-		for file in "$$dest_dir"/*.yaml; do \
-			basename=$$(basename "$$file") && \
-			is_manual=false && \
-			for mc in $(MANUAL_CORE_MANIFESTS); do \
-				if [ "$$basename" = "$$mc" ]; then is_manual=true; break; fi; \
-			done && \
-			if [ "$$is_manual" = "true" ]; then continue; fi && \
-			is_expected=false && \
-			for ef in $$EXPECTED_FILES; do \
-				if [ "$$basename" = "$$ef" ]; then is_expected=true; break; fi; \
-			done && \
-			if [ "$$is_expected" = "false" ]; then \
-				echo "  Removing stale manifest: $$file"; \
-				rm "$$file"; \
-			fi; \
-		done; \
-	done
-	@echo "Done. Review and commit the updated files."
+sync-resource-types: ## Copy manifest files from the per-namespace refs pinned in defaults.yaml
+	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh
