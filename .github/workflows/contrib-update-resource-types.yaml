@@ -18,17 +18,31 @@
 ---
 name: contrib-update-resource-types
 
-# Triggered via `repository_dispatch` from radius-project/resource-types-contrib
-# whenever its `main` branch updates. Opens (or refreshes) a PR that runs
-# `make update-resource-types` so the manifest copies committed under
-# deploy/manifest/built-in-providers/ stay in sync with the contrib repo.
+# Triggered via `repository_dispatch` (event type `resource-types-contrib-updated`)
+# from radius-project/resource-types-contrib's notify-radius.yaml. A single event
+# type carries both channels in its client_payload:
+#   - channel "edge":    a push to contrib `main`; contrib_ref is the pushed
+#                        commit SHA.
+#   - channel "release": a published contrib release; contrib_ref is the release
+#                        tag (a scope-prefixed tag affects one namespace, a plain
+#                        vX.Y.Z affects all).
+# The payload lists exactly the affected `Radius.<Category>` namespaces, each with
+# its immutable ref:
+#   { channel, contrib_repo, contrib_ref, namespaces: [ {namespace, ref}, ... ], actor }
+#
+# This job opens (or refreshes) a PR that runs `make update-resource-types` with
+# those pins, which resolves each ref to an immutable commit SHA, records it per
+# namespace in deploy/manifest/defaults.yaml (sources[].ref), and re-copies the
+# manifests under deploy/manifest/built-in-providers/ - advancing only the
+# namespaces the event changed (namespaces Radius does not register are skipped).
 #
 # Merging the resulting PR triggers the existing `build-and-push-bicep-types`
 # job in build.yaml, which dispatches to azure-octo/radius-publisher to
 # republish `radius:latest` with the refreshed contrib types.
 #
-# See the design note:
+# See the design notes:
 #   eng/design-notes/extensibility/2026-05-unified-bicep-extension-publishing.md
+#   eng/design-notes/extensibility/2026-06-resource-types-sync-without-fake-go-module.md
 
 on:
   repository_dispatch:
@@ -37,7 +51,11 @@ on:
   # workflow_dispatch: # Enable during development for manual testing
   #   inputs:
   #     contrib_ref:
-  #       description: "Optional resource-types-contrib commit SHA the update is based on."
+  #       description: "Optional resource-types-contrib ref (commit SHA, tag, or branch) the update is based on."
+  #       required: false
+  #       default: ""
+  #     contrib_namespace:
+  #       description: "Optional resource-type namespace to scope the update to (e.g. Radius.Compute). Empty updates all."
   #       required: false
   #       default: ""
 
@@ -61,27 +79,63 @@ jobs:
     permissions:
       contents: read # actions/checkout
     steps:
-      - name: Resolve contrib ref
-        # Extracts the contrib commit SHA from either the dispatch payload or
-        # workflow_dispatch input. Validates it as a hex SHA to prevent injection.
-        # Falls back to "main" if not provided. Note: this value is informational
-        # only (used in commit messages and PR body). The actual version fetched
-        # is determined by 'make update-resource-types' which runs 'go get ...@latest'.
+      - name: Resolve dispatch payload
+        # Two paths, both validated before anything reaches the shell/make:
+        #   * repository_dispatch (contrib): client_payload.namespaces is a JSON
+        #     array of {namespace, ref}. Each namespace + ref is checked against
+        #     an allowlist, then forwarded verbatim as RESOURCE_TYPES_PINS so make
+        #     advances only the affected, registered namespaces.
+        #   * workflow_dispatch (manual testing): a single contrib_ref (+ optional
+        #     contrib_namespace) maps to RESOURCE_TYPES_REF / RESOURCE_TYPES_NAMESPACE.
         id: contrib
         env:
-          DISPATCH_REF: ${{ github.event.client_payload.contrib_ref }}
+          NAMESPACES_JSON: ${{ toJSON(github.event.client_payload.namespaces) }}
+          CHANNEL: ${{ github.event.client_payload.channel }}
+          CONTRIB_REF: ${{ github.event.client_payload.contrib_ref }}
+          ACTOR: ${{ github.event.client_payload.actor }}
           INPUT_REF: ${{ github.event.inputs.contrib_ref }}
+          INPUT_NS: ${{ github.event.inputs.contrib_namespace }}
         run: |
           set -euo pipefail
-          ref="${DISPATCH_REF:-${INPUT_REF:-}}"
-          if [ -z "${ref}" ]; then
-            ref="main"
-          elif ! [[ "${ref}" =~ ^[a-f0-9]{7,40}$ ]]; then
-            echo "ERROR: contrib_ref must be a hex commit SHA, got '${ref}'"
-            exit 1
+          ns_re='^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$'
+          ref_re='^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$'
+
+          ns_json="${NAMESPACES_JSON:-null}"
+          if [ "${ns_json}" != "null" ] && [ "$(printf '%s' "${ns_json}" | jq 'length')" -gt 0 ]; then
+            # Batch path (repository_dispatch): validate every {namespace, ref}.
+            while IFS=$'\t' read -r ns ref; do
+              printf '%s' "${ns}" | grep -Eq "${ns_re}" || { echo "ERROR: invalid namespace '${ns}'" >&2; exit 1; }
+              printf '%s' "${ref}" | grep -Eq "${ref_re}" || { echo "ERROR: invalid ref '${ref}' for '${ns}'" >&2; exit 1; }
+            done < <(printf '%s' "${ns_json}" | jq -r '.[] | [.namespace, .ref] | @tsv')
+
+            pins="$(printf '%s' "${ns_json}" | jq -c '[.[] | {namespace, ref}]')"
+            affected="$(printf '%s' "${ns_json}" | jq -r '[.[].namespace] | join(", ")')"
+            {
+              echo "pins<<PINS_EOF"
+              printf '%s\n' "${pins}"
+              echo "PINS_EOF"
+              echo "channel=${CHANNEL:-edge}"
+              echo "ref=${CONTRIB_REF:-}"
+              echo "actor=${ACTOR:-}"
+              echo "affected=${affected}"
+            } >> "${GITHUB_OUTPUT}"
+            echo "Batch: channel=${CHANNEL:-edge} ref=${CONTRIB_REF:-} namespaces=[${affected}]"
+          else
+            # Manual path (workflow_dispatch): single ref + optional namespace.
+            ref="${INPUT_REF:-main}"
+            ns="${INPUT_NS:-}"
+            printf '%s' "${ref}" | grep -Eq "${ref_re}" || { echo "ERROR: invalid contrib_ref '${ref}'" >&2; exit 1; }
+            if [ -n "${ns}" ]; then
+              printf '%s' "${ns}" | grep -Eq "${ns_re}" || { echo "ERROR: invalid contrib_namespace '${ns}'" >&2; exit 1; }
+            fi
+            {
+              echo "ref=${ref}"
+              echo "namespace=${ns}"
+              echo "channel=manual"
+              echo "affected=${ns:-all}"
+            } >> "${GITHUB_OUTPUT}"
+            echo "Manual: ref=${ref} namespace=${ns:-all}"
           fi
-          echo "ref=${ref}" >> "${GITHUB_OUTPUT}"
-          echo "Contrib ref: ${ref}"
 
       - name: Generate App Token
         # Uses a GitHub App token instead of the default GITHUB_TOKEN so that
@@ -111,30 +165,23 @@ jobs:
           git config user.name "Radius CI Bot"
           git config user.email "radiuscoreteam@service.microsoft.com"
 
-      - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-          cache: true
-
       - name: Install yq
         # Required by make update-resource-types / sync-resource-types to parse
         # deploy/manifest/defaults.yaml.
         run: make install-yq
 
       - name: Run make update-resource-types
-        # Bumps go.mod to the latest resource-types-contrib version and copies
-        # the manifest files listed in defaults.yaml into
-        # deploy/manifest/built-in-providers/{dev,self-hosted}/.
+        # Advances the affected namespaces: pins each to its immutable commit SHA
+        # in deploy/manifest/defaults.yaml (sources[].ref) and copies the manifest
+        # files into deploy/manifest/built-in-providers/{dev,self-hosted}/.
+        # RESOURCE_TYPES_PINS (the contrib namespaces[] payload) drives the batch;
+        # the RESOURCE_TYPES_REF/NAMESPACE fallback covers manual runs.
+        env:
+          RESOURCE_TYPES_PINS: ${{ steps.contrib.outputs.pins }}
+          RESOURCE_TYPES_REF: ${{ steps.contrib.outputs.ref }}
+          RESOURCE_TYPES_NAMESPACE: ${{ steps.contrib.outputs.namespace }}
         run: |
           set -euo pipefail
-          if ! make -n update-resource-types >/dev/null 2>&1; then
-            echo "ERROR: 'make update-resource-types' target is not yet defined." >&2
-            echo "This workflow depends on the target introduced by the default-registration design" >&2
-            echo "(eng/design-notes/extensibility/2026-04-automated-default-resource-type-registration.md)." >&2
-            exit 1
-          fi
           make update-resource-types
 
       - name: Detect changes
@@ -158,12 +205,13 @@ jobs:
         # than accumulating stale commits.
         if: steps.changes.outputs.changed == 'true'
         env:
-          CONTRIB_REF: ${{ steps.contrib.outputs.ref }}
+          CHANNEL: ${{ steps.contrib.outputs.channel }}
+          AFFECTED: ${{ steps.contrib.outputs.affected }}
         run: |
           set -euo pipefail
           git checkout -B "${PR_BRANCH}"
           git add -A
-          git commit -m "chore: refresh resource type manifests from ${CONTRIB_REPO} (${CONTRIB_REF})"
+          git commit -m "chore: refresh resource type manifests from ${CONTRIB_REPO} (${CHANNEL}: ${AFFECTED:-all})"
           git push --force origin "${PR_BRANCH}"
 
       - name: Open or update pull request
@@ -173,20 +221,27 @@ jobs:
         if: steps.changes.outputs.changed == 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
+          CHANNEL: ${{ steps.contrib.outputs.channel }}
+          AFFECTED: ${{ steps.contrib.outputs.affected }}
           CONTRIB_REF: ${{ steps.contrib.outputs.ref }}
         with:
           github-token: ${{ steps.app-token.outputs.token }}
           script: |
             const branch = process.env.PR_BRANCH;
-            const contribRef = process.env.CONTRIB_REF;
+            const channel = process.env.CHANNEL || "edge";
+            const affected = process.env.AFFECTED || "";
+            const contribRef = process.env.CONTRIB_REF || "";
             const title = "chore: refresh resource type manifests from resource-types-contrib";
             const body = [
               "Automated refresh of resource type manifests under `deploy/manifest/built-in-providers/`.",
               "",
-              `Triggered by an update to [\`${process.env.CONTRIB_REPO}\`](https://github.com/${process.env.CONTRIB_REPO}) at ref \`${contribRef}\`.`,
+              `Triggered by [\`${process.env.CONTRIB_REPO}\`](https://github.com/${process.env.CONTRIB_REPO}) on the \`${channel}\` channel at ref \`${contribRef}\`.`,
+              affected ? `Affected namespaces: ${affected}.` : "",
+              "",
+              "Each affected namespace is pinned to an immutable commit SHA in `deploy/manifest/defaults.yaml` (`sources[].ref`).",
               "",
               "Merging this PR will republish `br:biceptypes.azurecr.io/radius:latest` via the existing `build-and-push-bicep-types` job in `build.yaml`.",
-            ].join("\n");
+            ].filter(Boolean).join("\n");
 
             const { owner, repo } = context.repo;
             const { data: existing } = await github.rest.pulls.list({
