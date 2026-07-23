@@ -31,7 +31,96 @@ using TypeSpec.Rest;
 
 namespace Radius.Core;
 
-@doc("The recipe pack resource")
+@doc("""
+  The `Radius.Core/recipePacks` Resource Type represents a Recipe Pack: a named collection of Recipes that platform engineers assign to an Environment. A Recipe maps a resource type (such as `Radius.Data/redisCaches`) to an infrastructure-as-code module, a Terraform module or Bicep template, that provisions the infrastructure backing that resource when a developer deploys it.
+  
+  A Recipe Pack is defined as its own resource and referenced from an Environment's `recipePacks` property, so one Recipe Pack can be shared across many Environments.
+  
+  ## Defining a Recipe Pack
+  
+  Each entry in the `recipes` map is keyed by resource type. Set the recipe `kind` (`bicep` or `terraform`) and its `source` (an OCI registry reference for Bicep recipes, or a module source for Terraform recipes).
+  
+  ```bicep
+  extension radius
+  
+  resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
+    name: 'data-recipes'
+    properties: {
+      recipes: {
+        'Radius.Data/redisCaches': {
+          kind: 'bicep'
+          source: 'ghcr.io/my-org/recipes/redis:latest'
+        }
+        'Radius.Data/postgreSqlDatabases': {
+          kind: 'terraform'
+          source: 'git::https://github.com/my-org/recipes//postgresql'
+        }
+      }
+    }
+  }
+  ```
+  
+  ## Recipe parameters
+  
+  Each Recipe can declare default `parameters` that are passed to its module. Platform engineers set baseline values here, and developers get them automatically. An Environment can override these values per resource type through its `recipeParameters` property.
+  
+  ```bicep
+  resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
+    name: 'data-recipes'
+    properties: {
+      recipes: {
+        'Radius.Data/redisCaches': {
+          kind: 'bicep'
+          source: 'ghcr.io/my-org/recipes/redis:latest'
+          parameters: {
+            sku: 'Standard'
+            capacity: 1
+          }
+        }
+      }
+    }
+  }
+  ```
+  
+  ## Deploying a Recipe Pack
+  
+  Deploy the Bicep file with `rad deploy` to create the Recipe Pack resource. Once deployed, list and inspect Recipe Packs with the `rad recipe-pack list` and `rad recipe-pack show` commands.
+  
+  ## Referencing a Recipe Pack from an Environment
+  
+  An Environment references a Recipe Pack through its `recipePacks` property. When the Recipe Pack and the Environment are deployed to the same resource group, declare it as an `existing` resource and reference its `.id`:
+  
+  ```bicep
+  extension radius
+  
+  resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' existing = {
+    name: 'data-recipes'
+  }
+  
+  resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
+    name: 'my-environment'
+    properties: {
+      recipePacks: [
+        dataRecipes.id
+      ]
+    }
+  }
+  ```
+  
+  To reference a Recipe Pack in a different resource group, use its full resource ID instead:
+  
+  ```bicep
+  recipePacks: [
+    '/planes/radius/local/resourceGroups/shared/providers/Radius.Core/recipePacks/data-recipes'
+  ]
+  ```
+  
+  Radius is installed with a `default` Recipe Pack in the `default` resource group. When you create an Environment with the Radius CLI and do not set `recipePacks`, the Environment uses this `default` Recipe Pack.
+  
+  Prebuilt Recipe Packs and the Recipes they reference are published in the [resource-types-contrib](https://github.com/radius-project/resource-types-contrib) repository.
+  
+  For more information, see the Radius documentation at https://docs.radapp.io.
+  """)
 model RecipePackResource
   is TrackedResourceRequired<RecipePackProperties, "recipePacks"> {
   @doc("Recipe pack name")
@@ -43,33 +132,33 @@ model RecipePackResource
 
 @doc("Recipe Pack properties")
 model RecipePackProperties {
-  @doc("The status of the asynchronous operation")
+  @doc("(Read Only) The status of the Recipe Pack resource within the Radius control plane.")
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
-  @doc("List of environment IDs that reference this recipe pack")
+  @doc("(Read Only) Resource IDs of the Environments that reference this Recipe Pack.")
   @visibility(Lifecycle.Read)
   referencedBy?: string[];
 
-  @doc("Map of resource types to their recipe configurations")
+  @doc("(Required) The Recipes in this pack, keyed by the resource type each Recipe provisions. Each key is a resource type such as `Radius.Data/redisCaches`.")
   recipes: Record<RecipeDefinition>;
 }
 
 @doc("Recipe definition for a specific resource type")
 model RecipeDefinition {
-  @doc("The type of recipe (e.g., Terraform, Bicep)")
+  @doc("(Required) The kind of Recipe, which determines how Radius runs it.")
   kind: RecipeKind;
 
-  @doc("Connect to the source using HTTP (not HTTPS). This should be used when the source is known not to support HTTPS, for example in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)")
+  @doc("(Optional) Connect to the source using HTTP instead of HTTPS. Use this only when the source does not support HTTPS such as a locally hosted registry for Bicep recipes. Defaults to `false` if not specified.")
   plainHttp?: boolean;
 
-  @doc("The source of the recipe. For Bicep recipes this is the OCI registry reference. For Terraform recipes this is the module source.")
+  @doc("(Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes this is the module source such as a Git URL or a Terraform registry module.")
   source: string;
 
-  @doc("Parameters to pass to the recipe")
+  @doc("(Optional) Default parameter values passed to the Recipe when it runs. An Environment can override these per resource type through its `recipeParameters` property.")
   parameters?: Record<unknown>;
 
-  @doc("Maps the module's outputs onto the resource type's properties, for recipes that point directly at a Bicep or Terraform module. Each entry's value is either a string (the module output name for a non-secret property) or, under the reserved `secrets` key, a nested object mapping secret property names to module output names. A `secrets` entry always routes its module output to the resource's secret outputs regardless of how the module classified it (for example an AVM module's `primaryConnectionString`). Example: `{ host: 'name', secrets: { connectionString: 'primaryConnectionString' } }`.")
+  @doc("(Optional) Maps the module outputs onto the resource type properties for recipes that point directly at a Bicep or Terraform module. Each value is the module output name for a non-secret property. Under the reserved `secrets` key a nested object maps secret property names to module output names and always routes those outputs to the resource secret outputs.")
   outputs?: Record<unknown>;
 }
 
