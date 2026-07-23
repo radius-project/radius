@@ -87,17 +87,60 @@ type ApplicationGraphResponse struct {
 
 // ApplicationProperties - Application properties
 type ApplicationProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the application is linked to
+	// REQUIRED; (Required) Fully qualified resource ID of the environment the application is deployed to
 	Environment *string
 
-	// READ-ONLY; The status of the asynchronous operation.
+	// READ-ONLY; (Read Only) The status of the Application resource within the Radius control plane. Does not include the other
+	// resources that compose the Application.
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Status of a resource.
+	// READ-ONLY; (Read Only) Deployment details for the Application, including any output resources Radius created for it.
 	Status *ResourceStatus
 }
 
-// ApplicationResource - Radius Application resource
+// ApplicationResource - The `Radius.Core/applications` Resource Type represents a Radius Application: a logical grouping
+// of the resources that make up a single Application, such as containers, databases, and message queues, along with the connections
+// between them. Radius uses the Application to build the application graph, apply shared configuration, and manage its resources
+// together throughout their lifecycle.
+// ## Defining an Application
+// An Application is always deployed to a Radius Environment, which is supplied through the `environment` property. To define
+// an Application, add a `Radius.Core/applications` resource to your application definition Bicep file.
+// ```bicep
+// extension radius
+// @description('The Radius Environment ID. Injected automatically by the rad CLI.')
+// param environment string
+// resource myApp 'Radius.Core/applications@2025-08-01-preview' = {
+// name: 'my-app'
+// properties: {
+// environment: environment
+// }
+// }
+// ```
+// ## Deploying an Application
+// An Application is deployed with the `rad deploy` command, which deploys the Application together with the resources that
+// belong to it:
+// ```bash
+// rad deploy ./app.bicep
+// ```
+// ## Adding resources to an Application
+// Resources are composed into an Application by setting their `application` property to the Application's ID. For example,
+// to add a Container to this Application, add the following to the application definition Bicep file and set `application:
+// myApp.id`:
+// ```bicep
+// resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
+// name: 'frontend'
+// properties: {
+// environment: environment
+// application: myApp.id
+// containers: {
+// frontend: {
+// image: 'ghcr.io/my-org/frontend:latest'
+// }
+// }
+// }
+// }
+// ```
+// For more information, see the Radius documentation at https://docs.radapp.io.
 type ApplicationResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -154,40 +197,98 @@ func (a *AzureContainerInstanceCompute) GetEnvironmentCompute() *EnvironmentComp
 	}
 }
 
-// BicepRegistryAuthentication - Authentication configuration for a single private Bicep registry. When `authenticationMethod`
-// is `BasicAuth`, `basicAuthSecretId` is required; the controller rejects configs that omit it.
+// BicepRegistryAuthentication - Authentication configuration for a single private Bicep registry. Only `BasicAuth` is currently
+// supported, and it requires `basicAuthSecretId`; the controller rejects configs that omit it. `AzureWI` and `AwsIrsa` will
+// be supported in the future.
 type BicepRegistryAuthentication struct {
-	// The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa.
+	// (Optional) How Radius authenticates to the registry.
 	AuthenticationMethod *BicepAuthenticationMethod
 
-	// AWS IAM Role ARN for IRSA authentication. Required when authenticationMethod is 'AwsIrsa'.
+	// (Optional) AWS IAM Role ARN for IRSA authentication. Required when `authenticationMethod` is `AwsIrsa`.
 	AwsIamRoleArn *string
 
-	// Azure Workload Identity client ID. Required when authenticationMethod is 'AzureWI'.
+	// (Optional) Azure Workload Identity client ID. Required when `authenticationMethod` is `AzureWI`.
 	AzureWiClientID *string
 
-	// Azure Workload Identity tenant ID. Required when authenticationMethod is 'AzureWI'.
+	// (Optional) Azure Workload Identity tenant ID. Required when `authenticationMethod` is `AzureWI`.
 	AzureWiTenantID *string
 
-	// The ID of a secret resource containing username and password for BasicAuth. Supported types: Radius.Security/secrets (recommended)
-	// or Applications.Core/secretStores. Required when authenticationMethod is 'BasicAuth'.
+	// (Optional) The ID of a `Radius.Security/secrets` resource containing the username and password. Required when `authenticationMethod`
+	// is `BasicAuth`.
 	BasicAuthSecretID *string
 }
 
-// BicepSettingsProperties - Bicep configuration properties.
+// BicepSettingsProperties - Bicep settings properties.
 type BicepSettingsProperties struct {
-	// Authentication configuration for private Bicep registries, keyed by registry hostname (e.g. 'corp.acr.io'). The Bicep driver
-	// looks up credentials by the host parsed from the recipe template path.
+	// (Optional) Authentication for private Bicep registries that host Recipe templates, keyed by registry hostname such as `corp.acr.io`.
+	// Radius matches a registry by the hostname in the Recipe source.
 	RegistryAuthentications map[string]*BicepRegistryAuthentication
 
-	// READ-ONLY; The status of the asynchronous operation.
+	// READ-ONLY; (Read Only) The status of the Bicep settings resource within the Radius control plane.
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Environments that reference this Bicep configuration.
+	// READ-ONLY; (Read Only) Resource IDs of the Environments that reference this Bicep settings resource.
 	ReferencedBy []*string
 }
 
-// BicepSettingsResource - The Bicep configuration resource, providing reusable Bicep recipe settings for environments.
+// BicepSettingsResource - The `Radius.Core/bicepSettings` Resource Type holds reusable Bicep engine settings that Environments
+// apply when running Bicep Recipes. Its primary use is authenticating to private Bicep registries: OCI registries, such as
+// Azure Container Registry, that host the Recipe templates referenced by a Recipe Pack.
+// Platform engineers define a `Radius.Core/bicepSettings` resource once and reference it from any Environment whose Recipes
+// pull templates from a private registry.
+// ## Defining Bicep settings
+// Configure `registryAuthentications`, keyed by registry hostname. When a Recipe template is pulled from a matching host,
+// Radius authenticates using the configured method. The example below uses basic authentication, reading the username and
+// password from a secret:
+// ```bicep
+// extension radius
+// @description('The Radius Environment ID. Injected automatically by the rad CLI.')
+// param environment string
+// resource registrySecret 'Radius.Security/secrets@2025-08-01-preview' = {
+// name: 'registry-credentials'
+// properties: {
+// environment: environment
+// data: {
+// username: { value: 'my-username' }
+// password: { value: 'my-password' }
+// }
+// }
+// }
+// resource bicepRegistry 'Radius.Core/bicepSettings@2025-08-01-preview' = {
+// name: 'private-registry'
+// properties: {
+// registryAuthentications: {
+// 'corp.azurecr.io': {
+// authenticationMethod: 'BasicAuth'
+// basicAuthSecretId: registrySecret.id
+// }
+// }
+// }
+// }
+// ```
+// Basic authentication is supported via `BasicAuth` (username and password from a secret). `AwsIrsa` and `AzureWI` will be
+// implemented in the future.
+// ## Deploying Bicep settings
+// Deploy the settings resource with the `rad deploy` command:
+// ```bash
+// rad deploy ./bicep-settings.bicep
+// ```
+// ## Referencing Bicep settings from an Environment
+// Reference the settings from an Environment by setting its `bicepSettings` property to the resource ID. Every Bicep Recipe
+// run in that Environment then uses the configured registry authentication:
+// ```bicep
+// extension radius
+// resource bicepRegistry 'Radius.Core/bicepSettings@2025-08-01-preview' existing = {
+// name: 'private-registry'
+// }
+// resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
+// name: 'my-environment'
+// properties: {
+// bicepSettings: bicepRegistry.id
+// }
+// }
+// ```
+// For more information, see the Radius documentation at https://docs.radapp.io.
 type BicepSettingsResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -237,29 +338,123 @@ func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { retur
 
 // EnvironmentProperties - Environment properties
 type EnvironmentProperties struct {
-	// Resource ID of a Radius.Core/bicepSettings resource providing Bicep recipe settings.
+	// (Optional) Resource ID of a `Radius.Core/bicepSettings` resource that supplies Bicep engine settings, such as private registry
+	// authentication, used when running Bicep Recipes in this Environment.
 	BicepSettings *string
 
-	// Cloud provider configuration for the environment.
+	// (Optional) Target compute platform and cloud provider accounts that resources are deployed into. When created with the
+	// Radius CLI, defaults to Kubernetes in the `default` namespace.
 	Providers *Providers
 
-	// List of Recipe Pack resource IDs linked to this environment.
+	// (Optional) Resource IDs of the Recipe Packs this Environment uses to provision infrastructure for application resources.
+	// When created with the Radius CLI, defaults to the `default` Recipe Pack in the `default` resource group.
 	RecipePacks []*string
 
-	// Recipe specific parameters that apply to all resources of a given type in this environment.
+	// (Optional) Parameters passed to Recipes when they run, keyed by resource type. Values here override the default parameters
+	// defined in the Recipe Pack for every resource of that type deployed to this Environment.
 	RecipeParameters map[string]*RecipeParameterValue
 
-	// Simulated environment.
+	// (Optional) When true, the Environment is simulated and does not deploy real infrastructure. Recipes are evaluated but no
+	// resources are provisioned, which is useful for validating application definitions. Defaults to `false` if not specified.
 	Simulated *bool
 
-	// Resource ID of a Radius.Core/terraformSettings resource providing Terraform recipe settings.
+	// (Optional) Resource ID of a `Radius.Core/terraformSettings` resource that supplies Terraform CLI settings, such as private
+	// registry credentials, used when running Terraform Recipes in this Environment.
 	TerraformSettings *string
 
-	// READ-ONLY; The status of the asynchronous operation.
+	// READ-ONLY; (Read Only) The status of the Environment resource within the Radius control plane. Does not include the resources
+	// deployed to the Environment.
 	ProvisioningState *ProvisioningState
 }
 
-// EnvironmentResource - The environment resource
+// EnvironmentResource - The `Radius.Core/environments` Resource Type represents a Radius Environment: the deployment target
+// that platform engineers configure for their developers. Every Radius Application is deployed to an Environment through
+// its `environment` property.
+// An Environment defines three things for the Applications deployed to it:
+// - **Where resources are deployed**: the target compute platform and cloud provider accounts, set through the `providers`
+// property.
+// - **Which Recipes are used**: the Recipe Packs whose Recipes provision the infrastructure backing application resources,
+// set through the `recipePacks` property.
+// - **Advanced Terraform and Bicep settings**: environment-wide Recipe parameters and Terraform or Bicep engine configuration
+// applied when Recipes run.
+// ## Defining an Environment
+// The simplest Environment can be created directly with the `rad environment create` command, without a Bicep file:
+// ```bash
+// rad environment create my-environment
+// ```
+// For more advanced configurations, define an Environment as a `Radius.Core/environments` resource in a Bicep file. For example:
+// ```bicep
+// extension radius
+// resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
+// name: 'my-environment'
+// properties: {
+// recipePacks: [
+// myRecipePack.id
+// ]
+// providers: {
+// kubernetes: {
+// namespace: 'my-namespace'
+// }
+// }
+// }
+// }
+// resource myRecipePack 'Radius.Core/recipePacks@2025-08-01-preview' existing = {
+// name: 'my-recipe-pack'
+// }
+// ```
+// Both properties are optional. When you create an Environment with the Radius CLI, an omitted `providers` defaults to Kubernetes
+// in the `default` namespace, and an omitted `recipePacks` defaults to the `default` Recipe Pack in the `default` resource
+// group.
+// ## Deploying an Environment
+// Deploy a defined Environment with the `rad deploy` command:
+// ```bash
+// rad deploy ./environment.bicep
+// ```
+// ## Cloud providers
+// To use Recipes that provision resources in a cloud provider, you must configure that provider's account details on the
+// Environment by setting the `providers` property. For AWS, set the account ID and the region resources are deployed to:
+// ```bicep
+// extension radius
+// resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
+// name: 'my-environment'
+// properties: {
+// providers: {
+// aws: {
+// accountId: '123456789012'
+// region: 'us-west-2'
+// }
+// }
+// }
+// }
+// ```
+// For Azure, set the subscription ID and the name of the resource group that resources are deployed to:
+// ```bicep
+// extension radius
+// resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
+// name: 'my-environment'
+// properties: {
+// providers: {
+// azure: {
+// subscriptionId: '00000000-0000-0000-0000-000000000000'
+// resourceGroupName: 'my-resource-group'
+// }
+// }
+// }
+// }
+// ```
+// The `providers` property selects the target account, but the credentials Radius uses to authenticate to AWS and Azure are
+// configured separately with the `rad credential register` command.
+// ## Recipe Packs
+// A Recipe Pack is a collection of Recipes, defined as a separate `Radius.Core/recipePacks` resource. A Recipe is an infrastructure-as-code
+// module, a Terraform module or Bicep template, that provisions the infrastructure backing an application resource. Reference
+// one or more Recipe Packs by their resource IDs in the `recipePacks` property to control which Recipes are used. See the
+// `Radius.Core/recipePacks` documentation for details.
+// Use `recipeParameters` to pass environment-specific parameters to the Recipes defined in the referenced Recipe Packs, for
+// example to standardize configuration such as SKUs or instance sizes across an Environment.
+// ## Advanced Terraform and Bicep settings
+// For advanced Terraform and Bicep settings, such as private module sources and registry authentication, reference a `Radius.Core/terraformSettings`
+// or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings` properties.
+// For more information, see the Radius documentation at https://docs.radapp.io.
 type EnvironmentResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -411,79 +606,158 @@ type OutputResource struct {
 }
 
 type Providers struct {
-	// The AWS cloud provider configuration.
+	// (Optional) Configuration for deploying resources to AWS.
 	Aws *ProvidersAws
 
-	// The Azure cloud provider configuration.
+	// (Optional) Configuration for deploying resources to Azure.
 	Azure *ProvidersAzure
 
-	// The Kubernetes provider configuration.
+	// (Optional) Configuration for deploying resources to Kubernetes.
 	Kubernetes *ProvidersKubernetes
 }
 
 // ProvidersAws - The AWS cloud provider definition.
 type ProvidersAws struct {
-	// REQUIRED; AWS account ID for AWS resources to be deployed into.
+	// REQUIRED; (Required) ID of the AWS account that resources are deployed into.
 	AccountID *string
 
-	// REQUIRED; AWS region for AWS resources to be deployed into.
+	// REQUIRED; (Required) AWS region that resources are deployed into.
 	Region *string
 }
 
 // ProvidersAzure - The Azure cloud provider definition.
 type ProvidersAzure struct {
-	// REQUIRED; Azure subscription ID hosting deployed resources.
+	// REQUIRED; (Required) ID of the Azure subscription that resources are deployed into.
 	SubscriptionID *string
 
-	// External identity settings (moved from compute).
+	// (Optional) Managed or workload identity Radius uses to authenticate to Azure when deploying resources.
 	Identity *IdentitySettings
 
-	// Optional resource group name.
+	// (Optional) Name of the Azure resource group that resources are deployed into. Most Bicep and Terraform Recipes expect a
+	// resource group in the deployment context, so set this whenever deploying Azure resources.
 	ResourceGroupName *string
 }
 
 type ProvidersKubernetes struct {
-	// REQUIRED; Kubernetes namespace to deploy workloads into.
+	// REQUIRED; (Required) Kubernetes namespace that workloads are deployed into.
 	Namespace *string
 }
 
 // RecipeDefinition - Recipe definition for a specific resource type
 type RecipeDefinition struct {
-	// REQUIRED; The type of recipe (e.g., Terraform, Bicep)
+	// REQUIRED; (Required) The kind of Recipe, which determines how Radius runs it.
 	Kind *RecipeKind
 
-	// REQUIRED; The source of the recipe. For Bicep recipes this is the OCI registry reference. For Terraform recipes this is
-	// the module source.
+	// REQUIRED; (Required) Location of the Recipe. For Bicep Recipes this is an OCI registry reference. For Terraform Recipes
+	// this is the module source such as a Git URL or a Terraform registry module.
 	Source *string
 
-	// Maps the module's outputs onto the resource type's properties, for recipes that point directly at a Bicep or Terraform
-	// module. Each entry's value is either a string (the module output name for a non-secret property) or, under the reserved
-	// `secrets` key, a nested object mapping secret property names to module output names. A `secrets` entry always routes its
-	// module output to the resource's secret outputs regardless of how the module classified it (for example an AVM module's
-	// `primaryConnectionString`). Example: `{ host: 'name', secrets: { connectionString: 'primaryConnectionString' } }`.
+	// (Optional) Maps the module outputs onto the resource type properties for recipes that point directly at a Bicep or Terraform
+	// module. Each value is the module output name for a non-secret property. Under the reserved `secrets` key a nested object
+	// maps secret property names to module output names and always routes those outputs to the resource secret outputs.
 	Outputs map[string]any
 
-	// Parameters to pass to the recipe
+	// (Optional) Default parameter values passed to the Recipe when it runs. An Environment can override these per resource type
+	// through its `recipeParameters` property.
 	Parameters map[string]any
 
-	// Connect to the source using HTTP (not HTTPS). This should be used when the source is known not to support HTTPS, for example
-	// in a locally hosted registry for Bicep recipes. Defaults to false (use HTTPS/TLS)
+	// (Optional) Connect to the source using HTTP instead of HTTPS. Use this only when the source does not support HTTPS such
+	// as a locally hosted registry for Bicep recipes. Defaults to `false` if not specified.
 	PlainHTTP *bool
 }
 
 // RecipePackProperties - Recipe Pack properties
 type RecipePackProperties struct {
-	// REQUIRED; Map of resource types to their recipe configurations
+	// REQUIRED; (Required) The Recipes in this pack, keyed by the resource type each Recipe provisions. Each key is a resource
+	// type such as `Radius.Data/redisCaches`.
 	Recipes map[string]*RecipeDefinition
 
-	// READ-ONLY; The status of the asynchronous operation
+	// READ-ONLY; (Read Only) The status of the Recipe Pack resource within the Radius control plane.
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; List of environment IDs that reference this recipe pack
+	// READ-ONLY; (Read Only) Resource IDs of the Environments that reference this Recipe Pack.
 	ReferencedBy []*string
 }
 
-// RecipePackResource - The recipe pack resource
+// RecipePackResource - The `Radius.Core/recipePacks` Resource Type represents a Recipe Pack: a named collection of Recipes
+// that platform engineers assign to an Environment. A Recipe maps a resource type (such as `Radius.Data/redisCaches`) to
+// an infrastructure-as-code module, a Terraform module or Bicep template, that provisions the infrastructure backing that
+// resource when a developer deploys it.
+// A Recipe Pack is defined as its own resource and referenced from an Environment's `recipePacks` property, so one Recipe
+// Pack can be shared across many Environments.
+// ## Defining a Recipe Pack
+// Each entry in the `recipes` map is keyed by resource type. Set the recipe `kind` (`bicep` or `terraform`) and its `source`
+// (an OCI registry reference for Bicep recipes, or a module source for Terraform recipes).
+// ```bicep
+// extension radius
+// resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
+// name: 'data-recipes'
+// properties: {
+// recipes: {
+// 'Radius.Data/redisCaches': {
+// kind: 'bicep'
+// source: 'ghcr.io/my-org/recipes/redis:latest'
+// }
+// 'Radius.Data/postgreSqlDatabases': {
+// kind: 'terraform'
+// source: 'git::https://github.com/my-org/recipes//postgresql'
+// }
+// }
+// }
+// }
+// ```
+// ## Recipe parameters
+// Each Recipe can declare default `parameters` that are passed to its module. Platform engineers set baseline values here,
+// and developers get them automatically. An Environment can override these values per resource type through its `recipeParameters`
+// property.
+// ```bicep
+// resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' = {
+// name: 'data-recipes'
+// properties: {
+// recipes: {
+// 'Radius.Data/redisCaches': {
+// kind: 'bicep'
+// source: 'ghcr.io/my-org/recipes/redis:latest'
+// parameters: {
+// sku: 'Standard'
+// capacity: 1
+// }
+// }
+// }
+// }
+// }
+// ```
+// ## Deploying a Recipe Pack
+// Deploy the Bicep file with `rad deploy` to create the Recipe Pack resource. Once deployed, list and inspect Recipe Packs
+// with the `rad recipe-pack list` and `rad recipe-pack show` commands.
+// ## Referencing a Recipe Pack from an Environment
+// An Environment references a Recipe Pack through its `recipePacks` property. When the Recipe Pack and the Environment are
+// deployed to the same resource group, declare it as an `existing` resource and reference its `.id`:
+// ```bicep
+// extension radius
+// resource dataRecipes 'Radius.Core/recipePacks@2025-08-01-preview' existing = {
+// name: 'data-recipes'
+// }
+// resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
+// name: 'my-environment'
+// properties: {
+// recipePacks: [
+// dataRecipes.id
+// ]
+// }
+// }
+// ```
+// To reference a Recipe Pack in a different resource group, use its full resource ID instead:
+// ```bicep
+// recipePacks: [
+// '/planes/radius/local/resourceGroups/shared/providers/Radius.Core/recipePacks/data-recipes'
+// ]
+// ```
+// Radius is installed with a `default` Recipe Pack in the `default` resource group. When you create an Environment with the
+// Radius CLI and do not set `recipePacks`, the Environment uses this `default` Recipe Pack.
+// Prebuilt Recipe Packs and the Recipes they reference are published in the [resource-types-contrib](https://github.com/radius-project/resource-types-contrib)
+// repository.
+// For more information, see the Radius documentation at https://docs.radapp.io.
 type RecipePackResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -568,57 +842,150 @@ type SystemData struct {
 
 // TerraformCredentialConfig - Credential configuration for a Terraform registry or module source host.
 type TerraformCredentialConfig struct {
-	// The ID of a secret resource containing the authentication token. Supported types: Radius.Security/secrets (recommended)
-	// or Applications.Core/secretStores. The secret must have a key named 'token'.
+	// (Optional) The ID of a `Radius.Security/secrets` resource containing the authentication token. The secret must have a key
+	// named `token`.
 	Secret *string
 }
 
 // TerraformProviderDirect - Direct provider installation configuration.
 type TerraformProviderDirect struct {
-	// Provider address patterns to exclude from direct installation.
+	// (Optional) Provider address patterns to exclude from direct installation.
 	Exclude []*string
 
-	// Provider address patterns to include for direct installation.
+	// (Optional) Provider address patterns to include for direct installation.
 	Include []*string
 }
 
 // TerraformProviderInstallation - Provider installation configuration for Terraform CLI.
 type TerraformProviderInstallation struct {
-	// Direct provider installation configuration.
+	// (Optional) Providers to install directly from the public registry rather than a mirror.
 	Direct *TerraformProviderDirect
 
-	// Network mirror configuration for downloading providers.
+	// (Optional) A network mirror to install providers from instead of the public registry.
 	NetworkMirror *TerraformProviderMirror
 }
 
 // TerraformProviderMirror - Network mirror configuration for Terraform providers.
 type TerraformProviderMirror struct {
-	// Provider address patterns to exclude from this mirror.
+	// (Optional) Provider address patterns to exclude from this mirror.
 	Exclude []*string
 
-	// Provider address patterns to include from this mirror.
+	// (Optional) Provider address patterns to include from this mirror.
 	Include []*string
 
-	// The URL of the provider mirror.
+	// (Optional) The URL of the provider mirror.
 	URL *string
 }
 
-// TerraformSettingsProperties - Terraform configuration properties.
+// TerraformSettingsProperties - Terraform settings properties.
 type TerraformSettingsProperties struct {
-	// Environment variables injected during Terraform recipe execution.
+	// (Optional) Environment variables injected into the Terraform process during Recipe execution.
 	Env map[string]*string
 
-	// Terraform CLI configuration file settings. Maps directly to the Terraform CLI configuration file (.terraformrc).
+	// (Optional) Settings for the Terraform CLI configuration file. Radius renders these into a `.terraformrc` file used when
+	// running Terraform Recipes.
 	Terraformrc *TerraformrcConfig
 
-	// READ-ONLY; The status of the asynchronous operation.
+	// READ-ONLY; (Read Only) The status of the Terraform settings resource within the Radius control plane.
 	ProvisioningState *ProvisioningState
 
-	// READ-ONLY; Environments that reference this Terraform configuration.
+	// READ-ONLY; (Read Only) Resource IDs of the Environments that reference this Terraform settings resource.
 	ReferencedBy []*string
 }
 
-// TerraformSettingsResource - The Terraform configuration resource, providing reusable Terraform recipe settings for environments.
+// TerraformSettingsResource - The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI settings that
+// Environments apply when running Terraform Recipes. Its primary use is authenticating to private Terraform registries that
+// host the modules referenced by a Recipe Pack, along with configuring provider installation and injecting environment variables
+// during Recipe execution.
+// Platform engineers define a `Radius.Core/terraformSettings` resource once and reference it from any Environment whose Recipes
+// pull modules from a private registry.
+// ## Defining Terraform settings
+// Configure `terraformrc.credentials`, keyed by registry hostname, to authenticate to a private Terraform registry. Each
+// entry points to a secret whose `token` key holds the registry token:
+// ```bicep
+// extension radius
+// @description('The Radius Environment ID. Injected automatically by the rad CLI.')
+// param environment string
+// resource registrySecret 'Radius.Security/secrets@2025-08-01-preview' = {
+// name: 'terraform-registry-token'
+// properties: {
+// environment: environment
+// data: {
+// token: { value: 'my-registry-token' }
+// }
+// }
+// }
+// resource terraformRegistry 'Radius.Core/terraformSettings@2025-08-01-preview' = {
+// name: 'private-registry'
+// properties: {
+// terraformrc: {
+// credentials: {
+// 'app.terraform.io': {
+// secret: registrySecret.id
+// }
+// }
+// }
+// }
+// }
+// ```
+// Two other settings are available: provider installation and environment variables.
+// ### Provider installation
+// In air-gapped or internal environments, use `terraformrc.providerInstallation` to install providers from a network mirror
+// instead of the public registry. Set the mirror `url`, optionally narrow it with `include` or `exclude` provider address
+// patterns, and use `direct` to control which providers are still downloaded directly:
+// ```bicep
+// resource providerMirror 'Radius.Core/terraformSettings@2025-08-01-preview' = {
+// name: 'internal-mirror'
+// properties: {
+// terraformrc: {
+// providerInstallation: {
+// networkMirror: {
+// url: 'https://terraform.corp.example.com/providers/'
+// include: ['*']
+// }
+// direct: {
+// exclude: ['*']
+// }
+// }
+// }
+// }
+// }
+// ```
+// ### Environment variables
+// Use `env` to inject environment variables into every Terraform Recipe run, for example to raise the Terraform log level
+// for troubleshooting or to tune CLI behavior:
+// ```bicep
+// resource terraformLogging 'Radius.Core/terraformSettings@2025-08-01-preview' = {
+// name: 'terraform-logging'
+// properties: {
+// env: {
+// TF_LOG: 'TRACE'
+// TF_REGISTRY_CLIENT_TIMEOUT: '15'
+// }
+// }
+// }
+// ```
+// ## Deploying Terraform settings
+// Deploy the settings resource with the `rad deploy` command:
+// ```bash
+// rad deploy ./terraform-settings.bicep
+// ```
+// ## Referencing Terraform settings from an Environment
+// Reference the settings from an Environment by setting its `terraformSettings` property to the resource ID. Every Terraform
+// Recipe run in that Environment then uses the configured registry credentials:
+// ```bicep
+// extension radius
+// resource terraformRegistry 'Radius.Core/terraformSettings@2025-08-01-preview' existing = {
+// name: 'private-registry'
+// }
+// resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
+// name: 'my-environment'
+// properties: {
+// terraformSettings: terraformRegistry.id
+// }
+// }
+// ```
+// For more information, see the Radius documentation at https://docs.radapp.io.
 type TerraformSettingsResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -654,11 +1021,11 @@ type TerraformSettingsResourceListResult struct {
 // TerraformrcConfig - Terraform CLI configuration file (.terraformrc) settings. See https://developer.hashicorp.com/terraform/cli/config
 // for details.
 type TerraformrcConfig struct {
-	// Credentials for authenticating to private Terraform registries (HTTP-based, e.g. app.terraform.io). Map of registry hostname
-	// to credential configuration. Rendered as native `credentials "hostname" {}` blocks in the generated .terraformrc. Note:
-	// this is for Terraform CLI registry auth (HTTP), not for Git-based module sources; Git auth is a separate mechanism.
+	// (Optional) Credentials for authenticating to private Terraform registries such as `app.terraform.io`. Maps a registry hostname
+	// to its credential configuration. This authenticates to Terraform CLI registries over HTTP and does not authenticate Git-based
+	// module sources, which use a separate mechanism.
 	Credentials map[string]*TerraformCredentialConfig
 
-	// Provider installation configuration. Specifies the location of providers via network mirrors or direct downloads.
+	// (Optional) Controls where Terraform installs providers from, such as a network mirror instead of the public registry.
 	ProviderInstallation *TerraformProviderInstallation
 }

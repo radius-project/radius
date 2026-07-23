@@ -35,45 +35,114 @@ using OpenAPI;
 
 namespace Radius.Core;
 
-@doc("The Bicep configuration resource, providing reusable Bicep recipe settings for environments.")
+@doc("""
+  The `Radius.Core/bicepSettings` Resource Type holds reusable Bicep engine settings that Environments apply when running Bicep Recipes. Its primary use is authenticating to private Bicep registries: OCI registries, such as Azure Container Registry, that host the Recipe templates referenced by a Recipe Pack.
+  
+  Platform engineers define a `Radius.Core/bicepSettings` resource once and reference it from any Environment whose Recipes pull templates from a private registry.
+  
+  ## Defining Bicep settings
+  
+  Configure `registryAuthentications`, keyed by registry hostname. When a Recipe template is pulled from a matching host, Radius authenticates using the configured method. The example below uses basic authentication, reading the username and password from a secret:
+  
+  ```bicep
+  extension radius
+  
+  @description('The Radius Environment ID. Injected automatically by the rad CLI.')
+  param environment string
+  
+  resource registrySecret 'Radius.Security/secrets@2025-08-01-preview' = {
+    name: 'registry-credentials'
+    properties: {
+      environment: environment
+      data: {
+        username: { value: 'my-username' }
+        password: { value: 'my-password' }
+      }
+    }
+  }
+  
+  resource bicepRegistry 'Radius.Core/bicepSettings@2025-08-01-preview' = {
+    name: 'private-registry'
+    properties: {
+      registryAuthentications: {
+        'corp.azurecr.io': {
+          authenticationMethod: 'BasicAuth'
+          basicAuthSecretId: registrySecret.id
+        }
+      }
+    }
+  }
+  ```
+  
+  Basic authentication is supported via `BasicAuth` (username and password from a secret). `AwsIrsa` and `AzureWI` will be implemented in the future.
+  
+  ## Deploying Bicep settings
+  
+  Deploy the settings resource with the `rad deploy` command:
+  
+  ```bash
+  rad deploy ./bicep-settings.bicep
+  ```
+  
+  ## Referencing Bicep settings from an Environment
+  
+  Reference the settings from an Environment by setting its `bicepSettings` property to the resource ID. Every Bicep Recipe run in that Environment then uses the configured registry authentication:
+  
+  ```bicep
+  extension radius
+  
+  resource bicepRegistry 'Radius.Core/bicepSettings@2025-08-01-preview' existing = {
+    name: 'private-registry'
+  }
+  
+  resource myEnvironment 'Radius.Core/environments@2025-08-01-preview' = {
+    name: 'my-environment'
+    properties: {
+      bicepSettings: bicepRegistry.id
+    }
+  }
+  ```
+  
+  For more information, see the Radius documentation at https://docs.radapp.io.
+  """)
 model BicepSettingsResource
   is TrackedResourceRequired<BicepSettingsProperties, "bicepSettings"> {
-  @doc("Bicep configuration name")
+  @doc("Bicep settings name")
   @key("bicepSettingsName")
   @path
   @segment("bicepSettings")
   name: ResourceNameString;
 }
 
-@doc("Bicep configuration properties.")
+@doc("Bicep settings properties.")
 model BicepSettingsProperties {
-  @doc("The status of the asynchronous operation.")
+  @doc("(Read Only) The status of the Bicep settings resource within the Radius control plane.")
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
 
-  @doc("Environments that reference this Bicep configuration.")
+  @doc("(Read Only) Resource IDs of the Environments that reference this Bicep settings resource.")
   @visibility(Lifecycle.Read)
   referencedBy?: string[];
 
-  @doc("Authentication configuration for private Bicep registries, keyed by registry hostname (e.g. 'corp.acr.io'). The Bicep driver looks up credentials by the host parsed from the recipe template path.")
+  @doc("(Optional) Authentication for private Bicep registries that host Recipe templates, keyed by registry hostname such as `corp.acr.io`. Radius matches a registry by the hostname in the Recipe source.")
   registryAuthentications?: Record<BicepRegistryAuthentication>;
 }
 
-@doc("Authentication configuration for a single private Bicep registry. When `authenticationMethod` is `BasicAuth`, `basicAuthSecretId` is required; the controller rejects configs that omit it.")
+@doc("Authentication configuration for a single private Bicep registry. Only `BasicAuth` is currently supported, and it requires `basicAuthSecretId`; the controller rejects configs that omit it. `AzureWI` and `AwsIrsa` will be supported in the future.")
 model BicepRegistryAuthentication {
-  @doc("The authentication method to use. Supported values: BasicAuth, AzureWI, AwsIrsa.")
+  @doc("(Optional) How Radius authenticates to the registry.")
   authenticationMethod?: BicepAuthenticationMethod;
 
-  @doc("The ID of a secret resource containing username and password for BasicAuth. Supported types: Radius.Security/secrets (recommended) or Applications.Core/secretStores. Required when authenticationMethod is 'BasicAuth'.")
+  @doc("(Optional) The ID of a `Radius.Security/secrets` resource containing the username and password. Required when `authenticationMethod` is `BasicAuth`.")
   basicAuthSecretId?: string;
 
-  @doc("Azure Workload Identity client ID. Required when authenticationMethod is 'AzureWI'.")
+  @doc("(Optional) Azure Workload Identity client ID. Required when `authenticationMethod` is `AzureWI`.")
   azureWiClientId?: string;
 
-  @doc("Azure Workload Identity tenant ID. Required when authenticationMethod is 'AzureWI'.")
+  @doc("(Optional) Azure Workload Identity tenant ID. Required when `authenticationMethod` is `AzureWI`.")
   azureWiTenantId?: string;
 
-  @doc("AWS IAM Role ARN for IRSA authentication. Required when authenticationMethod is 'AwsIrsa'.")
+  @doc("(Optional) AWS IAM Role ARN for IRSA authentication. Required when `authenticationMethod` is `AwsIrsa`.")
   awsIamRoleArn?: string;
 }
 
