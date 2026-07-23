@@ -41,6 +41,11 @@ jobs:
             arch: amd64
             file: rad
             ext: .exe
+          - os: windows
+            arch: arm64
+            file: rad
+            ext: .exe
+            minimum_version: v0.60.0
     permissions:
       contents: read
       issues: write # Required to create an issue when the nightly run fails
@@ -56,7 +61,8 @@ jobs:
           MATRIX_ARCH: ${{ matrix.arch }}
           MATRIX_FILE: ${{ matrix.file }}
           MATRIX_EXT: ${{ matrix.ext }}
-        run: make test-cli-download CLI_DOWNLOAD_OS="${MATRIX_OS}" CLI_DOWNLOAD_ARCH="${MATRIX_ARCH}" CLI_DOWNLOAD_FILE="${MATRIX_FILE}" CLI_DOWNLOAD_EXT="${MATRIX_EXT}"
+          MATRIX_MINIMUM_VERSION: ${{ matrix.minimum_version }}
+        run: make test-cli-download CLI_DOWNLOAD_OS="${MATRIX_OS}" CLI_DOWNLOAD_ARCH="${MATRIX_ARCH}" CLI_DOWNLOAD_FILE="${MATRIX_FILE}" CLI_DOWNLOAD_EXT="${MATRIX_EXT}" CLI_DOWNLOAD_MINIMUM_VERSION="${MATRIX_MINIMUM_VERSION}"
 
       - name: Create GitHub issue on failure
         if: ${{ failure() }}
