@@ -37,16 +37,21 @@ runs:
 
         # Write the combined result on exit so the rad-delete-result artifact is
         # complete even when the delete fails and the step exits early.
+        # Capture rad's combined output to a file (not a shell variable) so the
+        # result artifact can embed it via `jq --rawfile` regardless of size --
+        # passing large output through `jq --arg` risks exceeding OS argv limits and
+        # failing the artifact write even on a successful delete. Created up front and
+        # left empty so write_result can always read it, including on an early exit.
         OUTCOME="succeeded"
         EXIT=0
-        OUTPUT=""
+        OUTFILE=$(mktemp)
         write_result() {
           jq -n \
             --arg outcome "$OUTCOME" \
             --argjson exitCode "$EXIT" \
             --arg resourceType "$RESOURCE_TYPE" \
             --arg name "$RESOURCE_NAME" \
-            --arg output "$OUTPUT" \
+            --rawfile output "$OUTFILE" \
             '{schemaVersion:"1.0", outcome:$outcome, exitCode:$exitCode, resourceType:$resourceType, name:$name, output:$output}' \
             > "$RESULT_FILE"
         }
@@ -86,18 +91,15 @@ runs:
         # Keep the group label constant: RESOURCE_NAME is untrusted and a newline
         # or workflow-command-like text in it could corrupt log rendering or inject
         # workflow commands. The actual `rad` invocation below still carries the name.
-        outfile=$(mktemp)
         echo "::group::rad ${VERB[*]} --yes --preview"
         # Relax -e only for the pipeline so a non-zero `rad` exit is captured via
         # PIPESTATUS and reported below, rather than aborting the step before we
         # can write the result artifact. -e is restored immediately after.
         set +e
-        rad "${VERB[@]}" "$RESOURCE_NAME" --yes --preview 2>&1 | tee "$outfile"
+        rad "${VERB[@]}" "$RESOURCE_NAME" --yes --preview 2>&1 | tee "$OUTFILE"
         EXIT=${PIPESTATUS[0]}
         set -e
         echo "::endgroup::"
-        OUTPUT=$(cat "$outfile")
-        rm -f "$outfile"
 
         if [ "$EXIT" -ne 0 ]; then
           OUTCOME="failed"
