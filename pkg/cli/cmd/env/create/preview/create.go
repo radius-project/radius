@@ -18,7 +18,6 @@ package preview
 
 import (
 	"context"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -70,7 +69,7 @@ rad env create myenv --aws-region <region> --aws-account-id <account-id>
 rad env create myenv --kubernetes-namespace mynamespace
 
 ## Create environment with recipe packs (--preview)
-rad env create myenv --recipe-packs pack1,pack2
+rad env create myenv --preview --recipe-packs pack1,pack2
 `,
 		RunE: framework.RunCommand(runner),
 	}
@@ -230,7 +229,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	r.recipePacks = normalizeRecipePacks(recipePacks)
+	r.recipePacks = recipepack.NormalizeRecipePacks(recipePacks)
+
+	// Reject an explicitly provided but effectively empty --recipe-packs value
+	// (e.g. "," or "  ") rather than silently falling back to the default pack.
+	if cmd.Flags().Changed("recipe-packs") && len(r.recipePacks) == 0 {
+		return clierrors.Message("No valid recipe packs were provided. Specify one or more recipe pack names or IDs with --recipe-packs.")
+	}
 
 	return nil
 }
@@ -292,10 +297,11 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// Keep referencedBy in sync on any user-specified recipe packs so each pack
 	// records the environment that now references it. The default recipe pack
-	// path does not maintain referencedBy.
+	// path does not maintain referencedBy. The environment already exists at this
+	// point, so make clear that the failure is limited to the reference update.
 	if len(r.recipePacks) > 0 {
 		if err := r.addEnvironmentReferences(ctx, recipePackIDs); err != nil {
-			return err
+			return clierrors.MessageWithCause(err, "Environment %q was created, but its recipe pack references could not be updated.", r.EnvironmentName)
 		}
 	}
 
@@ -322,8 +328,10 @@ func (r *Runner) resolveRecipePacks(ctx context.Context) ([]*string, error) {
 		}
 
 		_, err = recipePackClient.Get(ctx, recipePackID.RootScope(), recipePackID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
-		if err != nil {
+		if clients.Is404Error(err) {
 			return nil, clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to set on the environment.", recipePack)
+		} else if err != nil {
+			return nil, err
 		}
 
 		recipePackIDs = append(recipePackIDs, to.Ptr(recipePackID.String()))
@@ -430,7 +438,7 @@ func addEnvReferenceToRecipePack(ctx context.Context, envID string, packID strin
 		pack.Properties = &corerpv20250801.RecipePackProperties{}
 	}
 
-	if !refExists(pack.Properties.ReferencedBy, envID) {
+	if !recipepack.RefExists(pack.Properties.ReferencedBy, envID) {
 		pack.Properties.ReferencedBy = append(pack.Properties.ReferencedBy, &envID)
 	}
 
@@ -440,37 +448,4 @@ func addEnvReferenceToRecipePack(ctx context.Context, envID string, packID strin
 	}
 
 	return nil
-}
-
-// refExists reports whether id is present in the referencedBy list.
-func refExists(refs []*string, id string) bool {
-	for _, ref := range refs {
-		if ref != nil && *ref == id {
-			return true
-		}
-	}
-	return false
-}
-
-// normalizeRecipePacks splits comma-separated values, trims whitespace, and
-// removes empty entries and duplicates while preserving the first-seen order.
-// Deduplication avoids redundant referencedBy sync work and prevents server-side
-// recipe pack conflict validation from failing on repeated entries.
-func normalizeRecipePacks(recipePacks []string) []string {
-	seen := map[string]struct{}{}
-	result := []string{}
-	for _, value := range recipePacks {
-		for p := range strings.SplitSeq(value, ",") {
-			trimmed := strings.TrimSpace(p)
-			if trimmed == "" {
-				continue
-			}
-			if _, ok := seen[trimmed]; ok {
-				continue
-			}
-			seen[trimmed] = struct{}{}
-			result = append(result, trimmed)
-		}
-	}
-	return result
 }

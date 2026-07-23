@@ -18,7 +18,6 @@ package preview
 
 import (
 	"context"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -29,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/to"
@@ -213,32 +213,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	r.recipePacks = normalizeRecipePacks(recipePacks)
+	r.recipePacks = recipepack.NormalizeRecipePacks(recipePacks)
 
 	return nil
-}
-
-// normalizeRecipePacks splits comma-separated values, trims whitespace, and
-// removes empty entries and duplicates while preserving the first-seen order.
-// Deduplication avoids redundant referencedBy sync work and prevents server-side
-// recipe pack conflict validation from failing on repeated entries.
-func normalizeRecipePacks(recipepacks []string) []string {
-	seen := map[string]struct{}{}
-	result := []string{}
-	for _, value := range recipepacks {
-		for p := range strings.SplitSeq(value, ",") {
-			trimmed := strings.TrimSpace(p)
-			if trimmed == "" {
-				continue
-			}
-			if _, ok := seen[trimmed]; ok {
-				continue
-			}
-			seen[trimmed] = struct{}{}
-			result = append(result, trimmed)
-		}
-	}
-	return result
 }
 
 // Run runs the `rad env update` preview command.
@@ -545,7 +522,7 @@ func addEnvReferenceToRecipePack(
 		pack.Properties = &corerpv20250801.RecipePackProperties{}
 	}
 
-	if !refExists(pack.Properties.ReferencedBy, envID) {
+	if !recipepack.RefExists(pack.Properties.ReferencedBy, envID) {
 		pack.Properties.ReferencedBy = append(pack.Properties.ReferencedBy, &envID)
 	}
 
@@ -566,13 +543,4 @@ func removeReference(environmentRefs []*string, id string) []*string {
 	}
 
 	return result
-}
-
-func refExists(environmentRefs []*string, id string) bool {
-	for _, r := range environmentRefs {
-		if r != nil && *r == id {
-			return true
-		}
-	}
-	return false
 }
