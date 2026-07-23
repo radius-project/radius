@@ -268,6 +268,7 @@ func runPortForward(ctx context.Context, forwarder portForwardRunner, stopChan <
 		sendPortForwardError(ctx, stopChan, errorChan, err)
 		return
 	case <-ctx.Done():
+		sendPortForwardError(context.WithoutCancel(ctx), stopChan, errorChan, ctx.Err())
 		return
 	case <-stopChan:
 		return
@@ -289,6 +290,7 @@ func runPortForward(ctx context.Context, forwarder portForwardRunner, stopChan <
 		sendPortForwardError(ctx, stopChan, errorChan, err)
 		return
 	case <-ctx.Done():
+		sendPortForwardError(context.WithoutCancel(ctx), stopChan, errorChan, ctx.Err())
 		return
 	case <-stopChan:
 		return

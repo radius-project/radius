@@ -662,7 +662,7 @@ func newTestHTTPClient(isHttps bool, hostname string) *http.Client {
 	}
 }
 
-func Test_TestGatewayAvailability_PortForwardStops(t *testing.T) {
+func TestGatewayAvailability_PortForwardStops(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(responseWriter http.ResponseWriter, _ *http.Request) {

@@ -39,6 +39,102 @@ func (f fakePortForwardRunner) GetPorts() ([]portforward.ForwardedPort, error) {
 	return f.getPorts()
 }
 
+func TestRunPortForward_ContextCanceledBeforeReadyReportsError(t *testing.T) {
+	t.Parallel()
+
+	forwardPortsStarted := make(chan struct{})
+	forwardPortsRelease := make(chan struct{})
+	defer close(forwardPortsRelease)
+
+	forwarder := fakePortForwardRunner{
+		forwardPorts: func() error {
+			close(forwardPortsStarted)
+			<-forwardPortsRelease
+			return nil
+		},
+		getPorts: func() ([]portforward.ForwardedPort, error) {
+			return nil, errors.New("GetPorts called before ready")
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	stopChan := make(chan struct{})
+	readyChan := make(chan struct{})
+	portChan := make(chan int)
+	errorChan := make(chan error)
+	done := make(chan struct{})
+	go func() {
+		runPortForward(ctx, forwarder, stopChan, readyChan, portChan, errorChan)
+		close(done)
+	}()
+
+	<-forwardPortsStarted
+	cancel()
+
+	select {
+	case err := <-errorChan:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for context cancellation error")
+	}
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("runPortForward blocked after reporting context cancellation")
+	}
+}
+
+func TestRunPortForward_ContextCanceledBeforePortReportsError(t *testing.T) {
+	t.Parallel()
+
+	forwardPortsRelease := make(chan struct{})
+	defer close(forwardPortsRelease)
+	getPortsStarted := make(chan struct{})
+	getPortsRelease := make(chan struct{})
+
+	forwarder := fakePortForwardRunner{
+		forwardPorts: func() error {
+			<-forwardPortsRelease
+			return nil
+		},
+		getPorts: func() ([]portforward.ForwardedPort, error) {
+			close(getPortsStarted)
+			<-getPortsRelease
+			return []portforward.ForwardedPort{{Local: 43210, Remote: 8080}}, nil
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	stopChan := make(chan struct{})
+	readyChan := make(chan struct{})
+	close(readyChan)
+	portChan := make(chan int)
+	errorChan := make(chan error)
+	done := make(chan struct{})
+	go func() {
+		runPortForward(ctx, forwarder, stopChan, readyChan, portChan, errorChan)
+		close(done)
+	}()
+
+	<-getPortsStarted
+	cancel()
+	close(getPortsRelease)
+
+	select {
+	case err := <-errorChan:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for context cancellation error")
+	}
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("runPortForward blocked after reporting context cancellation")
+	}
+}
+
 func TestRunPortForward_GetPortsErrorDoesNotBlockOnForwardResult(t *testing.T) {
 	t.Parallel()
 
