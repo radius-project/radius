@@ -126,6 +126,11 @@ runs:
           local index="$1"; shift
           local display="$1"; shift
           local outfile code gtitle
+          # The recorded command string can contain a caller-supplied secret (e.g.
+          # a value passed inline via `--parameters`). GitHub's log masking does not
+          # apply to artifact contents, so strip every known secret from `display`
+          # before it reaches either the ::group:: title or the JSON `command` field.
+          display=$(scrub_string "$display")
           outfile=$(mktemp)
           # The group title carries the caller-supplied command string, so escape
           # the workflow-command metacharacters: strip CR, fold newlines to spaces
@@ -160,8 +165,8 @@ runs:
         # key. Used to avoid passing a --parameters twice when an older environment
         # still supplies registryUsername/registryPassword in the params secret.
         deploy_params_has_key() {
-          [ -n "${RADIUS_DEPLOY_PARAMS//[[:space:]]/}" ] || return 1
-          printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -e --arg k "$1" 'has($k)' >/dev/null 2>&1
+          [ -n "$DEPLOY_PARAMS_JSON" ] || return 1
+          printf '%s' "$DEPLOY_PARAMS_JSON" | jq -e --arg k "$1" 'has($k)' >/dev/null 2>&1
         }
 
         # Secret values that must never reach the logs or the uploaded artifact:
@@ -187,29 +192,49 @@ runs:
             echo "::add-mask::$_line"
           done <<< "$1"
         }
-        add_secret "$REGISTRY_PASSWORD"
+
+        # RADIUS_DEPLOY_PARAMS is a secret expected to be a JSON object. Validate it
+        # once, up front, so the jq calls below never emit a parse error -- which
+        # could echo raw secret content into the logs -- when the value is malformed.
+        # A blank/unset value means "no params"; a malformed value is rejected with a
+        # generic message (no secret content) and treated as empty.
+        DEPLOY_PARAMS_JSON=""
         if [ -n "${RADIUS_DEPLOY_PARAMS//[[:space:]]/}" ]; then
-          while IFS= read -r _sname; do
-            [ -z "$_sname" ] && continue
-            add_secret "$(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r --arg k "$_sname" '.[$k]')"
-          done < <(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r 'keys_unsorted[]')
+          if printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -e 'type == "object"' >/dev/null 2>&1; then
+            DEPLOY_PARAMS_JSON="$RADIUS_DEPLOY_PARAMS"
+          else
+            echo "::error::RADIUS_DEPLOY_PARAMS is not a valid JSON object; ignoring it." >&2
+          fi
         fi
 
-        # Replace every known secret value in the given file with *** in place, so
-        # the artifact never carries a credential that `rad` happened to echo. The
+        add_secret "$REGISTRY_PASSWORD"
+        if [ -n "$DEPLOY_PARAMS_JSON" ]; then
+          while IFS= read -r _sname; do
+            [ -z "$_sname" ] && continue
+            add_secret "$(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r --arg k "$_sname" '.[$k]' 2>/dev/null)"
+          done < <(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r 'keys_unsorted[]' 2>/dev/null)
+        fi
+
+        # Strip every known secret value from a string, replacing each with ***. The
         # search value is double-quoted inside the substitution, which disables
         # pattern matching so it is compared as a literal string -- glob
         # metacharacters (* ? [ ] \) in a secret are matched verbatim, not as
         # patterns.
-        scrub_secrets() {
-          local file="$1" content value
-          [ ${#SECRET_VALUES[@]} -eq 0 ] && return 0
-          content=$(cat "$file")
+        scrub_string() {
+          local s="$1" value
           for value in "${SECRET_VALUES[@]}"; do
             [ -n "$value" ] || continue
-            content=${content//"$value"/***}
+            s=${s//"$value"/***}
           done
-          printf '%s' "$content" > "$file"
+          printf '%s' "$s"
+        }
+
+        # Replace every known secret value in the given file with *** in place, so
+        # the artifact never carries a credential that `rad` happened to echo.
+        scrub_secrets() {
+          local file="$1"
+          [ ${#SECRET_VALUES[@]} -eq 0 ] && return 0
+          printf '%s' "$(scrub_string "$(cat "$file")")" > "$file"
         }
 
         if [ -n "${RAD_COMMANDS//[[:space:]]/}" ]; then
@@ -280,12 +305,12 @@ runs:
                 if [ -n "$APP_IMAGE" ]; then
                   EXTRA_PARAMS+=(--parameters "image=$APP_IMAGE")
                 fi
-                if [ -n "${RADIUS_DEPLOY_PARAMS//[[:space:]]/}" ]; then
+                if [ -n "$DEPLOY_PARAMS_JSON" ]; then
                   while IFS= read -r _pname; do
                     [ -z "$_pname" ] && continue
-                    _pval=$(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r --arg k "$_pname" '.[$k]')
+                    _pval=$(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r --arg k "$_pname" '.[$k]' 2>/dev/null)
                     EXTRA_PARAMS+=(--parameters "$_pname=$_pval")
-                  done < <(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r 'keys_unsorted[]')
+                  done < <(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r 'keys_unsorted[]' 2>/dev/null)
                 fi
                 # Registry credentials for the app's Radius.Security/secrets
                 # resource. Appended to the argv array so the secret value is never
@@ -330,12 +355,12 @@ runs:
           # --parameters name=value pairs. Each value is read back from the JSON
           # by key with jq so embedded '=', spaces, or newlines are preserved and
           # never re-split by the shell.
-          if [ -n "${RADIUS_DEPLOY_PARAMS//[[:space:]]/}" ]; then
+          if [ -n "$DEPLOY_PARAMS_JSON" ]; then
             while IFS= read -r _pname; do
               [ -z "$_pname" ] && continue
-              _pval=$(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r --arg k "$_pname" '.[$k]')
+              _pval=$(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r --arg k "$_pname" '.[$k]' 2>/dev/null)
               DEPLOY_PARAMS+=(--parameters "$_pname=$_pval")
-            done < <(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r 'keys_unsorted[]')
+            done < <(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r 'keys_unsorted[]' 2>/dev/null)
           fi
           # Registry credentials for the app's Radius.Security/secrets resource
           # (`radius-ghcr-registry-creds`). Appended to the argv array so the secret
