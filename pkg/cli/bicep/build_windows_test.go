@@ -80,7 +80,10 @@ func TestHelperProcess(t *testing.T) {
 		}
 		time.Sleep(25 * time.Millisecond)
 	}
-
+	if _, err := os.Stat(readyFile); err != nil {
+		fmt.Fprintf(os.Stderr, "fake bicep did not signal readiness within deadline: %v\n", err)
+		os.Exit(2)
+	}
 	// Exit while fake bicep may still be alive.  This is the crux of the test:
 	// any stderr handle that bicep inherited will keep the caller's pipe open
 	// after we exit; with StderrPipe() bicep never has the caller's handle, so
