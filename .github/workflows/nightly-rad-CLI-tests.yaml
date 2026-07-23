@@ -56,7 +56,7 @@ jobs:
           MATRIX_ARCH: ${{ matrix.arch }}
           MATRIX_FILE: ${{ matrix.file }}
           MATRIX_EXT: ${{ matrix.ext }}
-        run: make test-cli-download OS="${MATRIX_OS}" ARCH="${MATRIX_ARCH}" FILE="${MATRIX_FILE}" EXT="${MATRIX_EXT}"
+        run: make test-cli-download CLI_DOWNLOAD_OS="${MATRIX_OS}" CLI_DOWNLOAD_ARCH="${MATRIX_ARCH}" CLI_DOWNLOAD_FILE="${MATRIX_FILE}" CLI_DOWNLOAD_EXT="${MATRIX_EXT}"
 
       - name: Create GitHub issue on failure
         if: ${{ failure() }}
