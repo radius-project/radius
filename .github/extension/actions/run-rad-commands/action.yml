@@ -125,9 +125,17 @@ runs:
         record() {
           local index="$1"; shift
           local display="$1"; shift
-          local outfile code
+          local outfile code gtitle
           outfile=$(mktemp)
-          echo "::group::rad $display"
+          # The group title carries the caller-supplied command string, so escape
+          # the workflow-command metacharacters: strip CR, fold newlines to spaces
+          # (a title is single-line), and escape '%' -- the escape char -- so the
+          # value can neither break the ::group:: command nor inject into the log.
+          gtitle="rad $display"
+          gtitle=${gtitle//$'\r'/}
+          gtitle=${gtitle//$'\n'/ }
+          gtitle=${gtitle//'%'/'%25'}
+          echo "::group::$gtitle"
           "$@" 2>&1 | tee "$outfile"
           code=${PIPESTATUS[0]}
           echo "::endgroup::"
@@ -246,10 +254,28 @@ runs:
               # The image, application, and registry parameters belong to the app
               # only. `rad deploy` rejects unknown parameters, so a custom command
               # that deploys a different template (e.g. an environment/recipe-pack
-              # bicep) must not receive them. The deploy target is the first
-              # positional argument after the `deploy` verb; inject the app-only
-              # parameters only when it is APP_FILE.
-              DEPLOY_TARGET="${CMD_ARGV[1]:-}"
+              # bicep) must not receive them. Find the deploy target -- the first
+              # positional argument after the `deploy` verb -- skipping flags and
+              # the values of value-taking flags, since rad accepts flags before
+              # the file (e.g. `deploy -e dev app.bicep`). Inject the app-only
+              # parameters only when the target is APP_FILE.
+              DEPLOY_TARGET=""
+              _val_flags=" -w --workspace -g --group -a --application -e --environment -p --parameters "
+              _i=1
+              while [ "$_i" -lt "${#CMD_ARGV[@]}" ]; do
+                _tok="${CMD_ARGV[$_i]}"
+                case "$_tok" in
+                  -*=*)
+                    _i=$((_i + 1)) ;;
+                  -*)
+                    case "$_val_flags" in
+                      *" $_tok "*) _i=$((_i + 2)) ;;
+                      *) _i=$((_i + 1)) ;;
+                    esac ;;
+                  *)
+                    DEPLOY_TARGET="$_tok"; break ;;
+                esac
+              done
               if [ "$DEPLOY_TARGET" = "$APP_FILE" ]; then
                 if [ -n "$APP_IMAGE" ]; then
                   EXTRA_PARAMS+=(--parameters "image=$APP_IMAGE")
