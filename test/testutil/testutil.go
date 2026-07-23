@@ -256,6 +256,8 @@ type portForwardRunner interface {
 	GetPorts() ([]portforward.ForwardedPort, error)
 }
 
+var errPortForwardStopped = errors.New("port-forwarder stopped unexpectedly")
+
 func runPortForward(ctx context.Context, forwarder portForwardRunner, stopChan <-chan struct{}, readyChan <-chan struct{}, portChan chan<- int, errorChan chan<- error) {
 	forwardResultChan := make(chan error, 1)
 	go func() {
@@ -305,6 +307,10 @@ func runPortForward(ctx context.Context, forwarder portForwardRunner, stopChan <
 }
 
 func sendPortForwardError(ctx context.Context, stopChan <-chan struct{}, errorChan chan<- error, err error) {
+	if err == nil {
+		err = errPortForwardStopped
+	}
+
 	select {
 	case <-stopChan:
 		return

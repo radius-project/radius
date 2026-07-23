@@ -135,6 +135,42 @@ func TestRunPortForward_ContextCanceledBeforePortReportsError(t *testing.T) {
 	}
 }
 
+func TestRunPortForward_ForwardPortsNilReportsError(t *testing.T) {
+	t.Parallel()
+
+	forwarder := fakePortForwardRunner{
+		forwardPorts: func() error {
+			return nil
+		},
+		getPorts: func() ([]portforward.ForwardedPort, error) {
+			return nil, errors.New("GetPorts called before ready")
+		},
+	}
+
+	stopChan := make(chan struct{})
+	readyChan := make(chan struct{})
+	portChan := make(chan int)
+	errorChan := make(chan error)
+	done := make(chan struct{})
+	go func() {
+		runPortForward(context.Background(), forwarder, stopChan, readyChan, portChan, errorChan)
+		close(done)
+	}()
+
+	select {
+	case err := <-errorChan:
+		require.ErrorIs(t, err, errPortForwardStopped)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for unexpected port-forward stop error")
+	}
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("runPortForward blocked after reporting an unexpected stop")
+	}
+}
+
 func TestRunPortForward_GetPortsErrorDoesNotBlockOnForwardResult(t *testing.T) {
 	t.Parallel()
 

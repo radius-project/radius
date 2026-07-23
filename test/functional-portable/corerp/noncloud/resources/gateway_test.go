@@ -570,7 +570,10 @@ func logGatewayNetworkDiagnostics(t *testing.T, ctx context.Context, at rp.RPTes
 	t.Helper()
 	t.Logf("Gateway network diagnostics for namespace %s", namespace)
 
-	services, err := at.Options.K8sClient.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{})
+	diagnosticsCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+
+	services, err := at.Options.K8sClient.CoreV1().Services(namespace).List(diagnosticsCtx, metav1.ListOptions{})
 	if err != nil {
 		t.Logf("failed to list Services: %v", err)
 	} else {
@@ -583,7 +586,7 @@ func logGatewayNetworkDiagnostics(t *testing.T, ctx context.Context, at rp.RPTes
 		}
 	}
 
-	endpointSlices, err := at.Options.K8sClient.DiscoveryV1().EndpointSlices(namespace).List(ctx, metav1.ListOptions{})
+	endpointSlices, err := at.Options.K8sClient.DiscoveryV1().EndpointSlices(namespace).List(diagnosticsCtx, metav1.ListOptions{})
 	if err != nil {
 		t.Logf("failed to list EndpointSlices: %v", err)
 		return
