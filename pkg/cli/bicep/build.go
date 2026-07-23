@@ -51,7 +51,7 @@ func runBicepRaw(args ...string) ([]byte, error) {
 
 	stdout, err := c.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create pipe: %w", err)
+		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
 
 	// Route bicep's stderr through a pipe we own instead of handing it os.Stderr
