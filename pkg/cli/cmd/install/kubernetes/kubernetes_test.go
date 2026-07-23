@@ -29,11 +29,18 @@ import (
 	"github.com/radius-project/radius/pkg/cli/helm"
 	cli_kubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
+	"github.com/radius-project/radius/pkg/cli/test_client_factory"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	corerpfake "github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
+	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
+
+	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -62,6 +69,11 @@ func Test_Validate(t *testing.T) {
 		{
 			Name:          "contour",
 			Input:         []string{"--skip-contour-install"},
+			ExpectedValid: true,
+		},
+		{
+			Name:          "preview",
+			Input:         []string{"--preview"},
 			ExpectedValid: true,
 		},
 	}
@@ -546,5 +558,164 @@ func Test_Run(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Failed to create the default environment")
 		require.ErrorIs(t, err, boom)
+	})
+
+	t.Run("Success: Install with --preview creates a Radius.Core environment", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		helmMock := helm.NewMockInterface(ctrl)
+		outputMock := &output.MockOutput{}
+
+		notFound := &azcore.ResponseError{StatusCode: http.StatusNotFound}
+		mgmtMock := clients.NewMockApplicationsManagementClient(ctrl)
+		mgmtMock.EXPECT().
+			GetResourceGroup(gomock.Any(), "local", "default").
+			Return(ucp.ResourceGroupResource{}, notFound).
+			Times(1)
+		mgmtMock.EXPECT().
+			CreateOrUpdateResourceGroup(gomock.Any(), "local", "default", gomock.Any()).
+			Return(nil).
+			Times(1)
+		// The preview path uses the Radius.Core client factory for the environment, so the legacy
+		// management client must not receive any environment calls.
+
+		// Capture the Radius.Core environment that gets created so we can assert its shape.
+		var capturedScope, capturedName string
+		var capturedEnv corerpv20250801.EnvironmentResource
+		envServer := func() corerpfake.EnvironmentsServer {
+			return corerpfake.EnvironmentsServer{
+				Get: func(_ context.Context, _ string, _ string, _ *corerpv20250801.EnvironmentsClientGetOptions) (resp azfake.Responder[corerpv20250801.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+					errResp.SetResponseError(http.StatusNotFound, "Not Found")
+					return
+				},
+				CreateOrUpdate: func(_ context.Context, rootScope string, environmentName string, resource corerpv20250801.EnvironmentResource, _ *corerpv20250801.EnvironmentsClientCreateOrUpdateOptions) (resp azfake.Responder[corerpv20250801.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					capturedScope = rootScope
+					capturedName = environmentName
+					capturedEnv = resource
+					resp.SetResponse(http.StatusOK, corerpv20250801.EnvironmentsClientCreateOrUpdateResponse{EnvironmentResource: resource}, nil)
+					return
+				},
+			}
+		}
+		radiusCoreFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			"/planes/radius/local/resourceGroups/default",
+			envServer,
+			test_client_factory.WithRecipePackServer404OnGet,
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		runner := &Runner{
+			Helm:                    helmMock,
+			Output:                  outputMock,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mgmtMock},
+			KubernetesInterface:     cli_kubernetes.NewMockInterface(ctrl),
+			RadiusCoreClientFactory: radiusCoreFactory,
+
+			KubeContext: "test-context",
+			Chart:       "test-chart",
+			Preview:     true,
+		}
+
+		helmMock.EXPECT().CheckRadiusInstall("test-context").
+			Return(helm.InstallState{}, nil).
+			Times(1)
+		expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
+			Radius: helm.ChartOptions{ChartPath: "test-chart"},
+		})
+		helmMock.EXPECT().InstallRadius(ctx, expectedOptions, "test-context").
+			Return(nil).
+			Times(1)
+
+		err = runner.Run(ctx)
+		require.NoError(t, err)
+
+		require.Equal(t, "planes/radius/local/resourceGroups/default", capturedScope)
+		require.Equal(t, "default", capturedName)
+		require.NotNil(t, capturedEnv.Properties)
+		require.Equal(t, []*string{to.Ptr(recipepack.DefaultRecipePackID())}, capturedEnv.Properties.RecipePacks)
+		require.NotNil(t, capturedEnv.Properties.Providers)
+		require.NotNil(t, capturedEnv.Properties.Providers.Kubernetes)
+		require.Equal(t, "default", *capturedEnv.Properties.Providers.Kubernetes.Namespace)
+
+		expectedWrites := []any{
+			output.LogOutput{
+				Format: "Installing Radius version %s to namespace: %s...",
+				Params: []any{"edge", "radius-system"},
+			},
+			output.LogOutput{
+				Format: "Creating default resource group %q...",
+				Params: []any{"default"},
+			},
+			output.LogOutput{
+				Format: "Creating default environment %q in namespace %q...",
+				Params: []any{"default", "default"},
+			},
+		}
+		require.Equal(t, expectedWrites, outputMock.Writes)
+	})
+
+	t.Run("Success: Reinstall with --preview leaves an existing Radius.Core environment unchanged", func(t *testing.T) {
+		t.Parallel()
+		ctrl := gomock.NewController(t)
+		helmMock := helm.NewMockInterface(ctrl)
+		outputMock := &output.MockOutput{}
+
+		mgmtMock := clients.NewMockApplicationsManagementClient(ctrl)
+		mgmtMock.EXPECT().
+			GetResourceGroup(gomock.Any(), "local", "default").
+			Return(ucp.ResourceGroupResource{}, nil).
+			Times(1)
+
+		// The environment already exists: Get succeeds and no CreateOrUpdate is issued.
+		radiusCoreFactory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			"/planes/radius/local/resourceGroups/default",
+			test_client_factory.WithEnvironmentServerNoError,
+			nil,
+		)
+		require.NoError(t, err)
+
+		ctx := context.Background()
+		runner := &Runner{
+			Helm:                    helmMock,
+			Output:                  outputMock,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mgmtMock},
+			KubernetesInterface:     cli_kubernetes.NewMockInterface(ctrl),
+			RadiusCoreClientFactory: radiusCoreFactory,
+
+			KubeContext: "test-context",
+			Chart:       "test-chart",
+			Preview:     true,
+			Reinstall:   true,
+		}
+
+		helmMock.EXPECT().CheckRadiusInstall("test-context").
+			Return(helm.InstallState{RadiusInstalled: true, RadiusVersion: "test-version"}, nil).
+			Times(1)
+		expectedOptions := helm.PopulateDefaultClusterOptions(helm.CLIClusterOptions{
+			Radius: helm.ChartOptions{ChartPath: "test-chart", Reinstall: true},
+		})
+		helmMock.EXPECT().InstallRadius(ctx, expectedOptions, "test-context").
+			Return(nil).
+			Times(1)
+
+		err = runner.Run(ctx)
+		require.NoError(t, err)
+
+		expectedWrites := []any{
+			output.LogOutput{
+				Format: "Reinstalling Radius version %s to namespace: %s...",
+				Params: []any{"edge", "radius-system"},
+			},
+			output.LogOutput{
+				Format: "Default resource group %q already exists; leaving it unchanged.",
+				Params: []any{"default"},
+			},
+			output.LogOutput{
+				Format: "Default environment %q already exists; leaving it unchanged.",
+				Params: []any{"default"},
+			},
+		}
+		require.Equal(t, expectedWrites, outputMock.Writes)
 	})
 }
