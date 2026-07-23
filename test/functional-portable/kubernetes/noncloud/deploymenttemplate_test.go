@@ -33,7 +33,6 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/test/rp"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -50,7 +49,7 @@ import (
 )
 
 func Test_DeploymentTemplate_Env(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	opts := rp.NewRPTestOptions(t)
 
 	name := "dt-env"
@@ -82,7 +81,7 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 	})
 
 	t.Run("Check DeploymentTemplate status", func(t *testing.T) {
-		ctx, cancel := testcontext.NewWithCancel(t)
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
 		// Get resource version
@@ -130,7 +129,7 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 }
 
 func Test_DeploymentTemplate_Module(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	opts := rp.NewRPTestOptions(t)
 
 	name := "dt-module"
@@ -163,7 +162,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 	})
 
 	t.Run("Check DeploymentTemplate status", func(t *testing.T) {
-		ctx, cancel := testcontext.NewWithCancel(t)
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
 		// Get resource version
@@ -205,7 +204,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 }
 
 func Test_DeploymentTemplate_Recipe(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	opts := rp.NewRPTestOptions(t)
 
 	name := "dt-recipe"
@@ -240,7 +239,7 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 	})
 
 	t.Run("Check DeploymentTemplate status", func(t *testing.T) {
-		ctx, cancel := testcontext.NewWithCancel(t)
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
 		// Get resource version

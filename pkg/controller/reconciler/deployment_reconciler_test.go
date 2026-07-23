@@ -17,6 +17,7 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -26,7 +27,6 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/kubernetes"
-	"github.com/radius-project/radius/test/testcontext"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,15 +51,8 @@ const (
 func SetupDeploymentTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	SkipWithoutEnvironment(t)
 
-	// For debugging, you can set uncomment this to see logs from the controller. This will cause tests to fail
-	// because the logging will continue after the test completes.
-	//
-	// Add runtimelog "sigs.k8s.io/controller-runtime/pkg/log" to imports.
-	//
-	// runtimelog.SetLogger(ucplog.FromContextOrDiscard(testcontext.New(t)))
-
 	// Shut down the manager when the test exits.
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
@@ -91,7 +84,7 @@ func SetupDeploymentTest(t *testing.T) (*mockRadiusClient, client.Client) {
 }
 
 func Test_DeploymentReconciler_StartDeleteOperationIfNeeded_OwnershipMismatch_BlocksDelete(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	radius := NewMockRadiusClient()
 	reconciler := &DeploymentReconciler{
 		Radius:        radius,
@@ -123,7 +116,7 @@ func Test_DeploymentReconciler_StartDeleteOperationIfNeeded_OwnershipMismatch_Bl
 }
 
 func Test_DeploymentReconciler_StartPutOrDeleteOperationIfNeeded_OwnershipMismatch_BlocksDelete(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	radius := NewMockRadiusClient()
 	reconciler := &DeploymentReconciler{
 		Radius:        radius,
@@ -164,7 +157,7 @@ func Test_DeploymentReconciler_StartPutOrDeleteOperationIfNeeded_OwnershipMismat
 }
 
 func Test_DeploymentReconciler_StartDeleteOperationIfNeeded_OwnershipMatch_AllowsDelete(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	radius := NewMockRadiusClient()
 	reconciler := &DeploymentReconciler{
 		Radius:        radius,
@@ -206,7 +199,7 @@ func requireNoDeleteOperation(t *testing.T, radius *mockRadiusClient, resourceID
 //
 // Then exercises the cleanup path by deleting the deployment.
 func Test_DeploymentReconciler_RadiusEnabled_ThenDeploymentDeleted(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	radius, client := SetupDeploymentTest(t)
 
 	name := types.NamespacedName{Namespace: "deployment-enabled-deleted", Name: "test-deployment-enabled-deleted"}
@@ -252,7 +245,7 @@ func Test_DeploymentReconciler_RadiusEnabled_ThenDeploymentDeleted(t *testing.T)
 }
 
 func Test_DeploymentReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	radius, client := SetupDeploymentTest(t)
 
 	name := types.NamespacedName{Namespace: "deployment-change-envapp", Name: "test-deployment-change-envapp"}
@@ -326,7 +319,7 @@ func Test_DeploymentReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 //
 // Then exercises the cleanup path by disabling Radius.
 func Test_DeploymentReconciler_RadiusEnabled_ThenRadiusDisabled(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	radius, client := SetupDeploymentTest(t)
 
 	name := types.NamespacedName{Namespace: "deployment-enabled-disabled", Name: "test-deployment-enabled-disabled"}
@@ -377,7 +370,7 @@ func Test_DeploymentReconciler_RadiusEnabled_ThenRadiusDisabled(t *testing.T) {
 // Then exercises the cleanup path by disabling Radius - and shows that we can revert
 // the changes Radius made to the deployment.
 func Test_DeploymentReconciler_Connections(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	radius, client := SetupDeploymentTest(t)
 
 	name := types.NamespacedName{Namespace: "deployment-connections", Name: "test-deployment-connections"}
@@ -568,7 +561,7 @@ func Test_DeploymentReconciler_Connections(t *testing.T) {
 //
 // Then checks the Events for Disabled-Disabled.
 func Test_DeploymentReconciler_RadiusDisabled_ThenRadiusDisabled_ByAnnotation(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	_, client := SetupDeploymentTest(t)
 
 	name := types.NamespacedName{
@@ -614,7 +607,7 @@ func Test_DeploymentReconciler_RadiusDisabled_ThenRadiusDisabled_ByAnnotation(t 
 //
 // Then checks the Events for Disabled-Disabled.
 func Test_DeploymentReconciler_RadiusDisabled_ThenRadiusDisabled(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	_, client := SetupDeploymentTest(t)
 
 	name := types.NamespacedName{
@@ -655,7 +648,7 @@ func Test_DeploymentReconciler_RadiusDisabled_ThenRadiusDisabled(t *testing.T) {
 }
 
 func waitForStateWaiting(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	var annotations deploymentAnnotations
@@ -679,7 +672,7 @@ func waitForStateWaiting(t *testing.T, client client.Client, name types.Namespac
 }
 
 func waitForStateUpdating(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	var annotations deploymentAnnotations
@@ -703,7 +696,7 @@ func waitForStateUpdating(t *testing.T, client client.Client, name types.Namespa
 }
 
 func waitForStateReady(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	var annotations deploymentAnnotations
@@ -727,7 +720,7 @@ func waitForStateReady(t *testing.T, client client.Client, name types.Namespaced
 }
 
 func waitForStateDeleting(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	var annotations deploymentAnnotations
@@ -761,7 +754,7 @@ type expectedEvent struct {
 //
 // We can have multiple events as the result of the List function but we are only interested in the expected event.
 func waitForEvent(t *testing.T, client client.Client, event expectedEvent) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	logger := t
 
 	require.EventuallyWithTf(t, func(t *assert.CollectT) {
@@ -784,7 +777,7 @@ func waitForEvent(t *testing.T, client client.Client, event expectedEvent) {
 }
 
 func waitForRadiusContainerDeleted(t *testing.T, client client.Client, name types.NamespacedName) *deploymentAnnotations {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	var annotations *deploymentAnnotations
@@ -803,7 +796,7 @@ func waitForRadiusContainerDeleted(t *testing.T, client client.Client, name type
 }
 
 func waitForDeploymentDeleted(t *testing.T, client client.Client, name types.NamespacedName) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	require.Eventuallyf(t, func() bool {

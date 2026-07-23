@@ -32,7 +32,6 @@ import (
 	"time"
 
 	"github.com/radius-project/radius/pkg/components/hosting"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,7 +39,7 @@ import (
 // The TestHost will have its lifecycle managed by the test context, and will be shut down when the test
 // completes.
 func StartHost(t *testing.T, host *hosting.Host, baseURL string) *TestHost {
-	ctx, cancel := context.WithCancel(testcontext.New(t))
+	ctx, cancel := context.WithCancel(t.Context())
 	errs, messages := host.RunAsync(ctx)
 
 	go func() {

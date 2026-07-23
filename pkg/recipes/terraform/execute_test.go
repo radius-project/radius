@@ -26,7 +26,6 @@ import (
 	dm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -62,7 +61,7 @@ func TestGenerateConfig(t *testing.T) {
 
 	for _, tc := range configTests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := testcontext.New(t)
+			ctx := t.Context()
 			if tc.workingDir == "" {
 				tc.workingDir = t.TempDir()
 			}
@@ -93,7 +92,7 @@ func Test_GetTerraformConfig(t *testing.T) {
 		Module: map[string]config.TFModuleConfig{
 			"test-recipe": {"source": "test/module/source"}},
 	}
-	tfConfig, err := getTerraformConfig(testcontext.New(t), testDir, options)
+	tfConfig, err := getTerraformConfig(t.Context(), testDir, options)
 	require.NoError(t, err)
 	require.Equal(t, &expectedConfig, tfConfig)
 }
@@ -110,7 +109,7 @@ func Test_GetTerraformConfig_EmptyRecipeName(t *testing.T) {
 		ResourceRecipe: &recipes.ResourceMetadata{},
 	}
 
-	_, err := getTerraformConfig(testcontext.New(t), testDir, options)
+	_, err := getTerraformConfig(t.Context(), testDir, options)
 	require.Error(t, err)
 	require.Equal(t, err, ErrRecipeNameEmpty)
 }
@@ -125,7 +124,7 @@ func Test_GetTerraformConfig_InvalidDirectory(t *testing.T) {
 		ResourceRecipe: &recipes.ResourceMetadata{},
 	}
 
-	_, err := getTerraformConfig(testcontext.New(t), workingDir, options)
+	_, err := getTerraformConfig(t.Context(), workingDir, options)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "error creating file: open invalid-directory/main.tf.json: no such file or directory")
 }

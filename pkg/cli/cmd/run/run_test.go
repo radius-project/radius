@@ -41,7 +41,6 @@ import (
 	corerpfake "github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/test/radcli"
-	"github.com/radius-project/radius/test/testcontext"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -552,7 +551,7 @@ func Test_Run(t *testing.T) {
 
 	// We'll run the actual command in the background, and do cancellation and verification in
 	// the foreground.
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	resultErrChan := make(chan error, 1)
@@ -718,7 +717,7 @@ func Test_Run_NoDashboard(t *testing.T) {
 
 	// We'll run the actual command in the background, and do cancellation and verification in
 	// the foreground.
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	resultErrChan := make(chan error, 1)
@@ -826,7 +825,7 @@ func Test_Run_ExtensibleEnvironment(t *testing.T) {
 		Portforward: portforwardMock,
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	err := runner.Run(ctx)
 	require.NoError(t, err)
 
@@ -893,7 +892,7 @@ func Test_Run_ExtensibleEnvironment_PreExisting(t *testing.T) {
 		Portforward: portforwardMock,
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	err := runner.Run(ctx)
 	require.NoError(t, err)
 
