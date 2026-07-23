@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/radius-project/radius/pkg/cli/bicep/tools"
 )
@@ -47,25 +48,40 @@ func runBicepRaw(args ...string) ([]byte, error) {
 	// runs 'bicep'
 	fullCmd := binPath + " " + strings.Join(args, " ")
 	c := exec.Command(binPath, args...)
-	c.Stderr = os.Stderr
+
 	stdout, err := c.StdoutPipe()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create pipe: %w", err)
 	}
 
-	err = c.Start()
+	// Route bicep's stderr through a pipe we own instead of handing it os.Stderr
+	// directly. If bicep inherits the parent process's real stderr handle, a caller
+	// that launched rad with a piped stderr won't observe that pipe close until
+	// bicep also exits -- which hangs stderr stream-close waits on Windows. Copying
+	// through our own pipe keeps the 'stream bicep stderr to ours' behavior without
+	// leaking the caller's handle to the grandchild.
+	stderr, err := c.StderrPipe()
 	if err != nil {
+		return nil, fmt.Errorf("failed to create pipe: %w", err)
+	}
+
+	if err = c.Start(); err != nil {
 		return nil, fmt.Errorf("failed executing %q: %w", fullCmd, err)
 	}
+
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		_, _ = io.Copy(os.Stderr, stderr)
+	})
 
 	// copy to our buffer, we don't really need to observe
 	// errors here since it's copying into memory
 	buf := bytes.Buffer{}
 	_, _ = io.Copy(&buf, stdout)
 
-	// Wait() will wait for us to finish draining stderr before returning the exit code
-	err = c.Wait()
-	if err != nil {
+	// Ensure stderr is fully drained before Wait() closes the pipe.
+	wg.Wait()
+	if err = c.Wait(); err != nil {
 		return nil, fmt.Errorf("failed executing %q: %w", fullCmd, err)
 	}
 
