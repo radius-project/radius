@@ -43,6 +43,10 @@ const (
 	// bicepReleaseFileEnv is the path of a file the test creates to signal the
 	// fake bicep that it may exit.  This prevents orphan batch processes.
 	bicepReleaseFileEnv = "GO_BICEP_RELEASE_FILE"
+
+	// bicepChildScriptEnv is the path of a child batch script that fake bicep
+	// starts and then exits immediately. The child keeps stderr open until released.
+	bicepChildScriptEnv = "GO_BICEP_CHILD_SCRIPT"
 )
 
 // TestHelperProcess is a subprocess entry point for helper-process tests in
@@ -113,24 +117,36 @@ func TestVersion_ClosesCallerStderrPipePromptly(t *testing.T) {
 		_ = os.WriteFile(releaseFile, []byte("release"), 0o600)
 	})
 
-	// Write a batch-file fake bicep that:
-	//   1. prints the version string to stdout and a message to stderr,
-	//   2. writes the ready-signal file so the helper knows bicep is alive, and
-	//   3. polls until the release-signal file appears (keeping the process alive).
+	// Write a child batch file that:
+	//   1. writes the ready-signal file so the helper knows a descendant is alive,
+	//   2. polls until the release-signal file appears (keeping the process alive).
 	//
-	// When fake bicep runs with the OLD implementation it inherits the helper's
-	// real stderr handle (PIPE_A).  With the new implementation it only gets the
-	// private stderr pipe (PIPE_B) that runBicepRaw created, never PIPE_A.
-	bicepScript := "" +
+	// This child outlives fake bicep and keeps inherited handles open.
+	bicepChildScript := "" +
 		"@echo off\r\n" +
-		"echo Bicep CLI version 0.42.1 (abcdef1234)\r\n" +
-		"echo fake bicep stderr 1>&2\r\n" +
 		"echo.>\"%GO_BICEP_READY_FILE%\"\r\n" +
 		":waitloop\r\n" +
 		"if exist \"%GO_BICEP_RELEASE_FILE%\" goto release\r\n" +
 		"timeout /t 1 /nobreak >nul 2>&1\r\n" +
 		"goto waitloop\r\n" +
 		":release\r\n"
+	bicepChildPath := filepath.Join(dir, "bicep-child.cmd")
+	require.NoError(t, os.WriteFile(bicepChildPath, []byte(bicepChildScript), 0o600))
+
+	// Write a batch-file fake bicep parent that:
+	//   1. prints the version string to stdout and a message to stderr,
+	//   2. starts a child process that keeps stderr open after parent exit, and
+	//   3. exits immediately.
+	//
+	// With the OLD implementation both parent and child can inherit the helper's
+	// real stderr handle (PIPE_A). With the new implementation they only get the
+	// private stderr pipe (PIPE_B) that runBicepRaw created, never PIPE_A.
+	bicepScript := "" +
+		"@echo off\r\n" +
+		"echo Bicep CLI version 0.42.1 (abcdef1234)\r\n" +
+		"echo fake bicep stderr 1>&2\r\n" +
+		"start \"\" /b \"%GO_BICEP_CHILD_SCRIPT%\"\r\n" +
+		"exit /b 0\r\n"
 	bicepPath := filepath.Join(dir, "bicep.cmd")
 	require.NoError(t, os.WriteFile(bicepPath, []byte(bicepScript), 0o600))
 
@@ -142,6 +158,7 @@ func TestVersion_ClosesCallerStderrPipePromptly(t *testing.T) {
 		bicepHelperModeEnv+"=rad",
 		bicepReadyFileEnv+"="+readyFile,
 		bicepReleaseFileEnv+"="+releaseFile,
+		bicepChildScriptEnv+"="+bicepChildPath,
 		BicepEnvVar+"="+bicepPath,
 	)
 
