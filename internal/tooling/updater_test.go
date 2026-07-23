@@ -2,6 +2,7 @@ package tooling
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"net/http"
@@ -217,5 +218,42 @@ func TestChecksumCachesSharedFile(t *testing.T) {
 	}
 	if fetches != 1 {
 		t.Fatalf("shared checksum file fetched %d times, want 1", fetches)
+	}
+}
+
+func TestChecksumStreamsDownloadedAsset(t *testing.T) {
+	const contents = "downloaded tool contents"
+	want := fmt.Sprintf("%x", sha256.Sum256([]byte(contents)))
+
+	var attempts int
+	client := NewClient("")
+	client.HTTP = httpClientFunc(func(request *http.Request) (*http.Response, error) {
+		attempts++
+		if attempts == 1 {
+			return nil, fmt.Errorf("temporary download error")
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(strings.NewReader(contents)),
+		}, nil
+	})
+	tool := Tool{
+		Version:          "v1.0.0",
+		DownloadTemplate: "https://downloads.example.test/{asset}",
+		Platforms: map[string]Platform{
+			"linux_amd64": {Asset: "tool_linux_amd64"},
+		},
+		ChecksumSource: ChecksumSource{Type: "download"},
+	}
+
+	got, err := client.Checksum(context.Background(), tool, "linux_amd64", tool.Version)
+	if err != nil {
+		t.Fatalf("Checksum() error = %v", err)
+	}
+	if got != want {
+		t.Fatalf("Checksum() = %q, want %q", got, want)
+	}
+	if attempts != 2 {
+		t.Fatalf("download attempts = %d, want 2", attempts)
 	}
 }
