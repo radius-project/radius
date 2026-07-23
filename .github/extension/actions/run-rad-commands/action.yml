@@ -180,18 +180,22 @@ runs:
         SECRET_VALUES=()
         add_secret() {
           [ -n "$1" ] || return 0
+          # Keep the full value (covers output emitted as one block) and each
+          # individual line, so artifact scrubbing matches what per-line masking
+          # protects: rad may echo a multi-line value line by line, and a per-line
+          # ::add-mask:: only redacts the live logs, not the uploaded artifact.
           SECRET_VALUES+=("$1")
           # Mask one line at a time. GitHub reliably masks a single-line value, but
           # a multiline ::add-mask:: leaves the second and later lines unmasked (and
-          # prints them verbatim). Strip CR and escape '%' -- the workflow-command
-          # escape character -- so a value can neither break nor inject the command,
-          # then emit a mask for each non-empty line.
+          # prints them verbatim). Strip CR, add the line to the scrub set (before
+          # escaping), then escape '%' -- the workflow-command escape character --
+          # so a value can neither break nor inject the command.
           local _line
           while IFS= read -r _line || [ -n "$_line" ]; do
             _line=${_line//$'\r'/}
             [ -n "$_line" ] || continue
-            _line=${_line//'%'/'%25'}
-            echo "::add-mask::$_line"
+            SECRET_VALUES+=("$_line")
+            echo "::add-mask::${_line//'%'/'%25'}"
           done <<< "$1"
         }
 
