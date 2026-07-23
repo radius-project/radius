@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/stretchr/testify/require"
 )
@@ -90,4 +91,98 @@ func Test_NewDefaultRecipePackResource(t *testing.T) {
 		"gatewayName":      DefaultRoutesGatewayName,
 		"gatewayNamespace": DefaultRoutesGatewayNamespace,
 	}, routeRecipe.Parameters)
+}
+
+func Test_NormalizeRecipePacks(t *testing.T) {
+	testcases := []struct {
+		name     string
+		input    []string
+		expected []string
+	}{
+		{
+			name:     "nil input",
+			input:    nil,
+			expected: []string{},
+		},
+		{
+			name:     "empty input",
+			input:    []string{},
+			expected: []string{},
+		},
+		{
+			name:     "single value",
+			input:    []string{"pack1"},
+			expected: []string{"pack1"},
+		},
+		{
+			name:     "comma-separated values",
+			input:    []string{"pack1,pack2,pack3"},
+			expected: []string{"pack1", "pack2", "pack3"},
+		},
+		{
+			name:     "trims whitespace",
+			input:    []string{" pack1 , pack2 ,  pack3"},
+			expected: []string{"pack1", "pack2", "pack3"},
+		},
+		{
+			name:     "drops empty entries",
+			input:    []string{"pack1,,pack2", "", " , "},
+			expected: []string{"pack1", "pack2"},
+		},
+		{
+			name:     "deduplicates repeated flags",
+			input:    []string{"pack1", "pack1"},
+			expected: []string{"pack1"},
+		},
+		{
+			name:     "deduplicates within comma list",
+			input:    []string{"pack1,pack1,pack2"},
+			expected: []string{"pack1", "pack2"},
+		},
+		{
+			name:     "deduplicates across mixed sources preserving order",
+			input:    []string{"pack2", "pack1,pack2", " pack1 ", "pack3"},
+			expected: []string{"pack2", "pack1", "pack3"},
+		},
+		{
+			name:     "treats whitespace-only difference as duplicate",
+			input:    []string{"pack1", " pack1 "},
+			expected: []string{"pack1"},
+		},
+		{
+			name:     "preserves full resource ID and dedupes",
+			input:    []string{"/planes/radius/local/resourcegroups/g/providers/Radius.Core/recipePacks/p1,/planes/radius/local/resourcegroups/g/providers/Radius.Core/recipePacks/p1"},
+			expected: []string{"/planes/radius/local/resourcegroups/g/providers/Radius.Core/recipePacks/p1"},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.expected, NormalizeRecipePacks(tc.input))
+		})
+	}
+}
+
+func Test_RefExists(t *testing.T) {
+	env1 := "/planes/radius/local/resourceGroups/g/providers/Radius.Core/environments/env1"
+	env2 := "/planes/radius/local/resourceGroups/g/providers/Radius.Core/environments/env2"
+
+	testcases := []struct {
+		name     string
+		refs     []*string
+		id       string
+		expected bool
+	}{
+		{name: "nil list", refs: nil, id: env1, expected: false},
+		{name: "present", refs: []*string{to.Ptr(env1), to.Ptr(env2)}, id: env2, expected: true},
+		{name: "absent", refs: []*string{to.Ptr(env1)}, id: env2, expected: false},
+		{name: "ignores nil entries", refs: []*string{nil, to.Ptr(env1)}, id: env1, expected: true},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, RefExists(tc.refs, tc.id))
+		})
+	}
 }

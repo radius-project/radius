@@ -19,6 +19,7 @@ package recipepack
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -28,6 +29,39 @@ import (
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/version"
 )
+
+// NormalizeRecipePacks splits comma-separated values, trims whitespace, and
+// removes empty entries and duplicates while preserving the first-seen order.
+// Deduplication avoids redundant referencedBy sync work and prevents server-side
+// recipe pack conflict validation from failing on repeated entries.
+func NormalizeRecipePacks(recipePacks []string) []string {
+	seen := map[string]struct{}{}
+	result := []string{}
+	for _, value := range recipePacks {
+		for p := range strings.SplitSeq(value, ",") {
+			trimmed := strings.TrimSpace(p)
+			if trimmed == "" {
+				continue
+			}
+			if _, ok := seen[trimmed]; ok {
+				continue
+			}
+			seen[trimmed] = struct{}{}
+			result = append(result, trimmed)
+		}
+	}
+	return result
+}
+
+// RefExists reports whether id is present in the referencedBy list.
+func RefExists(environmentRefs []*string, id string) bool {
+	for _, ref := range environmentRefs {
+		if ref != nil && *ref == id {
+			return true
+		}
+	}
+	return false
+}
 
 const (
 	// DefaultRecipePackResourceName is the name of the Radius provided
