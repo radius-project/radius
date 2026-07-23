@@ -201,8 +201,8 @@ type BicepSettingsClientCreateOrUpdateResponse struct {
 	// }
 	// }
 	// ```
-	// Three authentication methods are supported: `BasicAuth` (username and password from a secret), `AwsIrsa` (AWS IAM Roles
-	// for Service Accounts, using `awsIamRoleArn`), and `AzureWI` (Azure Workload Identity, using `azureWiClientId` and `azureWiTenantId`).
+	// Basic authentication is supported via `BasicAuth` (username and password from a secret). `AwsIrsa` and `AzureWI` will be
+	// implemented in the future.
 	// ## Deploying Bicep settings
 	// Deploy the settings resource with the `rad deploy` command:
 	// ```bash
@@ -269,8 +269,8 @@ type BicepSettingsClientGetResponse struct {
 	// }
 	// }
 	// ```
-	// Three authentication methods are supported: `BasicAuth` (username and password from a secret), `AwsIrsa` (AWS IAM Roles
-	// for Service Accounts, using `awsIamRoleArn`), and `AzureWI` (Azure Workload Identity, using `azureWiClientId` and `azureWiTenantId`).
+	// Basic authentication is supported via `BasicAuth` (username and password from a secret). `AwsIrsa` and `AzureWI` will be
+	// implemented in the future.
 	// ## Deploying Bicep settings
 	// Deploy the settings resource with the `rad deploy` command:
 	// ```bash
@@ -338,8 +338,8 @@ type BicepSettingsClientUpdateResponse struct {
 	// }
 	// }
 	// ```
-	// Three authentication methods are supported: `BasicAuth` (username and password from a secret), `AwsIrsa` (AWS IAM Roles
-	// for Service Accounts, using `awsIamRoleArn`), and `AzureWI` (Azure Workload Identity, using `azureWiClientId` and `azureWiTenantId`).
+	// Basic authentication is supported via `BasicAuth` (username and password from a secret). `AwsIrsa` and `AzureWI` will be
+	// implemented in the future.
 	// ## Deploying Bicep settings
 	// Deploy the settings resource with the `rad deploy` command:
 	// ```bash

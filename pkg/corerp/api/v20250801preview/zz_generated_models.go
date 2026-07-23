@@ -197,8 +197,9 @@ func (a *AzureContainerInstanceCompute) GetEnvironmentCompute() *EnvironmentComp
 	}
 }
 
-// BicepRegistryAuthentication - Authentication configuration for a single private Bicep registry. When `authenticationMethod`
-// is `BasicAuth`, `basicAuthSecretId` is required; the controller rejects configs that omit it.
+// BicepRegistryAuthentication - Authentication configuration for a single private Bicep registry. Only `BasicAuth` is currently
+// supported, and it requires `basicAuthSecretId`; the controller rejects configs that omit it. `AzureWI` and `AwsIrsa` will
+// be supported in the future.
 type BicepRegistryAuthentication struct {
 	// (Optional) How Radius authenticates to the registry.
 	AuthenticationMethod *BicepAuthenticationMethod
@@ -265,8 +266,8 @@ type BicepSettingsProperties struct {
 // }
 // }
 // ```
-// Three authentication methods are supported: `BasicAuth` (username and password from a secret), `AwsIrsa` (AWS IAM Roles
-// for Service Accounts, using `awsIamRoleArn`), and `AzureWI` (Azure Workload Identity, using `azureWiClientId` and `azureWiTenantId`).
+// Basic authentication is supported via `BasicAuth` (username and password from a secret). `AwsIrsa` and `AzureWI` will be
+// implemented in the future.
 // ## Deploying Bicep settings
 // Deploy the settings resource with the `rad deploy` command:
 // ```bash
