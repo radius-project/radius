@@ -122,9 +122,8 @@ func Test_GatewayDNS(t *testing.T) {
 	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
 	test.PreSetup = preSetup
 	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
-	test.RunSerial = true
 
-	test.Test(t)
+	runGatewayTest(t, test)
 }
 
 func Test_Gateway_SSLPassthrough(t *testing.T) {
@@ -190,9 +189,8 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
 	test.PreSetup = preSetup
 	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), "@testdata/parameters/test-tls-cert.parameters.json", fmt.Sprintf("environment=%s", previewEnvID))
-	test.RunSerial = true
 
-	test.Test(t)
+	runGatewayTest(t, test)
 }
 
 func Test_Gateway_Timeout(t *testing.T) {
@@ -254,8 +252,7 @@ func Test_Gateway_Timeout(t *testing.T) {
 			},
 		},
 	})
-	test.RunSerial = true
-	test.Test(t)
+	runGatewayTest(t, test)
 }
 
 func Test_Gateway_Timeout_Backend_Exceeds_Request(t *testing.T) {
@@ -381,9 +378,8 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 			},
 		},
 	})
-	test.RunSerial = true
 
-	test.Test(t)
+	runGatewayTest(t, test)
 }
 
 func Test_Gateway_Failure(t *testing.T) {
@@ -430,6 +426,14 @@ func Test_Gateway_Failure(t *testing.T) {
 	test.Test(t)
 }
 
+// runGatewayTest prevents route reconciliation and probes from overlapping on the
+// single Contour/Envoy dataplane used by the functional-test cluster.
+func runGatewayTest(t *testing.T, test rp.RPTest) {
+	t.Helper()
+	test.RunSerial = true
+	test.Test(t)
+}
+
 func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namespace, hostname string, remotePort int, isHttps bool, tests []GatewayTestConfig) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
@@ -446,6 +450,9 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest,
 
 	select {
 	case err := <-errorChan:
+		if err == nil {
+			return errors.New("portforward stopped before becoming ready")
+		}
 		return fmt.Errorf("portforward failed: %w", err)
 	case localPort := <-portChan:
 		protocol := "http"
@@ -523,6 +530,9 @@ func testGatewayAvailability(t *testing.T, ctx context.Context, hostname, baseUR
 		case err := <-portForwardErrors:
 			if lastRes != nil {
 				lastRes.Body.Close()
+			}
+			if err == nil {
+				return fmt.Errorf("portforward stopped while probing %s", urlPath)
 			}
 			return fmt.Errorf("portforward stopped while probing %s: %w", urlPath, err)
 		case <-ctx.Done():
