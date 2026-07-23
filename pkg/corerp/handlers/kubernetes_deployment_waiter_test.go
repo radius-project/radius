@@ -105,7 +105,7 @@ func startInformers(ctx context.Context, clientSet *fake.Clientset) informers.Sh
 }
 
 func TestWaitUntilReady_NewResource(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
@@ -156,7 +156,7 @@ func TestWaitUntilReady_NewResource(t *testing.T) {
 }
 
 func TestWaitUntilReady_Timeout(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -193,7 +193,7 @@ func TestWaitUntilReady_Timeout(t *testing.T) {
 }
 
 func TestWaitUntilReady_DifferentResourceName(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
@@ -318,7 +318,7 @@ func TestGetPodsInDeployment(t *testing.T) {
 		clientSet: fakeClient,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	informerFactory := startInformers(ctx, fakeClient)
 
 	// Call the getPodsInDeployment function
@@ -405,7 +405,7 @@ func TestGetCurrentReplicaSetForDeployment(t *testing.T) {
 		clientSet: fakeClient,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	informerFactory := startInformers(ctx, fakeClient)
 
 	// Call the getNewestReplicaSetForDeployment function
@@ -558,7 +558,7 @@ func TestCheckPodStatus(t *testing.T) {
 		},
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	deploymentWaiter := NewDeploymentWaiter(fake.NewClientset())
 	for _, tc := range podTests {
 		pod.Status.Conditions = tc.podCondition
@@ -578,7 +578,7 @@ func TestCheckAllPodsReady_Success(t *testing.T) {
 	// Create a fake Kubernetes clientset
 	clientset := fake.NewClientset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := clientset.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -638,7 +638,7 @@ func TestCheckAllPodsReady_Fail(t *testing.T) {
 	// Create a fake Kubernetes clientset
 	clientset := fake.NewClientset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := clientset.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
 	require.NoError(t, err)
@@ -705,7 +705,7 @@ func TestCheckDeploymentStatus_AllReady(t *testing.T) {
 	// Create a fake Kubernetes fakeClient
 	fakeClient := fake.NewClientset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
 	require.NoError(t, err)
 	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, testDeployment)
@@ -783,7 +783,7 @@ func TestCheckDeploymentStatus_NoReplicaSetsFound(t *testing.T) {
 	// Create a fake Kubernetes fakeClient
 	fakeClient := fake.NewClientset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
 	require.NoError(t, err)
 
@@ -855,7 +855,7 @@ func TestCheckDeploymentStatus_PodsNotReady(t *testing.T) {
 	// Create a fake Kubernetes fakeClient
 	fakeClient := fake.NewClientset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, testDeployment, metav1.CreateOptions{})
 	require.NoError(t, err)
 	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, testDeployment)
@@ -940,7 +940,7 @@ func TestCheckDeploymentStatus_ObservedGenerationMismatch(t *testing.T) {
 	// Create a fake Kubernetes fakeClient
 	fakeClient := fake.NewClientset()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, generationMismatchDeployment, metav1.CreateOptions{})
 	require.NoError(t, err)
 	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, generationMismatchDeployment)
@@ -1018,7 +1018,7 @@ func TestCheckDeploymentStatus_DeploymentNotProgressing(t *testing.T) {
 
 	deploymentNotProgressing := testDeployment.DeepCopy()
 
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := fakeClient.AppsV1().Deployments("test-namespace").Create(ctx, deploymentNotProgressing, metav1.CreateOptions{})
 	require.NoError(t, err)
 	replicaSet := addReplicaSetToDeployment(t, ctx, fakeClient, deploymentNotProgressing)

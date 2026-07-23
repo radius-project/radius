@@ -650,7 +650,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		clientFactory, err := testUCPClientFactory()
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		resourceType := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-resource"
 		apiVersion := "2023-10-01-preview"
 
@@ -670,7 +670,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		clientFactory, err := testUCPClientFactory()
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		resourceType := "invalid-resource-type-format"
 		apiVersion := "2023-10-01-preview"
 
@@ -698,7 +698,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		resourceType := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-resource"
 		apiVersion := "nonexistent-version"
 
@@ -733,7 +733,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		resourceType := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-resource"
 		apiVersion := "2023-10-01-preview"
 
@@ -747,7 +747,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		clientFactory, err := testUCPClientFactory()
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		testCases := []struct {
 			name         string

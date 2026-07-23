@@ -47,7 +47,7 @@ func TestKubernetesResourceCheck_WithClientset(t *testing.T) {
 }
 
 func TestKubernetesResourceCheck_Run(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("sufficient resources", func(t *testing.T) {
 		clientset := createClientsetWithResources(

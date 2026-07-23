@@ -44,7 +44,7 @@ import (
 
 func TestOCIArchive_CommitRoundTrip(t *testing.T) {
 	archive, target := newTestArchive(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
@@ -142,7 +142,7 @@ func TestOCIArchive_CommitEnforcesGHCRVisibility(t *testing.T) {
 				return test.visibility, nil
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			session, err := archive.Open(ctx, "radius-state")
 			require.NoError(t, err)
 			t.Cleanup(func() { session.Close(ctx) })
@@ -203,7 +203,7 @@ func TestOCIArchive_CommitBootstrapsMissingGHCRPackage(t *testing.T) {
 			}}
 			archive.checkPackageVisibility = visibility.Check
 
-			ctx := context.Background()
+			ctx := t.Context()
 			session, err := archive.Open(ctx, "radius-state")
 			require.NoError(t, err)
 			require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("sensitive state"), 0o644))
@@ -236,7 +236,7 @@ func TestOCIArchive_CommitBootstrapsMissingGHCRPackage(t *testing.T) {
 
 func TestOCIArchive_BootstrapDoesNotOverwriteConcurrentState(t *testing.T) {
 	archive, target := newTestArchive(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	checks := 0
 	archive.checkPackageVisibility = func(context.Context) (packageVisibility, error) {
 		checks++
@@ -272,7 +272,7 @@ func TestOCIArchive_BootstrapDoesNotOverwriteConcurrentState(t *testing.T) {
 
 func TestOCIArchive_PublicPackageAllowsStateDeletion(t *testing.T) {
 	archive, target := newTestArchive(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	archive.checkPackageVisibility = func(context.Context) (packageVisibility, error) {
 		return packageVisibilityPrivate, nil
 	}
@@ -308,7 +308,7 @@ func TestOCIArchive_CommitReturnsVisibilityErrorBeforeUpload(t *testing.T) {
 		return "", errors.New("visibility unavailable")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
 	t.Cleanup(func() { session.Close(ctx) })
@@ -328,7 +328,7 @@ func TestOCIArchive_CommitReturnsBootstrapUploadError(t *testing.T) {
 		return "", errGHCRPackageNotFound
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
 	t.Cleanup(func() { session.Close(ctx) })
@@ -347,7 +347,7 @@ func TestOCIArchive_EmptyNewArchiveSkipsVisibilityCheck(t *testing.T) {
 		return packageVisibilityPublic, nil
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
 	t.Cleanup(func() { session.Close(ctx) })
@@ -359,7 +359,7 @@ func TestOCIArchive_EmptyNewArchiveSkipsVisibilityCheck(t *testing.T) {
 
 func TestOCIArchive_CommitPersistsDeletion(t *testing.T) {
 	archive, target := newTestArchive(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
@@ -386,7 +386,7 @@ func TestOCIArchive_CommitPersistsDeletion(t *testing.T) {
 
 func TestOCIArchive_EmptyNewArchiveIsNoOp(t *testing.T) {
 	archive, target := newTestArchive(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
@@ -405,7 +405,7 @@ func TestOCIArchive_EmptyNewArchiveIsNoOp(t *testing.T) {
 
 func TestOCIArchive_CommitRejectsConcurrentTagUpdate(t *testing.T) {
 	archive, target := newTestArchive(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
@@ -456,7 +456,7 @@ func TestCreateLayerRejectsSymbolicLinks(t *testing.T) {
 }
 
 func TestCreateArtifactUsesCompatibleManifestAndCleansUp(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	root := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(root, "state.txt"), []byte("state"), 0o644))
 
@@ -543,7 +543,7 @@ func TestUnpackArchiveEntriesRejectsNonRegularEntries(t *testing.T) {
 }
 
 func TestUnpackArchiveRejectsInvalidArtifacts(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("malformed manifest", func(t *testing.T) {
 		target := memory.New()

@@ -434,7 +434,7 @@ func TestExtractSensitiveFieldPaths_WithPrefix(t *testing.T) {
 }
 
 func TestGetSensitiveFieldPaths(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("nil client returns nil", func(t *testing.T) {
 		result, err := GetSensitiveFieldPaths(ctx, nil, "/planes/radius/local/resourceGroups/test/providers/Foo.Bar/myResources/test", "Foo.Bar/myResources", "2024-01-01")
@@ -511,7 +511,7 @@ func TestGetSensitiveFieldPaths(t *testing.T) {
 }
 
 func TestGetSchema(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("nil client returns nil", func(t *testing.T) {
 		result, err := GetSchema(ctx, nil, "/planes/radius/local/resourceGroups/test/providers/Foo.Bar/myResources/test", "Foo.Bar/myResources", "2024-01-01")

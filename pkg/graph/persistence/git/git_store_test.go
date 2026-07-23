@@ -115,7 +115,7 @@ func TestStore_SaveLoadDeleteRoundTrip(t *testing.T) {
 	repoDir := initTestRepo(t)
 	chdir(t, repoDir)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	s, err := NewStore(Options{Branch: "store-" + t.Name()})
 	require.NoError(t, err)
 
@@ -151,7 +151,7 @@ func TestStore_LoadMissingKeyReturnsErrNotFound(t *testing.T) {
 	repoDir := initTestRepo(t)
 	chdir(t, repoDir)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	s, err := NewStore(Options{Branch: "store-" + t.Name()})
 	require.NoError(t, err)
 
@@ -176,7 +176,7 @@ func TestStore_List(t *testing.T) {
 	repoDir := initTestRepo(t)
 	chdir(t, repoDir)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	s, err := NewStore(Options{Branch: "store-" + t.Name()})
 	require.NoError(t, err)
 

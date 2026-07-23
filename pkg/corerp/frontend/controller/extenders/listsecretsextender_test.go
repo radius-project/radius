@@ -43,7 +43,7 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			mctrl.Finish()
 		}, mds, msm
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, extenderDataModel, _ := getTestModels20231001preview()
 	expectedSecrets := map[string]any{

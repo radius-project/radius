@@ -558,7 +558,7 @@ func TestGetConfigurationV20250801(t *testing.T) {
 }
 
 func TestGetRecipeDefinitionFromEnvironmentV20250801(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	armOptions := &arm.ClientOptions{}
 
 	envResource := &modelv20250801.EnvironmentResource{

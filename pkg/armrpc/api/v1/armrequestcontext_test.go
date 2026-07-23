@@ -17,7 +17,6 @@ limitations under the License.
 package v1
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -54,7 +53,7 @@ func TestFromARMRequest(t *testing.T) {
 
 	for _, tt := range headerTests {
 		t.Run(tt.desc, func(t *testing.T) {
-			req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
+			req, err := getTestHTTPRequest(t, "./testdata/armrpcheaders.json")
 			require.NoError(t, err)
 
 			if tt.refererUrl == "" {
@@ -162,7 +161,7 @@ func TestFromARMRequest_PrefersURLWhenRefererResourceDiffers(t *testing.T) {
 }
 
 func TestSystemData(t *testing.T) {
-	req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
+	req, err := getTestHTTPRequest(t, "./testdata/armrpcheaders.json")
 	require.NoError(t, err)
 	serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
 	require.NoError(t, err)
@@ -179,11 +178,11 @@ func TestSystemData(t *testing.T) {
 
 func TestFromContext(t *testing.T) {
 	t.Run("ARMRequestContext is injected", func(t *testing.T) {
-		req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
+		req, err := getTestHTTPRequest(t, "./testdata/armrpcheaders.json")
 		require.NoError(t, err)
 		serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
 		require.NoError(t, err)
-		ctx := context.Background()
+		ctx := t.Context()
 		newCtx := WithARMRequestContext(ctx, serviceCtx)
 
 		sCtx := ARMRequestContextFromContext(newCtx)
@@ -193,7 +192,7 @@ func TestFromContext(t *testing.T) {
 
 	t.Run("ARMRequestContext is not injected", func(t *testing.T) {
 		require.Panics(t, func() {
-			ARMRequestContextFromContext(context.Background())
+			ARMRequestContextFromContext(t.Context())
 		})
 	})
 }
@@ -214,7 +213,7 @@ func TestTopQueryParam(t *testing.T) {
 
 	for _, tt := range topQueryParamCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
+			req, err := getTestHTTPRequest(t, "./testdata/armrpcheaders.json")
 
 			q := req.URL.Query()
 			q.Add(tt.qpKey, tt.qpValue)
@@ -235,7 +234,7 @@ func TestTopQueryParam(t *testing.T) {
 	}
 }
 
-func getTestHTTPRequest(headerFile string) (*http.Request, error) {
+func getTestHTTPRequest(t *testing.T, headerFile string) (*http.Request, error) {
 	jsonData, err := os.ReadFile(headerFile)
 	if err != nil {
 		return nil, err
@@ -246,7 +245,7 @@ func getTestHTTPRequest(headerFile string) (*http.Request, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, strings.ToLower(parsed["Referer"]), nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPut, strings.ToLower(parsed["Referer"]), nil)
 	if err != nil {
 		return nil, err
 	}
