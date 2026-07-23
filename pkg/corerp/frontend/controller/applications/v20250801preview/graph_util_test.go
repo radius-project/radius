@@ -163,3 +163,54 @@ func Test_computeGraph_MergesDependsOnEdges(t *testing.T) {
 		}
 	})
 }
+
+// Test_computeGraph_ExcludesContainerImageNodes verifies that
+// Radius.Compute/containerImages resources are dropped at node-emission
+// time, matching the CLI static graph behaviour. containerImages are
+// build-time artifacts referenced via imageReference, not runtime graph
+// endpoints.
+func Test_computeGraph_ExcludesContainerImageNodes(t *testing.T) {
+	t.Parallel()
+
+	const (
+		appID       = "/planes/radius/local/resourceGroups/default/providers/Radius.Core/applications/myapp"
+		containerID = "/planes/radius/local/resourceGroups/default/providers/Radius.Compute/containers/web"
+		imageID     = "/planes/radius/local/resourceGroups/default/providers/Radius.Compute/containerImages/frontend"
+	)
+
+	container := generated.GenericResource{
+		ID:   to.Ptr(containerID),
+		Name: to.Ptr("web"),
+		Type: to.Ptr("Radius.Compute/containers"),
+		Properties: map[string]any{
+			"application": appID,
+		},
+	}
+	image := generated.GenericResource{
+		ID:   to.Ptr(imageID),
+		Name: to.Ptr("frontend"),
+		Type: to.Ptr("Radius.Compute/containerImages"),
+		Properties: map[string]any{
+			"application": appID,
+		},
+	}
+
+	graph := computeGraph(
+		[]generated.GenericResource{container, image},
+		nil,
+		"",
+		nil,
+	)
+
+	for _, r := range graph.Resources {
+		if r == nil || r.ID == nil {
+			continue
+		}
+		assert.NotEqual(t, imageID, *r.ID,
+			"containerImages resource must not appear as a graph node")
+		if r.Type != nil {
+			assert.NotEqual(t, "Radius.Compute/containerImages", *r.Type,
+				"no node of type Radius.Compute/containerImages should be emitted")
+		}
+	}
+}

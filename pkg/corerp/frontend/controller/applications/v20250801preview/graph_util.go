@@ -332,6 +332,14 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 	resourcesByIDInApplication := map[string]bool{}
 
 	for _, resource := range applicationResources {
+		// Skip resources whose type is on the shared exclusion list.
+		// These are structural containers or build-time artifacts that
+		// must not appear as graph nodes; the CLI static-graph builder
+		// applies the same rule so the two graphs stay in sync. See
+		// edges.ExcludedResourceTypes.
+		if _, excluded := edges.ExcludedResourceTypes[to.String(resource.Type)]; excluded {
+			continue
+		}
 		resources = append(resources, resource)
 
 		// Application-scoped resources are by definition "in" the application
@@ -339,6 +347,12 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 	}
 
 	for _, resource := range environmentResources {
+		// Same exclusion rule for environment-scoped resources (e.g. a
+		// recipe pack tagged with the environment ID must not appear
+		// as a graph node).
+		if _, excluded := edges.ExcludedResourceTypes[to.String(resource.Type)]; excluded {
+			continue
+		}
 		_, found := resourcesByIDInApplication[to.String(resource.ID)]
 		if found {
 			// Appears in both application and environment lists, avoid duplicates.
