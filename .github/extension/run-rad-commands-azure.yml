@@ -217,7 +217,7 @@ jobs:
           # ghcr.io/<owner>/<repo> so images land under the repository's package
           # namespace; it must be lowercase.
           BUILD_REGISTRY=$(echo "${{ vars.RADIUS_BUILD_REGISTRY || format('ghcr.io/{0}', github.repository) }}" | tr '[:upper:]' '[:lower:]')
-          REGISTRY_SECRET_NAME="ghcr-registry-creds"
+          REGISTRY_SECRET_NAME="radius-ghcr-registry-creds"
 
           # Download the default Azure recipe pack from resource-types-contrib,
           # pinned to $RECIPE_PACK_REF. The recipe logic lives upstream; here we

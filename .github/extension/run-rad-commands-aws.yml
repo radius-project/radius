@@ -239,7 +239,7 @@ jobs:
           # recipe pack's registrySecretName. $BUILD_REGISTRY is ghcr.io/<owner>/<repo>
           # so images land under the repository's package namespace; it must be lowercase.
           BUILD_REGISTRY=$(echo "${{ vars.RADIUS_BUILD_REGISTRY || format('ghcr.io/{0}', github.repository) }}" | tr '[:upper:]' '[:lower:]')
-          REGISTRY_SECRET_NAME="ghcr-registry-creds"
+          REGISTRY_SECRET_NAME="radius-ghcr-registry-creds"
 
           # Select the provider-specific Terraform recipe pack. Both provider packs
           # bundle the shared Kubernetes compute/data recipes and differ only in the
