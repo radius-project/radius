@@ -1,0 +1,108 @@
+# Provider-agnostic custom resource-type / recipe-pack apply shared by
+# run-rad-commands-aws.yml and run-rad-commands-azure.yml. Runs after the
+# provider-specific "Create Radius environment and recipe pack" step. When the
+# app's `.radius/` folder (alongside `.radius/app.bicep`) carries custom resource
+# types, this:
+#   1. registers those types from `.radius/custom-types.yaml` via
+#      `rad resource-type create --from-file` (skipped when the file is absent), and
+#   2. deploys `.radius/custom-recipe-pack.bicep`, then attaches only the pack(s)
+#      newly created by that deploy to the environment -- preserving the
+#      environment's existing recipe packs (e.g. the default provider pack) and
+#      adding the custom pack, without pulling in unrelated packs the control
+#      plane may know about (skipped when the file is absent).
+# When neither file exists the action is a no-op, leaving the default pack in place.
+name: Radius - Apply custom recipe packs
+description: Register the repo's custom resource types and recipe pack (if present) and attach the new pack to the environment alongside its existing packs.
+
+inputs:
+  environment:
+    description: Radius environment name to update with the full recipe pack list.
+    required: true
+  app-file:
+    description: Application bicep file. Its directory (e.g. .radius/) is searched for custom-types.yaml and custom-recipe-pack.bicep.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Register custom types and apply custom recipe pack
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        APP_FILE: ${{ inputs.app-file }}
+      run: |
+        set -euo pipefail
+
+        # Custom type / recipe-pack files live next to the app file (e.g. .radius/).
+        # Deploying from that directory lets `rad deploy` resolve the repo's own
+        # .radius/bicepconfig.json (which declares the `radius` extension) -- bicep
+        # resolves the config nearest the .bicep file.
+        APP_DIR=$(dirname "$APP_FILE")
+        CUSTOM_TYPES_YAML="$APP_DIR/custom-types.yaml"
+        RECIPE_PACK_BICEP="$APP_DIR/custom-recipe-pack.bicep"
+
+        # 1. Register custom resource types with Radius. --from-file registers every
+        # type defined in the manifest. Must run before deploying the recipe pack,
+        # which references these types. Absent file => nothing to register.
+        if [ -f "$CUSTOM_TYPES_YAML" ]; then
+          echo "Registering custom resource types from $CUSTOM_TYPES_YAML..."
+          rad resource-type create --from-file "$CUSTOM_TYPES_YAML"
+          echo "✅ Custom resource types registered."
+        else
+          echo "No custom resource types at $CUSTOM_TYPES_YAML; skipping type registration."
+        fi
+
+        # 2. Deploy the custom recipe pack and attach it to the environment. Absent
+        # file => nothing to deploy, keep the default pack.
+        if [ ! -f "$RECIPE_PACK_BICEP" ]; then
+          echo "No custom recipe pack at $RECIPE_PACK_BICEP; keeping the default recipe pack."
+          exit 0
+        fi
+
+        # Capture the set of recipe-pack IDs before deploying so we can identify
+        # exactly which pack(s) this step creates. `rad recipe-pack list` returns
+        # every pack across scopes (including ones restored from prior state), so we
+        # must not blindly attach all of them -- that could pull unrelated packs into
+        # the environment and trip server-side recipe-pack conflict validation.
+        # ids_json emits a compact JSON array of the non-empty string IDs.
+        ids_json() {
+          rad recipe-pack list -o json \
+            | jq -c '(if type == "array" then . else [.] end) | map(.id) | map(select(type == "string" and . != ""))'
+        }
+
+        echo "Recording existing recipe packs..."
+        PACKS_BEFORE=$(ids_json)
+
+        echo "Deploying custom recipe pack from $RECIPE_PACK_BICEP..."
+        rad deploy "$RECIPE_PACK_BICEP"
+
+        PACKS_AFTER=$(ids_json)
+
+        # New pack(s) = those present after the deploy but not before.
+        NEW_PACKS=$(jq -nc --argjson before "$PACKS_BEFORE" --argjson after "$PACKS_AFTER" '$after - $before')
+
+        # Preserve the environment's current recipe packs (e.g. the default provider
+        # pack attached when the environment was created) and add only the new pack(s).
+        # `rad env update --recipe-packs` REPLACES the list, so we compute the full
+        # desired set here rather than passing every pack the control plane knows.
+        # --preview reads the Radius.Core/environments resource (which carries
+        # properties.recipePacks); without it env show hits the legacy surface and
+        # can't see recipe packs. That command prints the resource first followed by
+        # optional provider/recipe JSON docs, so jq -s slurps the stream and takes the
+        # environment resource ([0]) rather than choking on the trailing documents.
+        EXISTING_PACKS=$(rad env show "$ENVIRONMENT" --preview -o json | jq -sc '((.[0].properties.recipePacks) // []) | map(select(type == "string" and . != ""))')
+
+        PACK_IDS=$(jq -nr --argjson existing "$EXISTING_PACKS" --argjson new "$NEW_PACKS" '($existing + $new) | unique | join(",")')
+
+        if [ -z "$PACK_IDS" ]; then
+          echo "No recipe packs found to attach to environment '$ENVIRONMENT'." >&2
+          exit 1
+        fi
+
+        # Replace the environment's recipe pack list with the preserved + new set so
+        # the custom types resolve alongside the default provider recipes. --preview
+        # selects the Radius.Core implementation; without it `rad env update`
+        # dispatches to the legacy command, which does not understand --recipe-packs.
+        echo "Attaching recipe packs to environment '$ENVIRONMENT': $PACK_IDS"
+        rad env update "$ENVIRONMENT" --recipe-packs "$PACK_IDS" --preview
+        echo "✅ Environment '$ENVIRONMENT' updated with recipe packs."
