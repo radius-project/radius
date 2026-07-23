@@ -33,8 +33,8 @@ import (
 // https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 const SemanticVersionRegex = `(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?`
 
-// Run bicep with the given args and return the stdout. The stderr
-// is not capture but instead redirected to that of the current process.
+// Run bicep with the given args and return the stdout. Stderr is piped
+// through a private pipe and forwarded to the current process's stderr.
 func runBicepRaw(args ...string) ([]byte, error) {
 	if installed, _ := IsBicepInstalled(); !installed {
 		return nil, fmt.Errorf("bicep not installed, run \"rad bicep download\" to install")
