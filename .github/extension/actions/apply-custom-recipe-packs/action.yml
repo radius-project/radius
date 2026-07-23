@@ -84,7 +84,12 @@ runs:
         # pack attached when the environment was created) and add only the new pack(s).
         # `rad env update --recipe-packs` REPLACES the list, so we compute the full
         # desired set here rather than passing every pack the control plane knows.
-        EXISTING_PACKS=$(rad env show "$ENVIRONMENT" -o json | jq -c '(.properties.recipePacks // []) | map(select(type == "string" and . != ""))')
+        # --preview reads the Radius.Core/environments resource (which carries
+        # properties.recipePacks); without it env show hits the legacy surface and
+        # can't see recipe packs. That command prints the resource first followed by
+        # optional provider/recipe JSON docs, so jq -s slurps the stream and takes the
+        # environment resource ([0]) rather than choking on the trailing documents.
+        EXISTING_PACKS=$(rad env show "$ENVIRONMENT" --preview -o json | jq -sc '((.[0].properties.recipePacks) // []) | map(select(type == "string" and . != ""))')
 
         PACK_IDS=$(jq -nr --argjson existing "$EXISTING_PACKS" --argjson new "$NEW_PACKS" '($existing + $new) | unique | join(",")')
 
