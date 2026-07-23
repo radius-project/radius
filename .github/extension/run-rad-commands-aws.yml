@@ -241,9 +241,9 @@ jobs:
           BUILD_REGISTRY=$(echo "${{ vars.RADIUS_BUILD_REGISTRY || format('ghcr.io/{0}', github.repository) }}" | tr '[:upper:]' '[:lower:]')
           REGISTRY_SECRET_NAME="radius-ghcr-registry-creds"
 
-          # Select the provider-specific Terraform recipe pack. Both provider packs
-          # bundle the shared Kubernetes compute/data recipes and differ only in the
-          # mySQL database recipe and cloud provider config.
+          # Select the provider-specific recipe pack. Both provider packs share the
+          # Bicep containerImages recipe and the Kubernetes compute/data recipes,
+          # and differ only in the mySQL database recipe and cloud provider config.
           PACK_NAME="aws-terraform"
           MYSQL_RECIPE=$(cat <<EOF
           'Radius.Data/mySqlDatabases': {
@@ -281,8 +281,8 @@ jobs:
             properties: {
               recipes: {
                 'Radius.Compute/containerImages': {
-                  kind: 'terraform'
-                  source: 'git::$REPO//Compute/containerImages/recipes/kubernetes/terraform?ref=$REF'
+                  kind: 'bicep'
+                  source: 'ghcr.io/radius-project/kube-recipes/containerimages:latest'
                   parameters: {
                     registry: '$BUILD_REGISTRY'
                     registrySecretName: '$REGISTRY_SECRET_NAME'
