@@ -26,8 +26,12 @@ runs:
         RESOURCE_NAME: ${{ inputs.name }}
       run: |
         # pipefail so a failed `rad` whose output is piped through `tee` is detected
-        # via PIPESTATUS rather than masked by tee's exit code.
-        set -uo pipefail
+        # via PIPESTATUS rather than masked by tee's exit code. -e/-u make setup and
+        # result-writing failures (mkdir, mktemp, jq, redirection) fail fast instead
+        # of silently producing a missing or partial rad-delete-result artifact; -e
+        # is relaxed only around the `rad | tee` pipeline below so the delete's own
+        # exit code is captured and reported rather than aborting the step.
+        set -euo pipefail
         mkdir -p /tmp/radius-output
         RESULT_FILE=/tmp/radius-output/rad-delete-result.json
 
@@ -76,8 +80,13 @@ runs:
         # workflow commands. The actual `rad` invocation below still carries the name.
         outfile=$(mktemp)
         echo "::group::rad ${VERB[*]} --yes --preview"
+        # Relax -e only for the pipeline so a non-zero `rad` exit is captured via
+        # PIPESTATUS and reported below, rather than aborting the step before we
+        # can write the result artifact. -e is restored immediately after.
+        set +e
         rad "${VERB[@]}" "$RESOURCE_NAME" --yes --preview 2>&1 | tee "$outfile"
         EXIT=${PIPESTATUS[0]}
+        set -e
         echo "::endgroup::"
         OUTPUT=$(cat "$outfile")
         rm -f "$outfile"
