@@ -43,7 +43,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 	defer mctrl.Finish()
 
 	databaseClient := database.NewMockClient(mctrl)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	createNewResourceCases := []struct {
 		desc               string

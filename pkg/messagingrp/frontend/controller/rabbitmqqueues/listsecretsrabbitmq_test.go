@@ -38,7 +38,7 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 	defer mctrl.Finish()
 
 	databaseClient := database.NewMockClient(mctrl)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, rabbitMQDataModel, _ := getTest_Model20231001preview()
 

@@ -63,7 +63,7 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 	defer mctrl.Finish()
 
 	databaseClient := database.NewMockClient(mctrl)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// The shared environment fixtures reference a recipe pack by ID; mock its
 	// existence for every subtest so the controller's recipe pack validation
@@ -384,7 +384,7 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 }
 
 func TestCreateOrUpdateEnvironment_RecipePackValidation(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	testCases := []struct {
 		desc               string
@@ -765,7 +765,7 @@ func TestCreateOrUpdateEnvironment_RecipePackValidation(t *testing.T) {
 // bare name is resolved against the environment's own plane and resource group, while a
 // full resource ID is stored unchanged.
 func TestCreateOrUpdateEnvironment_RecipePackNormalization(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	const (
 		envID          = "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/my-k8s-env"

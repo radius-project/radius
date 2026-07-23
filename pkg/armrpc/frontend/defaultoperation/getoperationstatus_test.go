@@ -39,7 +39,7 @@ func TestGetOperationStatusRun(t *testing.T) {
 	defer mctrl.Finish()
 
 	databaseClient := database.NewMockClient(mctrl)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	rawDataModel := testutil.ReadFixture("operationstatus_datamodel.json")
 	osDataModel := &manager.Status{}

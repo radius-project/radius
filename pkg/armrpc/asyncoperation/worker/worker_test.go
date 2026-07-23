@@ -85,7 +85,7 @@ func TestUpdateResourceState(t *testing.T) {
 			defer mctrl.Finish()
 
 			databaseClient := database.NewMockClient(mctrl)
-			ctx := context.Background()
+			ctx := t.Context()
 
 			databaseClient.
 				EXPECT().

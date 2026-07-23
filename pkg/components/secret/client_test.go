@@ -35,7 +35,7 @@ func Test_SaveSecret(t *testing.T) {
 	defer mctrl.Finish()
 
 	mockSecretClient := NewMockClient(mctrl)
-	ctx := context.Background()
+	ctx := t.Context()
 	azureSecret, err := newTestAzureSecret()
 	require.NoError(t, err)
 	saveError := errors.New("Failed to Save Secret")
@@ -74,7 +74,7 @@ func Test_GetSecret(t *testing.T) {
 	defer mctrl.Finish()
 
 	mockSecretClient := NewMockClient(mctrl)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	testSecretResponse, err := newTestAzureSecretResponse()
 	getError := errors.New("Failed to Save Secret")

@@ -1130,7 +1130,7 @@ func Test_fetchSecrets(t *testing.T) {
 func Test_FailedDeploymentProcessor_AllMethodsReturnError(t *testing.T) {
 	sentinel := errors.New("target cluster unavailable")
 	p := NewFailedDeploymentProcessor(sentinel)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	_, err := p.Render(ctx, resources.ID{}, nil)
 	require.ErrorIs(t, err, sentinel)
