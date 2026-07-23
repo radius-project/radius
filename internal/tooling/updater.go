@@ -1,6 +1,7 @@
 package tooling
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -210,12 +211,7 @@ func (client *Client) Checksum(ctx context.Context, tool Tool, platform, version
 		if err != nil {
 			return "", fmt.Errorf("expand download URL: %w", err)
 		}
-		contents, err := client.get(ctx, url)
-		if err != nil {
-			return "", err
-		}
-		digest := sha256.Sum256(contents)
-		return hex.EncodeToString(digest[:]), nil
+		return client.hash(ctx, url)
 	case "none":
 		return "", nil
 	default:
@@ -242,11 +238,27 @@ func (client *Client) getFile(ctx context.Context, url string) ([]byte, error) {
 }
 
 func (client *Client) get(ctx context.Context, url string) ([]byte, error) {
+	var contents bytes.Buffer
+	if err := client.writeResponse(ctx, url, &contents); err != nil {
+		return nil, err
+	}
+	return contents.Bytes(), nil
+}
+
+func (client *Client) hash(ctx context.Context, url string) (string, error) {
+	hasher := sha256.New()
+	if err := client.writeResponse(ctx, url, hasher); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hasher.Sum(nil)), nil
+}
+
+func (client *Client) writeResponse(ctx context.Context, url string, destination io.Writer) error {
 	var lastError error
 	for attempt := 0; attempt < requestAttempts; attempt++ {
 		request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
-			return nil, fmt.Errorf("create request for %s: %w", url, err)
+			return fmt.Errorf("create request for %s: %w", url, err)
 		}
 		request.Header.Set("User-Agent", client.UserAgent)
 		isGitHubAPI := request.URL.Scheme == "https" && request.URL.Hostname() == "api.github.com"
@@ -262,19 +274,31 @@ func (client *Client) get(ctx context.Context, url string) ([]byte, error) {
 			lastError = err
 			continue
 		}
+		if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
+			written, readErr := io.Copy(destination, io.LimitReader(response.Body, maximumResponse+1))
+			closeErr := response.Body.Close()
+			if readErr != nil {
+				return fmt.Errorf("read %s: %w", url, readErr)
+			}
+			if closeErr != nil {
+				return fmt.Errorf("close response from %s: %w", url, closeErr)
+			}
+			if written > maximumResponse {
+				return fmt.Errorf("response from %s exceeds %d bytes", url, maximumResponse)
+			}
+			return nil
+		}
+
 		contents, readErr := io.ReadAll(io.LimitReader(response.Body, maximumResponse+1))
 		closeErr := response.Body.Close()
 		if readErr != nil {
-			return nil, fmt.Errorf("read %s: %w", url, readErr)
+			return fmt.Errorf("read %s: %w", url, readErr)
 		}
 		if closeErr != nil {
-			return nil, fmt.Errorf("close response from %s: %w", url, closeErr)
+			return fmt.Errorf("close response from %s: %w", url, closeErr)
 		}
 		if len(contents) > maximumResponse {
-			return nil, fmt.Errorf("response from %s exceeds %d bytes", url, maximumResponse)
-		}
-		if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
-			return contents, nil
+			return fmt.Errorf("response from %s exceeds %d bytes", url, maximumResponse)
 		}
 		lastError = fmt.Errorf("HTTP %s from %s: %s", response.Status, url, strings.TrimSpace(string(contents)))
 		if response.StatusCode < 500 && response.StatusCode != http.StatusTooManyRequests {
@@ -283,12 +307,12 @@ func (client *Client) get(ctx context.Context, url string) ([]byte, error) {
 		if attempt < requestAttempts-1 {
 			select {
 			case <-ctx.Done():
-				return nil, ctx.Err()
+				return ctx.Err()
 			case <-time.After(time.Duration(attempt+1) * 500 * time.Millisecond):
 			}
 		}
 	}
-	return nil, lastError
+	return lastError
 }
 
 func newerVersion(candidate, current string) (bool, error) {
