@@ -439,7 +439,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest,
 	stopChan := make(chan struct{})
 
 	// portChan will be populated with the assigned port once the port-forward connection is opened on it
-	portChan := make(chan int)
+	portChan := make(chan int, 1)
 
 	// errorChan receives both startup and runtime failures. Buffer it so ExposeIngress
 	// can finish after this helper closes the session.
@@ -454,6 +454,8 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest,
 			return errors.New("portforward stopped before becoming ready")
 		}
 		return fmt.Errorf("portforward failed: %w", err)
+	case <-ctx.Done():
+		return fmt.Errorf("portforward setup canceled: %w", ctx.Err())
 	case localPort := <-portChan:
 		protocol := "http"
 		if isHttps {
