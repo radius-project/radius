@@ -17,6 +17,7 @@ limitations under the License.
 package credential
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -27,7 +28,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-	"github.com/radius-project/radius/test/testcontext"
 )
 
 const (
@@ -76,7 +76,7 @@ func Test_AzureCredential_Put(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.NewWithCancel(t)
+			ctx, cancel := context.WithCancel(t.Context())
 			t.Cleanup(cancel)
 
 			mockCtrl := gomock.NewController(t)
@@ -132,7 +132,7 @@ func Test_AWSCredential_Put(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.NewWithCancel(t)
+			ctx, cancel := context.WithCancel(t.Context())
 			t.Cleanup(cancel)
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
@@ -245,7 +245,7 @@ func Test_Credential_Get(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.NewWithCancel(t)
+			ctx, cancel := context.WithCancel(t.Context())
 			t.Cleanup(cancel)
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
@@ -271,7 +271,7 @@ func Test_Credential_Get(t *testing.T) {
 }
 
 func Test_Credential_List(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	mockCtrl := gomock.NewController(t)
@@ -311,7 +311,7 @@ func Test_Credential_List(t *testing.T) {
 }
 
 func Test_Credential_Azure_Show(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	mockCtrl := gomock.NewController(t)
@@ -336,7 +336,7 @@ func Test_Credential_Azure_Show(t *testing.T) {
 }
 
 func Test_Credential_AWS_Show(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	mockCtrl := gomock.NewController(t)
@@ -425,7 +425,7 @@ func Test_Credential_Delete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.NewWithCancel(t)
+			ctx, cancel := context.WithCancel(t.Context())
 			t.Cleanup(cancel)
 
 			mockCtrl := gomock.NewController(t)

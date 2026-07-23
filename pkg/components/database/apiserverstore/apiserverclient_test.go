@@ -17,6 +17,7 @@ limitations under the License.
 package apiserverstore
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -32,7 +33,6 @@ import (
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/util/etag"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/ucp/kubeenv"
 	shared "github.com/radius-project/radius/test/ucp/storetest"
 )
@@ -104,7 +104,7 @@ func Test_ResourceName_Normalize(t *testing.T) {
 }
 
 func Test_APIServer_Client(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	// The APIServer tests require installation of the Kubernetes test environment binaries.

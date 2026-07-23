@@ -27,7 +27,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -124,7 +123,7 @@ func Test_Run(t *testing.T) {
 			Get(gomock.Any(), locationResource.ID).
 			Return(&database.Object{Data: locationResource}, nil).Times(1)
 
-		result, err := pc.Run(testcontext.New(t), &controller.Request{ResourceID: trackingID.String()})
+		result, err := pc.Run(t.Context(), &controller.Request{ResourceID: trackingID.String()})
 		require.Equal(t, controller.Result{}, result)
 		require.NoError(t, err)
 	})
@@ -158,7 +157,7 @@ func Test_Run(t *testing.T) {
 		expected := controller.Result{}
 		expected.SetFailed(v1.ErrorDetails{Code: v1.CodeConflict, Message: updater.Result.Error(), Target: trackingID.String()}, true)
 
-		result, err := pc.Run(testcontext.New(t), &controller.Request{ResourceID: trackingID.String()})
+		result, err := pc.Run(t.Context(), &controller.Request{ResourceID: trackingID.String()})
 		require.Equal(t, expected, result)
 		require.NoError(t, err)
 	})
@@ -176,7 +175,7 @@ func Test_Run(t *testing.T) {
 			Target:  trackingID.String(),
 		})
 
-		result, err := pc.Run(testcontext.New(t), &controller.Request{ResourceID: trackingID.String()})
+		result, err := pc.Run(t.Context(), &controller.Request{ResourceID: trackingID.String()})
 		require.Equal(t, expected, result)
 		require.NoError(t, err)
 	})
@@ -198,7 +197,7 @@ func Test_Run(t *testing.T) {
 			Target:  trackingID.String(),
 		})
 
-		result, err := pc.Run(testcontext.New(t), &controller.Request{ResourceID: trackingID.String()})
+		result, err := pc.Run(t.Context(), &controller.Request{ResourceID: trackingID.String()})
 		require.Equal(t, expected, result)
 		require.NoError(t, err)
 	})

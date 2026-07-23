@@ -20,7 +20,6 @@ import (
 	"testing"
 
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,7 +34,7 @@ func Test_InertPutController_Run(t *testing.T) {
 	controller := setup()
 
 	request := &ctrl.Request{}
-	result, err := controller.Run(testcontext.New(t), request)
+	result, err := controller.Run(t.Context(), request)
 	require.NoError(t, err)
 	require.Equal(t, ctrl.Result{}, result)
 }

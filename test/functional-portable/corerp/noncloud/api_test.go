@@ -28,7 +28,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/test/rp"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,7 +55,7 @@ func Test_ResourceList(t *testing.T) {
 
 	listResources := func(t *testing.T, resourceType string) {
 		clientOptions := options.ManagementClient.(*clients.UCPApplicationsManagementClient).ClientOptions
-		ctx, cancel := testcontext.NewWithCancel(t)
+		ctx, cancel := context.WithCancel(t.Context())
 		var client *generated.GenericResourcesClient
 		t.Cleanup(cancel)
 		// Radius.* resources use a different API version.

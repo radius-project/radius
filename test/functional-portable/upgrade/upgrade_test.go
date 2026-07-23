@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/radius-project/radius/test/rp"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/require"
 	batchv1 "k8s.io/api/batch/v1"
@@ -91,7 +90,7 @@ func Test_PreflightContainer(t *testing.T) {
 //   - Custom job configuration (TTL, version check) is applied correctly
 //   - Job logs and status are accessible
 func testPreflightEnabled(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	image, tag := getPreUpgradeImage()
 
 	cleanupAndWait(t, ctx)
@@ -132,7 +131,7 @@ func testPreflightEnabled(t *testing.T) {
 // testPreflightDisabled verifies that when preflight is disabled, the pre-upgrade
 // Helm hook does not create a job during upgrade.
 func testPreflightDisabled(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	image, tag := getPreUpgradeImage()
 
 	cleanupAndWait(t, ctx)
@@ -157,7 +156,7 @@ func testPreflightDisabled(t *testing.T) {
 	// Poll several times to confirm no job was created. The helm upgrade --wait
 	// flag ensures the upgrade is fully complete before returning, so if a job
 	// was going to be created it would exist by now. We poll briefly to be safe.
-for i := range jobPollAttempts {
+	for i := range jobPollAttempts {
 		_, err = options.K8sClient.BatchV1().Jobs(radiusNamespace).Get(ctx, preUpgradeJobName, metav1.GetOptions{})
 		switch {
 		case apierrors.IsNotFound(err):
