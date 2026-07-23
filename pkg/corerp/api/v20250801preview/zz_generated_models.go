@@ -432,14 +432,14 @@ type ProvidersAws struct {
 
 // ProvidersAzure - The Azure cloud provider definition.
 type ProvidersAzure struct {
+	// REQUIRED; Azure resource group hosting deployed resources.
+	ResourceGroupName *string
+
 	// REQUIRED; Azure subscription ID hosting deployed resources.
 	SubscriptionID *string
 
 	// External identity settings (moved from compute).
 	Identity *IdentitySettings
-
-	// Optional resource group name.
-	ResourceGroupName *string
 }
 
 type ProvidersKubernetes struct {

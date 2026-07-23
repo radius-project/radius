@@ -1375,8 +1375,8 @@
         "type": {
           "$ref": "#/0"
         },
-        "flags": 0,
-        "description": "Optional resource group name."
+        "flags": 1,
+        "description": "Azure resource group hosting deployed resources."
       },
       "identity": {
         "type": {
