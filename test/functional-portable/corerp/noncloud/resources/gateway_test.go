@@ -19,10 +19,13 @@ package resource_test
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/http/httputil"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -32,6 +35,8 @@ import (
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	discoveryv1 "k8s.io/api/discovery/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -95,7 +100,7 @@ func Test_GatewayDNS(t *testing.T) {
 				// Set up pod port-forwarding for the shared Gateway API envoy
 				t.Logf("Setting up portforward")
 
-				err := testGatewayWithPortForward(t, ctx, ct, hostname, httpRemotePort, false, []GatewayTestConfig{
+				err := testGatewayWithPortForward(t, ctx, ct, appNamespace, hostname, httpRemotePort, false, []GatewayTestConfig{
 					// /healthz is exposed on the frontend container, reached via the '/' rule
 					{
 						Path:               "healthz",
@@ -118,7 +123,7 @@ func Test_GatewayDNS(t *testing.T) {
 	test.PreSetup = preSetup
 	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
 
-	test.Test(t)
+	runGatewayTest(t, test)
 }
 
 func Test_Gateway_SSLPassthrough(t *testing.T) {
@@ -162,7 +167,7 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				// Set up pod port-forwarding for the shared Gateway API envoy
 				t.Logf("Setting up portforward")
-				err := testGatewayWithPortForward(t, ctx, ct, hostname, httpsRemotePort, true, []GatewayTestConfig{
+				err := testGatewayWithPortForward(t, ctx, ct, appNamespace, hostname, httpsRemotePort, true, []GatewayTestConfig{
 					// /healthz is exposed on frontend container (which terminates TLS itself)
 					{
 						Path:               "healthz",
@@ -185,7 +190,7 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 	test.PreSetup = preSetup
 	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), "@testdata/parameters/test-tls-cert.parameters.json", fmt.Sprintf("environment=%s", previewEnvID))
 
-	test.Test(t)
+	runGatewayTest(t, test)
 }
 
 func Test_Gateway_Timeout(t *testing.T) {
@@ -229,7 +234,7 @@ func Test_Gateway_Timeout(t *testing.T) {
 
 				// Set up pod port-forwarding for contour-envoy
 				t.Logf("Setting up portforward")
-				err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, httpRemotePort, false, []GatewayTestConfig{
+				err = testGatewayWithPortForward(t, ctx, ct, appNamespace, metadata.Hostname, httpRemotePort, false, []GatewayTestConfig{
 					// /healthz is exposed on frontend container
 					{
 						Path:               "healthz",
@@ -247,7 +252,7 @@ func Test_Gateway_Timeout(t *testing.T) {
 			},
 		},
 	})
-	test.Test(t)
+	runGatewayTest(t, test)
 }
 
 func Test_Gateway_Timeout_Backend_Exceeds_Request(t *testing.T) {
@@ -355,7 +360,7 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 
 				// Set up pod port-forwarding for contour-envoy
 				t.Logf("Setting up portforward")
-				err = testGatewayWithPortForward(t, ctx, ct, metadata.Hostname, httpsRemotePort, true, []GatewayTestConfig{
+				err = testGatewayWithPortForward(t, ctx, ct, appNamespace, metadata.Hostname, httpsRemotePort, true, []GatewayTestConfig{
 					// /healthz is exposed on frontend container
 					{
 						Path:               "healthz",
@@ -374,7 +379,7 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 		},
 	})
 
-	test.Test(t)
+	runGatewayTest(t, test)
 }
 
 func Test_Gateway_Failure(t *testing.T) {
@@ -421,21 +426,35 @@ func Test_Gateway_Failure(t *testing.T) {
 	test.Test(t)
 }
 
-func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, hostname string, remotePort int, isHttps bool, tests []GatewayTestConfig) error {
+// runGatewayTest prevents route reconciliation and probes from overlapping on the
+// single Contour/Envoy dataplane used by the functional-test cluster.
+func runGatewayTest(t *testing.T, test rp.RPTest) {
+	t.Helper()
+	test.RunSerial = true
+	test.Test(t)
+}
+
+func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namespace, hostname string, remotePort int, isHttps bool, tests []GatewayTestConfig) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
 
 	// portChan will be populated with the assigned port once the port-forward connection is opened on it
-	portChan := make(chan int)
+	portChan := make(chan int, 1)
 
-	// errorChan will contain any errors created from initializing the port-forwarding session
-	errorChan := make(chan error)
+	// errorChan receives the single startup or runtime failure while request probes are in flight.
+	errorChan := make(chan error, 1)
 
 	go testutil.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, remotePort, stopChan, portChan, errorChan)
+	defer close(stopChan)
 
 	select {
 	case err := <-errorChan:
-		return fmt.Errorf("portforward failed with error: %s", err)
+		if err == nil {
+			return errors.New("portforward stopped before becoming ready")
+		}
+		return fmt.Errorf("portforward failed: %w", err)
+	case <-ctx.Done():
+		return fmt.Errorf("portforward setup canceled: %w", ctx.Err())
 	case localPort := <-portChan:
 		protocol := "http"
 		if isHttps {
@@ -446,8 +465,8 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest,
 		t.Logf("Portforward session active at %s", baseURL)
 
 		for _, test := range tests {
-			if err := testGatewayAvailability(t, hostname, baseURL, test.Path, test.ExpectedStatusCode, isHttps); err != nil {
-				close(stopChan)
+			if err := testGatewayAvailability(t, ctx, hostname, baseURL, test.Path, test.ExpectedStatusCode, isHttps, errorChan); err != nil {
+				logGatewayNetworkDiagnostics(t, ctx, at, namespace)
 				return err
 			}
 		}
@@ -458,9 +477,9 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest,
 	}
 }
 
-func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int, isHttps bool) error {
+func testGatewayAvailability(t *testing.T, ctx context.Context, hostname, baseURL, path string, expectedStatusCode int, isHttps bool, portForwardErrors <-chan error) error {
 	urlPath := strings.TrimSuffix(baseURL, "/") + "/" + strings.TrimPrefix(path, "/")
-	req, err := http.NewRequest(http.MethodGet, urlPath, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlPath, nil)
 	if err != nil {
 		return err
 	}
@@ -468,6 +487,7 @@ func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expec
 	req.Host = hostname
 
 	client := newTestHTTPClient(isHttps, hostname)
+	defer client.CloseIdleConnections()
 
 	// A freshly-deployed gateway can briefly return errors (e.g. HTTP 503 from Envoy) while
 	// Contour programs the xDS route/cluster for the new route. Poll over a realistic window
@@ -507,8 +527,22 @@ func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expec
 			break
 		}
 
-		// Wait for retryBackoff before trying again
-		time.Sleep(retryBackoff)
+		select {
+		case err := <-portForwardErrors:
+			if lastRes != nil {
+				lastRes.Body.Close()
+			}
+			if err == nil {
+				return fmt.Errorf("portforward stopped while probing %s", urlPath)
+			}
+			return fmt.Errorf("portforward stopped while probing %s: %w", urlPath, err)
+		case <-ctx.Done():
+			if lastRes != nil {
+				lastRes.Body.Close()
+			}
+			return fmt.Errorf("gateway probe canceled: %w", ctx.Err())
+		case <-time.After(retryBackoff):
+		}
 	}
 
 	// The poll budget is exhausted; dump the last request and response to help with debugging.
@@ -530,6 +564,79 @@ func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expec
 	}
 
 	return fmt.Errorf("failed to make request to %s after %d attempts over %s", urlPath, attempts, timeout)
+}
+
+func logGatewayNetworkDiagnostics(t *testing.T, ctx context.Context, at rp.RPTest, namespace string) {
+	t.Helper()
+	t.Logf("Gateway network diagnostics for namespace %s", namespace)
+
+	diagnosticsCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
+
+	services, err := at.Options.K8sClient.CoreV1().Services(namespace).List(diagnosticsCtx, metav1.ListOptions{})
+	if err != nil {
+		t.Logf("failed to list Services: %v", err)
+	} else {
+		for _, service := range services.Items {
+			ports := make([]string, 0, len(service.Spec.Ports))
+			for _, port := range service.Spec.Ports {
+				ports = append(ports, fmt.Sprintf("%s:%d->%s/%s", port.Name, port.Port, port.TargetPort.String(), port.Protocol))
+			}
+			t.Logf("Service %s/%s: clusterIP=%s ports=%s selector=%v", service.Namespace, service.Name, service.Spec.ClusterIP, strings.Join(ports, ","), service.Spec.Selector)
+		}
+	}
+
+	endpointSlices, err := at.Options.K8sClient.DiscoveryV1().EndpointSlices(namespace).List(diagnosticsCtx, metav1.ListOptions{})
+	if err != nil {
+		t.Logf("failed to list EndpointSlices: %v", err)
+		return
+	}
+
+	for _, endpointSlice := range endpointSlices.Items {
+		ports := make([]string, 0, len(endpointSlice.Ports))
+		for _, port := range endpointSlice.Ports {
+			portName := "<unnamed>"
+			if port.Name != nil {
+				portName = *port.Name
+			}
+			portNumber := "<unknown>"
+			if port.Port != nil {
+				portNumber = strconv.FormatInt(int64(*port.Port), 10)
+			}
+			protocol := "<unknown>"
+			if port.Protocol != nil {
+				protocol = string(*port.Protocol)
+			}
+			ports = append(ports, fmt.Sprintf("%s:%s/%s", portName, portNumber, protocol))
+		}
+
+		endpoints := make([]string, 0, len(endpointSlice.Endpoints))
+		for _, endpoint := range endpointSlice.Endpoints {
+			endpoints = append(endpoints, fmt.Sprintf(
+				"%s ready=%s serving=%s terminating=%s",
+				strings.Join(endpoint.Addresses, ","),
+				optionalBool(endpoint.Conditions.Ready),
+				optionalBool(endpoint.Conditions.Serving),
+				optionalBool(endpoint.Conditions.Terminating),
+			))
+		}
+
+		t.Logf(
+			"EndpointSlice %s/%s: service=%s ports=%s endpoints=[%s]",
+			endpointSlice.Namespace,
+			endpointSlice.Name,
+			endpointSlice.Labels[discoveryv1.LabelServiceName],
+			strings.Join(ports, ","),
+			strings.Join(endpoints, "; "),
+		)
+	}
+}
+
+func optionalBool(value *bool) string {
+	if value == nil {
+		return "unknown"
+	}
+	return strconv.FormatBool(*value)
 }
 
 func newTestHTTPClient(isHttps bool, hostname string) *http.Client {
@@ -556,4 +663,20 @@ func newTestHTTPClient(isHttps bool, hostname string) *http.Client {
 	return &http.Client{
 		Transport: transport,
 	}
+}
+
+func TestGatewayAvailability_PortForwardStops(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(responseWriter http.ResponseWriter, _ *http.Request) {
+		responseWriter.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(server.Close)
+
+	portForwardErrors := make(chan error, 1)
+	portForwardErrors <- errors.New("tunnel closed")
+
+	err := testGatewayAvailability(t, t.Context(), "localhost", server.URL, "healthz", http.StatusOK, false, portForwardErrors)
+	require.ErrorContains(t, err, "portforward stopped while probing")
+	require.ErrorContains(t, err, "tunnel closed")
 }
