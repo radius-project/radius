@@ -20,9 +20,9 @@
 # default manifests for that namespace are copied from. sync-resource-types
 # fetches each distinct (repo, ref) once; update-resource-types resolves a
 # branch/tag/commit to an immutable commit SHA and rewrites the matching ref.
-# In Phase A every namespace tracks the same linear history, so the refs match;
-# the per-namespace schema lets them diverge once upstream publishes
-# per-namespace versioned artifacts (Phase B).
+# In the edge channel the refs often match (single linear history), but
+# namespace-scoped releases can intentionally diverge pins across namespaces.
+# Phase B adds versioned artifacts/checksum metadata alongside these refs.
 ---
 sources:
   - namespace: Radius.Compute
