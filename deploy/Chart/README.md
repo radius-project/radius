@@ -25,6 +25,8 @@ By default, Radius pulls container images from GitHub Container Registry (ghcr.i
 
 You can specify a custom tag for all Radius images using the `global.imageTag` parameter. This is useful when you want to deploy a specific version across all components or use custom-built images.
 
+The override is literal and bypasses the chart's default channel mapping. Without an override, an `edge` chart uses `edge` for images built from this repository and `latest` for the Deployment Engine and dashboard, which are built from external repositories that do not publish `edge` yet. For a stable or RC chart, all default images use that release's channel. To install the current main build from the default registry, omit `global.imageTag`; `latest` now identifies the latest stable Radius release rather than the main build.
+
 #### Using a Custom Registry
 
 ```console
@@ -119,7 +121,7 @@ kubectl create secret docker-registry regcred \
   -n radius-system
 ```
 
-2. Reference the secret in your Helm values:
+1. Reference the secret in your Helm values:
 
 ```console
 helm upgrade --wait --install radius deploy/Chart -n radius-system \
@@ -134,7 +136,7 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system \
 #     - name: regcred
 ```
 
-3. With rad CLI:
+1. With rad CLI:
 
 ```console
 rad install kubernetes \
@@ -153,26 +155,35 @@ For completely air-gapped environments, you'll need to:
 Example of mirroring images (requires access to both registries):
 
 ```bash
-# List of Radius images
-IMAGES=(
+# Images built from this repository publish edge for the main build.
+RADIUS_IMAGES=(
   "controller"
   "ucpd"
   "applications-rp"
   "dynamic-rp"
+  "bicep"
+  "pre-upgrade"
+)
+
+# These external repositories still publish their main builds as latest.
+EXTERNAL_IMAGES=(
   "deployment-engine"
   "dashboard"
-  "bicep"
 )
 
 SOURCE_REGISTRY="ghcr.io/radius-project"
 TARGET_REGISTRY="myregistry.azurecr.io"
-VERSION="latest"  # or specific version like "0.48"
 
-# Mirror each image
-for IMAGE in "${IMAGES[@]}"; do
-  docker pull ${SOURCE_REGISTRY}/${IMAGE}:${VERSION}
-  docker tag ${SOURCE_REGISTRY}/${IMAGE}:${VERSION} ${TARGET_REGISTRY}/${IMAGE}:${VERSION}
-  docker push ${TARGET_REGISTRY}/${IMAGE}:${VERSION}
+for IMAGE in "${RADIUS_IMAGES[@]}"; do
+  docker pull ${SOURCE_REGISTRY}/${IMAGE}:edge
+  docker tag ${SOURCE_REGISTRY}/${IMAGE}:edge ${TARGET_REGISTRY}/${IMAGE}:edge
+  docker push ${TARGET_REGISTRY}/${IMAGE}:edge
+done
+
+for IMAGE in "${EXTERNAL_IMAGES[@]}"; do
+  docker pull ${SOURCE_REGISTRY}/${IMAGE}:latest
+  docker tag ${SOURCE_REGISTRY}/${IMAGE}:latest ${TARGET_REGISTRY}/${IMAGE}:latest
+  docker push ${TARGET_REGISTRY}/${IMAGE}:latest
 done
 ```
 
@@ -183,7 +194,7 @@ rad install kubernetes \
   --set global.imageRegistry=myregistry.azurecr.io
 ```
 
-**Note:** When using a custom registry, images are pulled directly from `<registry>/<image-name>:<tag>` format. For example, with `myregistry.azurecr.io`, the controller image will be pulled from `myregistry.azurecr.io/controller:latest`.
+**Note:** When using a custom registry, images are pulled directly from `<registry>/<image-name>:<tag>` format. With the default `edge` chart and `myregistry.azurecr.io`, for example, the controller image is `myregistry.azurecr.io/controller:edge` and the Deployment Engine image is `myregistry.azurecr.io/deployment-engine:latest`.
 
 ### Terraform Binary Pre-downloading
 

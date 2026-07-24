@@ -327,6 +327,7 @@ Monitor and verify:
 1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully and creates the `vX.Y.Z` [tag](https://github.com/radius-project/radius/tags).
 2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the tag push) completes successfully. Allow up to ~20 minutes for release assets to be published.
 3. A final release (not pre-release) appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
+4. For each Radius container image, the immutable `X.Y.Z`, mutable `X.Y`, and `latest` tags exist and resolve to the same multi-architecture manifest. RC releases publish only their full prerelease tag and must not update `latest`.
 
 ### Step 7: Publish Bicep recipes
 
@@ -351,6 +352,8 @@ If all workflows pass, the release is complete. Post a final update in the Teams
 ## Patching
 
 Use this process to fix a bug in an already-released version.
+
+**Rollout note**: Before releasing from a branch created before the `edge`/`latest` convention was adopted, backport the complete container publishing change set, including its parser and promotion tests. Without that backport, the patch updates `X.Y` but cannot advance `latest` to the new patch manifest.
 
 > **Note**: If the patch includes a fix to the [Deployment Engine](https://github.com/azure-octo/deployment-engine), you must also tag the Deployment Engine with the patch version (e.g., `vX.Y.Z`) before proceeding, following the same process as in the [RC](#step-2-tag-the-deployment-engine) and [Final release](#step-2-tag-the-deployment-engine-1) sections.
 
@@ -414,6 +417,7 @@ Monitor and verify:
 1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully and creates the `vX.Y.Z` [tag](https://github.com/radius-project/radius/tags).
 2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the tag push) completes successfully. Allow up to ~20 minutes for release assets to be published.
 3. A patch release appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
+4. The immutable `X.Y.Z` and mutable `X.Y` container tags resolve to the patch manifests. If `X.Y` is the latest stable channel, `latest` must resolve to the same manifests; a patch for an older supported channel must leave `latest` unchanged.
 
 ### Step 6: Run validation workflows
 
