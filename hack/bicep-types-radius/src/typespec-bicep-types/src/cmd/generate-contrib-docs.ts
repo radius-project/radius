@@ -53,7 +53,9 @@ if (!typesJsonArg || !outDirArg) {
 const typesJsonPath = resolve(process.cwd(), typesJsonArg);
 const outDir = resolve(process.cwd(), outDirArg);
 
-const types = readTypesJson(await readFile(typesJsonPath, { encoding: "utf8" }));
+const types = readTypesJson(
+  await readFile(typesJsonPath, { encoding: "utf8" })
+);
 const resourceTypes = filterResourceTypes(types);
 
 if (resourceTypes.length === 0) {
