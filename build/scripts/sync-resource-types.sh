@@ -68,6 +68,7 @@ source_field() {
 validate_ref() {
     case "$1" in
         "") fail "ref must not be empty." ;;
+        -*) fail "ref '$1' must not start with '-'." ;;
         *[!A-Za-z0-9._/-]*) fail "ref '$1' contains invalid characters." ;;
     esac
 }
@@ -135,7 +136,7 @@ update_sources() {
 # what it registers). yq parses the JSON, so no extra tooling is required.
 apply_pins() {
     local ns ref repo sha applied=0
-    while read -r ns ref; do
+    while IFS=$'\t' read -r ns ref; do
         [ -n "${ns}" ] || continue
         validate_namespace "${ns}"
         validate_ref "${ref}"
@@ -149,7 +150,7 @@ apply_pins() {
         yq -i "(.sources[] | select(.namespace == \"${ns}\") | .ref) = \"${sha}\"" "${DEFAULTS_YAML}"
         echo "  Pinned ${ns} -> ${sha}"
         applied=$((applied + 1))
-    done < <(printf '%s' "${RESOURCE_TYPES_PINS}" | yq -p=json '.[] | .namespace + " " + .ref')
+    done < <(printf '%s' "${RESOURCE_TYPES_PINS}" | yq -p=json -r '.[] | .namespace + "\t" + .ref')
     [ "${applied}" -gt 0 ] || echo "No registered namespaces in RESOURCE_TYPES_PINS; nothing re-pinned."
 }
 
