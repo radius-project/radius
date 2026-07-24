@@ -309,7 +309,21 @@ runs:
                     DEPLOY_TARGET="$_tok"; break ;;
                 esac
               done
-              if [ "$DEPLOY_TARGET" = "$APP_FILE" ]; then
+              # Compare the target to APP_FILE after normalizing equivalent
+              # spellings: `read -ra` keeps surrounding quotes verbatim, and a
+              # caller may write `./.radius/app.bicep`. Strip a matched pair of
+              # surrounding single/double quotes and a single leading `./` from
+              # both sides so these forms still match.
+              normalize_target() {
+                local t="$1"
+                case "$t" in
+                  \"*\") t=${t#\"}; t=${t%\"} ;;
+                  \'*\') t=${t#\'}; t=${t%\'} ;;
+                esac
+                t=${t#./}
+                printf '%s' "$t"
+              }
+              if [ "$(normalize_target "$DEPLOY_TARGET")" = "$(normalize_target "$APP_FILE")" ]; then
                 if [ -n "$APP_IMAGE" ]; then
                   EXTRA_PARAMS+=(--parameters "image=$APP_IMAGE")
                 fi
