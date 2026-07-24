@@ -73,8 +73,12 @@ runs:
         echo "Recording existing recipe packs..."
         PACKS_BEFORE=$(ids_json)
 
+        # Pass --environment explicitly: the recipe pack bicep only creates a
+        # Radius.Core/recipePacks resource (no environment), so rad deploy would
+        # otherwise require a default environment to be set. The environment was
+        # created by the preceding step.
         echo "Deploying custom recipe pack from $RECIPE_PACK_BICEP..."
-        rad deploy "$RECIPE_PACK_BICEP"
+        rad deploy "$RECIPE_PACK_BICEP" --environment "$ENVIRONMENT"
 
         PACKS_AFTER=$(ids_json)
 
