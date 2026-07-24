@@ -1,10 +1,10 @@
 # Provider-agnostic deploy shared by run-rad-commands-aws.yml and
-# run-rad-commands-azure.yml. Provisions registry credentials on the control plane
-# and runs the requested rad commands (deploying by default), writing the combined
-# rad-commands-result artifact. Teardown (rad shutdown, log collection, k3d delete)
-# lives in the separate `teardown` action so it can run unconditionally.
+# run-rad-commands-azure.yml. Runs the requested rad commands (deploying by
+# default), writing the combined rad-commands-result artifact. Teardown (rad
+# shutdown, log collection, k3d delete) lives in the separate `teardown` action
+# so it can run unconditionally.
 name: Radius - Run rad commands
-description: Provision registry credentials and run the requested rad commands (deploying by default).
+description: Run the requested rad commands (deploying by default).
 
 inputs:
   environment:
@@ -30,10 +30,10 @@ inputs:
     required: false
     default: ""
   registry-username:
-    description: Username for the containerImages recipe's image-push registry secret.
+    description: Username passed to the app deploy as the registryUsername parameter (feeds the app's Radius.Security/secrets registry Secret).
     required: true
   registry-password:
-    description: Password/token for the containerImages recipe's image-push registry secret.
+    description: Password/token passed to the app deploy as the registryPassword parameter (feeds the app's Radius.Security/secrets registry Secret).
     required: true
 
 runs:
@@ -54,45 +54,22 @@ runs:
             kubectl --kubeconfig "$TARGET_KUBECONFIG" create namespace "$APP_NS"
         fi
 
-    - name: Provision registry credentials on control plane
-      shell: bash
-      env:
-        # The Radius.Compute/containerImages recipe authenticates its BuildKit
-        # image push by loading the Kubernetes Secret named by registrySecretName
-        # via the in-cluster provider -- i.e. from the CONTROL PLANE cluster where
-        # the dynamic-rp/BuildKit pods run, NOT the target cluster. Provision that
-        # secret here directly from the default GitHub token so no registry
-        # credentials need to live in the application bicep.
-        REGISTRY_USERNAME: ${{ inputs.registry-username }}
-        REGISTRY_PASSWORD: ${{ inputs.registry-password }}
-        ENV_NS: ${{ inputs.namespace }}
-      run: |
-        set -eu
-        REGISTRY_SECRET_NAME="ghcr-registry-creds"
-        BICEP_APP_NAME=$(grep -oP "name:\s*'\K[^']+" ".radius/app.bicep" 2>/dev/null | head -1)
-        [ -z "$BICEP_APP_NAME" ] && BICEP_APP_NAME="app"
-        APP_NS="default-$BICEP_APP_NAME"
-        # The recipe reads the secret from context.runtime.kubernetes.namespace on
-        # the control plane. Materialize it in both the environment namespace and
-        # the application namespace so the read resolves regardless of scope. These
-        # kubectl calls run against the default kubeconfig (the control plane), not
-        # the target cluster.
-        for NS in "$ENV_NS" "$APP_NS"; do
-          kubectl get namespace "$NS" >/dev/null 2>&1 || kubectl create namespace "$NS"
-          kubectl create secret generic "$REGISTRY_SECRET_NAME" \
-            --namespace "$NS" \
-            --from-literal=username="$REGISTRY_USERNAME" \
-            --from-literal=password="$REGISTRY_PASSWORD" \
-            --dry-run=client -o yaml | kubectl apply -f -
-          echo "Provisioned $REGISTRY_SECRET_NAME in control-plane namespace $NS"
-        done
-
     - name: Run rad commands
       shell: bash
       env:
         ENVIRONMENT: ${{ inputs.environment }}
         APP_FILE: ${{ inputs.app-file }}
         APP_IMAGE: ${{ inputs.app-image }}
+        # Registry push/pull credentials for the app deploy. These are passed to
+        # the app file's `rad deploy` as the registryUsername/registryPassword
+        # parameters, which feed the app's Radius.Security/secrets resource
+        # (`radius-ghcr-registry-creds`). That resource materializes the registry Secret
+        # on the TARGET cluster, where the containerImages recipe reads it by the
+        # name the recipe pack registers. Read via the environment (not inlined
+        # into the script) so the secret value can't break the shell or be
+        # word-split, and is never written into the recorded command string.
+        REGISTRY_USERNAME: ${{ inputs.registry-username }}
+        REGISTRY_PASSWORD: ${{ inputs.registry-password }}
         # Pass caller input through the environment to avoid command injection.
         # Caller-supplied rad commands (falls back to the RADIUS_RAD_COMMANDS
         # variable upstream) so the command applies on both an explicit dispatch
@@ -148,13 +125,30 @@ runs:
         record() {
           local index="$1"; shift
           local display="$1"; shift
-          local outfile code
+          local outfile code gtitle
+          # The recorded command string can contain a caller-supplied secret (e.g.
+          # a value passed inline via `--parameters`). GitHub's log masking does not
+          # apply to artifact contents, so strip every known secret from `display`
+          # before it reaches either the ::group:: title or the JSON `command` field.
+          display=$(scrub_string "$display")
           outfile=$(mktemp)
-          echo "::group::rad $display"
+          # The group title carries the caller-supplied command string, so escape
+          # the workflow-command metacharacters: strip CR, fold newlines to spaces
+          # (a title is single-line), and escape '%' -- the escape char -- so the
+          # value can neither break the ::group:: command nor inject into the log.
+          gtitle="rad $display"
+          gtitle=${gtitle//$'\r'/}
+          gtitle=${gtitle//$'\n'/ }
+          gtitle=${gtitle//'%'/'%25'}
+          echo "::group::$gtitle"
           "$@" 2>&1 | tee "$outfile"
           code=${PIPESTATUS[0]}
           echo "::endgroup::"
           RAN=$((RAN + 1))
+          # Redact any known secret values from the captured output before it is
+          # written into the uploaded artifact. GitHub's log masking does not apply
+          # to artifact file contents, so scrub them ourselves.
+          scrub_secrets "$outfile"
           COMMANDS_JSON=$(jq \
             --argjson index "$index" \
             --arg cmd "$display" \
@@ -165,6 +159,90 @@ runs:
             <<<"$COMMANDS_JSON")
           rm -f "$outfile"
           return "$code"
+        }
+
+        # True when RADIUS_DEPLOY_PARAMS (a JSON object) already carries the given
+        # key with a usable value. Used to avoid passing a --parameters twice when
+        # an older environment still supplies registryUsername/registryPassword in
+        # the params secret. A key whose value is null or an empty string is treated
+        # as absent, so the runner-provided credentials are still injected.
+        deploy_params_has_key() {
+          [ -n "$DEPLOY_PARAMS_JSON" ] || return 1
+          printf '%s' "$DEPLOY_PARAMS_JSON" | jq -e --arg k "$1" 'has($k) and (.[$k] != null) and (.[$k] != "")' >/dev/null 2>&1
+        }
+
+        # Secret values that must never reach the logs or the uploaded artifact:
+        # the registry password (the runner GITHUB_TOKEN) and every value in the
+        # RADIUS_DEPLOY_PARAMS secret. Register each with ::add-mask:: so GitHub
+        # redacts it from the live logs (defense in depth -- registered secrets are
+        # already masked, but values sourced from vars are not), and keep the list
+        # for scrub_secrets to strip from the captured output.
+        SECRET_VALUES=()
+        add_secret() {
+          [ -n "$1" ] || return 0
+          # Keep the full value (covers output emitted as one block) and each
+          # individual line, so artifact scrubbing matches what per-line masking
+          # protects: rad may echo a multi-line value line by line, and a per-line
+          # ::add-mask:: only redacts the live logs, not the uploaded artifact.
+          SECRET_VALUES+=("$1")
+          # Mask one line at a time. GitHub reliably masks a single-line value, but
+          # a multiline ::add-mask:: leaves the second and later lines unmasked (and
+          # prints them verbatim). Strip CR, add the line to the scrub set (before
+          # escaping), then escape '%' -- the workflow-command escape character --
+          # so a value can neither break nor inject the command.
+          local _line
+          while IFS= read -r _line || [ -n "$_line" ]; do
+            _line=${_line//$'\r'/}
+            [ -n "$_line" ] || continue
+            SECRET_VALUES+=("$_line")
+            echo "::add-mask::${_line//'%'/'%25'}"
+          done <<< "$1"
+        }
+
+        # RADIUS_DEPLOY_PARAMS is a secret expected to be a JSON object. Validate it
+        # once, up front, so the jq calls below never emit a parse error -- which
+        # could echo raw secret content into the logs -- when the value is malformed.
+        # A blank/unset value means "no params"; a malformed value is rejected with a
+        # generic message (no secret content) and treated as empty.
+        DEPLOY_PARAMS_JSON=""
+        if [ -n "${RADIUS_DEPLOY_PARAMS//[[:space:]]/}" ]; then
+          if printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -e 'type == "object"' >/dev/null 2>&1; then
+            DEPLOY_PARAMS_JSON="$RADIUS_DEPLOY_PARAMS"
+          else
+            echo "::error::RADIUS_DEPLOY_PARAMS is not a valid JSON object; ignoring it." >&2
+          fi
+        fi
+
+        add_secret "$REGISTRY_PASSWORD"
+        if [ -n "$DEPLOY_PARAMS_JSON" ]; then
+          while IFS= read -r _sname; do
+            [ -z "$_sname" ] && continue
+            # Emit nothing for a JSON null so add_secret is not asked to mask/scrub
+            # the literal string "null" (which would redact unrelated output).
+            add_secret "$(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r --arg k "$_sname" 'if .[$k] == null then empty else .[$k] end' 2>/dev/null)"
+          done < <(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r 'keys_unsorted[]' 2>/dev/null)
+        fi
+
+        # Strip every known secret value from a string, replacing each with ***. The
+        # search value is double-quoted inside the substitution, which disables
+        # pattern matching so it is compared as a literal string -- glob
+        # metacharacters (* ? [ ] \) in a secret are matched verbatim, not as
+        # patterns.
+        scrub_string() {
+          local s="$1" value
+          for value in "${SECRET_VALUES[@]}"; do
+            [ -n "$value" ] || continue
+            s=${s//"$value"/***}
+          done
+          printf '%s' "$s"
+        }
+
+        # Replace every known secret value in the given file with *** in place, so
+        # the artifact never carries a credential that `rad` happened to echo.
+        scrub_secrets() {
+          local file="$1"
+          [ ${#SECRET_VALUES[@]} -eq 0 ] && return 0
+          printf '%s' "$(scrub_string "$(cat "$file")")" > "$file"
         }
 
         if [ -n "${RAD_COMMANDS//[[:space:]]/}" ]; then
@@ -200,22 +278,73 @@ runs:
           for cmd in "${CLEAN[@]}"; do
             verb="${cmd%% *}"
             if [ "$verb" = "deploy" ]; then
-              # For deploy commands, append the image and the secret application
-              # parameters. Build an argv array so secret values with special
-              # characters are never word-split, and keep them out of the
+              # For deploy commands, build an argv array so secret values with
+              # special characters are never word-split, and keep them out of the
               # recorded command string (only the non-secret `$cmd` is recorded).
               # shellcheck disable=SC2086
               read -ra CMD_ARGV <<< "$cmd"
               EXTRA_PARAMS=()
-              if [ -n "$APP_IMAGE" ]; then
-                EXTRA_PARAMS+=(--parameters "image=$APP_IMAGE")
-              fi
-              if [ -n "${RADIUS_DEPLOY_PARAMS//[[:space:]]/}" ]; then
-                while IFS= read -r _pname; do
-                  [ -z "$_pname" ] && continue
-                  _pval=$(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r --arg k "$_pname" '.[$k]')
-                  EXTRA_PARAMS+=(--parameters "$_pname=$_pval")
-                done < <(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r 'keys_unsorted[]')
+              # The image, application, and registry parameters belong to the app
+              # only. `rad deploy` rejects unknown parameters, so a custom command
+              # that deploys a different template (e.g. an environment/recipe-pack
+              # bicep) must not receive them. Find the deploy target -- the first
+              # positional argument after the `deploy` verb -- skipping flags and
+              # the values of value-taking flags, since rad accepts flags before
+              # the file (e.g. `deploy -e dev app.bicep`). Inject the app-only
+              # parameters only when the target is APP_FILE.
+              DEPLOY_TARGET=""
+              _val_flags=" -w --workspace -g --group -a --application -e --environment -p --parameters "
+              _i=1
+              while [ "$_i" -lt "${#CMD_ARGV[@]}" ]; do
+                _tok="${CMD_ARGV[$_i]}"
+                case "$_tok" in
+                  -*=*)
+                    _i=$((_i + 1)) ;;
+                  -*)
+                    case "$_val_flags" in
+                      *" $_tok "*) _i=$((_i + 2)) ;;
+                      *) _i=$((_i + 1)) ;;
+                    esac ;;
+                  *)
+                    DEPLOY_TARGET="$_tok"; break ;;
+                esac
+              done
+              # Compare the target to APP_FILE after normalizing equivalent
+              # spellings: `read -ra` keeps surrounding quotes verbatim, and a
+              # caller may write `./.radius/app.bicep`. Strip a matched pair of
+              # surrounding single/double quotes and a single leading `./` from
+              # both sides so these forms still match.
+              normalize_target() {
+                local t="$1"
+                case "$t" in
+                  \"*\") t=${t#\"}; t=${t%\"} ;;
+                  \'*\') t=${t#\'}; t=${t%\'} ;;
+                esac
+                t=${t#./}
+                printf '%s' "$t"
+              }
+              if [ "$(normalize_target "$DEPLOY_TARGET")" = "$(normalize_target "$APP_FILE")" ]; then
+                if [ -n "$APP_IMAGE" ]; then
+                  EXTRA_PARAMS+=(--parameters "image=$APP_IMAGE")
+                fi
+                if [ -n "$DEPLOY_PARAMS_JSON" ]; then
+                  while IFS= read -r _pname; do
+                    [ -z "$_pname" ] && continue
+                    _pval=$(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r --arg k "$_pname" '.[$k]' 2>/dev/null)
+                    EXTRA_PARAMS+=(--parameters "$_pname=$_pval")
+                  done < <(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r 'keys_unsorted[]' 2>/dev/null)
+                fi
+                # Registry credentials for the app's Radius.Security/secrets
+                # resource. Appended to the argv array so the secret value is never
+                # word-split or written into the recorded command string. Skipped
+                # when the params secret already supplies the key, so the same
+                # --parameters is never passed twice.
+                if [ -n "$REGISTRY_USERNAME" ] && ! deploy_params_has_key registryUsername; then
+                  EXTRA_PARAMS+=(--parameters "registryUsername=$REGISTRY_USERNAME")
+                fi
+                if [ -n "$REGISTRY_PASSWORD" ] && ! deploy_params_has_key registryPassword; then
+                  EXTRA_PARAMS+=(--parameters "registryPassword=$REGISTRY_PASSWORD")
+                fi
               fi
               if ! record "$idx" "$cmd" rad "${CMD_ARGV[@]}" "${EXTRA_PARAMS[@]}"; then
                 OVERALL_OUTCOME="command_failed"
@@ -248,12 +377,23 @@ runs:
           # --parameters name=value pairs. Each value is read back from the JSON
           # by key with jq so embedded '=', spaces, or newlines are preserved and
           # never re-split by the shell.
-          if [ -n "${RADIUS_DEPLOY_PARAMS//[[:space:]]/}" ]; then
+          if [ -n "$DEPLOY_PARAMS_JSON" ]; then
             while IFS= read -r _pname; do
               [ -z "$_pname" ] && continue
-              _pval=$(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r --arg k "$_pname" '.[$k]')
+              _pval=$(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r --arg k "$_pname" '.[$k]' 2>/dev/null)
               DEPLOY_PARAMS+=(--parameters "$_pname=$_pval")
-            done < <(printf '%s' "$RADIUS_DEPLOY_PARAMS" | jq -r 'keys_unsorted[]')
+            done < <(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r 'keys_unsorted[]' 2>/dev/null)
+          fi
+          # Registry credentials for the app's Radius.Security/secrets resource
+          # (`radius-ghcr-registry-creds`). Appended to the argv array so the secret
+          # value is never word-split or written into the recorded command string.
+          # Skipped when the params secret already supplies the key, so the same
+          # --parameters is never passed twice.
+          if [ -n "$REGISTRY_USERNAME" ] && ! deploy_params_has_key registryUsername; then
+            DEPLOY_PARAMS+=(--parameters "registryUsername=$REGISTRY_USERNAME")
+          fi
+          if [ -n "$REGISTRY_PASSWORD" ] && ! deploy_params_has_key registryPassword; then
+            DEPLOY_PARAMS+=(--parameters "registryPassword=$REGISTRY_PASSWORD")
           fi
           # The recorded command string omits the parameters so secret values are
           # not written into the result artifact.
