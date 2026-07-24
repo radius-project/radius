@@ -16,15 +16,16 @@
 
 import { EmitContext, emitFile, getDoc, resolvePath } from "@typespec/compiler";
 import {
-  ResourceType,
-  TypeBaseKind,
   TypeFactory,
   writeMarkdown,
   writeTypesJson
 } from "./bicep.js";
 import { discoverResources, DiscoveredResource } from "./resource-discovery.js";
 import { buildResourceType, newTranslationCache } from "./type-translator.js";
-import { writeTableMarkdown } from "./writers/markdown-table.js";
+import {
+  buildResourceDocs,
+  filterResourceTypes
+} from "./writers/resource-docs.js";
 import type { BicepEmitterOptions } from "./lib.js";
 
 /**
@@ -97,26 +98,20 @@ export async function $onEmit(
     });
 
     // One reference doc per resource type under docs/<resource>.md.
-    const resourceTypes = factory.types.filter(
-      (type) => type.type === TypeBaseKind.ResourceType
-    ) as ResourceType[];
-    for (const resourceType of resourceTypes) {
-      const filename = resourceType.name
-        .split("/")[1]
-        .split("@")[0]
-        .toLowerCase();
+    const docs = buildResourceDocs(
+      filterResourceTypes(factory.types),
+      factory.types,
+      (resourceType) => descriptions.get(resourceType.name)
+    );
+    for (const doc of docs) {
       await emitFile(context.program, {
         path: resolvePath(
           context.emitterOutputDir,
           outFolder,
           "docs",
-          `${filename}.md`
+          doc.filename
         ),
-        content: writeTableMarkdown(
-          [resourceType],
-          factory.types,
-          descriptions.get(resourceType.name)
-        )
+        content: doc.content
       });
     }
   }
