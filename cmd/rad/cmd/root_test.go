@@ -311,3 +311,24 @@ func Test_wirePreviewSubcommandPreviewBase(t *testing.T) {
 		require.False(t, previewCalled, "preview runner should not have been called")
 	})
 }
+
+// Test_EnvCreate_ExposesPreviewRecipePacksFlag guards the command-tree wiring for
+// `rad env create`. The --recipe-packs flag is defined only on the preview
+// implementation, so env create must be wired with the preview command as the
+// base (wirePreviewSubcommandPreviewBase). If it regresses to a legacy-base
+// wiring, the flag becomes unreachable and `rad env create --preview
+// --recipe-packs` fails with "flag accessed but not defined". RootCmd is fully
+// assembled at package init(), so this asserts the real wiring, not a helper.
+func Test_EnvCreate_ExposesPreviewRecipePacksFlag(t *testing.T) {
+	createCmd, _, err := RootCmd.Find([]string{"env", "create"})
+	require.NoError(t, err)
+	require.Equal(t, "create", createCmd.Name())
+
+	require.NotNil(t, createCmd.Flags().Lookup("recipe-packs"),
+		"rad env create must expose --recipe-packs (regression: wrong preview wiring)")
+	require.NotNil(t, createCmd.Flags().Lookup("preview"),
+		"rad env create must expose --preview")
+
+	require.NoError(t, createCmd.ParseFlags([]string{"--preview", "--recipe-packs", "p1,p2"}),
+		"rad env create must accept --preview together with --recipe-packs")
+}

@@ -295,6 +295,33 @@ func Test_Validate(t *testing.T) {
 				require.Nil(t, r.providers.Kubernetes, "should not default Kubernetes namespace when AWS provider is configured")
 			},
 		},
+		{
+			Name:          "Create command with --recipe-packs flag",
+			Input:         []string{"testingenv", "--recipe-packs", "pack1, pack2 ,pack1"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				// Values are trimmed and de-duplicated, preserving first-seen order.
+				require.Equal(t, []string{"pack1", "pack2"}, r.recipePacks)
+			},
+		},
+		{
+			Name:          "Create command with empty --recipe-packs value",
+			Input:         []string{"testingenv", "--recipe-packs", " , "},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
@@ -514,6 +541,191 @@ func Test_Run(t *testing.T) {
 		require.NotNil(t, capturedResource.Properties.Providers.Kubernetes)
 		require.NotNil(t, capturedResource.Properties.Providers.Kubernetes.Namespace)
 		require.Equal(t, "default", *capturedResource.Properties.Providers.Kubernetes.Namespace)
+	})
+
+	t.Run("creates environment with specified recipe packs", func(t *testing.T) {
+		var capturedEnv v20250801preview.EnvironmentResource
+		var referencedByUpdates [][]*string
+
+		capturingEnvServer := func() corerpfake.EnvironmentsServer {
+			return corerpfake.EnvironmentsServer{
+				CreateOrUpdate: func(
+					ctx context.Context,
+					rootScope string,
+					environmentName string,
+					resource v20250801preview.EnvironmentResource,
+					options *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					capturedEnv = resource
+					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientCreateOrUpdateResponse{EnvironmentResource: resource}, nil)
+					return
+				},
+			}
+		}
+
+		// Recipe pack server that succeeds on Get (validation) and records the
+		// referencedBy list sent on CreateOrUpdate (referencedBy sync).
+		capturingPackServer := func() corerpfake.RecipePacksServer {
+			return corerpfake.RecipePacksServer{
+				Get: test_client_factory.WithRecipePackServerNoError().Get,
+				CreateOrUpdate: func(
+					ctx context.Context,
+					rootScope string,
+					recipePackName string,
+					resource v20250801preview.RecipePackResource,
+					options *v20250801preview.RecipePacksClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					referencedByUpdates = append(referencedByUpdates, resource.Properties.ReferencedBy)
+					resp.SetResponse(http.StatusOK, v20250801preview.RecipePacksClientCreateOrUpdateResponse{RecipePackResource: resource}, nil)
+					return
+				},
+			}
+		}
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			capturingEnvServer,
+			capturingPackServer,
+		)
+		require.NoError(t, err)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Output:                  outputSink,
+			Workspace:               workspace,
+			EnvironmentName:         "testenv",
+			ResourceGroupName:       "test-resource-group",
+			recipePacks:             []string{"pack1", "pack2"},
+		}
+
+		err = runner.Run(context.Background())
+		require.NoError(t, err)
+
+		// The specified packs replace the default and are resolved to full IDs.
+		require.Len(t, capturedEnv.Properties.RecipePacks, 2)
+		packIDs := []string{*capturedEnv.Properties.RecipePacks[0], *capturedEnv.Properties.RecipePacks[1]}
+		require.Contains(t, packIDs[0], "Radius.Core/recipePacks/pack1")
+		require.Contains(t, packIDs[1], "Radius.Core/recipePacks/pack2")
+
+		// Each specified pack has the environment added to its referencedBy list.
+		require.Len(t, referencedByUpdates, 2)
+		for _, refs := range referencedByUpdates {
+			require.Len(t, refs, 1)
+			require.Contains(t, *refs[0], "Radius.Core/environments/testenv")
+		}
+	})
+
+	t.Run("resolves recipe pack specified as a full resource ID", func(t *testing.T) {
+		var capturedEnv v20250801preview.EnvironmentResource
+		var referencedByUpdate []*string
+		fullPackID := "/planes/radius/local/resourceGroups/other-group/providers/Radius.Core/recipePacks/mypack"
+
+		capturingEnvServer := func() corerpfake.EnvironmentsServer {
+			return corerpfake.EnvironmentsServer{
+				CreateOrUpdate: func(
+					ctx context.Context,
+					rootScope string,
+					environmentName string,
+					resource v20250801preview.EnvironmentResource,
+					options *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					capturedEnv = resource
+					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientCreateOrUpdateResponse{EnvironmentResource: resource}, nil)
+					return
+				},
+			}
+		}
+
+		// Capture the referencedBy sync so we assert it targets the pack's own
+		// scope (other-group), not the environment's workspace scope.
+		capturingPackServer := func() corerpfake.RecipePacksServer {
+			return corerpfake.RecipePacksServer{
+				Get: test_client_factory.WithRecipePackServerNoError().Get,
+				CreateOrUpdate: func(
+					ctx context.Context,
+					rootScope string,
+					recipePackName string,
+					resource v20250801preview.RecipePackResource,
+					options *v20250801preview.RecipePacksClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[v20250801preview.RecipePacksClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					referencedByUpdate = resource.Properties.ReferencedBy
+					resp.SetResponse(http.StatusOK, v20250801preview.RecipePacksClientCreateOrUpdateResponse{RecipePackResource: resource}, nil)
+					return
+				},
+			}
+		}
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			capturingEnvServer,
+			capturingPackServer,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "testenv",
+			ResourceGroupName:       "test-resource-group",
+			recipePacks:             []string{fullPackID},
+		}
+
+		err = runner.Run(context.Background())
+		require.NoError(t, err)
+
+		require.Len(t, capturedEnv.Properties.RecipePacks, 1)
+		require.Equal(t, fullPackID, *capturedEnv.Properties.RecipePacks[0])
+
+		// The environment is added to the referencedBy list of the pack in its own scope.
+		require.Len(t, referencedByUpdate, 1)
+		require.Contains(t, *referencedByUpdate[0], "Radius.Core/environments/testenv")
+	})
+
+	t.Run("returns error when specified recipe pack does not exist", func(t *testing.T) {
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			nil,
+			test_client_factory.WithRecipePackServer404OnGet,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "testenv",
+			ResourceGroupName:       "test-resource-group",
+			recipePacks:             []string{"missing-pack"},
+		}
+
+		err = runner.Run(context.Background())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "Recipe pack \"missing-pack\" does not exist")
+	})
+
+	t.Run("surfaces non-404 errors when validating a recipe pack", func(t *testing.T) {
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			nil,
+			test_client_factory.WithRecipePackServerInternalError,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "testenv",
+			ResourceGroupName:       "test-resource-group",
+			recipePacks:             []string{"some-pack"},
+		}
+
+		err = runner.Run(context.Background())
+		require.Error(t, err)
+		// A server-side failure must not be reported as "does not exist".
+		require.NotContains(t, err.Error(), "does not exist")
 	})
 }
 

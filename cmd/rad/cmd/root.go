@@ -372,10 +372,10 @@ func initSubCommands() {
 	shutdownCmd, _ := cmd_shutdown.NewCommand(framework)
 	RootCmd.AddCommand(shutdownCmd)
 
-	envCreateCmd, _ := env_create.NewCommand(framework)
+	legacyEnvCreateCmd, _ := env_create.NewCommand(framework)
 	previewCreateCmd, _ := env_create_preview.NewCommand(framework)
-	wirePreviewSubcommand(envCreateCmd, previewCreateCmd)
-	envCmd.AddCommand(envCreateCmd)
+	wirePreviewSubcommandPreviewBase(previewCreateCmd, legacyEnvCreateCmd.RunE, "Use the Radius.Core preview implementation for environment create")
+	envCmd.AddCommand(previewCreateCmd)
 
 	envDeleteCmd, _ := env_delete.NewCommand(framework)
 	previewDeleteCmd, _ := env_delete_preview.NewCommand(framework)
