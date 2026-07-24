@@ -113,8 +113,34 @@ used_namespaces() {
 # RESOURCE_TYPES_NAMESPACE when set) to an immutable commit SHA.
 update_sources() {
     validate_ref "${RESOURCE_TYPES_REF}"
-    local target="${RESOURCE_TYPES_NAMESPACE}" matched=false ns repo sha
-    for ns in $(yq -r '.sources[].namespace' "${DEFAULTS_YAML}"); do
+    local namespaces target="${RESOURCE_TYPES_NAMESPACE}" matched=false
+    local ns repo sha
+    if [ -n "${target}" ]; then
+        validate_namespace "${target}"
+    fi
+    if ! namespaces="$(
+        yq -e -r '
+            select(
+                (.sources | type) == "!!seq" and
+                (.sources | length) > 0 and
+                ([.sources[] | select(
+                    type != "!!map" or
+                    has("namespace") == false or
+                    (.namespace | type) != "!!str" or
+                    (.namespace | test("^[A-Za-z0-9._-]+$")) == false
+                )] | length == 0)
+            ) |
+            .sources[].namespace
+        ' "${DEFAULTS_YAML}"
+    )"; then
+        fail "sources must contain valid namespace strings in ${DEFAULTS_YAML}."
+    fi
+
+    while IFS= read -r ns; do
+        validate_namespace "${ns}"
+    done <<< "${namespaces}"
+
+    while IFS= read -r ns; do
         if [ -n "${target}" ] && [ "${ns}" != "${target}" ]; then
             continue
         fi
@@ -125,7 +151,7 @@ update_sources() {
         sha="$(resolve_ref "${repo}" "${RESOURCE_TYPES_REF}")"
         yq -i "(.sources[] | select(.namespace == \"${ns}\") | .ref) = \"${sha}\"" "${DEFAULTS_YAML}"
         echo "  Pinned ${ns} -> ${sha}"
-    done
+    done <<< "${namespaces}"
     [ "${matched}" = true ] || fail "namespace '${target}' not found under sources in ${DEFAULTS_YAML}."
 }
 
