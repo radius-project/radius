@@ -16,13 +16,14 @@
 #   4. Run: make update-resource-types
 #   5. Commit the updated files (defaults.yaml and the copied YAMLs).
 
-# sources pins, per namespace, the upstream resource-types-contrib revision the
+# sources pin, per namespace, the upstream resource-types-contrib revision the
 # default manifests for that namespace are copied from. sync-resource-types
 # fetches each distinct (repo, ref) once; update-resource-types resolves a
 # branch/tag/commit to an immutable commit SHA and rewrites the matching ref.
 # In Phase A every namespace tracks the same linear history, so the refs match;
 # the per-namespace schema lets them diverge once upstream publishes
 # per-namespace versioned artifacts (Phase B).
+---
 sources:
   - namespace: Radius.Compute
     repo: github.com/radius-project/resource-types-contrib

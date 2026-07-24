@@ -135,8 +135,29 @@ update_sources() {
 # skipped, so an upstream-only namespace produces no change (Radius vendors only
 # what it registers). yq parses the JSON, so no extra tooling is required.
 apply_pins() {
-    local ns ref repo sha applied=0
-    while IFS=$'\t' read -r ns ref; do
+    local parsed_pins ns ref repo sha applied=0
+    if ! parsed_pins="$(
+        printf '%s' "${RESOURCE_TYPES_PINS}" |
+            yq -p=json -e -r '
+                select(
+                    type == "!!seq" and
+                    length > 0 and
+                    ([.[] | select(
+                        type != "!!map" or
+                        has("namespace") == false or
+                        has("ref") == false or
+                        (.namespace | type) != "!!str" or
+                        (.ref | type) != "!!str"
+                    )] | length == 0)
+                ) |
+                .[] |
+                .namespace + "|" + .ref
+            '
+    )"; then
+        fail "RESOURCE_TYPES_PINS must be a valid JSON array of {namespace, ref} objects."
+    fi
+
+    while IFS='|' read -r ns ref; do
         [ -n "${ns}" ] || continue
         validate_namespace "${ns}"
         validate_ref "${ref}"
@@ -150,7 +171,7 @@ apply_pins() {
         yq -i "(.sources[] | select(.namespace == \"${ns}\") | .ref) = \"${sha}\"" "${DEFAULTS_YAML}"
         echo "  Pinned ${ns} -> ${sha}"
         applied=$((applied + 1))
-    done < <(printf '%s' "${RESOURCE_TYPES_PINS}" | yq -p=json -r '.[] | .namespace + "\t" + .ref')
+    done <<< "${parsed_pins}"
     [ "${applied}" -gt 0 ] || echo "No registered namespaces in RESOURCE_TYPES_PINS; nothing re-pinned."
 }
 
