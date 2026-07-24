@@ -15,19 +15,20 @@
 # ------------------------------------------------------------
 
 # This workflow verifies that the resource type manifest files committed in
-# deploy/manifest/built-in-providers/ match the versions in the
-# resource-types-contrib module pinned in go.mod.
+# deploy/manifest/built-in-providers/ match the per-namespace upstream
+# revisions pinned in deploy/manifest/defaults.yaml (sources[].ref).
 #
-# It runs "make sync-resource-types", which re-copies the manifest files from
-# the Go module cache, and then checks for any diff.
+# It runs "make sync-resource-types", which re-fetches each pinned ref from
+# resource-types-contrib and re-copies the manifest files, and then checks for
+# any diff.
 #
 # - If there is no diff, the committed copies are in sync and the check passes.
 # - If there is a diff, the committed copies have drifted from the pinned
-#   version and the check fails. The developer must run
+#   refs and the check fails. The developer must run
 #   "make sync-resource-types" locally and commit the updated files.
 #
 # This catches:
-#   - A go.mod bump without re-running "make sync-resource-types"
+#   - A sources[].ref bump in defaults.yaml without re-running "make sync-resource-types"
 #   - Manual edits to copied manifest files that drift from upstream
 #   - New entries in defaults.yaml without re-syncing
 #
@@ -42,15 +43,14 @@ on:
       - main
       - release/*
     paths:
-      # Trigger when the default list, the copied manifests, the dependency
-      # version (go.mod/go.sum), or the sync logic (Makefile, resource-types.mk)
-      # changes.
-      - "go.mod"
-      - "go.sum"
+      # Trigger when the default list and per-namespace pins, the copied
+      # manifests, or the sync logic (Makefile, resource-types.mk, the sync
+      # script) changes.
       - "deploy/manifest/defaults.yaml"
       - "deploy/manifest/built-in-providers/**"
       - "Makefile"
       - "build/resource-types.mk"
+      - "build/scripts/sync-resource-types.sh"
   # The merge_group event does not support path filters. This check is cheap
   # (sync + git diff), so it simply runs on every queued group rather than
   # adding change-detection. Scoped to main only so the release branch flow is
@@ -77,26 +77,26 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Set up Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-
       - name: Install yq
         run: make install-yq
 
-      # Re-run the copy step (without bumping the version) to regenerate the
-      # manifest files from the module version pinned in go.mod.
-      - name: Sync resource types from pinned version
+      # Re-run the copy step (without bumping the ref) to regenerate the
+      # manifest files from the ref pinned in deploy/manifest/defaults.yaml.
+      - name: Sync resource types from pinned ref
         run: make sync-resource-types
 
-      # If the regenerated files differ from what's committed, the PR has drift.
+      # If the regenerated tree differs from what's committed, the PR has drift.
+      # git status is required here because git diff ignores untracked files.
       - name: Check for drift
         run: |
-          if ! git diff --exit-code deploy/manifest/built-in-providers/; then
+          changes="$(git status --porcelain --untracked-files=all -- deploy/manifest/built-in-providers/)"
+          if [ -n "${changes}" ]; then
             echo ""
             echo "ERROR: Resource type manifest copies are out of sync with the pinned"
-            echo "resource-types-contrib version in deploy/manifest/defaults.yaml."
+            echo "resource-types-contrib revisions (sources[].ref) in deploy/manifest/defaults.yaml."
+            echo ""
+            printf '%s\n' "${changes}"
+            git diff -- deploy/manifest/built-in-providers/
             echo ""
             echo "Run 'make sync-resource-types' and commit the updated files."
             exit 1

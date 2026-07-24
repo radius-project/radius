@@ -1,17 +1,50 @@
 # defaults.yaml lists the resource types from resource-types-contrib that ship
 # as defaults in Radius. Each entry uses the <namespace>/<typeName> format
-# and is resolved to a file path in the resource-types-contrib module
+# and is resolved to a file path in the resource-types-contrib repository
 # using the convention: strip the "Radius." prefix, then
 # <namespace>/<typeName>/<typeName>.yaml.
 #
-# The version of resource-types-contrib is pinned in go.mod. To update:
-#   make update-resource-types
+# Each namespace is pinned independently under `sources` to a commit SHA and
+# fetched directly with git (no Go module). To update:
+#   make update-resource-types                                  # all namespaces
+#   make update-resource-types RESOURCE_TYPES_NAMESPACE=Radius.Compute
 #
 # To add a new default resource type:
 #   1. Merge the manifest in resource-types-contrib.
-#   2. Add the entry below.
-#   3. Run: make update-resource-types
-#   4. Commit the updated files (defaults.yaml, go.mod, go.sum, and copied YAMLs).
+#   2. Ensure its namespace has an entry under `sources` below.
+#   3. Add the entry under `defaultRegistration` below.
+#   4. Run: make update-resource-types
+#   5. Commit the updated files (defaults.yaml and the copied YAMLs).
+
+# sources pin, per namespace, the upstream resource-types-contrib revision the
+# default manifests for that namespace are copied from. sync-resource-types
+# fetches each distinct (repo, ref) once; update-resource-types resolves a
+# branch/tag/commit to an immutable commit SHA and rewrites the matching ref.
+# In the edge channel the refs often match (single linear history), but
+# namespace-scoped releases can intentionally diverge pins across namespaces.
+# Phase B adds versioned artifacts/checksum metadata alongside these refs.
+---
+sources:
+  - namespace: Radius.Compute
+    repo: github.com/radius-project/resource-types-contrib
+    # An immutable commit SHA (Phase A). A branch or tag is also accepted by the
+    # fetch, but update-resource-types always pins a full commit SHA.
+    ref: 158be1959352e2c23e22488ae7d26c772c989de1
+  - namespace: Radius.Data
+    repo: github.com/radius-project/resource-types-contrib
+    ref: 158be1959352e2c23e22488ae7d26c772c989de1
+  - namespace: Radius.Security
+    repo: github.com/radius-project/resource-types-contrib
+    ref: 158be1959352e2c23e22488ae7d26c772c989de1
+  - namespace: Radius.Messaging
+    repo: github.com/radius-project/resource-types-contrib
+    ref: 158be1959352e2c23e22488ae7d26c772c989de1
+  - namespace: Radius.AI
+    repo: github.com/radius-project/resource-types-contrib
+    ref: 158be1959352e2c23e22488ae7d26c772c989de1
+  - namespace: Radius.Storage
+    repo: github.com/radius-project/resource-types-contrib
+    ref: 158be1959352e2c23e22488ae7d26c772c989de1
 defaultRegistration:
   - Radius.Compute/containers
   - Radius.Compute/containerImages
