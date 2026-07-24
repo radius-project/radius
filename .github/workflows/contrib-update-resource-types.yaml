@@ -98,6 +98,14 @@ jobs:
             exit 1
           fi
 
+          case "${CHANNEL:-}" in
+            edge | release) ;;
+            *)
+              echo "ERROR: channel must be 'edge' or 'release'." >&2
+              exit 1
+              ;;
+          esac
+
           while IFS=$'\t' read -r ns ref; do
             if ! printf '%s' "${ns}" | grep -Eq "${ns_re}"; then
               echo "ERROR: invalid namespace '${ns}'" >&2
@@ -121,12 +129,12 @@ jobs:
             echo "pins<<PINS_EOF"
             printf '%s\n' "${pins}"
             echo "PINS_EOF"
-            echo "channel=${CHANNEL:-edge}"
+            echo "channel=${CHANNEL}"
             echo "ref=${CONTRIB_REF:-}"
             echo "actor=${ACTOR:-}"
             echo "affected=${affected}"
           } >> "${GITHUB_OUTPUT}"
-          echo "Batch: channel=${CHANNEL:-edge} ref=${CONTRIB_REF:-}" \
+          echo "Batch: channel=${CHANNEL} ref=${CONTRIB_REF:-}" \
             "namespaces=[${affected}]"
 
       - name: Generate App Token
@@ -136,7 +144,7 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
-          client-id: ${{ vars.RESOURCE_TYPES_BOT_CLIENT_ID }}
+          client-id: ${{ secrets.RESOURCE_TYPES_BOT_CLIENT_ID }}
           private-key: ${{ secrets.RESOURCE_TYPES_BOT_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: |
