@@ -231,6 +231,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// Use this channel to send progress updates to the UI.
 	progressChan := make(chan common.ProgressMsg)
+	defer close(progressChan)
 	progressCompleteChan := make(chan error)
 	progress := common.ProgressMsg{}
 

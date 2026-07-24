@@ -189,11 +189,11 @@ func ShowProgress(ctx context.Context, prompter prompt.Interface, options Displa
 		for {
 			select {
 			case <-ctx.Done():
-				program.Send(tea.Quit)
+				program.Quit()
 				return
 			case msg, ok := <-progressChan:
 				if !ok {
-					program.Send(tea.Quit)
+					program.Quit()
 					return
 				}
 
@@ -209,7 +209,7 @@ func ShowProgress(ctx context.Context, prompter prompt.Interface, options Displa
 	// cannot be canceled cooperatively, so terminate the process the way Helm does on
 	// interrupt. The terminal has already been restored by Bubble Tea at this point.
 	if pm, ok := finalModel.(*ProgressModel); ok && pm.Interrupted {
-		os.Exit(130)
+		os.Exit(130) //nolint:forbidigo // Intentional: match Helm's behavior and abort rad init on Ctrl+C.
 	}
 
 	return err
