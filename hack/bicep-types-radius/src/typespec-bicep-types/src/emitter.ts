@@ -15,11 +15,7 @@
 // ------------------------------------------------------------.
 
 import { EmitContext, emitFile, getDoc, resolvePath } from "@typespec/compiler";
-import {
-  TypeFactory,
-  writeMarkdown,
-  writeTypesJson
-} from "./bicep.js";
+import { TypeFactory, writeMarkdown, writeTypesJson } from "./bicep.js";
 import { discoverResources, DiscoveredResource } from "./resource-discovery.js";
 import { buildResourceType, newTranslationCache } from "./type-translator.js";
 import {
