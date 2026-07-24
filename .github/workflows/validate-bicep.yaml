@@ -77,7 +77,7 @@ jobs:
       - name: Install bicep CLI
         # Install into ~/.rad/bin so the rad CLI finds it; the script also adds
         # the dir to PATH for subsequent steps. Pinned version + checksum live in
-        # build/tools.mk.
+        # build/tools.yaml.
         run: make install-bicep BICEP_INSTALL_DIR="$HOME/.rad/bin"
 
       - name: Create a temporary file system
@@ -101,7 +101,7 @@ jobs:
               go run ./cmd/rad/main.go bicep publish-extension -f ./test/functional-portable/dynamicrp/noncloud/resources/testdata/testresourcetypes.yaml --target ./tmp-testresources-bicep-extension/testresources.tgz --force
 
       - name: Install jq
-        # Pinned version + checksums live in build/tools.mk (JQ_VERSION).
+        # Pinned version + checksums live in build/tools.yaml (JQ_VERSION).
         run: make install-jq
 
       - name: Modify bicepconfig.json

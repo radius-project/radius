@@ -10,7 +10,7 @@ set -euo pipefail
 # jq is published as a single per-platform binary on jqlang/jq's GitHub releases,
 # whose release tags are 'jq-<version>' (e.g. jq-1.8.2) and whose darwin assets
 # are named 'macos'. The pinned version and per-platform SHA-256 checksums are
-# normally provided by build/tools.mk through the environment. The script is
+# normally provided by build/tools.yaml through the generated Make include. The script is
 # generic, so when a value is not supplied it is resolved at runtime:
 #   * empty JQ_VERSION              -> the latest published release
 #   * missing checksum for platform -> read from the release's own 'sha256sum.txt'

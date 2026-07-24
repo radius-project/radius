@@ -8,7 +8,7 @@ set -euo pipefail
 # PATH so later steps can run yq.
 #
 # The pinned version and per-platform SHA-256 checksums are normally provided by
-# build/tools.mk through the environment. The script is generic, so when a value
+# build/tools.yaml through the generated Make include. The script is generic, so when a value
 # is not supplied it is resolved at runtime:
 #   * empty YQ_VERSION              -> the latest published release
 #   * missing checksum for platform -> read from the release's own checksums file

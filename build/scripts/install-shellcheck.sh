@@ -9,7 +9,7 @@ set -euo pipefail
 #
 # ShellCheck is published as a per-platform '.tar.xz' archive on
 # koalaman/shellcheck's GitHub releases. The pinned version and per-platform
-# SHA-256 checksums (of the archive) are normally provided by build/tools.mk
+# SHA-256 checksums (of the archive) are normally provided by build/tools.yaml
 # through the environment. The script is generic, so when a value is not supplied
 # it is resolved at runtime:
 #   * empty SHELLCHECK_VERSION      -> the latest published release
