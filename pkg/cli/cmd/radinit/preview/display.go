@@ -18,7 +18,7 @@ package preview
 
 import (
 	"context"
-	"path/filepath"
+	"io"
 
 	"github.com/radius-project/radius/pkg/cli/cmd/radinit/common"
 )
@@ -31,8 +31,10 @@ func (r *Runner) confirmOptions(ctx context.Context, options *initOptions) (bool
 // showProgress shows an updating progress display while the user's selections are being applied.
 //
 // This function should be called from a goroutine while installation proceeds in the background.
-func (r *Runner) showProgress(ctx context.Context, options *initOptions, progressChan <-chan common.ProgressMsg) error {
-	return common.ShowProgress(ctx, r.Prompter, toDisplayOptions(options), progressChan)
+// The display is rendered to out, which must be the real stdout captured before the caller
+// redirects os.Stdout for the duration of the installation.
+func (r *Runner) showProgress(ctx context.Context, options *initOptions, progressChan <-chan common.ProgressMsg, out io.Writer) error {
+	return common.ShowProgress(ctx, r.Prompter, toDisplayOptions(options), progressChan, out)
 }
 
 // toDisplayOptions converts the package-local initOptions into the common
@@ -45,7 +47,7 @@ func toDisplayOptions(options *initOptions) common.DisplayOptions {
 
 	var scaffoldFiles []string
 	if options.Application.Scaffold {
-		scaffoldFiles = []string{"app.bicep", "bicepconfig.json", filepath.Join(".rad", "rad.yaml")}
+		scaffoldFiles = []string{"app.bicep", "bicepconfig.json"}
 	}
 
 	return common.DisplayOptions{

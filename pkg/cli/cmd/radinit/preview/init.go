@@ -196,9 +196,15 @@ func (r *Runner) Run(ctx context.Context) error {
 	progressCompleteChan := make(chan error)
 	progress := common.ProgressMsg{}
 
+	// Redirect stdout to the null device while the progress UI owns the terminal so that
+	// stray writes from the installation steps (for example Helm's install logs) cannot
+	// corrupt the rendered output. The UI is given the real stdout explicitly.
+	progressOut, restoreStdout := common.RedirectStdout()
+	defer restoreStdout()
+
 	go func() {
 		// Show dynamic UI.
-		err := r.showProgress(ctx, r.Options, progressChan)
+		err := r.showProgress(ctx, r.Options, progressChan, progressOut)
 		if err != nil {
 			progressCompleteChan <- err
 		}
