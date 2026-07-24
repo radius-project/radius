@@ -42,7 +42,7 @@ func (r *Runner) showProgress(ctx context.Context, options *initOptions, progres
 func toDisplayOptions(options *initOptions) common.DisplayOptions {
 	recipePackLabel := ""
 	if options.Recipes.DefaultRecipePack {
-		recipePackLabel = "default recipe pack"
+		recipePackLabel = "default"
 	}
 
 	var scaffoldFiles []string
