@@ -267,10 +267,10 @@ func runPortForward(ctx context.Context, forwarder portForwardRunner, stopChan <
 	select {
 	case <-readyChan:
 	case err := <-forwardResultChan:
-		sendPortForwardError(ctx, stopChan, errorChan, err)
+		sendPortForwardError(stopChan, errorChan, err)
 		return
 	case <-ctx.Done():
-		sendPortForwardError(context.WithoutCancel(ctx), stopChan, errorChan, ctx.Err())
+		sendPortForwardError(stopChan, errorChan, ctx.Err())
 		return
 	case <-stopChan:
 		return
@@ -278,21 +278,21 @@ func runPortForward(ctx context.Context, forwarder portForwardRunner, stopChan <
 
 	ports, err := forwarder.GetPorts()
 	if err != nil {
-		sendPortForwardError(ctx, stopChan, errorChan, err)
+		sendPortForwardError(stopChan, errorChan, err)
 		return
 	}
 	if len(ports) == 0 {
-		sendPortForwardError(ctx, stopChan, errorChan, errors.New("port-forwarder returned no ports"))
+		sendPortForwardError(stopChan, errorChan, errors.New("port-forwarder returned no ports"))
 		return
 	}
 
 	select {
 	case portChan <- int(ports[0].Local):
 	case err := <-forwardResultChan:
-		sendPortForwardError(ctx, stopChan, errorChan, err)
+		sendPortForwardError(stopChan, errorChan, err)
 		return
 	case <-ctx.Done():
-		sendPortForwardError(context.WithoutCancel(ctx), stopChan, errorChan, ctx.Err())
+		sendPortForwardError(stopChan, errorChan, ctx.Err())
 		return
 	case <-stopChan:
 		return
@@ -300,13 +300,13 @@ func runPortForward(ctx context.Context, forwarder portForwardRunner, stopChan <
 
 	select {
 	case err := <-forwardResultChan:
-		sendPortForwardError(ctx, stopChan, errorChan, err)
+		sendPortForwardError(stopChan, errorChan, err)
 	case <-ctx.Done():
 	case <-stopChan:
 	}
 }
 
-func sendPortForwardError(ctx context.Context, stopChan <-chan struct{}, errorChan chan<- error, err error) {
+func sendPortForwardError(stopChan <-chan struct{}, errorChan chan<- error, err error) {
 	if err == nil {
 		err = errPortForwardStopped
 	}
@@ -319,7 +319,6 @@ func sendPortForwardError(ctx context.Context, stopChan <-chan struct{}, errorCh
 
 	select {
 	case errorChan <- err:
-	case <-ctx.Done():
 	case <-stopChan:
 	}
 }
