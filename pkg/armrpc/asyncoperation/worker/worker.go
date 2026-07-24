@@ -396,7 +396,7 @@ func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, resourceID
 
 	// 1. If the operation is in updating state and the last updated time is within the deduplication duration, we consider it as a duplicated operation.
 	// 2. If the operation is in terminal state, we consider it as a duplicated operation.
-	if (status.Status == v1.ProvisioningStateUpdating && status.LastUpdatedTime.IsZero() &&
+	if (status.Status == v1.ProvisioningStateUpdating && !status.LastUpdatedTime.IsZero() &&
 		status.LastUpdatedTime.Add(w.options.DeduplicationDuration).After(time.Now().UTC())) ||
 		status.Status.IsTerminal() {
 		return true, nil

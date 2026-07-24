@@ -22,8 +22,12 @@ import (
 	"testing"
 	"time"
 
+	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -157,4 +161,50 @@ func TestErrorHandling(t *testing.T) {
 		armErr := extractError(tt.err)
 		require.Equal(t, tt.expectedArmErr, armErr)
 	}
+}
+
+func TestIsDuplicated(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	sm := manager.NewMockStatusManager(ctrl)
+	worker := New(Options{DeduplicationDuration: 30 * time.Second}, sm, nil, nil)
+
+	resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/test-app"
+	rID, err := resources.ParseResource(resourceID)
+	require.NoError(t, err)
+	opID := uuid.New()
+
+	t.Run("updating status refreshed recently is duplicated", func(t *testing.T) {
+		sm.EXPECT().Get(gomock.Any(), rID, opID).Return(&manager.Status{
+			AsyncOperationStatus: v1.AsyncOperationStatus{Status: v1.ProvisioningStateUpdating},
+			LastUpdatedTime: time.Now().UTC().Add(-5 * time.Second),
+		}, nil)
+
+		dup, err := worker.isDuplicated(context.Background(), resourceID, opID)
+		require.NoError(t, err)
+		require.True(t, dup)
+	})
+
+	t.Run("updating status older than dedup window is not duplicated", func(t *testing.T) {
+		sm.EXPECT().Get(gomock.Any(), rID, opID).Return(&manager.Status{
+			AsyncOperationStatus: v1.AsyncOperationStatus{Status: v1.ProvisioningStateUpdating},
+			LastUpdatedTime: time.Now().UTC().Add(-2 * time.Minute),
+		}, nil)
+
+		dup, err := worker.isDuplicated(context.Background(), resourceID, opID)
+		require.NoError(t, err)
+		require.False(t, dup)
+	})
+
+	t.Run("terminal status is duplicated", func(t *testing.T) {
+		sm.EXPECT().Get(gomock.Any(), rID, opID).Return(&manager.Status{
+			AsyncOperationStatus: v1.AsyncOperationStatus{Status: v1.ProvisioningStateFailed},
+			LastUpdatedTime: time.Now().UTC().Add(-10 * time.Minute),
+		}, nil)
+
+		dup, err := worker.isDuplicated(context.Background(), resourceID, opID)
+		require.NoError(t, err)
+		require.True(t, dup)
+	})
 }
