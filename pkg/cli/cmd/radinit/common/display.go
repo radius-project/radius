@@ -19,6 +19,8 @@ package common
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -152,13 +154,36 @@ func ConfirmOptions(ctx context.Context, prompter prompt.Interface, options Disp
 	}
 }
 
+// RedirectStdout redirects the process's stdout to the null device and returns the previous
+// stdout writer along with a restore function. Callers render the progress UI to the returned
+// writer so that stray writes to os.Stdout during installation (for example Helm's install
+// logs) cannot corrupt the display. If the null device cannot be opened, stdout is left
+// unchanged. The returned restore function is safe to call via defer.
+func RedirectStdout() (out io.Writer, restore func()) {
+	real := os.Stdout
+	devNull, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+	if err != nil {
+		return real, func() {}
+	}
+
+	os.Stdout = devNull
+	return real, func() {
+		os.Stdout = real
+		_ = devNull.Close()
+	}
+}
+
 // ShowProgress shows an updating progress display while the user's selections are being applied.
 //
 // This function should be called from a goroutine while installation proceeds in the background.
 // Progress updates are received on progressChan; the loop also exits when ctx is canceled.
-func ShowProgress(ctx context.Context, prompter prompt.Interface, options DisplayOptions, progressChan <-chan ProgressMsg) error {
+//
+// The display is rendered to out rather than to os.Stdout directly. Callers redirect the
+// process's stdout elsewhere while this UI runs so that stray writes (for example Helm's
+// install logs) cannot corrupt the rendered output.
+func ShowProgress(ctx context.Context, prompter prompt.Interface, options DisplayOptions, progressChan <-chan ProgressMsg, out io.Writer) error {
 	model := NewProgressModel(options)
-	program := tea.NewProgram(model, tea.WithContext(ctx))
+	program := tea.NewProgram(model, tea.WithContext(ctx), tea.WithOutput(out))
 
 	go func() {
 		for {
@@ -177,7 +202,16 @@ func ShowProgress(ctx context.Context, prompter prompt.Interface, options Displa
 		}
 	}()
 
-	_, err := prompter.RunProgram(program)
+	finalModel, err := prompter.RunProgram(program)
+
+	// If the user pressed Ctrl+C, abort rad init immediately. The installation steps run
+	// in another goroutine and may be blocked in a call (such as a Helm install) that
+	// cannot be canceled cooperatively, so terminate the process the way Helm does on
+	// interrupt. The terminal has already been restored by Bubble Tea at this point.
+	if pm, ok := finalModel.(*ProgressModel); ok && pm.Interrupted {
+		os.Exit(130)
+	}
+
 	return err
 }
 
@@ -288,6 +322,9 @@ type ProgressModel struct {
 	spinner  spinner.Model
 	style    lipgloss.Style
 
+	// Interrupted is set when the user cancels the progress display with Ctrl+C.
+	Interrupted bool
+
 	// SuppressSpinner is used to suppress the ticking of the spinner for testing.
 	SuppressSpinner bool
 	width           int
@@ -305,6 +342,12 @@ func (m *ProgressModel) Init() tea.Cmd {
 // Update implements tea.Model. It updates the model state on progress updates and spinner ticks.
 func (m *ProgressModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		if msg.String() == "ctrl+c" {
+			m.Interrupted = true
+			return m, tea.Quit
+		}
+		return m, nil
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		return m, nil
