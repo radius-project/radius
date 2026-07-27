@@ -118,8 +118,6 @@ namespace Radius.Core;
   Radius is installed with a `default` Recipe Pack in the `default` resource group. When you create an Environment with the Radius CLI and do not set `recipePacks`, the Environment uses this `default` Recipe Pack.
   
   Prebuilt Recipe Packs and the Recipes they reference are published in the [resource-types-contrib](https://github.com/radius-project/resource-types-contrib) repository.
-  
-  For more information, see the Radius documentation at https://docs.radapp.io.
   """)
 model RecipePackResource
   is TrackedResourceRequired<RecipePackProperties, "recipePacks"> {

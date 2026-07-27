@@ -140,7 +140,6 @@ type ApplicationProperties struct {
 // }
 // }
 // ```
-// For more information, see the Radius documentation at https://docs.radapp.io.
 type ApplicationResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -288,7 +287,6 @@ type BicepSettingsProperties struct {
 // }
 // }
 // ```
-// For more information, see the Radius documentation at https://docs.radapp.io.
 type BicepSettingsResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -454,7 +452,6 @@ type EnvironmentProperties struct {
 // ## Advanced Terraform and Bicep settings
 // For advanced Terraform and Bicep settings, such as private module sources and registry authentication, reference a `Radius.Core/terraformSettings`
 // or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings` properties.
-// For more information, see the Radius documentation at https://docs.radapp.io.
 type EnvironmentResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -757,7 +754,6 @@ type RecipePackProperties struct {
 // Radius CLI and do not set `recipePacks`, the Environment uses this `default` Recipe Pack.
 // Prebuilt Recipe Packs and the Recipes they reference are published in the [resource-types-contrib](https://github.com/radius-project/resource-types-contrib)
 // repository.
-// For more information, see the Radius documentation at https://docs.radapp.io.
 type RecipePackResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
@@ -985,7 +981,6 @@ type TerraformSettingsProperties struct {
 // }
 // }
 // ```
-// For more information, see the Radius documentation at https://docs.radapp.io.
 type TerraformSettingsResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string
