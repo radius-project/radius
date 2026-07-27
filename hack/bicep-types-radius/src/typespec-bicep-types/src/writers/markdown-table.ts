@@ -281,7 +281,11 @@ function writeTable(
     );
   }
 
-  if (section.additionalProperties) {
+  // Only surface the `*` additionalProperties row for pure maps (objects with
+  // no named properties). Objects that both declare named properties and allow
+  // arbitrary keys (models that `extends Record<T>`) omit it, matching `rad
+  // resource-type show`, which lists only named properties.
+  if (section.additionalProperties && names.length === 0) {
     const type = getPropertyType(types, section.additionalProperties);
     lines.push(
       `| \`*\` | ${type} | false | false | Additional properties keyed by name. |`

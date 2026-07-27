@@ -162,6 +162,21 @@ function buildResource(): { factory: TypeFactory; resourceType: ResourceType } {
     )
   });
 
+  // An object that both declares named properties and allows arbitrary keys
+  // (models that `extends Record<T>`). The `*` additionalProperties row must be
+  // omitted here to match `rad resource-type show`.
+  const metadataRef = factory.addObjectType(
+    "ResourceMetadata",
+    {
+      owner: createObjectProperty(
+        stringRef,
+        ObjectTypePropertyFlags.Required,
+        "(Required) The owner of the resource."
+      )
+    },
+    stringRef
+  );
+
   const propertiesRef = factory.addObjectType("EnvironmentProperties", {
     providers: createObjectProperty(
       providersRef,
@@ -192,6 +207,11 @@ function buildResource(): { factory: TypeFactory; resourceType: ResourceType } {
       providerConfigsMapRef,
       ObjectTypePropertyFlags.None,
       "(Optional) Provider configs keyed by name."
+    ),
+    metadata: createObjectProperty(
+      metadataRef,
+      ObjectTypePropertyFlags.None,
+      "(Optional) Resource metadata."
     ),
     extensions: createObjectProperty(
       extensionsArrayRef,
@@ -343,6 +363,19 @@ describe("writeTableMarkdown", () => {
     );
     expect(markdown).toContain("### `providerConfigs` {#providerconfigs}\n");
     expect(markdown).toContain("| `name` | string | true | false |");
+  });
+
+  it("omits the additionalProperties row for objects that also have named properties", () => {
+    const { factory, resourceType } = buildResource();
+
+    const markdown = writeTableMarkdown([resourceType], factory.types);
+
+    // ResourceMetadata declares `owner` and extends Record<string>. The named
+    // property is listed but the `*` row is omitted to match the CLI.
+    expect(markdown).toContain("### `metadata` {#metadata}\n");
+    const metadata = markdown.split("### `metadata`")[1].split("###")[0];
+    expect(metadata).toContain("| `owner` | string | true | false |");
+    expect(metadata).not.toContain("| `*` |");
   });
 
   it("flattens nested objects into dotted-path sections", () => {
