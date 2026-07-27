@@ -331,7 +331,8 @@ function getLinkedType(
  * Enums (unions of string literals) render their allowed values, for example
  * `'terraform' \| 'bicep'`.
  */
-function getPropertyType(types: BicepType[], reference: TypeReference): string {  const type = types[reference.index];
+function getPropertyType(types: BicepType[], reference: TypeReference): string {
+  const type = types[reference.index];
   switch (type.type) {
     case TypeBaseKind.ObjectType:
     case TypeBaseKind.DiscriminatedObjectType:
