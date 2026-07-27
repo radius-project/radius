@@ -264,9 +264,9 @@ function writeTable(
     const property = section.properties[name];
     const enumValues = getEnumValues(types, property.type);
     const type =
-      enumValues ?
-        "string"
-      : getLinkedType(types, property.type, childAnchors.get(name));
+      enumValues ? "string" : (
+        getLinkedType(types, property.type, childAnchors.get(name))
+      );
     const required = (property.flags & ObjectTypePropertyFlags.Required) !== 0;
     const readOnly = (property.flags & ObjectTypePropertyFlags.ReadOnly) !== 0;
     let description = sanitizeCell(property.description ?? "");

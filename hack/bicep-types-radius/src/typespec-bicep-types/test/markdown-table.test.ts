@@ -298,7 +298,9 @@ describe("writeTableMarkdown", () => {
     const markdown = writeTableMarkdown([resourceType], factory.types);
 
     // The map property appears in the top-level table as a linked object...
-    expect(markdown).toContain("| `recipes` | [object](#recipes) | false | false |");
+    expect(markdown).toContain(
+      "| `recipes` | [object](#recipes) | false | false |"
+    );
     // ...and its value type (RecipeDefinition) is documented under its path,
     // including the enum allowed values in the nested property's description.
     expect(markdown).toContain("### `recipes` {#recipes}\n");
@@ -350,7 +352,9 @@ describe("writeTableMarkdown", () => {
       "| `secondaryEndpoint` | [object](#secondaryendpoint) | false | false |"
     );
     expect(markdown).toContain("### `primaryEndpoint` {#primaryendpoint}\n");
-    expect(markdown).toContain("### `secondaryEndpoint` {#secondaryendpoint}\n");
+    expect(markdown).toContain(
+      "### `secondaryEndpoint` {#secondaryendpoint}\n"
+    );
     // The shared property is documented under each path.
     const primary = markdown.split("### `primaryEndpoint`")[1].split("###")[0];
     expect(primary).toContain("| `host` | string | true | false |");
@@ -368,7 +372,9 @@ describe("writeTableMarkdown", () => {
     );
     // Each variant is expanded into its own section with the discriminator
     // literal omitted (shown only once on the parent row).
-    expect(markdown).toContain("### `compute.kubernetes` {#compute-kubernetes}\n");
+    expect(markdown).toContain(
+      "### `compute.kubernetes` {#compute-kubernetes}\n"
+    );
     expect(markdown).toContain("### `compute.aci` {#compute-aci}\n");
     expect(markdown).toContain("| `namespace` | string | true | false |");
     expect(markdown).toContain("| `resourceGroup` | string | true | false |");
