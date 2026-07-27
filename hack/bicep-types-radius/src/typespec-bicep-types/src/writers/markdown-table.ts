@@ -331,7 +331,8 @@ function resolveSection(
       };
     }
     if (objectType.additionalProperties) {
-      return resolveSection(types, objectType.additionalProperties);
+      const target = resolveLinkTarget(types, objectType.additionalProperties);
+      return target ? target.section : undefined;
     }
     return undefined;
   }

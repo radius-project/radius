@@ -84,6 +84,22 @@ function buildResource(): { factory: TypeFactory; resourceType: ResourceType } {
     recipeDefinitionRef
   );
 
+  // A map whose value type is an array of objects (map<ProviderConfig[]>). The
+  // element object shape must still expand into its own linked section even
+  // though the map value is an ArrayType rather than an ObjectType.
+  const providerConfigRef = factory.addObjectType("ProviderConfig", {
+    name: createObjectProperty(
+      stringRef,
+      ObjectTypePropertyFlags.Required,
+      "(Required) The provider config name."
+    )
+  });
+  const providerConfigsMapRef = factory.addObjectType(
+    "ProviderConfigMap",
+    {},
+    factory.addArrayType(providerConfigRef)
+  );
+
   // An array<Extension>: the element object is documented as its own section
   // and the Type column links to it as `[object](#extensions)[]`.
   const extensionRef = factory.addObjectType("Extension", {
@@ -171,6 +187,11 @@ function buildResource(): { factory: TypeFactory; resourceType: ResourceType } {
       recipesMapRef,
       ObjectTypePropertyFlags.None,
       "(Optional) Recipes keyed by name."
+    ),
+    providerConfigs: createObjectProperty(
+      providerConfigsMapRef,
+      ObjectTypePropertyFlags.None,
+      "(Optional) Provider configs keyed by name."
     ),
     extensions: createObjectProperty(
       extensionsArrayRef,
@@ -308,6 +329,20 @@ describe("writeTableMarkdown", () => {
       "| `kind` | string | true | false | (Required) The kind of recipe.<br />Allowed values: `bicep`, `terraform`. |"
     );
     expect(markdown).toContain("| `source` | string | true | false |");
+  });
+
+  it("documents map values that are arrays of objects as their own section", () => {
+    const { factory, resourceType } = buildResource();
+
+    const markdown = writeTableMarkdown([resourceType], factory.types);
+
+    // The map value is an array of objects (map<ProviderConfig[]>); the element
+    // object must still expand into its own linked section.
+    expect(markdown).toContain(
+      "| `providerConfigs` | [object](#providerconfigs) | false | false |"
+    );
+    expect(markdown).toContain("### `providerConfigs` {#providerconfigs}\n");
+    expect(markdown).toContain("| `name` | string | true | false |");
   });
 
   it("flattens nested objects into dotted-path sections", () => {
