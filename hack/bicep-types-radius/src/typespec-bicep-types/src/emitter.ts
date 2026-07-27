@@ -14,7 +14,7 @@
 // limitations under the License.
 // ------------------------------------------------------------.
 
-import { EmitContext, emitFile, resolvePath } from "@typespec/compiler";
+import { EmitContext, emitFile, getDoc, resolvePath } from "@typespec/compiler";
 import {
   ResourceType,
   TypeBaseKind,
@@ -71,6 +71,18 @@ export async function $onEmit(
       buildResourceType(context.program, factory, resource, cache);
     }
 
+    // Capture the resource-level `@doc` for each resource so the reference docs
+    // can render a description block. The description is authored on the body
+    // model and is not serialized into types.json, so it is read here from the
+    // TypeSpec program and keyed by the resource type name.
+    const descriptions = new Map<string, string | undefined>();
+    for (const resource of group) {
+      descriptions.set(
+        resource.resourceTypeName,
+        getDoc(context.program, resource.bodyModel)
+      );
+    }
+
     const apiVersion = group[0].apiVersion;
     const outFolder = `${namespace}/${apiVersion}`.toLowerCase();
 
@@ -100,7 +112,11 @@ export async function $onEmit(
           "docs",
           `${filename}.md`
         ),
-        content: writeTableMarkdown([resourceType], factory.types)
+        content: writeTableMarkdown(
+          [resourceType],
+          factory.types,
+          descriptions.get(resourceType.name)
+        )
       });
     }
   }
