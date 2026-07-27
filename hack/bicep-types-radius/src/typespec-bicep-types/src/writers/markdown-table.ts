@@ -127,7 +127,8 @@ function getTopLevelProperties(
     if (bag) {
       return {
         properties: bag.properties,
-        additionalProperties: bag.additionalProperties
+        additionalProperties: bag.additionalProperties,
+        discriminator: bag.discriminator
       };
     }
   }

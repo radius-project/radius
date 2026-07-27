@@ -414,4 +414,81 @@ describe("writeTableMarkdown", () => {
     expect(markdown).toContain("| `namespace` | string | true | false |");
     expect(markdown).toContain("| `resourceGroup` | string | true | false |");
   });
+
+  it("renders the discriminator row and variants when properties is a discriminated union", () => {
+    const factory = new TypeFactory();
+    const stringRef = factory.addStringType();
+
+    const propertiesRef = factory.addDiscriminatedObjectType(
+      "GatewayProperties",
+      "mode",
+      {
+        hostname: createObjectProperty(
+          stringRef,
+          ObjectTypePropertyFlags.None,
+          "(Optional) The gateway hostname."
+        )
+      },
+      {
+        http: factory.addObjectType("HttpGateway", {
+          mode: createObjectProperty(
+            factory.addStringLiteralType("http"),
+            ObjectTypePropertyFlags.Required,
+            "Discriminator value."
+          ),
+          port: createObjectProperty(
+            stringRef,
+            ObjectTypePropertyFlags.Required,
+            "(Required) The HTTP port."
+          )
+        }),
+        tcp: factory.addObjectType("TcpGateway", {
+          mode: createObjectProperty(
+            factory.addStringLiteralType("tcp"),
+            ObjectTypePropertyFlags.Required,
+            "Discriminator value."
+          ),
+          endpoint: createObjectProperty(
+            stringRef,
+            ObjectTypePropertyFlags.Required,
+            "(Required) The TCP endpoint."
+          )
+        })
+      }
+    );
+
+    const bodyRef = factory.addObjectType("Radius.Core/gateways", {
+      name: createObjectProperty(
+        stringRef,
+        ObjectTypePropertyFlags.Required,
+        "The resource name"
+      ),
+      properties: createObjectProperty(
+        propertiesRef,
+        ObjectTypePropertyFlags.Required,
+        "The resource-specific properties for this resource."
+      )
+    });
+
+    const resourceRef = factory.addResourceType(
+      "Radius.Core/gateways@2025-08-01-preview",
+      bodyRef,
+      ScopeType.ResourceGroup,
+      ScopeType.ResourceGroup
+    );
+    const resourceType = factory.lookupType(resourceRef) as ResourceType;
+
+    const markdown = writeTableMarkdown([resourceType], factory.types);
+
+    // The discriminator row appears in the top-level table with links to each
+    // variant section...
+    expect(markdown).toContain(
+      "| `mode` | string | true | false | Discriminator property that selects the variant. Allowed values: [`http`](#http), [`tcp`](#tcp). |"
+    );
+    // ...and each variant is expanded as its own section.
+    expect(markdown).toContain("### `http` {#http}\n");
+    expect(markdown).toContain("### `tcp` {#tcp}\n");
+    expect(markdown).toContain("| `port` | string | true | false |");
+    expect(markdown).toContain("| `endpoint` | string | true | false |");
+  });
 });
