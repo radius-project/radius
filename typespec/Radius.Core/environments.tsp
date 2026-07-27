@@ -135,8 +135,6 @@ namespace Radius.Core;
   ## Advanced Terraform and Bicep settings
   
   For advanced Terraform and Bicep settings, such as private module sources and registry authentication, reference a `Radius.Core/terraformSettings` or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings` properties.
-  
-  For more information, see the Radius documentation at https://docs.radapp.io.
   """)
 model EnvironmentResource
   is TrackedResourceRequired<EnvironmentProperties, "environments"> {

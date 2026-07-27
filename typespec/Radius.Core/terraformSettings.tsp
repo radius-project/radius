@@ -141,8 +141,6 @@ namespace Radius.Core;
     }
   }
   ```
-  
-  For more information, see the Radius documentation at https://docs.radapp.io.
   """)
 model TerraformSettingsResource
   is TrackedResourceRequired<TerraformSettingsProperties, "terraformSettings"> {

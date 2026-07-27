@@ -82,8 +82,6 @@ namespace Radius.Core;
     }
   }
   ```
-  
-  For more information, see the Radius documentation at https://docs.radapp.io.
   """)
 model ApplicationResource
   is TrackedResourceRequired<ApplicationProperties, "applications"> {

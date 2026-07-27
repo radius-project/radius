@@ -47,7 +47,6 @@ type ApplicationsClientCreateOrUpdateResponse struct {
 	// }
 	// }
 	// ```
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	ApplicationResource
 }
 
@@ -106,7 +105,6 @@ type ApplicationsClientGetResponse struct {
 	// }
 	// }
 	// ```
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	ApplicationResource
 }
 
@@ -160,7 +158,6 @@ type ApplicationsClientUpdateResponse struct {
 	// }
 	// }
 	// ```
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	ApplicationResource
 }
 
@@ -223,7 +220,6 @@ type BicepSettingsClientCreateOrUpdateResponse struct {
 	// }
 	// }
 	// ```
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	BicepSettingsResource
 }
 
@@ -291,7 +287,6 @@ type BicepSettingsClientGetResponse struct {
 	// }
 	// }
 	// ```
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	BicepSettingsResource
 }
 
@@ -360,7 +355,6 @@ type BicepSettingsClientUpdateResponse struct {
 	// }
 	// }
 	// ```
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	BicepSettingsResource
 }
 
@@ -452,7 +446,6 @@ type EnvironmentsClientCreateOrUpdateResponse struct {
 	// ## Advanced Terraform and Bicep settings
 	// For advanced Terraform and Bicep settings, such as private module sources and registry authentication, reference a `Radius.Core/terraformSettings`
 	// or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings` properties.
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	EnvironmentResource
 }
 
@@ -549,7 +542,6 @@ type EnvironmentsClientGetResponse struct {
 	// ## Advanced Terraform and Bicep settings
 	// For advanced Terraform and Bicep settings, such as private module sources and registry authentication, reference a `Radius.Core/terraformSettings`
 	// or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings` properties.
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	EnvironmentResource
 }
 
@@ -647,7 +639,6 @@ type EnvironmentsClientUpdateResponse struct {
 	// ## Advanced Terraform and Bicep settings
 	// For advanced Terraform and Bicep settings, such as private module sources and registry authentication, reference a `Radius.Core/terraformSettings`
 	// or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings` properties.
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	EnvironmentResource
 }
 
@@ -737,7 +728,6 @@ type RecipePacksClientCreateOrUpdateResponse struct {
 	// Radius CLI and do not set `recipePacks`, the Environment uses this `default` Recipe Pack.
 	// Prebuilt Recipe Packs and the Recipes they reference are published in the [resource-types-contrib](https://github.com/radius-project/resource-types-contrib)
 	// repository.
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	RecipePackResource
 }
 
@@ -826,7 +816,6 @@ type RecipePacksClientGetResponse struct {
 	// Radius CLI and do not set `recipePacks`, the Environment uses this `default` Recipe Pack.
 	// Prebuilt Recipe Packs and the Recipes they reference are published in the [resource-types-contrib](https://github.com/radius-project/resource-types-contrib)
 	// repository.
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	RecipePackResource
 }
 
@@ -916,7 +905,6 @@ type RecipePacksClientUpdateResponse struct {
 	// Radius CLI and do not set `recipePacks`, the Environment uses this `default` Recipe Pack.
 	// Prebuilt Recipe Packs and the Recipes they reference are published in the [resource-types-contrib](https://github.com/radius-project/resource-types-contrib)
 	// repository.
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	RecipePackResource
 }
 
@@ -1013,7 +1001,6 @@ type TerraformSettingsClientCreateOrUpdateResponse struct {
 	// }
 	// }
 	// ```
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	TerraformSettingsResource
 }
 
@@ -1115,7 +1102,6 @@ type TerraformSettingsClientGetResponse struct {
 	// }
 	// }
 	// ```
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	TerraformSettingsResource
 }
 
@@ -1218,6 +1204,5 @@ type TerraformSettingsClientUpdateResponse struct {
 	// }
 	// }
 	// ```
-	// For more information, see the Radius documentation at https://docs.radapp.io.
 	TerraformSettingsResource
 }
