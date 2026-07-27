@@ -1,0 +1,117 @@
+# Provider-agnostic resource delete shared by delete-azure.yml and delete-aws.yml.
+# Runs after restore-state (rad startup) has brought back the control-plane state,
+# so the environment, its recipe packs, the application, and the Terraform recipe
+# state all exist and recipe deletes can run. Deletes a single application or
+# environment with the Radius.Core preview surface, then writes a rad-delete-result
+# artifact. State is persisted again by the separate `teardown` action (rad shutdown),
+# which runs unconditionally after this step.
+name: Radius - Delete resource
+description: Delete a Radius application or environment (Radius.Core preview) and write a result artifact.
+
+inputs:
+  resource-type:
+    description: What to delete -- "application" or "environment".
+    required: true
+  name:
+    description: Name of the application or environment to delete.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Delete Radius resource
+      shell: bash
+      env:
+        RESOURCE_TYPE: ${{ inputs.resource-type }}
+        RESOURCE_NAME: ${{ inputs.name }}
+      run: |
+        # pipefail so a failed `rad` whose output is piped through `tee` is detected
+        # via PIPESTATUS rather than masked by tee's exit code. -e/-u make setup and
+        # result-writing failures (mkdir, mktemp, jq, redirection) fail fast instead
+        # of silently producing a missing or partial rad-delete-result artifact; -e
+        # is relaxed only around the `rad | tee` pipeline below so the delete's own
+        # exit code is captured and reported rather than aborting the step.
+        set -euo pipefail
+        mkdir -p /tmp/radius-output
+        RESULT_FILE=/tmp/radius-output/rad-delete-result.json
+
+        # Write the combined result on exit so the rad-delete-result artifact is
+        # complete even when the delete fails and the step exits early.
+        # Capture rad's combined output to a file (not a shell variable) so the
+        # result artifact can embed it via `jq --rawfile` regardless of size --
+        # passing large output through `jq --arg` risks exceeding OS argv limits and
+        # failing the artifact write even on a successful delete. Created up front and
+        # left empty so write_result can always read it, including on an early exit.
+        OUTCOME="succeeded"
+        EXIT=0
+        OUTFILE=$(mktemp)
+        write_result() {
+          jq -n \
+            --arg outcome "$OUTCOME" \
+            --argjson exitCode "$EXIT" \
+            --arg resourceType "$RESOURCE_TYPE" \
+            --arg name "$RESOURCE_NAME" \
+            --rawfile output "$OUTFILE" \
+            '{schemaVersion:"1.0", outcome:$outcome, exitCode:$exitCode, resourceType:$resourceType, name:$name, output:$output}' \
+            > "$RESULT_FILE"
+        }
+        trap write_result EXIT
+
+        # Sanitize untrusted inputs for log output only: strip control characters
+        # (newlines/CR in particular) so a crafted resource type/name cannot start a
+        # new log line or inject GitHub Actions workflow commands (e.g. a name
+        # containing `\n::warning::`). The raw values are still passed verbatim to
+        # `rad` and to write_result (jq --arg JSON-encodes them safely).
+        SAFE_TYPE=$(printf '%s' "$RESOURCE_TYPE" | tr -d '[:cntrl:]')
+        SAFE_NAME=$(printf '%s' "$RESOURCE_NAME" | tr -d '[:cntrl:]')
+
+        if [ -z "${RESOURCE_NAME//[[:space:]]/}" ]; then
+          echo "No resource name supplied to delete." >&2
+          OUTCOME="invalid_input"
+          EXIT=2
+          exit 2
+        fi
+
+        # Map the resource type to its rad command. Only application and environment
+        # are supported; anything else fails fast without touching the control plane.
+        case "$RESOURCE_TYPE" in
+          application) VERB=(app delete) ;;
+          environment) VERB=(env delete) ;;
+          *)
+            echo "Unsupported resource type: '$SAFE_TYPE' (expected 'application' or 'environment')." >&2
+            OUTCOME="invalid_input"
+            EXIT=2
+            exit 2
+            ;;
+        esac
+
+        # --yes bypasses the interactive confirmation prompt; --preview selects the
+        # Radius.Core implementation the deploy workflow provisions (without it the
+        # base command dispatches to the legacy, non-Radius.Core surface).
+        # Keep the group label constant: RESOURCE_NAME is untrusted and a newline
+        # or workflow-command-like text in it could corrupt log rendering or inject
+        # workflow commands. The actual `rad` invocation below still carries the name.
+        echo "::group::rad ${VERB[*]} --yes --preview"
+        # Relax -e only for the pipeline so a non-zero `rad` exit is captured via
+        # PIPESTATUS and reported below, rather than aborting the step before we
+        # can write the result artifact. -e is restored immediately after.
+        set +e
+        rad "${VERB[@]}" "$RESOURCE_NAME" --yes --preview 2>&1 | tee "$OUTFILE"
+        EXIT=${PIPESTATUS[0]}
+        set -e
+        echo "::endgroup::"
+
+        if [ "$EXIT" -ne 0 ]; then
+          OUTCOME="failed"
+          echo "Failed to delete $SAFE_TYPE '$SAFE_NAME'." >&2
+          exit "$EXIT"
+        fi
+        echo "✅ Deleted $SAFE_TYPE '$SAFE_NAME'."
+
+    - name: Upload delete result
+      if: always()
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      with:
+        name: rad-delete-result
+        path: /tmp/radius-output/
+        retention-days: 1
