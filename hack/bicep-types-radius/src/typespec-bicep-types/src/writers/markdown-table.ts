@@ -450,7 +450,8 @@ function getPropertyType(types: BicepType[], reference: TypeReference): string {
 /** Renders an array as `<scalar> array`, or `array` when the element is complex. */
 function getArrayType(types: BicepType[], type: ArrayType): string {
   const element = getPropertyType(types, type.itemType);
-  return /^[a-z]+$/.test(element) ? `${element} array` : "array";
+  const scalars = new Set(["string", "integer", "boolean", "null"]);
+  return scalars.has(element) ? `${element} array` : "array";
 }
 
 /**

@@ -111,6 +111,12 @@ function buildResource(): { factory: TypeFactory; resourceType: ResourceType } {
   });
   const extensionsArrayRef = factory.addArrayType(extensionRef);
 
+  // An array whose element object does not expand into a section (it has no
+  // named properties and no additional properties). Its Type cell must render
+  // `array`, not `object array`.
+  const logEntryRef = factory.addObjectType("LogEntry", {});
+  const logsArrayRef = factory.addArrayType(logEntryRef);
+
   // A discriminated union (like EnvironmentCompute): a `kind` discriminator with
   // shared base properties plus per-variant properties. The variant objects
   // carry the discriminator literal, which the writer omits from their tables.
@@ -217,6 +223,11 @@ function buildResource(): { factory: TypeFactory; resourceType: ResourceType } {
       extensionsArrayRef,
       ObjectTypePropertyFlags.None,
       "(Optional) Extensions applied to the Environment."
+    ),
+    logs: createObjectProperty(
+      logsArrayRef,
+      ObjectTypePropertyFlags.None,
+      "(Optional) Log entries."
     ),
     simulated: createObjectProperty(
       boolRef,
@@ -404,6 +415,17 @@ describe("writeTableMarkdown", () => {
     // ...and the element object (Extension) is expanded as its own section.
     expect(markdown).toContain("### `extensions` {#extensions}\n");
     expect(markdown).toContain("| `manifest` | string | false | false |");
+  });
+
+  it("renders arrays of non-expanding objects as `array`, not `object array`", () => {
+    const { factory, resourceType } = buildResource();
+
+    const markdown = writeTableMarkdown([resourceType], factory.types);
+
+    // LogEntry has no properties so it does not expand; the array Type cell must
+    // be `array` rather than `object array`.
+    expect(markdown).toContain("| `logs` | array | false | false |");
+    expect(markdown).not.toContain("object array");
   });
 
   it("expands a shared object type into a separate section per path", () => {
