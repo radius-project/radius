@@ -95,11 +95,77 @@ function buildResource(): { factory: TypeFactory; resourceType: ResourceType } {
   });
   const extensionsArrayRef = factory.addArrayType(extensionRef);
 
+  // A discriminated union (like EnvironmentCompute): a `kind` discriminator with
+  // shared base properties plus per-variant properties. The variant objects
+  // carry the discriminator literal, which the writer omits from their tables.
+  const computeRef = factory.addDiscriminatedObjectType(
+    "EnvironmentCompute",
+    "kind",
+    {
+      resourceId: createObjectProperty(
+        stringRef,
+        ObjectTypePropertyFlags.None,
+        "(Optional) The compute resource id."
+      )
+    },
+    {
+      kubernetes: factory.addObjectType("KubernetesCompute", {
+        kind: createObjectProperty(
+          factory.addStringLiteralType("kubernetes"),
+          ObjectTypePropertyFlags.Required,
+          "Discriminator value."
+        ),
+        namespace: createObjectProperty(
+          stringRef,
+          ObjectTypePropertyFlags.Required,
+          "(Required) The Kubernetes namespace."
+        )
+      }),
+      aci: factory.addObjectType("ACICompute", {
+        kind: createObjectProperty(
+          factory.addStringLiteralType("aci"),
+          ObjectTypePropertyFlags.Required,
+          "Discriminator value."
+        ),
+        resourceGroup: createObjectProperty(
+          stringRef,
+          ObjectTypePropertyFlags.Required,
+          "(Required) The ACI resource group."
+        )
+      })
+    }
+  );
+
+  // A shared object type referenced from two properties to prove each path is
+  // expanded into its own section rather than de-duplicated by type identity.
+  const endpointRef = factory.addObjectType("EndpointInfo", {
+    host: createObjectProperty(
+      stringRef,
+      ObjectTypePropertyFlags.Required,
+      "(Required) The endpoint host."
+    )
+  });
+
   const propertiesRef = factory.addObjectType("EnvironmentProperties", {
     providers: createObjectProperty(
       providersRef,
       ObjectTypePropertyFlags.None,
       "(Optional) Target compute platform."
+    ),
+    compute: createObjectProperty(
+      computeRef,
+      ObjectTypePropertyFlags.None,
+      "(Optional) The compute platform."
+    ),
+    primaryEndpoint: createObjectProperty(
+      endpointRef,
+      ObjectTypePropertyFlags.None,
+      "(Optional) The primary endpoint."
+    ),
+    secondaryEndpoint: createObjectProperty(
+      endpointRef,
+      ObjectTypePropertyFlags.None,
+      "(Optional) The secondary endpoint."
     ),
     recipes: createObjectProperty(
       recipesMapRef,
@@ -268,5 +334,43 @@ describe("writeTableMarkdown", () => {
     // ...and the element object (Extension) is expanded as its own section.
     expect(markdown).toContain("### `extensions` {#extensions}\n");
     expect(markdown).toContain("| `manifest` | string | false | false |");
+  });
+
+  it("expands a shared object type into a separate section per path", () => {
+    const { factory, resourceType } = buildResource();
+
+    const markdown = writeTableMarkdown([resourceType], factory.types);
+
+    // Both properties reference the same EndpointInfo type but each links to
+    // its own dotted-path section rather than collapsing to a shared one.
+    expect(markdown).toContain(
+      "| `primaryEndpoint` | [object](#primaryendpoint) | false | false |"
+    );
+    expect(markdown).toContain(
+      "| `secondaryEndpoint` | [object](#secondaryendpoint) | false | false |"
+    );
+    expect(markdown).toContain("### `primaryEndpoint` {#primaryendpoint}\n");
+    expect(markdown).toContain("### `secondaryEndpoint` {#secondaryendpoint}\n");
+    // The shared property is documented under each path.
+    const primary = markdown.split("### `primaryEndpoint`")[1].split("###")[0];
+    expect(primary).toContain("| `host` | string | true | false |");
+  });
+
+  it("expands discriminated unions into a discriminator row and variant sections", () => {
+    const { factory, resourceType } = buildResource();
+
+    const markdown = writeTableMarkdown([resourceType], factory.types);
+
+    // The discriminated property's section leads with a discriminator row whose
+    // allowed values link to each variant section.
+    expect(markdown).toContain(
+      "| `kind` | string | true | false | Discriminator property that selects the variant. Allowed values: [`aci`](#compute-aci), [`kubernetes`](#compute-kubernetes). |"
+    );
+    // Each variant is expanded into its own section with the discriminator
+    // literal omitted (shown only once on the parent row).
+    expect(markdown).toContain("### `compute.kubernetes` {#compute-kubernetes}\n");
+    expect(markdown).toContain("### `compute.aci` {#compute-aci}\n");
+    expect(markdown).toContain("| `namespace` | string | true | false |");
+    expect(markdown).toContain("| `resourceGroup` | string | true | false |");
   });
 });

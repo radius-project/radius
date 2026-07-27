@@ -50,12 +50,27 @@ const ENVELOPE_PROPERTIES = new Set([
 interface PropertyBag {
   properties: Record<string, ObjectTypeProperty>;
   additionalProperties?: TypeReference;
+  /**
+   * Discriminated-union metadata, present when the object selects its shape via
+   * a discriminator property. Each element is documented as its own variant
+   * section and the discriminator row links to them.
+   */
+  discriminator?: {
+    propertyName: string;
+    elements: Record<string, TypeReference>;
+  };
 }
 
 /** A pending object section to render, keyed by its dotted-path heading. */
 interface Section extends PropertyBag {
   heading: string;
-  index?: number;
+  /**
+   * Type indices of the sections on the path from the root to this one
+   * (inclusive of this section's own type). Distinct paths that share a type
+   * are each expanded into their own section (matching the CLI), while this set
+   * guards against genuinely recursive types producing an unbounded traversal.
+   */
+  ancestors: Set<number>;
 }
 
 /**
@@ -136,29 +151,67 @@ function writeResource(
   types: BicepType[],
   topLevel: PropertyBag
 ): void {
-  const queue: Section[] = [{ heading: "", ...topLevel }];
-  const visited = new Set<number>();
-  const anchorsByIndex = new Map<number, string>();
+  const queue: Section[] = [
+    { heading: "", ancestors: new Set<number>(), ...topLevel }
+  ];
   let state: "none" | "top-level" | "object" = "none";
 
   while (queue.length > 0) {
     const section = queue.shift() as Section;
     const names = sortedKeys(section.properties);
 
-    // Enqueue nested sections before emitting this section's heading so child
-    // headings are derived from the current traversal state, matching the CLI:
-    // top-level object properties are keyed by name, deeper ones by path. Object
-    // properties, map value types, and array-element objects each expand into
-    // their own section, and the anchor map records each section's heading so
-    // the Type column can link to it. The visited set guards against recursive
-    // schemas producing an unbounded traversal.
+    // Expand each nested object into its own section keyed by dotted path, so a
+    // type shared across several paths is documented once per path (matching
+    // the CLI, which walks an inlined JSON schema). Child anchors are recorded
+    // per property name for this section's Type-cell links. The ancestors set
+    // guards against genuinely recursive types without collapsing distinct
+    // paths. Top-level object properties are keyed by name, deeper ones by path.
+    const childAnchors = new Map<string, string>();
+    const childHeading = (key: string): string =>
+      state === "none" ? key : `${section.heading}.${key}`;
+
     for (const name of names) {
       const target = resolveLinkTarget(types, section.properties[name].type);
-      if (target && !visited.has(target.section.index)) {
-        visited.add(target.section.index);
-        const heading = state === "none" ? name : `${section.heading}.${name}`;
-        anchorsByIndex.set(target.section.index, anchor(heading));
-        queue.push({ heading, ...target.section });
+      if (!target || section.ancestors.has(target.section.index)) {
+        continue;
+      }
+      const heading = childHeading(name);
+      childAnchors.set(name, anchor(heading));
+      queue.push({
+        heading,
+        ancestors: new Set(section.ancestors).add(target.section.index),
+        ...target.section
+      });
+    }
+
+    // Document each discriminated-union variant as its own section, dropping the
+    // discriminator literal from the variant table since it is already shown on
+    // the parent's discriminator row.
+    if (section.discriminator) {
+      const { propertyName, elements } = section.discriminator;
+      for (const value of sortedKeys(elements)) {
+        const ref = elements[value];
+        const elementType = types[ref.index];
+        if (
+          elementType.type !== TypeBaseKind.ObjectType ||
+          section.ancestors.has(ref.index)
+        ) {
+          continue;
+        }
+        const properties: Record<string, ObjectTypeProperty> = {};
+        for (const [key, prop] of Object.entries(
+          (elementType as ObjectType).properties
+        )) {
+          if (key !== propertyName) {
+            properties[key] = prop;
+          }
+        }
+        queue.push({
+          heading: childHeading(value),
+          ancestors: new Set(section.ancestors).add(ref.index),
+          properties,
+          additionalProperties: (elementType as ObjectType).additionalProperties
+        });
       }
     }
 
@@ -178,7 +231,7 @@ function writeResource(
       }
     }
 
-    writeTable(lines, types, section, anchorsByIndex);
+    writeTable(lines, types, section, childAnchors);
     lines.push("");
   }
 }
@@ -187,11 +240,15 @@ function writeResource(
 function writeTable(
   lines: string[],
   types: BicepType[],
-  section: PropertyBag,
-  anchorsByIndex: Map<number, string>
+  section: Section,
+  childAnchors: Map<string, string>
 ): void {
   const names = sortedKeys(section.properties);
-  if (names.length === 0 && !section.additionalProperties) {
+  if (
+    names.length === 0 &&
+    !section.additionalProperties &&
+    !section.discriminator
+  ) {
     lines.push("_No properties._");
     return;
   }
@@ -199,13 +256,17 @@ function writeTable(
   lines.push("| Property | Type | Required | Read-Only | Description |");
   lines.push("|----------|------|----------|-----------|-------------|");
 
+  if (section.discriminator) {
+    lines.push(writeDiscriminatorRow(section));
+  }
+
   for (const name of names) {
     const property = section.properties[name];
     const enumValues = getEnumValues(types, property.type);
     const type =
       enumValues ?
         "string"
-      : getLinkedType(types, property.type, anchorsByIndex);
+      : getLinkedType(types, property.type, childAnchors.get(name));
     const required = (property.flags & ObjectTypePropertyFlags.Required) !== 0;
     const readOnly = (property.flags & ObjectTypePropertyFlags.ReadOnly) !== 0;
     let description = sanitizeCell(property.description ?? "");
@@ -225,6 +286,23 @@ function writeTable(
       `| \`*\` | ${type} | false | false | Additional properties keyed by name. |`
     );
   }
+}
+
+/**
+ * Renders the discriminator property row for a discriminated-union section. The
+ * allowed values link to each variant's section so readers can jump to the
+ * shape selected by that value.
+ */
+function writeDiscriminatorRow(section: Section): string {
+  const { propertyName, elements } = section.discriminator!;
+  const allowed = sortedKeys(elements)
+    .map((value) => {
+      const path = section.heading ? `${section.heading}.${value}` : value;
+      return `[\`${value}\`](#${anchor(path)})`;
+    })
+    .join(", ");
+  const description = `Discriminator property that selects the variant. Allowed values: ${allowed}.`;
+  return `| \`${propertyName}\` | string | true | false | ${description} |`;
 }
 
 /** A resolved object section together with the index of its source type. */
@@ -258,9 +336,14 @@ function resolveSection(
     return undefined;
   }
   if (type.type === TypeBaseKind.DiscriminatedObjectType) {
+    const discriminated = type as DiscriminatedObjectType;
     return {
       index: reference.index,
-      properties: (type as DiscriminatedObjectType).baseProperties
+      properties: discriminated.baseProperties,
+      discriminator: {
+        propertyName: discriminated.discriminator,
+        elements: discriminated.elements
+      }
     };
   }
   return undefined;
@@ -312,13 +395,12 @@ function anchor(headingPath: string): string {
 function getLinkedType(
   types: BicepType[],
   reference: TypeReference,
-  anchorsByIndex: Map<number, string>
+  anchorId: string | undefined
 ): string {
-  const target = resolveLinkTarget(types, reference);
-  if (target) {
-    const id = anchorsByIndex.get(target.section.index);
-    if (id) {
-      const link = `[object](#${id})`;
+  if (anchorId) {
+    const target = resolveLinkTarget(types, reference);
+    if (target) {
+      const link = `[object](#${anchorId})`;
       return target.isArray ? `${link}[]` : link;
     }
   }
