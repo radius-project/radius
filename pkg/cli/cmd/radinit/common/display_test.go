@@ -20,6 +20,7 @@ import (
 	"os"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,8 +28,15 @@ func Test_RedirectStdout(t *testing.T) {
 	original := os.Stdout
 
 	out, restore := RedirectStdout()
-	// Ensure the original stdout is restored even if an assertion fails.
-	defer restore()
+
+	// Restore the original stdout on failure, but only if the explicit restore
+	// below did not already run, so restore is called exactly once.
+	restored := false
+	defer func() {
+		if !restored {
+			restore()
+		}
+	}()
 
 	// The returned writer is the original stdout so the progress UI can keep
 	// rendering to the real terminal.
@@ -40,5 +48,21 @@ func Test_RedirectStdout(t *testing.T) {
 
 	// Restoring puts the original stdout back in place.
 	restore()
+	restored = true
 	require.Same(t, original, os.Stdout)
+}
+
+func Test_ProgressModel_Update_CtrlC(t *testing.T) {
+	model := NewProgressModel(DisplayOptions{})
+
+	updated, cmd := model.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+
+	// Ctrl+C marks the model as interrupted so the caller can abort rad init.
+	pm, ok := updated.(*ProgressModel)
+	require.True(t, ok)
+	require.True(t, pm.Interrupted)
+
+	// The returned command quits the Bubble Tea program.
+	require.NotNil(t, cmd)
+	require.IsType(t, tea.QuitMsg{}, cmd())
 }
