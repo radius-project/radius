@@ -143,14 +143,14 @@ git checkout -b <USERNAME>/update-resource-types
 make update-resource-types
 ```
 
-This updates the `resource-types-contrib` dependency in `go.mod` to the latest version and copies the manifest files listed in `deploy/manifest/defaults.yaml` into `deploy/manifest/built-in-providers/`. Review the diff to confirm the changes are expected.
+This resolves the latest `resource-types-contrib` `main` commit, pins it as a commit SHA per namespace in `deploy/manifest/defaults.yaml` (`sources[].ref`), and copies the manifest files listed under `defaultRegistration` into `deploy/manifest/built-in-providers/`. To pin a specific release tag or commit instead of the latest `main`, pass `RESOURCE_TYPES_REF`, for example `make update-resource-types RESOURCE_TYPES_REF=v0.56.0`. To update a single namespace, also pass `RESOURCE_TYPES_NAMESPACE`, for example `make update-resource-types RESOURCE_TYPES_NAMESPACE=Radius.Compute RESOURCE_TYPES_REF=v0.56.0`. Review the diff to confirm the changes are expected.
 
 If the update fails or the copied manifests fail schema validation at startup during testing, you have two options:
 
 1. **Fix forward**: Correct the manifest in `resource-types-contrib`, merge the fix, then re-run `make update-resource-types`.
-2. **Pin to last known good version**: Revert the `go.mod` change to keep the previous `resource-types-contrib` version and run `make sync-resource-types` to restore the matching manifests.
+2. **Pin to last known good version**: Revert the `sources[].ref` change in `deploy/manifest/defaults.yaml` to keep the previous `resource-types-contrib` revision and run `make sync-resource-types` to restore the matching manifests.
 
-Open a separate PR targeting `main` in `radius-project/radius` with the updated `go.mod`, `go.sum`, and manifest files. Merge it before proceeding to the `versions.yaml` update.
+Open a separate PR targeting `main` in `radius-project/radius` with the updated `deploy/manifest/defaults.yaml` and manifest files. Merge it before proceeding to the `versions.yaml` update.
 
 ### Step 4: Update versions.yaml
 
