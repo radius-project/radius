@@ -463,9 +463,11 @@ When a new resource type version is pulled into Radius via a `go.mod` bump, the 
 Push changes from contrib → Radius PR
 
 Pros:
+
 - No build changes
 
 Cons:
+
 - Operational complexity
 - Requires cross-repo PATs
 - Duplicates files
