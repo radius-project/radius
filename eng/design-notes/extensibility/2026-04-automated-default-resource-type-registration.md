@@ -142,24 +142,28 @@ The copy script resolves each entry to a file path in the `resource-types-contri
 
 #### `make update-resource-types`
 
+<!-- markdownlint-disable MD010 -- Makefile recipes require hard tabs. -->
+
 ```make
 update-resource-types:
- go get github.com/radius-project/resource-types-contrib@latest
- go mod tidy
- $(MAKE) sync-resource-types
+	go get github.com/radius-project/resource-types-contrib@latest
+	go mod tidy
+	$(MAKE) sync-resource-types
 
 sync-resource-types:
- @echo "Syncing default resource types from resource-types-contrib..."
- @MODULE_DIR=$$(go mod download -json github.com/radius-project/resource-types-contrib | jq -r '.Dir') && \
- for path in $$(yq '.defaultRegistration[]' deploy/manifest/defaults.yaml); do \
-  for dest in deploy/manifest/built-in-providers/dev deploy/manifest/built-in-providers/self-hosted; do \
-   cp "$$MODULE_DIR/$$path" "$$dest/$$(basename "$$path")"; \
-  done; \
-  echo "  Copied $$path"; \
- done
- @# Remove stale managed files not in the current defaults.yaml list.
- @echo "Done. Review and commit the updated files."
+	@echo "Syncing default resource types from resource-types-contrib..."
+	@MODULE_DIR=$$(go mod download -json github.com/radius-project/resource-types-contrib | jq -r '.Dir') && \
+	for path in $$(yq '.defaultRegistration[]' deploy/manifest/defaults.yaml); do \
+		for dest in deploy/manifest/built-in-providers/dev deploy/manifest/built-in-providers/self-hosted; do \
+			cp "$$MODULE_DIR/$$path" "$$dest/$$(basename "$$path")"; \
+		done; \
+		echo "  Copied $$path"; \
+	done
+	@# Remove stale managed files not in the current defaults.yaml list.
+	@echo "Done. Review and commit the updated files."
 ```
+
+<!-- markdownlint-enable MD010 -->
 
 `sync-resource-types` is split out so CI can run the copy step alone (without bumping the dependency) to detect drift. It also removes stale managed files whose entries have been removed from `defaults.yaml`.
 
@@ -303,16 +307,20 @@ To address the visibility concern, `defaults.yaml` and the manifest copies can b
 
 **Makefile target:**
 
+<!-- markdownlint-disable MD010 -- Makefile recipes require hard tabs. -->
+
 ```make
 sync-resource-types:
- @echo "Syncing default resource types from resource-types-contrib..."
- @MODULE_DIR=$$(go mod download -json github.com/radius-project/resource-types-contrib | jq -r '.Dir') && \
- for path in $$(yq '.defaultRegistration[]' deploy/manifest/defaults.yaml); do \
-  cp "$$MODULE_DIR/$$path" deploy/manifest/built-in-providers/$$(basename "$$path"); \
-  echo "  Copied $$path"; \
- done
- @echo "Done. Review and commit the updated files."
+	@echo "Syncing default resource types from resource-types-contrib..."
+	@MODULE_DIR=$$(go mod download -json github.com/radius-project/resource-types-contrib | jq -r '.Dir') && \
+	for path in $$(yq '.defaultRegistration[]' deploy/manifest/defaults.yaml); do \
+		cp "$$MODULE_DIR/$$path" deploy/manifest/built-in-providers/$$(basename "$$path"); \
+		echo "  Copied $$path"; \
+	done
+	@echo "Done. Review and commit the updated files."
 ```
+
+<!-- markdownlint-enable MD010 -->
 
 **Usage:**
 
