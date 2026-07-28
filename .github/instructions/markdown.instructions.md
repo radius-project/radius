@@ -3,6 +3,12 @@ description: 'Conventions for authoring Markdown in this repository'
 applyTo: '**/*.md'
 ---
 
+<!--
+  This file is synced from the radius-project/.github repository.
+  DO NOT EDIT MANUALLY - changes will be overwritten by the next sync.
+  Source: https://github.com/radius-project/.github
+-->
+
 # Markdown Guidelines
 
 Formatting rules for Markdown are enforced by tooling. This file covers only the conventions the linters cannot check and points to the source of truth for everything else.
