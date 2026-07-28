@@ -312,6 +312,96 @@ func Test_wirePreviewSubcommandPreviewBase(t *testing.T) {
 	})
 }
 
+// Test_wirePreviewSubcommandPreviewBase_PreviewOnlyFlags verifies that preview-only flags are
+// rejected when preview mode is off, instead of silently routing to the legacy runner (which
+// would ignore them).
+func Test_wirePreviewSubcommandPreviewBase_PreviewOnlyFlags(t *testing.T) {
+	newCmd := func(legacyCalled, previewCalled *bool) *cobra.Command {
+		previewCmd := &cobra.Command{
+			Use:  "test",
+			RunE: func(cmd *cobra.Command, args []string) error { *previewCalled = true; return nil },
+		}
+		previewCmd.Flags().StringSlice("recipe-packs", nil, "preview-only flag")
+		legacyRunE := func(cmd *cobra.Command, args []string) error { *legacyCalled = true; return nil }
+		wirePreviewSubcommandPreviewBase(previewCmd, legacyRunE, "Use the preview implementation.", "recipe-packs")
+		return previewCmd
+	}
+
+	t.Run("rejects a preview-only flag when preview is off", func(t *testing.T) {
+		legacyCalled, previewCalled := false, false
+		cmd := newCmd(&legacyCalled, &previewCalled)
+
+		cmd.SetArgs([]string{"--recipe-packs", "p1"})
+		err := cmd.Execute()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "requires preview mode")
+		require.False(t, legacyCalled, "legacy runner must not run when a preview-only flag is set")
+		require.False(t, previewCalled, "preview runner must not run when preview is off")
+	})
+
+	t.Run("allows a preview-only flag when --preview is set", func(t *testing.T) {
+		legacyCalled, previewCalled := false, false
+		cmd := newCmd(&legacyCalled, &previewCalled)
+
+		cmd.SetArgs([]string{"--preview", "--recipe-packs", "p1"})
+		require.NoError(t, cmd.Execute())
+		require.True(t, previewCalled, "preview runner should have been called")
+		require.False(t, legacyCalled, "legacy runner should not have been called")
+	})
+
+	t.Run("routes to legacy runner when no preview-only flag is set", func(t *testing.T) {
+		legacyCalled, previewCalled := false, false
+		cmd := newCmd(&legacyCalled, &previewCalled)
+
+		cmd.SetArgs([]string{})
+		require.NoError(t, cmd.Execute())
+		require.True(t, legacyCalled, "legacy runner should have been called")
+		require.False(t, previewCalled, "preview runner should not have been called")
+	})
+
+	t.Run("allows a preview-only flag when RADIUS_PREVIEW=true", func(t *testing.T) {
+		legacyCalled, previewCalled := false, false
+		cmd := newCmd(&legacyCalled, &previewCalled)
+
+		t.Setenv("RADIUS_PREVIEW", "true")
+		cmd.SetArgs([]string{"--recipe-packs", "p1"})
+		require.NoError(t, cmd.Execute())
+		require.True(t, previewCalled, "preview runner should have been called")
+		require.False(t, legacyCalled, "legacy runner should not have been called")
+	})
+
+	t.Run("rejects a preview-only flag when --preview=false overrides RADIUS_PREVIEW=true", func(t *testing.T) {
+		legacyCalled, previewCalled := false, false
+		cmd := newCmd(&legacyCalled, &previewCalled)
+
+		t.Setenv("RADIUS_PREVIEW", "true")
+		cmd.SetArgs([]string{"--preview=false", "--recipe-packs", "p1"})
+		err := cmd.Execute()
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "requires preview mode")
+		require.False(t, legacyCalled, "legacy runner must not run when a preview-only flag is set")
+		require.False(t, previewCalled, "preview runner must not run when preview is off")
+	})
+}
+
+// Test_wirePreviewSubcommandPreviewBase_UnknownPreviewOnlyFlagPanics verifies that wiring a
+// preview-only flag name that is not defined on the command fails loudly, rather than silently
+// disabling the guard.
+func Test_wirePreviewSubcommandPreviewBase_UnknownPreviewOnlyFlagPanics(t *testing.T) {
+	previewCmd := &cobra.Command{
+		Use:  "test",
+		RunE: func(cmd *cobra.Command, args []string) error { return nil },
+	}
+	legacyRunE := func(cmd *cobra.Command, args []string) error { return nil }
+
+	require.PanicsWithValue(t,
+		`wirePreviewSubcommandPreviewBase: preview-only flag "does-not-exist" is not defined on command "test"`,
+		func() {
+			wirePreviewSubcommandPreviewBase(previewCmd, legacyRunE, "Use the preview implementation.", "does-not-exist")
+		},
+	)
+}
+
 // Test_EnvCreate_ExposesPreviewRecipePacksFlag guards the command-tree wiring for
 // `rad env create`. The --recipe-packs flag is defined only on the preview
 // implementation, so env create must be wired with the preview command as the
@@ -324,6 +414,13 @@ func Test_EnvCreate_ExposesPreviewRecipePacksFlag(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "create", createCmd.Name())
 
+	// RootCmd is a shared global; restore the flags this test mutates so it does not
+	// leak --preview/--recipe-packs state into other tests.
+	t.Cleanup(func() {
+		_ = createCmd.Flags().Set("preview", createCmd.Flags().Lookup("preview").DefValue)
+		_ = createCmd.Flags().Set("recipe-packs", createCmd.Flags().Lookup("recipe-packs").DefValue)
+	})
+
 	require.NotNil(t, createCmd.Flags().Lookup("recipe-packs"),
 		"rad env create must expose --recipe-packs (regression: wrong preview wiring)")
 	require.NotNil(t, createCmd.Flags().Lookup("preview"),
@@ -331,4 +428,42 @@ func Test_EnvCreate_ExposesPreviewRecipePacksFlag(t *testing.T) {
 
 	require.NoError(t, createCmd.ParseFlags([]string{"--preview", "--recipe-packs", "p1,p2"}),
 		"rad env create must accept --preview together with --recipe-packs")
+}
+
+// Test_EnvPreviewOnlyFlagsRejectedWithoutPreview drives the real, fully-assembled command tree
+// and asserts that each preview-only flag is rejected when preview mode is off. This guards
+// against a preview-only flag being added to a command without also being registered in the
+// wirePreviewSubcommandPreviewBase guard, which would let it silently fall through to the legacy
+// runner. env create's only preview-only flag is --recipe-packs; env update additionally has
+// --clear-kubernetes.
+func Test_EnvPreviewOnlyFlagsRejectedWithoutPreview(t *testing.T) {
+	testcases := []struct {
+		command string
+		flag    string
+		value   string
+	}{
+		{command: "create", flag: "recipe-packs", value: "p1"},
+		{command: "update", flag: "recipe-packs", value: "p1"},
+		{command: "update", flag: "clear-kubernetes", value: "true"},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.command+" --"+tc.flag, func(t *testing.T) {
+			cmd, _, err := RootCmd.Find([]string{"env", tc.command})
+			require.NoError(t, err)
+
+			// RootCmd is a shared global; a prior test may have left --preview set.
+			// Force preview off so this test deterministically exercises the guard.
+			require.NoError(t, cmd.Flags().Set("preview", "false"))
+			t.Cleanup(func() { _ = cmd.Flags().Set("preview", cmd.Flags().Lookup("preview").DefValue) })
+
+			require.NoError(t, cmd.Flags().Set(tc.flag, tc.value))
+			t.Cleanup(func() { _ = cmd.Flags().Set(tc.flag, cmd.Flags().Lookup(tc.flag).DefValue) })
+
+			err = cmd.RunE(cmd, []string{"someenv"})
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "requires preview mode",
+				"--%s must be rejected without --preview", tc.flag)
+		})
+	}
 }
