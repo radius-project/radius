@@ -532,6 +532,7 @@ function getBuiltInType(kind: BuiltInTypeKind): string {
 function sanitizeCell(text: string): string {
   return text
     .replace(/\r?\n/g, " ")
+    .replace(/\\/g, "\\\\")
     .replace(/\|/g, "\\|")
     .replace(/\s+/g, " ")
     .trim();

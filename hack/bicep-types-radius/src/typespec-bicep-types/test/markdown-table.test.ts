@@ -428,6 +428,42 @@ describe("writeTableMarkdown", () => {
     expect(markdown).not.toContain("object array");
   });
 
+  it("escapes backslashes and pipes in description cells", () => {
+    const factory = new TypeFactory();
+    const stringRef = factory.addStringType();
+    const propsRef = factory.addObjectType("Props", {
+      pattern: createObjectProperty(
+        stringRef,
+        ObjectTypePropertyFlags.None,
+        "Escape sequence \\n or the pipe | character."
+      )
+    });
+    const bodyRef = factory.addObjectType("Body", {
+      properties: createObjectProperty(
+        propsRef,
+        ObjectTypePropertyFlags.None,
+        "The resource properties."
+      )
+    });
+    const resource = factory.addResourceType(
+      "Test/resource@2025-01-01",
+      bodyRef,
+      ScopeType.ResourceGroup,
+      ScopeType.ResourceGroup
+    );
+
+    const markdown = writeTableMarkdown(
+      [factory.lookupType(resource) as ResourceType],
+      factory.types
+    );
+
+    // The backslash is escaped before the pipe, so both survive as literals in
+    // the table cell without corrupting the column structure.
+    expect(markdown).toContain(
+      "| `pattern` | string | false | false | Escape sequence \\\\n or the pipe \\| character. |"
+    );
+  });
+
   it("expands a shared object type into a separate section per path", () => {
     const { factory, resourceType } = buildResource();
 
