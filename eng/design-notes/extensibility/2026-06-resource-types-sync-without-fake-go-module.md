@@ -77,7 +77,7 @@ Done. Review and commit the updated files.
 
 The Radius PR diff shows the actual YAML changes inline (the visibility property the 2026-04 design intentionally chose), plus the affected `resourceTypes[].ref` changes - instead of an opaque `go.mod` pseudo-version bump.
 
-In practice this command is usually run **by the sync bot, not by hand**: when `resource-types-contrib` updates, [`contrib-update-resource-types.yaml`](../../../.github/workflows/contrib-update-resource-types.yaml) opens a `bot/update-resource-types` PR that runs it and pushes the result, so the affected per-namespace pin changes and inline YAML diff arrive as a reviewable PR with CI already running. The manual command remains the fallback.
+In practice this command is usually run **by the sync bot, not by hand**: when `resource-types-contrib` updates, [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml) opens a `bot/update-resource-types` PR that runs it and pushes the result, so the affected per-namespace pin changes and inline YAML diff arrive as a reviewable PR with CI already running. The manual command remains the fallback.
 
 ## Design
 
@@ -243,7 +243,7 @@ A hardening of Option 4: instead of (or alongside) a release asset, the contrib 
 
 #### Option 6 - Automated, Dependabot-like PR sync (adopted in Phase A+)
 
-A bot opens (or refreshes) a Radius PR that runs `make update-resource-types` with the affected namespace refs, rewriting the matching `resourceTypes[].ref` entries so pins advance continuously, not only by hand at release time. This already exists as [`contrib-update-resource-types.yaml`](../../../.github/workflows/contrib-update-resource-types.yaml): `resource-types-contrib` dispatches `resource-types-contrib-updated` for both pushes to `main` and published releases, and the Radius consumer opens a cumulative `bot/update-resource-types` PR. A GitHub App token makes that PR trigger CI (including the drift check) like a human PR.
+A bot opens (or refreshes) a Radius PR that runs `make update-resource-types` with the affected namespace refs, rewriting the matching `resourceTypes[].ref` entries so pins advance continuously, not only by hand at release time. This already exists as [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml): `resource-types-contrib` dispatches `resource-types-contrib-updated` for both pushes to `main` and published releases, and the Radius consumer opens a cumulative `bot/update-resource-types` PR. A GitHub App token makes that PR trigger CI (including the drift check) like a human PR.
 
 ##### Advantages
 
@@ -412,7 +412,7 @@ Concretely, two separate workflows: (1) a minimal `resource-types-contrib` relea
 
 The per-namespace pins in `defaults.yaml` are bumped by an **automated, Dependabot-like job that opens a reviewable PR**, not only by hand at release time. This is Phase A+: the immutable-pin transport (Option 3) and automated PR sync (Option 6) are adopted together as a **hybrid** - immutable `resourceTypes[].ref` entries plus a bot that proposes each affected ref as a PR carrying the full YAML diff, the drift check, and CI.
 
-The bot exists as [`contrib-update-resource-types.yaml`](../../../.github/workflows/contrib-update-resource-types.yaml): the `resource-types-contrib` notifier emits a `resource-types-contrib-updated` `repository_dispatch` with a `namespaces` array of `{namespace, ref}` objects for both edge pushes and published releases, plus an optional `recipe_packs` array of `{name, ref}` objects. The Radius consumer accumulates those pins on `bot/update-resource-types`, runs `make update-resource-types` and `make update-recipe-packs`, and opens or refreshes the PR. A scoped GitHub App token makes that PR trigger CI (including the drift check) exactly like a human PR.
+The bot exists as [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml): the `resource-types-contrib` notifier emits a `resource-types-contrib-updated` `repository_dispatch` with a `namespaces` array of `{namespace, ref}` objects for both edge pushes and published releases, plus an optional `recipe_packs` array of `{name, ref}` objects. The Radius consumer accumulates those pins on `bot/update-resource-types`, runs `make update-resource-types` and `make update-recipe-packs`, and opens or refreshes the PR. A scoped GitHub App token makes that PR trigger CI (including the drift check) exactly like a human PR.
 
 **Channels.** Each affected `resourceTypes[].ref` follows one of two upstream channels, both stored as immutable commit SHAs:
 
@@ -464,7 +464,7 @@ The moving channel keeps Radius `latest`/`edge` builds current with contrib `mai
 1. **PR 1 (radius):** add the namespace-scoped `sources` list to `defaults.yaml`; rewrite `build/resource-types.mk` to fetch by pinned ref (Option 3); update `verify-resource-types.yaml` (drop Go setup and `go.mod`/`go.sum` path filters); remove the `require` line and run `go mod tidy`; delete `pkg/resourcetypescontrib/import.go`. Verify drift CI and startup tests pass.
 2. **PR 2 (resource-types-contrib):** delete `go.mod` and `doc.go`.
 3. **PR 3 (radius):** update the release process doc and the contrib README to describe the ref-based bump.
-4. **Automated sync (Phase A+):** the `resource-types-contrib` notifier dispatches namespace-scoped refs for both pushes to `main` and published releases. [`contrib-update-resource-types.yaml`](../../../.github/workflows/contrib-update-resource-types.yaml) validates that contract, accumulates pending namespace changes, runs `make update-resource-types`, surfaces the full YAML diff, and gates on the drift check + CI.
+4. **Automated sync (Phase A+):** the `resource-types-contrib` notifier dispatches namespace-scoped refs for both pushes to `main` and published releases. [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml) validates that contract, accumulates pending namespace changes, runs `make update-resource-types`, surfaces the full YAML diff, and gates on the drift check + CI.
 5. **Phase B (contrib release assets + radius coordination):** extend namespace-scoped releases to attach manifest bundles + `checksums.txt` (Option 4); switch the Radius fetch step to download and verify each asset; record checksum/digest metadata alongside the affected `resourceTypes[].ref` entries. Optionally harden to signed OCI artifacts (Option 5: `oras pull … @digest` + `cosign verify`/SBOM). Sequenced with the radius core repo's GoReleaser work.
 
 ## Open Questions
@@ -484,7 +484,7 @@ The moving channel keeps Radius `latest`/`edge` builds current with contrib `mai
 | 3. Pinned git-ref fetch               | **Phase A+**              | Removes all three smells; supports per-namespace immutable pins; reuses the existing skeleton.                                                         |
 | 4. Pinned GitHub Release asset        | **Phase B (end state)**   | Standard release format (archive + `checksums.txt`) from a minimal contrib workflow; human-readable tag + checksum; tool-light (`curl`/`sha256sum`).   |
 | 5. Versioned signed OCI artifact      | Phase B upgrade           | Adds registry distribution + cosign/SBOM over Option 4; needs `oras`/`cosign`.                                                                         |
-| 6. Automated, Dependabot-like PR sync | **Phase A+ (automation)** | Accumulates `resourceTypes[].ref` bumps as a reviewable PR for both edge and release channels; implemented as `contrib-update-resource-types.yaml`.    |
+| 6. Automated, Dependabot-like PR sync | **Phase A+ (automation)** | Accumulates `resourceTypes[].ref` bumps as a reviewable PR for both edge and release channels; implemented as `update-resource-types.yaml`.    |
 | 7. `go:embed`                         | Rejected                  | Still needs the fake module; no YAML-diff visibility.                                                                                                  |
 | 8. Runtime / install-time fetch       | Rejected                  | Violates the 2026-04 "no runtime fetching" non-goal; no PR-time visibility.                                                                            |
 | 9. Foreign package registry (npm)     | Rejected                  | Relocates the fake-module smell to another ecosystem.                                                                                                  |

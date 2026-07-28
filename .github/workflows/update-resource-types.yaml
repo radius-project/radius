@@ -16,7 +16,7 @@
 
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: contrib-update-resource-types
+name: Update Resource Types
 
 # Triggered via `repository_dispatch` (event type `resource-types-contrib-updated`)
 # from radius-project/resource-types-contrib's notify-radius.yaml. A single event
@@ -57,7 +57,7 @@ permissions: {}
 
 concurrency:
   # Only one in-flight refresh PR at a time.
-  group: contrib-update-resource-types
+  group: update-resource-types
   cancel-in-progress: false
 
 env:
