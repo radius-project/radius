@@ -105,15 +105,17 @@ validate_name() {
     esac
 }
 
-# resolve_pin <repo> <ref> -> "<sha>\t<tag>". A 40-char hex value is used as-is
-# with an empty tag; anything else is resolved via git ls-remote. The full
-# refname ls-remote reports distinguishes a tag (recorded in <tag>) from a
-# branch, and the peeled (^{}) entry wins so annotated tags resolve to their
-# underlying commit.
+# resolve_pin <repo> <ref> -> "<sha>\t<tag>". A 40-char hex value is already a
+# commit SHA and is returned as-is with an empty tag; anything else is resolved
+# via git ls-remote. The full refname ls-remote reports distinguishes a tag
+# (recorded in <tag>) from a branch, and the peeled (^{}) entry wins so
+# annotated tags resolve to their underlying commit.
 resolve_pin() {
     local repo="$1" ref="$2" sha="" tag="" line_sha line_ref
-    if printf '%s' "${ref}" | grep -Eq '^[0-9a-f]{40}$'; then
-        printf '%s\t\n' "${ref}"
+    # git accepts uppercase SHAs but always prints lowercase; normalize so pins
+    # written from either form stay comparable.
+    if printf '%s' "${ref}" | grep -Eqi '^[0-9a-f]{40}$'; then
+        printf '%s\t\n' "$(printf '%s' "${ref}" | tr '[:upper:]' '[:lower:]')"
         return 0
     fi
     while IFS=$'\t' read -r line_sha line_ref; do
