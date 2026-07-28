@@ -29,7 +29,7 @@ sources:
     repo: github.com/radius-project/resource-types-contrib
     # An immutable commit SHA (Phase A). A branch or tag is also accepted by the
     # fetch, but update-resource-types always pins a full commit SHA.
-    ref: 158be1959352e2c23e22488ae7d26c772c989de1
+    ref: cfe0e011c1a37b383d7c5bf51068fc6e9ebba04d
   - namespace: Radius.Data
     repo: github.com/radius-project/resource-types-contrib
     ref: 158be1959352e2c23e22488ae7d26c772c989de1
