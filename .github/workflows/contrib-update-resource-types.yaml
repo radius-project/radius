@@ -24,17 +24,21 @@ name: contrib-update-resource-types
 #   - channel "edge":    a push to contrib `main`; contrib_ref is the pushed
 #                        commit SHA.
 #   - channel "release": a published contrib release; contrib_ref is the release
-#                        tag (a scope-prefixed tag affects one namespace, a plain
-#                        vX.Y.Z affects all).
-# The payload lists exactly the affected `Radius.<Category>` namespaces, each with
-# its immutable ref:
-#   { channel, contrib_repo, contrib_ref, namespaces: [ {namespace, ref}, ... ], actor }
+#                        tag (a scope-prefixed tag affects one namespace or one
+#                        recipe pack, a plain vX.Y.Z affects all namespaces).
+# The payload lists exactly the affected units, each with its immutable ref:
+#   { channel, contrib_repo, contrib_ref, namespaces: [ {namespace, ref}, ... ],
+#     recipe_packs: [ {name, ref}, ... ], actor }
+# `recipe_packs` is optional and covers the independent
+# `recipe-pack/<pack>/vX.Y.Z` release series; at least one of the two arrays
+# must be non-empty.
 #
-# This job opens (or refreshes) a PR that runs `make update-resource-types` with
-# those pins, which resolves each ref to an immutable commit SHA, records it per
-# namespace in deploy/manifest/defaults.yaml (sources[].ref), and re-copies the
-# manifests under deploy/manifest/built-in-providers/ - advancing only the
-# namespaces the event changed (namespaces Radius does not register are skipped).
+# This job opens (or refreshes) a PR that runs `make update-resource-types` (and
+# `make update-recipe-packs` when recipe packs are affected) with those pins,
+# which resolves each ref to an immutable commit SHA, records it in
+# deploy/manifest/defaults.yaml (`resourceTypes[]` / `recipePacks[]`), and
+# re-copies the manifests under deploy/manifest/built-in-providers/ - advancing
+# only what the event changed (entries Radius does not register are skipped).
 #
 # Merging the resulting PR triggers the existing `build-and-push-bicep-types`
 # job in build.yaml, which dispatches to azure-octo/radius-publisher to
@@ -70,31 +74,67 @@ jobs:
       contents: read # actions/checkout
     steps:
       - name: Resolve dispatch payload
-        # client_payload.namespaces must be a non-empty JSON array of
-        # {namespace, ref}. Each value is checked against an allowlist before
-        # the array is forwarded as RESOURCE_TYPES_PINS, so make advances only
-        # the affected, registered namespaces.
+        # client_payload.namespaces and client_payload.recipe_packs are JSON
+        # arrays of {name, ref} ({namespace, ref} is accepted for namespaces);
+        # at least one must be non-empty. Every value is checked against an
+        # allowlist before the arrays are forwarded as RESOURCE_TYPES_PINS /
+        # RECIPE_PACKS_PINS, so make advances only the affected, registered
+        # entries.
         id: contrib
         env:
           NAMESPACES_JSON: ${{ toJSON(github.event.client_payload.namespaces) }}
+          RECIPE_PACKS_JSON: ${{ toJSON(github.event.client_payload.recipe_packs) }}
           CHANNEL: ${{ github.event.client_payload.channel }}
           CONTRIB_REF: ${{ github.event.client_payload.contrib_ref }}
           ACTOR: ${{ github.event.client_payload.actor }}
         run: |
           set -euo pipefail
-          ns_re='^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$'
+          name_re='^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$'
           ref_re='^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$'
 
-          ns_json="${NAMESPACES_JSON:-null}"
-          if ! printf '%s' "${ns_json}" | jq -e '
-            type == "array" and
-            length > 0 and
-            all(.[]; type == "object" and
-              (.namespace | type == "string") and
-              (.ref | type == "string"))
-          ' > /dev/null; then
+          # normalize <json> <label> validates an optional pin array and echoes
+          # it as a compact [{name, ref}] array, or an empty array when the
+          # payload omits it.
+          normalize() {
+            local json="${1:-null}" label="$2" name ref
+            if [ -z "${json}" ] || [ "${json}" = "null" ]; then
+              printf '[]'
+              return 0
+            fi
+            if ! printf '%s' "${json}" | jq -e '
+              type == "array" and
+              all(.[]; type == "object" and
+                ((.name // .namespace) | type == "string") and
+                (.ref | type == "string"))
+            ' > /dev/null; then
+              echo "ERROR: client_payload.${label} must be an array of" \
+                "{name, ref} objects." >&2
+              exit 1
+            fi
+            while IFS=$'\t' read -r name ref; do
+              if ! printf '%s' "${name}" | grep -Eq "${name_re}"; then
+                echo "ERROR: invalid ${label} name '${name}'" >&2
+                exit 1
+              fi
+              if ! printf '%s' "${ref}" | grep -Eq "${ref_re}"; then
+                echo "ERROR: invalid ref '${ref}' for '${name}'" >&2
+                exit 1
+              fi
+            done < <(
+              printf '%s' "${json}" |
+                jq -r '.[] | [(.name // .namespace), .ref] | @tsv'
+            )
+            printf '%s' "${json}" |
+              jq -c '[.[] | {name: (.name // .namespace), ref}]'
+          }
+
+          ns_pins="$(normalize "${NAMESPACES_JSON:-null}" namespaces)"
+          pack_pins="$(normalize "${RECIPE_PACKS_JSON:-null}" recipe_packs)"
+
+          if [ "$(printf '%s' "${ns_pins}" | jq 'length')" -eq 0 ] &&
+            [ "$(printf '%s' "${pack_pins}" | jq 'length')" -eq 0 ]; then
             echo "ERROR: repository_dispatch requires a non-empty namespaces" \
-              "array of {namespace, ref} objects." >&2
+              "or recipe_packs array." >&2
             exit 1
           fi
 
@@ -106,36 +146,27 @@ jobs:
               ;;
           esac
 
-          while IFS=$'\t' read -r ns ref; do
-            if ! printf '%s' "${ns}" | grep -Eq "${ns_re}"; then
-              echo "ERROR: invalid namespace '${ns}'" >&2
-              exit 1
-            fi
-            if ! printf '%s' "${ref}" | grep -Eq "${ref_re}"; then
-              echo "ERROR: invalid ref '${ref}' for '${ns}'" >&2
-              exit 1
-            fi
-          done < <(
-            printf '%s' "${ns_json}" |
-              jq -r '.[] | [.namespace, .ref] | @tsv'
-          )
-
-          pins="$(printf '%s' "${ns_json}" | jq -c '[.[] | {namespace, ref}]')"
           affected="$(
-            printf '%s' "${ns_json}" |
-              jq -r '[.[].namespace] | join(", ")'
+            jq -rn --argjson ns "${ns_pins}" --argjson packs "${pack_pins}" '
+              ($ns | map(.name)) +
+              ($packs | map("recipe-pack/" + .name)) |
+              join(", ")
+            '
           )"
           {
             echo "pins<<PINS_EOF"
-            printf '%s\n' "${pins}"
+            printf '%s\n' "${ns_pins}"
             echo "PINS_EOF"
+            echo "pack_pins<<PACK_PINS_EOF"
+            printf '%s\n' "${pack_pins}"
+            echo "PACK_PINS_EOF"
             echo "channel=${CHANNEL}"
             echo "ref=${CONTRIB_REF:-}"
             echo "actor=${ACTOR:-}"
             echo "affected=${affected}"
           } >> "${GITHUB_OUTPUT}"
           echo "Batch: channel=${CHANNEL} ref=${CONTRIB_REF:-}" \
-            "namespaces=[${affected}]"
+            "affected=[${affected}]"
 
       - name: Generate App Token
         # Uses a GitHub App token instead of the default GITHUB_TOKEN so that
@@ -189,15 +220,27 @@ jobs:
 
       - name: Run make update-resource-types
         # Advances the affected namespaces: pins each to its immutable commit SHA
-        # in deploy/manifest/defaults.yaml (sources[].ref) and copies the manifest
-        # files into deploy/manifest/built-in-providers/{dev,self-hosted}/.
+        # in deploy/manifest/defaults.yaml (resourceTypes[].ref, plus .tag on the
+        # release channel) and copies the manifest files into
+        # deploy/manifest/built-in-providers/{dev,self-hosted}/.
         # RESOURCE_TYPES_PINS (the contrib namespaces[] payload) drives the
         # batch.
+        if: steps.contrib.outputs.pins != '[]'
         env:
           RESOURCE_TYPES_PINS: ${{ steps.contrib.outputs.pins }}
         run: |
           set -euo pipefail
           make update-resource-types
+
+      - name: Run make update-recipe-packs
+        # Recipe packs are pinned but never vendored into this repo, so this
+        # only rewrites recipePacks[].ref / .tag in defaults.yaml.
+        if: steps.contrib.outputs.pack_pins != '[]'
+        env:
+          RECIPE_PACKS_PINS: ${{ steps.contrib.outputs.pack_pins }}
+        run: |
+          set -euo pipefail
+          make update-recipe-packs
 
       - name: Detect changes
         # Uses git status --porcelain (not git diff --quiet) because
@@ -251,9 +294,9 @@ jobs:
               "Automated refresh of resource type manifests under `deploy/manifest/built-in-providers/`.",
               "",
               `Triggered by [\`${process.env.CONTRIB_REPO}\`](https://github.com/${process.env.CONTRIB_REPO}) on the \`${channel}\` channel at ref \`${contribRef}\`.`,
-              affected ? `Affected namespaces: ${affected}.` : "",
+              affected ? `Affected: ${affected}.` : "",
               "",
-              "Each affected namespace is pinned to an immutable commit SHA in `deploy/manifest/defaults.yaml` (`sources[].ref`).",
+              "Each affected entry is pinned to an immutable commit SHA in `deploy/manifest/defaults.yaml` (`resourceTypes[]` / `recipePacks[]`).",
               "",
               "Merging this PR will republish `br:biceptypes.azurecr.io/radius:latest` via the existing `build-and-push-bicep-types` job in `build.yaml`.",
             ].filter(Boolean).join("\n");

@@ -40,9 +40,10 @@ env:
   # AI types with Azure Verified Modules (Bicep), builds the app image from repo
   # source via the Kubernetes containerImages recipe, and keeps core types
   # (containers, persistentVolumes, routes, secrets) on the shared Kubernetes
-  # recipes. Tracks main; RECIPE_PACK_REF can be pinned to a commit if needed.
+  # recipes. Tracks main; RECIPE_PACK_REF can be pinned to a commit or to a
+  # recipe-pack/azure/vX.Y.Z release tag if needed.
   RECIPE_PACK_REF: main
-  RECIPE_PACK_PATH: recipepack/azure/aks-recipepack.bicep
+  RECIPE_PACK_PATH: recipe-packs/azure/aks-recipepack.bicep
 
 jobs:
   deploy:
