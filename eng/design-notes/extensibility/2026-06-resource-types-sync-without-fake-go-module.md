@@ -455,7 +455,7 @@ The moving channel keeps Radius `latest`/`edge` builds current with contrib `mai
 ## Compatibility
 
 - **No runtime change.** `RegisterDirectory`, the `built-in-providers/` layout, and the manual `radius_core.yaml`/`microsoft_resources.yaml` files are untouched.
-- **No default-set change.** `defaultRegistration` is unchanged; only the namespace-scoped `sources` list is added.
+- **No default-set change.** `defaultRegistration` is unchanged; only the pin metadata (`resourceTypes` / `recipePacks`) is updated.
 - **Contributor workflow change.** Bumping the default set no longer involves `go get`; it updates one or more `resourceTypes[].ref` entries through `make update-resource-types`. This is documented in the release process and the contrib README (see PR 3 below).
 - **One-time cleanup.** Removing the module from `go.mod`/`go.sum` and deleting `import.go` is a mechanical, reviewable change.
 
