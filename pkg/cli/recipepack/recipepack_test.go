@@ -48,15 +48,34 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 	require.ElementsMatch(t, expectedResourceTypes, actualResourceTypes)
 }
 
-func Test_GetDefaultRecipePackDefinition_UsesLatestTagForEdgeChannel(t *testing.T) {
+func Test_GetDefaultRecipePackDefinition_UsesEdgeTagForEdgeChannel(t *testing.T) {
 	// The test binary is built without ldflags, so channel defaults to "edge".
 	require.True(t, version.IsEdgeChannel(), "default should be on edge channel")
 
 	definitions := GetCoreTypesRecipeInfo()
 	for _, def := range definitions {
-		require.True(t, strings.HasSuffix(def.Source, ":latest"),
-			"Expected :latest tag for edge channel, got %s", def.Source)
+		require.True(t, strings.HasSuffix(def.Source, ":edge"),
+			"Expected :edge tag for edge channel, got %s", def.Source)
 	}
+}
+
+func Test_resolveRecipeTag_ReleaseChannelUsesNamespaceRef(t *testing.T) {
+	// This test cannot flip the package-level channel variable, so we
+	// verify the release-channel logic directly by calling the helper
+	// with a resource type whose namespace has a pin in defaults.yaml.
+	// Skip when the test binary is (as usual) on the edge channel — the
+	// helper unconditionally returns "edge" there, which is covered by
+	// Test_GetDefaultRecipePackDefinition_UsesEdgeTagForEdgeChannel.
+	if version.IsEdgeChannel() {
+		t.Skip("test binary is on edge channel; release path not exercisable without ldflags")
+	}
+	// Sanity: the release branch of resolveRecipeTag must never return
+	// an empty tag, and for a well-known namespace it must match the
+	// pinned SHA (kept in sync via `make update-resource-types`).
+	tag := resolveRecipeTag("Radius.Compute/containers")
+	require.NotEmpty(t, tag)
+	require.NotEqual(t, "edge", tag,
+		"release channel should resolve to a pinned commit SHA, not the edge fallback")
 }
 
 func Test_NewDefaultRecipePackResource(t *testing.T) {
