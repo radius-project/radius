@@ -461,7 +461,7 @@ The moving channel keeps Radius `latest`/`edge` builds current with contrib `mai
 
 ## Development plan
 
-1. **PR 1 (radius):** add the namespace-scoped `sources` list to `defaults.yaml`; rewrite `build/resource-types.mk` to fetch by pinned ref (Option 3); update `verify-resource-types.yaml` (drop Go setup and `go.mod`/`go.sum` path filters); remove the `require` line and run `go mod tidy`; delete `pkg/resourcetypescontrib/import.go`. Verify drift CI and startup tests pass.
+1. **PR 1 (radius):** add the namespace-scoped `sources` list to `defaults.yaml`; rewrite `build/resource-types.mk` to fetch by pinned ref (Option 3); update `verify-resource-types-manifest.yaml` (drop Go setup and `go.mod`/`go.sum` path filters); remove the `require` line and run `go mod tidy`; delete `pkg/resourcetypescontrib/import.go`. Verify drift CI and startup tests pass.
 2. **PR 2 (resource-types-contrib):** delete `go.mod` and `doc.go`.
 3. **PR 3 (radius):** update the release process doc and the contrib README to describe the ref-based bump.
 4. **Automated sync (Phase A+):** the `resource-types-contrib` notifier dispatches namespace-scoped refs for both pushes to `main` and published releases. [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml) validates that contract, accumulates pending namespace changes, runs `make update-resource-types`, surfaces the full YAML diff, and gates on the drift check + CI.

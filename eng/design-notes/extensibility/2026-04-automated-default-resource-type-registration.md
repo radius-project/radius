@@ -1,6 +1,6 @@
 # Automated Default Registration of Resource Types from resource-types-contrib
 
-* **Author**: Karishma Chawla (@kachawla)
+- **Author**: Karishma Chawla (@kachawla)
 
 ## Overview
 
@@ -144,21 +144,21 @@ The copy script resolves each entry to a file path in the `resource-types-contri
 
 ```make
 update-resource-types:
-	go get github.com/radius-project/resource-types-contrib@latest
-	go mod tidy
-	$(MAKE) sync-resource-types
+ go get github.com/radius-project/resource-types-contrib@latest
+ go mod tidy
+ $(MAKE) sync-resource-types
 
 sync-resource-types:
-	@echo "Syncing default resource types from resource-types-contrib..."
-	@MODULE_DIR=$$(go mod download -json github.com/radius-project/resource-types-contrib | jq -r '.Dir') && \
-	for path in $$(yq '.defaultRegistration[]' deploy/manifest/defaults.yaml); do \
-		for dest in deploy/manifest/built-in-providers/dev deploy/manifest/built-in-providers/self-hosted; do \
-			cp "$$MODULE_DIR/$$path" "$$dest/$$(basename "$$path")"; \
-		done; \
-		echo "  Copied $$path"; \
-	done
-	@# Remove stale managed files not in the current defaults.yaml list.
-	@echo "Done. Review and commit the updated files."
+ @echo "Syncing default resource types from resource-types-contrib..."
+ @MODULE_DIR=$$(go mod download -json github.com/radius-project/resource-types-contrib | jq -r '.Dir') && \
+ for path in $$(yq '.defaultRegistration[]' deploy/manifest/defaults.yaml); do \
+  for dest in deploy/manifest/built-in-providers/dev deploy/manifest/built-in-providers/self-hosted; do \
+   cp "$$MODULE_DIR/$$path" "$$dest/$$(basename "$$path")"; \
+  done; \
+  echo "  Copied $$path"; \
+ done
+ @# Remove stale managed files not in the current defaults.yaml list.
+ @echo "Done. Review and commit the updated files."
 ```
 
 `sync-resource-types` is split out so CI can run the copy step alone (without bumping the dependency) to detect drift. It also removes stale managed files whose entries have been removed from `defaults.yaml`.
@@ -177,7 +177,7 @@ on:
       - 'deploy/manifest/built-in-providers/**'
 
 jobs:
-  verify-resource-types:
+  verify-resource-types-manifest:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -188,6 +188,7 @@ jobs:
 ```
 
 If the committed copies do not match what `defaults.yaml` + the pinned `resource-types-contrib` version produce, the PR fails. This catches:
+
 - A `go.mod` bump that wasn't followed by `make sync-resource-types`.
 - A manual edit to a copied file that drifts from the upstream definition.
 - A new entry added to `defaults.yaml` without re-syncing.
@@ -228,7 +229,7 @@ No `defaults.yaml`, no generated code, no embed directives. The repo continues t
 | `deploy/manifest/built-in-providers/{dev,self-hosted}/radius_core.yaml` | Unchanged. Not in `resource-types-contrib`. |
 | `deploy/manifest/built-in-providers/{dev,self-hosted}/microsoft_resources.yaml` | Unchanged. Not in `resource-types-contrib`. |
 | `Makefile` | Add `update-resource-types` and `sync-resource-types` targets. |
-| `.github/workflows/verify-resource-types.yaml` | Add the drift-detection workflow described above. |
+| `.github/workflows/verify-resource-types-manifest.yaml` | Add the drift-detection workflow described above. |
 
 **No changes to UCP runtime code.** `pkg/cli/manifest/registermanifest.go`, `pkg/ucp/initializer/service.go`, and `pkg/ucp/server/server.go` are untouched. The existing `RegisterDirectory` path picks up the copied files automatically.
 
@@ -301,18 +302,20 @@ To address the visibility concern, `defaults.yaml` and the manifest copies can b
 3. The copied YAML files are committed to the `radius` repo and registered at startup by the existing `RegisterDirectory` function.
 
 **Makefile target:**
+
 ```make
 sync-resource-types:
-	@echo "Syncing default resource types from resource-types-contrib..."
-	@MODULE_DIR=$$(go mod download -json github.com/radius-project/resource-types-contrib | jq -r '.Dir') && \
-	for path in $$(yq '.defaultRegistration[]' deploy/manifest/defaults.yaml); do \
-		cp "$$MODULE_DIR/$$path" deploy/manifest/built-in-providers/$$(basename "$$path"); \
-		echo "  Copied $$path"; \
-	done
-	@echo "Done. Review and commit the updated files."
+ @echo "Syncing default resource types from resource-types-contrib..."
+ @MODULE_DIR=$$(go mod download -json github.com/radius-project/resource-types-contrib | jq -r '.Dir') && \
+ for path in $$(yq '.defaultRegistration[]' deploy/manifest/defaults.yaml); do \
+  cp "$$MODULE_DIR/$$path" deploy/manifest/built-in-providers/$$(basename "$$path"); \
+  echo "  Copied $$path"; \
+ done
+ @echo "Done. Review and commit the updated files."
 ```
 
 **Usage:**
+
 ```bash
 # After bumping the dependency
 go get -u github.com/radius-project/resource-types-contrib
@@ -345,11 +348,13 @@ radius/
 | **Contribution simplicity** | Single-repo change for contrib authors | Cross-repo change (contrib for the type, radius for making it default) |
 
 **Advantages of the alternative:**
+
 - Stronger security posture: `defaults.yaml` changes go through Radius CODEOWNERS review
 - Full content visibility in Radius PRs eliminates the opaque `go.mod` bump problem
 - Radius maintainers have explicit control over which types ship as defaults
 
 **Disadvantages of the alternative:**
+
 - Reintroduces file copies in the `radius` repo (automated, but still copies)
 - Adding a new default requires changes in both repos instead of one
 - **Sequential cross-repo workflow.** A contributor's manifest PR in `resource-types-contrib` must be merged before they can open the corresponding PR in `radius` (since `go get -u` pulls from the merged main branch), so it is a sequential two step process across repos.
@@ -362,9 +367,11 @@ Rather than moving `defaults.yaml` to `radius`, the visibility and control gaps 
 1. **CI diff report in `radius`.** A CI step triggers on `go.mod` changes involving `resource-types-contrib`, fetches both the old and new versions of the module, and posts a comment on the PR with a diff summary of changed YAML files. This gives reviewers full visibility into what changed without any architectural changes, file duplication, or cross-repo complexity.
 
 2. **CODEOWNERS for `defaults.yaml` in `resource-types-contrib`.** Add Radius maintainers as required reviewers for `defaults.yaml` via `resource-types-contrib`'s CODEOWNERS file:
+
    ```
    /defaults.yaml @radius-project/radius-maintainers
    ```
+
    This ensures that any change to which types are registered as defaults requires approval from a Radius maintainer, even though the file lives in the contrib repo. This gives Radius maintainers visibility on default registration changes without moving the file to a different repo.
 
 Combined with the existing safeguards (strict parsing, schema validation, contrib CODEOWNERS), these two mitigations address both visibility and review requirements without the complexity of the alternative approach.
@@ -378,10 +385,12 @@ The proposed approach (defaults.yaml in `resource-types-contrib`) with a **CI di
 **Adopt Alternative approach 1: `defaults.yaml` and copied manifest files live in the `radius` repo.** After review, the team prioritized security visibility and Radius-side ownership of the default set over the single-repo contribution workflow.
 
 Rationale:
+
 - **Full content visibility in Radius PRs.** When a default type is added, updated, or removed, the actual YAML diff appears directly in the Radius PR rather than being hidden behind a `go.mod` version bump. This gives reviewers the same level of insight they have for any other code change in the repo.
 - **Radius maintainers own the default set.** Adding or removing a default type is a Radius-repo decision gated by Radius CODEOWNERS, eliminating the need for cross-repo CODEOWNERS coordination on `defaults.yaml`.
 
 Mitigating the disadvantages noted in the alternative:
+
 - **Drift risk if the copy script is not re-run after `go get -u`:** Add a CI check in `radius` that runs `make update-resource-types` (copy step only, no `go get`) and fails if it produces a diff. This guarantees the committed YAML files match the pinned `resource-types-contrib` version on every PR, the same way `go mod tidy` checks work.
 - **Sequential cross-repo workflow when adding a new default type:** The contributor's PR in `resource-types-contrib` must merge first, then a follow-up PR in `radius` bumps the dependency, runs the copy script, and edits `defaults.yaml`. This is accepted as a worthwhile tradeoff for the visibility and ownership benefits.
 
@@ -394,6 +403,7 @@ Mitigating the disadvantages noted in the alternative:
 ## Monitoring and Logging
 
 No new logs or metrics. The existing `RegisterDirectory` logging applies:
+
 - `"Loaded manifest <path> (namespace: <ns>)"` for each file loaded.
 - `"Successfully registered manifests" directory=<dir>` on completion.
 
@@ -420,6 +430,7 @@ None at this time.
 Each default-registered resource type also needs a corresponding Bicep extension published to an OCI registry (ACR) so that users can author Bicep files against the type schemas. Today, `rad bicep publish-extension -f <manifest.yaml> --target br:<registry>/<name>:<tag>` handles this per-file, but there is no automation tying it to the default registration list.
 
 **Work needed:**
+
 - Add a build step (in Radius CI or release pipeline) that reads `defaults.yaml`, groups manifests by namespace, merges them, and calls `rad bicep publish-extension` once per namespace to publish to the shared ACR (e.g., `br:biceptypes.azurecr.io/radius-compute:<version>`).
 - Decide whether extensions are published per-namespace (e.g., `radius-compute`, `radius-data`, `radius-security`), per-type (e.g., `radius-compute-containers`), or one extension for all namespaces. One extension for all namespaces is preferred to keep `bicepconfig.json` manageable.
 - Ensure extension versions stay in lockstep with the `resource-types-contrib` version pinned in `go.mod`, so Bicep types always match the schemas registered at startup.
@@ -429,6 +440,7 @@ Each default-registered resource type also needs a corresponding Bicep extension
 When a new resource type version is pulled into Radius via a `go.mod` bump, the corresponding recipes in `resource-types-contrib` may also need to be updated or registered. This design does not cover recipe registration.
 
 **Work needed:**
+
 - Define how default recipes (e.g., the Kubernetes recipe for `Radius.Compute/containers`) are associated with default-registered resource types.
 - Determine whether `defaults.yaml` should also list default recipes per resource type, or whether a separate mechanism (e.g., recipe packs) handles this.
 
@@ -442,13 +454,13 @@ When a new resource type version is pulled into Radius via a `go.mod` bump, the 
 
 Push changes from contrib → Radius PR
 
-Pros: 
-* No build changes
+Pros:
+- No build changes
 
 Cons:
-* Operational complexity
-* Requires cross-repo PATs
-* Duplicates files
+- Operational complexity
+- Requires cross-repo PATs
+- Duplicates files
 
 ## Appendix: Originally proposed `go:embed` approach
 
@@ -487,6 +499,7 @@ A `defaults.yaml` file at the root of `resource-types-contrib` lists which resou
 | `manifests_gen.go` | **Generated**. Contains `//go:embed` directives for `defaults.yaml` and each listed manifest. Exports `DefaultManifests embed.FS`. |
 
 **`defaults.yaml` format:**
+
 ```yaml
 defaultRegistration:
   - Radius.Compute/containers
