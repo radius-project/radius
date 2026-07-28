@@ -161,6 +161,10 @@ dynamicrp:
     enabled: false
     # Pinned rootless BuildKit image.
     image: "moby/buildkit:v0.13.2-rootless"
+    # Limit concurrent OCI worker steps across all builds sharing the
+    # BuildKit sidecar. Increase only after profiling representative cold
+    # builds and sizing the resources below with sufficient headroom.
+    maxParallelism: 1
     # Default limits suit small/medium image builds; raise for large
     # contexts or memory-heavy compilations.
     resources:
