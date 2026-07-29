@@ -17,12 +17,15 @@ jobs:
     environment: ${{ inputs.environment }}
     steps:
       - name: Inspect GitHub OIDC token claims
-        # Diagnostic only. Decode the GitHub Actions OIDC token's claims locally so an
-        # enterprise-claim policy rejection (Entra AADSTS7002381) is legible in this run
-        # BEFORE azure/login surfaces a raw error code. The token is a short-lived bearer
-        # credential and is never printed — only non-secret claims are shown. `set -e` is
-        # intentionally omitted so this best-effort step can never abort credential
-        # verification; the Azure Login step below remains the authority on success.
+        id: oidc_claims
+        # Diagnostic breadcrumb only. Decode the GitHub Actions OIDC token's claims
+        # locally and log them to this (collapsed) step log so a failure is debuggable
+        # later — nothing is written to the job summary, so a successful run shows no
+        # extra output. The token is a short-lived bearer credential and is never
+        # printed; only non-secret claims are shown. `set -e` is intentionally omitted
+        # so this best-effort step can never abort credential verification. It exports
+        # `enterprise_empty` so the failure-only explainer below can decide whether an
+        # Azure Login failure is likely the enterprise-claim policy (AADSTS7002381).
         env:
           OIDC_AUDIENCE: api://AzureADTokenExchange
         run: |
@@ -57,46 +60,40 @@ jobs:
           repository_owner="$(printf '%s' "$claims" | jq -r '.repository_owner // "(none)"')"
           subject="$(printf '%s' "$claims" | jq -r '.sub // "(none)"')"
           enterprise="$(printf '%s' "$claims" | jq -r '.enterprise // ""')"
-          enterprise_display="$enterprise"
-          [[ -z "$enterprise" ]] && enterprise_display="(empty — repo owner is not linked to a GitHub Enterprise)"
 
-          {
-            echo "## GitHub OIDC token claims"
-            echo ""
-            echo "Claims the target Azure tenant evaluates when it validates this repository's federated (OIDC) login."
-            echo ""
-            echo "| Claim | Value |"
-            echo "| --- | --- |"
-            echo "| repository | \`$repository\` |"
-            echo "| repository_owner | \`$repository_owner\` |"
-            echo "| subject (sub) | \`$subject\` |"
-            echo "| enterprise | \`$enterprise_display\` |"
-            echo "| audience (aud) | \`$OIDC_AUDIENCE\` |"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          echo "OIDC claims — repository=$repository repository_owner=$repository_owner enterprise=${enterprise:-<empty>}"
+          # Step-log only (collapsed by default); nothing goes to the job summary here.
+          echo "OIDC claims — repository=$repository repository_owner=$repository_owner subject=$subject enterprise=${enterprise:-<empty>} audience=$OIDC_AUDIENCE"
 
           if [[ -z "$enterprise" ]]; then
-            {
-              echo ""
-              echo "> ⚠️ The **enterprise** claim is empty. If the target Azure tenant enforces a"
-              echo "> federated-credential policy requiring a specific enterprise claim (common in"
-              echo "> Microsoft corporate tenants), the **Azure Login (OIDC)** step below will fail"
-              echo "> with \`AADSTS7002381\`. GitHub only stamps the enterprise claim when the"
-              echo "> repository's owning account or organization is linked to a GitHub Enterprise."
-              echo "> To satisfy such a policy, host this repository under an organization that"
-              echo "> belongs to an accepted GitHub Enterprise, or target a tenant that does not"
-              echo "> enforce the policy."
-            } >> "$GITHUB_STEP_SUMMARY"
-            echo "::warning title=Empty GitHub enterprise claim::Azure Login may fail with AADSTS7002381 if the target tenant enforces an enterprise-claim policy. See the job summary for details."
+            echo "enterprise_empty=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enterprise_empty=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Azure Login (OIDC)
+        id: azure_login
         uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Explain OIDC enterprise-claim failure
+        # Fires only when Azure Login failed AND the OIDC token carried an empty
+        # enterprise claim — the signature of the tenant-side enterprise-claim policy
+        # (AADSTS7002381). On a successful run this step is skipped and adds nothing, so
+        # the common hobbyist path (personal repo, non-enforcing tenant) stays silent.
+        if: failure() && steps.azure_login.outcome == 'failure' && steps.oidc_claims.outputs.enterprise_empty == 'true'
+        run: |
+          {
+            echo "## ⚠️ Azure Login failed on the GitHub enterprise claim"
+            echo ""
+            echo "Azure Login (OIDC) was rejected because this repository's GitHub OIDC token is missing the required \"enterprise\" claim."
+            echo ""
+            echo "The target Azure tenant only trusts GitHub Actions tokens whose enterprise claim matches its federated-credential policy (a common restriction in Microsoft corporate tenants). GitHub only includes the enterprise claim for repositories owned by an account or organization that belongs to a GitHub Enterprise — personal-account repositories cannot satisfy this policy."
+            echo ""
+            echo "**Fix:** host this repository under an organization that is part of an accepted GitHub Enterprise, then re-run Create Environment so the federated credential is recreated for the new owner/repo. Alternatively, target an Azure tenant that does not enforce an enterprise-claim policy."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify Azure Credentials
         run: |
