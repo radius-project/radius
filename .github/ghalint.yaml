@@ -12,11 +12,11 @@ excludes:
     workflow_file_path: .github/workflows/release.yaml
     job_name: release
 
-  # contrib-update-resource-types.yaml force-pushes the bot PR branch using a
+  # update-resource-types.yaml force-pushes the bot PR branch using a
   # scoped GitHub App token (contents/pull-requests write on radius only), so
   # the checkout must persist those credentials to run `git push`.
   - policy_name: checkout_persist_credentials_should_be_false
-    workflow_file_path: .github/workflows/contrib-update-resource-types.yaml
+    workflow_file_path: .github/workflows/update-resource-types.yaml
     job_name: open-update-pr
 
   # The actions below are first-party reusable workflows synced from

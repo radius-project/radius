@@ -143,12 +143,19 @@ git checkout -b <USERNAME>/update-resource-types
 make update-resource-types
 ```
 
-This resolves the latest `resource-types-contrib` `main` commit, pins it as a commit SHA per namespace in `deploy/manifest/defaults.yaml` (`sources[].ref`), and copies the manifest files listed under `defaultRegistration` into `deploy/manifest/built-in-providers/`. To pin a specific release tag or commit instead of the latest `main`, pass `RESOURCE_TYPES_REF`, for example `make update-resource-types RESOURCE_TYPES_REF=v0.56.0`. To update a single namespace, also pass `RESOURCE_TYPES_NAMESPACE`, for example `make update-resource-types RESOURCE_TYPES_NAMESPACE=Radius.Compute RESOURCE_TYPES_REF=v0.56.0`. Review the diff to confirm the changes are expected.
+This resolves the latest `resource-types-contrib` `main` commit, pins it as a commit SHA per namespace in `deploy/manifest/defaults.yaml` (`resourceTypes[].ref`), and copies the manifest files listed under `defaultRegistration` into `deploy/manifest/built-in-providers/`. To pin a specific release tag or commit instead of the latest `main`, pass `RESOURCE_TYPES_REF`, for example `make update-resource-types RESOURCE_TYPES_REF=Radius.Compute/v0.2.0 RESOURCE_TYPES_NAMESPACE=Radius.Compute`. When the ref names an upstream tag it is also recorded in `resourceTypes[].tag`; edge-channel pins leave that field empty. To update a single namespace, pass `RESOURCE_TYPES_NAMESPACE` on its own, for example `make update-resource-types RESOURCE_TYPES_NAMESPACE=Radius.Compute`. Review the diff to confirm the changes are expected.
+
+Recipe packs are released upstream on their own `recipe-pack/<pack>/vX.Y.Z` tag series and are not vendored into this repo, so they are pinned separately and copy nothing:
+
+```bash
+make update-recipe-packs
+make update-recipe-packs RECIPE_PACKS_NAME=azure RECIPE_PACKS_REF=recipe-pack/azure/v0.2.0
+```
 
 If the update fails or the copied manifests fail schema validation at startup during testing, you have two options:
 
 1. **Fix forward**: Correct the manifest in `resource-types-contrib`, merge the fix, then re-run `make update-resource-types`.
-2. **Pin to last known good version**: Revert the `sources[].ref` change in `deploy/manifest/defaults.yaml` to keep the previous `resource-types-contrib` revision and run `make sync-resource-types` to restore the matching manifests.
+2. **Pin to last known good version**: Revert the `resourceTypes[].ref` change in `deploy/manifest/defaults.yaml` to keep the previous `resource-types-contrib` revision and run `make sync-resource-types` to restore the matching manifests.
 
 Open a separate PR targeting `main` in `radius-project/radius` with the updated `deploy/manifest/defaults.yaml` and manifest files. Merge it before proceeding to the `versions.yaml` update.
 

@@ -169,7 +169,6 @@ The provider delete workflows run the same provider setup as deploy — OIDC log
 
 The shared `delete-resource` composite action runs `rad app delete <name> --yes --preview` or `rad env delete <name> --yes --preview`. `--preview` is required: without it these commands fall through to the legacy implementation instead of the Radius.Core surface the deploy flow provisions. It writes a `rad-delete-result` artifact (JSON with `outcome`, `exitCode`, `resourceType`, `name`, `output`) so a frontend can report the result the same way it reads the deploy result. Deleting an application also deletes that application's resources; deleting an environment removes the environment and its recipe-pack associations.
 
-
 ### Control plane startup (Investment 5)
 
 Because the control plane is created and torn down on every operation, startup time is on the critical path for every user-facing action and is the primary determinant of perceived responsiveness. Two backend decisions follow from that, both owned by this technical design rather than the feature spec:
