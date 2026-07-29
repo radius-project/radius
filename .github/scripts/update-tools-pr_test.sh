@@ -46,6 +46,9 @@ git init -q --bare "${REMOTE}"
 git init -q -b main "${SEED}"
 git -C "${SEED}" config user.name "Test User"
 git -C "${SEED}" config user.email "test@example.com"
+# A contributor's global commit.gpgsign makes git commit block on a signing
+# prompt. DCO --signoff is unrelated and still applies.
+git -C "${SEED}" config commit.gpgsign false
 echo "original" >"${SEED}/tools.yaml"
 git -C "${SEED}" add tools.yaml
 git -C "${SEED}" commit -q -m "initial"
@@ -56,6 +59,8 @@ git -C "${SEED}" push -q origin main
 # gains a remote-tracking ref. Mirror that here or the pushes below lease
 # against a ref that CI does not have.
 git clone -q --single-branch --branch main "${REMOTE}" "${REPOSITORY}"
+# The script under test commits here, so it needs the same protection.
+git -C "${REPOSITORY}" config commit.gpgsign false
 
 mkdir -p "${FAKE_BIN}"
 cat >"${FAKE_BIN}/gh" <<'EOF'
