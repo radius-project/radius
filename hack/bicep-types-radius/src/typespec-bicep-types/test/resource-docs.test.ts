@@ -144,4 +144,26 @@ describe("buildResourceDocs", () => {
       buildResourceDocs(filterResourceTypes(factory.types), factory.types)
     ).toThrow(/expected 'Namespace\/type@version'/);
   });
+
+  it("rejects two API versions of one resource type, which share a file name", () => {
+    const factory = buildTypes([
+      "Radius.Compute/containers@2025-08-01-preview",
+      "Radius.Compute/containers@2026-01-01"
+    ]);
+
+    expect(() =>
+      buildResourceDocs(filterResourceTypes(factory.types), factory.types)
+    ).toThrow(/same reference doc file name.*containers\.md/s);
+  });
+
+  it("rejects nested resource types that collapse to the same hyphenated name", () => {
+    const factory = buildTypes([
+      "Radius.Compute/containers-sidecars@2025-08-01-preview",
+      "Radius.Compute/containers/sidecars@2025-08-01-preview"
+    ]);
+
+    expect(() =>
+      buildResourceDocs(filterResourceTypes(factory.types), factory.types)
+    ).toThrow(/same reference doc file name/);
+  });
 });

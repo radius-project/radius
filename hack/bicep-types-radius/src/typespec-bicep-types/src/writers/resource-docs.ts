@@ -44,10 +44,45 @@ export function buildResourceDocs(
   types: BicepType[],
   describe?: (resourceType: ResourceType) => string | undefined
 ): ResourceDoc[] {
-  return resourceTypes.map((resourceType) => ({
+  const docs = resourceTypes.map((resourceType) => ({
     filename: `${resourceDocFilename(resourceType)}.md`,
     content: writeTableMarkdown([resourceType], types, describe?.(resourceType))
   }));
+
+  assertUniqueFilenames(resourceTypes, docs);
+  return docs;
+}
+
+/**
+ * Fails when two resource types map to the same file name. The file name drops
+ * the API version, so a `types.json` holding several API versions of one
+ * resource type would otherwise write both docs to the same path and silently
+ * publish whichever finished last. Nested names joined with `-` can collide the
+ * same way. Callers should split the input by API version rather than letting
+ * one overwrite the other.
+ */
+function assertUniqueFilenames(
+  resourceTypes: ResourceType[],
+  docs: ResourceDoc[]
+): void {
+  const owners = new Map<string, string[]>();
+  docs.forEach((doc, index) => {
+    const names = owners.get(doc.filename) ?? [];
+    names.push(resourceTypes[index].name);
+    owners.set(doc.filename, names);
+  });
+
+  const collisions = [...owners.entries()].filter(
+    ([, names]) => names.length > 1
+  );
+  if (collisions.length > 0) {
+    const detail = collisions
+      .map(([filename, names]) => `${filename} <- ${names.join(", ")}`)
+      .join("; ");
+    throw new Error(
+      `Resource types map to the same reference doc file name: ${detail}`
+    );
+  }
 }
 
 /**

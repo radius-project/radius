@@ -27,7 +27,7 @@
 //     --out-dir    <namespace>/<apiVersion>/docs
 
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { readTypesJson } from "../bicep.js";
 import {
   buildResourceDocs,
@@ -52,6 +52,19 @@ if (!typesJsonArg || !outDirArg) {
 
 const typesJsonPath = resolve(process.cwd(), typesJsonArg);
 const outDir = resolve(process.cwd(), outDirArg);
+
+// The stale-doc cleanup below removes every *.md in the output directory, so
+// require the output to be the `docs/` directory alongside the supplied
+// types.json. A looser check (for example, only requiring the directory to be
+// named `docs`) would allow an unrelated docs directory to be wiped.
+const expectedOutDir = resolve(dirname(typesJsonPath), "docs");
+if (outDir !== expectedOutDir) {
+  console.error(
+    `--out-dir must be the 'docs' directory next to --types-json; got '${outDirArg}' ` +
+      `(resolved to '${outDir}'), expected '${expectedOutDir}'.`
+  );
+  process.exit(1);
+}
 
 const types = readTypesJson(
   await readFile(typesJsonPath, { encoding: "utf8" })
