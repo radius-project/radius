@@ -1,50 +1,81 @@
-# defaults.yaml lists the resource types from resource-types-contrib that ship
-# as defaults in Radius. Each entry uses the <namespace>/<typeName> format
-# and is resolved to a file path in the resource-types-contrib repository
-# using the convention: strip the "Radius." prefix, then
-# <namespace>/<typeName>/<typeName>.yaml.
+# defaults.yaml records what Radius consumes from resource-types-contrib:
 #
-# Each namespace is pinned independently under `sources` to a commit SHA and
-# fetched directly with git (no Go module). To update:
-#   make update-resource-types                                  # all namespaces
+#   resourceTypes[]      per-namespace pins for the default resource type
+#                        manifests, which are fetched and copied into
+#                        deploy/manifest/built-in-providers/{dev,self-hosted}/.
+#   recipePacks[]        per-pack pins for the recipe packs published by
+#                        resource-types-contrib. Recipe packs are not vendored
+#                        into this repo; the pin records the upstream revision
+#                        Radius targets and validates against.
+#   defaultRegistration  the <namespace>/<typeName> entries that ship as
+#                        defaults. Each resolves to a file path in
+#                        resource-types-contrib by stripping the "Radius."
+#                        prefix: <namespace>/<typeName>/<typeName>.yaml.
+#
+# Pin entries in both sections share one shape:
+#   name  namespace (Radius.Compute) or recipe pack folder (azure)
+#   repo  upstream repository, without a scheme
+#   ref   immutable commit SHA that is fetched (Phase A)
+#   tag   upstream release tag `ref` was resolved from, or "" when the pin came
+#         from the edge channel (a push to contrib main). Namespace tags look
+#         like Radius.Compute/v0.2.0, recipe pack tags like
+#         recipe-pack/azure/v0.2.0.
+#
+# sync-resource-types fetches each distinct (repo, ref) once. Edge-channel pins
+# usually match across entries (single linear history), but namespace- and
+# pack-scoped releases can intentionally diverge them.
+#
+# To update the pins:
+#   make update-resource-types                                    # all namespaces
 #   make update-resource-types RESOURCE_TYPES_NAMESPACE=Radius.Compute
+#   make update-recipe-packs                                      # all packs
+#   make update-recipe-packs RECIPE_PACKS_NAME=azure
 #
 # To add a new default resource type:
 #   1. Merge the manifest in resource-types-contrib.
-#   2. Ensure its namespace has an entry under `sources` below.
+#   2. Ensure its namespace has an entry under `resourceTypes` below.
 #   3. Add the entry under `defaultRegistration` below.
 #   4. Run: make update-resource-types
 #   5. Commit the updated files (defaults.yaml and the copied YAMLs).
-
-# sources pin, per namespace, the upstream resource-types-contrib revision the
-# default manifests for that namespace are copied from. sync-resource-types
-# fetches each distinct (repo, ref) once; update-resource-types resolves a
-# branch/tag/commit to an immutable commit SHA and rewrites the matching ref.
-# In the edge channel the refs often match (single linear history), but
-# namespace-scoped releases can intentionally diverge pins across namespaces.
-# Phase B adds versioned artifacts/checksum metadata alongside these refs.
+#
+# Phase B adds versioned artifacts/checksum metadata alongside these pins.
 ---
-sources:
-  - namespace: Radius.Compute
+resourceTypes:
+  - name: Radius.Compute
     repo: github.com/radius-project/resource-types-contrib
-    # An immutable commit SHA (Phase A). A branch or tag is also accepted by the
-    # fetch, but update-resource-types always pins a full commit SHA.
+    # A branch or tag is also accepted by the fetch, but update-resource-types
+    # always pins a full commit SHA.
     ref: 158be1959352e2c23e22488ae7d26c772c989de1
-  - namespace: Radius.Data
-    repo: github.com/radius-project/resource-types-contrib
-    ref: 158be1959352e2c23e22488ae7d26c772c989de1
-  - namespace: Radius.Security
+    tag: ""
+  - name: Radius.Data
     repo: github.com/radius-project/resource-types-contrib
     ref: 158be1959352e2c23e22488ae7d26c772c989de1
-  - namespace: Radius.Messaging
+    tag: ""
+  - name: Radius.Security
     repo: github.com/radius-project/resource-types-contrib
     ref: 158be1959352e2c23e22488ae7d26c772c989de1
-  - namespace: Radius.AI
+    tag: ""
+  - name: Radius.Messaging
     repo: github.com/radius-project/resource-types-contrib
     ref: 158be1959352e2c23e22488ae7d26c772c989de1
-  - namespace: Radius.Storage
+    tag: ""
+  - name: Radius.AI
     repo: github.com/radius-project/resource-types-contrib
     ref: 158be1959352e2c23e22488ae7d26c772c989de1
+    tag: ""
+  - name: Radius.Storage
+    repo: github.com/radius-project/resource-types-contrib
+    ref: 158be1959352e2c23e22488ae7d26c772c989de1
+    tag: ""
+recipePacks:
+  - name: azure
+    repo: github.com/radius-project/resource-types-contrib
+    ref: 13f4423207b8379b26254439806c6a208f23e769
+    tag: ""
+  - name: kubernetes
+    repo: github.com/radius-project/resource-types-contrib
+    ref: 13f4423207b8379b26254439806c6a208f23e769
+    tag: ""
 defaultRegistration:
   - Radius.Compute/containers
   - Radius.Compute/containerImages

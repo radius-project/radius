@@ -36,7 +36,7 @@ This design shares the goals of the [2026-04 automated default registration desi
 3. **Pin to an immutable, auditable revision** of upstream (commit SHA, tag, or OCI digest) with a readable record of what version is in use.
 4. **Align with the radius GoReleaser refactor.** The mechanism must require no Go-module machinery and must model the manifest bundle as a non-Go release artifact that a thin, tag-driven workflow in `resource-types-contrib` can publish and that a small coordination PR on the radius side can bump - the shape the GoReleaser note prescribes for non-Go assets. GoReleaser itself runs only in the radius core repo, not in `resource-types-contrib`.
 5. **Keep the on-disk skeleton stable across phases**, so the transport can evolve (git ref → OCI digest) without touching `defaults.yaml` semantics, the copy/prune logic, the drift check, or `RegisterDirectory`.
-6. **Automate the bump as a reviewable PR from the start.** A Dependabot-like bot opens a PR that bumps the affected `sources[].ref` entries and re-syncs - tracking the moving `main`/`edge`/`latest` channel continuously and namespace-scoped release tags at release time - so `latest`/`edge` builds never silently lag upstream and every bump is auditable with a full YAML diff.
+6. **Automate the bump as a reviewable PR from the start.** A Dependabot-like bot opens a PR that bumps the affected `resourceTypes[].ref` entries and re-syncs - tracking the moving `main`/`edge`/`latest` channel continuously and namespace-scoped release tags at release time - so `latest`/`edge` builds never silently lag upstream and every bump is auditable with a full YAML diff.
 
 ### Non goals
 
@@ -75,9 +75,9 @@ Syncing default resource types from resource-types-contrib...
 Done. Review and commit the updated files.
 ```
 
-The Radius PR diff shows the actual YAML changes inline (the visibility property the 2026-04 design intentionally chose), plus the affected `sources[].ref` changes - instead of an opaque `go.mod` pseudo-version bump.
+The Radius PR diff shows the actual YAML changes inline (the visibility property the 2026-04 design intentionally chose), plus the affected `resourceTypes[].ref` changes - instead of an opaque `go.mod` pseudo-version bump.
 
-In practice this command is usually run **by the sync bot, not by hand**: when `resource-types-contrib` updates, [`contrib-update-resource-types.yaml`](../../../.github/workflows/contrib-update-resource-types.yaml) opens a `bot/update-resource-types` PR that runs it and pushes the result, so the affected per-namespace pin changes and inline YAML diff arrive as a reviewable PR with CI already running. The manual command remains the fallback.
+In practice this command is usually run **by the sync bot, not by hand**: when `resource-types-contrib` updates, [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml) opens a `bot/update-resource-types` PR that runs it and pushes the result, so the affected per-namespace pin changes and inline YAML diff arrive as a reviewable PR with CI already running. The manual command remains the fallback.
 
 ## Design
 
@@ -87,9 +87,9 @@ The model keeps a fixed **skeleton** and makes the **transport** swappable:
 
 - **Skeleton (unchanged across phases):** `defaults.yaml` declares the default set and records the upstream pin → `make sync-resource-types` copies the selected manifests into `built-in-providers/{dev,self-hosted}/` and prunes stale managed files → the copies are committed → a CI drift check re-runs the copy and fails on any diff → `RegisterDirectory` loads the committed files at startup.
 - **Transport (the only thing that changes):** how `sync-resource-types` obtains the pinned snapshot of upstream files. Today: the Go module cache. Phase A: a pinned git ref fetched directly. Phase B: a versioned GitHub Release asset verified by checksum (optionally a signed OCI artifact pulled by digest).
-- **Bump (automated from the start):** a Dependabot-like bot opens a reviewable PR that advances the affected `sources[].ref` entries - the moving `main`/`edge`/`latest` commit or namespace-scoped release tags - and re-runs the copy. The bump is never silent: it lands as a PR with the full YAML diff, the drift check, and CI.
+- **Bump (automated from the start):** a Dependabot-like bot opens a reviewable PR that advances the affected `resourceTypes[].ref` entries - the moving `main`/`edge`/`latest` commit or namespace-scoped release tags - and re-runs the copy. The bump is never silent: it lands as a PR with the full YAML diff, the drift check, and CI.
 
-Because each pin is a plain string in `defaults.yaml` and the copy/prune/drift logic is transport-agnostic, swapping transports is a localized change to the sync implementation. The bump mechanism is likewise transport-agnostic - the bot rewrites the same `sources[].ref` entries regardless of how `sync` fetches them.
+Because each pin is a plain string in `defaults.yaml` and the copy/prune/drift logic is transport-agnostic, swapping transports is a localized change to the sync implementation. The bump mechanism is likewise transport-agnostic - the bot rewrites the same `resourceTypes[].ref` entries regardless of how `sync` fetches them.
 
 ### Architecture Diagram
 
@@ -243,7 +243,7 @@ A hardening of Option 4: instead of (or alongside) a release asset, the contrib 
 
 #### Option 6 - Automated, Dependabot-like PR sync (adopted in Phase A+)
 
-A bot opens (or refreshes) a Radius PR that runs `make update-resource-types` with the affected namespace refs, rewriting the matching `sources[].ref` entries so pins advance continuously, not only by hand at release time. This already exists as [`contrib-update-resource-types.yaml`](../../../.github/workflows/contrib-update-resource-types.yaml): `resource-types-contrib` dispatches `resource-types-contrib-updated` for both pushes to `main` and published releases, and the Radius consumer opens a cumulative `bot/update-resource-types` PR. A GitHub App token makes that PR trigger CI (including the drift check) like a human PR.
+A bot opens (or refreshes) a Radius PR that runs `make update-resource-types` with the affected namespace refs, rewriting the matching `resourceTypes[].ref` entries so pins advance continuously, not only by hand at release time. This already exists as [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml): `resource-types-contrib` dispatches `resource-types-contrib-updated` for both pushes to `main` and published releases, and the Radius consumer opens a cumulative `bot/update-resource-types` PR. A GitHub App token makes that PR trigger CI (including the drift check) like a human PR.
 
 ##### Advantages
 
@@ -310,16 +310,18 @@ Adopt **Option 3 (pinned git-ref fetch)** to remove the fake module immediately.
 
 ##### `defaults.yaml` Phase A+ schema
 
-Add a namespace-scoped `sources` list recording each upstream pin. The existing `defaultRegistration` list is unchanged, and every registered namespace must have one matching source.
+Add a namespace-scoped `resourceTypes` list recording each upstream pin. The existing `defaultRegistration` list is unchanged, and every registered namespace must have one matching entry.
 
 ```yaml
-sources:
-  - namespace: Radius.Compute
+resourceTypes:
+  - name: Radius.Compute
     repo: github.com/radius-project/resource-types-contrib
     ref: 51ee446a8fc6c0c0a1b2c3d4e5f6071829304152
-  - namespace: Radius.Data
+    tag: ""
+  - name: Radius.Data
     repo: github.com/radius-project/resource-types-contrib
     ref: 51ee446a8fc6c0c0a1b2c3d4e5f6071829304152
+    tag: ""
 defaultRegistration:
   - Radius.Compute/containers
   - Radius.Compute/persistentVolumes
@@ -327,25 +329,28 @@ defaultRegistration:
   - Radius.Data/mySqlDatabases
 ```
 
-Keeping the pins in `defaults.yaml` means every bump touches that file and triggers the existing CI path filter. A separate `deploy/manifest/sources.yaml` is unnecessary while this remains the only upstream source catalog.
+`ref` is always the immutable commit SHA that is fetched; `tag` records the upstream release tag that SHA was resolved from, and stays empty on the edge channel. Keeping the pins in `defaults.yaml` means every bump touches that file and triggers the existing CI path filter. A separate `deploy/manifest/sources.yaml` is unnecessary while this remains the only upstream source catalog.
 
 ##### Pin granularity: per-namespace Phase A+
 
 Phase A+ gives each **namespace** its own immutable pin so edge and release events can advance independently. `resource-types-contrib` is laid out and released by namespace (`Radius.Compute/`, `Radius.Data/`, `Radius.Security/`, and others), and its notifier emits a `namespaces` array of `{namespace, ref}` objects. The namespace is therefore the natural unit for synchronization. (`Radius.Core` is a special case: today it ships from the manual `radius_core.yaml`, not from upstream sync, so it carries no upstream pin; were it ever sourced from the contrib repo it would slot into the same per-namespace scheme.)
 
-**Schema.** Each `defaultRegistration` entry resolves its files from the source whose `namespace` it matches. Multiple namespaces may point to the same commit (the normal edge case) or diverge through namespace-scoped releases.
+**Schema.** Each `defaultRegistration` entry resolves its files from the `resourceTypes` entry whose `name` it matches. Multiple namespaces may point to the same commit (the normal edge case) or diverge through namespace-scoped releases.
 
 ```yaml
-sources:
-  - namespace: Radius.Compute
+resourceTypes:
+  - name: Radius.Compute
     repo: github.com/radius-project/resource-types-contrib
-    ref: Radius.Compute/v0.56.0          # SHA (Phase A) or tag/digest (Phase B)
-  - namespace: Radius.Data
+    ref: 51ee446a8fc6c0c0a1b2c3d4e5f6071829304152   # SHA (Phase A) or digest (Phase B)
+    tag: Radius.Compute/v0.56.0
+  - name: Radius.Data
     repo: github.com/radius-project/resource-types-contrib
-    ref: Radius.Data/v0.42.1
-  - namespace: Radius.Security
+    ref: 9c1f0b73a4d25e68fb0417c9ad3e5216708b94ce
+    tag: Radius.Data/v0.42.1
+  - name: Radius.Security
     repo: github.com/radius-project/resource-types-contrib
-    ref: Radius.Security/v0.30.0
+    ref: 3d82a6e40b917c5fd8e2314a06b7c95d1e4f8027
+    tag: Radius.Security/v0.30.0
 defaultRegistration:
   - Radius.Compute/containers
   - Radius.Compute/persistentVolumes
@@ -353,6 +358,24 @@ defaultRegistration:
   - Radius.Data/mySqlDatabases
   - Radius.Security/secrets
 ```
+
+##### Recipe pack pins
+
+`resource-types-contrib` also publishes **recipe packs** - the folders under `recipe-packs/` (`azure`, `kubernetes`) - on their own `recipe-pack/<pack>/vX.Y.Z` tag series, released independently of the namespace series ([resource-types-contrib#263](https://github.com/radius-project/resource-types-contrib/pull/263)). Radius does not vendor recipe packs: the extension deploy workflows fetch a pack's Bicep directly from upstream at deploy time. They are still recorded in `defaults.yaml` under a `recipePacks` list that reuses the `resourceTypes` entry shape, so there is one catalog of everything Radius consumes from upstream and one place to see which pack revision the workflows target.
+
+```yaml
+recipePacks:
+  - name: azure
+    repo: github.com/radius-project/resource-types-contrib
+    ref: 13f4423207b8379b26254439806c6a208f23e769
+    tag: ""
+  - name: kubernetes
+    repo: github.com/radius-project/resource-types-contrib
+    ref: 13f4423207b8379b26254439806c6a208f23e769
+    tag: ""
+```
+
+`make update-recipe-packs` (`RECIPE_PACKS_REF` / `RECIPE_PACKS_NAME`, or a `RECIPE_PACKS_PINS` JSON batch) resolves and rewrites these pins exactly like `make update-resource-types` does for namespaces, but copies nothing - so the drift check does not apply to them. The upstream notifier currently classifies a `recipe-pack/` tag as a non-namespace scope and sends no dispatch; the Radius consumer already accepts an optional `recipe_packs` array in the payload, so enabling the dispatch upstream needs no further change here.
 
 ###### Advantages
 
@@ -378,22 +401,22 @@ Use **per-namespace pins in Phase A+**. Edge events commonly set several namespa
 The [GoReleaser note](https://github.com/radius-project/design-notes/blob/main/tools/2026-03-goreleaser-release-lifecycle.md) makes releases tag-driven, demotes `versions.yaml` from automation trigger to metadata, and keeps non-Go artifacts (Helm chart, Bicep image, deployment-engine assets) as thin post-release coordination workflows. **GoReleaser is adopted by the radius core repo only - `resource-types-contrib` is not a GoReleaser repo and keeps its own minimal release workflow.** This design aligns the radius side with that lifecycle on every axis:
 
 - **No Go-module entanglement.** Removing the fake module keeps the radius core repo's GoReleaser Go build/release graph clean; the manifest bundle is explicitly a _non-Go artifact_, the category the note keeps outside GoReleaser.
-- **Each pin is just a version string.** Bumping an affected `sources[].ref` entry is the same shape as the note's "open a PR to update `versions.yaml`" coordination step - easy for a release workflow or a bot to perform.
+- **Each pin is just a version string.** Bumping an affected `resourceTypes[].ref` entry is the same shape as the note's "open a PR to update `versions.yaml`" coordination step - easy for a release workflow or a bot to perform.
 - **Phase B reuses the note's supply-chain rails.** Digest pinning, cosign signing, SBOMs, and provenance attestation are exactly what the note wants to add; applying them to the manifest bundle shares tooling rather than inventing a parallel mechanism.
 - **The end-state artifact is a standard release format.** A release asset plus a `checksums.txt` is what the radius core repo's GoReleaser already emits, so the shape is familiar - but `resource-types-contrib` produces it with a minimal publish workflow of its own, not GoReleaser. Publishing the manifest bundle as a release asset (Option 4) is the lowest-friction fit; an OCI artifact (Option 5) is the optional registry/signing upgrade. Either way, a small contrib release workflow satisfies the 2026-04 note's Follow-up #3 (tagged releases) without the Dependabot-on-a-fake-module hack.
 - **`defaults.yaml` stays declarative metadata**, mirroring the note's treatment of `versions.yaml` as metadata rather than a tooling trigger.
 
-Concretely, two separate workflows: (1) a minimal `resource-types-contrib` release workflow (not GoReleaser) attaches namespace-scoped manifest bundles (release assets + `checksums.txt`, optionally OCI artifacts + signatures) on tags; (2) the Radius coordination workflow bumps the affected `deploy/manifest/defaults.yaml` `sources[].ref` and future checksum/digest fields via PR. Only step (2) touches the radius GoReleaser plan.
+Concretely, two separate workflows: (1) a minimal `resource-types-contrib` release workflow (not GoReleaser) attaches namespace-scoped manifest bundles (release assets + `checksums.txt`, optionally OCI artifacts + signatures) on tags; (2) the Radius coordination workflow bumps the affected `deploy/manifest/defaults.yaml` `resourceTypes[].ref` and future checksum/digest fields via PR. Only step (2) touches the radius GoReleaser plan.
 
 ### Automated sync (Dependabot-like) and channels
 
-The per-namespace pins in `defaults.yaml` are bumped by an **automated, Dependabot-like job that opens a reviewable PR**, not only by hand at release time. This is Phase A+: the immutable-pin transport (Option 3) and automated PR sync (Option 6) are adopted together as a **hybrid** - immutable `sources[].ref` entries plus a bot that proposes each affected ref as a PR carrying the full YAML diff, the drift check, and CI.
+The per-namespace pins in `defaults.yaml` are bumped by an **automated, Dependabot-like job that opens a reviewable PR**, not only by hand at release time. This is Phase A+: the immutable-pin transport (Option 3) and automated PR sync (Option 6) are adopted together as a **hybrid** - immutable `resourceTypes[].ref` entries plus a bot that proposes each affected ref as a PR carrying the full YAML diff, the drift check, and CI.
 
-The bot exists as [`contrib-update-resource-types.yaml`](../../../.github/workflows/contrib-update-resource-types.yaml): the `resource-types-contrib` notifier emits a `resource-types-contrib-updated` `repository_dispatch` with a non-empty `namespaces` array of `{namespace, ref}` objects for both edge pushes and published releases. The Radius consumer accumulates those pins on `bot/update-resource-types`, runs `make update-resource-types`, and opens or refreshes the PR. A scoped GitHub App token makes that PR trigger CI (including the drift check) exactly like a human PR.
+The bot exists as [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml): the `resource-types-contrib` notifier emits a `resource-types-contrib-updated` `repository_dispatch` with a `namespaces` array of `{namespace, ref}` objects for both edge pushes and published releases, plus an optional `recipe_packs` array of `{name, ref}` objects. The Radius consumer accumulates those pins on `bot/update-resource-types`, runs `make update-resource-types` and `make update-recipe-packs`, and opens or refreshes the PR. A scoped GitHub App token makes that PR trigger CI (including the drift check) exactly like a human PR.
 
-**Channels.** Each affected `sources[].ref` follows one of two upstream channels, both stored as immutable commit SHAs:
+**Channels.** Each affected `resourceTypes[].ref` follows one of two upstream channels, both stored as immutable commit SHAs:
 
-| Channel                    | Affected `sources[].ref` points to                                                  | Trigger                                                                      | Status                                               |
+| Channel                    | Affected `resourceTypes[].ref` points to                                            | Trigger                                                                      | Status                                               |
 |----------------------------|-------------------------------------------------------------------------------------|------------------------------------------------------------------------------|------------------------------------------------------|
 | `main` / `edge` / `latest` | The pushed upstream `main` commit SHA for each affected namespace                   | Contrib notifier dispatch after a push to `main`                             | In place (Phase A+)                                  |
 | release                    | The commit behind each affected namespace-scoped tag; future asset digest alongside | Contrib notifier dispatch after the corresponding `release: published` event | In place; release-asset verification remains Phase B |
@@ -416,7 +439,7 @@ The moving channel keeps Radius `latest`/`edge` builds current with contrib `mai
 ## Test plan
 
 1. **`sync-resource-types` correctness:** on a clean checkout it copies exactly the files in `defaults.yaml` for the pinned refs; running it twice is idempotent (no diff); a bogus entry fails clearly.
-2. **CI drift detection:** a PR that hand-edits a copied file without re-syncing fails; a PR that bumps `sources[].ref` without re-syncing fails; newly generated untracked manifests/icons also fail; a clean `make update-resource-types` PR passes.
+2. **CI drift detection:** a PR that hand-edits a copied file without re-syncing fails; a PR that bumps `resourceTypes[].ref` without re-syncing fails; newly generated untracked manifests/icons also fail; a clean `make update-resource-types` PR passes.
 3. **Fake-module removal:** `go mod tidy` leaves no `resource-types-contrib` entry; the repo builds with `pkg/resourcetypescontrib/import.go` deleted; no reference to the module remains.
 4. **Startup registration:** existing `Test_ResourceProvider_RegisterManifests` and the no-location registration test continue to pass against the copied files.
 5. **(Phase B) integrity:** a tampered artifact (wrong digest or bad signature) aborts the sync.
@@ -432,17 +455,17 @@ The moving channel keeps Radius `latest`/`edge` builds current with contrib `mai
 ## Compatibility
 
 - **No runtime change.** `RegisterDirectory`, the `built-in-providers/` layout, and the manual `radius_core.yaml`/`microsoft_resources.yaml` files are untouched.
-- **No default-set change.** `defaultRegistration` is unchanged; only the namespace-scoped `sources` list is added.
-- **Contributor workflow change.** Bumping the default set no longer involves `go get`; it updates one or more `sources[].ref` entries through `make update-resource-types`. This is documented in the release process and the contrib README (see PR 3 below).
+- **No default-set change.** `defaultRegistration` is unchanged; only the pin metadata (`resourceTypes` / `recipePacks`) is updated.
+- **Contributor workflow change.** Bumping the default set no longer involves `go get`; it updates one or more `resourceTypes[].ref` entries through `make update-resource-types`. This is documented in the release process and the contrib README (see PR 3 below).
 - **One-time cleanup.** Removing the module from `go.mod`/`go.sum` and deleting `import.go` is a mechanical, reviewable change.
 
 ## Development plan
 
-1. **PR 1 (radius):** add the namespace-scoped `sources` list to `defaults.yaml`; rewrite `build/resource-types.mk` to fetch by pinned ref (Option 3); update `verify-resource-types.yaml` (drop Go setup and `go.mod`/`go.sum` path filters); remove the `require` line and run `go mod tidy`; delete `pkg/resourcetypescontrib/import.go`. Verify drift CI and startup tests pass.
+1. **PR 1 (radius):** add the namespace-scoped `resourceTypes` list to `defaults.yaml`; rewrite `build/resource-types.mk` to fetch by pinned ref (Option 3); update `verify-resource-types-manifest.yaml` (drop Go setup and `go.mod`/`go.sum` path filters); remove the `require` line and run `go mod tidy`; delete `pkg/resourcetypescontrib/import.go`. Verify drift CI and startup tests pass.
 2. **PR 2 (resource-types-contrib):** delete `go.mod` and `doc.go`.
 3. **PR 3 (radius):** update the release process doc and the contrib README to describe the ref-based bump.
-4. **Automated sync (Phase A+):** the `resource-types-contrib` notifier dispatches namespace-scoped refs for both pushes to `main` and published releases. [`contrib-update-resource-types.yaml`](../../../.github/workflows/contrib-update-resource-types.yaml) validates that contract, accumulates pending namespace changes, runs `make update-resource-types`, surfaces the full YAML diff, and gates on the drift check + CI.
-5. **Phase B (contrib release assets + radius coordination):** extend namespace-scoped releases to attach manifest bundles + `checksums.txt` (Option 4); switch the Radius fetch step to download and verify each asset; record checksum/digest metadata alongside the affected `sources[].ref` entries. Optionally harden to signed OCI artifacts (Option 5: `oras pull … @digest` + `cosign verify`/SBOM). Sequenced with the radius core repo's GoReleaser work.
+4. **Automated sync (Phase A+):** the `resource-types-contrib` notifier dispatches namespace-scoped refs for both pushes to `main` and published releases. [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml) validates that contract, accumulates pending namespace changes, runs `make update-resource-types`, surfaces the full YAML diff, and gates on the drift check + CI.
+5. **Phase B (contrib release assets + radius coordination):** extend namespace-scoped releases to attach manifest bundles + `checksums.txt` (Option 4); switch the Radius fetch step to download and verify each asset; record checksum/digest metadata alongside the affected `resourceTypes[].ref` entries. Optionally harden to signed OCI artifacts (Option 5: `oras pull … @digest` + `cosign verify`/SBOM). Sequenced with the radius core repo's GoReleaser work.
 
 ## Open Questions
 
@@ -461,7 +484,7 @@ The moving channel keeps Radius `latest`/`edge` builds current with contrib `mai
 | 3. Pinned git-ref fetch               | **Phase A+**              | Removes all three smells; supports per-namespace immutable pins; reuses the existing skeleton.                                                         |
 | 4. Pinned GitHub Release asset        | **Phase B (end state)**   | Standard release format (archive + `checksums.txt`) from a minimal contrib workflow; human-readable tag + checksum; tool-light (`curl`/`sha256sum`).   |
 | 5. Versioned signed OCI artifact      | Phase B upgrade           | Adds registry distribution + cosign/SBOM over Option 4; needs `oras`/`cosign`.                                                                         |
-| 6. Automated, Dependabot-like PR sync | **Phase A+ (automation)** | Accumulates affected `sources[].ref` bumps as a reviewable PR for both edge and release channels; implemented as `contrib-update-resource-types.yaml`. |
+| 6. Automated, Dependabot-like PR sync | **Phase A+ (automation)** | Accumulates `resourceTypes[].ref` bumps as a reviewable PR for both edge and release channels; implemented as `update-resource-types.yaml`.            |
 | 7. `go:embed`                         | Rejected                  | Still needs the fake module; no YAML-diff visibility.                                                                                                  |
 | 8. Runtime / install-time fetch       | Rejected                  | Violates the 2026-04 "no runtime fetching" non-goal; no PR-time visibility.                                                                            |
 | 9. Foreign package registry (npm)     | Rejected                  | Relocates the fake-module smell to another ecosystem.                                                                                                  |
