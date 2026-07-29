@@ -21,10 +21,11 @@ Each workflow runs on `ubuntu-latest`. No long-lived cloud secrets are stored �
 
 **`verify-azure.yml`:**
 
-1. **Authenticate via OIDC.** Runs `azure/login` with the environment's Azure variables.
-2. **Verify access.** Runs `az account show` to confirm the login.
-3. **Verify AKS access.** Sets up `kubelogin`, fetches cluster credentials with `az aks get-credentials`, converts the kubeconfig, and runs `kubectl cluster-info`.
-4. **Summary.** Writes the environment and provider to the job summary.
+1. **Inspect OIDC token claims.** Decodes the runner's GitHub OIDC token locally (the token is never printed) and writes a claims table — `repository`, `repository_owner`, `sub`, `enterprise`, `aud` — to the job summary. When the `enterprise` claim is empty it adds a warning explaining that a tenant enforcing an enterprise-claim policy (e.g. Microsoft corporate tenants) will reject login with `AADSTS7002381`. This step is diagnostic only and never fails the job.
+2. **Authenticate via OIDC.** Runs `azure/login` with the environment's Azure variables.
+3. **Verify access.** Runs `az account show` to confirm the login.
+4. **Verify AKS access.** Sets up `kubelogin`, fetches cluster credentials with `az aks get-credentials`, converts the kubeconfig, and runs `kubectl cluster-info`.
+5. **Summary.** Writes the environment and provider to the job summary.
 
 **`verify-aws.yml`:**
 
