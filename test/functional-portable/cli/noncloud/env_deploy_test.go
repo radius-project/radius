@@ -52,7 +52,7 @@ func Test_DeployEnvironmentTemplate(t *testing.T) {
 
 	// Ensure cleanup even if test fails
 	t.Cleanup(func() {
-		deleteKubernetesNamespace(context.Background(), t, options.K8sClient, envNamespace)
+		deleteKubernetesNamespace(context.Background(), t, options, envNamespace)
 	})
 	t.Cleanup(func() {
 		// Try to delete the test group if it still exists
@@ -65,7 +65,7 @@ func Test_DeployEnvironmentTemplate(t *testing.T) {
 	err = cli.GroupCreate(ctx, uniqueGroupName)
 	require.NoError(t, err, "Failed to create resource group")
 
-	createKubernetesNamespace(ctx, t, options.K8sClient, envNamespace)
+	createKubernetesNamespace(ctx, t, options, envNamespace)
 
 	// Get the template file path
 	templateFilePath := filepath.Join(cwd, "testdata/corerp-env-deploy-test.bicep")

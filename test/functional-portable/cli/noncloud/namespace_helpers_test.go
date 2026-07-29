@@ -28,20 +28,13 @@ import (
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	k8s "k8s.io/client-go/kubernetes"
 )
 
 func newCLIWithoutDefaultEnvironment(t *testing.T, options rp.RPTestOptions) *radcli.CLI {
 	t.Helper()
 
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-
-	tempConfigFile, err := os.CreateTemp(cwd, "rad-test-config-*.yaml")
+	tempConfigFile, err := os.CreateTemp(t.TempDir(), "rad-test-config-*.yaml")
 	require.NoError(t, err, "Failed to create temp config file")
-	t.Cleanup(func() {
-		_ = os.Remove(tempConfigFile.Name())
-	})
 
 	configYAML := fmt.Sprintf(`workspaces:
         default: test-workspace
@@ -60,16 +53,24 @@ func newCLIWithoutDefaultEnvironment(t *testing.T, options rp.RPTestOptions) *ra
 	return radcli.NewCLI(t, tempConfigFile.Name())
 }
 
-func createKubernetesNamespace(ctx context.Context, t *testing.T, client k8s.Interface, namespace string) {
+func createKubernetesNamespace(ctx context.Context, t *testing.T, options rp.RPTestOptions, namespace string) {
 	t.Helper()
 
+	client, err := rp.DeploymentTargetK8sClient(options)
+	require.NoError(t, err, "failed to build deployment-target Kubernetes client")
 	require.NoError(t, kubernetes.EnsureNamespace(ctx, client, namespace), "failed to create namespace %s", namespace)
 }
 
-func deleteKubernetesNamespace(ctx context.Context, t *testing.T, client k8s.Interface, namespace string) {
+func deleteKubernetesNamespace(ctx context.Context, t *testing.T, options rp.RPTestOptions, namespace string) {
 	t.Helper()
 
-	err := client.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
+	client, err := rp.DeploymentTargetK8sClient(options)
+	if err != nil {
+		t.Logf("Warning: Failed to build deployment-target Kubernetes client: %v", err)
+		return
+	}
+
+	err = client.CoreV1().Namespaces().Delete(ctx, namespace, metav1.DeleteOptions{})
 	if err != nil && !apierrors.IsNotFound(err) {
 		t.Logf("Warning: Failed to delete namespace %s: %v", namespace, err)
 	}
