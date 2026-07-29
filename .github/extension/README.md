@@ -24,26 +24,33 @@ Each workflow runs on `ubuntu-latest`. No long-lived cloud secrets are stored â€
 1. **Authenticate via OIDC.** Runs `azure/login` with the environment's Azure variables.
 2. **Verify access.** Runs `az account show` to confirm the login.
 3. **Verify AKS access.** Sets up `kubelogin`, fetches cluster credentials with `az aks get-credentials`, converts the kubeconfig, and runs `kubectl cluster-info`.
-4. **Summary.** Writes the environment and provider to the job summary.
+4. **Verify GHCR package push permission.** Confirms the workflow token can push to the OCI state archive package (`RADIUS_STATE_REGISTRY`) that `rad startup` / `rad shutdown` write to. See [GHCR package push check](#ghcr-package-push-check).
+5. **Summary.** Writes the environment, provider, and GHCR check result to the job summary.
 
 **`verify-aws.yml`:**
 
 1. **Authenticate via OIDC.** Runs `aws-actions/configure-aws-credentials` with the environment's AWS variables.
 2. **Verify access.** Runs `aws sts get-caller-identity` to confirm the login.
 3. **Verify EKS access.** Updates the kubeconfig with `aws eks update-kubeconfig` and runs `kubectl cluster-info`.
-4. **Summary.** Writes the environment and provider to the job summary.
+4. **Verify GHCR package push permission.** Confirms the workflow token can push to the OCI state archive package (`RADIUS_STATE_REGISTRY`) that `rad startup` / `rad shutdown` write to. See [GHCR package push check](#ghcr-package-push-check).
+5. **Summary.** Writes the environment, provider, and GHCR check result to the job summary.
+
+### GHCR package push check
+
+Radius stores its control-plane state as an OCI archive in GHCR (`RADIUS_STATE_REGISTRY`). During a deploy, `rad startup` and `rad shutdown` push to that package, and GHCR rejects the push with a `403 Forbidden` when the workflow token lacks write access to it â€” a permission that is **not granted by default** for packages not linked to the repo. To surface that early instead of mid-deploy, the check asks GHCR's Docker v2 token endpoint for a `pull,push`-scoped token as `github.actor` and inspects the actions the token was actually granted; a Docker registry only grants the subset of the requested scope the caller is authorized for, so this reveals push access without mutating the package. The check fails with an actionable error when `push` is not granted, is skipped when `RADIUS_STATE_REGISTRY` is unset or not on `ghcr.io`, and mirrors the deploy workflow's `packages: write` token so it tests the same capability the deploy relies on.
 
 ### Trigger and permissions
 
 - **Trigger:** `workflow_dispatch` with a single `environment` input (the GitHub Environment name). The job binds to that environment via `environment: ${{ inputs.environment }}`.
-- **Permissions:** `id-token: write` (required for OIDC) and `contents: read`.
+- **Permissions:** `id-token: write` (required for OIDC), `contents: read`, and `packages: write` (so the GHCR package push check tests the same token capability the deploy uses).
 
 ### Required environment variables
 
-The workflows read only GitHub Actions **variables** (`vars`), never secrets. Configure these on the target GitHub Environment:
+The workflows read GitHub Actions **variables** (`vars`) plus the built-in `GITHUB_TOKEN` secret (used by the GHCR package push check). Configure these on the target GitHub Environment:
 
 | Provider | Variables |
 |---|---|
+| Common | `RADIUS_STATE_REGISTRY` (optional; enables the GHCR package push check) |
 | Azure | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_AKS_CLUSTER_NAME` |
 | AWS | `AWS_ROLE_ARN`, `AWS_REGION`, `AWS_EKS_CLUSTER_NAME` |
 

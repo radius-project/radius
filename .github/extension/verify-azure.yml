@@ -10,6 +10,9 @@ on:
 permissions:
   id-token: write
   contents: read
+  # Mirrors the run-rad-commands deploy workflow so the GHCR push-permission
+  # check below tests the same token capability the deploy will rely on.
+  packages: write
 
 jobs:
   verify:
@@ -40,8 +43,71 @@ jobs:
           kubectl cluster-info
           echo "✅ AKS cluster accessible"
 
+      - name: Verify GHCR package push permission
+        env:
+          GH_ACTOR: ${{ github.actor }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATE_REGISTRY: ${{ vars.RADIUS_STATE_REGISTRY }}
+        run: |
+          set -euo pipefail
+
+          # The Radius control-plane state is stored as an OCI archive in GHCR.
+          # rad startup / rad shutdown push to that package during a deploy, so
+          # the workflow token must have push (write) access to it. When it does
+          # not, the deploy fails later with a 403 from GHCR. Detect that here so
+          # the user gets a clear, early signal instead of a mid-deploy failure.
+          if [ -z "${STATE_REGISTRY}" ]; then
+            echo "RADIUS_STATE_REGISTRY is not set for this environment; skipping GHCR package push check."
+            echo "GHCR_PUSH_CHECK=skipped" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          case "${STATE_REGISTRY}" in
+            ghcr.io/*) ;;
+            *)
+              echo "RADIUS_STATE_REGISTRY (${STATE_REGISTRY}) is not on ghcr.io; skipping GHCR package push check."
+              echo "GHCR_PUSH_CHECK=skipped" >> "$GITHUB_ENV"
+              exit 0
+              ;;
+          esac
+
+          repo_path="${STATE_REGISTRY#ghcr.io/}"
+          echo "Checking push permission for ghcr.io/${repo_path} as ${GH_ACTOR}..."
+
+          # Ask GHCR's token endpoint for a pull,push-scoped token. A Docker v2
+          # registry only grants the subset of the requested scope the caller is
+          # authorized for, so the returned token's granted actions reveal
+          # whether push is actually allowed -- without mutating the package.
+          response=$(curl -sS -u "${GH_ACTOR}:${GH_TOKEN}" \
+            "https://ghcr.io/token?service=ghcr.io&scope=repository:${repo_path}:pull,push")
+          token=$(printf '%s' "${response}" | jq -r '.token // empty')
+          if [ -z "${token}" ]; then
+            echo "::error::Could not obtain a GHCR access token for ghcr.io/${repo_path}."
+            exit 1
+          fi
+
+          # Decode the JWT payload (base64url) and read the granted actions.
+          payload=$(printf '%s' "${token}" | cut -d. -f2)
+          case $(( ${#payload} % 4 )) in
+            2) payload="${payload}==" ;;
+            3) payload="${payload}=" ;;
+          esac
+          actions=$(printf '%s' "${payload}" | tr '_-' '/+' | base64 -d 2>/dev/null \
+            | jq -r '.access[]?.actions[]?' | sort -u)
+          echo "Granted actions: $(printf '%s' "${actions}" | tr '\n' ' ')"
+
+          if printf '%s\n' "${actions}" | grep -qx "push"; then
+            echo "✅ Workflow token has push permission to ghcr.io/${repo_path}"
+            echo "GHCR_PUSH_CHECK=ok" >> "$GITHUB_ENV"
+          else
+            echo "GHCR_PUSH_CHECK=failed" >> "$GITHUB_ENV"
+            echo "::error::The workflow token cannot push to the Radius state package ghcr.io/${repo_path}. Grant '${GH_ACTOR}' write access to that GHCR package (or the org's packages), then re-run this workflow."
+            exit 1
+          fi
+
       - name: Summary
         run: |
           echo "## ✅ Credentials Verified" >> $GITHUB_STEP_SUMMARY
           echo "Environment: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "Provider: azure" >> $GITHUB_STEP_SUMMARY
+          echo "GHCR package push: ${GHCR_PUSH_CHECK:-unknown}" >> $GITHUB_STEP_SUMMARY
