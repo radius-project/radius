@@ -32,7 +32,7 @@ runs:
   using: composite
   steps:
     - name: Install KinD
-      # Installs the version pinned in build/tools.mk (KIND_VERSION) and adds the
+      # Installs the version pinned in build/tools.yaml (KIND_VERSION) and adds the
       # install dir to the job PATH, so the cluster-create steps below find kind.
       shell: bash
       run: make install-kind

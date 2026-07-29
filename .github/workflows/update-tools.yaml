@@ -1,0 +1,100 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: update-tools
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: update-tools
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  update:
+    if: >-
+      github.repository == 'radius-project/radius' ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      PR_BRANCH: automation/update-tools
+      PR_TITLE: "chore: update pinned tool versions"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
+
+      - name: Check and update tool metadata
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: make update-tools
+
+      - name: Detect changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git status --short
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Tool metadata is current."
+          fi
+
+      - name: Generate Dependabot-manager App token
+        if: >-
+          steps.changes.outputs.changed == 'true' &&
+          github.repository == 'radius-project/radius'
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.DEPENDABOT_MANAGER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.DEPENDABOT_MANAGER_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            radius
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Get Dependabot-manager bot details
+        if: >-
+          steps.changes.outputs.changed == 'true' &&
+          github.repository == 'radius-project/radius'
+        id: bot-details
+        uses: raven-actions/bot-details@ee8966a9ff6e7e42cbfc4a56b4ddb60a9d1b40a6 # v1.2.0
+        with:
+          bot-slug-name: ${{ steps.app-token.outputs.app-slug }}
+
+      - name: Commit updates and create or update pull request
+        if: >-
+          steps.changes.outputs.changed == 'true' &&
+          github.repository == 'radius-project/radius'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GIT_USER_EMAIL: ${{ steps.bot-details.outputs.email }}
+          GIT_USER_NAME: ${{ steps.bot-details.outputs.name }}
+        run: make workflow-update-tools-pr
+
+      - name: Report fork changes
+        if: >-
+          steps.changes.outputs.changed == 'true' &&
+          github.repository != 'radius-project/radius'
+        run: |
+          echo "Tool updates were found."
+          echo "PR creation is skipped outside radius-project/radius because"
+          echo "the Dependabot-manager App secrets are unavailable to forks."

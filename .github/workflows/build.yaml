@@ -159,7 +159,7 @@ jobs:
 
       - name: Install oras
         if: needs.changes.outputs.only_changed != 'true'
-        # Version pinned in build/tools.mk (ORAS_VERSION).
+        # Version pinned in build/tools.yaml (ORAS_VERSION).
         run: make install-oras
 
       - name: Push latest rad cli binary to GHCR (unix-like)
@@ -328,7 +328,7 @@ jobs:
           persist-credentials: false
 
       - name: Install helm
-        # Version pinned in build/tools.mk (HELM_VERSION).
+        # Version pinned in build/tools.yaml (HELM_VERSION).
         run: make install-helm
 
       - name: Setup Python

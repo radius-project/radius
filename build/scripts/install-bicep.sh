@@ -8,7 +8,7 @@ set -euo pipefail
 # later steps can run bicep.
 #
 # The pinned version and per-platform SHA-256 checksums are normally provided by
-# build/tools.mk through the environment. The script is generic, so when a value
+# build/tools.yaml through the generated Make include. The script is generic, so when a value
 # is not supplied it is resolved at runtime:
 #   * empty BICEP_VERSION           -> the latest published release
 #   * missing checksum for platform -> install without verification (a warning is
@@ -168,7 +168,7 @@ main() {
         || fail "could not download ${asset} ${version}"
 
     # Azure/bicep does not publish checksums, so verification only happens when a
-    # pinned checksum is supplied (the common case via build/tools.mk).
+    # pinned checksum is supplied (the common case via build/tools.yaml).
     if [ -n "$checksum" ]; then
         verify_checksum "$checksum" "${WORKDIR}/bicep"
     else

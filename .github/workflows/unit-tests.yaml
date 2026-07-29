@@ -67,7 +67,7 @@ jobs:
       # Helm is required because `make test` depends on the `test-helm` target,
       # which installs the helm-unittest plugin and runs the chart unit tests.
       - name: Install helm
-        # Version pinned in build/tools.mk (HELM_VERSION).
+        # Version pinned in build/tools.yaml (HELM_VERSION).
         run: make install-helm
 
       - name: Run make test (unit tests)

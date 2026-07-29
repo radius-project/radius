@@ -17,7 +17,6 @@
 ##@ Generate (Code and Schema Generation)
 
 GOOS ?= $(shell go env GOOS)
-CONTROLLER_TOOLS_VERSION ?= v0.12.0
 
 ifeq ($(GOOS),windows)
    CMD_EXT = .cmd
