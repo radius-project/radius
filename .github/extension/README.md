@@ -39,6 +39,8 @@ Each workflow runs on `ubuntu-latest`. No long-lived cloud secrets are stored �
 
 Radius stores its control-plane state as an OCI archive in GHCR (`RADIUS_STATE_REGISTRY`). During a deploy, `rad startup` and `rad shutdown` push to that package, and GHCR rejects the push with a `403 Forbidden` when the workflow token lacks write access to it — a permission that is **not granted by default** for packages not linked to the repo. To surface that early instead of mid-deploy, the check asks GHCR's Docker v2 token endpoint for a `pull,push`-scoped token as `github.actor` and inspects the actions the token was actually granted; a Docker registry only grants the subset of the requested scope the caller is authorized for, so this reveals push access without mutating the package. The check fails with an actionable error when `push` is not granted, is skipped when `RADIUS_STATE_REGISTRY` is unset or not on `ghcr.io`, and mirrors the deploy workflow's `packages: write` token so it tests the same capability the deploy relies on.
 
+The check lives in the shared [`verify-ghcr-push`](actions/verify-ghcr-push/action.yml) composite action so the two verify templates cannot drift; both workflows reference it from `radius-project/radius` at the `{{RADIUS_REF}}` pinned ref (the same mechanism the run-rad-commands provider workflows use), so the logic is not copied into user repos.
+
 ### Trigger and permissions
 
 - **Trigger:** `workflow_dispatch` with a single `environment` input (the GitHub Environment name). The job binds to that environment via `environment: ${{ inputs.environment }}`.
@@ -46,7 +48,7 @@ Radius stores its control-plane state as an OCI archive in GHCR (`RADIUS_STATE_R
 
 ### Required environment variables
 
-The workflows read GitHub Actions **variables** (`vars`) plus the built-in `GITHUB_TOKEN` secret (used by the GHCR package push check). Configure these on the target GitHub Environment:
+The workflows read GitHub Actions **variables** (`vars`) — never long-lived secrets. The GHCR package push check also uses the built-in `GITHUB_TOKEN`, which GitHub Actions provides automatically (nothing to configure). Configure these variables on the target GitHub Environment:
 
 | Provider | Variables |
 |---|---|
