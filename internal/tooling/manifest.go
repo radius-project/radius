@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"go.yaml.in/yaml/v3"
 )
@@ -30,6 +31,7 @@ var (
 // and checksums of the external tools used by the repository.
 type Manifest struct {
 	SchemaVersion int      `yaml:"schemaVersion"`
+	CooldownDays  int      `yaml:"cooldownDays,omitempty"`
 	Platforms     []string `yaml:"platforms"`
 	Tools         []Tool   `yaml:"tools"`
 }
@@ -116,6 +118,9 @@ func (m Manifest) Validate() error {
 	if m.SchemaVersion != manifestSchemaVersion {
 		return fmt.Errorf("unsupported schemaVersion %d", m.SchemaVersion)
 	}
+	if m.CooldownDays < 0 {
+		return fmt.Errorf("cooldownDays must not be negative")
+	}
 	if len(m.Platforms) == 0 {
 		return fmt.Errorf("at least one platform is required")
 	}
@@ -159,6 +164,9 @@ func (m Manifest) Validate() error {
 		}
 		if err := validateSource(tool); err != nil {
 			return err
+		}
+		if m.CooldownDays > 0 && tool.UpdatesEnabled() && !tool.Source.ReportsReleaseDate() {
+			return fmt.Errorf("tool %s cannot resolve a release date for the %d-day cooldown; set source.repository", tool.Name, m.CooldownDays)
 		}
 		if err := validateChecksumSource(tool); err != nil {
 			return err
@@ -315,6 +323,26 @@ func validateVersionFiles(tool Tool) error {
 		}
 	}
 	return nil
+}
+
+// Cooldown returns the minimum age a release must reach before the updater
+// adopts it. A zero duration disables the cooldown.
+func (m Manifest) Cooldown() time.Duration {
+	return time.Duration(m.CooldownDays) * 24 * time.Hour
+}
+
+// ReportsReleaseDate reports whether the updater can determine when a source's
+// latest release was published, which the cooldown requires. A stable-text
+// source carries no timestamp, so it needs a repository to resolve one.
+func (s Source) ReportsReleaseDate() bool {
+	switch s.Type {
+	case "github-release", "hashicorp-checkpoint":
+		return true
+	case "stable-text":
+		return strings.TrimSpace(s.Repository) != ""
+	default:
+		return false
+	}
 }
 
 // UpdatesEnabled reports whether the updater may advance the tool's version.

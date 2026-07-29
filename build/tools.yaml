@@ -1,5 +1,6 @@
 ---
 schemaVersion: 1
+cooldownDays: 7
 platforms:
   - linux_amd64
   - linux_arm64
@@ -91,6 +92,7 @@ tools:
     version: v1.36.2
     source:
       type: stable-text
+      repository: kubernetes/kubernetes
       latestURL: https://dl.k8s.io/release/stable.txt
     downloadTemplate: https://dl.k8s.io/release/{version}/bin/{os}/{arch}/kubectl
     platforms:

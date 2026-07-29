@@ -52,6 +52,7 @@ The manifest is YAML with the following top-level properties:
 | Property        | Type            | Allowed or required values                                                                         | Description                                            |
 |-----------------|-----------------|----------------------------------------------------------------------------------------------------|--------------------------------------------------------|
 | `schemaVersion` | integer         | `1`                                                                                                | Manifest schema version.                               |
+| `cooldownDays`  | integer         | Non-negative integer; omitted or `0` disables the cooldown                                         | Minimum age, in days, before a release is adopted.     |
 | `platforms`     | list of strings | One or more unique values matching `linux_amd64`, `linux_arm64`, `darwin_amd64`, or `darwin_arm64` | Platforms for which checksums and assets are recorded. |
 | `tools`         | list of objects | One or more tools                                                                                  | Tool definitions described below.                      |
 
@@ -75,11 +76,13 @@ The manifest is YAML with the following top-level properties:
 | Property     | Type   | Allowed or required values                                 | Description                                                              |
 |--------------|--------|------------------------------------------------------------|--------------------------------------------------------------------------|
 | `type`       | string | `github-release`, `stable-text`, or `hashicorp-checkpoint` | Version source parser selected by the updater.                           |
-| `repository` | string | Required for `github-release`, in `owner/repository` form  | GitHub repository containing the release.                                |
+| `repository` | string | `owner/repository`; required for `github-release`          | GitHub repository; `stable-text` uses it for release dates.              |
 | `tagPrefix`  | string | Optional                                                   | Prefix added to the pinned version to form a release tag, such as `jq-`. |
 | `latestURL`  | string | Non-empty HTTPS URL                                        | Endpoint queried for the latest version.                                 |
 
 For `github-release`, the endpoint must return a GitHub release object with `tag_name`. `stable-text` reads the trimmed response body, and `hashicorp-checkpoint` reads `current_version` from the JSON response.
+
+The cooldown needs a release date. `github-release` reads `published_at` and `hashicorp-checkpoint` reads `current_release`. A `stable-text` response carries no date, so the updater reads `published_at` from the GitHub release matching the resolved tag in `repository`. When a cooldown is configured, every updatable tool must be able to resolve a date this way or the manifest fails validation.
 
 ### `checksumSource` properties
 
@@ -136,6 +139,7 @@ The `replace` prefix must occur exactly once. Terraform uses `versionFiles` for 
 
 - The updater checks the latest version source for every tool.
 - A version changes only when the source is a greater semantic version; downgrades are ignored.
+- A newer release is adopted only once it is at least `cooldownDays` old. A younger release is reported as held and the current version stays pinned until a later run.
 - A tool with `update: false` remains pinned, but its source and current-version checks still run.
 - Checksums are refreshed for every configured platform at the selected version.
 - The manifest, generated Make include, Terraform compatibility file, and declared version consumers are updated only after source checks succeed.
@@ -155,5 +159,7 @@ The Make dry run should invoke `bin/tool-updater` or `bin/tool-updater.exe`, not
 ## Troubleshooting
 
 - **Windows reports an elevation error for `go run`.** Use `make update-tools`, or build and run `bin/tool-updater.exe` directly. The Make target avoids Go's temporary executable directory.
+- **A newer release is reported as held.** The release is younger than `cooldownDays`. Wait for it to age, or change `cooldownDays` in the manifest.
+- **The updater reports that a source has no release date.** The source stopped returning `published_at` or `current_release`. Confirm the release exists upstream, and check that a `stable-text` source names a `repository` that publishes GitHub releases for its tags.
 - **A checksum is not found.** Check the release asset name, version/tag prefix, checksum-file template, and checksum format together. The updater matches the expanded asset name exactly.
 - **Manifest validation fails.** Ensure every checksum-bearing tool defines every platform listed at the manifest's top level, every checksum is 64 lowercase hexadecimal characters, and any `versionFiles` path stays inside the repository.

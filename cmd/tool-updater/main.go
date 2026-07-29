@@ -68,14 +68,17 @@ func update(args []string) error {
 	if err != nil {
 		return fmt.Errorf("load manifest: %w", err)
 	}
-	changes, err := tooling.UpdateManifest(context.Background(), &manifest, tooling.NewClient(""))
+	result, err := tooling.UpdateManifest(context.Background(), &manifest, tooling.NewClient(""))
 	if err != nil {
 		return fmt.Errorf("update tool metadata: %w", err)
 	}
-	if len(changes) == 0 {
+	for _, held := range result.Held {
+		fmt.Printf("held %s\n", held)
+	}
+	if len(result.Changes) == 0 {
 		fmt.Println("tool metadata is current")
 	} else {
-		for _, change := range changes {
+		for _, change := range result.Changes {
 			fmt.Printf("updated %s\n", change)
 		}
 		if _, err := tooling.WriteManifest(*manifestPath, manifest); err != nil {
