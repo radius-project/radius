@@ -33,7 +33,9 @@ for ns in $NAMESPACES; do
     ns_lower=$(echo "$ns" | tr '[:upper:]' '[:lower:]')
     out_dir="$BICEP_TYPES_OUTPUT_BASE/$ns_lower/$BICEP_TYPES_CONTRIB_API_VERSION"
     manifest_args=""
-    for entry in $(yq '.defaultRegistration[]' "$DEFAULTS_YAML" | grep "^$ns/"); do
+    for entry in $(yq '.defaultRegistration[]' "$DEFAULTS_YAML"); do
+        # Literal namespace prefix match; namespaces contain '.', which grep would treat as a wildcard.
+        [ "${entry%%/*}" = "$ns" ] || continue
         type_name=$(echo "$entry" | cut -d'/' -f2)
         manifest="$BICEP_TYPES_CONTRIB_MANIFEST_DIR/$type_name.yaml"
         if [ ! -f "$manifest" ]; then
