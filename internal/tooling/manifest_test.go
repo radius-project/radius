@@ -3,6 +3,7 @@ package tooling
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -334,6 +335,48 @@ tools:
 		if !strings.Contains(text, expected) {
 			t.Errorf("updated manifest does not contain %q:\n%s", expected, text)
 		}
+	}
+}
+
+func TestUpdateManifestYAMLOnlyRewritesChangedValues(t *testing.T) {
+	path := filepath.Join("..", "..", "build", "tools.yaml")
+	original, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest, err := LoadManifest(path)
+	if err != nil {
+		t.Fatalf("LoadManifest() error = %v", err)
+	}
+
+	const newVersion = "v99.99.99"
+	const newChecksum = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+	tool := &manifest.Tools[0]
+	platform := manifest.Platforms[0]
+	entry := tool.Platforms[platform]
+	entry.Checksum = newChecksum
+	tool.Platforms[platform] = entry
+	tool.Version = newVersion
+
+	updated, err := updateManifestYAML(path, manifest)
+	if err != nil {
+		t.Fatalf("updateManifestYAML() error = %v", err)
+	}
+
+	originalLines := strings.Split(string(original), "\n")
+	updatedLines := strings.Split(string(updated), "\n")
+	if len(originalLines) != len(updatedLines) {
+		t.Fatalf("line count changed from %d to %d; the manifest was reformatted", len(originalLines), len(updatedLines))
+	}
+	var changed []string
+	for index := range originalLines {
+		if originalLines[index] != updatedLines[index] {
+			changed = append(changed, strings.TrimSpace(updatedLines[index]))
+		}
+	}
+	want := []string{"version: " + newVersion, "checksum: " + newChecksum}
+	if !slices.Equal(changed, want) {
+		t.Fatalf("changed lines = %q, want only %q", changed, want)
 	}
 }
 

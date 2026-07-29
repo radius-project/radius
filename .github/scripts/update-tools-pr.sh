@@ -42,6 +42,18 @@ local `br:localhost` functional tests support a newer release.
 EOF
 }
 
+# The workflow checks out only the base branch, so there is no remote-tracking
+# ref to lease against. Read the destination SHA from the remote instead; an
+# empty value leases on the branch not existing yet.
+push_branch() {
+    local expected
+    expected="$(
+        git ls-remote origin "refs/heads/${PR_BRANCH}" | awk '{print $1}'
+    )"
+    git push --force-with-lease="refs/heads/${PR_BRANCH}:${expected}" \
+        origin "HEAD:${PR_BRANCH}"
+}
+
 require_environment
 cd "${REPO_ROOT}"
 
@@ -51,7 +63,7 @@ git checkout -B "${PR_BRANCH}"
 git add -A
 git commit --signoff -m "${PR_TITLE}"
 gh auth setup-git
-git push --force-with-lease origin "HEAD:${PR_BRANCH}"
+push_branch
 
 existing_pr="$(
     gh pr list --state open --head "${PR_BRANCH}" \

@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
@@ -427,8 +428,8 @@ func WriteMakeFile(path string, manifest Manifest) (bool, error) {
 	return writeIfChanged(path, contents)
 }
 
-// WriteManifest writes a normalized YAML manifest only when its contents
-// change.
+// WriteManifest patches tool versions and checksums into the manifest,
+// preserving its existing formatting, and writes only when contents change.
 func WriteManifest(path string, manifest Manifest) (bool, error) {
 	if err := manifest.Validate(); err != nil {
 		return false, err
@@ -438,6 +439,12 @@ func WriteManifest(path string, manifest Manifest) (bool, error) {
 		return false, fmt.Errorf("update tool manifest: %w", err)
 	}
 	return writeIfChanged(path, contents)
+}
+
+// scalarEdit is a manifest value to rewrite at its original position.
+type scalarEdit struct {
+	node  *yaml.Node
+	value string
 }
 
 func updateManifestYAML(path string, manifest Manifest) ([]byte, error) {
@@ -462,6 +469,7 @@ func updateManifestYAML(path string, manifest Manifest) ([]byte, error) {
 		return nil, fmt.Errorf("tools must be a YAML sequence")
 	}
 
+	var edits []scalarEdit
 	for _, tool := range manifest.Tools {
 		toolNode, err := findToolNode(toolsNode, tool.Name)
 		if err != nil {
@@ -471,7 +479,7 @@ func updateManifestYAML(path string, manifest Manifest) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		versionNode.Value = tool.Version
+		edits = append(edits, scalarEdit{node: versionNode, value: tool.Version})
 
 		if tool.ChecksumSource.Type == "none" {
 			continue
@@ -489,15 +497,38 @@ func updateManifestYAML(path string, manifest Manifest) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-			checksumNode.Value = entry.Checksum
+			edits = append(edits, scalarEdit{node: checksumNode, value: entry.Checksum})
 		}
 	}
+	return applyScalarEdits(contents, edits)
+}
 
-	updated, err := yaml.Marshal(&document)
-	if err != nil {
-		return nil, fmt.Errorf("marshal manifest: %w", err)
+// applyScalarEdits patches values in the original bytes. Re-serializing the
+// parsed document instead would reindent every line and drop the document
+// marker and blank lines, burying real updates in formatting noise.
+func applyScalarEdits(contents []byte, edits []scalarEdit) ([]byte, error) {
+	lines := strings.Split(string(contents), "\n")
+	// Highest position first so edits sharing a line keep their offsets valid.
+	slices.SortFunc(edits, func(a, b scalarEdit) int {
+		if a.node.Line != b.node.Line {
+			return b.node.Line - a.node.Line
+		}
+		return b.node.Column - a.node.Column
+	})
+
+	for _, edit := range edits {
+		index := edit.node.Line - 1
+		if index < 0 || index >= len(lines) {
+			return nil, fmt.Errorf("manifest line %d is out of range", edit.node.Line)
+		}
+		line := lines[index]
+		start := edit.node.Column - 1
+		if edit.node.Style != 0 || start < 0 || start > len(line) || !strings.HasPrefix(line[start:], edit.node.Value) {
+			return nil, fmt.Errorf("manifest line %d must hold %q as a plain scalar", edit.node.Line, edit.node.Value)
+		}
+		lines[index] = line[:start] + edit.value + line[start+len(edit.node.Value):]
 	}
-	return updated, nil
+	return []byte(strings.Join(lines, "\n")), nil
 }
 
 func findToolNode(toolsNode *yaml.Node, name string) (*yaml.Node, error) {

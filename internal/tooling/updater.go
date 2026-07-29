@@ -275,10 +275,11 @@ func (client *Client) writeResponse(ctx context.Context, url string, destination
 			continue
 		}
 		if response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices {
-			written, readErr := io.Copy(destination, io.LimitReader(response.Body, maximumResponse+1))
+			// io.Copy can fail on either side, so the message stays neutral.
+			written, copyErr := io.Copy(destination, io.LimitReader(response.Body, maximumResponse+1))
 			closeErr := response.Body.Close()
-			if readErr != nil {
-				return fmt.Errorf("read %s: %w", url, readErr)
+			if copyErr != nil {
+				return fmt.Errorf("copy response from %s: %w", url, copyErr)
 			}
 			if closeErr != nil {
 				return fmt.Errorf("close response from %s: %w", url, closeErr)
