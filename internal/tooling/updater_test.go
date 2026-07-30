@@ -7,8 +7,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"path"
 	"strings"
 	"testing"
+	"time"
 )
 
 type httpClientFunc func(*http.Request) (*http.Response, error)
@@ -32,8 +34,165 @@ func TestUpdateManifestRefreshesVersionAndChecksum(t *testing.T) {
 	}))
 	defer server.Close()
 
-	manifest := Manifest{
+	manifest := githubToolManifest(server.URL, 0)
+	client := NewClient("")
+	client.HTTP = server.Client()
+	result, err := UpdateManifest(context.Background(), &manifest, client)
+	if err != nil {
+		t.Fatalf("UpdateManifest() error = %v", err)
+	}
+	if len(result.Changes) != 2 {
+		t.Fatalf("got %d changes, want version and checksum changes", len(result.Changes))
+	}
+	if got := manifest.Tools[0].Version; got != "v2.0.0" {
+		t.Fatalf("version = %q, want v2.0.0", got)
+	}
+	if got := manifest.Tools[0].Platforms["linux_amd64"].Checksum; got != checksum {
+		t.Fatalf("checksum = %q, want %q", got, checksum)
+	}
+}
+
+func TestUpdateManifestAppliesReleaseCooldown(t *testing.T) {
+	const checksum = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+	tests := []struct {
+		name        string
+		publishedAt time.Time
+		wantVersion string
+		wantHeld    int
+	}{
+		{
+			name:        "release inside the cooldown stays pinned",
+			publishedAt: time.Now().Add(-2 * 24 * time.Hour),
+			wantVersion: "v1.0.0",
+			wantHeld:    1,
+		},
+		{
+			name:        "release past the cooldown is adopted",
+			publishedAt: time.Now().Add(-30 * 24 * time.Hour),
+			wantVersion: "v2.0.0",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				if request.URL.Path == "/latest" {
+					fmt.Fprintf(response, `{"tag_name":"v2.0.0","published_at":%q}`, test.publishedAt.UTC().Format(time.RFC3339))
+					return
+				}
+				if strings.HasPrefix(request.URL.Path, "/checksums/") {
+					fmt.Fprintf(response, "%s  %s\n", checksum, path.Base(request.URL.Path))
+					return
+				}
+				http.NotFound(response, request)
+			}))
+			defer server.Close()
+
+			manifest := githubToolManifest(server.URL, 7)
+			client := NewClient("")
+			client.HTTP = server.Client()
+			result, err := UpdateManifest(context.Background(), &manifest, client)
+			if err != nil {
+				t.Fatalf("UpdateManifest() error = %v", err)
+			}
+			if got := manifest.Tools[0].Version; got != test.wantVersion {
+				t.Errorf("version = %q, want %q", got, test.wantVersion)
+			}
+			if got := len(result.Held); got != test.wantHeld {
+				t.Errorf("held = %d (%v), want %d", got, result.Held, test.wantHeld)
+			}
+		})
+	}
+}
+
+func TestUpdateManifestRejectsUnknownReleaseDateDuringCooldown(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/latest" {
+			fmt.Fprint(response, `{"tag_name":"v2.0.0"}`)
+			return
+		}
+		http.NotFound(response, request)
+	}))
+	defer server.Close()
+
+	manifest := githubToolManifest(server.URL, 7)
+	client := NewClient("")
+	client.HTTP = server.Client()
+	_, err := UpdateManifest(context.Background(), &manifest, client)
+	if err == nil || !strings.Contains(err.Error(), "reported no release date") {
+		t.Fatalf("UpdateManifest() error = %v, want missing release date error", err)
+	}
+	if got := manifest.Tools[0].Version; got != "v1.0.0" {
+		t.Fatalf("version = %q, want v1.0.0", got)
+	}
+}
+
+func TestLatestVersionReportsReleaseDate(t *testing.T) {
+	published := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+
+	tests := []struct {
+		name        string
+		tool        Tool
+		responses   map[string]string
+		wantVersion string
+	}{
+		{
+			name: "GitHub release",
+			tool: Tool{Source: Source{Type: "github-release", Repository: "example/tool", LatestURL: "https://example.test/latest"}},
+			responses: map[string]string{
+				"https://example.test/latest": `{"tag_name":"v2.0.0","published_at":"2026-01-02T03:04:05Z"}`,
+			},
+			wantVersion: "v2.0.0",
+		},
+		{
+			name: "HashiCorp checkpoint",
+			tool: Tool{Source: Source{Type: "hashicorp-checkpoint", LatestURL: "https://example.test/checkpoint"}},
+			responses: map[string]string{
+				"https://example.test/checkpoint": fmt.Sprintf(`{"current_version":"1.14.9","current_release":%d}`, published.Unix()),
+			},
+			wantVersion: "1.14.9",
+		},
+		{
+			name: "stable text resolved through its repository",
+			tool: Tool{Source: Source{Type: "stable-text", Repository: "kubernetes/kubernetes", LatestURL: "https://example.test/stable.txt"}},
+			responses: map[string]string{
+				"https://example.test/stable.txt":                                          "v1.36.2\n",
+				"https://api.github.com/repos/kubernetes/kubernetes/releases/tags/v1.36.2": `{"tag_name":"v1.36.2","published_at":"2026-01-02T03:04:05Z"}`,
+			},
+			wantVersion: "v1.36.2",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			client := NewClient("")
+			client.HTTP = httpClientFunc(func(request *http.Request) (*http.Response, error) {
+				body, ok := test.responses[request.URL.String()]
+				if !ok {
+					return nil, fmt.Errorf("unexpected request for %s", request.URL)
+				}
+				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body))}, nil
+			})
+
+			release, err := client.LatestVersion(context.Background(), test.tool)
+			if err != nil {
+				t.Fatalf("LatestVersion() error = %v", err)
+			}
+			if release.Version != test.wantVersion {
+				t.Errorf("Version = %q, want %q", release.Version, test.wantVersion)
+			}
+			if !release.PublishedAt.Equal(published) {
+				t.Errorf("PublishedAt = %s, want %s", release.PublishedAt, published)
+			}
+		})
+	}
+}
+
+func githubToolManifest(serverURL string, cooldownDays int) Manifest {
+	return Manifest{
 		SchemaVersion: 1,
+		CooldownDays:  cooldownDays,
 		Platforms:     []string{"linux_amd64"},
 		Tools: []Tool{{
 			Name:       "tool",
@@ -42,9 +201,9 @@ func TestUpdateManifestRefreshesVersionAndChecksum(t *testing.T) {
 			Source: Source{
 				Type:       "github-release",
 				Repository: "example/tool",
-				LatestURL:  server.URL + "/latest",
+				LatestURL:  serverURL + "/latest",
 			},
-			DownloadTemplate: server.URL + "/download/{tag}/{asset}",
+			DownloadTemplate: serverURL + "/download/{tag}/{asset}",
 			Platforms: map[string]Platform{
 				"linux_amd64": {
 					Asset:    "tool-{version}.tar.gz",
@@ -53,26 +212,10 @@ func TestUpdateManifestRefreshesVersionAndChecksum(t *testing.T) {
 			},
 			ChecksumSource: ChecksumSource{
 				Type:        "url-file",
-				URLTemplate: server.URL + "/checksums/{version}/{asset}",
+				URLTemplate: serverURL + "/checksums/{version}/{asset}",
 				Format:      "standard",
 			},
 		}},
-	}
-
-	client := NewClient("")
-	client.HTTP = server.Client()
-	changes, err := UpdateManifest(context.Background(), &manifest, client)
-	if err != nil {
-		t.Fatalf("UpdateManifest() error = %v", err)
-	}
-	if len(changes) != 2 {
-		t.Fatalf("got %d changes, want version and checksum changes", len(changes))
-	}
-	if got := manifest.Tools[0].Version; got != "v2.0.0" {
-		t.Fatalf("version = %q, want v2.0.0", got)
-	}
-	if got := manifest.Tools[0].Platforms["linux_amd64"].Checksum; got != checksum {
-		t.Fatalf("checksum = %q, want %q", got, checksum)
 	}
 }
 

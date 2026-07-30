@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: update-tools
+name: Update Tools
 
 on:
   schedule:
@@ -24,7 +24,7 @@ jobs:
       contents: read
     env:
       PR_BRANCH: automation/update-tools
-      PR_TITLE: "chore: update pinned tool versions"
+      PR_TITLE: "chore(tools): bump versions"
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

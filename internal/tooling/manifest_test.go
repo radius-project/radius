@@ -124,6 +124,20 @@ func TestManifestValidationRejectsInvalidSourcesAndFormats(t *testing.T) {
 			},
 			want: "unsupported checksum format",
 		},
+		{
+			name: "negative cooldown",
+			setup: func(manifest *Manifest) {
+				manifest.CooldownDays = -1
+			},
+			want: "cooldownDays must not be negative",
+		},
+		{
+			name: "cooldown without a resolvable release date",
+			setup: func(manifest *Manifest) {
+				manifest.CooldownDays = 7
+			},
+			want: "cannot resolve a release date for the 7-day cooldown",
+		},
 	}
 
 	for _, test := range tests {

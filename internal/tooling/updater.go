@@ -65,31 +65,57 @@ func NewClient(token string) *Client {
 	}
 }
 
+// Release is the newest version advertised by a tool's source, with the time
+// it was published when the source reports one.
+type Release struct {
+	Version     string
+	PublishedAt time.Time
+}
+
+// UpdateResult reports the manifest values the updater changed and the newer
+// releases it deferred because they are still inside the cooldown.
+type UpdateResult struct {
+	Changes []string
+	Held    []string
+}
+
 // UpdateManifest refreshes versions and checksums in memory. It writes no
 // files, so a failed source lookup cannot leave a partially updated manifest.
-func UpdateManifest(ctx context.Context, manifest *Manifest, client *Client) ([]string, error) {
+func UpdateManifest(ctx context.Context, manifest *Manifest, client *Client) (UpdateResult, error) {
 	if err := manifest.Validate(); err != nil {
-		return nil, err
+		return UpdateResult{}, err
 	}
 	if client == nil || client.HTTP == nil {
-		return nil, fmt.Errorf("an HTTP client is required")
+		return UpdateResult{}, fmt.Errorf("an HTTP client is required")
 	}
 
-	var changes []string
+	cooldown := manifest.Cooldown()
+	now := time.Now()
+
+	var result UpdateResult
 	for index := range manifest.Tools {
 		tool := &manifest.Tools[index]
 		targetVersion := tool.Version
 		latest, err := client.LatestVersion(ctx, *tool)
 		if err != nil {
-			return nil, fmt.Errorf("check %s version: %w", tool.Name, err)
+			return UpdateResult{}, fmt.Errorf("check %s version: %w", tool.Name, err)
 		}
-		newer, err := newerVersion(latest, tool.Version)
+		newer, err := newerVersion(latest.Version, tool.Version)
 		if err != nil {
-			return nil, fmt.Errorf("compare %s versions: %w", tool.Name, err)
+			return UpdateResult{}, fmt.Errorf("compare %s versions: %w", tool.Name, err)
 		}
 		if newer && tool.UpdatesEnabled() {
-			changes = append(changes, fmt.Sprintf("%s version %s -> %s", tool.Name, tool.Version, latest))
-			targetVersion = latest
+			held, err := heldByCooldown(latest, cooldown, now)
+			if err != nil {
+				return UpdateResult{}, fmt.Errorf("check %s cooldown: %w", tool.Name, err)
+			}
+			if held {
+				result.Held = append(result.Held, fmt.Sprintf("%s %s published %s, less than %d days ago",
+					tool.Name, latest.Version, latest.PublishedAt.UTC().Format(time.DateOnly), manifest.CooldownDays))
+			} else {
+				result.Changes = append(result.Changes, fmt.Sprintf("%s version %s -> %s", tool.Name, tool.Version, latest.Version))
+				targetVersion = latest.Version
+			}
 		}
 
 		updatedChecksums := make(map[string]string, len(tool.Platforms))
@@ -99,11 +125,11 @@ func UpdateManifest(ctx context.Context, manifest *Manifest, client *Client) ([]
 			}
 			checksum, err := client.Checksum(ctx, *tool, platform, targetVersion)
 			if err != nil {
-				return nil, fmt.Errorf("check %s %s checksum: %w", tool.Name, platform, err)
+				return UpdateResult{}, fmt.Errorf("check %s %s checksum: %w", tool.Name, platform, err)
 			}
 			updatedChecksums[platform] = checksum
 			if checksum != tool.Platforms[platform].Checksum {
-				changes = append(changes, fmt.Sprintf("%s %s checksum refreshed", tool.Name, platform))
+				result.Changes = append(result.Changes, fmt.Sprintf("%s %s checksum refreshed", tool.Name, platform))
 			}
 		}
 
@@ -116,48 +142,101 @@ func UpdateManifest(ctx context.Context, manifest *Manifest, client *Client) ([]
 			tool.Platforms[platform] = entry
 		}
 	}
-	return changes, nil
+	return result, nil
 }
 
-// LatestVersion resolves the latest stable version for a tool source.
-func (client *Client) LatestVersion(ctx context.Context, tool Tool) (string, error) {
+// heldByCooldown reports whether a candidate release is still too new to adopt.
+// An unknown release date is an error rather than an implicit pass, so a source
+// that stops reporting dates cannot silently bypass the cooldown.
+func heldByCooldown(release Release, cooldown time.Duration, now time.Time) (bool, error) {
+	if cooldown <= 0 {
+		return false, nil
+	}
+	if release.PublishedAt.IsZero() {
+		return false, fmt.Errorf("the source reported no release date for %s", release.Version)
+	}
+	return now.Sub(release.PublishedAt) < cooldown, nil
+}
+
+// LatestVersion resolves the latest stable release for a tool source.
+func (client *Client) LatestVersion(ctx context.Context, tool Tool) (Release, error) {
 	contents, err := client.get(ctx, tool.Source.LatestURL)
 	if err != nil {
-		return "", err
+		return Release{}, err
 	}
 
 	switch tool.Source.Type {
 	case "github-release":
-		var release struct {
-			TagName string `json:"tag_name"`
+		tag, publishedAt, err := parseGitHubRelease(contents)
+		if err != nil {
+			return Release{}, err
 		}
-		if err := json.Unmarshal(contents, &release); err != nil {
-			return "", fmt.Errorf("parse GitHub release: %w", err)
-		}
-		if release.TagName == "" {
-			return "", fmt.Errorf("GitHub release has no tag")
-		}
-		return tool.VersionFromTag(release.TagName), nil
+		return Release{Version: tool.VersionFromTag(tag), PublishedAt: publishedAt}, nil
 	case "stable-text":
 		version := strings.TrimSpace(string(contents))
 		if version == "" {
-			return "", fmt.Errorf("stable version response is empty")
+			return Release{}, fmt.Errorf("stable version response is empty")
 		}
-		return version, nil
+		if strings.TrimSpace(tool.Source.Repository) == "" {
+			return Release{Version: version}, nil
+		}
+		publishedAt, err := client.releaseDate(ctx, tool, version)
+		if err != nil {
+			return Release{}, err
+		}
+		return Release{Version: version, PublishedAt: publishedAt}, nil
 	case "hashicorp-checkpoint":
 		var checkpoint struct {
 			CurrentVersion string `json:"current_version"`
+			CurrentRelease int64  `json:"current_release"`
 		}
 		if err := json.Unmarshal(contents, &checkpoint); err != nil {
-			return "", fmt.Errorf("parse HashiCorp checkpoint: %w", err)
+			return Release{}, fmt.Errorf("parse HashiCorp checkpoint: %w", err)
 		}
 		if checkpoint.CurrentVersion == "" {
-			return "", fmt.Errorf("HashiCorp checkpoint has no current_version")
+			return Release{}, fmt.Errorf("HashiCorp checkpoint has no current_version")
 		}
-		return checkpoint.CurrentVersion, nil
+		release := Release{Version: checkpoint.CurrentVersion}
+		if checkpoint.CurrentRelease > 0 {
+			release.PublishedAt = time.Unix(checkpoint.CurrentRelease, 0).UTC()
+		}
+		return release, nil
 	default:
-		return "", fmt.Errorf("unsupported version source %q", tool.Source.Type)
+		return Release{}, fmt.Errorf("unsupported version source %q", tool.Source.Type)
 	}
+}
+
+// releaseDate resolves when a version was published for a source that reports
+// no timestamp of its own, using the GitHub release for the matching tag.
+func (client *Client) releaseDate(ctx context.Context, tool Tool, version string) (time.Time, error) {
+	releaseURL := fmt.Sprintf("https://api.github.com/repos/%s/releases/tags/%s", tool.Source.Repository, tool.TagForVersion(version))
+	contents, err := client.get(ctx, releaseURL)
+	if err != nil {
+		return time.Time{}, err
+	}
+	_, publishedAt, err := parseGitHubRelease(contents)
+	return publishedAt, err
+}
+
+func parseGitHubRelease(contents []byte) (string, time.Time, error) {
+	var release struct {
+		TagName     string `json:"tag_name"`
+		PublishedAt string `json:"published_at"`
+	}
+	if err := json.Unmarshal(contents, &release); err != nil {
+		return "", time.Time{}, fmt.Errorf("parse GitHub release: %w", err)
+	}
+	if release.TagName == "" {
+		return "", time.Time{}, fmt.Errorf("GitHub release has no tag")
+	}
+	if release.PublishedAt == "" {
+		return release.TagName, time.Time{}, nil
+	}
+	publishedAt, err := time.Parse(time.RFC3339, release.PublishedAt)
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("parse GitHub release date %q: %w", release.PublishedAt, err)
+	}
+	return release.TagName, publishedAt, nil
 }
 
 // Checksum reads or computes the checksum for one target platform.
