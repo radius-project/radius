@@ -29,7 +29,3 @@ workflow-enable-all: ## Enable all workflows in the current repo
 .PHONY: workflow-delete-all-runs
 workflow-delete-all-runs: ## Delete all workflow runs in the repository. NOTE: This is a destructive operation and cannot be undone.
 	@bash $(WORKFLOW_SCRIPT) delete-all-runs
-
-.PHONY: workflow-update-tools-pr
-workflow-update-tools-pr: ## Commit tool updates and create or update the automation pull request.
-	@bash ./.github/scripts/update-tools-pr.sh
