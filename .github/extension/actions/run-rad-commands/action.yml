@@ -258,6 +258,11 @@ runs:
         PROGRESS_POLLER_PID=""
         if [ -n "$PROGRESS_APP_NAME" ]; then
           (
+            # GitHub runs `shell: bash` steps as `bash -eo pipefail`, which this
+            # subshell inherits. Without disabling errexit here, the FIRST poll
+            # that fails (e.g. the app not registered yet at deploy start) would
+            # kill the whole loop instead of just skipping that snapshot.
+            set +e
             while true; do
               sleep 5
               snapshot=$(rad resource list -a "$PROGRESS_APP_NAME" -o json 2>/dev/null \
@@ -270,8 +275,11 @@ runs:
           PROGRESS_POLLER_PID=$!
         fi
         stop_progress_poller() {
-          [ -n "$PROGRESS_POLLER_PID" ] && kill "$PROGRESS_POLLER_PID" 2>/dev/null
-          return 0
+          # `|| true`: under inherited errexit, `kill` on an already-exited
+          # poller would otherwise abort this trap before write_result runs.
+          if [ -n "$PROGRESS_POLLER_PID" ]; then
+            kill "$PROGRESS_POLLER_PID" 2>/dev/null || true
+          fi
         }
         # Supersedes the earlier `trap write_result EXIT` -- also stop the poller
         # so it never outlives this step.
