@@ -60,9 +60,10 @@ jobs:
           repository_owner="$(printf '%s' "$claims" | jq -r '.repository_owner // "(none)"')"
           subject="$(printf '%s' "$claims" | jq -r '.sub // "(none)"')"
           enterprise="$(printf '%s' "$claims" | jq -r '.enterprise // ""')"
+          aud="$(printf '%s' "$claims" | jq -r 'if (.aud|type)=="array" then (.aud|join(",")) else (.aud // "(none)") end')"
 
           # Step-log only (collapsed by default); nothing goes to the job summary here.
-          echo "OIDC claims — repository=$repository repository_owner=$repository_owner subject=$subject enterprise=${enterprise:-<empty>} audience=$OIDC_AUDIENCE"
+          echo "OIDC claims — repository=$repository repository_owner=$repository_owner subject=$subject enterprise=${enterprise:-<empty>} aud=$aud requested_aud=$OIDC_AUDIENCE"
 
           if [[ -z "$enterprise" ]]; then
             echo "enterprise_empty=true" >> "$GITHUB_OUTPUT"
