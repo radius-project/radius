@@ -1,0 +1,89 @@
+# Provider-agnostic deploy-status publisher shared by run-rad-commands-aws.yml
+# and run-rad-commands-azure.yml. Captures the deployed app graph from the live
+# control plane and publishes it to the radius-deploy-status branch so the canvas
+# "Deployed" graph view has a producer for deploy-graph.json.
+name: Radius - Publish deploy status
+description: Generate deploy-graph.json and publish deploy status files to radius-deploy-status branch.
+
+inputs:
+  environment:
+    description: Radius environment name.
+    required: true
+  app-file:
+    description: Application bicep file used for deploy.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Publish deployed graph and status files
+      shell: bash
+      env:
+        ENVIRONMENT: ${{ inputs.environment }}
+        APP_FILE: ${{ inputs.app-file }}
+      run: |
+        set -euo pipefail
+
+        RESULT_FILE=/tmp/radius-output/rad-commands-result.json
+        STATUS_BRANCH=radius-deploy-status
+        STATUS_DIR=$(mktemp -d)
+
+        # Resolve the app name from the app bicep file first (same pattern used
+        # elsewhere in the run-rad-commands action), with a fallback to `rad app
+        # list` when the file doesn't contain a simple literal name.
+        APP_NAME=$(grep -oP "name:\s*'\K[^']+" "$APP_FILE" 2>/dev/null | head -1 || true)
+        if [ -z "$APP_NAME" ]; then
+          APP_NAME=$(rad app list -o json 2>/dev/null | jq -r '.[0].name // .items[0].name // empty' || true)
+        fi
+
+        if [ -z "$APP_NAME" ]; then
+          echo "::warning::Could not determine application name; skipping deployed graph publish."
+          exit 0
+        fi
+
+        echo "Generating deployed graph for app '$APP_NAME' in environment '$ENVIRONMENT'..."
+        if ! rad app graph --application "$APP_NAME" --preview --include-icons --output json > "$STATUS_DIR/deploy-graph.json" 2> "$STATUS_DIR/deploy-graph.stderr"; then
+          echo "::warning::Failed to generate deployed graph; skipping publish."
+          cat "$STATUS_DIR/deploy-graph.stderr" || true
+          exit 0
+        fi
+
+        # Write sibling status files the canvas reads from the same branch.
+        NOW_UTC=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        OUTCOME="unknown"
+        EXIT_CODE="0"
+        if [ -f "$RESULT_FILE" ]; then
+          OUTCOME=$(jq -r '.outcome // "unknown"' "$RESULT_FILE" 2>/dev/null || echo "unknown")
+          EXIT_CODE=$(jq -r '.exitCode // 0' "$RESULT_FILE" 2>/dev/null || echo "0")
+          cp "$RESULT_FILE" "$STATUS_DIR/deploy-activity.log"
+          cp "$RESULT_FILE" "$STATUS_DIR/deploy-controlplane.log"
+          cp "$RESULT_FILE" "$STATUS_DIR/deploy-progress.log"
+        else
+          printf '{"warning":"rad-commands-result.json not found"}\n' > "$STATUS_DIR/deploy-activity.log"
+          cp "$STATUS_DIR/deploy-activity.log" "$STATUS_DIR/deploy-controlplane.log"
+          cp "$STATUS_DIR/deploy-activity.log" "$STATUS_DIR/deploy-progress.log"
+        fi
+
+        printf 'state=%s\nexitCode=%s\napplication=%s\nenvironment=%s\nupdatedAt=%s\nsha=%s\n' \
+          "$OUTCOME" "$EXIT_CODE" "$APP_NAME" "$ENVIRONMENT" "$NOW_UTC" "$GITHUB_SHA" \
+          > "$STATUS_DIR/deploy-state.txt"
+
+        # Publish an orphan status branch from a temporary git repo so the current
+        # checkout/branch used by later steps (including teardown/rad shutdown) is
+        # not disturbed.
+        ORIGIN_URL=$(git remote get-url origin)
+        PUSH_DIR=$(mktemp -d)
+        cp "$STATUS_DIR"/* "$PUSH_DIR/"
+
+        pushd "$PUSH_DIR" >/dev/null
+        git init
+        git config user.email "radius-deploy@users.noreply.github.com"
+        git config user.name "radius-deploy"
+        git checkout --orphan "$STATUS_BRANCH"
+        git add deploy-graph.json deploy-progress.log deploy-activity.log deploy-controlplane.log deploy-state.txt
+        git commit -m "Update deploy status for $APP_NAME ($NOW_UTC)"
+        git remote add origin "$ORIGIN_URL"
+        git push --force origin "$STATUS_BRANCH"
+        popd >/dev/null
+
+        echo "✅ Published deploy status to branch '$STATUS_BRANCH'."

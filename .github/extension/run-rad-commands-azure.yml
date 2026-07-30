@@ -275,6 +275,13 @@ jobs:
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Publish deployed graph and status
+        if: success()
+        uses: radius-project/radius/.github/extension/actions/publish-deploy-status@{{RADIUS_REF}}
+        with:
+          environment: ${{ inputs.environment }}
+          app-file: ${{ env.APP_FILE }}
+
       - name: Teardown
         if: always()
         uses: radius-project/radius/.github/extension/actions/teardown@{{RADIUS_REF}}
