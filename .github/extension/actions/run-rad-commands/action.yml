@@ -254,7 +254,7 @@ runs:
         # pending -> in_progress -> success/failed as it happens instead of only
         # seeing everything flip at once at the end. Emits `RADIUS_PROGRESS
         # <json-array>` lines; harmless if nothing parses them.
-        PROGRESS_APP_NAME=$(grep -oP "name:\s*'\K[^']+" "$APP_FILE" 2>/dev/null | head -1)
+        PROGRESS_APP_NAME=$(grep -m1 -oP "name:\s*['\"]\K[^'\"]+" "$APP_FILE" 2>/dev/null || true)
         PROGRESS_POLLER_PID=""
         if [ -n "$PROGRESS_APP_NAME" ]; then
           (
