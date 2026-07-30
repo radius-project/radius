@@ -75,15 +75,18 @@ func update(args []string) error {
 	for _, held := range result.Held {
 		fmt.Printf("held %s\n", held)
 	}
-	if len(result.Changes) == 0 {
-		fmt.Println("tool metadata is current")
-	} else {
+	switch {
+	case len(result.Changes) > 0:
 		for _, change := range result.Changes {
 			fmt.Printf("updated %s\n", change)
 		}
 		if _, err := tooling.WriteManifest(*manifestPath, manifest); err != nil {
 			return fmt.Errorf("write manifest: %w", err)
 		}
+	case len(result.Held) > 0:
+		fmt.Println("no tool metadata changes applied; every newer release is still inside the cooldown")
+	default:
+		fmt.Println("tool metadata is current")
 	}
 
 	if err := syncVersionFiles(".", manifest); err != nil {
