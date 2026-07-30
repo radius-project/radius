@@ -89,9 +89,9 @@ jobs:
           {
             echo "## ⚠️ Azure Login failed on the GitHub enterprise claim"
             echo ""
-            echo "Azure Login (OIDC) was rejected because this repository's GitHub OIDC token is missing the required \"enterprise\" claim."
+            echo "Azure Login (OIDC) failed and this repository's GitHub OIDC token had an empty \"enterprise\" claim."
             echo ""
-            echo "The target Azure tenant only trusts GitHub Actions tokens whose enterprise claim matches its federated-credential policy (a common restriction in Microsoft corporate tenants). GitHub only includes the enterprise claim for repositories owned by an account or organization that belongs to a GitHub Enterprise — personal-account repositories cannot satisfy this policy."
+            echo "If the Azure error includes AADSTS7002381, the target tenant is enforcing an enterprise-claim requirement on its federated-credential policy (common in Microsoft corporate tenants). GitHub only includes the enterprise claim for repositories owned by an account or organization that belongs to a GitHub Enterprise — personal-account repositories cannot satisfy this policy."
             echo ""
             echo "**Fix:** host this repository under an organization that is part of an accepted GitHub Enterprise, then re-run Create Environment so the federated credential is recreated for the new owner/repo. Alternatively, target an Azure tenant that does not enforce an enterprise-claim policy."
           } >> "$GITHUB_STEP_SUMMARY"
