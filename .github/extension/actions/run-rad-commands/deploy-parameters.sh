@@ -11,6 +11,7 @@ load_declared_app_params() {
     local app_file="$1"
     local bicep_bin="${BICEP_BIN:-${BICEP:-${HOME}/.rad/bin/bicep}}"
     local compiled_template
+    local declared_parameters
 
     if [[ "${DECLARED_APP_PARAMS_LOADED}" == "true" ]]; then
         return 0
@@ -43,9 +44,20 @@ load_declared_app_params() {
         return 1
     fi
 
+    if ! declared_parameters="$(
+        jq -r '(.parameters // {}) | keys[]' "${compiled_template}"
+    )"; then
+        rm -f "${compiled_template}"
+        echo "::error::Failed to read parameters from compiled template." >&2
+        return 1
+    fi
+
+    DECLARED_APP_PARAMS=()
     while IFS= read -r parameter; do
-        DECLARED_APP_PARAMS+=("${parameter}")
-    done < <(jq -r '(.parameters // {}) | keys[]' "${compiled_template}")
+        if [[ -n "${parameter}" ]]; then
+            DECLARED_APP_PARAMS+=("${parameter}")
+        fi
+    done <<<"${declared_parameters}"
     rm -f "${compiled_template}"
     DECLARED_APP_PARAMS_LOADED=true
 }

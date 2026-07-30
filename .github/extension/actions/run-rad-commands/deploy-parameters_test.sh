@@ -13,6 +13,12 @@ fail() {
     exit 1
 }
 
+if ! command -v jq >/dev/null 2>&1; then
+    fail "jq is required; run 'make install-jq'"
+fi
+REAL_JQ="$(command -v jq)"
+readonly REAL_JQ
+
 assert_param_present() {
     local expected="$1"
     local actual
@@ -141,6 +147,33 @@ fi
 unset BICEP_SHOULD_FAIL
 [[ "${DECLARED_APP_PARAMS_LOADED}" == "false" ]] ||
     fail "failed compilation must not populate the parameter cache"
+
+fake_jq_dir="${TEST_ROOT}/fake-jq"
+mkdir "${fake_jq_dir}"
+cat >"${fake_jq_dir}/jq" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+if [[ "$*" == *'(.parameters // {}) | keys[]'* ]]; then
+    echo "synthetic parameter extraction failure" >&2
+    exit 1
+fi
+exec "${REAL_JQ}" "$@"
+EOF
+chmod +x "${fake_jq_dir}/jq"
+export REAL_JQ
+
+reset_discovery
+write_template '{"image":{}}'
+original_path="${PATH}"
+PATH="${fake_jq_dir}:${PATH}"
+if load_declared_app_params "${APP_FILE}"; then
+    PATH="${original_path}"
+    fail "expected parameter extraction failure to stop discovery"
+fi
+PATH="${original_path}"
+[[ "${DECLARED_APP_PARAMS_LOADED}" == "false" ]] ||
+    fail "failed parameter extraction must not populate the parameter cache"
 
 action_file="${SCRIPT_DIR}/action.yml"
 [[ "$(grep -c 'append_generated_app_params' "${action_file}")" == "2" ]] ||
