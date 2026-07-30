@@ -143,7 +143,7 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Build artifacts from the same ref the tests job checks out so the
           # compiled artifacts match the source under test. On workflow_dispatch
@@ -256,7 +256,7 @@ jobs:
         run: echo "PR_NUMBER=${PR_NUMBER}" >> "${GITHUB_ENV}"
 
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Check out the same ref the build job built its artifacts from so the
           # source under test matches those artifacts. On workflow_dispatch that is
@@ -266,7 +266,7 @@ jobs:
           persist-credentials: false
 
       - name: Checkout samples repo
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: matrix.name == 'samples-noncloud'
         with:
           repository: radius-project/samples
