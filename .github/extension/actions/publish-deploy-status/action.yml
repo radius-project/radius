@@ -79,6 +79,13 @@ runs:
         git init
         git config user.email "radius-deploy@users.noreply.github.com"
         git config user.name "radius-deploy"
+        # actions/checkout wires workflow auth via an HTTP extraheader in the
+        # checked-out repo config. Copy it into this temp repo so pushing the
+        # status branch works non-interactively with the same credentials.
+        CHECKOUT_AUTH_HEADER=$(git -C "$GITHUB_WORKSPACE" config --get http.https://github.com/.extraheader || true)
+        if [ -n "$CHECKOUT_AUTH_HEADER" ]; then
+          git config http.https://github.com/.extraheader "$CHECKOUT_AUTH_HEADER"
+        fi
         git checkout --orphan "$STATUS_BRANCH"
         git add deploy-graph.json deploy-progress.log deploy-activity.log deploy-controlplane.log deploy-state.txt
         git commit -m "Update deploy status for $APP_NAME ($NOW_UTC)"
