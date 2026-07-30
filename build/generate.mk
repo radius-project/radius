@@ -212,11 +212,13 @@ generate-yq-installed:
 .PHONY: generate-bicep-types-contrib
 generate-bicep-types-contrib: generate-yq-installed ## Generates Bicep types.json files for default contrib namespaces from defaults.yaml.
 	@echo "$(ARROW) Generating Bicep types for default contrib resource type namespaces..."
+	@test -f $(BICEP_TYPES_EMITTER_DIR)/dist/src/cmd/generate-contrib-docs.js || $(MAKE) generate-bicep-types-emitter
 	build/scripts/generate-bicep-types-contrib.sh \
 		"$(DEFAULTS_YAML)" \
 		"$(BICEP_TYPES_CONTRIB_MANIFEST_DIR)" \
 		"$(BICEP_TYPES_OUTPUT_BASE)" \
-		"$(BICEP_TYPES_CONTRIB_API_VERSION)"
+		"$(BICEP_TYPES_CONTRIB_API_VERSION)" \
+		"$(BICEP_TYPES_EMITTER_DIR)"
 
 # rebuild-bicep-types-index rebuilds the unified index from the per-namespace
 # types.json files. It builds the emitter only when it is not already built (e.g.

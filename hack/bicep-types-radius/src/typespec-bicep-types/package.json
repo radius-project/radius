@@ -26,6 +26,7 @@
     "typecheck": "tsc -p . --noEmit",
     "compile-projects": "node dist/src/cmd/compile-projects.js",
     "rebuild-index": "node dist/src/cmd/rebuild-index.js",
+    "generate-contrib-docs": "node dist/src/cmd/generate-contrib-docs.js",
     "clean": "rimraf dist"
   },
   "author": "The Radius Authors",
