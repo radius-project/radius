@@ -1,9 +1,9 @@
 # Provider-agnostic deploy-status publisher shared by run-rad-commands-aws.yml
 # and run-rad-commands-azure.yml. Captures the deployed app graph from the live
-# control plane and publishes it to the radius-deploy-status branch so the canvas
+# control plane and publishes it as an OCI artifact to GHCR so the canvas
 # "Deployed" graph view has a producer for deploy-graph.json.
 name: Radius - Publish deploy status
-description: Generate deploy-graph.json and publish deploy status files to radius-deploy-status branch.
+description: Generate deploy-graph.json and publish deploy status files to GHCR.
 
 inputs:
   environment:
@@ -25,7 +25,6 @@ runs:
         set -euo pipefail
 
         RESULT_FILE=/tmp/radius-output/rad-commands-result.json
-        STATUS_BRANCH=radius-deploy-status
         STATUS_DIR=$(mktemp -d)
 
         # Resolve the app name from the app bicep file first (same pattern used
@@ -48,7 +47,7 @@ runs:
           exit 0
         fi
 
-        # Write sibling status files the canvas reads from the same branch.
+        # Write sibling status files the canvas reads with deploy-graph.json.
         NOW_UTC=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         OUTCOME="unknown"
         EXIT_CODE="0"
@@ -68,29 +67,48 @@ runs:
           "$OUTCOME" "$EXIT_CODE" "$APP_NAME" "$ENVIRONMENT" "$NOW_UTC" "$GITHUB_SHA" \
           > "$STATUS_DIR/deploy-state.txt"
 
-        # Publish an orphan status branch from a temporary git repo so the current
-        # checkout/branch used by later steps (including teardown/rad shutdown) is
-        # not disturbed.
-        ORIGIN_URL=$(git remote get-url origin)
-        PUSH_DIR=$(mktemp -d)
-        cp "$STATUS_DIR"/* "$PUSH_DIR/"
-
-        pushd "$PUSH_DIR" >/dev/null
-        git init
-        git config user.email "radius-deploy@users.noreply.github.com"
-        git config user.name "radius-deploy"
-        # actions/checkout wires workflow auth via an HTTP extraheader in the
-        # checked-out repo config. Copy it into this temp repo so pushing the
-        # status branch works non-interactively with the same credentials.
-        CHECKOUT_AUTH_HEADER=$(git -C "$GITHUB_WORKSPACE" config --get http.https://github.com/.extraheader || true)
-        if [ -n "$CHECKOUT_AUTH_HEADER" ]; then
-          git config http.https://github.com/.extraheader "$CHECKOUT_AUTH_HEADER"
+        # Publish to GHCR as an OCI artifact. Prefer an explicit graph registry,
+        # then derive from RADIUS_STATE_REGISTRY for compatibility.
+        GRAPH_REGISTRY="${RADIUS_GRAPH_REGISTRY:-}"
+        if [ -z "$GRAPH_REGISTRY" ] && [ -n "${RADIUS_STATE_REGISTRY:-}" ]; then
+          case "$RADIUS_STATE_REGISTRY" in
+            *radius-state*) GRAPH_REGISTRY="${RADIUS_STATE_REGISTRY/radius-state/radius-graph}" ;;
+            *) GRAPH_REGISTRY="${RADIUS_STATE_REGISTRY}-graph" ;;
+          esac
         fi
-        git checkout --orphan "$STATUS_BRANCH"
-        git add deploy-graph.json deploy-progress.log deploy-activity.log deploy-controlplane.log deploy-state.txt
-        git commit -m "Update deploy status for $APP_NAME ($NOW_UTC)"
-        git remote add origin "$ORIGIN_URL"
-        git push --force origin "$STATUS_BRANCH"
-        popd >/dev/null
 
-        echo "✅ Published deploy status to branch '$STATUS_BRANCH'."
+        if [ -z "$GRAPH_REGISTRY" ]; then
+          echo "::warning::No RADIUS_GRAPH_REGISTRY (or derivable RADIUS_STATE_REGISTRY); skipping deployed graph publish."
+          exit 0
+        fi
+
+        case "$GRAPH_REGISTRY" in
+          ghcr.io/*) ;;
+          *)
+            echo "::warning::RADIUS_GRAPH_REGISTRY must be a ghcr.io repository (got '$GRAPH_REGISTRY'); skipping deployed graph publish."
+            exit 0
+            ;;
+        esac
+
+        BASE_TAG=$(printf '%s-%s' "$ENVIRONMENT" "$APP_NAME" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//' | cut -c1-80)
+        if [ -z "$BASE_TAG" ]; then
+          BASE_TAG="deploy-status"
+        fi
+        LATEST_TAG="${RADIUS_GRAPH_TAG:-${BASE_TAG}-latest}"
+        TARGET_REF="${GRAPH_REGISTRY}:${LATEST_TAG}"
+
+        # Include metadata annotations and publish all files as one artifact so the
+        # reader can pull a single reference and inspect its files locally.
+        oras push "$TARGET_REF" \
+          --artifact-type application/vnd.radius.deploy-status.v1+json \
+          --annotation "org.opencontainers.image.created=${NOW_UTC}" \
+          --annotation "org.opencontainers.image.revision=${GITHUB_SHA}" \
+          --annotation "dev.radius.application=${APP_NAME}" \
+          --annotation "dev.radius.environment=${ENVIRONMENT}" \
+          "${STATUS_DIR}/deploy-graph.json:application/json" \
+          "${STATUS_DIR}/deploy-progress.log:text/plain" \
+          "${STATUS_DIR}/deploy-activity.log:text/plain" \
+          "${STATUS_DIR}/deploy-controlplane.log:text/plain" \
+          "${STATUS_DIR}/deploy-state.txt:text/plain"
+
+        echo "✅ Published deploy status artifact to '$TARGET_REF'."
