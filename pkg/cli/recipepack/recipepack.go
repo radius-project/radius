@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"strings"
 
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/version"
@@ -166,7 +166,7 @@ type CoreTypesRecipeInfo struct {
 //
 // The OCI tag pinned on each recipe source is derived from the build
 // channel and the per-namespace pin recorded in
-// deploy/manifest/defaults.yaml under `sources`:
+// deploy/manifest/defaults.yaml under `resourceTypes`:
 //
 //   - Edge / dev builds (channel == "edge") always use the mutable tag
 //     "edge" so a locally-built CLI picks up whatever the recipes
@@ -176,13 +176,13 @@ type CoreTypesRecipeInfo struct {
 //   - Release builds resolve the recipe's resource-type namespace
 //     (e.g. "Radius.Compute" for "Radius.Compute/containers") to the
 //     immutable commit SHA that defaults.yaml pins that namespace to,
-//     via productmanifest.SourceRef. The recipes publishing pipeline
+//     via defaults.ResourceTypePin. The recipes publishing pipeline
 //     tags each namespace's OCI artifacts with the same commit SHA,
 //     so this guarantees a released rad CLI installs exactly the
 //     recipes that were published from the pinned resource-types-contrib
 //     revision, regardless of what `latest` currently points at.
 //   - As a defensive fallback, a namespace missing from the
-//     defaults.yaml sources list falls back to "edge" so a
+//     defaults.yaml `resourceTypes` list falls back to "edge" so a
 //     mis-configured build still installs something rather than
 //     producing an invalid OCI reference.
 func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
@@ -220,13 +220,13 @@ func resolveRecipeTag(resourceType string) string {
 	if version.IsEdgeChannel() {
 		return "edge"
 	}
-	namespace, _, ok := productmanifest.SplitResourceType(resourceType)
+	namespace, _, ok := defaults.SplitResourceType(resourceType)
 	if !ok {
 		return "edge"
 	}
-	ref, ok := productmanifest.SourceRef(namespace)
-	if !ok || ref == "" {
+	pin, ok := defaults.ResourceTypePin(namespace)
+	if !ok || pin.Ref == "" {
 		return "edge"
 	}
-	return ref
+	return pin.Ref
 }
