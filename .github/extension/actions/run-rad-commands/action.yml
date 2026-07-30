@@ -263,12 +263,14 @@ runs:
             # that fails (e.g. the app not registered yet at deploy start) would
             # kill the whole loop instead of just skipping that snapshot.
             set +e
+            last_snapshot=""
             while true; do
               sleep 5
               snapshot=$(rad resource list -a "$PROGRESS_APP_NAME" -o json 2>/dev/null \
                 | jq -c 'map({name, type, state:(.properties.provisioningState // "Provisioning")})' 2>/dev/null)
-              if [ -n "$snapshot" ] && [ "$snapshot" != "null" ]; then
+              if [ -n "$snapshot" ] && [ "$snapshot" != "null" ] && [ "$snapshot" != "$last_snapshot" ]; then
                 echo "RADIUS_PROGRESS $snapshot"
+                last_snapshot="$snapshot"
               fi
             done
           ) &
