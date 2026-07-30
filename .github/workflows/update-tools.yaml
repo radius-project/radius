@@ -18,6 +18,7 @@ jobs:
     if: >-
       github.repository == 'radius-project/radius' ||
       github.event_name == 'workflow_dispatch'
+    name: Update
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -56,7 +57,7 @@ jobs:
             echo "Tool metadata is current."
           fi
 
-      - name: Generate Dependabot-manager App token
+      - name: Create App token
         if: >-
           steps.changes.outputs.changed == 'true' &&
           github.repository == 'radius-project/radius'
@@ -71,7 +72,7 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
 
-      - name: Get Dependabot-manager bot details
+      - name: Get bot details
         if: >-
           steps.changes.outputs.changed == 'true' &&
           github.repository == 'radius-project/radius'
@@ -88,7 +89,7 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GIT_USER_EMAIL: ${{ steps.bot-details.outputs.email }}
           GIT_USER_NAME: ${{ steps.bot-details.outputs.name }}
-        run: make workflow-update-tools-pr
+        run: ./.github/scripts/update-tools-pr.sh
 
       - name: Report fork changes
         if: >-
