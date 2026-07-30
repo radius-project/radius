@@ -46,5 +46,26 @@ for ns in $NAMESPACES; do
     done
     echo "  -> $ns ($manifest_args) -> $out_dir"
     go run ./bicep-tools/cmd/manifest-to-bicep generate $manifest_args "$out_dir"
-    node "${GENERATE_DOCS_JS}" --types-json "$out_dir/types.json" --out-dir "$out_dir/docs"
+
+    # Resource-level descriptions are authored in the manifests but cannot be carried in
+    # types.json: the bicep-types schema has no description field on ResourceType or
+    # ObjectType, only on individual properties. Side-channel them to the doc generator as
+    # a { "<Namespace>/<typeName>": "<description>" } map, mirroring how the TypeSpec
+    # emitter reads @doc from the compiler rather than from types.json.
+    #
+    # Only the first document of each manifest is read, because manifest-to-bicep parses
+    # with yaml.Unmarshal and silently ignores any later documents. Reading them here too
+    # would describe types the converter never emitted.
+    descriptions_json="$out_dir/descriptions.json"
+    # shellcheck disable=SC2016 # $ns is a yq variable, so the expression must not be expanded by the shell.
+    yq -o=json eval-all \
+        '[select(document_index == 0) | .namespace as $ns | .types | to_entries[] | select(.value.description != null) | {"key": ($ns + "/" + .key), "value": .value.description}] | from_entries' \
+        $manifest_args > "$descriptions_json"
+
+    node "${GENERATE_DOCS_JS}" \
+        --types-json "$out_dir/types.json" \
+        --out-dir "$out_dir/docs" \
+        --descriptions "$descriptions_json"
+
+    rm -f "$descriptions_json"
 done

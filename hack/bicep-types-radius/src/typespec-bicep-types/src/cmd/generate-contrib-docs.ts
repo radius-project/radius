@@ -23,12 +23,13 @@
 //
 // Usage:
 //   node dist/src/cmd/generate-contrib-docs.js \
-//     --types-json <namespace>/<apiVersion>/types.json \
-//     --out-dir    <namespace>/<apiVersion>/docs
+//     --types-json    <namespace>/<apiVersion>/types.json \
+//     --out-dir       <namespace>/<apiVersion>/docs \
+//     [--descriptions <path to { "<Namespace>/<typeName>": "<description>" } JSON>]
 
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { readTypesJson } from "../bicep.js";
+import { readTypesJson, writeMarkdown } from "../bicep.js";
 import {
   buildResourceDocs,
   filterResourceTypes
@@ -42,6 +43,7 @@ function getArg(name: string): string | undefined {
 
 const typesJsonArg = getArg("types-json");
 const outDirArg = getArg("out-dir");
+const descriptionsArg = getArg("descriptions");
 
 if (!typesJsonArg || !outDirArg) {
   console.error(
@@ -79,7 +81,41 @@ if (resourceTypes.length === 0) {
   process.exit(1);
 }
 
-const docs = buildResourceDocs(resourceTypes, types);
+// Resource-level descriptions are authored in the source manifests but cannot be
+// carried in types.json: the bicep-types schema exposes `description` only on
+// individual object properties, not on ResourceType or ObjectType. The generation
+// script extracts them with yq and passes them here, keyed by `<Namespace>/<typeName>`
+// without the API version.
+const descriptions = new Map<string, string>();
+if (descriptionsArg) {
+  const parsed: unknown = JSON.parse(
+    await readFile(resolve(process.cwd(), descriptionsArg), {
+      encoding: "utf8"
+    })
+  );
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    console.error(
+      `--descriptions must contain a JSON object mapping resource type names to descriptions; got ${descriptionsArg}.`
+    );
+    process.exit(1);
+  }
+  for (const [name, description] of Object.entries(parsed)) {
+    // A non-string value means the manifest authored something unexpected. The Go
+    // converter ignores the resource-level description entirely, so nothing upstream
+    // catches it; fail here rather than silently publishing a doc without it.
+    if (typeof description !== "string") {
+      console.error(
+        `Description for '${name}' in ${descriptionsArg} must be a string; got ${typeof description}.`
+      );
+      process.exit(1);
+    }
+    descriptions.set(name, description);
+  }
+}
+
+const docs = buildResourceDocs(resourceTypes, types, (resourceType) =>
+  descriptions.get(resourceType.name.split("@")[0])
+);
 
 // Regenerate from scratch so docs for renamed/removed resources do not linger
 // and get republished by the docs-repo consumer.
@@ -91,6 +127,21 @@ await Promise.all(
   docs.map((doc) => writeFile(resolve(outDir, doc.filename), doc.content))
 );
 
+// The generated index.md links every resource to `types.md#resource-...`, and the
+// TypeSpec path writes that file alongside types.json. Emit it here too so the
+// contrib namespaces have the same layout and those links resolve.
+const [namespace, apiVersion] = splitResourceTypeName(resourceTypes[0].name);
+await writeFile(
+  resolve(dirname(typesJsonPath), "types.md"),
+  writeMarkdown(types, `${namespace} @ ${apiVersion}`)
+);
+
 console.log(
   `Generated ${docs.length} reference doc(s) from ${typesJsonArg} into ${outDirArg}`
 );
+
+/** Splits `Namespace/type@apiVersion` into its namespace and API version. */
+function splitResourceTypeName(name: string): [string, string] {
+  const [typePath, apiVersion = ""] = name.split("@");
+  return [typePath.split("/")[0], apiVersion];
+}
