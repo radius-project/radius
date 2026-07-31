@@ -16,7 +16,7 @@ on:
         required: true
         default: '{{ENV}}'
       image:
-        description: 'Container image for the application'
+        description: 'Container image passed only when the application template declares the image parameter'
         required: false
         default: ''
       rad_commands:

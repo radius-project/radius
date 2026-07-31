@@ -49,12 +49,8 @@ else
 endif
 
 # Linker flags: https://cmake.org/cmake/help/latest/envvar/LDFLAGS.html.
-# TERRAFORM_VERSION defaults to the .terraform-version file (the canonical source,
-# matching the .node-version / .python-version convention) but can be overridden,
-# e.g. `make build TERRAFORM_VERSION=1.15.0`. It is embedded into the rad binary so
-# the recipe engine downloads a matching Terraform, and is consumed by the
-# install-terraform target in build/tools.mk.
-TERRAFORM_VERSION ?= $(shell cat .terraform-version)
+# TERRAFORM_VERSION is loaded from the generated tool metadata include before this
+# file is parsed. It can still be overridden, e.g. `make build TERRAFORM_VERSION=1.15.0`.
 LDFLAGS := "-s -w -X $(BASE_PACKAGE_NAME)/pkg/version.channel=$(REL_CHANNEL) -X $(BASE_PACKAGE_NAME)/pkg/version.release=$(REL_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.commit=$(GIT_COMMIT) -X $(BASE_PACKAGE_NAME)/pkg/version.version=$(GIT_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/version.chartVersion=$(CHART_VERSION) -X $(BASE_PACKAGE_NAME)/pkg/recipes/terraform.terraformVersion=$(TERRAFORM_VERSION)"
 
 # Combination of flags into GOARGS.
