@@ -9,7 +9,7 @@ set -euo pipefail
 #
 # kubectl is published on the Kubernetes release CDN (dl.k8s.io), not GitHub. The
 # pinned version and per-platform SHA-256 checksums are normally provided by
-# build/tools.mk through the environment. The script is generic, so when a value
+# build/tools.yaml through the generated Make include. The script is generic, so when a value
 # is not supplied it is resolved at runtime:
 #   * empty KUBECTL_VERSION         -> the latest stable release (stable.txt)
 #   * missing checksum for platform -> read from the release's own
