@@ -306,6 +306,10 @@ jobs:
           # picks up .radius/bicepconfig.json instead of the workspace root.
           APP_DIR=$(dirname "$APP_FILE")
           ENV_BICEP="$APP_DIR/radius-env.bicep"
+          # Ensure the destination directory exists before writing. The checkout
+          # branch may not contain the app's directory (e.g. .radius/), in which
+          # case the redirect below would fail with "No such file or directory".
+          mkdir -p "$APP_DIR"
           cat > "$ENV_BICEP" <<EOF
           extension radius
 

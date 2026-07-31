@@ -236,6 +236,11 @@ jobs:
           # root, where no config exists.
           APP_DIR=$(dirname "$APP_FILE")
           ENV_BICEP="$APP_DIR/radius-env.bicep"
+          # Ensure the destination directory exists before curl writes to it.
+          # The checkout branch may not contain the app's directory (e.g. .radius/),
+          # in which case curl would otherwise exit 23 ("Failure writing output to
+          # destination") even though the URL returns HTTP 200.
+          mkdir -p "$APP_DIR"
           curl -fsSL "$RECIPE_PACK_URL" -o "$ENV_BICEP"
 
           # routesGatewayName is a required pack parameter, but it only matters when
