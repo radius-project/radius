@@ -122,6 +122,9 @@ func init() {
 	if raw, err := manifestassets.FS.ReadFile(manifestassets.DefaultsYAMLPath); err != nil {
 		logger.Printf("read defaults.yaml: %s; icon and pin lookups disabled", err)
 	} else if err := yaml.Unmarshal(raw, &parsed); err != nil {
+		// A type error leaves the sections decoded before it populated; drop
+		// them so a bad file degrades uniformly instead of half-loading.
+		parsed = catalog{}
 		logger.Printf("parse defaults.yaml: %s; icon and pin lookups disabled", err)
 	}
 
