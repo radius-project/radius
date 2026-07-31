@@ -24,10 +24,9 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/graph/edges"
 	"github.com/radius-project/radius/pkg/to"
-
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 // Default scope segments used when constructing fully-qualified Radius
@@ -289,7 +288,7 @@ func collectStaticGraphIcons(resources []*corerpv20250801preview.ApplicationGrap
 	if len(resources) == 0 {
 		return nil
 	}
-	defaultIcon := productmanifest.Default()
+	defaultIcon := defaults.DefaultIcon()
 	hasDefault := defaultIcon.Hash != "" && len(defaultIcon.Bytes) > 0
 	out := map[string]*string{}
 	for _, r := range resources {
@@ -305,7 +304,7 @@ func collectStaticGraphIcons(resources []*corerpv20250801preview.ApplicationGrap
 			out[hash] = &bytes
 			continue
 		}
-		if icon, ok := productmanifest.Lookup(to.String(r.Type)); ok {
+		if icon, ok := defaults.LookupIcon(to.String(r.Type)); ok {
 			bytes := string(icon.Bytes)
 			out[hash] = &bytes
 		}
@@ -325,11 +324,11 @@ func collectStaticGraphIcons(resources []*corerpv20250801preview.ApplicationGrap
 // which the wire model represents as "no icon" and downstream
 // consumers render without decoration.
 func resolveIconHash(resourceType string) *string {
-	if icon, ok := productmanifest.Lookup(resourceType); ok {
+	if icon, ok := defaults.LookupIcon(resourceType); ok {
 		h := icon.Hash
 		return &h
 	}
-	return productmanifest.DefaultHash()
+	return defaults.DefaultIconHash()
 }
 
 // collectResources normalizes the "resources" section of an ARM JSON

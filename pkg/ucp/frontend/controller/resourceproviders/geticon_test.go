@@ -27,12 +27,11 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 const (
@@ -197,7 +196,7 @@ func TestGetIcon_NoIcon(t *testing.T) {
 // hash on such a record must still succeed by serving the embedded default
 // SVG.
 func TestGetIcon_DefaultHashServesEmbeddedBytes(t *testing.T) {
-	defaultIcon := productmanifest.Default()
+	defaultIcon := defaults.DefaultIcon()
 
 	ctrl, mockDB := newGetIconController(t)
 
