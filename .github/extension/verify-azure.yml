@@ -10,6 +10,9 @@ on:
 permissions:
   id-token: write
   contents: read
+  # Mirrors the run-rad-commands deploy workflow so the GHCR push-permission
+  # check below tests the same token capability the deploy will rely on.
+  packages: write
 
 jobs:
   verify:
@@ -40,8 +43,15 @@ jobs:
           kubectl cluster-info
           echo "✅ AKS cluster accessible"
 
+      - name: Verify GHCR package push permission
+        uses: radius-project/radius/.github/extension/actions/verify-ghcr-push@{{RADIUS_REF}}
+        with:
+          state-registry: ${{ vars.RADIUS_STATE_REGISTRY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Summary
         run: |
           echo "## ✅ Credentials Verified" >> $GITHUB_STEP_SUMMARY
           echo "Environment: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
           echo "Provider: azure" >> $GITHUB_STEP_SUMMARY
+          echo "GHCR package push: ${GHCR_PUSH_CHECK:-unknown}" >> $GITHUB_STEP_SUMMARY
