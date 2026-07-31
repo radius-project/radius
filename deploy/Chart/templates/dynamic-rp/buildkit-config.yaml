@@ -1,0 +1,23 @@
+{{- if .Values.dynamicrp.buildkit.enabled }}
+{{- $maxParallelism := .Values.dynamicrp.buildkit.maxParallelism }}
+{{- $maxParallelismError := "dynamicrp.buildkit.maxParallelism must be an integer between 1 and 2147483647" }}
+{{- if not (or (kindIs "int" $maxParallelism) (kindIs "int64" $maxParallelism) (kindIs "float64" $maxParallelism)) }}
+{{- fail $maxParallelismError }}
+{{- end }}
+{{- $maxParallelismFloat := float64 $maxParallelism }}
+{{- if or (lt $maxParallelismFloat 1.0) (gt $maxParallelismFloat 2147483647.0) (ne $maxParallelismFloat (floor $maxParallelismFloat)) }}
+{{- fail $maxParallelismError }}
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dynamic-rp-buildkit-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: dynamic-rp
+    app.kubernetes.io/part-of: radius
+data:
+  buildkitd.toml: |-
+    [worker.oci]
+      max-parallelism = {{ int64 $maxParallelism }}
+{{- end }}

@@ -50,10 +50,9 @@ on:
 permissions: {}
 
 env:
-  # Dapr runtime version
-  DAPR_RUNTIME_VER: 1.15.4
-  # Dapr dashboard version
-  DAPR_DASHBOARD_VER: 0.15.0
+  # Dapr runtime version. Must stay on the same minor line as the Dapr CLI
+  # pinned in build/tools.yaml (DAPR_VERSION), which installs it.
+  DAPR_RUNTIME_VER: 1.18.2
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 15m
   # The base directory for storing test logs
@@ -143,7 +142,7 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Build artifacts from the same ref the tests job checks out so the
           # compiled artifacts match the source under test. On workflow_dispatch
@@ -256,7 +255,7 @@ jobs:
         run: echo "PR_NUMBER=${PR_NUMBER}" >> "${GITHUB_ENV}"
 
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Check out the same ref the build job built its artifacts from so the
           # source under test matches those artifacts. On workflow_dispatch that is
@@ -266,7 +265,7 @@ jobs:
           persist-credentials: false
 
       - name: Checkout samples repo
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: matrix.name == 'samples-noncloud'
         with:
           repository: radius-project/samples
@@ -315,7 +314,7 @@ jobs:
           registry-port: ${{ env.LOCAL_REGISTRY_PORT }}
 
       - name: Install bicep CLI
-        # Pinned version + checksum live in build/tools.mk.
+        # Pinned version + checksum live in build/tools.yaml.
         run: make install-bicep
 
       - name: Publish bicep types
@@ -366,7 +365,7 @@ jobs:
           rad version
 
       - name: Install helm
-        # Version pinned in build/tools.mk (HELM_VERSION).
+        # Version pinned in build/tools.yaml (HELM_VERSION).
         run: make install-helm
 
       - name: Create a KinD cluster with a local registry
@@ -583,12 +582,12 @@ jobs:
 
       - name: Install Dapr CLI
         if: matrix.name == 'daprrp-noncloud'
-        # Version pinned in build/tools.mk (DAPR_VERSION).
+        # Version pinned in build/tools.yaml (DAPR_VERSION).
         run: make install-dapr
 
       - name: Install Dapr control plane
         if: matrix.name == 'daprrp-noncloud'
-        run: dapr init -k --wait --timeout 600 --runtime-version "${DAPR_RUNTIME_VER}" --dashboard-version "${DAPR_DASHBOARD_VER}"
+        run: dapr init -k --wait --timeout 600 --runtime-version "${DAPR_RUNTIME_VER}"
 
       - name: Publish Terraform test recipes
         run: |

@@ -19,17 +19,24 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
+	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	cli_kubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/recipepack"
 	"github.com/radius-project/radius/pkg/cli/setup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -58,15 +65,22 @@ By default 'rad install kubernetes' will install Radius with the version matchin
 
 Radius will be installed in the 'radius-system' namespace. For more information visit https://docs.radapp.io/concepts#technical-architecture
 
-This command also ensures that a default resource group named 'default' and a default environment
-named 'default' (using the 'default' Kubernetes namespace) exist so the cluster is immediately
-ready to deploy applications. If either resource already exists, it is left unchanged; user
-customizations are never overwritten, even with '--reinstall'.
+On install or reinstall, this command also ensures that a default resource group named 'default'
+and a default environment named 'default' (using the 'default' Kubernetes namespace) exist so the
+cluster is immediately ready to deploy applications. If either resource already exists, it is left
+unchanged (GET-first); user customizations are never overwritten, even with '--reinstall'.
+
+By default the environment is created using the 'Applications.Core/environments' resource type.
+Pass '--preview' (or set RADIUS_PREVIEW=true) to create it using the new 'Radius.Core/environments'
+resource type with the default recipe pack instead.
 
 Overrides can be set by specifying Helm chart values with the '--set' flag. For more information visit https://docs.radapp.io/guides/operations/kubernetes/install/.
 `,
 		Example: `# Install Radius with default settings in current Kubernetes context
 rad install kubernetes
+
+# Install Radius and create the default environment using the Radius.Core/environments type
+rad install kubernetes --preview
 
 # Install Radius with default settings in specified Kubernetes context
 rad install kubernetes --kubecontext mycluster
@@ -119,6 +133,7 @@ rad install kubernetes --set global.terraform.loglevel=DEBUG
 	}
 
 	commonflags.AddKubeContextFlagVar(cmd, &runner.KubeContext)
+	cmd.Flags().Bool("preview", false, "Create the default environment using the Radius.Core/environments resource type instead of Applications.Core/environments (can also be set via RADIUS_PREVIEW=true)")
 	cmd.Flags().BoolVar(&runner.Reinstall, "reinstall", false, "Specify to force reinstallation of Radius")
 	cmd.Flags().StringVar(&runner.Chart, "chart", "", "Specify a file path to a helm chart to install Radius from")
 	cmd.Flags().StringArrayVar(&runner.Set, "set", []string{}, "Set values on the command line (can specify multiple or separate values with commas: key1=val1,key2=val2)")
@@ -153,6 +168,15 @@ type Runner struct {
 	ContourSetFile  []string
 
 	Reinstall bool
+
+	// Preview selects the new Radius.Core/environments resource type (with the default recipe pack)
+	// for the default environment instead of the legacy Applications.Core/environments type.
+	Preview bool
+
+	// RadiusCoreClientFactory is the Radius.Core (v20250801preview) client factory used to create the
+	// default environment and recipe pack when Preview is set. It is initialized lazily from the
+	// workspace when nil; tests inject a fake factory.
+	RadiusCoreClientFactory *corerpv20250801.ClientFactory
 }
 
 // NewRunner creates an instance of the runner for the `rad install kubernetes` command.
@@ -171,6 +195,16 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad install kubernetes` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
+	preview, err := cmd.Flags().GetBool("preview")
+	if err != nil {
+		return err
+	}
+	// The --preview flag takes precedence; fall back to RADIUS_PREVIEW only when the flag is unset,
+	// mirroring resolveUsePreview used by the other preview-enabled commands.
+	if !cmd.Flags().Changed("preview") {
+		preview = strings.EqualFold(os.Getenv("RADIUS_PREVIEW"), "true")
+	}
+	r.Preview = preview
 	return nil
 }
 
@@ -252,9 +286,12 @@ func (r *Runner) createDefaultGroupAndEnvironment(ctx context.Context) error {
 	if err := r.ensureDefaultResourceGroup(ctx, client); err != nil {
 		return err
 	}
+
+	if r.Preview {
+		return r.ensureDefaultEnvironmentPreview(ctx, &workspace)
+	}
 	return r.ensureDefaultEnvironment(ctx, client)
 }
-
 
 // ensureDefaultResourceGroup creates the "default" resource group only if it does not already exist.
 func (r *Runner) ensureDefaultResourceGroup(ctx context.Context, client clients.ApplicationsManagementClient) error {
@@ -288,6 +325,56 @@ func (r *Runner) ensureDefaultEnvironment(ctx context.Context, client clients.Ap
 	r.Output.LogInfo("Creating default environment %q in namespace %q...", defaultEnvironmentName, defaultEnvironmentNamespace)
 	if err := setup.EnsureEnvironment(ctx, client, defaultEnvironmentName, defaultEnvironmentNamespace, nil, nil); err != nil {
 		return clierrors.MessageWithCause(err, "Failed to create the default environment. Radius was installed successfully; you can retry with 'rad env create default'.")
+	}
+	return nil
+}
+
+// ensureDefaultEnvironmentPreview creates the "default" environment using the new
+// Radius.Core/environments resource type only if it does not already exist. It first ensures the
+// Radius-managed default recipe pack exists (in the default resource group) and attaches it to the
+// environment, mirroring `rad env create --preview`. If the environment already exists it is left
+// untouched so user customizations are preserved across reinstalls.
+func (r *Runner) ensureDefaultEnvironmentPreview(ctx context.Context, workspace *workspaces.Workspace) error {
+	if r.RadiusCoreClientFactory == nil {
+		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, workspace)
+		if err != nil {
+			return clierrors.MessageWithCause(err, "Failed to connect to the Radius control plane. Radius was installed successfully; you can create the default environment manually with 'rad env create default --preview'.")
+		}
+		r.RadiusCoreClientFactory = clientFactory
+	}
+
+	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
+
+	_, err := envClient.Get(ctx, workspace.Scope, defaultEnvironmentName, nil)
+	if err == nil {
+		r.Output.LogInfo("Default environment %q already exists; leaving it unchanged.", defaultEnvironmentName)
+		return nil
+	}
+	if !clients.Is404Error(err) {
+		return clierrors.MessageWithCause(err, "Failed to check for the default environment. Radius was installed successfully; you can retry with 'rad env create default --preview'.")
+	}
+
+	// The default recipe pack always lives in the default resource group scope, regardless of the
+	// current workspace scope. Create it (or reuse the existing one) before referencing it.
+	recipePackID, err := recipepack.GetOrCreateDefaultRecipePack(ctx, r.RadiusCoreClientFactory.NewRecipePacksClient())
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create the default recipe pack. Radius was installed successfully; you can retry with 'rad env create default --preview'.")
+	}
+
+	r.Output.LogInfo("Creating default environment %q in namespace %q...", defaultEnvironmentName, defaultEnvironmentNamespace)
+	resource := corerpv20250801.EnvironmentResource{
+		Location: to.Ptr(v1.LocationGlobal),
+		Properties: &corerpv20250801.EnvironmentProperties{
+			RecipePacks: []*string{to.Ptr(recipePackID)},
+			Providers: &corerpv20250801.Providers{
+				Kubernetes: &corerpv20250801.ProvidersKubernetes{
+					Namespace: to.Ptr(defaultEnvironmentNamespace),
+				},
+			},
+		},
+	}
+	if _, err := envClient.CreateOrUpdate(ctx, workspace.Scope, defaultEnvironmentName, resource, nil); err != nil {
+		return clierrors.MessageWithCause(err, "Failed to create the default environment. Radius was installed successfully; you can retry with 'rad env create default --preview'.")
 	}
 	return nil
 }

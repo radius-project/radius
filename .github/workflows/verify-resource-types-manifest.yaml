@@ -16,7 +16,7 @@
 
 # This workflow verifies that the resource type manifest files committed in
 # deploy/manifest/built-in-providers/ match the per-namespace upstream
-# revisions pinned in deploy/manifest/defaults.yaml (sources[].ref).
+# revisions pinned in deploy/manifest/defaults.yaml (resourceTypes[].ref).
 #
 # It runs "make sync-resource-types", which re-fetches each pinned ref from
 # resource-types-contrib and re-copies the manifest files, and then checks for
@@ -28,14 +28,17 @@
 #   "make sync-resource-types" locally and commit the updated files.
 #
 # This catches:
-#   - A sources[].ref bump in defaults.yaml without re-running "make sync-resource-types"
+#   - A resourceTypes[].ref bump in defaults.yaml without re-running "make sync-resource-types"
 #   - Manual edits to copied manifest files that drift from upstream
 #   - New entries in defaults.yaml without re-syncing
 #
+# recipePacks[] pins are intentionally not covered: recipe packs are not
+# vendored into this repo, so there are no copies that can drift.
+#
 # Similar in spirit to the "go mod tidy" check, ensuring generated/copied
 # artifacts are consistent with their source.
-
-name: Verify resource type manifests
+---
+name: Verify Resource Types Manifest
 
 on:
   pull_request:
@@ -62,18 +65,18 @@ on:
 permissions: {}
 
 concurrency:
-  group: verify-resource-types-${{ github.event.pull_request.number || github.sha }}
+  group: verify-resource-types-manifest-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
-  verify-resource-types:
+  verify-resource-types-manifest:
     name: Verify resource type copies are in sync
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -93,7 +96,7 @@ jobs:
           if [ -n "${changes}" ]; then
             echo ""
             echo "ERROR: Resource type manifest copies are out of sync with the pinned"
-            echo "resource-types-contrib revisions (sources[].ref) in deploy/manifest/defaults.yaml."
+            echo "resource-types-contrib revisions (resourceTypes[].ref) in deploy/manifest/defaults.yaml."
             echo ""
             printf '%s\n' "${changes}"
             git diff -- deploy/manifest/built-in-providers/

@@ -71,7 +71,7 @@ To confirm your schema compiles in a Bicep template, publish the generated Bicep
    make generate-bicep-types
    ```
 
-   This writes the type files under `hack/bicep-types-radius/generated/` and rebuilds the unified index at `hack/bicep-types-radius/generated/index.json`.
+   This writes the type files under `hack/bicep-types-radius/generated/` and rebuilds the unified index at `hack/bicep-types-radius/generated/index.json`. It also writes one reference doc per resource type to `<namespace>/<apiVersion>/docs/`, for both the TypeSpec-generated and the manifest-generated (contrib) namespaces. Those docs are build artifacts, not checked in, and are published to the docs repo by the `publish-docs` workflow.
 3. Publish the unified `radius` extension to a target of your choice (a local file path or an OCI registry):
 
    ```bash
@@ -121,3 +121,4 @@ To confirm your schema compiles in a Bicep template, publish the generated Bicep
 - **Generated files keep reappearing as changes.** Generated `zz_generated_*.go` and `openapi.json` files are committed artifacts. Run `make generate`, then commit the regenerated output so it matches your TypeSpec.
 - **`make publish-bicep-extension` errors that the index does not exist.** Run `make generate-bicep-types` first; the target publishes `hack/bicep-types-radius/generated/index.json`, which that command creates.
 - **`make publish-bicep-extension` cannot find `bicep`.** Install the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) and ensure it is on your `PATH`, or use the binary at `~/.rad/bin/bicep` from a Radius CLI install.
+- **`Reference-doc generator not found`.** The contrib namespaces render their reference docs with the compiled TypeSpec emitter. Run `make generate-bicep-types-emitter` to build it, then re-run `make generate-bicep-types-contrib`.

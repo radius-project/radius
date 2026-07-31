@@ -42,10 +42,10 @@ Each workflow runs on `ubuntu-latest`. No long-lived cloud secrets are stored �
 
 The workflows read only GitHub Actions **variables** (`vars`), never secrets. Configure these on the target GitHub Environment:
 
-| Provider | Variables |
-|---|---|
-| Azure | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_AKS_CLUSTER_NAME` |
-| AWS | `AWS_ROLE_ARN`, `AWS_REGION`, `AWS_EKS_CLUSTER_NAME` |
+| Provider | Variables                                                                                                       |
+|----------|-----------------------------------------------------------------------------------------------------------------|
+| Azure    | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_AKS_CLUSTER_NAME` |
+| AWS      | `AWS_ROLE_ARN`, `AWS_REGION`, `AWS_EKS_CLUSTER_NAME`                                                            |
 
 ### Prerequisites on the cloud side
 
@@ -63,7 +63,7 @@ To keep the two provider paths from duplicating the ~80% of steps they share, it
 - **`run-rad-commands.yml`** — the unified **dispatcher** and the only file that is dispatched. It owns the dispatch contract (`workflow_dispatch` inputs and the `Radius - Verify Credentials` auto-trigger). A `detect` job binds the GitHub Environment, reads which provider variable is set (`AZURE_CLIENT_ID` / `AWS_ROLE_ARN`), and calls the matching provider workflow via `workflow_call` with `secrets: inherit`.
 - **`run-rad-commands-azure.yml`** — a reusable (`workflow_call`) workflow with only the Azure-specific steps: Azure OIDC login, AKS connection (`az aks get-credentials`), workload-identity credential registration, and the `azure-avm` recipe pack (Azure Verified Modules) downloaded from [resource-types-contrib](https://github.com/radius-project/resource-types-contrib).
 - **`run-rad-commands-aws.yml`** — a reusable (`workflow_call`) workflow with only the AWS-specific steps: AWS OIDC login, EKS connection (access entry + static token kubeconfig), IRSA credential registration, and the `aws-terraform` recipe pack.
-- **`actions/*`** — composite actions holding the provider-agnostic phases both provider workflows share: [`setup-control-plane`](actions/setup-control-plane/action.yml), [`restore-state`](actions/restore-state/action.yml), [`apply-custom-recipe-packs`](actions/apply-custom-recipe-packs/action.yml), [`run-rad-commands`](actions/run-rad-commands/action.yml), [`delete-resource`](actions/delete-resource/action.yml), and [`teardown`](actions/teardown/action.yml). The provider workflows reference them from `radius-project/radius` at a pinned ref (the `{{RADIUS_REF}}` placeholder the generator fills in), so the shared logic has a single reviewed home and is not copied into user repos. Third-party actions in these workflows are pinned to full commit SHAs (with a `# vX` comment); only the first-party Radius composite actions are referenced by ref.
+- **`actions/*`** — composite actions holding the provider-agnostic phases both provider workflows share: [`setup-control-plane`](actions/setup-control-plane/action.yml), [`restore-state`](actions/restore-state/action.yml), [`apply-custom-recipe-packs`](actions/apply-custom-recipe-packs/action.yml), [`run-rad-commands`](actions/run-rad-commands/action.yml), [`publish-deploy-status`](actions/publish-deploy-status/action.yml), [`delete-resource`](actions/delete-resource/action.yml), and [`teardown`](actions/teardown/action.yml). The provider workflows reference them from `radius-project/radius` at a pinned ref (the `{{RADIUS_REF}}` placeholder the generator fills in), so the shared logic has a single reviewed home and is not copied into user repos. Third-party actions in these workflows are pinned to full commit SHAs (with a `# vX` comment); only the first-party Radius composite actions are referenced by ref.
 
 The deploy flow generates the dispatcher and both provider workflows, commits them to the target repo under `.github/workflows/`, and dispatches `run-rad-commands.yml`.
 
@@ -76,7 +76,6 @@ Radius deletes a deployed application or an environment with the same ephemeral-
 - **`delete-azure.yml`** / **`delete-aws.yml`** — reusable (`workflow_call`) workflows with the provider-specific steps (OIDC login, cluster connection, cloud OIDC token projection, and credential registration) shared with the deploy provider workflows. They reuse the `setup-control-plane`, `restore-state`, [`delete-resource`](actions/delete-resource/action.yml), and `teardown` composite actions. Like the deploy provider workflows they log in to GHCR and set the `RADIUS_STATE_*` variables so `rad startup`/`rad shutdown` can open the OCI-backed state archive. Unlike the deploy provider workflows they do **not** create the environment, recipe pack, or the in-pod image-push registry credentials — the environment and its recipes are restored from state, and deleting builds no images.
 
 The `delete-resource` composite action runs `rad app delete <name> --yes --preview` or `rad env delete <name> --yes --preview` (`--preview` selects the Radius.Core surface the deploy flow provisions) and writes a `rad-delete-result` artifact — a JSON document with `outcome`, `exitCode`, `resourceType`, `name`, and the command `output`.
-
 
 ### What it does
 
@@ -94,9 +93,10 @@ The dispatcher routes to the matching provider workflow, which runs on `ubuntu-l
 10. **Register cloud credentials.** Registers the cloud identity with `rad credential register azure wi` / `aws irsa` so Radius holds the identity selector and reads the projected token at runtime.
 11. **Create the Radius environment and recipe pack.** `rad deploy`s a `radius-env.bicep` that defines a `Radius.Core/recipePacks` resource and the `Radius.Core/environments` resource that references it. Azure downloads the `azure-avm` pack (Azure Verified Modules) from [resource-types-contrib](https://github.com/radius-project/resource-types-contrib); AWS generates an inline `aws-terraform` pack. `radius-env.bicep` is written to the app file's directory (e.g. `.radius/`) and deployed from there, so `rad deploy` resolves the repo's own `bicepconfig.json` (which declares the `radius` extension) — bicep resolves the config nearest the `.bicep` file. The `Radius.Compute/containerImages` type ships with the Radius extension, so no separate resource-type registration is needed.
 12. **Register custom types and apply custom recipe pack.** When the app's `.radius/` folder carries a `custom-types.yaml` file, the shared `apply-custom-recipe-packs` action registers those resource types with `rad resource-type create --from-file` (skipped when absent). When it carries a `custom-recipe-pack.bicep` file, the action snapshots the recipe-pack IDs before and after `rad deploy`ing that pack to identify the newly-created pack(s), reads the environment's existing `recipePacks` with `rad env show --preview`, and runs `rad env update <env> --recipe-packs <existing ∪ new> --preview` so the environment keeps the default provider pack and gains the custom pack — without pulling in unrelated packs the control plane may know about (skipped when absent). When neither file exists this step is a no-op and the default pack stays in place.
-13. **Run the requested rad commands.** Validates each command in `rad_commands` against the allowed-command set, then runs them in order (stopping on the first failure) and writes a combined `rad-commands-result` artifact. When `rad_commands` is empty it runs the default `rad deploy <app-file> --environment <env>`, passing the `image` parameter (the `image` input, defaulting to `github.sha`), any application parameters from the `RADIUS_DEPLOY_PARAMS` secret, and the registry push/pull credentials as `registryUsername` (`github.actor`) and `registryPassword` (the built-in `GITHUB_TOKEN`). Those feed the app's `Radius.Security/secrets` resource (`radius-ghcr-registry-creds`), which materializes the registry Secret on the target cluster so the containerImages recipe's in-pod BuildKit can push the application image. The secret value is passed via an argv array and never written into the recorded command string.
-14. **Persist state (`rad shutdown`).** Backs the control-plane databases and Terraform recipe-state Secrets up to the state archive — the OCI-backed archive by default (pushed to GHCR, selected by the `RADIUS_STATE_*` variables), or the `radius-state` git orphan branch when `RADIUS_STATE_BACKEND=git`. This runs even when the deploy fails (`if: always()`), so a partially-applied Terraform run is not lost.
-15. **Tear down.** Runs `rad app list`, and always deletes the ephemeral `radius-cp` cluster. On failure, Radius and application logs are collected and uploaded as the `radius-logs` artifact (three-day retention).
+13. **Run the requested rad commands.** Validates each command in `rad_commands` against the allowed-command set, then runs them in order (stopping on the first failure) and writes a combined `rad-commands-result` artifact. Before deploying the app, the shared action compiles its Bicep file once and reads the declared ARM parameters. It passes each extension-generated parameter only when the template declares it: `image` (the workflow input, defaulting to `github.sha`), `registryUsername` (`github.actor`), and `registryPassword` (the built-in `GITHUB_TOKEN`). Caller-configured application parameters from the `RADIUS_DEPLOY_PARAMS` secret remain strict and are passed unchanged. The registry parameters feed the app's `Radius.Security/secrets` resource (`radius-ghcr-registry-creds`), when present, so the containerImages recipe's in-pod BuildKit can push the application image. Secret values are passed via an argv array and never written into the recorded command string.
+14. **Publish deployed graph/status artifact.** On successful command execution, the shared `publish-deploy-status` action runs `rad app graph --application <app> --preview --include-icons --output json` against the live control plane and publishes `deploy-graph.json` plus sibling status files (`deploy-progress.log`, `deploy-activity.log`, `deploy-controlplane.log`, `deploy-state.txt`) as a single OCI artifact in GHCR (`RADIUS_GRAPH_REGISTRY`, with `RADIUS_GRAPH_TAG` or a derived `<environment>-<app>-latest` tag).
+15. **Persist state (`rad shutdown`).** Backs the control-plane databases and Terraform recipe-state Secrets up to the state archive — the OCI-backed archive by default (pushed to GHCR, selected by the `RADIUS_STATE_*` variables), or the `radius-state` git orphan branch when `RADIUS_STATE_BACKEND=git`. This runs even when the deploy fails (`if: always()`), so a partially-applied Terraform run is not lost.
+16. **Tear down.** Runs `rad app list`, and always deletes the ephemeral `radius-cp` cluster. On failure, Radius and application logs are collected and uploaded as the `radius-logs` artifact (three-day retention).
 
 ### Triggers and permissions
 
@@ -107,11 +107,11 @@ Triggers and permissions live on the **dispatcher** (`run-rad-commands.yml`); th
   - `workflow_run` after the `Radius - Verify Credentials` workflow completes. The `detect` job runs only when the upstream verify run concluded `success`, so a successful credential check auto-triggers a deploy.
 - **Inputs:**
 
-  | Input | Required | Description |
-  |---|---|---|
-  | `environment` | Yes | The GitHub Environment name, used as the Radius environment. |
-  | `image` | No | Container image for the application, passed to the default deploy as the `image` parameter. Defaults to the commit SHA (`github.sha`) when unset. |
-  | `rad_commands` | No | A single `rad` command string, or a JSON array of command strings run in order (the `rad` prefix omitted, e.g. `["deploy .radius/app.bicep --environment dev", "app graph my-app -o json"]`). Each command is validated against the allowed-command set. Falls back to the `RADIUS_RAD_COMMANDS` variable. When empty, the workflow runs its default `rad deploy` of the app bicep. |
+  | Input          | Required | Description                                                                                                                                                                                                                                                                                                                                                                         |
+  |----------------|----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+  | `environment`  | Yes      | The GitHub Environment name, used as the Radius environment.                                                                                                                                                                                                                                                                                                                        |
+  | `image`        | No       | Container image for the application. Defaults to the commit SHA (`github.sha`) when unset and is passed only when the application template declares the `image` parameter.                                                                                                                                                                                                          |
+  | `rad_commands` | No       | A single `rad` command string, or a JSON array of command strings run in order (the `rad` prefix omitted, e.g. `["deploy .radius/app.bicep --environment dev", "app graph my-app -o json"]`). Each command is validated against the allowed-command set. Falls back to the `RADIUS_RAD_COMMANDS` variable. When empty, the workflow runs its default `rad deploy` of the app bicep. |
 
 - **Outputs:** a combined `rad-commands-result` artifact — a JSON document with a top-level `outcome`/`exitCode` and a `commands` array (one entry per command, in input order, with each command's exit code and output).
 - **Permissions:** `id-token: write` (required for OIDC), `contents: write` (so `rad shutdown` can push the `radius-state` branch when the git state backend is selected), and `packages: write` (to push the OCI-backed state archive to GHCR and the application image built by the containerImages recipe).
@@ -120,19 +120,17 @@ Triggers and permissions live on the **dispatcher** (`run-rad-commands.yml`); th
 
 The workflow reads cloud and cluster configuration from GitHub Actions **variables** (`vars`). Configure the relevant provider's set on the target GitHub Environment:
 
-| Provider | Variables |
-|---|---|
-| Common | `KUBERNETES_NAMESPACE` (default `default`), `RADIUS_BUILD_REGISTRY` (default `ghcr.io/<owner>/<repo>`), `RADIUS_RAD_COMMANDS` (optional fallback for `rad_commands`) |
-| Azure (`run-rad-commands-azure.yml`) | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_AKS_CLUSTER_NAME` |
-| AWS (`run-rad-commands-aws.yml`) | `AWS_ROLE_ARN`, `AWS_REGION`, `AWS_ACCOUNT_ID`, `AWS_EKS_CLUSTER_NAME`, `RADIUS_VPC_ID`, `RADIUS_SUBNET_IDS` |
+- Common: `KUBERNETES_NAMESPACE` (default `default`), `RADIUS_BUILD_REGISTRY` (default `ghcr.io/<owner>/<repo>`), `RADIUS_RAD_COMMANDS` (optional fallback for `rad_commands`), `RADIUS_GRAPH_REGISTRY` (optional GHCR repo for deployed graph/status artifacts), `RADIUS_GRAPH_TAG` (optional tag override)
+- Azure (`run-rad-commands-azure.yml`): `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_AKS_CLUSTER_NAME`
+- AWS (`run-rad-commands-aws.yml`): `AWS_ROLE_ARN`, `AWS_REGION`, `AWS_ACCOUNT_ID`, `AWS_EKS_CLUSTER_NAME`, `RADIUS_VPC_ID`, `RADIUS_SUBNET_IDS`
 
 The provider steps run only when the identifying variable (`AZURE_CLIENT_ID` or `AWS_ROLE_ARN`) is non-empty. When it is unset, resources deploy to the ephemeral control-plane cluster instead of an external target.
 
 This workflow also reads GitHub Actions **secrets** for image push and application configuration:
 
-| Secret | Purpose |
-|---|---|
-| `GITHUB_TOKEN` | Built-in. Used with `github.actor` to authenticate the containerImages recipe's image push to GHCR. |
+| Secret                 | Purpose                                                                                                                                                  |
+|------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `GITHUB_TOKEN`         | Built-in. Used with `github.actor` to authenticate the containerImages recipe's image push to GHCR.                                                      |
 | `RADIUS_DEPLOY_PARAMS` | Optional. A JSON object of application parameters (`{"password":"…","apiKey":"…"}`) expanded into `--parameters name=value` pairs on the default deploy. |
 
 ### State persistence (`rad startup` / `rad shutdown`)

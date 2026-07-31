@@ -17,30 +17,30 @@ generic provider model.
 
 ## Quick Reference
 
-| Topic | Start Here |
-| --- | --- |
-| Startup | `cmd/dynamic-rp/cmd/root.go` |
-| Host composition | `pkg/dynamicrp/server/server.go` |
-| API service | `pkg/dynamicrp/frontend/service.go` |
-| Route wiring | `pkg/dynamicrp/frontend/routes.go` |
-| Async backend | `pkg/dynamicrp/backend/service.go` |
+| Topic            | Start Here                          |
+|------------------|-------------------------------------|
+| Startup          | `cmd/dynamic-rp/cmd/root.go`        |
+| Host composition | `pkg/dynamicrp/server/server.go`    |
+| API service      | `pkg/dynamicrp/frontend/service.go` |
+| Route wiring     | `pkg/dynamicrp/frontend/routes.go`  |
+| Async backend    | `pkg/dynamicrp/backend/service.go`  |
 
-| Test Focus | Packages |
-| --- | --- |
-| Frontend/read-path behavior | `./pkg/dynamicrp/frontend/...` |
-| Backend/processor behavior | `./pkg/dynamicrp/backend/...` |
-| Integration coverage | `./pkg/dynamicrp/integrationtest/...` |
-| Broad safety check | `./pkg/dynamicrp/...` |
+| Test Focus                  | Packages                              |
+|-----------------------------|---------------------------------------|
+| Frontend/read-path behavior | `./pkg/dynamicrp/frontend/...`        |
+| Backend/processor behavior  | `./pkg/dynamicrp/backend/...`         |
+| Integration coverage        | `./pkg/dynamicrp/integrationtest/...` |
+| Broad safety check          | `./pkg/dynamicrp/...`                 |
 
 ## Core Packages
 
-| Package | Responsibility |
-| --- | --- |
-| `pkg/dynamicrp/frontend` | request handling and API surface |
-| `pkg/dynamicrp/backend` | backend processing and async work |
+| Package                   | Responsibility                     |
+|---------------------------|------------------------------------|
+| `pkg/dynamicrp/frontend`  | request handling and API surface   |
+| `pkg/dynamicrp/backend`   | backend processing and async work  |
 | `pkg/dynamicrp/datamodel` | dynamic resource persistence model |
-| `pkg/dynamicrp/api` | versioned API types |
-| `pkg/dynamicrp/server` | process bootstrap and hosting |
+| `pkg/dynamicrp/api`       | versioned API types                |
+| `pkg/dynamicrp/server`    | process bootstrap and hosting      |
 
 ## How It Works
 
@@ -71,6 +71,12 @@ type authoring patterns.
 The Bicep driver has a hook used only by `Radius.Compute/containerImages`. When a recipe returns an `imageBuild` object, the driver loads the script embedded in the recipe, adds the operator-configured registry, passes the object's fields as command-line flags, and waits for the script to push the image. The script and `imageBuild` output can change together without a Radius driver change. Other resource types ignore this output, and recipe parameters cannot provide the script.
 
 ARM/Bicep cannot call BuildKit directly, so `dynamic-rp` runs the script where the in-Pod BuildKit endpoint is available. The registry and credential Secret name come from the registered Recipe, which prevents developer overrides from redirecting credentials. Radius reads the Secret from the recipe runtime namespace on the selected cluster, including `RADIUS_TARGET_KUBECONFIG`, and does not fall back when that target is invalid. The build runs on every recipe execution and stores no state.
+
+### Shared BuildKit Capacity
+
+All `containerImages` operations in one `dynamic-rp` Pod share its BuildKit sidecar and memory cgroup. The chart configures BuildKit's native OCI worker scheduler through `dynamicrp.buildkit.maxParallelism`, which defaults to one concurrent build step across all active solves. A generated `buildkitd.toml` carries the setting, and its Pod-template checksum restarts `dynamic-rp` when the value changes because BuildKit reads daemon configuration only at startup.
+
+Keep this limit independent from `workerServer.maxOperationConcurrency`. The worker setting bounds all Dynamic RP operations, while BuildKit's scheduler bounds the memory-intensive execution steps within and across image builds. Increasing BuildKit parallelism requires profiling representative cold builds and sizing the sidecar's memory request and limit with sufficient headroom. This is a concurrency boundary, not per-build isolation: one build can still exceed the configured memory limit.
 
 ### Packages That Usually Move Together
 
