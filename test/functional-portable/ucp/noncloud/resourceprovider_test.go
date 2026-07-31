@@ -21,7 +21,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/schema/baseresource"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
@@ -67,7 +67,7 @@ func Test_ResourceProviderRegistration(t *testing.T) {
 				"capabilities": []any{"ManualResourceProvisioning"},
 				// Types registered without an icon get the product default
 				// icon's hash stamped on the record at registration time.
-				"iconHash": productmanifest.Default().Hash,
+				"iconHash": defaults.DefaultIcon().Hash,
 			},
 		},
 	}
