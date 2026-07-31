@@ -14,7 +14,7 @@ inputs:
     description: Application bicep file to deploy by default.
     required: true
   app-image:
-    description: Container image passed to the default deploy as the image parameter.
+    description: Container image passed when the application template declares the image parameter.
     required: false
     default: ""
   namespace:
@@ -30,10 +30,10 @@ inputs:
     required: false
     default: ""
   registry-username:
-    description: Username passed to the app deploy as the registryUsername parameter (feeds the app's Radius.Security/secrets registry Secret).
+    description: Username passed when the app declares the registryUsername parameter (feeds its Radius.Security/secrets registry Secret).
     required: true
   registry-password:
-    description: Password/token passed to the app deploy as the registryPassword parameter (feeds the app's Radius.Security/secrets registry Secret).
+    description: Password/token passed when the app declares the registryPassword parameter (feeds its Radius.Security/secrets registry Secret).
     required: true
 
 runs:
@@ -60,14 +60,13 @@ runs:
         ENVIRONMENT: ${{ inputs.environment }}
         APP_FILE: ${{ inputs.app-file }}
         APP_IMAGE: ${{ inputs.app-image }}
-        # Registry push/pull credentials for the app deploy. These are passed to
-        # the app file's `rad deploy` as the registryUsername/registryPassword
-        # parameters, which feed the app's Radius.Security/secrets resource
-        # (`radius-ghcr-registry-creds`). That resource materializes the registry Secret
-        # on the TARGET cluster, where the containerImages recipe reads it by the
-        # name the recipe pack registers. Read via the environment (not inlined
-        # into the script) so the secret value can't break the shell or be
-        # word-split, and is never written into the recorded command string.
+        # Registry push/pull credentials for the app deploy. When the app declares
+        # registryUsername/registryPassword, these feed its Radius.Security/secrets
+        # resource (`radius-ghcr-registry-creds`). That resource materializes the
+        # registry Secret on the TARGET cluster, where the containerImages recipe
+        # reads it by the name the recipe pack registers. Read via the environment
+        # (not inlined into the script) so the secret value can't break the shell or
+        # be word-split, and is never written into the recorded command string.
         REGISTRY_USERNAME: ${{ inputs.registry-username }}
         REGISTRY_PASSWORD: ${{ inputs.registry-password }}
         # Pass caller input through the environment to avoid command injection.
@@ -170,6 +169,11 @@ runs:
           [ -n "$DEPLOY_PARAMS_JSON" ] || return 1
           printf '%s' "$DEPLOY_PARAMS_JSON" | jq -e --arg k "$1" 'has($k) and (.[$k] != null) and (.[$k] != "")' >/dev/null 2>&1
         }
+
+        # Compile the app once and use its ARM parameter keys to avoid supplying
+        # extension-generated parameters that the template does not declare.
+        # shellcheck source=deploy-parameters.sh
+        source "$GITHUB_ACTION_PATH/deploy-parameters.sh"
 
         # Secret values that must never reach the logs or the uploaded artifact:
         # the registry password (the runner GITHUB_TOKEN) and every value in the
@@ -324,26 +328,19 @@ runs:
                 printf '%s' "$t"
               }
               if [ "$(normalize_target "$DEPLOY_TARGET")" = "$(normalize_target "$APP_FILE")" ]; then
-                if [ -n "$APP_IMAGE" ]; then
-                  EXTRA_PARAMS+=(--parameters "image=$APP_IMAGE")
+                if ! load_declared_app_params "$APP_FILE"; then
+                  OVERALL_OUTCOME="command_failed"
+                  OVERALL_EXIT=1
+                  exit 1
                 fi
+                append_generated_app_params
+                EXTRA_PARAMS+=("${GENERATED_APP_PARAMS[@]}")
                 if [ -n "$DEPLOY_PARAMS_JSON" ]; then
                   while IFS= read -r _pname; do
                     [ -z "$_pname" ] && continue
                     _pval=$(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r --arg k "$_pname" '.[$k]' 2>/dev/null)
                     EXTRA_PARAMS+=(--parameters "$_pname=$_pval")
                   done < <(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r 'keys_unsorted[]' 2>/dev/null)
-                fi
-                # Registry credentials for the app's Radius.Security/secrets
-                # resource. Appended to the argv array so the secret value is never
-                # word-split or written into the recorded command string. Skipped
-                # when the params secret already supplies the key, so the same
-                # --parameters is never passed twice.
-                if [ -n "$REGISTRY_USERNAME" ] && ! deploy_params_has_key registryUsername; then
-                  EXTRA_PARAMS+=(--parameters "registryUsername=$REGISTRY_USERNAME")
-                fi
-                if [ -n "$REGISTRY_PASSWORD" ] && ! deploy_params_has_key registryPassword; then
-                  EXTRA_PARAMS+=(--parameters "registryPassword=$REGISTRY_PASSWORD")
                 fi
               fi
               if ! record "$idx" "$cmd" rad "${CMD_ARGV[@]}" "${EXTRA_PARAMS[@]}"; then
@@ -370,9 +367,13 @@ runs:
           # so values with special characters are not mangled by the shell.
           REQUESTED=1
           DEPLOY_PARAMS=()
-          if [ -n "$APP_IMAGE" ]; then
-            DEPLOY_PARAMS+=(--parameters "image=$APP_IMAGE")
+          if ! load_declared_app_params "$APP_FILE"; then
+            OVERALL_OUTCOME="command_failed"
+            OVERALL_EXIT=1
+            exit 1
           fi
+          append_generated_app_params
+          DEPLOY_PARAMS+=("${GENERATED_APP_PARAMS[@]}")
           # Expand the application parameters JSON ({"name":"value", …}) into
           # --parameters name=value pairs. Each value is read back from the JSON
           # by key with jq so embedded '=', spaces, or newlines are preserved and
@@ -383,17 +384,6 @@ runs:
               _pval=$(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r --arg k "$_pname" '.[$k]' 2>/dev/null)
               DEPLOY_PARAMS+=(--parameters "$_pname=$_pval")
             done < <(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r 'keys_unsorted[]' 2>/dev/null)
-          fi
-          # Registry credentials for the app's Radius.Security/secrets resource
-          # (`radius-ghcr-registry-creds`). Appended to the argv array so the secret
-          # value is never word-split or written into the recorded command string.
-          # Skipped when the params secret already supplies the key, so the same
-          # --parameters is never passed twice.
-          if [ -n "$REGISTRY_USERNAME" ] && ! deploy_params_has_key registryUsername; then
-            DEPLOY_PARAMS+=(--parameters "registryUsername=$REGISTRY_USERNAME")
-          fi
-          if [ -n "$REGISTRY_PASSWORD" ] && ! deploy_params_has_key registryPassword; then
-            DEPLOY_PARAMS+=(--parameters "registryPassword=$REGISTRY_PASSWORD")
           fi
           # The recorded command string omits the parameters so secret values are
           # not written into the result artifact.

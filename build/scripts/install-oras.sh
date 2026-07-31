@@ -9,7 +9,7 @@ set -euo pipefail
 #
 # ORAS is published as a per-platform tarball on oras-project/oras's GitHub
 # releases. The pinned version and per-platform SHA-256 checksums (of the
-# tarball) are normally provided by build/tools.mk through the environment. The
+# tarball) are normally provided by build/tools.yaml through the generated Make include. The
 # script is generic, so when a value is not supplied it is resolved at runtime:
 #   * empty ORAS_VERSION            -> the latest published release
 #   * missing checksum for platform -> read from the release's own
