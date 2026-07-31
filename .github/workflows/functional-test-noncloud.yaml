@@ -50,10 +50,9 @@ on:
 permissions: {}
 
 env:
-  # Dapr runtime version
-  DAPR_RUNTIME_VER: 1.15.4
-  # Dapr dashboard version
-  DAPR_DASHBOARD_VER: 0.15.0
+  # Dapr runtime version. Must stay on the same minor line as the Dapr CLI
+  # pinned in build/tools.yaml (DAPR_VERSION), which installs it.
+  DAPR_RUNTIME_VER: 1.18.2
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 15m
   # The base directory for storing test logs
@@ -588,7 +587,7 @@ jobs:
 
       - name: Install Dapr control plane
         if: matrix.name == 'daprrp-noncloud'
-        run: dapr init -k --wait --timeout 600 --runtime-version "${DAPR_RUNTIME_VER}" --dashboard-version "${DAPR_DASHBOARD_VER}"
+        run: dapr init -k --wait --timeout 600 --runtime-version "${DAPR_RUNTIME_VER}"
 
       - name: Publish Terraform test recipes
         run: |
