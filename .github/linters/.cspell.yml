@@ -130,6 +130,6 @@ ignorePaths:
   - "**/redirect/**"
   - "**/presentation-pack/**"
 
-# Only check markdown files (the workflow also restricts the glob to **/*.md).
+# Default to checking both Markdown and YAML. CI also passes an explicit glob.
 files:
-  - "**/*.md"
+  - "**/*.{md,yaml,yml}"
