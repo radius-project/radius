@@ -16,22 +16,16 @@ limitations under the License.
 
 package schema
 
-// ApplyDefaults fills unset properties from the "default" declared in the schema and returns the
-// number applied.
+// ApplyDefaults adds defaults to missing properties and returns how many it added.
 //
-// Explicit values are never overwritten. Required properties are never defaulted, so omitting one
-// still fails validation. Read-only properties are recipe outputs, and an absent object is not
-// created just to hold defaults.
+// It keeps explicit values and skips required and read-only properties. It doesn't create missing
+// objects or arrays unless their schema declares a default.
 func ApplyDefaults(properties map[string]any, schemaData map[string]any) int {
 	if properties == nil || schemaData == nil {
 		return 0
 	}
 
-	declared, ok := schemaData["properties"].(map[string]any)
-	if !ok {
-		return 0
-	}
-
+	declared, _ := schemaData["properties"].(map[string]any)
 	required := requiredProperties(schemaData)
 
 	applied := 0
@@ -45,12 +39,9 @@ func ApplyDefaults(properties map[string]any, schemaData map[string]any) int {
 			continue
 		}
 
-		// A supplied object is descended into even when required, since its own optional
-		// properties may declare defaults.
+		// Apply nested defaults to supplied objects and arrays, even when required.
 		if existing, present := properties[name]; present {
-			if nested, ok := existing.(map[string]any); ok {
-				applied += ApplyDefaults(nested, fieldSchema)
-			}
+			applied += applyDefaultsToValue(existing, fieldSchema)
 			continue
 		}
 
@@ -59,16 +50,50 @@ func ApplyDefaults(properties map[string]any, schemaData map[string]any) int {
 		}
 
 		if defaultValue, ok := fieldSchema["default"]; ok {
-			properties[name] = copyDefaultValue(defaultValue)
+			materialized := copyDefaultValue(defaultValue)
+			properties[name] = materialized
 			applied++
+			applied += applyDefaultsToValue(materialized, fieldSchema)
 		}
+	}
+
+	additionalProperties, ok := schemaData["additionalProperties"].(map[string]any)
+	if !ok {
+		return applied
+	}
+
+	for name, existing := range properties {
+		if _, declared := declared[name]; declared {
+			continue
+		}
+
+		applied += applyDefaultsToValue(existing, additionalProperties)
 	}
 
 	return applied
 }
 
-// requiredProperties reads the schema's "required" list, accepting either the []any from JSON
-// decoding or a []string.
+func applyDefaultsToValue(value any, schemaData map[string]any) int {
+	switch typed := value.(type) {
+	case map[string]any:
+		return ApplyDefaults(typed, schemaData)
+	case []any:
+		itemSchema, ok := schemaData["items"].(map[string]any)
+		if !ok {
+			return 0
+		}
+
+		applied := 0
+		for _, item := range typed {
+			applied += applyDefaultsToValue(item, itemSchema)
+		}
+		return applied
+	default:
+		return 0
+	}
+}
+
+// requiredProperties accepts required lists decoded as []any or []string.
 func requiredProperties(schemaData map[string]any) map[string]bool {
 	required := map[string]bool{}
 
@@ -88,8 +113,7 @@ func requiredProperties(schemaData map[string]any) map[string]bool {
 	return required
 }
 
-// copyDefaultValue deep copies a default so mutating a materialized property cannot reach back into
-// a cached schema.
+// copyDefaultValue copies maps and slices so resources don't share schema data.
 func copyDefaultValue(value any) any {
 	switch typed := value.(type) {
 	case map[string]any:

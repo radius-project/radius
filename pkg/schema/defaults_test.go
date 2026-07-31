@@ -100,6 +100,117 @@ func TestApplyDefaults(t *testing.T) {
 			applied:  1,
 		},
 		{
+			name: "objects inside an array are recursed into",
+			properties: map[string]any{"workers": []any{
+				map[string]any{"name": "first"},
+				map[string]any{"name": "second", "replicas": 2},
+			}},
+			schema: map[string]any{"properties": map[string]any{
+				"workers": map[string]any{
+					"type": "array",
+					"items": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"name":     map[string]any{"type": "string"},
+							"replicas": map[string]any{"type": "integer", "default": 1},
+						},
+					},
+				},
+			}},
+			expected: map[string]any{"workers": []any{
+				map[string]any{"name": "first", "replicas": 1},
+				map[string]any{"name": "second", "replicas": 2},
+			}},
+			applied: 1,
+		},
+		{
+			name:       "new object default is recursed into",
+			properties: map[string]any{},
+			schema: map[string]any{"properties": map[string]any{
+				"config": map[string]any{
+					"type":    "object",
+					"default": map[string]any{"name": "given"},
+					"properties": map[string]any{
+						"name":    map[string]any{"type": "string"},
+						"retries": map[string]any{"type": "integer", "default": 3},
+					},
+				},
+			}},
+			expected: map[string]any{"config": map[string]any{"name": "given", "retries": 3}},
+			applied:  2,
+		},
+		{
+			name:       "new array default is recursed into",
+			properties: map[string]any{},
+			schema: map[string]any{"properties": map[string]any{
+				"workers": map[string]any{
+					"type":    "array",
+					"default": []any{map[string]any{"name": "first"}},
+					"items": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"name":     map[string]any{"type": "string"},
+							"replicas": map[string]any{"type": "integer", "default": 1},
+						},
+					},
+				},
+			}},
+			expected: map[string]any{"workers": []any{
+				map[string]any{"name": "first", "replicas": 1},
+			}},
+			applied: 2,
+		},
+		{
+			name: "additional property values are recursed into",
+			properties: map[string]any{"regions": map[string]any{
+				"east": map[string]any{"name": "primary"},
+				"west": map[string]any{"name": "secondary", "replicas": 3},
+			}},
+			schema: map[string]any{"properties": map[string]any{
+				"regions": map[string]any{
+					"type": "object",
+					"additionalProperties": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"name":     map[string]any{"type": "string"},
+							"replicas": map[string]any{"type": "integer", "default": 1},
+						},
+					},
+				},
+			}},
+			expected: map[string]any{"regions": map[string]any{
+				"east": map[string]any{"name": "primary", "replicas": 1},
+				"west": map[string]any{"name": "secondary", "replicas": 3},
+			}},
+			applied: 1,
+		},
+		{
+			name: "additional properties schema is not applied to declared properties",
+			properties: map[string]any{"settings": map[string]any{
+				"fixed":  map[string]any{},
+				"custom": map[string]any{},
+			}},
+			schema: map[string]any{"properties": map[string]any{
+				"settings": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"fixed": map[string]any{"type": "object"},
+					},
+					"additionalProperties": map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"enabled": map[string]any{"type": "boolean", "default": true},
+						},
+					},
+				},
+			}},
+			expected: map[string]any{"settings": map[string]any{
+				"fixed":  map[string]any{},
+				"custom": map[string]any{"enabled": true},
+			}},
+			applied: 1,
+		},
+		{
 			name:       "absent object is not created to hold defaults",
 			properties: map[string]any{},
 			schema: map[string]any{"properties": map[string]any{
@@ -169,7 +280,6 @@ func TestApplyDefaults_NilInputs(t *testing.T) {
 	require.Equal(t, 0, ApplyDefaults(map[string]any{}, nil))
 }
 
-// A map or slice default must be copied, not shared with the schema.
 func TestApplyDefaults_DefaultsAreCopied(t *testing.T) {
 	schemaData := map[string]any{"properties": map[string]any{
 		"tags":    map[string]any{"type": "object", "default": map[string]any{"tier": "free"}},
@@ -188,7 +298,7 @@ func TestApplyDefaults_DefaultsAreCopied(t *testing.T) {
 	require.Equal(t, []any{"a"}, second["origins"])
 }
 
-// Defaults declared by the resource types in resource-types-contrib.
+// These shapes match resource-types-contrib schemas.
 func TestApplyDefaults_ContribShapes(t *testing.T) {
 	schemaData := map[string]any{"properties": map[string]any{
 		"environment":   map[string]any{"type": "string"},
@@ -206,7 +316,6 @@ func TestApplyDefaults_ContribShapes(t *testing.T) {
 	require.NotContains(t, properties, "application")
 }
 
-// A default on a required property must not fill it, or an omitted value would pass validation.
 func TestApplyDefaults_RequiredWinsOverDeclaredDefault(t *testing.T) {
 	schemaData := map[string]any{
 		"required": []any{"environment", "database", "username", "password"},
@@ -222,7 +331,6 @@ func TestApplyDefaults_RequiredWinsOverDeclaredDefault(t *testing.T) {
 	require.NotContains(t, properties, "database")
 }
 
-// A supplied required object still needs its own optional properties defaulted.
 func TestApplyDefaults_NestedDefaultsInsideSuppliedRequiredObject(t *testing.T) {
 	schemaData := map[string]any{
 		"required": []any{"config"},
@@ -247,7 +355,6 @@ func TestApplyDefaults_NestedDefaultsInsideSuppliedRequiredObject(t *testing.T) 
 	require.Equal(t, "given", config["name"])
 }
 
-// An absent required object is not created just to hold defaults.
 func TestApplyDefaults_AbsentRequiredObjectIsNotCreated(t *testing.T) {
 	schemaData := map[string]any{
 		"required": []any{"config"},

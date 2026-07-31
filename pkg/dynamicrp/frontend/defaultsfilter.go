@@ -28,12 +28,12 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
-// makeDefaultsFilter creates an UpdateFilter that materializes schema defaults into the resource's
-// Properties before it is saved, so the stored resource, the API response and the recipe agree.
+type defaultsUpdateFilter controller.UpdateFilter[datamodel.DynamicResource]
+
+// makeDefaultsFilter applies schema defaults before a resource is saved.
 //
-// oldResource is deliberately not consulted: a PUT replaces the resource, so a dropped property
-// returns to its default rather than keeping its previous value.
-func makeDefaultsFilter(ucpClient *v20231001preview.ClientFactory) controller.UpdateFilter[datamodel.DynamicResource] {
+// PUT replaces the resource, so omitted properties use current defaults instead of old values.
+func makeDefaultsFilter(ucpClient *v20231001preview.ClientFactory) defaultsUpdateFilter {
 	return func(
 		ctx context.Context,
 		newResource *datamodel.DynamicResource,
@@ -44,7 +44,18 @@ func makeDefaultsFilter(ucpClient *v20231001preview.ClientFactory) controller.Up
 	}
 }
 
-// applySchemaDefaults fills unset properties from the "default" values declared in the resource type schema.
+func makeUpdateFilters(
+	defaultsFilter defaultsUpdateFilter,
+	encryptionFilter encryptionUpdateFilter,
+) []controller.UpdateFilter[datamodel.DynamicResource] {
+	// Distinct types prevent callers from passing encryption first.
+	return []controller.UpdateFilter[datamodel.DynamicResource]{
+		controller.UpdateFilter[datamodel.DynamicResource](defaultsFilter),
+		controller.UpdateFilter[datamodel.DynamicResource](encryptionFilter),
+	}
+}
+
+// applySchemaDefaults adds defaults from the resource schema.
 func applySchemaDefaults(
 	ctx context.Context,
 	newResource *datamodel.DynamicResource,
@@ -77,7 +88,7 @@ func applySchemaDefaults(
 		return nil, nil
 	}
 
-	// Attach the map only if something was applied, so an empty resource serializes as before.
+	// Keep Properties nil when no default applies.
 	properties := newResource.Properties
 	if properties == nil {
 		properties = map[string]any{}

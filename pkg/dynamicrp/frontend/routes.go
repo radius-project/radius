@@ -53,17 +53,17 @@ func (s *Service) registerRoutes(
 	// Create encryption filter for sensitive fields
 	encryptionFilter := makeEncryptionFilter(ucpClient, handler)
 
-	// Materialize schema defaults before encryption, so a defaulted sensitive field is still encrypted.
+	// Apply defaults before encrypting sensitive fields.
 	defaultsFilter := makeDefaultsFilter(ucpClient)
 
 	// Resource options with encryption filter applied to PUT operations
 	resourceOptions := controller.ResourceOptions[datamodel.DynamicResource]{
 		RequestConverter:  converter.DynamicResourceDataModelFromVersioned,
 		ResponseConverter: converter.DynamicResourceDataModelToVersioned,
-		UpdateFilters: []controller.UpdateFilter[datamodel.DynamicResource]{
+		UpdateFilters: makeUpdateFilters(
 			defaultsFilter,
 			encryptionFilter,
-		},
+		),
 		AsyncOperationRetryAfter: time.Second * 5,
 		AsyncOperationTimeout:    time.Hour * 24,
 	}
