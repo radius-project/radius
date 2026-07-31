@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/stretchr/testify/require"
@@ -59,23 +60,50 @@ func Test_GetDefaultRecipePackDefinition_UsesEdgeTagForEdgeChannel(t *testing.T)
 	}
 }
 
-func Test_resolveRecipeTag_ReleaseChannelUsesNamespaceRef(t *testing.T) {
-	// This test cannot flip the package-level channel variable, so we
-	// verify the release-channel logic directly by calling the helper
-	// with a resource type whose namespace has a pin in defaults.yaml.
-	// Skip when the test binary is (as usual) on the edge channel — the
-	// helper unconditionally returns "edge" there, which is covered by
-	// Test_GetDefaultRecipePackDefinition_UsesEdgeTagForEdgeChannel.
-	if version.IsEdgeChannel() {
-		t.Skip("test binary is on edge channel; release path not exercisable without ldflags")
+func Test_resolveRecipeTag(t *testing.T) {
+	// Kept in sync with deploy/manifest/defaults.yaml by `make update-resource-types`.
+	pin, ok := defaults.ResourceTypePin("Radius.Compute")
+	require.True(t, ok, "Radius.Compute must be pinned in defaults.yaml")
+	require.NotEmpty(t, pin.Ref)
+
+	testcases := []struct {
+		name         string
+		resourceType string
+		isEdge       bool
+		expected     string
+	}{
+		{
+			name:         "edge channel uses mutable tag",
+			resourceType: "Radius.Compute/containers",
+			isEdge:       true,
+			expected:     "edge",
+		},
+		{
+			name:         "release channel uses pinned namespace ref",
+			resourceType: "Radius.Compute/containers",
+			isEdge:       false,
+			expected:     pin.Ref,
+		},
+		{
+			name:         "release channel falls back on malformed resource type",
+			resourceType: "NotAResourceType",
+			isEdge:       false,
+			expected:     "edge",
+		},
+		{
+			name:         "release channel falls back on unpinned namespace",
+			resourceType: "Contoso.Example/widgets",
+			isEdge:       false,
+			expected:     "edge",
+		},
 	}
-	// Sanity: the release branch of resolveRecipeTag must never return
-	// an empty tag, and for a well-known namespace it must match the
-	// pinned SHA (kept in sync via `make update-resource-types`).
-	tag := resolveRecipeTag("Radius.Compute/containers")
-	require.NotEmpty(t, tag)
-	require.NotEqual(t, "edge", tag,
-		"release channel should resolve to a pinned commit SHA, not the edge fallback")
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.expected, resolveRecipeTag(tc.resourceType, tc.isEdge))
+		})
+	}
 }
 
 func Test_NewDefaultRecipePackResource(t *testing.T) {

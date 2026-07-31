@@ -27,7 +27,7 @@ limitations under the License.
 //
 // # Icons
 //
-// Two consumers read icons:
+// Four consumers read icons:
 //
 //  1. The static (modeled) graph builder in `pkg/cli/graph` — the CLI binary
 //     has no control plane to consult, so it resolves per-node iconHash values
@@ -38,6 +38,11 @@ limitations under the License.
 //     are the fallback for connected external cloud nodes that are not
 //     registered in the local Radius resource-type registry. They are also used
 //     when a user does not supply an icon for the resource type.
+//  3. The resource-type registration path — `pkg/ucp/initializer` and the
+//     `pkg/ucp/api` conversion layer — which stamps the default hash onto a
+//     type registered without an icon of its own.
+//  4. The icon endpoint in `pkg/ucp/frontend/controller/resourceproviders`,
+//     which serves the default bytes back for those types.
 //
 // Icon absence is never an error. Icons are cosmetic, so a missing or malformed
 // one must not fail a graph request, refuse a resource-type registration, or

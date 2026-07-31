@@ -180,24 +180,26 @@ type CoreTypesRecipeInfo struct {
 //     tags each namespace's OCI artifacts with the same commit SHA,
 //     so this guarantees a released rad CLI installs exactly the
 //     recipes that were published from the pinned resource-types-contrib
-//     revision, regardless of what `latest` currently points at.
+//     revision, regardless of what the mutable "edge" tag currently
+//     points at.
 //   - As a defensive fallback, a namespace missing from the
 //     defaults.yaml `resourceTypes` list falls back to "edge" so a
 //     mis-configured build still installs something rather than
 //     producing an invalid OCI reference.
 func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
+	isEdge := version.IsEdgeChannel()
 	return []CoreTypesRecipeInfo{
 		{
 			ResourceType: "Radius.Compute/containers",
-			Source:       "ghcr.io/radius-project/kube-recipes/containers:" + resolveRecipeTag("Radius.Compute/containers"),
+			Source:       "ghcr.io/radius-project/kube-recipes/containers:" + resolveRecipeTag("Radius.Compute/containers", isEdge),
 		},
 		{
 			ResourceType: "Radius.Compute/persistentVolumes",
-			Source:       "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + resolveRecipeTag("Radius.Compute/persistentVolumes"),
+			Source:       "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + resolveRecipeTag("Radius.Compute/persistentVolumes", isEdge),
 		},
 		{
 			ResourceType: "Radius.Compute/routes",
-			Source:       "ghcr.io/radius-project/kube-recipes/routes:" + resolveRecipeTag("Radius.Compute/routes"),
+			Source:       "ghcr.io/radius-project/kube-recipes/routes:" + resolveRecipeTag("Radius.Compute/routes", isEdge),
 			Parameters: map[string]any{
 				"gatewayName":      DefaultRoutesGatewayName,
 				"gatewayNamespace": DefaultRoutesGatewayNamespace,
@@ -205,19 +207,20 @@ func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 		},
 		{
 			ResourceType: "Radius.Security/secrets",
-			Source:       "ghcr.io/radius-project/kube-recipes/secrets:" + resolveRecipeTag("Radius.Security/secrets"),
+			Source:       "ghcr.io/radius-project/kube-recipes/secrets:" + resolveRecipeTag("Radius.Security/secrets", isEdge),
 		},
 		{
 			ResourceType: "Radius.Data/mySqlDatabases",
-			Source:       "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + resolveRecipeTag("Radius.Data/mySqlDatabases"),
+			Source:       "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + resolveRecipeTag("Radius.Data/mySqlDatabases", isEdge),
 		},
 	}
 }
 
-// resolveRecipeTag picks the OCI tag for a single core-type recipe.
-// See GetCoreTypesRecipeInfo for the full contract.
-func resolveRecipeTag(resourceType string) string {
-	if version.IsEdgeChannel() {
+// resolveRecipeTag picks the OCI tag for a single core-type recipe. isEdge is
+// passed in rather than read from the build-stamped channel so both branches
+// are reachable from tests. See GetCoreTypesRecipeInfo for the full contract.
+func resolveRecipeTag(resourceType string, isEdge bool) string {
+	if isEdge {
 		return "edge"
 	}
 	namespace, _, ok := defaults.SplitResourceType(resourceType)
