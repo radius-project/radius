@@ -26,7 +26,7 @@ package terraform
 // `go test`, `go run`, and other invocations that do not go through the
 // Makefile; the TestTerraformVersionMatchesFile test guarantees it stays in
 // sync with the compatibility file.
-var terraformVersion = "1.14.9"
+var terraformVersion = "1.15.8"
 
 // TerraformVersion returns the Terraform version Radius will install.
 func TerraformVersion() string {
