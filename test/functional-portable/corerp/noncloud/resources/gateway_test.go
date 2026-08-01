@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -43,7 +44,21 @@ import (
 const (
 	httpRemotePort  = 8080
 	httpsRemotePort = 8443
+
+	// gatewayProbeTimeout bounds the total time spent probing a gateway, including any
+	// port-forward sessions that have to be re-established mid-probe.
+	gatewayProbeTimeout = 90 * time.Second
+
+	// gatewayProbeBackoff is the delay between probe attempts and between port-forward
+	// re-establishment attempts.
+	gatewayProbeBackoff = 5 * time.Second
 )
+
+// errPortForwardLost reports that the port-forward session ended while a probe was in flight.
+// client-go tears down the whole SPDY session when any single forwarded connection errors, which
+// Envoy triggers by resetting connections while it is still programming the route, so the probe
+// re-establishes the session instead of failing. See radius-project/radius#12298.
+var errPortForwardLost = errors.New("portforward stopped")
 
 // GatewayTestConfig is a struct that contains the configuration for a Gateway test
 type GatewayTestConfig struct {
@@ -435,6 +450,36 @@ func runGatewayTest(t *testing.T, test rp.RPTest) {
 }
 
 func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namespace, hostname string, remotePort int, isHttps bool, tests []GatewayTestConfig) error {
+	deadline := time.Now().Add(gatewayProbeTimeout)
+
+	for session := 1; ; session++ {
+		err := probeGatewayOverPortForward(t, ctx, at, hostname, remotePort, isHttps, tests, deadline)
+		if err == nil {
+			// All of the requests were successful
+			t.Logf("All requests encountered the correct status code")
+			return nil
+		}
+
+		if !errors.Is(err, errPortForwardLost) || time.Now().After(deadline) {
+			logGatewayNetworkDiagnostics(t, ctx, at, namespace)
+			return err
+		}
+
+		t.Logf("portforward session %d ended early (%s); re-establishing", session, err)
+
+		select {
+		case <-time.After(gatewayProbeBackoff):
+		case <-ctx.Done():
+			logGatewayNetworkDiagnostics(t, ctx, at, namespace)
+			return fmt.Errorf("gateway probe canceled: %w", ctx.Err())
+		}
+	}
+}
+
+// probeGatewayOverPortForward opens a single port-forward session to the shared Envoy pod and runs
+// every probe against it. Errors wrapping errPortForwardLost mean the session died rather than the
+// gateway being unhealthy, so the caller can rebuild it and keep probing until deadline.
+func probeGatewayOverPortForward(t *testing.T, ctx context.Context, at rp.RPTest, hostname string, remotePort int, isHttps bool, tests []GatewayTestConfig, deadline time.Time) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
 
@@ -450,9 +495,9 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest,
 	select {
 	case err := <-errorChan:
 		if err == nil {
-			return errors.New("portforward stopped before becoming ready")
+			return fmt.Errorf("%w before becoming ready", errPortForwardLost)
 		}
-		return fmt.Errorf("portforward failed: %w", err)
+		return fmt.Errorf("%w during setup: %w", errPortForwardLost, err)
 	case <-ctx.Done():
 		return fmt.Errorf("portforward setup canceled: %w", ctx.Err())
 	case localPort := <-portChan:
@@ -465,19 +510,16 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest,
 		t.Logf("Portforward session active at %s", baseURL)
 
 		for _, test := range tests {
-			if err := testGatewayAvailability(t, ctx, hostname, baseURL, test.Path, test.ExpectedStatusCode, isHttps, errorChan); err != nil {
-				logGatewayNetworkDiagnostics(t, ctx, at, namespace)
+			if err := testGatewayAvailability(t, ctx, hostname, baseURL, test.Path, test.ExpectedStatusCode, isHttps, errorChan, deadline); err != nil {
 				return err
 			}
 		}
 
-		// All of the requests were successful
-		t.Logf("All requests encountered the correct status code")
 		return nil
 	}
 }
 
-func testGatewayAvailability(t *testing.T, ctx context.Context, hostname, baseURL, path string, expectedStatusCode int, isHttps bool, portForwardErrors <-chan error) error {
+func testGatewayAvailability(t *testing.T, ctx context.Context, hostname, baseURL, path string, expectedStatusCode int, isHttps bool, portForwardErrors <-chan error, deadline time.Time) error {
 	urlPath := strings.TrimSuffix(baseURL, "/") + "/" + strings.TrimPrefix(path, "/")
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlPath, nil)
 	if err != nil {
@@ -492,9 +534,7 @@ func testGatewayAvailability(t *testing.T, ctx context.Context, hostname, baseUR
 	// A freshly-deployed gateway can briefly return errors (e.g. HTTP 503 from Envoy) while
 	// Contour programs the xDS route/cluster for the new route. Poll over a realistic window
 	// instead of failing after only a couple of attempts. See radius-project/radius#12298.
-	retryBackoff := 5 * time.Second
-	timeout := 90 * time.Second
-	deadline := time.Now().Add(timeout)
+	start := time.Now()
 
 	var lastRes *http.Response
 	var lastErr error
@@ -533,15 +573,15 @@ func testGatewayAvailability(t *testing.T, ctx context.Context, hostname, baseUR
 				lastRes.Body.Close()
 			}
 			if err == nil {
-				return fmt.Errorf("portforward stopped while probing %s", urlPath)
+				return fmt.Errorf("%w while probing %s", errPortForwardLost, urlPath)
 			}
-			return fmt.Errorf("portforward stopped while probing %s: %w", urlPath, err)
+			return fmt.Errorf("%w while probing %s: %w", errPortForwardLost, urlPath, err)
 		case <-ctx.Done():
 			if lastRes != nil {
 				lastRes.Body.Close()
 			}
 			return fmt.Errorf("gateway probe canceled: %w", ctx.Err())
-		case <-time.After(retryBackoff):
+		case <-time.After(gatewayProbeBackoff):
 		}
 	}
 
@@ -552,6 +592,9 @@ func testGatewayAvailability(t *testing.T, ctx context.Context, hostname, baseUR
 	}
 	t.Logf("request dump: %s", string(requestDump))
 
+	// Summarize why the last attempt failed so the CI failure names the actual cause (for example
+	// an Envoy 503 with "reset reason: connection timeout") instead of just an attempt count.
+	summary := fmt.Sprintf("last error: %v", lastErr)
 	if lastRes == nil {
 		t.Logf("last response is nil (last error: %v)", lastErr)
 	} else {
@@ -560,10 +603,14 @@ func testGatewayAvailability(t *testing.T, ctx context.Context, hostname, baseUR
 			t.Logf("failed to dump response with error: %s", dumpErr)
 		}
 		t.Logf("response dump: %s", string(responseDump))
+
+		// DumpResponse restores the body, so it can still be read for the summary.
+		body, _ := io.ReadAll(io.LimitReader(lastRes.Body, 512))
 		lastRes.Body.Close()
+		summary = fmt.Sprintf("last response: %s %s", lastRes.Status, strings.TrimSpace(string(body)))
 	}
 
-	return fmt.Errorf("failed to make request to %s after %d attempts over %s", urlPath, attempts, timeout)
+	return fmt.Errorf("failed to make request to %s after %d attempts over %s (%s)", urlPath, attempts, time.Since(start).Round(time.Second), summary)
 }
 
 func logGatewayNetworkDiagnostics(t *testing.T, ctx context.Context, at rp.RPTest, namespace string) {
@@ -676,7 +723,27 @@ func TestGatewayAvailability_PortForwardStops(t *testing.T) {
 	portForwardErrors := make(chan error, 1)
 	portForwardErrors <- errors.New("tunnel closed")
 
-	err := testGatewayAvailability(t, t.Context(), "localhost", server.URL, "healthz", http.StatusOK, false, portForwardErrors)
+	err := testGatewayAvailability(t, t.Context(), "localhost", server.URL, "healthz", http.StatusOK, false, portForwardErrors, time.Now().Add(gatewayProbeTimeout))
 	require.ErrorContains(t, err, "portforward stopped while probing")
 	require.ErrorContains(t, err, "tunnel closed")
+
+	// The caller relies on this sentinel to re-establish the session instead of failing the test.
+	require.ErrorIs(t, err, errPortForwardLost)
+}
+
+func TestGatewayAvailability_ReportsLastResponse(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(responseWriter http.ResponseWriter, _ *http.Request) {
+		responseWriter.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = responseWriter.Write([]byte("upstream connect error or disconnect/reset before headers. reset reason: connection timeout"))
+	}))
+	t.Cleanup(server.Close)
+
+	// An already-expired deadline exhausts the poll budget after a single attempt.
+	err := testGatewayAvailability(t, t.Context(), "localhost", server.URL, "healthz", http.StatusOK, false, make(chan error), time.Now().Add(-time.Second))
+	require.ErrorContains(t, err, "after 1 attempts")
+	require.ErrorContains(t, err, "503 Service Unavailable")
+	require.ErrorContains(t, err, "reset reason: connection timeout")
+	require.NotErrorIs(t, err, errPortForwardLost)
 }
