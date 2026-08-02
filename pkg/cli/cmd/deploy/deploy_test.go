@@ -1893,7 +1893,7 @@ func Test_getRadiusCoreEnvironment(t *testing.T) {
 				},
 			}
 
-			env, err := runner.getRadiusCoreEnvironment(context.Background(), tc.environmentName)
+			env, err := runner.getRadiusCoreEnvironment(context.Background(), scope, tc.environmentName)
 
 			if tc.shouldError {
 				require.Error(t, err)
@@ -1910,6 +1910,65 @@ func Test_getRadiusCoreEnvironment(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test_FetchEnvironment_RadiusCoreEnvironmentUsesOwnGroup is a regression test for
+// https://github.com/radius-project/radius/issues/12573: a Radius.Core environment
+// referenced by full ID (e.g. the workspace's stored default environment) must be looked
+// up in the resource group encoded in that ID, not in the (possibly different)
+// --group-overridden workspace scope used for the deployment itself.
+func Test_FetchEnvironment_RadiusCoreEnvironmentUsesOwnGroup(t *testing.T) {
+	envScope := "/planes/radius/local/resourceGroups/default"
+	envID := envScope + "/providers/Radius.Core/environments/default"
+	deployScope := "/planes/radius/local/resourceGroups/test"
+
+	// Only succeed when queried in the environment's own scope; 404 for any other scope
+	// (such as the --group-overridden deploy scope) to catch a regression.
+	envServer := corerpfake.EnvironmentsServer{
+		Get: func(
+			_ context.Context,
+			rootScope string,
+			environmentName string,
+			_ *v20250801preview.EnvironmentsClientGetOptions,
+		) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+			// The fake HTTP transport strips the leading slash from the rootScope path
+			// segment, so compare against the trimmed form.
+			if rootScope != strings.TrimPrefix(envScope, "/") {
+				errResp.SetError(fmt.Errorf("environment not found"))
+				errResp.SetResponseError(404, "Not Found")
+				return
+			}
+			resp.SetResponse(200, v20250801preview.EnvironmentsClientGetResponse{
+				EnvironmentResource: v20250801preview.EnvironmentResource{
+					Name: to.Ptr(environmentName),
+					ID:   to.Ptr(envID),
+				},
+			}, nil)
+			return
+		},
+	}
+
+	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+		deployScope,
+		func() corerpfake.EnvironmentsServer { return envServer },
+		nil,
+	)
+	require.NoError(t, err)
+
+	runner := &Runner{
+		RadiusCoreClientFactory: factory,
+		Workspace: &workspaces.Workspace{
+			// Simulates `-g test` overriding the deploy scope while the workspace's
+			// default environment still lives in the "default" resource group.
+			Scope: deployScope,
+		},
+	}
+
+	result, err := runner.FetchEnvironment(context.Background(), envID)
+	require.NoError(t, err)
+	require.NotNil(t, result, "environment should resolve using the ID's own resource group, not the --group-overridden workspace scope")
+	require.False(t, result.UseApplicationsCore)
+	require.Equal(t, envID, runner.EnvironmentNameOrID)
 }
 
 func Test_constructApplicationsCoreEnvironmentID(t *testing.T) {
