@@ -129,6 +129,8 @@ ignorePaths:
   - "**/holding-pen/**"
   - "**/redirect/**"
   - "**/presentation-pack/**"
+  - "**/pnpm-lock.yaml"
+  - "**/.golangci.yml"
 
 # Default to checking both Markdown and YAML. CI also passes an explicit glob.
 files:
