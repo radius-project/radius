@@ -64,7 +64,7 @@ In addition, we have the below repositories.
 |:-----|:------------|
 | [Docs](https://github.com/radius-project/docs) | This repository contains the source for the Radius documentation.
 | [Samples](https://github.com/radius-project/samples) | This repository contains the source code for quickstarts, reference apps, and tutorials for Radius.
-| [Resource Types and Recipes](https://github.com/radius-project/resource-types-contrib) | This repository contains commonly used Resource Types and Re`cipe templates for Radius Environments.
+| [Resource Types and Recipes](https://github.com/radius-project/resource-types-contrib) | This repository contains commonly used Resource Types and Recipe templates for Radius Environments.
 | [Dashboard](https://github.com/radius-project/dashboard) | This repository contains the source code for the Radius dashboard.
 | [Website](https://github.com/radius-project/website) | This repository contains the source code for the Radius website.
 | [AWS Bicep Types](https://github.com/radius-project/bicep-types-aws) | This repository contains the tooling for Bicep support for AWS resource types.
