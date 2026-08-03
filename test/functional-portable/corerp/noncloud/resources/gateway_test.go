@@ -189,14 +189,8 @@ func Test_Gateway_SSLPassthrough(t *testing.T) {
 						ExpectedStatusCode: http.StatusOK,
 					},
 				})
-				if err != nil {
-					t.Logf("Failed to test Gateway via portforward with error: %s", err)
-				} else {
-					// Successfully ran tests
-					return
-				}
 
-				require.Fail(t, "Gateway tests failed")
+				require.NoError(t, err)
 			},
 		},
 	})
@@ -256,14 +250,8 @@ func Test_Gateway_Timeout(t *testing.T) {
 						ExpectedStatusCode: http.StatusOK,
 					},
 				})
-				if err != nil {
-					t.Logf("Failed to test Gateway via portforward with error: %s", err)
-				} else {
-					// Successfully ran tests
-					return
-				}
 
-				require.Fail(t, "Gateway tests failed")
+				require.NoError(t, err)
 			},
 		},
 	})
@@ -382,14 +370,8 @@ func Test_Gateway_TLSTermination(t *testing.T) {
 						ExpectedStatusCode: http.StatusOK,
 					},
 				})
-				if err != nil {
-					t.Logf("Failed to test Gateway via portforward with error: %s", err)
-				} else {
-					// Successfully ran tests
-					return
-				}
 
-				require.Fail(t, "Gateway tests failed")
+				require.NoError(t, err)
 			},
 		},
 	})
