@@ -37,7 +37,7 @@ We are growing our community of adopters and contributors to help shape where Ra
 
 ## Community
 
-We welcome your contributions and suggestions! One of the easiest ways to contribute is to participate in Issue discussions, chat on [Discord server](https://discord.gg/SRG3ePMKNy) or the monthly [community calls](#community-calls). For more information on the community engagement, developer and contributing guidelines and more, head over to the [Radius community repo](https://github.com/radius-project/community).
+We welcome your contributions and suggestions! One of the easiest ways to contribute is to participate in Issue discussions, chat on [Discord server](https://discord.gg/SRG3ePMKNy) or the quarterly [community calls](#community-calls). For more information on the community engagement, developer and contributing guidelines and more, head over to the [Radius community repository](https://github.com/radius-project/community).
 
 ### Contact us
 
@@ -60,11 +60,11 @@ To contribute to Radius documentation visit [Radius documentation](https://docs.
 [Radius](https://github.com/radius-project/radius) is the main Radius repository. It contains all of Radius code and documentation.
 In addition, we have the below repositories.
 
-| Repo | Description |
+| Repository | Description |
 |:-----|:------------|
-| [Docs](https://github.com/radius-project/docs) | This repository contains the Radius documentation source for Radius.
+| [Docs](https://github.com/radius-project/docs) | This repository contains the source for the Radius documentation.
 | [Samples](https://github.com/radius-project/samples) | This repository contains the source code for quickstarts, reference apps, and tutorials for Radius.
-| [Resource Types and Recipes](https://github.com/radius-project/resource-types-contrib) | This repo contains commonly used Resource Types and Recipe templates for Radius Environments.
+| [Resource Types and Recipes](https://github.com/radius-project/resource-types-contrib) | This repository contains commonly used Resource Types and Re`cipe templates for Radius Environments.
 | [Dashboard](https://github.com/radius-project/dashboard) | This repository contains the source code for the Radius dashboard.
 | [Website](https://github.com/radius-project/website) | This repository contains the source code for the Radius website.
 | [AWS Bicep Types](https://github.com/radius-project/bicep-types-aws) | This repository contains the tooling for Bicep support for AWS resource types.
