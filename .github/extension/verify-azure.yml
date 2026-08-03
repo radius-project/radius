@@ -19,12 +19,90 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
+      - name: Inspect GitHub OIDC token claims
+        id: oidc_claims
+        # Diagnostic breadcrumb only. Decode the GitHub Actions OIDC token's claims
+        # locally and log them to this (collapsed) step log so a failure is debuggable
+        # later — nothing is written to the job summary, so a successful run shows no
+        # extra output. The token is a short-lived bearer credential and is never
+        # printed; only non-secret claims are shown. `set -e` is intentionally omitted
+        # so this best-effort step can never abort credential verification. It exports
+        # `enterprise_empty` so the failure-only explainer below can flag an Azure Login
+        # failure as a *possible* enterprise-claim policy problem (AADSTS7002381).
+        env:
+          OIDC_AUDIENCE: api://AzureADTokenExchange
+        run: |
+          set -uo pipefail
+
+          req_url="${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
+          req_token="${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
+          if [[ -z "$req_url" || -z "$req_token" ]]; then
+            echo "OIDC token request endpoint not available; skipping claim inspection."
+            exit 0
+          fi
+
+          token="$(curl -sS -H "Authorization: bearer $req_token" "${req_url}&audience=${OIDC_AUDIENCE}" | jq -r '.value // empty')"
+          if [[ -z "$token" ]]; then
+            echo "Could not obtain an OIDC token; skipping claim inspection."
+            exit 0
+          fi
+
+          # Decode the JWT payload (2nd dot-delimited segment) from base64url to JSON.
+          payload_b64="$(printf '%s' "$token" | cut -d. -f2 | tr '_-' '/+')"
+          case $(( ${#payload_b64} % 4 )) in
+            2) payload_b64="${payload_b64}==" ;;
+            3) payload_b64="${payload_b64}=" ;;
+          esac
+          claims="$(printf '%s' "$payload_b64" | base64 -d 2>/dev/null || true)"
+          if [[ -z "$claims" ]] || ! printf '%s' "$claims" | jq -e . >/dev/null 2>&1; then
+            echo "Could not decode OIDC token claims; skipping claim inspection."
+            exit 0
+          fi
+
+          repository="$(printf '%s' "$claims" | jq -r '.repository // "(none)"')"
+          repository_owner="$(printf '%s' "$claims" | jq -r '.repository_owner // "(none)"')"
+          subject="$(printf '%s' "$claims" | jq -r '.sub // "(none)"')"
+          enterprise="$(printf '%s' "$claims" | jq -r '.enterprise // ""')"
+          aud="$(printf '%s' "$claims" | jq -r 'if (.aud|type)=="array" then (.aud|join(",")) else (.aud // "(none)") end')"
+
+          # Step-log only (collapsed by default); nothing goes to the job summary here.
+          echo "OIDC claims — repository=$repository repository_owner=$repository_owner subject=$subject enterprise=${enterprise:-<empty>} aud=$aud requested_aud=$OIDC_AUDIENCE"
+
+          if [[ -z "$enterprise" ]]; then
+            echo "enterprise_empty=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enterprise_empty=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Azure Login (OIDC)
+        id: azure_login
         uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Report possible GitHub enterprise-claim mismatch
+        # Fires only when Azure Login failed AND the OIDC token carried an empty
+        # enterprise claim. That combination is a hint, not a diagnosis — Azure Login can
+        # fail for unrelated reasons (wrong client/tenant/subscription id, missing
+        # federated credential, RBAC), so the summary asks the user to confirm by looking
+        # for AADSTS7002381 in the Azure Login error. On a successful run this step is
+        # skipped and adds nothing, so the common hobbyist path (personal repo,
+        # non-enforcing tenant) stays silent.
+        if: failure() && steps.azure_login.outcome == 'failure' && steps.oidc_claims.outputs.enterprise_empty == 'true'
+        run: |
+          {
+            echo "## ⚠️ Possible GitHub enterprise-claim mismatch"
+            echo ""
+            echo "Azure Login (OIDC) failed and this repository's GitHub OIDC token had an empty \"enterprise\" claim. That combination *may* mean the enterprise claim caused the failure, but Azure Login can also fail for unrelated reasons (incorrect client, tenant, or subscription id, a missing federated credential, or insufficient role assignments)."
+            echo ""
+            echo "**Confirm first:** open the Azure Login step log and check whether the error contains \`AADSTS7002381\`. If it does not, this is a different problem and the guidance below does not apply."
+            echo ""
+            echo "If the Azure error does include \`AADSTS7002381\`, the target tenant is enforcing an enterprise-claim requirement on its federated-credential policy (common in Microsoft corporate tenants). GitHub only includes the enterprise claim for repositories owned by an account or organization that belongs to a GitHub Enterprise — personal-account repositories cannot satisfy this policy."
+            echo ""
+            echo "**Fix:** host this repository under an organization that is part of an accepted GitHub Enterprise, then re-run Create Environment so the federated credential is recreated for the new owner/repo. Alternatively, target an Azure tenant that does not enforce an enterprise-claim policy."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verify Azure Credentials
         run: |
