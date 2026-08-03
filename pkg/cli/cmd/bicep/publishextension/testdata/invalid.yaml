@@ -2,5 +2,5 @@ namespace: MyCompany.Resources
 types:
   testResources   dkdkkdkfkkd:
     apiVersions:
-      '2025-01-01-preview':
+      "2025-01-01-preview":
         schema: {}
