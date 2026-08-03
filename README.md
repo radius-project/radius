@@ -52,8 +52,8 @@ Every quarter we host a community call to showcase new features, review upcoming
 ## Contributing to Radius
 
 Visit [Contributing](./CONTRIBUTING.md) for more information on how to contribute to Radius.
-To author Radius Resource Types and Recipes visit the [Resource Types and Recipes repository](https://github.com/radius-project/resource-types-contrib).
-To contribute to Radius documentation visit [Radius documentation](https://docs.radapp.io/contributing/docs/)
+To author Radius Resource Types and Recipes, visit the [Resource Types and Recipes repository](https://github.com/radius-project/resource-types-contrib).
+To contribute to Radius documentation, visit [Radius documentation](https://docs.radapp.io/contributing/docs/).
 
 ## Repositories
 
