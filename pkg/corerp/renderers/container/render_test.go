@@ -38,7 +38,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/google/uuid"
@@ -251,7 +250,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	}
 	resource := makeResource(properties)
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	renderer := Renderer{}
 	radiusResourceIDs, azureResourceIDs, err := renderer.GetDependencyIDs(ctx, resource)
@@ -289,7 +288,7 @@ func Test_GetDependencyIDs_InvalidId(t *testing.T) {
 	}
 	resource := makeResource(properties)
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	ids, azureIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.Error(t, err)
@@ -298,7 +297,7 @@ func Test_GetDependencyIDs_InvalidId(t *testing.T) {
 }
 
 func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	properties := datamodel.ContainerProperties{
 		// Simulating error code path
@@ -389,7 +388,7 @@ func Test_Render_Basic(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -479,7 +478,7 @@ func Test_Render_WithInvalidEnvironmentVariables(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	_, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.Error(t, err)
@@ -509,7 +508,7 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -570,7 +569,7 @@ func Test_Render_Manual(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -605,7 +604,7 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -682,7 +681,7 @@ func Test_Render_Connections(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
 	require.NoError(t, err)
@@ -828,7 +827,7 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
 	require.NoError(t, err)
@@ -884,7 +883,7 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
 	require.NoError(t, err)
@@ -951,7 +950,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			},
 		},
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 	require.NoError(t, err)
 	require.Len(t, output.ComputedValues, 2)
@@ -1079,7 +1078,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 	require.NoError(t, err)
 
@@ -1148,7 +1147,7 @@ func Test_Render_AzureConnectionEmptyRoleAllowed(t *testing.T) {
 			datamodel.KindAzure: {},
 		},
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	_, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 }
@@ -1190,7 +1189,7 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 			ComputedValues: map[string]any{},
 		},
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1270,7 +1269,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	renderOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.Lenf(t, renderOutput.Resources, 2, "expected 2 output resource, instead got %+v", len(renderOutput.Resources))
@@ -1368,7 +1367,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	renderOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 
@@ -1430,7 +1429,7 @@ func Test_Render_RestartPolicy(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1491,7 +1490,7 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1572,7 +1571,7 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1646,7 +1645,7 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1706,7 +1705,7 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1761,7 +1760,7 @@ func Test_DNS_Service_Generation(t *testing.T) {
 		}
 
 		resource := makeResource(properties)
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		renderer := Renderer{}
 		output, err := renderer.Render(ctx, resource, renderOptionsEnvAndAppKubeMetadata())
 
@@ -1814,7 +1813,7 @@ func Test_Render_ImagePullPolicySpecified(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1880,7 +1879,7 @@ func Test_Render_StrategicPatchMerge(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1986,7 +1985,7 @@ func Test_Render_BaseManifest(t *testing.T) {
 			resource := makeResource(tc.container)
 			dependencies := map[string]renderers.RendererDependency{}
 
-			ctx := testcontext.New(t)
+			ctx := t.Context()
 			renderer := Renderer{}
 			output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 			require.NoError(t, err)

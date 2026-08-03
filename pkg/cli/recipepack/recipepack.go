@@ -19,15 +19,50 @@ package recipepack
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/version"
 )
+
+// NormalizeRecipePacks splits comma-separated values, trims whitespace, and
+// removes empty entries and duplicates while preserving the first-seen order.
+// Deduplication avoids redundant referencedBy sync work and prevents server-side
+// recipe pack conflict validation from failing on repeated entries.
+func NormalizeRecipePacks(recipePacks []string) []string {
+	seen := map[string]struct{}{}
+	result := []string{}
+	for _, value := range recipePacks {
+		for p := range strings.SplitSeq(value, ",") {
+			trimmed := strings.TrimSpace(p)
+			if trimmed == "" {
+				continue
+			}
+			if _, ok := seen[trimmed]; ok {
+				continue
+			}
+			seen[trimmed] = struct{}{}
+			result = append(result, trimmed)
+		}
+	}
+	return result
+}
+
+// RefExists reports whether id is present in the referencedBy list.
+func RefExists(environmentRefs []*string, id string) bool {
+	for _, ref := range environmentRefs {
+		if ref != nil && *ref == id {
+			return true
+		}
+	}
+	return false
+}
 
 const (
 	// DefaultRecipePackResourceName is the name of the Radius provided
@@ -128,25 +163,43 @@ type CoreTypesRecipeInfo struct {
 
 // GetCoreTypesRecipeInfo returns recipe information for all core types.
 // Each definition represents a recipe for one core resource type.
-// The OCI tag is set to the full semver release version (e.g., "0.58.0") to match the
-// tags used by the recipes publishing pipeline. For edge/dev builds, "latest" is used.
+//
+// The OCI tag pinned on each recipe source is derived from the build
+// channel and the per-namespace pin recorded in
+// deploy/manifest/defaults.yaml under `resourceTypes`:
+//
+//   - Edge / dev builds (channel == "edge") always use the mutable tag
+//     "edge" so a locally-built CLI picks up whatever the recipes
+//     publishing pipeline last pushed for the tip of the recipes
+//     repository. This matches the "edge" convention used elsewhere
+//     for unpinned builds.
+//   - Release builds resolve the recipe's resource-type namespace
+//     (e.g. "Radius.Compute" for "Radius.Compute/containers") to the
+//     immutable commit SHA that defaults.yaml pins that namespace to,
+//     via defaults.ResourceTypePin. The recipes publishing pipeline
+//     tags each namespace's OCI artifacts with the same commit SHA,
+//     so this guarantees a released rad CLI installs exactly the
+//     recipes that were published from the pinned resource-types-contrib
+//     revision, regardless of what the mutable "edge" tag currently
+//     points at.
+//   - As a defensive fallback, a namespace missing from the
+//     defaults.yaml `resourceTypes` list falls back to "edge" so a
+//     mis-configured build still installs something rather than
+//     producing an invalid OCI reference.
 func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
-	tag := version.Release()
-	if version.IsEdgeChannel() {
-		tag = "latest"
-	}
+	isEdge := version.IsEdgeChannel()
 	return []CoreTypesRecipeInfo{
 		{
 			ResourceType: "Radius.Compute/containers",
-			Source:       "ghcr.io/radius-project/kube-recipes/containers:" + tag,
+			Source:       "ghcr.io/radius-project/kube-recipes/containers:" + resolveRecipeTag("Radius.Compute/containers", isEdge),
 		},
 		{
 			ResourceType: "Radius.Compute/persistentVolumes",
-			Source:       "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + tag,
+			Source:       "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + resolveRecipeTag("Radius.Compute/persistentVolumes", isEdge),
 		},
 		{
 			ResourceType: "Radius.Compute/routes",
-			Source:       "ghcr.io/radius-project/kube-recipes/routes:" + tag,
+			Source:       "ghcr.io/radius-project/kube-recipes/routes:" + resolveRecipeTag("Radius.Compute/routes", isEdge),
 			Parameters: map[string]any{
 				"gatewayName":      DefaultRoutesGatewayName,
 				"gatewayNamespace": DefaultRoutesGatewayNamespace,
@@ -154,11 +207,29 @@ func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 		},
 		{
 			ResourceType: "Radius.Security/secrets",
-			Source:       "ghcr.io/radius-project/kube-recipes/secrets:" + tag,
+			Source:       "ghcr.io/radius-project/kube-recipes/secrets:" + resolveRecipeTag("Radius.Security/secrets", isEdge),
 		},
 		{
 			ResourceType: "Radius.Data/mySqlDatabases",
-			Source:       "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + tag,
+			Source:       "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + resolveRecipeTag("Radius.Data/mySqlDatabases", isEdge),
 		},
 	}
+}
+
+// resolveRecipeTag picks the OCI tag for a single core-type recipe. isEdge is
+// passed in rather than read from the build-stamped channel so both branches
+// are reachable from tests. See GetCoreTypesRecipeInfo for the full contract.
+func resolveRecipeTag(resourceType string, isEdge bool) string {
+	if isEdge {
+		return "edge"
+	}
+	namespace, _, ok := defaults.SplitResourceType(resourceType)
+	if !ok {
+		return "edge"
+	}
+	pin, ok := defaults.ResourceTypePin(namespace)
+	if !ok || pin.Ref == "" {
+		return "edge"
+	}
+	return pin.Ref
 }

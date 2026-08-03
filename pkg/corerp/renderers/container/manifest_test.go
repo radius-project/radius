@@ -27,7 +27,6 @@ import (
 	"github.com/radius-project/radius/pkg/kubeutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/test/k8sutil"
-	"github.com/radius-project/radius/test/testcontext"
 
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -573,7 +572,7 @@ func TestGetServiceAccountBase(t *testing.T) {
 func TestPopulateAllBaseResources(t *testing.T) {
 	fakeDeployment := fmt.Sprintf(k8sutil.FakeDeploymentTemplate, "magpie", "", "magpie")
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	t.Run("deployment resource is not in outputResources", func(t *testing.T) {
 		manifest, err := kubeutil.ParseManifest([]byte(fakeDeployment))

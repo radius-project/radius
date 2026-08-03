@@ -49,7 +49,6 @@ import (
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/step"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
@@ -183,7 +182,7 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 	_, terraformRecipeModuleServerURL, _ := strings.Cut(testutil.GetTerraformRecipeModuleServerURL(), "=")
 	t.Logf("Using terraform recipe module server URL: %s - set TF_RECIPE_MODULE_SERVER_URL to override", terraformRecipeModuleServerURL)
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
@@ -265,7 +264,7 @@ func NewPreviewEnvPreSetup(testName string, workspaceScope string, kubernetesNam
 		// namespace named after the test (ct.Name) is auto-created by CreateInitialResources, so when
 		// the preview environment uses a different namespace we must create it here before the CLI
 		// call, otherwise env creation fails with "Namespace '<ns>' does not exist".
-		nsClient, err := test.deploymentTargetK8sClient()
+		nsClient, err := DeploymentTargetK8sClient(test.Options)
 		require.NoError(t, err, "failed to build deployment-target Kubernetes client")
 		require.NoError(t, kubernetes.EnsureNamespace(ctx, nsClient, kubernetesNamespace), "failed to ensure preview environment namespace exists")
 
@@ -332,7 +331,7 @@ func K8sSecretResource(namespace, name, secretType string, kv ...any) unstructur
 // CreateInitialResources creates a namespace and creates initial resources from the InitialResources field of the
 // RPTest struct. It returns an error if either of these operations fail.
 func (ct RPTest) CreateInitialResources(ctx context.Context) error {
-	nsClient, err := ct.deploymentTargetK8sClient()
+	nsClient, err := DeploymentTargetK8sClient(ct.Options)
 	if err != nil {
 		return fmt.Errorf("failed to build deployment-target Kubernetes client: %w", err)
 	}
@@ -342,8 +341,8 @@ func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 	}
 
 	for _, r := range ct.InitialResources {
-		if err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, r.GetNamespace()); err != nil {
-			return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
+		if err := kubernetes.EnsureNamespace(ctx, nsClient, r.GetNamespace()); err != nil {
+			return fmt.Errorf("failed to create namespace %s: %w", r.GetNamespace(), err)
 		}
 		if err := ct.Options.Client.Create(ctx, &r); err != nil {
 			return fmt.Errorf("failed to create resource %#v:  %w", r, err)
@@ -353,7 +352,7 @@ func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 	return nil
 }
 
-// deploymentTargetK8sClient returns the Kubernetes client for the cluster that an
+// DeploymentTargetK8sClient returns the Kubernetes client for the cluster that an
 // application's resources deploy to. In multi-cluster runs the test sets
 // RADIUS_TEST_EXTERNAL_KUBECONFIG to the external (workload) cluster's kubeconfig;
 // this mirrors the RADIUS_TARGET_KUBECONFIG contract Radius itself honors, so the
@@ -361,10 +360,10 @@ func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 // to and the control-plane cluster is not populated with per-application
 // namespaces. When the variable is unset (single-cluster runs) the control-plane
 // client is returned unchanged.
-func (ct RPTest) deploymentTargetK8sClient() (k8sclient.Interface, error) {
+func DeploymentTargetK8sClient(options RPTestOptions) (k8sclient.Interface, error) {
 	kubeconfigPath := os.Getenv(externalKubeconfigEnvVar)
 	if kubeconfigPath == "" {
-		return ct.Options.K8sClient, nil
+		return options.K8sClient, nil
 	}
 
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
@@ -429,7 +428,7 @@ func (ct RPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
 }
 
 func (ct RPTest) Test(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	ct.CheckRequiredFeatures(ctx, t)

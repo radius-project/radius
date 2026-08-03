@@ -22,19 +22,19 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 func Test_registerResourceProviderDirect(t *testing.T) {
@@ -325,19 +325,20 @@ types:
 		require.NoError(t, obj.As(summaryModel))
 		require.Len(t, summaryModel.Properties.ResourceTypes, len(radiusCoreTypeOpenAPIDefinitions))
 
-		expectedDescriptions := map[string]string{
-			"applications":      "Radius Application resource",
-			"bicepSettings":     "The Bicep configuration resource, providing reusable Bicep recipe settings for environments.",
-			"environments":      "The environment resource",
-			"recipePacks":       "The recipe pack resource",
-			"terraformSettings": "The Terraform configuration resource, providing reusable Terraform recipe settings for environments.",
+		expectedDescriptionPrefixes := map[string]string{
+			"applications":      "The `Radius.Core/applications` Resource Type represents a Radius Application",
+			"bicepSettings":     "The `Radius.Core/bicepSettings` Resource Type holds reusable Bicep engine settings",
+			"environments":      "The `Radius.Core/environments` Resource Type represents a Radius Environment",
+			"recipePacks":       "The `Radius.Core/recipePacks` Resource Type represents a Recipe Pack",
+			"terraformSettings": "The `Radius.Core/terraformSettings` Resource Type holds reusable Terraform CLI settings",
 		}
-		require.Len(t, expectedDescriptions, len(radiusCoreTypeOpenAPIDefinitions))
-		for typeName, expectedDescription := range expectedDescriptions {
+		require.Len(t, expectedDescriptionPrefixes, len(radiusCoreTypeOpenAPIDefinitions))
+		for typeName, expectedDescriptionPrefix := range expectedDescriptionPrefixes {
 			resourceType := summaryModel.Properties.ResourceTypes[typeName]
 			require.NotNil(t, resourceType, "resource type %q should be registered", typeName)
 			require.NotNil(t, resourceType.Description, "resource type %q should have a description", typeName)
-			assert.Equal(t, expectedDescription, *resourceType.Description)
+			assert.True(t, strings.HasPrefix(*resourceType.Description, expectedDescriptionPrefix),
+				"resource type %q description should start with %q, got %q", typeName, expectedDescriptionPrefix, *resourceType.Description)
 
 			apiVersion := resourceType.APIVersions["2025-08-01-preview"]
 			require.NotNil(t, apiVersion, "resource type %q should have API version 2025-08-01-preview", typeName)
@@ -765,7 +766,7 @@ func Test_Run_Icons(t *testing.T) {
 		require.NoError(t, obj.As(gadgets))
 		assert.Nil(t, gadgets.Properties.Icon)
 		require.NotNil(t, gadgets.Properties.IconHash)
-		assert.Equal(t, productmanifest.Default().Hash, *gadgets.Properties.IconHash)
+		assert.Equal(t, defaults.DefaultIcon().Hash, *gadgets.Properties.IconHash)
 	})
 
 	t.Run("manifest without <typeName>.svg substitutes the default icon hash", func(t *testing.T) {
@@ -790,7 +791,7 @@ func Test_Run_Icons(t *testing.T) {
 		require.NoError(t, obj.As(rt))
 		assert.Nil(t, rt.Properties.Icon)
 		require.NotNil(t, rt.Properties.IconHash)
-		assert.Equal(t, productmanifest.Default().Hash, *rt.Properties.IconHash)
+		assert.Equal(t, defaults.DefaultIcon().Hash, *rt.Properties.IconHash)
 	})
 
 	t.Run("skips stray svg files during directory scan", func(t *testing.T) {

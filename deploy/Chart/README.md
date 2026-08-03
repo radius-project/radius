@@ -17,6 +17,21 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system
 
 ## Configuration Options
 
+### In-Cluster Container Image Builds
+
+The `Radius.Compute/containerImages` resource type requires the opt-in rootless BuildKit sidecar:
+
+```console
+rad install kubernetes \
+  --set dynamicrp.buildkit.enabled=true
+```
+
+BuildKit defaults to one parallel OCI worker step across all image builds sharing the `dynamic-rp` Pod. This protects the sidecar's memory limit when multiple `containerImages` resources are deployed together. `dynamicrp.buildkit.maxParallelism` must be an integer between `1` and `2147483647`; BuildKit treats non-positive values as unlimited, so the chart rejects them before rendering the daemon configuration.
+
+Increase `dynamicrp.buildkit.maxParallelism` only after profiling representative cold builds. Size `dynamicrp.buildkit.resources.requests` for the sustained working set and `dynamicrp.buildkit.resources.limits` with enough headroom for the configured parallelism. The limit bounds concurrent build steps but cannot make an individual build fit within an undersized memory limit.
+
+Do not lower the global `workerServer.maxOperationConcurrency` to control image-build memory. That setting governs every Dynamic RP operation and does not constrain parallel steps within a single BuildKit solve.
+
 ### Custom Container Registry
 
 By default, Radius pulls container images from GitHub Container Registry (ghcr.io). For air-gapped environments or when using private registries, you can configure a custom container registry using the `global.imageRegistry` parameter.
@@ -119,7 +134,7 @@ kubectl create secret docker-registry regcred \
   -n radius-system
 ```
 
-2. Reference the secret in your Helm values:
+1. Reference the secret in your Helm values:
 
 ```console
 helm upgrade --wait --install radius deploy/Chart -n radius-system \
@@ -134,7 +149,7 @@ helm upgrade --wait --install radius deploy/Chart -n radius-system \
 #     - name: regcred
 ```
 
-3. With rad CLI:
+1. With rad CLI:
 
 ```console
 rad install kubernetes \

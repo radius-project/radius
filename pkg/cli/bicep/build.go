@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/radius-project/radius/pkg/cli/bicep/tools"
 )
@@ -32,8 +33,8 @@ import (
 // https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 const SemanticVersionRegex = `(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?`
 
-// Run bicep with the given args and return the stdout. The stderr
-// is not capture but instead redirected to that of the current process.
+// Run bicep with the given args and return the stdout. Stderr is piped
+// through a private pipe and forwarded to the current process's stderr.
 func runBicepRaw(args ...string) ([]byte, error) {
 	if installed, _ := IsBicepInstalled(); !installed {
 		return nil, fmt.Errorf("bicep not installed, run \"rad bicep download\" to install")
@@ -47,25 +48,45 @@ func runBicepRaw(args ...string) ([]byte, error) {
 	// runs 'bicep'
 	fullCmd := binPath + " " + strings.Join(args, " ")
 	c := exec.Command(binPath, args...)
-	c.Stderr = os.Stderr
+
 	stdout, err := c.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create pipe: %w", err)
+		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
 
-	err = c.Start()
+	// Route bicep's stderr through a pipe we own instead of handing it os.Stderr
+	// directly. If bicep inherits the parent process's real stderr handle, a caller
+	// that launched rad with a piped stderr won't observe that pipe close until
+	// bicep also exits -- which hangs stderr stream-close waits on Windows. Copying
+	// through our own pipe keeps the 'stream bicep stderr to ours' behavior without
+	// leaking the caller's handle to the grandchild.
+	stderr, err := c.StderrPipe()
 	if err != nil {
+		_ = stdout.Close()
+		return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
+	}
+
+	if err = c.Start(); err != nil {
+		_ = stdout.Close()
+		_ = stderr.Close()
 		return nil, fmt.Errorf("failed executing %q: %w", fullCmd, err)
 	}
+
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		if _, err := io.Copy(os.Stderr, stderr); err != nil {
+			_, _ = io.Copy(io.Discard, stderr)
+		}
+	})
 
 	// copy to our buffer, we don't really need to observe
 	// errors here since it's copying into memory
 	buf := bytes.Buffer{}
 	_, _ = io.Copy(&buf, stdout)
 
-	// Wait() will wait for us to finish draining stderr before returning the exit code
-	err = c.Wait()
-	if err != nil {
+	// Ensure stderr is fully drained before Wait() closes the pipe.
+	wg.Wait()
+	if err = c.Wait(); err != nil {
 		return nil, fmt.Errorf("failed executing %q: %w", fullCmd, err)
 	}
 

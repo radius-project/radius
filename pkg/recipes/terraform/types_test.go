@@ -24,7 +24,6 @@ import (
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,7 +37,7 @@ func TestNewTerraform_Success(t *testing.T) {
 	err := os.WriteFile(execPath, []byte("#!/bin/bash\necho 'mock terraform'"), 0755)
 	require.NoError(t, err)
 
-	tf, err := NewTerraform(testcontext.New(t), testDir, execPath)
+	tf, err := NewTerraform(t.Context(), testDir, execPath)
 	require.NoError(t, err)
 	require.Equal(t, expectedWorkingDir, tf.WorkingDir())
 }
@@ -54,7 +53,7 @@ func TestNewTerraform_InvalidDir(t *testing.T) {
 	execPath := filepath.Join(testDir, "terraform")
 
 	// Call NewTerraform with read only root directory.
-	_, err = NewTerraform(testcontext.New(t), readOnlyDir, execPath)
+	_, err = NewTerraform(t.Context(), readOnlyDir, execPath)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to create working directory for terraform execution")
 }
@@ -64,7 +63,7 @@ func TestNewTerraform_EmptyExecPath(t *testing.T) {
 	testDir := t.TempDir()
 
 	// Call NewTerraform with an empty exec path.
-	_, err := NewTerraform(testcontext.New(t), testDir, "")
+	_, err := NewTerraform(t.Context(), testDir, "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to initialize Terraform: no suitable terraform binary could be found")
 }
@@ -74,7 +73,7 @@ func TestCreateWorkingDir_Created(t *testing.T) {
 	testDir := t.TempDir()
 
 	expectedWorkingDir := filepath.Join(testDir, executionSubDir)
-	workingDir, err := createWorkingDir(testcontext.New(t), testDir)
+	workingDir, err := createWorkingDir(t.Context(), testDir)
 	require.NoError(t, err)
 	require.Equal(t, expectedWorkingDir, workingDir)
 
@@ -92,7 +91,7 @@ func TestCreateWorkingDir_Error(t *testing.T) {
 	require.NoError(t, err)
 
 	// Call createWorkingDir with the read-only directory.
-	_, err = createWorkingDir(testcontext.New(t), readOnlyDir)
+	_, err = createWorkingDir(t.Context(), readOnlyDir)
 
 	// Assert that createWorkingDir returns an error.
 	require.Error(t, err)

@@ -41,6 +41,16 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
+	configWithWorkspaceNoEnvironment := radcli.LoadConfig(t, `
+workspaces:
+  default: test-workspace
+  items:
+    test-workspace:
+      connection:
+        context: test-context
+        kind: kubernetes
+      scope: /planes/radius/local/resourceGroups/test-resource-group
+`)
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid List Command",
@@ -79,8 +89,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command with insufficient args",
-			Input:         []string{},
+			Name:          "List Command with too many args",
+			Input:         []string{"invalidResourceType", "foo"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -88,8 +98,62 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command with too many args",
-			Input:         []string{"invalidResourceType", "foo"},
+			Name:          "Valid List Command with no resource type lists the default environment",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Valid List Command with no resource type and environment flag",
+			Input:         []string{"-e", "other-env"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Valid List Command with no resource type and application flag",
+			Input:         []string{"-a", "test-app"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "List Command with no resource type and no default environment",
+			Input:         []string{},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspaceNoEnvironment,
+			},
+		},
+		{
+			Name:          "Valid List Command with resource type and environment flag",
+			Input:         []string{"Applications.Core/containers", "-e", "other-env"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "List Command with application and environment flags is invalid",
+			Input:         []string{"-a", "test-app", "-e", "other-env"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "List Command with resource type, application and environment flags is invalid",
+			Input:         []string{"Applications.Core/containers", "-a", "test-app", "-e", "other-env"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -218,6 +282,150 @@ func Test_Run(t *testing.T) {
 			}
 
 			err = runner.Run(context.Background())
+			require.NoError(t, err)
+
+			expected := []any{
+				output.FormattedOutput{
+					Format:  "table",
+					Obj:     resources,
+					Options: objectformats.GetGenericResourceTableFormat(),
+				},
+			}
+			require.Equal(t, expected, outputSink.Writes)
+		})
+	})
+
+	t.Run("List resources by type in environment", func(t *testing.T) {
+		t.Run("Success", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			resources := []generated.GenericResource{
+				radcli.CreateResource("testResources", "A"),
+				radcli.CreateResource("testResources", "B"),
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				ListResourcesOfTypeInEnvironment(gomock.Any(), "test-env", "MyCompany.Resources/testResources").
+				Return(resources, nil).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			clientFactory, err := manifest.NewTestClientFactory(manifest.WithResourceProviderServerNoError)
+			require.NoError(t, err)
+			runner := &Runner{
+				ConnectionFactory:         &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				UCPClientFactory:          clientFactory,
+				Output:                    outputSink,
+				Workspace:                 &workspaces.Workspace{Name: radcli.TestWorkspaceName},
+				EnvironmentName:           "test-env",
+				ResourceType:              "MyCompany.Resources/testResources",
+				Format:                    "table",
+				ResourceTypeSuffix:        "testResources",
+				ResourceProviderNamespace: "MyCompany.Resources",
+			}
+
+			err = runner.Run(context.Background())
+			require.NoError(t, err)
+
+			expected := []any{
+				output.FormattedOutput{
+					Format:  "table",
+					Obj:     resources,
+					Options: objectformats.GetGenericResourceTableFormat(),
+				},
+			}
+			require.Equal(t, expected, outputSink.Writes)
+		})
+	})
+
+	t.Run("List all resources without a resource type", func(t *testing.T) {
+		t.Run("List resources in an environment - Success", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			resources := []generated.GenericResource{
+				radcli.CreateResource("Applications.Core/containers", "A"),
+				radcli.CreateResource("Applications.Datastores/redisCaches", "B"),
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				ListResourcesInEnvironment(gomock.Any(), "test-env").
+				Return(resources, nil).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{Name: radcli.TestWorkspaceName},
+				EnvironmentName:   "test-env",
+				Format:            "table",
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
+
+			expected := []any{
+				output.FormattedOutput{
+					Format:  "table",
+					Obj:     resources,
+					Options: objectformats.GetGenericResourceTableFormat(),
+				},
+			}
+			require.Equal(t, expected, outputSink.Writes)
+		})
+
+		t.Run("List resources in an application - Application does not exist", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetApplication(gomock.Any(), "test-app").
+				Return(v20231001preview.ApplicationResource{}, radcli.Create404Error()).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{Name: radcli.TestWorkspaceName},
+				ApplicationName:   "test-app",
+				Format:            "table",
+			}
+
+			err := runner.Run(context.Background())
+			require.Error(t, err)
+			require.IsType(t, clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", "test-app", radcli.TestWorkspaceName), err)
+		})
+
+		t.Run("List resources in an application - Success", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			resources := []generated.GenericResource{
+				radcli.CreateResource("Applications.Core/containers", "A"),
+				radcli.CreateResource("Applications.Datastores/redisCaches", "B"),
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetApplication(gomock.Any(), "test-app").
+				Return(v20231001preview.ApplicationResource{}, nil).Times(1)
+			appManagementClient.EXPECT().
+				ListResourcesInApplication(gomock.Any(), "test-app").
+				Return(resources, nil).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{Name: radcli.TestWorkspaceName},
+				ApplicationName:   "test-app",
+				Format:            "table",
+			}
+
+			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
 			expected := []any{

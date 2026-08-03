@@ -17,6 +17,7 @@ limitations under the License.
 package apiserver
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -24,7 +25,6 @@ import (
 
 	v1alpha1 "github.com/radius-project/radius/pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/radius-project/radius/pkg/components/queue"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/ucp/kubeenv"
 	sharedtest "github.com/radius-project/radius/test/ucp/queuetest"
 	"github.com/stretchr/testify/require"
@@ -104,7 +104,7 @@ func TestClient(t *testing.T) {
 		_ = env.Stop()
 	}()
 
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	ns := "radius-test"

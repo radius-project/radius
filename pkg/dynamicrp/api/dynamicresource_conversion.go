@@ -90,6 +90,9 @@ func (d *DynamicResource) ConvertFrom(src v1.DataModelInterface) error {
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal properties: %w", err)
 	}
+	if properties == nil {
+		properties = map[string]any{}
+	}
 
 	d.ID = &dm.ID
 	d.Name = &dm.Name

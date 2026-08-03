@@ -135,6 +135,13 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 		logger.Info(fmt.Sprintf("Deployment %s in namespace %s is ready", item.GetName(), item.GetNamespace()))
 		return properties, nil
 	case "httpproxy":
+		if !isContourHTTPProxy(&item) {
+			return properties, nil
+		}
+		if isContourHTTPProxyRouteChild(&item) {
+			logger.Info(fmt.Sprintf("Skipping readiness wait for route HTTP proxy %s in namespace %s", item.GetName(), item.GetNamespace()))
+			return properties, nil
+		}
 		err = handler.httpProxyWaiter.waitUntilReady(ctx, &item)
 		if err != nil {
 			return nil, err

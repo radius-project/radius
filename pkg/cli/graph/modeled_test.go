@@ -20,8 +20,8 @@ import (
 	"strings"
 	"testing"
 
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,15 +43,15 @@ func TestBuildModeledGraph_EmptyTemplate(t *testing.T) {
 //
 // The test uses `Applications.Core/containers` — a type that ships no
 // per-type SVG in the built-in-providers manifest — so its iconHash
-// must be the product default (see productmanifest.Lookup vs
-// productmanifest.DefaultHash in resolveIconHash). Asserting the exact
+// must be the product default (see defaults.LookupIcon vs
+// defaults.DefaultIconHash in resolveIconHash). Asserting the exact
 // default hash — rather than merely non-nil — locks in the fallback
 // path and would catch a regression that quietly stops populating
 // IconHash for types without their own SVG.
 func TestBuildModeledGraph_IncludeIconsControlsIconsMap(t *testing.T) {
 	t.Parallel()
 
-	defaultHash := productmanifest.DefaultHash()
+	defaultHash := defaults.DefaultIconHash()
 	require.NotNil(t, defaultHash, "product default icon must be embedded for this test to be meaningful")
 
 	template := map[string]any{
@@ -204,6 +204,117 @@ func TestBuildModeledGraph_InboundConnectionsAreReciprocal(t *testing.T) {
 	)
 }
 
+// TestBuildModeledGraph_ConnectionWinsOverDependencyOnRabbitMQShape locks
+// in SC-001 (specs/004-graph-dependency-edges/spec.md): when a resource
+// has BOTH a properties.connections block targeting another resource AND
+// a dependsOn entry naming the same target, the static graph emits
+// exactly ONE edge tagged Kind: Connection. Connection wins.
+func TestBuildModeledGraph_ConnectionWinsOverDependencyOnRabbitMQShape(t *testing.T) {
+	t.Parallel()
+
+	template := map[string]any{
+		"languageVersion": "2.0",
+		"resources": map[string]any{
+			"rabbitmq": map[string]any{
+				"type": "Radius.Messaging/rabbitMQ@2025-08-01-preview",
+				"properties": map[string]any{
+					"name": "rabbitmq",
+					"properties": map[string]any{
+						"queue": "jobs",
+					},
+				},
+			},
+			"consumer": map[string]any{
+				"type": "Radius.Compute/containers@2025-08-01-preview",
+				"properties": map[string]any{
+					"name": "consumer",
+					"properties": map[string]any{
+						// Author-declared connection to rabbitmq.
+						"connections": map[string]any{
+							"rabbitmq": map[string]any{
+								"source": "[reference('rabbitmq').id]",
+							},
+						},
+					},
+				},
+				// dependsOn also names rabbitmq, so both edge sources
+				// signal the same (consumer, rabbitmq) pair. Connection
+				// wins.
+				"dependsOn": []any{"rabbitmq"},
+			},
+		},
+	}
+
+	graph, err := BuildModeledGraph(template, false)
+	require.NoError(t, err)
+	require.Len(t, graph.Resources, 2)
+
+	consumer := findResource(t, graph, "consumer")
+	require.Len(t, consumer.Connections, 1, "consumer must have exactly one outbound edge (Connection wins over Dependency)")
+	require.Equal(t, corerpv20250801preview.DirectionOutbound, *consumer.Connections[0].Direction)
+	require.NotNil(t, consumer.Connections[0].Kind, "kind must be populated on every emitted edge")
+	require.Equal(t, corerpv20250801preview.ConnectionKindConnection, *consumer.Connections[0].Kind,
+		"same-pair Connection + Dependency must resolve to Connection")
+
+	rabbitmq := findResource(t, graph, "rabbitmq")
+	require.Len(t, rabbitmq.Connections, 1)
+	require.Equal(t, corerpv20250801preview.DirectionInbound, *rabbitmq.Connections[0].Direction)
+	require.NotNil(t, rabbitmq.Connections[0].Kind)
+	require.Equal(t, corerpv20250801preview.ConnectionKindConnection, *rabbitmq.Connections[0].Kind,
+		"mirrored inbound must preserve the winning Kind")
+}
+
+// TestBuildModeledGraph_DependencyEdgeSurfacesWithoutConnectionsBlock
+// locks in SC-002: a resource that references another via dependsOn
+// only (no properties.connections block) still surfaces an implicit
+// edge, tagged Kind: Dependency.
+func TestBuildModeledGraph_DependencyEdgeSurfacesWithoutConnectionsBlock(t *testing.T) {
+	t.Parallel()
+
+	template := map[string]any{
+		"languageVersion": "2.0",
+		"resources": map[string]any{
+			"rabbitmq": map[string]any{
+				"type": "Radius.Messaging/rabbitMQ@2025-08-01-preview",
+				"properties": map[string]any{
+					"name": "rabbitmq",
+					"properties": map[string]any{
+						"queue": "jobs",
+					},
+				},
+			},
+			"consumer": map[string]any{
+				"type": "Radius.Compute/containers@2025-08-01-preview",
+				"properties": map[string]any{
+					"name": "consumer",
+					// No connections block. dependsOn is the only edge
+					// source; the extractor tags it Kind: Dependency.
+					"properties": map[string]any{},
+				},
+				"dependsOn": []any{"rabbitmq"},
+			},
+		},
+	}
+
+	graph, err := BuildModeledGraph(template, false)
+	require.NoError(t, err)
+	require.Len(t, graph.Resources, 2)
+
+	consumer := findResource(t, graph, "consumer")
+	require.Len(t, consumer.Connections, 1)
+	require.Equal(t, corerpv20250801preview.DirectionOutbound, *consumer.Connections[0].Direction)
+	require.NotNil(t, consumer.Connections[0].Kind)
+	require.Equal(t, corerpv20250801preview.ConnectionKindDependency, *consumer.Connections[0].Kind,
+		"dependsOn-only edge must be tagged Dependency")
+
+	rabbitmq := findResource(t, graph, "rabbitmq")
+	require.Len(t, rabbitmq.Connections, 1, "mirrored inbound must be emitted on the target")
+	require.Equal(t, corerpv20250801preview.DirectionInbound, *rabbitmq.Connections[0].Direction)
+	require.NotNil(t, rabbitmq.Connections[0].Kind)
+	require.Equal(t, corerpv20250801preview.ConnectionKindDependency, *rabbitmq.Connections[0].Kind,
+		"mirrored inbound must preserve the source Kind")
+}
+
 func TestBuildModeledGraph_DropsUnresolvableConnections(t *testing.T) {
 	t.Parallel()
 
@@ -272,7 +383,7 @@ func TestResolveResourceIDExpression(t *testing.T) {
 		{"missing args", "[resourceId('only-one')]", ""},
 	}
 	for _, tc := range cases {
-		got := resolveResourceIDExpression(tc.in)
+		got := resolveResourceIDExpression(tc.in, "")
 		require.Equal(t, tc.want, got, tc.name)
 	}
 }

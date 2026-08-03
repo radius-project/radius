@@ -17,7 +17,7 @@ on:
         type: string
         required: true
       image:
-        description: 'Container image for the application'
+        description: 'Container image passed only when the application template declares the image parameter'
         type: string
         required: false
         default: ''
@@ -55,6 +55,8 @@ jobs:
       RADIUS_STATE_BACKEND: ${{ vars.RADIUS_STATE_BACKEND }}
       RADIUS_STATE_REGISTRY: ${{ vars.RADIUS_STATE_REGISTRY }}
       RADIUS_STATE_ARCHIVE: ${{ vars.RADIUS_STATE_ARCHIVE }}
+      RADIUS_GRAPH_REGISTRY: ${{ vars.RADIUS_GRAPH_REGISTRY }}
+      RADIUS_GRAPH_TAG: ${{ vars.RADIUS_GRAPH_TAG }}
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -65,6 +67,21 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Log in to GHCR for the state archive
+        # The OCI-backed Radius state archive authenticates to GHCR using the
+        # runner's Docker credential store (~/.docker/config.json). rad startup
+        # (restore-state) and rad shutdown (teardown) open that archive, so the
+        # runner must be logged in BEFORE those steps run -- otherwise the pull
+        # is anonymous and GHCR rejects the private radius-state package with a
+        # 401. docker login persists for the whole job, covering teardown too.
+        # GITHUB_TOKEN has packages: write (set at job level) for repo-linked
+        # packages; a PAT can be supplied instead for other-owner packages.
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get target cluster kubeconfig
         run: |
@@ -79,20 +96,37 @@ jobs:
           ROLE_ARN="${{ vars.AWS_ROLE_ARN }}"
           TARGET="$RADIUS_TARGET_KUBECONFIG"
 
-          # Ensure the IAM role has access to the EKS cluster.
-          # Creates an access entry if one doesn't already exist.
+          # Ensure the IAM role has access to the EKS cluster. These calls are
+          # idempotent by intent: a ResourceInUseException means the entry/policy is
+          # already present, which is fine to ignore. Any other failure (auth,
+          # permissions, throttling) is surfaced with its stderr and fails the step
+          # rather than being masked behind an "already exists" message.
           echo "Ensuring EKS access entry for $ROLE_ARN..."
-          aws eks create-access-entry \
+          if ! err=$(aws eks create-access-entry \
             --cluster-name "$CLUSTER" \
             --principal-arn "$ROLE_ARN" \
             --type STANDARD \
-            --region "$REGION" 2>/dev/null || echo "Access entry already exists"
-          aws eks associate-access-policy \
+            --region "$REGION" 2>&1); then
+            if printf '%s' "$err" | grep -q 'ResourceInUseException'; then
+              echo "Access entry already exists"
+            else
+              printf '%s\n' "$err" >&2
+              exit 1
+            fi
+          fi
+          if ! err=$(aws eks associate-access-policy \
             --cluster-name "$CLUSTER" \
             --principal-arn "$ROLE_ARN" \
             --policy-arn arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy \
             --access-scope type=cluster \
-            --region "$REGION" 2>/dev/null || echo "Access policy already associated"
+            --region "$REGION" 2>&1); then
+            if printf '%s' "$err" | grep -q 'ResourceInUseException'; then
+              echo "Access policy already associated"
+            else
+              printf '%s\n' "$err" >&2
+              exit 1
+            fi
+          fi
 
           # Build a static kubeconfig with a bearer token instead of exec-based auth.
           # The exec-based config requires aws CLI inside the container, which Radius
@@ -217,18 +251,32 @@ jobs:
           # Registry and credentials for the Radius.Compute/containerImages recipe.
           # The recipe builds images with the in-pod BuildKit and pushes them to
           # $BUILD_REGISTRY, authenticating with the Kubernetes Secret named
-          # $REGISTRY_SECRET_NAME. Because the recipe loads that Secret via the
-          # in-cluster provider (the control-plane cluster where dynamic-rp/BuildKit
-          # run), the secret is provisioned directly onto the control plane by the
-          # run-and-teardown action. Only the secret NAME is wired here via the
-          # recipe pack's registrySecretName. $BUILD_REGISTRY is ghcr.io/<owner>/<repo>
-          # so images land under the repository's package namespace; it must be lowercase.
+          # $REGISTRY_SECRET_NAME. That Secret is created on the target cluster by
+          # the app's Radius.Security/secrets resource during `rad deploy` (fed by
+          # the registryUsername/registryPassword parameters conditionally injected
+          # by the run-rad-commands action when the app declares them). Only the secret
+          # NAME is wired here via the recipe pack's registrySecretName.
+          # $BUILD_REGISTRY is ghcr.io/<owner>/<repo> so images land under the
+          # repository's package namespace; it must be lowercase.
           BUILD_REGISTRY=$(echo "${{ vars.RADIUS_BUILD_REGISTRY || format('ghcr.io/{0}', github.repository) }}" | tr '[:upper:]' '[:lower:]')
-          REGISTRY_SECRET_NAME="ghcr-registry-creds"
+          REGISTRY_SECRET_NAME="radius-ghcr-registry-creds"
 
-          # Select the provider-specific Terraform recipe pack. Both provider packs
-          # bundle the shared Kubernetes compute/data recipes and differ only in the
-          # mySQL database recipe and cloud provider config.
+          # Tag/digest of the Bicep containerImages recipe. Defaults to the mutable
+          # `latest` tag (as the Azure hosted pack uses), but is overridable via the
+          # RADIUS_KUBE_RECIPES_REF repo variable so the pack can be pinned to an
+          # immutable digest (e.g. sha256:...) for reproducible runs, matching how
+          # the Terraform recipes below are pinned to $REF. A digest ref is joined
+          # with '@', a tag with ':'.
+          KUBE_RECIPES_REF="${{ vars.RADIUS_KUBE_RECIPES_REF || 'latest' }}"
+          case "$KUBE_RECIPES_REF" in
+            sha256:*) _ci_sep="@" ;;
+            *) _ci_sep=":" ;;
+          esac
+          CONTAINERIMAGES_SOURCE="ghcr.io/radius-project/kube-recipes/containerimages${_ci_sep}${KUBE_RECIPES_REF}"
+
+          # Select the provider-specific recipe pack. Both provider packs share the
+          # Bicep containerImages recipe and the Kubernetes compute/data recipes,
+          # and differ only in the mySQL database recipe and cloud provider config.
           PACK_NAME="aws-terraform"
           MYSQL_RECIPE=$(cat <<EOF
           'Radius.Data/mySqlDatabases': {
@@ -258,6 +306,10 @@ jobs:
           # picks up .radius/bicepconfig.json instead of the workspace root.
           APP_DIR=$(dirname "$APP_FILE")
           ENV_BICEP="$APP_DIR/radius-env.bicep"
+          # Ensure the destination directory exists before writing. The checkout
+          # branch may not contain the app's directory (e.g. .radius/), in which
+          # case the redirect below would fail with "No such file or directory".
+          mkdir -p "$APP_DIR"
           cat > "$ENV_BICEP" <<EOF
           extension radius
 
@@ -266,8 +318,8 @@ jobs:
             properties: {
               recipes: {
                 'Radius.Compute/containerImages': {
-                  kind: 'terraform'
-                  source: 'git::$REPO//Compute/containerImages/recipes/kubernetes/terraform?ref=$REF'
+                  kind: 'bicep'
+                  source: '$CONTAINERIMAGES_SOURCE'
                   parameters: {
                     registry: '$BUILD_REGISTRY'
                     registrySecretName: '$REGISTRY_SECRET_NAME'
@@ -321,6 +373,12 @@ jobs:
           rad deploy "$ENV_BICEP"
           echo "✅ Environment '$ENVIRONMENT' created with recipe pack."
 
+      - name: Apply custom recipe packs
+        uses: radius-project/radius/.github/extension/actions/apply-custom-recipe-packs@{{RADIUS_REF}}
+        with:
+          environment: ${{ inputs.environment }}
+          app-file: ${{ env.APP_FILE }}
+
       - name: Run rad commands
         uses: radius-project/radius/.github/extension/actions/run-rad-commands@{{RADIUS_REF}}
         with:
@@ -332,6 +390,13 @@ jobs:
           deploy-params: ${{ secrets.RADIUS_DEPLOY_PARAMS }}
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish deployed graph and status
+        if: success()
+        uses: radius-project/radius/.github/extension/actions/publish-deploy-status@{{RADIUS_REF}}
+        with:
+          environment: ${{ inputs.environment }}
+          app-file: ${{ env.APP_FILE }}
 
       - name: Teardown
         if: always()

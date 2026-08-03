@@ -29,7 +29,6 @@ import (
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -53,7 +52,7 @@ func TestGetOperationResultRun(t *testing.T) {
 		databaseClient := database.NewMockClient(mctrl)
 
 		w := httptest.NewRecorder()
-		req, err := rpctest.NewHTTPRequestFromJSON(testcontext.New(t), http.MethodGet, operationStatusTestHeaderFile, nil)
+		req, err := rpctest.NewHTTPRequestFromJSON(t.Context(), http.MethodGet, operationStatusTestHeaderFile, nil)
 		require.NoError(t, err)
 		ctx := rpctest.NewARMRequestContext(req)
 
@@ -119,7 +118,7 @@ func TestGetOperationResultRun(t *testing.T) {
 			databaseClient := database.NewMockClient(mctrl)
 
 			w := httptest.NewRecorder()
-			req, err := rpctest.NewHTTPRequestFromJSON(testcontext.New(t), http.MethodGet, operationStatusTestHeaderFile, nil)
+			req, err := rpctest.NewHTTPRequestFromJSON(t.Context(), http.MethodGet, operationStatusTestHeaderFile, nil)
 			require.NoError(t, err)
 			ctx := rpctest.NewARMRequestContext(req)
 

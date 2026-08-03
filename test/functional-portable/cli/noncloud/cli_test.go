@@ -47,7 +47,6 @@ import (
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
@@ -278,7 +277,7 @@ func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
 
 func Test_Run_Logger(t *testing.T) {
 	// Will be used to cancel `rad run`
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 	options := rp.NewRPTestOptions(t)
 
@@ -338,7 +337,7 @@ func Test_Run_Logger(t *testing.T) {
 	// Now we can delete the application (before we report pass/fail)
 	t.Run("delete application", func(t *testing.T) {
 		// Create a new context since we canceled the outer one.
-		ctx, cancel := testcontext.NewWithCancel(t)
+		ctx, cancel := context.WithCancel(t.Context())
 		t.Cleanup(cancel)
 
 		err := cli.ApplicationDelete(ctx, applicationName)
@@ -352,7 +351,7 @@ func Test_Run_Logger(t *testing.T) {
 
 func Test_Run_Portforward(t *testing.T) {
 	// Will be used to cancel `rad run`
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 	options := rp.NewRPTestOptions(t)
 
@@ -437,7 +436,7 @@ func Test_Run_Portforward(t *testing.T) {
 	// Now we can delete the application (before we report pass/fail)
 	t.Run("delete application", func(t *testing.T) {
 		// Create a new context since we canceled the outer one.
-		ctx, cancel := testcontext.NewWithCancel(t)
+		ctx, cancel := context.WithCancel(t.Context())
 		t.Cleanup(cancel)
 
 		err := cli.ApplicationDelete(ctx, applicationName)
@@ -536,7 +535,7 @@ func Test_CLI_JSON(t *testing.T) {
 }
 
 func Test_CLI_Delete(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	options := rp.NewRPTestOptions(t)
@@ -694,7 +693,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 }
 
 func Test_CLI_version(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	options := rp.NewTestOptions(t)
@@ -715,7 +714,7 @@ func Test_CLI_version(t *testing.T) {
 }
 
 func Test_CLI_Only_version(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	options := rp.NewTestOptions(t)
@@ -759,7 +758,7 @@ func Test_RecipeCommands(t *testing.T) {
 // This test creates an environment by directly calling the CreateEnvironment function to test dev recipes.
 // After dev recipes are confirmed, the environment is deleted.
 func Test_DevRecipes(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	options := rp.NewTestOptions(t)
@@ -839,7 +838,7 @@ func generateUniqueTag() string {
 }
 
 func Test_RecipePack(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	options := rp.NewRPTestOptions(t)
@@ -883,7 +882,7 @@ func Test_RecipePack(t *testing.T) {
 }
 
 func Test_RadiusCoreEnv(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	options := rp.NewRPTestOptions(t)

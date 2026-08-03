@@ -26,7 +26,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,7 +47,7 @@ type HandlerTestSpec struct {
 
 // AssertRouters asserts that the given router matches the given test cases.
 func AssertRouters(t *testing.T, tests []HandlerTestSpec, pathBase, rootScope string, configureRouter func(context.Context) (chi.Router, error)) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	r, err := configureRouter(ctx)
 	require.NoError(t, err)
 
@@ -93,7 +92,7 @@ func AssertRouters(t *testing.T, tests []HandlerTestSpec, pathBase, rootScope st
 // AssertRequests asserts that the restful APIs matches the routes and its operation type matches the given test cases.
 // This is working only for test controllers. If you want to validate the routes for the real controllers, use AssertRouters.
 func AssertRequests(t *testing.T, tests []HandlerTestSpec, pathBase, rootScope string, configureRouter func(context.Context) (chi.Router, error)) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	r, err := configureRouter(ctx)
 	require.NoError(t, err)
 

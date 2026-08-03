@@ -27,7 +27,6 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -116,7 +115,7 @@ func makeRecipe(name types.NamespacedName, resourceType string) *radappiov1alpha
 }
 
 func waitForRecipeStateUpdating(t *testing.T, client client.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.RecipeStatus {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	status := &radappiov1alpha3.RecipeStatus{}
@@ -141,7 +140,7 @@ func waitForRecipeStateUpdating(t *testing.T, client client.Client, name types.N
 }
 
 func waitForRecipeStateReady(t *testing.T, client client.Client, name types.NamespacedName) *radappiov1alpha3.RecipeStatus {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	status := &radappiov1alpha3.RecipeStatus{}
@@ -164,7 +163,7 @@ func waitForRecipeStateReady(t *testing.T, client client.Client, name types.Name
 }
 
 func waitForRecipeStateDeleting(t *testing.T, client client.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.RecipeStatus {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	status := &radappiov1alpha3.RecipeStatus{}
@@ -188,7 +187,7 @@ func waitForRecipeStateDeleting(t *testing.T, client client.Client, name types.N
 }
 
 func waitForRecipeDeleted(t *testing.T, client client.Client, name types.NamespacedName) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	require.Eventuallyf(t, func() bool {

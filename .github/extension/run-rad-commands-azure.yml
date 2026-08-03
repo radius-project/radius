@@ -17,7 +17,7 @@ on:
         type: string
         required: true
       image:
-        description: 'Container image for the application'
+        description: 'Container image passed only when the application template declares the image parameter'
         type: string
         required: false
         default: ''
@@ -40,9 +40,10 @@ env:
   # AI types with Azure Verified Modules (Bicep), builds the app image from repo
   # source via the Kubernetes containerImages recipe, and keeps core types
   # (containers, persistentVolumes, routes, secrets) on the shared Kubernetes
-  # recipes. Tracks main; RECIPE_PACK_REF can be pinned to a commit if needed.
+  # recipes. Tracks main; RECIPE_PACK_REF can be pinned to a commit or to a
+  # recipe-pack/azure/vX.Y.Z release tag if needed.
   RECIPE_PACK_REF: main
-  RECIPE_PACK_PATH: recipepack/azure/aks-recipepack.bicep
+  RECIPE_PACK_PATH: recipe-packs/azure/aks-recipepack.bicep
 
 jobs:
   deploy:
@@ -60,6 +61,8 @@ jobs:
       RADIUS_STATE_BACKEND: ${{ vars.RADIUS_STATE_BACKEND }}
       RADIUS_STATE_REGISTRY: ${{ vars.RADIUS_STATE_REGISTRY }}
       RADIUS_STATE_ARCHIVE: ${{ vars.RADIUS_STATE_ARCHIVE }}
+      RADIUS_GRAPH_REGISTRY: ${{ vars.RADIUS_GRAPH_REGISTRY }}
+      RADIUS_GRAPH_TAG: ${{ vars.RADIUS_GRAPH_TAG }}
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -71,6 +74,21 @@ jobs:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to GHCR for the state archive
+        # The OCI-backed Radius state archive authenticates to GHCR using the
+        # runner's Docker credential store (~/.docker/config.json). rad startup
+        # (restore-state) and rad shutdown (teardown) open that archive, so the
+        # runner must be logged in BEFORE those steps run -- otherwise the pull
+        # is anonymous and GHCR rejects the private radius-state package with a
+        # 401. docker login persists for the whole job, covering teardown too.
+        # GITHUB_TOKEN has packages: write (set at job level) for repo-linked
+        # packages; a PAT can be supplied instead for other-owner packages.
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get target cluster kubeconfig
         run: |
@@ -194,15 +212,16 @@ jobs:
           # Registry and credentials for the Radius.Compute/containerImages recipe.
           # The recipe builds images with the in-pod BuildKit and pushes them to
           # $BUILD_REGISTRY, authenticating with the Kubernetes Secret named
-          # $REGISTRY_SECRET_NAME. Because the recipe loads that Secret via the
-          # in-cluster provider (the control-plane cluster where dynamic-rp/BuildKit
-          # run), the secret is provisioned directly onto the control plane by the
-          # run-and-teardown action. Only the secret NAME is wired here via the
-          # recipe pack's containerImagesRegistrySecretName. $BUILD_REGISTRY is
+          # $REGISTRY_SECRET_NAME. That Secret is created on the target cluster by
+          # the app's Radius.Security/secrets resource during `rad deploy` (fed by
+          # the registryUsername/registryPassword parameters conditionally injected
+          # by the run-rad-commands action when the app declares them). Only the secret
+          # NAME is wired here via the recipe pack's
+          # containerImagesRegistrySecretName. $BUILD_REGISTRY is
           # ghcr.io/<owner>/<repo> so images land under the repository's package
           # namespace; it must be lowercase.
           BUILD_REGISTRY=$(echo "${{ vars.RADIUS_BUILD_REGISTRY || format('ghcr.io/{0}', github.repository) }}" | tr '[:upper:]' '[:lower:]')
-          REGISTRY_SECRET_NAME="ghcr-registry-creds"
+          REGISTRY_SECRET_NAME="radius-ghcr-registry-creds"
 
           # Download the default Azure recipe pack from resource-types-contrib,
           # pinned to $RECIPE_PACK_REF. The recipe logic lives upstream; here we
@@ -217,6 +236,11 @@ jobs:
           # root, where no config exists.
           APP_DIR=$(dirname "$APP_FILE")
           ENV_BICEP="$APP_DIR/radius-env.bicep"
+          # Ensure the destination directory exists before curl writes to it.
+          # The checkout branch may not contain the app's directory (e.g. .radius/),
+          # in which case curl would otherwise exit 23 ("Failure writing output to
+          # destination") even though the URL returns HTTP 200.
+          mkdir -p "$APP_DIR"
           curl -fsSL "$RECIPE_PACK_URL" -o "$ENV_BICEP"
 
           # routesGatewayName is a required pack parameter, but it only matters when
@@ -240,6 +264,12 @@ jobs:
             --parameters containerImagesRegistrySecretName="$REGISTRY_SECRET_NAME"
           echo "✅ Environment '$ENVIRONMENT' created with recipe pack."
 
+      - name: Apply custom recipe packs
+        uses: radius-project/radius/.github/extension/actions/apply-custom-recipe-packs@{{RADIUS_REF}}
+        with:
+          environment: ${{ inputs.environment }}
+          app-file: ${{ env.APP_FILE }}
+
       - name: Run rad commands
         uses: radius-project/radius/.github/extension/actions/run-rad-commands@{{RADIUS_REF}}
         with:
@@ -251,6 +281,13 @@ jobs:
           deploy-params: ${{ secrets.RADIUS_DEPLOY_PARAMS }}
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish deployed graph and status
+        if: success()
+        uses: radius-project/radius/.github/extension/actions/publish-deploy-status@{{RADIUS_REF}}
+        with:
+          environment: ${{ inputs.environment }}
+          app-file: ${{ env.APP_FILE }}
 
       - name: Teardown
         if: always()

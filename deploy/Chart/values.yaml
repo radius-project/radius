@@ -69,7 +69,7 @@ global:
     # (pkg/recipes/terraform/install.go::downloadAndInstallTerraform)
     # pins to that version, so the pre-mounted binary must match or
     # recipes will see behavior differences between cold and warm starts.
-    version: "1.14.9"
+    version: "1.15.8"
     # URL for downloading Terraform binary. Leave empty to download the
     # version specified by `version` from releases.hashicorp.com. Provide
     # a complete direct download URL to override (e.g., for air-gapped or
@@ -161,6 +161,10 @@ dynamicrp:
     enabled: false
     # Pinned rootless BuildKit image.
     image: "moby/buildkit:v0.13.2-rootless"
+    # Limit concurrent OCI worker steps across all builds sharing the
+    # BuildKit sidecar. Increase only after profiling representative cold
+    # builds and sizing the resources below with sufficient headroom.
+    maxParallelism: 1
     # Default limits suit small/medium image builds; raise for large
     # contexts or memory-heavy compilations.
     resources:

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package manifest
+package defaults
 
 import (
 	"crypto/sha256"
@@ -26,26 +26,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestDefault_HasNonEmptyBytesAndStableHash pins two invariants that the rest
-// of the icon story depends on: the embedded default icon actually contains
-// bytes, and the hash returned by Default() is the SHA-256 of exactly those
-// bytes. If someone edits default-icon.svg the bytes/hash both change together
-// — the test still passes — but corrupted or missing content is caught.
-func TestDefault_HasNonEmptyBytesAndStableHash(t *testing.T) {
-	def := Default()
+// TestDefaultIcon_HasNonEmptyBytesAndStableHash pins two invariants that the
+// rest of the icon story depends on: the embedded default icon actually
+// contains bytes, and the hash returned by DefaultIcon() is the SHA-256 of
+// exactly those bytes. If someone edits default-icon.svg the bytes/hash both
+// change together — the test still passes — but corrupted or missing content is
+// caught.
+func TestDefaultIcon_HasNonEmptyBytesAndStableHash(t *testing.T) {
+	def := DefaultIcon()
 	require.NotEmpty(t, def.Bytes, "default-icon.svg must not be empty")
 
 	sum := sha256.Sum256(def.Bytes)
 	assert.Equal(t, hex.EncodeToString(sum[:]), def.Hash)
 }
 
-// TestLookup_KnownBuiltInReturnsIcon covers the happy path: a type that
+// TestLookupIcon_KnownBuiltInReturnsIcon covers the happy path: a type that
 // ships an SVG in resource-types-contrib is present in the map, its bytes
 // are non-empty, and its hash is the SHA-256 of those bytes. We use
 // containers because its SVG is present in every dev/self-hosted mirror
 // today.
-func TestLookup_KnownBuiltInReturnsIcon(t *testing.T) {
-	icon, ok := Lookup("Radius.Compute/containers")
+func TestLookupIcon_KnownBuiltInReturnsIcon(t *testing.T) {
+	icon, ok := LookupIcon("Radius.Compute/containers")
 	require.True(t, ok, "Radius.Compute/containers should have an embedded icon; if this fails, run make sync-resource-types")
 	require.NotEmpty(t, icon.Bytes)
 
@@ -56,38 +57,38 @@ func TestLookup_KnownBuiltInReturnsIcon(t *testing.T) {
 	// static-graph consumers can't distinguish "this is the containers icon"
 	// from "this type has no icon"; the whole point of the map is to give
 	// distinct hashes for distinct types.
-	assert.NotEqual(t, Default().Hash, icon.Hash)
+	assert.NotEqual(t, DefaultIcon().Hash, icon.Hash)
 }
 
-// TestLookup_UnknownTypeReturnsFalse covers the fall-through case: user-
+// TestLookupIcon_UnknownTypeReturnsFalse covers the fall-through case: user-
 // defined types and external cloud namespaces (Microsoft.Storage/*, etc.)
 // are never in the built-in map, and callers must handle that by falling
-// through to Default().
-func TestLookup_UnknownTypeReturnsFalse(t *testing.T) {
-	_, ok := Lookup("MyCompany.Test/widgets")
+// through to DefaultIcon().
+func TestLookupIcon_UnknownTypeReturnsFalse(t *testing.T) {
+	_, ok := LookupIcon("MyCompany.Test/widgets")
 	assert.False(t, ok)
 
-	_, ok = Lookup("Microsoft.Storage/storageAccounts")
+	_, ok = LookupIcon("Microsoft.Storage/storageAccounts")
 	assert.False(t, ok)
 
 	// Malformed input must also return false rather than a partial match.
-	_, ok = Lookup("")
+	_, ok = LookupIcon("")
 	assert.False(t, ok)
-	_, ok = Lookup("no-slash")
+	_, ok = LookupIcon("no-slash")
 	assert.False(t, ok)
 }
 
-// TestIsDefault_MatchesDefaultHash locks in the semantics: IsDefault is true
-// exactly for the default hash and false for anything else (including empty
-// input and a built-in type's hash).
-func TestIsDefault_MatchesDefaultHash(t *testing.T) {
-	assert.True(t, IsDefault(Default().Hash))
+// TestIsDefaultIcon_MatchesDefaultHash locks in the semantics: IsDefaultIcon is
+// true exactly for the default hash and false for anything else (including
+// empty input and a built-in type's hash).
+func TestIsDefaultIcon_MatchesDefaultHash(t *testing.T) {
+	assert.True(t, IsDefaultIcon(DefaultIcon().Hash))
 
-	assert.False(t, IsDefault(""))
-	assert.False(t, IsDefault("not-a-real-hash"))
+	assert.False(t, IsDefaultIcon(""))
+	assert.False(t, IsDefaultIcon("not-a-real-hash"))
 
-	if icon, ok := Lookup("Radius.Compute/containers"); ok {
-		assert.False(t, IsDefault(icon.Hash))
+	if icon, ok := LookupIcon("Radius.Compute/containers"); ok {
+		assert.False(t, IsDefaultIcon(icon.Hash))
 	}
 }
 
@@ -110,12 +111,12 @@ func TestIsDefault_MatchesDefaultHash(t *testing.T) {
 // icons are a build-time constant, so a build-time test is the right
 // enforcement point.
 func TestEmbeddedIcons_PassValidateIcon(t *testing.T) {
-	def := Default()
+	def := DefaultIcon()
 	require.NotEmpty(t, def.Bytes, "default-icon.svg must be embedded")
 	require.NoError(t, datamodel.ValidateIcon(def.Bytes), "default-icon.svg must pass ValidateIcon")
 
-	require.NotEmpty(t, builtIns, "no built-in icons loaded; check defaults.yaml and built-in-providers/self-hosted/")
-	for typeName, icon := range builtIns {
+	require.NotEmpty(t, builtInIcons, "no built-in icons loaded; check defaults.yaml and built-in-providers/self-hosted/")
+	for typeName, icon := range builtInIcons {
 		t.Run(typeName, func(t *testing.T) {
 			assert.NoError(t, datamodel.ValidateIcon(icon.Bytes),
 				"embedded icon for %s (built-in-providers/self-hosted/) must pass ValidateIcon", typeName)
@@ -123,9 +124,10 @@ func TestEmbeddedIcons_PassValidateIcon(t *testing.T) {
 	}
 }
 
-// both by this package's init() to bind SVGs to their entries in defaults.yaml
-// and by graph pipelines to bucket resources by provider namespace before
-// calling GetProviderSummary.
+// TestSplitResourceType covers the parsing shared by this package's init(),
+// which binds SVGs to their entries in defaults.yaml, and by graph pipelines,
+// which bucket resources by provider namespace before calling
+// GetProviderSummary.
 func TestSplitResourceType(t *testing.T) {
 	cases := []struct {
 		in          string

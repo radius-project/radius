@@ -8,11 +8,9 @@ import (
 	"time"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
-	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/dynamic/dynamicinformer"
@@ -67,6 +65,11 @@ func (handler *httpProxyWaiter) addEventHandler(ctx context.Context, informerFac
 func (handler *httpProxyWaiter) waitUntilReady(ctx context.Context, obj client.Object) error {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("httpProxyName", obj.GetName(), "namespace", obj.GetNamespace())
 
+	if isContourHTTPProxyRouteChild(obj) {
+		logger.Info(fmt.Sprintf("Not validating the deployment of route HTTP proxy for %s", obj.GetName()))
+		return nil
+	}
+
 	doneCh := make(chan error, 1)
 
 	ctx, cancel := context.WithTimeout(ctx, handler.httpProxyDeploymentTimeout)
@@ -88,7 +91,7 @@ func (handler *httpProxyWaiter) waitUntilReady(ctx context.Context, obj client.O
 	select {
 	case <-ctx.Done():
 		// Get the final status
-		proxy, err := httpProxyInformer.Lister().Get(obj.GetName())
+		proxy, err := httpProxyInformer.Lister().ByNamespace(obj.GetNamespace()).Get(obj.GetName())
 
 		if err != nil {
 			return fmt.Errorf("proxy deployment timed out, name: %s, namespace %s, error occurred while fetching latest status: %w", obj.GetName(), obj.GetNamespace(), err)
@@ -115,57 +118,76 @@ func (handler *httpProxyWaiter) waitUntilReady(ctx context.Context, obj client.O
 
 func (handler *httpProxyWaiter) checkHTTPProxyStatus(ctx context.Context, dynamicInformerFactory dynamicinformer.DynamicSharedInformerFactory, obj client.Object, doneCh chan<- error) bool {
 	logger := ucplog.FromContextOrDiscard(ctx).WithValues("httpProxyName", obj.GetName(), "namespace", obj.GetNamespace())
-	selector := labels.SelectorFromSet(
-		map[string]string{
-			kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-			kubernetes.LabelName:      obj.GetName(),
-		},
-	)
-	proxies, err := dynamicInformerFactory.ForResource(contourv1.HTTPProxyGVR).Lister().List(selector)
+	proxy, err := dynamicInformerFactory.ForResource(contourv1.HTTPProxyGVR).Lister().ByNamespace(obj.GetNamespace()).Get(obj.GetName())
 	if err != nil {
-		logger.Info(fmt.Sprintf("Unable to list http proxies: %s", err.Error()))
+		logger.Info(fmt.Sprintf("Unable to get http proxy: %s", err.Error()))
 		return false
 	}
 
-	for _, proxy := range proxies {
-		p := contourv1.HTTPProxy{}
-		err = runtime.DefaultUnstructuredConverter.FromUnstructured(proxy.(*unstructured.Unstructured).Object, &p)
-		if err != nil {
-			logger.Info(fmt.Sprintf("Unable to convert http proxy: %s", err.Error()))
-			continue
-		}
+	p := contourv1.HTTPProxy{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(proxy.(*unstructured.Unstructured).Object, &p)
+	if err != nil {
+		logger.Info(fmt.Sprintf("Unable to convert http proxy: %s", err.Error()))
+		return false
+	}
+	p.SetGroupVersionKind(contourv1.SchemeGroupVersion.WithKind("HTTPProxy"))
 
-		if len(p.Spec.Includes) == 0 && len(p.Spec.Routes) > 0 {
-			// This is a route HTTP proxy. We will not validate deployment completion for it and return success here
-			logger.Info(fmt.Sprintf("Not validating the deployment of route HTTP proxy for %s", p.Name))
-			doneCh <- nil
-			return true
-		}
+	if isContourHTTPProxyRouteChild(&p) {
+		// This is a route HTTP proxy. We will not validate deployment completion for it and return success here
+		logger.Info(fmt.Sprintf("Not validating the deployment of route HTTP proxy for %s", p.Name))
+		doneCh <- nil
+		return true
+	}
 
-		// We will check the status for the root HTTP proxy
-		if p.Status.CurrentStatus == HTTPProxyStatusInvalid {
-			if strings.Contains(p.Status.Description, "see Errors for details") {
-				var msg strings.Builder
-				for _, c := range p.Status.Conditions {
-					if c.ObservedGeneration != p.Generation {
-						continue
-					}
-					if c.Type == HTTPProxyConditionValid && c.Status == "False" {
-						for _, e := range c.Errors {
-							msg.WriteString(fmt.Sprintf("Error - Type: %s, Status: %s, Reason: %s, Message: %s\n", e.Type, e.Status, e.Reason, e.Message))
-						}
+	// We will check the status for the root HTTP proxy
+	if p.Status.CurrentStatus == HTTPProxyStatusInvalid {
+		if strings.Contains(p.Status.Description, "see Errors for details") {
+			var msg strings.Builder
+			for _, c := range p.Status.Conditions {
+				if c.ObservedGeneration != p.Generation {
+					continue
+				}
+				if c.Type == HTTPProxyConditionValid && c.Status == "False" {
+					for _, e := range c.Errors {
+						msg.WriteString(fmt.Sprintf("Error - Type: %s, Status: %s, Reason: %s, Message: %s\n", e.Type, e.Status, e.Reason, e.Message))
 					}
 				}
-				doneCh <- errors.New(msg.String())
-			} else {
-				doneCh <- fmt.Errorf("Failed to deploy HTTP proxy. Description: %s", p.Status.Description)
 			}
-			return false
-		} else if p.Status.CurrentStatus == HTTPProxyStatusValid {
-			// The HTTPProxy is ready
-			doneCh <- nil
-			return true
+			doneCh <- errors.New(msg.String())
+		} else {
+			doneCh <- fmt.Errorf("Failed to deploy HTTP proxy. Description: %s", p.Status.Description)
 		}
+		return false
+	} else if p.Status.CurrentStatus == HTTPProxyStatusValid {
+		// The HTTPProxy is ready
+		doneCh <- nil
+		return true
 	}
 	return false
+}
+
+func isContourHTTPProxy(obj client.Object) bool {
+	gvk := obj.GetObjectKind().GroupVersionKind()
+	return gvk.Group == contourv1.SchemeGroupVersion.Group && strings.EqualFold(gvk.Kind, "HTTPProxy")
+}
+
+func isContourHTTPProxyRouteChild(obj client.Object) bool {
+	if !isContourHTTPProxy(obj) {
+		return false
+	}
+
+	var proxy contourv1.HTTPProxy
+	switch p := obj.(type) {
+	case *contourv1.HTTPProxy:
+		proxy = *p
+	case *unstructured.Unstructured:
+		err := runtime.DefaultUnstructuredConverter.FromUnstructured(p.Object, &proxy)
+		if err != nil {
+			return false
+		}
+	default:
+		return false
+	}
+
+	return proxy.Spec.VirtualHost == nil && len(proxy.Spec.Includes) == 0 && len(proxy.Spec.Routes) > 0
 }

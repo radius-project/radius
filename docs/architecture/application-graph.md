@@ -46,7 +46,7 @@ sequenceDiagram
 | Component | Location | Responsibility |
 |---|---|---|
 | `rad app graph` command | `pkg/cli/cmd/app/graph/graph.go` | CLI entry point; dispatches between the stable Applications.Core path and the `--preview` Radius.Core path |
-| `rad app graph --preview` runner | `pkg/cli/cmd/app/graph/preview/graph.go` | Preview runner; owns the `--include-icons` flag and calls the Radius.Core preview client |
+| `rad app graph --preview` runner | `pkg/cli/cmd/app/graph/preview/graph.go` | Preview runner; owns the `--include-icons` flag, accepts an optional `app.bicep` path for enriched mode, and calls the Radius.Core preview client |
 | `display()` | `pkg/cli/cmd/app/graph/display.go` | Formats graph resources into human-readable text |
 | `UCPApplicationsManagementClient` | `pkg/cli/clients/management.go` | CLI SDK wrapper; calls `ApplicationsClient.GetGraph()` |
 | `ApplicationsClient.GetGraph()` | `pkg/corerp/api/v20231001preview/zz_generated_applications_client.go`, `pkg/corerp/api/v20250801preview/zz_generated_applications_client.go` | Auto-generated ARM clients (one per API version); build the HTTP POST request |
@@ -206,6 +206,57 @@ The `findSourceResource()` helper supports three resolution strategies:
    resource name)
 3. Fallback to the raw string (marked as `ErrInvalidSource`)
 
+#### Edge Sources and `Kind`
+
+Every edge on the `Radius.Core/2025-08-01-preview` wire carries a `kind`
+discriminator (`ApplicationGraphConnection.kind`, values `Connection` or
+`Dependency`). Two sources feed it:
+
+- **`properties.connections`** — author-declared. Every edge emitted from
+  this source is tagged `Kind: Connection`.
+- **`dependsOn`** — implicit dependencies inferred from Bicep's compiled
+  `dependsOn` list. Every edge emitted from this source is tagged `Kind:
+  Dependency`. When the same `(source, target)` pair is signaled by both
+  the connections block and `dependsOn`, **Connection wins** — exactly
+  one edge is emitted, tagged `Connection`.
+
+Today the two producers differ in which sources they consume:
+
+- **Server-side runtime handler**
+  (`pkg/corerp/frontend/controller/applications/v20250801preview/graph_util.go`)
+  — sees `properties.connections` on stored resources and emits every
+  resulting edge as `Kind: Connection`. It also accepts an optional
+  `dependsOnEdges` map on `GetGraphRequest` (see below) and merges those
+  edges as `Kind: Dependency` through the shared
+  [`edges.MergeDependencyEdges`](../../pkg/graph/edges/edges.go) helper.
+  Applications.Core (stable) is unchanged and does not carry `kind` on
+  the wire.
+- **CLI static-graph builder** (`rad app graph app.bicep`,
+  [`pkg/cli/graph/modeled.go`](../../pkg/cli/graph/modeled.go)) — also
+  reads Bicep's `dependsOn`, so it emits both `Kind: Connection` and
+  `Kind: Dependency` edges. Templates that reference another resource
+  only via `secretKeyRef` (no `properties.connections` block) still
+  surface an implicit dependency edge.
+- **CLI enriched deployed mode** (`rad app graph -a <name> --preview
+  <path>.bicep`) — combines the two: the CLI compiles the Bicep file,
+  extracts its `dependsOn` edges via
+  [`cligraph.ExtractDependsOnEdges`](../../pkg/cli/graph/modeled.go), and
+  attaches the map to `GetGraphRequest.DependsOnEdges`. The server
+  computes the connection-only deployed graph as usual, then merges the
+  caller-supplied edges as `Kind: Dependency`.
+
+Both producers share the same extraction primitive
+([`pkg/graph/edges/`](../../pkg/graph/edges/)): exclusion of
+control-plane types (`Radius.Core/applications`, `Radius.Core/environments`,
+`Radius.Core/recipePacks`, plus the legacy `Applications.Core/applications`
+and `Applications.Core/environments`), Connection-wins de-duplication, and
+reciprocal `Outbound`/`Inbound` mirroring. Excluded types are neither
+graph nodes nor edge targets. The server-side exclusion set lives on
+`dependsOnExclusionSet` in
+[`graph_util.go`](../../pkg/corerp/frontend/controller/applications/v20250801preview/graph_util.go)
+and is kept in sync with the CLI-side `excludeResourceTypes` in
+[`modeled.go`](../../pkg/cli/graph/modeled.go) by a pinning test.
+
 #### Breadth-First Expansion
 
 The algorithm starts with resources known to be in the application and
@@ -245,6 +296,7 @@ classDiagram
     class ApplicationGraphConnection {
         +id: string
         +direction: Direction
+        +kind: ConnectionKind
     }
     class ApplicationGraphOutputResource {
         +id: string
@@ -256,15 +308,24 @@ classDiagram
         Outbound
         Inbound
     }
+    class ConnectionKind {
+        <<enum>>
+        Connection
+        Dependency
+    }
 
     ApplicationGraphResponse "1" --> "*" ApplicationGraphResource : resources
     ApplicationGraphResource "1" --> "*" ApplicationGraphConnection : connections
     ApplicationGraphResource "1" --> "*" ApplicationGraphOutputResource : outputResources
     ApplicationGraphConnection --> Direction : direction
+    ApplicationGraphConnection --> ConnectionKind : kind
 ```
 
 The types are defined in TypeSpec at `typespec/Radius.Core/applications.tsp`
-and generated into `pkg/corerp/api/v20231001preview/`.
+and generated into `pkg/corerp/api/v20231001preview/` (stable Applications.Core)
+and `pkg/corerp/api/v20250801preview/` (Radius.Core preview). The `kind`
+field and the `ConnectionKind` enum only exist on the Radius.Core preview
+surface; the stable Applications.Core wire is unchanged.
 
 ## CLI Display
 
@@ -332,8 +393,8 @@ RP handler based on the registered resource provider.
 |---|---|
 | HTTP Method | `POST` |
 | URL | `{rootScope}/providers/Radius.Core/applications/{name}/getGraph?api-version=2025-08-01-preview` |
-| Request Body | `GetGraphRequest` — `{ "includeIcons": false }` (both the object and the field are optional; missing or empty bodies resolve to `false`) |
-| Response | `ApplicationGraphResponse` (200 OK) — same resources/connections/output-resources as the stable version, plus per-node `iconHash` and (when `includeIcons: true`) a top-level `icons` map from hash to verbatim SVG bytes |
+| Request Body | `GetGraphRequest` — `{ "includeIcons": false, "dependsOnEdges": null }` (both fields and the object itself are optional; missing or empty bodies are equivalent to a zero-value request). `dependsOnEdges` is a map keyed by source resource ID, each entry a list of outbound `Kind: Dependency` edges; when present, the server merges them onto the connection-only deployed graph. |
+| Response | `ApplicationGraphResponse` (200 OK) — same resources/connections/output-resources as the stable version, plus per-node `iconHash` and (when `includeIcons: true`) a top-level `icons` map from hash to verbatim SVG bytes. Every `ApplicationGraphConnection` also carries a `kind` discriminator (`Connection` or `Dependency`) not present on the Applications.Core wire; see [Edge Sources and Kind](#edge-sources-and-kind). |
 
 ## Radius.Core Preview: Icon Enrichment
 
@@ -343,8 +404,9 @@ returning the response.
 
 ```mermaid
 graph TD
-    Request["POST getGraph<br/>body: { includeIcons: bool }"] --> Compute["computeGraphPayload<br/>(local to v20250801preview)"]
-    Compute --> Namespaces["Collect distinct namespaces<br/>from graph.Resources[].type"]
+    Request["POST getGraph<br/>body: { includeIcons: bool,<br/>dependsOnEdges?: map }"] --> Compute["computeGraphPayload<br/>(local to v20250801preview)"]
+    Compute --> Merge["edges.MergeDependencyEdges<br/>(merges dependsOnEdges as<br/>Kind: Dependency, filtered by<br/>dependsOnExclusionSet)"]
+    Merge --> Namespaces["Collect distinct namespaces<br/>from graph.Resources[].type"]
     Namespaces --> ForEachNS["For each namespace"]
     ForEachNS --> GPS["UCP GetProviderSummary<br/>/planes/radius/local/providers/&lt;ns&gt;"]
     GPS -->|"200 with iconHash"| BuildLookup["Build lookup<br/>&lt;ns&gt;/&lt;typeName&gt; → { hash, bytes? }"]
@@ -387,10 +449,13 @@ and fail the graph request. This behavior applies regardless of the
 
 Every Radius binary embeds a single product-shipped default SVG at
 [`deploy/manifest/default-icon.svg`](../../deploy/manifest/default-icon.svg).
-A small [`deploy/manifest`](../../deploy/manifest/icons.go) Go package exposes
-it as `Default()` alongside `Lookup(resourceType)` for the per-type icons that
-`make sync-resource-types` mirrors from `resource-types-contrib` into
+The [`pkg/defaults`](../../pkg/defaults/icons.go) Go package exposes
+it as `DefaultIcon()` alongside `LookupIcon(resourceType)` for the per-type
+icons that `make sync-resource-types` mirrors from `resource-types-contrib` into
 [`deploy/manifest/built-in-providers/self-hosted/*.svg`](../../deploy/manifest/built-in-providers/self-hosted/).
+The assets themselves are embedded by the assets-only
+[`deploy/manifest`](../../deploy/manifest/embed.go) package, because a
+`//go:embed` pattern cannot name a path outside its own directory.
 The package is imported by three consumers:
 
 1. **Resource-type registration (control plane).** When a manifest arrives
@@ -418,7 +483,7 @@ The embedded default icon is compiled into every Radius binary from
 [`deploy/manifest/default-icon.svg`](../../deploy/manifest/default-icon.svg),
 so under normal conditions the fallback above always succeeds. If that
 embedded asset ever fails to load (malformed SVG, empty file, unparsable
-`defaults.yaml`, or a broken build), the [`deploy/manifest`](../../deploy/manifest/icons.go)
+`defaults.yaml`, or a broken build), the [`pkg/defaults`](../../pkg/defaults/icons.go)
 package **logs the failure to stderr and continues** rather than panicking
 at process start. Downstream callers then treat "no default available" the
 same way they treat "no icon registered for this type": they set
@@ -432,16 +497,16 @@ Rationale:
   asset is broken would be a strictly worse experience.
 - **One code path, two graphs.** The same rule holds for the control plane's
   runtime graph and the CLI's static graph — both share
-  `productmanifest.DefaultHash()`, which returns `nil` when the default is
+  `defaults.DefaultIconHash()`, which returns `nil` when the default is
   unavailable. Callers uniformly forward that `nil` to their output rather
   than substituting an empty-string hash.
-- **Failures are still observable.** The init-time log line (`manifest: ...`)
+- **Failures are still observable.** The init-time log line (`defaults: ...`)
   surfaces in CI logs, `kubectl logs` for `ucpd`/`applications-rp`, and the
   CLI's stderr, so a broken build never fails silently.
 
-The [`deploy/manifest/icons.go`](../../deploy/manifest/icons.go) package
+The [`pkg/defaults`](../../pkg/defaults/icons.go) package
 documents the concrete fallback chain (per-type icon → product default →
-`nil`) and the graceful-degradation contract; `DefaultHash()` is the single
+`nil`) and the graceful-degradation contract; `DefaultIconHash()` is the single
 spelling of that contract used across the registration path
 ([`resourcetype_conversion.go`](../../pkg/ucp/api/v20231001preview/resourcetype_conversion.go),
 [`initializer/service.go`](../../pkg/ucp/initializer/service.go)), the
@@ -456,6 +521,7 @@ and the static graph builder
 classDiagram
     class GetGraphRequest {
         +includeIcons?: bool
+        +dependsOnEdges?: Map~string,ApplicationGraphConnection[]~
     }
     class ApplicationGraphResponse {
         +resources: ApplicationGraphResource[]
@@ -490,12 +556,22 @@ threads through to `GetGraphRequest.IncludeIcons`; without it the CLI sends
 `nil` and the server defaults to `false`. Text output does not render SVGs;
 the flag is intended for programmatic consumers using `-o json`.
 
+An optional positional argument — the application's `app.bicep` path —
+switches the command into **enriched deployed mode**: the CLI compiles the
+template locally, extracts its `dependsOn` edges, and attaches them to
+`GetGraphRequest.DependsOnEdges`. The server merges them onto the
+deployed graph as `Kind: Dependency`. `-a/--application` is required in
+this shape because the positional slot has been claimed by the file path.
+
 ```bash
 # Hash-only: nodes carry iconHash; clients fetch bytes separately by hash.
 rad app graph my-app --preview -o json
 
 # Bytes inline: response also includes a deduped icons map (hash → SVG bytes).
 rad app graph my-app --preview -o json --include-icons
+
+# Enriched: deployed graph plus dependsOn edges from a local app.bicep.
+rad app graph -a my-app --preview ./app.bicep
 ```
 
 ### Client-side rendering and sanitization boundary
@@ -555,12 +631,12 @@ The modeled graph is built locally in the CLI from a Bicep application
 definition (`rad app graph app.bicep`) with no control-plane call — see
 [`pkg/cli/graph/modeled.go`](../../pkg/cli/graph/modeled.go). Because there
 is no registry to query, icons are resolved from the embedded
-[`deploy/manifest`](../../deploy/manifest/icons.go) package that both the CLI
+[`pkg/defaults`](../../pkg/defaults/icons.go) package that both the CLI
 and the control plane share:
 
 1. **Per-node `iconHash`**: `buildModeledResource` calls `resolveIconHash`,
-   which prefers a per-type hit from `productmanifest.Lookup(type)`, then
-   falls back to `productmanifest.DefaultHash()`. The helper returns `nil`
+   which prefers a per-type hit from `defaults.LookupIcon(type)`, then
+   falls back to `defaults.DefaultIconHash()`. The helper returns `nil`
    when neither is available so the node simply appears without an icon —
    see [Design decision: icon absence is not an error](#design-decision-icon-absence-is-not-an-error).
 2. **Response `icons` map**: `collectStaticGraphIcons` dedupes by hash and
