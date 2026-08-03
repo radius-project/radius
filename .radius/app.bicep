@@ -28,6 +28,5 @@ resource repoRadiusStateContainer 'Radius.Compute/containers@2025-08-01-preview'
         args: ['-c', 'while true; do echo ${deploymentPhase}; sleep 10; done']
       }
     }
-    connections: {}
   }
 }
