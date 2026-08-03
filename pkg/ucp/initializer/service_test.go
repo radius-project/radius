@@ -29,13 +29,12 @@ import (
 	"github.com/radius-project/radius/pkg/cli/manifest"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 func Test_registerResourceProviderDirect(t *testing.T) {
@@ -767,7 +766,7 @@ func Test_Run_Icons(t *testing.T) {
 		require.NoError(t, obj.As(gadgets))
 		assert.Nil(t, gadgets.Properties.Icon)
 		require.NotNil(t, gadgets.Properties.IconHash)
-		assert.Equal(t, productmanifest.Default().Hash, *gadgets.Properties.IconHash)
+		assert.Equal(t, defaults.DefaultIcon().Hash, *gadgets.Properties.IconHash)
 	})
 
 	t.Run("manifest without <typeName>.svg substitutes the default icon hash", func(t *testing.T) {
@@ -792,7 +791,7 @@ func Test_Run_Icons(t *testing.T) {
 		require.NoError(t, obj.As(rt))
 		assert.Nil(t, rt.Properties.Icon)
 		require.NotNil(t, rt.Properties.IconHash)
-		assert.Equal(t, productmanifest.Default().Hash, *rt.Properties.IconHash)
+		assert.Equal(t, defaults.DefaultIcon().Hash, *rt.Properties.IconHash)
 	})
 
 	t.Run("skips stray svg files during directory scan", func(t *testing.T) {

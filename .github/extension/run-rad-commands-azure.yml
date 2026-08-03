@@ -61,6 +61,8 @@ jobs:
       RADIUS_STATE_BACKEND: ${{ vars.RADIUS_STATE_BACKEND }}
       RADIUS_STATE_REGISTRY: ${{ vars.RADIUS_STATE_REGISTRY }}
       RADIUS_STATE_ARCHIVE: ${{ vars.RADIUS_STATE_ARCHIVE }}
+      RADIUS_GRAPH_REGISTRY: ${{ vars.RADIUS_GRAPH_REGISTRY }}
+      RADIUS_GRAPH_TAG: ${{ vars.RADIUS_GRAPH_TAG }}
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -234,6 +236,11 @@ jobs:
           # root, where no config exists.
           APP_DIR=$(dirname "$APP_FILE")
           ENV_BICEP="$APP_DIR/radius-env.bicep"
+          # Ensure the destination directory exists before curl writes to it.
+          # The checkout branch may not contain the app's directory (e.g. .radius/),
+          # in which case curl would otherwise exit 23 ("Failure writing output to
+          # destination") even though the URL returns HTTP 200.
+          mkdir -p "$APP_DIR"
           curl -fsSL "$RECIPE_PACK_URL" -o "$ENV_BICEP"
 
           # routesGatewayName is a required pack parameter, but it only matters when
@@ -274,6 +281,13 @@ jobs:
           deploy-params: ${{ secrets.RADIUS_DEPLOY_PARAMS }}
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish deployed graph and status
+        if: success()
+        uses: radius-project/radius/.github/extension/actions/publish-deploy-status@{{RADIUS_REF}}
+        with:
+          environment: ${{ inputs.environment }}
+          app-file: ${{ env.APP_FILE }}
 
       - name: Teardown
         if: always()

@@ -26,26 +26,35 @@ Each workflow runs on `ubuntu-latest`. No long-lived cloud secrets are stored �
 3. **Report possible enterprise-claim mismatch (failure-only).** Runs only when Azure Login failed and the OIDC token's `enterprise` claim was empty. That combination is a hint, not a diagnosis — Azure Login can fail for unrelated reasons — so the job summary asks the user to confirm by checking whether the Azure Login error contains `AADSTS7002381` before applying the suggested fix. On a successful run it is skipped and adds nothing.
 4. **Verify access.** Runs `az account show` to confirm the login.
 5. **Verify AKS access.** Sets up `kubelogin`, fetches cluster credentials with `az aks get-credentials`, converts the kubeconfig, and runs `kubectl cluster-info`.
-6. **Summary.** Writes the environment and provider to the job summary.
+6. **Verify GHCR package push permission.** Confirms the workflow token can push to the OCI state archive package (`RADIUS_STATE_REGISTRY`) that `rad startup` / `rad shutdown` write to. See [GHCR package push check](#ghcr-package-push-check).
+7. **Summary.** Writes the environment, provider, and GHCR check result to the job summary.
 
 **`verify-aws.yml`:**
 
 1. **Authenticate via OIDC.** Runs `aws-actions/configure-aws-credentials` with the environment's AWS variables.
 2. **Verify access.** Runs `aws sts get-caller-identity` to confirm the login.
 3. **Verify EKS access.** Updates the kubeconfig with `aws eks update-kubeconfig` and runs `kubectl cluster-info`.
-4. **Summary.** Writes the environment and provider to the job summary.
+4. **Verify GHCR package push permission.** Confirms the workflow token can push to the OCI state archive package (`RADIUS_STATE_REGISTRY`) that `rad startup` / `rad shutdown` write to. See [GHCR package push check](#ghcr-package-push-check).
+5. **Summary.** Writes the environment, provider, and GHCR check result to the job summary.
+
+### GHCR package push check
+
+Radius stores its control-plane state as an OCI archive in GHCR (`RADIUS_STATE_REGISTRY`). During a deploy, `rad startup` and `rad shutdown` push to that package, and GHCR rejects the push with a `403 Forbidden` when the workflow token lacks write access to it — a permission that is **not granted by default** for packages not linked to the repo. To surface that early instead of mid-deploy, the check asks GHCR's Docker v2 token endpoint for a `pull,push`-scoped token as `github.actor` and inspects the actions the token was actually granted; a Docker registry only grants the subset of the requested scope the caller is authorized for, so this reveals push access without mutating the package. The check fails with an actionable error when `push` is not granted, is skipped when `RADIUS_STATE_REGISTRY` is unset or not on `ghcr.io`, and mirrors the deploy workflow's `packages: write` token so it tests the same capability the deploy relies on.
+
+The check lives in the shared [`verify-ghcr-push`](actions/verify-ghcr-push/action.yml) composite action so the two verify templates cannot drift; both workflows reference it from `radius-project/radius` at the `{{RADIUS_REF}}` pinned ref (the same mechanism the run-rad-commands provider workflows use), so the logic is not copied into user repos.
 
 ### Trigger and permissions
 
 - **Trigger:** `workflow_dispatch` with a single `environment` input (the GitHub Environment name). The job binds to that environment via `environment: ${{ inputs.environment }}`.
-- **Permissions:** `id-token: write` (required for OIDC) and `contents: read`.
+- **Permissions:** `id-token: write` (required for OIDC), `contents: read`, and `packages: write` (so the GHCR package push check tests the same token capability the deploy uses).
 
 ### Required environment variables
 
-The workflows read only GitHub Actions **variables** (`vars`), never secrets. Configure these on the target GitHub Environment:
+The workflows read GitHub Actions **variables** (`vars`) — never long-lived secrets. The GHCR package push check also uses the built-in `GITHUB_TOKEN`, which GitHub Actions provides automatically (nothing to configure). Configure these variables on the target GitHub Environment:
 
 | Provider | Variables                                                                                                       |
 |----------|-----------------------------------------------------------------------------------------------------------------|
+| Common   | `RADIUS_STATE_REGISTRY` (optional; enables the GHCR package push check)                                         |
 | Azure    | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_AKS_CLUSTER_NAME` |
 | AWS      | `AWS_ROLE_ARN`, `AWS_REGION`, `AWS_EKS_CLUSTER_NAME`                                                            |
 
@@ -65,7 +74,7 @@ To keep the two provider paths from duplicating the ~80% of steps they share, it
 - **`run-rad-commands.yml`** — the unified **dispatcher** and the only file that is dispatched. It owns the dispatch contract (`workflow_dispatch` inputs and the `Radius - Verify Credentials` auto-trigger). A `detect` job binds the GitHub Environment, reads which provider variable is set (`AZURE_CLIENT_ID` / `AWS_ROLE_ARN`), and calls the matching provider workflow via `workflow_call` with `secrets: inherit`.
 - **`run-rad-commands-azure.yml`** — a reusable (`workflow_call`) workflow with only the Azure-specific steps: Azure OIDC login, AKS connection (`az aks get-credentials`), workload-identity credential registration, and the `azure-avm` recipe pack (Azure Verified Modules) downloaded from [resource-types-contrib](https://github.com/radius-project/resource-types-contrib).
 - **`run-rad-commands-aws.yml`** — a reusable (`workflow_call`) workflow with only the AWS-specific steps: AWS OIDC login, EKS connection (access entry + static token kubeconfig), IRSA credential registration, and the `aws-terraform` recipe pack.
-- **`actions/*`** — composite actions holding the provider-agnostic phases both provider workflows share: [`setup-control-plane`](actions/setup-control-plane/action.yml), [`restore-state`](actions/restore-state/action.yml), [`apply-custom-recipe-packs`](actions/apply-custom-recipe-packs/action.yml), [`run-rad-commands`](actions/run-rad-commands/action.yml), [`delete-resource`](actions/delete-resource/action.yml), and [`teardown`](actions/teardown/action.yml). The provider workflows reference them from `radius-project/radius` at a pinned ref (the `{{RADIUS_REF}}` placeholder the generator fills in), so the shared logic has a single reviewed home and is not copied into user repos. Third-party actions in these workflows are pinned to full commit SHAs (with a `# vX` comment); only the first-party Radius composite actions are referenced by ref.
+- **`actions/*`** — composite actions holding the provider-agnostic phases both provider workflows share: [`setup-control-plane`](actions/setup-control-plane/action.yml), [`restore-state`](actions/restore-state/action.yml), [`apply-custom-recipe-packs`](actions/apply-custom-recipe-packs/action.yml), [`run-rad-commands`](actions/run-rad-commands/action.yml), [`publish-deploy-status`](actions/publish-deploy-status/action.yml), [`delete-resource`](actions/delete-resource/action.yml), and [`teardown`](actions/teardown/action.yml). The provider workflows reference them from `radius-project/radius` at a pinned ref (the `{{RADIUS_REF}}` placeholder the generator fills in), so the shared logic has a single reviewed home and is not copied into user repos. Third-party actions in these workflows are pinned to full commit SHAs (with a `# vX` comment); only the first-party Radius composite actions are referenced by ref.
 
 The deploy flow generates the dispatcher and both provider workflows, commits them to the target repo under `.github/workflows/`, and dispatches `run-rad-commands.yml`.
 
@@ -96,8 +105,9 @@ The dispatcher routes to the matching provider workflow, which runs on `ubuntu-l
 11. **Create the Radius environment and recipe pack.** `rad deploy`s a `radius-env.bicep` that defines a `Radius.Core/recipePacks` resource and the `Radius.Core/environments` resource that references it. Azure downloads the `azure-avm` pack (Azure Verified Modules) from [resource-types-contrib](https://github.com/radius-project/resource-types-contrib); AWS generates an inline `aws-terraform` pack. `radius-env.bicep` is written to the app file's directory (e.g. `.radius/`) and deployed from there, so `rad deploy` resolves the repo's own `bicepconfig.json` (which declares the `radius` extension) — bicep resolves the config nearest the `.bicep` file. The `Radius.Compute/containerImages` type ships with the Radius extension, so no separate resource-type registration is needed.
 12. **Register custom types and apply custom recipe pack.** When the app's `.radius/` folder carries a `custom-types.yaml` file, the shared `apply-custom-recipe-packs` action registers those resource types with `rad resource-type create --from-file` (skipped when absent). When it carries a `custom-recipe-pack.bicep` file, the action snapshots the recipe-pack IDs before and after `rad deploy`ing that pack to identify the newly-created pack(s), reads the environment's existing `recipePacks` with `rad env show --preview`, and runs `rad env update <env> --recipe-packs <existing ∪ new> --preview` so the environment keeps the default provider pack and gains the custom pack — without pulling in unrelated packs the control plane may know about (skipped when absent). When neither file exists this step is a no-op and the default pack stays in place.
 13. **Run the requested rad commands.** Validates each command in `rad_commands` against the allowed-command set, then runs them in order (stopping on the first failure) and writes a combined `rad-commands-result` artifact. Before deploying the app, the shared action compiles its Bicep file once and reads the declared ARM parameters. It passes each extension-generated parameter only when the template declares it: `image` (the workflow input, defaulting to `github.sha`), `registryUsername` (`github.actor`), and `registryPassword` (the built-in `GITHUB_TOKEN`). Caller-configured application parameters from the `RADIUS_DEPLOY_PARAMS` secret remain strict and are passed unchanged. The registry parameters feed the app's `Radius.Security/secrets` resource (`radius-ghcr-registry-creds`), when present, so the containerImages recipe's in-pod BuildKit can push the application image. Secret values are passed via an argv array and never written into the recorded command string.
-14. **Persist state (`rad shutdown`).** Backs the control-plane databases and Terraform recipe-state Secrets up to the state archive — the OCI-backed archive by default (pushed to GHCR, selected by the `RADIUS_STATE_*` variables), or the `radius-state` git orphan branch when `RADIUS_STATE_BACKEND=git`. This runs even when the deploy fails (`if: always()`), so a partially-applied Terraform run is not lost.
-15. **Tear down.** Runs `rad app list`, and always deletes the ephemeral `radius-cp` cluster. On failure, Radius and application logs are collected and uploaded as the `radius-logs` artifact (three-day retention).
+14. **Publish deployed graph/status artifact.** On successful command execution, the shared `publish-deploy-status` action runs `rad app graph --application <app> --preview --include-icons --output json` against the live control plane and publishes `deploy-graph.json` plus sibling status files (`deploy-progress.log`, `deploy-activity.log`, `deploy-controlplane.log`, `deploy-state.txt`) as a single OCI artifact in GHCR (`RADIUS_GRAPH_REGISTRY`, with `RADIUS_GRAPH_TAG` or a derived `<environment>-<app>-latest` tag).
+15. **Persist state (`rad shutdown`).** Backs the control-plane databases and Terraform recipe-state Secrets up to the state archive — the OCI-backed archive by default (pushed to GHCR, selected by the `RADIUS_STATE_*` variables), or the `radius-state` git orphan branch when `RADIUS_STATE_BACKEND=git`. This runs even when the deploy fails (`if: always()`), so a partially-applied Terraform run is not lost.
+16. **Tear down.** Runs `rad app list`, and always deletes the ephemeral `radius-cp` cluster. On failure, Radius and application logs are collected and uploaded as the `radius-logs` artifact (three-day retention).
 
 ### Triggers and permissions
 
@@ -121,11 +131,9 @@ Triggers and permissions live on the **dispatcher** (`run-rad-commands.yml`); th
 
 The workflow reads cloud and cluster configuration from GitHub Actions **variables** (`vars`). Configure the relevant provider's set on the target GitHub Environment:
 
-| Provider                             | Variables                                                                                                                                                            |
-|--------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Common                               | `KUBERNETES_NAMESPACE` (default `default`), `RADIUS_BUILD_REGISTRY` (default `ghcr.io/<owner>/<repo>`), `RADIUS_RAD_COMMANDS` (optional fallback for `rad_commands`) |
-| Azure (`run-rad-commands-azure.yml`) | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_AKS_CLUSTER_NAME`                                                      |
-| AWS (`run-rad-commands-aws.yml`)     | `AWS_ROLE_ARN`, `AWS_REGION`, `AWS_ACCOUNT_ID`, `AWS_EKS_CLUSTER_NAME`, `RADIUS_VPC_ID`, `RADIUS_SUBNET_IDS`                                                         |
+- Common: `KUBERNETES_NAMESPACE` (default `default`), `RADIUS_BUILD_REGISTRY` (default `ghcr.io/<owner>/<repo>`), `RADIUS_RAD_COMMANDS` (optional fallback for `rad_commands`), `RADIUS_GRAPH_REGISTRY` (optional GHCR repo for deployed graph/status artifacts), `RADIUS_GRAPH_TAG` (optional tag override)
+- Azure (`run-rad-commands-azure.yml`): `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_AKS_CLUSTER_NAME`
+- AWS (`run-rad-commands-aws.yml`): `AWS_ROLE_ARN`, `AWS_REGION`, `AWS_ACCOUNT_ID`, `AWS_EKS_CLUSTER_NAME`, `RADIUS_VPC_ID`, `RADIUS_SUBNET_IDS`
 
 The provider steps run only when the identifying variable (`AZURE_CLIENT_ID` or `AWS_ROLE_ARN`) is non-empty. When it is unset, resources deploy to the ephemeral control-plane cluster instead of an external target.
 

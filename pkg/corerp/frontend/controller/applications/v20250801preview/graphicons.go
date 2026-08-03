@@ -27,12 +27,11 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 // resourceTypeIcon captures the icon metadata for a single resource type as
@@ -62,7 +61,7 @@ func fetchIcons(ctx context.Context, connection sdk.Connection, graph *corerpv20
 	// issue at most one GetProviderSummary per provider.
 	namespaces := map[string]struct{}{}
 	for _, resource := range graph.Resources {
-		namespace, _, ok := productmanifest.SplitResourceType(to.String(resource.Type))
+		namespace, _, ok := defaults.SplitResourceType(to.String(resource.Type))
 		if !ok {
 			continue
 		}
@@ -186,8 +185,8 @@ func attachIconHashes(payload *corerpv20250801preview.ApplicationGraphResponse, 
 		}
 		// Missing lookup (external 404, unregistered type, or no icon at
 		// registration time) — fall back to the product default.
-		// DefaultHash returns nil when the embedded default is unavailable,
+		// DefaultIconHash returns nil when the embedded default is unavailable,
 		// leaving IconHash unset for the node.
-		r.IconHash = productmanifest.DefaultHash()
+		r.IconHash = defaults.DefaultIconHash()
 	}
 }

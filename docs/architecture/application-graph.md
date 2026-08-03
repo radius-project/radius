@@ -449,10 +449,13 @@ and fail the graph request. This behavior applies regardless of the
 
 Every Radius binary embeds a single product-shipped default SVG at
 [`deploy/manifest/default-icon.svg`](../../deploy/manifest/default-icon.svg).
-A small [`deploy/manifest`](../../deploy/manifest/icons.go) Go package exposes
-it as `Default()` alongside `Lookup(resourceType)` for the per-type icons that
-`make sync-resource-types` mirrors from `resource-types-contrib` into
+The [`pkg/defaults`](../../pkg/defaults/icons.go) Go package exposes
+it as `DefaultIcon()` alongside `LookupIcon(resourceType)` for the per-type
+icons that `make sync-resource-types` mirrors from `resource-types-contrib` into
 [`deploy/manifest/built-in-providers/self-hosted/*.svg`](../../deploy/manifest/built-in-providers/self-hosted/).
+The assets themselves are embedded by the assets-only
+[`deploy/manifest`](../../deploy/manifest/embed.go) package, because a
+`//go:embed` pattern cannot name a path outside its own directory.
 The package is imported by three consumers:
 
 1. **Resource-type registration (control plane).** When a manifest arrives
@@ -480,7 +483,7 @@ The embedded default icon is compiled into every Radius binary from
 [`deploy/manifest/default-icon.svg`](../../deploy/manifest/default-icon.svg),
 so under normal conditions the fallback above always succeeds. If that
 embedded asset ever fails to load (malformed SVG, empty file, unparsable
-`defaults.yaml`, or a broken build), the [`deploy/manifest`](../../deploy/manifest/icons.go)
+`defaults.yaml`, or a broken build), the [`pkg/defaults`](../../pkg/defaults/icons.go)
 package **logs the failure to stderr and continues** rather than panicking
 at process start. Downstream callers then treat "no default available" the
 same way they treat "no icon registered for this type": they set
@@ -494,16 +497,16 @@ Rationale:
   asset is broken would be a strictly worse experience.
 - **One code path, two graphs.** The same rule holds for the control plane's
   runtime graph and the CLI's static graph — both share
-  `productmanifest.DefaultHash()`, which returns `nil` when the default is
+  `defaults.DefaultIconHash()`, which returns `nil` when the default is
   unavailable. Callers uniformly forward that `nil` to their output rather
   than substituting an empty-string hash.
-- **Failures are still observable.** The init-time log line (`manifest: ...`)
+- **Failures are still observable.** The init-time log line (`defaults: ...`)
   surfaces in CI logs, `kubectl logs` for `ucpd`/`applications-rp`, and the
   CLI's stderr, so a broken build never fails silently.
 
-The [`deploy/manifest/icons.go`](../../deploy/manifest/icons.go) package
+The [`pkg/defaults`](../../pkg/defaults/icons.go) package
 documents the concrete fallback chain (per-type icon → product default →
-`nil`) and the graceful-degradation contract; `DefaultHash()` is the single
+`nil`) and the graceful-degradation contract; `DefaultIconHash()` is the single
 spelling of that contract used across the registration path
 ([`resourcetype_conversion.go`](../../pkg/ucp/api/v20231001preview/resourcetype_conversion.go),
 [`initializer/service.go`](../../pkg/ucp/initializer/service.go)), the
@@ -628,12 +631,12 @@ The modeled graph is built locally in the CLI from a Bicep application
 definition (`rad app graph app.bicep`) with no control-plane call — see
 [`pkg/cli/graph/modeled.go`](../../pkg/cli/graph/modeled.go). Because there
 is no registry to query, icons are resolved from the embedded
-[`deploy/manifest`](../../deploy/manifest/icons.go) package that both the CLI
+[`pkg/defaults`](../../pkg/defaults/icons.go) package that both the CLI
 and the control plane share:
 
 1. **Per-node `iconHash`**: `buildModeledResource` calls `resolveIconHash`,
-   which prefers a per-type hit from `productmanifest.Lookup(type)`, then
-   falls back to `productmanifest.DefaultHash()`. The helper returns `nil`
+   which prefers a per-type hit from `defaults.LookupIcon(type)`, then
+   falls back to `defaults.DefaultIconHash()`. The helper returns `nil`
    when neither is available so the node simply appears without an icon —
    see [Design decision: icon absence is not an error](#design-decision-icon-absence-is-not-an-error).
 2. **Response `icons` map**: `collectStaticGraphIcons` dedupes by hash and

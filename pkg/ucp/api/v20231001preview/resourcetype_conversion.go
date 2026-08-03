@@ -22,10 +22,9 @@ import (
 	"fmt"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
-
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 // ConvertTo converts from the versioned ResourceTypeResource resource to version-agnostic datamodel.
@@ -77,11 +76,11 @@ func (src *ResourceTypeResource) ConvertTo() (v1.DataModelInterface, error) {
 		// No icon supplied — substitute the product default icon's hash so
 		// every registered type has a non-nil IconHash. The bytes stay unset
 		// on the record; consumers fetch them from the embedded product
-		// default in-binary (deploy/manifest package). If the embedded
-		// default failed to load, DefaultHash returns nil and IconHash stays
+		// default in-binary (pkg/defaults package). If the embedded default
+		// failed to load, DefaultIconHash returns nil and IconHash stays
 		// unset — icons are cosmetic, we degrade gracefully rather than
 		// fail registration.
-		dst.Properties.IconHash = productmanifest.DefaultHash()
+		dst.Properties.IconHash = defaults.DefaultIconHash()
 	}
 
 	return dst, nil
