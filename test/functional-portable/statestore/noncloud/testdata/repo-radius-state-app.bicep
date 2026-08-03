@@ -6,7 +6,7 @@ param environment string
 @description('A marker written by the container to prove that an update was deployed.')
 param deploymentPhase string
 
-resource app 'Radius.Core/applications@2025-08-01-preview' = {
+resource repoRadiusStateApp 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'repo-radius-state-e2e'
   location: 'global'
   properties: {
@@ -14,11 +14,11 @@ resource app 'Radius.Core/applications@2025-08-01-preview' = {
   }
 }
 
-resource container 'Radius.Compute/containers@2025-08-01-preview' = {
+resource repoRadiusStateContainer 'Radius.Compute/containers@2025-08-01-preview' = {
   name: 'repo-radius-state-container'
   location: 'global'
   properties: {
-    application: app.id
+    application: repoRadiusStateApp.id
     environment: environment
     containers: {
       main: {
