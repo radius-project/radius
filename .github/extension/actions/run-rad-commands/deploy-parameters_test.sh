@@ -148,6 +148,20 @@ unset BICEP_SHOULD_FAIL
 [[ "${DECLARED_APP_PARAMS_LOADED}" == "false" ]] ||
     fail "failed compilation must not populate the parameter cache"
 
+# A missing application file must fast-fail before the Bicep compiler is invoked.
+reset_discovery
+missing_app_file="${TEST_ROOT}/missing-app.bicep"
+rm -f "${missing_app_file}"
+if load_declared_app_params "${missing_app_file}" 2>"${TEST_ROOT}/missing-app.err"; then
+    fail "expected a missing application file to stop parameter discovery"
+fi
+[[ "$(wc -l <"${BICEP_CALLS}" | tr -d ' ')" == "0" ]] ||
+    fail "a missing application file must not invoke the Bicep compiler"
+grep -q "not found on this branch/commit" "${TEST_ROOT}/missing-app.err" ||
+    fail "expected a helpful not-found error for a missing application file"
+[[ "${DECLARED_APP_PARAMS_LOADED}" == "false" ]] ||
+    fail "a missing application file must not populate the parameter cache"
+
 fake_jq_dir="${TEST_ROOT}/fake-jq"
 mkdir "${fake_jq_dir}"
 cat >"${fake_jq_dir}/jq" <<'EOF'

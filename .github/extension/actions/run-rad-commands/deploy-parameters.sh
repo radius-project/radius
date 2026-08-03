@@ -17,6 +17,15 @@ load_declared_app_params() {
         return 0
     fi
 
+    # Fast-fail with a clear message when the application file is missing on the
+    # deployed branch/commit, rather than surfacing a confusing Bicep compile
+    # error below. This commonly happens when a deploy is dispatched before the
+    # generated app.bicep has been committed and pushed to the deployed branch.
+    if [[ ! -f "${app_file}" ]]; then
+        echo "::error::Application file ${app_file} not found on this branch/commit. Generate it (ask Copilot to \"create app.bicep\") and commit it to the deployed branch before deploying." >&2
+        return 1
+    fi
+
     if [[ -d "${bicep_bin}" ]]; then
         bicep_bin="${bicep_bin}/bicep"
     fi
