@@ -20,14 +20,14 @@ Key features of the Radius platform include:
 - *Cloud Neutral*: Deploy across development, on-premises and cloud environments with a consistent experience.
 - *Incremental Adoption*: Integrate Radius into existing workflows and existing catalogs of Infrastructure-as-Code templates.
 
-## Release status
-
-This is an early release of Radius which enables the community to learn about and experiment with the platform. Please let us know what you think and open Issues when you find bugs or want to request a new feature. Radius is not yet ready for production workloads.
-
 ## Getting started
 
 1. Follow the [getting started guide](https://docs.radapp.io/getting-started/) to install and try out Radius
 1. Visit the [Tutorials](https://docs.radapp.io/tutorials) and [User Guides](https://docs.radapp.io/guides) to learn more about Radius and start radifying your apps
+
+## Join us in building Radius
+
+We are growing our community of adopters and contributors to help shape where Radius goes next. Try it out, tell us what you think, and open [Issues](https://github.com/radius-project/radius/issues/new/choose) when you find bugs or want to request a new feature. Early feedback has an outsized influence on the direction of the project.
 
 ## Getting help
 
@@ -45,14 +45,14 @@ Please visit our [Discord server](https://discord.gg/SRG3ePMKNy) to contact us a
 
 ### Community calls
 
-Every month we host a community call to showcase new features, review upcoming milestones, and engage in a Q&A. All are welcome!
+Every quarter we host a community call to showcase new features, review upcoming milestones, and engage in a Q&A. All are welcome!
 
 📞 Visit our [community meetings](https://github.com/radius-project/community/#community-meetings) page for upcoming dates and the meeting link.
 
 ## Contributing to Radius
 
 Visit [Contributing](./CONTRIBUTING.md) for more information on how to contribute to Radius.
-To author Radius Recipes visit [Author Custom Radius Recipes](https://docs.radapp.io/guides/recipes/howto-author-recipes/).
+To author Radius Resource Types and Recipes visit the [Resource Types and Recipes repository](https://github.com/radius-project/resource-types-contrib).
 To contribute to Radius documentation visit [Radius documentation](https://docs.radapp.io/contributing/docs/)
 
 ## Repositories
@@ -64,7 +64,8 @@ In addition, we have the below repositories.
 |:-----|:------------|
 | [Docs](https://github.com/radius-project/docs) | This repository contains the Radius documentation source for Radius.
 | [Samples](https://github.com/radius-project/samples) | This repository contains the source code for quickstarts, reference apps, and tutorials for Radius.
-| [Recipes](https://github.com/radius-project/recipes) | This repo contains commonly used Recipe templates for Radius Environments.
+| [Resource Types and Recipes](https://github.com/radius-project/resource-types-contrib) | This repo contains commonly used Resource Types and Recipe templates for Radius Environments.
+| [Dashboard](https://github.com/radius-project/dashboard) | This repository contains the source code for the Radius dashboard.
 | [Website](https://github.com/radius-project/website) | This repository contains the source code for the Radius website.
 | [AWS Bicep Types](https://github.com/radius-project/bicep-types-aws) | This repository contains the tooling for Bicep support for AWS resource types.
 
