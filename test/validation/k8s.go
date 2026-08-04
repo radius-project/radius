@@ -370,7 +370,7 @@ func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.C
 func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, namespace string, application string) {
 	labelset := kuberneteskeys.MakeSelectorLabels(application, "")
 
-	actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+	actualPods, err := k8s.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labelset).String(),
 	})
 	assert.NoErrorf(t, err, "failed to list pods in namespace %s", namespace)
@@ -392,7 +392,7 @@ func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kuberne
 		case <-time.After(IntervalForPodShutdown):
 			t.Logf("at %s waiting for pods in namespace %s for application %s to shut down.. ", time.Now().Format("2006-01-02 15:04:05"), namespace, application)
 
-			actualPods, err := listPodsWithRetries(t, k8s, labelset, namespace, application)
+			actualPods, err := listPodsWithRetries(ctx, t, k8s, labelset, namespace, application)
 			assert.NoError(t, err)
 
 			logPods(t, actualPods.Items)
@@ -404,11 +404,11 @@ func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kuberne
 	}
 }
 
-func listPodsWithRetries(t *testing.T, k8s *kubernetes.Clientset, labelset map[string]string, namespace, application string) (*corev1.PodList, error) {
+func listPodsWithRetries(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, labelset map[string]string, namespace, application string) (*corev1.PodList, error) {
 	// Need to retry because of AKS error: https://github.com/radius-project/radius/issues/2484
 	retries := 3
 	for i := 1; i <= retries; i++ {
-		actualPods, err := k8s.CoreV1().Pods(namespace).List(t.Context(), metav1.ListOptions{
+		actualPods, err := k8s.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labelset).String(),
 		})
 		if err == nil {

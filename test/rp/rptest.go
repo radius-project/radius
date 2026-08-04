@@ -375,9 +375,9 @@ func DeploymentTargetK8sClient(options RPTestOptions) (k8sclient.Interface, erro
 }
 
 // Method CleanUpExtensionResources deletes all resources in the given slice of unstructured objects.
-func (ct RPTest) CleanUpExtensionResources(resources []unstructured.Unstructured) {
+func (ct RPTest) CleanUpExtensionResources(ctx context.Context, resources []unstructured.Unstructured) {
 	for i := len(resources) - 1; i >= 0; i-- {
-		_ = ct.Options.Client.Delete(context.TODO(), &resources[i])
+		_ = ct.Options.Client.Delete(ctx, &resources[i])
 	}
 }
 
@@ -481,7 +481,7 @@ func (ct RPTest) Test(t *testing.T) {
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
 	require.GreaterOrEqual(t, len(ct.Steps), 1, "at least one step is required")
-	defer ct.CleanUpExtensionResources(ct.InitialResources)
+	defer ct.CleanUpExtensionResources(ctx, ct.InitialResources)
 	err := ct.CreateInitialResources(ctx)
 	require.NoError(t, err, "failed to create initial resources")
 
@@ -492,7 +492,7 @@ func (ct RPTest) Test(t *testing.T) {
 	success := true
 	for i, step := range ct.Steps {
 		success = t.Run(step.Executor.GetDescription(), func(t *testing.T) {
-			defer ct.CleanUpExtensionResources(step.K8sOutputResources)
+			defer ct.CleanUpExtensionResources(ctx, step.K8sOutputResources)
 			if !success {
 				t.Skip("skipping due to previous step failure")
 				return
