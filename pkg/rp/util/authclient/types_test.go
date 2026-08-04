@@ -80,14 +80,15 @@ func Test_getRegistryAuthClient(t *testing.T) {
 		},
 	}
 
+	ctx := t.Context()
 	for _, tc := range testset {
 		ctrl := gomock.NewController(t)
 		newClient, err := GetNewRegistryAuthClient(tc.secrets)
 		require.NoError(t, err)
 		require.Equal(t, tc.expNewAuthClient, newClient)
 		mClient := NewMockAuthClient(ctrl)
-		mClient.EXPECT().GetAuthClient(t.Context(), tc.templatePath).Times(1).Return(tc.expAuthClient, nil)
-		ac, err := mClient.GetAuthClient(t.Context(), tc.templatePath)
+		mClient.EXPECT().GetAuthClient(ctx, tc.templatePath).Times(1).Return(tc.expAuthClient, nil)
+		ac, err := mClient.GetAuthClient(ctx, tc.templatePath)
 		require.NoError(t, err)
 		require.Equal(t, ac, tc.expAuthClient)
 	}
