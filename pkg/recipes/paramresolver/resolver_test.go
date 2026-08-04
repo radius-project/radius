@@ -17,6 +17,7 @@ limitations under the License.
 package paramresolver
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/recipes"
@@ -107,6 +108,16 @@ func Test_ResolveParameterExpressions(t *testing.T) {
 			ctx: testContext(),
 			expected: map[string]any{
 				"name": "my-resource",
+			},
+		},
+		{
+			name: "derived Azure resource name hash resolves",
+			params: map[string]any{
+				"name": "redis-{{context.azure.resourceNameHash}}",
+			},
+			ctx: testContext(),
+			expected: map[string]any{
+				"name": "redis-b9f5a1471dadc792",
 			},
 		},
 		{
@@ -454,6 +465,7 @@ func Test_buildContextLookup(t *testing.T) {
 		lookup := buildContextLookup(ctx)
 
 		assert.Equal(t, "my-resource", lookup["context.resource.name"])
+		assert.Equal(t, "b9f5a1471dadc792", lookup["context.azure.resourceNameHash"])
 		assert.Equal(t, "my-app", lookup["context.application.name"])
 		assert.Equal(t, "my-env", lookup["context.environment.name"])
 		assert.Equal(t, "my-namespace", lookup["context.runtime.kubernetes.namespace"])
@@ -463,6 +475,62 @@ func Test_buildContextLookup(t *testing.T) {
 		assert.Equal(t, "5432", lookup["context.resource.properties.port"])
 		assert.Equal(t, "my-db", lookup["context.resource.connections.db.name"])
 		assert.Equal(t, "postgres://myhost:5432/mydb", lookup["context.resource.connections.db.properties.connectionString"])
+	})
+
+	t.Run("Azure resource name hash changes with resource or Azure scope", func(t *testing.T) {
+		first := testContext()
+		second := testContext()
+		second.Resource.ID += "-other"
+		third := testContext()
+		third.Azure.ResourceGroup.ID += "-other"
+
+		firstLookup := buildContextLookup(first)
+		secondLookup := buildContextLookup(second)
+		thirdLookup := buildContextLookup(third)
+
+		assert.Len(t, firstLookup["context.azure.resourceNameHash"], resourceNameHashLength)
+		assert.NotEqual(t, firstLookup["context.azure.resourceNameHash"], secondLookup["context.azure.resourceNameHash"])
+		assert.NotEqual(t, firstLookup["context.azure.resourceNameHash"], thirdLookup["context.azure.resourceNameHash"])
+	})
+
+	t.Run("Azure resource name hash is case insensitive", func(t *testing.T) {
+		first := testContext()
+		second := testContext()
+		second.Resource.ID = strings.ToUpper(second.Resource.ID)
+		second.Azure.ResourceGroup.ID = strings.ToUpper(second.Azure.ResourceGroup.ID)
+
+		firstLookup := buildContextLookup(first)
+		secondLookup := buildContextLookup(second)
+
+		assert.Equal(t, firstLookup["context.azure.resourceNameHash"], secondLookup["context.azure.resourceNameHash"])
+	})
+
+	t.Run("omits Azure resource name hash when resource ID is empty", func(t *testing.T) {
+		ctx := testContext()
+		ctx.Resource.ID = ""
+
+		lookup := buildContextLookup(ctx)
+		_, ok := lookup["context.azure.resourceNameHash"]
+		assert.False(t, ok)
+	})
+
+	t.Run("omits Azure resource name hash when resource group name is empty", func(t *testing.T) {
+		ctx := testContext()
+		ctx.Azure.ResourceGroup.Name = ""
+		ctx.Azure.ResourceGroup.ID = "/subscriptions/sub-id/resourceGroups/"
+
+		lookup := buildContextLookup(ctx)
+		_, ok := lookup["context.azure.resourceNameHash"]
+		assert.False(t, ok)
+	})
+
+	t.Run("omits Azure resource name hash when resource group ID is empty", func(t *testing.T) {
+		ctx := testContext()
+		ctx.Azure.ResourceGroup.ID = ""
+
+		lookup := buildContextLookup(ctx)
+		_, ok := lookup["context.azure.resourceNameHash"]
+		assert.False(t, ok)
 	})
 
 	t.Run("handles nil kubernetes runtime", func(t *testing.T) {
