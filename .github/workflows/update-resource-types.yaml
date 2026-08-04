@@ -250,25 +250,30 @@ jobs:
           base="$(yq -o=json -I=0 '.' "${defaults}")"
 
           # carried <section> <legacy_section> <payload_json> echoes the branch
-          # pins that main does not already have and the payload does not
-          # already cover, as a [{name, ref}] array. `sources`/`namespace` are
-          # the pre-rename spellings of `resourceTypes`/`name`; accepting them
-          # keeps a branch written against the older schema readable. An entry
-          # with a tag is carried by tag so the tag survives re-resolution; a
-          # bare SHA is re-pinned without a network round trip.
+          # pins the payload does not already cover and main does not already
+          # record with the same SHA *and* tag, as a [{name, ref}] array. The
+          # tag has to be part of that comparison: a release can tag a commit
+          # main is already pinned to, and comparing SHAs alone would discard
+          # that tag-only pin. `sources`/`namespace` are the pre-rename
+          # spellings of `resourceTypes`/`name`; accepting them keeps a branch
+          # written against the older schema readable. An entry with a tag is
+          # carried by tag so the tag survives re-resolution; a bare SHA is
+          # re-pinned without a network round trip.
           carried() {
             jq -c --arg section "$1" --arg legacy "$2" \
               --argjson payload "$3" --argjson base "${base}" '
               [ (.[$section] // .[$legacy] // [])[]
                 | {name: (.name // .namespace),
                    ref: (if (.tag // "") == "" then .ref else .tag end),
-                   sha: .ref}
+                   sha: .ref,
+                   tag: (.tag // "")}
                 | select(.name != null and .ref != null)
                 | . as $e
                 | select(($payload | any(.name == $e.name)) | not)
                 | select(
                     (($base[$section] // [])
-                      | any(.name == $e.name and .ref == $e.sha)) | not
+                      | any(.name == $e.name and .ref == $e.sha
+                            and (.tag // "") == $e.tag)) | not
                   )
                 | {name: .name, ref: .ref} ]
             ' <<< "${pending}"
