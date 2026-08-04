@@ -4,7 +4,7 @@ types:
     description: |
       The Radius.Compute/containers Resource Type is the primary resource type for running one or more containers. It is always part of a Radius Application. To deploy a Container add a resource to the application definition Bicep file.
 
-      ```
+      ```bicep
       extension radius
       param environment string 
 
@@ -28,7 +28,7 @@ types:
 
       To accept network connections, expose a port on the container.
 
-      ```
+      ```bicep
       resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
         name: 'myContainer'
         properties: {
@@ -50,9 +50,9 @@ types:
       
       When a port is included, a Kubernetes Service named demo with the type ClusterIP is created.
       
-      To create a emphemeral emptyDir shared between two containers add a Containers.properties.volumes.
+      To create an ephemeral emptyDir shared between two containers add a Containers.properties.volumes.
 
-      ```
+      ```bicep
       resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
         name: 'myContainer'
         properties: {
@@ -168,7 +168,7 @@ types:
                         description: (Optional) Requests define the minimum amount of CPU or memory that is required by the container.
                         properties:
                           cpu:
-                            # TODO: Change to float once floats are availabla https://github.com/radius-project/radius/issues/10279
+                            # TODO: Change to float once floats are available https://github.com/radius-project/radius/issues/10279
                             type: string
                             description: (Optional) The minimum number of vCPUs required by the container. `0.1` results in one tenth of a vCPU being reserved.
                           memoryInMib:
@@ -179,7 +179,7 @@ types:
                         description: (Optional) Limits define the maximum amount of CPU or memory the container can consume.
                         properties:
                           cpu:
-                            # TODO: Change to float once floats are availabla https://github.com/radius-project/radius/issues/10279
+                            # TODO: Change to float once floats are available https://github.com/radius-project/radius/issues/10279
                             type: string
                             description: (Optional) The maximum number of vCPUs which can be used by the container.
                           memoryInMib:
