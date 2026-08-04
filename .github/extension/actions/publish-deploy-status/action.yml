@@ -64,8 +64,11 @@ runs:
 
         # deploy-progress.log - per-resource provisioning state from the live
         # control plane, the closest thing to per-node status available here.
+        # `rad resource list -o json` marshals []generated.GenericResource directly
+        # (pkg/cli/cmd/resource/list/list.go), so the payload is a bare array with
+        # no object wrapper - iterate it with `.[]?` and nothing else.
         if ! rad resource list -a "$APP_NAME" -o json 2>/dev/null \
-          | jq -r '.[]? // .items[]? | "\(.name)\t\(.type)\t\(.properties.provisioningState // "Unknown")"' \
+          | jq -r '.[]? | "\(.name)\t\(.type)\t\(.properties.provisioningState // "Unknown")"' \
           > "$STATUS_DIR/deploy-progress.log" 2>/dev/null; then
           : > "$STATUS_DIR/deploy-progress.log"
         fi
