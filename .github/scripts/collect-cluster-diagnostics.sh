@@ -78,9 +78,10 @@ collect_pod_state() {
     capture "${OUTPUT_DIR}/${PREFIX}-pod-states.log" kubectl describe pods -A
 
     # Written raw, with no headers, so the file stays parseable by a YAML
-    # reader. Failures land in the pod-states log above, so a broken dump here
-    # only means an absent or empty file.
-    kubectl get pods -A -o yaml >"${OUTPUT_DIR}/${PREFIX}-pods.yaml" 2>/dev/null || true
+    # reader. stderr goes to the pod-states log so a failed dump is still
+    # explained there rather than silently producing an empty file.
+    kubectl get pods -A -o yaml >"${OUTPUT_DIR}/${PREFIX}-pods.yaml" \
+        2>>"${OUTPUT_DIR}/${PREFIX}-pod-states.log" || true
 }
 
 collect_events() {

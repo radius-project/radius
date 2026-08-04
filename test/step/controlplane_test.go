@@ -20,6 +20,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -46,9 +47,12 @@ func newTestRESTClient(t *testing.T, handler http.Handler) rest.Interface {
 
 func Test_WaitForControlPlaneReady_ReturnsWhenAggregatedAPIServes(t *testing.T) {
 	t.Parallel()
+	var mu sync.Mutex
 	var paths []string
 	client := newTestRESTClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
 		paths = append(paths, r.URL.Path)
+		mu.Unlock()
 		w.WriteHeader(http.StatusOK)
 	}))
 
@@ -56,6 +60,8 @@ func Test_WaitForControlPlaneReady_ReturnsWhenAggregatedAPIServes(t *testing.T) 
 
 	// A single probe of the aggregated path is enough: it cannot succeed unless
 	// the kube-apiserver and its aggregation layer are both serving.
+	mu.Lock()
+	defer mu.Unlock()
 	assert.Equal(t, []string{radiusAggregatedAPIPath}, paths)
 }
 

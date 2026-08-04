@@ -209,7 +209,7 @@ func Test_ExecuteWithRetry_ZeroBudgetDisablesRetries(t *testing.T) {
 	assert.Equal(t, int32(1), calls.Load())
 }
 
-func Test_ExecuteWithRetry_WaitsForControlPlaneBeforeRetrying(t *testing.T) {
+func Test_ExecuteWithRetry_UnreadyControlPlaneStopsRetrying(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
 	var waits atomic.Int32
@@ -217,13 +217,11 @@ func Test_ExecuteWithRetry_WaitsForControlPlaneBeforeRetrying(t *testing.T) {
 	d := NewDeployExecutor("test.bicep")
 	d.RetryDelay = time.Millisecond
 	d.ShouldRetry = func(error) bool { return true }
-	// The gate stands in for a control plane that is down for the first two
-	// probes: the retry must not be attempted until it reports ready.
+	// The gate stands in for a control plane that never came back within the
+	// budget. Retrying against it cannot succeed, so the loop must stop.
 	d.waitForReady = func(ctx context.Context) error {
-		if waits.Add(1) < 3 {
-			return errors.New("kube-apiserver is not ready")
-		}
-		return nil
+		waits.Add(1)
+		return errors.New("kube-apiserver is not ready")
 	}
 
 	err := d.executeWithRetry(context.Background(), t, func() error {
@@ -234,9 +232,10 @@ func Test_ExecuteWithRetry_WaitsForControlPlaneBeforeRetrying(t *testing.T) {
 		return nil
 	})
 
-	// A failing gate ends the loop with the deployment error rather than
-	// retrying against an unavailable control plane.
+	// The deployment error is surfaced rather than the gate's error, and no
+	// retry is attempted against an unavailable control plane.
 	require.Error(t, err)
+	assert.Equal(t, "connection reset by peer", err.Error())
 	assert.Equal(t, int32(1), calls.Load())
 	assert.Equal(t, int32(1), waits.Load())
 }
