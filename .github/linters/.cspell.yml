@@ -129,6 +129,7 @@ ignorePaths:
   - "**/holding-pen/**"
   - "**/redirect/**"
   - "**/presentation-pack/**"
+  - "**/.cspell.yml"
   - "**/pnpm-lock.yaml"
   - "**/.golangci.yml"
 
