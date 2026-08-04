@@ -27,6 +27,10 @@ import (
 )
 
 const (
+	// controlPlaneReadyPollInterval is how long to wait between readiness
+	// probes while the control plane is recovering.
+	controlPlaneReadyPollInterval = 5 * time.Second
+
 	// controlPlaneProbeTimeout bounds a single readiness probe so a hung
 	// kube-apiserver cannot consume the caller's entire retry budget in one
 	// request.
@@ -40,11 +44,6 @@ const (
 	// kube-apiserver is serving, so no separate /readyz probe is needed.
 	radiusAggregatedAPIPath = "/apis/api.ucp.dev/v1alpha3"
 )
-
-// controlPlaneReadyPollInterval is how long to wait between readiness probes
-// while the control plane is recovering. It is a variable so tests can shorten
-// it.
-var controlPlaneReadyPollInterval = 5 * time.Second
 
 // newControlPlaneReadyWaiter returns a function that blocks until the Radius
 // aggregated API is serving again, or until ctx is done.
@@ -68,14 +67,14 @@ func newControlPlaneReadyWaiter(t *testing.T, client k8s.Interface) func(context
 	}
 
 	return func(ctx context.Context) error {
-		return waitForControlPlaneReady(ctx, t, restClient)
+		return waitForControlPlaneReady(ctx, t, restClient, controlPlaneReadyPollInterval)
 	}
 }
 
 // waitForControlPlaneReady polls until the control plane is ready or ctx is
 // done. The error returned on timeout includes the last probe failure so the
 // test log records what was still unavailable.
-func waitForControlPlaneReady(ctx context.Context, t *testing.T, client rest.Interface) error {
+func waitForControlPlaneReady(ctx context.Context, t *testing.T, client rest.Interface, pollInterval time.Duration) error {
 	for {
 		lastErr := probe(ctx, client, radiusAggregatedAPIPath)
 		if lastErr == nil {
@@ -84,7 +83,7 @@ func waitForControlPlaneReady(ctx context.Context, t *testing.T, client rest.Int
 
 		t.Logf("waiting for the Radius control plane to become ready: %v", lastErr)
 
-		timer := time.NewTimer(controlPlaneReadyPollInterval)
+		timer := time.NewTimer(pollInterval)
 		select {
 		case <-timer.C:
 		case <-ctx.Done():

@@ -293,6 +293,33 @@ func Test_ExecuteWithRetry_BudgetBoundsTheReadinessWait(t *testing.T) {
 	assert.Less(t, time.Since(start), 5*time.Second)
 }
 
+func Test_EffectiveRetryBudget_CappedByTestDeadline(t *testing.T) {
+	t.Parallel()
+	deadline, ok := t.Deadline()
+	if !ok {
+		t.Skip("go test was run without -timeout, so there is no deadline to cap against")
+	}
+
+	// A budget far larger than the time the test binary has left must be cut
+	// down, so a broken cluster produces per-test failures rather than an
+	// opaque `go test -timeout` panic.
+	d := NewDeployExecutor("test.bicep")
+	d.RetryBudget = time.Hour
+
+	budget := d.effectiveRetryBudget(t)
+
+	assert.Less(t, budget, time.Until(deadline))
+	assert.Positive(t, budget)
+}
+
+func Test_EffectiveRetryBudget_UnchangedWhenItFitsTheDeadline(t *testing.T) {
+	t.Parallel()
+	d := NewDeployExecutor("test.bicep")
+	d.RetryBudget = time.Millisecond
+
+	assert.Equal(t, time.Millisecond, d.effectiveRetryBudget(t))
+}
+
 func Test_IsTransientImagePullError(t *testing.T) {
 	// imagePullError mirrors how rad surfaces a transient image pull failure:
 	// the ErrImagePull/timeout cause only appears inside a deeply nested

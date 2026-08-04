@@ -52,7 +52,7 @@ func Test_WaitForControlPlaneReady_ReturnsWhenAggregatedAPIServes(t *testing.T) 
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	require.NoError(t, waitForControlPlaneReady(context.Background(), t, client))
+	require.NoError(t, waitForControlPlaneReady(context.Background(), t, client, time.Millisecond))
 
 	// A single probe of the aggregated path is enough: it cannot succeed unless
 	// the kube-apiserver and its aggregation layer are both serving.
@@ -60,11 +60,7 @@ func Test_WaitForControlPlaneReady_ReturnsWhenAggregatedAPIServes(t *testing.T) 
 }
 
 func Test_WaitForControlPlaneReady_PollsUntilHealthy(t *testing.T) {
-	// Not parallel: this test shortens the package-level poll interval.
-	original := controlPlaneReadyPollInterval
-	controlPlaneReadyPollInterval = time.Millisecond
-	t.Cleanup(func() { controlPlaneReadyPollInterval = original })
-
+	t.Parallel()
 	var requests atomic.Int32
 	// The kube-apiserver can be up while the UCP APIService behind the
 	// aggregation layer is still unavailable, which surfaces as a 503. The gate
@@ -80,7 +76,7 @@ func Test_WaitForControlPlaneReady_PollsUntilHealthy(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	require.NoError(t, waitForControlPlaneReady(ctx, t, client))
+	require.NoError(t, waitForControlPlaneReady(ctx, t, client, time.Millisecond))
 	assert.Equal(t, int32(3), requests.Load())
 }
 
@@ -93,7 +89,7 @@ func Test_WaitForControlPlaneReady_ReportsLastProbeFailureOnTimeout(t *testing.T
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	err := waitForControlPlaneReady(ctx, t, client)
+	err := waitForControlPlaneReady(ctx, t, client, time.Millisecond)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.Contains(t, err.Error(), "last probe failure")

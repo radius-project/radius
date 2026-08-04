@@ -76,10 +76,11 @@ type DeployExecutor struct {
 const (
 	defaultTransientRetryDelay = 30 * time.Second
 
-	// defaultTransientRetryBudget is roughly three times the longest
-	// control-plane outage observed in CI (about 3.5 minutes between the first
-	// etcd request timeout and the kube-apiserver serving again).
-	defaultTransientRetryBudget = 10 * time.Minute
+	// defaultTransientRetryBudget covers the longest control-plane outage
+	// observed in CI (about 3.5 minutes between the first etcd request timeout
+	// and the kube-apiserver serving again) with a little margin. It is an upper
+	// bound: effectiveRetryBudget shortens it to fit the test binary's deadline.
+	defaultTransientRetryBudget = 5 * time.Minute
 )
 
 // transientImagePullErrorMarkers are substrings that indicate a container image
@@ -239,11 +240,16 @@ func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test
 // rather than on attempts that cannot succeed.
 func (d *DeployExecutor) executeWithRetry(ctx context.Context, t *testing.T, deployFunc func() error) error {
 	err := deployFunc()
-	if err == nil || d.ShouldRetry == nil || d.RetryBudget <= 0 {
+	if err == nil || d.ShouldRetry == nil {
 		return err
 	}
 
-	retryCtx, cancel := context.WithTimeout(ctx, d.RetryBudget)
+	budget := d.effectiveRetryBudget(t)
+	if budget <= 0 {
+		return err
+	}
+
+	retryCtx, cancel := context.WithTimeout(ctx, budget)
 	defer cancel()
 
 	for attempt := 1; d.ShouldRetry(err); attempt++ {
@@ -267,6 +273,34 @@ func (d *DeployExecutor) executeWithRetry(ctx context.Context, t *testing.T, dep
 	}
 
 	return err
+}
+
+// effectiveRetryBudget returns RetryBudget shortened so that retrying can never
+// run the test binary out of time.
+//
+// The budget is per deploy step, so a control plane that never recovers makes
+// every test pay it. The suites run in parallel batches - corerp-noncloud is 52
+// tests at -parallel 10 - and their `go test -timeout` is as low as 15 minutes
+// (FUNCTIONALTEST_TIMEOUT in functional-test-noncloud.yaml, versus 60 minutes
+// for the cloud suites). A fixed budget large enough to cover a multi-minute
+// outage in one suite would blow the deadline in another, replacing clear
+// per-test failures with an opaque panic and risking the loss of the
+// diagnostics collected on failure.
+//
+// Spending at most half the remaining time leaves each subsequent batch half of
+// what is left, so the deadline is approached but never reached, without
+// needing a per-suite constant.
+func (d *DeployExecutor) effectiveRetryBudget(t *testing.T) time.Duration {
+	deadline, ok := t.Deadline()
+	if !ok {
+		return d.RetryBudget
+	}
+
+	if half := time.Until(deadline) / 2; half < d.RetryBudget {
+		return half
+	}
+
+	return d.RetryBudget
 }
 
 // waitBeforeRetry waits out the retry delay and then blocks until the control
