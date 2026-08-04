@@ -281,7 +281,7 @@ func (d *DeployExecutor) executeWithRetry(ctx context.Context, t *testing.T, dep
 // The budget is per deploy step, so a control plane that never recovers makes
 // every test pay it. The suites run in parallel batches - corerp-noncloud is 52
 // tests at -parallel 10 - and their `go test -timeout` is as low as 15 minutes
-// (FUNCTIONALTEST_TIMEOUT in functional-test-noncloud.yaml, versus 60 minutes
+// (FUNCTIONALTEST_TIMEOUT in functional-test-noncloud.yaml, versus 30 minutes
 // for the cloud suites). A fixed budget large enough to cover a multi-minute
 // outage in one suite would blow the deadline in another, replacing clear
 // per-test failures with an opaque panic and risking the loss of the
