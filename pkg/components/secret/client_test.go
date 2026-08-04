@@ -51,11 +51,11 @@ func Test_SaveSecret(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			if tt.isSuccess {
 				mockSecretClient.EXPECT().
-					Save(t.Context(), testSecretName, gomock.Any()).
+					Save(ctx, testSecretName, gomock.Any()).
 					Return(nil).Times(1)
 			} else {
 				mockSecretClient.EXPECT().
-					Save(t.Context(), testSecretName, gomock.Any()).
+					Save(ctx, testSecretName, gomock.Any()).
 					Return(saveError).Times(1)
 			}
 			err := SaveSecret(ctx, tt.secretClient, testSecretName, tt.secret)
@@ -90,11 +90,11 @@ func Test_GetSecret(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			if tt.isSuccess {
 				mockSecretClient.EXPECT().
-					Get(t.Context(), testSecretName).
+					Get(ctx, testSecretName).
 					Return(testSecretResponse, nil).Times(1)
 			} else {
 				mockSecretClient.EXPECT().
-					Get(t.Context(), testSecretName).
+					Get(ctx, testSecretName).
 					Return(nil, getError).Times(1)
 			}
 			secretResponse, err := GetSecret[testSecretObject](ctx, tt.secretClient, testSecretName)
