@@ -619,7 +619,7 @@ func (ct RPTest) Test(t *testing.T) {
 				go func(r validation.RPResource) {
 					// Use a background context that won't be canceled when the test finishes
 					// Use silent deletion to avoid "Log in goroutine after test has completed" panics
-					bgCtx := context.Background()
+					bgCtx := context.Background() //nolint:usetesting
 					_ = validation.DeleteRPResourceSilent(bgCtx, cli, ct.Options.ManagementClient, r)
 					// Errors are ignored in fast cleanup mode since it's best-effort
 				}(resource)

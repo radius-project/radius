@@ -314,7 +314,7 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 	// 1. Fresh install with the PostgreSQL state backend.
 	installRadius(ctx, t, cli)
 	// Use a fresh context because t.Context() is cancelled before cleanup runs.
-	t.Cleanup(func() { uninstallRadius(context.Background(), t, cli) })
+	t.Cleanup(func() { uninstallRadius(context.Background(), t, cli) }) //nolint:usetesting
 
 	// Create the workspace and resource group the test deploys into (the shared CI "Install Radius"
 	// step is skipped for this leg, so the test owns this setup).

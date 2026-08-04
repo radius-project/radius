@@ -118,7 +118,7 @@ func TestOCIArchive_CommitReturnsTargetError(t *testing.T) {
 	session, err := archive.Open(t.Context(), "radius-state")
 	require.NoError(t, err)
 	// Use a fresh context because t.Context() is cancelled before cleanup runs.
-	t.Cleanup(func() { session.Close(context.Background()) })
+	t.Cleanup(func() { session.Close(context.Background()) }) //nolint:usetesting
 	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
 
 	err = session.Commit(t.Context(), "ignored message")
