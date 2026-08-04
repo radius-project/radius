@@ -90,7 +90,7 @@ func Test_RefreshCredentials_ServicePrincipal(t *testing.T) {
 		require.NoError(t, err)
 		p.fakeCredential.ServicePrincipal.ClientID = ""
 
-		err = c.refreshCredentials(context.TODO())
+		err = c.refreshCredentials(t.Context())
 		require.Error(t, err)
 	})
 
@@ -99,7 +99,7 @@ func Test_RefreshCredentials_ServicePrincipal(t *testing.T) {
 		c, err := NewUCPCredential(UCPCredentialOptions{Provider: p})
 		require.NoError(t, err)
 
-		err = c.refreshCredentials(context.TODO())
+		err = c.refreshCredentials(t.Context())
 		require.NoError(t, err)
 		require.False(t, c.isExpired())
 	})
@@ -109,7 +109,7 @@ func Test_RefreshCredentials_ServicePrincipal(t *testing.T) {
 		c, err := NewUCPCredential(UCPCredentialOptions{Provider: p})
 		require.NoError(t, err)
 
-		err = c.refreshCredentials(context.TODO())
+		err = c.refreshCredentials(t.Context())
 		require.NoError(t, err)
 
 		// reset next refresh time.
@@ -117,7 +117,7 @@ func Test_RefreshCredentials_ServicePrincipal(t *testing.T) {
 		require.True(t, c.isExpired())
 		old := c.tokenCred
 
-		err = c.refreshCredentials(context.TODO())
+		err = c.refreshCredentials(t.Context())
 		require.NoError(t, err)
 		require.False(t, c.isExpired())
 		require.Equal(t, old, c.tokenCred)
@@ -131,7 +131,7 @@ func Test_RefreshCredentials_WorkloadIdentity(t *testing.T) {
 		require.NoError(t, err)
 		p.fakeCredential.WorkloadIdentity.ClientID = ""
 
-		err = c.refreshCredentials(context.TODO())
+		err = c.refreshCredentials(t.Context())
 		require.Error(t, err)
 	})
 
@@ -140,7 +140,7 @@ func Test_RefreshCredentials_WorkloadIdentity(t *testing.T) {
 		c, err := NewUCPCredential(UCPCredentialOptions{Provider: p, TokenFilePath: "/var/run/secrets/azure/tokens/azure-identity-token"})
 		require.NoError(t, err)
 
-		err = c.refreshCredentials(context.TODO())
+		err = c.refreshCredentials(t.Context())
 		require.NoError(t, err)
 		require.False(t, c.isExpired())
 	})
@@ -150,7 +150,7 @@ func Test_RefreshCredentials_WorkloadIdentity(t *testing.T) {
 		c, err := NewUCPCredential(UCPCredentialOptions{Provider: p, TokenFilePath: "/var/run/secrets/azure/tokens/azure-identity-token"})
 		require.NoError(t, err)
 
-		err = c.refreshCredentials(context.TODO())
+		err = c.refreshCredentials(t.Context())
 		require.NoError(t, err)
 
 		// reset next refresh time.
@@ -158,7 +158,7 @@ func Test_RefreshCredentials_WorkloadIdentity(t *testing.T) {
 		require.True(t, c.isExpired())
 		old := c.tokenCred
 
-		err = c.refreshCredentials(context.TODO())
+		err = c.refreshCredentials(t.Context())
 		require.NoError(t, err)
 		require.False(t, c.isExpired())
 		require.Equal(t, old, c.tokenCred)

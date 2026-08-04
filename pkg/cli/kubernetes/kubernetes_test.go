@@ -17,7 +17,6 @@ limitations under the License.
 package kubernetes
 
 import (
-	"context"
 	"errors"
 	"os"
 	"testing"
@@ -43,7 +42,7 @@ func TestEnsureNamespace(t *testing.T) {
 		}
 	})
 
-	ctx := context.TODO()
+	ctx := t.Context()
 	err := EnsureNamespace(ctx, f, "radius-test")
 	require.NoError(t, err)
 	_, err = f.CoreV1().Namespaces().Get(ctx, "radius-test", meta_v1.GetOptions{})

@@ -17,7 +17,6 @@ limitations under the License.
 package git
 
 import (
-	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -330,9 +329,9 @@ func TestOpen_UnreachableRemoteFailsLoudly(t *testing.T) {
 	chdir(t, root)
 
 	branch := "radius-state-test"
-	_, err := NewGitArchive().Open(context.Background(), branch)
+	_, err := NewGitArchive().Open(t.Context(), branch)
 	require.Error(t, err, "Open must fail when the configured remote is unreachable")
-	require.False(t, branchExists(context.Background(), root, branch),
+	require.False(t, branchExists(t.Context(), root, branch),
 		"Open must not create a local branch when it cannot confirm remote state")
 }
 
@@ -347,7 +346,7 @@ func TestOpen_OutsideGitRepositoryReturnsError(t *testing.T) {
 	// A bare temp dir with no "git init" is not inside any repository.
 	chdir(t, t.TempDir())
 
-	_, err := NewGitArchive().Open(context.Background(), "radius-state-test")
+	_, err := NewGitArchive().Open(t.Context(), "radius-state-test")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to determine git repo root")
 }

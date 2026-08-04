@@ -17,7 +17,6 @@ limitations under the License.
 package show
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -121,7 +120,7 @@ func Test_Run(t *testing.T) {
 			ResourceTypeSuffix:        "testResources",
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -206,7 +205,7 @@ func Test_Run(t *testing.T) {
 			ResourceTypeSuffix:        "exampleResources",
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Equal(t, clierrors.Message("The resource type \"Applications.AnotherTest/exampleResources\" does not exist."), err)
 
@@ -238,7 +237,7 @@ func Test_Run(t *testing.T) {
 			ResourceTypeSuffix:        "anotherResources",
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Equal(t, clierrors.Message("The resource type \"Applications.Test/anotherResources\" does not exist."), err)
 

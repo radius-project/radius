@@ -99,7 +99,7 @@ func startInformers(ctx context.Context, clientSet *fake.Clientset) informers.Sh
 	informerFactory.Apps().V1().ReplicaSets().Informer()
 	informerFactory.Core().V1().Pods().Informer()
 
-	informerFactory.Start(context.Background().Done())
+	informerFactory.Start(ctx.Done())
 	informerFactory.WaitForCacheSync(ctx.Done())
 	return informerFactory
 }
@@ -307,10 +307,10 @@ func TestGetPodsInDeployment(t *testing.T) {
 	}
 
 	// Add the Pod object to the fake Kubernetes clientset
-	_, err := fakeClient.CoreV1().Pods(pod1.Namespace).Create(context.Background(), pod1, metav1.CreateOptions{})
+	_, err := fakeClient.CoreV1().Pods(pod1.Namespace).Create(t.Context(), pod1, metav1.CreateOptions{})
 	require.NoError(t, err, "Failed to create Pod: %v", err)
 
-	_, err = fakeClient.CoreV1().Pods(pod2.Namespace).Create(context.Background(), pod2, metav1.CreateOptions{})
+	_, err = fakeClient.CoreV1().Pods(pod2.Namespace).Create(t.Context(), pod2, metav1.CreateOptions{})
 	require.NoError(t, err, "Failed to create Pod: %v", err)
 
 	// Create a KubernetesHandler object with the fake clientset
@@ -389,15 +389,15 @@ func TestGetCurrentReplicaSetForDeployment(t *testing.T) {
 	}
 
 	// Add the ReplicaSet objects to the fake Kubernetes clientset
-	_, err := fakeClient.AppsV1().ReplicaSets(replicaSet1.Namespace).Create(context.Background(), replicaSet1, metav1.CreateOptions{})
+	_, err := fakeClient.AppsV1().ReplicaSets(replicaSet1.Namespace).Create(t.Context(), replicaSet1, metav1.CreateOptions{})
 	require.NoError(t, err)
-	_, err = fakeClient.AppsV1().ReplicaSets(replicaSet2.Namespace).Create(context.Background(), replicaSet2, metav1.CreateOptions{})
+	_, err = fakeClient.AppsV1().ReplicaSets(replicaSet2.Namespace).Create(t.Context(), replicaSet2, metav1.CreateOptions{})
 	require.NoError(t, err)
-	_, err = fakeClient.AppsV1().ReplicaSets(replicaSet2.Namespace).Create(context.Background(), replicaSet3, metav1.CreateOptions{})
+	_, err = fakeClient.AppsV1().ReplicaSets(replicaSet2.Namespace).Create(t.Context(), replicaSet3, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	// Add the Deployment object to the fake Kubernetes clientset
-	_, err = fakeClient.AppsV1().Deployments(deployment.Namespace).Create(context.Background(), deployment, metav1.CreateOptions{})
+	_, err = fakeClient.AppsV1().Deployments(deployment.Namespace).Create(t.Context(), deployment, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	// Create a KubernetesHandler object with the fake clientset
@@ -612,7 +612,7 @@ func TestCheckAllPodsReady_Success(t *testing.T) {
 			},
 		},
 	}
-	_, err = clientset.CoreV1().Pods("test-namespace").Create(context.Background(), pod, metav1.CreateOptions{})
+	_, err = clientset.CoreV1().Pods("test-namespace").Create(t.Context(), pod, metav1.CreateOptions{})
 	assert.NoError(t, err)
 
 	// Create an informer factory and add the deployment and replica set to the cache
@@ -679,7 +679,7 @@ func TestCheckAllPodsReady_Fail(t *testing.T) {
 			},
 		},
 	}
-	_, err = clientset.CoreV1().Pods(pod.Namespace).Create(context.Background(), pod, metav1.CreateOptions{})
+	_, err = clientset.CoreV1().Pods(pod.Namespace).Create(t.Context(), pod, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	// Create an informer factory and add the deployment and replica set to the cache

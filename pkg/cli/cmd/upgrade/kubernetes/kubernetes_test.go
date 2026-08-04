@@ -260,7 +260,7 @@ func TestRunner_Run(t *testing.T) {
 				SetFile:       tt.setFile,
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 
 			if tt.expectError {
 				assert.Error(t, err)

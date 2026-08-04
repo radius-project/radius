@@ -17,7 +17,6 @@ limitations under the License.
 package configloader
 
 import (
-	"context"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -545,7 +544,7 @@ func TestGetConfigurationV20250801(t *testing.T) {
 
 	for _, tc := range configTests {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := getConfigurationV20250801(context.Background(), tc.envResource, &arm.ClientOptions{})
+			result, err := getConfigurationV20250801(t.Context(), tc.envResource, &arm.ClientOptions{})
 			if tc.errString != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.errString)

@@ -17,7 +17,6 @@ limitations under the License.
 package handlers
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -124,7 +123,7 @@ func TestHTTPProxyWaiter_WaitUntilReadySkipsRouteChild(t *testing.T) {
 		},
 	})
 
-	err := httpProxyWaiter.waitUntilReady(context.Background(), httpProxy)
+	err := httpProxyWaiter.waitUntilReady(t.Context(), httpProxy)
 	require.NoError(t, err)
 }
 
@@ -155,7 +154,7 @@ func TestHTTPProxyWaiter_WaitUntilReadyTimeoutGetsNamespacedHTTPProxy(t *testing
 		httpProxyDeploymentTimeout: 50 * time.Millisecond,
 	}
 
-	err = httpProxyWaiter.waitUntilReady(context.Background(), httpProxy)
+	err = httpProxyWaiter.waitUntilReady(t.Context(), httpProxy)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "HTTP proxy deployment timed out, name: example.com, namespace default, status: still reconciling, reason: Waiting")
 	require.NotContains(t, err.Error(), "not found")
@@ -207,7 +206,7 @@ func TestCheckHTTPProxyStatus_ValidStatus(t *testing.T) {
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 
 	// call the function with the fake clientset, informer factory, logger, object, and done channel
-	go httpProxyWaiter.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, obj, doneCh)
+	go httpProxyWaiter.checkHTTPProxyStatus(t.Context(), dynamicInformerFactory, obj, doneCh)
 	err = <-doneCh
 	require.NoError(t, err)
 }
@@ -240,11 +239,11 @@ func TestCheckHTTPProxyStatus_ValidRootProxyWithOverriddenLabels(t *testing.T) {
 		dynamicClientSet: fakeClient,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	dynamicInformerFactory.Start(ctx.Done())
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 
-	status := httpProxyWaiter.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, httpProxy, doneCh)
+	status := httpProxyWaiter.checkHTTPProxyStatus(t.Context(), dynamicInformerFactory, httpProxy, doneCh)
 	err = <-doneCh
 	require.True(t, status)
 	require.NoError(t, err)
@@ -325,7 +324,7 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRootProxy(t *testing.T) {
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 
 	// call the function with the fake clientset, informer factory, logger, object, and done channel
-	go httpProxyWaiter.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, obj, doneCh)
+	go httpProxyWaiter.checkHTTPProxyStatus(t.Context(), dynamicInformerFactory, obj, doneCh)
 	err = <-doneCh
 	require.EqualError(t, err, "Error - Type: Valid, Status: False, Reason: RouteNotDefined, Message: HTTPProxy is invalid\n")
 }
@@ -369,11 +368,11 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRootProxyWithRoutes(t *testing.T) 
 		dynamicClientSet: fakeClient,
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	dynamicInformerFactory.Start(ctx.Done())
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 
-	status := httpProxyWaiter.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, httpProxy, doneCh)
+	status := httpProxyWaiter.checkHTTPProxyStatus(t.Context(), dynamicInformerFactory, httpProxy, doneCh)
 	err = <-doneCh
 	require.False(t, status)
 	require.EqualError(t, err, "Failed to deploy HTTP proxy. Description: root proxy is invalid")
@@ -459,7 +458,7 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRouteProxy(t *testing.T) {
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 
 	// call the function with the fake clientset, informer factory, logger, object, and done channel
-	go httpProxyWaiter.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, obj, doneCh)
+	go httpProxyWaiter.checkHTTPProxyStatus(t.Context(), dynamicInformerFactory, obj, doneCh)
 	err = <-doneCh
 	require.NoError(t, err)
 }
@@ -540,7 +539,7 @@ func TestCheckHTTPProxyStatus_WrongName(t *testing.T) {
 	dynamicInformerFactory.WaitForCacheSync(ctx.Done())
 
 	// call the function with the fake clientset, informer factory, logger, object, and done channel
-	status := httpProxyWaiter.checkHTTPProxyStatus(context.Background(), dynamicInformerFactory, obj, doneCh)
+	status := httpProxyWaiter.checkHTTPProxyStatus(t.Context(), dynamicInformerFactory, obj, doneCh)
 	require.False(t, status)
 }
 

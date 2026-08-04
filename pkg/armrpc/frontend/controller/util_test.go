@@ -18,7 +18,6 @@ package controller
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -49,7 +48,7 @@ func TestReadJSONBody(t *testing.T) {
 
 	for _, tc := range contentTypeTests {
 		t.Run(tc.contentType, func(t *testing.T) {
-			req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, "http://github.com", bytes.NewBuffer(tc.body))
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodPut, "http://github.com", bytes.NewBuffer(tc.body))
 			require.NoError(t, err)
 			req.Header.Set("Content-Type", tc.contentType)
 			// act
@@ -117,7 +116,7 @@ func TestValidateEtag_IfMatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			armRequestContext := v1.ARMRequestContextFromContext(
 				v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
+					t.Context(), &v1.ARMRequestContext{
 						IfMatch: tt.ifMatchEtag,
 					}))
 			result := ValidateETag(*armRequestContext, tt.etagProvided)
@@ -170,7 +169,7 @@ func TestValidateEtag_IfNoneMatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			armRequestContext := v1.ARMRequestContextFromContext(
 				v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
+					t.Context(), &v1.ARMRequestContext{
 						IfNoneMatch: tt.ifNoneMatchEtag,
 					}))
 			result := ValidateETag(*armRequestContext, tt.etagProvided)

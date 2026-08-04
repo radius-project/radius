@@ -604,7 +604,7 @@ func Test_Run(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:                    helmMock,
 			Output:                  outputMock,
@@ -675,7 +675,7 @@ func Test_Run(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:                    helmMock,
 			Output:                  outputMock,

@@ -57,7 +57,7 @@ func TestRunPortForward_ContextCanceledBeforeReadyReportsError(t *testing.T) {
 		},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	stopChan := make(chan struct{})
 	readyChan := make(chan struct{})
 	portChan := make(chan int)
@@ -105,7 +105,7 @@ func TestRunPortForward_ContextCanceledBeforePortReportsError(t *testing.T) {
 		},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	stopChan := make(chan struct{})
 	readyChan := make(chan struct{})
 	close(readyChan)
@@ -156,7 +156,7 @@ func TestRunPortForward_GetPortsErrorAfterContextCanceledReportsError(t *testing
 		},
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	stopChan := make(chan struct{})
 	readyChan := make(chan struct{})
 	close(readyChan)
@@ -206,7 +206,7 @@ func TestRunPortForward_ForwardPortsNilReportsError(t *testing.T) {
 	errorChan := make(chan error)
 	done := make(chan struct{})
 	go func() {
-		runPortForward(context.Background(), forwarder, stopChan, readyChan, portChan, errorChan)
+		runPortForward(t.Context(), forwarder, stopChan, readyChan, portChan, errorChan)
 		close(done)
 	}()
 
@@ -252,7 +252,7 @@ func TestRunPortForward_GetPortsErrorDoesNotBlockOnForwardResult(t *testing.T) {
 	errorChan := make(chan error)
 	done := make(chan struct{})
 	go func() {
-		runPortForward(context.Background(), forwarder, stopChan, readyChan, portChan, errorChan)
+		runPortForward(t.Context(), forwarder, stopChan, readyChan, portChan, errorChan)
 		close(done)
 	}()
 
@@ -297,7 +297,7 @@ func TestRunPortForward_ForwardsRuntimeError(t *testing.T) {
 	stopChan := make(chan struct{})
 	portChan := make(chan int)
 	errorChan := make(chan error)
-	go runPortForward(context.Background(), forwarder, stopChan, readyChan, portChan, errorChan)
+	go runPortForward(t.Context(), forwarder, stopChan, readyChan, portChan, errorChan)
 
 	select {
 	case port := <-portChan:

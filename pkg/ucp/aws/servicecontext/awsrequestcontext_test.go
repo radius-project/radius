@@ -17,7 +17,6 @@ limitations under the License.
 package servicecontext
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -29,7 +28,7 @@ import (
 )
 
 func TestFromContext(t *testing.T) {
-	req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
+	req, err := getTestHTTPRequest(t, "./testdata/armrpcheaders.json")
 	require.NoError(t, err)
 	serviceCtx, err := v1.FromARMRequest(req, "", v1.LocationGlobal)
 	require.NoError(t, err)
@@ -42,7 +41,7 @@ func TestFromContext(t *testing.T) {
 	require.Equal(t, "AWS::Kinesis::Stream", sCtx.ResourceTypeInAWSFormat())
 }
 
-func getTestHTTPRequest(headerFile string) (*http.Request, error) {
+func getTestHTTPRequest(t *testing.T, headerFile string) (*http.Request, error) {
 	jsonData, err := os.ReadFile(headerFile)
 	if err != nil {
 		return nil, err
@@ -53,7 +52,7 @@ func getTestHTTPRequest(headerFile string) (*http.Request, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, strings.ToLower(parsed["Referer"]), nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPut, strings.ToLower(parsed["Referer"]), nil)
 	if err != nil {
 		return nil, err
 	}

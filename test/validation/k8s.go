@@ -408,7 +408,7 @@ func listPodsWithRetries(t *testing.T, k8s *kubernetes.Clientset, labelset map[s
 	// Need to retry because of AKS error: https://github.com/radius-project/radius/issues/2484
 	retries := 3
 	for i := 1; i <= retries; i++ {
-		actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
+		actualPods, err := k8s.CoreV1().Pods(namespace).List(t.Context(), metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labelset).String(),
 		})
 		if err == nil {

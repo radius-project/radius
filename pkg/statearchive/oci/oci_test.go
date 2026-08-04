@@ -80,22 +80,22 @@ func TestOCIArchive_UsesOCIStorageForGraphs(t *testing.T) {
 			},
 		},
 	}
-	require.NoError(t, store.Save(context.Background(), key, graph, persistence.SaveOptions{}))
+	require.NoError(t, store.Save(t.Context(), key, graph, persistence.SaveOptions{}))
 
-	got, err := store.Load(context.Background(), key)
+	got, err := store.Load(t.Context(), key)
 	require.NoError(t, err)
 	require.Len(t, got.Resources, 1)
 	require.Equal(t, "frontend", *got.Resources[0].Name)
 
-	require.NoError(t, store.Delete(context.Background(), key))
-	_, err = store.Load(context.Background(), key)
+	require.NoError(t, store.Delete(t.Context(), key))
+	_, err = store.Load(t.Context(), key)
 	require.ErrorIs(t, err, persistence.ErrNotFound)
 }
 
 func TestOCIArchive_OpenRejectsEmptyName(t *testing.T) {
 	archive, _ := newTestArchive(t)
 
-	_, err := archive.Open(context.Background(), "")
+	_, err := archive.Open(t.Context(), "")
 	require.ErrorContains(t, err, "OCI archive name must not be empty")
 }
 
@@ -105,7 +105,7 @@ func TestOCIArchive_OpenReturnsTargetError(t *testing.T) {
 		return nil, errors.New("registry unavailable")
 	}
 
-	_, err := archive.Open(context.Background(), "radius-state")
+	_, err := archive.Open(t.Context(), "radius-state")
 	require.ErrorContains(t, err, "registry unavailable")
 }
 
@@ -115,12 +115,13 @@ func TestOCIArchive_CommitReturnsTargetError(t *testing.T) {
 		return failedPushTarget{}, nil
 	}
 
-	session, err := archive.Open(context.Background(), "radius-state")
+	session, err := archive.Open(t.Context(), "radius-state")
 	require.NoError(t, err)
+	// Use a fresh context because t.Context() is cancelled before cleanup runs.
 	t.Cleanup(func() { session.Close(context.Background()) })
 	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
 
-	err = session.Commit(context.Background(), "ignored message")
+	err = session.Commit(t.Context(), "ignored message")
 	require.ErrorContains(t, err, "push failed")
 }
 
@@ -435,7 +436,7 @@ func TestOCIArchive_OpenRemoteTargetConfiguresPlainHTTP(t *testing.T) {
 	t.Setenv("DOCKER_CONFIG", t.TempDir())
 	archive := NewOCIArchive(Options{Repository: "localhost:5000/radius-state", PlainHTTP: true})
 
-	target, err := archive.openRemoteTarget(context.Background())
+	target, err := archive.openRemoteTarget(t.Context())
 	require.NoError(t, err)
 	repository, ok := target.(*remote.Repository)
 	require.True(t, ok)
@@ -579,7 +580,7 @@ func pushTestManifest(t *testing.T, target oras.Target, manifest ocispec.Manifes
 
 	data, err := json.Marshal(manifest)
 	require.NoError(t, err)
-	desc, err := pushBlob(context.Background(), target, ocispec.MediaTypeImageManifest, data)
+	desc, err := pushBlob(t.Context(), target, ocispec.MediaTypeImageManifest, data)
 	require.NoError(t, err)
 	return desc
 }

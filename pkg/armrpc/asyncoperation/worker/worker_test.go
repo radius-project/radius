@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	manager "github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 
@@ -178,10 +178,10 @@ func TestIsDuplicated(t *testing.T) {
 	t.Run("updating status refreshed recently is duplicated", func(t *testing.T) {
 		sm.EXPECT().Get(gomock.Any(), rID, opID).Return(&manager.Status{
 			AsyncOperationStatus: v1.AsyncOperationStatus{Status: v1.ProvisioningStateUpdating},
-			LastUpdatedTime: time.Now().UTC().Add(-5 * time.Second),
+			LastUpdatedTime:      time.Now().UTC().Add(-5 * time.Second),
 		}, nil)
 
-		dup, err := worker.isDuplicated(context.Background(), resourceID, opID)
+		dup, err := worker.isDuplicated(t.Context(), resourceID, opID)
 		require.NoError(t, err)
 		require.True(t, dup)
 	})
@@ -189,10 +189,10 @@ func TestIsDuplicated(t *testing.T) {
 	t.Run("updating status older than dedup window is not duplicated", func(t *testing.T) {
 		sm.EXPECT().Get(gomock.Any(), rID, opID).Return(&manager.Status{
 			AsyncOperationStatus: v1.AsyncOperationStatus{Status: v1.ProvisioningStateUpdating},
-			LastUpdatedTime: time.Now().UTC().Add(-2 * time.Minute),
+			LastUpdatedTime:      time.Now().UTC().Add(-2 * time.Minute),
 		}, nil)
 
-		dup, err := worker.isDuplicated(context.Background(), resourceID, opID)
+		dup, err := worker.isDuplicated(t.Context(), resourceID, opID)
 		require.NoError(t, err)
 		require.False(t, dup)
 	})
@@ -200,10 +200,10 @@ func TestIsDuplicated(t *testing.T) {
 	t.Run("terminal status is duplicated", func(t *testing.T) {
 		sm.EXPECT().Get(gomock.Any(), rID, opID).Return(&manager.Status{
 			AsyncOperationStatus: v1.AsyncOperationStatus{Status: v1.ProvisioningStateFailed},
-			LastUpdatedTime: time.Now().UTC().Add(-10 * time.Minute),
+			LastUpdatedTime:      time.Now().UTC().Add(-10 * time.Minute),
 		}, nil)
 
-		dup, err := worker.isDuplicated(context.Background(), resourceID, opID)
+		dup, err := worker.isDuplicated(t.Context(), resourceID, opID)
 		require.NoError(t, err)
 		require.True(t, dup)
 	})

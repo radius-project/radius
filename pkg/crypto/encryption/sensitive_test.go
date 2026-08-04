@@ -17,7 +17,6 @@ limitations under the License.
 package encryption
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/schema"
@@ -56,7 +55,7 @@ func TestSensitiveDataHandler_EncryptDecrypt_SimpleField(t *testing.T) {
 	require.Equal(t, "admin", data["username"])
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"password"}, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, []string{"password"}, testResourceID)
 	require.NoError(t, err)
 
 	// Verify password is decrypted
@@ -95,7 +94,7 @@ func TestSensitiveDataHandler_EncryptDecrypt_NestedField(t *testing.T) {
 	require.True(t, apiKeyIsEncrypted)
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"credentials.password", "credentials.apiKey"}, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, []string{"credentials.password", "credentials.apiKey"}, testResourceID)
 	require.NoError(t, err)
 
 	creds = data["credentials"].(map[string]any)
@@ -134,7 +133,7 @@ func TestSensitiveDataHandler_EncryptDecrypt_ArrayWildcard(t *testing.T) {
 	}
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"secrets[*].value"}, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, []string{"secrets[*].value"}, testResourceID)
 	require.NoError(t, err)
 
 	secrets = data["secrets"].([]any)
@@ -172,7 +171,7 @@ func TestSensitiveDataHandler_EncryptDecrypt_MapWildcard(t *testing.T) {
 	}
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"config[*]"}, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, []string{"config[*]"}, testResourceID)
 	require.NoError(t, err)
 
 	config = data["config"].(map[string]any)
@@ -212,7 +211,7 @@ func TestSensitiveDataHandler_EncryptDecrypt_ObjectValue(t *testing.T) {
 	require.NotEmpty(t, encData["nonce"])
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"sensitiveConfig"}, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, []string{"sensitiveConfig"}, testResourceID)
 	require.NoError(t, err)
 
 	// Verify decrypted object
@@ -240,7 +239,7 @@ func TestSensitiveDataHandler_FieldNotFound(t *testing.T) {
 	require.NoError(t, err)
 
 	// Decrypting non-existent field should be skipped (no error)
-	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"password"}, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, []string{"password"}, testResourceID)
 	require.NoError(t, err)
 }
 
@@ -280,7 +279,7 @@ func TestSensitiveDataHandler_OptionalSensitiveFields(t *testing.T) {
 	require.False(t, hasCredentials, "credentials should not be added")
 
 	// Decrypt should also succeed
-	err = handler.DecryptSensitiveFields(context.Background(), data, sensitivePaths, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, sensitivePaths, testResourceID)
 	require.NoError(t, err)
 
 	// Verify decryption worked for the present field
@@ -397,7 +396,7 @@ func TestSensitiveDataHandler_RoundTrip_ComplexStructure(t *testing.T) {
 	require.Equal(t, "visible", data["config"].(map[string]any)["public_setting"])
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(context.Background(), data, sensitivePaths, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, sensitivePaths, testResourceID)
 	require.NoError(t, err)
 
 	// Verify values are restored
@@ -466,7 +465,7 @@ func TestSensitiveDataHandler_SpecificIndex(t *testing.T) {
 	require.True(t, isEncrypted)
 
 	// Decrypt
-	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"items[1].value"}, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, []string{"items[1].value"}, testResourceID)
 	require.NoError(t, err)
 
 	require.Equal(t, "secret", items[1].(map[string]any)["value"])
@@ -525,7 +524,7 @@ func TestSensitiveDataHandler_DecryptWithSchema_IntegerRestoration(t *testing.T)
 	require.True(t, isEncrypted)
 
 	// Decrypt WITH schema
-	err = handler.DecryptSensitiveFieldsWithSchema(context.Background(), data, sensitivePaths, testResourceID, schema)
+	err = handler.DecryptSensitiveFieldsWithSchema(t.Context(), data, sensitivePaths, testResourceID, schema)
 	require.NoError(t, err)
 
 	// Verify types are correctly restored
@@ -604,7 +603,7 @@ func TestSensitiveDataHandler_DecryptWithSchema_NestedObjects(t *testing.T) {
 	err = handler.EncryptSensitiveFields(data, sensitivePaths, testResourceID)
 	require.NoError(t, err)
 
-	err = handler.DecryptSensitiveFieldsWithSchema(context.Background(), data, sensitivePaths, testResourceID, schema)
+	err = handler.DecryptSensitiveFieldsWithSchema(t.Context(), data, sensitivePaths, testResourceID, schema)
 	require.NoError(t, err)
 
 	// Verify nested integers are restored
@@ -657,7 +656,7 @@ func TestSensitiveDataHandler_DecryptWithSchema_ArrayWithIntegers(t *testing.T) 
 	err = handler.EncryptSensitiveFields(data, sensitivePaths, testResourceID)
 	require.NoError(t, err)
 
-	err = handler.DecryptSensitiveFieldsWithSchema(context.Background(), data, sensitivePaths, testResourceID, schema)
+	err = handler.DecryptSensitiveFieldsWithSchema(t.Context(), data, sensitivePaths, testResourceID, schema)
 	require.NoError(t, err)
 
 	config := data["config"].(map[string]any)
@@ -690,7 +689,7 @@ func TestSensitiveDataHandler_DecryptWithoutSchema_NoTypeCoercion(t *testing.T) 
 	require.NoError(t, err)
 
 	// Decrypt WITHOUT schema
-	err = handler.DecryptSensitiveFields(context.Background(), data, sensitivePaths, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, sensitivePaths, testResourceID)
 	require.NoError(t, err)
 
 	config := data["sensitiveConfig"].(map[string]any)
@@ -940,7 +939,7 @@ func TestSensitiveDataHandler_DecryptWithADMismatch(t *testing.T) {
 
 	// Attempt to decrypt with a DIFFERENT resource ID — the AD hash will not match
 	// and ChaCha20-Poly1305 authentication will reject the ciphertext.
-	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"secret"}, attackerResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, []string{"secret"}, attackerResourceID)
 	require.Error(t, err, "decryption must fail when resource ID does not match")
 	require.ErrorIs(t, err, ErrFieldDecryptionFailed)
 
@@ -983,7 +982,7 @@ func TestSensitiveDataHandler_FullDecryptRedactWorkflow(t *testing.T) {
 	recipeProperties := deepCopyMap(dbProperties)
 
 	// Step 3: Decrypt the recipe copy — in-memory only
-	err = handler.DecryptSensitiveFields(context.Background(), recipeProperties, sensitivePaths, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), recipeProperties, sensitivePaths, testResourceID)
 	require.NoError(t, err)
 
 	// Verify recipe properties have the decrypted plaintext values
@@ -1034,7 +1033,7 @@ func TestSensitiveDataHandler_DecryptNonEncryptedMap(t *testing.T) {
 	}
 
 	// Attempt to decrypt a map that was never encrypted — should pass through
-	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"config"}, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, []string{"config"}, testResourceID)
 	require.NoError(t, err)
 
 	config := data["config"].(map[string]any)
@@ -1068,7 +1067,7 @@ func TestSensitiveDataHandler_EncryptDecrypt_BareIntegerField(t *testing.T) {
 	require.Equal(t, "test-resource", data["name"])
 
 	// Decrypt — without schema, JSON unmarshals integers as float64
-	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"secretPort"}, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, []string{"secretPort"}, testResourceID)
 	require.NoError(t, err)
 
 	// Standard JSON behavior: integers become float64 without schema
@@ -1092,7 +1091,7 @@ func TestSensitiveDataHandler_EncryptDecrypt_BareBooleanField(t *testing.T) {
 	_, isEncrypted := data["secretFlag"].(map[string]any)
 	require.True(t, isEncrypted, "secretFlag should be encrypted")
 
-	err = handler.DecryptSensitiveFields(context.Background(), data, []string{"secretFlag"}, testResourceID)
+	err = handler.DecryptSensitiveFields(t.Context(), data, []string{"secretFlag"}, testResourceID)
 	require.NoError(t, err)
 
 	require.Equal(t, true, data["secretFlag"])

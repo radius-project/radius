@@ -17,7 +17,6 @@ limitations under the License.
 package applications
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -258,7 +257,7 @@ func Test_getAPIVersionForResourceType_Validation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// For validation tests, we just need to check the parsing logic
 			// We'll use a nil clientOptions since validation happens first
-			_, err := getAPIVersionForResourceType(context.Background(), tt.resourceType, nil)
+			_, err := getAPIVersionForResourceType(t.Context(), tt.resourceType, nil)
 
 			// Verify results
 			require.Error(t, err)
@@ -749,7 +748,7 @@ func Test_azureTenantID(t *testing.T) {
 				},
 			}
 
-			got := azureTenantID(context.Background(), opts)
+			got := azureTenantID(t.Context(), opts)
 			require.Equal(t, tt.want, got)
 		})
 	}

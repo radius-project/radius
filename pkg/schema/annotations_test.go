@@ -575,7 +575,7 @@ func TestGetSensitiveFieldPaths_InvalidResourceID(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = GetSensitiveFieldPaths(
-		context.Background(),
+		t.Context(),
 		clientFactory,
 		"invalid-resource-id",
 		"Foo.Bar/myResources",

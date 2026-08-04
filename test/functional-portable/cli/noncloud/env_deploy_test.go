@@ -52,12 +52,12 @@ func Test_DeployEnvironmentTemplate(t *testing.T) {
 
 	// Ensure cleanup even if test fails
 	t.Cleanup(func() {
-		deleteKubernetesNamespace(context.Background(), t, options, envNamespace)
+		deleteKubernetesNamespace(t.Context(), t, options, envNamespace)
 	})
 	t.Cleanup(func() {
 		// Try to delete the test group if it still exists
 		// Ignore errors as the group might have been successfully deleted
-		_ = cli.GroupDelete(context.Background(), uniqueGroupName, radcli.DeleteOptions{Confirm: true})
+		_ = cli.GroupDelete(t.Context(), uniqueGroupName, radcli.DeleteOptions{Confirm: true})
 	})
 
 	// Create the unique resource group

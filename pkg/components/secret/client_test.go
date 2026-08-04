@@ -17,7 +17,6 @@ limitations under the License.
 package secret
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -52,11 +51,11 @@ func Test_SaveSecret(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			if tt.isSuccess {
 				mockSecretClient.EXPECT().
-					Save(context.Background(), testSecretName, gomock.Any()).
+					Save(t.Context(), testSecretName, gomock.Any()).
 					Return(nil).Times(1)
 			} else {
 				mockSecretClient.EXPECT().
-					Save(context.Background(), testSecretName, gomock.Any()).
+					Save(t.Context(), testSecretName, gomock.Any()).
 					Return(saveError).Times(1)
 			}
 			err := SaveSecret(ctx, tt.secretClient, testSecretName, tt.secret)
@@ -91,11 +90,11 @@ func Test_GetSecret(t *testing.T) {
 		t.Run(tt.testName, func(t *testing.T) {
 			if tt.isSuccess {
 				mockSecretClient.EXPECT().
-					Get(context.Background(), testSecretName).
+					Get(t.Context(), testSecretName).
 					Return(testSecretResponse, nil).Times(1)
 			} else {
 				mockSecretClient.EXPECT().
-					Get(context.Background(), testSecretName).
+					Get(t.Context(), testSecretName).
 					Return(nil, getError).Times(1)
 			}
 			secretResponse, err := GetSecret[testSecretObject](ctx, tt.secretClient, testSecretName)

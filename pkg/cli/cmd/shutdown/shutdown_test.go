@@ -129,7 +129,7 @@ func Test_Run_BacksUpBothStoresAndCommits(t *testing.T) {
 	r, session, stateDir := newTestRunner(t, ctrl, client)
 	session.EXPECT().Commit(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.NoError(t, err)
 
 	require.True(t, client.dbCalled, "databases should be backed up")
@@ -146,7 +146,7 @@ func Test_Run_DatabaseBackupFailureStopsBeforeCommit(t *testing.T) {
 	// deferred session.Close is still expected (verified by the mock at ctrl.Finish).
 	r, _, _ := newTestRunner(t, ctrl, client)
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.ErrorContains(t, err, "pg_dump boom")
 	require.False(t, client.tfCalled, "terraform backup should not run after database failure")
 }
@@ -159,7 +159,7 @@ func Test_Run_CommitFailureIsReturned(t *testing.T) {
 	r, session, _ := newTestRunner(t, ctrl, client)
 	session.EXPECT().Commit(gomock.Any(), gomock.Any()).Return(errors.New("push rejected")).Times(1)
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.ErrorContains(t, err, "push rejected")
 }
 
@@ -180,7 +180,7 @@ func Test_Run_ArchiveOpenFailureIsReturned(t *testing.T) {
 		Archive:     archive,
 	}
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.ErrorContains(t, err, "failed to open state archive")
 	require.ErrorContains(t, err, "not a git repo")
 	require.False(t, client.dbCalled, "no backup should run when the archive cannot be opened")

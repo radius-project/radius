@@ -315,7 +315,7 @@ func TestGetRecipeMetadataFromRegistry_ConfiguredParameterValuesAppearedInRespon
 
 	controller := ctl.(*GetRecipeMetadata)
 	result, err := controller.GetRecipeMetadataFromRegistry(
-		context.Background(),
+		t.Context(),
 		recipeProperties,
 		recipeDataModel,
 		"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/applications.core/environments/env0",

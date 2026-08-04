@@ -17,6 +17,7 @@ limitations under the License.
 package handlers
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -125,7 +126,7 @@ func TestPut(t *testing.T) {
 }
 
 func TestPut_ContourHTTPProxyRouteChildSkipsWait(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	httpProxy := &contourv1.HTTPProxy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: contourv1.SchemeGroupVersion.String(),
@@ -174,7 +175,7 @@ func TestPut_ContourHTTPProxyRouteChildSkipsWait(t *testing.T) {
 }
 
 func TestPut_ContourHTTPProxyRootWaits(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	httpProxy := &contourv1.HTTPProxy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: contourv1.SchemeGroupVersion.String(),
@@ -222,7 +223,7 @@ func TestPut_ContourHTTPProxyRootWaits(t *testing.T) {
 }
 
 func TestPut_NonContourHTTPProxyBypassesWaiter(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	httpProxy := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": "networking.example.com/v1",

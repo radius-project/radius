@@ -89,7 +89,7 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	updateRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodPost, ucp.BaseURL()+testProxyRequestAWSCollectionPath+"/:put", body)
+	updateRequest, err := rpctest.NewHTTPRequestWithContent(t.Context(), http.MethodPost, ucp.BaseURL()+testProxyRequestAWSCollectionPath+"/:put", body)
 	require.NoError(t, err, "update request failed")
 
 	ctx := rpctest.NewARMRequestContext(updateRequest)

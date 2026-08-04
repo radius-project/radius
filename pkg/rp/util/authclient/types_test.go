@@ -17,7 +17,6 @@ limitations under the License.
 package authclient
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -87,8 +86,8 @@ func Test_getRegistryAuthClient(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, tc.expNewAuthClient, newClient)
 		mClient := NewMockAuthClient(ctrl)
-		mClient.EXPECT().GetAuthClient(context.Background(), templatePath).Times(1).Return(tc.expAuthClient, nil)
-		ac, err := mClient.GetAuthClient(context.Background(), tc.templatePath)
+		mClient.EXPECT().GetAuthClient(t.Context(), templatePath).Times(1).Return(tc.expAuthClient, nil)
+		ac, err := mClient.GetAuthClient(t.Context(), tc.templatePath)
 		require.NoError(t, err)
 		require.Equal(t, ac, tc.expAuthClient)
 	}

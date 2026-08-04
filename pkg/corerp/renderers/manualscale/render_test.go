@@ -68,7 +68,7 @@ func Test_Render_Success(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(t.Context(), resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 
@@ -90,7 +90,7 @@ func Test_Render_CanSpecifyZero(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(t.Context(), resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 
@@ -115,7 +115,7 @@ func Test_Render_NoExtension(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(t.Context(), resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
 

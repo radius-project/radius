@@ -197,7 +197,7 @@ func Test_Run(t *testing.T) {
 				Output:                  outputSink,
 			}
 
-			err = runner.Run(context.Background())
+			err = runner.Run(t.Context())
 			require.NoError(t, err)
 			require.Equal(t, tc.expectedOutput, outputSink.Writes)
 		})
@@ -290,7 +290,7 @@ func Test_Run_RecipeSortOrder(t *testing.T) {
 		Output:                  outputSink,
 	}
 
-	err = runner.Run(context.Background())
+	err = runner.Run(t.Context())
 	require.NoError(t, err)
 
 	// Verify the recipes are sorted by RecipePack first, then by ResourceType

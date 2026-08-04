@@ -17,7 +17,6 @@ limitations under the License.
 package preflight
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -171,7 +170,7 @@ func TestKubernetesResourceCheck_EstimatedUsage(t *testing.T) {
 func TestKubernetesResourceCheck_NoClientset(t *testing.T) {
 	check := NewKubernetesResourceCheck("nonexistent-context")
 
-	pass, _, err := check.Run(context.Background())
+	pass, _, err := check.Run(t.Context())
 
 	require.Error(t, err)
 	assert.False(t, pass)
