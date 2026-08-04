@@ -33,7 +33,7 @@ import (
 func Test_ExecuteWithRetry_SucceedsOnFirstAttempt(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(error) bool { return true })
+	d := NewDeployExecutor("test.bicep").WithRetry(time.Second, 10*time.Millisecond, func(error) bool { return true })
 
 	err := d.executeWithRetry(context.Background(), t, func() error {
 		calls.Add(1)
@@ -48,7 +48,7 @@ func Test_ExecuteWithRetry_RetriesOnTransientThenSucceeds(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
 	transientErr := errors.New("ManagedServiceIdentityNotFound")
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(err error) bool {
+	d := NewDeployExecutor("test.bicep").WithRetry(time.Second, 10*time.Millisecond, func(err error) bool {
 		return err.Error() == "ManagedServiceIdentityNotFound"
 	})
 
@@ -67,7 +67,7 @@ func Test_ExecuteWithRetry_RetriesOnTransientThenSucceeds(t *testing.T) {
 func Test_ExecuteWithRetry_DoesNotRetryNonTransientError(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(err error) bool {
+	d := NewDeployExecutor("test.bicep").WithRetry(time.Second, 10*time.Millisecond, func(err error) bool {
 		return err.Error() == "transient"
 	})
 
@@ -81,10 +81,10 @@ func Test_ExecuteWithRetry_DoesNotRetryNonTransientError(t *testing.T) {
 	assert.Equal(t, int32(1), calls.Load())
 }
 
-func Test_ExecuteWithRetry_ExhaustsAllRetries(t *testing.T) {
+func Test_ExecuteWithRetry_StopsWhenBudgetIsExhausted(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(error) bool { return true })
+	d := NewDeployExecutor("test.bicep").WithRetry(50*time.Millisecond, 10*time.Millisecond, func(error) bool { return true })
 
 	err := d.executeWithRetry(context.Background(), t, func() error {
 		calls.Add(1)
@@ -93,7 +93,9 @@ func Test_ExecuteWithRetry_ExhaustsAllRetries(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Equal(t, "always fails", err.Error())
-	assert.Equal(t, int32(3), calls.Load()) // 1 initial + 2 retries
+	// The initial attempt plus at least one retry, and the loop must have
+	// stopped once the budget elapsed rather than run forever.
+	assert.Greater(t, calls.Load(), int32(1))
 }
 
 func Test_ExecuteWithRetry_DefaultDoesNotRetryNonTransientError(t *testing.T) {
@@ -158,7 +160,7 @@ func Test_ExecuteWithRetry_ContextCancelledDuringDelay(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
 	ctx, cancel := context.WithCancel(context.Background())
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 5*time.Second, func(error) bool { return true })
+	d := NewDeployExecutor("test.bicep").WithRetry(time.Minute, 5*time.Second, func(error) bool { return true })
 
 	// Cancel context immediately after first deploy attempt
 	err := d.executeWithRetry(ctx, t, func() error {
@@ -179,7 +181,6 @@ func Test_ExecuteWithRetry_NilShouldRetryDisablesRetries(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
 	d := NewDeployExecutor("test.bicep")
-	d.MaxRetries = 3
 	d.ShouldRetry = nil // nil predicate
 
 	err := d.executeWithRetry(context.Background(), t, func() error {
@@ -208,29 +209,6 @@ func Test_ExecuteWithRetry_ZeroBudgetDisablesRetries(t *testing.T) {
 	assert.Equal(t, int32(1), calls.Load())
 }
 
-func Test_ExecuteWithRetry_UncappedAttemptsBoundedByBudget(t *testing.T) {
-	t.Parallel()
-	var calls atomic.Int32
-	// MaxRetries is zero, so only the budget bounds the loop. A short budget
-	// with no delay still terminates.
-	d := NewDeployExecutor("test.bicep")
-	d.MaxRetries = 0
-	d.RetryDelay = time.Millisecond
-	d.RetryBudget = 50 * time.Millisecond
-	d.ShouldRetry = func(error) bool { return true }
-
-	err := d.executeWithRetry(context.Background(), t, func() error {
-		calls.Add(1)
-		return errors.New("always fails")
-	})
-
-	require.Error(t, err)
-	assert.Equal(t, "always fails", err.Error())
-	// The initial attempt plus at least one retry, and the loop must have
-	// stopped rather than run forever.
-	assert.Greater(t, calls.Load(), int32(1))
-}
-
 func Test_ExecuteWithRetry_WaitsForControlPlaneBeforeRetrying(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
@@ -241,7 +219,7 @@ func Test_ExecuteWithRetry_WaitsForControlPlaneBeforeRetrying(t *testing.T) {
 	d.ShouldRetry = func(error) bool { return true }
 	// The gate stands in for a control plane that is down for the first two
 	// probes: the retry must not be attempted until it reports ready.
-	d.WaitForReady = func(ctx context.Context) error {
+	d.waitForReady = func(ctx context.Context) error {
 		if waits.Add(1) < 3 {
 			return errors.New("kube-apiserver is not ready")
 		}
@@ -271,7 +249,7 @@ func Test_ExecuteWithRetry_RetriesOnceControlPlaneIsReady(t *testing.T) {
 	d := NewDeployExecutor("test.bicep")
 	d.RetryDelay = time.Millisecond
 	d.ShouldRetry = func(error) bool { return true }
-	d.WaitForReady = func(ctx context.Context) error {
+	d.waitForReady = func(ctx context.Context) error {
 		waits.Add(1)
 		return nil
 	}
@@ -298,7 +276,7 @@ func Test_ExecuteWithRetry_BudgetBoundsTheReadinessWait(t *testing.T) {
 	d.RetryBudget = 50 * time.Millisecond
 	d.ShouldRetry = func(error) bool { return true }
 	// A control plane that never recovers must not block past the budget.
-	d.WaitForReady = func(ctx context.Context) error {
+	d.waitForReady = func(ctx context.Context) error {
 		<-ctx.Done()
 		return ctx.Err()
 	}

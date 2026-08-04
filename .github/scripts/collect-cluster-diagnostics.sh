@@ -76,7 +76,11 @@ collect_pod_state() {
     # the YAML dump adds the machine-readable lastState/exitCode fields.
     capture "${OUTPUT_DIR}/${PREFIX}-pod-states.log" kubectl get pods -A -o wide
     capture "${OUTPUT_DIR}/${PREFIX}-pod-states.log" kubectl describe pods -A
-    capture "${OUTPUT_DIR}/${PREFIX}-pods.yaml" kubectl get pods -A -o yaml
+
+    # Written raw, with no headers, so the file stays parseable by a YAML
+    # reader. Failures land in the pod-states log above, so a broken dump here
+    # only means an absent or empty file.
+    kubectl get pods -A -o yaml >"${OUTPUT_DIR}/${PREFIX}-pods.yaml" 2>/dev/null || true
 }
 
 collect_events() {
@@ -96,6 +100,7 @@ collect_control_plane_health() {
     capture "${output_file}" kubectl get --raw "/readyz?verbose"
     capture "${output_file}" kubectl get apiservices -o wide
 }
+
 
 # collect_kube_system_logs writes the current and previous logs of every
 # kube-system container. Timestamps are included so the logs can be correlated

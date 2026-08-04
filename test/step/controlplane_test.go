@@ -44,7 +44,7 @@ func newTestRESTClient(t *testing.T, handler http.Handler) rest.Interface {
 	return client.Discovery().RESTClient()
 }
 
-func Test_CheckControlPlaneReady_ReadyWhenBothProbesSucceed(t *testing.T) {
+func Test_WaitForControlPlaneReady_ReturnsWhenAggregatedAPIServes(t *testing.T) {
 	t.Parallel()
 	var paths []string
 	client := newTestRESTClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -52,47 +52,26 @@ func Test_CheckControlPlaneReady_ReadyWhenBothProbesSucceed(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	require.NoError(t, checkControlPlaneReady(context.Background(), client))
-	assert.Equal(t, []string{"/readyz", radiusAggregatedAPIPath}, paths)
+	require.NoError(t, waitForControlPlaneReady(context.Background(), t, client))
+
+	// A single probe of the aggregated path is enough: it cannot succeed unless
+	// the kube-apiserver and its aggregation layer are both serving.
+	assert.Equal(t, []string{radiusAggregatedAPIPath}, paths)
 }
 
-func Test_CheckControlPlaneReady_NotReadyWhenAPIServerIsUnhealthy(t *testing.T) {
-	t.Parallel()
-	client := newTestRESTClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
+func Test_WaitForControlPlaneReady_PollsUntilHealthy(t *testing.T) {
+	// Not parallel: this test shortens the package-level poll interval.
+	original := controlPlaneReadyPollInterval
+	controlPlaneReadyPollInterval = time.Millisecond
+	t.Cleanup(func() { controlPlaneReadyPollInterval = original })
 
-	err := checkControlPlaneReady(context.Background(), client)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "kube-apiserver is not ready")
-}
-
-func Test_CheckControlPlaneReady_NotReadyWhenAggregatedAPIIsUnavailable(t *testing.T) {
-	t.Parallel()
-	// The kube-apiserver can be healthy while the UCP APIService behind the
-	// aggregation layer is still unavailable, which the apiserver reports as a
-	// 503. Retrying a deployment in that window cannot succeed.
-	client := newTestRESTClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == radiusAggregatedAPIPath {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-	}))
-
-	err := checkControlPlaneReady(context.Background(), client)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "the Radius aggregated API is not reachable")
-}
-
-func Test_WaitForControlPlaneReady_ReturnsOnceHealthy(t *testing.T) {
-	t.Parallel()
 	var requests atomic.Int32
+	// The kube-apiserver can be up while the UCP APIService behind the
+	// aggregation layer is still unavailable, which surfaces as a 503. The gate
+	// must keep polling rather than let a retry proceed in that window.
 	client := newTestRESTClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Fail the first /readyz probe so the wait loop has to poll at least
-		// twice before succeeding.
-		if r.URL.Path == "/readyz" && requests.Add(1) == 1 {
-			w.WriteHeader(http.StatusInternalServerError)
+		if requests.Add(1) < 3 {
+			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -102,7 +81,7 @@ func Test_WaitForControlPlaneReady_ReturnsOnceHealthy(t *testing.T) {
 	defer cancel()
 
 	require.NoError(t, waitForControlPlaneReady(ctx, t, client))
-	assert.Greater(t, requests.Load(), int32(1))
+	assert.Equal(t, int32(3), requests.Load())
 }
 
 func Test_WaitForControlPlaneReady_ReportsLastProbeFailureOnTimeout(t *testing.T) {
@@ -117,7 +96,7 @@ func Test_WaitForControlPlaneReady_ReportsLastProbeFailureOnTimeout(t *testing.T
 	err := waitForControlPlaneReady(ctx, t, client)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
-	assert.Contains(t, err.Error(), "kube-apiserver is not ready")
+	assert.Contains(t, err.Error(), "last probe failure")
 }
 
 func Test_NewControlPlaneReadyWaiter_NilClientDisablesGate(t *testing.T) {
