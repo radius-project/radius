@@ -318,7 +318,11 @@ func (d *DeployExecutor) waitBeforeRetry(ctx context.Context, t *testing.T) erro
 	}
 
 	if d.waitForReady == nil {
-		return nil
+		// ctx.Err() is nil while budget remains. Returning it rather than a
+		// bare nil matters when RetryDelay is also zero: with neither a delay
+		// nor a readiness gate to block on, nothing else would consult the
+		// deadline and the loop would keep starting attempts past the budget.
+		return ctx.Err()
 	}
 
 	return d.waitForReady(ctx)

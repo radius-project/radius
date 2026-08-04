@@ -319,6 +319,35 @@ func Test_EffectiveRetryBudget_UnchangedWhenItFitsTheDeadline(t *testing.T) {
 	assert.Equal(t, time.Millisecond, d.effectiveRetryBudget(t))
 }
 
+func Test_ExecuteWithRetry_BudgetBoundsRetriesWithoutDelayOrReadinessGate(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+
+	// With neither a retry delay nor a readiness gate, the budget is the only
+	// thing that can stop the loop, so waitBeforeRetry has to consult it on
+	// that path too. Without this the loop runs until the parent context or the
+	// test binary's timeout, not the budget.
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = 0
+	d.RetryBudget = 20 * time.Millisecond
+	d.ShouldRetry = func(error) bool { return true }
+	d.waitForReady = nil
+
+	start := time.Now()
+	err := d.executeWithRetry(context.Background(), t, func() error {
+		calls.Add(1)
+		// Keeps the attempt count (and the log volume) bounded while the
+		// budget elapses.
+		time.Sleep(5 * time.Millisecond)
+		return errors.New("connection reset by peer")
+	})
+
+	require.Error(t, err)
+	assert.Equal(t, "connection reset by peer", err.Error())
+	assert.Less(t, time.Since(start), 5*time.Second)
+	assert.Greater(t, calls.Load(), int32(1))
+}
+
 func Test_IsTransientImagePullError(t *testing.T) {
 	// imagePullError mirrors how rad surfaces a transient image pull failure:
 	// the ErrImagePull/timeout cause only appears inside a deeply nested
