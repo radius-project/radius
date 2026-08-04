@@ -233,7 +233,8 @@ jobs:
 
           pending='{}'
           if [ -n "${head_sha}" ] && [ -n "$(
-            gh pr list --repo "${GITHUB_REPOSITORY}" --head "${PR_BRANCH}" \
+            gh pr list --repo "${GITHUB_REPOSITORY}" \
+              --head "${GITHUB_REPOSITORY%%/*}:${PR_BRANCH}" \
               --state open --json number --jq '.[].number'
           )" ]; then
             git fetch origin "${PR_BRANCH}"
