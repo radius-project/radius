@@ -38,8 +38,10 @@ using OpenAPI;
 namespace Applications.Core;
 
 @doc("The environment resource")
-model EnvironmentResource
-  is TrackedResourceRequired<EnvironmentProperties, "environments"> {
+model EnvironmentResource is TrackedResourceRequired<
+  EnvironmentProperties,
+  "environments"
+> {
   @doc("environment name")
   @key("environmentName")
   @path
