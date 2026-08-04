@@ -1049,23 +1049,20 @@ jobs:
           result_directory: dist/functional_test/
           comment_mode: failures
 
-      - name: Collect Pod details
+      - name: Collect cluster diagnostics
         if: always()
-        # Diagnostic-only snapshot of cluster-wide pod state for post-mortem. A
-        # `kubectl describe pods -A` can race pod teardown and return a transient
-        # NotFound, so never let it fail the job.
+        # Diagnostic-only snapshot for post-mortem: pod state (including the
+        # previous container instance's termination reason), events, node
+        # conditions, control-plane health, and kube-system container logs.
+        # These commands can race cluster teardown and return a transient
+        # NotFound, so never let them fail the job.
         continue-on-error: true
         env:
           MATRIX_NAME: ${{ matrix.name }}
         run: |
-          POD_STATE_LOG_FILENAME="${RADIUS_CONTAINER_LOG_BASE}/${MATRIX_NAME}-tests-pod-states.log"
-          mkdir -p "$(dirname "${POD_STATE_LOG_FILENAME}")"
-          {
-            echo "kubectl get pods -A"
-            kubectl get pods -A
-            echo "kubectl describe pods -A"
-            kubectl describe pods -A
-          } >> "${POD_STATE_LOG_FILENAME}"
+          ./.github/scripts/collect-cluster-diagnostics.sh \
+            --output-dir "${RADIUS_CONTAINER_LOG_BASE}" \
+            --prefix "${MATRIX_NAME}-tests"
 
       - name: Upload container logs
         if: always()
