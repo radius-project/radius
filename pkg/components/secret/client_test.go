@@ -34,7 +34,6 @@ func Test_SaveSecret(t *testing.T) {
 	defer mctrl.Finish()
 
 	mockSecretClient := NewMockClient(mctrl)
-	ctx := t.Context()
 	azureSecret, err := newTestAzureSecret()
 	require.NoError(t, err)
 	saveError := errors.New("Failed to Save Secret")
@@ -49,6 +48,7 @@ func Test_SaveSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
+			ctx := t.Context()
 			if tt.isSuccess {
 				mockSecretClient.EXPECT().
 					Save(ctx, testSecretName, gomock.Any()).
@@ -73,7 +73,6 @@ func Test_GetSecret(t *testing.T) {
 	defer mctrl.Finish()
 
 	mockSecretClient := NewMockClient(mctrl)
-	ctx := t.Context()
 
 	testSecretResponse, err := newTestAzureSecretResponse()
 	getError := errors.New("Failed to Save Secret")
@@ -88,6 +87,7 @@ func Test_GetSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
+			ctx := t.Context()
 			if tt.isSuccess {
 				mockSecretClient.EXPECT().
 					Get(ctx, testSecretName).

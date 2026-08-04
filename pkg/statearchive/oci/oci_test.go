@@ -32,6 +32,7 @@ import (
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/persistence"
 	graphstore "github.com/radius-project/radius/pkg/graph/persistence/git"
+	"github.com/radius-project/radius/pkg/statearchive"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 	"oras.land/oras-go/v2"
@@ -55,7 +56,7 @@ func TestOCIArchive_CommitRoundTrip(t *testing.T) {
 
 	session, err = archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 
 	data, err := os.ReadFile(filepath.Join(session.Path(), "nested", "state.txt"))
 	require.NoError(t, err)
@@ -117,8 +118,7 @@ func TestOCIArchive_CommitReturnsTargetError(t *testing.T) {
 
 	session, err := archive.Open(t.Context(), "radius-state")
 	require.NoError(t, err)
-	// Use a fresh context because t.Context() is cancelled before cleanup runs.
-	t.Cleanup(func() { session.Close(context.Background()) }) //nolint:usetesting
+	closeOnCleanup(t, session)
 	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
 
 	err = session.Commit(t.Context(), "ignored message")
@@ -146,7 +146,7 @@ func TestOCIArchive_CommitEnforcesGHCRVisibility(t *testing.T) {
 			ctx := t.Context()
 			session, err := archive.Open(ctx, "radius-state")
 			require.NoError(t, err)
-			t.Cleanup(func() { session.Close(ctx) })
+			closeOnCleanup(t, session)
 			require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
 
 			err = session.Commit(ctx, "ignored message")
@@ -221,7 +221,7 @@ func TestOCIArchive_CommitBootstrapsMissingGHCRPackage(t *testing.T) {
 
 			session, err = archive.Open(ctx, "radius-state")
 			require.NoError(t, err)
-			t.Cleanup(func() { session.Close(ctx) })
+			closeOnCleanup(t, session)
 			if test.errorContains == "" {
 				data, err := os.ReadFile(filepath.Join(session.Path(), "state.txt"))
 				require.NoError(t, err)
@@ -265,7 +265,7 @@ func TestOCIArchive_BootstrapDoesNotOverwriteConcurrentState(t *testing.T) {
 
 	session, err = archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 	data, err := os.ReadFile(filepath.Join(session.Path(), "state.txt"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("external state"), data)
@@ -297,7 +297,7 @@ func TestOCIArchive_PublicPackageAllowsStateDeletion(t *testing.T) {
 
 	session, err = archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 	entries, err := os.ReadDir(session.Path())
 	require.NoError(t, err)
 	require.Empty(t, entries)
@@ -312,7 +312,7 @@ func TestOCIArchive_CommitReturnsVisibilityErrorBeforeUpload(t *testing.T) {
 	ctx := t.Context()
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
 
 	err = session.Commit(ctx, "ignored message")
@@ -332,7 +332,7 @@ func TestOCIArchive_CommitReturnsBootstrapUploadError(t *testing.T) {
 	ctx := t.Context()
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
 
 	err = session.Commit(ctx, "ignored message")
@@ -351,7 +351,7 @@ func TestOCIArchive_EmptyNewArchiveSkipsVisibilityCheck(t *testing.T) {
 	ctx := t.Context()
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 
 	require.NoError(t, session.Commit(ctx, "ignored message"))
 	require.Equal(t, 0, checks)
@@ -378,7 +378,7 @@ func TestOCIArchive_CommitPersistsDeletion(t *testing.T) {
 
 	session, err = archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 
 	entries, err := os.ReadDir(session.Path())
 	require.NoError(t, err)
@@ -398,7 +398,7 @@ func TestOCIArchive_EmptyNewArchiveIsNoOp(t *testing.T) {
 
 	session, err = archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 	entries, err := os.ReadDir(session.Path())
 	require.NoError(t, err)
 	require.Empty(t, entries)
@@ -426,7 +426,7 @@ func TestOCIArchive_CommitRejectsConcurrentTagUpdate(t *testing.T) {
 
 	session, err = archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 	data, err := os.ReadFile(filepath.Join(session.Path(), "state.txt"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("external state"), data)
@@ -596,6 +596,13 @@ func newTestArchive(t *testing.T) (*OCIArchive, *countingTarget) {
 		return target, nil
 	}
 	return archive, target
+}
+
+// closeOnCleanup closes the session once the test ends. It uses a fresh context because
+// t.Context() is cancelled before cleanup runs.
+func closeOnCleanup(t *testing.T, session statearchive.Session) {
+	t.Helper()
+	t.Cleanup(func() { session.Close(context.Background()) }) //nolint:usetesting
 }
 
 type countingTarget struct {

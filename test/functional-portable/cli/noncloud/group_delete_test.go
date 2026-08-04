@@ -49,8 +49,9 @@ func Test_GroupDelete(t *testing.T) {
 	// Ensure cleanup even if test fails
 	t.Cleanup(func() {
 		// Try to delete the test group if it still exists
-		// Ignore errors as the group might have been successfully deleted
-		_ = cli.GroupDelete(t.Context(), uniqueGroupName, radcli.DeleteOptions{Confirm: true})
+		// Ignore errors as the group might have been successfully deleted.
+		// Use a fresh context because t.Context() is cancelled before cleanup runs.
+		_ = cli.GroupDelete(context.Background(), uniqueGroupName, radcli.DeleteOptions{Confirm: true}) //nolint:usetesting
 	})
 
 	// Create the unique resource group
