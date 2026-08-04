@@ -442,7 +442,10 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest,
 			return nil
 		}
 
-		if !errors.Is(err, errPortForwardLost) || time.Now().After(deadline) {
+		// Cap the backoff at whatever is left of the probe budget so re-establishing a session
+		// never pushes the total probe past gatewayProbeTimeout.
+		backoff := min(gatewayProbeBackoff, time.Until(deadline))
+		if !errors.Is(err, errPortForwardLost) || backoff <= 0 {
 			logGatewayNetworkDiagnostics(t, ctx, at, namespace)
 			return err
 		}
@@ -450,7 +453,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest,
 		t.Logf("portforward session %d ended early (%s); re-establishing", session, err)
 
 		select {
-		case <-time.After(gatewayProbeBackoff):
+		case <-time.After(backoff):
 		case <-ctx.Done():
 			logGatewayNetworkDiagnostics(t, ctx, at, namespace)
 			return fmt.Errorf("gateway probe canceled: %w", ctx.Err())
