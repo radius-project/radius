@@ -22,7 +22,16 @@ load_declared_app_params() {
     # error below. This commonly happens when a deploy is dispatched before the
     # generated app.bicep has been committed and pushed to the deployed branch.
     if [[ ! -f "${app_file}" ]]; then
-        echo "::error::Application file ${app_file} not found on this branch/commit. Generate it (ask Copilot to \"create app.bicep\") and commit it to the deployed branch before deploying." >&2
+        # Escape workflow-command metacharacters in the interpolated path before
+        # embedding it in the ::error:: annotation: '%' is the escape character
+        # (must be first), and CR/LF would otherwise break or inject the command.
+        # The assignments are intentionally unquoted so the single quotes around
+        # the patterns/replacements are treated as quoting, not literal text.
+        local escaped_app_file="${app_file}"
+        escaped_app_file=${escaped_app_file//'%'/'%25'}
+        escaped_app_file=${escaped_app_file//$'\r'/'%0D'}
+        escaped_app_file=${escaped_app_file//$'\n'/'%0A'}
+        echo "::error::Application file ${escaped_app_file} not found on this branch/commit. Generate it (ask Copilot to \"create app.bicep\") and commit it to the deployed branch before deploying." >&2
         return 1
     fi
 

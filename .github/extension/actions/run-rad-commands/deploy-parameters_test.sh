@@ -162,6 +162,19 @@ grep -q "not found on this branch/commit" "${TEST_ROOT}/missing-app.err" ||
 [[ "${DECLARED_APP_PARAMS_LOADED}" == "false" ]] ||
     fail "a missing application file must not populate the parameter cache"
 
+# A missing-file path containing workflow-command metacharacters must be escaped
+# in the ::error:: annotation so it cannot break or inject the workflow command.
+reset_discovery
+injecting_app_file="${TEST_ROOT}/pct%evil.bicep"
+rm -f "${injecting_app_file}"
+if load_declared_app_params "${injecting_app_file}" 2>"${TEST_ROOT}/inject.err"; then
+    fail "expected a missing application file to stop parameter discovery"
+fi
+grep -q 'pct%25evil.bicep' "${TEST_ROOT}/inject.err" ||
+    fail "expected '%' in the app-file path to be escaped as %25 in the error"
+grep -q 'pct%evil.bicep' "${TEST_ROOT}/inject.err" &&
+    fail "expected the raw '%' app-file path to not appear unescaped in the error"
+
 fake_jq_dir="${TEST_ROOT}/fake-jq"
 mkdir "${fake_jq_dir}"
 cat >"${fake_jq_dir}/jq" <<'EOF'
@@ -192,5 +205,11 @@ PATH="${original_path}"
 action_file="${SCRIPT_DIR}/action.yml"
 [[ "$(grep -c 'append_generated_app_params' "${action_file}")" == "2" ]] ||
     fail "expected both deploy paths to use generated parameter filtering"
+
+# The "Verify app namespace" step must tolerate a missing app file so it cannot
+# pre-empt the actionable not-found error raised in Run rad commands. Guard
+# against regression by requiring the grep there to use the `|| true` form.
+grep -qE "grep -oP .*head -1 \|\| true" "${action_file}" ||
+    fail "expected the app-name grep in action.yml to tolerate a missing file via '|| true'"
 
 echo "run-rad-commands deploy parameter tests passed"
