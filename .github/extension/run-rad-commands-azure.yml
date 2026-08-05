@@ -282,8 +282,12 @@ jobs:
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Publish status on failure too: an empty Deployed tab is least helpful
+      # exactly when a deploy failed and the user is trying to see which
+      # resource broke. `!cancelled()` covers success and failure but skips
+      # cancellation, where the control plane is already being torn down.
       - name: Publish deployed graph and status
-        if: success()
+        if: ${{ !cancelled() }}
         uses: radius-project/radius/.github/extension/actions/publish-deploy-status@{{RADIUS_REF}}
         with:
           environment: ${{ inputs.environment }}
