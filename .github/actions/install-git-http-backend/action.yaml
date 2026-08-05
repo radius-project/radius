@@ -22,9 +22,9 @@ runs:
   steps:
     - name: Install git-http-backend
       shell: bash
-      run: .github/actions/install-git-http-backend/install-git-http-backend.sh "${INPUTS_GIT_USERNAME}" "${INPUTS_GIT_PASSWORD}" "${INPUTS_NAMESPACE}" "${INPUTS_IMAGE}"
+      run: .github/actions/install-git-http-backend/install-git-http-backend.sh "${INPUT_GIT_USERNAME}" "${INPUT_GIT_PASSWORD}" "${INPUT_NAMESPACE}" "${INPUT_IMAGE}"
       env:
-        INPUTS_GIT_USERNAME: ${{ inputs.git-username }}
-        INPUTS_GIT_PASSWORD: ${{ inputs.git-password }}
-        INPUTS_NAMESPACE: ${{ inputs.namespace }}
-        INPUTS_IMAGE: ${{ inputs.image }}
+        INPUT_GIT_USERNAME: ${{ inputs.git-username }}
+        INPUT_GIT_PASSWORD: ${{ inputs.git-password }}
+        INPUT_NAMESPACE: ${{ inputs.namespace }}
+        INPUT_IMAGE: ${{ inputs.image }}

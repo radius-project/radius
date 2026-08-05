@@ -62,8 +62,8 @@ runs:
         subjectAltName          = @alt_names
 
         [alt_names]
-        DNS.1 = ${INPUTS_REGISTRY_NAME}
-        DNS.2 = ${INPUTS_REGISTRY_SERVER}
+        DNS.1 = ${INPUT_REGISTRY_NAME}
+        DNS.2 = ${INPUT_REGISTRY_SERVER}
         EOF
           )
           echo "$CFG"
@@ -73,7 +73,7 @@ runs:
 
         pushd $TEMP_CERT_DIR
         # Create the directory for the certificates
-        mkdir -p certs/${INPUTS_REGISTRY_SERVER}
+        mkdir -p certs/${INPUT_REGISTRY_SERVER}
 
         echo "==== Generate the openssl config"
         create_openssl_cfg >req.cnf
@@ -83,13 +83,13 @@ runs:
           -nodes \
           -days 365 \
           -newkey rsa:4096 \
-          -keyout certs/${INPUTS_REGISTRY_SERVER}/client.key \
-          -out certs/${INPUTS_REGISTRY_SERVER}/client.crt \
+          -keyout certs/${INPUT_REGISTRY_SERVER}/client.key \
+          -out certs/${INPUT_REGISTRY_SERVER}/client.crt \
           -config req.cnf \
           -sha256
       env:
-        INPUTS_REGISTRY_NAME: ${{ inputs.registry-name }}
-        INPUTS_REGISTRY_SERVER: ${{ inputs.registry-server }}
+        INPUT_REGISTRY_NAME: ${{ inputs.registry-name }}
+        INPUT_REGISTRY_SERVER: ${{ inputs.registry-server }}
         STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR: ${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
 
     - name: Add the certificate to the system trust store
@@ -98,20 +98,20 @@ runs:
       run: |
         TEMP_CERT_DIR=${STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR}
         sudo apt install ca-certificates
-        sudo cp $TEMP_CERT_DIR/certs/${INPUTS_REGISTRY_SERVER}/client.crt /usr/local/share/ca-certificates/${INPUTS_REGISTRY_SERVER}.crt
-        sudo cp $TEMP_CERT_DIR/certs/${INPUTS_REGISTRY_SERVER}/client.crt /usr/local/share/ca-certificates/${INPUTS_REGISTRY_NAME}.crt
+        sudo cp $TEMP_CERT_DIR/certs/${INPUT_REGISTRY_SERVER}/client.crt /usr/local/share/ca-certificates/${INPUT_REGISTRY_SERVER}.crt
+        sudo cp $TEMP_CERT_DIR/certs/${INPUT_REGISTRY_SERVER}/client.crt /usr/local/share/ca-certificates/${INPUT_REGISTRY_NAME}.crt
         sudo update-ca-certificates
       env:
         STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR: ${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
-        INPUTS_REGISTRY_SERVER: ${{ inputs.registry-server }}
-        INPUTS_REGISTRY_NAME: ${{ inputs.registry-name }}
+        INPUT_REGISTRY_SERVER: ${{ inputs.registry-server }}
+        INPUT_REGISTRY_NAME: ${{ inputs.registry-name }}
 
     - name: Add registry name to /etc/hosts
       shell: bash
       run: |
-        echo "127.0.0.1 ${INPUTS_REGISTRY_NAME}" | sudo tee -a /etc/hosts
+        echo "127.0.0.1 ${INPUT_REGISTRY_NAME}" | sudo tee -a /etc/hosts
       env:
-        INPUTS_REGISTRY_NAME: ${{ inputs.registry-name }}
+        INPUT_REGISTRY_NAME: ${{ inputs.registry-name }}
 
     - name: Create secure Docker registry
       if: ${{ inputs.secure == 'true' }}
@@ -120,18 +120,18 @@ runs:
         TEMP_CERT_DIR=${STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR}
         echo "==== Create secure Docker registry"
         docker run -d \
-          -p ${INPUTS_REGISTRY_PORT}:5000 \
+          -p ${INPUT_REGISTRY_PORT}:5000 \
           --restart=always \
-          --name ${INPUTS_REGISTRY_NAME} \
-          -v $TEMP_CERT_DIR/certs/${INPUTS_REGISTRY_SERVER}:/certs \
+          --name ${INPUT_REGISTRY_NAME} \
+          -v $TEMP_CERT_DIR/certs/${INPUT_REGISTRY_SERVER}:/certs \
           -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/client.crt \
           -e REGISTRY_HTTP_TLS_KEY=/certs/client.key \
           registry:2
       env:
         STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR: ${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
-        INPUTS_REGISTRY_PORT: ${{ inputs.registry-port }}
-        INPUTS_REGISTRY_NAME: ${{ inputs.registry-name }}
-        INPUTS_REGISTRY_SERVER: ${{ inputs.registry-server }}
+        INPUT_REGISTRY_PORT: ${{ inputs.registry-port }}
+        INPUT_REGISTRY_NAME: ${{ inputs.registry-name }}
+        INPUT_REGISTRY_SERVER: ${{ inputs.registry-server }}
 
     - name: Create insecure Docker registry
       if: ${{ inputs.secure == 'false' }}
@@ -139,10 +139,10 @@ runs:
       run: |
         echo "==== Create insecure Docker registry"
         docker run -d \
-          -p ${INPUTS_REGISTRY_PORT}:5000 \
+          -p ${INPUT_REGISTRY_PORT}:5000 \
           --restart=always \
-          --name ${INPUTS_REGISTRY_NAME} \
+          --name ${INPUT_REGISTRY_NAME} \
           registry:2
       env:
-        INPUTS_REGISTRY_PORT: ${{ inputs.registry-port }}
-        INPUTS_REGISTRY_NAME: ${{ inputs.registry-name }}
+        INPUT_REGISTRY_PORT: ${{ inputs.registry-port }}
+        INPUT_REGISTRY_NAME: ${{ inputs.registry-name }}

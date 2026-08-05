@@ -18,6 +18,6 @@ runs:
     - name: Install Flux Source Controller
       shell: bash
       run: |
-        .github/actions/install-flux/install-flux.sh ${INPUTS_VERSION}
+        .github/actions/install-flux/install-flux.sh ${INPUT_VERSION}
       env:
-        INPUTS_VERSION: ${{ inputs.version }}
+        INPUT_VERSION: ${{ inputs.version }}
