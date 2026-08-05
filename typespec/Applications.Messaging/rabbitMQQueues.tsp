@@ -37,8 +37,10 @@ namespace Applications.Messaging;
 
 #suppress "@azure-tools/typespec-azure-core/casing-style" "The names of Model types must use PascalCase"
 @doc("RabbitMQQueue portable resource")
-model RabbitMQQueueResource
-  is TrackedResourceRequired<RabbitMQQueueProperties, "rabbitMQQueues"> {
+model RabbitMQQueueResource is TrackedResourceRequired<
+  RabbitMQQueueProperties,
+  "rabbitMQQueues"
+> {
   @doc("The name of the RabbitMQQueue portable resource resource")
   @key("rabbitMQQueueName")
   @segment("rabbitMQQueues")

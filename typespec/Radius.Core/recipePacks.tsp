@@ -119,8 +119,10 @@ namespace Radius.Core;
   
   Prebuilt Recipe Packs and the Recipes they reference are published in the [resource-types-contrib](https://github.com/radius-project/resource-types-contrib) repository.
   """)
-model RecipePackResource
-  is TrackedResourceRequired<RecipePackProperties, "recipePacks"> {
+model RecipePackResource is TrackedResourceRequired<
+  RecipePackProperties,
+  "recipePacks"
+> {
   @doc("Recipe pack name")
   @key("recipePackName")
   @path

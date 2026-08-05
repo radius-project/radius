@@ -53,12 +53,11 @@ model PlaneBaseParameters<TResource> {
 }
 
 @doc("The generic representation of a plane resource")
-model GenericPlaneResource
-  is TrackedResourceRequired<
-    GenericPlaneResourceProperties,
-    "System.Resources/planes",
-    "planes"
-  > {
+model GenericPlaneResource is TrackedResourceRequired<
+  GenericPlaneResourceProperties,
+  "System.Resources/planes",
+  "planes"
+> {
   @key("planeType")
   @doc("The plane type.")
   @segment("planes")
