@@ -85,7 +85,7 @@ runs:
         done
 
         if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' "${INPUT_REGISTRY_NAME}")" = 'null' ]; then
-          docker network connect "kind" "${reg_name}"
+          docker network connect "kind" "${INPUT_REGISTRY_NAME}"
         fi
 
         cat <<EOF | kubectl apply -f -
@@ -99,11 +99,11 @@ runs:
             host: "localhost:${INPUT_REGISTRY_PORT}"
             help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
         EOF
+
+        # Reference: https://kind.sigs.k8s.io/docs/user/local-registry/
       env:
         INPUT_REGISTRY_PORT: ${{ inputs.registry-port }}
         INPUT_REGISTRY_NAME: ${{ inputs.registry-name }}
-
-        # Reference: https://kind.sigs.k8s.io/docs/user/local-registry/
 
     - name: Create a KinD cluster with a secure local registry
       if: ${{ inputs.with-local-registry == 'true' && inputs.secure == 'true' }}

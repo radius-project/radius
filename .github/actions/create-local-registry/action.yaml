@@ -44,7 +44,7 @@ runs:
       run: |
         create_openssl_cfg() {
           CFG=$(
-            cat <<'EOF'
+            cat <<EOF
         [req]
         distinguished_name = subject
         x509_extensions    = x509_ext
@@ -69,11 +69,11 @@ runs:
           echo "$CFG"
         }
 
-        TEMP_CERT_DIR=${STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR}
+        TEMP_CERT_DIR="${STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR}"
 
-        pushd $TEMP_CERT_DIR
+        pushd "${TEMP_CERT_DIR}"
         # Create the directory for the certificates
-        mkdir -p certs/${INPUT_REGISTRY_SERVER}
+        mkdir -p "certs/${INPUT_REGISTRY_SERVER}"
 
         echo "==== Generate the openssl config"
         create_openssl_cfg >req.cnf
@@ -83,8 +83,8 @@ runs:
           -nodes \
           -days 365 \
           -newkey rsa:4096 \
-          -keyout certs/${INPUT_REGISTRY_SERVER}/client.key \
-          -out certs/${INPUT_REGISTRY_SERVER}/client.crt \
+          -keyout "certs/${INPUT_REGISTRY_SERVER}/client.key" \
+          -out "certs/${INPUT_REGISTRY_SERVER}/client.crt" \
           -config req.cnf \
           -sha256
       env:
@@ -96,10 +96,10 @@ runs:
       if: ${{ inputs.secure == 'true' }}
       shell: bash
       run: |
-        TEMP_CERT_DIR=${STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR}
+        TEMP_CERT_DIR="${STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR}"
         sudo apt install ca-certificates
-        sudo cp $TEMP_CERT_DIR/certs/${INPUT_REGISTRY_SERVER}/client.crt /usr/local/share/ca-certificates/${INPUT_REGISTRY_SERVER}.crt
-        sudo cp $TEMP_CERT_DIR/certs/${INPUT_REGISTRY_SERVER}/client.crt /usr/local/share/ca-certificates/${INPUT_REGISTRY_NAME}.crt
+        sudo cp "${TEMP_CERT_DIR}/certs/${INPUT_REGISTRY_SERVER}/client.crt" "/usr/local/share/ca-certificates/${INPUT_REGISTRY_SERVER}.crt"
+        sudo cp "${TEMP_CERT_DIR}/certs/${INPUT_REGISTRY_SERVER}/client.crt" "/usr/local/share/ca-certificates/${INPUT_REGISTRY_NAME}.crt"
         sudo update-ca-certificates
       env:
         STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR: ${{ steps.create-temp-cert-dir.outputs.TEMP_CERT_DIR }}
@@ -117,13 +117,13 @@ runs:
       if: ${{ inputs.secure == 'true' }}
       shell: bash
       run: |
-        TEMP_CERT_DIR=${STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR}
+        TEMP_CERT_DIR="${STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR}"
         echo "==== Create secure Docker registry"
         docker run -d \
-          -p ${INPUT_REGISTRY_PORT}:5000 \
+          -p "${INPUT_REGISTRY_PORT}:5000" \
           --restart=always \
-          --name ${INPUT_REGISTRY_NAME} \
-          -v $TEMP_CERT_DIR/certs/${INPUT_REGISTRY_SERVER}:/certs \
+          --name "${INPUT_REGISTRY_NAME}" \
+          -v "${TEMP_CERT_DIR}/certs/${INPUT_REGISTRY_SERVER}:/certs" \
           -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/client.crt \
           -e REGISTRY_HTTP_TLS_KEY=/certs/client.key \
           registry:2
@@ -139,9 +139,9 @@ runs:
       run: |
         echo "==== Create insecure Docker registry"
         docker run -d \
-          -p ${INPUT_REGISTRY_PORT}:5000 \
+          -p "${INPUT_REGISTRY_PORT}:5000" \
           --restart=always \
-          --name ${INPUT_REGISTRY_NAME} \
+          --name "${INPUT_REGISTRY_NAME}" \
           registry:2
       env:
         INPUT_REGISTRY_PORT: ${{ inputs.registry-port }}
