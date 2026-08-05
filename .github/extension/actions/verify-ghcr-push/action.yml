@@ -49,39 +49,36 @@ runs:
         repo_path="${STATE_REGISTRY#ghcr.io/}"
         echo "Checking push permission for ghcr.io/${repo_path} as ${GH_ACTOR}..."
 
-        # Ask GHCR's token endpoint for a pull,push-scoped token. A Docker v2
-        # registry only grants the subset of the requested scope the caller is
-        # authorized for, so the returned token's granted actions reveal whether
-        # push is actually allowed -- without mutating the package. Capture curl
-        # failures explicitly: GHCR returns a non-JSON body on 401/403/5xx, which
-        # would otherwise make jq abort the script before the actionable message.
         if ! response=$(curl -fsS -u "${GH_ACTOR}:${GH_TOKEN}" \
           "https://ghcr.io/token?service=ghcr.io&scope=repository:${repo_path}:pull,push"); then
           echo "::error::Could not reach the GHCR token endpoint for ghcr.io/${repo_path} (the request failed or was rejected). Confirm the package exists and the workflow token can read it."
           exit 1
         fi
 
-        token=$(printf '%s' "${response}" | jq -r '.token // empty' 2>/dev/null || true)
+        token=$(printf '%s' "${response}" | jq -r '.token // .access_token // empty' 2>/dev/null || true)
         if [ -z "${token}" ]; then
           echo "::error::GHCR returned an unexpected (non-JSON or tokenless) response for ghcr.io/${repo_path}. Confirm the package exists and the workflow token can access it."
           exit 1
         fi
 
-        # Decode the JWT payload (base64url) and read the granted actions.
-        payload=$(printf '%s' "${token}" | cut -d. -f2)
-        case $(( ${#payload} % 4 )) in
-          2) payload="${payload}==" ;;
-          3) payload="${payload}=" ;;
-        esac
-        actions=$(printf '%s' "${payload}" | tr '_-' '/+' | base64 -d 2>/dev/null \
-          | jq -r '.access[]?.actions[]?' 2>/dev/null | sort -u || true)
-        echo "Granted actions: $(printf '%s' "${actions}" | tr '\n' ' ')"
+        # GHCR tokens aren't guaranteed to be JWTs, so test push access directly.
+        # GHCR rejects session cancellation and expires unfinished uploads.
+        if ! status=$(curl -sS -o /dev/null -w '%{http_code}' \
+          -X POST -H "Content-Length: 0" \
+          -H "Authorization: Bearer ${token}" \
+          "https://ghcr.io/v2/${repo_path}/blobs/uploads/"); then
+          echo "::error::Could not start the GHCR push-permission probe for ghcr.io/${repo_path}."
+          exit 1
+        fi
 
-        if printf '%s\n' "${actions}" | grep -qx "push"; then
+        if [ "${status}" = "202" ]; then
           echo "✅ Workflow token has push permission to ghcr.io/${repo_path}"
           echo "GHCR_PUSH_CHECK=ok" >> "$GITHUB_ENV"
-        else
+        elif [ "${status}" = "401" ] || [ "${status}" = "403" ]; then
           echo "GHCR_PUSH_CHECK=failed" >> "$GITHUB_ENV"
           echo "::error::The workflow's GITHUB_TOKEN cannot push to the Radius state package ghcr.io/${repo_path}. GHCR does not grant this by default. In the package's settings, give this repository's Actions workflows the 'Write' role (Package settings → Manage Actions access → add repository), or link the package to the repository, then re-run this workflow."
+          exit 1
+        else
+          echo "::error::GHCR push-permission probe for ghcr.io/${repo_path} returned HTTP ${status}; this does not prove whether push access is allowed."
           exit 1
         fi
