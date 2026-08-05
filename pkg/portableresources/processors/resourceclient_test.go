@@ -17,7 +17,6 @@ limitations under the License.
 package processors
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -52,7 +51,7 @@ const (
 
 func Test_Delete_InvalidResourceID(t *testing.T) {
 	c := NewResourceClient(nil, nil, nil)
-	err := c.Delete(context.Background(), "invalid")
+	err := c.Delete(t.Context(), "invalid")
 	require.Error(t, err)
 }
 
@@ -71,7 +70,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 	})
@@ -99,7 +98,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.NoError(t, err)
 	})
 
@@ -122,7 +121,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.NoError(t, err)
 	})
 
@@ -149,7 +148,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.NoError(t, err)
 	})
 
@@ -163,7 +162,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 	})
@@ -181,7 +180,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 		require.Contains(t, err.Error(), "could not find API version for type \"Microsoft.Compute/virtualMachines\", type was not found")
@@ -205,7 +204,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 		require.Contains(t, err.Error(), "could not find API version for type \"Microsoft.Compute/virtualMachines\", no supported API versions")
@@ -244,7 +243,7 @@ func Test_Delete_Kubernetes(t *testing.T) {
 
 		c := NewResourceClient(nil, nil, kcp)
 
-		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID)
+		err := c.Delete(t.Context(), KubernetesCoreGroupResourceID)
 		require.NoError(t, err)
 	})
 
@@ -276,7 +275,7 @@ func Test_Delete_Kubernetes(t *testing.T) {
 
 		c := NewResourceClient(nil, nil, kcp)
 
-		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID)
+		err := c.Delete(t.Context(), KubernetesCoreGroupResourceID)
 		require.NoError(t, err)
 	})
 
@@ -298,7 +297,7 @@ func Test_Delete_Kubernetes(t *testing.T) {
 
 		c := NewResourceClient(nil, nil, kcp)
 
-		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID)
+		err := c.Delete(t.Context(), KubernetesCoreGroupResourceID)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "could not find API version for type \"core/Secret\", type was not found")
 	})
@@ -317,7 +316,7 @@ func Test_Delete_UCP(t *testing.T) {
 
 		c := NewResourceClient(nil, connection, nil)
 
-		err = c.Delete(context.Background(), AWSResourceID)
+		err = c.Delete(t.Context(), AWSResourceID)
 		require.NoError(t, err)
 	})
 
@@ -333,7 +332,7 @@ func Test_Delete_UCP(t *testing.T) {
 
 		c := NewResourceClient(nil, connection, nil)
 
-		err = c.Delete(context.Background(), AWSResourceID)
+		err = c.Delete(t.Context(), AWSResourceID)
 		require.NoError(t, err)
 	})
 
@@ -353,7 +352,7 @@ func Test_Delete_UCP(t *testing.T) {
 
 		c := NewResourceClient(nil, connection, nil)
 
-		err = c.Delete(context.Background(), AWSResourceID)
+		err = c.Delete(t.Context(), AWSResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 	})

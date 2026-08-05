@@ -334,7 +334,7 @@ func (client *Client) hash(ctx context.Context, url string) (string, error) {
 
 func (client *Client) writeResponse(ctx context.Context, url string, destination io.Writer) error {
 	var lastError error
-	for attempt := 0; attempt < requestAttempts; attempt++ {
+	for attempt := range requestAttempts {
 		request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			return fmt.Errorf("create request for %s: %w", url, err)
@@ -408,8 +408,8 @@ func newerVersion(candidate, current string) (bool, error) {
 }
 
 func parseChecksum(contents []byte, format, asset string) (string, error) {
-	lines := strings.Split(string(contents), "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(string(contents), "\n")
+	for line := range lines {
 		fields := strings.Fields(line)
 		if len(fields) == 0 {
 			continue
@@ -444,7 +444,7 @@ func parseYQChecksum(orderContents, checksumContents []byte, asset string) (stri
 		return "", fmt.Errorf("SHA-256 column not found in checksums_hashes_order")
 	}
 
-	for _, line := range strings.Split(string(checksumContents), "\n") {
+	for line := range strings.SplitSeq(string(checksumContents), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) > column && fields[0] == asset {
 			return validateHash(fields[column])

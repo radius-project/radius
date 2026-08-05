@@ -17,7 +17,6 @@ limitations under the License.
 package preflight
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -45,7 +44,7 @@ func TestKubernetesConnectivityCheck_WithClientset(t *testing.T) {
 }
 
 func TestKubernetesConnectivityCheck_Run(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("successful connection with permissions", func(t *testing.T) {
 		// Setup: namespace exists, deployments can be listed
@@ -119,7 +118,7 @@ func TestKubernetesConnectivityCheck_NoClientset(t *testing.T) {
 	// In a test environment, this should fail to create a client
 	check := NewKubernetesConnectivityCheck("nonexistent-context")
 
-	pass, _, err := check.Run(context.Background())
+	pass, _, err := check.Run(t.Context())
 
 	require.Error(t, err)
 	assert.False(t, pass)

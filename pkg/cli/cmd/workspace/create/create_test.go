@@ -17,7 +17,6 @@ limitations under the License.
 package create
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -142,7 +141,7 @@ func Test_ValidateApplicationsCoreEnvironment(t *testing.T) {
 		mgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mgmt.EXPECT().GetEnvironment(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, radcli.Create404Error()).Times(1)
 
-		id, err := ValidateApplicationsCoreEnvironment(context.Background(), ws, mgmt, "env1")
+		id, err := ValidateApplicationsCoreEnvironment(t.Context(), ws, mgmt, "env1")
 		require.Error(t, err)
 		require.Empty(t, id)
 		require.Contains(t, err.Error(), wantID)
@@ -155,7 +154,7 @@ func Test_ValidateApplicationsCoreEnvironment(t *testing.T) {
 		mgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mgmt.EXPECT().GetEnvironment(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, errors.New("connection refused")).Times(1)
 
-		id, err := ValidateApplicationsCoreEnvironment(context.Background(), ws, mgmt, "env1")
+		id, err := ValidateApplicationsCoreEnvironment(t.Context(), ws, mgmt, "env1")
 		require.Error(t, err)
 		require.Empty(t, id)
 		require.Contains(t, err.Error(), "Failed to get environment")
@@ -180,7 +179,7 @@ func Test_Run(t *testing.T) {
 
 		configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 		configFileInterface.EXPECT().
-			EditWorkspaces(context.Background(), gomock.Any(), workspace).
+			EditWorkspaces(t.Context(), gomock.Any(), workspace).
 			Return(nil).Times(1)
 
 		runner := &Runner{
@@ -191,7 +190,7 @@ func Test_Run(t *testing.T) {
 			Output:              outputSink,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, []any{
 			output.LogOutput{

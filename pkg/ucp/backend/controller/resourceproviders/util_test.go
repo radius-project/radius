@@ -192,7 +192,7 @@ func Test_UpdateResourceProviderSummaryWithETag(t *testing.T) {
 				})
 			}
 
-			err := updateResourceProviderSummaryWithETag(context.Background(), client, tt.summaryID, tt.policy, tt.updateFunc)
+			err := updateResourceProviderSummaryWithETag(t.Context(), client, tt.summaryID, tt.policy, tt.updateFunc)
 			if tt.expectedErr {
 				assert.Error(t, err)
 			} else {

@@ -17,7 +17,6 @@
 package delete
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"testing"
@@ -310,7 +309,7 @@ func Test_Run(t *testing.T) {
 			}
 
 			// Execute
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 
 			// Verify results
 			if tt.expectedError != nil {

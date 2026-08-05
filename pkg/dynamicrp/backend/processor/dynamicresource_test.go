@@ -81,7 +81,7 @@ func Test_Process(t *testing.T) {
 			UcpClient: clientFactory,
 		}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.NoError(t, err)
 
 		bs, err := json.Marshal(resource.Properties)
@@ -158,7 +158,7 @@ func Test_Process(t *testing.T) {
 			UcpClient: clientFactory,
 		}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.NoError(t, err)
 
 		bs, err := json.Marshal(resource.Properties)
@@ -194,7 +194,7 @@ func Test_Process(t *testing.T) {
 			UcpClient: clientFactory,
 		}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "is not a valid resource id")
 	})
@@ -230,7 +230,7 @@ func Test_Process(t *testing.T) {
 			UcpClient: cf,
 		}
 
-		require.NoError(t, p.Process(context.Background(), resource, options))
+		require.NoError(t, p.Process(t.Context(), resource, options))
 
 		// The managed secret is created with the declared secret data and the owner's environment/application.
 		require.True(t, mat.called)
@@ -290,7 +290,7 @@ func Test_Process(t *testing.T) {
 			UcpClient: cf,
 		}
 
-		require.NoError(t, p.Process(context.Background(), resource, options))
+		require.NoError(t, p.Process(t.Context(), resource, options))
 
 		// Both the declared and the undeclared recipe secret outputs are materialized: the schema's declared
 		// keys document the expected surface but do not filter what is routed to the managed secret, so a
@@ -335,7 +335,7 @@ func Test_Process(t *testing.T) {
 			UcpClient: cf,
 		}
 
-		require.NoError(t, p.Process(context.Background(), resource, options))
+		require.NoError(t, p.Process(t.Context(), resource, options))
 
 		// The declared secret values are stringified and routed to the managed secret, not the owner.
 		require.Equal(t, map[string]string{"port": "1234", "enabled": "true"}, mat.request.Data)
@@ -374,7 +374,7 @@ func Test_Process(t *testing.T) {
 			UcpClient: cf,
 		}
 
-		require.NoError(t, p.Process(context.Background(), resource, options))
+		require.NoError(t, p.Process(t.Context(), resource, options))
 
 		// With only a nil secret value, there is no secret data to materialize.
 		require.False(t, mat.called, "materializer should not be called when there is no secret data")
@@ -412,7 +412,7 @@ func Test_Process(t *testing.T) {
 			UcpClient: cf,
 		}
 
-		require.NoError(t, p.Process(context.Background(), resource, options))
+		require.NoError(t, p.Process(t.Context(), resource, options))
 
 		// The now-stale managed secret is cascade-deleted and the dangling reference is cleared.
 		require.Equal(t, []string{resourceID}, mat.deleted, "the stale managed secret should be deleted")
@@ -451,7 +451,7 @@ func Test_Process(t *testing.T) {
 			UcpClient: cf,
 		}
 
-		require.NoError(t, p.Process(context.Background(), resource, options))
+		require.NoError(t, p.Process(t.Context(), resource, options))
 
 		// Cleanup keys off the owner's reference, not the schema, so the orphan is still reclaimed.
 		require.Equal(t, []string{resourceID}, mat.deleted, "the stale managed secret should be deleted")
@@ -491,7 +491,7 @@ func Test_Process(t *testing.T) {
 			UcpClient: cf,
 		}
 
-		require.NoError(t, p.Process(context.Background(), resource, options))
+		require.NoError(t, p.Process(t.Context(), resource, options))
 
 		// The new secret is dropped (no block), and the prior managed secret is reclaimed rather than
 		// orphaned — even though this update produced secret outputs.
@@ -532,7 +532,7 @@ func Test_Process(t *testing.T) {
 			UcpClient: cf,
 		}
 
-		err = p.Process(context.Background(), resource, options)
+		err = p.Process(t.Context(), resource, options)
 		require.Error(t, err, "a malformed secrets block should fail processing")
 		require.Contains(t, err.Error(), "must be an object")
 		require.False(t, mat.called, "no secret should be materialized for an invalid schema")
@@ -650,7 +650,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		clientFactory, err := testUCPClientFactory()
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		resourceType := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-resource"
 		apiVersion := "2023-10-01-preview"
 
@@ -670,7 +670,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		clientFactory, err := testUCPClientFactory()
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		resourceType := "invalid-resource-type-format"
 		apiVersion := "2023-10-01-preview"
 
@@ -698,7 +698,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		resourceType := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-resource"
 		apiVersion := "nonexistent-version"
 
@@ -733,7 +733,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		resourceType := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/containers/test-resource"
 		apiVersion := "2023-10-01-preview"
 
@@ -747,7 +747,7 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		clientFactory, err := testUCPClientFactory()
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 
 		testCases := []struct {
 			name         string

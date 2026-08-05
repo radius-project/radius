@@ -258,11 +258,11 @@ func validateURLBearingValue(elementName, attrName, value string) error {
 			return nil
 		}
 		after := remaining[i+len("url("):]
-		j := strings.Index(after, ")")
-		if j < 0 {
+		before, after0, ok := strings.Cut(after, ")")
+		if !ok {
 			return fmt.Errorf("icon <%s> element attribute %q has malformed url(...) value %q", elementName, attrName, value)
 		}
-		target := strings.TrimSpace(after[:j])
+		target := strings.TrimSpace(before)
 		if len(target) >= 2 {
 			first, last := target[0], target[len(target)-1]
 			if (first == '"' && last == '"') || (first == '\'' && last == '\'') {
@@ -272,6 +272,6 @@ func validateURLBearingValue(elementName, attrName, value string) error {
 		if !strings.HasPrefix(target, "#") {
 			return fmt.Errorf("icon <%s> element attribute %q references external resource %q via url(); only intra-document fragments (url(#...)) are allowed", elementName, attrName, value)
 		}
-		remaining = after[j+1:]
+		remaining = after0
 	}
 }

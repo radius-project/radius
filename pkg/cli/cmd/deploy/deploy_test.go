@@ -375,7 +375,7 @@ func Test_ValidatePreviewEnvVarWithoutApplication(t *testing.T) {
 	r := runner.(*Runner)
 	r.ConnectionFactory = &connections.MockFactory{ApplicationsManagementClient: mockAppClient}
 
-	cmd.SetContext(context.Background())
+	cmd.SetContext(t.Context())
 	require.NoError(t, cmd.ParseFlags([]string{"-e", appCoreEnvID}))
 
 	err := r.Validate(cmd, []string{"app.bicep"})
@@ -463,7 +463,7 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 
 		// Parse the flags manually to set the environment flag
 		cmd.SetArgs([]string{"app.bicep", "-e", "prod"})
-		cmd.SetContext(context.Background())
+		cmd.SetContext(t.Context())
 		err = cmd.ParseFlags([]string{"-e", "prod"})
 		require.NoError(t, err)
 
@@ -535,7 +535,7 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 
 		// Parse the flags manually to set the environment flag with a non-existent environment
 		cmd.SetArgs([]string{"app.bicep", "-e", "nonexistent"})
-		cmd.SetContext(context.Background())
+		cmd.SetContext(t.Context())
 		err = cmd.ParseFlags([]string{"-e", "nonexistent"})
 		require.NoError(t, err)
 
@@ -629,7 +629,7 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 
 		// Parse the flags manually to set the environment flag with a conflicting environment name
 		cmd.SetArgs([]string{"app.bicep", "-e", "conflictenv"})
-		cmd.SetContext(context.Background())
+		cmd.SetContext(t.Context())
 		err = cmd.ParseFlags([]string{"-e", "conflictenv"})
 		require.NoError(t, err)
 
@@ -704,7 +704,7 @@ func Test_Run(t *testing.T) {
 			Template:            map[string]any{},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// Deployment is scoped to env
@@ -776,7 +776,7 @@ func Test_Run(t *testing.T) {
 			Template:            map[string]any{},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// Deployment is scoped to env
@@ -842,7 +842,7 @@ func Test_Run(t *testing.T) {
 			Template:            map[string]any{},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// Deployment is scoped to app and env
@@ -943,7 +943,7 @@ func Test_Run(t *testing.T) {
 			Preview:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// The application must have been created as a Radius.Core/applications resource.
@@ -1045,7 +1045,7 @@ func Test_Run(t *testing.T) {
 			Preview:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// A Radius.Core application is created and its environment reference is preserved as-is.
@@ -1106,7 +1106,7 @@ func Test_Run(t *testing.T) {
 			Template:            map[string]any{},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 
 		// Even though GetEnvironment returns a 404 error (indicated by EnvCheckResult being nil), the deployment should still succeed
 		require.NoError(t, err)
@@ -1156,7 +1156,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 
 		// Even though GetEnvironment returns a 404 error, the deployment should still succeed
 		require.Error(t, err)
@@ -1236,7 +1236,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 		}
 
-		err = runner.setupRecipePack(context.Background(), template)
+		err = runner.setupRecipePack(t.Context(), template)
 		require.NoError(t, err)
 
 		// Verify that the default recipe pack was injected.
@@ -1263,7 +1263,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 		}
 
-		err := runner.setupRecipePack(context.Background(), template)
+		err := runner.setupRecipePack(t.Context(), template)
 		require.NoError(t, err)
 
 		packs, _ := getRecipePacks(t, template, "env")
@@ -1288,7 +1288,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 		}
 
-		err := runner.setupRecipePack(context.Background(), template)
+		err := runner.setupRecipePack(t.Context(), template)
 		require.NoError(t, err)
 	})
 
@@ -1309,7 +1309,7 @@ func Test_setupRecipePacks(t *testing.T) {
 		}
 
 		// Should be a no-op since we only handle Radius.Core environments
-		err := runner.setupRecipePack(context.Background(), template)
+		err := runner.setupRecipePack(t.Context(), template)
 		require.NoError(t, err)
 	})
 
@@ -1348,7 +1348,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 		}
 
-		err = runner.setupRecipePack(context.Background(), template)
+		err = runner.setupRecipePack(t.Context(), template)
 		require.NoError(t, err)
 
 		// envWithPacks should be untouched — still just 1 pack.
@@ -1395,7 +1395,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 		}
 
-		err = runner.setupRecipePack(context.Background(), template)
+		err = runner.setupRecipePack(t.Context(), template)
 		require.NoError(t, err)
 
 		packs, ok := getRecipePacks(t, template, "env")
@@ -1435,7 +1435,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 		}
 
-		err = runner.setupRecipePack(context.Background(), template)
+		err = runner.setupRecipePack(t.Context(), template)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to get default recipe pack from default scope")
 	})
@@ -1462,7 +1462,7 @@ func Test_setupRecipePacks(t *testing.T) {
 			},
 		}
 
-		err := runner.setupRecipePack(context.Background(), template)
+		err := runner.setupRecipePack(t.Context(), template)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "resource group creation failed")
 	})
@@ -1827,7 +1827,7 @@ func Test_getApplicationsCoreEnvironment(t *testing.T) {
 				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: mockClient},
 			}
 
-			env, err := runner.getApplicationsCoreEnvironment(context.Background(), "myenv")
+			env, err := runner.getApplicationsCoreEnvironment(t.Context(), "myenv")
 
 			if tc.shouldError {
 				require.Error(t, err)
@@ -1893,7 +1893,7 @@ func Test_getRadiusCoreEnvironment(t *testing.T) {
 				},
 			}
 
-			env, err := runner.getRadiusCoreEnvironment(context.Background(), tc.environmentName)
+			env, err := runner.getRadiusCoreEnvironment(t.Context(), tc.environmentName)
 
 			if tc.shouldError {
 				require.Error(t, err)
@@ -2007,7 +2007,7 @@ func Test_FetchEnvironment(t *testing.T) {
 				runner.RadiusCoreClientFactory = factory
 			}
 
-			result, err := runner.FetchEnvironment(context.Background(), tc.envNameOrID)
+			result, err := runner.FetchEnvironment(t.Context(), tc.envNameOrID)
 
 			if tc.shouldError {
 				require.Error(t, err)

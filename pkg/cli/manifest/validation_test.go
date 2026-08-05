@@ -17,7 +17,6 @@ limitations under the License.
 package manifest
 
 import (
-	"context"
 	"testing"
 
 	"github.com/go-playground/validator/v10"
@@ -283,7 +282,7 @@ func TestCapabilityValidation(t *testing.T) {
 }
 
 func TestValidateManifestSchemas(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("nil provider", func(t *testing.T) {
 		err := validateManifestSchemas(ctx, nil)

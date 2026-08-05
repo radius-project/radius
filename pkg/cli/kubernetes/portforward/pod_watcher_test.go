@@ -27,7 +27,7 @@ import (
 )
 
 func Test_podWatcher_CanShutdownGracefully(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	pod := &corev1.Pod{
 		ObjectMeta: v1.ObjectMeta{
@@ -87,7 +87,7 @@ func Test_podWatcher_CanShutdownGracefully(t *testing.T) {
 }
 
 func Test_podWatcher_CanStartWhenPodIsReady(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	pod := &corev1.Pod{
 		ObjectMeta: v1.ObjectMeta{

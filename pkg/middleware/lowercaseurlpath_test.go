@@ -17,7 +17,6 @@ limitations under the License.
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -63,7 +62,7 @@ func TestLowercaseURLPath(t *testing.T) {
 
 		handler := LowercaseURLPath(r)
 
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, testHostname+tt.armid, nil)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, testHostname+tt.armid, nil)
 		require.NoError(t, err)
 		if tt.refererHeader != "" {
 			req.Header.Add(v1.RefererHeader, tt.refererHeader)

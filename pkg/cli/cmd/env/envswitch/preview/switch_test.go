@@ -138,7 +138,7 @@ func Test_Validate(t *testing.T) {
 			}
 
 			cmd.SetArgs(tc.args)
-			cmd.SetContext(context.Background())
+			cmd.SetContext(t.Context())
 
 			err := r.Validate(cmd, tc.args)
 			if tc.expectError {

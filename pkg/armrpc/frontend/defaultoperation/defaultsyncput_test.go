@@ -17,7 +17,6 @@ limitations under the License.
 package defaultoperation
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -66,7 +65,7 @@ func TestDefaultSyncPut_Create(t *testing.T) {
 			reqModel, _, _ := loadTestResurce()
 
 			w := httptest.NewRecorder()
-			req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodPut, resourceTestHeaderFile, reqModel)
+			req, err := rpctest.NewHTTPRequestFromJSON(t.Context(), http.MethodPut, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
 			ctx := rpctest.NewARMRequestContext(req)
@@ -186,7 +185,7 @@ func TestDefaultSyncPut_Update(t *testing.T) {
 			_ = json.Unmarshal(testutil.ReadFixture(tt.datamodelFile), reqDataModel)
 
 			w := httptest.NewRecorder()
-			req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodPatch, resourceTestHeaderFile, reqModel)
+			req, err := rpctest.NewHTTPRequestFromJSON(t.Context(), http.MethodPatch, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
 			ctx := rpctest.NewARMRequestContext(req)
