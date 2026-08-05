@@ -6,124 +6,124 @@ metadata:
     app.kubernetes.io/name: dynamic-rp
     app.kubernetes.io/part-of: radius
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  - secrets
-  - services
-  - namespaces
-  - serviceaccounts
-  - pods
-  - persistentvolumes
-  - persistentvolumes/status
-  - persistentvolumeclaims
-  - persistentvolumeclaims/status
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-# Adding coordination.k8s.io api group as Terraform need to access leases resource for backend initialization for state locking: https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes.
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - secrets
+      - services
+      - namespaces
+      - serviceaccounts
+      - pods
+      - persistentvolumes
+      - persistentvolumes/status
+      - persistentvolumeclaims
+      - persistentvolumeclaims/status
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  # Adding coordination.k8s.io api group as Terraform need to access leases resource for backend initialization for state locking: https://developer.hashicorp.com/terraform/language/settings/backends/kubernetes.
+  - apiGroups:
+      - coordination.k8s.io
+    resources:
+      - leases
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
 
-# Integration with UCP's API.
-- apiGroups:
-  - api.ucp.dev
-  resources:
-  - '*'
-  verbs:
-  - '*'
+  # Integration with UCP's API.
+  - apiGroups:
+      - api.ucp.dev
+    resources:
+      - "*"
+    verbs:
+      - "*"
 
-# Integration with data store and queues.
-- apiGroups:
-  - ucp.dev
-  resources:
-  - resources
-  - queuemessages
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+  # Integration with data store and queues.
+  - apiGroups:
+      - ucp.dev
+    resources:
+      - resources
+      - queuemessages
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
 
-# Terraform kubernetes provider needs to look up GVKs among available CRDs.
-- apiGroups:
-  - apiextensions.k8s.io
-  resources:
-  - customresourcedefinitions
-  verbs:
-  - get
-  - list
-  - watch
+  # Terraform kubernetes provider needs to look up GVKs among available CRDs.
+  - apiGroups:
+      - apiextensions.k8s.io
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - get
+      - list
+      - watch
 
-# Dapr resources for Recipes deployment.
-- apiGroups:
-  - dapr.io
-  resources:
-  - components
-  - subscriptions
-  - configurations
-  - resiliencies
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+  # Dapr resources for Recipes deployment.
+  - apiGroups:
+      - dapr.io
+    resources:
+      - components
+      - subscriptions
+      - configurations
+      - resiliencies
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
 
-# Gateway API resources for Recipes deployment.
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - gateways
-  - httproutes
-  - tlsroutes
-  - tcproutes
-  - udproutes
-  - referencegrants
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+  # Gateway API resources for Recipes deployment.
+  - apiGroups:
+      - gateway.networking.k8s.io
+    resources:
+      - gateways
+      - httproutes
+      - tlsroutes
+      - tcproutes
+      - udproutes
+      - referencegrants
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
 
-# Integration with DE's API.
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  - statefulsets
-  - replicasets
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+  # Integration with DE's API.
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - statefulsets
+      - replicasets
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -134,6 +134,6 @@ roleRef:
   kind: ClusterRole
   name: dynamic-rp
 subjects:
-- kind: ServiceAccount
-  name: dynamic-rp
-  namespace: {{ .Release.Namespace }}
+  - kind: ServiceAccount
+    name: dynamic-rp
+    namespace: {{ .Release.Namespace }}

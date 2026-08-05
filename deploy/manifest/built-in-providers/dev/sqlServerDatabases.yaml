@@ -3,7 +3,7 @@ types:
   sqlServerDatabases:
     description: |
       The Radius.Data/sqlServerDatabases Resource Type deploys a SQL database. Provide the administrator `username` and `password` directly on the resource. The `password` property is marked `x-radius-sensitive`, so Radius encrypts it at rest, redacts it on reads, and exposes it (decrypted) only to the recipe that provisions the database.
-      ```
+      ```bicep
       resource sqlserver 'Radius.Data/sqlServerDatabases@2025-08-01-preview' = {
         name: 'sqlserver'
         properties: {
@@ -23,7 +23,7 @@ types:
       Container resource to the database as shown below. This verification test is
       provisioning-only because the stock demo image has no SQL Server backend, but
       the type still exposes a connection surface for applications that can use it.
-      ```
+      ```bicep
       resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
         name: 'frontend'
         properties: {
