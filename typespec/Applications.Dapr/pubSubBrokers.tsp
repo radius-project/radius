@@ -37,8 +37,10 @@ using OpenAPI;
 namespace Applications.Dapr;
 
 @doc("Dapr PubSubBroker portable resource")
-model DaprPubSubBrokerResource
-  is TrackedResourceRequired<DaprPubSubBrokerProperties, "daprPubSubBrokers"> {
+model DaprPubSubBrokerResource is TrackedResourceRequired<
+  DaprPubSubBrokerProperties,
+  "daprPubSubBrokers"
+> {
   @doc("PubSubBroker name")
   @key("pubSubBrokerName")
   @path

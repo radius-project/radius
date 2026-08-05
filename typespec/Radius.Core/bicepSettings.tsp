@@ -103,8 +103,10 @@ namespace Radius.Core;
   }
   ```
   """)
-model BicepSettingsResource
-  is TrackedResourceRequired<BicepSettingsProperties, "bicepSettings"> {
+model BicepSettingsResource is TrackedResourceRequired<
+  BicepSettingsProperties,
+  "bicepSettings"
+> {
   @doc("Bicep settings name")
   @key("bicepSettingsName")
   @path
