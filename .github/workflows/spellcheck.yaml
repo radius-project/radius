@@ -20,3 +20,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    with:
+      # Check both Markdown docs and the embedded `description` fields in
+      # resource type YAML schemas (and other YAML docs in the repo).
+      glob: "**/*.{md,yaml,yml}"
