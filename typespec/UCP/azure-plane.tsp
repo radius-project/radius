@@ -40,12 +40,11 @@ using OpenAPI;
 namespace Ucp;
 
 @doc("The Azure plane resource.")
-model AzurePlaneResource
-  is TrackedResourceRequired<
-    AzurePlaneResourceProperties,
-    "System.Azure/planes",
-    "planes"
-  > {
+model AzurePlaneResource is TrackedResourceRequired<
+  AzurePlaneResourceProperties,
+  "System.Azure/planes",
+  "planes"
+> {
   @doc("The plane name.")
   @segment("azure")
   @path

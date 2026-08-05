@@ -17,7 +17,6 @@ limitations under the License.
 package encryption
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"strconv"
@@ -52,7 +51,7 @@ func createTestKeyStore(t *testing.T, keys map[int][]byte, currentVersion int) [
 }
 
 func TestKubernetesKeyProvider_GetCurrentKey(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	validKey := make([]byte, KeySize)
 	for i := range validKey {
 		validKey[i] = byte(i)
@@ -255,7 +254,7 @@ func TestKubernetesKeyProvider_GetCurrentKey(t *testing.T) {
 }
 
 func TestKubernetesKeyProvider_GetKeyByVersion(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	key1 := make([]byte, KeySize)
 	key2 := make([]byte, KeySize)
 	for i := range key1 {
@@ -370,7 +369,7 @@ func TestNewKubernetesKeyProvider_DefaultOptions(t *testing.T) {
 }
 
 func TestInMemoryKeyProvider(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	validKey := make([]byte, KeySize)
 	for i := range validKey {
 		validKey[i] = byte(i)
@@ -429,7 +428,7 @@ func TestInMemoryKeyProvider(t *testing.T) {
 }
 
 func TestInMemoryKeyProviderWithVersions(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	key1 := make([]byte, KeySize)
 	key2 := make([]byte, KeySize)
 	for i := range key1 {
@@ -475,7 +474,7 @@ func TestInMemoryKeyProviderWithVersions(t *testing.T) {
 }
 
 func TestInMemoryKeyProvider_AddKeyAndSetVersion(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	key1 := make([]byte, KeySize)
 	key2 := make([]byte, KeySize)
 	for i := range key1 {
@@ -524,7 +523,7 @@ func TestInMemoryKeyProvider_AddKeyAndSetVersion(t *testing.T) {
 }
 
 func TestKeyProviderIntegration(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Generate keys
 	key1, err := GenerateKey()

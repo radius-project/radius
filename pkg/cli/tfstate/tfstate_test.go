@@ -17,7 +17,6 @@ limitations under the License.
 package tfstate
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -55,7 +54,7 @@ func Test_Backup_WritesLabelledSecretsOnly(t *testing.T) {
 	stateDir := t.TempDir()
 	client := NewClient(clientset, DefaultNamespace)
 
-	err := client.Backup(context.Background(), stateDir)
+	err := client.Backup(t.Context(), stateDir)
 	require.NoError(t, err)
 
 	entries, err := os.ReadDir(filepath.Join(stateDir, SubDir))
@@ -78,7 +77,7 @@ func Test_Backup_ClearsStaleFiles(t *testing.T) {
 	)
 	client := NewClient(clientset, DefaultNamespace)
 
-	err := client.Backup(context.Background(), stateDir)
+	err := client.Backup(t.Context(), stateDir)
 	require.NoError(t, err)
 
 	require.NoFileExists(t, stalePath)
@@ -90,7 +89,7 @@ func Test_Backup_NoSecrets(t *testing.T) {
 	stateDir := t.TempDir()
 	client := NewClient(clientset, DefaultNamespace)
 
-	err := client.Backup(context.Background(), stateDir)
+	err := client.Backup(t.Context(), stateDir)
 	require.NoError(t, err)
 	require.False(t, HasBackup(stateDir))
 }
@@ -112,13 +111,13 @@ func Test_BackupRestore_RoundTrip(t *testing.T) {
 	source := fake.NewSimpleClientset(original)
 	stateDir := t.TempDir()
 
-	require.NoError(t, NewClient(source, DefaultNamespace).Backup(context.Background(), stateDir))
+	require.NoError(t, NewClient(source, DefaultNamespace).Backup(t.Context(), stateDir))
 
 	// Restore into a fresh, empty cluster.
 	target := fake.NewSimpleClientset()
-	require.NoError(t, NewClient(target, DefaultNamespace).Restore(context.Background(), stateDir))
+	require.NoError(t, NewClient(target, DefaultNamespace).Restore(t.Context(), stateDir))
 
-	restored, err := target.CoreV1().Secrets(DefaultNamespace).Get(context.Background(), "tfstate-default-aaa", metav1.GetOptions{})
+	restored, err := target.CoreV1().Secrets(DefaultNamespace).Get(t.Context(), "tfstate-default-aaa", metav1.GetOptions{})
 	require.NoError(t, err)
 	require.Equal(t, []byte("round-trip-state"), restored.Data["tfstate"])
 	require.Equal(t, "true", restored.Labels["tfstate"])
@@ -131,15 +130,15 @@ func Test_Restore_UpdatesExistingSecret(t *testing.T) {
 	source := fake.NewSimpleClientset(
 		tfstateSecret("tfstate-default-aaa", map[string][]byte{"tfstate": []byte("new-state")}),
 	)
-	require.NoError(t, NewClient(source, DefaultNamespace).Backup(context.Background(), stateDir))
+	require.NoError(t, NewClient(source, DefaultNamespace).Backup(t.Context(), stateDir))
 
 	// Target already has a secret of the same name with stale data.
 	target := fake.NewSimpleClientset(
 		tfstateSecret("tfstate-default-aaa", map[string][]byte{"tfstate": []byte("old-state")}),
 	)
-	require.NoError(t, NewClient(target, DefaultNamespace).Restore(context.Background(), stateDir))
+	require.NoError(t, NewClient(target, DefaultNamespace).Restore(t.Context(), stateDir))
 
-	updated, err := target.CoreV1().Secrets(DefaultNamespace).Get(context.Background(), "tfstate-default-aaa", metav1.GetOptions{})
+	updated, err := target.CoreV1().Secrets(DefaultNamespace).Get(t.Context(), "tfstate-default-aaa", metav1.GetOptions{})
 	require.NoError(t, err)
 	require.Equal(t, []byte("new-state"), updated.Data["tfstate"])
 }
@@ -148,10 +147,10 @@ func Test_Restore_NoBackupIsNoOp(t *testing.T) {
 	target := fake.NewSimpleClientset()
 	stateDir := t.TempDir()
 
-	err := NewClient(target, DefaultNamespace).Restore(context.Background(), stateDir)
+	err := NewClient(target, DefaultNamespace).Restore(t.Context(), stateDir)
 	require.NoError(t, err)
 
-	secrets, err := target.CoreV1().Secrets(DefaultNamespace).List(context.Background(), metav1.ListOptions{})
+	secrets, err := target.CoreV1().Secrets(DefaultNamespace).List(t.Context(), metav1.ListOptions{})
 	require.NoError(t, err)
 	require.Empty(t, secrets.Items)
 }

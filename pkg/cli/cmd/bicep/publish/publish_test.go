@@ -17,7 +17,6 @@ limitations under the License.
 package publish
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -212,7 +211,7 @@ func Test_pushBlob(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDesc, err := pushBlob(context.Background(), tt.mediaType, tt.blob, tt.target)
+			gotDesc, err := pushBlob(t.Context(), tt.mediaType, tt.blob, tt.target)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("pushBlob() error = %v, wantErr %v", err, tt.wantErr)
 				return

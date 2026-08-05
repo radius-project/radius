@@ -17,7 +17,6 @@ limitations under the License.
 package azure
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -130,7 +129,7 @@ func TestSetWorkloadIdentityServiceAccount(t *testing.T) {
 	}
 
 	// Transform outputresource
-	err := TransformFederatedIdentitySA(context.Background(), putOptions)
+	err := TransformFederatedIdentitySA(t.Context(), putOptions)
 	require.NoError(t, err)
 	sa := fi.CreateResource.Data.(*corev1.ServiceAccount)
 
@@ -180,7 +179,7 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.desc, func(t *testing.T) {
-			err := TransformFederatedIdentitySA(context.Background(), &handlers.PutOptions{
+			err := TransformFederatedIdentitySA(t.Context(), &handlers.PutOptions{
 				Resource:             &rpv1.OutputResource{CreateResource: &rpv1.Resource{Data: tc.resource}},
 				DependencyProperties: tc.dep,
 			})

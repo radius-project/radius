@@ -38,7 +38,7 @@ func NewControllerContext(t *testing.T) *ControllerContext {
 	mctrl := gomock.NewController(t)
 
 	return &ControllerContext{
-		Ctx:    context.Background(),
+		Ctx:    t.Context(),
 		MCtrl:  mctrl,
 		MockSC: database.NewMockClient(mctrl),
 	}

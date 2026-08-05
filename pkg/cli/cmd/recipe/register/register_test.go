@@ -17,7 +17,6 @@ limitations under the License.
 package register
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -164,7 +163,7 @@ func Test_Run(t *testing.T) {
 			Return(envResource, nil).Times(1)
 
 		appManagementClient.EXPECT().
-			CreateOrUpdateEnvironment(context.Background(), "kind-kind", &envResource).
+			CreateOrUpdateEnvironment(t.Context(), "kind-kind", &envResource).
 			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -190,7 +189,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, expectedOutput, outputSink.Writes)
 	})
@@ -235,7 +234,7 @@ func Test_Run(t *testing.T) {
 			Times(1)
 
 		appManagementClient.EXPECT().
-			CreateOrUpdateEnvironment(context.Background(), "kind-kind", &envResource).
+			CreateOrUpdateEnvironment(t.Context(), "kind-kind", &envResource).
 			Return(expectedError).
 			Times(1)
 
@@ -250,7 +249,7 @@ func Test_Run(t *testing.T) {
 			RecipeName:        "cosmosDB_new",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Error(t, err)
 		require.Equal(t, expectedErrorMessage, err.Error())
 	})
@@ -277,7 +276,7 @@ func Test_Run(t *testing.T) {
 			RecipeName:        "cosmosDB_new",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Error(t, err)
 		require.Equal(t, expectedError, err)
 	})
@@ -317,7 +316,7 @@ func Test_Run(t *testing.T) {
 			Return(envResource, nil).Times(1)
 
 		appManagementClient.EXPECT().
-			CreateOrUpdateEnvironment(context.Background(), "kind-kind", &envResource).
+			CreateOrUpdateEnvironment(t.Context(), "kind-kind", &envResource).
 			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -343,7 +342,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, expectedOutput, outputSink.Writes)
 	})
@@ -374,7 +373,7 @@ func Test_Run(t *testing.T) {
 			Return(envResource, nil).Times(1)
 
 		appManagementClient.EXPECT().
-			CreateOrUpdateEnvironment(context.Background(), "kind-kind", &envResource).
+			CreateOrUpdateEnvironment(t.Context(), "kind-kind", &envResource).
 			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -399,7 +398,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, expectedOutput, outputSink.Writes)
 	})
@@ -427,7 +426,7 @@ func Test_Run(t *testing.T) {
 			Return(envResource, nil).Times(1)
 
 		appManagementClient.EXPECT().
-			CreateOrUpdateEnvironment(context.Background(), "kind-kind", &envResource).
+			CreateOrUpdateEnvironment(t.Context(), "kind-kind", &envResource).
 			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -452,7 +451,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, expectedOutput, outputSink.Writes)
 	})

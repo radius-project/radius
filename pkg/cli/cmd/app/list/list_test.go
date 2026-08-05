@@ -17,7 +17,6 @@ limitations under the License.
 package list
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -114,7 +113,7 @@ func Test_Run(t *testing.T) {
 		Output:            outputSink,
 	}
 
-	err := runner.Run(context.Background())
+	err := runner.Run(t.Context())
 	require.NoError(t, err)
 
 	expected := []any{

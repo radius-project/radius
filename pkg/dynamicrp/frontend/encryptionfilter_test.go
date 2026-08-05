@@ -43,7 +43,7 @@ func TestMakeEncryptionFilter_NilHandler(t *testing.T) {
 	// When handler is nil, filter should return an error response
 	filter := makeEncryptionFilter(nil, nil)
 
-	ctx := createTestContext()
+	ctx := createTestContext(t)
 	resource := &datamodel.DynamicResource{
 		Properties: map[string]any{
 			"password": "secret123",
@@ -66,7 +66,7 @@ func TestMakeEncryptionFilter_NoSensitiveFields(t *testing.T) {
 	handler := createTestHandler(t)
 	filter := makeEncryptionFilter(ucpClient, handler)
 
-	ctx := createTestContext()
+	ctx := createTestContext(t)
 	resource := &datamodel.DynamicResource{
 		Properties: map[string]any{
 			"name":  "test",
@@ -91,7 +91,7 @@ func TestMakeEncryptionFilter_WithSensitiveFields(t *testing.T) {
 	handler := createTestHandler(t)
 	filter := makeEncryptionFilter(ucpClient, handler)
 
-	ctx := createTestContext()
+	ctx := createTestContext(t)
 	resource := &datamodel.DynamicResource{
 		Properties: map[string]any{
 			"name":     "test",
@@ -122,7 +122,7 @@ func TestMakeEncryptionFilter_NilProperties(t *testing.T) {
 	handler := createTestHandler(t)
 	filter := makeEncryptionFilter(ucpClient, handler)
 
-	ctx := createTestContext()
+	ctx := createTestContext(t)
 	resource := &datamodel.DynamicResource{
 		Properties: nil,
 	}
@@ -140,7 +140,7 @@ func TestMakeEncryptionFilter_SchemaFetchError(t *testing.T) {
 	handler := createTestHandler(t)
 	filter := makeEncryptionFilter(ucpClient, handler)
 
-	ctx := createTestContext()
+	ctx := createTestContext(t)
 	resource := &datamodel.DynamicResource{
 		Properties: map[string]any{
 			"password": "secret123",
@@ -163,7 +163,7 @@ func TestMakeEncryptionFilter_NestedSensitiveFields(t *testing.T) {
 	handler := createTestHandler(t)
 	filter := makeEncryptionFilter(ucpClient, handler)
 
-	ctx := createTestContext()
+	ctx := createTestContext(t)
 	resource := &datamodel.DynamicResource{
 		Properties: map[string]any{
 			"name": "test",
@@ -194,8 +194,8 @@ func TestMakeEncryptionFilter_NestedSensitiveFields(t *testing.T) {
 
 // Helper functions
 
-func createTestContext() context.Context {
-	ctx := context.Background()
+func createTestContext(t *testing.T) context.Context {
+	ctx := t.Context()
 	// Add ARM request context
 	armCtx := &v1.ARMRequestContext{
 		ResourceID: mustParseResourceID(testResourceID),
@@ -219,7 +219,7 @@ func createTestHandler(t *testing.T) *encryption.SensitiveDataHandler {
 	provider, err := encryption.NewInMemoryKeyProvider(key)
 	require.NoError(t, err)
 
-	handler, err := encryption.NewSensitiveDataHandlerFromProvider(context.Background(), provider)
+	handler, err := encryption.NewSensitiveDataHandlerFromProvider(t.Context(), provider)
 	require.NoError(t, err)
 
 	return handler

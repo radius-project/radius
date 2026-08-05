@@ -17,7 +17,6 @@ limitations under the License.
 package rest
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -118,7 +117,7 @@ func Test_OKResponse_Empty(t *testing.T) {
 	req := httptest.NewRequest("GET", "http://example.com", nil)
 	w := httptest.NewRecorder()
 
-	err := response.Apply(context.TODO(), w, req)
+	err := response.Apply(t.Context(), w, req)
 	require.NoError(t, err)
 
 	require.Equal(t, http.StatusOK, w.Code)
@@ -135,7 +134,7 @@ func Test_OKResponse_WithBody(t *testing.T) {
 	req := httptest.NewRequest("GET", "http://example.com", nil)
 	w := httptest.NewRecorder()
 
-	err := response.Apply(context.TODO(), w, req)
+	err := response.Apply(t.Context(), w, req)
 	require.NoError(t, err)
 
 	require.Equal(t, http.StatusOK, w.Code)
@@ -258,7 +257,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			req := httptest.NewRequest("GET", tt.base, nil)
 			req.Header.Add(v1.RefererHeader, tt.referer.String())
 			w := httptest.NewRecorder()
-			err = r.Apply(context.Background(), w, req)
+			err = r.Apply(t.Context(), w, req)
 			require.NoError(t, err)
 
 			require.NotNil(t, w.Header().Get("Location"))

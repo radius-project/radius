@@ -3,7 +3,7 @@ types:
   mySqlDatabases:
     description: |
       The Radius.Data/mySqlDatabases Resource Type deploys a MySQL database. Provide the administrator `username` and `password` directly on the resource. The `password` property is marked `x-radius-sensitive`, so Radius encrypts it at rest, redacts it on reads, and exposes it (decrypted) only to the platform-engineer recipe that provisions the database.
-      ```
+      ```bicep
       resource mysql 'Radius.Data/mySqlDatabases@2025-08-01-preview' = {
         name: 'mysql'
         properties: {
@@ -21,7 +21,7 @@ types:
       When deploying the application definition, provide the database password value as a parameter. It is recommended to use a password generator such as `openssl` or equivalent. For example, `rad deploy app.bicep -p ****** rand -hex 16)`.
 
       To connect your container to the database, create a connection from the Container resource to the database as shown below.
-      ```
+      ```bicep
       resource myApplication 'Radius.Core/Applications@2025-08-01-preview' = { ... }
 
       resource frontend 'Radius.Compute/containers@2025-08-01-preview' = {
@@ -72,11 +72,13 @@ types:
               description: "(Required) The administrator password for the MySQL database. Marked `x-radius-sensitive`: Radius encrypts it at rest, redacts it on reads, and exposes it decrypted only to the recipe as `{{context.resource.properties.password}}`."
             database:
               type: string
+              default: mysql_db
               description: "(Optional) The name of the database. Defaults to `mysql_db` if not provided."
             version:
               type: string
               enum: ['5.7', '8.0', '8.4']
-              description: "(Optional) The major MySQL server version in the X.Y format. Assumed to be 8.4 if not specified."
+              default: '8.4'
+              description: "(Optional) The major MySQL server version in the X.Y format. Defaults to `8.4` if not provided."
             host:
               type: string
               description: The host name used to connect to the database. Mapped from the recipe module's output.

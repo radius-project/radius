@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -208,7 +207,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			genCtrl, err := NewCreateOrUpdateResource(opts)
 			require.NoError(t, err)
 
-			res, err := genCtrl.Run(context.Background(), req)
+			res, err := genCtrl.Run(t.Context(), req)
 
 			if tt.convErr {
 				tt.expErr = fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", strings.ToLower(tt.rt), parsedID.String())
@@ -380,7 +379,7 @@ func TestCreateOrUpdateResourceRun_20231001Preview(t *testing.T) {
 			genCtrl, err := NewCreateOrUpdateResource(opts)
 			require.NoError(t, err)
 
-			res, err := genCtrl.Run(context.Background(), req)
+			res, err := genCtrl.Run(t.Context(), req)
 
 			if tt.convErr {
 				tt.expErr = fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", strings.ToLower(tt.rt), parsedID.String())

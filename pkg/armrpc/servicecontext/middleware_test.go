@@ -17,7 +17,6 @@ limitations under the License.
 package servicecontext
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -92,7 +91,7 @@ func TestARMRequestCtx(t *testing.T) {
 
 			testUrl := testPathBase + tt.url
 
-			req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, testUrl, nil)
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodPut, testUrl, nil)
 			require.NoError(t, err)
 			handler.ServeHTTP(w, req)
 

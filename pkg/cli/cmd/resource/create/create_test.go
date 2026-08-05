@@ -17,7 +17,6 @@ limitations under the License.
 package create
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -114,7 +113,7 @@ func Test_Run(t *testing.T) {
 			Format:                         "table",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, []any{
 			output.LogOutput{

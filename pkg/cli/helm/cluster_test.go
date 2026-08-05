@@ -44,7 +44,7 @@ func Test_Helm_InstallRadius(t *testing.T) {
 		Helm:                           mockHelmClient,
 		configureDefaultContourGateway: gatewayCalls.configure,
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
@@ -104,7 +104,7 @@ func Test_Helm_UninstallRadius(t *testing.T) {
 		Helm:                        mockHelmClient,
 		removeDefaultContourGateway: gatewayCalls.remove,
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 	options.Contour.Namespace = "contour-system"
@@ -138,7 +138,7 @@ func Test_Helm_UninstallRadius_ReleaseNotFound(t *testing.T) {
 		Helm:                        mockHelmClient,
 		removeDefaultContourGateway: (&defaultContourGatewayCalls{}).remove,
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
@@ -258,7 +258,7 @@ func Test_Helm_UpgradeRadius(t *testing.T) {
 		Helm:                           mockHelmClient,
 		configureDefaultContourGateway: gatewayCalls.configure,
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
@@ -334,7 +334,7 @@ func Test_Helm_UpgradeRadius_ContourNotInstalled(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
@@ -444,7 +444,7 @@ func Test_Helm_UpgradeRadius_RadiusUpgradeError(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
@@ -480,7 +480,7 @@ func Test_Helm_UpgradeRadius_ContourUpgradeError(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
@@ -557,7 +557,7 @@ func Test_Helm_UpgradeRadius_CheckInstallError(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 
@@ -610,7 +610,7 @@ func Test_Helm_UpgradeRadius_ResetValues(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 	options := NewDefaultClusterOptions()
 	options.ResetValues = true
@@ -663,7 +663,7 @@ func Test_Helm_RollbackRadius_Success(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 
 	// Mock history with multiple versions
@@ -692,7 +692,7 @@ func Test_Helm_RollbackRadius_NoOlderVersion(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 
 	// Mock history with only one version
@@ -715,7 +715,7 @@ func Test_Helm_RollbackRadius_SameVersionSkipped(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 
 	// Mock history with same versions (no semantic rollback available)
@@ -739,7 +739,7 @@ func Test_Helm_RollbackRadius_HistoryError(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 
 	mockHelmClient.EXPECT().
@@ -758,7 +758,7 @@ func Test_Helm_RollbackRadiusToRevision_Success(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 	targetRevision := 3
 
@@ -789,7 +789,7 @@ func Test_Helm_RollbackRadiusToRevision_RevisionNotFound(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 	targetRevision := 999
 
@@ -814,7 +814,7 @@ func Test_Helm_RollbackRadiusToRevision_RollbackError(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 	targetRevision := 1
 
@@ -845,7 +845,7 @@ func Test_Helm_GetRadiusRevisions_Success(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 
 	// Mock history with multiple versions
@@ -901,7 +901,7 @@ func Test_Helm_GetRadiusRevisions_NoRevisions(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 
 	// Mock empty history
@@ -923,7 +923,7 @@ func Test_Helm_GetRadiusRevisions_HistoryError(t *testing.T) {
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 
 	mockHelmClient.EXPECT().
@@ -942,7 +942,7 @@ func Test_Helm_GetRadiusRevisions_MultipleUpgradesWithDifferentTimestamps(t *tes
 
 	mockHelmClient := NewMockHelmClient(ctrl)
 	impl := &Impl{Helm: mockHelmClient}
-	ctx := context.Background()
+	ctx := t.Context()
 	kubeContext := "test-context"
 
 	// Mock history simulating multiple upgrades and rollbacks across different days

@@ -17,7 +17,6 @@ limitations under the License.
 package factory
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/statearchive/oci"
@@ -58,7 +57,7 @@ func TestNewGraphArchive_InvalidBackendFailsOnOpen(t *testing.T) {
 	t.Setenv(BackendEnvVar, "filesystem")
 
 	archive := NewGraphArchive("")
-	_, err := archive.Open(context.Background(), "radius-graph")
+	_, err := archive.Open(t.Context(), "radius-graph")
 	require.ErrorContains(t, err, "invalid "+BackendEnvVar)
 }
 
@@ -74,7 +73,7 @@ func TestNewStateArchive_DefaultWithoutRegistryFailsOnOpen(t *testing.T) {
 	t.Setenv("DOCKER_CONFIG", t.TempDir())
 
 	archive := NewStateArchive("")
-	_, err := archive.Open(context.Background(), "radius-state")
+	_, err := archive.Open(t.Context(), "radius-state")
 	require.ErrorContains(t, err, "repository is not configured")
 }
 
@@ -90,7 +89,7 @@ func TestNewStateArchive_ExplicitOCIWithoutRegistryFailsOnOpen(t *testing.T) {
 	t.Setenv("DOCKER_CONFIG", t.TempDir())
 
 	archive := NewStateArchive("")
-	_, err := archive.Open(context.Background(), "radius-state")
+	_, err := archive.Open(t.Context(), "radius-state")
 	require.ErrorContains(t, err, "repository is not configured")
 }
 
@@ -106,6 +105,6 @@ func TestNewStateArchive_InvalidBackendFailsOnOpen(t *testing.T) {
 	t.Setenv(BackendEnvVar, "filesystem")
 
 	archive := NewStateArchive("")
-	_, err := archive.Open(context.Background(), "radius-state")
+	_, err := archive.Open(t.Context(), "radius-state")
 	require.ErrorContains(t, err, "invalid "+BackendEnvVar)
 }

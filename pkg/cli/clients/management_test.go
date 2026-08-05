@@ -413,7 +413,7 @@ func Test_Resource(t *testing.T) {
 
 		expectedResourceList := []generated.GenericResource{*listPages[0].Value[0], *listPages[0].Value[1], *listPages[1].Value[0], *listPages[1].Value[1]}
 
-		resources, err := client.ListResourcesOfType(context.Background(), testResourceType)
+		resources, err := client.ListResourcesOfType(t.Context(), testResourceType)
 		require.NoError(t, err)
 		require.Equal(t, expectedResourceList, resources)
 	})
@@ -424,7 +424,7 @@ func Test_Resource(t *testing.T) {
 		mockResourceProviderClient.EXPECT().NewListProviderSummariesPager("local", gomock.Any()).Return(pager(resourceProviderSummaryPages)).AnyTimes()
 		client := createResourceProviderClient(mockResourceProviderClient)
 
-		resourceTypes, err := client.ListAllResourceTypesNames(context.Background(), "local")
+		resourceTypes, err := client.ListAllResourceTypesNames(t.Context(), "local")
 		require.NoError(t, err)
 		require.Equal(t, []string{
 			"Applications.Test1/resourceType1",
@@ -466,7 +466,7 @@ func Test_Resource(t *testing.T) {
 
 		expectedResourceList := []generated.GenericResource{*listPages[0].Value[0]}
 
-		resources, err := client.ListResourcesOfTypeInApplication(context.Background(), "test-application", testResourceType)
+		resources, err := client.ListResourcesOfTypeInApplication(t.Context(), "test-application", testResourceType)
 		require.NoError(t, err)
 		require.Equal(t, expectedResourceList, resources)
 	})
@@ -502,7 +502,7 @@ func Test_Resource(t *testing.T) {
 
 		expectedResourceList := []generated.GenericResource{*listPages[0].Value[0], *listPages[0].Value[1]}
 
-		resources, err := client.ListResourcesOfTypeInEnvironment(context.Background(), "test-environment", testResourceType)
+		resources, err := client.ListResourcesOfTypeInEnvironment(t.Context(), "test-environment", testResourceType)
 		require.NoError(t, err)
 		require.Equal(t, expectedResourceList, resources)
 	})
@@ -544,7 +544,7 @@ func Test_Resource(t *testing.T) {
 
 		expectedResourceList := []generated.GenericResource{*listPages[0].Value[0]}
 
-		resources, err := client.ListResourcesInApplication(context.Background(), "test-application")
+		resources, err := client.ListResourcesInApplication(t.Context(), "test-application")
 		require.NoError(t, err)
 		require.Equal(t, expectedResourceList, resources)
 	})
@@ -586,7 +586,7 @@ func Test_Resource(t *testing.T) {
 
 		expectedResourceList := []generated.GenericResource{*listPages[0].Value[0], *listPages[0].Value[1]}
 
-		resources, err := client.ListResourcesInEnvironment(context.Background(), "test-environment")
+		resources, err := client.ListResourcesInEnvironment(t.Context(), "test-environment")
 		require.NoError(t, err)
 		require.Equal(t, expectedResourceList, resources)
 	})
@@ -620,7 +620,7 @@ func Test_Resource(t *testing.T) {
 			Get(gomock.Any(), testResourceName, gomock.Any()).
 			Return(generated.GenericResourcesClientGetResponse{GenericResource: expectedResource}, nil)
 
-		resource, err := client.GetResource(context.Background(), testResourceType, testResourceID)
+		resource, err := client.GetResource(t.Context(), testResourceType, testResourceID)
 		require.NoError(t, err)
 		require.Equal(t, expectedResource, resource)
 	})
@@ -633,7 +633,7 @@ func Test_Resource(t *testing.T) {
 			BeginCreateOrUpdate(gomock.Any(), testResourceName, expectedResource, gomock.Any()).
 			Return(poller(&generated.GenericResourcesClientCreateOrUpdateResponse{GenericResource: expectedResource}), nil)
 
-		response, err := client.CreateOrUpdateResource(context.Background(), testResourceType, testResourceID, &expectedResource)
+		response, err := client.CreateOrUpdateResource(t.Context(), testResourceType, testResourceID, &expectedResource)
 		require.NoError(t, err)
 		require.Equal(t, expectedResource, response)
 	})
@@ -667,7 +667,7 @@ func Test_Resource(t *testing.T) {
 			BeginDelete(gomock.Any(), testResourceName, gomock.Any()).
 			Return(poller(&generated.GenericResourcesClientDeleteResponse{}), nil)
 
-		deleted, err := client.DeleteResource(context.Background(), testResourceType, testResourceID, false)
+		deleted, err := client.DeleteResource(t.Context(), testResourceType, testResourceID, false)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -718,7 +718,7 @@ func Test_Resource(t *testing.T) {
 
 		// Test via GetResource which calls getGenericClient internally
 		// This indirectly tests that getGenericClient handles Radius.Core resources correctly
-		_, err := client.GetResource(context.Background(), "Radius.Core/environments", "test-env")
+		_, err := client.GetResource(t.Context(), "Radius.Core/environments", "test-env")
 		require.NoError(t, err)
 	})
 }
@@ -743,7 +743,7 @@ func Test_ForceDeletePolicy(t *testing.T) {
 			},
 		})
 
-		req, err := runtime.NewRequest(context.Background(), http.MethodDelete, "http://localhost/test?api-version=2023-10-01-preview")
+		req, err := runtime.NewRequest(t.Context(), http.MethodDelete, "http://localhost/test?api-version=2023-10-01-preview")
 		require.NoError(t, err)
 
 		_, err = pipeline.Do(req)
@@ -770,7 +770,7 @@ func Test_ForceDeletePolicy(t *testing.T) {
 			},
 		})
 
-		req, err := runtime.NewRequest(context.Background(), http.MethodGet, "http://localhost/test?api-version=2023-10-01-preview")
+		req, err := runtime.NewRequest(t.Context(), http.MethodGet, "http://localhost/test?api-version=2023-10-01-preview")
 		require.NoError(t, err)
 
 		_, err = pipeline.Do(req)
@@ -848,7 +848,7 @@ func Test_DeleteResource_ForceQueryParameter(t *testing.T) {
 			}
 
 			// Assert the delete call succeeds so failures in later requests are not silently ignored.
-			_, err := client.DeleteResource(context.Background(), "Applications.Test/testResource", testScope+"/providers/Applications.Test/testResource/myresource", tt.force)
+			_, err := client.DeleteResource(t.Context(), "Applications.Test/testResource", testScope+"/providers/Applications.Test/testResource/myresource", tt.force)
 			require.NoError(t, err)
 
 			require.NotEmpty(t, capturedURLs, "expected at least one HTTP request")
@@ -944,7 +944,7 @@ func Test_DeleteApplication_ForceQueryParameter(t *testing.T) {
 			}
 
 			// Assert the delete call succeeds so failures in later requests are not silently ignored.
-			_, err := client.DeleteApplication(context.Background(), testScope+"/providers/Applications.Core/applications/test-app", tt.force)
+			_, err := client.DeleteApplication(t.Context(), testScope+"/providers/Applications.Core/applications/test-app", tt.force)
 			require.NoError(t, err)
 
 			require.NotEmpty(t, appDeleteURLs, "expected at least one DELETE request to applications endpoint")
@@ -1058,7 +1058,7 @@ func Test_Application(t *testing.T) {
 
 		expectedResourceList := []corerp.ApplicationResource{*listPages[0].Value[0], *listPages[0].Value[1], *listPages[1].Value[0], *listPages[1].Value[1]}
 
-		resources, err := client.ListApplications(context.Background())
+		resources, err := client.ListApplications(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, expectedResourceList, resources)
 	})
@@ -1073,7 +1073,7 @@ func Test_Application(t *testing.T) {
 
 		expectedResourceList := []corerp.ApplicationResource{*listPages[0].Value[0], *listPages[0].Value[1]}
 
-		resources, err := client.ListApplicationsInEnvironment(context.Background(), "test-environment")
+		resources, err := client.ListApplicationsInEnvironment(t.Context(), "test-environment")
 		require.NoError(t, err)
 		require.Equal(t, expectedResourceList, resources)
 	})
@@ -1086,7 +1086,7 @@ func Test_Application(t *testing.T) {
 			Get(gomock.Any(), testResourceName, gomock.Any()).
 			Return(corerp.ApplicationsClientGetResponse{ApplicationResource: expectedResource}, nil)
 
-		application, err := client.GetApplication(context.Background(), testResourceID)
+		application, err := client.GetApplication(t.Context(), testResourceID)
 		require.NoError(t, err)
 		require.Equal(t, expectedResource, application)
 	})
@@ -1107,7 +1107,7 @@ func Test_Application(t *testing.T) {
 			GetGraph(gomock.Any(), testResourceName, gomock.Any(), gomock.Any()).
 			Return(corerp.ApplicationsClientGetGraphResponse{ApplicationGraphResponse: expectedGraph}, nil)
 
-		graph, err := client.GetApplicationGraph(context.Background(), testResourceID)
+		graph, err := client.GetApplicationGraph(t.Context(), testResourceID)
 		require.NoError(t, err)
 		require.Equal(t, expectedGraph, graph)
 	})
@@ -1120,7 +1120,7 @@ func Test_Application(t *testing.T) {
 			CreateOrUpdate(gomock.Any(), testResourceName, expectedResource, gomock.Any()).
 			Return(corerp.ApplicationsClientCreateOrUpdateResponse{}, nil)
 
-		err := client.CreateOrUpdateApplication(context.Background(), testResourceID, &expectedResource)
+		err := client.CreateOrUpdateApplication(t.Context(), testResourceID, &expectedResource)
 		require.NoError(t, err)
 	})
 
@@ -1136,7 +1136,7 @@ func Test_Application(t *testing.T) {
 			CreateOrUpdate(gomock.Any(), testResourceName, expectedResource, gomock.Any()).
 			Return(corerp.ApplicationsClientCreateOrUpdateResponse{}, nil)
 
-		err := client.CreateApplicationIfNotFound(context.Background(), testResourceID, &expectedResource)
+		err := client.CreateApplicationIfNotFound(t.Context(), testResourceID, &expectedResource)
 		require.NoError(t, err)
 	})
 
@@ -1222,7 +1222,7 @@ func Test_Application(t *testing.T) {
 				return corerp.ApplicationsClientDeleteResponse{}, nil
 			})
 
-		deleted, err := client.DeleteApplication(context.Background(), testResourceID, false)
+		deleted, err := client.DeleteApplication(t.Context(), testResourceID, false)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -1302,7 +1302,7 @@ func Test_Application(t *testing.T) {
 				return corerp.ApplicationsClientDeleteResponse{}, nil
 			})
 
-		deleted, err := client.DeleteApplication(context.Background(), testResourceID, false)
+		deleted, err := client.DeleteApplication(t.Context(), testResourceID, false)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -1341,7 +1341,7 @@ func Test_Application(t *testing.T) {
 		// Delete should NOT be called when ListResourcesInApplication fails with non-404 error
 		// No expectation set for mock.Delete()
 
-		deleted, err := client.DeleteApplication(context.Background(), testResourceID, false)
+		deleted, err := client.DeleteApplication(t.Context(), testResourceID, false)
 		require.Error(t, err)
 		require.False(t, deleted)
 		// Verify the error is propagated correctly
@@ -1423,7 +1423,7 @@ func Test_Environment(t *testing.T) {
 
 		expectedResourceList := []corerp.EnvironmentResource{*listPages[0].Value[0], *listPages[0].Value[1], *listPages[1].Value[0], *listPages[1].Value[1]}
 
-		resources, err := client.ListEnvironments(context.Background())
+		resources, err := client.ListEnvironments(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, expectedResourceList, resources)
 	})
@@ -1438,7 +1438,7 @@ func Test_Environment(t *testing.T) {
 
 		expectedResourceList := []corerp.EnvironmentResource{*listPages[0].Value[0], *listPages[0].Value[1], *listPages[1].Value[0], *listPages[1].Value[1]}
 
-		resources, err := client.ListEnvironmentsAll(context.Background())
+		resources, err := client.ListEnvironmentsAll(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, expectedResourceList, resources)
 	})
@@ -1451,7 +1451,7 @@ func Test_Environment(t *testing.T) {
 			Get(gomock.Any(), testResourceName, gomock.Any()).
 			Return(corerp.EnvironmentsClientGetResponse{EnvironmentResource: expectedResource}, nil)
 
-		environment, err := client.GetEnvironment(context.Background(), testResourceID)
+		environment, err := client.GetEnvironment(t.Context(), testResourceID)
 		require.NoError(t, err)
 		require.Equal(t, expectedResource, environment)
 	})
@@ -1481,7 +1481,7 @@ func Test_Environment(t *testing.T) {
 				},
 			}, nil)
 
-		result, err := client.GetRecipeMetadata(context.Background(), testResourceID, expectedMetadata)
+		result, err := client.GetRecipeMetadata(t.Context(), testResourceID, expectedMetadata)
 		require.NoError(t, err)
 		require.Equal(t, expectedResult, result)
 	})
@@ -1494,7 +1494,7 @@ func Test_Environment(t *testing.T) {
 			CreateOrUpdate(gomock.Any(), testResourceName, expectedResource, gomock.Any()).
 			Return(corerp.EnvironmentsClientCreateOrUpdateResponse{EnvironmentResource: expectedResource}, nil)
 
-		err := client.CreateOrUpdateEnvironment(context.Background(), testResourceID, &expectedResource)
+		err := client.CreateOrUpdateEnvironment(t.Context(), testResourceID, &expectedResource)
 		require.NoError(t, err)
 	})
 
@@ -1610,7 +1610,7 @@ func Test_Environment(t *testing.T) {
 				return corerp.EnvironmentsClientDeleteResponse{}, nil
 			})
 
-		deleted, err := client.DeleteEnvironment(context.Background(), testResourceID)
+		deleted, err := client.DeleteEnvironment(t.Context(), testResourceID)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -1679,7 +1679,7 @@ func Test_RadiusCoreEnvironment(t *testing.T) {
 			*listPages[1].Value[0],
 		}
 
-		resources, err := client.ListRadiusCoreEnvironmentsAll(context.Background())
+		resources, err := client.ListRadiusCoreEnvironmentsAll(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, expected, resources)
 	})
@@ -1757,7 +1757,7 @@ func Test_ResourceGroup(t *testing.T) {
 
 		expected := []ucp.ResourceGroupResource{*resourceGroupPages[0].Value[0], *resourceGroupPages[0].Value[1], *resourceGroupPages[1].Value[0], *resourceGroupPages[1].Value[1]}
 
-		groups, err := client.ListResourceGroups(context.Background(), "local")
+		groups, err := client.ListResourceGroups(t.Context(), "local")
 		require.NoError(t, err)
 		require.Equal(t, expected, groups)
 	})
@@ -1770,7 +1770,7 @@ func Test_ResourceGroup(t *testing.T) {
 			Get(gomock.Any(), "local", testResourceName, gomock.Any()).
 			Return(ucp.ResourceGroupsClientGetResponse{ResourceGroupResource: expectedResource}, nil)
 
-		group, err := client.GetResourceGroup(context.Background(), "local", testResourceName)
+		group, err := client.GetResourceGroup(t.Context(), "local", testResourceName)
 		require.NoError(t, err)
 		require.Equal(t, expectedResource, group)
 	})
@@ -1783,7 +1783,7 @@ func Test_ResourceGroup(t *testing.T) {
 			CreateOrUpdate(gomock.Any(), "local", testResourceName, expectedResource, gomock.Any()).
 			Return(ucp.ResourceGroupsClientCreateOrUpdateResponse{}, nil)
 
-		err := client.CreateOrUpdateResourceGroup(context.Background(), "local", testResourceName, &expectedResource)
+		err := client.CreateOrUpdateResourceGroup(t.Context(), "local", testResourceName, &expectedResource)
 		require.NoError(t, err)
 	})
 
@@ -1836,7 +1836,7 @@ func Test_ResourceGroup(t *testing.T) {
 				return ucp.ResourceGroupsClientDeleteResponse{}, nil
 			})
 
-		deleted, err := client.DeleteResourceGroup(context.Background(), "local", testResourceName)
+		deleted, err := client.DeleteResourceGroup(t.Context(), "local", testResourceName)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -1860,7 +1860,7 @@ func Test_DeleteResourceGroup(t *testing.T) {
 		// Expect group deletion
 		mockResourceGroupDeletion(rgClient, "local", "test-rg")
 
-		deleted, err := client.DeleteResourceGroup(context.Background(), "local", "test-rg")
+		deleted, err := client.DeleteResourceGroup(t.Context(), "local", "test-rg")
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -1889,7 +1889,7 @@ func Test_DeleteResourceGroup(t *testing.T) {
 		// Expect group deletion
 		mockResourceGroupDeletion(rgClient, "local", "test-rg")
 
-		deleted, err := client.DeleteResourceGroup(context.Background(), "local", "test-rg")
+		deleted, err := client.DeleteResourceGroup(t.Context(), "local", "test-rg")
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -1909,7 +1909,7 @@ func Test_DeleteResourceGroup(t *testing.T) {
 		mockProviderSummaryForDeletion(rpClient, "local", "Applications.Core")
 		mockResourceDeletionFailure(genericClient, "test-env", "deletion failed")
 
-		deleted, err := client.DeleteResourceGroup(context.Background(), "local", "test-rg")
+		deleted, err := client.DeleteResourceGroup(t.Context(), "local", "test-rg")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to delete resources in group")
 		require.False(t, deleted)
@@ -1919,7 +1919,7 @@ func Test_DeleteResourceGroup(t *testing.T) {
 // runListTest is a helper for testing list operations with filters
 func runListTest(t *testing.T, client *UCPApplicationsManagementClient, resourceGroupName, environmentID, applicationID string, expectedNames []string) {
 	resources, err := client.ListResourcesInResourceGroupFiltered(
-		context.Background(), "local", resourceGroupName, environmentID, applicationID)
+		t.Context(), "local", resourceGroupName, environmentID, applicationID)
 	require.NoError(t, err)
 	require.Len(t, resources, len(expectedNames))
 	for i, expectedName := range expectedNames {
@@ -1958,7 +1958,7 @@ func Test_ListResourcesInResourceGroup(t *testing.T) {
 			NewListByRootScopePager(gomock.Any()).
 			Return(pager(allResources)).Times(4)
 
-		resources, err := client.ListResourcesInResourceGroup(context.Background(), "local", "test-group")
+		resources, err := client.ListResourcesInResourceGroup(t.Context(), "local", "test-group")
 		require.NoError(t, err)
 		require.Len(t, resources, 4)
 		require.Equal(t, "resource1", *resources[0].Name)
@@ -1977,7 +1977,7 @@ func Test_ListResourcesInResourceGroup(t *testing.T) {
 			NewListByRootScopePager(gomock.Any()).
 			Return(pager(emptyResources)).Times(4)
 
-		resources, err := client.ListResourcesInResourceGroup(context.Background(), "local", "test-group")
+		resources, err := client.ListResourcesInResourceGroup(t.Context(), "local", "test-group")
 		require.NoError(t, err)
 		require.Empty(t, resources)
 	})
@@ -2034,7 +2034,7 @@ func Test_ListResourcesInResourceGroup(t *testing.T) {
 			NewListByRootScopePager(gomock.Any()).
 			Return(pager(emptyResources)).Times(1)
 
-		resources, err := client.ListResourcesInResourceGroup(context.Background(), "local", "test-group")
+		resources, err := client.ListResourcesInResourceGroup(t.Context(), "local", "test-group")
 		require.NoError(t, err)
 		require.Len(t, resources, 1)
 		require.Equal(t, "resource1", *resources[0].Name)
@@ -2096,7 +2096,7 @@ func Test_ListResourcesInResourceGroup(t *testing.T) {
 // runListResourcesOfTypeTest is a helper for testing list resources of type operations with filters
 func runListResourcesOfTypeTest(t *testing.T, client *UCPApplicationsManagementClient, resourceGroupName, resourceType, environmentID, applicationID string, expectedNames []string) {
 	resources, err := client.ListResourcesOfTypeInResourceGroupFiltered(
-		context.Background(), "local", resourceGroupName, resourceType, environmentID, applicationID)
+		t.Context(), "local", resourceGroupName, resourceType, environmentID, applicationID)
 	require.NoError(t, err)
 	require.Len(t, resources, len(expectedNames))
 	for i, expectedName := range expectedNames {
@@ -2139,7 +2139,7 @@ func Test_ListResourcesOfTypeInResourceGroup(t *testing.T) {
 			Return(pager(allResourcesOfType))
 
 		resources, err := client.ListResourcesOfTypeInResourceGroup(
-			context.Background(), "local", "test-group", testResourceType)
+			t.Context(), "local", "test-group", testResourceType)
 		require.NoError(t, err)
 		require.Len(t, resources, 3)
 		require.Equal(t, "resource1", *resources[0].Name)
@@ -2161,7 +2161,7 @@ func Test_ListResourcesOfTypeInResourceGroup(t *testing.T) {
 			Return(pager(emptyResources))
 
 		resources, err := client.ListResourcesOfTypeInResourceGroup(
-			context.Background(), "local", "test-group", testResourceType)
+			t.Context(), "local", "test-group", testResourceType)
 		require.NoError(t, err)
 		require.Empty(t, resources)
 	})
@@ -2175,7 +2175,7 @@ func Test_ListResourcesOfTypeInResourceGroup(t *testing.T) {
 			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{}, fmt.Errorf("provider not found"))
 
 		_, err := client.ListResourcesOfTypeInResourceGroup(
-			context.Background(), "local", "test-group", "Unknown.Provider/unknownType")
+			t.Context(), "local", "test-group", "Unknown.Provider/unknownType")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "provider not found")
 	})
@@ -2318,7 +2318,7 @@ func Test_ResourceProvider(t *testing.T) {
 
 		expected := []ucp.ResourceProviderResource{*resourceProviderPages[0].Value[0], *resourceProviderPages[0].Value[1], *resourceProviderPages[1].Value[0], *resourceProviderPages[1].Value[1]}
 
-		groups, err := client.ListResourceProviders(context.Background(), "local")
+		groups, err := client.ListResourceProviders(t.Context(), "local")
 		require.NoError(t, err)
 		require.Equal(t, expected, groups)
 	})
@@ -2331,7 +2331,7 @@ func Test_ResourceProvider(t *testing.T) {
 			Get(gomock.Any(), "local", testResourceProviderName, gomock.Any()).
 			Return(ucp.ResourceProvidersClientGetResponse{ResourceProviderResource: expectedResource}, nil)
 
-		group, err := client.GetResourceProvider(context.Background(), "local", testResourceProviderName)
+		group, err := client.GetResourceProvider(t.Context(), "local", testResourceProviderName)
 		require.NoError(t, err)
 		require.Equal(t, expectedResource, group)
 	})
@@ -2344,7 +2344,7 @@ func Test_ResourceProvider(t *testing.T) {
 			BeginCreateOrUpdate(gomock.Any(), "local", testResourceProviderName, expectedResource, gomock.Any()).
 			Return(poller(&ucp.ResourceProvidersClientCreateOrUpdateResponse{ResourceProviderResource: expectedResource}), nil)
 
-		result, err := client.CreateOrUpdateResourceProvider(context.Background(), "local", testResourceProviderName, &expectedResource)
+		result, err := client.CreateOrUpdateResourceProvider(t.Context(), "local", testResourceProviderName, &expectedResource)
 		require.NoError(t, err)
 		require.Equal(t, result, expectedResource)
 	})
@@ -2360,7 +2360,7 @@ func Test_ResourceProvider(t *testing.T) {
 				return poller(&ucp.ResourceProvidersClientDeleteResponse{}), nil
 			})
 
-		deleted, err := client.DeleteResourceProvider(context.Background(), "local", testResourceProviderName)
+		deleted, err := client.DeleteResourceProvider(t.Context(), "local", testResourceProviderName)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -2374,7 +2374,7 @@ func Test_ResourceProvider(t *testing.T) {
 			Return(pager(resourceProviderSummaryPages))
 		expected := []ucp.ResourceProviderSummary{*resourceProviderSummaryPages[0].Value[0], *resourceProviderSummaryPages[0].Value[1], *resourceProviderSummaryPages[1].Value[0], *resourceProviderSummaryPages[1].Value[1], *resourceProviderSummaryPages[1].Value[2]}
 
-		resourceProviderSummaries, err := client.ListResourceProviderSummaries(context.Background(), "local")
+		resourceProviderSummaries, err := client.ListResourceProviderSummaries(t.Context(), "local")
 		require.NoError(t, err)
 		require.Equal(t, expected, resourceProviderSummaries)
 	})
@@ -2402,7 +2402,7 @@ func Test_ResourceProvider(t *testing.T) {
 			GetProviderSummary(gomock.Any(), "local", testResourceProviderName, gomock.Any()).
 			Return(ucp.ResourceProvidersClientGetProviderSummaryResponse{ResourceProviderSummary: expectedResource}, nil)
 
-		summary, err := client.GetResourceProviderSummary(context.Background(), "local", testResourceProviderName)
+		summary, err := client.GetResourceProviderSummary(t.Context(), "local", testResourceProviderName)
 		require.NoError(t, err)
 		require.Equal(t, expectedResource, summary)
 	})
@@ -2437,7 +2437,7 @@ func Test_ResourceType(t *testing.T) {
 			BeginCreateOrUpdate(gomock.Any(), "local", testResourceProviderName, testResourceTypeName, expectedResource, gomock.Any()).
 			Return(poller(&ucp.ResourceTypesClientCreateOrUpdateResponse{ResourceTypeResource: expectedResource}), nil)
 
-		result, err := client.CreateOrUpdateResourceType(context.Background(), "local", testResourceProviderName, testResourceTypeName, &expectedResource)
+		result, err := client.CreateOrUpdateResourceType(t.Context(), "local", testResourceProviderName, testResourceTypeName, &expectedResource)
 		require.NoError(t, err)
 		require.Equal(t, expectedResource, result)
 	})
@@ -2453,7 +2453,7 @@ func Test_ResourceType(t *testing.T) {
 				return poller(&ucp.ResourceTypesClientDeleteResponse{}), nil
 			})
 
-		deleted, err := client.DeleteResourceType(context.Background(), "local", testResourceProviderName, testResourceTypeName)
+		deleted, err := client.DeleteResourceType(t.Context(), "local", testResourceProviderName, testResourceTypeName)
 		require.NoError(t, err)
 		require.True(t, deleted)
 	})
@@ -2489,7 +2489,7 @@ func Test_APIVersion(t *testing.T) {
 			BeginCreateOrUpdate(gomock.Any(), "local", testResourceProviderName, testResourceTypeName, testAPIVersionResourceName, expectedResource, gomock.Any()).
 			Return(poller(&ucp.APIVersionsClientCreateOrUpdateResponse{APIVersionResource: expectedResource}), nil)
 
-		result, err := client.CreateOrUpdateAPIVersion(context.Background(), "local", testResourceProviderName, testResourceTypeName, testAPIVersionResourceName, &expectedResource)
+		result, err := client.CreateOrUpdateAPIVersion(t.Context(), "local", testResourceProviderName, testResourceTypeName, testAPIVersionResourceName, &expectedResource)
 		require.NoError(t, err)
 		require.Equal(t, expectedResource, result)
 	})
@@ -2524,7 +2524,7 @@ func Test_Location(t *testing.T) {
 			BeginCreateOrUpdate(gomock.Any(), "local", testResourceProviderName, testLocationName, expectedResource, gomock.Any()).
 			Return(poller(&ucp.LocationsClientCreateOrUpdateResponse{LocationResource: expectedResource}), nil)
 
-		result, err := client.CreateOrUpdateLocation(context.Background(), "local", testResourceProviderName, testLocationName, &expectedResource)
+		result, err := client.CreateOrUpdateLocation(t.Context(), "local", testResourceProviderName, testLocationName, &expectedResource)
 		require.NoError(t, err)
 		require.Equal(t, expectedResource, result)
 	})

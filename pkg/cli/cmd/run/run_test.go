@@ -326,7 +326,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 
 		// Parse the flags manually to set the environment and app flags
 		cmd.SetArgs([]string{"app.bicep", "-e", "prod", "-a", "my-app"})
-		cmd.SetContext(context.Background())
+		cmd.SetContext(t.Context())
 		err = cmd.ParseFlags([]string{"-e", "prod", "-a", "my-app"})
 		require.NoError(t, err)
 
@@ -400,7 +400,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 
 		// Parse the flags manually to set the environment flag with a non-existent environment
 		cmd.SetArgs([]string{"app.bicep", "-e", "nonexistent", "-a", "my-app"})
-		cmd.SetContext(context.Background())
+		cmd.SetContext(t.Context())
 		err = cmd.ParseFlags([]string{"-e", "nonexistent", "-a", "my-app"})
 		require.NoError(t, err)
 

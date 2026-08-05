@@ -43,7 +43,7 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 
 	databaseClient := database.NewMockClient(mctrl)
 	req, err := rpctest.NewHTTPRequestWithContent(
-		context.Background(),
+		t.Context(),
 		v1.OperationPost.HTTPMethod(),
 		"http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/secret0/listsecrets?api-version=2023-10-01-preview", nil)
 	require.NoError(t, err)
@@ -117,7 +117,7 @@ func TestListSecrets_InvalidKubernetesSecret(t *testing.T) {
 
 	databaseClient := database.NewMockClient(mctrl)
 	req, err := rpctest.NewHTTPRequestWithContent(
-		context.Background(),
+		t.Context(),
 		v1.OperationPost.HTTPMethod(),
 		"http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/secretStores/secret0/listsecrets?api-version=2023-10-01-preview", nil)
 	require.NoError(t, err)
