@@ -228,6 +228,10 @@ func Test_RetryDelayForAttempt(t *testing.T) {
 		{name: "delay doubles per attempt", base: 30 * time.Second, attempt: 3, expected: 60 * time.Second},
 		{name: "delay reaches the cap", base: 30 * time.Second, attempt: 4, expected: maxTransientRetryDelay},
 		{name: "delay stops growing at the cap", base: 30 * time.Second, attempt: 9, expected: maxTransientRetryDelay},
+		// A base above half the cap makes the next doubling overshoot it, so the
+		// result has to be clamped rather than just left ungrown.
+		{name: "doubling overshoots the cap", base: 90 * time.Second, attempt: 3, expected: maxTransientRetryDelay},
+		{name: "overshooting base stays at the cap", base: 90 * time.Second, attempt: 9, expected: maxTransientRetryDelay},
 		// A caller that asks for a longer delay than the cap keeps it: the cap only
 		// bounds the doubling, it never shortens a caller-supplied delay.
 		{name: "caller delay above the cap is preserved", base: 5 * time.Minute, attempt: 3, expected: 5 * time.Minute},
