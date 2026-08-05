@@ -312,13 +312,16 @@ func (d *DeployExecutor) executeWithRetry(ctx context.Context, t *testing.T, dep
 
 // retryDelayForAttempt returns how long to wait before the given attempt, which
 // is always 2 or greater. The wait starts at RetryDelay and doubles per attempt
-// so the retry budget spans a control-plane restart, and stops growing once it
-// reaches maxTransientRetryDelay. A caller-supplied delay is never shortened.
+// so the retry budget spans a control-plane restart, clamped to
+// maxTransientRetryDelay. A caller-supplied delay is never shortened.
 func (d *DeployExecutor) retryDelayForAttempt(attempt int) time.Duration {
+	// Taking the max keeps a caller-supplied delay that already exceeds the cap.
+	limit := max(d.RetryDelay, maxTransientRetryDelay)
+
 	delay := d.RetryDelay
-	for i := 2; i < attempt && delay < maxTransientRetryDelay; i++ {
+	for i := 2; i < attempt && delay < limit; i++ {
 		delay *= 2
 	}
 
-	return delay
+	return min(delay, limit)
 }
