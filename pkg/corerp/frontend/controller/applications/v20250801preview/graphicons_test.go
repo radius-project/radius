@@ -17,7 +17,6 @@ limitations under the License.
 package v20250801preview
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -123,7 +122,7 @@ func Test_fetchIcons_HashOnly(t *testing.T) {
 		},
 	}
 
-	icons, err := fetchIcons(context.Background(), conn, graph, false)
+	icons, err := fetchIcons(t.Context(), conn, graph, false)
 	require.NoError(t, err)
 	require.NotNil(t, icons)
 
@@ -147,7 +146,7 @@ func Test_fetchIcons_EmptyGraph(t *testing.T) {
 	conn, err := sdk.NewDirectConnection(server.URL)
 	require.NoError(t, err)
 
-	icons, err := fetchIcons(context.Background(), conn, &corerpv20250801preview.ApplicationGraphResponse{}, false)
+	icons, err := fetchIcons(t.Context(), conn, &corerpv20250801preview.ApplicationGraphResponse{}, false)
 	require.NoError(t, err)
 	assert.Nil(t, icons)
 }
@@ -189,7 +188,7 @@ func Test_fetchIcons_ExternalProviderNotFound(t *testing.T) {
 
 	// includeBytes=false because the reviewer's report was specifically that
 	// the graph errored even when the caller had not opted into inline bytes.
-	icons, err := fetchIcons(context.Background(), conn, graph, false)
+	icons, err := fetchIcons(t.Context(), conn, graph, false)
 	require.NoError(t, err)
 	require.NotNil(t, icons)
 
@@ -259,7 +258,7 @@ func Test_fetchIcons_IntegrityCheck(t *testing.T) {
 		},
 	}
 
-	icons, err := fetchIcons(context.Background(), conn, graph, true)
+	icons, err := fetchIcons(t.Context(), conn, graph, true)
 	require.NoError(t, err, "integrity failure must not fail the whole request")
 	require.NotNil(t, icons)
 

@@ -17,7 +17,6 @@ limitations under the License.
 package applications
 
 import (
-	"context"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -42,7 +41,7 @@ func TestGetGraphRun_20231001Preview(t *testing.T) {
 
 	databaseClient := database.NewMockClient(mctrl)
 	req, err := rpctest.NewHTTPRequestWithContent(
-		context.Background(),
+		t.Context(),
 		v1.OperationPost.HTTPMethod(),
 		"http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/Applications/myapp/getGraph?api-version=2023-10-01-preview", nil)
 
@@ -83,7 +82,7 @@ func TestComputeGraphResponse_InvalidEnvironmentID(t *testing.T) {
 
 	// An empty/invalid environment ID string must surface as a parse error from
 	// resources.Parse and not a panic or a successful response.
-	resp, err := ComputeGraphResponse(context.Background(), applicationID, "not-a-valid-resource-id", conn)
+	resp, err := ComputeGraphResponse(t.Context(), applicationID, "not-a-valid-resource-id", conn)
 	require.Error(t, err)
 	require.Nil(t, resp)
 }
@@ -105,7 +104,7 @@ func TestComputeGraphResponse_UCPProvidersError(t *testing.T) {
 	require.NoError(t, err)
 
 	resp, err := ComputeGraphResponse(
-		context.Background(),
+		t.Context(),
 		applicationID,
 		"/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/myenv",
 		conn,
@@ -138,7 +137,7 @@ func TestComputeGraphResponse_ListByApplicationError(t *testing.T) {
 	require.NoError(t, err)
 
 	resp, err := ComputeGraphResponse(
-		context.Background(),
+		t.Context(),
 		applicationID,
 		"/planes/radius/local/resourceGroups/env-rg/providers/Applications.Core/environments/myenv",
 		conn,
@@ -183,7 +182,7 @@ func TestComputeGraphResponse_ListByEnvironmentError(t *testing.T) {
 	require.NoError(t, err)
 
 	resp, err := ComputeGraphResponse(
-		context.Background(),
+		t.Context(),
 		applicationID,
 		"/planes/radius/local/resourceGroups/env-rg/providers/Applications.Core/environments/myenv",
 		conn,
@@ -200,7 +199,7 @@ func TestGetGraphRun_DatabaseError(t *testing.T) {
 
 	databaseClient := database.NewMockClient(mctrl)
 	req, err := rpctest.NewHTTPRequestWithContent(
-		context.Background(),
+		t.Context(),
 		v1.OperationPost.HTTPMethod(),
 		"http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/Applications/myapp/getGraph?api-version=2023-10-01-preview", nil)
 	require.NoError(t, err)
@@ -256,7 +255,7 @@ func TestGetGraphRun_ComputeGraphSuccess(t *testing.T) {
 		}), nil)
 
 	req, err := rpctest.NewHTTPRequestWithContent(
-		context.Background(),
+		t.Context(),
 		v1.OperationPost.HTTPMethod(),
 		"http://localhost:8080"+appIDStr+"/getGraph?api-version=2023-10-01-preview", nil)
 	require.NoError(t, err)

@@ -17,7 +17,6 @@ limitations under the License.
 package delete
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -166,7 +165,7 @@ func Test_Delete(t *testing.T) {
 			Confirm:           true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -235,7 +234,7 @@ func Test_Delete(t *testing.T) {
 			EnvironmentName:   "default",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -291,7 +290,7 @@ func Test_Delete(t *testing.T) {
 			EnvironmentName:   "default",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Empty(t, outputSink.Writes)
 	})
@@ -349,7 +348,7 @@ func Test_Delete(t *testing.T) {
 			Confirm:           true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -406,7 +405,7 @@ func Test_Delete(t *testing.T) {
 			EnvironmentName:   "default",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Equal(t, &prompt.ErrExitConsole{}, err)
 		require.Empty(t, outputSink.Writes)
 	})
@@ -461,7 +460,7 @@ func Test_Delete(t *testing.T) {
 			Confirm:           true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Failed to delete application")
 		require.Contains(t, err.Error(), "delete operation failed")
@@ -517,7 +516,7 @@ func Test_Delete(t *testing.T) {
 			Confirm:           true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -579,7 +578,7 @@ func Test_Delete(t *testing.T) {
 			Confirm:           true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -643,7 +642,7 @@ func Test_Delete(t *testing.T) {
 			Force:             true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// Verify warning was logged before the delete result

@@ -17,7 +17,6 @@ limitations under the License.
 package statusmanager
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -167,7 +166,7 @@ func TestCreateAsyncOperationStatus(t *testing.T) {
 				OperationTimeout: operationTimeoutDuration,
 				RetryAfter:       opererationRetryAfterDuration,
 			}
-			err := aomTest.manager.QueueAsyncOperation(context.TODO(), reqCtx, options)
+			err := aomTest.manager.QueueAsyncOperation(t.Context(), reqCtx, options)
 
 			if tt.SaveErr == nil && tt.EnqueueErr == nil && tt.DeleteErr == nil {
 				require.NoError(t, err)
@@ -211,7 +210,7 @@ func TestDeleteAsyncOperationStatus(t *testing.T) {
 			aomTest.databaseClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.DeleteErr)
 			rid, err := resources.ParseResource(azureEnvResourceID)
 			require.NoError(t, err)
-			err = aomTest.manager.Delete(context.TODO(), rid, uuid.New())
+			err = aomTest.manager.Delete(t.Context(), rid, uuid.New())
 
 			if tt.DeleteErr != nil {
 				require.Error(t, err, deleteErr)
@@ -255,7 +254,7 @@ func TestGetAsyncOperationStatus(t *testing.T) {
 
 			rid, err := resources.ParseResource(azureEnvResourceID)
 			require.NoError(t, err)
-			aos, err := aomTest.manager.Get(context.TODO(), rid, uuid.New())
+			aos, err := aomTest.manager.Get(t.Context(), rid, uuid.New())
 
 			if tt.GetErr == nil {
 				require.NoError(t, err)
@@ -309,7 +308,7 @@ func TestUpdateAsyncOperationStatus(t *testing.T) {
 			testAos.Status = v1.ProvisioningStateSucceeded
 			rid, err := resources.ParseResource(azureEnvResourceID)
 			require.NoError(t, err)
-			err = aomTest.manager.Update(context.TODO(), rid, opID, v1.ProvisioningStateAccepted, nil, nil)
+			err = aomTest.manager.Update(t.Context(), rid, opID, v1.ProvisioningStateAccepted, nil, nil)
 
 			if tt.GetErr == nil && tt.SaveErr == nil {
 				require.NoError(t, err)

@@ -17,7 +17,6 @@ limitations under the License.
 package delete
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -141,7 +140,7 @@ func Test_Show(t *testing.T) {
 			Confirm:           true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -194,7 +193,7 @@ func Test_Show(t *testing.T) {
 			EnvironmentName:   "test-env",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -250,7 +249,7 @@ func Test_Show(t *testing.T) {
 			EnvironmentName:   "test-env",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -306,7 +305,7 @@ func Test_Show(t *testing.T) {
 			EnvironmentName:   "test-env",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -353,7 +352,7 @@ func Test_Show(t *testing.T) {
 			EnvironmentName:   "test-env",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		require.Empty(t, outputSink.Writes)
@@ -398,7 +397,7 @@ func Test_Show(t *testing.T) {
 			Confirm:           true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -445,7 +444,7 @@ func Test_Show(t *testing.T) {
 			EnvironmentName:   "test-env",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Equal(t, &prompt.ErrExitConsole{}, err)
 		require.Empty(t, outputSink.Writes)
 	})

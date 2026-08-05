@@ -188,7 +188,7 @@ func Test_Run(t *testing.T) {
 		ApplicationName: "test-app",
 	}
 
-	err := runner.Run(context.Background())
+	err := runner.Run(t.Context())
 	require.NoError(t, err)
 
 	expectedOutput := `Displaying application: test-app
@@ -269,7 +269,7 @@ func Test_Run_JSON(t *testing.T) {
 		ApplicationName: "test-app",
 	}
 
-	err := runner.Run(context.Background())
+	err := runner.Run(t.Context())
 	require.NoError(t, err)
 
 	require.Len(t, outputSink.Writes, 1)
@@ -331,7 +331,7 @@ func TestRunner_RunModeled_LocalFilesystem(t *testing.T) {
 		BicepFilePath: sampleBicepPath,
 	}
 
-	err := runner.Run(context.Background())
+	err := runner.Run(t.Context())
 	require.NoError(t, err)
 
 	contents, err := os.ReadFile(defaultModeledGraphFile)
@@ -369,7 +369,7 @@ func TestRunner_RunModeled_OrphanBranchPersistence(t *testing.T) {
 		GraphStore:    storeMock,
 	}
 
-	err := runner.Run(context.Background())
+	err := runner.Run(t.Context())
 	require.NoError(t, err)
 
 	_, statErr := os.Stat(defaultModeledGraphFile)
@@ -409,7 +409,7 @@ func TestRunner_RunModeled_RealGitStore_SlashBranch(t *testing.T) {
 		GraphStore:    store,
 	}
 
-	err = runner.Run(context.Background())
+	err = runner.Run(t.Context())
 	require.NoError(t, err, "runModeled must accept slash-containing GITHUB_HEAD_REF values")
 }
 
@@ -441,7 +441,7 @@ func TestRunner_RunModeled_FallsBackToRefName(t *testing.T) {
 		GraphStore:    storeMock,
 	}
 
-	require.NoError(t, runner.Run(context.Background()))
+	require.NoError(t, runner.Run(t.Context()))
 }
 
 func TestRunner_RunModeled_NoBranchInEnv(t *testing.T) {
@@ -466,7 +466,7 @@ func TestRunner_RunModeled_NoBranchInEnv(t *testing.T) {
 		GraphStore:    persistence.NewMockStore(ctrl),
 	}
 
-	err := runner.Run(context.Background())
+	err := runner.Run(t.Context())
 	require.Error(t, err)
 }
 
@@ -489,7 +489,7 @@ func TestRunner_RunModeled_BicepCompileError(t *testing.T) {
 		BicepFilePath: sampleBicepPath,
 	}
 
-	err := runner.Run(context.Background())
+	err := runner.Run(t.Context())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "syntax error")
 }
@@ -515,7 +515,7 @@ func TestRunner_RunModeled_NilGraphStore(t *testing.T) {
 		GraphStore:    nil,
 	}
 
-	err := runner.Run(context.Background())
+	err := runner.Run(t.Context())
 	require.Error(t, err)
 }
 
@@ -546,7 +546,7 @@ func TestRunner_RunModeled_StoreSaveError(t *testing.T) {
 		GraphStore:    storeMock,
 	}
 
-	err := runner.Run(context.Background())
+	err := runner.Run(t.Context())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "push rejected")
 	require.Contains(t, err.Error(), gitstore.DefaultGraphBranch)

@@ -17,7 +17,6 @@ limitations under the License.
 package backends
 
 import (
-	"context"
 	"crypto/sha1"
 	"crypto/sha256"
 	"fmt"
@@ -176,7 +175,7 @@ func Test_BuildBackend_ExistingLegacyStateUsesLegacySuffix(t *testing.T) {
 
 	// Simulate a Terraform state secret created by an older version of Radius (legacy SHA-1 suffix).
 	clientset := fake.NewClientset()
-	_, err = clientset.CoreV1().Secrets(RadiusNamespace).Create(context.Background(), &v1.Secret{
+	_, err = clientset.CoreV1().Secrets(RadiusNamespace).Create(t.Context(), &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      KubernetesBackendNamePrefix + legacySuffix,
 			Namespace: RadiusNamespace,
@@ -204,16 +203,16 @@ func Test_ValidateBackendExists(t *testing.T) {
 			"key": []byte("value"),
 		},
 	}
-	_, err := clientset.CoreV1().Secrets(RadiusNamespace).Create(context.Background(), secret, metav1.CreateOptions{})
+	_, err := clientset.CoreV1().Secrets(RadiusNamespace).Create(t.Context(), secret, metav1.CreateOptions{})
 	require.NoError(t, err)
 
 	b := NewKubernetesBackend(clientset)
-	exists, err := b.ValidateBackendExists(context.Background(), "test-secret")
+	exists, err := b.ValidateBackendExists(t.Context(), "test-secret")
 	require.NoError(t, err)
 	require.True(t, exists)
 
 	// Validate that the function returns false for a non-existent secret.
-	exists, err = b.ValidateBackendExists(context.Background(), "invalid-secret")
+	exists, err = b.ValidateBackendExists(t.Context(), "invalid-secret")
 	require.NoError(t, err)
 	require.False(t, exists)
 
@@ -221,7 +220,7 @@ func Test_ValidateBackendExists(t *testing.T) {
 	clientset.Fake.PrependReactor("get", "secrets", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 		return true, nil, k8s_errors.NewServerTimeout(schema.GroupResource{Resource: "test-secret"}, "get", 1)
 	})
-	exists, err = b.ValidateBackendExists(context.Background(), "test-secret")
+	exists, err = b.ValidateBackendExists(t.Context(), "test-secret")
 	require.Error(t, err)
 	require.True(t, k8s_errors.IsServerTimeout(err))
 	require.False(t, exists)

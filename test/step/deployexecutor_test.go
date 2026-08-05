@@ -35,7 +35,7 @@ func Test_ExecuteWithRetry_SucceedsOnFirstAttempt(t *testing.T) {
 	var calls atomic.Int32
 	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(error) bool { return true })
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		calls.Add(1)
 		return nil
 	})
@@ -52,7 +52,7 @@ func Test_ExecuteWithRetry_RetriesOnTransientThenSucceeds(t *testing.T) {
 		return err.Error() == "ManagedServiceIdentityNotFound"
 	})
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		n := calls.Add(1)
 		if n == 1 {
 			return transientErr
@@ -71,7 +71,7 @@ func Test_ExecuteWithRetry_DoesNotRetryNonTransientError(t *testing.T) {
 		return err.Error() == "transient"
 	})
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		calls.Add(1)
 		return errors.New("permanent failure")
 	})
@@ -86,7 +86,7 @@ func Test_ExecuteWithRetry_ExhaustsAllRetries(t *testing.T) {
 	var calls atomic.Int32
 	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(error) bool { return true })
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		calls.Add(1)
 		return errors.New("always fails")
 	})
@@ -103,7 +103,7 @@ func Test_ExecuteWithRetry_DefaultDoesNotRetryNonTransientError(t *testing.T) {
 	// non-transient error must not be retried.
 	d := NewDeployExecutor("test.bicep")
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		calls.Add(1)
 		return errors.New("fails")
 	})
@@ -120,7 +120,7 @@ func Test_ExecuteWithRetry_DefaultRetriesTransientImagePullError(t *testing.T) {
 	d := NewDeployExecutor("test.bicep")
 	d.RetryDelay = 10 * time.Millisecond // shorten the delay for the test
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		n := calls.Add(1)
 		if n < 2 {
 			return errors.New("Reason: ErrImagePull, net/http: timeout awaiting response headers")
@@ -140,7 +140,7 @@ func Test_ExecuteWithRetry_DefaultRetriesTransientConnectionError(t *testing.T) 
 	d := NewDeployExecutor("test.bicep")
 	d.RetryDelay = 10 * time.Millisecond // shorten the delay for the test
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		n := calls.Add(1)
 		if n < 2 {
 			return errors.New(`command 'rad deploy' had non-zero exit code: exit status 1
@@ -156,7 +156,7 @@ Error: Get "https://127.0.0.1:37481/apis/api.ucp.dev/v1alpha3/.../operationStatu
 func Test_ExecuteWithRetry_ContextCancelledDuringDelay(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	d := NewDeployExecutor("test.bicep").WithRetry(2, 5*time.Second, func(error) bool { return true })
 
 	// Cancel context immediately after first deploy attempt
@@ -181,7 +181,7 @@ func Test_ExecuteWithRetry_NilShouldRetryDisablesRetries(t *testing.T) {
 	d.MaxRetries = 3
 	d.ShouldRetry = nil // nil predicate
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		calls.Add(1)
 		return errors.New("fails")
 	})

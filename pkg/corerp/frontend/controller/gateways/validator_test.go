@@ -17,7 +17,6 @@ limitations under the License.
 package gateways
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/armrpc/rest"
@@ -112,7 +111,7 @@ func TestValidateAndMutateRequest_Gateway(t *testing.T) {
 
 	for _, tc := range requestTests {
 		t.Run(tc.desc, func(t *testing.T) {
-			r, err := ValidateAndMutateRequest(context.Background(), tc.newResource, tc.oldResource, nil)
+			r, err := ValidateAndMutateRequest(t.Context(), tc.newResource, tc.oldResource, nil)
 
 			require.NoError(t, err)
 			if tc.resp != nil {

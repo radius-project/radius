@@ -17,7 +17,6 @@ limitations under the License.
 package preview
 
 import (
-	"context"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -195,7 +194,7 @@ func Test_Run(t *testing.T) {
 
 		configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 		configFileInterface.EXPECT().
-			EditWorkspaces(context.Background(), gomock.Any(), workspace).
+			EditWorkspaces(t.Context(), gomock.Any(), workspace).
 			Return(nil).Times(1)
 
 		runner := &Runner{
@@ -208,7 +207,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 	})
 }
@@ -239,7 +238,7 @@ func newRunnerForEnvValidation(t *testing.T, ctrl *gomock.Controller, factory *c
 	}
 
 	cmd, runnerIface := NewCommand(fw)
-	cmd.SetContext(context.Background())
+	cmd.SetContext(t.Context())
 	runner := runnerIface.(*Runner)
 	runner.RadiusCoreClientFactory = factory
 

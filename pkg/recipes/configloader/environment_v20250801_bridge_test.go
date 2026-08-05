@@ -110,7 +110,7 @@ func TestGetConfigurationV20250801_TerraformCredentialsAndEnvAndProviderInstalla
 	// Clear the bicepSettings pointer since we don't want to fetch it in this test.
 	env.Properties.BicepSettings = nil
 
-	cfg, err := getConfigurationV20250801(context.Background(), env, armOpts)
+	cfg, err := getConfigurationV20250801(t.Context(), env, armOpts)
 	require.NoError(t, err)
 
 	// Credentials map is bridged 1:1.
@@ -160,7 +160,7 @@ func TestGetConfigurationV20250801_BicepBasicAuthMapped(t *testing.T) {
 	env := minimalEnv("", bcConfigID)
 	env.Properties.TerraformSettings = nil
 
-	cfg, err := getConfigurationV20250801(context.Background(), env, armOpts)
+	cfg, err := getConfigurationV20250801(t.Context(), env, armOpts)
 	require.NoError(t, err)
 
 	require.Len(t, cfg.RecipeConfig.Bicep.Authentication, 1)
@@ -211,7 +211,7 @@ func TestGetConfigurationV20250801_BicepEntriesWithoutBasicAuthSecretAreSkipped(
 	env := minimalEnv("", bcConfigID)
 	env.Properties.TerraformSettings = nil
 
-	cfg, err := getConfigurationV20250801(context.Background(), env, armOpts)
+	cfg, err := getConfigurationV20250801(t.Context(), env, armOpts)
 	require.NoError(t, err)
 
 	// Only the BasicAuth entry survives.
@@ -255,7 +255,7 @@ func TestGetConfigurationV20250801_BicepAllEntriesSkipped_LeavesAuthNil(t *testi
 	env := minimalEnv("", bcConfigID)
 	env.Properties.TerraformSettings = nil
 
-	cfg, err := getConfigurationV20250801(context.Background(), env, armOpts)
+	cfg, err := getConfigurationV20250801(t.Context(), env, armOpts)
 	require.NoError(t, err)
 
 	require.Empty(t, cfg.RecipeConfig.Bicep.Authentication, "expected no auth map when no usable entries")
@@ -274,7 +274,7 @@ func TestGetConfigurationV20250801_TerraformFetchError_IsWrapped(t *testing.T) {
 	env := minimalEnv(tfConfigID, "")
 	env.Properties.BicepSettings = nil
 
-	_, err := getConfigurationV20250801(context.Background(), env, armOpts)
+	_, err := getConfigurationV20250801(t.Context(), env, armOpts)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to fetch terraformSettings")
 	require.Contains(t, err.Error(), tfConfigID)
@@ -293,7 +293,7 @@ func TestGetConfigurationV20250801_BicepFetchError_IsWrapped(t *testing.T) {
 	env := minimalEnv("", bcConfigID)
 	env.Properties.TerraformSettings = nil
 
-	_, err := getConfigurationV20250801(context.Background(), env, armOpts)
+	_, err := getConfigurationV20250801(t.Context(), env, armOpts)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to fetch bicepSettings")
 	require.Contains(t, err.Error(), bcConfigID)
