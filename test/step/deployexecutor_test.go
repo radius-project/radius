@@ -153,6 +153,32 @@ Error: Get "https://127.0.0.1:37481/apis/api.ucp.dev/v1alpha3/.../operationStatu
 	assert.Equal(t, int32(2), calls.Load()) // failed once, succeeded on retry
 }
 
+func Test_ExecuteWithRetry_DefaultRetriesAPIServerRestartError(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	// NewDeployExecutor retries a kube-apiserver that is still restarting by
+	// default. This is the second phase of a control-plane restart: the socket is
+	// accepted again, but the apiserver answers 503 until its handlers are
+	// installed.
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = 10 * time.Millisecond // shorten the delay for the test
+
+	err := d.executeWithRetry(t.Context(), t, func() error {
+		n := calls.Add(1)
+		if n < 2 {
+			return errors.New(`command 'rad deploy' had non-zero exit code: exit status 1
+Error: An unknown error was returned while testing Radius API status:
+Status Code: 503
+Response Body:
+{"kind":"Status","message":"the request has been made before all known HTTP paths have been installed, please try again","reason":"ServiceUnavailable","code":503}`)
+		}
+		return nil
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), calls.Load()) // failed once, succeeded on retry
+}
+
 func Test_ExecuteWithRetry_ContextCancelledDuringDelay(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
@@ -188,6 +214,35 @@ func Test_ExecuteWithRetry_NilShouldRetryDisablesRetries(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Equal(t, int32(1), calls.Load())
+}
+
+func Test_RetryDelayForAttempt(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		base     time.Duration
+		attempt  int
+		expected time.Duration
+	}{
+		{name: "first retry uses the base delay", base: 30 * time.Second, attempt: 2, expected: 30 * time.Second},
+		{name: "delay doubles per attempt", base: 30 * time.Second, attempt: 3, expected: 60 * time.Second},
+		{name: "delay reaches the cap", base: 30 * time.Second, attempt: 4, expected: maxTransientRetryDelay},
+		{name: "delay stops growing at the cap", base: 30 * time.Second, attempt: 9, expected: maxTransientRetryDelay},
+		// A caller that asks for a longer delay than the cap keeps it: the cap only
+		// bounds the doubling, it never shortens a caller-supplied delay.
+		{name: "caller delay above the cap is preserved", base: 5 * time.Minute, attempt: 3, expected: 5 * time.Minute},
+		{name: "zero delay stays zero", base: 0, attempt: 5, expected: 0},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			d := NewDeployExecutor("test.bicep")
+			d.RetryDelay = tc.base
+
+			require.Equal(t, tc.expected, d.retryDelayForAttempt(tc.attempt))
+		})
+	}
 }
 
 func Test_IsTransientImagePullError(t *testing.T) {
@@ -305,6 +360,51 @@ func Test_IsTransientConnectionError(t *testing.T) {
 	}
 }
 
+func Test_IsTransientAPIServerRestartError(t *testing.T) {
+	// restartMarkerBearingStructuredError mirrors a genuine structured ARM
+	// deployment failure whose flattened message happens to contain a restart
+	// marker. The concrete-type guard must keep it from being retried.
+	restartMarkerBearingStructuredError := &radcli.CLIError{
+		ErrorResponse: apiv1.ErrorResponse{
+			Error: &apiv1.ErrorDetails{
+				Code:    "DeploymentFailed",
+				Message: `recipe validation failed: cannot get path "/apis/api.ucp.dev/v1alpha3"`,
+			},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{name: "nil error", err: nil, expected: false},
+		{
+			name:     "503 while HTTP paths are still installing",
+			err:      errors.New(`{"message":"the request has been made before all known HTTP paths have been installed, please try again","reason":"ServiceUnavailable","code":503}`),
+			expected: true,
+		},
+		{
+			name:     "403 before RBAC bootstrap finishes",
+			err:      errors.New(`{"message":"forbidden: User \"kubernetes-admin\" cannot get path \"/apis/api.ucp.dev/v1alpha3\"","reason":"Forbidden","code":403}`),
+			expected: true,
+		},
+		{
+			name:     "403 on an unrelated non-resource path",
+			err:      errors.New(`{"message":"forbidden: User \"tester\" cannot get path \"/metrics\"","reason":"Forbidden","code":403}`),
+			expected: false,
+		},
+		{name: "structured failure containing a marker", err: restartMarkerBearingStructuredError, expected: false},
+		{name: "unrelated error", err: errors.New("the resource type is not supported"), expected: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, IsTransientAPIServerRestartError(tc.err))
+		})
+	}
+}
+
 func Test_IsTransientDeployError(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -314,6 +414,8 @@ func Test_IsTransientDeployError(t *testing.T) {
 		{name: "nil error", err: nil, expected: false},
 		{name: "transient image pull", err: errors.New("pod is stuck in ImagePullBackOff"), expected: true},
 		{name: "transient connection reset", err: errors.New("read: connection reset by peer"), expected: true},
+		{name: "apiserver still installing HTTP paths", err: errors.New("the request has been made before all known HTTP paths have been installed, please try again"), expected: true},
+		{name: "apiserver RBAC not yet bootstrapped", err: errors.New(`forbidden: User \"kubernetes-admin\" cannot get path \"/apis/api.ucp.dev/v1alpha3\"`), expected: true},
 		{name: "non-transient failure", err: errors.New("the resource type is not supported"), expected: false},
 	}
 
