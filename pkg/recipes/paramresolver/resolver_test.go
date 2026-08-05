@@ -17,9 +17,9 @@ limitations under the License.
 package paramresolver
 
 import (
-	"strings"
 	"testing"
 
+	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/stretchr/testify/assert"
@@ -73,6 +73,7 @@ func testContext() *recipecontext.Context {
 				SubscriptionID: "sub-id",
 				ID:             "/subscriptions/sub-id",
 			},
+			ResourceNameHash: "b9f5a1471dadc792",
 		},
 		AWS: &recipecontext.ProviderAWS{
 			Region:  "us-east-1",
@@ -324,6 +325,30 @@ func Test_ResolveParameterExpressions(t *testing.T) {
 	}
 }
 
+func Test_ResolveParameterExpressions_GeneratedAzureResourceNameHash(t *testing.T) {
+	ctx, err := recipecontext.New(
+		&recipes.ResourceMetadata{
+			ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+		},
+		&recipes.Configuration{
+			Providers: coredm.Providers{
+				Azure: coredm.ProvidersAzure{
+					Scope: "/subscriptions/testSub",
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+
+	result := ResolveParameterExpressions(
+		map[string]any{"name": "redis-{{context.azure.resourceNameHash}}"},
+		ctx,
+	)
+
+	require.Equal(t, map[string]any{"name": "redis-2ee7ced618d5dd8e"}, result)
+}
+
 func Test_TernaryExpressions(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -477,56 +502,15 @@ func Test_buildContextLookup(t *testing.T) {
 		assert.Equal(t, "postgres://myhost:5432/mydb", lookup["context.resource.connections.db.properties.connectionString"])
 	})
 
-	t.Run("Azure resource name hash changes with resource or Azure scope", func(t *testing.T) {
-		first := testContext()
-		second := testContext()
-		second.Resource.ID += "-other"
-		third := testContext()
-		third.Azure.ResourceGroup.ID += "-other"
-
-		firstLookup := buildContextLookup(first)
-		secondLookup := buildContextLookup(second)
-		thirdLookup := buildContextLookup(third)
-
-		assert.Len(t, firstLookup["context.azure.resourceNameHash"], resourceNameHashLength)
-		assert.NotEqual(t, firstLookup["context.azure.resourceNameHash"], secondLookup["context.azure.resourceNameHash"])
-		assert.NotEqual(t, firstLookup["context.azure.resourceNameHash"], thirdLookup["context.azure.resourceNameHash"])
-	})
-
-	t.Run("Azure resource name hash is case insensitive", func(t *testing.T) {
-		first := testContext()
-		second := testContext()
-		second.Resource.ID = strings.ToUpper(second.Resource.ID)
-		second.Azure.ResourceGroup.ID = strings.ToUpper(second.Azure.ResourceGroup.ID)
-
-		firstLookup := buildContextLookup(first)
-		secondLookup := buildContextLookup(second)
-
-		assert.Equal(t, firstLookup["context.azure.resourceNameHash"], secondLookup["context.azure.resourceNameHash"])
-	})
-
-	t.Run("omits Azure resource name hash when resource ID is empty", func(t *testing.T) {
+	t.Run("Azure resource name hash is exposed when present", func(t *testing.T) {
 		ctx := testContext()
-		ctx.Resource.ID = ""
-
 		lookup := buildContextLookup(ctx)
-		_, ok := lookup["context.azure.resourceNameHash"]
-		assert.False(t, ok)
+		assert.Equal(t, ctx.Azure.ResourceNameHash, lookup["context.azure.resourceNameHash"])
 	})
 
-	t.Run("omits Azure resource name hash when resource group name is empty", func(t *testing.T) {
+	t.Run("omits Azure resource name hash when not set", func(t *testing.T) {
 		ctx := testContext()
-		ctx.Azure.ResourceGroup.Name = ""
-		ctx.Azure.ResourceGroup.ID = "/subscriptions/sub-id/resourceGroups/"
-
-		lookup := buildContextLookup(ctx)
-		_, ok := lookup["context.azure.resourceNameHash"]
-		assert.False(t, ok)
-	})
-
-	t.Run("omits Azure resource name hash when resource group ID is empty", func(t *testing.T) {
-		ctx := testContext()
-		ctx.Azure.ResourceGroup.ID = ""
+		ctx.Azure.ResourceNameHash = ""
 
 		lookup := buildContextLookup(ctx)
 		_, ok := lookup["context.azure.resourceNameHash"]

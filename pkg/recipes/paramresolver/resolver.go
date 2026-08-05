@@ -21,11 +21,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/radius-project/radius/pkg/hashutil"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 )
-
-const resourceNameHashLength = 16
 
 // expressionPattern matches {{context.*}} template expressions, including ternary expressions.
 var expressionPattern = regexp.MustCompile(`\{\{([^}]+)\}\}`)
@@ -246,16 +243,6 @@ func buildContextLookup(ctx *recipecontext.Context) map[string]string {
 		"context.environment.id":   ctx.Environment.ID,
 	}
 
-	// This stable hash avoids Azure name collisions while keeping redeployments stable.
-	// See https://github.com/radius-project/ai-extensions/issues/128.
-	if ctx.Resource.ID != "" && ctx.Azure != nil &&
-		ctx.Azure.ResourceGroup.Name != "" && ctx.Azure.ResourceGroup.ID != "" {
-		resourceGroupID := strings.ToLower(ctx.Azure.ResourceGroup.ID)
-		resourceID := strings.ToLower(ctx.Resource.ID)
-		seed := resourceGroupID + "\x00" + resourceID
-		lookup["context.azure.resourceNameHash"] = hashutil.Hex([]byte(seed))[:resourceNameHashLength]
-	}
-
 	// Add runtime.kubernetes fields.
 	if ctx.Runtime.Kubernetes != nil {
 		lookup["context.runtime.kubernetes.namespace"] = ctx.Runtime.Kubernetes.Namespace
@@ -268,6 +255,9 @@ func buildContextLookup(ctx *recipecontext.Context) map[string]string {
 		lookup["context.azure.resourceGroup.id"] = ctx.Azure.ResourceGroup.ID
 		lookup["context.azure.subscription.subscriptionId"] = ctx.Azure.Subscription.SubscriptionID
 		lookup["context.azure.subscription.id"] = ctx.Azure.Subscription.ID
+		if ctx.Azure.ResourceNameHash != "" {
+			lookup["context.azure.resourceNameHash"] = ctx.Azure.ResourceNameHash
+		}
 	}
 
 	// Add AWS provider fields.

@@ -224,7 +224,7 @@ Use any standard Bicep or Terraform module directly as a Recipe by pointing `sou
 
 ### Feature 2: Template Expression Resolution
 
-The `{{context.*}}` expression system resolves Radius application context into Recipe parameters at deploy time. It supports resource metadata, application and Environment data, Kubernetes runtime data, Azure and AWS provider data, and single-level ternary expressions. For Azure resources whose names must be globally unique, `{{context.azure.resourceNameHash}}` returns the first 16 lowercase hexadecimal characters of a SHA-256 hash over the lowercased Azure resource-group ID and Radius resource ID.
+The `{{context.*}}` expression system resolves Radius application context into Recipe parameters at deploy time. It supports resource metadata, application and Environment data, Kubernetes runtime data, Azure and AWS provider data, and single-level ternary expressions. For Azure resources whose names must be globally unique, `{{context.azure.resourceNameHash}}` returns the first 16 lowercase hexadecimal characters of the SHA-256 hash of the lowercased Azure provider scope ID, a NUL separator, and the lowercased Radius resource ID. The provider scope is the resource-group ID when configured and otherwise the subscription ID.
 
 ### Feature 3: Output Mapping
 
