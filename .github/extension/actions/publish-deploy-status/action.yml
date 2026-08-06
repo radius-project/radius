@@ -60,6 +60,18 @@ runs:
           } >> "$GITHUB_OUTPUT"
         }
 
+        # Escape workflow-command metacharacters before interpolating a value into
+        # a ::warning::/::error:: annotation: '%' is the escape character and CR/LF
+        # terminate the command, so an unescaped value can corrupt or truncate the
+        # annotation. Same treatment as deploy-parameters.sh in run-rad-commands.
+        escape_workflow_command() {
+          local escaped="$1"
+          escaped=${escaped//'%'/'%25'}
+          escaped=${escaped//$'\r'/'%0D'}
+          escaped=${escaped//$'\n'/'%0A'}
+          printf '%s' "$escaped"
+        }
+
         # Resolve the app name from the app bicep file first (same pattern used
         # elsewhere in the run-rad-commands action), with a fallback to `rad app
         # list` when the file doesn't contain a simple literal name.
@@ -101,9 +113,17 @@ runs:
 
         # Run-level state, using the vocabulary the canvas expects. `in_progress`
         # is only reachable once mid-run uploads exist; today this step runs after
-        # `rad deploy` has already returned, so the state is always terminal.
+        # `rad deploy` has already returned, so the state is normally terminal.
+        #
+        # "unknown" is the sentinel for a missing or unreadable result file, and is
+        # the one case where we genuinely do not know the outcome - report it as
+        # neutral rather than claiming a failure the deploy may not have had. Real
+        # non-success outcomes from run-rad-commands (command_failed,
+        # disallowed_command) must still map to failed, or a broken deploy would be
+        # reported as merely unfinished.
         case "$OUTCOME" in
-          success|succeeded) RUN_STATE="succeeded" ;;
+          succeeded|success) RUN_STATE="succeeded" ;;
+          unknown)           RUN_STATE="in_progress" ;;
           *)                 RUN_STATE="failed" ;;
         esac
 
@@ -194,7 +214,7 @@ runs:
         # name resolved that way publishes under a name it will never request.
         # Say so explicitly instead of leaving an empty Deployed tab to debug.
         if [ "$APP_NAME_FROM_LITERAL" -eq 0 ]; then
-          echo "::warning::Application name '${APP_NAME}' came from 'rad app list', not a literal name in ${APP_FILE}. Publishing as '${ARTIFACT_NAME}', but the canvas derives the name from the bicep literal and will not find this artifact. Set a literal name in the app bicep."
+          echo "::warning::Application name '$(escape_workflow_command "$APP_NAME")' came from 'rad app list', not a literal name in $(escape_workflow_command "$APP_FILE"). Publishing as '$(escape_workflow_command "$ARTIFACT_NAME")', but the canvas derives the name from the bicep literal and will not find this artifact. Set a literal name in the app bicep."
         fi
 
         emit_outputs "$ARTIFACT_NAME" true
