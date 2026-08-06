@@ -88,10 +88,9 @@ runs:
         fi
 
         # Write sibling status files the canvas reads with deploy-graph.json.
-        # These are three distinct signals and must carry distinct content. An
-        # earlier version copied rad-commands-result.json into all three, which
-        # published three identical files that told the reader nothing about what
-        # actually happened.
+        # These are distinct signals and must carry distinct content. An earlier
+        # version copied rad-commands-result.json into all of them, which published
+        # identical files that told the reader nothing about what actually happened.
         NOW_UTC=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         OUTCOME="unknown"
         EXIT_CODE="0"
@@ -100,21 +99,65 @@ runs:
           EXIT_CODE=$(jq -r '.exitCode // 0' "$RESULT_FILE" 2>/dev/null || echo "0")
         fi
 
-        # deploy-progress.log - per-resource provisioning state from the live
-        # control plane, the closest thing to per-node status available here.
+        # Run-level state, using the vocabulary the canvas expects. `in_progress`
+        # is only reachable once mid-run uploads exist; today this step runs after
+        # `rad deploy` has already returned, so the state is always terminal.
+        case "$OUTCOME" in
+          success|succeeded) RUN_STATE="succeeded" ;;
+          *)                 RUN_STATE="failed" ;;
+        esac
+
+        # deploy-progress.json - per-resource status, the signal that paints the
+        # graph. Schema is the contract agreed with the canvas reader; see
+        # docs/design in radius-project/ai-extensions. Both the raw
+        # provisioningState and a normalized status are emitted: the producer owns
+        # the mapping because it knows the Radius version, and the consumer can
+        # still recover if that mapping goes stale. Unknown states normalize to
+        # in_progress, never failed, so a new Radius state cannot paint a node red.
+        #
         # `rad resource list -o json` marshals []generated.GenericResource directly
         # (pkg/cli/cmd/resource/list/list.go), so the payload is a bare array with
         # no object wrapper - iterate it with `.[]?` and nothing else.
-        if ! rad resource list -a "$APP_NAME" -o json 2>/dev/null \
-          | jq -r '.[]? | "\(.name)\t\(.type)\t\(.properties.provisioningState // "Unknown")"' \
-          > "$STATUS_DIR/deploy-progress.log" 2>/dev/null; then
-          : > "$STATUS_DIR/deploy-progress.log"
+        RESOURCES_JSON="[]"
+        if RAW_RESOURCES=$(rad resource list -a "$APP_NAME" -o json 2>/dev/null); then
+          RESOURCES_JSON=$(printf '%s' "$RAW_RESOURCES" | jq -c '
+            [ .[]? | {
+                id: (.id // ""),
+                name: (.name // ""),
+                type: (.type // ""),
+                provisioningState: (.properties.provisioningState // ""),
+                status: (
+                  (.properties.provisioningState // "") as $s
+                  | if   $s == "Succeeded" then "success"
+                    elif $s == "Failed" or $s == "Canceled" or $s == "Cancelled" then "failed"
+                    else "in_progress"
+                    end
+                ),
+                message: (.properties.status.message // "")
+              } ]' 2>/dev/null) || RESOURCES_JSON="[]"
         fi
-        if [ ! -s "$STATUS_DIR/deploy-progress.log" ]; then
-          printf 'no per-resource state available for %s\n' "$APP_NAME" > "$STATUS_DIR/deploy-progress.log"
-        fi
+        [ -n "$RESOURCES_JSON" ] || RESOURCES_JSON="[]"
+
+        jq -n \
+          --argjson resources "$RESOURCES_JSON" \
+          --arg application "$APP_NAME" \
+          --arg environment "$ENVIRONMENT" \
+          --argjson runId "${GITHUB_RUN_ID:-0}" \
+          --arg updatedAt "$NOW_UTC" \
+          --arg state "$RUN_STATE" \
+          '{
+            schemaVersion: 1,
+            application: $application,
+            environment: $environment,
+            runId: $runId,
+            sequence: 1,
+            updatedAt: $updatedAt,
+            state: $state,
+            resources: $resources
+          }' > "$STATUS_DIR/deploy-progress.json"
 
         # deploy-activity.log - the rad command result envelope (outcome/exit code).
+        # Optional for the canvas; kept because it is useful when debugging a run.
         if [ -f "$RESULT_FILE" ]; then
           cp "$RESULT_FILE" "$STATUS_DIR/deploy-activity.log"
         else
