@@ -278,17 +278,23 @@ run_publisher() {
         # Keep the action's `mktemp` inside the sandbox.
         TMPDIR="${PUBLISHER_TMP}"
         export PATH TMPDIR GITHUB_OUTPUT
-        # RUNNER_TEMP is a plain variable here, so leaving it unexported is
-        # enough to hide it from the step.
-        if [[ "${PUBLISHER_WITHOUT_RUNNER_TEMP}" != "true" ]]; then
-            export RUNNER_TEMP
-        fi
         if [[ -n "${PUBLISHER_LOCALE}" ]]; then
             LC_ALL="${PUBLISHER_LOCALE}"
             LANG="${PUBLISHER_LOCALE}"
             export LC_ALL LANG
         fi
-        bash "${BODY_SCRIPT}"
+        if [[ "${PUBLISHER_WITHOUT_RUNNER_TEMP}" == "true" ]]; then
+            # Not exporting RUNNER_TEMP is NOT enough to hide it. On a GitHub
+            # runner RUNNER_TEMP is already an exported environment variable, and
+            # assigning to an exported name keeps the export attribute - so the
+            # sandbox value would reach the step anyway and the fallback would
+            # never be exercised. This passed locally and failed in CI for exactly
+            # that reason. Remove it from the child's environment explicitly.
+            env -u RUNNER_TEMP bash "${BODY_SCRIPT}"
+        else
+            export RUNNER_TEMP
+            bash "${BODY_SCRIPT}"
+        fi
     ) >"${PUBLISHER_LOG}" 2>&1
     PUBLISHER_EXIT=$?
     set -e
