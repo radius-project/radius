@@ -62,7 +62,7 @@ func Test_CreateAWSResource(t *testing.T) {
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
-	createRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodPut, ucp.BaseURL()+testProxyRequestAWSPath, body)
+	createRequest, err := rpctest.NewHTTPRequestWithContent(t.Context(), http.MethodPut, ucp.BaseURL()+testProxyRequestAWSPath, body)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := rpctest.NewARMRequestContext(createRequest)

@@ -42,7 +42,7 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 	defer mctrl.Finish()
 	databaseClient := database.NewMockClient(mctrl)
 	mEngine := engine.NewMockEngine(mctrl)
-	ctx := context.Background()
+	ctx := t.Context()
 	t.Parallel()
 	t.Run("get recipe metadata run", func(t *testing.T) {
 		envInput, envDataModel, expectedOutput := getTestModelsGetRecipeMetadata20231001preview()
@@ -315,7 +315,7 @@ func TestGetRecipeMetadataFromRegistry_ConfiguredParameterValuesAppearedInRespon
 
 	controller := ctl.(*GetRecipeMetadata)
 	result, err := controller.GetRecipeMetadataFromRegistry(
-		context.Background(),
+		t.Context(),
 		recipeProperties,
 		recipeDataModel,
 		"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg/providers/applications.core/environments/env0",

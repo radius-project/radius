@@ -128,7 +128,7 @@ func TestApplicationDataModelToVersioned(t *testing.T) {
 				}
 			}
 
-			output, err := renderer.Render(context.Background(), resource, options)
+			output, err := renderer.Render(t.Context(), resource, options)
 			require.NoError(t, err)
 			require.Len(t, output.Resources, 1)
 

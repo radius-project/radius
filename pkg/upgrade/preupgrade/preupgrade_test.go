@@ -17,7 +17,6 @@ limitations under the License.
 package preupgrade
 
 import (
-	"context"
 	"errors"
 	"testing"
 	"time"
@@ -64,7 +63,7 @@ func TestRunPreflightChecks_Success(t *testing.T) {
 		CurrentVersion: "",
 	}
 
-	err := RunPreflightChecks(context.Background(), config, options)
+	err := RunPreflightChecks(t.Context(), config, options)
 	require.NoError(t, err)
 }
 
@@ -96,7 +95,7 @@ func TestRunPreflightChecks_AllNewChecks(t *testing.T) {
 		CurrentVersion: "0.28.0",
 	}
 
-	err := RunPreflightChecks(context.Background(), config, options)
+	err := RunPreflightChecks(t.Context(), config, options)
 	// Note: This will fail because kubernetes checks need actual client
 	// But it validates that the checks are being registered
 	assert.Error(t, err) // Expected since we don't have actual k8s client
@@ -124,7 +123,7 @@ func TestRunPreflightChecks_UnknownCheck(t *testing.T) {
 		CurrentVersion: "0.28.0",
 	}
 
-	err := RunPreflightChecks(context.Background(), config, options)
+	err := RunPreflightChecks(t.Context(), config, options)
 	require.NoError(t, err)
 }
 
@@ -150,7 +149,7 @@ func TestRunPreflightChecks_EmptyCheckNames(t *testing.T) {
 		CurrentVersion: "0.28.0",
 	}
 
-	err := RunPreflightChecks(context.Background(), config, options)
+	err := RunPreflightChecks(t.Context(), config, options)
 	require.NoError(t, err)
 }
 
@@ -188,7 +187,7 @@ func TestRunPreflightChecks_MultipleChecks(t *testing.T) {
 		TargetVersion: "0.29.0",
 	}
 
-	err := RunPreflightChecks(context.Background(), config, options)
+	err := RunPreflightChecks(t.Context(), config, options)
 	require.NoError(t, err)
 }
 
@@ -226,7 +225,7 @@ func TestRunPreflightChecks_WithSpacesInCheckNames(t *testing.T) {
 		TargetVersion: "0.29.0",
 	}
 
-	err := RunPreflightChecks(context.Background(), config, options)
+	err := RunPreflightChecks(t.Context(), config, options)
 	require.NoError(t, err)
 }
 
@@ -255,7 +254,7 @@ func TestRunPreflightChecks_HelmCheckError(t *testing.T) {
 		CurrentVersion: "",
 	}
 
-	err := RunPreflightChecks(context.Background(), config, options)
+	err := RunPreflightChecks(t.Context(), config, options)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to check current Radius installation")
 	assert.Contains(t, err.Error(), "failed to connect to kubernetes")
@@ -282,7 +281,7 @@ func TestRunPreflightChecks_UnknownCheckName(t *testing.T) {
 		TargetVersion: "0.29.0",
 	}
 
-	err := RunPreflightChecks(context.Background(), config, options)
+	err := RunPreflightChecks(t.Context(), config, options)
 	// Should no longer error since we skip unknown checks
 	require.NoError(t, err)
 }
@@ -310,7 +309,7 @@ func TestRunPreflightChecks_EmptyChecksList(t *testing.T) {
 		TargetVersion: "0.29.0",
 	}
 
-	err := RunPreflightChecks(context.Background(), config, options)
+	err := RunPreflightChecks(t.Context(), config, options)
 	require.NoError(t, err)
 }
 
@@ -346,7 +345,7 @@ func TestRunPreflightChecks_PreflightCheckFailure(t *testing.T) {
 		CurrentVersion: "",
 	}
 
-	err := RunPreflightChecks(context.Background(), config, options)
+	err := RunPreflightChecks(t.Context(), config, options)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "pre-flight check")
 	assert.Contains(t, err.Error(), "failed")
@@ -388,6 +387,6 @@ func TestRunPreflightChecks_WithTimeout(t *testing.T) {
 		Timeout:        10 * time.Second, // Custom timeout
 	}
 
-	err := RunPreflightChecks(context.Background(), config, options)
+	err := RunPreflightChecks(t.Context(), config, options)
 	require.NoError(t, err)
 }

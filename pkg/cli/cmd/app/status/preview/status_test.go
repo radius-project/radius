@@ -128,7 +128,7 @@ func Test_Run(t *testing.T) {
 			Output:          outputSink,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Len(t, outputSink.Writes, 1)
 
@@ -193,7 +193,7 @@ func Test_Run(t *testing.T) {
 			Output:          outputSink,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// Should have: status table, blank line, gateway table
@@ -241,7 +241,7 @@ func Test_Run(t *testing.T) {
 			Output:                  &output.MockOutput{},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "was not found or has been deleted")
 	})
@@ -276,7 +276,7 @@ func Test_Run(t *testing.T) {
 			Output:          outputSink,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Len(t, outputSink.Writes, 1)
 
@@ -309,7 +309,7 @@ func Test_Run(t *testing.T) {
 			Output:                  &output.MockOutput{},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "simulated error")
 	})

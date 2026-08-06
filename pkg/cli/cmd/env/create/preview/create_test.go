@@ -379,7 +379,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		require.Equal(t, expectedOutput, outputSink.Writes)
@@ -419,7 +419,7 @@ func Test_Run(t *testing.T) {
 			ResourceGroupName:         "test-resource-group",
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 	})
 
@@ -457,7 +457,7 @@ func Test_Run(t *testing.T) {
 			ResourceGroupName:         "test-resource-group",
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "failed to get default recipe pack from default scope")
 	})
@@ -533,7 +533,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		require.NotNil(t, capturedResource.Properties)
@@ -599,7 +599,7 @@ func Test_Run(t *testing.T) {
 			recipePacks:             []string{"pack1", "pack2"},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// The specified packs replace the default and are resolved to full IDs.
@@ -672,7 +672,7 @@ func Test_Run(t *testing.T) {
 			recipePacks:             []string{fullPackID},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		require.Len(t, capturedEnv.Properties.RecipePacks, 1)
@@ -700,7 +700,7 @@ func Test_Run(t *testing.T) {
 			recipePacks:             []string{"missing-pack"},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Recipe pack \"missing-pack\" does not exist")
 	})
@@ -722,7 +722,7 @@ func Test_Run(t *testing.T) {
 			recipePacks:             []string{"some-pack"},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		// A server-side failure must not be reported as "does not exist".
 		require.NotContains(t, err.Error(), "does not exist")

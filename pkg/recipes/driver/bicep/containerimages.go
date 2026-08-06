@@ -398,10 +398,7 @@ func drainScriptStream(stream io.Reader, logPrefix string, logger logr.Logger, t
 			logFragment = bytes.TrimRight(logFragment, "\r\n")
 		}
 		if len(logFragment) > 0 {
-			remaining := scriptLogLineLimit - len(line)
-			if remaining > len(logFragment) {
-				remaining = len(logFragment)
-			}
+			remaining := min(scriptLogLineLimit-len(line), len(logFragment))
 			line = append(line, logFragment[:remaining]...)
 			lineTruncated = lineTruncated || remaining < len(logFragment)
 		}

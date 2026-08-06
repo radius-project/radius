@@ -147,7 +147,7 @@ func Test_Run(t *testing.T) {
 		outputMock := &output.MockOutput{}
 		factory, k8sMock, postInstallWrites := expectDefaultGroupAndEnvCreation(t, ctrl)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:                helmMock,
 			Output:              outputMock,
@@ -190,7 +190,7 @@ func Test_Run(t *testing.T) {
 		helmMock := helm.NewMockInterface(ctrl)
 		outputMock := &output.MockOutput{}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:   helmMock,
 			Output: outputMock,
@@ -235,7 +235,7 @@ func Test_Run(t *testing.T) {
 		k8sMock := cli_kubernetes.NewMockInterface(ctrl)
 		factory := &connections.MockFactory{ApplicationsManagementClient: mgmtMock}
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:                helmMock,
 			Output:              outputMock,
@@ -289,7 +289,7 @@ func Test_Run(t *testing.T) {
 		outputMock := &output.MockOutput{}
 		factory, k8sMock, postInstallWrites := expectDefaultGroupAndEnvCreation(t, ctrl)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:                helmMock,
 			Output:              outputMock,
@@ -335,7 +335,7 @@ func Test_Run(t *testing.T) {
 		outputMock := &output.MockOutput{}
 		factory, k8sMock, postInstallWrites := expectDefaultGroupAndEnvCreation(t, ctrl)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:                helmMock,
 			Output:              outputMock,
@@ -377,7 +377,7 @@ func Test_Run(t *testing.T) {
 		outputMock := &output.MockOutput{}
 		factory, k8sMock, postInstallWrites := expectDefaultGroupAndEnvCreation(t, ctrl)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:                helmMock,
 			Output:              outputMock,
@@ -420,7 +420,7 @@ func Test_Run(t *testing.T) {
 		outputMock := &output.MockOutput{}
 		factory, k8sMock, postInstallWrites := expectDefaultGroupAndEnvCreation(t, ctrl)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:                helmMock,
 			Output:              outputMock,
@@ -478,7 +478,7 @@ func Test_Run(t *testing.T) {
 		// GetEnvironment / CreateOrUpdateEnvironment must not be called: the runner should bail out
 		// as soon as the resource group create fails.
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:                helmMock,
 			Output:              outputMock,
@@ -532,7 +532,7 @@ func Test_Run(t *testing.T) {
 			Return(boom).
 			Times(1)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:                helmMock,
 			Output:              outputMock,
@@ -604,7 +604,7 @@ func Test_Run(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:                    helmMock,
 			Output:                  outputMock,
@@ -675,7 +675,7 @@ func Test_Run(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		ctx := context.Background()
+		ctx := t.Context()
 		runner := &Runner{
 			Helm:                    helmMock,
 			Output:                  outputMock,

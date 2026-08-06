@@ -473,7 +473,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 			genCtrl, err := tt.factory(recipeCfg, opts)
 			require.NoError(t, err)
 
-			res, err := genCtrl.Run(context.Background(), req)
+			res, err := genCtrl.Run(t.Context(), req)
 			switch {
 			case tt.conversionFailure:
 				require.False(t, stillPassing)
@@ -562,7 +562,7 @@ func TestCreateOrUpdateResource_Run_RecipeErrorSurfacedWhenStatusSaveFails(t *te
 	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 	require.NoError(t, err)
 
-	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+	res, err := ctrlr.Run(t.Context(), &ctrl.Request{
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
@@ -592,7 +592,7 @@ func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
 	provider, err := encryption.NewInMemoryKeyProvider(key)
 	require.NoError(t, err)
 
-	handler, err := encryption.NewSensitiveDataHandlerFromProvider(context.Background(), provider)
+	handler, err := encryption.NewSensitiveDataHandlerFromProvider(t.Context(), provider)
 	require.NoError(t, err)
 
 	secretValue := "top-secret"
@@ -709,7 +709,7 @@ func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
 	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 	require.NoError(t, err)
 
-	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+	res, err := ctrlr.Run(t.Context(), &ctrl.Request{
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
@@ -783,7 +783,7 @@ func TestCreateOrUpdateResource_Run_SensitiveMissingKey(t *testing.T) {
 	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 	require.NoError(t, err)
 
-	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+	res, err := ctrlr.Run(t.Context(), &ctrl.Request{
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
@@ -895,7 +895,7 @@ func TestCreateOrUpdateResource_Run_SensitiveNilKubeClient(t *testing.T) {
 	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 	require.NoError(t, err)
 
-	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+	res, err := ctrlr.Run(t.Context(), &ctrl.Request{
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
@@ -923,7 +923,7 @@ func TestCreateOrUpdateResource_Run_SensitiveRedactionSaveFails(t *testing.T) {
 	provider, err := encryption.NewInMemoryKeyProvider(key)
 	require.NoError(t, err)
 
-	handler, err := encryption.NewSensitiveDataHandlerFromProvider(context.Background(), provider)
+	handler, err := encryption.NewSensitiveDataHandlerFromProvider(t.Context(), provider)
 	require.NoError(t, err)
 
 	properties := map[string]any{
@@ -1010,7 +1010,7 @@ func TestCreateOrUpdateResource_Run_SensitiveRedactionSaveFails(t *testing.T) {
 	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 	require.NoError(t, err)
 
-	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+	res, err := ctrlr.Run(t.Context(), &ctrl.Request{
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
@@ -1038,7 +1038,7 @@ func TestCreateOrUpdateResource_Run_SensitiveMultipleFields(t *testing.T) {
 	provider, err := encryption.NewInMemoryKeyProvider(key)
 	require.NoError(t, err)
 
-	handler, err := encryption.NewSensitiveDataHandlerFromProvider(context.Background(), provider)
+	handler, err := encryption.NewSensitiveDataHandlerFromProvider(t.Context(), provider)
 	require.NoError(t, err)
 
 	properties := map[string]any{
@@ -1175,7 +1175,7 @@ func TestCreateOrUpdateResource_Run_SensitiveMultipleFields(t *testing.T) {
 	ctrlr, err := NewCreateOrUpdateResource(opts, successProcessorReference, recipeCfg.Engine, recipeCfg.ConfigLoader)
 	require.NoError(t, err)
 
-	res, err := ctrlr.Run(context.Background(), &ctrl.Request{
+	res, err := ctrlr.Run(t.Context(), &ctrl.Request{
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,

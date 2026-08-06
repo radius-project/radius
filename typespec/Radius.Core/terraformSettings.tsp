@@ -142,8 +142,10 @@ namespace Radius.Core;
   }
   ```
   """)
-model TerraformSettingsResource
-  is TrackedResourceRequired<TerraformSettingsProperties, "terraformSettings"> {
+model TerraformSettingsResource is TrackedResourceRequired<
+  TerraformSettingsProperties,
+  "terraformSettings"
+> {
   @doc("Terraform settings name")
   @key("terraformSettingsName")
   @path

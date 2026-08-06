@@ -56,7 +56,7 @@ func Test_WaitForControlPlaneReady_ReturnsWhenAggregatedAPIServes(t *testing.T) 
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	require.NoError(t, waitForControlPlaneReady(context.Background(), t, client, time.Millisecond))
+	require.NoError(t, waitForControlPlaneReady(t.Context(), t, client, time.Millisecond))
 
 	// A single probe of the aggregated path is enough: it cannot succeed unless
 	// the kube-apiserver and its aggregation layer are both serving.
@@ -79,7 +79,7 @@ func Test_WaitForControlPlaneReady_PollsUntilHealthy(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	require.NoError(t, waitForControlPlaneReady(ctx, t, client, time.Millisecond))
@@ -92,7 +92,7 @@ func Test_WaitForControlPlaneReady_ReportsLastProbeFailureOnTimeout(t *testing.T
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
 
 	err := waitForControlPlaneReady(ctx, t, client, time.Millisecond)

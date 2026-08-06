@@ -1,7 +1,6 @@
 package tooling
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -37,7 +36,7 @@ func TestUpdateManifestRefreshesVersionAndChecksum(t *testing.T) {
 	manifest := githubToolManifest(server.URL, 0)
 	client := NewClient("")
 	client.HTTP = server.Client()
-	result, err := UpdateManifest(context.Background(), &manifest, client)
+	result, err := UpdateManifest(t.Context(), &manifest, client)
 	if err != nil {
 		t.Fatalf("UpdateManifest() error = %v", err)
 	}
@@ -92,7 +91,7 @@ func TestUpdateManifestAppliesReleaseCooldown(t *testing.T) {
 			manifest := githubToolManifest(server.URL, 7)
 			client := NewClient("")
 			client.HTTP = server.Client()
-			result, err := UpdateManifest(context.Background(), &manifest, client)
+			result, err := UpdateManifest(t.Context(), &manifest, client)
 			if err != nil {
 				t.Fatalf("UpdateManifest() error = %v", err)
 			}
@@ -119,7 +118,7 @@ func TestUpdateManifestRejectsUnknownReleaseDateDuringCooldown(t *testing.T) {
 	manifest := githubToolManifest(server.URL, 7)
 	client := NewClient("")
 	client.HTTP = server.Client()
-	_, err := UpdateManifest(context.Background(), &manifest, client)
+	_, err := UpdateManifest(t.Context(), &manifest, client)
 	if err == nil || !strings.Contains(err.Error(), "reported no release date") {
 		t.Fatalf("UpdateManifest() error = %v, want missing release date error", err)
 	}
@@ -175,7 +174,7 @@ func TestLatestVersionReportsReleaseDate(t *testing.T) {
 				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body))}, nil
 			})
 
-			release, err := client.LatestVersion(context.Background(), test.tool)
+			release, err := client.LatestVersion(t.Context(), test.tool)
 			if err != nil {
 				t.Fatalf("LatestVersion() error = %v", err)
 			}
@@ -271,7 +270,7 @@ func TestClientOnlyAuthenticatesExactGitHubAPIHost(t *testing.T) {
 					Body:       io.NopCloser(strings.NewReader("{}")),
 				}, nil
 			})
-			if _, err := client.get(context.Background(), test.url); err != nil {
+			if _, err := client.get(t.Context(), test.url); err != nil {
 				t.Fatalf("get() error = %v", err)
 			}
 		})
@@ -355,7 +354,7 @@ func TestChecksumCachesSharedFile(t *testing.T) {
 	client.HTTP = server.Client()
 
 	for _, platform := range []string{"linux_amd64", "linux_arm64"} {
-		if _, err := client.Checksum(context.Background(), tool, platform, tool.Version); err != nil {
+		if _, err := client.Checksum(t.Context(), tool, platform, tool.Version); err != nil {
 			t.Fatalf("Checksum(%s) error = %v", platform, err)
 		}
 	}
@@ -389,7 +388,7 @@ func TestChecksumStreamsDownloadedAsset(t *testing.T) {
 		ChecksumSource: ChecksumSource{Type: "download"},
 	}
 
-	got, err := client.Checksum(context.Background(), tool, "linux_amd64", tool.Version)
+	got, err := client.Checksum(t.Context(), tool, "linux_amd64", tool.Version)
 	if err != nil {
 		t.Fatalf("Checksum() error = %v", err)
 	}

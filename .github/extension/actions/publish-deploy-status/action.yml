@@ -31,7 +31,9 @@ runs:
         # elsewhere in the run-rad-commands action), with a fallback to `rad app
         # list` when the file doesn't contain a simple literal name.
         APP_NAME=$(grep -oP "name:\s*'\K[^']+" "$APP_FILE" 2>/dev/null | head -1 || true)
+        APP_NAME_FROM_LITERAL=1
         if [ -z "$APP_NAME" ]; then
+          APP_NAME_FROM_LITERAL=0
           APP_NAME=$(rad app list -o json 2>/dev/null | jq -r '.[0].name // .items[0].name // empty' || true)
         fi
 
@@ -48,20 +50,47 @@ runs:
         fi
 
         # Write sibling status files the canvas reads with deploy-graph.json.
+        # These are three distinct signals and must carry distinct content. The
+        # previous version copied rad-commands-result.json into all three, which
+        # published byte-identical blobs (same digest, deduplicated by the
+        # registry) that told the reader nothing about what actually happened.
         NOW_UTC=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         OUTCOME="unknown"
         EXIT_CODE="0"
         if [ -f "$RESULT_FILE" ]; then
           OUTCOME=$(jq -r '.outcome // "unknown"' "$RESULT_FILE" 2>/dev/null || echo "unknown")
           EXIT_CODE=$(jq -r '.exitCode // 0' "$RESULT_FILE" 2>/dev/null || echo "0")
+        fi
+
+        # deploy-progress.log - per-resource provisioning state from the live
+        # control plane, the closest thing to per-node status available here.
+        # `rad resource list -o json` marshals []generated.GenericResource directly
+        # (pkg/cli/cmd/resource/list/list.go), so the payload is a bare array with
+        # no object wrapper - iterate it with `.[]?` and nothing else.
+        if ! rad resource list -a "$APP_NAME" -o json 2>/dev/null \
+          | jq -r '.[]? | "\(.name)\t\(.type)\t\(.properties.provisioningState // "Unknown")"' \
+          > "$STATUS_DIR/deploy-progress.log" 2>/dev/null; then
+          : > "$STATUS_DIR/deploy-progress.log"
+        fi
+        if [ ! -s "$STATUS_DIR/deploy-progress.log" ]; then
+          printf 'no per-resource state available for %s\n' "$APP_NAME" > "$STATUS_DIR/deploy-progress.log"
+        fi
+
+        # deploy-activity.log - the rad command result envelope (outcome/exit code).
+        if [ -f "$RESULT_FILE" ]; then
           cp "$RESULT_FILE" "$STATUS_DIR/deploy-activity.log"
-          cp "$RESULT_FILE" "$STATUS_DIR/deploy-controlplane.log"
-          cp "$RESULT_FILE" "$STATUS_DIR/deploy-progress.log"
         else
           printf '{"warning":"rad-commands-result.json not found"}\n' > "$STATUS_DIR/deploy-activity.log"
-          cp "$STATUS_DIR/deploy-activity.log" "$STATUS_DIR/deploy-controlplane.log"
-          cp "$STATUS_DIR/deploy-activity.log" "$STATUS_DIR/deploy-progress.log"
         fi
+
+        # deploy-controlplane.log - control-plane health at publish time.
+        {
+          echo "# rad version"
+          rad version 2>&1 || true
+          echo ""
+          echo "# rad env list"
+          rad env list -o json 2>&1 || true
+        } > "$STATUS_DIR/deploy-controlplane.log" 2>&1 || true
 
         printf 'state=%s\nexitCode=%s\napplication=%s\nenvironment=%s\nupdatedAt=%s\nsha=%s\n' \
           "$OUTCOME" "$EXIT_CODE" "$APP_NAME" "$ENVIRONMENT" "$NOW_UTC" "$GITHUB_SHA" \
@@ -90,25 +119,62 @@ runs:
             ;;
         esac
 
-        BASE_TAG=$(printf '%s-%s' "$ENVIRONMENT" "$APP_NAME" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//' | cut -c1-80)
+        # Sanitize under LC_ALL=C so the [^a-z0-9._-] class is evaluated bytewise.
+        # In the runner's UTF-8 locale GNU sed leaves multi-byte characters (for
+        # example the "é" in "café", or "™") intact, which yields a tag that is
+        # invalid per the OCI spec and makes `oras push` fail the whole deploy.
+        # Byte-wise sanitization also matches the canvas reader's JS derivation
+        # (deriveGraphTag in adapters/canvas/src/deploy.mjs), which strips them.
+        BASE_TAG=$(printf '%s-%s' "$ENVIRONMENT" "$APP_NAME" | LC_ALL=C tr '[:upper:]' '[:lower:]' | LC_ALL=C sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//' | LC_ALL=C cut -c1-80)
         if [ -z "$BASE_TAG" ]; then
           BASE_TAG="deploy-status"
         fi
         LATEST_TAG="${RADIUS_GRAPH_TAG:-${BASE_TAG}-latest}"
         TARGET_REF="${GRAPH_REGISTRY}:${LATEST_TAG}"
 
+        # The canvas reader derives this same tag from the app bicep's first
+        # single-quoted `name:` literal and has no `rad app list` fallback, so a
+        # name resolved that way publishes to a tag the reader will never request.
+        # Say so explicitly instead of leaving an empty Deployed tab to debug.
+        if [ "$APP_NAME_FROM_LITERAL" -eq 0 ] && [ -z "${RADIUS_GRAPH_TAG:-}" ]; then
+          echo "::warning::Application name '${APP_NAME}' came from 'rad app list', not a literal name in ${APP_FILE}. Publishing to '${TARGET_REF}', but the canvas derives its tag from the bicep literal and will not find this artifact. Set a literal name in the app bicep, or set RADIUS_GRAPH_TAG on both sides."
+        fi
+
         # Include metadata annotations and publish all files as one artifact so the
         # reader can pull a single reference and inspect its files locally.
-        oras push "$TARGET_REF" \
+        #
+        # Run from inside STATUS_DIR and pass bare file names. ORAS rejects absolute
+        # paths ("absolute file path detected") and, more importantly, it derives each
+        # layer's org.opencontainers.image.title from the path it is given. The canvas
+        # looks the files up by exactly those titles, so pushing absolute paths - even
+        # with --disable-path-validation to get past the check - would title the layer
+        # "/tmp/tmp.XXXX/deploy-graph.json" and the reader would never find it. The
+        # subshell keeps the cd from leaking into the rest of the step.
+        #
+        # Publishing status is best-effort reporting, not part of the deployment
+        # itself: every other failure path in this action warns and exits 0. The
+        # push must do the same, otherwise a problem that has nothing to do with
+        # the deploy - most commonly no `packages: write` access to the derived
+        # graph package, which the pre-flight verify-ghcr-push check does not
+        # cover because it only tests RADIUS_STATE_REGISTRY - marks an otherwise
+        # successful deploy as failed under `set -e`.
+        PUSH_LOG=$(mktemp)
+        if ! ( cd "$STATUS_DIR" && oras push "$TARGET_REF" \
           --artifact-type application/vnd.radius.deploy-status.v1+json \
           --annotation "org.opencontainers.image.created=${NOW_UTC}" \
           --annotation "org.opencontainers.image.revision=${GITHUB_SHA}" \
           --annotation "dev.radius.application=${APP_NAME}" \
           --annotation "dev.radius.environment=${ENVIRONMENT}" \
-          "${STATUS_DIR}/deploy-graph.json:application/json" \
-          "${STATUS_DIR}/deploy-progress.log:text/plain" \
-          "${STATUS_DIR}/deploy-activity.log:text/plain" \
-          "${STATUS_DIR}/deploy-controlplane.log:text/plain" \
-          "${STATUS_DIR}/deploy-state.txt:text/plain"
+          "deploy-graph.json:application/json" \
+          "deploy-progress.log:text/plain" \
+          "deploy-activity.log:text/plain" \
+          "deploy-controlplane.log:text/plain" \
+          "deploy-state.txt:text/plain" ) > "$PUSH_LOG" 2>&1; then
+          cat "$PUSH_LOG" || true
+          PUSH_ERR=$(tr '\n' ' ' < "$PUSH_LOG" | sed 's/[[:space:]]\+/ /g' | cut -c1-400)
+          echo "::warning::Failed to publish deploy status artifact to '${TARGET_REF}', so the canvas Deployed tab will not show this run. The deployment itself is unaffected. ORAS reported: ${PUSH_ERR}"
+          exit 0
+        fi
+        cat "$PUSH_LOG" || true
 
         echo "✅ Published deploy status artifact to '$TARGET_REF'."

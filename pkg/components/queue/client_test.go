@@ -57,7 +57,7 @@ func TestStartDequeuer(t *testing.T) {
 			return nil, ErrInvalidMessage
 		}).AnyTimes().After(secondCall)
 
-	ctx, cancel := context.WithCancel(context.TODO())
+	ctx, cancel := context.WithCancel(t.Context())
 	msgCh, err := StartDequeuer(ctx, mockCli, WithDequeueInterval(defaultTestDequeueInterval))
 	require.NoError(t, err)
 

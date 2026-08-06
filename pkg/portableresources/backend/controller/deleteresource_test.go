@@ -17,7 +17,6 @@ limitations under the License.
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -172,7 +171,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 			ctrl, err := NewDeleteResource(opts, successProcessorReference, eng, configLoader)
 			require.NoError(t, err)
 
-			_, err = ctrl.Run(context.Background(), req)
+			_, err = ctrl.Run(t.Context(), req)
 
 			if tt.getErr != nil || tt.engDelErr != nil || tt.scDelErr != nil {
 				require.Error(t, err)

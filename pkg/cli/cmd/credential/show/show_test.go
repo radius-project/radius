@@ -17,7 +17,6 @@ limitations under the License.
 package show
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -132,7 +131,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			credentialFormatOutput := credentialFormatAzureServicePrincipal()
@@ -180,7 +179,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			credentialFormatOutput := credentialFormatAzureWorkloadIdentity()
@@ -218,7 +217,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			expected := clierrors.Message("The credentials for cloud provider %q could not be found.", runner.Kind)
 			require.Equal(t, expected, err)
 		})
@@ -253,7 +252,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			credentialFormatOutput := credentialFormatAWSAccessKey()
@@ -295,7 +294,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			expected := clierrors.Message("The credentials for cloud provider %q could not be found.", runner.Kind)
 			require.Equal(t, expected, err)
 		})

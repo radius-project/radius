@@ -288,7 +288,7 @@ func Test_DeploymentWatcher_Deleted_NoOtherReplicas(t *testing.T) {
 	defer stopPodWatchers(dw)
 
 	// Step 1: Add a pod
-	dw.updated(context.Background(), createPod("p1", "rs1"), map[string]bool{})
+	dw.updated(t.Context(), createPod("p1", "rs1"), map[string]bool{})
 	require.NotNil(t, dw.podWatcher)
 	require.Equal(t, dw.podWatcher.Pod.Name, "p1")
 	existing := dw.podWatcher

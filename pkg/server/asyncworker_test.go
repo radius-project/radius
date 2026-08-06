@@ -17,7 +17,6 @@ limitations under the License.
 package server
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -53,7 +52,7 @@ func Test_deploymentTargetClients_NoEnvVar_ReturnsControlPlane(t *testing.T) {
 	w := &AsyncWorker{}
 	controlPlane := &kubeutil.Clients{}
 
-	got, err := w.deploymentTargetClients(context.Background(), controlPlane)
+	got, err := w.deploymentTargetClients(t.Context(), controlPlane)
 	require.NoError(t, err)
 	require.Same(t, controlPlane, got, "with no target kubeconfig the control-plane clients must be returned unchanged")
 }
@@ -67,7 +66,7 @@ func Test_deploymentTargetClients_ValidKubeconfig_ReturnsTargetClients(t *testin
 	w := &AsyncWorker{}
 	controlPlane := &kubeutil.Clients{}
 
-	got, err := w.deploymentTargetClients(context.Background(), controlPlane)
+	got, err := w.deploymentTargetClients(t.Context(), controlPlane)
 	require.NoError(t, err)
 	require.NotNil(t, got)
 	require.NotSame(t, controlPlane, got, "with a target kubeconfig set, distinct target clients must be returned")
@@ -79,7 +78,7 @@ func Test_deploymentTargetClients_UnreadableKubeconfig_ReturnsError(t *testing.T
 
 	w := &AsyncWorker{}
 
-	_, err := w.deploymentTargetClients(context.Background(), &kubeutil.Clients{})
+	_, err := w.deploymentTargetClients(t.Context(), &kubeutil.Clients{})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), kubeutil.TargetKubeconfigEnvVar)
 	require.Contains(t, err.Error(), missingPath)

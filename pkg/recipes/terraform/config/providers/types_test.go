@@ -1,7 +1,6 @@
 package providers
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -296,7 +295,7 @@ func Test_GetRecipeProviderConfigs(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			result, err := GetRecipeProviderConfigs(context.Background(), tc.envConfig, tc.secrets)
+			result, err := GetRecipeProviderConfigs(t.Context(), tc.envConfig, tc.secrets)
 			require.NoError(t, err)
 			require.Equal(t, tc.expected, result)
 		})

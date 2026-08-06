@@ -17,7 +17,6 @@ limitations under the License.
 package portforward
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/kubernetes"
@@ -178,7 +177,7 @@ func Test_findStaleReplicaSets(t *testing.T) {
 	require.NoError(t, err)
 
 	client := fake.NewClientset(objs...)
-	actual, err := findStaleReplicaSets(context.Background(), client, "default", "3", labelSelector)
+	actual, err := findStaleReplicaSets(t.Context(), client, "default", "3", labelSelector)
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)
 }

@@ -274,7 +274,7 @@ func Test_Run(t *testing.T) {
 				},
 			}
 
-			err = runner.Run(context.Background())
+			err = runner.Run(t.Context())
 			require.NoError(t, err)
 			require.Equal(t, tc.expectedOutput, outputSink.Writes)
 		})
@@ -347,7 +347,7 @@ func Test_Run_RecipePacksReplaced(t *testing.T) {
 		providers:               &v20250801preview.Providers{},
 	}
 
-	err = runner.Run(context.Background())
+	err = runner.Run(t.Context())
 	require.NoError(t, err)
 
 	// The old pack should be gone — only the two new packs should remain.
@@ -449,7 +449,7 @@ func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
 			providers:               &v20250801preview.Providers{},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		require.NotNil(t, captured.Properties)
@@ -477,7 +477,7 @@ func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
 			providers:               &v20250801preview.Providers{},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		require.NotNil(t, captured.Properties.Providers.Kubernetes)
@@ -506,7 +506,7 @@ func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
 			},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		require.NotNil(t, captured.Properties.Providers.Kubernetes)
@@ -532,7 +532,7 @@ func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
 			providers:               &v20250801preview.Providers{},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		require.NotNil(t, captured.Properties.Providers)
@@ -563,7 +563,7 @@ func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
 			providers:               &v20250801preview.Providers{},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		require.NotNil(t, captured.Properties.Providers)
@@ -606,7 +606,7 @@ func Test_syncRecipePackReferences(t *testing.T) {
 
 		newPackIDs := []*string{to.Ptr(pack1FullID)}
 
-		err = syncRecipePackReferences(context.Background(), envID, nil, newPackIDs, workspace, factory)
+		err = syncRecipePackReferences(t.Context(), envID, nil, newPackIDs, workspace, factory)
 		require.NoError(t, err)
 		require.Len(t, capturedReferencedBy, 1)
 		require.Equal(t, envID, *capturedReferencedBy[0])
@@ -649,7 +649,7 @@ func Test_syncRecipePackReferences(t *testing.T) {
 
 		oldPackIDs := []*string{to.Ptr(pack1FullID)}
 
-		err = syncRecipePackReferences(context.Background(), envID, oldPackIDs, nil, workspace, factory)
+		err = syncRecipePackReferences(t.Context(), envID, oldPackIDs, nil, workspace, factory)
 		require.NoError(t, err)
 		// This env is removed; the other env remains.
 		require.Len(t, capturedReferencedBy, 1)
@@ -695,7 +695,7 @@ func Test_syncRecipePackReferences(t *testing.T) {
 		oldPackIDs := []*string{to.Ptr(pack1FullID), to.Ptr(pack2FullID)}
 		newPackIDs := []*string{to.Ptr(pack1FullID), to.Ptr(pack3FullID)}
 
-		err = syncRecipePackReferences(context.Background(), envID, oldPackIDs, newPackIDs, workspace, factory)
+		err = syncRecipePackReferences(t.Context(), envID, oldPackIDs, newPackIDs, workspace, factory)
 		require.NoError(t, err)
 
 		require.False(t, createOrUpdateCalled["pack1"], "unchanged pack should not be updated")
@@ -719,7 +719,7 @@ func Test_syncRecipePackReferences(t *testing.T) {
 
 		oldPackIDs := []*string{to.Ptr(pack1FullID)}
 
-		err = syncRecipePackReferences(context.Background(), envID, oldPackIDs, nil, workspace, factory)
+		err = syncRecipePackReferences(t.Context(), envID, oldPackIDs, nil, workspace, factory)
 		require.NoError(t, err)
 	})
 }

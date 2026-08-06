@@ -17,7 +17,6 @@ limitations under the License.
 package authentication
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -78,7 +77,7 @@ func TestCertValidation(t *testing.T) {
 				Thumbprint:  tc.fakeCertThumbprint,
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			log := logr.FromContextOrDiscard(ctx)
 			armCertMgr := NewArmCertManager(metadataEndpoint, log)
 			ArmCertStore.Store(tc.fakeCertThumbprint, cert)
@@ -92,7 +91,7 @@ func TestCertValidation(t *testing.T) {
 				})
 
 			handler := middleware.LowercaseURLPath(r)
-			req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, tc.armid, nil)
+			req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, tc.armid, nil)
 			require.NoError(t, err)
 			req.Header.Set(IngressCertThumbprintHeader, tc.headerThumbprint)
 			handler.ServeHTTP(w, req)

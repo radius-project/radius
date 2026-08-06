@@ -17,7 +17,6 @@ limitations under the License.
 package preview
 
 import (
-	"context"
 	"net/http"
 	"testing"
 
@@ -185,7 +184,7 @@ func Test_Run(t *testing.T) {
 				Output:                  outputSink,
 			}
 
-			err = runner.Run(context.Background())
+			err = runner.Run(t.Context())
 			if tc.expectError {
 				require.Error(t, err)
 				require.Empty(t, outputSink.Writes)

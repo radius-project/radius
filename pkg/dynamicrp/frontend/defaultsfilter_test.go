@@ -33,7 +33,7 @@ func TestMakeDefaultsFilter_SchemaFetchError(t *testing.T) {
 		Properties: map[string]any{"size": "L"},
 	}
 
-	response, err := makeDefaultsFilter(ucpClient)(createTestContext(), resource, nil, nil)
+	response, err := makeDefaultsFilter(ucpClient)(createTestContext(t), resource, nil, nil)
 	require.NoError(t, err)
 
 	errorResponse, ok := response.(*rest.InternalServerErrorResponse)
@@ -54,7 +54,7 @@ func TestMakeDefaultsFilter_NilProperties(t *testing.T) {
 		require.NoError(t, err)
 
 		resource := &datamodel.DynamicResource{}
-		response, err := makeDefaultsFilter(ucpClient)(createTestContext(), resource, nil, nil)
+		response, err := makeDefaultsFilter(ucpClient)(createTestContext(t), resource, nil, nil)
 		require.NoError(t, err)
 		require.Nil(t, response)
 		require.Equal(t, map[string]any{"size": "S"}, resource.Properties)
@@ -70,7 +70,7 @@ func TestMakeDefaultsFilter_NilProperties(t *testing.T) {
 		require.NoError(t, err)
 
 		resource := &datamodel.DynamicResource{}
-		response, err := makeDefaultsFilter(ucpClient)(createTestContext(), resource, nil, nil)
+		response, err := makeDefaultsFilter(ucpClient)(createTestContext(t), resource, nil, nil)
 		require.NoError(t, err)
 		require.Nil(t, response)
 		require.Nil(t, resource.Properties)
@@ -96,7 +96,7 @@ func TestMakeUpdateFilters_DefaultsBeforeEncryption(t *testing.T) {
 		makeEncryptionFilter(ucpClient, createTestHandler(t)),
 	)
 	for _, filter := range filters {
-		response, err := filter(createTestContext(), resource, nil, nil)
+		response, err := filter(createTestContext(t), resource, nil, nil)
 		require.NoError(t, err)
 		require.Nil(t, response)
 	}
