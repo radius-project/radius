@@ -53,13 +53,12 @@ jobs:
           persist-credentials: false
 
       - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0 # zizmor: ignore[cache-poisoning]
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-          # Cache is kept here: this job produces only test-result XML and a coverage
-          # report, never a build input, so a poisoned cache has no downstream sink.
-          cache: true
+          # Compiles and executes Go code — don't restore a cache a prior run could have poisoned.
+          cache: false
 
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
