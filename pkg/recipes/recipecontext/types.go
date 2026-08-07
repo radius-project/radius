@@ -78,6 +78,8 @@ type ProviderAzure struct {
 	ResourceGroup AzureResourceGroup `json:"resourceGroup"`
 	// Subscription represents the subscription information.
 	Subscription AzureSubscription `json:"subscription"`
+	// ResourceNameHash is a short, stable hash derived from the Azure provider scope and Radius resource ID.
+	ResourceNameHash string `json:"resourceNameHash,omitempty"`
 }
 
 // AzureResourceGroup contains Azure Resource Group provider information.

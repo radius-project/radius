@@ -19,6 +19,7 @@ package paramresolver
 import (
 	"testing"
 
+	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/stretchr/testify/assert"
@@ -72,6 +73,7 @@ func testContext() *recipecontext.Context {
 				SubscriptionID: "sub-id",
 				ID:             "/subscriptions/sub-id",
 			},
+			ResourceNameHash: "b9f5a1471dadc792",
 		},
 		AWS: &recipecontext.ProviderAWS{
 			Region:  "us-east-1",
@@ -107,6 +109,16 @@ func Test_ResolveParameterExpressions(t *testing.T) {
 			ctx: testContext(),
 			expected: map[string]any{
 				"name": "my-resource",
+			},
+		},
+		{
+			name: "derived Azure resource name hash resolves",
+			params: map[string]any{
+				"name": "redis-{{context.azure.resourceNameHash}}",
+			},
+			ctx: testContext(),
+			expected: map[string]any{
+				"name": "redis-b9f5a1471dadc792",
 			},
 		},
 		{
@@ -313,6 +325,30 @@ func Test_ResolveParameterExpressions(t *testing.T) {
 	}
 }
 
+func Test_ResolveParameterExpressions_GeneratedAzureResourceNameHash(t *testing.T) {
+	ctx, err := recipecontext.New(
+		&recipes.ResourceMetadata{
+			ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+		},
+		&recipes.Configuration{
+			Providers: coredm.Providers{
+				Azure: coredm.ProvidersAzure{
+					Scope: "/subscriptions/testSub",
+				},
+			},
+		},
+	)
+	require.NoError(t, err)
+
+	result := ResolveParameterExpressions(
+		map[string]any{"name": "redis-{{context.azure.resourceNameHash}}"},
+		ctx,
+	)
+
+	require.Equal(t, map[string]any{"name": "redis-2ee7ced618d5dd8e"}, result)
+}
+
 func Test_TernaryExpressions(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -454,6 +490,7 @@ func Test_buildContextLookup(t *testing.T) {
 		lookup := buildContextLookup(ctx)
 
 		assert.Equal(t, "my-resource", lookup["context.resource.name"])
+		assert.Equal(t, "b9f5a1471dadc792", lookup["context.azure.resourceNameHash"])
 		assert.Equal(t, "my-app", lookup["context.application.name"])
 		assert.Equal(t, "my-env", lookup["context.environment.name"])
 		assert.Equal(t, "my-namespace", lookup["context.runtime.kubernetes.namespace"])
@@ -463,6 +500,21 @@ func Test_buildContextLookup(t *testing.T) {
 		assert.Equal(t, "5432", lookup["context.resource.properties.port"])
 		assert.Equal(t, "my-db", lookup["context.resource.connections.db.name"])
 		assert.Equal(t, "postgres://myhost:5432/mydb", lookup["context.resource.connections.db.properties.connectionString"])
+	})
+
+	t.Run("Azure resource name hash is exposed when present", func(t *testing.T) {
+		ctx := testContext()
+		lookup := buildContextLookup(ctx)
+		assert.Equal(t, ctx.Azure.ResourceNameHash, lookup["context.azure.resourceNameHash"])
+	})
+
+	t.Run("omits Azure resource name hash when not set", func(t *testing.T) {
+		ctx := testContext()
+		ctx.Azure.ResourceNameHash = ""
+
+		lookup := buildContextLookup(ctx)
+		_, ok := lookup["context.azure.resourceNameHash"]
+		assert.False(t, ok)
 	})
 
 	t.Run("handles nil kubernetes runtime", func(t *testing.T) {
