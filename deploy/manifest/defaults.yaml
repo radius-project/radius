@@ -70,7 +70,7 @@ resourceTypes:
 recipePacks:
   - name: azure
     repo: github.com/radius-project/resource-types-contrib
-    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
+    ref: 9bcd8e53282b9a4bdc5ba031966299955f5009d0
     tag: ""
   - name: kubernetes
     repo: github.com/radius-project/resource-types-contrib
