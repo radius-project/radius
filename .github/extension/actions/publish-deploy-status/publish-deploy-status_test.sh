@@ -11,7 +11,7 @@
 # and sets step outputs, and an actions/upload-artifact step gated on those
 # outputs. Only the first is executable here, so the expressions wiring the two
 # together are checked structurally against the parsed YAML instead - nothing
-# else covers that seam.
+# else covers them.
 #
 # `rad` is stubbed. There is no runner, no network and no artifact upload:
 # RUNNER_TEMP, GITHUB_OUTPUT and TMPDIR are all redirected into a sandbox.
@@ -680,8 +680,8 @@ assert_status_dir_contains_exactly "${EXPECTED_STATUS_FILES}" \
 rm -rf "${FALLBACK_STATUS_DIR}"
 
 # ---------------------------------------------------------------------------
-# The seam between the two composite steps. These three expressions are the only
-# thing connecting the generate step's outputs to the upload, and no runtime
+# The wiring between the two composite steps. These three expressions are the
+# only thing connecting the generate step's outputs to the upload, and no runtime
 # scenario here can exercise them.
 # ---------------------------------------------------------------------------
 assert_fact "generate.id" "generate"
