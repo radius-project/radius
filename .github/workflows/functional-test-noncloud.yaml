@@ -156,7 +156,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-          cache: true
+          # Produces artifacts/images — don't restore a cache a prior run could have poisoned.
+          cache: false
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -278,7 +279,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-          cache: true
+          # Produces artifacts/images — don't restore a cache a prior run could have poisoned.
+          cache: false
 
       # The rad CLI, container images and Bicep types are built once in the
       # "build" job and shared with every matrix leg. Downloading them here avoids
