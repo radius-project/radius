@@ -259,6 +259,49 @@ runs:
           printf '%s' "$(scrub_string "$(cat "$file")")" > "$file"
         }
 
+        # ── Live per-resource progress sidecar ──────────────────────────
+        # `rad deploy` only prints two run-level markers (Deployment In
+        # Progress.../Deployment Complete) plus, on success, a final Resources:
+        # block -- nothing per-resource while provisioning is actually happening.
+        # Poll `rad resource list` in the background for the duration of this
+        # step so consumers of this job's log can tick each resource from
+        # pending -> in_progress -> success/failed as it happens instead of only
+        # seeing everything flip at once at the end. Emits `RADIUS_PROGRESS
+        # <json-array>` lines; harmless if nothing parses them.
+        PROGRESS_APP_NAME=$(grep -m1 -oP "name:\s*['\"]\K[^'\"]+" "$APP_FILE" 2>/dev/null || true)
+        PROGRESS_POLLER_PID=""
+        if [ -n "$PROGRESS_APP_NAME" ]; then
+          (
+            # GitHub runs `shell: bash` steps as `bash -eo pipefail`, which this
+            # subshell inherits. Without disabling errexit here, the FIRST poll
+            # that fails (e.g. the app not registered yet at deploy start) would
+            # kill the whole loop instead of just skipping that snapshot.
+            set +e
+            last_snapshot=""
+            while true; do
+              sleep 5
+              snapshot=$(rad resource list -a "$PROGRESS_APP_NAME" -o json 2>/dev/null \
+                | jq -c 'map({name, type, state:(.properties.provisioningState // "Provisioning")})' 2>/dev/null)
+              if [ -n "$snapshot" ] && [ "$snapshot" != "null" ] && [ "$snapshot" != "$last_snapshot" ]; then
+                echo "RADIUS_PROGRESS $snapshot"
+                last_snapshot="$snapshot"
+              fi
+            done
+          ) &
+          PROGRESS_POLLER_PID=$!
+        fi
+        stop_progress_poller() {
+          # `|| true`: under inherited errexit, `kill` on an already-exited
+          # poller would otherwise abort this trap before write_result runs.
+          if [ -n "$PROGRESS_POLLER_PID" ]; then
+            kill "$PROGRESS_POLLER_PID" 2>/dev/null || true
+            wait "$PROGRESS_POLLER_PID" 2>/dev/null || true
+          fi
+        }
+        # Supersedes the earlier `trap write_result EXIT` -- also stop the poller
+        # so it never outlives this step.
+        trap 'stop_progress_poller; write_result' EXIT
+
         if [ -n "${RAD_COMMANDS//[[:space:]]/}" ]; then
           # Caller-supplied commands: a single command string or a JSON array, run in
           # order with the `rad` prefix omitted.
