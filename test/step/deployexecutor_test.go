@@ -33,7 +33,7 @@ import (
 func Test_ExecuteWithRetry_SucceedsOnFirstAttempt(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(error) bool { return true })
+	d := NewDeployExecutor("test.bicep").WithRetry(time.Second, 10*time.Millisecond, func(error) bool { return true })
 
 	err := d.executeWithRetry(t.Context(), t, func() error {
 		calls.Add(1)
@@ -48,7 +48,7 @@ func Test_ExecuteWithRetry_RetriesOnTransientThenSucceeds(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
 	transientErr := errors.New("ManagedServiceIdentityNotFound")
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(err error) bool {
+	d := NewDeployExecutor("test.bicep").WithRetry(time.Second, 10*time.Millisecond, func(err error) bool {
 		return err.Error() == "ManagedServiceIdentityNotFound"
 	})
 
@@ -67,7 +67,7 @@ func Test_ExecuteWithRetry_RetriesOnTransientThenSucceeds(t *testing.T) {
 func Test_ExecuteWithRetry_DoesNotRetryNonTransientError(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(err error) bool {
+	d := NewDeployExecutor("test.bicep").WithRetry(time.Second, 10*time.Millisecond, func(err error) bool {
 		return err.Error() == "transient"
 	})
 
@@ -81,10 +81,10 @@ func Test_ExecuteWithRetry_DoesNotRetryNonTransientError(t *testing.T) {
 	assert.Equal(t, int32(1), calls.Load())
 }
 
-func Test_ExecuteWithRetry_ExhaustsAllRetries(t *testing.T) {
+func Test_ExecuteWithRetry_StopsWhenBudgetIsExhausted(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(error) bool { return true })
+	d := NewDeployExecutor("test.bicep").WithRetry(50*time.Millisecond, 10*time.Millisecond, func(error) bool { return true })
 
 	err := d.executeWithRetry(t.Context(), t, func() error {
 		calls.Add(1)
@@ -93,7 +93,9 @@ func Test_ExecuteWithRetry_ExhaustsAllRetries(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Equal(t, "always fails", err.Error())
-	assert.Equal(t, int32(3), calls.Load()) // 1 initial + 2 retries
+	// The initial attempt plus at least one retry, and the loop must have
+	// stopped once the budget elapsed rather than run forever.
+	assert.Greater(t, calls.Load(), int32(1))
 }
 
 func Test_ExecuteWithRetry_DefaultDoesNotRetryNonTransientError(t *testing.T) {
@@ -135,8 +137,9 @@ func Test_ExecuteWithRetry_DefaultRetriesTransientImagePullError(t *testing.T) {
 func Test_ExecuteWithRetry_DefaultRetriesTransientConnectionError(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	// NewDeployExecutor retries transient UCP connection resets by default, which
-	// occur when the kind control-plane restarts and drops the port-forward tunnel.
+	// NewDeployExecutor retries transient UCP connection resets by default,
+	// which occur when the kind control plane restarts and drops every
+	// in-flight connection to the API server.
 	d := NewDeployExecutor("test.bicep")
 	d.RetryDelay = 10 * time.Millisecond // shorten the delay for the test
 
@@ -183,7 +186,7 @@ func Test_ExecuteWithRetry_ContextCancelledDuringDelay(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
 	ctx, cancel := context.WithCancel(t.Context())
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 5*time.Second, func(error) bool { return true })
+	d := NewDeployExecutor("test.bicep").WithRetry(time.Minute, 5*time.Second, func(error) bool { return true })
 
 	// Cancel context immediately after first deploy attempt
 	err := d.executeWithRetry(ctx, t, func() error {
@@ -204,7 +207,6 @@ func Test_ExecuteWithRetry_NilShouldRetryDisablesRetries(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
 	d := NewDeployExecutor("test.bicep")
-	d.MaxRetries = 3
 	d.ShouldRetry = nil // nil predicate
 
 	err := d.executeWithRetry(t.Context(), t, func() error {
@@ -216,37 +218,160 @@ func Test_ExecuteWithRetry_NilShouldRetryDisablesRetries(t *testing.T) {
 	assert.Equal(t, int32(1), calls.Load())
 }
 
-func Test_RetryDelayForAttempt(t *testing.T) {
+func Test_ExecuteWithRetry_ZeroBudgetDisablesRetries(t *testing.T) {
 	t.Parallel()
-	tests := []struct {
-		name     string
-		base     time.Duration
-		attempt  int
-		expected time.Duration
-	}{
-		{name: "first retry uses the base delay", base: 30 * time.Second, attempt: 2, expected: 30 * time.Second},
-		{name: "delay doubles per attempt", base: 30 * time.Second, attempt: 3, expected: 60 * time.Second},
-		{name: "delay reaches the cap", base: 30 * time.Second, attempt: 4, expected: maxTransientRetryDelay},
-		{name: "delay stops growing at the cap", base: 30 * time.Second, attempt: 9, expected: maxTransientRetryDelay},
-		// A base above half the cap makes the next doubling overshoot it, so the
-		// result has to be clamped rather than just left ungrown.
-		{name: "doubling overshoots the cap", base: 90 * time.Second, attempt: 3, expected: maxTransientRetryDelay},
-		{name: "overshooting base stays at the cap", base: 90 * time.Second, attempt: 9, expected: maxTransientRetryDelay},
-		// A caller that asks for a longer delay than the cap keeps it: the cap only
-		// bounds the doubling, it never shortens a caller-supplied delay.
-		{name: "caller delay above the cap is preserved", base: 5 * time.Minute, attempt: 3, expected: 5 * time.Minute},
-		{name: "zero delay stays zero", base: 0, attempt: 5, expected: 0},
+	var calls atomic.Int32
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = 0
+	d.RetryBudget = 0
+	d.ShouldRetry = func(error) bool { return true }
+
+	err := d.executeWithRetry(t.Context(), t, func() error {
+		calls.Add(1)
+		return errors.New("transient")
+	})
+
+	require.Error(t, err)
+	assert.Equal(t, int32(1), calls.Load())
+}
+
+func Test_ExecuteWithRetry_UnreadyControlPlaneStopsRetrying(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	var waits atomic.Int32
+
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = time.Millisecond
+	d.ShouldRetry = func(error) bool { return true }
+	// The gate stands in for a control plane that never came back within the
+	// budget. Retrying against it cannot succeed, so the loop must stop.
+	d.waitForReady = func(ctx context.Context) error {
+		waits.Add(1)
+		return errors.New("kube-apiserver is not ready")
 	}
 
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			d := NewDeployExecutor("test.bicep")
-			d.RetryDelay = tc.base
+	err := d.executeWithRetry(t.Context(), t, func() error {
+		n := calls.Add(1)
+		if n == 1 {
+			return errors.New("connection reset by peer")
+		}
+		return nil
+	})
 
-			require.Equal(t, tc.expected, d.retryDelayForAttempt(tc.attempt))
-		})
+	// The deployment error is surfaced rather than the gate's error, and no
+	// retry is attempted against an unavailable control plane.
+	require.Error(t, err)
+	assert.Equal(t, "connection reset by peer", err.Error())
+	assert.Equal(t, int32(1), calls.Load())
+	assert.Equal(t, int32(1), waits.Load())
+}
+
+func Test_ExecuteWithRetry_RetriesOnceControlPlaneIsReady(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	var waits atomic.Int32
+
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = time.Millisecond
+	d.ShouldRetry = func(error) bool { return true }
+	d.waitForReady = func(ctx context.Context) error {
+		waits.Add(1)
+		return nil
 	}
+
+	err := d.executeWithRetry(t.Context(), t, func() error {
+		n := calls.Add(1)
+		if n == 1 {
+			return errors.New("connection reset by peer")
+		}
+		return nil
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), calls.Load())
+	assert.Equal(t, int32(1), waits.Load())
+}
+
+func Test_ExecuteWithRetry_BudgetBoundsTheReadinessWait(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = 0
+	d.RetryBudget = 50 * time.Millisecond
+	d.ShouldRetry = func(error) bool { return true }
+	// A control plane that never recovers must not block past the budget.
+	d.waitForReady = func(ctx context.Context) error {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+
+	start := time.Now()
+	err := d.executeWithRetry(t.Context(), t, func() error {
+		calls.Add(1)
+		return errors.New("connection reset by peer")
+	})
+
+	require.Error(t, err)
+	assert.Equal(t, "connection reset by peer", err.Error())
+	assert.Equal(t, int32(1), calls.Load())
+	assert.Less(t, time.Since(start), 5*time.Second)
+}
+
+func Test_EffectiveRetryBudget_CappedByTestDeadline(t *testing.T) {
+	t.Parallel()
+	deadline, ok := t.Deadline()
+	if !ok {
+		t.Skip("go test was run without -timeout, so there is no deadline to cap against")
+	}
+
+	// A budget far larger than the time the test binary has left must be cut
+	// down, so a broken cluster produces per-test failures rather than an
+	// opaque `go test -timeout` panic.
+	d := NewDeployExecutor("test.bicep")
+	d.RetryBudget = time.Hour
+
+	budget := d.effectiveRetryBudget(t)
+
+	assert.Less(t, budget, time.Until(deadline))
+	assert.Positive(t, budget)
+}
+
+func Test_EffectiveRetryBudget_UnchangedWhenItFitsTheDeadline(t *testing.T) {
+	t.Parallel()
+	d := NewDeployExecutor("test.bicep")
+	d.RetryBudget = time.Millisecond
+
+	assert.Equal(t, time.Millisecond, d.effectiveRetryBudget(t))
+}
+
+func Test_ExecuteWithRetry_BudgetBoundsRetriesWithoutDelayOrReadinessGate(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+
+	// With neither a retry delay nor a readiness gate, the budget is the only
+	// thing that can stop the loop, so waitBeforeRetry has to consult it on
+	// that path too. Without this the loop runs until the parent context or the
+	// test binary's timeout, not the budget.
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = 0
+	d.RetryBudget = 20 * time.Millisecond
+	d.ShouldRetry = func(error) bool { return true }
+	d.waitForReady = nil
+
+	start := time.Now()
+	err := d.executeWithRetry(t.Context(), t, func() error {
+		calls.Add(1)
+		// Keeps the attempt count (and the log volume) bounded while the
+		// budget elapses.
+		time.Sleep(5 * time.Millisecond)
+		return errors.New("connection reset by peer")
+	})
+
+	require.Error(t, err)
+	assert.Equal(t, "connection reset by peer", err.Error())
+	assert.Less(t, time.Since(start), 5*time.Second)
+	assert.Greater(t, calls.Load(), int32(1))
 }
 
 func Test_IsTransientImagePullError(t *testing.T) {
@@ -341,7 +466,7 @@ func Test_IsTransientConnectionError(t *testing.T) {
 	}{
 		{name: "nil error", err: nil, expected: false},
 		{
-			name:     "port-forward connection reset",
+			name:     "apiserver connection reset",
 			err:      errors.New(`Get "https://127.0.0.1:37481/.../operationStatuses/...": read tcp 127.0.0.1:38764->127.0.0.1:37481: read: connection reset by peer`),
 			expected: true,
 		},

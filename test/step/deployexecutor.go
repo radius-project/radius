@@ -46,36 +46,44 @@ type DeployExecutor struct {
 	// the environment is not defined in bicep.
 	Environment string
 
-	// MaxRetries is the maximum number of retry attempts after the initial deployment fails.
-	// Zero means no retries (default behavior).
-	MaxRetries int
-
-	// RetryDelay is the base duration to wait between retry attempts. The wait
-	// doubles after each attempt, up to maxTransientRetryDelay.
+	// RetryDelay is the minimum time to wait between retry attempts.
 	RetryDelay time.Duration
 
+	// RetryBudget bounds how long the executor keeps starting new attempts,
+	// measured from the moment the first attempt fails. Once it elapses no
+	// further attempt begins, but an attempt already in flight runs to
+	// completion under the caller's context. Zero disables retries.
+	RetryBudget time.Duration
+
 	// ShouldRetry is a predicate that determines whether a failed deployment should be retried.
-	// If nil, no retries are attempted regardless of MaxRetries.
+	// If nil, no retries are attempted regardless of RetryBudget.
 	ShouldRetry func(error) bool
+
+	// waitForReady, when set, blocks before each retry until the Radius control
+	// plane is serving again. Execute populates it from the test's Kubernetes
+	// client; a nil value falls back to RetryDelay alone.
+	waitForReady func(context.Context) error
 }
 
 // Default retry behavior applied by NewDeployExecutor for transient deployment
-// failures. Functional tests hit two classes of environmental flake in CI:
-// container image pulls from shared registries (for example the
-// ghcr.io/radius-project/* images) that occasionally fail due to registry or
-// network blips, and UCP connection resets/EOFs when the kind control-plane
-// restarts under runner resource pressure and drops the port-forward tunnel.
-// Callers can override these defaults with WithRetry.
+// Default retry behavior applied by NewDeployExecutor for transient deployment
+// failures: image pull blips from shared registries, and the UCP connection
+// resets, EOFs and restart-phase HTTP errors produced when the kind control
+// plane restarts under runner pressure.
 //
-// The delay doubles per attempt, so the defaults give a recovery window of
-// 30s + 60s + 120s = 3m30s. A fixed 30s delay left the budget exhausted while a
-// restarted kube-apiserver was still initializing (see
-// transientAPIServerRestartErrorMarkers), and only transient-classified failures
-// wait at all - a genuine deployment failure still fails on the first attempt.
+// The bound is wall-clock time rather than an attempt count because a
+// control-plane outage makes every attempt fail instantly against a dead
+// socket, so "2 retries, 30s apart" is spent in about a minute while the outage
+// lasts several. Waiting for readiness between attempts (see waitForReady)
+// spends that budget on recovery instead of on attempts that cannot succeed.
 const (
-	defaultTransientMaxRetries = 3
 	defaultTransientRetryDelay = 30 * time.Second
-	maxTransientRetryDelay     = 2 * time.Minute
+
+	// defaultTransientRetryBudget covers the longest control-plane outage
+	// observed in CI (about 3.5 minutes between the first etcd request timeout
+	// and the kube-apiserver serving again) with a little margin. It is an upper
+	// bound: effectiveRetryBudget shortens it to fit the test binary's deadline.
+	defaultTransientRetryBudget = 5 * time.Minute
 )
 
 // transientImagePullErrorMarkers are substrings that indicate a container image
@@ -110,31 +118,31 @@ func IsTransientImagePullError(err error) bool {
 // failed because the connection between rad and the UCP API server was reset or
 // closed mid-request, rather than because the deployment itself was invalid.
 //
-// In CI the Radius workspace reaches UCP through a local `kubectl port-forward`
-// tunnel that proxies through the kind cluster's kube-apiserver. When the
-// GitHub-hosted runner is under resource pressure the kind static control-plane
-// pods (kube-apiserver/controller-manager/scheduler) restart, which drops every
-// in-flight port-forward tunnel at once and resets all parallel `rad deploy`
-// connections simultaneously. UCP and the Radius pods do not crash, so
-// re-running the deployment once the control-plane recovers typically succeeds.
+// rad reaches UCP over the aggregated API path (/apis/api.ucp.dev/v1alpha3/...)
+// using the connection built from the test kubeconfig, which for kind points at
+// the apiserver port published on 127.0.0.1. When the control plane goes down -
+// observed in CI as etcd failing to serve requests, followed a few minutes
+// later by the kube-apiserver restarting - every in-flight connection is reset
+// at once, so all parallel `rad deploy` invocations fail together. UCP and the
+// Radius pods do not crash, so re-running the deployment once the control plane
+// recovers typically succeeds.
 var transientConnectionErrorMarkers = []string{
-	// The socket to the port-forward tunnel was reset when the kube-apiserver
-	// (which the tunnel proxies through) bounced, e.g.
+	// The socket to the apiserver was reset when it bounced, e.g.
 	// `read tcp 127.0.0.1:38764->127.0.0.1:37481: read: connection reset by peer`.
 	"connection reset by peer",
-	// rad's HTTP client observed a clean close of the tunnel mid-response, e.g.
+	// rad's HTTP client observed a clean close mid-response, e.g.
 	// `Get "https://127.0.0.1:37481/.../operationStatuses/...": EOF`.
 	": EOF",
 	// The pod log-stream tailers and larger response bodies surface this variant
-	// when the tunnel closes partway through a read.
+	// when the connection closes partway through a read.
 	"unexpected EOF",
-	// The write side of the tunnel was torn down while rad was still sending.
+	// The write side was torn down while rad was still sending.
 	"broken pipe",
 }
 
 // IsTransientConnectionError reports whether err was caused by a transient
 // network disruption between rad and the UCP API server (a reset or closed
-// port-forward tunnel) that is likely to succeed on retry. See
+// connection) that is likely to succeed on retry. See
 // transientConnectionErrorMarkers for the environmental root cause.
 //
 // A connection reset/EOF is a transport-level failure that rad surfaces as a
@@ -209,16 +217,16 @@ func IsTransientDeployError(err error) bool {
 // NewDeployExecutor creates a new DeployExecutor instance with the given template and parameters.
 //
 // By default the executor retries a deployment that fails with a transient
-// error - either a container image pull blip or a UCP connection reset/EOF (see
-// IsTransientDeployError). Use WithRetry to override the retry count, delay, and
-// predicate.
+// error (see IsTransientDeployError) for up to defaultTransientRetryBudget,
+// waiting for the control plane to become ready again before each attempt. Use
+// WithRetry to override the budget, delay, and predicate.
 func NewDeployExecutor(template string, parameters ...string) *DeployExecutor {
 	return &DeployExecutor{
 		Description: fmt.Sprintf("deploy %s", template),
 		Template:    template,
 		Parameters:  parameters,
-		MaxRetries:  defaultTransientMaxRetries,
 		RetryDelay:  defaultTransientRetryDelay,
+		RetryBudget: defaultTransientRetryBudget,
 		ShouldRetry: IsTransientDeployError,
 	}
 }
@@ -236,13 +244,11 @@ func (d *DeployExecutor) WithEnvironment(environment string) *DeployExecutor {
 }
 
 // WithRetry configures retry behavior for transient deployment failures,
-// replacing the default transient image pull retry set by NewDeployExecutor.
-// maxRetries is the number of additional attempts after the first failure.
-// delay is the base wait time between attempts, doubling per attempt up to
-// maxTransientRetryDelay. shouldRetry determines whether a given error is
-// eligible for retry.
-func (d *DeployExecutor) WithRetry(maxRetries int, delay time.Duration, shouldRetry func(error) bool) *DeployExecutor {
-	d.MaxRetries = maxRetries
+// replacing the default set by NewDeployExecutor. budget bounds how long new
+// attempts keep being started, delay is the minimum wait between them, and
+// shouldRetry decides which errors are eligible.
+func (d *DeployExecutor) WithRetry(budget time.Duration, delay time.Duration, shouldRetry func(error) bool) *DeployExecutor {
+	d.RetryBudget = budget
 	d.RetryDelay = delay
 	d.ShouldRetry = shouldRetry
 	return d
@@ -262,6 +268,10 @@ func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
+	if d.waitForReady == nil && options.K8sClient != nil {
+		d.waitForReady = newControlPlaneReadyWaiter(t, options.K8sClient)
+	}
+
 	deployFunc := func() error {
 		return cli.Deploy(ctx, templateFilePath, d.Environment, d.Application, d.Parameters...)
 	}
@@ -271,57 +281,100 @@ func (d *DeployExecutor) Execute(ctx context.Context, t *testing.T, options test
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }
 
-// executeWithRetry runs the deploy function with optional retry logic.
+// executeWithRetry runs the deploy function, retrying transient failures until
+// the retry budget is spent or the context is cancelled.
+//
+// The bound is wall-clock time because a control-plane outage makes a
+// deployment fail immediately rather than slowly, so a fixed attempt count is
+// consumed long before the control plane returns. Between attempts the loop
+// waits for the delay and then for readiness, spending the budget on recovery
+// rather than on attempts that cannot succeed.
 func (d *DeployExecutor) executeWithRetry(ctx context.Context, t *testing.T, deployFunc func() error) error {
-	maxAttempts := 1
-	if d.MaxRetries > 0 && d.ShouldRetry != nil {
-		maxAttempts = d.MaxRetries + 1
+	err := deployFunc()
+	if err == nil || d.ShouldRetry == nil {
+		return err
 	}
 
-	var lastErr error
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		if attempt > 1 {
-			delay := d.retryDelayForAttempt(attempt)
-			t.Logf("waiting %s before retry attempt %d/%d", delay, attempt, maxAttempts)
-			timer := time.NewTimer(delay)
-			select {
-			case <-timer.C:
-			case <-ctx.Done():
-				timer.Stop()
-				lastErr = ctx.Err()
-			}
+	budget := d.effectiveRetryBudget(t)
+	if budget <= 0 {
+		return err
+	}
+
+	retryCtx, cancel := context.WithTimeout(ctx, budget)
+	defer cancel()
+
+	for attempt := 1; d.ShouldRetry(err); attempt++ {
+		t.Logf("deployment attempt %d failed with a retryable error: %v", attempt, err)
+
+		if waitErr := d.waitBeforeRetry(retryCtx, t); waitErr != nil {
+			// A cancelled parent context is a caller-driven abort and is
+			// reported as such. Exhausting the budget is not: the deployment
+			// error is the meaningful failure to surface.
 			if ctx.Err() != nil {
-				break
+				return ctx.Err()
 			}
+
+			t.Logf("no longer retrying the deployment after %d attempts: %v", attempt, waitErr)
+			return err
 		}
 
-		lastErr = deployFunc()
-		if lastErr == nil {
-			break
+		if err = deployFunc(); err == nil {
+			return nil
 		}
-
-		if attempt == maxAttempts || !d.ShouldRetry(lastErr) {
-			break
-		}
-
-		t.Logf("deployment attempt %d/%d failed with retryable error: %v", attempt, maxAttempts, lastErr)
 	}
 
-	return lastErr
+	return err
 }
 
-// retryDelayForAttempt returns how long to wait before the given attempt, which
-// is always 2 or greater. The wait starts at RetryDelay and doubles per attempt
-// so the retry budget spans a control-plane restart, clamped to
-// maxTransientRetryDelay. A caller-supplied delay is never shortened.
-func (d *DeployExecutor) retryDelayForAttempt(attempt int) time.Duration {
-	// Taking the max keeps a caller-supplied delay that already exceeds the cap.
-	limit := max(d.RetryDelay, maxTransientRetryDelay)
-
-	delay := d.RetryDelay
-	for i := 2; i < attempt && delay < limit; i++ {
-		delay *= 2
+// effectiveRetryBudget returns RetryBudget shortened so that retrying can never
+// run the test binary out of time.
+//
+// The budget is per deploy step, so a control plane that never recovers makes
+// every test pay it. The suites run in parallel batches - corerp-noncloud is 52
+// tests at -parallel 10 - and their `go test -timeout` is as low as 15 minutes
+// (FUNCTIONALTEST_TIMEOUT in functional-test-noncloud.yaml, versus 30 minutes
+// for the cloud suites). A fixed budget large enough to cover a multi-minute
+// outage in one suite would blow the deadline in another, replacing clear
+// per-test failures with an opaque panic and risking the loss of the
+// diagnostics collected on failure.
+//
+// Spending at most half the remaining time leaves each subsequent batch half of
+// what is left, so the deadline is approached but never reached, without
+// needing a per-suite constant.
+func (d *DeployExecutor) effectiveRetryBudget(t *testing.T) time.Duration {
+	deadline, ok := t.Deadline()
+	if !ok {
+		return d.RetryBudget
 	}
 
-	return min(delay, limit)
+	if half := time.Until(deadline) / 2; half < d.RetryBudget {
+		return half
+	}
+
+	return d.RetryBudget
+}
+
+// waitBeforeRetry waits out the retry delay and then blocks until the control
+// plane is ready, bounded by ctx.
+func (d *DeployExecutor) waitBeforeRetry(ctx context.Context, t *testing.T) error {
+	if d.RetryDelay > 0 {
+		timer := time.NewTimer(d.RetryDelay)
+		defer timer.Stop()
+
+		select {
+		case <-timer.C:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	if d.waitForReady == nil {
+		// ctx.Err() is nil while budget remains. Returning it rather than a
+		// bare nil matters when RetryDelay is also zero: with neither a delay
+		// nor a readiness gate to block on, nothing else would consult the
+		// deadline and the loop would keep starting attempts past the budget.
+		return ctx.Err()
+	}
+
+	return d.waitForReady(ctx)
 }
