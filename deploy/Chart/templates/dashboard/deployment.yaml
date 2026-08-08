@@ -1,5 +1,5 @@
 {{- if .Values.dashboard.enabled }}
-{{- $appversion := include "radius.versiontag" . }}
+{{- $appversion := include "radius.externalversiontag" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
