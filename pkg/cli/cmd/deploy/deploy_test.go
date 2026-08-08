@@ -41,6 +41,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	corerpfake "github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -1922,7 +1923,7 @@ func Test_getRadiusCoreEnvironment(t *testing.T) {
 			command:         &cobra.Command{},
 			args:            []string{"template.bicep"},
 			expectedEnv: &v20250801preview.EnvironmentResource{
-				Name: new("/planes/radius/local/resourceGroups/test/providers/Radius.Core/environments/myenv"),
+				Name: new("myenv"),
 			},
 			shouldError: false,
 		},
@@ -1942,7 +1943,15 @@ func Test_getRadiusCoreEnvironment(t *testing.T) {
 				},
 			}
 
-			env, err := runner.getRadiusCoreEnvironment(t.Context(), scope, tc.environmentName)
+			// The Radius Core EnvironmentsClient.Get API takes (scope, environmentName), not a
+			// full resource ID. Callers (e.g. FetchEnvironment) extract scope/name from a full
+			// ID before calling getRadiusCoreEnvironment, so mirror that here.
+			callScope, callName := scope, tc.environmentName
+			if parsedID, parseErr := resources.Parse(tc.environmentName); parseErr == nil {
+				callScope, callName = parsedID.RootScope(), parsedID.Name()
+			}
+
+			env, err := runner.getRadiusCoreEnvironment(t.Context(), callScope, callName)
 
 			if tc.shouldError {
 				require.Error(t, err)
