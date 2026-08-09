@@ -18,6 +18,7 @@ package preview
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -70,6 +71,9 @@ rad env create myenv --kubernetes-namespace mynamespace
 
 ## Create environment with recipe packs (--preview)
 rad env create myenv --preview --recipe-packs pack1,pack2
+
+## Create environment with recipe packs from a different resource group (--preview)
+rad env create myenv --preview --recipe-packs pack1 --recipe-pack-group other-group
 `,
 		RunE: framework.RunCommand(runner),
 	}
@@ -88,6 +92,7 @@ rad env create myenv --preview --recipe-packs pack1,pack2
 	commonflags.MarkNamespaceFlagDeprecated(cmd)
 	cmd.MarkFlagsMutuallyExclusive(commonflags.KubernetesNamespaceFlag, commonflags.NamespaceFlag)
 	cmd.Flags().StringSliceP("recipe-packs", "", []string{}, "Specify recipe packs to assign to the environment (--preview). Accepts comma-separated values.")
+	cmd.Flags().StringP("recipe-pack-group", "", "", "Specify the resource group containing the recipe packs named in --recipe-packs, if different from the environment's resource group (--preview).")
 
 	return cmd, runner
 }
@@ -107,8 +112,9 @@ type Runner struct {
 	ConfigFileInterface       framework.ConfigFileInterface
 	ConnectionFactory         connections.Factory
 
-	recipePacks []string
-	providers   *corerpv20250801.Providers
+	recipePacks     []string
+	recipePackGroup string
+	providers       *corerpv20250801.Providers
 }
 
 // NewRunner creates a new instance of the `rad env create` runner.
@@ -237,6 +243,15 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return clierrors.Message("No valid recipe packs were provided. Specify one or more recipe pack names or IDs with --recipe-packs.")
 	}
 
+	r.recipePackGroup, err = cmd.Flags().GetString("recipe-pack-group")
+	if err != nil {
+		return err
+	}
+
+	if r.recipePackGroup != "" && !cmd.Flags().Changed("recipe-packs") {
+		return clierrors.Message("--recipe-pack-group can only be used together with --recipe-packs.")
+	}
+
 	return nil
 }
 
@@ -320,9 +335,14 @@ func (r *Runner) resolveRecipePacks(ctx context.Context) ([]*string, error) {
 
 	recipePackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
 
+	recipePackScope := r.Workspace.Scope
+	if r.recipePackGroup != "" {
+		recipePackScope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", r.recipePackGroup)
+	}
+
 	recipePackIDs := make([]*string, 0, len(r.recipePacks))
 	for _, recipePack := range r.recipePacks {
-		recipePackID, isFullID, err := recipepack.ResolveID(recipePack, r.Workspace.Scope)
+		recipePackID, isFullID, err := recipepack.ResolveID(recipePack, recipePackScope)
 		if err != nil {
 			return nil, err
 		}
