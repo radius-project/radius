@@ -65,13 +65,12 @@ type interactiveListener struct {
 	progressChan <-chan clients.ResourceProgress
 }
 
-// Run renders progress in place until the channel is closed. It deliberately
-// does not capture stdin or install a signal handler, preserving the previous
-// behavior where Ctrl+C terminates the process during a deployment or deletion.
+// Run renders progress in place until the channel is closed. It reads from the
+// real stdin so Bubble Tea consumes the terminal's replies to its own
+// capability-detection queries instead of leaking them to the shell.
 func (l *interactiveListener) Run() {
 	program := tea.NewProgram(
 		newModel(l.progressChan),
-		tea.WithInput(strings.NewReader("")),
 		tea.WithoutSignalHandler(),
 	)
 	if _, err := program.Run(); err != nil {
