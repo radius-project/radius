@@ -36,6 +36,14 @@ env:
   ENVIRONMENT: ${{ inputs.environment }}
   APP_FILE: '{{APP_FILE}}'
   APP_IMAGE: ${{ inputs.image || github.sha || 'latest' }}
+  # Target-cluster architecture-aware container image builds. Rendered by the
+  # Radius extension: TARGET_CLUSTER_ARCH_MODE -> ${{ vars.RADIUS_BUILD_ARCH_MODE
+  # || 'detect' }} and TARGET_CLUSTER_ARCH_FALLBACK_PLATFORMS ->
+  # ${{ vars.RADIUS_BUILD_PLATFORMS || 'linux/amd64,linux/arm64' }}. When a
+  # template does not opt in, the unsubstituted placeholder disables the feature
+  # and the containerImages recipe's default platforms apply (existing behavior).
+  TARGET_CLUSTER_ARCH_MODE: '{{TARGET_CLUSTER_ARCH_MODE}}'
+  TARGET_CLUSTER_ARCH_FALLBACK_PLATFORMS: '{{TARGET_CLUSTER_ARCH_FALLBACK_PLATFORMS}}'
 
 jobs:
   deploy:
@@ -342,6 +350,8 @@ jobs:
           deploy-params: ${{ secrets.RADIUS_DEPLOY_PARAMS }}
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
+          build-arch-mode: ${{ env.TARGET_CLUSTER_ARCH_MODE }}
+          build-fallback-platforms: ${{ env.TARGET_CLUSTER_ARCH_FALLBACK_PLATFORMS }}
 
       # Publish status on failure too: an empty Deployed tab is least helpful
       # exactly when a deploy failed and the user is trying to see which
