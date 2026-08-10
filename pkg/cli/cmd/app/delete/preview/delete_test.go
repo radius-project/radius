@@ -159,7 +159,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, []any{
 			output.LogOutput{
@@ -192,7 +192,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// Verify resource count message and final deleted message are present
@@ -236,7 +236,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, []any{
 			output.LogOutput{
@@ -269,7 +269,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 false,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, []any{
 			output.LogOutput{
@@ -300,7 +300,7 @@ func Test_Run(t *testing.T) {
 			Force:                   true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// First log should be the force warning.
@@ -348,7 +348,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Failed to delete resources for application 'test-app'")
 	})
@@ -375,7 +375,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "simulated list error")
 	})
@@ -425,7 +425,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 	})
 
@@ -468,7 +468,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 	})
 
@@ -498,7 +498,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 false,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// Must reach the final "Application deleted" log.

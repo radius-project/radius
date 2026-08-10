@@ -50,10 +50,9 @@ on:
 permissions: {}
 
 env:
-  # Dapr runtime version
-  DAPR_RUNTIME_VER: 1.15.4
-  # Dapr dashboard version
-  DAPR_DASHBOARD_VER: 0.15.0
+  # Dapr runtime version. Must stay on the same minor line as the Dapr CLI
+  # pinned in build/tools.yaml (DAPR_VERSION), which installs it.
+  DAPR_RUNTIME_VER: 1.18.2
   # The radius functional test timeout
   FUNCTIONALTEST_TIMEOUT: 15m
   # The base directory for storing test logs
@@ -157,7 +156,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-          cache: true
+          # Produces artifacts/images — don't restore a cache a prior run could have poisoned.
+          cache: false
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -279,7 +279,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-          cache: true
+          # Produces artifacts/images — don't restore a cache a prior run could have poisoned.
+          cache: false
 
       # The rad CLI, container images and Bicep types are built once in the
       # "build" job and shared with every matrix leg. Downloading them here avoids
@@ -516,7 +517,7 @@ jobs:
             exit 1
           fi
 
-          # Poll logs for up to  iterations, 30 seconds each (upto 3 minutes total)
+          # Poll logs for up to  iterations, 30 seconds each (up to 3 minutes total)
           for i in {1..6}; do
             kubectl logs "$POD_NAME" -n radius-system | tee registermanifest_logs.txt > /dev/null
 
@@ -588,7 +589,7 @@ jobs:
 
       - name: Install Dapr control plane
         if: matrix.name == 'daprrp-noncloud'
-        run: dapr init -k --wait --timeout 600 --runtime-version "${DAPR_RUNTIME_VER}" --dashboard-version "${DAPR_DASHBOARD_VER}"
+        run: dapr init -k --wait --timeout 600 --runtime-version "${DAPR_RUNTIME_VER}"
 
       - name: Publish Terraform test recipes
         run: |

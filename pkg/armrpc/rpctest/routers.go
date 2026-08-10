@@ -122,7 +122,7 @@ func AssertRequests(t *testing.T, tests []HandlerTestSpec, pathBase, rootScope s
 			require.NoError(t, err)
 
 			rCtx := &v1.ARMRequestContext{}
-			req = req.WithContext(v1.WithARMRequestContext(context.Background(), rCtx))
+			req = req.WithContext(v1.WithARMRequestContext(t.Context(), rCtx))
 
 			r.ServeHTTP(w, req)
 			require.NotEqual(t, 404, w.Result().StatusCode)

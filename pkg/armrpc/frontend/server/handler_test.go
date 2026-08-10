@@ -208,7 +208,7 @@ func Test_HandlerErrModelConversion(t *testing.T) {
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
 	err := &v1.ErrModelConversion{PropertyName: "namespace", ValidValue: "63 characters or less"}
-	HandleError(context.Background(), responseWriter, req, err)
+	HandleError(t.Context(), responseWriter, req, err)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
@@ -230,7 +230,7 @@ func Test_HandlerErrInvalidModelConversion(t *testing.T) {
 
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
-	HandleError(context.Background(), responseWriter, req, v1.ErrInvalidModelConversion)
+	HandleError(t.Context(), responseWriter, req, v1.ErrInvalidModelConversion)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
@@ -253,7 +253,7 @@ func Test_HandlerErrInternal(t *testing.T) {
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
 	err := errors.New("Internal error")
-	HandleError(context.Background(), responseWriter, req, err)
+	HandleError(t.Context(), responseWriter, req, err)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
@@ -282,7 +282,7 @@ func Test_HandlerForController_OperationType(t *testing.T) {
 	require.NoError(t, err)
 
 	rCtx := &v1.ARMRequestContext{}
-	req = req.WithContext(v1.WithARMRequestContext(context.Background(), rCtx))
+	req = req.WithContext(v1.WithARMRequestContext(t.Context(), rCtx))
 
 	handler.ServeHTTP(w, req)
 

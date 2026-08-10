@@ -59,7 +59,7 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationPut}.String(),
 		}
 
-		selected, err := controller.selectController(context.Background(), request)
+		selected, err := controller.selectController(t.Context(), request)
 		require.NoError(t, err)
 
 		require.IsType(t, &InertPutController{}, selected)
@@ -72,7 +72,7 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationDelete}.String(),
 		}
 
-		selected, err := controller.selectController(context.Background(), request)
+		selected, err := controller.selectController(t.Context(), request)
 		require.NoError(t, err)
 
 		require.IsType(t, &InertDeleteController{}, selected)
@@ -85,7 +85,7 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 			OperationType: v1.OperationType{Type: recipeResourceType, Method: v1.OperationPut}.String(),
 		}
 
-		selected, err := controller.selectController(context.Background(), request)
+		selected, err := controller.selectController(t.Context(), request)
 		require.NoError(t, err)
 
 		require.IsType(t, &RecipePutController{}, selected)
@@ -98,7 +98,7 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 			OperationType: v1.OperationType{Type: recipeResourceType, Method: v1.OperationDelete}.String(),
 		}
 
-		selected, err := controller.selectController(context.Background(), request)
+		selected, err := controller.selectController(t.Context(), request)
 		require.NoError(t, err)
 
 		require.IsType(t, &RecipeDeleteController{}, selected)
@@ -111,7 +111,7 @@ func Test_DynamicResourceController_selectController(t *testing.T) {
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationGet}.String(),
 		}
 
-		selected, err := controller.selectController(context.Background(), request)
+		selected, err := controller.selectController(t.Context(), request)
 		require.Error(t, err)
 		require.Equal(t, "unsupported operation type: \"APPLICATIONS.TEST/TESTINERTRESOURCES|GET\"", err.Error())
 		require.Nil(t, selected)
@@ -251,7 +251,7 @@ func Test_DynamicResourceController_fetchResourceTypeDetails(t *testing.T) {
 			id, err := resources.ParseResource(tt.resourceID)
 			require.NoError(t, err)
 
-			resourceType, err := controller.fetchResourceTypeDetails(context.Background(), id)
+			resourceType, err := controller.fetchResourceTypeDetails(t.Context(), id)
 			if tt.wantErr {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.errMessage)
@@ -284,7 +284,7 @@ func TestDynamicResourceController_validateRequestSchema(t *testing.T) {
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationDelete}.String(),
 		}
 
-		err := controller.validateRequestSchema(context.Background(), request)
+		err := controller.validateRequestSchema(t.Context(), request)
 		require.NoError(t, err) // Should skip validation for DELETE
 	})
 
@@ -295,7 +295,7 @@ func TestDynamicResourceController_validateRequestSchema(t *testing.T) {
 			OperationType: v1.OperationType{Type: inertResourceType, Method: v1.OperationPut}.String(),
 		}
 
-		err := controller.validateRequestSchema(context.Background(), request)
+		err := controller.validateRequestSchema(t.Context(), request)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid resource ID")
 	})

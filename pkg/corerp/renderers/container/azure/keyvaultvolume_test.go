@@ -17,7 +17,6 @@ limitations under the License.
 package azure
 
 import (
-	"context"
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -134,7 +133,7 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 						},
 					},
 				}
-				err := TransformSecretProviderClass(context.Background(), putOptions)
+				err := TransformSecretProviderClass(t.Context(), putOptions)
 				require.NoError(t, err)
 				require.Equal(t, tc.afterParams, r.Spec.Parameters)
 			}

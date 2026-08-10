@@ -17,7 +17,6 @@ limitations under the License.
 package testhost
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -177,7 +176,7 @@ func Start(t *testing.T, opts ...TestHostOption) *TestHost {
 		},
 	}
 
-	options, err := ucp.NewOptions(context.Background(), config)
+	options, err := ucp.NewOptions(t.Context(), config)
 	require.NoError(t, err)
 
 	for _, opt := range opts {

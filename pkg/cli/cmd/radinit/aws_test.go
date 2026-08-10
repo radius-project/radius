@@ -17,7 +17,6 @@ limitations under the License.
 package radinit
 
 import (
-	"context"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
@@ -52,7 +51,7 @@ func Test_enterAWSCloudProvider_AccessKey(t *testing.T) {
 	setAWSRegionPrompt(prompter, regions, "region")
 
 	options := &initOptions{}
-	provider, err := runner.enterAWSCloudProvider(context.Background(), options)
+	provider, err := runner.enterAWSCloudProvider(t.Context(), options)
 	require.NoError(t, err)
 
 	expected := &aws.Provider{
@@ -88,7 +87,7 @@ func Test_enterAWSCloudProvider_IRSA(t *testing.T) {
 	setAWSRegionPrompt(prompter, regions, "region")
 
 	options := &initOptions{}
-	provider, err := runner.enterAWSCloudProvider(context.Background(), options)
+	provider, err := runner.enterAWSCloudProvider(t.Context(), options)
 	require.NoError(t, err)
 
 	expected := &aws.Provider{

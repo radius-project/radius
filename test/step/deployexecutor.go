@@ -50,7 +50,8 @@ type DeployExecutor struct {
 	// Zero means no retries (default behavior).
 	MaxRetries int
 
-	// RetryDelay is the duration to wait between retry attempts.
+	// RetryDelay is the base duration to wait between retry attempts. The wait
+	// doubles after each attempt, up to maxTransientRetryDelay.
 	RetryDelay time.Duration
 
 	// ShouldRetry is a predicate that determines whether a failed deployment should be retried.
@@ -65,9 +66,16 @@ type DeployExecutor struct {
 // network blips, and UCP connection resets/EOFs when the kind control-plane
 // restarts under runner resource pressure and drops the port-forward tunnel.
 // Callers can override these defaults with WithRetry.
+//
+// The delay doubles per attempt, so the defaults give a recovery window of
+// 30s + 60s + 120s = 3m30s. A fixed 30s delay left the budget exhausted while a
+// restarted kube-apiserver was still initializing (see
+// transientAPIServerRestartErrorMarkers), and only transient-classified failures
+// wait at all - a genuine deployment failure still fails on the first attempt.
 const (
-	defaultTransientMaxRetries = 2
+	defaultTransientMaxRetries = 3
 	defaultTransientRetryDelay = 30 * time.Second
+	maxTransientRetryDelay     = 2 * time.Minute
 )
 
 // transientImagePullErrorMarkers are substrings that indicate a container image
@@ -141,13 +149,61 @@ func IsTransientConnectionError(err error) bool {
 	return ErrorContainsAny(err, transientConnectionErrorMarkers...)
 }
 
+// transientAPIServerRestartErrorMarkers are substrings that indicate the
+// kube-apiserver answered rad while it was still restarting, rather than that
+// the deployment itself failed.
+//
+// A kind control-plane restart reaches rad in two phases. First the in-flight
+// connections are torn down, producing the transport errors matched by
+// transientConnectionErrorMarkers. Then the apiserver process is back and
+// accepting connections, but has not finished initializing, so it answers with
+// structured HTTP errors instead. Classifying only the first phase as retryable
+// exhausts the retry budget while the cluster is still recovering, which is what
+// makes a control-plane restart fail every parallel test in the job at once.
+var transientAPIServerRestartErrorMarkers = []string{
+	// 503 ServiceUnavailable returned by the kube-apiserver mux until every
+	// handler - including the aggregation layer that fronts UCP - is registered:
+	// `{"message":"the request has been made before all known HTTP paths have
+	// been installed, please try again","reason":"ServiceUnavailable"}`.
+	"before all known HTTP paths have been installed",
+}
+
+// IsTransientAPIServerRestartError reports whether err was caused by the kind
+// kube-apiserver still recovering from a restart. See
+// transientAPIServerRestartErrorMarkers for the environmental root cause.
+//
+// These errors originate in rad's connection health check, which returns a plain
+// error rather than an ARM error response, so - as in IsTransientConnectionError
+// - a *radcli.CLIError is never a match.
+func IsTransientAPIServerRestartError(err error) bool {
+	if _, ok := errors.AsType[*radcli.CLIError](err); ok {
+		return false
+	}
+
+	if ErrorContainsAny(err, transientAPIServerRestartErrorMarkers...) {
+		return true
+	}
+
+	// A 403 on the aggregated Radius API path is also a restart signal: until the
+	// RBAC authorizer finishes reconciling the bootstrap policy, even the
+	// cluster-admin user is denied, e.g. `forbidden: User "kubernetes-admin"
+	// cannot get path "/apis/api.ucp.dev/v1alpha3"`. That denial is impossible
+	// once the authorizer chain is wired up. Both markers are required so a real
+	// authorization failure elsewhere is not swept up; if RBAC is genuinely
+	// misconfigured the deployment still fails once the retries are exhausted.
+	return ErrorContainsAny(err, "cannot get path") && ErrorContainsAny(err, "/apis/api.ucp.dev")
+}
+
 // IsTransientDeployError reports whether err was caused by any transient failure
-// that a deployment is likely to recover from on retry - either a container
-// image pull blip (IsTransientImagePullError) or a UCP connection reset/EOF
-// (IsTransientConnectionError). It is the default ShouldRetry predicate for
+// that a deployment is likely to recover from on retry - a container image pull
+// blip (IsTransientImagePullError), a UCP connection reset/EOF
+// (IsTransientConnectionError), or a kube-apiserver restart
+// (IsTransientAPIServerRestartError). It is the default ShouldRetry predicate for
 // DeployExecutor (see NewDeployExecutor).
 func IsTransientDeployError(err error) bool {
-	return IsTransientImagePullError(err) || IsTransientConnectionError(err)
+	return IsTransientImagePullError(err) ||
+		IsTransientConnectionError(err) ||
+		IsTransientAPIServerRestartError(err)
 }
 
 // NewDeployExecutor creates a new DeployExecutor instance with the given template and parameters.
@@ -182,8 +238,9 @@ func (d *DeployExecutor) WithEnvironment(environment string) *DeployExecutor {
 // WithRetry configures retry behavior for transient deployment failures,
 // replacing the default transient image pull retry set by NewDeployExecutor.
 // maxRetries is the number of additional attempts after the first failure.
-// delay is the wait time between attempts. shouldRetry determines whether
-// a given error is eligible for retry.
+// delay is the base wait time between attempts, doubling per attempt up to
+// maxTransientRetryDelay. shouldRetry determines whether a given error is
+// eligible for retry.
 func (d *DeployExecutor) WithRetry(maxRetries int, delay time.Duration, shouldRetry func(error) bool) *DeployExecutor {
 	d.MaxRetries = maxRetries
 	d.RetryDelay = delay
@@ -224,8 +281,9 @@ func (d *DeployExecutor) executeWithRetry(ctx context.Context, t *testing.T, dep
 	var lastErr error
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		if attempt > 1 {
-			t.Logf("waiting %s before retry attempt %d/%d", d.RetryDelay, attempt, maxAttempts)
-			timer := time.NewTimer(d.RetryDelay)
+			delay := d.retryDelayForAttempt(attempt)
+			t.Logf("waiting %s before retry attempt %d/%d", delay, attempt, maxAttempts)
+			timer := time.NewTimer(delay)
 			select {
 			case <-timer.C:
 			case <-ctx.Done():
@@ -250,4 +308,20 @@ func (d *DeployExecutor) executeWithRetry(ctx context.Context, t *testing.T, dep
 	}
 
 	return lastErr
+}
+
+// retryDelayForAttempt returns how long to wait before the given attempt, which
+// is always 2 or greater. The wait starts at RetryDelay and doubles per attempt
+// so the retry budget spans a control-plane restart, clamped to
+// maxTransientRetryDelay. A caller-supplied delay is never shortened.
+func (d *DeployExecutor) retryDelayForAttempt(attempt int) time.Duration {
+	// Taking the max keeps a caller-supplied delay that already exceeds the cap.
+	limit := max(d.RetryDelay, maxTransientRetryDelay)
+
+	delay := d.RetryDelay
+	for i := 2; i < attempt && delay < limit; i++ {
+		delay *= 2
+	}
+
+	return min(delay, limit)
 }

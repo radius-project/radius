@@ -97,7 +97,7 @@ func Test_Materialize(t *testing.T) {
 
 	m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
 
-	result, err := m.Materialize(context.Background(), Request{
+	result, err := m.Materialize(t.Context(), Request{
 		OwnerResourceID: testOwnerID,
 		EnvironmentID:   "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/environments/env",
 		ApplicationID:   "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/applications/app",
@@ -138,7 +138,7 @@ func Test_Materialize_OmitsEmptyApplication(t *testing.T) {
 
 	m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
 
-	_, err := m.Materialize(context.Background(), Request{
+	_, err := m.Materialize(t.Context(), Request{
 		OwnerResourceID: testOwnerID,
 		EnvironmentID:   "env",
 		Data:            map[string]string{"connectionString": "abc"},
@@ -151,7 +151,7 @@ func Test_Materialize_OmitsEmptyApplication(t *testing.T) {
 
 func Test_Materialize_InvalidOwnerID(t *testing.T) {
 	m := NewMaterializer(&arm.ClientOptions{})
-	_, err := m.Materialize(context.Background(), Request{OwnerResourceID: "not-an-id", Data: map[string]string{"k": "v"}})
+	_, err := m.Materialize(t.Context(), Request{OwnerResourceID: "not-an-id", Data: map[string]string{"k": "v"}})
 	require.Error(t, err)
 }
 
@@ -194,7 +194,7 @@ func Test_Delete(t *testing.T) {
 
 	m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
 
-	require.NoError(t, m.Delete(context.Background(), testOwnerID))
+	require.NoError(t, m.Delete(t.Context(), testOwnerID))
 	ownerID, err := resources.ParseResource(testOwnerID)
 	require.NoError(t, err)
 	require.Equal(t, ManagedSecretName(ownerID), capturedName)
@@ -212,5 +212,5 @@ func Test_Delete_NotFoundIsIgnored(t *testing.T) {
 
 	m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
 
-	require.NoError(t, m.Delete(context.Background(), testOwnerID))
+	require.NoError(t, m.Delete(t.Context(), testOwnerID))
 }

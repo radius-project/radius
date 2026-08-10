@@ -83,8 +83,10 @@ namespace Radius.Core;
   }
   ```
   """)
-model ApplicationResource
-  is TrackedResourceRequired<ApplicationProperties, "applications"> {
+model ApplicationResource is TrackedResourceRequired<
+  ApplicationProperties,
+  "applications"
+> {
   @doc("The application name")
   @path
   @key("applicationName")

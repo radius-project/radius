@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/version"
 	"github.com/stretchr/testify/require"
@@ -48,14 +49,60 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 	require.ElementsMatch(t, expectedResourceTypes, actualResourceTypes)
 }
 
-func Test_GetDefaultRecipePackDefinition_UsesLatestTagForEdgeChannel(t *testing.T) {
+func Test_GetDefaultRecipePackDefinition_UsesEdgeTagForEdgeChannel(t *testing.T) {
 	// The test binary is built without ldflags, so channel defaults to "edge".
 	require.True(t, version.IsEdgeChannel(), "default should be on edge channel")
 
 	definitions := GetCoreTypesRecipeInfo()
 	for _, def := range definitions {
-		require.True(t, strings.HasSuffix(def.Source, ":latest"),
-			"Expected :latest tag for edge channel, got %s", def.Source)
+		require.True(t, strings.HasSuffix(def.Source, ":edge"),
+			"Expected :edge tag for edge channel, got %s", def.Source)
+	}
+}
+
+func Test_resolveRecipeTag(t *testing.T) {
+	// Kept in sync with deploy/manifest/defaults.yaml by `make update-resource-types`.
+	pin, ok := defaults.ResourceTypePin("Radius.Compute")
+	require.True(t, ok, "Radius.Compute must be pinned in defaults.yaml")
+	require.NotEmpty(t, pin.Ref)
+
+	testcases := []struct {
+		name         string
+		resourceType string
+		isEdge       bool
+		expected     string
+	}{
+		{
+			name:         "edge channel uses mutable tag",
+			resourceType: "Radius.Compute/containers",
+			isEdge:       true,
+			expected:     "edge",
+		},
+		{
+			name:         "release channel uses pinned namespace ref",
+			resourceType: "Radius.Compute/containers",
+			isEdge:       false,
+			expected:     pin.Ref,
+		},
+		{
+			name:         "release channel falls back on malformed resource type",
+			resourceType: "NotAResourceType",
+			isEdge:       false,
+			expected:     "edge",
+		},
+		{
+			name:         "release channel falls back on unpinned namespace",
+			resourceType: "Contoso.Example/widgets",
+			isEdge:       false,
+			expected:     "edge",
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tc.expected, resolveRecipeTag(tc.resourceType, tc.isEdge))
+		})
 	}
 }
 

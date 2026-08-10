@@ -27,12 +27,11 @@ import (
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 const (
@@ -86,12 +85,12 @@ func TestGetIcon_Success(t *testing.T) {
 	mockDB.EXPECT().Get(gomock.Any(), testIconResourceTypeID).Return(&database.Object{Data: rt}, nil)
 
 	req := newIconRequest(t, testIconHash)
-	resp, err := ctrl.Run(context.Background(), nil, req)
+	resp, err := ctrl.Run(t.Context(), nil, req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
 	rec := httptest.NewRecorder()
-	require.NoError(t, resp.Apply(context.Background(), rec, req))
+	require.NoError(t, resp.Apply(t.Context(), rec, req))
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "image/svg+xml; charset=utf-8", rec.Header().Get("Content-Type"))
@@ -113,7 +112,7 @@ func TestGetIcon_HashMismatch(t *testing.T) {
 	mockDB.EXPECT().Get(gomock.Any(), testIconResourceTypeID).Return(&database.Object{Data: rt}, nil)
 
 	req := newIconRequest(t, "deadbeef")
-	resp, err := ctrl.Run(context.Background(), nil, req)
+	resp, err := ctrl.Run(t.Context(), nil, req)
 	require.NoError(t, err)
 
 	notFound, ok := resp.(*armrpc_rest.NotFoundResponse)
@@ -142,7 +141,7 @@ func TestGetIcon_IntegrityCheckFails(t *testing.T) {
 	mockDB.EXPECT().Get(gomock.Any(), testIconResourceTypeID).Return(&database.Object{Data: rt}, nil)
 
 	req := newIconRequest(t, testIconHash)
-	resp, err := ctrl.Run(context.Background(), nil, req)
+	resp, err := ctrl.Run(t.Context(), nil, req)
 	require.NoError(t, err)
 
 	notFound, ok := resp.(*armrpc_rest.NotFoundResponse)
@@ -181,7 +180,7 @@ func TestGetIcon_NoIcon(t *testing.T) {
 			mockDB.EXPECT().Get(gomock.Any(), testIconResourceTypeID).Return(&database.Object{Data: rt}, nil)
 
 			req := newIconRequest(t, testIconHash)
-			resp, err := ctrl.Run(context.Background(), nil, req)
+			resp, err := ctrl.Run(t.Context(), nil, req)
 			require.NoError(t, err)
 
 			notFound, ok := resp.(*armrpc_rest.NotFoundResponse)
@@ -197,7 +196,7 @@ func TestGetIcon_NoIcon(t *testing.T) {
 // hash on such a record must still succeed by serving the embedded default
 // SVG.
 func TestGetIcon_DefaultHashServesEmbeddedBytes(t *testing.T) {
-	defaultIcon := productmanifest.Default()
+	defaultIcon := defaults.DefaultIcon()
 
 	ctrl, mockDB := newGetIconController(t)
 
@@ -212,12 +211,12 @@ func TestGetIcon_DefaultHashServesEmbeddedBytes(t *testing.T) {
 	mockDB.EXPECT().Get(gomock.Any(), testIconResourceTypeID).Return(&database.Object{Data: rt}, nil)
 
 	req := newIconRequest(t, defaultIcon.Hash)
-	resp, err := ctrl.Run(context.Background(), nil, req)
+	resp, err := ctrl.Run(t.Context(), nil, req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
 	rec := httptest.NewRecorder()
-	require.NoError(t, resp.Apply(context.Background(), rec, req))
+	require.NoError(t, resp.Apply(t.Context(), rec, req))
 
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, "image/svg+xml; charset=utf-8", rec.Header().Get("Content-Type"))
@@ -230,7 +229,7 @@ func TestGetIcon_ResourceTypeNotFound(t *testing.T) {
 	mockDB.EXPECT().Get(gomock.Any(), testIconResourceTypeID).Return(nil, &database.ErrNotFound{ID: testIconResourceTypeID})
 
 	req := newIconRequest(t, testIconHash)
-	resp, err := ctrl.Run(context.Background(), nil, req)
+	resp, err := ctrl.Run(t.Context(), nil, req)
 	require.NoError(t, err)
 
 	notFound, ok := resp.(*armrpc_rest.NotFoundResponse)

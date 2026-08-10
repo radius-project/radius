@@ -126,7 +126,7 @@ func Test_Run(t *testing.T) {
 				Output:                  outputSink,
 			}
 
-			err = runner.Run(context.Background())
+			err = runner.Run(t.Context())
 			require.NoError(t, err)
 			require.Equal(t, tc.expectedOutput, outputSink.Writes)
 		})
@@ -159,7 +159,7 @@ func Test_Run(t *testing.T) {
 			Output:                  outputSink,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Equal(t, clierrors.Message("The application %q was not found or has been deleted.", "test-app"), err)
 		require.Empty(t, outputSink.Writes)
@@ -192,7 +192,7 @@ func Test_Run(t *testing.T) {
 			Output:                  outputSink,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		// Should NOT be the 404 user-facing message.
 		require.NotEqual(t, clierrors.Message("The application %q was not found or has been deleted.", "test-app"), err)
@@ -212,7 +212,7 @@ func Test_Run(t *testing.T) {
 			Output:                  outputSink,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, []any{
 			output.FormattedOutput{

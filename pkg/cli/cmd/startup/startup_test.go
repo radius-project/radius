@@ -171,7 +171,7 @@ func Test_Run_RestoresInOrderWaitDatabaseTerraform(t *testing.T) {
 	client := &fakeStateRestoreClient{}
 	r, scaler := newTestRunner(t, ctrl, client)
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.NoError(t, err)
 
 	require.True(t, client.waited)
@@ -191,7 +191,7 @@ func Test_Run_ScaleDownFailureStopsBeforeRestore(t *testing.T) {
 	r, scaler := newTestRunner(t, ctrl, client)
 	scaler.scaleDownErr = errors.New("scale down boom")
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.ErrorContains(t, err, "scale down boom")
 	require.False(t, client.waited, "no restore should run if scale down failed")
 	require.False(t, scaler.upCalled, "scale up should not run if scale down failed")
@@ -204,7 +204,7 @@ func Test_Run_WaitFailureStopsBeforeRestore(t *testing.T) {
 	client := &fakeStateRestoreClient{waitErr: errors.New("db never ready")}
 	r, scaler := newTestRunner(t, ctrl, client)
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.ErrorContains(t, err, "db never ready")
 	require.False(t, client.dbCalled)
 	require.False(t, client.tfCalled)
@@ -218,7 +218,7 @@ func Test_Run_DatabaseRestoreFailureScalesBackUp(t *testing.T) {
 	client := &fakeStateRestoreClient{restoreDBErr: errors.New("psql boom")}
 	r, scaler := newTestRunner(t, ctrl, client)
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.ErrorContains(t, err, "psql boom")
 	require.False(t, client.tfCalled, "terraform restore must not run after database restore failure")
 	require.True(t, scaler.upCalled, "control plane must be scaled back up after a failed restore")
@@ -246,7 +246,7 @@ func Test_Run_ArchiveOpenFailureIsReturned(t *testing.T) {
 		},
 	}
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.ErrorContains(t, err, "failed to open state archive")
 	require.ErrorContains(t, err, "not a git repo")
 	require.False(t, client.waited, "no restore should run when the archive cannot be opened")

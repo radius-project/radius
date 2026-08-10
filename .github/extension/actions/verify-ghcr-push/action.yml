@@ -1,0 +1,84 @@
+# Provider-agnostic GHCR package push-permission check shared by verify-aws.yml
+# and verify-azure.yml. Radius stores its control-plane state as an OCI archive
+# in GHCR (RADIUS_STATE_REGISTRY); `rad startup` / `rad shutdown` push to that
+# package during a deploy, and GHCR rejects the push with a 403 Forbidden when
+# the workflow's GITHUB_TOKEN lacks write access to it -- a permission that is
+# not granted by default for packages that are not linked to the repository.
+# This action surfaces that early, during credential verification, instead of
+# mid-deploy. Kept as a shared composite action so the two verify templates do
+# not drift.
+name: Radius - Verify GHCR package push permission
+description: Check that the workflow token can push to the Radius OCI state archive package in GHCR.
+
+inputs:
+  state-registry:
+    description: The OCI state registry (vars.RADIUS_STATE_REGISTRY), e.g. ghcr.io/<owner>/<repo>-radius-state-... . When empty or not on ghcr.io the check is skipped.
+    required: false
+    default: ""
+  github-token:
+    description: A token with packages:write for the state package (typically secrets.GITHUB_TOKEN).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Verify GHCR package push permission
+      shell: bash
+      env:
+        GH_ACTOR: ${{ github.actor }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        STATE_REGISTRY: ${{ inputs.state-registry }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "${STATE_REGISTRY}" ]; then
+          echo "RADIUS_STATE_REGISTRY is not set for this environment; skipping GHCR package push check."
+          echo "GHCR_PUSH_CHECK=skipped" >> "$GITHUB_ENV"
+          exit 0
+        fi
+
+        case "${STATE_REGISTRY}" in
+          ghcr.io/*) ;;
+          *)
+            echo "RADIUS_STATE_REGISTRY (${STATE_REGISTRY}) is not on ghcr.io; skipping GHCR package push check."
+            echo "GHCR_PUSH_CHECK=skipped" >> "$GITHUB_ENV"
+            exit 0
+            ;;
+        esac
+
+        repo_path="${STATE_REGISTRY#ghcr.io/}"
+        echo "Checking push permission for ghcr.io/${repo_path} as ${GH_ACTOR}..."
+
+        if ! response=$(curl -fsS -u "${GH_ACTOR}:${GH_TOKEN}" \
+          "https://ghcr.io/token?service=ghcr.io&scope=repository:${repo_path}:pull,push"); then
+          echo "::error::Could not reach the GHCR token endpoint for ghcr.io/${repo_path} (the request failed or was rejected). Confirm the package exists and the workflow token can read it."
+          exit 1
+        fi
+
+        token=$(printf '%s' "${response}" | jq -r '.token // .access_token // empty' 2>/dev/null || true)
+        if [ -z "${token}" ]; then
+          echo "::error::GHCR returned an unexpected (non-JSON or tokenless) response for ghcr.io/${repo_path}. Confirm the package exists and the workflow token can access it."
+          exit 1
+        fi
+
+        # GHCR tokens aren't guaranteed to be JWTs, so test push access directly.
+        # GHCR rejects session cancellation and expires unfinished uploads.
+        if ! status=$(curl -sS -o /dev/null -w '%{http_code}' \
+          -X POST -H "Content-Length: 0" \
+          -H "Authorization: Bearer ${token}" \
+          "https://ghcr.io/v2/${repo_path}/blobs/uploads/"); then
+          echo "::error::Could not start the GHCR push-permission probe for ghcr.io/${repo_path}."
+          exit 1
+        fi
+
+        if [ "${status}" = "202" ]; then
+          echo "✅ Workflow token has push permission to ghcr.io/${repo_path}"
+          echo "GHCR_PUSH_CHECK=ok" >> "$GITHUB_ENV"
+        elif [ "${status}" = "401" ] || [ "${status}" = "403" ]; then
+          echo "GHCR_PUSH_CHECK=failed" >> "$GITHUB_ENV"
+          echo "::error::The workflow's GITHUB_TOKEN cannot push to the Radius state package ghcr.io/${repo_path}. GHCR does not grant this by default. In the package's settings, give this repository's Actions workflows the 'Write' role (Package settings → Manage Actions access → add repository), or link the package to the repository, then re-run this workflow."
+          exit 1
+        else
+          echo "::error::GHCR push-permission probe for ghcr.io/${repo_path} returned HTTP ${status}; this does not prove whether push access is allowed."
+          exit 1
+        fi

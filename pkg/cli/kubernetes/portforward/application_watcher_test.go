@@ -54,7 +54,7 @@ func Test_ApplicationWatcher_Updated_HandleNewDeployment(t *testing.T) {
 	aw := NewApplicationWatcher(Options{Client: client})
 	defer stopDeploymentWatchers(aw)
 
-	aw.updated(context.Background(), createDeployment("test", "1", "1"))
+	aw.updated(t.Context(), createDeployment("test", "1", "1"))
 	require.Contains(t, aw.deploymentWatchers, "test")
 }
 

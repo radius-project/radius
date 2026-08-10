@@ -386,7 +386,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-          cache: true
+          # Produces artifacts/images — don't restore a cache a prior run could have poisoned.
+          cache: false
 
       - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: env.PR_NUMBER != ''
@@ -427,7 +428,7 @@ jobs:
             ## Test Status
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@06fb636fac595d6fb4b28a5dfcb21a6f5091859c # v4.5.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -696,7 +697,8 @@ jobs:
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
-          cache: true
+          # Publishes recipes/types — don't restore a cache a prior run could have poisoned.
+          cache: false
 
       - name: Download rad CLI
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -829,7 +831,7 @@ jobs:
           helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --version "${AZURE_WORKLOAD_IDENTITY_WEBHOOK_VER}" --set "azureTenantID=${AZURE_SP_TESTS_TENANTID}"
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@06fb636fac595d6fb4b28a5dfcb21a6f5091859c # v4.5.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -892,7 +894,7 @@ jobs:
             exit 1
           fi
 
-          # Poll logs for up to  iterations, 30 seconds each (upto 3 minutes total)
+          # Poll logs for up to  iterations, 30 seconds each (up to 3 minutes total)
           for i in {1..6}; do
             kubectl logs "$POD_NAME" -n radius-system | tee registermanifest_logs.txt > /dev/null
 

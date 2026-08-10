@@ -17,7 +17,6 @@ limitations under the License.
 package radinit
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/aws"
@@ -74,7 +73,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		runner := Runner{}
 
 		options := initOptions{}
-		err := runner.enterCloudProviderOptions(context.Background(), &options)
+		err := runner.enterCloudProviderOptions(t.Context(), &options)
 		require.NoError(t, err)
 		require.Nil(t, options.CloudProviders.AWS)
 		require.Nil(t, options.CloudProviders.Azure)
@@ -84,7 +83,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		runner := Runner{Full: true}
 
 		options := initOptions{Environment: environmentOptions{Create: false}}
-		err := runner.enterCloudProviderOptions(context.Background(), &options)
+		err := runner.enterCloudProviderOptions(t.Context(), &options)
 		require.NoError(t, err)
 		require.Nil(t, options.CloudProviders.AWS)
 		require.Nil(t, options.CloudProviders.Azure)
@@ -101,7 +100,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		initAddCloudProviderPromptNo(prompter)
 
 		options := initOptions{Environment: environmentOptions{Create: true}}
-		err := runner.enterCloudProviderOptions(context.Background(), &options)
+		err := runner.enterCloudProviderOptions(t.Context(), &options)
 		require.NoError(t, err)
 		require.Nil(t, options.CloudProviders.AWS)
 		require.Nil(t, options.CloudProviders.Azure)
@@ -120,7 +119,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		initSelectCloudProvider(prompter, confirmCloudProviderBackNavigationSentinel)
 
 		options := initOptions{Environment: environmentOptions{Create: true}}
-		err := runner.enterCloudProviderOptions(context.Background(), &options)
+		err := runner.enterCloudProviderOptions(t.Context(), &options)
 		require.NoError(t, err)
 		require.Nil(t, options.CloudProviders.AWS)
 		require.Nil(t, options.CloudProviders.Azure)
@@ -141,7 +140,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		initAddCloudProviderPromptNo(prompter)
 
 		options := initOptions{Environment: environmentOptions{Create: true}}
-		err := runner.enterCloudProviderOptions(context.Background(), &options)
+		err := runner.enterCloudProviderOptions(t.Context(), &options)
 		require.NoError(t, err)
 		require.Nil(t, options.CloudProviders.Azure)
 		require.Equal(t, awsProviderAccessKey, *options.CloudProviders.AWS)
@@ -168,7 +167,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		initAddCloudProviderPromptNo(prompter)
 
 		options := initOptions{Environment: environmentOptions{Create: true}}
-		err := runner.enterCloudProviderOptions(context.Background(), &options)
+		err := runner.enterCloudProviderOptions(t.Context(), &options)
 		require.NoError(t, err)
 		require.Nil(t, options.CloudProviders.Azure)
 		require.Equal(t, awsProviderIRSA, *options.CloudProviders.AWS)
@@ -195,7 +194,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		initAddCloudProviderPromptNo(prompter)
 
 		options := initOptions{Environment: environmentOptions{Create: true}}
-		err := runner.enterCloudProviderOptions(context.Background(), &options)
+		err := runner.enterCloudProviderOptions(t.Context(), &options)
 		require.NoError(t, err)
 		require.Nil(t, options.CloudProviders.AWS)
 		require.Equal(t, azureProviderServicePrincipal, *options.CloudProviders.Azure)
@@ -223,7 +222,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		initAddCloudProviderPromptNo(prompter)
 
 		options := initOptions{Environment: environmentOptions{Create: true}}
-		err := runner.enterCloudProviderOptions(context.Background(), &options)
+		err := runner.enterCloudProviderOptions(t.Context(), &options)
 		require.NoError(t, err)
 		require.Nil(t, options.CloudProviders.AWS)
 		require.Equal(t, azureProviderWorkloadIdentity, *options.CloudProviders.Azure)
@@ -255,7 +254,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		initAddCloudProviderPromptNo(prompter)
 
 		options := initOptions{Environment: environmentOptions{Create: true}}
-		err := runner.enterCloudProviderOptions(context.Background(), &options)
+		err := runner.enterCloudProviderOptions(t.Context(), &options)
 		require.NoError(t, err)
 		require.Equal(t, awsProviderAccessKey, *options.CloudProviders.AWS)
 		require.Equal(t, azureProviderServicePrincipal, *options.CloudProviders.Azure)
@@ -294,7 +293,7 @@ func Test_enterCloudProviderOptions(t *testing.T) {
 		initAddCloudProviderPromptNo(prompter)
 
 		options := initOptions{Environment: environmentOptions{Create: true}}
-		err := runner.enterCloudProviderOptions(context.Background(), &options)
+		err := runner.enterCloudProviderOptions(t.Context(), &options)
 		require.NoError(t, err)
 		require.Nil(t, options.CloudProviders.Azure)
 		require.Equal(t, awsProvider, *options.CloudProviders.AWS)

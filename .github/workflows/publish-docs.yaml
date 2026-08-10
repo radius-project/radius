@@ -85,12 +85,15 @@ jobs:
         with:
           go-version-file: radius/go.mod
           cache-dependency-path: radius/go.sum
-          cache: true
+          cache: false
 
       - name: Setup NodeJS
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: radius/.node-version
+          # This workflow publishes generated docs, so never restore a cache that a
+          # prior workflow run could have poisoned.
+          package-manager-cache: false
 
       - name: Install yq
         # Required by make generate-bicep-types-contrib to parse defaults.yaml.

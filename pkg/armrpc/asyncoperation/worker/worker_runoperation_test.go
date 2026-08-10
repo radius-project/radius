@@ -116,7 +116,7 @@ func newTestContext(t *testing.T, lockTime time.Duration) (*testContext, *gomock
 	inmemQ := inmemory.NewInMemQueue(lockTime)
 	databaseClient := database.NewMockClient(mctrl)
 	return &testContext{
-		ctx:       context.Background(),
+		ctx:       t.Context(),
 		mockSC:    databaseClient,
 		mockSM:    manager.NewMockStatusManager(mctrl),
 		internalQ: inmemQ,
@@ -433,7 +433,7 @@ func TestRunOperation_Successfully(t *testing.T) {
 
 	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx, queue.QueueClientConfig{})
 	require.NoError(t, err)
-	worker.runOperation(context.Background(), msg, testCtrl)
+	worker.runOperation(t.Context(), msg, testCtrl)
 
 	// Ensure that message is finished.
 	require.Equal(t, 0, tCtx.internalQ.Len(), "message is finished")
@@ -479,7 +479,7 @@ func TestRunOperation_ExtendMessageLock(t *testing.T) {
 	old := msg.NextVisibleAt
 	require.NoError(t, err)
 
-	worker.runOperation(context.Background(), msg, testCtrl)
+	worker.runOperation(t.Context(), msg, testCtrl)
 
 	require.Equal(t, 0, tCtx.internalQ.Len(), "message is finished")
 	require.Greater(t, msg.NextVisibleAt.UnixNano(), old.UnixNano(), "message lock is extended")
@@ -573,7 +573,7 @@ func TestRunOperation_Timeout(t *testing.T) {
 
 	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx, queue.QueueClientConfig{})
 	require.NoError(t, err)
-	worker.runOperation(context.Background(), msg, testCtrl)
+	worker.runOperation(t.Context(), msg, testCtrl)
 	<-done
 
 	require.Equal(t, 0, tCtx.internalQ.Len(), "message is finished")

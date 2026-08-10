@@ -17,19 +17,17 @@ limitations under the License.
 package v20250801preview
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 // Test_attachIconHashes_AttachesIconHashPerNode verifies the enricher
@@ -62,7 +60,7 @@ func Test_attachIconHashes_AttachesIconHashPerNode(t *testing.T) {
 	// Type not in the lookup falls back to the product default icon's hash
 	// so every node in the response carries a resolvable icon.
 	require.NotNil(t, payload.Resources[2].IconHash)
-	assert.Equal(t, productmanifest.Default().Hash, *payload.Resources[2].IconHash)
+	assert.Equal(t, defaults.DefaultIcon().Hash, *payload.Resources[2].IconHash)
 }
 
 // Test_attachIconHashes_NilIconsLookup asserts that when no per-type icons
@@ -80,7 +78,7 @@ func Test_attachIconHashes_NilIconsLookup(t *testing.T) {
 	attachIconHashes(payload, nil)
 	require.Len(t, payload.Resources, 1)
 	require.NotNil(t, payload.Resources[0].IconHash)
-	assert.Equal(t, productmanifest.Default().Hash, *payload.Resources[0].IconHash)
+	assert.Equal(t, defaults.DefaultIcon().Hash, *payload.Resources[0].IconHash)
 	assert.Nil(t, payload.Icons)
 }
 
@@ -124,7 +122,7 @@ func Test_fetchIcons_HashOnly(t *testing.T) {
 		},
 	}
 
-	icons, err := fetchIcons(context.Background(), conn, graph, false)
+	icons, err := fetchIcons(t.Context(), conn, graph, false)
 	require.NoError(t, err)
 	require.NotNil(t, icons)
 
@@ -148,7 +146,7 @@ func Test_fetchIcons_EmptyGraph(t *testing.T) {
 	conn, err := sdk.NewDirectConnection(server.URL)
 	require.NoError(t, err)
 
-	icons, err := fetchIcons(context.Background(), conn, &corerpv20250801preview.ApplicationGraphResponse{}, false)
+	icons, err := fetchIcons(t.Context(), conn, &corerpv20250801preview.ApplicationGraphResponse{}, false)
 	require.NoError(t, err)
 	assert.Nil(t, icons)
 }
@@ -190,7 +188,7 @@ func Test_fetchIcons_ExternalProviderNotFound(t *testing.T) {
 
 	// includeBytes=false because the reviewer's report was specifically that
 	// the graph errored even when the caller had not opted into inline bytes.
-	icons, err := fetchIcons(context.Background(), conn, graph, false)
+	icons, err := fetchIcons(t.Context(), conn, graph, false)
 	require.NoError(t, err)
 	require.NotNil(t, icons)
 
@@ -260,7 +258,7 @@ func Test_fetchIcons_IntegrityCheck(t *testing.T) {
 		},
 	}
 
-	icons, err := fetchIcons(context.Background(), conn, graph, true)
+	icons, err := fetchIcons(t.Context(), conn, graph, true)
 	require.NoError(t, err, "integrity failure must not fail the whole request")
 	require.NotNil(t, icons)
 
@@ -270,7 +268,7 @@ func Test_fetchIcons_IntegrityCheck(t *testing.T) {
 	assert.Equal(t, goodBytes, icons["Radius.Compute/containers"].bytes)
 
 	// Corrupted type is absent from the map. Downstream attachIconHashes
-	// will fall through to productmanifest.DefaultHash() for nodes of
+	// will fall through to defaults.DefaultIconHash() for nodes of
 	// this type, and buildIconsMap will emit the default bytes under the
 	// default hash — exactly the fallback path that already handles
 	// "type registered without an icon."

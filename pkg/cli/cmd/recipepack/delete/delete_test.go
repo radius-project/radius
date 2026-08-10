@@ -156,7 +156,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// Pack must be removed from the environment's RecipePacks list.
@@ -195,7 +195,7 @@ func Test_Run(t *testing.T) {
 			Confirm:           true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, []any{
 			output.LogOutput{Format: msgRecipePackDeleted, Params: []any{packName}},
@@ -244,7 +244,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, []any{
 			output.LogOutput{Format: msgRecipePackDeleted, Params: []any{packName}},
@@ -272,7 +272,7 @@ func Test_Run(t *testing.T) {
 			Confirm:           false,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Empty(t, outputSink.Writes)
 	})
@@ -295,7 +295,7 @@ func Test_Run(t *testing.T) {
 			Confirm:           true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), packName)
 	})
@@ -318,7 +318,7 @@ func Test_Run(t *testing.T) {
 			Confirm:           true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.EqualError(t, err, "test error")
 	})
 
@@ -361,7 +361,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "An error occurred while retrieving environment")
 	})
@@ -420,7 +420,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Failed to update environment")
 	})
@@ -453,7 +453,7 @@ func Test_Run(t *testing.T) {
 			Confirm:           true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, []any{
 			output.LogOutput{Format: msgRecipePackNotFound, Params: []any{packName}},
@@ -522,7 +522,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// Both referenced envs should have been updated using the injected factory,
@@ -603,7 +603,7 @@ func Test_Run(t *testing.T) {
 			Confirm:                 true,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		require.Len(t, capturedEnv.Properties.RecipePacks, 1)

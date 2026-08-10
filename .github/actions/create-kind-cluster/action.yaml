@@ -76,16 +76,16 @@ runs:
             config_path = "/etc/containerd/certs.d"
         EOF
 
-        REGISTRY_DIR="/etc/containerd/certs.d/localhost:${{ inputs.registry-port }}"
+        REGISTRY_DIR="/etc/containerd/certs.d/localhost:${INPUT_REGISTRY_PORT}"
         for node in $(kind get nodes); do
           docker exec "${node}" mkdir -p "${REGISTRY_DIR}"
           cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${REGISTRY_DIR}/hosts.toml"
-        [host."http://${{ inputs.registry-name }}:5000"]
+        [host."http://${INPUT_REGISTRY_NAME}:5000"]
         EOF
         done
 
-        if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' "${{ inputs.registry-name }}")" = 'null' ]; then
-          docker network connect "kind" "${reg_name}"
+        if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' "${INPUT_REGISTRY_NAME}")" = 'null' ]; then
+          docker network connect "kind" "${INPUT_REGISTRY_NAME}"
         fi
 
         cat <<EOF | kubectl apply -f -
@@ -96,11 +96,14 @@ runs:
           namespace: kube-public
         data:
           localRegistryHosting.v1: |
-            host: "localhost:${{ inputs.registry-port }}"
+            host: "localhost:${INPUT_REGISTRY_PORT}"
             help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
         EOF
 
         # Reference: https://kind.sigs.k8s.io/docs/user/local-registry/
+      env:
+        INPUT_REGISTRY_PORT: ${{ inputs.registry-port }}
+        INPUT_REGISTRY_NAME: ${{ inputs.registry-name }}
 
     - name: Create a KinD cluster with a secure local registry
       if: ${{ inputs.with-local-registry == 'true' && inputs.secure == 'true' }}
@@ -114,8 +117,8 @@ runs:
         nodes:
         - role: control-plane
           extraMounts:
-            - containerPath: "/etc/containerd/certs.d/${{ inputs.registry-name }}"
-              hostPath: "${{ inputs.temp-cert-dir }}/certs/${{ inputs.registry-server }}"
+            - containerPath: "/etc/containerd/certs.d/${INPUT_REGISTRY_NAME}"
+              hostPath: "${INPUT_TEMP_CERT_DIR}/certs/${INPUT_REGISTRY_SERVER}"
           extraPortMappings:
             - containerPort: 30080
               hostPort: 30080
@@ -127,20 +130,20 @@ runs:
         EOF
 
         # Create the directory for the certificates and add the certificate to the system trust store
-        LOCALHOST_DIR="/etc/containerd/certs.d/${{ inputs.registry-server }}:${{ inputs.registry-port }}"
-        RADIUS_DIR="/etc/containerd/certs.d/${{ inputs.registry-name }}:${{ inputs.registry-port }}"
+        LOCALHOST_DIR="/etc/containerd/certs.d/${INPUT_REGISTRY_SERVER}:${INPUT_REGISTRY_PORT}"
+        RADIUS_DIR="/etc/containerd/certs.d/${INPUT_REGISTRY_NAME}:${INPUT_REGISTRY_PORT}"
 
         for node in $(kind get nodes); do
           docker exec "${node}" mkdir -p "${LOCALHOST_DIR}"
           cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${LOCALHOST_DIR}/hosts.toml"
-        [host."http://${{ inputs.registry-name }}:${{ inputs.registry-port }}"]
+        [host."http://${INPUT_REGISTRY_NAME}:${INPUT_REGISTRY_PORT}"]
           capabilities = ["pull", "resolve", "push"]
           skip_verify = true
         EOF
 
           docker exec "${node}" mkdir -p "${RADIUS_DIR}"
           cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${RADIUS_DIR}/hosts.toml"
-        [host."http://${{ inputs.registry-name }}:${{ inputs.registry-port }}"]
+        [host."http://${INPUT_REGISTRY_NAME}:${INPUT_REGISTRY_PORT}"]
           capabilities = ["pull", "resolve", "push"]
           skip_verify = true
         EOF
@@ -149,8 +152,8 @@ runs:
         done
 
         # Connect the registry to the KinD network
-        if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' "${{ inputs.registry-name }}")" = 'null' ]; then
-          docker network connect "kind" "${{ inputs.registry-name }}"
+        if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' "${INPUT_REGISTRY_NAME}")" = 'null' ]; then
+          docker network connect "kind" "${INPUT_REGISTRY_NAME}"
         fi
 
         # Document the local registry
@@ -162,6 +165,11 @@ runs:
           namespace: kube-public
         data:
           localRegistryHosting.v1: |
-            host: "${{ inputs.registry-name }}:${{ inputs.registry-port }}"
+            host: "${INPUT_REGISTRY_NAME}:${INPUT_REGISTRY_PORT}"
             help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
         EOF
+      env:
+        INPUT_REGISTRY_NAME: ${{ inputs.registry-name }}
+        INPUT_TEMP_CERT_DIR: ${{ inputs.temp-cert-dir }}
+        INPUT_REGISTRY_SERVER: ${{ inputs.registry-server }}
+        INPUT_REGISTRY_PORT: ${{ inputs.registry-port }}

@@ -402,7 +402,7 @@
         }
       },
       "version": {
-        "description": "(Optional) The major MySQL server version in the X.Y format. Assumed to be 8.4 if not specified.",
+        "description": "(Optional) The major MySQL server version in the X.Y format. Defaults to `8.4` if not provided.",
         "flags": 0,
         "type": {
           "$ref": "#/34"
@@ -537,7 +537,7 @@
         }
       },
       "version": {
-        "description": "(Optional) The major MySQL server version in the X.Y format. Assumed to be 8.4 if not specified.",
+        "description": "(Optional) The major MySQL server version in the X.Y format. Defaults to `8.4` if not provided.",
         "flags": 2,
         "type": {
           "$ref": "#/34"

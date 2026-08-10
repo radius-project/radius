@@ -89,7 +89,7 @@ tools:
 
   - name: kubectl
     makePrefix: KUBECTL
-    version: v1.36.2
+    version: v1.36.3
     source:
       type: stable-text
       repository: kubernetes/kubernetes
@@ -98,16 +98,16 @@ tools:
     platforms:
       linux_amd64:
         asset: kubectl
-        checksum: 1e9045ec32bea85da43de85f0065358529ea7c7a152eca78154fba5b58c27d82
+        checksum: ebbd080e7c2e275093b55915722043257eb24004363e20acb3c4d71919f88336
       linux_arm64:
         asset: kubectl
-        checksum: c957eb8c4bea27a3bb35b269edd9082e27f027f7b76b20b5bf4afebc726c6d3e
+        checksum: 3d86f24401c41ae5a46ac50eef8865fe891d3647d324a0836f6c63757a126e62
       darwin_amd64:
         asset: kubectl
-        checksum: ce6c5e55cd17559e87e4fb5e73ebbbc2511bcf2b695d7a40c1b1461a9817d4b3
+        checksum: 158b3b46cf74e8b6bd9b1d7cd30f665e3efb2bc1ec3c843ec925bcfdd2930de0
       darwin_arm64:
         asset: kubectl
-        checksum: 4408c85c83fd3a31adaa555bdf3c7a6c81f74b19449a9060ba31ab91926f023d
+        checksum: fc8582acde13869a606730a79379d6515f30c68afcced0b5ac8789d5d002b7d6
     checksumSource:
       type: url-file
       urlTemplate: https://dl.k8s.io/release/{version}/bin/{os}/{arch}/kubectl.sha256
@@ -115,7 +115,7 @@ tools:
 
   - name: dapr
     makePrefix: DAPR
-    version: v1.15.2
+    version: v1.18.0
     source:
       type: github-release
       repository: dapr/cli
@@ -124,16 +124,16 @@ tools:
     platforms:
       linux_amd64:
         asset: dapr_linux_amd64.tar.gz
-        checksum: 09328bc0e4353036b824c2ec9cf7cabf4d75b4fc00ca02d80ae3e4374ee27eda
+        checksum: 2a94739e0aa101289d88418225319562bc6800db273b3d9cf819a0efd1ea1bfe
       linux_arm64:
         asset: dapr_linux_arm64.tar.gz
-        checksum: b49244701a191c1e843211383703be9f2cd086a1db259c9789672f7e4e82ad55
+        checksum: 99d93e1dde04225204e2feb33191a1df97c87bb7d88abd10d1523f29a88d35d2
       darwin_amd64:
         asset: dapr_darwin_amd64.tar.gz
-        checksum: 42a36e667559aef0fb6357fbe8f0fdbf1a6d9ea0ba8484c32e90ea61ddf15ba0
+        checksum: 2a7b7f3e4dfa5f8408b183bf840ab518766d91c3338e540cf84e16b5eb561604
       darwin_arm64:
         asset: dapr_darwin_arm64.tar.gz
-        checksum: 176f455ea1961cdb59ab0e9ec3e4900b877576a9a2178d3b4b2619bfe947643f
+        checksum: 7d564d6aa29a68caab53e9aa4bcb4aabd9da5829992f3c8c297df3095ef5678b
     checksumSource:
       type: github-release-file
       fileTemplate: "{asset}.sha256"
@@ -141,7 +141,7 @@ tools:
 
   - name: helm
     makePrefix: HELM
-    version: v4.2.2
+    version: v4.2.3
     source:
       type: github-release
       repository: helm/helm
@@ -150,16 +150,16 @@ tools:
     platforms:
       linux_amd64:
         asset: helm-{version}-linux-amd64.tar.gz
-        checksum: 9adafecab4d406853bba163a70e9f104f47dbbf65ce24b7653bae7e36150bcb6
+        checksum: e9b88b4ee95b18c706839c28d3a0220e5bc470e9cd9262410c90793c45ff8b7c
       linux_arm64:
         asset: helm-{version}-linux-arm64.tar.gz
-        checksum: 78803142087a0069fa4b50d3f32a84d3ef25c14d1ee8a40fbccf86a6216d2f36
+        checksum: 21abd9354d39b2cd79a8d76be6912cd137a983cbf997193503fb8a6a6e2f2785
       darwin_amd64:
         asset: helm-{version}-darwin-amd64.tar.gz
-        checksum: 10c1e36ee8c5f2e2ee25a16599cb03ab74c0953cd889cacb980a49ba4b6574ba
+        checksum: ff3ac86755a45f3422473bc1200776aac0fe04c5766abe6ca66699f7b564b23b
       darwin_arm64:
         asset: helm-{version}-darwin-arm64.tar.gz
-        checksum: 5410a0dae3d5d91f45653b161260d9301aabc4ae80ae50a6605d66884b6df8ea
+        checksum: 048ecf5ad3160f83d918f9fe945238d2132b079640f7b106175331c25f242c64
     checksumSource:
       type: url-file
       urlTemplate: https://get.helm.sh/{asset}.sha256sum
@@ -219,7 +219,7 @@ tools:
 
   - name: terraform
     makePrefix: TERRAFORM
-    version: 1.14.9
+    version: 1.15.8
     source:
       type: hashicorp-checkpoint
       latestURL: https://checkpoint-api.hashicorp.com/v1/check/terraform
@@ -227,16 +227,16 @@ tools:
     platforms:
       linux_amd64:
         asset: terraform_{version}_linux_amd64.zip
-        checksum: 2e5cffc20a0b48a67a76268723bd5a10b8666f69b2aa4f04906e206726bedd63
+        checksum: d25ce7b6902013ad905db3d2eab0be4cd905887fe88b81a6171b8d5503c31f3d
       linux_arm64:
         asset: terraform_{version}_linux_arm64.zip
-        checksum: 863002085b886453795d9ff4b8989b8468784478150b70ba8a1df3e3ad66da99
+        checksum: 8891e9dcedc9e3b8950bc6af9d4d8af1f4cfade3062f53b9dc403a89f6ce8c9c
       darwin_amd64:
         asset: terraform_{version}_darwin_amd64.zip
-        checksum: c15326e1af102d2767d40208a0157d1402057f80192991f56803b66457304cf3
+        checksum: e2e812e783771159bf758fd4e55d6dc9bb08f63e2af2c63d212721807a02c5dc
       darwin_arm64:
         asset: terraform_{version}_darwin_arm64.zip
-        checksum: 5bc0b11b7a63c8984a41d82523356df46f7833c2e9651a39a7f8919422de5cde
+        checksum: f210110c5698b94d803a7a63cdb0251b5455c150841478808e2bbb343f95ed68
     checksumSource:
       type: url-file
       urlTemplate: https://releases.hashicorp.com/terraform/{version}/terraform_{version}_SHA256SUMS
@@ -281,7 +281,7 @@ tools:
 
   - name: oras
     makePrefix: ORAS
-    version: v1.3.2
+    version: v1.3.3
     source:
       type: github-release
       repository: oras-project/oras
@@ -290,16 +290,16 @@ tools:
     platforms:
       linux_amd64:
         asset: oras_{version_no_v}_linux_amd64.tar.gz
-        checksum: 9229ccc6d17bb282039ad4a69abb16dcb887a5bce567c075d731d9b3c7ad8eaf
+        checksum: 9ce999f8d2de03fc03968b29d743077a58783e545e5eaa53917ca177352d0e59
       linux_arm64:
         asset: oras_{version_no_v}_linux_arm64.tar.gz
-        checksum: 8db4a223bd6034deff198e791ea7cb3af0840df25b7e9f370e2f1f3fd20d389b
+        checksum: ac7156f93a21e903f7ad606c792f3560f17e0cd0e36365634701b1e7cc4e4eca
       darwin_amd64:
         asset: oras_{version_no_v}_darwin_amd64.tar.gz
-        checksum: 2621f6b252b222f6fbf4e114d2fcaa0cec6b632624ffaf73143f66e4e0994f86
+        checksum: aeb684d8c24c18dce28fd1f7326636e4782b573108e244a93d4b1c4a5ec50f48
       darwin_arm64:
         asset: oras_{version_no_v}_darwin_arm64.tar.gz
-        checksum: 7929f792cf272268412375ecad6f0fb3c20f164368d5b57966e67ad6d36eca53
+        checksum: f33fc12753c54172b0d0d19eaa0318d3f90fe9b094d96e8b259c881713c92e1c
     checksumSource:
       type: github-release-file
       fileTemplate: oras_{version_no_v}_checksums.txt

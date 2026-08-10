@@ -40,6 +40,10 @@ name: Update Resource Types
 # re-copies the manifests under deploy/manifest/built-in-providers/ - advancing
 # only what the event changed (entries Radius does not register are skipped).
 #
+# The bot branch is rebuilt from the current main on every dispatch. Pins that
+# are still pending on its open PR are replayed as extra input to make, so
+# updates stay cumulative without the branch ever having to be rebased.
+#
 # Merging the resulting PR triggers the existing `build-and-push-bicep-types`
 # job in build.yaml, which dispatches to azure-octo/radius-publisher to
 # republish `radius:latest` with the refreshed contrib types.
@@ -197,37 +201,128 @@ jobs:
           git config user.name "Radius CI Bot"
           git config user.email "radiuscoreteam@service.microsoft.com"
 
-      - name: Prepare cumulative update branch
-        # Preserve unmerged namespace updates from earlier dispatches. Starting
-        # each run from main would let a later namespace-only event overwrite
-        # an earlier pending update on the shared bot branch.
-        run: |
-          set -euo pipefail
-          git fetch origin main
-          if git ls-remote --exit-code --heads origin "${PR_BRANCH}" \
-              > /dev/null 2>&1; then
-            git fetch origin "${PR_BRANCH}:refs/remotes/origin/${PR_BRANCH}"
-            git checkout -B "${PR_BRANCH}" "origin/${PR_BRANCH}"
-            git rebase origin/main
-          else
-            git checkout -B "${PR_BRANCH}" origin/main
-          fi
-
       - name: Install yq
         # Required by make update-resource-types / sync-resource-types to parse
-        # deploy/manifest/defaults.yaml.
+        # deploy/manifest/defaults.yaml, and by the branch preparation below.
+        # install-yq appends its install dir to GITHUB_PATH, so yq is only on
+        # PATH from the next step onwards.
         run: make install-yq
+
+      - name: Prepare cumulative update branch
+        # Rebuild the bot branch from the current main on every dispatch instead
+        # of rebasing its previous commit. make update-resource-types
+        # regenerates everything it writes, so the pin set is the only state
+        # worth preserving: carrying the still-pending pins forward keeps
+        # updates cumulative and can never conflict, whereas rebasing wedges the
+        # branch as soon as main reshapes defaults.yaml.
+        # Pins are only carried while the branch still has an open PR, so a
+        # leftover already-merged branch cannot drag pins backwards.
+        id: branch
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          PAYLOAD_PINS: ${{ steps.contrib.outputs.pins }}
+          PAYLOAD_PACK_PINS: ${{ steps.contrib.outputs.pack_pins }}
+        run: |
+          set -euo pipefail
+          defaults=deploy/manifest/defaults.yaml
+
+          git fetch origin main
+          head_sha="$(
+            git ls-remote origin "refs/heads/${PR_BRANCH}" | awk '{print $1}'
+          )"
+
+          # `gh pr list --head` matches a bare branch name only and silently
+          # returns nothing for the `owner:branch` form, so the guard has to use
+          # the REST filter, which scopes the lookup to this repo's branch and
+          # cannot be satisfied by a fork branch of the same name.
+          pr_query="repos/${GITHUB_REPOSITORY}/pulls?state=open"
+          pr_query="${pr_query}&head=${GITHUB_REPOSITORY%%/*}:${PR_BRANCH}"
+
+          pending='{}'
+          if [ -n "${head_sha}" ] && [ -n "$(
+            gh api "${pr_query}" --jq '.[].number'
+          )" ]; then
+            git fetch origin "${PR_BRANCH}"
+            if git cat-file -e "FETCH_HEAD:${defaults}" 2> /dev/null; then
+              pending="$(
+                git show "FETCH_HEAD:${defaults}" | yq -o=json -I=0 '.'
+              )"
+              echo "Reading pending pins from ${PR_BRANCH}@${head_sha}."
+            fi
+          fi
+
+          git checkout -B "${PR_BRANCH}" origin/main
+          base="$(yq -o=json -I=0 '.' "${defaults}")"
+
+          # carried <section> <legacy_section> <payload_json> echoes the branch
+          # pins the payload does not already cover and main does not already
+          # record with the same SHA *and* tag, as a [{name, ref}] array. The
+          # tag has to be part of that comparison: a release can tag a commit
+          # main is already pinned to, and comparing SHAs alone would discard
+          # that tag-only pin. `sources`/`namespace` are the pre-rename
+          # spellings of `resourceTypes`/`name`; accepting them keeps a branch
+          # written against the older schema readable. An entry with a tag is
+          # carried by tag so the tag survives re-resolution; a bare SHA is
+          # re-pinned without a network round trip.
+          carried() {
+            jq -c --arg section "$1" --arg legacy "$2" \
+              --argjson payload "$3" --argjson base "${base}" '
+              [ (.[$section] // .[$legacy] // [])[]
+                | {name: (.name // .namespace),
+                   ref: (if (.tag // "") == "" then .ref else .tag end),
+                   sha: .ref,
+                   tag: (.tag // "")}
+                | select(.name != null and .ref != null)
+                | . as $e
+                | select(($payload | any(.name == $e.name)) | not)
+                | select(
+                    (($base[$section] // [])
+                      | any(.name == $e.name and .ref == $e.sha
+                            and (.tag // "") == $e.tag)) | not
+                  )
+                | {name: .name, ref: .ref} ]
+            ' <<< "${pending}"
+          }
+
+          carried_types="$(carried resourceTypes sources "${PAYLOAD_PINS}")"
+          carried_packs="$(carried recipePacks '' "${PAYLOAD_PACK_PINS}")"
+          pins="$(
+            jq -cn --argjson a "${carried_types}" \
+              --argjson b "${PAYLOAD_PINS}" '$a + $b'
+          )"
+          pack_pins="$(
+            jq -cn --argjson a "${carried_packs}" \
+              --argjson b "${PAYLOAD_PACK_PINS}" '$a + $b'
+          )"
+          carried_names="$(
+            jq -rn --argjson a "${carried_types}" --argjson b "${carried_packs}" '
+              ($a | map(.name)) + ($b | map("recipe-pack/" + .name)) |
+              join(", ")
+            '
+          )"
+
+          {
+            echo "pins<<PINS_EOF"
+            printf '%s\n' "${pins}"
+            echo "PINS_EOF"
+            echo "pack_pins<<PACK_PINS_EOF"
+            printf '%s\n' "${pack_pins}"
+            echo "PACK_PINS_EOF"
+            echo "head_sha=${head_sha}"
+            echo "carried=${carried_names}"
+          } >> "${GITHUB_OUTPUT}"
+          echo "Carried forward: [${carried_names}]"
 
       - name: Run make update-resource-types
         # Advances the affected namespaces: pins each to its immutable commit SHA
         # in deploy/manifest/defaults.yaml (resourceTypes[].ref, plus .tag on the
         # release channel) and copies the manifest files into
         # deploy/manifest/built-in-providers/{dev,self-hosted}/.
-        # RESOURCE_TYPES_PINS (the contrib namespaces[] payload) drives the
-        # batch.
-        if: steps.contrib.outputs.pins != '[]'
+        # RESOURCE_TYPES_PINS is the contrib namespaces[] payload plus any pins
+        # carried forward from the still-open PR.
+        if: steps.branch.outputs.pins != '[]'
         env:
-          RESOURCE_TYPES_PINS: ${{ steps.contrib.outputs.pins }}
+          RESOURCE_TYPES_PINS: ${{ steps.branch.outputs.pins }}
         run: |
           set -euo pipefail
           make update-resource-types
@@ -235,9 +330,9 @@ jobs:
       - name: Run make update-recipe-packs
         # Recipe packs are pinned but never vendored into this repo, so this
         # only rewrites recipePacks[].ref / .tag in defaults.yaml.
-        if: steps.contrib.outputs.pack_pins != '[]'
+        if: steps.branch.outputs.pack_pins != '[]'
         env:
-          RECIPE_PACKS_PINS: ${{ steps.contrib.outputs.pack_pins }}
+          RECIPE_PACKS_PINS: ${{ steps.branch.outputs.pack_pins }}
         run: |
           set -euo pipefail
           make update-recipe-packs
@@ -258,19 +353,28 @@ jobs:
           fi
 
       - name: Create or update PR branch
-        # Rebase keeps pending updates cumulative; force-with-lease publishes
-        # the rewritten history without overwriting a concurrent remote update.
+        # The branch was rebuilt from main, so the push always rewrites history.
+        # Lease against the head read in "Prepare cumulative update branch" (an
+        # empty value means the branch must not already exist) - a bare
+        # --force-with-lease would lease against a remote-tracking ref this job
+        # never creates, and would reject every push after the first.
         if: steps.changes.outputs.changed == 'true'
         env:
           CHANNEL: ${{ steps.contrib.outputs.channel }}
           AFFECTED: ${{ steps.contrib.outputs.affected }}
+          CARRIED: ${{ steps.branch.outputs.carried }}
+          HEAD_SHA: ${{ steps.branch.outputs.head_sha }}
         run: |
           set -euo pipefail
           git add -A
           message="chore: refresh resource type manifests from ${CONTRIB_REPO}"
           message+=" (${CHANNEL}: ${AFFECTED:-all})"
+          if [ -n "${CARRIED}" ]; then
+            message+=$'\n\n'"Carried forward: ${CARRIED}"
+          fi
           git commit -m "${message}"
-          git push --force-with-lease origin "HEAD:${PR_BRANCH}"
+          git push --force-with-lease="refs/heads/${PR_BRANCH}:${HEAD_SHA}" \
+            origin "HEAD:${PR_BRANCH}"
 
       - name: Open or update pull request
         # Creates a new PR if none exists for the bot branch, or updates the
@@ -281,6 +385,7 @@ jobs:
         env:
           CHANNEL: ${{ steps.contrib.outputs.channel }}
           AFFECTED: ${{ steps.contrib.outputs.affected }}
+          CARRIED: ${{ steps.branch.outputs.carried }}
           CONTRIB_REF: ${{ steps.contrib.outputs.ref }}
         with:
           github-token: ${{ steps.app-token.outputs.token }}
@@ -288,6 +393,7 @@ jobs:
             const branch = process.env.PR_BRANCH;
             const channel = process.env.CHANNEL || "edge";
             const affected = process.env.AFFECTED || "";
+            const carried = process.env.CARRIED || "";
             const contribRef = process.env.CONTRIB_REF || "";
             const title = "chore: refresh resource type manifests from resource-types-contrib";
             const body = [
@@ -295,6 +401,7 @@ jobs:
               "",
               `Triggered by [\`${process.env.CONTRIB_REPO}\`](https://github.com/${process.env.CONTRIB_REPO}) on the \`${channel}\` channel at ref \`${contribRef}\`.`,
               affected ? `Affected: ${affected}.` : "",
+              carried ? `Carried forward from the previous pending update: ${carried}.` : "",
               "",
               "Each affected entry is pinned to an immutable commit SHA in `deploy/manifest/defaults.yaml` (`resourceTypes[]` / `recipePacks[]`).",
               "",

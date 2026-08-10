@@ -124,3 +124,14 @@ func Test_DynamicResource_ConvertDataModelToVersioned(t *testing.T) {
 		})
 	}
 }
+
+func Test_DynamicResource_ConvertDataModelToVersioned_NilProperties(t *testing.T) {
+	dm := &datamodel.DynamicResource{}
+	resource := &DynamicResource{}
+
+	err := resource.ConvertFrom(dm)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{
+		"provisioningState": fromProvisioningStateDataModel(dm.AsyncProvisioningState),
+	}, resource.Properties)
+}
