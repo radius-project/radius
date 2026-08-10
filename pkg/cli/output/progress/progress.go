@@ -67,13 +67,20 @@ type interactiveListener struct {
 
 // Run renders progress in place until the channel is closed. It reads from the
 // real stdin so Bubble Tea consumes the terminal's replies to its own
-// capability-detection queries instead of leaking them to the shell.
+// capability-detection queries instead of leaking them to the shell, and so the
+// model can observe Ctrl+C. On Ctrl+C the process is aborted with status 130.
 func (l *interactiveListener) Run() {
-	program := tea.NewProgram(
-		newModel(l.progressChan),
-		tea.WithoutSignalHandler(),
-	)
-	if _, err := program.Run(); err != nil {
+	program := tea.NewProgram(newModel(l.progressChan))
+	finalModel, err := program.Run()
+	if m, ok := finalModel.(*model); ok && m.interrupted {
+		// The user pressed Ctrl+C during the deployment or deletion. The work runs
+		// in another goroutine that may be blocked in a call that cannot be
+		// canceled cooperatively, so abort the process the way Ctrl+C did before
+		// the display ran in raw mode. Bubble Tea has already restored the terminal
+		// by the time Run returns.
+		os.Exit(130) //nolint:forbidigo // Intentional: abort on Ctrl+C, matching rad init.
+	}
+	if err != nil {
 		// Bubble Tea failed to start or exited before the channel was closed.
 		// The model is no longer reading from progressChan, so drain it here to
 		// keep producers (deploy/delete) from blocking until it is closed.
@@ -106,6 +113,8 @@ type model struct {
 	// index maps a resource ID to its position in entries so repeated updates
 	// for the same resource reuse the same line.
 	index map[string]int
+	// interrupted is set when the user cancels the display with Ctrl+C.
+	interrupted bool
 }
 
 func newModel(updates <-chan clients.ResourceProgress) *model {
@@ -138,9 +147,15 @@ func waitForUpdate(updates <-chan clients.ResourceProgress) tea.Cmd {
 	}
 }
 
-// Update handles progress updates, channel closure, and spinner ticks.
+// Update handles progress updates, channel closure, Ctrl+C, and spinner ticks.
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		if msg.String() == "ctrl+c" {
+			m.interrupted = true
+			return m, tea.Quit
+		}
+		return m, nil
 	case progressMsg:
 		m.apply(clients.ResourceProgress(msg))
 		return m, waitForUpdate(m.updates)
