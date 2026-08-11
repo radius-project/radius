@@ -173,6 +173,7 @@ if not upload.get("uses", "").startswith("actions/upload-artifact@"):
 facts = {
     "generate.id": generate.get("id", ""),
     "generate.shell": generate.get("shell", ""),
+    "upload.continue-on-error": upload.get("continue-on-error", ""),
     "upload.if": upload.get("if", ""),
     "upload.uses": upload.get("uses", ""),
     "upload.with.name": upload.get("with.name", ""),
@@ -686,6 +687,7 @@ rm -rf "${FALLBACK_STATUS_DIR}"
 # ---------------------------------------------------------------------------
 assert_fact "generate.id" "generate"
 assert_fact "generate.shell" "bash"
+assert_fact "upload.continue-on-error" "true"
 assert_fact "upload.if" "steps.generate.outputs.published == 'true'"
 # GitHub Actions expressions are literal text here, not shell expansions.
 # shellcheck disable=SC2016
