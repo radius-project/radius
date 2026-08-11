@@ -103,8 +103,10 @@ runs:
         # verbatim by the helper without any kubectl call.
         ARCHES=""
         if [ "$BUILD_ARCH_MODE" = "detect" ]; then
-          TARGET_KUBECONFIG="$RADIUS_TARGET_KUBECONFIG"
-          if [ -n "${TARGET_KUBECONFIG:-}" ] && [ -f "$TARGET_KUBECONFIG" ]; then
+          # Default-expand so an unset RADIUS_TARGET_KUBECONFIG does not trip
+          # `set -u`; the empty case is handled below and degrades to fallback.
+          TARGET_KUBECONFIG="${RADIUS_TARGET_KUBECONFIG:-}"
+          if [ -n "$TARGET_KUBECONFIG" ] && [ -f "$TARGET_KUBECONFIG" ]; then
             # One architecture token per node; failures degrade to empty, which the
             # helper treats as "undetermined" and resolves to the fallback list.
             ARCHES=$(kubectl --kubeconfig "$TARGET_KUBECONFIG" get nodes \

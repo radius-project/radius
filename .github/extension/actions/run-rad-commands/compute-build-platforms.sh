@@ -15,14 +15,15 @@
 #
 # Contract (kept intentionally small and explicit):
 #   MODE
-#     - ''                          feature disabled -> emit nothing (callers
-#     - '{{TARGET_CLUSTER_ARCH_MODE}}'  keep existing behavior: the recipe's own
-#                                   default platforms apply). An unsubstituted
-#                                   template placeholder is treated as disabled.
-#     - 'detect'                    probe the target cluster node architectures.
-#     - an explicit platform list   any value containing '/', e.g.
-#                                   'linux/amd64' or 'linux/amd64,linux/arm64',
-#                                   is honored verbatim with no detection.
+#     - ''                          Feature disabled: emit nothing so the recipe
+#                                   default platforms apply (existing behavior).
+#     - '{{TARGET_CLUSTER_ARCH_MODE}}'
+#                                   An unsubstituted template placeholder is
+#                                   treated the same as empty (disabled).
+#     - 'detect'                    Probe the target cluster node architectures.
+#     - an explicit platform list   Any value containing '/', e.g. 'linux/amd64'
+#                                   or 'linux/amd64,linux/arm64', is honored
+#                                   verbatim with no detection.
 #   FALLBACK
 #     - comma-separated platform list used when detection is inconclusive
 #       (mixed-arch or undetermined). Empty or an unsubstituted placeholder
