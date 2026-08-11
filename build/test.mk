@@ -126,8 +126,14 @@ test-functional-corerp-noncloud: ## Runs corerp functional tests that do not req
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/noncloud/... -timeout ${TEST_TIMEOUT} -v -json -parallel 10 $(GOTEST_OPTS)
 
 .PHONY: test-functional-corerp-cloud
+# Radius uses the Kubernetes API server as both its database (apiserverstore) and
+# its async queue, so every concurrent deployment multiplies API server load. At
+# -parallel 10 all of this suite's tests deployed at once and saturated the
+# single-node KinD control plane on a 4-vCPU CI runner: kube-apiserver went
+# NotReady without restarting and every `rad deploy` failed with EOF at the same
+# instant. Keep concurrency at or below the runner's CPU count.
 test-functional-corerp-cloud: ## Runs corerp functional tests that require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 4 $(GOTEST_OPTS)
 
 .PHONY: test-functional-msgrp
 test-functional-msgrp: test-functional-msgrp-noncloud ## Runs all Messaging RP functional tests (both cloud and non-cloud)

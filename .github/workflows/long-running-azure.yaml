@@ -164,7 +164,8 @@ jobs:
         with:
           go-version-file: ${{ steps.checkout-release-codebase.outputs.release-dir }}/go.mod
           cache-dependency-path: ${{ steps.checkout-release-codebase.outputs.release-dir }}/go.sum
-          cache: true
+          # Publishes recipes/types — don't restore a cache a prior run could have poisoned.
+          cache: false
 
       - name: Login to Azure
         uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
