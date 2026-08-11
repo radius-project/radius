@@ -21,6 +21,7 @@ limitations under the License.
 package progress
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -72,7 +73,8 @@ type interactiveListener struct {
 func (l *interactiveListener) Run() {
 	program := tea.NewProgram(newModel(l.progressChan))
 	finalModel, err := program.Run()
-	if m, ok := finalModel.(*model); ok && m.interrupted {
+	m, _ := finalModel.(*model)
+	if (m != nil && m.interrupted) || errors.Is(err, tea.ErrInterrupted) {
 		// The user pressed Ctrl+C during the deployment or deletion. The work runs
 		// in another goroutine that may be blocked in a call that cannot be
 		// canceled cooperatively, so abort the process the way Ctrl+C did before
@@ -82,12 +84,16 @@ func (l *interactiveListener) Run() {
 	}
 	if err != nil {
 		// Bubble Tea failed to start or exited before the channel was closed.
-		// The model is no longer reading from progressChan, so drain it here to
-		// keep producers (deploy/delete) from blocking until it is closed.
 		fmt.Fprintf(os.Stderr, "Warning: progress display stopped: %v\n", err)
-		for range l.progressChan {
-			// Drain remaining updates so writers do not block.
-		}
+	}
+
+	// The model is no longer reading from progressChan, so drain it here to keep
+	// producers (deploy/delete) from blocking until the channel is closed. Bubble
+	// Tea can exit without an error while the channel is still open (for example
+	// on SIGTERM), so this must run on every non-interrupt exit path, not just
+	// when Run returns an error.
+	for range l.progressChan {
+		// Drain remaining updates so writers do not block.
 	}
 }
 
