@@ -36,7 +36,7 @@ verify_single_source_of_truth() {
                 "${file}" || true
         )"
         [[ -z "${violations}" ]] ||
-            fail "${file} contains a direct contrib source instead of the defaults catalog:\n${violations}"
+            fail "${file} contains a direct contrib source instead of the defaults catalog:"$'\n'"${violations}"
 
         scalar_values="$(
             yq -r \

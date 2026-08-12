@@ -485,9 +485,10 @@ apply_pins() {
     [ "${applied}" -gt 0 ] || echo "No registered entries in ${var_name}; nothing re-pinned."
 }
 
-# has_pins <json> reports whether a dispatch pin variable carries entries.
 has_pins() {
-    [[ -n "$1" && "$1" != "[]" ]]
+    local trimmed
+    trimmed="$(printf '%s' "$1" | tr -d '[:space:]')"
+    [[ -n "${trimmed}" && "${trimmed}" != "[]" ]]
 }
 
 # update_all_sections applies both pin sections before validating either one.
