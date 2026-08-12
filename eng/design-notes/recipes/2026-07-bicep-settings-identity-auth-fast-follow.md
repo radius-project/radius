@@ -1,6 +1,6 @@
 # Topic: BicepSettings Identity Authentication Fast Follow
 
-- **Author**: Sylvain + Copilot draft
+- **Author**: Sylvain Niles
 - **Status**: Draft for review
 
 ## Topic Summary
