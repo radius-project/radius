@@ -268,9 +268,10 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 				//
 				// To preserve the real cause, on the final attempt complete the operation as Failed using
 				// the panic details. Earlier attempts are still left unfinished so they are retried. We
-				// skip this when the request context was canceled (operation timeout or worker shutdown),
-				// because those paths own completion and must not be overwritten.
-				if message.DequeueCount >= w.options.MaxOperationRetryCount && !errors.Is(asyncReqCtx.Err(), context.Canceled) {
+				// only do this when the request context is still active (Err() == nil); if it was
+				// canceled or its deadline was exceeded (operation timeout or worker shutdown), those
+				// paths own completion and must not be overwritten.
+				if message.DequeueCount >= w.options.MaxOperationRetryCount && asyncReqCtx.Err() == nil {
 					failed := ctrl.NewFailedResult(v1.ErrorDetails{
 						Code:    v1.CodeInternal,
 						Message: fmt.Sprintf("unexpected error while processing async operation: %v", err),
