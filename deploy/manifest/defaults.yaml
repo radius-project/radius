@@ -45,36 +45,36 @@ resourceTypes:
     repo: github.com/radius-project/resource-types-contrib
     # A branch or tag is also accepted by the fetch, but update-resource-types
     # always pins a full commit SHA.
-    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
+    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
     tag: ""
   - name: Radius.Data
     repo: github.com/radius-project/resource-types-contrib
-    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
+    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
     tag: ""
   - name: Radius.Security
     repo: github.com/radius-project/resource-types-contrib
-    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
+    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
     tag: ""
   - name: Radius.Messaging
     repo: github.com/radius-project/resource-types-contrib
-    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
+    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
     tag: ""
   - name: Radius.AI
     repo: github.com/radius-project/resource-types-contrib
-    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
+    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
     tag: ""
   - name: Radius.Storage
     repo: github.com/radius-project/resource-types-contrib
-    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
+    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
     tag: ""
 recipePacks:
   - name: azure
     repo: github.com/radius-project/resource-types-contrib
-    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
+    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
     tag: ""
   - name: kubernetes
     repo: github.com/radius-project/resource-types-contrib
-    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
+    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
     tag: ""
 defaultRegistration:
   - Radius.Compute/containers
