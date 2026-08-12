@@ -4,13 +4,13 @@
       "$ref": "types.json#/23"
     },
     "Radius.Compute/containers@2025-08-01-preview": {
-      "$ref": "types.json#/149"
+      "$ref": "types.json#/151"
     },
     "Radius.Compute/persistentVolumes@2025-08-01-preview": {
-      "$ref": "types.json#/168"
+      "$ref": "types.json#/170"
     },
     "Radius.Compute/routes@2025-08-01-preview": {
-      "$ref": "types.json#/225"
+      "$ref": "types.json#/227"
     }
   },
   "resourceFunctions": {},
