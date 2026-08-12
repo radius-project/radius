@@ -5,19 +5,36 @@
 
 ## Topic Summary
 
-`Radius.Core/bicepSettings` currently accepts three authentication methods in schema (`BasicAuth`, `AzureWI`, `AwsIrsa`), but only `BasicAuth` is wired through runtime execution. This document specifies the fast-follow work to complete end-to-end support for `AzureWI` and `AwsIrsa` during recipe execution while preserving backward compatibility for existing `BasicAuth` flows.
+`Radius.Core/bicepSettings` lets a platform engineer configure how Radius authenticates to private Bicep registries when pulling recipe templates. Authentication is keyed by registry hostname, and each entry declares an `authenticationMethod`: `BasicAuth` (username/password from a secret), `AzureWI` (Azure Workload Identity), or `AwsIrsa` (AWS IAM Roles for Service Accounts). The public schema and controller validation accept all three methods today, but only `BasicAuth` is actually honored when a recipe runs — `AzureWI` and `AwsIrsa` are accepted, persisted, and then silently ignored at execution time.
 
-This is intentionally scoped to runtime completion of the existing API contract. It does not introduce new REST resource types or a new auth model.
+This document specifies the fast-follow work to make `AzureWI` and `AwsIrsa` effective end-to-end during recipe execution, while keeping existing `BasicAuth` flows unchanged. It is intentionally scoped to completing the runtime behind the *existing* API contract. It does not introduce new REST resource types, new fields, or a new auth model.
 
 ## Context and Problem
 
-The checked-in architecture document ([docs/architecture/terraform-bicep-settings.md](../../../docs/architecture/terraform-bicep-settings.md), §What is excluded) already calls out this limitation as a follow-up. API validation accepts identity methods, but the environment-to-driver bridge currently only forwards entries containing `basicAuthSecretId`, which makes `AzureWI` and `AwsIrsa` no-ops at runtime.
+### How bicepSettings reaches recipe execution
 
-Current behavior creates a gap between accepted configuration and effective execution behavior:
+`Radius.Core/bicepSettings` is a standalone, resource-group–scoped resource that an environment references. It is not consumed directly by the recipe engine. Instead, its configuration is translated into the internal shape the recipe engine understands. That translation is the **Radius.Core environment bridge**, and it is the crux of this design:
 
-- Users can persist `AzureWI` and `AwsIrsa` configurations successfully.
-- Recipe execution silently ignores those entries because only `basicAuthSecretId` entries are bridged.
-- Functional correctness depends on `BasicAuth` even when a different method is configured.
+1. **Persisted resource (public API shape).** `bicepSettings.registryAuthentications` is a map of `host -> { authenticationMethod, basicAuthSecretId, azureWi*, awsIam* }`. This is what the user writes and what validation accepts.
+2. **Environment bridge (translation point).** When a recipe deploys, the environment config loader ([`pkg/recipes/configloader/environment.go`](../../../pkg/recipes/configloader/environment.go)) reads the referenced `bicepSettings` and maps its host-keyed entries into the internal, execution-time `recipes.Configuration` — specifically the legacy `RecipeConfig.Bicep.Authentication` map of `host -> RegistrySecretConfig{ Secret, AuthenticationMethod }`. This bridge exists because the persisted resource shape and the runtime configuration shape are deliberately decoupled; the loader is the single place they are reconciled.
+3. **Bicep driver (consumer).** The driver ([`pkg/recipes/driver/bicep/bicep.go`](../../../pkg/recipes/driver/bicep/bicep.go)) looks up the entry by the registry host parsed from the template path, then selects a registry auth client (`authclient.GetNewRegistryAuthClient`, via [`pkg/rp/util/registry.go`](../../../pkg/rp/util/registry.go)) using the bridged method and credential data.
+
+The checked-in architecture document ([docs/architecture/terraform-bicep-settings.md](../../../docs/architecture/terraform-bicep-settings.md), §What is excluded) already calls out this runtime gap as a follow-up.
+
+### The gap this fast-follow fills
+
+The bridge is where identity methods are lost, for two compounding reasons:
+
+- **The bridge drops non-secret entries.** The loader iterates `registryAuthentications` and skips any entry whose `basicAuthSecretId` is empty (`if auth.BasicAuthSecretId == "" { continue }`). `AzureWI` and `AwsIrsa` carry no secret ID — they authenticate with inline, non-secret identity metadata (`azureWiClientId`/`azureWiTenantId`, or `awsIamRoleArn`) — so those entries never survive the bridge and never reach the driver.
+- **The internal descriptor has nowhere to put identity data.** Even if forwarded, the runtime `RegistrySecretConfig` only carries `{ Secret, AuthenticationMethod }`. It has no fields for client/tenant IDs or a role ARN, so the identity inputs would be discarded even if the entry were not skipped.
+
+The result is a gap between accepted configuration and effective execution behavior:
+
+- Users can create and persist `AzureWI` and `AwsIrsa` configurations successfully (the API says yes).
+- Recipe execution silently ignores those entries, because the bridge only forwards `basicAuthSecretId` entries and the runtime type cannot represent identity inputs.
+- Correctness therefore depends on `BasicAuth` even when a different, valid method is configured — with no error to signal the mismatch.
+
+This fast-follow closes that gap by extending the internal runtime descriptor with identity fields, making the bridge forward every method (not just secret-backed ones), and making the driver materialize the correct auth client per method — so the configuration a user is already allowed to persist becomes the configuration that actually runs.
 
 ## Goals
 
