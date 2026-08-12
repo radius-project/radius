@@ -36,19 +36,11 @@ env:
   ENVIRONMENT: ${{ inputs.environment }}
   APP_FILE: '{{APP_FILE}}'
   APP_IMAGE: ${{ inputs.image || github.sha || 'latest' }}
-  # Azure recipe pack from resource-types-contrib. Provisions data / messaging /
-  # AI types with Azure Verified Modules (Bicep), builds the app image from repo
-  # source via the Kubernetes containerImages recipe, and keeps core types
-  # (containers, persistentVolumes, routes, secrets) on the shared Kubernetes
-  # recipes. Tracks main; RECIPE_PACK_REF can be pinned to a commit or to a
-  # recipe-pack/azure/vX.Y.Z release tag if needed.
-  RECIPE_PACK_REF: main
-  RECIPE_PACK_PATH: recipe-packs/azure/aks-recipepack.bicep
 
 jobs:
   deploy:
     name: Deploy with Radius
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: ${{ inputs.environment }}
     # OCI-backed Radius control-plane state, provisioned per-environment by the
     # deploy tooling (canvas extension) as environment variables. Set at job
@@ -105,6 +97,9 @@ jobs:
 
       - name: Set up control plane
         uses: radius-project/radius/.github/extension/actions/setup-control-plane@{{RADIUS_REF}}
+
+      - name: Load Radius contrib catalog
+        uses: radius-project/radius/.github/extension/actions/load-contrib-catalog@{{RADIUS_REF}}
 
       - name: Project cloud OIDC tokens into Radius pods
         run: |
@@ -206,6 +201,9 @@ jobs:
 
       - name: Create Radius environment and recipe pack
         run: |
+          # load-contrib-catalog exports the catalog and generic accessors from
+          # the same Radius ref as this generated workflow.
+          source "$RADIUS_CONTRIB_CATALOG_HELPER"
           NAMESPACE="${{ vars.KUBERNETES_NAMESPACE || 'default' }}"
 
           # Registry and credentials for the Radius.Compute/containerImages recipe.
@@ -222,11 +220,9 @@ jobs:
           BUILD_REGISTRY=$(echo "${{ vars.RADIUS_BUILD_REGISTRY || format('ghcr.io/{0}', github.repository) }}" | tr '[:upper:]' '[:lower:]')
           REGISTRY_SECRET_NAME="radius-ghcr-registry-creds"
 
-          # Download the default Azure recipe pack from resource-types-contrib,
-          # pinned to $RECIPE_PACK_REF. The recipe logic lives upstream; here we
-          # only supply parameters. The pack creates a Radius.Core/recipePacks
-          # resource and a Radius.Core/environments resource referencing it.
-          RECIPE_PACK_URL="https://raw.githubusercontent.com/radius-project/resource-types-contrib/${{ env.RECIPE_PACK_REF }}/${{ env.RECIPE_PACK_PATH }}"
+          # Resolve the recipe pack from deploy/manifest/defaults.yaml. The pack
+          # creates the Radius.Core/recipePacks and environment resources.
+          RECIPE_PACK_URL="$(radius_contrib_recipe_pack_url azure aks-recipepack.bicep)"
           echo "Downloading recipe pack from $RECIPE_PACK_URL"
           # Place the recipe pack next to the app file so `rad deploy` resolves the
           # repo's own bicepconfig.json (which declares the `radius` extension). bicep
@@ -241,6 +237,30 @@ jobs:
           # destination") even though the URL returns HTTP 200.
           mkdir -p "$APP_DIR"
           curl -fsSL "$RECIPE_PACK_URL" -o "$ENV_BICEP"
+
+          # The upstream pack currently uses the mutable `latest` aliases for
+          # Kubernetes recipes. Rewrite every one to the namespace commit that
+          # defaults.yaml validated, and fail if the pack shape changes rather
+          # than silently deploying mutable recipe content.
+          pin_kube_recipe() {
+            local resource_type="$1" recipe="$2" pinned_source mutable_source
+            pinned_source="$(radius_contrib_kube_recipe_source "$resource_type" "$recipe")"
+            mutable_source="${pinned_source%:*}:latest"
+            sed -i "s|${mutable_source}|${pinned_source}|g" "$ENV_BICEP"
+            if ! grep -Fq "source: '${pinned_source}'" "$ENV_BICEP"; then
+              echo "ERROR: expected ${recipe} source was not pinned in the Azure recipe pack." >&2
+              exit 1
+            fi
+          }
+          pin_kube_recipe Radius.Compute/containers containers
+          pin_kube_recipe Radius.Compute/containerImages containerimages
+          pin_kube_recipe Radius.Compute/persistentVolumes persistentvolumes
+          pin_kube_recipe Radius.Compute/routes routes
+          pin_kube_recipe Radius.Security/secrets secrets
+          if grep -Eq 'ghcr\.io/radius-project/kube-recipes/[^'"'"']+:latest' "$ENV_BICEP"; then
+            echo "ERROR: the Azure recipe pack still contains a mutable kube recipe tag." >&2
+            exit 1
+          fi
 
           # routesGatewayName is a required pack parameter, but it only matters when
           # a Radius.Compute/routes resource is actually deployed. Default to empty

@@ -22,7 +22,7 @@ name: Update Resource Types
 # from radius-project/resource-types-contrib's notify-radius.yaml. A single event
 # type carries both channels in its client_payload:
 #   - channel "edge":    a push to contrib `main`; contrib_ref is the pushed
-#                        commit SHA.
+#                        commit SHA, used only for units with no stable release.
 #   - channel "release": a published contrib release; contrib_ref is the release
 #                        tag (a scope-prefixed tag affects one namespace or one
 #                        recipe pack, a plain vX.Y.Z affects all namespaces).
@@ -33,12 +33,14 @@ name: Update Resource Types
 # `recipe-pack/<pack>/vX.Y.Z` release series; at least one of the two arrays
 # must be non-empty.
 #
-# This job opens (or refreshes) a PR that runs `make update-resource-types` (and
-# `make update-recipe-packs` when recipe packs are affected) with those pins,
-# which resolves each ref to an immutable commit SHA, records it in
+# This job opens (or refreshes) a PR that runs the atomic
+# `make update-resource-types-and-recipe-packs` target with those pins. It
+# selects a stable unit release when one exists, otherwise resolves the edge
+# candidate to an immutable commit SHA, records it in
 # deploy/manifest/defaults.yaml (`resourceTypes[]` / `recipePacks[]`), and
-# re-copies the manifests under deploy/manifest/built-in-providers/ - advancing
-# only what the event changed (entries Radius does not register are skipped).
+# re-copies the manifests under deploy/manifest/built-in-providers/. The event's
+# units advance, as do any consumed edge units whose first stable release is now
+# available; entries Radius does not register are skipped.
 #
 # The bot branch is rebuilt from the current main on every dispatch. Pins that
 # are still pending on its open PR are replayed as extra input to make, so
@@ -60,9 +62,11 @@ on:
 permissions: {}
 
 concurrency:
-  # Only one in-flight refresh PR at a time.
+  # Serialize every dispatch. The default single pending slot evicts an older
+  # queued event when a newer one arrives, which can strand an affected unit on
+  # an old pin when separate namespaces release close together.
   group: update-resource-types
-  cancel-in-progress: false
+  queue: max
 
 env:
   PR_BRANCH: bot/update-resource-types
@@ -202,8 +206,8 @@ jobs:
           git config user.email "radiuscoreteam@service.microsoft.com"
 
       - name: Install yq
-        # Required by make update-resource-types / sync-resource-types to parse
-        # deploy/manifest/defaults.yaml, and by the branch preparation below.
+        # Required by the resource type sync targets to parse defaults.yaml, and
+        # by the branch preparation below.
         # install-yq appends its install dir to GITHUB_PATH, so yq is only on
         # PATH from the next step onwards.
         run: make install-yq
@@ -239,9 +243,14 @@ jobs:
           pr_query="${pr_query}&head=${GITHUB_REPOSITORY%%/*}:${PR_BRANCH}"
 
           pending='{}'
-          if [ -n "${head_sha}" ] && [ -n "$(
-            gh api "${pr_query}" --jq '.[].number'
-          )" ]; then
+          open_prs=''
+          if [ -n "${head_sha}" ]; then
+            if ! open_prs="$(gh api "${pr_query}" --jq '.[].number')"; then
+              echo "ERROR: failed to query the pending ${PR_BRANCH} pull request." >&2
+              exit 1
+            fi
+          fi
+          if [ -n "${head_sha}" ] && [ -n "${open_prs}" ]; then
             git fetch origin "${PR_BRANCH}"
             if git cat-file -e "FETCH_HEAD:${defaults}" 2> /dev/null; then
               pending="$(
@@ -313,29 +322,16 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
           echo "Carried forward: [${carried_names}]"
 
-      - name: Run make update-resource-types
-        # Advances the affected namespaces: pins each to its immutable commit SHA
-        # in deploy/manifest/defaults.yaml (resourceTypes[].ref, plus .tag on the
-        # release channel) and copies the manifest files into
-        # deploy/manifest/built-in-providers/{dev,self-hosted}/.
-        # RESOURCE_TYPES_PINS is the contrib namespaces[] payload plus any pins
-        # carried forward from the still-open PR.
-        if: steps.branch.outputs.pins != '[]'
+      - name: Update resource types and recipe packs
+        # Applies both payload sections before validating either one. This is
+        # required for repository-wide releases, whose stable tag advances
+        # namespaces and recipe packs together.
         env:
           RESOURCE_TYPES_PINS: ${{ steps.branch.outputs.pins }}
-        run: |
-          set -euo pipefail
-          make update-resource-types
-
-      - name: Run make update-recipe-packs
-        # Recipe packs are pinned but never vendored into this repo, so this
-        # only rewrites recipePacks[].ref / .tag in defaults.yaml.
-        if: steps.branch.outputs.pack_pins != '[]'
-        env:
           RECIPE_PACKS_PINS: ${{ steps.branch.outputs.pack_pins }}
         run: |
           set -euo pipefail
-          make update-recipe-packs
+          make update-resource-types-and-recipe-packs
 
       - name: Detect changes
         # Uses git status --porcelain (not git diff --quiet) because
