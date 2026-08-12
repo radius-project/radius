@@ -33,24 +33,27 @@
 #                  prefix stripped) into every destination directory, and prunes
 #                  stale managed files.
 #   recipePacks    per-pack pins for the recipe packs published upstream. Recipe
-#                  packs are not vendored here, so they are only pinned.
+#                  packs are not vendored here. Extension workflows resolve
+#                  their immutable sources directly from this catalog.
 #
 # At startup UCP's RegisterDirectory loads the committed files unchanged;
 # manifests without a "location" field are routed via DefaultDownstreamEndpoint
 # (dynamic-rp).
 #
 # Targets:
-#   update-resource-types  - Resolve each resourceTypes entry's ref
-#                            (RESOURCE_TYPES_REF, default "main";
-#                            RESOURCE_TYPES_NAMESPACE limits to a single
-#                            namespace) to an immutable commit SHA, pin it in
-#                            defaults.yaml, and copy the manifest files.
-#   update-recipe-packs    - Same resolution for each recipePacks entry
-#                            (RECIPE_PACKS_REF / RECIPE_PACKS_NAME). Nothing is
-#                            copied; only the pins are rewritten.
+#   update-resource-types-and-recipe-packs
+#                          - Atomically apply stable-first selection to both pin
+#                            sections, then copy the resource type manifests.
+#   update-resource-types  - Select a stable release for each resourceTypes
+#                            entry, falling back to its requested edge ref only
+#                            when no stable release exists, then pin the commit
+#                            SHA and copy the manifest files.
+#   update-recipe-packs    - Apply the same stable-first selection to each
+#                            recipePacks entry. Nothing is copied; only the pins
+#                            are rewritten.
 #   sync-resource-types    - Copy manifest files from the refs already pinned in
 #                            defaults.yaml (no ref bump). Used by CI to verify
-#                            that committed copies match the pinned refs.
+#                            manifest and pin drift.
 
 # Path to the file listing default resource types and the upstream pins.
 DEFAULTS_YAML := deploy/manifest/defaults.yaml
@@ -68,13 +71,14 @@ MANIFEST_DEST_DIRS := deploy/manifest/built-in-providers/dev deploy/manifest/bui
 # sourced from resource-types-contrib.
 MANUAL_CORE_MANIFESTS := applications_core.yaml applications_dapr.yaml applications_datastores.yaml applications_messaging.yaml microsoft_resources.yaml radius_core.yaml
 
-# Ref (branch, tag, or commit SHA) that update-resource-types resolves to an
-# immutable commit SHA before pinning it in defaults.yaml. Defaults to "main"
-# (the moving latest/edge channel). RESOURCE_TYPES_NAMESPACE optionally limits
-# the update to a single namespace (e.g. Radius.Compute); empty updates every
-# namespace. RESOURCE_TYPES_PINS (a JSON array of {name, ref}) takes
-# precedence and pins several namespaces at once - it is how the
-# resource-types-contrib dispatch payload advances only the affected namespaces.
+# Candidate ref that update-resource-types uses only when a namespace has no
+# stable release. It must be "main" (the moving edge channel) or a full commit
+# SHA and defaults to "main". A stable Radius.<Namespace>/vX.Y.Z tag always wins;
+# prereleases are ignored. RESOURCE_TYPES_NAMESPACE optionally limits the
+# requested update to one namespace; empty requests every namespace.
+# RESOURCE_TYPES_PINS takes precedence and carries dispatch candidates for the
+# affected namespaces. Existing edge pins are promoted whenever stable tags
+# become available.
 # Examples:
 #   make update-resource-types
 #   make update-resource-types RESOURCE_TYPES_REF=Radius.Compute/v0.2.0 RESOURCE_TYPES_NAMESPACE=Radius.Compute
@@ -83,10 +87,9 @@ RESOURCE_TYPES_NAMESPACE ?=
 RESOURCE_TYPES_PINS ?=
 export RESOURCE_TYPES_REF RESOURCE_TYPES_NAMESPACE RESOURCE_TYPES_PINS
 
-# Same contract as the RESOURCE_TYPES_* variables above, for the recipePacks
-# section. Recipe packs are released upstream on their own
-# recipe-pack/<pack>/vX.Y.Z tag series, so their pins can advance independently
-# of the namespace pins.
+# Same stable-first contract as the RESOURCE_TYPES_* variables above, for the
+# recipePacks section. Recipe packs are released upstream on their own
+# recipe-pack/<pack>/vX.Y.Z tag series, so their pins advance independently.
 # Examples:
 #   make update-recipe-packs
 #   make update-recipe-packs RECIPE_PACKS_REF=recipe-pack/azure/v0.2.0 RECIPE_PACKS_NAME=azure
@@ -105,14 +108,26 @@ SYNC_RESOURCE_TYPES_ENV := \
 
 ##@ Resource Types
 
+.PHONY: update-resource-types-and-recipe-packs
+update-resource-types-and-recipe-packs: ## Atomically pin stable resource types and recipe packs, then sync manifests
+	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh --update-all
+
 .PHONY: update-resource-types
-update-resource-types: ## Resolve each resourceTypes ref (RESOURCE_TYPES_REF, default main) to a commit SHA, pin it in defaults.yaml, and sync
+update-resource-types: ## Pin stable resource type releases (edge only when unreleased) and sync manifests
 	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh --update
 
 .PHONY: update-recipe-packs
-update-recipe-packs: ## Resolve each recipePacks ref (RECIPE_PACKS_REF, default main) to a commit SHA and pin it in defaults.yaml
+update-recipe-packs: ## Pin stable recipe pack releases (edge only when unreleased)
 	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh --update-recipe-packs
 
 .PHONY: sync-resource-types
 sync-resource-types: ## Copy manifest files from the per-namespace refs pinned in defaults.yaml
 	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh
+
+.PHONY: test-sync-resource-types
+test-sync-resource-types: ## Test stable-first resource type and recipe pack pin selection
+	@bash ./build/scripts/test-sync-resource-types.sh
+
+.PHONY: verify-contrib-consumers
+verify-contrib-consumers: ## Verify workflow Recipe sources resolved from defaults.yaml exist upstream
+	@bash ./build/scripts/verify-contrib-consumers.sh

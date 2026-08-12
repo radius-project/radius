@@ -18,9 +18,9 @@
 # deploy/manifest/built-in-providers/ match the per-namespace upstream
 # revisions pinned in deploy/manifest/defaults.yaml (resourceTypes[].ref).
 #
-# It runs "make sync-resource-types", which re-fetches each pinned ref from
-# resource-types-contrib and re-copies the manifest files, and then checks for
-# any diff.
+# It runs "make sync-resource-types", which first verifies every resource type
+# and recipe pack uses a stable release when one exists, then re-fetches each
+# pinned resource type ref, re-copies the manifest files, and checks for drift.
 #
 # - If there is no diff, the committed copies are in sync and the check passes.
 # - If there is a diff, the committed copies have drifted from the pinned
@@ -28,12 +28,14 @@
 #   "make sync-resource-types" locally and commit the updated files.
 #
 # This catches:
+#   - An edge pin for a namespace or recipe pack that has a stable release
+#   - A prerelease or mismatched release tag
 #   - A resourceTypes[].ref bump in defaults.yaml without re-running "make sync-resource-types"
 #   - Manual edits to copied manifest files that drift from upstream
 #   - New entries in defaults.yaml without re-syncing
 #
-# recipePacks[] pins are intentionally not covered: recipe packs are not
-# vendored into this repo, so there are no copies that can drift.
+# recipePacks[] have no vendored copies to compare, but their stable-first pin
+# policy, tag-to-SHA consistency, and runtime catalog consumers are tested.
 #
 # Similar in spirit to the "go mod tidy" check, ensuring generated/copied
 # artifacts are consistent with their source.
@@ -54,6 +56,9 @@ on:
       - "Makefile"
       - "build/resource-types.mk"
       - "build/scripts/sync-resource-types.sh"
+      - "build/scripts/test-sync-resource-types.sh"
+      - "build/scripts/verify-contrib-consumers.sh"
+      - ".github/extension/**"
   # The merge_group event does not support path filters. This check is cheap
   # (sync + git diff), so it simply runs on every queued group rather than
   # adding change-detection. Scoped to main only so the release branch flow is
@@ -83,6 +88,12 @@ jobs:
       - name: Install yq
         run: make install-yq
 
+      - name: Test stable-first pin selection
+        run: make test-sync-resource-types
+
+      - name: Verify contrib workflow consumers
+        run: make verify-contrib-consumers
+
       # Re-run the copy step (without bumping the ref) to regenerate the
       # manifest files from the ref pinned in deploy/manifest/defaults.yaml.
       - name: Sync resource types from pinned ref
@@ -92,7 +103,8 @@ jobs:
       # git status is required here because git diff ignores untracked files.
       - name: Check for drift
         run: |
-          changes="$(git status --porcelain --untracked-files=all -- deploy/manifest/built-in-providers/)"
+          changes="$(git status --porcelain --untracked-files=all -- \
+            deploy/manifest/built-in-providers/)"
           if [ -n "${changes}" ]; then
             echo ""
             echo "ERROR: Resource type manifest copies are out of sync with the pinned"

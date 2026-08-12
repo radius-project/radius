@@ -29,7 +29,7 @@ jobs:
   # decision has to happen in a regular job first.
   detect:
     name: Detect provider
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: ${{ inputs.environment || '{{ENV}}' }}
     outputs:
       provider: ${{ steps.detect.outputs.provider }}
