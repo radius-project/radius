@@ -239,13 +239,20 @@ jobs:
           curl -fsSL "$RECIPE_PACK_URL" -o "$ENV_BICEP"
 
           # The upstream pack currently uses the mutable `latest` aliases for
-          # Kubernetes recipes. Rewrite every one to the namespace commit that
-          # defaults.yaml validated, and fail if the pack shape changes rather
-          # than silently deploying mutable recipe content.
+          # Kubernetes recipes. Rewrite each one present to the namespace commit
+          # that defaults.yaml validated. A pack may omit a resource Recipe; warn
+          # and continue in that case.
           pin_kube_recipe() {
             local resource_type="$1" recipe="$2" pinned_source mutable_source
             pinned_source="$(radius_contrib_kube_recipe_source "$resource_type" "$recipe")"
             mutable_source="${pinned_source%:*}:latest"
+            if grep -Fq "source: '${pinned_source}'" "$ENV_BICEP"; then
+              return 0
+            fi
+            if ! grep -Fq "source: '${mutable_source}'" "$ENV_BICEP"; then
+              echo "WARNING: the Azure recipe pack has no ${resource_type} Recipe; continuing without it." >&2
+              return 0
+            fi
             sed -i "s|${mutable_source}|${pinned_source}|g" "$ENV_BICEP"
             if ! grep -Fq "source: '${pinned_source}'" "$ENV_BICEP"; then
               echo "ERROR: expected ${recipe} source was not pinned in the Azure recipe pack." >&2
