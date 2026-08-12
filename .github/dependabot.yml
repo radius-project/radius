@@ -13,6 +13,8 @@ updates:
     directories:
       - "/"
       - "/.github/actions/*"
+      - "/.github/extension/*"
+      - "/.github/extension/actions/*"
     schedule:
       interval: weekly
     cooldown:
