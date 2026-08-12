@@ -20,6 +20,55 @@ assert_equal() {
     fi
 }
 
+test_azure_recipe_pack_pinning() {
+    local workflow run_block function_definition fixture function_file warning
+    local sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    workflow="${REPO_ROOT}/.github/extension/run-rad-commands-azure.yml"
+    run_block="$(
+        yq -r '
+            .jobs.deploy.steps[] |
+            select(.name == "Create Radius environment and recipe pack") |
+            .run
+        ' "${workflow}"
+    )"
+    function_definition="$(
+        printf '%s\n' "${run_block}" |
+            sed -n '/^pin_kube_recipe() {$/,/^}$/p'
+    )"
+    [[ -n "${function_definition}" ]] ||
+        fail "pin_kube_recipe function not found in ${workflow}."
+
+    fixture="$(mktemp -d)"
+    function_file="${fixture}/pin-kube-recipe.sh"
+    printf '%s\n' "${function_definition}" >"${function_file}"
+    (
+        # shellcheck disable=SC2329 # Invoked by the sourced workflow function.
+        radius_contrib_kube_recipe_source() {
+            printf 'ghcr.io/radius-project/kube-recipes/%s:%s' "$2" "${sha}"
+        }
+        ENV_BICEP="${fixture}/recipe-pack.bicep"
+        : >"${ENV_BICEP}"
+        # shellcheck disable=SC1090 # Generated from the workflow under test.
+        source "${function_file}"
+
+        warning="$(pin_kube_recipe Radius.Compute/containers containers 2>&1)"
+        grep -Fq \
+            "WARNING: the Azure recipe pack has no Radius.Compute/containers Recipe" \
+            <<<"${warning}" || fail "missing Recipe did not produce a warning."
+
+        printf "source: 'ghcr.io/radius-project/kube-recipes/containers:latest'\n" \
+            >"${ENV_BICEP}"
+        pin_kube_recipe Radius.Compute/containers containers
+        grep -Fq \
+            "source: 'ghcr.io/radius-project/kube-recipes/containers:${sha}'" \
+            "${ENV_BICEP}" || fail "mutable Recipe source was not pinned."
+
+        warning="$(pin_kube_recipe Radius.Compute/containers containers 2>&1)"
+        [[ -z "${warning}" ]] || fail "already-pinned Recipe produced a warning."
+    )
+    rm -rf "${fixture}"
+}
+
 # Stub the one git operation exercised by the selection helpers. The fixtures
 # deliberately include a newer prerelease and numerically ambiguous versions.
 git() {
@@ -219,6 +268,8 @@ main() {
         grep -Fq 'source "$RADIUS_CONTRIB_CATALOG_HELPER"' "${workflow}" ||
             fail "workflow does not consume the shared defaults catalog: ${workflow}"
     done
+
+    test_azure_recipe_pack_pinning
 
     invariant_fixture="$(mktemp -d)"
     cat >"${invariant_fixture}/bad.yml" <<'EOF'
