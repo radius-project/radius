@@ -322,14 +322,14 @@ func (r *Runner) resolveRecipePacks(ctx context.Context) ([]*string, error) {
 
 	recipePackIDs := make([]*string, 0, len(r.recipePacks))
 	for _, recipePack := range r.recipePacks {
-		recipePackID, err := resolveRecipePackID(recipePack, r.Workspace.Scope)
+		recipePackID, isFullID, err := recipepack.ResolveID(recipePack, r.Workspace.Scope)
 		if err != nil {
 			return nil, err
 		}
 
 		_, err = recipePackClient.Get(ctx, recipePackID.RootScope(), recipePackID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
 		if clients.Is404Error(err) {
-			return nil, clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to set on the environment.", recipePack)
+			return nil, recipepack.NotFoundError(recipePack, recipePackID, isFullID)
 		} else if err != nil {
 			return nil, err
 		}
@@ -395,25 +395,6 @@ func (r *Runner) addEnvironmentReferences(ctx context.Context, recipePackIDs []*
 	}
 
 	return nil
-}
-
-// resolveRecipePackID resolves a recipe pack reference to a full resource ID.
-// The reference may be a full resource ID or a bare name, in which case it is
-// scoped to the environment's resource group.
-func resolveRecipePackID(recipePack string, workspaceScope string) (resources.ID, error) {
-	if recipePackID, err := resources.Parse(recipePack); err == nil {
-		return recipePackID, nil
-	}
-
-	scopeID, err := resources.ParseScope(workspaceScope)
-	if err != nil {
-		return resources.ID{}, err
-	}
-
-	return scopeID.Append(resources.TypeSegment{
-		Type: "Radius.Core/recipePacks",
-		Name: recipePack,
-	}), nil
 }
 
 // addEnvReferenceToRecipePack adds the environment ID to a recipe pack's
