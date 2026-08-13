@@ -179,8 +179,9 @@ jobs:
 
       - name: Generate App Token
         # Uses a GitHub App token instead of the default GITHUB_TOKEN so that
-        # the bot can push the PR branch and the resulting PR triggers CI checks.
-        # The default GITHUB_TOKEN cannot trigger workflows on pushes it creates.
+        # radius-resource-types can manage the PR branch and pull request, and
+        # the resulting update triggers CI checks. The default GITHUB_TOKEN
+        # cannot trigger workflows on pushes it creates.
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
@@ -192,6 +193,12 @@ jobs:
           permission-metadata: read
           permission-contents: write
           permission-pull-requests: write
+
+      - name: Get bot details
+        id: bot-details
+        uses: raven-actions/bot-details@ee8966a9ff6e7e42cbfc4a56b4ddb60a9d1b40a6 # v1.2.0
+        with:
+          bot-slug-name: ${{ steps.app-token.outputs.app-slug }}
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -215,8 +222,11 @@ jobs:
       - name: Set up Git identity
         # Configure git author for the automated commit on the PR branch.
         run: |
-          git config user.name "Radius CI Bot"
-          git config user.email "radiuscoreteam@service.microsoft.com"
+          git config user.name "${GIT_USER_NAME}"
+          git config user.email "${GIT_USER_EMAIL}"
+        env:
+          GIT_USER_NAME: ${{ steps.bot-details.outputs.name }}
+          GIT_USER_EMAIL: ${{ steps.bot-details.outputs.email }}
 
       - name: Install yq
         # Required by the resource type sync targets to parse defaults.yaml, and
@@ -364,11 +374,6 @@ jobs:
           fi
 
       - name: Create or update PR branch
-        # The branch was rebuilt from main, so the push always rewrites history.
-        # Lease against the head read in "Prepare cumulative update branch" (an
-        # empty value means the branch must not already exist) - a bare
-        # --force-with-lease would lease against a remote-tracking ref this job
-        # never creates, and would reject every push after the first.
         if: steps.changes.outputs.changed == 'true'
         env:
           CHANNEL: ${{ steps.contrib.outputs.channel }}
@@ -383,7 +388,7 @@ jobs:
           if [ -n "${CARRIED}" ]; then
             message+=$'\n\n'"Carried forward: ${CARRIED}"
           fi
-          git commit -m "${message}"
+          git commit -s -m "${message}"
           git push --force-with-lease="refs/heads/${PR_BRANCH}:${HEAD_SHA}" \
             origin "HEAD:${PR_BRANCH}"
 
