@@ -38,9 +38,10 @@ name: Update Resource Types
 # selects a stable unit release when one exists, otherwise resolves the edge
 # candidate to an immutable commit SHA, records it in
 # deploy/manifest/defaults.yaml (`resourceTypes[]` / `recipePacks[]`), and
-# re-copies the manifests under deploy/manifest/built-in-providers/. The event's
-# units advance, as do any consumed edge units whose first stable release is now
-# available; entries Radius does not register are skipped.
+# re-copies the manifests under deploy/manifest/built-in-providers/. It then
+# runs `make generate` and commits all resulting generated artifacts. The
+# event's units advance, as do any consumed edge units whose first stable
+# release is now available; entries Radius does not register are skipped.
 #
 # The bot branch is rebuilt from the current main on every dispatch. Pins that
 # are still pending on its open PR are replayed as extra input to make, so
@@ -77,7 +78,7 @@ jobs:
     name: Open update-resource-types PR
     if: github.repository == 'radius-project/radius'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: read # actions/checkout
     steps:
@@ -198,6 +199,18 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
           persist-credentials: true
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
 
       - name: Set up Git identity
         # Configure git author for the automated commit on the PR branch.
@@ -333,17 +346,19 @@ jobs:
           set -euo pipefail
           make update-resource-types-and-recipe-packs
 
+      - name: Generate derived artifacts
+        run: make generate
+
       - name: Detect changes
         # Uses git status --porcelain (not git diff --quiet) because
-        # make update-resource-types may create new untracked files when new
-        # resource types are added to defaults.yaml. git diff only detects
-        # modifications to already-tracked files.
+        # the update and generation targets may create new untracked files.
+        # git diff only detects modifications to already-tracked files.
         id: changes
         run: |
           set -euo pipefail
           if [ -z "$(git status --porcelain)" ]; then
             echo "changed=false" >> "${GITHUB_OUTPUT}"
-            echo "No changes from 'make update-resource-types'; nothing to do."
+            echo "No resource type or generated changes; nothing to do."
           else
             echo "changed=true" >> "${GITHUB_OUTPUT}"
           fi
@@ -363,7 +378,7 @@ jobs:
         run: |
           set -euo pipefail
           git add -A
-          message="chore: refresh resource type manifests from ${CONTRIB_REPO}"
+          message="chore(resource-types): update from ${CONTRIB_REPO}"
           message+=" (${CHANNEL}: ${AFFECTED:-all})"
           if [ -n "${CARRIED}" ]; then
             message+=$'\n\n'"Carried forward: ${CARRIED}"
