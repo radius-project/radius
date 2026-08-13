@@ -72,6 +72,10 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 The deploy command compiles a Bicep or ARM template and deploys it to your default environment (unless otherwise specified).
 
+The template can be a local file path or an http(s) URL. Remote templates are downloaded before
+being compiled and deployed, similar to how tools such as kubectl accept remote URLs. Remote
+templates must be self-contained; relative imports and other local file dependencies are not supported.
+
 You can combine Radius types as as well as other types that are available in Bicep such as Azure resources. See
 the Radius documentation for information about describing your application and resources with Bicep.
 
@@ -94,6 +98,9 @@ rad deploy myapp.bicep
 
 # deploy an ARM template (json)
 rad deploy myapp.json
+
+# deploy a Bicep template from a remote URL
+rad deploy https://example.com/myapp.bicep
 
 # deploy to a specific workspace
 rad deploy myapp.bicep --workspace production
