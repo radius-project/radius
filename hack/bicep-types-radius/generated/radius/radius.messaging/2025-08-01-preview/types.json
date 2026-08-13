@@ -346,7 +346,7 @@
           "$ref": "#/26"
         }
       },
-      "passwordSecret": {
+      "password": {
         "description": "(Required) The resource ID of the `Radius.Security/secrets` resource that holds the broker password under the data key `password`. Set to `\u003csecretResource\u003e.id`. The Kubernetes Recipe references the materialized Kubernetes Secret by name and mounts the password into the broker via `secretKeyRef`, so the plaintext password is never written into the pod spec or onto this resource.",
         "flags": 1,
         "type": {
@@ -460,7 +460,7 @@
           "$ref": "#/32"
         }
       },
-      "passwordSecret": {
+      "password": {
         "description": "(Required) The resource ID of the `Radius.Security/secrets` resource that holds the broker password under the data key `password`. Set to `\u003csecretResource\u003e.id`. The Kubernetes Recipe references the materialized Kubernetes Secret by name and mounts the password into the broker via `secretKeyRef`, so the plaintext password is never written into the pod spec or onto this resource.",
         "flags": 2,
         "type": {

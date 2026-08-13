@@ -60,7 +60,7 @@ resourceTypes:
     tag: ""
   - name: Radius.Messaging
     repo: github.com/radius-project/resource-types-contrib
-    ref: ef7aba5edb501b5367dccc708ab4ed1084939e9f
+    ref: 566a6def8cf7d2084ab238d122086aa64e83f888
     tag: ""
   - name: Radius.AI
     repo: github.com/radius-project/resource-types-contrib
