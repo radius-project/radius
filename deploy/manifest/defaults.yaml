@@ -48,37 +48,37 @@ resourceTypes:
     repo: github.com/radius-project/resource-types-contrib
     # The sync fetch accepts git refs, but update-resource-types always records
     # a full commit SHA under ref and the stable release tag under tag.
-    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
-    tag: ""
+    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
+    tag: "Radius.Compute/v0.1.0"
   - name: Radius.Data
     repo: github.com/radius-project/resource-types-contrib
-    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
-    tag: ""
+    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
+    tag: "Radius.Data/v0.1.0"
   - name: Radius.Security
     repo: github.com/radius-project/resource-types-contrib
-    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
-    tag: ""
+    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
+    tag: "Radius.Security/v0.1.0"
   - name: Radius.Messaging
     repo: github.com/radius-project/resource-types-contrib
-    ref: 566a6def8cf7d2084ab238d122086aa64e83f888
-    tag: ""
+    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
+    tag: "Radius.Messaging/v0.1.0"
   - name: Radius.AI
     repo: github.com/radius-project/resource-types-contrib
-    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
-    tag: ""
+    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
+    tag: "Radius.AI/v0.1.0"
   - name: Radius.Storage
     repo: github.com/radius-project/resource-types-contrib
-    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
-    tag: ""
+    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
+    tag: "Radius.Storage/v0.1.0"
 recipePacks:
   - name: azure
     repo: github.com/radius-project/resource-types-contrib
-    ref: ef7aba5edb501b5367dccc708ab4ed1084939e9f
-    tag: ""
+    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
+    tag: "recipe-pack/azure/v0.1.0"
   - name: kubernetes
     repo: github.com/radius-project/resource-types-contrib
-    ref: ef7aba5edb501b5367dccc708ab4ed1084939e9f
-    tag: ""
+    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
+    tag: "recipe-pack/kubernetes/v0.1.0"
 defaultRegistration:
   - Radius.Compute/containers
   - Radius.Compute/containerImages
