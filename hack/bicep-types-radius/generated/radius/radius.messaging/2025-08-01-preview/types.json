@@ -299,30 +299,13 @@
     "$type": "StringType"
   },
   {
-    "$type": "StringType"
+    "$type": "IntegerType"
   },
   {
     "$type": "StringType"
   },
   {
-    "$type": "ObjectType",
-    "name": "secrets",
-    "properties": {
-      "connectionString": {
-        "description": "The primary connection string used to connect to the queue. Mapped from the recipe module's output; delivered via the managed secret.",
-        "flags": 2,
-        "type": {
-          "$ref": "#/28"
-        }
-      },
-      "name": {
-        "description": "(Reserved) Name of the managed Radius.Security/secrets resource. Use as `secretName` in a container `secretKeyRef`.",
-        "flags": 2,
-        "type": {
-          "$ref": "#/29"
-        }
-      }
-    }
+    "$type": "StringType"
   },
   {
     "$type": "ObjectType",
@@ -357,21 +340,35 @@
         }
       },
       "host": {
-        "description": "The host or namespace name used to connect to the queue. Mapped from the recipe module's output.",
+        "description": "(Read Only) The host name used to connect to the broker. Mapped from the recipe's Service DNS name.",
         "flags": 2,
         "type": {
           "$ref": "#/26"
         }
       },
-      "queue": {
-        "description": "(Optional) The queue name to create. Defaults to `jobs` if not provided.",
-        "flags": 0,
+      "passwordSecret": {
+        "description": "(Required) The resource ID of the `Radius.Security/secrets` resource that holds the broker password under the data key `password`. Set to `\u003csecretResource\u003e.id`. The Kubernetes Recipe references the materialized Kubernetes Secret by name and mounts the password into the broker via `secretKeyRef`, so the plaintext password is never written into the pod spec or onto this resource.",
+        "flags": 1,
         "type": {
           "$ref": "#/27"
         }
       },
-      "secrets": {
-        "description": "(Read-only) Recipe secrets. The reserved `name` sub-property references the managed Radius.Security/secrets resource Radius materializes from the recipe's `outputs.secrets`; the other sub-properties declare secret keys whose values are written only into that managed secret (never onto this resource). Consumers bind a key into a container env var via `secretKeyRef`, using `\u003cresource\u003e.properties.secrets.name` as `secretName`.",
+      "port": {
+        "description": "(Read Only) The port used to connect to the broker over AMQP 0-9-1 (5672). Mapped from the recipe's output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/28"
+        }
+      },
+      "queue": {
+        "description": "(Optional) The name of the queue to pre-provision on the broker. The Recipe creates this durable queue on the default virtual host when the broker starts, so it exists before your workload connects. Defaults to `jobs` if not provided.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/29"
+        }
+      },
+      "username": {
+        "description": "(Optional) The username the broker is provisioned with and that clients authenticate as. Defaults to `radius` if not provided. Avoid `guest`, which RabbitMQ restricts to loopback connections. The username is not sensitive and is exposed as a read-only connection value.",
         "flags": 0,
         "type": {
           "$ref": "#/30"
@@ -436,7 +433,7 @@
         }
       },
       "host": {
-        "description": "The host or namespace name used to connect to the queue. Mapped from the recipe module's output.",
+        "description": "(Read Only) The host name used to connect to the broker. Mapped from the recipe's Service DNS name.",
         "flags": 2,
         "type": {
           "$ref": "#/26"
@@ -463,6 +460,20 @@
           "$ref": "#/32"
         }
       },
+      "passwordSecret": {
+        "description": "(Required) The resource ID of the `Radius.Security/secrets` resource that holds the broker password under the data key `password`. Set to `\u003csecretResource\u003e.id`. The Kubernetes Recipe references the materialized Kubernetes Secret by name and mounts the password into the broker via `secretKeyRef`, so the plaintext password is never written into the pod spec or onto this resource.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/27"
+        }
+      },
+      "port": {
+        "description": "(Read Only) The port used to connect to the broker over AMQP 0-9-1 (5672). Mapped from the recipe's output.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/28"
+        }
+      },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
@@ -471,17 +482,10 @@
         }
       },
       "queue": {
-        "description": "(Optional) The queue name to create. Defaults to `jobs` if not provided.",
+        "description": "(Optional) The name of the queue to pre-provision on the broker. The Recipe creates this durable queue on the default virtual host when the broker starts, so it exists before your workload connects. Defaults to `jobs` if not provided.",
         "flags": 2,
         "type": {
-          "$ref": "#/27"
-        }
-      },
-      "secrets": {
-        "description": "(Read-only) Recipe secrets. The reserved `name` sub-property references the managed Radius.Security/secrets resource Radius materializes from the recipe's `outputs.secrets`; the other sub-properties declare secret keys whose values are written only into that managed secret (never onto this resource). Consumers bind a key into a container env var via `secretKeyRef`, using `\u003cresource\u003e.properties.secrets.name` as `secretName`.",
-        "flags": 2,
-        "type": {
-          "$ref": "#/30"
+          "$ref": "#/29"
         }
       },
       "type": {
@@ -489,6 +493,13 @@
         "flags": 10,
         "type": {
           "$ref": "#/35"
+        }
+      },
+      "username": {
+        "description": "(Optional) The username the broker is provisioned with and that clients authenticate as. Defaults to `radius` if not provided. Avoid `guest`, which RabbitMQ restricts to loopback connections. The username is not sensitive and is exposed as a read-only connection value.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/30"
         }
       }
     }

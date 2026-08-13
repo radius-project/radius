@@ -52,32 +52,32 @@ resourceTypes:
     tag: ""
   - name: Radius.Data
     repo: github.com/radius-project/resource-types-contrib
-    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
+    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
     tag: ""
   - name: Radius.Security
     repo: github.com/radius-project/resource-types-contrib
-    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
+    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
     tag: ""
   - name: Radius.Messaging
     repo: github.com/radius-project/resource-types-contrib
-    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
+    ref: ef7aba5edb501b5367dccc708ab4ed1084939e9f
     tag: ""
   - name: Radius.AI
     repo: github.com/radius-project/resource-types-contrib
-    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
+    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
     tag: ""
   - name: Radius.Storage
     repo: github.com/radius-project/resource-types-contrib
-    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
+    ref: 39f65be914c931acce42bc730ebdedff6fcc7af7
     tag: ""
 recipePacks:
   - name: azure
     repo: github.com/radius-project/resource-types-contrib
-    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
+    ref: ef7aba5edb501b5367dccc708ab4ed1084939e9f
     tag: ""
   - name: kubernetes
     repo: github.com/radius-project/resource-types-contrib
-    ref: 65d8ba845c516d76dc31ae88a8f96925dabfe2a7
+    ref: ef7aba5edb501b5367dccc708ab4ed1084939e9f
     tag: ""
 defaultRegistration:
   - Radius.Compute/containers
