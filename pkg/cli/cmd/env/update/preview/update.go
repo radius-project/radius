@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/group/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/recipepack"
@@ -221,6 +222,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	r.recipePacks = recipepack.NormalizeRecipePacks(recipePacks)
 
+	// Reject an explicitly provided but effectively empty --recipe-packs value
+	// (e.g. "," or "  ") rather than silently skipping the recipe-pack update.
+	if cmd.Flags().Changed("recipe-packs") && len(r.recipePacks) == 0 {
+		return clierrors.Message("No valid recipe packs were provided. Specify one or more recipe pack names or IDs with --recipe-packs.")
+	}
+
 	r.recipePackGroup, err = cmd.Flags().GetString("recipe-pack-group")
 	if err != nil {
 		return err
@@ -228,6 +235,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	if r.recipePackGroup != "" && !cmd.Flags().Changed("recipe-packs") {
 		return clierrors.Message("--recipe-pack-group can only be used together with --recipe-packs.")
+	}
+
+	if r.recipePackGroup != "" {
+		if err := common.ValidateResourceGroupName(r.recipePackGroup); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -358,7 +371,11 @@ func (r *Runner) resolveRecipePacks(ctx context.Context) ([]*string, error) {
 
 	recipePackScope := r.Workspace.Scope
 	if r.recipePackGroup != "" {
-		recipePackScope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", r.recipePackGroup)
+		workspaceScopeID, err := resources.ParseScope(r.Workspace.Scope)
+		if err != nil {
+			return nil, err
+		}
+		recipePackScope = fmt.Sprintf("%s/resourceGroups/%s", workspaceScopeID.PlaneScope(), r.recipePackGroup)
 	}
 
 	for _, recipePack := range r.recipePacks {

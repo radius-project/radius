@@ -28,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/group/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -252,6 +253,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return clierrors.Message("--recipe-pack-group can only be used together with --recipe-packs.")
 	}
 
+	if r.recipePackGroup != "" {
+		if err := common.ValidateResourceGroupName(r.recipePackGroup); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -337,7 +344,11 @@ func (r *Runner) resolveRecipePacks(ctx context.Context) ([]*string, error) {
 
 	recipePackScope := r.Workspace.Scope
 	if r.recipePackGroup != "" {
-		recipePackScope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", r.recipePackGroup)
+		workspaceScopeID, err := resources.ParseScope(r.Workspace.Scope)
+		if err != nil {
+			return nil, err
+		}
+		recipePackScope = fmt.Sprintf("%s/resourceGroups/%s", workspaceScopeID.PlaneScope(), r.recipePackGroup)
 	}
 
 	recipePackIDs := make([]*string, 0, len(r.recipePacks))

@@ -114,6 +114,24 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 		},
+		{
+			Name:          "Update Env Command with empty --recipe-packs value",
+			Input:         []string{"default", "--recipe-packs", " , "},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Update Env Command with invalid --recipe-pack-group value",
+			Input:         []string{"default", "--recipe-packs", "pack1", "--recipe-pack-group", "invalid group name!"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)

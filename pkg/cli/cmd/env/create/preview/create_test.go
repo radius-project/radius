@@ -348,6 +348,17 @@ func Test_Validate(t *testing.T) {
 				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
 			},
 		},
+		{
+			Name:          "Create command with invalid --recipe-pack-group value",
+			Input:         []string{"testingenv", "--recipe-packs", "pack1", "--recipe-pack-group", "invalid group name!"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
