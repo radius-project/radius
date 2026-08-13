@@ -702,7 +702,34 @@ func Test_Run(t *testing.T) {
 
 		err = runner.Run(t.Context())
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "Recipe pack \"missing-pack\" does not exist")
+		require.Equal(t,
+			`Recipe pack "missing-pack" does not exist in resource group "test-resource-group". To reference a recipe pack in another resource group, pass its full resource ID, for example: /planes/radius/local/resourceGroups/test-resource-group/providers/Radius.Core/recipePacks/missing-pack`,
+			err.Error())
+	})
+
+	t.Run("returns error without cross-group hint when a full resource ID does not exist", func(t *testing.T) {
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			nil,
+			test_client_factory.WithRecipePackServer404OnGet,
+		)
+		require.NoError(t, err)
+
+		packID := "/planes/radius/local/resourceGroups/other-group/providers/Radius.Core/recipePacks/missing-pack"
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "testenv",
+			ResourceGroupName:       "test-resource-group",
+			recipePacks:             []string{packID},
+		}
+
+		err = runner.Run(t.Context())
+		require.Error(t, err)
+		require.Equal(t,
+			`Recipe pack "`+packID+`" does not exist. Please provide a valid recipe pack to set on the environment.`,
+			err.Error())
 	})
 
 	t.Run("surfaces non-404 errors when validating a recipe pack", func(t *testing.T) {
