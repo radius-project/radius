@@ -52,16 +52,16 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	This command compiles a Bicep template with the given parameters and outputs a DeploymentTemplate Custom Resource.
 
 	You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
-	
+
 	- A file containing multiple parameters using the ARM JSON parameter format (see below)
 	- A file containing a single value in JSON format
 	- A key-value-pair passed in the command line
-	
+
 	When passing multiple parameters in a single file, use the format described here:
-	
+
 		https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/parameter-files
-	
-	You can specify parameters using multiple sources. Parameters can be overridden based on the 
+
+	You can specify parameters using multiple sources. Parameters can be overridden based on the
 	order they are provided. Parameters appearing later in the argument list will override those defined earlier.
 		`,
 		Example: `
