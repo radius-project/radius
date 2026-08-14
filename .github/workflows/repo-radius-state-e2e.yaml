@@ -16,7 +16,7 @@
 
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: Repo Radius State E2E
+name: repo-radius-state-e2e
 
 on:
   workflow_dispatch:
