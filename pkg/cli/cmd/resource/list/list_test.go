@@ -17,7 +17,6 @@ limitations under the License.
 package list
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -191,7 +190,7 @@ func Test_Run(t *testing.T) {
 				ResourceProviderNamespace: "MyCompany.Resources",
 			}
 
-			err = runner.Run(context.Background())
+			err = runner.Run(t.Context())
 			require.Error(t, err)
 			require.IsType(t, err, clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", "test-app", radcli.TestWorkspaceName))
 		})
@@ -228,7 +227,7 @@ func Test_Run(t *testing.T) {
 				ResourceProviderNamespace: "MyCompany.Resources",
 			}
 
-			err = runner.Run(context.Background())
+			err = runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -281,7 +280,7 @@ func Test_Run(t *testing.T) {
 				ResourceProviderNamespace: "MyCompany.Resources",
 			}
 
-			err = runner.Run(context.Background())
+			err = runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -325,7 +324,7 @@ func Test_Run(t *testing.T) {
 				ResourceProviderNamespace: "MyCompany.Resources",
 			}
 
-			err = runner.Run(context.Background())
+			err = runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -363,7 +362,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -394,7 +393,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.Error(t, err)
 			require.IsType(t, clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", "test-app", radcli.TestWorkspaceName), err)
 		})
@@ -425,7 +424,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{

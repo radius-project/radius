@@ -55,13 +55,13 @@
       "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/23"
     },
     "Radius.Compute/containers@2025-08-01-preview": {
-      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/149"
+      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/151"
     },
     "Radius.Compute/persistentVolumes@2025-08-01-preview": {
-      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/168"
+      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/170"
     },
     "Radius.Compute/routes@2025-08-01-preview": {
-      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/225"
+      "$ref": "radius/radius.compute/2025-08-01-preview/types.json#/227"
     },
     "Radius.Core/applications@2025-08-01-preview": {
       "$ref": "radius/radius.core/2025-08-01-preview/types.json#/72"
@@ -97,7 +97,7 @@
       "$ref": "radius/radius.messaging/2025-08-01-preview/types.json#/19"
     },
     "Radius.Messaging/rabbitMQ@2025-08-01-preview": {
-      "$ref": "radius/radius.messaging/2025-08-01-preview/types.json#/38"
+      "$ref": "radius/radius.messaging/2025-08-01-preview/types.json#/41"
     },
     "Radius.Security/secrets@2025-08-01-preview": {
       "$ref": "radius/radius.security/2025-08-01-preview/types.json#/27"

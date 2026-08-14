@@ -41,10 +41,20 @@ runs:
   steps:
     - name: Verify app namespace on target cluster
       shell: bash
+      env:
+        APP_FILE: ${{ inputs.app-file }}
       run: |
         TARGET_KUBECONFIG="$RADIUS_TARGET_KUBECONFIG"
         if [ -f "$TARGET_KUBECONFIG" ]; then
-          BICEP_APP_NAME=$(grep -oP "name:\s*'\K[^']+" ".radius/app.bicep" 2>/dev/null | head -1)
+          # Tolerate a missing app file or no name match here: `grep` exits
+          # non-zero on both, and with `set -e -o pipefail` (the composite
+          # bash default) that would kill this step with a bare exit code and
+          # no message -- pre-empting the actionable "file not found" error
+          # raised later in Run rad commands. `|| true` keeps this best-effort
+          # namespace pre-creation from masking that gate. It also makes the
+          # BICEP_APP_NAME="app" fallback reachable (pipefail otherwise aborts
+          # before it). Use $APP_FILE rather than a hardcoded path.
+          BICEP_APP_NAME=$(grep -oP "name:\s*'\K[^']+" "$APP_FILE" 2>/dev/null | head -1 || true)
           if [ -z "$BICEP_APP_NAME" ]; then
             BICEP_APP_NAME="app"
           fi
@@ -399,7 +409,7 @@ runs:
 
     - name: Upload command result
       if: always()
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: rad-commands-result
         path: /tmp/radius-output/

@@ -50,7 +50,7 @@ jobs:
   # decision has to happen in a regular job first.
   detect:
     name: Detect provider
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: ${{ inputs.environment || '{{ENV}}' }}
     # On workflow_dispatch run unconditionally; on workflow_run only when the
     # upstream Verify Credentials run succeeded.

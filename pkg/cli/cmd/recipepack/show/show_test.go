@@ -16,7 +16,6 @@ limitations under the License.
 package show
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -126,7 +125,7 @@ func Test_Run(t *testing.T) {
 			Format:            "json",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -168,7 +167,7 @@ func Test_Run(t *testing.T) {
 			Format:            "table",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		// Table format produces a table write followed by display (LogInfo) output

@@ -36,8 +36,10 @@ using OpenAPI;
 
 namespace Applications.Core;
 
-model GatewayResource
-  is TrackedResourceRequired<GatewayProperties, "gateways"> {
+model GatewayResource is TrackedResourceRequired<
+  GatewayProperties,
+  "gateways"
+> {
   @doc("Gateway name")
   @key("gatewayName")
   @path

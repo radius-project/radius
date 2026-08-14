@@ -17,7 +17,6 @@ limitations under the License.
 package git
 
 import (
-	"context"
 	"errors"
 	"sort"
 	"testing"
@@ -107,7 +106,7 @@ func TestSave_RejectsNilPayload(t *testing.T) {
 	s, err := NewStore(Options{Branch: "store-" + t.Name()})
 	require.NoError(t, err)
 
-	err = s.Save(context.Background(), persistence.Key{Namespace: "ns", Name: "n"}, nil, persistence.SaveOptions{})
+	err = s.Save(t.Context(), persistence.Key{Namespace: "ns", Name: "n"}, nil, persistence.SaveOptions{})
 	require.Error(t, err)
 }
 
@@ -115,7 +114,7 @@ func TestStore_SaveLoadDeleteRoundTrip(t *testing.T) {
 	repoDir := initTestRepo(t)
 	chdir(t, repoDir)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	s, err := NewStore(Options{Branch: "store-" + t.Name()})
 	require.NoError(t, err)
 
@@ -151,7 +150,7 @@ func TestStore_LoadMissingKeyReturnsErrNotFound(t *testing.T) {
 	repoDir := initTestRepo(t)
 	chdir(t, repoDir)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	s, err := NewStore(Options{Branch: "store-" + t.Name()})
 	require.NoError(t, err)
 
@@ -167,7 +166,7 @@ func TestStore_DeleteMissingKeyReturnsErrNotFound(t *testing.T) {
 	s, err := NewStore(Options{Branch: "store-" + t.Name()})
 	require.NoError(t, err)
 
-	err = s.Delete(context.Background(), persistence.Key{Namespace: "ns", Name: "missing"})
+	err = s.Delete(t.Context(), persistence.Key{Namespace: "ns", Name: "missing"})
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, persistence.ErrNotFound))
 }
@@ -176,7 +175,7 @@ func TestStore_List(t *testing.T) {
 	repoDir := initTestRepo(t)
 	chdir(t, repoDir)
 
-	ctx := context.Background()
+	ctx := t.Context()
 	s, err := NewStore(Options{Branch: "store-" + t.Name()})
 	require.NoError(t, err)
 
@@ -213,7 +212,7 @@ func TestStore_ListMissingNamespaceReturnsEmpty(t *testing.T) {
 	s, err := NewStore(Options{Branch: "store-" + t.Name()})
 	require.NoError(t, err)
 
-	got, err := s.List(context.Background(), "does-not-exist")
+	got, err := s.List(t.Context(), "does-not-exist")
 	require.NoError(t, err)
 	assert.Empty(t, got)
 }
@@ -238,7 +237,7 @@ func TestStore_ListRejectsInvalidNamespace(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := s.List(context.Background(), tc.namespace)
+			got, err := s.List(t.Context(), tc.namespace)
 			require.Error(t, err)
 			assert.Nil(t, got)
 		})

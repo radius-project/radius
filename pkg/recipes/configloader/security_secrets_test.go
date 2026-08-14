@@ -157,7 +157,7 @@ func Test_findKubernetesSecretOutputResource(t *testing.T) {
 
 func Test_LoadSecrets_UnsupportedType(t *testing.T) {
 	loader := &secretsLoader{}
-	_, err := loader.LoadSecrets(context.Background(), map[string][]string{
+	_, err := loader.LoadSecrets(t.Context(), map[string][]string{
 		"/planes/radius/local/resourceGroups/rg/providers/Applications.Core/gateways/not-a-secret": nil,
 	})
 	require.Error(t, err)
@@ -166,7 +166,7 @@ func Test_LoadSecrets_UnsupportedType(t *testing.T) {
 
 func Test_LoadSecrets_SecuritySecret_NoKubernetesClient(t *testing.T) {
 	loader := &secretsLoader{}
-	_, err := loader.LoadSecrets(context.Background(), map[string][]string{
+	_, err := loader.LoadSecrets(t.Context(), map[string][]string{
 		"/planes/radius/local/resourceGroups/rg/providers/Radius.Security/secrets/my-secret": nil,
 	})
 	require.Error(t, err)
@@ -288,7 +288,7 @@ func Test_loadSecuritySecret(t *testing.T) {
 			id, err := resources.ParseResource(secretResourceID)
 			require.NoError(t, err)
 
-			secretData, err := loader.loadSecuritySecret(context.Background(), id, tt.keysFilter)
+			secretData, err := loader.loadSecuritySecret(t.Context(), id, tt.keysFilter)
 			if tt.expectError {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErrMsg)

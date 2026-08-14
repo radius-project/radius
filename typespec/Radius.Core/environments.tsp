@@ -136,8 +136,10 @@ namespace Radius.Core;
   
   For advanced Terraform and Bicep settings, such as private module sources and registry authentication, reference a `Radius.Core/terraformSettings` or `Radius.Core/bicepSettings` resource from the `terraformSettings` and `bicepSettings` properties.
   """)
-model EnvironmentResource
-  is TrackedResourceRequired<EnvironmentProperties, "environments"> {
+model EnvironmentResource is TrackedResourceRequired<
+  EnvironmentProperties,
+  "environments"
+> {
   @doc("environment name")
   @key("environmentName")
   @path

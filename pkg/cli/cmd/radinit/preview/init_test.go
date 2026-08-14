@@ -787,13 +787,13 @@ func newScaffoldTestRunner(t *testing.T, expectCompletion bool, appServerFactory
 
 	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 	configFileInterface.EXPECT().
-		ConfigFromContext(context.Background()).
+		ConfigFromContext(t.Context()).
 		Return(nil).
 		Times(1)
 
 	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 	appManagementClient.EXPECT().
-		CreateOrUpdateResourceGroup(context.Background(), "local", "default", gomock.Any()).
+		CreateOrUpdateResourceGroup(t.Context(), "local", "default", gomock.Any()).
 		Return(nil).
 		Times(2)
 
@@ -805,14 +805,14 @@ func newScaffoldTestRunner(t *testing.T, expectCompletion bool, appServerFactory
 
 	if expectCompletion {
 		configFileInterface.EXPECT().
-			EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
+			EditWorkspaces(t.Context(), gomock.Any(), gomock.Any()).
 			Return(nil).
 			Times(1)
 	}
 
 	helmInterface := helm.NewMockInterface(ctrl)
 	helmInterface.EXPECT().
-		InstallRadius(context.Background(), gomock.Any(), "kind-kind").
+		InstallRadius(t.Context(), gomock.Any(), "kind-kind").
 		Return(nil).
 		Times(1)
 
@@ -909,7 +909,7 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 			}
 		})
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		assert.Equal(t, 1, getCalled, "Get should be called once")
@@ -956,7 +956,7 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 			}
 		})
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		assert.Equal(t, 1, getCalled, "Get should be called once")
@@ -999,7 +999,7 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 			}
 		})
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Failed to check for existing application.")
 
@@ -1041,7 +1041,7 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 			}
 		})
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "Failed to create application.")
 
@@ -1219,13 +1219,13 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 			configFileInterface.EXPECT().
-				ConfigFromContext(context.Background()).
+				ConfigFromContext(t.Context()).
 				Return(nil).
 				Times(1)
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			appManagementClient.EXPECT().
-				CreateOrUpdateResourceGroup(context.Background(), "local", "default", gomock.Any()).
+				CreateOrUpdateResourceGroup(t.Context(), "local", "default", gomock.Any()).
 				Return(nil).
 				Times(2)
 
@@ -1237,14 +1237,14 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			credentialManagementClient := cli_credential.NewMockCredentialManagementClient(ctrl)
 			if tc.azureProvider != nil {
 				credentialManagementClient.EXPECT().
-					PutAzure(context.Background(), gomock.Any()).
+					PutAzure(t.Context(), gomock.Any()).
 					Return(nil).
 					Times(1)
 			}
 			if tc.awsProvider != nil {
 				if tc.awsProvider.AccessKey != nil {
 					credentialManagementClient.EXPECT().
-						PutAWS(context.Background(), ucp.AwsCredentialResource{
+						PutAWS(t.Context(), ucp.AwsCredentialResource{
 							Location: to.Ptr(v1.LocationGlobal),
 							Type:     to.Ptr(cli_credential.AWSCredential),
 							Properties: &ucp.AwsAccessKeyCredentialProperties{
@@ -1259,7 +1259,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 						Times(1)
 				} else {
 					credentialManagementClient.EXPECT().
-						PutAWS(context.Background(), ucp.AwsCredentialResource{
+						PutAWS(t.Context(), ucp.AwsCredentialResource{
 							Location: to.Ptr(v1.LocationGlobal),
 							Type:     to.Ptr(cli_credential.AWSCredential),
 							Properties: &ucp.AwsIRSACredentialProperties{
@@ -1276,7 +1276,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			}
 
 			configFileInterface.EXPECT().
-				EditWorkspaces(context.Background(), gomock.Any(), gomock.Any()).
+				EditWorkspaces(t.Context(), gomock.Any(), gomock.Any()).
 				Return(nil).
 				Times(1)
 
@@ -1293,7 +1293,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 			}
 
 			helmInterface.EXPECT().
-				InstallRadius(context.Background(), gomock.Any(), "kind-kind").
+				InstallRadius(t.Context(), gomock.Any(), "kind-kind").
 				DoAndReturn(func(ctx context.Context, clusterOptions helm.ClusterOptions, kubeContext string) error {
 					// Verify the SetArgs and SetFileArgs are passed correctly
 					assert.Equal(t, expectedClusterOptions.Radius.SetArgs, clusterOptions.Radius.SetArgs)
@@ -1348,7 +1348,7 @@ func Test_Run_InstallAndCreateEnvironment(t *testing.T) {
 				SetFile: tc.setFile,
 			}
 
-			err = runner.Run(context.Background())
+			err = runner.Run(t.Context())
 			require.NoError(t, err)
 
 			if len(tc.expectedOutput) == 0 {

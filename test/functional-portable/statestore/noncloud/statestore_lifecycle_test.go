@@ -264,14 +264,14 @@ func TestRegistryManifestExists(t *testing.T) {
 	t.Cleanup(server.Close)
 
 	registry := strings.TrimPrefix(server.URL, "http://")
-	require.True(t, registryManifestExists(context.Background(), registry, "radius-state", "radius-state"))
+	require.True(t, registryManifestExists(t.Context(), registry, "radius-state", "radius-state"))
 }
 
 // Test_StateStore_ShutdownStartup_TerraformCrossDeploy exercises every state path:
 // install, deploy a Terraform resource, shut down (backup), tear down, start up (restore), then
 // deploy an update to the same resource.
 func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Minute)
 	defer cancel()
 
 	cli := radcli.NewCLI(t, "")
@@ -313,7 +313,8 @@ func Test_StateStore_ShutdownStartup_TerraformCrossDeploy(t *testing.T) {
 
 	// 1. Fresh install with the PostgreSQL state backend.
 	installRadius(ctx, t, cli)
-	t.Cleanup(func() { uninstallRadius(context.Background(), t, cli) })
+	// Use a fresh context because t.Context() is cancelled before cleanup runs.
+	t.Cleanup(func() { uninstallRadius(context.Background(), t, cli) }) //nolint:usetesting
 
 	// Create the workspace and resource group the test deploys into (the shared CI "Install Radius"
 	// step is skipped for this leg, so the test owns this setup).

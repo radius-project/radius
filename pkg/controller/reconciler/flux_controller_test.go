@@ -299,7 +299,7 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 	namespacesToCleanup := make(map[string]bool)
 	defer func() {
 		// Clean up namespaces at the end of the test using fresh context
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second) //nolint:usetesting
 		defer cancel()
 
 		for ns := range namespacesToCleanup {

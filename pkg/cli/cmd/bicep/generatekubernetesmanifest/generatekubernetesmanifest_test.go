@@ -17,7 +17,6 @@ limitations under the License.
 package bicep
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -183,7 +182,7 @@ func Test_Run(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, fileExists)
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 
 		fileExists = runner.FileSystem.Exists(yamlFilePath)

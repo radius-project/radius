@@ -17,7 +17,6 @@ limitations under the License.
 package testhost
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -101,7 +100,7 @@ func Start(t *testing.T, opts ...TestHostOption) (*TestHost, *ucptesthost.TestHo
 		},
 	}
 
-	options, err := dynamicrp.NewOptions(context.Background(), config)
+	options, err := dynamicrp.NewOptions(t.Context(), config)
 	require.NoError(t, err)
 
 	// Set up a fake Kubernetes client with an encryption key secret for testing

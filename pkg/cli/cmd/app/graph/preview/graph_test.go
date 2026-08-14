@@ -116,7 +116,7 @@ func Test_Run(t *testing.T) {
 			Output:                  outputSink,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Len(t, outputSink.Writes, 1)
 
@@ -170,7 +170,7 @@ func Test_Run(t *testing.T) {
 			Output:                  outputSink,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Len(t, outputSink.Writes, 1)
 
@@ -192,7 +192,7 @@ func Test_Run(t *testing.T) {
 			Output:                  outputSink,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Len(t, outputSink.Writes, 1)
 
@@ -233,7 +233,7 @@ func Test_Run(t *testing.T) {
 			Output:                  &output.MockOutput{},
 		}
 
-		require.NoError(t, runner.Run(context.Background()))
+		require.NoError(t, runner.Run(t.Context()))
 		require.Nil(t, received.IncludeIcons, "IncludeIcons must be nil by default (opt-in only)")
 	})
 
@@ -267,7 +267,7 @@ func Test_Run(t *testing.T) {
 			Output:                  &output.MockOutput{},
 		}
 
-		require.NoError(t, runner.Run(context.Background()))
+		require.NoError(t, runner.Run(t.Context()))
 		require.NotNil(t, received.IncludeIcons)
 		require.True(t, *received.IncludeIcons)
 	})
@@ -299,7 +299,7 @@ func Test_Run(t *testing.T) {
 			Output:                  &output.MockOutput{},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Equal(t, clierrors.Message("Application %q does not exist or has been deleted.", "test-app"), err)
 	})
@@ -331,7 +331,7 @@ func Test_Run(t *testing.T) {
 			Output:                  &output.MockOutput{},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 	})
 }
@@ -410,7 +410,7 @@ func Test_Run_EnrichedMode(t *testing.T) {
 		Output:                  &output.MockOutput{},
 	}
 
-	require.NoError(t, runner.Run(context.Background()))
+	require.NoError(t, runner.Run(t.Context()))
 
 	require.NotNil(t, received.DependsOnEdges, "enriched mode must forward extracted edges")
 	entries, ok := received.DependsOnEdges[consumerID]
@@ -454,7 +454,7 @@ func Test_Run_EnrichedMode_CompileError_Wrapped(t *testing.T) {
 		Output:                  &output.MockOutput{},
 	}
 
-	err = runner.Run(context.Background())
+	err = runner.Run(t.Context())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "./bad.bicep")
 }

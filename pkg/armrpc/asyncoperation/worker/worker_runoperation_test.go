@@ -116,7 +116,7 @@ func newTestContext(t *testing.T, lockTime time.Duration) (*testContext, *gomock
 	inmemQ := inmemory.NewInMemQueue(lockTime)
 	databaseClient := database.NewMockClient(mctrl)
 	return &testContext{
-		ctx:       context.Background(),
+		ctx:       t.Context(),
 		mockSC:    databaseClient,
 		mockSM:    manager.NewMockStatusManager(mctrl),
 		internalQ: inmemQ,
@@ -206,6 +206,11 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 			return newTestResourceObject(), nil
 		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+	// The operation is not yet terminal, so the max-retry path completes it with the generic message.
+	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(&manager.Status{
+			AsyncOperationStatus: v1.AsyncOperationStatus{Status: v1.ProvisioningStateUpdating},
+		}, nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Eq(v1.ProvisioningStateFailed), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 	expectedDequeueCount := 2
@@ -254,6 +259,65 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	<-done
 
 	require.Equal(t, expectedDequeueCount+2, testMessage.DequeueCount)
+}
+
+// TestStart_MaxDequeueCount_AlreadyTerminal verifies that when the retry count is exceeded but the
+// operation was already completed on a prior attempt (terminal status), the worker just finishes the
+// message and does NOT overwrite the recorded status with a generic "exceeded max retry count" error.
+func TestStart_MaxDequeueCount_AlreadyTerminal(t *testing.T) {
+	tCtx, mctrl := newTestContext(t, 1*time.Minute)
+	defer mctrl.Finish()
+
+	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+			return newTestResourceObject(), nil
+		}).AnyTimes()
+	// The operation is already terminal (Failed) from a prior attempt.
+	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(&manager.Status{
+			AsyncOperationStatus: v1.AsyncOperationStatus{Status: v1.ProvisioningStateFailed},
+		}, nil).AnyTimes()
+	// No Update must happen: the recorded terminal status must not be overwritten.
+	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+	expectedDequeueCount := 2
+
+	registry := NewControllerRegistry()
+	worker := New(Options{MaxOperationRetryCount: expectedDequeueCount, DequeueIntervalDuration: defaultTestDequeueInterval}, tCtx.mockSM, tCtx.testQueue, registry)
+
+	testCtrl := &testAsyncController{
+		BaseController: ctrl.NewBaseAsyncController(ctrl.Options{DatabaseClient: tCtx.mockSC}),
+		fn: func(ctx context.Context) (ctrl.Result, error) {
+			return ctrl.Result{}, nil
+		},
+	}
+
+	ctx, cancel := tCtx.cancellable(0)
+	err := registry.Register(
+		testResourceType, v1.OperationPut,
+		func(opts ctrl.Options) (ctrl.Controller, error) {
+			return testCtrl, nil
+		}, ctrl.Options{DatabaseClient: tCtx.mockSC})
+	require.NoError(t, err)
+
+	testMessage := genTestMessage(uuid.New(), ctrl.DefaultAsyncOperationTimeout)
+	err = tCtx.testQueue.Enqueue(ctx, testMessage)
+	require.NoError(t, err)
+	testMessage.DequeueCount = expectedDequeueCount + 1
+
+	done := make(chan struct{}, 1)
+	go func() {
+		err = worker.Start(ctx)
+		require.NoError(t, err)
+		close(done)
+	}()
+
+	tCtx.drainQueueOrAssert(t)
+
+	cancel()
+	<-done
+
+	require.Equal(t, 0, tCtx.internalQ.Len(), "message should be finished without overwriting the terminal status")
 }
 
 func TestStart_MaxConcurrency(t *testing.T) {
@@ -433,7 +497,7 @@ func TestRunOperation_Successfully(t *testing.T) {
 
 	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx, queue.QueueClientConfig{})
 	require.NoError(t, err)
-	worker.runOperation(context.Background(), msg, testCtrl)
+	worker.runOperation(t.Context(), msg, testCtrl)
 
 	// Ensure that message is finished.
 	require.Equal(t, 0, tCtx.internalQ.Len(), "message is finished")
@@ -479,7 +543,7 @@ func TestRunOperation_ExtendMessageLock(t *testing.T) {
 	old := msg.NextVisibleAt
 	require.NoError(t, err)
 
-	worker.runOperation(context.Background(), msg, testCtrl)
+	worker.runOperation(t.Context(), msg, testCtrl)
 
 	require.Equal(t, 0, tCtx.internalQ.Len(), "message is finished")
 	require.Greater(t, msg.NextVisibleAt.UnixNano(), old.UnixNano(), "message lock is extended")
@@ -573,20 +637,26 @@ func TestRunOperation_Timeout(t *testing.T) {
 
 	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx, queue.QueueClientConfig{})
 	require.NoError(t, err)
-	worker.runOperation(context.Background(), msg, testCtrl)
+	worker.runOperation(t.Context(), msg, testCtrl)
 	<-done
 
 	require.Equal(t, 0, tCtx.internalQ.Len(), "message is finished")
 }
 
-func TestRunOperation_PanicController(t *testing.T) {
-	tCtx, _ := newTestContext(t, defaultTestLockTime)
+// TestRunOperation_PanicController_Requeues verifies that when a controller panics on an attempt
+// before the final retry, the message is left unfinished (so it is retried) and the operation is
+// not completed.
+func TestRunOperation_PanicController_Requeues(t *testing.T) {
+	tCtx, mctrl := newTestContext(t, defaultTestLockTime)
+	defer mctrl.Finish()
 
 	testMessage := genTestMessage(uuid.New(), ctrl.DefaultAsyncOperationTimeout)
 	err := tCtx.testQueue.Enqueue(tCtx.ctx, testMessage)
 	require.NoError(t, err)
 
-	worker := New(Options{}, nil, tCtx.testQueue, nil)
+	// MaxOperationRetryCount is high enough that the single delivery (DequeueCount == 1) is not the
+	// final attempt, so the panic must not complete the operation - no status Update is expected.
+	worker := New(Options{MaxOperationRetryCount: 3}, tCtx.mockSM, tCtx.testQueue, nil)
 
 	opts := ctrl.Options{
 		DatabaseClient: tCtx.mockSC,
@@ -609,5 +679,61 @@ func TestRunOperation_PanicController(t *testing.T) {
 		worker.runOperation(tCtx.ctx, msg, testCtrl)
 	})
 
-	require.Equal(t, 1, tCtx.internalQ.Len(), "ensure that message is not finished")
+	require.Equal(t, 1, tCtx.internalQ.Len(), "ensure that message is not finished so it is retried")
+}
+
+// TestRunOperation_PanicController_FinalAttempt verifies that when a controller panics on the final
+// retry, the operation is completed as Failed with the real panic reason (instead of being retried
+// to exhaustion and reported with a generic "exceeded max retry count" message), and the message is
+// finished.
+func TestRunOperation_PanicController_FinalAttempt(t *testing.T) {
+	tCtx, mctrl := newTestContext(t, defaultTestLockTime)
+	defer mctrl.Finish()
+
+	testMessage := genTestMessage(uuid.New(), ctrl.DefaultAsyncOperationTimeout)
+	err := tCtx.testQueue.Enqueue(tCtx.ctx, testMessage)
+	require.NoError(t, err)
+
+	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+			return newTestResourceObject(), nil
+		}).AnyTimes()
+	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	var terminalErr *v1.ErrorDetails
+	tCtx.mockSM.EXPECT().
+		Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Eq(v1.ProvisioningStateFailed), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ resources.ID, _ uuid.UUID, _ v1.ProvisioningState, _ *time.Time, opErr *v1.ErrorDetails) error {
+			terminalErr = opErr
+			return nil
+		}).Times(1)
+
+	// MaxOperationRetryCount == 1 makes the single delivery (DequeueCount == 1) the final attempt.
+	worker := New(Options{MaxOperationRetryCount: 1}, tCtx.mockSM, tCtx.testQueue, nil)
+
+	opts := ctrl.Options{
+		DatabaseClient: tCtx.mockSC,
+		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
+			return nil
+		},
+	}
+
+	testCtrl := &testAsyncController{
+		BaseController: ctrl.NewBaseAsyncController(opts),
+		fn: func(ctx context.Context) (ctrl.Result, error) {
+			panic("!!! don't panic !!!")
+		},
+	}
+
+	msg, err := tCtx.testQueue.Dequeue(tCtx.ctx, queue.QueueClientConfig{})
+	require.NoError(t, err)
+
+	require.NotPanics(t, func() {
+		worker.runOperation(tCtx.ctx, msg, testCtrl)
+	})
+
+	require.Equal(t, 0, tCtx.internalQ.Len(), "ensure that the message is finished on the final attempt")
+	require.NotNil(t, terminalErr, "the panic reason must be recorded as the terminal failure")
+	require.Equal(t, v1.CodeInternal, terminalErr.Code)
+	require.Contains(t, terminalErr.Message, "don't panic")
 }

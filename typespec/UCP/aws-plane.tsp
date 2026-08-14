@@ -40,12 +40,11 @@ using OpenAPI;
 namespace Ucp;
 
 @doc("The AWS plane resource")
-model AwsPlaneResource
-  is TrackedResourceRequired<
-    AwsPlaneResourceProperties,
-    "System.AWS/planes",
-    "planes"
-  > {
+model AwsPlaneResource is TrackedResourceRequired<
+  AwsPlaneResourceProperties,
+  "System.AWS/planes",
+  "planes"
+> {
   @doc("The plane name.")
   @segment("aws")
   @path

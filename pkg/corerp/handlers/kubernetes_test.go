@@ -99,7 +99,7 @@ func TestPut(t *testing.T) {
 
 	for _, tc := range putTests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := context.Background()
+			ctx := t.Context()
 
 			clientSet := fake.NewClientset(tc.in.Resource.CreateResource.Data.(runtime.Object))
 			handler := kubernetesHandler{
@@ -126,7 +126,7 @@ func TestPut(t *testing.T) {
 }
 
 func TestPut_ContourHTTPProxyRouteChildSkipsWait(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	httpProxy := &contourv1.HTTPProxy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: contourv1.SchemeGroupVersion.String(),
@@ -175,7 +175,7 @@ func TestPut_ContourHTTPProxyRouteChildSkipsWait(t *testing.T) {
 }
 
 func TestPut_ContourHTTPProxyRootWaits(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	httpProxy := &contourv1.HTTPProxy{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: contourv1.SchemeGroupVersion.String(),
@@ -223,7 +223,7 @@ func TestPut_ContourHTTPProxyRootWaits(t *testing.T) {
 }
 
 func TestPut_NonContourHTTPProxyBypassesWaiter(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	httpProxy := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": "networking.example.com/v1",
@@ -261,7 +261,7 @@ func TestPut_NonContourHTTPProxyBypassesWaiter(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	// Create first deployment that will be watched
 	deployment := &v1.Deployment{
 		TypeMeta: metav1.TypeMeta{

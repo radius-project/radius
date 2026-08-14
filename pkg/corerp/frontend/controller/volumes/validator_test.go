@@ -85,7 +85,7 @@ func TestValidateRequest(t *testing.T) {
 			name: "invalid-kind",
 			args: args{
 				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
+					t.Context(), &v1.ARMRequestContext{
 						ResourceID: mustParseResourceID(resourceID),
 						HTTPMethod: http.MethodPut,
 					}),
@@ -107,7 +107,7 @@ func TestValidateRequest(t *testing.T) {
 			name: "csi-driver-not-installed",
 			args: args{
 				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
+					t.Context(), &v1.ARMRequestContext{
 						ResourceID: mustParseResourceID(resourceID),
 						HTTPMethod: http.MethodPut,
 					}),
@@ -131,7 +131,7 @@ func TestValidateRequest(t *testing.T) {
 			name: "csi-driver-installed",
 			args: args{
 				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
+					t.Context(), &v1.ARMRequestContext{
 						ResourceID: mustParseResourceID(resourceID),
 						HTTPMethod: http.MethodPut,
 					}),

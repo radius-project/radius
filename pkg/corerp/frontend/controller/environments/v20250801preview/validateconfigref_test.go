@@ -17,7 +17,6 @@ limitations under the License.
 package v20250801preview
 
 import (
-	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -62,7 +61,7 @@ func TestValidateConfigRef_InvalidResourceID(t *testing.T) {
 	// No DB calls expected: parsing fails first.
 
 	e := newControllerForValidateConfigRef(databaseClient)
-	resp := validateConfigRef(context.Background(), e, "not a resource id", datamodel.TerraformSettingsResourceType, "terraformSettings")
+	resp := validateConfigRef(t.Context(), e, "not a resource id", datamodel.TerraformSettingsResourceType, "terraformSettings")
 
 	br, ok := resp.(*rest.BadRequestResponse)
 	require.True(t, ok, "expected BadRequestResponse, got %T", resp)
@@ -77,7 +76,7 @@ func TestValidateConfigRef_WrongType(t *testing.T) {
 
 	e := newControllerForValidateConfigRef(databaseClient)
 	// recipePackID has a valid ARM-style structure but the wrong resource type.
-	resp := validateConfigRef(context.Background(), e, recipePackID, datamodel.TerraformSettingsResourceType, "terraformSettings")
+	resp := validateConfigRef(t.Context(), e, recipePackID, datamodel.TerraformSettingsResourceType, "terraformSettings")
 
 	br, ok := resp.(*rest.BadRequestResponse)
 	require.True(t, ok, "expected BadRequestResponse, got %T", resp)
@@ -99,7 +98,7 @@ func TestValidateConfigRef_NotFound_ReturnsBadRequest(t *testing.T) {
 		Return(nil, &database.ErrNotFound{ID: tfConfigID})
 
 	e := newControllerForValidateConfigRef(databaseClient)
-	resp := validateConfigRef(context.Background(), e, tfConfigID, datamodel.TerraformSettingsResourceType, "terraformSettings")
+	resp := validateConfigRef(t.Context(), e, tfConfigID, datamodel.TerraformSettingsResourceType, "terraformSettings")
 
 	br, ok := resp.(*rest.BadRequestResponse)
 	require.True(t, ok, "expected BadRequestResponse for missing resource, got %T", resp)
@@ -116,7 +115,7 @@ func TestValidateConfigRef_DatabaseError_ReturnsInternalServerError(t *testing.T
 		Return(nil, errors.New("database is on fire"))
 
 	e := newControllerForValidateConfigRef(databaseClient)
-	resp := validateConfigRef(context.Background(), e, tfConfigID, datamodel.TerraformSettingsResourceType, "terraformSettings")
+	resp := validateConfigRef(t.Context(), e, tfConfigID, datamodel.TerraformSettingsResourceType, "terraformSettings")
 
 	ise, ok := resp.(*rest.InternalServerErrorResponse)
 	require.True(t, ok, "expected InternalServerErrorResponse for transport failure, got %T", resp)
@@ -139,7 +138,7 @@ func TestValidateConfigRef_HappyPath_TerraformSettings(t *testing.T) {
 		}, nil)
 
 	e := newControllerForValidateConfigRef(databaseClient)
-	resp := validateConfigRef(context.Background(), e, tfConfigID, datamodel.TerraformSettingsResourceType, "terraformSettings")
+	resp := validateConfigRef(t.Context(), e, tfConfigID, datamodel.TerraformSettingsResourceType, "terraformSettings")
 	require.Nil(t, resp, "expected validateConfigRef to return nil on success")
 }
 
@@ -159,6 +158,6 @@ func TestValidateConfigRef_HappyPath_BicepSettings(t *testing.T) {
 		}, nil)
 
 	e := newControllerForValidateConfigRef(databaseClient)
-	resp := validateConfigRef(context.Background(), e, bicepSettingsID, datamodel.BicepSettingsResourceType, "bicepSettings")
+	resp := validateConfigRef(t.Context(), e, bicepSettingsID, datamodel.BicepSettingsResourceType, "bicepSettings")
 	require.Nil(t, resp, "expected validateConfigRef to return nil on success")
 }

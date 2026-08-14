@@ -31,13 +31,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-func newTestARMContext() context.Context {
-	return v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{})
+func newTestARMContext(t *testing.T) context.Context {
+	return v1.WithARMRequestContext(t.Context(), &v1.ARMRequestContext{})
 }
 
 func TestPrepareRadiusResource_OldResource_Nil(t *testing.T) {
 	newResource := &TestResourceDataModel{}
-	resp, err := PrepareRadiusResource(newTestARMContext(), newResource, nil, &controller.Options{})
+	resp, err := PrepareRadiusResource(newTestARMContext(t), newResource, nil, &controller.Options{})
 
 	require.Nil(t, resp)
 	require.NoError(t, err)
@@ -57,13 +57,13 @@ func TestPrepareRadiusResource_UnmatchedLinks(t *testing.T) {
 		},
 	}}
 
-	resp, err := PrepareRadiusResource(newTestARMContext(), newResource, oldResource, &controller.Options{})
+	resp, err := PrepareRadiusResource(newTestARMContext(t), newResource, oldResource, &controller.Options{})
 	require.NoError(t, err)
 	require.Nil(t, resp)
 
 	// Ensure that unmatched application id returns the error.
 	newResource.Properties.BasicResourceProperties.Application = "invalid"
-	resp, err = PrepareRadiusResource(newTestARMContext(), newResource, oldResource, &controller.Options{})
+	resp, err = PrepareRadiusResource(newTestARMContext(t), newResource, oldResource, &controller.Options{})
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 }
@@ -88,7 +88,7 @@ func TestPrepareRadiusResource_DeepCopy(t *testing.T) {
 			Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
 		},
 	}}
-	resp, err := PrepareRadiusResource(newTestARMContext(), newResource, oldResource, &controller.Options{})
+	resp, err := PrepareRadiusResource(newTestARMContext(t), newResource, oldResource, &controller.Options{})
 	require.NoError(t, err)
 	require.Nil(t, resp)
 	require.Equal(t, "testID", newResource.Properties.BasicResourceProperties.Status.OutputResources[0].LocalID)
@@ -123,7 +123,7 @@ func TestPrepareDaprResource(t *testing.T) {
 		},
 	}}
 	expectedResp := rest.NewDependencyMissingResponse(datamodel.DaprMissingError)
-	resp, err := PrepareDaprResource(newTestARMContext(), newResource, oldResource, &controller.Options{KubeClient: client})
+	resp, err := PrepareDaprResource(newTestARMContext(t), newResource, oldResource, &controller.Options{KubeClient: client})
 	require.NoError(t, err)
 	require.Equal(t, expectedResp, resp)
 

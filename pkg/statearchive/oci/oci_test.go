@@ -32,6 +32,7 @@ import (
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/persistence"
 	graphstore "github.com/radius-project/radius/pkg/graph/persistence/git"
+	"github.com/radius-project/radius/pkg/statearchive"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
 	"oras.land/oras-go/v2"
@@ -44,7 +45,7 @@ import (
 
 func TestOCIArchive_CommitRoundTrip(t *testing.T) {
 	archive, target := newTestArchive(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
@@ -55,7 +56,7 @@ func TestOCIArchive_CommitRoundTrip(t *testing.T) {
 
 	session, err = archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 
 	data, err := os.ReadFile(filepath.Join(session.Path(), "nested", "state.txt"))
 	require.NoError(t, err)
@@ -80,22 +81,22 @@ func TestOCIArchive_UsesOCIStorageForGraphs(t *testing.T) {
 			},
 		},
 	}
-	require.NoError(t, store.Save(context.Background(), key, graph, persistence.SaveOptions{}))
+	require.NoError(t, store.Save(t.Context(), key, graph, persistence.SaveOptions{}))
 
-	got, err := store.Load(context.Background(), key)
+	got, err := store.Load(t.Context(), key)
 	require.NoError(t, err)
 	require.Len(t, got.Resources, 1)
 	require.Equal(t, "frontend", *got.Resources[0].Name)
 
-	require.NoError(t, store.Delete(context.Background(), key))
-	_, err = store.Load(context.Background(), key)
+	require.NoError(t, store.Delete(t.Context(), key))
+	_, err = store.Load(t.Context(), key)
 	require.ErrorIs(t, err, persistence.ErrNotFound)
 }
 
 func TestOCIArchive_OpenRejectsEmptyName(t *testing.T) {
 	archive, _ := newTestArchive(t)
 
-	_, err := archive.Open(context.Background(), "")
+	_, err := archive.Open(t.Context(), "")
 	require.ErrorContains(t, err, "OCI archive name must not be empty")
 }
 
@@ -105,7 +106,7 @@ func TestOCIArchive_OpenReturnsTargetError(t *testing.T) {
 		return nil, errors.New("registry unavailable")
 	}
 
-	_, err := archive.Open(context.Background(), "radius-state")
+	_, err := archive.Open(t.Context(), "radius-state")
 	require.ErrorContains(t, err, "registry unavailable")
 }
 
@@ -115,12 +116,12 @@ func TestOCIArchive_CommitReturnsTargetError(t *testing.T) {
 		return failedPushTarget{}, nil
 	}
 
-	session, err := archive.Open(context.Background(), "radius-state")
+	session, err := archive.Open(t.Context(), "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(context.Background()) })
+	closeOnCleanup(t, session)
 	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
 
-	err = session.Commit(context.Background(), "ignored message")
+	err = session.Commit(t.Context(), "ignored message")
 	require.ErrorContains(t, err, "push failed")
 }
 
@@ -142,10 +143,10 @@ func TestOCIArchive_CommitEnforcesGHCRVisibility(t *testing.T) {
 				return test.visibility, nil
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			session, err := archive.Open(ctx, "radius-state")
 			require.NoError(t, err)
-			t.Cleanup(func() { session.Close(ctx) })
+			closeOnCleanup(t, session)
 			require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
 
 			err = session.Commit(ctx, "ignored message")
@@ -203,7 +204,7 @@ func TestOCIArchive_CommitBootstrapsMissingGHCRPackage(t *testing.T) {
 			}}
 			archive.checkPackageVisibility = visibility.Check
 
-			ctx := context.Background()
+			ctx := t.Context()
 			session, err := archive.Open(ctx, "radius-state")
 			require.NoError(t, err)
 			require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("sensitive state"), 0o644))
@@ -220,7 +221,7 @@ func TestOCIArchive_CommitBootstrapsMissingGHCRPackage(t *testing.T) {
 
 			session, err = archive.Open(ctx, "radius-state")
 			require.NoError(t, err)
-			t.Cleanup(func() { session.Close(ctx) })
+			closeOnCleanup(t, session)
 			if test.errorContains == "" {
 				data, err := os.ReadFile(filepath.Join(session.Path(), "state.txt"))
 				require.NoError(t, err)
@@ -236,7 +237,7 @@ func TestOCIArchive_CommitBootstrapsMissingGHCRPackage(t *testing.T) {
 
 func TestOCIArchive_BootstrapDoesNotOverwriteConcurrentState(t *testing.T) {
 	archive, target := newTestArchive(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	checks := 0
 	archive.checkPackageVisibility = func(context.Context) (packageVisibility, error) {
 		checks++
@@ -264,7 +265,7 @@ func TestOCIArchive_BootstrapDoesNotOverwriteConcurrentState(t *testing.T) {
 
 	session, err = archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 	data, err := os.ReadFile(filepath.Join(session.Path(), "state.txt"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("external state"), data)
@@ -272,7 +273,7 @@ func TestOCIArchive_BootstrapDoesNotOverwriteConcurrentState(t *testing.T) {
 
 func TestOCIArchive_PublicPackageAllowsStateDeletion(t *testing.T) {
 	archive, target := newTestArchive(t)
-	ctx := context.Background()
+	ctx := t.Context()
 	archive.checkPackageVisibility = func(context.Context) (packageVisibility, error) {
 		return packageVisibilityPrivate, nil
 	}
@@ -296,7 +297,7 @@ func TestOCIArchive_PublicPackageAllowsStateDeletion(t *testing.T) {
 
 	session, err = archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 	entries, err := os.ReadDir(session.Path())
 	require.NoError(t, err)
 	require.Empty(t, entries)
@@ -308,10 +309,10 @@ func TestOCIArchive_CommitReturnsVisibilityErrorBeforeUpload(t *testing.T) {
 		return "", errors.New("visibility unavailable")
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
 
 	err = session.Commit(ctx, "ignored message")
@@ -328,10 +329,10 @@ func TestOCIArchive_CommitReturnsBootstrapUploadError(t *testing.T) {
 		return "", errGHCRPackageNotFound
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 	require.NoError(t, os.WriteFile(filepath.Join(session.Path(), "state.txt"), []byte("state"), 0o644))
 
 	err = session.Commit(ctx, "ignored message")
@@ -347,10 +348,10 @@ func TestOCIArchive_EmptyNewArchiveSkipsVisibilityCheck(t *testing.T) {
 		return packageVisibilityPublic, nil
 	}
 
-	ctx := context.Background()
+	ctx := t.Context()
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 
 	require.NoError(t, session.Commit(ctx, "ignored message"))
 	require.Equal(t, 0, checks)
@@ -359,7 +360,7 @@ func TestOCIArchive_EmptyNewArchiveSkipsVisibilityCheck(t *testing.T) {
 
 func TestOCIArchive_CommitPersistsDeletion(t *testing.T) {
 	archive, target := newTestArchive(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
@@ -377,7 +378,7 @@ func TestOCIArchive_CommitPersistsDeletion(t *testing.T) {
 
 	session, err = archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 
 	entries, err := os.ReadDir(session.Path())
 	require.NoError(t, err)
@@ -386,7 +387,7 @@ func TestOCIArchive_CommitPersistsDeletion(t *testing.T) {
 
 func TestOCIArchive_EmptyNewArchiveIsNoOp(t *testing.T) {
 	archive, target := newTestArchive(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
@@ -397,7 +398,7 @@ func TestOCIArchive_EmptyNewArchiveIsNoOp(t *testing.T) {
 
 	session, err = archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 	entries, err := os.ReadDir(session.Path())
 	require.NoError(t, err)
 	require.Empty(t, entries)
@@ -405,7 +406,7 @@ func TestOCIArchive_EmptyNewArchiveIsNoOp(t *testing.T) {
 
 func TestOCIArchive_CommitRejectsConcurrentTagUpdate(t *testing.T) {
 	archive, target := newTestArchive(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	session, err := archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
@@ -425,7 +426,7 @@ func TestOCIArchive_CommitRejectsConcurrentTagUpdate(t *testing.T) {
 
 	session, err = archive.Open(ctx, "radius-state")
 	require.NoError(t, err)
-	t.Cleanup(func() { session.Close(ctx) })
+	closeOnCleanup(t, session)
 	data, err := os.ReadFile(filepath.Join(session.Path(), "state.txt"))
 	require.NoError(t, err)
 	require.Equal(t, []byte("external state"), data)
@@ -435,7 +436,7 @@ func TestOCIArchive_OpenRemoteTargetConfiguresPlainHTTP(t *testing.T) {
 	t.Setenv("DOCKER_CONFIG", t.TempDir())
 	archive := NewOCIArchive(Options{Repository: "localhost:5000/radius-state", PlainHTTP: true})
 
-	target, err := archive.openRemoteTarget(context.Background())
+	target, err := archive.openRemoteTarget(t.Context())
 	require.NoError(t, err)
 	repository, ok := target.(*remote.Repository)
 	require.True(t, ok)
@@ -456,7 +457,7 @@ func TestCreateLayerRejectsSymbolicLinks(t *testing.T) {
 }
 
 func TestCreateArtifactUsesCompatibleManifestAndCleansUp(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	root := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(root, "state.txt"), []byte("state"), 0o644))
 
@@ -543,7 +544,7 @@ func TestUnpackArchiveEntriesRejectsNonRegularEntries(t *testing.T) {
 }
 
 func TestUnpackArchiveRejectsInvalidArtifacts(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("malformed manifest", func(t *testing.T) {
 		target := memory.New()
@@ -579,7 +580,7 @@ func pushTestManifest(t *testing.T, target oras.Target, manifest ocispec.Manifes
 
 	data, err := json.Marshal(manifest)
 	require.NoError(t, err)
-	desc, err := pushBlob(context.Background(), target, ocispec.MediaTypeImageManifest, data)
+	desc, err := pushBlob(t.Context(), target, ocispec.MediaTypeImageManifest, data)
 	require.NoError(t, err)
 	return desc
 }
@@ -595,6 +596,13 @@ func newTestArchive(t *testing.T) (*OCIArchive, *countingTarget) {
 		return target, nil
 	}
 	return archive, target
+}
+
+// closeOnCleanup closes the session once the test ends. It uses a fresh context because
+// t.Context() is cancelled before cleanup runs.
+func closeOnCleanup(t *testing.T, session statearchive.Session) {
+	t.Helper()
+	t.Cleanup(func() { session.Close(context.Background()) }) //nolint:usetesting
 }
 
 type countingTarget struct {

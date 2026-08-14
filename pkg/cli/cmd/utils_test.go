@@ -17,7 +17,6 @@ limitations under the License.
 package cmd
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -151,7 +150,7 @@ func TestPopulateRecipePackClients(t *testing.T) {
 			scope: {}, // placeholder client
 		}
 
-		err := PopulateRecipePackClients(context.Background(), &workspaces.Workspace{Scope: scope}, clientsByScope, nil)
+		err := PopulateRecipePackClients(t.Context(), &workspaces.Workspace{Scope: scope}, clientsByScope, nil)
 		require.NoError(t, err)
 		require.Len(t, clientsByScope, 1)
 	})
@@ -165,7 +164,7 @@ func TestPopulateRecipePackClients(t *testing.T) {
 			scope + "/providers/Radius.Core/recipePacks/pack2",
 		}
 
-		err := PopulateRecipePackClients(context.Background(), &workspaces.Workspace{Scope: scope}, clientsByScope, packIDs)
+		err := PopulateRecipePackClients(t.Context(), &workspaces.Workspace{Scope: scope}, clientsByScope, packIDs)
 		require.NoError(t, err)
 		require.Len(t, clientsByScope, 1, "no new scopes should be added")
 	})

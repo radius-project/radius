@@ -17,7 +17,6 @@ limitations under the License.
 package configurationstores
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -86,7 +85,7 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.NoError(t, err)
 
 		require.Equal(t, componentName, resource.Properties.ComponentName)
@@ -108,7 +107,7 @@ func Test_Process(t *testing.T) {
 		components.SetKind("Component")
 
 		// No components created for a recipe
-		err = processor.Client.List(context.Background(), &components,
+		err = processor.Client.List(t.Context(), &components,
 			&client.ListOptions{
 				Namespace: options.RuntimeConfiguration.Kubernetes.Namespace,
 			},
@@ -250,7 +249,7 @@ func Test_Process(t *testing.T) {
 						},
 					},
 				}
-				err := processor.Process(context.Background(), resource, options)
+				err := processor.Process(t.Context(), resource, options)
 				require.NoError(t, err)
 
 				require.Equal(t, componentName, resource.Properties.ComponentName)
@@ -273,7 +272,7 @@ func Test_Process(t *testing.T) {
 				components := unstructured.UnstructuredList{}
 				components.SetAPIVersion("dapr.io/v1alpha1")
 				components.SetKind("Component")
-				err = processor.Client.List(context.Background(), &components, &client.ListOptions{Namespace: options.RuntimeConfiguration.Kubernetes.Namespace})
+				err = processor.Client.List(t.Context(), &components, &client.ListOptions{Namespace: options.RuntimeConfiguration.Kubernetes.Namespace})
 				require.NoError(t, err)
 				require.NotEmpty(t, components.Items)
 				require.Equal(t, []unstructured.Unstructured{*tc.generated}, components.Items)
@@ -320,7 +319,7 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.NoError(t, err)
 
 		require.Equal(t, componentName, resource.Properties.ComponentName)
@@ -367,7 +366,7 @@ func Test_Process(t *testing.T) {
 		components := unstructured.UnstructuredList{}
 		components.SetAPIVersion("dapr.io/v1alpha1")
 		components.SetKind("Component")
-		err = processor.Client.List(context.Background(), &components, &client.ListOptions{Namespace: options.RuntimeConfiguration.Kubernetes.Namespace})
+		err = processor.Client.List(t.Context(), &components, &client.ListOptions{Namespace: options.RuntimeConfiguration.Kubernetes.Namespace})
 		require.NoError(t, err)
 		require.NotEmpty(t, components.Items)
 		require.Equal(t, []unstructured.Unstructured{*generated}, components.Items)
@@ -411,7 +410,7 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.NoError(t, err)
 
 		require.Equal(t, componentName, resource.Properties.ComponentName)
@@ -437,7 +436,7 @@ func Test_Process(t *testing.T) {
 		components := unstructured.UnstructuredList{}
 		components.SetAPIVersion("dapr.io/v1alpha1")
 		components.SetKind("Component")
-		err = processor.Client.List(context.Background(), &components,
+		err = processor.Client.List(t.Context(), &components,
 			&client.ListOptions{
 				Namespace: options.RuntimeConfiguration.Kubernetes.Namespace,
 			},
@@ -498,7 +497,7 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		err = processor.Process(context.Background(), resource, options)
+		err = processor.Process(t.Context(), resource, options)
 		require.Error(t, err)
 		assert.IsType(t, &processors.ValidationError{}, err)
 		assert.Equal(t, fmt.Sprintf("the Dapr component name '\"%s\"' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (e.g., StateStores, PubSubBrokers, SecretStores, ConfigurationStores, etc.). Please select a new name and try again.", componentName), err.Error())
