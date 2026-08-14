@@ -60,8 +60,8 @@ resourceTypes:
     tag: "Radius.Security/v0.1.0"
   - name: Radius.Messaging
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.Messaging/v0.1.0"
+    ref: ebdeec9509036f2b2f271e41661e6fcfe45eda89
+    tag: "Radius.Messaging/v0.1.1"
   - name: Radius.AI
     repo: github.com/radius-project/resource-types-contrib
     ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb

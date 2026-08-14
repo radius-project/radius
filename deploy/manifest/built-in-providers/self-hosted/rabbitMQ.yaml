@@ -11,12 +11,11 @@ types:
       that speaks AMQP 0-9-1. It allows developers to create and connect to a queue
       as part of their Radius applications.
 
-      Provision the broker password by creating a `Radius.Security/secrets` resource
-      (with the value passed to `rad deploy` as a `@secure()` parameter) and pass its
-      resource ID on the `password` property. The Recipe references the
-      materialized Kubernetes Secret by name and mounts the password into the broker
-      via `secretKeyRef`, so the plaintext password is never written into the pod spec
-      or onto this resource.
+      You can provision the broker password by creating a `Radius.Security/secrets`
+      resource and passing its resource ID on the optional `password` property. If
+      omitted, the Kubernetes Recipe generates a random password and returns it
+      through the resource's managed secrets. In both cases, the password is mounted
+      into the broker via `secretKeyRef`.
       ```bicep
       @secure()
       param password string
@@ -55,10 +54,10 @@ types:
       - CONNECTION_RABBITMQ_PORT
       - CONNECTION_RABBITMQ_USERNAME
 
-      The password is NOT emitted by this resource. Read it from the same
-      `Radius.Security/secrets` resource you created above by binding it into a
-      container env var with a `secretKeyRef`, using `rabbitmqSecret.name` as the
-      `secretName` and key `password`.
+      When `password` is supplied, bind the same `Radius.Security/secrets` resource
+      into the workload. When it is omitted, bind the Recipe-generated managed
+      secret using `queue.properties.secrets.name` as the `secretName`. In both cases,
+      use key `password`.
 
     apiVersions:
       '2025-08-01-preview':
@@ -81,7 +80,7 @@ types:
               description: "(Optional) The username the broker is provisioned with and that clients authenticate as. Defaults to `radius` if not provided. Avoid `guest`, which RabbitMQ restricts to loopback connections. The username is not sensitive and is exposed as a read-only connection value."
             password:
               type: string
-              description: "(Required) The resource ID of the `Radius.Security/secrets` resource that holds the broker password under the data key `password`. Set to `<secretResource>.id`. The Kubernetes Recipe references the materialized Kubernetes Secret by name and mounts the password into the broker via `secretKeyRef`, so the plaintext password is never written into the pod spec or onto this resource."
+              description: "(Optional) The resource ID of the `Radius.Security/secrets` resource that holds the broker password under the data key `password`. Set to `<secretResource>.id`. If omitted, the Kubernetes Recipe generates a random password and returns it through the managed `secrets.password` output."
             host:
               type: string
               description: (Read Only) The host name used to connect to the broker. Mapped from the recipe's Service DNS name.
@@ -90,4 +89,19 @@ types:
               type: integer
               description: (Read Only) The port used to connect to the broker over AMQP 0-9-1 (5672). Mapped from the recipe's output.
               readOnly: true
-          required: [environment, password]
+            secrets:
+              type: object
+              description: >-
+                (Read Only) Recipe-generated secrets. The reserved `name` sub-property references
+                the managed Radius.Security/secrets resource Radius materializes from the Recipe's
+                `outputs.secrets`. Consumers bind a key into a container env var via `secretKeyRef`.
+              properties:
+                name:
+                  type: string
+                  readOnly: true
+                  description: (Read Only) Name of the managed Radius.Security/secrets resource. Use as `secretName` in a container `secretKeyRef`.
+                password:
+                  type: string
+                  readOnly: true
+                  description: (Read Only) The Recipe-generated fallback password, delivered through the managed secret when the `password` input is omitted.
+          required: [environment]
