@@ -321,7 +321,7 @@ func TestRunner_RunModeled_LocalFilesystem(t *testing.T) {
 
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
-		PrepareTemplate(sampleBicepPath).
+		PrepareTemplate(gomock.Any(), sampleBicepPath).
 		Return(sampleTemplate(), nil).
 		Times(1)
 
@@ -351,7 +351,7 @@ func TestRunner_RunModeled_OrphanBranchPersistence(t *testing.T) {
 
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
-		PrepareTemplate(sampleBicepPath).
+		PrepareTemplate(gomock.Any(), sampleBicepPath).
 		Return(sampleTemplate(), nil).
 		Times(1)
 
@@ -395,7 +395,7 @@ func TestRunner_RunModeled_RealGitStore_SlashBranch(t *testing.T) {
 
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
-		PrepareTemplate(sampleBicepPath).
+		PrepareTemplate(gomock.Any(), sampleBicepPath).
 		Return(sampleTemplate(), nil).
 		Times(1)
 
@@ -424,7 +424,7 @@ func TestRunner_RunModeled_FallsBackToRefName(t *testing.T) {
 
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
-		PrepareTemplate(sampleBicepPath).
+		PrepareTemplate(gomock.Any(), sampleBicepPath).
 		Return(sampleTemplate(), nil).
 		Times(1)
 
@@ -455,7 +455,7 @@ func TestRunner_RunModeled_NoBranchInEnv(t *testing.T) {
 
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
-		PrepareTemplate(sampleBicepPath).
+		PrepareTemplate(gomock.Any(), sampleBicepPath).
 		Return(sampleTemplate(), nil).
 		Times(1)
 
@@ -479,7 +479,7 @@ func TestRunner_RunModeled_BicepCompileError(t *testing.T) {
 
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
-		PrepareTemplate(sampleBicepPath).
+		PrepareTemplate(gomock.Any(), sampleBicepPath).
 		Return(nil, errors.New("syntax error")).
 		Times(1)
 
@@ -504,7 +504,7 @@ func TestRunner_RunModeled_NilGraphStore(t *testing.T) {
 
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
-		PrepareTemplate(sampleBicepPath).
+		PrepareTemplate(gomock.Any(), sampleBicepPath).
 		Return(sampleTemplate(), nil).
 		Times(1)
 
@@ -529,7 +529,7 @@ func TestRunner_RunModeled_StoreSaveError(t *testing.T) {
 
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
-		PrepareTemplate(sampleBicepPath).
+		PrepareTemplate(gomock.Any(), sampleBicepPath).
 		Return(sampleTemplate(), nil).
 		Times(1)
 

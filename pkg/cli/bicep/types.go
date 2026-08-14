@@ -17,14 +17,18 @@ limitations under the License.
 package bicep
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,16 +38,24 @@ import (
 	"github.com/radius-project/radius/pkg/version"
 )
 
-// remoteTemplateTimeout bounds how long we wait when downloading a remote template.
-const remoteTemplateTimeout = 60 * time.Second
+const (
+	// remoteTemplateTimeout bounds the total time spent downloading a remote template.
+	remoteTemplateTimeout = 60 * time.Second
+	// maxDownloadAttempts is the number of times a transient download failure is retried.
+	maxDownloadAttempts = 3
+)
 
 // maxRemoteTemplateSize bounds how many bytes are read from a remote template so a large or
 // malicious response cannot exhaust memory. It is a variable so tests can lower it.
 var maxRemoteTemplateSize int64 = 100 << 20 // 100 MiB
 
+// retryBaseDelay is the base backoff between download attempts when no Retry-After is given. It is
+// a variable so tests can lower it.
+var retryBaseDelay = 500 * time.Millisecond
+
 // Interface is the interface for interacting with Bicep.
 type Interface interface {
-	PrepareTemplate(filePath string) (map[string]any, error)
+	PrepareTemplate(ctx context.Context, filePath string) (map[string]any, error)
 	Call(args ...string) ([]byte, error)
 }
 
@@ -55,18 +67,21 @@ var _ Interface = (*Impl)(nil)
 type Impl struct {
 	FileSystem filesystem.FileSystem
 	Output     output.Interface
+	// HTTPClient downloads remote templates. When nil, a default client that refuses to follow an
+	// https->http redirect downgrade is used. Injectable so tests can control transport behavior.
+	HTTPClient *http.Client
 }
 
 // PrepareTemplate checks if the file is a .json or .bicep file, downloads Bicep if it is not installed, checks if the file
 // exists, and builds the template if it does. The file may be a local path or an http(s) URL; remote templates are
 // downloaded to a temporary local file first. It returns a map of strings to any and an error if one occurs.
-func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
+func (i *Impl) PrepareTemplate(ctx context.Context, filePath string) (map[string]any, error) {
 	// A remote URL is downloaded to a temporary local file so it can be read or compiled like a
 	// local template. This mirrors the behavior users expect from tools such as kubectl.
 	originalPath := filePath
 	remote := isRemoteURL(filePath)
 	if remote {
-		localPath, cleanup, err := i.downloadTemplate(filePath)
+		localPath, cleanup, err := i.downloadTemplate(ctx, filePath)
 		if err != nil {
 			return nil, err
 		}
@@ -125,50 +140,86 @@ func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	return template, nil
 }
 
-// isRemoteURL reports whether filePath is an http or https URL. Local paths, including Windows
+// isRemoteURL reports whether filePath is intended as an http(s) URL. It classifies by scheme
+// prefix (not by url.Parse) so that a malformed URL is still routed to remote handling and surfaced
+// as a URL error, rather than being misread as a local file path. Local paths, including Windows
 // paths such as C:\foo.bicep, are not treated as remote URLs.
 func isRemoteURL(filePath string) bool {
-	parsed, err := url.Parse(filePath)
+	lower := strings.ToLower(filePath)
+	return strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://")
+}
+
+// redactURL returns a display-safe copy of a URL with any userinfo and query-parameter values
+// removed, so credentials embedded in the URL (basic-auth userinfo or signed query parameters such
+// as SAS tokens) are never written to logs or error messages.
+func redactURL(raw string) string {
+	parsed, err := url.Parse(raw)
 	if err != nil {
-		return false
+		return "<redacted url>"
 	}
-	return parsed.Scheme == "http" || parsed.Scheme == "https"
+	if parsed.User != nil {
+		parsed.User = url.User("redacted")
+	}
+	if parsed.RawQuery != "" {
+		query := parsed.Query()
+		for key := range query {
+			query[key] = []string{"redacted"}
+		}
+		parsed.RawQuery = query.Encode()
+	}
+	return parsed.String()
+}
+
+// urlParseReason extracts the underlying reason from a url.Parse error, dropping the raw URL string
+// it embeds (which may contain credentials).
+func urlParseReason(err error) error {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return urlErr.Err
+	}
+	return err
+}
+
+// newHTTPClient returns the default client used for downloads. It refuses to follow a redirect that
+// downgrades an https request to http so credentials and integrity are not silently lost.
+func newHTTPClient() *http.Client {
+	return &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return errors.New("stopped after 10 redirects")
+			}
+			if via[0].URL.Scheme == "https" && req.URL.Scheme != "https" {
+				return fmt.Errorf("refusing to follow redirect from https to %s", req.URL.Scheme)
+			}
+			return nil
+		},
+	}
 }
 
 // downloadTemplate retrieves a remote template referenced by an http(s) URL and writes it to a
 // temporary local file so it can be read or compiled like a local template. It returns the local
 // file path and a cleanup function that removes the temporary directory.
-func (i *Impl) downloadTemplate(templateURL string) (string, func(), error) {
+func (i *Impl) downloadTemplate(ctx context.Context, templateURL string) (string, func(), error) {
 	parsed, err := url.Parse(templateURL)
 	if err != nil {
-		return "", nil, fmt.Errorf("invalid template URL %q: %w", templateURL, err)
+		return "", nil, fmt.Errorf("invalid template URL %q: %w", redactURL(templateURL), urlParseReason(err))
+	}
+	if parsed.Host == "" {
+		return "", nil, fmt.Errorf("invalid template URL %q: missing host", redactURL(templateURL))
 	}
 
 	ext := path.Ext(parsed.Path)
 	if !strings.EqualFold(ext, ".bicep") && !strings.EqualFold(ext, ".json") {
-		return "", nil, fmt.Errorf("the provided URL %q must reference a .json or .bicep file", templateURL)
+		return "", nil, fmt.Errorf("the provided URL %q must reference a .json or .bicep file", redactURL(templateURL))
 	}
 
-	i.Output.LogInfo("Downloading template from %s...", templateURL)
+	// display is used in all logs/errors so credentials in the URL are never surfaced.
+	display := redactURL(templateURL)
+	i.Output.LogInfo("Downloading template from %s...", display)
 
-	client := &http.Client{Timeout: remoteTemplateTimeout}
-	resp, err := client.Get(templateURL)
+	body, err := i.fetchRemoteTemplate(ctx, templateURL, display)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to download template from %q: %w", templateURL, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", nil, fmt.Errorf("failed to download template from %q: unexpected status %s", templateURL, resp.Status)
-	}
-
-	// Bound the read so a large or malicious response cannot exhaust memory.
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxRemoteTemplateSize+1))
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to read template from %q: %w", templateURL, err)
-	}
-	if int64(len(body)) > maxRemoteTemplateSize {
-		return "", nil, fmt.Errorf("template from %q exceeds the maximum allowed size of %d bytes", templateURL, maxRemoteTemplateSize)
+		return "", nil, err
 	}
 
 	dir, err := i.FileSystem.MkdirTemp("", "rad-remote-template-")
@@ -197,6 +248,107 @@ func (i *Impl) downloadTemplate(templateURL string) (string, func(), error) {
 	}
 
 	return localPath, cleanup, nil
+}
+
+// fetchRemoteTemplate downloads the template body, retrying transient failures (transport errors,
+// 5xx responses, and 429) up to maxDownloadAttempts within an overall timeout. display is the
+// redacted URL used in log and error messages.
+func (i *Impl) fetchRemoteTemplate(ctx context.Context, templateURL, display string) ([]byte, error) {
+	client := i.HTTPClient
+	if client == nil {
+		client = newHTTPClient()
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, remoteTemplateTimeout)
+	defer cancel()
+
+	var lastErr error
+	for attempt := 1; attempt <= maxDownloadAttempts; attempt++ {
+		body, retryAfter, retryable, err := i.attemptDownload(ctx, client, templateURL, display)
+		if err == nil {
+			return body, nil
+		}
+		lastErr = err
+		if !retryable || attempt == maxDownloadAttempts {
+			return nil, err
+		}
+
+		delay := retryAfter
+		if delay <= 0 {
+			delay = time.Duration(attempt) * retryBaseDelay
+		}
+		select {
+		case <-ctx.Done():
+			return nil, lastErr
+		case <-time.After(delay):
+		}
+	}
+	return nil, lastErr
+}
+
+// attemptDownload performs a single download attempt. It returns whether the failure is retryable
+// and any server-provided Retry-After delay.
+func (i *Impl) attemptDownload(ctx context.Context, client *http.Client, templateURL, display string) (_ []byte, retryAfter time.Duration, retryable bool, _ error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, templateURL, nil)
+	if err != nil {
+		return nil, 0, false, fmt.Errorf("failed to request template from %q: %w", display, err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, 0, false, fmt.Errorf("failed to download template from %q: %w", display, context.Cause(ctx))
+		}
+		return nil, 0, true, fmt.Errorf("failed to download template from %q: %w", display, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		retryable = resp.StatusCode >= 500 || resp.StatusCode == http.StatusTooManyRequests
+		return nil, parseRetryAfter(resp.Header.Get("Retry-After")), retryable,
+			fmt.Errorf("failed to download template from %q: unexpected status %s", display, resp.Status)
+	}
+
+	// A GitHub file page (as opposed to the raw URL) returns HTML with 200 OK; reject it clearly
+	// instead of letting the HTML reach the Bicep/JSON parser. Other content types are allowed
+	// because valid templates are commonly served as text/plain or application/octet-stream.
+	if mediaType, _, mErr := mime.ParseMediaType(resp.Header.Get("Content-Type")); mErr == nil && mediaType == "text/html" {
+		return nil, 0, false, fmt.Errorf("the URL %q returned an HTML page rather than a template; use the raw file URL", display)
+	}
+
+	// Bound the read so a large or malicious response cannot exhaust memory.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxRemoteTemplateSize+1))
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, 0, false, fmt.Errorf("failed to read template from %q: %w", display, context.Cause(ctx))
+		}
+		return nil, 0, true, fmt.Errorf("failed to read template from %q: %w", display, err)
+	}
+	if int64(len(body)) > maxRemoteTemplateSize {
+		return nil, 0, false, fmt.Errorf("template from %q exceeds the maximum allowed size of %d bytes", display, maxRemoteTemplateSize)
+	}
+	return body, 0, false, nil
+}
+
+// parseRetryAfter interprets a Retry-After header value (delay-seconds or HTTP-date). It returns 0
+// when the value is absent or cannot be parsed.
+func parseRetryAfter(value string) time.Duration {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return 0
+	}
+	if seconds, err := strconv.Atoi(value); err == nil {
+		if seconds < 0 {
+			return 0
+		}
+		return time.Duration(seconds) * time.Second
+	}
+	if when, err := http.ParseTime(value); err == nil {
+		if delay := time.Until(when); delay > 0 {
+			return delay
+		}
+	}
+	return 0
 }
 
 // writeBicepConfig places a bicepconfig.json in destDir so extension declarations in a downloaded

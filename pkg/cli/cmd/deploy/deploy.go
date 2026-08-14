@@ -211,7 +211,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// Prepare the template early to check if it contains an environment resource.
 	// This allows us to skip environment validation if the template will create one.
-	r.Template, err = r.Bicep.PrepareTemplate(r.FilePath)
+	r.Template, err = r.Bicep.PrepareTemplate(cmd.Context(), r.FilePath)
 	if err != nil {
 		return err
 	}
