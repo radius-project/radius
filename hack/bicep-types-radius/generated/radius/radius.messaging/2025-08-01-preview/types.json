@@ -308,6 +308,32 @@
     "$type": "StringType"
   },
   {
+    "$type": "StringType"
+  },
+  {
+    "$type": "ObjectType",
+    "name": "secrets",
+    "properties": {
+      "name": {
+        "description": "(Read Only) Name of the managed Radius.Security/secrets resource. Use as `secretName` in a container `secretKeyRef`.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/30"
+        }
+      },
+      "password": {
+        "description": "(Read Only) The Recipe-generated fallback password, delivered through the managed secret when the `password` input is omitted.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/31"
+        }
+      }
+    }
+  },
+  {
+    "$type": "StringType"
+  },
+  {
     "$type": "ObjectType",
     "name": "rabbitMQProperties",
     "properties": {
@@ -347,8 +373,8 @@
         }
       },
       "password": {
-        "description": "(Required) The resource ID of the `Radius.Security/secrets` resource that holds the broker password under the data key `password`. Set to `\u003csecretResource\u003e.id`. The Kubernetes Recipe references the materialized Kubernetes Secret by name and mounts the password into the broker via `secretKeyRef`, so the plaintext password is never written into the pod spec or onto this resource.",
-        "flags": 1,
+        "description": "(Optional) The resource ID of the `Radius.Security/secrets` resource that holds the broker password under the data key `password`. Set to `\u003csecretResource\u003e.id`. If omitted, the Kubernetes Recipe generates a random password and returns it through the managed `secrets.password` output.",
+        "flags": 0,
         "type": {
           "$ref": "#/27"
         }
@@ -367,11 +393,18 @@
           "$ref": "#/29"
         }
       },
+      "secrets": {
+        "description": "(Read Only) Recipe-generated secrets. The reserved `name` sub-property references the managed Radius.Security/secrets resource Radius materializes from the Recipe's `outputs.secrets`. Consumers bind a key into a container env var via `secretKeyRef`.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/32"
+        }
+      },
       "username": {
         "description": "(Optional) The username the broker is provisioned with and that clients authenticate as. Defaults to `radius` if not provided. Avoid `guest`, which RabbitMQ restricts to loopback connections. The username is not sensitive and is exposed as a read-only connection value.",
         "flags": 0,
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/33"
         }
       }
     }
@@ -401,7 +434,7 @@
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/37"
         }
       },
       "application": {
@@ -443,25 +476,25 @@
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/36"
+          "$ref": "#/39"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/33"
+          "$ref": "#/36"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/32"
+          "$ref": "#/35"
         }
       },
       "password": {
-        "description": "(Required) The resource ID of the `Radius.Security/secrets` resource that holds the broker password under the data key `password`. Set to `\u003csecretResource\u003e.id`. The Kubernetes Recipe references the materialized Kubernetes Secret by name and mounts the password into the broker via `secretKeyRef`, so the plaintext password is never written into the pod spec or onto this resource.",
+        "description": "(Optional) The resource ID of the `Radius.Security/secrets` resource that holds the broker password under the data key `password`. Set to `\u003csecretResource\u003e.id`. If omitted, the Kubernetes Recipe generates a random password and returns it through the managed `secrets.password` output.",
         "flags": 2,
         "type": {
           "$ref": "#/27"
@@ -478,7 +511,7 @@
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/31"
+          "$ref": "#/34"
         }
       },
       "queue": {
@@ -488,18 +521,25 @@
           "$ref": "#/29"
         }
       },
+      "secrets": {
+        "description": "(Read Only) Recipe-generated secrets. The reserved `name` sub-property references the managed Radius.Security/secrets resource Radius materializes from the Recipe's `outputs.secrets`. Consumers bind a key into a container env var via `secretKeyRef`.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/32"
+        }
+      },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/35"
+          "$ref": "#/38"
         }
       },
       "username": {
         "description": "(Optional) The username the broker is provisioned with and that clients authenticate as. Defaults to `radius` if not provided. Avoid `guest`, which RabbitMQ restricts to loopback connections. The username is not sensitive and is exposed as a read-only connection value.",
         "flags": 2,
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/33"
         }
       }
     }
@@ -507,7 +547,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/37"
+      "$ref": "#/40"
     },
     "name": "Radius.Messaging/rabbitMQ@2025-08-01-preview",
     "readableScopes": 0,
