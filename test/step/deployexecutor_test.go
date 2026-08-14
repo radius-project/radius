@@ -331,9 +331,12 @@ func Test_EffectiveRetryBudget_CappedByTestDeadline(t *testing.T) {
 	d := NewDeployExecutor("test.bicep")
 	d.RetryBudget = time.Hour
 
+	halfRemainingBefore := time.Until(deadline) / 2
 	budget := d.effectiveRetryBudget(t)
+	halfRemainingAfter := time.Until(deadline) / 2
 
-	assert.Less(t, budget, time.Until(deadline))
+	assert.LessOrEqual(t, budget, halfRemainingBefore)
+	assert.GreaterOrEqual(t, budget, halfRemainingAfter)
 	assert.Positive(t, budget)
 }
 

@@ -22,7 +22,7 @@ name: Update Resource Types
 # from radius-project/resource-types-contrib's notify-radius.yaml. A single event
 # type carries both channels in its client_payload:
 #   - channel "edge":    a push to contrib `main`; contrib_ref is the pushed
-#                        commit SHA.
+#                        commit SHA, used only for units with no stable release.
 #   - channel "release": a published contrib release; contrib_ref is the release
 #                        tag (a scope-prefixed tag affects one namespace or one
 #                        recipe pack, a plain vX.Y.Z affects all namespaces).
@@ -33,12 +33,15 @@ name: Update Resource Types
 # `recipe-pack/<pack>/vX.Y.Z` release series; at least one of the two arrays
 # must be non-empty.
 #
-# This job opens (or refreshes) a PR that runs `make update-resource-types` (and
-# `make update-recipe-packs` when recipe packs are affected) with those pins,
-# which resolves each ref to an immutable commit SHA, records it in
+# This job opens (or refreshes) a PR that runs the atomic
+# `make update-resource-types-and-recipe-packs` target with those pins. It
+# selects a stable unit release when one exists, otherwise resolves the edge
+# candidate to an immutable commit SHA, records it in
 # deploy/manifest/defaults.yaml (`resourceTypes[]` / `recipePacks[]`), and
-# re-copies the manifests under deploy/manifest/built-in-providers/ - advancing
-# only what the event changed (entries Radius does not register are skipped).
+# re-copies the manifests under deploy/manifest/built-in-providers/. It then
+# runs `make generate` and commits all resulting generated artifacts. The
+# event's units advance, as do any consumed edge units whose first stable
+# release is now available; entries Radius does not register are skipped.
 #
 # The bot branch is rebuilt from the current main on every dispatch. Pins that
 # are still pending on its open PR are replayed as extra input to make, so
@@ -60,9 +63,11 @@ on:
 permissions: {}
 
 concurrency:
-  # Only one in-flight refresh PR at a time.
+  # Serialize every dispatch. The default single pending slot evicts an older
+  # queued event when a newer one arrives, which can strand an affected unit on
+  # an old pin when separate namespaces release close together.
   group: update-resource-types
-  cancel-in-progress: false
+  queue: max
 
 env:
   PR_BRANCH: bot/update-resource-types
@@ -73,7 +78,7 @@ jobs:
     name: Open update-resource-types PR
     if: github.repository == 'radius-project/radius'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: read # actions/checkout
     steps:
@@ -174,8 +179,9 @@ jobs:
 
       - name: Generate App Token
         # Uses a GitHub App token instead of the default GITHUB_TOKEN so that
-        # the bot can push the PR branch and the resulting PR triggers CI checks.
-        # The default GITHUB_TOKEN cannot trigger workflows on pushes it creates.
+        # radius-resource-types can manage the PR branch and pull request, and
+        # the resulting update triggers CI checks. The default GITHUB_TOKEN
+        # cannot trigger workflows on pushes it creates.
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
@@ -188,22 +194,34 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
 
+      - name: Get bot details
+        id: bot-details
+        uses: raven-actions/bot-details@ee8966a9ff6e7e42cbfc4a56b4ddb60a9d1b40a6 # v1.2.0
+        with:
+          bot-slug-name: ${{ steps.app-token.outputs.app-slug }}
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false
 
-      - name: Set up Git identity
-        # Configure git author for the automated commit on the PR branch.
-        run: |
-          git config user.name "Radius CI Bot"
-          git config user.email "radiuscoreteam@service.microsoft.com"
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: true
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
 
       - name: Install yq
-        # Required by make update-resource-types / sync-resource-types to parse
-        # deploy/manifest/defaults.yaml, and by the branch preparation below.
+        # Required by the resource type sync targets to parse defaults.yaml, and
+        # by the branch preparation below.
         # install-yq appends its install dir to GITHUB_PATH, so yq is only on
         # PATH from the next step onwards.
         run: make install-yq
@@ -239,9 +257,14 @@ jobs:
           pr_query="${pr_query}&head=${GITHUB_REPOSITORY%%/*}:${PR_BRANCH}"
 
           pending='{}'
-          if [ -n "${head_sha}" ] && [ -n "$(
-            gh api "${pr_query}" --jq '.[].number'
-          )" ]; then
+          open_prs=''
+          if [ -n "${head_sha}" ]; then
+            if ! open_prs="$(gh api "${pr_query}" --jq '.[].number')"; then
+              echo "ERROR: failed to query the pending ${PR_BRANCH} pull request." >&2
+              exit 1
+            fi
+          fi
+          if [ -n "${head_sha}" ] && [ -n "${open_prs}" ]; then
             git fetch origin "${PR_BRANCH}"
             if git cat-file -e "FETCH_HEAD:${defaults}" 2> /dev/null; then
               pending="$(
@@ -251,7 +274,10 @@ jobs:
             fi
           fi
 
-          git checkout -B "${PR_BRANCH}" origin/main
+          # create-pull-request owns the bot branch. Keep the generated changes
+          # on main so the action can rebuild the stable PR branch from the
+          # latest base while preserving the pending pins read above.
+          git checkout -B main origin/main
           base="$(yq -o=json -I=0 '.' "${defaults}")"
 
           # carried <section> <legacy_section> <payload_json> echoes the branch
@@ -308,132 +334,48 @@ jobs:
             echo "pack_pins<<PACK_PINS_EOF"
             printf '%s\n' "${pack_pins}"
             echo "PACK_PINS_EOF"
-            echo "head_sha=${head_sha}"
             echo "carried=${carried_names}"
           } >> "${GITHUB_OUTPUT}"
           echo "Carried forward: [${carried_names}]"
 
-      - name: Run make update-resource-types
-        # Advances the affected namespaces: pins each to its immutable commit SHA
-        # in deploy/manifest/defaults.yaml (resourceTypes[].ref, plus .tag on the
-        # release channel) and copies the manifest files into
-        # deploy/manifest/built-in-providers/{dev,self-hosted}/.
-        # RESOURCE_TYPES_PINS is the contrib namespaces[] payload plus any pins
-        # carried forward from the still-open PR.
-        if: steps.branch.outputs.pins != '[]'
+      - name: Update resource types and recipe packs
+        # Applies both payload sections before validating either one. This is
+        # required for repository-wide releases, whose stable tag advances
+        # namespaces and recipe packs together.
         env:
           RESOURCE_TYPES_PINS: ${{ steps.branch.outputs.pins }}
-        run: |
-          set -euo pipefail
-          make update-resource-types
-
-      - name: Run make update-recipe-packs
-        # Recipe packs are pinned but never vendored into this repo, so this
-        # only rewrites recipePacks[].ref / .tag in defaults.yaml.
-        if: steps.branch.outputs.pack_pins != '[]'
-        env:
           RECIPE_PACKS_PINS: ${{ steps.branch.outputs.pack_pins }}
         run: |
           set -euo pipefail
-          make update-recipe-packs
+          make update-resource-types-and-recipe-packs
 
-      - name: Detect changes
-        # Uses git status --porcelain (not git diff --quiet) because
-        # make update-resource-types may create new untracked files when new
-        # resource types are added to defaults.yaml. git diff only detects
-        # modifications to already-tracked files.
-        id: changes
-        run: |
-          set -euo pipefail
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "changed=false" >> "${GITHUB_OUTPUT}"
-            echo "No changes from 'make update-resource-types'; nothing to do."
-          else
-            echo "changed=true" >> "${GITHUB_OUTPUT}"
-          fi
+      - name: Generate derived artifacts
+        run: make generate
 
-      - name: Create or update PR branch
-        # The branch was rebuilt from main, so the push always rewrites history.
-        # Lease against the head read in "Prepare cumulative update branch" (an
-        # empty value means the branch must not already exist) - a bare
-        # --force-with-lease would lease against a remote-tracking ref this job
-        # never creates, and would reject every push after the first.
-        if: steps.changes.outputs.changed == 'true'
-        env:
-          CHANNEL: ${{ steps.contrib.outputs.channel }}
-          AFFECTED: ${{ steps.contrib.outputs.affected }}
-          CARRIED: ${{ steps.branch.outputs.carried }}
-          HEAD_SHA: ${{ steps.branch.outputs.head_sha }}
-        run: |
-          set -euo pipefail
-          git add -A
-          message="chore: refresh resource type manifests from ${CONTRIB_REPO}"
-          message+=" (${CHANNEL}: ${AFFECTED:-all})"
-          if [ -n "${CARRIED}" ]; then
-            message+=$'\n\n'"Carried forward: ${CARRIED}"
-          fi
-          git commit -m "${message}"
-          git push --force-with-lease="refs/heads/${PR_BRANCH}:${HEAD_SHA}" \
-            origin "HEAD:${PR_BRANCH}"
-
-      - name: Open or update pull request
-        # Creates a new PR if none exists for the bot branch, or updates the
-        # existing one's title and body. Uses github-script because we need
-        # conditional create-or-update logic that gh pr create doesn't support.
-        if: steps.changes.outputs.changed == 'true'
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          CHANNEL: ${{ steps.contrib.outputs.channel }}
-          AFFECTED: ${{ steps.contrib.outputs.affected }}
-          CARRIED: ${{ steps.branch.outputs.carried }}
-          CONTRIB_REF: ${{ steps.contrib.outputs.ref }}
+      - name: Create or update pull request
+        id: create-pr
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
         with:
-          github-token: ${{ steps.app-token.outputs.token }}
-          script: |
-            const branch = process.env.PR_BRANCH;
-            const channel = process.env.CHANNEL || "edge";
-            const affected = process.env.AFFECTED || "";
-            const carried = process.env.CARRIED || "";
-            const contribRef = process.env.CONTRIB_REF || "";
-            const title = "chore: refresh resource type manifests from resource-types-contrib";
-            const body = [
-              "Automated refresh of resource type manifests under `deploy/manifest/built-in-providers/`.",
-              "",
-              `Triggered by [\`${process.env.CONTRIB_REPO}\`](https://github.com/${process.env.CONTRIB_REPO}) on the \`${channel}\` channel at ref \`${contribRef}\`.`,
-              affected ? `Affected: ${affected}.` : "",
-              carried ? `Carried forward from the previous pending update: ${carried}.` : "",
-              "",
-              "Each affected entry is pinned to an immutable commit SHA in `deploy/manifest/defaults.yaml` (`resourceTypes[]` / `recipePacks[]`).",
-              "",
-              "Merging this PR will republish `br:biceptypes.azurecr.io/radius:latest` via the existing `build-and-push-bicep-types` job in `build.yaml`.",
-            ].filter(Boolean).join("\n");
+          token: ${{ steps.app-token.outputs.token }}
+          branch: ${{ env.PR_BRANCH }}
+          base: main
+          commit-message: |
+            chore(resource-types): update from ${{ env.CONTRIB_REPO }} (${{ steps.contrib.outputs.channel }}: ${{ steps.contrib.outputs.affected }})
 
-            const { owner, repo } = context.repo;
-            const { data: existing } = await github.rest.pulls.list({
-              owner,
-              repo,
-              head: `${owner}:${branch}`,
-              state: "open",
-            });
+            ${{ steps.branch.outputs.carried != '' && format('Carried forward: {0}', steps.branch.outputs.carried) || '' }}
+          # Used for the local DCO trailer. The API-created commit itself is
+          # authored and signed by the App because sign-commits is enabled.
+          committer: ${{ steps.bot-details.outputs.name-email }}
+          signoff: true
+          sign-commits: true
+          title: "chore(resource-types-contrib): updates"
+          body: |
+            Automated refresh of resource type manifests under `deploy/manifest/built-in-providers/`.
 
-            if (existing.length === 0) {
-              const { data: pr } = await github.rest.pulls.create({
-                owner,
-                repo,
-                title,
-                head: branch,
-                base: "main",
-                body,
-              });
-              core.notice(`Opened PR #${pr.number}: ${pr.html_url}`);
-            } else {
-              const pr = existing[0];
-              await github.rest.pulls.update({
-                owner,
-                repo,
-                pull_number: pr.number,
-                title,
-                body,
-              });
-              core.notice(`Refreshed existing PR #${pr.number}: ${pr.html_url}`);
-            }
+            Triggered by [`${{ env.CONTRIB_REPO }}`](https://github.com/${{ env.CONTRIB_REPO }}) on the `${{ steps.contrib.outputs.channel }}` channel at ref `${{ steps.contrib.outputs.ref }}`.
+            Affected: ${{ steps.contrib.outputs.affected }}.
+            ${{ steps.branch.outputs.carried != '' && format('Carried forward from the previous pending update: {0}.', steps.branch.outputs.carried) || '' }}
+
+            Each affected entry is pinned to an immutable commit SHA in `deploy/manifest/defaults.yaml` (`resourceTypes[]` / `recipePacks[]`).
+
+            Merging this PR will republish `br:biceptypes.azurecr.io/radius:latest` via the existing `build-and-push-bicep-types` job in `build.yaml`.

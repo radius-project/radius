@@ -297,51 +297,24 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	newRecipePacks := []*string{}
-
 	// Update recipe packs if specified: replace the environment's recipe pack list,
 	// keeping referencedBy on each recipe pack in sync.
 	if len(r.recipePacks) > 0 {
+		envID := *env.ID
+
+		// Resolve and validate all recipe packs before mutating anything or warning the
+		// user. Validating first keeps a failure from being printed underneath the
+		// replacement warning, where it reads as part of the warning instead of an error.
+		newRecipePacks, err := r.resolveRecipePacks(ctx)
+		if err != nil {
+			return err
+		}
+
 		if len(env.Properties.RecipePacks) > 0 {
 			r.Output.LogInfo("WARNING: The existing recipe pack list will be replaced with the specified packs.")
 		}
 
-		envID := *env.ID
-
-		// Resolve all new recipe packs to full IDs.
-		for _, recipePack := range r.recipePacks {
-			var rClientFactory *corerpv20250801.ClientFactory
-			recipePackID, err := resources.Parse(recipePack)
-			// If the provided recipe pack value is an ID, parse its scope.
-			if err == nil {
-				rClientFactory, err = cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
-				if err != nil {
-					return err
-				}
-			} else {
-				rClientFactory = r.RadiusCoreClientFactory
-				scopeID, err := resources.ParseScope(r.Workspace.Scope)
-				if err != nil {
-					return err
-				}
-
-				recipePackID = scopeID.Append(resources.TypeSegment{
-					Type: "Radius.Core/recipePacks",
-					Name: recipePack,
-				})
-			}
-
-			cfclient := rClientFactory.NewRecipePacksClient()
-
-			_, err = cfclient.Get(ctx, recipePackID.RootScope(), recipePackID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
-			if err != nil {
-				return clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to set on the environment.", recipePack)
-			}
-
-			newRecipePacks = append(newRecipePacks, to.Ptr(recipePackID.String()))
-		}
-
-		err := syncRecipePackReferences(ctx, envID, env.Properties.RecipePacks, newRecipePacks, r.Workspace, r.RadiusCoreClientFactory)
+		err = syncRecipePackReferences(ctx, envID, env.Properties.RecipePacks, newRecipePacks, r.Workspace, r.RadiusCoreClientFactory)
 		if err != nil {
 			return err
 		}
@@ -358,6 +331,33 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Radius.Core/environments/%s updated", r.EnvironmentName)
 
 	return nil
+}
+
+// resolveRecipePacks resolves each value passed to --recipe-packs to a full recipe
+// pack resource ID and verifies that the recipe pack exists. A bare name is scoped
+// to the workspace's resource group; a full resource ID is used as-is, which allows
+// referencing a recipe pack in another resource group.
+func (r *Runner) resolveRecipePacks(ctx context.Context) ([]*string, error) {
+	recipePackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
+	recipePackIDs := make([]*string, 0, len(r.recipePacks))
+
+	for _, recipePack := range r.recipePacks {
+		recipePackID, isFullID, err := recipepack.ResolveID(recipePack, r.Workspace.Scope)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = recipePackClient.Get(ctx, recipePackID.RootScope(), recipePackID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+		if clients.Is404Error(err) {
+			return nil, recipepack.NotFoundError(recipePack, recipePackID, isFullID)
+		} else if err != nil {
+			return nil, clierrors.MessageWithCause(err, "Failed to look up recipe pack %q.", recipePack)
+		}
+
+		recipePackIDs = append(recipePackIDs, to.Ptr(recipePackID.String()))
+	}
+
+	return recipePackIDs, nil
 }
 
 // syncRecipePackReferences updates the referencedBy field on recipe packs to reflect

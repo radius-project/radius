@@ -186,6 +186,17 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			}
 
 			if msgreq.DequeueCount > w.options.MaxOperationRetryCount {
+				// If the operation was already completed on a prior attempt (for example, the panic
+				// recovery recorded the real failure cause) but the message could not be finished then,
+				// just finish it now instead of overwriting the recorded status with a generic
+				// retry-count error.
+				if w.isOperationTerminal(reqCtx, op) {
+					if err := w.requestQueue.FinishMessage(reqCtx, msgreq); err != nil {
+						opLogger.Error(err, "failed to finish the message")
+					}
+					return
+				}
+
 				errMsg := fmt.Sprintf("exceeded max retry count to process async operation message: %d", msgreq.DequeueCount)
 				opLogger.Error(nil, errMsg)
 				failed := ctrl.NewFailedResult(v1.ErrorDetails{
@@ -244,16 +255,29 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 	// Start new go routine to cancel and timeout async operation.
 	go func() {
 		defer func(done chan struct{}) {
-			close(done)
+			defer close(done)
 			if err := recover(); err != nil {
 				msg := fmt.Errorf("recovering from panic %v: %s", err, debug.Stack())
 				logger.Error(msg, "recovering from panic")
 
-				// When backend controller has a critical bug such as nil reference, asyncCtrl.Run() is panicking.
-				// If this happens, the message is requeued after message lock time (5 mins).
-				// After message lock is expired, message will be reprocessed 'w.options.MaxOperationRetryCount' times and
-				// then complete the message and change provisioningState to 'Failed'. Meanwhile, PUT request will
-				// be blocked.
+				// A panic means the controller crashed (for example, a nil dereference). By default the
+				// message is left unfinished and redelivered after the message lock expires, and only
+				// after it has been redelivered more than 'w.options.MaxOperationRetryCount' times is the
+				// operation marked 'Failed' - with a generic "exceeded max retry count" message that hides
+				// the real cause.
+				//
+				// To preserve the real cause, on the final attempt complete the operation as Failed using
+				// the panic details. Earlier attempts are still left unfinished so they are retried. We
+				// only do this when the request context is still active (Err() == nil); if it was
+				// canceled or its deadline was exceeded (operation timeout or worker shutdown), those
+				// paths own completion and must not be overwritten.
+				if message.DequeueCount >= w.options.MaxOperationRetryCount && asyncReqCtx.Err() == nil {
+					failed := ctrl.NewFailedResult(v1.ErrorDetails{
+						Code:    v1.CodeInternal,
+						Message: fmt.Sprintf("unexpected error while processing async operation: %v", err),
+					})
+					w.completeOperation(ctx, message, failed, asyncCtrl.DatabaseClient())
+				}
 			}
 		}(opDone)
 
@@ -381,6 +405,28 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 	}
 
 	return nil
+}
+
+// isOperationTerminal reports whether the operation status has already reached a terminal
+// provisioning state (for example, it was completed as Failed by the panic recovery on the final
+// attempt). It is used to avoid overwriting an already-recorded terminal status with a generic
+// retry-count error. It returns false if the status cannot be read.
+func (w *AsyncRequestProcessWorker) isOperationTerminal(ctx context.Context, op *ctrl.Request) bool {
+	if w.sm == nil {
+		return false
+	}
+
+	rID, err := resources.ParseResource(op.ResourceID)
+	if err != nil {
+		return false
+	}
+
+	status, err := w.sm.Get(ctx, rID, op.OperationID)
+	if err != nil {
+		return false
+	}
+
+	return status.Status.IsTerminal()
 }
 
 func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, resourceID string, operationID uuid.UUID) (bool, error) {

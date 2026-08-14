@@ -66,7 +66,6 @@ type DeployExecutor struct {
 }
 
 // Default retry behavior applied by NewDeployExecutor for transient deployment
-// Default retry behavior applied by NewDeployExecutor for transient deployment
 // failures: image pull blips from shared registries, and the UCP connection
 // resets, EOFs and restart-phase HTTP errors produced when the kind control
 // plane restarts under runner pressure.

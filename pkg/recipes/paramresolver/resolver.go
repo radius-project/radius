@@ -255,6 +255,9 @@ func buildContextLookup(ctx *recipecontext.Context) map[string]string {
 		lookup["context.azure.resourceGroup.id"] = ctx.Azure.ResourceGroup.ID
 		lookup["context.azure.subscription.subscriptionId"] = ctx.Azure.Subscription.SubscriptionID
 		lookup["context.azure.subscription.id"] = ctx.Azure.Subscription.ID
+		if ctx.Azure.ResourceNameHash != "" {
+			lookup["context.azure.resourceNameHash"] = ctx.Azure.ResourceNameHash
+		}
 	}
 
 	// Add AWS provider fields.

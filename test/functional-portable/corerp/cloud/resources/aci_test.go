@@ -40,7 +40,7 @@ import (
 func Test_ACI(t *testing.T) {
 	// Disabled: this test dominates the corerp-cloud functional leg's wall-clock
 	// time. It provisions real Azure Container Instances (plus a VNet/NSG/ILB) and
-	// is wrapped in a 3 minute retry budget with 60s backoff to tolerate the
+	// is wrapped in a 5 minute retry budget with 60s backoff to tolerate the
 	// subscription-shared 'StandardCores' ACI quota (ContainerGroupQuotaReached).
 	// When the quota is exhausted by concurrent CI runs the deploy is retried
 	// end-to-end, so a single run can take ~11-12 minutes (vs <1 minute for every
@@ -57,7 +57,7 @@ func Test_ACI(t *testing.T) {
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor:             step.NewDeployExecutor(template).WithRetry(3*time.Minute, 60*time.Second, isTransientAzureError),
+			Executor:             step.NewDeployExecutor(template).WithRetry(5*time.Minute, 60*time.Second, isTransientCloudDeployError),
 			SkipObjectValidation: true,
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
@@ -189,15 +189,15 @@ var transientAzureErrorMarkers = []string{
 	"ContainerGroupQuotaReached",
 }
 
-// isTransientAzureError returns true if the error is a known transient Azure
-// error that may succeed on retry. It delegates to step.ErrorContainsAny, which
-// flattens the nested ARM error details rad surfaces inside a CLIError so the
-// match covers causes such as the ACI container group quota error.
-func isTransientAzureError(err error) bool {
-	return step.ErrorContainsAny(err, transientAzureErrorMarkers...)
+// isTransientCloudDeployError extends the default deployment predicate with
+// Azure-specific failures. Custom retry configuration must retain the default
+// image-pull and control-plane recovery behavior.
+func isTransientCloudDeployError(err error) bool {
+	return step.IsTransientDeployError(err) ||
+		step.ErrorContainsAny(err, transientAzureErrorMarkers...)
 }
 
-func Test_isTransientAzureError(t *testing.T) {
+func Test_isTransientCloudDeployError(t *testing.T) {
 	// aciQuotaError mirrors how rad surfaces an ACI quota failure: the quota
 	// error code only appears inside a deeply nested details[].message field,
 	// while the top-level code/message returned by CLIError.Error() is the
@@ -259,13 +259,15 @@ func Test_isTransientAzureError(t *testing.T) {
 		{name: "nested ACI quota error", err: aciQuotaError, expected: true},
 		{name: "nested managed identity error", err: msiError, expected: true},
 		{name: "plain transient error string", err: errors.New("deployment failed: ManagedServiceIdentityNotFound"), expected: true},
+		{name: "apiserver connection reset", err: errors.New("read: connection reset by peer"), expected: true},
+		{name: "apiserver restart response", err: errors.New("before all known HTTP paths have been installed"), expected: true},
 		{name: "non-transient CLIError", err: nonTransientError, expected: false},
 		{name: "unrelated error", err: errors.New("connection refused"), expected: false},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			require.Equal(t, tc.expected, isTransientAzureError(tc.err))
+			require.Equal(t, tc.expected, isTransientCloudDeployError(tc.err))
 		})
 	}
 }

@@ -37,7 +37,7 @@ runs:
         kubectl wait --for=condition=Ready node --all --timeout=120s
 
     - name: Install oras
-      uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1
+      uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d # v2.0.1
 
     - name: Install Radius CLI
       shell: bash
@@ -55,7 +55,7 @@ runs:
         rad version
 
     - name: Install Terraform
-      uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+      uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
       with:
         terraform_wrapper: false
 
