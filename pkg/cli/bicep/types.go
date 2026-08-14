@@ -37,6 +37,10 @@ import (
 // remoteTemplateTimeout bounds how long we wait when downloading a remote template.
 const remoteTemplateTimeout = 60 * time.Second
 
+// maxRemoteTemplateSize bounds how many bytes are read from a remote template so a large or
+// malicious response cannot exhaust memory. It is a variable so tests can lower it.
+var maxRemoteTemplateSize int64 = 100 << 20 // 100 MiB
+
 // Interface is the interface for interacting with Bicep.
 type Interface interface {
 	PrepareTemplate(filePath string) (map[string]any, error)
@@ -71,7 +75,11 @@ func (i *Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	}
 
 	if strings.EqualFold(path.Ext(filePath), ".json") {
-		return ReadARMJSON(filePath)
+		template, err := ReadARMJSON(filePath)
+		if err != nil && remote {
+			return nil, fmt.Errorf("failed to read remote template %q: %w", originalPath, err)
+		}
+		return template, err
 	} else if !strings.EqualFold(path.Ext(filePath), ".bicep") {
 		return nil, fmt.Errorf("the provided file %q must be a .json or .bicep file", originalPath)
 	}
@@ -154,9 +162,13 @@ func (i *Impl) downloadTemplate(templateURL string) (string, func(), error) {
 		return "", nil, fmt.Errorf("failed to download template from %q: unexpected status %s", templateURL, resp.Status)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	// Bound the read so a large or malicious response cannot exhaust memory.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxRemoteTemplateSize+1))
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to read template from %q: %w", templateURL, err)
+	}
+	if int64(len(body)) > maxRemoteTemplateSize {
+		return "", nil, fmt.Errorf("template from %q exceeds the maximum allowed size of %d bytes", templateURL, maxRemoteTemplateSize)
 	}
 
 	dir, err := i.FileSystem.MkdirTemp("", "rad-remote-template-")

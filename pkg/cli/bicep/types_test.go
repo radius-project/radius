@@ -17,15 +17,19 @@ limitations under the License.
 package bicep
 
 import (
+	"errors"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/filesystem"
 	"github.com/radius-project/radius/pkg/cli/output"
+	"github.com/radius-project/radius/pkg/cli/setup"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,6 +62,45 @@ func newTestImpl() *Impl {
 	}
 }
 
+// flakyFS wraps a real filesystem but forces specific operations to fail so error branches can be
+// exercised. Unset hooks delegate to the embedded filesystem.
+type flakyFS struct {
+	filesystem.FileSystem
+	failMkdirTemp   bool
+	failWriteSubstr string
+	failReadSubstr  string
+}
+
+func (f flakyFS) MkdirTemp(dir, pattern string) (string, error) {
+	if f.failMkdirTemp {
+		return "", errors.New("mkdirtemp failed")
+	}
+	return f.FileSystem.MkdirTemp(dir, pattern)
+}
+
+func (f flakyFS) WriteFile(name string, data []byte, perm fs.FileMode) error {
+	if f.failWriteSubstr != "" && strings.Contains(name, f.failWriteSubstr) {
+		return errors.New("writefile failed")
+	}
+	return f.FileSystem.WriteFile(name, data, perm)
+}
+
+func (f flakyFS) ReadFile(name string) ([]byte, error) {
+	if f.failReadSubstr != "" && strings.Contains(name, f.failReadSubstr) {
+		return nil, errors.New("readfile failed")
+	}
+	return f.FileSystem.ReadFile(name)
+}
+
+func newBicepServer(t *testing.T) *httptest.Server {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "resource foo 'Foo' = {}\n")
+	}))
+	t.Cleanup(server.Close)
+	return server
+}
+
 func Test_downloadTemplate_Success(t *testing.T) {
 	content := []byte("resource foo 'Foo' = {}\n")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +108,10 @@ func Test_downloadTemplate_Success(t *testing.T) {
 		_, _ = w.Write(content)
 	}))
 	defer server.Close()
+
+	// Run from an isolated directory with no bicepconfig.json in any parent so the fallback
+	// (default Radius config) path is exercised deterministically.
+	t.Chdir(t.TempDir())
 
 	i := newTestImpl()
 	localPath, cleanup, err := i.downloadTemplate(server.URL + "/dir/app.bicep")
@@ -78,16 +125,54 @@ func Test_downloadTemplate_Success(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, content, got)
 
-	// A bicepconfig.json is written alongside the template so `extension` declarations resolve.
+	// With no bicepconfig.json discoverable, the generated default is written alongside.
 	configBytes, err := os.ReadFile(filepath.Join(filepath.Dir(localPath), "bicepconfig.json"))
 	require.NoError(t, err)
-	require.Contains(t, string(configBytes), "extensions")
-	require.Contains(t, string(configBytes), "radius")
+	require.Equal(t, setup.GetVersionedBicepConfig(), string(configBytes))
 
 	// Cleanup removes the temporary directory.
 	cleanup()
 	_, err = os.Stat(localPath)
 	require.True(t, os.IsNotExist(err))
+}
+
+func Test_downloadTemplate_CopiesWorkingDirBicepConfig(t *testing.T) {
+	content := []byte("resource foo 'Foo' = {}\n")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(content)
+	}))
+	defer server.Close()
+
+	// A bicepconfig.json in the working directory should be reused rather than the default.
+	workDir := t.TempDir()
+	customConfig := `{"extensions":{"radius":"br:example.azurecr.io/radius:custom"}}`
+	require.NoError(t, os.WriteFile(filepath.Join(workDir, "bicepconfig.json"), []byte(customConfig), 0600))
+	t.Chdir(workDir)
+
+	i := newTestImpl()
+	localPath, cleanup, err := i.downloadTemplate(server.URL + "/app.bicep")
+	require.NoError(t, err)
+	defer cleanup()
+
+	configBytes, err := os.ReadFile(filepath.Join(filepath.Dir(localPath), "bicepconfig.json"))
+	require.NoError(t, err)
+	require.Equal(t, customConfig, string(configBytes))
+}
+
+func Test_downloadTemplate_ExceedsMaxSize(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("this body is larger than the limit"))
+	}))
+	defer server.Close()
+
+	original := maxRemoteTemplateSize
+	maxRemoteTemplateSize = 10
+	defer func() { maxRemoteTemplateSize = original }()
+
+	i := newTestImpl()
+	_, _, err := i.downloadTemplate(server.URL + "/app.bicep")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "exceeds the maximum allowed size")
 }
 
 func Test_downloadTemplate_JSONHasNoBicepConfig(t *testing.T) {
@@ -172,4 +257,65 @@ func Test_PrepareTemplate_RemoteUnsupportedExtension(t *testing.T) {
 	_, err := i.PrepareTemplate("https://example.com/app.txt")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "must reference a .json or .bicep file")
+}
+
+func Test_PrepareTemplate_RemoteJSONInvalidMentionsURL(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "{ not valid json")
+	}))
+	defer server.Close()
+
+	url := server.URL + "/template.json"
+	i := newTestImpl()
+	_, err := i.PrepareTemplate(url)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to read remote template")
+	require.Contains(t, err.Error(), url)
+}
+
+func Test_downloadTemplate_MkdirTempError(t *testing.T) {
+	server := newBicepServer(t)
+	i := &Impl{
+		FileSystem: flakyFS{FileSystem: filesystem.NewOSFS(), failMkdirTemp: true},
+		Output:     &output.OutputWriter{Writer: io.Discard},
+	}
+	_, _, err := i.downloadTemplate(server.URL + "/app.bicep")
+	require.ErrorContains(t, err, "failed to create temporary directory")
+}
+
+func Test_downloadTemplate_WriteTemplateError(t *testing.T) {
+	server := newBicepServer(t)
+	i := &Impl{
+		FileSystem: flakyFS{FileSystem: filesystem.NewOSFS(), failWriteSubstr: "app.bicep"},
+		Output:     &output.OutputWriter{Writer: io.Discard},
+	}
+	_, _, err := i.downloadTemplate(server.URL + "/app.bicep")
+	require.ErrorContains(t, err, "failed to write remote template")
+}
+
+func Test_downloadTemplate_WriteBicepConfigError(t *testing.T) {
+	// Isolated working dir forces the fallback (generated) config write, which is made to fail.
+	t.Chdir(t.TempDir())
+	server := newBicepServer(t)
+	i := &Impl{
+		FileSystem: flakyFS{FileSystem: filesystem.NewOSFS(), failWriteSubstr: "bicepconfig.json"},
+		Output:     &output.OutputWriter{Writer: io.Discard},
+	}
+	_, _, err := i.downloadTemplate(server.URL + "/app.bicep")
+	require.ErrorContains(t, err, "failed to write bicepconfig.json")
+}
+
+func Test_downloadTemplate_ReadWorkingDirConfigError(t *testing.T) {
+	// A bicepconfig.json exists in the working dir, but reading it fails.
+	workDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(workDir, "bicepconfig.json"), []byte("{}"), 0600))
+	t.Chdir(workDir)
+
+	server := newBicepServer(t)
+	i := &Impl{
+		FileSystem: flakyFS{FileSystem: filesystem.NewOSFS(), failReadSubstr: "bicepconfig.json"},
+		Output:     &output.OutputWriter{Writer: io.Discard},
+	}
+	_, _, err := i.downloadTemplate(server.URL + "/app.bicep")
+	require.ErrorContains(t, err, "failed to read")
 }
