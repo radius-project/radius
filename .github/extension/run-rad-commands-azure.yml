@@ -265,7 +265,17 @@ jobs:
           pin_kube_recipe Radius.Compute/routes routes
           pin_kube_recipe Radius.Security/secrets secrets
           pin_kube_recipe Radius.Messaging/rabbitMQ rabbitmq
-          offenders=$(grep -oE 'ghcr\.io/radius-project/kube-recipes/[a-z0-9._-]+:latest' "$ENV_BICEP" | sort -u)
+          # grep exits 1 when there are no matches, which is the success case here.
+          # Tolerate that under `set -eo pipefail` while still failing on a real
+          # grep error (exit status greater than 1).
+          offenders=$(grep -oE 'ghcr\.io/radius-project/kube-recipes/[a-z0-9._-]+:latest' "$ENV_BICEP") || {
+            grep_status=$?
+            if [ "$grep_status" -gt 1 ]; then
+              echo "ERROR: failed to scan ${ENV_BICEP} for unpinned kube recipes." >&2
+              exit "$grep_status"
+            fi
+          }
+          offenders=$(printf '%s' "$offenders" | sort -u)
           if [ -n "$offenders" ]; then
             echo "ERROR: unpinned kube recipes remain in the Azure recipe pack:" >&2
             echo "$offenders" >&2
