@@ -78,6 +78,14 @@ extract_run_blocks() {
     done < <(extension_yaml_files)
 }
 
+# Emit the "<pack> <file>" recipe packs consumed across the extension workflows,
+# resolved from defaults.yaml via radius_contrib_recipe_pack_url call sites.
+recipe_pack_consumers() {
+    printf '%s\n' "${RUN_BLOCKS}" |
+        sed -nE 's/.*radius_contrib_recipe_pack_url ([A-Za-z0-9._-]+) ([A-Za-z0-9._\/-]+).*/\1 \2/p' |
+        sort -u
+}
+
 verify_recipe_packs() {
     local pack file url count=0
     while read -r pack file; do
@@ -86,12 +94,50 @@ verify_recipe_packs() {
         curl -fsSL "${url}" -o /dev/null
         echo "  Verified recipe pack file ${pack}/${file}"
         ((count += 1))
-    done < <(
-        printf '%s\n' "${RUN_BLOCKS}" |
-            sed -nE 's/.*radius_contrib_recipe_pack_url ([A-Za-z0-9._-]+) ([A-Za-z0-9._\/-]+).*/\1 \2/p' |
-            sort -u
-    )
+    done < <(recipe_pack_consumers)
     ((count > 0)) || fail "no recipe pack catalog consumers found."
+}
+
+# Emit "<ResourceType> <artifact>" for each Kubernetes recipe a pack ships. Each
+# recipe entry is keyed by its Radius resource type, e.g.
+#   'Radius.Messaging/rabbitMQ': { kind: 'bicep' source: '...rabbitmq:latest' }
+# so both the resource type (which selects the namespace commit in defaults.yaml)
+# and the kube-recipe artifact come from the pack itself. This mirrors how
+# run-rad-commands-azure.yml derives its pins, so the verifier checks exactly the
+# recipes a deploy would pin without maintaining a parallel hardcoded list. Only
+# 2-arg match/RSTART/RLENGTH are used so it runs under mawk on the runner, and the
+# quote is passed via -v to keep the program single-quote free.
+parse_pack_kube_recipes() {
+    awk -v q="'" '
+        {
+            if (match($0, q "Radius\\.[^" q "]*" q)) {
+                rt = substr($0, RSTART + 1, RLENGTH - 2)
+            }
+            else if (match($0, /kube-recipes\/[a-z0-9._-]+:latest/)) {
+                s = substr($0, RSTART, RLENGTH)
+                sub(/^kube-recipes\//, "", s)
+                sub(/:latest$/, "", s)
+                if (rt != "") { print rt, s }
+            }
+        }
+    ' "$1"
+}
+
+# Collect every "<ResourceType> <artifact>" kube-recipe pair the workflows pin,
+# from two sources: workflows that name a recipe directly via
+# radius_contrib_kube_recipe_source, and recipe packs that ship Kubernetes
+# recipes (downloaded and parsed here so pack-derived pins are verified too).
+kube_recipe_consumers() {
+    local pack file url pack_file
+    printf '%s\n' "${RUN_BLOCKS}" |
+        sed -nE 's/.*radius_contrib_kube_recipe_source (Radius\.[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+) ([a-z0-9._-]+).*/\1 \2/p'
+    while read -r pack file; do
+        [[ -n "${pack}" ]] || continue
+        url="$(radius_contrib_recipe_pack_url "${pack}" "${file}")"
+        pack_file="${TMP_ROOT}/pack_${pack}_$(basename "${file}")"
+        curl -fsSL "${url}" -o "${pack_file}"
+        parse_pack_kube_recipes "${pack_file}"
+    done < <(recipe_pack_consumers)
 }
 
 verify_kube_recipes() {
@@ -102,13 +148,7 @@ verify_kube_recipes() {
         docker manifest inspect "${source}" >/dev/null
         echo "  Verified OCI recipe ${source}"
         ((count += 1))
-    done < <(
-        printf '%s\n' "${RUN_BLOCKS}" |
-            sed -nE \
-                -e 's/.*radius_contrib_kube_recipe_source (Radius\.[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+) ([a-z0-9._-]+).*/\1 \2/p' \
-                -e 's/^[[:space:]]*pin_kube_recipe (Radius\.[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+) ([a-z0-9._-]+).*/\1 \2/p' |
-            sort -u
-    )
+    done < <(kube_recipe_consumers | sort -u)
     ((count > 0)) || fail "no OCI recipe catalog consumers found."
 }
 
