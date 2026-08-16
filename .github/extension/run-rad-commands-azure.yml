@@ -264,8 +264,12 @@ jobs:
           pin_kube_recipe Radius.Compute/persistentVolumes persistentvolumes
           pin_kube_recipe Radius.Compute/routes routes
           pin_kube_recipe Radius.Security/secrets secrets
-          if grep -Eq 'ghcr\.io/radius-project/kube-recipes/[^'"'"']+:latest' "$ENV_BICEP"; then
-            echo "ERROR: the Azure recipe pack still contains a mutable kube recipe tag." >&2
+          pin_kube_recipe Radius.Messaging/rabbitMQ rabbitmq
+          offenders=$(grep -oE 'ghcr\.io/radius-project/kube-recipes/[a-z0-9._-]+:latest' "$ENV_BICEP" | sort -u)
+          if [ -n "$offenders" ]; then
+            echo "ERROR: unpinned kube recipes remain in the Azure recipe pack:" >&2
+            echo "$offenders" >&2
+            echo "Add a matching 'pin_kube_recipe <resourceType> <artifact>' for each." >&2
             exit 1
           fi
 
