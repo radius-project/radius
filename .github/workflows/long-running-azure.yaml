@@ -452,21 +452,16 @@ jobs:
           make test-functional-all-cloud
           make test-functional-all-noncloud
 
-      - name: Collect Pod details
+      - name: Collect cluster diagnostics
         if: always()
-        # Diagnostic-only snapshot of cluster-wide pod state for post-mortem. A
-        # `kubectl describe pods -A` can race pod teardown and return a transient
-        # NotFound, so never let it fail the job.
+        # Diagnostic-only post-mortem snapshot. The script records each command's
+        # failure inline and keeps going, because the failures worth debugging are
+        # usually the ones where the control plane is unreachable.
         continue-on-error: true
-        run: |
-          POD_STATE_LOG_FILENAME="${RADIUS_CONTAINER_LOG_BASE}/all-tests-pod-states.log"
-          mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
-          {
-            echo "kubectl get pods -A"
-            kubectl get pods -A
-            echo "kubectl describe pods -A"
-            kubectl describe pods -A
-          } >> "${POD_STATE_LOG_FILENAME}"
+        env:
+          RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          DIAGNOSTICS_NAME: all
+        run: ./.github/scripts/collect-cluster-diagnostics.sh
 
       - name: Upload container logs
         if: always()
