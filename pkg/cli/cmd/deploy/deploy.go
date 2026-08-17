@@ -344,15 +344,18 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
+	// Redact any credentials embedded in a remote template URL before displaying it.
+	displayPath := bicep.RedactTemplatePath(r.FilePath)
+
 	progressText := ""
 	if r.ApplicationName == "" {
 		progressText = fmt.Sprintf(
 			"Deploying template '%v' into environment '%v' from workspace '%v'...\n\n"+
-				"Deployment In Progress...", r.FilePath, r.EnvironmentNameOrID, r.Workspace.Name)
+				"Deployment In Progress...", displayPath, r.EnvironmentNameOrID, r.Workspace.Name)
 	} else {
 		progressText = fmt.Sprintf(
 			"Deploying template '%v' for application '%v' and environment '%v' from workspace '%v'...\n\n"+
-				"Deployment In Progress... ", r.FilePath, r.ApplicationName, r.EnvironmentNameOrID, r.Workspace.Name)
+				"Deployment In Progress... ", displayPath, r.ApplicationName, r.EnvironmentNameOrID, r.Workspace.Name)
 	}
 
 	// Before deploying, set up recipe packs for any Radius.Core environments in the
@@ -446,7 +449,7 @@ func (r *Runner) reportMissingParameters(template map[string]any) error {
 		details = append(details, fmt.Sprintf("  - %v", errors[key]))
 	}
 
-	return clierrors.Message("The template %q could not be deployed because of the following errors:\n\n%v", r.FilePath, strings.Join(details, "\n"))
+	return clierrors.Message("The template %q could not be deployed because of the following errors:\n\n%v", bicep.RedactTemplatePath(r.FilePath), strings.Join(details, "\n"))
 }
 
 // resolvePreview reports whether the deploy command should use the Radius.Core preview

@@ -457,6 +457,114 @@ func Test_redactURL(t *testing.T) {
 	}
 }
 
+func Test_RedactTemplatePath(t *testing.T) {
+	tests := []struct {
+		name       string
+		path       string
+		expected   string
+		notContain string
+	}{
+		{
+			name:     "local path unchanged",
+			path:     "./app.bicep",
+			expected: "./app.bicep",
+		},
+		{
+			name:     "local path with query-like name unchanged",
+			path:     "/tmp/app.bicep?notaquery",
+			expected: "/tmp/app.bicep?notaquery",
+		},
+		{
+			name:     "remote url without credentials unchanged",
+			path:     "https://example.com/app.bicep",
+			expected: "https://example.com/app.bicep",
+		},
+		{
+			name:       "remote url with signed query redacted",
+			path:       "https://example.com/app.bicep?sig=TOPSECRET",
+			expected:   "https://example.com/app.bicep?sig=redacted",
+			notContain: "TOPSECRET",
+		},
+		{
+			name:       "remote url with userinfo redacted",
+			path:       "https://user:" + "TOPSECRET" + "@example.com/app.bicep",
+			expected:   "https://redacted@example.com/app.bicep",
+			notContain: "TOPSECRET",
+		},
+		{
+			name:       "remote url with fragment dropped",
+			path:       "https://example.com/app.bicep#token=" + "TOPSECRET",
+			expected:   "https://example.com/app.bicep",
+			notContain: "TOPSECRET",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			got := RedactTemplatePath(tt.path)
+			require.Equal(t, tt.expected, got)
+			if tt.notContain != "" {
+				require.NotContains(t, got, tt.notContain)
+			}
+		})
+	}
+}
+
+// PrepareTemplate must never surface the raw template argument, because a remote URL can carry a
+// SAS token or basic-auth userinfo that would otherwise land in terminal and CI logs.
+func Test_PrepareTemplate_RemoteErrorRedactsCredentials(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "{ not valid json")
+	}))
+	defer server.Close()
+
+	i := newTestImpl()
+	_, err := i.PrepareTemplate(t.Context(), server.URL+"/template.json?sig=TOPSECRET")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "failed to read remote template")
+	require.NotContains(t, err.Error(), "TOPSECRET")
+	require.Contains(t, err.Error(), "sig=redacted")
+}
+
+func Test_TemplateFileName(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		expected string
+	}{
+		{name: "local relative path", path: "./app.bicep", expected: "app.bicep"},
+		{name: "local absolute path", path: "/tmp/dir/app.bicep", expected: "app.bicep"},
+		{name: "remote url", path: "https://example.com/dir/app.bicep", expected: "app.bicep"},
+		{
+			// filepath.Base would return "app.bicep?sig=abc.def" here, putting part of the
+			// credential into an on-disk file name.
+			name:     "remote url with dotted query value drops the query",
+			path:     "https://example.com/app.bicep?sig=abc.def",
+			expected: "app.bicep",
+		},
+		{name: "remote url with fragment drops the fragment", path: "https://example.com/app.bicep#token=abc", expected: "app.bicep"},
+		{name: "malformed url", path: "https://[::1/app.bicep", expected: "template"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.expected, TemplateFileName(tt.path))
+		})
+	}
+}
+
+// A transport failure returns a *url.Error whose message embeds the raw request URL, so the
+// wrapped error must not carry the credential that the redacted display string removed.
+func Test_downloadTemplate_TransportErrorRedactsCredentials(t *testing.T) {
+	i := newTestImpl()
+	_, _, err := i.downloadTemplate(t.Context(), "https://nonexistent.invalid/app.bicep?sig=TOPSECRET")
+	require.Error(t, err)
+	require.NotContains(t, err.Error(), "TOPSECRET")
+	require.Contains(t, err.Error(), "sig=redacted")
+}
+
 func Test_newHTTPClient_RedirectPolicy(t *testing.T) {
 	client := newHTTPClient()
 	mustReq := func(rawURL string) *http.Request {

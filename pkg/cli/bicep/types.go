@@ -78,7 +78,9 @@ type Impl struct {
 func (i *Impl) PrepareTemplate(ctx context.Context, filePath string) (map[string]any, error) {
 	// A remote URL is downloaded to a temporary local file so it can be read or compiled like a
 	// local template. This mirrors the behavior users expect from tools such as kubectl.
-	originalPath := filePath
+	// displayPath is the only form of the template argument that may be shown to the user, so a
+	// credential embedded in a remote URL is never written to the terminal or to CI logs.
+	displayPath := RedactTemplatePath(filePath)
 	remote := isRemoteURL(filePath)
 	if remote {
 		localPath, cleanup, err := i.downloadTemplate(ctx, filePath)
@@ -92,11 +94,11 @@ func (i *Impl) PrepareTemplate(ctx context.Context, filePath string) (map[string
 	if strings.EqualFold(path.Ext(filePath), ".json") {
 		template, err := ReadARMJSON(filePath)
 		if err != nil && remote {
-			return nil, fmt.Errorf("failed to read remote template %q: %w", originalPath, err)
+			return nil, fmt.Errorf("failed to read remote template %q: %w", displayPath, err)
 		}
 		return template, err
 	} else if !strings.EqualFold(path.Ext(filePath), ".bicep") {
-		return nil, fmt.Errorf("the provided file %q must be a .json or .bicep file", originalPath)
+		return nil, fmt.Errorf("the provided file %q must be a .json or .bicep file", displayPath)
 	}
 
 	ok, err := IsBicepInstalled()
@@ -118,14 +120,14 @@ func (i *Impl) PrepareTemplate(ctx context.Context, filePath string) (map[string
 		return nil, fmt.Errorf("could not find file: %w", err)
 	}
 
-	step := i.Output.BeginStep("Building %s...", originalPath)
+	step := i.Output.BeginStep("Building %s...", displayPath)
 	bytes, err := i.Call("build", "--stdout", filePath)
 	if err != nil {
 		i.Output.CompleteStep(step)
 		if remote {
 			// The bicep compiler prints detailed diagnostics to stderr, so keep the wrapper
 			// error focused on identifying the remote source rather than guessing the cause.
-			return nil, fmt.Errorf("failed to build remote template %q: %w", originalPath, err)
+			return nil, fmt.Errorf("failed to build remote template %q: %w", displayPath, err)
 		}
 		return nil, fmt.Errorf("failed to build template: %w", err)
 	}
@@ -149,6 +151,18 @@ func isRemoteURL(filePath string) bool {
 	return strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://")
 }
 
+// RedactTemplatePath returns a display-safe form of a `rad` template argument. A local file path is
+// returned unchanged; an http(s) URL has its userinfo and query-parameter values redacted so that
+// credentials such as SAS tokens are never written to the terminal, to CI logs, or into generated
+// output. Callers that display the template argument supplied by the user should format this value
+// rather than the raw argument.
+func RedactTemplatePath(templatePath string) string {
+	if !isRemoteURL(templatePath) {
+		return templatePath
+	}
+	return redactURL(templatePath)
+}
+
 // redactURL returns a display-safe copy of a URL with any userinfo and query-parameter values
 // removed, so credentials embedded in the URL (basic-auth userinfo or signed query parameters such
 // as SAS tokens) are never written to logs or error messages.
@@ -167,11 +181,31 @@ func redactURL(raw string) string {
 		}
 		parsed.RawQuery = query.Encode()
 	}
+	// A fragment is never needed to fetch a template, so drop it rather than risk displaying a
+	// credential someone placed there.
+	parsed.Fragment = ""
+	parsed.RawFragment = ""
 	return parsed.String()
 }
 
-// urlParseReason extracts the underlying reason from a url.Parse error, dropping the raw URL string
-// it embeds (which may contain credentials).
+// TemplateFileName returns the bare file name of a `rad` template argument, with any URL query
+// string, fragment, and userinfo removed. Use it instead of filepath.Base when the result is
+// written to disk or displayed, because filepath.Base of a URL retains the query string (and any
+// credential in it).
+func TemplateFileName(templatePath string) string {
+	if !isRemoteURL(templatePath) {
+		return filepath.Base(templatePath)
+	}
+	parsed, err := url.Parse(templatePath)
+	if err != nil {
+		return "template"
+	}
+	return path.Base(parsed.Path)
+}
+
+// urlParseReason extracts the underlying reason from a *url.Error, dropping the raw URL string it
+// embeds (which may contain credentials). It applies to both url.Parse failures and http.Client
+// transport failures, since both return *url.Error.
 func urlParseReason(err error) error {
 	var urlErr *url.Error
 	if errors.As(err, &urlErr) {
@@ -299,7 +333,9 @@ func (i *Impl) attemptDownload(ctx context.Context, client *http.Client, templat
 		if ctx.Err() != nil {
 			return nil, 0, false, fmt.Errorf("failed to download template from %q: %w", display, context.Cause(ctx))
 		}
-		return nil, 0, true, fmt.Errorf("failed to download template from %q: %w", display, err)
+		// http.Client returns a *url.Error whose message embeds the raw request URL, so unwrap it
+		// to the underlying reason rather than leaking credentials alongside the redacted display.
+		return nil, 0, true, fmt.Errorf("failed to download template from %q: %w", display, urlParseReason(err))
 	}
 	defer resp.Body.Close()
 
@@ -322,7 +358,7 @@ func (i *Impl) attemptDownload(ctx context.Context, client *http.Client, templat
 		if ctx.Err() != nil {
 			return nil, 0, false, fmt.Errorf("failed to read template from %q: %w", display, context.Cause(ctx))
 		}
-		return nil, 0, true, fmt.Errorf("failed to read template from %q: %w", display, err)
+		return nil, 0, true, fmt.Errorf("failed to read template from %q: %w", display, urlParseReason(err))
 	}
 	if int64(len(body)) > maxRemoteTemplateSize {
 		return nil, 0, false, fmt.Errorf("template from %q exceeds the maximum allowed size of %d bytes", display, maxRemoteTemplateSize)
