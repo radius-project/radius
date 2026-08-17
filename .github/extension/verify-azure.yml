@@ -76,11 +76,65 @@ jobs:
 
       - name: Azure Login (OIDC)
         id: azure_login
-        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+        # Log in as the environment's workload-identity federated credential.
+        #
+        # This replaces the azure/login action with an explicit federated login so
+        # it can RETRY the Azure AD propagation race: when Create Environment has
+        # just granted this service principal its subscription role assignment,
+        # Azure AD can take a few minutes to propagate that grant to the SP's
+        # token, so a verify that runs seconds later fails with
+        # "No subscriptions found" even though the setup is correct. We retry only
+        # that transient race and fail fast on any genuine authentication or
+        # configuration error, so e.g. an AADSTS7002381 enterprise-claim failure
+        # still surfaces immediately for the explainer step below.
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          OIDC_AUDIENCE: api://AzureADTokenExchange
+        run: |
+          set -uo pipefail
+
+          attempts=12
+          delay=15
+          err_file="$(mktemp)"
+
+          for i in $(seq 1 "$attempts"); do
+            token="$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${OIDC_AUDIENCE}" | jq -r '.value // empty')"
+            if [[ -z "$token" ]]; then
+              echo "Attempt $i/$attempts: could not obtain a GitHub OIDC token; retrying in ${delay}s..."
+              sleep "$delay"
+              continue
+            fi
+
+            if az login --service-principal \
+                 --username "$AZURE_CLIENT_ID" \
+                 --tenant "$AZURE_TENANT_ID" \
+                 --federated-token "$token" \
+                 --output none 2> "$err_file"; then
+              az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+              echo "Azure OIDC login succeeded on attempt $i."
+              exit 0
+            fi
+
+            # Only the role-assignment propagation race is transient. Any other
+            # failure (wrong client/tenant/subscription id, missing federated
+            # credential, enterprise-claim policy) is permanent -- fail fast so it
+            # is reported immediately instead of after every retry.
+            if ! grep -qi "No subscriptions found" "$err_file"; then
+              echo "Azure Login failed with a non-transient error:" >&2
+              cat "$err_file" >&2
+              exit 1
+            fi
+
+            echo "Attempt $i/$attempts: subscription not visible yet (role assignment still propagating); retrying in ${delay}s..."
+            sleep "$delay"
+          done
+
+          echo "Azure Login failed after $attempts attempts; last error:" >&2
+          cat "$err_file" >&2
+          exit 1
 
       - name: Report possible GitHub enterprise-claim mismatch
         # Fires only when Azure Login failed AND the OIDC token carried an empty
