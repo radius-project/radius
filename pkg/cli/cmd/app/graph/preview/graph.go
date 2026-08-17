@@ -179,7 +179,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	if r.BicepFilePath != "" {
 		r.Output.LogInfo("Compiling %s", r.BicepFilePath)
-		template, err := r.Bicep.PrepareTemplate(r.BicepFilePath)
+		template, err := r.Bicep.PrepareTemplate(ctx, r.BicepFilePath)
 		if err != nil {
 			return clierrors.Message("Failed to compile %q: %v", r.BicepFilePath, err)
 		}

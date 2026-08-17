@@ -152,7 +152,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // The Run function prepares a Bicep template, extracts the destination, publishes the template to the target, and logs
 // a success message if no errors are encountered. An error is returned if any of the steps fail.
 func (r *Runner) Run(ctx context.Context) error {
-	template, err := r.Bicep.PrepareTemplate(r.File)
+	template, err := r.Bicep.PrepareTemplate(ctx, r.File)
 	if err != nil {
 		return clierrors.MessageWithCause(err, "Failed to prepare Bicep file %q.", r.File)
 	}

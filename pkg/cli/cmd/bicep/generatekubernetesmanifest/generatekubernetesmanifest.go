@@ -170,7 +170,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Run runs the rad bicep generate-kubernetes-manifest command.
 func (r *Runner) Run(ctx context.Context) error {
-	template, err := r.Bicep.PrepareTemplate(r.FilePath)
+	template, err := r.Bicep.PrepareTemplate(ctx, r.FilePath)
 	if err != nil {
 		return err
 	}

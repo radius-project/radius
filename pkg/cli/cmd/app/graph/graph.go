@@ -249,7 +249,7 @@ func (r *Runner) runDeployed(ctx context.Context) error {
 // ./app-graph.json in the current working directory.
 func (r *Runner) runModeled(ctx context.Context) error {
 	r.Output.LogInfo("Compiling %s", r.BicepFilePath)
-	template, err := r.Bicep.PrepareTemplate(r.BicepFilePath)
+	template, err := r.Bicep.PrepareTemplate(ctx, r.BicepFilePath)
 	if err != nil {
 		return clierrors.Message("Failed to compile %q: %v", r.BicepFilePath, err)
 	}
