@@ -558,8 +558,16 @@ func Test_TemplateFileName(t *testing.T) {
 // A transport failure returns a *url.Error whose message embeds the raw request URL, so the
 // wrapped error must not carry the credential that the redacted display string removed.
 func Test_downloadTemplate_TransportErrorRedactsCredentials(t *testing.T) {
+	original := retryBaseDelay
+	retryBaseDelay = time.Millisecond
+	defer func() { retryBaseDelay = original }()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	url := server.URL + "/app.bicep?sig=TOPSECRET"
+	server.Close() // Close immediately so the connection is refused.
+
 	i := newTestImpl()
-	_, _, err := i.downloadTemplate(t.Context(), "https://nonexistent.invalid/app.bicep?sig=TOPSECRET")
+	_, _, err := i.downloadTemplate(t.Context(), url)
 	require.Error(t, err)
 	require.NotContains(t, err.Error(), "TOPSECRET")
 	require.Contains(t, err.Error(), "sig=redacted")
