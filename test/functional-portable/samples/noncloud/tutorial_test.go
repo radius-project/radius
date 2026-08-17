@@ -96,6 +96,13 @@ func Test_FirstApplicationSample(t *testing.T) {
 						Type: validation.ComputeContainersResource,
 						App:  appName,
 					},
+					{
+						// The environment-deploy step skips validation and has no RPResources,
+						// so include the fixed-name tutorial environment here to validate it and
+						// ensure the cleanup loop deletes it after the application.
+						Name: "tutorial",
+						Type: validation.CoreEnvironmentsResource,
+					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
