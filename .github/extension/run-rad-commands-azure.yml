@@ -259,13 +259,48 @@ jobs:
               exit 1
             fi
           }
-          pin_kube_recipe Radius.Compute/containers containers
-          pin_kube_recipe Radius.Compute/containerImages containerimages
-          pin_kube_recipe Radius.Compute/persistentVolumes persistentvolumes
-          pin_kube_recipe Radius.Compute/routes routes
-          pin_kube_recipe Radius.Security/secrets secrets
-          if grep -Eq 'ghcr\.io/radius-project/kube-recipes/[^'"'"']+:latest' "$ENV_BICEP"; then
-            echo "ERROR: the Azure recipe pack still contains a mutable kube recipe tag." >&2
+          # Derive the Kubernetes recipes to pin directly from the pack instead of
+          # maintaining a hardcoded list. Each recipe entry is keyed by its Radius
+          # resource type, e.g.
+          #   'Radius.Messaging/rabbitMQ': { kind: 'bicep' source: '...rabbitmq:latest' }
+          # so both the resource type (which selects the namespace commit in
+          # defaults.yaml) and the kube-recipe artifact come from the pack itself.
+          # Whatever kube recipes the Azure pack ships, present or future, are pinned
+          # automatically. awk remembers the most recent resource-type key and emits
+          # it alongside each kube-recipes '*:latest' source it then encounters. The
+          # quote is passed via -v to keep the program single-quote free, and only
+          # 2-arg match/RSTART/RLENGTH are used so it runs under mawk on the runner.
+          while read -r resource_type artifact; do
+            [ -n "$resource_type" ] || continue
+            pin_kube_recipe "$resource_type" "$artifact"
+          done < <(awk -v q="'" '
+            {
+              if (match($0, q "Radius\\.[^" q "]*" q)) {
+                rt = substr($0, RSTART + 1, RLENGTH - 2)
+              }
+              else if (match($0, /kube-recipes\/[a-z0-9._-]+:latest/)) {
+                s = substr($0, RSTART, RLENGTH)
+                sub(/^kube-recipes\//, "", s)
+                sub(/:latest$/, "", s)
+                if (rt != "") { print rt, s }
+              }
+            }
+          ' "$ENV_BICEP")
+          # grep exits 1 when there are no matches, which is the success case here.
+          # Tolerate that under `set -eo pipefail` while still failing on a real
+          # grep error (exit status greater than 1).
+          offenders=$(grep -oE 'ghcr\.io/radius-project/kube-recipes/[a-z0-9._-]+:latest' "$ENV_BICEP") || {
+            grep_status=$?
+            if [ "$grep_status" -gt 1 ]; then
+              echo "ERROR: failed to scan ${ENV_BICEP} for unpinned kube recipes." >&2
+              exit "$grep_status"
+            fi
+          }
+          offenders=$(printf '%s' "$offenders" | sort -u)
+          if [ -n "$offenders" ]; then
+            echo "ERROR: unpinned kube recipes remain in the Azure recipe pack:" >&2
+            echo "$offenders" >&2
+            echo "Each must be keyed by its 'Radius.<namespace>/<type>' resource type in the pack, with that namespace pinned in deploy/manifest/defaults.yaml, so its commit can be resolved." >&2
             exit 1
           fi
 
