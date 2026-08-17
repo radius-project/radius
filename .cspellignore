@@ -312,10 +312,12 @@ RDBMS
 RDBMS's
 READMD
 READMEs
+RLENGTH
 RP's
 RPs
 RRT
 RRTs
+RSTART
 RabbitMQListSecretsResult
 RabbitMQQueue
 RabbitMQQueueProperties
@@ -852,6 +854,7 @@ managedStore
 manualScaling
 mapstructure
 materializer
+mawk
 maxLogRequests
 maxOperationConcurrency
 maxOperationRetryCount
