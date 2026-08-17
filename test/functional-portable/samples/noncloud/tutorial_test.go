@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -118,6 +119,16 @@ func Test_FirstApplicationSample(t *testing.T) {
 			},
 		},
 	})
+
+	// Radius.Core/environments rejects a Kubernetes namespace that does not already
+	// exist. RPTest.CreateInitialResources only ensures the namespace named after the
+	// test (demo-tutorial), so the environment's "tutorial" namespace must be created
+	// here before the steps run, mirroring NewPreviewEnvPreSetup.
+	test.PreSetup = func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+		nsClient, err := rp.DeploymentTargetK8sClient(ct.Options)
+		require.NoError(t, err)
+		require.NoError(t, clikubernetes.EnsureNamespace(ctx, nsClient, appNamespace))
+	}
 
 	test.Test(t)
 }
