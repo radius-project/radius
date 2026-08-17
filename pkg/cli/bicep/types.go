@@ -200,7 +200,20 @@ func TemplateFileName(templatePath string) string {
 	if err != nil {
 		return "template"
 	}
-	return path.Base(parsed.Path)
+	return urlFileName(parsed.Path)
+}
+
+// urlFileName extracts the final segment of a decoded URL path. Percent-decoding can turn %5C into
+// a backslash, which path.Base does not treat as a separator but Windows does, so backslashes are
+// normalized first. Otherwise a path such as /..%5C..%5Capp.bicep would yield "..\..\app.bicep",
+// which filepath.Join would resolve outside the intended directory on Windows. A segment that is
+// not usable as a file name falls back to a fixed name.
+func urlFileName(urlPath string) string {
+	base := path.Base(strings.ReplaceAll(urlPath, `\`, "/"))
+	if base == "." || base == "/" || base == ".." {
+		return "template"
+	}
+	return base
 }
 
 // urlParseReason extracts the underlying reason from a *url.Error, dropping the raw URL string it
@@ -264,8 +277,10 @@ func (i *Impl) downloadTemplate(ctx context.Context, templateURL string) (string
 		_ = i.FileSystem.RemoveAll(dir)
 	}
 
-	// Preserve the original file name so compiler diagnostics reference a recognizable file.
-	localPath := filepath.Join(dir, path.Base(parsed.Path))
+	// Preserve the original file name so compiler diagnostics reference a recognizable file. The
+	// name is taken from the URL path only, so an encoded separator cannot place the file outside
+	// the temporary directory.
+	localPath := filepath.Join(dir, urlFileName(parsed.Path))
 	if err := i.FileSystem.WriteFile(localPath, body, 0600); err != nil {
 		cleanup()
 		return "", nil, fmt.Errorf("failed to write remote template to temporary file: %w", err)

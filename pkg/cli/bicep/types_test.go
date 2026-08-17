@@ -243,6 +243,27 @@ func Test_downloadTemplate_DownloadFailure(t *testing.T) {
 	require.Contains(t, err.Error(), "failed to download template")
 }
 
+// An encoded backslash must not become a path separator: on Windows it would otherwise place the
+// downloaded template outside the temporary directory.
+func Test_downloadTemplate_EncodedBackslashStaysInTempDir(t *testing.T) {
+	content := []byte("resource foo 'Foo' = {}\n")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write(content)
+	}))
+	defer server.Close()
+
+	t.Chdir(t.TempDir())
+
+	i := newTestImpl()
+	localPath, cleanup, err := i.downloadTemplate(t.Context(), server.URL+"/..%5C..%5Capp.bicep")
+	require.NoError(t, err)
+	defer cleanup()
+
+	require.Equal(t, "app.bicep", filepath.Base(localPath))
+	require.NotContains(t, localPath, `\`)
+	require.NotContains(t, localPath, "..")
+}
+
 func Test_PrepareTemplate_RemoteJSON(t *testing.T) {
 	template := `{"$schema":"https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#","resources":[]}`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -544,6 +565,23 @@ func Test_TemplateFileName(t *testing.T) {
 			expected: "app.bicep",
 		},
 		{name: "remote url with fragment drops the fragment", path: "https://example.com/app.bicep#token=abc", expected: "app.bicep"},
+		{
+			// %5C decodes to a backslash, which Windows treats as a path separator even though
+			// path.Base does not, so it must not survive into a file name.
+			name:     "remote url with encoded backslash",
+			path:     "https://example.com/folder%5Capp.bicep",
+			expected: "app.bicep",
+		},
+		{
+			name:     "remote url with encoded backslash traversal",
+			path:     "https://example.com/..%5C..%5Capp.bicep",
+			expected: "app.bicep",
+		},
+		{
+			name:     "remote url with no file segment",
+			path:     "https://example.com/",
+			expected: "template",
+		},
 		{name: "malformed url", path: "https://[::1/app.bicep", expected: "template"},
 	}
 
