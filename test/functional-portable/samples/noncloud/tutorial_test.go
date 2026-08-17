@@ -61,31 +61,33 @@ func Test_FirstApplicationSample(t *testing.T) {
 	relPathSamplesRepo, err := filepath.Rel(cwd, samplesRepoAbsPath)
 	require.NoError(t, err)
 	template := filepath.Join(relPathSamplesRepo, "samples/demo/app.bicep")
-	appName := "demo"
-	appNamespace := "tutorial-demo"
+	// The modernized sample (radius-project/samples#2645) names both the application
+	// and the container demo-${environmentName}, which resolves to demo-tutorial for the
+	// "tutorial" environment. The recipe-driven Radius.Compute/containers pod lands in the
+	// environment's Kubernetes namespace ("tutorial").
+	appName := "demo-tutorial"
+	appNamespace := "tutorial"
 
 	test := rp.NewRPTest(t, appName, []rp.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor("testdata/tutorial-environment.bicep", testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			Executor:                               step.NewDeployExecutor("testdata/tutorial-environment.bicep"),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 		},
 		{
-
-			Executor: step.NewDeployExecutor(template).WithEnvironment("tutorial").WithApplication(appName),
+			// The modernized sample has no "application" parameter; it derives the app name
+			// from the environment, so only --environment is passed.
+			Executor: step.NewDeployExecutor(template).WithEnvironment("tutorial"),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
-						Name: "demo",
-						Type: validation.ContainersResource,
-					},
-					{
-						Name: "db",
-						Type: validation.RedisCachesResource,
+						Name: appName,
+						Type: validation.ComputeContainersResource,
+						App:  appName,
 					},
 				},
 			},
@@ -93,7 +95,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 				// Set up pod port-forwarding for the pod
 				for i := 1; i <= retries; i++ {
 					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
-					selector := fmt.Sprintf("%s=%s", kubernetes.LabelRadiusResource, "demo")
+					selector := fmt.Sprintf("%s=%s", kubernetes.LabelRadiusResource, appName)
 					err := testWithPortForward(t, ctx, ct, appNamespace, selector, remotePort)
 					if err != nil {
 						t.Logf("Failed to test pod via portforward with error: %s", err)
@@ -110,7 +112,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(appName, "demo"),
+						validation.NewK8sPodForResource(appName, appName),
 					},
 				},
 			},
