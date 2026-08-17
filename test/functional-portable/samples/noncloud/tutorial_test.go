@@ -45,6 +45,12 @@ const (
 	retries      = 3
 	retryTimeout = 1 * time.Minute
 	retryBackoff = 1 * time.Second
+
+	// noDatabaseMessage is returned by the demo app's list endpoint when it runs
+	// without a configured database. The modernized sample (radius-project/samples#2645)
+	// removed the inline redis resource from app.bicep, so the app stores todo items in
+	// memory and surfaces this message in every list response.
+	noDatabaseMessage = "No database is configured, items will be stored in memory."
 )
 
 var samplesRepoAbsPath, samplesRepoEnvVarSet = os.LookupEnv("RADIUS_SAMPLES_REPO_ROOT")
@@ -180,7 +186,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 
 		expectedListResponseBody := map[string]any{
 			"items":   []any{},
-			"message": nil,
+			"message": noDatabaseMessage,
 		}
 		require.Equal(t, expectedListResponseBody, actualListResponseBody)
 
@@ -236,7 +242,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 			"items": []any{
 				createdItem,
 			},
-			"message": nil,
+			"message": noDatabaseMessage,
 		}
 		require.Equal(t, expectedListResponseBody, actualListResponseBody)
 
@@ -303,7 +309,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 
 		expectedListResponseBody = map[string]any{
 			"items":   []any{},
-			"message": nil,
+			"message": noDatabaseMessage,
 		}
 		require.Equal(t, expectedListResponseBody, actualListResponseBody)
 
