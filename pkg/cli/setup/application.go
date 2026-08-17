@@ -101,7 +101,7 @@ func ScaffoldApplication(directory string, template string) error {
 	bicepConfigFilepath := filepath.Join(directory, "bicepconfig.json")
 	_, err = os.Stat(bicepConfigFilepath)
 	if os.IsNotExist(err) {
-		err = os.WriteFile(bicepConfigFilepath, []byte(getVersionedBicepConfig()), 0644)
+		err = os.WriteFile(bicepConfigFilepath, []byte(GetVersionedBicepConfig()), 0644)
 		if err != nil {
 			return err
 		}
@@ -112,7 +112,9 @@ func ScaffoldApplication(directory string, template string) error {
 	return nil
 }
 
-func getVersionedBicepConfig() string {
+// GetVersionedBicepConfig returns the default bicepconfig.json contents with the Radius and AWS
+// Bicep extensions pinned to the current release channel.
+func GetVersionedBicepConfig() string {
 	tag := version.Channel()
 	if version.IsEdgeChannel() {
 		tag = "latest"
