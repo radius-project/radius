@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: Verify Commit Signatures
+
+on:
+  # This workflow uses the trusted base commit and never executes PR-head code.
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+  # workflow_dispatch: # Enable during development only.
+
+concurrency:
+  group: verify-commit-signatures-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  verify-commit-signatures:
+    name: Verify Commit Signatures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Checkout signature verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: |
+            .github/scripts/verify-commit-signatures.sh
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Verify commit signatures
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: ./.github/scripts/verify-commit-signatures.sh
