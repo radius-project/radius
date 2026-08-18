@@ -113,4 +113,18 @@ append_generated_app_params() {
             --parameters "registryPassword=${REGISTRY_PASSWORD}"
         )
     fi
+    # Target-cluster architecture-aware container builds. When the deploy computed
+    # an effective platform list (see compute-build-platforms.sh) and the app
+    # declares a `platforms` parameter, pass it so Radius.Compute/containerImages
+    # builds only the needed platform(s) instead of the recipe's multi-arch
+    # default (which builds arm64 under QEMU emulation on an amd64 runner). Apps
+    # that do not declare `platforms` are unaffected, and a value already supplied
+    # via RADIUS_DEPLOY_PARAMS is not overridden.
+    if [[ -n "${RADIUS_EFFECTIVE_BUILD_PLATFORMS:-}" ]] &&
+        app_declares_parameter "platforms" &&
+        ! deploy_params_has_key "platforms"; then
+        GENERATED_APP_PARAMS+=(
+            --parameters "platforms=${RADIUS_EFFECTIVE_BUILD_PLATFORMS}"
+        )
+    fi
 }
