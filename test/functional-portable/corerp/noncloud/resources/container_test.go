@@ -27,6 +27,7 @@ import (
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -449,12 +450,69 @@ func Test_Container_Secrets(t *testing.T) {
 					},
 				},
 			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
+				deployment := getContainerDeployment(ctx, t, test, appNamespace, name, "cntr-cntr-secrets")
+				require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+				require.Len(t, deployment.Spec.Template.Spec.InitContainers, 1)
+
+				findEnv := func(container corev1.Container, envName string) corev1.EnvVar {
+					t.Helper()
+					for _, env := range container.Env {
+						if env.Name == envName {
+							return env
+						}
+					}
+
+					require.FailNow(t, "environment variable not found", "container %q does not contain %q", container.Name, envName)
+					return corev1.EnvVar{}
+				}
+
+				requireSecretRef := func(container corev1.Container, envName, key string) {
+					t.Helper()
+					env := findEnv(container, envName)
+					require.NotNil(t, env.ValueFrom, "expected %s to be sourced from a secret", envName)
+					require.NotNil(t, env.ValueFrom.SecretKeyRef, "expected %s to use secretKeyRef", envName)
+					require.Equal(t, "saltysecret", env.ValueFrom.SecretKeyRef.Name)
+					require.Equal(t, key, env.ValueFrom.SecretKeyRef.Key)
+				}
+
+				appContainer := deployment.Spec.Template.Spec.Containers[0]
+				require.Equal(t, "app", appContainer.Name)
+				require.Equal(t, "explicit-user", findEnv(appContainer, "CONNECTION_CREDENTIALS_USERNAME").Value)
+				requireSecretRef(appContainer, "CONNECTION_CREDENTIALS_PASSWORD", "password")
+				requireSecretRef(appContainer, "CONNECTION_CREDENTIALS_APIKEY", "apiKey")
+
+				initContainer := deployment.Spec.Template.Spec.InitContainers[0]
+				require.Equal(t, "secretcheck", initContainer.Name)
+				requireSecretRef(initContainer, "CONNECTION_CREDENTIALS_USERNAME", "username")
+				requireSecretRef(initContainer, "CONNECTION_CREDENTIALS_PASSWORD", "password")
+				requireSecretRef(initContainer, "CONNECTION_CREDENTIALS_APIKEY", "apiKey")
+
+				for _, container := range []corev1.Container{appContainer, initContainer} {
+					for _, env := range container.Env {
+						require.NotContains(t, env.Name, "CONNECTION_DISABLEDCREDENTIALS_")
+					}
+				}
+
+				secret, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).Get(ctx, "saltysecret", metav1.GetOptions{})
+				require.NoError(t, err)
+				require.Equal(t, []byte("admin"), secret.Data["username"])
+				require.Equal(t, []byte("secretpassword"), secret.Data["password"])
+				require.Equal(t, []byte("api-key-value"), secret.Data["apiKey"])
+			},
 		},
 	})
 
 	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
 	test.PreSetup = preSetup
-	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+	test.Steps[0].Executor = step.NewDeployExecutor(
+		template,
+		testutil.GetMagpieImage(),
+		fmt.Sprintf("environment=%s", previewEnvID),
+		"secretUsername=admin",
+		"secretPassword=c2VjcmV0cGFzc3dvcmQ=",
+		"secretApiKey=api-key-value",
+	)
 
 	test.Test(t)
 }
