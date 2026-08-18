@@ -5,7 +5,9 @@
 
 ## Topic Summary
 
-`Radius.Core/bicepSettings` lets a platform engineer configure how Radius authenticates to private Bicep registries when pulling recipe templates. Authentication is keyed by registry hostname, and each entry declares an `authenticationMethod`: `BasicAuth` (username/password from a secret), `AzureWI` (Azure Workload Identity), or `AwsIrsa` (AWS IAM Roles for Service Accounts). The public schema and controller validation accept all three methods today, but only `BasicAuth` is actually honored when a recipe runs — `AzureWI` and `AwsIrsa` are accepted, persisted, and then silently ignored at execution time.
+`Radius.Core/bicepSettings` lets a platform engineer configure how Radius authenticates to private Bicep registries when pulling recipe templates. Authentication is keyed by registry hostname, and each entry declares an `authenticationMethod`: `BasicAuth` (username/password from a secret), `AzureWI` (Microsoft Entra Workload Identity), or `AwsIrsa` (AWS IAM Roles for Service Accounts). The public schema and controller validation accept all three methods today, but only `BasicAuth` is actually honored when a recipe runs — `AzureWI` and `AwsIrsa` are accepted, persisted, and then silently ignored at execution time.
+
+**What this supports.** Private Bicep Recipe distribution. Radius Recipe Packs can reference Bicep templates hosted in private OCI registries such as Azure Container Registry, Amazon ECR, or GHCR. `Radius.Core/bicepSettings` is how a platform engineer tells Radius how to authenticate to those registries when pulling templates during deployment. `BasicAuth` covers a static username/password secret; `AzureWI` and `AwsIrsa` let a cluster authenticate with its existing cloud workload identity (Microsoft Entra Workload Identity, AWS IRSA), so no long-lived registry credential has to be created or rotated. This note completes the runtime for the two identity methods so they behave as the schema already advertises.
 
 This document specifies the fast-follow work to make `AzureWI` and `AwsIrsa` effective end-to-end during recipe execution, while keeping existing `BasicAuth` flows unchanged. It is intentionally scoped to completing the runtime behind the *existing* API contract. It does not introduce new REST resource types, new fields, or a new auth model.
 
@@ -60,6 +62,8 @@ For each `registryAuthentications[host]` entry:
 - `AwsIrsa`: runtime uses `awsIamRoleArn` from the settings entry (no secret dependency).
 
 If the configured method cannot be materialized at runtime, execution fails with a clear error instead of silently skipping the host.
+
+**No authentication configured.** If a registry host has no matching `registryAuthentications` entry — or the environment has no `bicepSettings` at all — Radius pulls the template anonymously, exactly as today. That is not an error: unauthenticated pulls of publicly readable templates keep working. The fail-fast semantics apply only when a method *is* configured but its required inputs cannot be materialized at runtime.
 
 ## Detailed Design
 
