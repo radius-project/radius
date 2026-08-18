@@ -2022,7 +2022,7 @@ func Test_FetchEnvironment_RadiusCoreEnvironmentUsesOwnGroup(t *testing.T) {
 		},
 	}
 
-	result, err := runner.FetchEnvironment(context.Background(), envID)
+	result, err := runner.FetchEnvironment(t.Context(), envID)
 	require.NoError(t, err)
 	require.NotNil(t, result, "environment should resolve using the ID's own resource group, not the --group-overridden workspace scope")
 	require.False(t, result.UseApplicationsCore)
