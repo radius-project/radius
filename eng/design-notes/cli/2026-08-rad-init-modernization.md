@@ -357,9 +357,9 @@ if ws == nil {
 
 The damage is cross-cluster. If the current workspace points at cluster A and the user
 runs `rad init --preview` against cluster B, the workspace keeps its name but its
-`connection.context` is repointed to B and its `environment` reset, silently destroying
+`connection.context` is changed to B and its `environment` reset, silently destroying
 its binding to A. This is the [#9177](https://github.com/radius-project/radius/issues/9177)
-repro: a workspace on context `hollow` was repointed to `kind-init-bug` by an unrelated
+repro: a workspace on context `hollow` was changed to `kind-init-bug` by an unrelated
 `rad init`.
 
 #### Theme D: Initialization errors are rendered unreadably
