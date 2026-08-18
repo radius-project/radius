@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-run-rad-commands-action ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-run-rad-commands-action test-build-platforms test-publish-deploy-status ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -67,6 +67,14 @@ test-update-tools-pr: ## Tests the automated tool-update pull request workflow
 .PHONY: test-run-rad-commands-action
 test-run-rad-commands-action: ## Tests application deploy parameter filtering in the run-rad-commands action
 	@bash ./.github/extension/actions/run-rad-commands/deploy-parameters_test.sh
+
+.PHONY: test-build-platforms
+test-build-platforms: ## Tests container build platform resolution and workflow wiring in the run-rad-commands action
+	@bash ./.github/extension/actions/run-rad-commands/compute-build-platforms_test.sh
+
+.PHONY: test-publish-deploy-status
+test-publish-deploy-status: ## Tests deploy status publishing in the publish-deploy-status action
+	@bash ./.github/extension/actions/publish-deploy-status/publish-deploy-status_test.sh
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
@@ -122,8 +130,14 @@ test-functional-corerp-noncloud: ## Runs corerp functional tests that do not req
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/noncloud/... -timeout ${TEST_TIMEOUT} -v -json -parallel 10 $(GOTEST_OPTS)
 
 .PHONY: test-functional-corerp-cloud
+# Radius uses the Kubernetes API server as both its database (apiserverstore) and
+# its async queue, so every concurrent deployment multiplies API server load. At
+# -parallel 10 all of this suite's tests deployed at once and saturated the
+# single-node KinD control plane on a 4-vCPU CI runner: kube-apiserver went
+# NotReady without restarting and every `rad deploy` failed with EOF at the same
+# instant. Keep concurrency at or below the runner's CPU count.
 test-functional-corerp-cloud: ## Runs corerp functional tests that require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 4 $(GOTEST_OPTS)
 
 .PHONY: test-functional-msgrp
 test-functional-msgrp: test-functional-msgrp-noncloud ## Runs all Messaging RP functional tests (both cloud and non-cloud)

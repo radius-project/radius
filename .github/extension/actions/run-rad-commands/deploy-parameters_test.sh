@@ -132,6 +132,30 @@ assert_param_absent "registryUsername=${REGISTRY_USERNAME}"
 assert_param_present "registryPassword=${REGISTRY_PASSWORD}"
 DEPLOY_PARAMS_JSON=""
 
+# Architecture-aware build platforms: injected only when the app declares a
+# `platforms` parameter and the deploy computed an effective platform list.
+RADIUS_EFFECTIVE_BUILD_PLATFORMS="linux/amd64"
+
+run_generated_params_case '{"platforms":{}}'
+assert_param_present "platforms=linux/amd64"
+
+# App does not declare `platforms`: nothing injected.
+run_generated_params_case '{"environment":{}}'
+assert_param_absent "platforms=linux/amd64"
+
+# No effective platforms computed (feature off/undetermined): nothing injected.
+RADIUS_EFFECTIVE_BUILD_PLATFORMS=""
+run_generated_params_case '{"platforms":{}}'
+assert_param_absent "platforms=linux/amd64"
+
+# A value supplied via RADIUS_DEPLOY_PARAMS is not overridden by the computed one.
+RADIUS_EFFECTIVE_BUILD_PLATFORMS="linux/amd64"
+DEPLOY_PARAMS_JSON='{"platforms":"linux/arm64"}'
+run_generated_params_case '{"platforms":{}}'
+assert_param_absent "platforms=linux/amd64"
+DEPLOY_PARAMS_JSON=""
+RADIUS_EFFECTIVE_BUILD_PLATFORMS=""
+
 reset_discovery
 write_template '{"image":{}}'
 load_declared_app_params "${APP_FILE}"

@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -364,6 +365,157 @@ func Test_Run_RecipePacksReplaced(t *testing.T) {
 		}
 	}
 	require.True(t, foundWarning, "expected replacement warning in output")
+}
+
+// Test_Run_RecipePackNotFound verifies that a missing recipe pack fails the update
+// before the replacement warning is printed, and that the error names the resource
+// group that was searched along with the full resource ID form.
+func Test_Run_RecipePackNotFound(t *testing.T) {
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
+
+	existingPackID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/old-pack"
+
+	envServer := func() fake.EnvironmentsServer {
+		return fake.EnvironmentsServer{
+			Get: func(
+				_ context.Context,
+				_ string,
+				environmentName string,
+				_ *v20250801preview.EnvironmentsClientGetOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+				result := v20250801preview.EnvironmentsClientGetResponse{
+					EnvironmentResource: v20250801preview.EnvironmentResource{
+						ID:   to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+						Name: to.Ptr(environmentName),
+						Properties: &v20250801preview.EnvironmentProperties{
+							RecipePacks: []*string{to.Ptr(existingPackID)},
+						},
+					},
+				}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+			CreateOrUpdate: func(
+				_ context.Context,
+				_ string,
+				_ string,
+				_ v20250801preview.EnvironmentResource,
+				_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+				require.Fail(t, "environment should not be updated when a recipe pack does not exist")
+				return
+			},
+		}
+	}
+
+	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+		workspace.Scope,
+		envServer,
+		func() corerpfake.RecipePacksServer { return test_client_factory.WithRecipePackServer404OnGet() },
+	)
+	require.NoError(t, err)
+
+	outputSink := &output.MockOutput{}
+	runner := &Runner{
+		ConfigHolder:            &framework.ConfigHolder{},
+		Output:                  outputSink,
+		Workspace:               workspace,
+		EnvironmentName:         "test-env",
+		RadiusCoreClientFactory: factory,
+		recipePacks:             []string{"missing-pack"},
+		providers:               &v20250801preview.Providers{},
+	}
+
+	err = runner.Run(t.Context())
+	require.Error(t, err)
+	require.True(t, clierrors.IsFriendlyError(err))
+	require.Equal(t,
+		`Recipe pack "missing-pack" does not exist in resource group "test-group". To reference a recipe pack in another resource group, pass its full resource ID, for example: /planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/missing-pack`,
+		err.Error())
+
+	for _, w := range outputSink.Writes {
+		if logOut, ok := w.(output.LogOutput); ok {
+			require.NotEqual(t, "WARNING: The existing recipe pack list will be replaced with the specified packs.", logOut.Format,
+				"replacement warning should not be printed when validation fails")
+		}
+	}
+}
+
+// Test_Run_RecipePackFullResourceID verifies that a recipe pack referenced by full
+// resource ID is validated and stored as-is rather than being re-scoped.
+func Test_Run_RecipePackFullResourceID(t *testing.T) {
+	workspace := &workspaces.Workspace{
+		Name:  "test-workspace",
+		Scope: "/planes/radius/local/resourceGroups/test-group",
+	}
+
+	var capturedEnv v20250801preview.EnvironmentResource
+
+	packID := workspace.Scope + "/providers/Radius.Core/recipePacks/shared-pack"
+
+	envServer := func() fake.EnvironmentsServer {
+		return fake.EnvironmentsServer{
+			Get: func(
+				_ context.Context,
+				_ string,
+				environmentName string,
+				_ *v20250801preview.EnvironmentsClientGetOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+				result := v20250801preview.EnvironmentsClientGetResponse{
+					EnvironmentResource: v20250801preview.EnvironmentResource{
+						ID:         to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+						Name:       to.Ptr(environmentName),
+						Properties: &v20250801preview.EnvironmentProperties{},
+					},
+				}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+			CreateOrUpdate: func(
+				_ context.Context,
+				_ string,
+				_ string,
+				resource v20250801preview.EnvironmentResource,
+				_ *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+			) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+				capturedEnv = resource
+				result := v20250801preview.EnvironmentsClientCreateOrUpdateResponse{EnvironmentResource: resource}
+				resp.SetResponse(http.StatusOK, result, nil)
+				return
+			},
+		}
+	}
+
+	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+		workspace.Scope,
+		envServer,
+		func() corerpfake.RecipePacksServer {
+			return corerpfake.RecipePacksServer{
+				Get:            test_client_factory.WithRecipePackServerNoError().Get,
+				CreateOrUpdate: recipePackCreateOrUpdateNoError(),
+			}
+		},
+	)
+	require.NoError(t, err)
+
+	runner := &Runner{
+		ConfigHolder:            &framework.ConfigHolder{},
+		Output:                  &output.MockOutput{},
+		Workspace:               workspace,
+		EnvironmentName:         "test-env",
+		RadiusCoreClientFactory: factory,
+		recipePacks:             []string{packID},
+		providers:               &v20250801preview.Providers{},
+	}
+
+	err = runner.Run(t.Context())
+	require.NoError(t, err)
+
+	require.Len(t, capturedEnv.Properties.RecipePacks, 1)
+	require.Equal(t, packID, *capturedEnv.Properties.RecipePacks[0])
 }
 
 // Test_Run_DefaultsKubernetesNamespace verifies the namespace defaulting that

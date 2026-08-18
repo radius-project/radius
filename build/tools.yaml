@@ -358,7 +358,7 @@ tools:
 
   - name: dlv
     makePrefix: DLV
-    version: v1.27.0
+    version: v1.27.1
     source:
       type: github-release
       repository: go-delve/delve

@@ -64,8 +64,16 @@ env:
   CONTAINER_REGISTRY: ${{ vars.FUNCTIONAL_TEST_CONTAINER_REGISTRY }}
   # Container registry for storing Bicep recipe artifacts
   BICEP_RECIPE_REGISTRY: ${{ vars.FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY }}
-  # The radius functional test timeout
-  FUNCTIONALTEST_TIMEOUT: 60m
+  # The radius functional test timeout. This bounds `go test` and must stay
+  # comfortably below the job's timeout-minutes: the job also pays for ~10
+  # minutes of setup (KinD cluster, Radius install, Helm charts, cloud logins)
+  # before the tests start, and must still have time afterwards to collect
+  # cluster diagnostics and upload artifacts. If `go test` is allowed to run to
+  # the job timeout, GitHub cancels the job mid-test and the post-test steps -
+  # including diagnostics collection - never run, which is exactly the evidence
+  # needed to debug a hang. The cloud legs normally spend about 5 minutes in
+  # `go test`, so this leaves a wide margin.
+  FUNCTIONALTEST_TIMEOUT: 30m
   # The Azure Location to store test resources
   AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
   # The base directory for storing test logs
@@ -513,7 +521,7 @@ jobs:
         run: make install-bicep
 
       - name: Login to Azure (for private test bicep-types ACR)
-        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
@@ -717,7 +725,7 @@ jobs:
           ./bin/rad version >/dev/null 2>&1 || { echo "Downloaded rad binary is not a working rad CLI executable"; exit 1; }
 
       - name: Login to Azure
-        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
+        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
@@ -983,6 +991,12 @@ jobs:
           # Restore AWS Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-logs-loggroup.bicep --force
       - name: Run functional tests
+        # A step-level timeout, unlike the job-level one, still lets the
+        # `if: always()` steps below run - so a hung suite is followed by
+        # diagnostics collection rather than a cancelled job. Kept above
+        # FUNCTIONALTEST_TIMEOUT so `go test` times out first and prints its
+        # goroutine dump. Mirrors the pattern in long-running-azure.yaml.
+        timeout-minutes: 35
         run: |
           set -euo pipefail
 
@@ -1051,23 +1065,20 @@ jobs:
           result_directory: dist/functional_test/
           comment_mode: failures
 
-      - name: Collect Pod details
+      - name: Collect cluster diagnostics
         if: always()
-        # Diagnostic-only snapshot of cluster-wide pod state for post-mortem. A
-        # `kubectl describe pods -A` can race pod teardown and return a transient
-        # NotFound, so never let it fail the job.
+        # Diagnostic-only post-mortem snapshot. The script records each command's
+        # failure inline and keeps going, because the failures worth debugging are
+        # usually the ones where the control plane is unreachable and every
+        # kubectl call fails. Never let it fail the job.
         continue-on-error: true
         env:
-          MATRIX_NAME: ${{ matrix.name }}
-        run: |
-          POD_STATE_LOG_FILENAME="${RADIUS_CONTAINER_LOG_BASE}/${MATRIX_NAME}-tests-pod-states.log"
-          mkdir -p "$(dirname "${POD_STATE_LOG_FILENAME}")"
-          {
-            echo "kubectl get pods -A"
-            kubectl get pods -A
-            echo "kubectl describe pods -A"
-            kubectl describe pods -A
-          } >> "${POD_STATE_LOG_FILENAME}"
+          RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          DIAGNOSTICS_NAME: ${{ matrix.name }}
+          # kube-apiserver/etcd/kubelet logs are only worth the artifact size when
+          # something went wrong. An empty name skips the export.
+          KIND_CLUSTER_NAME: ${{ job.status != 'success' && 'radius' || '' }}
+        run: ./.github/scripts/collect-cluster-diagnostics.sh
 
       - name: Upload container logs
         if: always()

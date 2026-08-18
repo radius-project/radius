@@ -35,6 +35,24 @@ inputs:
   registry-password:
     description: Password/token passed when the app declares the registryPassword parameter (feeds its Radius.Security/secrets registry Secret).
     required: true
+  build-arch-mode:
+    description: >-
+      Target-cluster architecture mode for Radius.Compute/containerImages builds.
+      'detect' probes the target cluster node architectures; a single-arch cluster
+      builds only that platform, a mixed or undetermined cluster falls back to
+      build-fallback-platforms. An explicit platform list (any value containing
+      '/', e.g. 'linux/amd64') is honored verbatim. Empty or an unsubstituted
+      '{{TARGET_CLUSTER_ARCH_MODE}}' placeholder disables the feature and preserves
+      the recipe's default platforms.
+    required: false
+    default: ""
+  build-fallback-platforms:
+    description: >-
+      Comma-separated platform list used when build-arch-mode is 'detect' and the
+      target cluster is mixed-arch or its architecture cannot be determined. Empty
+      defaults to 'linux/amd64,linux/arm64'.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -62,6 +80,50 @@ runs:
           echo "Ensuring namespace $APP_NS exists on target cluster..."
           kubectl --kubeconfig "$TARGET_KUBECONFIG" get namespace "$APP_NS" 2>/dev/null || \
             kubectl --kubeconfig "$TARGET_KUBECONFIG" create namespace "$APP_NS"
+        fi
+
+    - name: Compute container build platforms from target cluster architecture
+      shell: bash
+      env:
+        BUILD_ARCH_MODE: ${{ inputs.build-arch-mode }}
+        BUILD_FALLBACK_PLATFORMS: ${{ inputs.build-fallback-platforms }}
+      run: |
+        set -euo pipefail
+
+        # Feature off when the mode is empty or still an unsubstituted template
+        # placeholder: emit nothing and preserve the recipe's default platforms.
+        case "$BUILD_ARCH_MODE" in
+          "" | "{{TARGET_CLUSTER_ARCH_MODE}}")
+            echo "Architecture-aware container builds disabled; using recipe default platforms."
+            exit 0
+            ;;
+        esac
+
+        # Only 'detect' consults the cluster; an explicit platform list is honored
+        # verbatim by the helper without any kubectl call.
+        ARCHES=""
+        if [ "$BUILD_ARCH_MODE" = "detect" ]; then
+          # Default-expand so an unset RADIUS_TARGET_KUBECONFIG does not trip
+          # `set -u`; the empty case is handled below and degrades to fallback.
+          TARGET_KUBECONFIG="${RADIUS_TARGET_KUBECONFIG:-}"
+          if [ -n "$TARGET_KUBECONFIG" ] && [ -f "$TARGET_KUBECONFIG" ]; then
+            # One architecture token per node; failures degrade to empty, which the
+            # helper treats as "undetermined" and resolves to the fallback list.
+            ARCHES=$(kubectl --kubeconfig "$TARGET_KUBECONFIG" get nodes \
+              -o jsonpath='{range .items[*]}{.status.nodeInfo.architecture}{"\n"}{end}' \
+              2>/dev/null || true)
+            echo "Detected target cluster node architectures: $(echo "$ARCHES" | tr '\n' ' ')"
+          else
+            echo "No target kubeconfig; cluster architecture undetermined, will use fallback."
+          fi
+        fi
+
+        EFFECTIVE=$(bash "$GITHUB_ACTION_PATH/compute-build-platforms.sh" \
+          "$BUILD_ARCH_MODE" "$BUILD_FALLBACK_PLATFORMS" "$ARCHES")
+
+        if [ -n "$EFFECTIVE" ]; then
+          echo "RADIUS_EFFECTIVE_BUILD_PLATFORMS=$EFFECTIVE" >> "$GITHUB_ENV"
+          echo "Effective container build platforms: $EFFECTIVE"
         fi
 
     - name: Run rad commands
@@ -409,7 +471,7 @@ runs:
 
     - name: Upload command result
       if: always()
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: rad-commands-result
         path: /tmp/radius-output/

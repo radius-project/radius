@@ -36,13 +36,19 @@ env:
   ENVIRONMENT: ${{ inputs.environment }}
   APP_FILE: '{{APP_FILE}}'
   APP_IMAGE: ${{ inputs.image || github.sha || 'latest' }}
-  RESOURCE_TYPES_CONTRIB_REPO: https://github.com/radius-project/resource-types-contrib.git
-  RESOURCE_TYPES_CONTRIB_REF: main
+  # Target-cluster architecture-aware container image builds. Rendered by the
+  # Radius extension: TARGET_CLUSTER_ARCH_MODE -> ${{ vars.RADIUS_BUILD_ARCH_MODE
+  # || 'detect' }} and TARGET_CLUSTER_ARCH_FALLBACK_PLATFORMS ->
+  # ${{ vars.RADIUS_BUILD_PLATFORMS || 'linux/amd64,linux/arm64' }}. When a
+  # template does not opt in, the unsubstituted placeholder disables the feature
+  # and the containerImages recipe's default platforms apply (existing behavior).
+  TARGET_CLUSTER_ARCH_MODE: '{{TARGET_CLUSTER_ARCH_MODE}}'
+  TARGET_CLUSTER_ARCH_FALLBACK_PLATFORMS: '{{TARGET_CLUSTER_ARCH_FALLBACK_PLATFORMS}}'
 
 jobs:
   deploy:
     name: Deploy with Radius
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: ${{ inputs.environment }}
     # OCI-backed Radius control-plane state, provisioned per-environment by the
     # deploy tooling (canvas extension) as environment variables. Set at job
@@ -56,14 +62,13 @@ jobs:
       RADIUS_STATE_REGISTRY: ${{ vars.RADIUS_STATE_REGISTRY }}
       RADIUS_STATE_ARCHIVE: ${{ vars.RADIUS_STATE_ARCHIVE }}
       RADIUS_GRAPH_REGISTRY: ${{ vars.RADIUS_GRAPH_REGISTRY }}
-      RADIUS_GRAPH_TAG: ${{ vars.RADIUS_GRAPH_TAG }}
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
 
       - name: Configure AWS Credentials (OIDC)
         if: ${{ vars.AWS_ROLE_ARN != '' }}
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
@@ -77,7 +82,7 @@ jobs:
         # 401. docker login persists for the whole job, covering teardown too.
         # GITHUB_TOKEN has packages: write (set at job level) for repo-linked
         # packages; a PAT can be supplied instead for other-owner packages.
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -140,6 +145,9 @@ jobs:
 
       - name: Set up control plane
         uses: radius-project/radius/.github/extension/actions/setup-control-plane@{{RADIUS_REF}}
+
+      - name: Load Radius contrib catalog
+        uses: radius-project/radius/.github/extension/actions/load-contrib-catalog@{{RADIUS_REF}}
 
       - name: Project cloud OIDC tokens into Radius pods
         run: |
@@ -244,8 +252,9 @@ jobs:
 
       - name: Create Radius environment and recipe pack
         run: |
-          REPO="${{ env.RESOURCE_TYPES_CONTRIB_REPO }}"
-          REF="${{ env.RESOURCE_TYPES_CONTRIB_REF }}"
+          # load-contrib-catalog exports the catalog and generic accessors from
+          # the same Radius ref as this generated workflow.
+          source "$RADIUS_CONTRIB_CATALOG_HELPER"
           NAMESPACE="${{ vars.KUBERNETES_NAMESPACE || 'default' }}"
 
           # Registry and credentials for the Radius.Compute/containerImages recipe.
@@ -261,18 +270,14 @@ jobs:
           BUILD_REGISTRY=$(echo "${{ vars.RADIUS_BUILD_REGISTRY || format('ghcr.io/{0}', github.repository) }}" | tr '[:upper:]' '[:lower:]')
           REGISTRY_SECRET_NAME="radius-ghcr-registry-creds"
 
-          # Tag/digest of the Bicep containerImages recipe. Defaults to the mutable
-          # `latest` tag (as the Azure hosted pack uses), but is overridable via the
-          # RADIUS_KUBE_RECIPES_REF repo variable so the pack can be pinned to an
-          # immutable digest (e.g. sha256:...) for reproducible runs, matching how
-          # the Terraform recipes below are pinned to $REF. A digest ref is joined
-          # with '@', a tag with ':'.
-          KUBE_RECIPES_REF="${{ vars.RADIUS_KUBE_RECIPES_REF || 'latest' }}"
-          case "$KUBE_RECIPES_REF" in
-            sha256:*) _ci_sep="@" ;;
-            *) _ci_sep=":" ;;
-          esac
-          CONTAINERIMAGES_SOURCE="ghcr.io/radius-project/kube-recipes/containerimages${_ci_sep}${KUBE_RECIPES_REF}"
+          # Resolve every Recipe source from deploy/manifest/defaults.yaml.
+          CONTAINERIMAGES_SOURCE="$(radius_contrib_kube_recipe_source Radius.Compute/containerImages containerimages)"
+          CONTAINERS_SOURCE="$(radius_contrib_resource_git_source Radius.Compute/containers recipes/kubernetes/terraform)"
+          PERSISTENTVOLUMES_SOURCE="$(radius_contrib_resource_git_source Radius.Compute/persistentVolumes recipes/kubernetes/terraform)"
+          ROUTES_SOURCE="$(radius_contrib_resource_git_source Radius.Compute/routes recipes/kubernetes/terraform)"
+          POSTGRESQL_SOURCE="$(radius_contrib_resource_git_source Radius.Data/postgreSqlDatabases recipes/kubernetes/terraform)"
+          MYSQL_SOURCE="$(radius_contrib_resource_git_source Radius.Data/mySqlDatabases recipes/aws/terraform)"
+          SECRETS_SOURCE="$(radius_contrib_resource_git_source Radius.Security/secrets recipes/kubernetes/terraform)"
 
           # Select the provider-specific recipe pack. Both provider packs share the
           # Bicep containerImages recipe and the Kubernetes compute/data recipes,
@@ -281,7 +286,7 @@ jobs:
           MYSQL_RECIPE=$(cat <<EOF
           'Radius.Data/mySqlDatabases': {
             kind: 'terraform'
-            source: 'git::$REPO//Data/mySqlDatabases/recipes/aws/terraform?ref=$REF'
+            source: '$MYSQL_SOURCE'
             parameters: {
               vpcId: '${{ vars.RADIUS_VPC_ID }}'
               subnetIds: '${{ vars.RADIUS_SUBNET_IDS }}'
@@ -327,23 +332,23 @@ jobs:
                 }
                 'Radius.Compute/containers': {
                   kind: 'terraform'
-                  source: 'git::$REPO//Compute/containers/recipes/kubernetes/terraform?ref=$REF'
+                  source: '$CONTAINERS_SOURCE'
                 }
                 'Radius.Compute/persistentVolumes': {
                   kind: 'terraform'
-                  source: 'git::$REPO//Compute/persistentVolumes/recipes/kubernetes/terraform?ref=$REF'
+                  source: '$PERSISTENTVOLUMES_SOURCE'
                 }
                 'Radius.Compute/routes': {
                   kind: 'terraform'
-                  source: 'git::$REPO//Compute/routes/recipes/kubernetes/terraform?ref=$REF'
+                  source: '$ROUTES_SOURCE'
                 }
                 'Radius.Data/postgreSqlDatabases': {
                   kind: 'terraform'
-                  source: 'git::$REPO//Data/postgreSqlDatabases/recipes/kubernetes/terraform?ref=$REF'
+                  source: '$POSTGRESQL_SOURCE'
                 }
                 'Radius.Security/secrets': {
                   kind: 'terraform'
-                  source: 'git::$REPO//Security/secrets/recipes/kubernetes/terraform?ref=$REF'
+                  source: '$SECRETS_SOURCE'
                 }
           $MYSQL_RECIPE
               }
@@ -390,6 +395,8 @@ jobs:
           deploy-params: ${{ secrets.RADIUS_DEPLOY_PARAMS }}
           registry-username: ${{ github.actor }}
           registry-password: ${{ secrets.GITHUB_TOKEN }}
+          build-arch-mode: ${{ env.TARGET_CLUSTER_ARCH_MODE }}
+          build-fallback-platforms: ${{ env.TARGET_CLUSTER_ARCH_FALLBACK_PLATFORMS }}
 
       # Publish status on failure too: an empty Deployed tab is least helpful
       # exactly when a deploy failed and the user is trying to see which

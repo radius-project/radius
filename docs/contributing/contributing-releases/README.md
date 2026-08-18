@@ -134,30 +134,36 @@ git push origin vX.Y.Z-rcN
 
 ### Step 3: Update default resource types in the Radius repo
 
-Ensure the default resource type manifests in the Radius repo are up to date with the latest `resource-types-contrib` definitions:
+Ensure the default resource type manifests and generated recipe consumers in the Radius repo use the latest eligible `resource-types-contrib` releases:
+
+Before syncing Radius, publish a stable release from `resource-types-contrib` for every consumed namespace or recipe pack that has releasable changes. Use the upstream **Release Namespace** and **Release Recipe Pack** workflows; they skip unchanged units. The edge fallback is only a bootstrap exception for a unit that has never had a stable release, not a substitute for publishing one. Confirm any remaining empty `tag` in `deploy/manifest/defaults.yaml` corresponds to a unit with no stable release upstream.
 
 ```bash
 git checkout main
 git pull origin main
 git checkout -b <USERNAME>/update-resource-types
-make update-resource-types
+make update-resource-types-and-recipe-packs
 ```
 
-This resolves the latest `resource-types-contrib` `main` commit, pins it as a commit SHA per namespace in `deploy/manifest/defaults.yaml` (`resourceTypes[].ref`), and copies the manifest files listed under `defaultRegistration` into `deploy/manifest/built-in-providers/`. To pin a specific release tag or commit instead of the latest `main`, pass `RESOURCE_TYPES_REF`, for example `make update-resource-types RESOURCE_TYPES_REF=Radius.Compute/v0.2.0 RESOURCE_TYPES_NAMESPACE=Radius.Compute`. When the ref names an upstream tag it is also recorded in `resourceTypes[].tag`; edge-channel pins leave that field empty. To update a single namespace, pass `RESOURCE_TYPES_NAMESPACE` on its own, for example `make update-resource-types RESOURCE_TYPES_NAMESPACE=Radius.Compute`. Review the diff to confirm the changes are expected.
+The target atomically enforces stable-first selection for every resource type namespace and consumed recipe pack. If a stable unit-scoped SemVer tag exists upstream (`Radius.Compute/vX.Y.Z` or `recipe-pack/azure/vX.Y.Z`), it pins that release's immutable commit SHA in `deploy/manifest/defaults.yaml` and records the tag. A legacy stable repository-wide `vX.Y.Z` tag is accepted only when the unit has no scoped stable release. A `main` commit is used as the edge fallback only for a unit that has never published any stable release. Prerelease tags do not qualify as stable and cannot be used as the edge fallback. The target copies the manifests listed under `defaultRegistration` into `deploy/manifest/built-in-providers/`; recipe packs are not vendored. Generated Azure/AWS workflows read their immutable recipe-pack and resource Recipe sources from the same `defaults.yaml` catalog at runtime, so no refs are duplicated in workflow files.
 
-Recipe packs are released upstream on their own `recipe-pack/<pack>/vX.Y.Z` tag series and are not vendored into this repo, so they are pinned separately and copy nothing:
+To pin a specific stable release, including a rollback to an older known-good release, pass its unit-scoped tag. For example, run `make update-resource-types RESOURCE_TYPES_REF=Radius.Compute/v0.2.0 RESOURCE_TYPES_NAMESPACE=Radius.Compute`. To request an update for one namespace using normal stable-first selection, pass `RESOURCE_TYPES_NAMESPACE` on its own. A full commit SHA is accepted only as the edge candidate for a unit with no stable release.
+
+For a targeted recipe-pack rollback or refresh, use its independent `recipe-pack/<pack>/vX.Y.Z` release series. The command updates its catalog pin but copies no pack files:
 
 ```bash
 make update-recipe-packs
 make update-recipe-packs RECIPE_PACKS_NAME=azure RECIPE_PACKS_REF=recipe-pack/azure/v0.2.0
 ```
 
+Review the diff and confirm every non-empty `tag` is a stable unit-scoped or repository-wide release. An empty `tag` is valid only when that namespace or recipe pack has no stable release upstream; CI rechecks that exception and verifies each stable tag resolves to the recorded SHA.
+
 If the update fails or the copied manifests fail schema validation at startup during testing, you have two options:
 
 1. **Fix forward**: Correct the manifest in `resource-types-contrib`, merge the fix, then re-run `make update-resource-types`.
-2. **Pin to last known good version**: Revert the `resourceTypes[].ref` change in `deploy/manifest/defaults.yaml` to keep the previous `resource-types-contrib` revision and run `make sync-resource-types` to restore the matching manifests.
+2. **Pin to last known good stable release**: Re-run `make update-resource-types` with that release's unit-scoped tag and namespace, then run `make sync-resource-types` to restore the matching manifests. For a namespace with no stable release, pass the previous edge commit SHA instead.
 
-Open a separate PR targeting `main` in `radius-project/radius` with the updated `deploy/manifest/defaults.yaml` and manifest files. Merge it before proceeding to the `versions.yaml` update.
+Open a separate PR targeting `main` in `radius-project/radius` with the updated catalog and manifest files. Merge it before proceeding to the `versions.yaml` update.
 
 ### Step 4: Update versions.yaml
 

@@ -1,0 +1,23 @@
+---
+name: Radius - Load contrib catalog
+description: >-
+  Expose the Radius resource type and recipe pack catalog to later workflow
+  steps.
+
+runs:
+  using: composite
+  steps:
+    - name: Configure Radius contrib catalog
+      shell: bash
+      run: |
+        RADIUS_REPO_ROOT="$(cd "${GITHUB_ACTION_PATH}/../../../.." && pwd)"
+        DEFAULTS_YAML="${RADIUS_REPO_ROOT}/deploy/manifest/defaults.yaml"
+        CATALOG_HELPER="${RADIUS_REPO_ROOT}/.github/extension/scripts/contrib-catalog.sh"
+
+        test -f "$DEFAULTS_YAML"
+        test -f "$CATALOG_HELPER"
+        make -C "$RADIUS_REPO_ROOT" install-yq
+        {
+          echo "RADIUS_DEFAULTS_YAML=$DEFAULTS_YAML"
+          echo "RADIUS_CONTRIB_CATALOG_HELPER=$CATALOG_HELPER"
+        } >> "$GITHUB_ENV"
