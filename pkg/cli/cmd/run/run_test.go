@@ -70,7 +70,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
@@ -90,7 +90,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
@@ -109,7 +109,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
@@ -135,7 +135,7 @@ func Test_Validate(t *testing.T) {
 					},
 				}
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(templateWithEnv, nil).
 					Times(1)
 			},
@@ -150,7 +150,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("env.bicep").
+					PrepareTemplate(gomock.Any(), "env.bicep").
 					Return(map[string]any{
 						"resources": map[string]any{
 							"env": map[string]any{
@@ -172,7 +172,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 			},
@@ -187,7 +187,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
@@ -213,7 +213,7 @@ func Test_Validate(t *testing.T) {
 					},
 				}
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(templateWithEnv, nil).
 					Times(1)
 			},
@@ -235,7 +235,7 @@ func Test_Validate(t *testing.T) {
 					},
 				}
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(templateWithEnv, nil).
 					Times(1)
 				// When env flag is explicitly provided, we honor it and validate even if template creates environment
@@ -305,7 +305,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 		// Set up Bicep mock to return empty template
 		mockBicep := bicep.NewMockInterface(ctrl)
 		mockBicep.EXPECT().
-			PrepareTemplate("app.bicep").
+			PrepareTemplate(gomock.Any(), "app.bicep").
 			Return(map[string]any{}, nil).
 			Times(1)
 
@@ -379,7 +379,7 @@ func Test_ValidateWithFakeEnvServer(t *testing.T) {
 		// Set up Bicep mock to return empty template
 		mockBicep := bicep.NewMockInterface(ctrl)
 		mockBicep.EXPECT().
-			PrepareTemplate("app.bicep").
+			PrepareTemplate(gomock.Any(), "app.bicep").
 			Return(map[string]any{}, nil).
 			Times(1)
 

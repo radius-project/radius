@@ -72,6 +72,10 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 The deploy command compiles a Bicep or ARM template and deploys it to your default environment (unless otherwise specified).
 
+The template can be a local file path or an http(s) URL. Remote templates are downloaded before
+being compiled and deployed, similar to how tools such as kubectl accept remote URLs. Remote
+templates must be self-contained; relative imports and other local file dependencies are not supported.
+
 You can combine Radius types as as well as other types that are available in Bicep such as Azure resources. See
 the Radius documentation for information about describing your application and resources with Bicep.
 
@@ -94,6 +98,9 @@ rad deploy myapp.bicep
 
 # deploy an ARM template (json)
 rad deploy myapp.json
+
+# deploy a Bicep template from a remote URL
+rad deploy https://example.com/myapp.bicep
 
 # deploy to a specific workspace
 rad deploy myapp.bicep --workspace production
@@ -204,7 +211,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// Prepare the template early to check if it contains an environment resource.
 	// This allows us to skip environment validation if the template will create one.
-	r.Template, err = r.Bicep.PrepareTemplate(r.FilePath)
+	r.Template, err = r.Bicep.PrepareTemplate(cmd.Context(), r.FilePath)
 	if err != nil {
 		return err
 	}
@@ -337,15 +344,18 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
+	// Redact any credentials embedded in a remote template URL before displaying it.
+	displayPath := bicep.RedactTemplatePath(r.FilePath)
+
 	progressText := ""
 	if r.ApplicationName == "" {
 		progressText = fmt.Sprintf(
 			"Deploying template '%v' into environment '%v' from workspace '%v'...\n\n"+
-				"Deployment In Progress...", r.FilePath, r.EnvironmentNameOrID, r.Workspace.Name)
+				"Deployment In Progress...", displayPath, r.EnvironmentNameOrID, r.Workspace.Name)
 	} else {
 		progressText = fmt.Sprintf(
 			"Deploying template '%v' for application '%v' and environment '%v' from workspace '%v'...\n\n"+
-				"Deployment In Progress... ", r.FilePath, r.ApplicationName, r.EnvironmentNameOrID, r.Workspace.Name)
+				"Deployment In Progress... ", displayPath, r.ApplicationName, r.EnvironmentNameOrID, r.Workspace.Name)
 	}
 
 	// Before deploying, set up recipe packs for any Radius.Core environments in the
@@ -439,7 +449,7 @@ func (r *Runner) reportMissingParameters(template map[string]any) error {
 		details = append(details, fmt.Sprintf("  - %v", errors[key]))
 	}
 
-	return clierrors.Message("The template %q could not be deployed because of the following errors:\n\n%v", r.FilePath, strings.Join(details, "\n"))
+	return clierrors.Message("The template %q could not be deployed because of the following errors:\n\n%v", bicep.RedactTemplatePath(r.FilePath), strings.Join(details, "\n"))
 }
 
 // resolvePreview reports whether the deploy command should use the Radius.Core preview

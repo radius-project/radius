@@ -29,6 +29,7 @@ import (
 	"testing"
 	"time"
 
+	clikubernetes "github.com/radius-project/radius/pkg/cli/kubernetes"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -44,6 +45,12 @@ const (
 	retries      = 3
 	retryTimeout = 1 * time.Minute
 	retryBackoff = 1 * time.Second
+
+	// noDatabaseMessage is returned by the demo app's list endpoint when it runs
+	// without a configured database. The modernized sample (radius-project/samples#2645)
+	// removed the inline redis resource from app.bicep, so the app stores todo items in
+	// memory and surfaces this message in every list response.
+	noDatabaseMessage = "No database is configured, items will be stored in memory."
 )
 
 var samplesRepoAbsPath, samplesRepoEnvVarSet = os.LookupEnv("RADIUS_SAMPLES_REPO_ROOT")
@@ -61,31 +68,40 @@ func Test_FirstApplicationSample(t *testing.T) {
 	relPathSamplesRepo, err := filepath.Rel(cwd, samplesRepoAbsPath)
 	require.NoError(t, err)
 	template := filepath.Join(relPathSamplesRepo, "samples/demo/app.bicep")
-	appName := "demo"
-	appNamespace := "tutorial-demo"
+	// The modernized sample (radius-project/samples#2645) names both the application
+	// and the container demo-${environmentName}, which resolves to demo-tutorial for the
+	// "tutorial" environment. The recipe-driven Radius.Compute/containers pod lands in the
+	// environment's Kubernetes namespace ("tutorial").
+	appName := "demo-tutorial"
+	appNamespace := "tutorial"
 
 	test := rp.NewRPTest(t, appName, []rp.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor("testdata/tutorial-environment.bicep", testutil.GetBicepRecipeRegistry(), testutil.GetBicepRecipeVersion()),
+			Executor:                               step.NewDeployExecutor("testdata/tutorial-environment.bicep"),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 		},
 		{
-
-			Executor: step.NewDeployExecutor(template).WithEnvironment("tutorial").WithApplication(appName),
+			// The modernized sample has no "application" parameter; it derives the app name
+			// from the environment, so only --environment is passed.
+			Executor: step.NewDeployExecutor(template).WithEnvironment("tutorial"),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: appName,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
-						Name: "demo",
-						Type: validation.ContainersResource,
+						Name: appName,
+						Type: validation.ComputeContainersResource,
+						App:  appName,
 					},
 					{
-						Name: "db",
-						Type: validation.RedisCachesResource,
+						// The environment-deploy step skips validation and has no RPResources,
+						// so include the fixed-name tutorial environment here to validate it and
+						// ensure the cleanup loop deletes it after the application.
+						Name: "tutorial",
+						Type: validation.CoreEnvironmentsResource,
 					},
 				},
 			},
@@ -93,7 +109,7 @@ func Test_FirstApplicationSample(t *testing.T) {
 				// Set up pod port-forwarding for the pod
 				for i := 1; i <= retries; i++ {
 					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
-					selector := fmt.Sprintf("%s=%s", kubernetes.LabelRadiusResource, "demo")
+					selector := fmt.Sprintf("%s=%s", kubernetes.LabelRadiusResource, appName)
 					err := testWithPortForward(t, ctx, ct, appNamespace, selector, remotePort)
 					if err != nil {
 						t.Logf("Failed to test pod via portforward with error: %s", err)
@@ -110,12 +126,22 @@ func Test_FirstApplicationSample(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					appNamespace: {
-						validation.NewK8sPodForResource(appName, "demo"),
+						validation.NewK8sPodForResource(appName, appName),
 					},
 				},
 			},
 		},
 	})
+
+	// Radius.Core/environments rejects a Kubernetes namespace that does not already
+	// exist. RPTest.CreateInitialResources only ensures the namespace named after the
+	// test (demo-tutorial), so the environment's "tutorial" namespace must be created
+	// here before the steps run, mirroring NewPreviewEnvPreSetup.
+	test.PreSetup = func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+		nsClient, err := rp.DeploymentTargetK8sClient(ct.Options)
+		require.NoError(t, err)
+		require.NoError(t, clikubernetes.EnsureNamespace(ctx, nsClient, appNamespace))
+	}
 
 	test.Test(t)
 }
@@ -167,7 +193,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 
 		expectedListResponseBody := map[string]any{
 			"items":   []any{},
-			"message": nil,
+			"message": noDatabaseMessage,
 		}
 		require.Equal(t, expectedListResponseBody, actualListResponseBody)
 
@@ -223,7 +249,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 			"items": []any{
 				createdItem,
 			},
-			"message": nil,
+			"message": noDatabaseMessage,
 		}
 		require.Equal(t, expectedListResponseBody, actualListResponseBody)
 
@@ -290,7 +316,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 
 		expectedListResponseBody = map[string]any{
 			"items":   []any{},
-			"message": nil,
+			"message": noDatabaseMessage,
 		}
 		require.Equal(t, expectedListResponseBody, actualListResponseBody)
 
