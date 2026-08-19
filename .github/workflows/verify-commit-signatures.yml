@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: Verify Commit Signatures
+name: verify-commit-signatures
 
 on:
   # This workflow uses the trusted base commit and never executes PR-head code.
