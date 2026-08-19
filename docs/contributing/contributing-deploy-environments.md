@@ -48,7 +48,7 @@ The credential-verification workflow reads only Actions **variables**, never sec
 
 ### 4. Add the credential-verification workflow
 
-Copy the provider's template from `.github/extension/` into the target repository at `.github/workflows/verify-<provider>.yml` — [`verify-aws.yml`](../../.github/extension/verify-aws.yml) for AWS or [`verify-azure.yml`](../../.github/extension/verify-azure.yml) for Azure (both are named `Radius - Verify Credentials`). See [`.github/extension/README.md`](../../.github/extension/README.md) for the contract between the workflow and any frontend that drives it.
+Copy the provider's template from the [`radius-project/ai-extensions`](https://github.com/radius-project/ai-extensions/tree/main/.github/extension) repository (under `.github/extension/`) into the target repository at `.github/workflows/verify-<provider>.yml` — [`verify-aws.yml`](https://github.com/radius-project/ai-extensions/blob/main/.github/extension/verify-aws.yml) for AWS or [`verify-azure.yml`](https://github.com/radius-project/ai-extensions/blob/main/.github/extension/verify-azure.yml) for Azure (both are named `Radius - Verify Credentials`). See the [`.github/extension/README.md`](https://github.com/radius-project/ai-extensions/blob/main/.github/extension/README.md) in that repository for the contract between the workflow and any frontend that drives it.
 
 > **Note:** the template's `environment` input has a `default: '{{ENV}}'` placeholder that the canvas/skill substitutes automatically. When copying the file by hand, replace `{{ENV}}` with your environment name (or delete the `default:` line).
 
@@ -79,4 +79,4 @@ Once the run is green, the environment is ready for Radius to deploy into.
 
 ## Related
 
-- [`.github/extension/README.md`](../../.github/extension/README.md) — the canonical workflow template and its contract with frontends.
+- [`.github/extension/README.md`](https://github.com/radius-project/ai-extensions/blob/main/.github/extension/README.md) — the canonical workflow template and its contract with frontends (hosted in `radius-project/ai-extensions`).

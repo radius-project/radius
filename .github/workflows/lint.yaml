@@ -113,7 +113,6 @@ jobs:
             run: |
               make tsp-format-check
               make format-check || { echo "Format check failed. Run 'make format-write' to fix the formatting issues."; exit 1; }
-              make test-deploy-progress-uploader
 
           - name: Shell lint
             run: make lint-shell
