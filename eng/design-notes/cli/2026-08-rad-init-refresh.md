@@ -195,7 +195,7 @@ Initialization complete! Have a RAD time 😎
 
 #### Recipe pack selection (`--full`)
 
-Recipe pack selection is offered only in `rad init --full`. The default, zero-question flow always uses the `default` recipe pack and does not prompt.
+Recipe pack selection is offered only in `rad init --full`. The default, zero-question flow always uses the `kubernetes` pack (whose `Radius.Core/recipePacks` resource is named `default`, which is why the output reads `Recipe pack: default`) and does not prompt.
 
 At the `Select a recipe pack for this environment` prompt, `rad init` lists the recipe packs pinned in [`defaults.yaml`](../../../deploy/manifest/defaults.yaml) (for example `kubernetes`, `azure-aks`, and `azure-aci`) so the choices always match what the installed control plane can provision. The user selects exactly one.
 
@@ -270,6 +270,8 @@ const radiusOnlyBicepConfigTemplate = `{
 }`
 ```
 
+`%s` is replaced at write time with the Radius version the CLI targets: `latest` for edge builds (as shown in the sample output above), or the pinned release version otherwise.
+
 #### Change 3: Remove the application-scaffold prompt and options
 
 Resolves #12587: the "Setup application in the current directory?" prompt is ambiguous and does not say a file will be written, because [`common.EnterApplicationOptions`](../../../pkg/cli/cmd/radinit/common/application.go) presents an abstract "setup" question rather than naming the artifact. With `bicepconfig.json` now written unconditionally (Change 1), the prompt and its options serve no purpose and are removed from preview.
@@ -316,7 +318,7 @@ The proposed flow resolves the chosen pack name to a `resource-types-contrib` so
 
 Resolves #12568. Today a non-existent namespace returns a valid `400`, but the raw JSON body is printed while the bubbletea progress display still owns the terminal, corrupting terminal width until the terminal is killed.
 
-When an init step fails, tear down the bubbletea progress UI **before** printing the error, and surface a parsed, single-line message rather than the raw HTTP body. The missing-namespace case should read:
+When an init step fails, tear down the bubbletea progress UI **before** printing the error, and surface a parsed, concise message (no raw or indented JSON) rather than the raw HTTP body. The missing-namespace case should read:
 
 ```text
 ✗ Failed to create environment: namespace 'test' does not exist in the Kubernetes
@@ -339,7 +341,7 @@ No UCP, Deployment Engine, or Core RP server-side changes are required. The envi
 ## Test plan
 
 - **Unit tests.** Update the `radinit/preview` suite: assert `app.bicep` is never created; assert `bicepconfig.json` is always created with only the `radius` extension; assert no stub application resource is created; assert the `--full` prompt order; assert recipe-pack selection maps to the linked pack. Add `setup` tests for the new `WriteBicepConfig` (create, don't-overwrite, radius-only extension).
-- **Error rendering.** Add a test that a `400` from environment creation yields a single-line, non-indented message and restores stdout.
+- **Error rendering.** Add a test that a `400` from environment creation yields a concise, terminal-safe message (not the raw indented JSON body) and restores stdout.
 - **Functional tests.** Add a **getting-started tutorial smoke test** that mirrors the documented [deploy-demo](https://docs.radapp.io/getting-started/deploy-demo/) flow end to end, so the on-ramp cannot regress now that the local `app.bicep` scaffold is gone. Run it as a dedicated CI job on a clean kind cluster (so `rad init --preview` performs the install itself, rather than reusing the suite that pre-installs via `rad install kubernetes`) and assert, in order: `rad init --preview` exits 0 and writes `bicepconfig.json`; `rad deploy` of the demo sample exits 0; `kubectl get deployment,service` shows the `demo-default` Deployment and `demo-default-web` Service `Ready`; and `rad application graph demo-default --preview` lists the `demo-default` container with its `apps/Deployment` and `core/Service`. Deploy from a pinned, versioned raw URL (`https://raw.githubusercontent.com/radius-project/samples/<release-tag>/samples/demo/app.bicep`) to keep the run deterministic, and add a separate check that the live `https://edge.docs.radapp.io/samples/demo/app.bicep` redirect resolves to that same file, so drift between the published tutorial and the pinned sample is caught.
 
 ### CI impact
