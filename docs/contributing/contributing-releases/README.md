@@ -132,40 +132,7 @@ git push origin vX.Y.Z-rcN
 
 > **Note**: This manual tagging step is a temporary workaround. Ideally the [Deployment Engine Release Workflow](https://github.com/azure-octo/deployment-engine/actions/workflows/release.yaml) would handle this, but GPG signing is not yet configured there. See [azure-octo/deployment-engine#456](https://github.com/azure-octo/deployment-engine/issues/456).
 
-### Step 3: Update default resource types in the Radius repo
-
-Ensure the default resource type manifests and generated recipe consumers in the Radius repo use the latest eligible `resource-types-contrib` releases:
-
-Before syncing Radius, publish a stable release from `resource-types-contrib` for every consumed namespace or recipe pack that has releasable changes. Use the upstream **Release Namespace** and **Release Recipe Pack** workflows; they skip unchanged units. The edge fallback is only a bootstrap exception for a unit that has never had a stable release, not a substitute for publishing one. Confirm any remaining empty `tag` in `deploy/manifest/defaults.yaml` corresponds to a unit with no stable release upstream.
-
-```bash
-git checkout main
-git pull origin main
-git checkout -b <USERNAME>/update-resource-types
-make update-resource-types-and-recipe-packs
-```
-
-The target atomically enforces stable-first selection for every resource type namespace and consumed recipe pack. If a stable unit-scoped SemVer tag exists upstream (`Radius.Compute/vX.Y.Z` or `recipe-pack/azure/vX.Y.Z`), it pins that release's immutable commit SHA in `deploy/manifest/defaults.yaml` and records the tag. A legacy stable repository-wide `vX.Y.Z` tag is accepted only when the unit has no scoped stable release. A `main` commit is used as the edge fallback only for a unit that has never published any stable release. Prerelease tags do not qualify as stable and cannot be used as the edge fallback. The target copies the manifests listed under `defaultRegistration` into `deploy/manifest/built-in-providers/`; recipe packs are not vendored. Generated Azure/AWS workflows read their immutable recipe-pack and resource Recipe sources from the same `defaults.yaml` catalog at runtime, so no refs are duplicated in workflow files.
-
-To pin a specific stable release, including a rollback to an older known-good release, pass its unit-scoped tag. For example, run `make update-resource-types RESOURCE_TYPES_REF=Radius.Compute/v0.2.0 RESOURCE_TYPES_NAMESPACE=Radius.Compute`. To request an update for one namespace using normal stable-first selection, pass `RESOURCE_TYPES_NAMESPACE` on its own. A full commit SHA is accepted only as the edge candidate for a unit with no stable release.
-
-For a targeted recipe-pack rollback or refresh, use its independent `recipe-pack/<pack>/vX.Y.Z` release series. The command updates its catalog pin but copies no pack files:
-
-```bash
-make update-recipe-packs
-make update-recipe-packs RECIPE_PACKS_NAME=azure RECIPE_PACKS_REF=recipe-pack/azure/v0.2.0
-```
-
-Review the diff and confirm every non-empty `tag` is a stable unit-scoped or repository-wide release. An empty `tag` is valid only when that namespace or recipe pack has no stable release upstream; CI rechecks that exception and verifies each stable tag resolves to the recorded SHA.
-
-If the update fails or the copied manifests fail schema validation at startup during testing, you have two options:
-
-1. **Fix forward**: Correct the manifest in `resource-types-contrib`, merge the fix, then re-run `make update-resource-types`.
-2. **Pin to last known good stable release**: Re-run `make update-resource-types` with that release's unit-scoped tag and namespace, then run `make sync-resource-types` to restore the matching manifests. For a namespace with no stable release, pass the previous edge commit SHA instead.
-
-Open a separate PR targeting `main` in `radius-project/radius` with the updated catalog and manifest files. Merge it before proceeding to the `versions.yaml` update.
-
-### Step 4: Update versions.yaml
+### Step 3: Update versions.yaml
 
 Create a branch from `main` in the `radius-project/radius` repo:
 
@@ -188,7 +155,7 @@ deprecated:
     version: 'v0.54.0'
 ```
 
-### Step 5: Merge to main
+### Step 4: Merge to main
 
 Push the branch and create a PR against `main`:
 
@@ -198,12 +165,12 @@ git push origin <USERNAME>/release-X.Y.0-rcN
 
 After approval, merge the PR to `main`.
 
-### Step 6: Verify the automated release
+### Step 5: Verify the automated release
 
 After merging, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on `main`.
 
 - **First RC**: The workflow creates the `release/X.Y` branch from `main` and pushes the `vX.Y.Z-rcN` tag. The tag push then triggers the [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow. No manual tag creation is needed. Verify the release using the checklist below.
-- **Subsequent RCs**: The workflow detects that the release branch already exists and **skips tag creation**. This is expected — the tag will be created when the cherry-pick lands on the release branch in [Step 8](#step-8-cherry-pick-additional-changes-subsequent-rcs-only). Skip ahead to Step 7 for now and return to verify after completing Step 8.
+- **Subsequent RCs**: The workflow detects that the release branch already exists and **skips tag creation**. This is expected — the tag will be created when the cherry-pick lands on the release branch in [Step 6](#step-6-cherry-pick-additional-changes-subsequent-rcs-only). Skip ahead to Step 6 for now and return to verify after completing it.
 
 Monitor and verify:
 
@@ -211,11 +178,7 @@ Monitor and verify:
 2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the tag push) completes successfully. This workflow also dispatches Bicep types publishing automatically.
 3. An RC release marked as pre-release appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
-### Step 7: Publish Bicep recipes
-
-In the `radius-project/resource-types-contrib` repo, manually run the [Publish Bicep Recipes](https://github.com/radius-project/resource-types-contrib/actions/workflows/publish-bicep-recipes.yaml) workflow. Enter the RC version number without the `v` prefix as the release version (e.g., `0.56.0-rc1`).
-
-### Step 8: Cherry-pick additional changes (subsequent RCs only)
+### Step 6: Cherry-pick additional changes (subsequent RCs only)
 
 > **Skip this step for the first RC.** The release branch was just created from `main` and already contains all changes.
 
@@ -237,9 +200,9 @@ Push and create a PR targeting the release branch:
 git push origin <USERNAME>/cherry-pick-rcN-to-release-branch
 ```
 
-After approval, merge the PR. This triggers the release automation on the release branch, creating the new RC tag. Return to [Step 6](#step-6-verify-the-automated-release) to verify the release completed successfully.
+After approval, merge the PR. This triggers the release automation on the release branch, creating the new RC tag. Return to [Step 5](#step-5-verify-the-automated-release) to verify the release completed successfully.
 
-### Step 9: Run validation workflows
+### Step 7: Run validation workflows
 
 1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch. Enter the RC version number without the `v` prefix as the version (e.g., `0.56.0-rc1`).
 
@@ -255,7 +218,7 @@ After approval, merge the PR. This triggers the release automation on the releas
 
    > Run this only after the upmerge PR has been merged to `edge`. If tests fail, check logs and existing issues in the samples repo. Flaky tests may pass on re-run. If failures persist, file an issue and raise it with maintainers.
 
-### Step 10: Assess results
+### Step 8: Assess results
 
 If all validation workflows pass, proceed to [creating the final release](#creating-the-final-release).
 
@@ -341,17 +304,13 @@ Monitor and verify:
 2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the tag push) completes successfully. Allow up to ~20 minutes for release assets to be published.
 3. A final release (not pre-release) appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
-### Step 7: Publish Bicep recipes
-
-In the `radius-project/resource-types-contrib` repo, manually run the [Publish Bicep Recipes](https://github.com/radius-project/resource-types-contrib/actions/workflows/publish-bicep-recipes.yaml) workflow. Enter the final version number without the `v` prefix as the release version (e.g., `0.56.0`).
-
-### Step 8: Publish docs and samples
+### Step 7: Publish docs and samples
 
 1. In `radius-project/docs`, run the [Release docs](https://github.com/radius-project/docs/actions/workflows/release.yaml) workflow from the `edge` branch. Enter the version number without the `v` prefix (e.g., `0.56.0`).
 
 2. In `radius-project/samples`, run the [Release samples](https://github.com/radius-project/samples/actions/workflows/release.yaml) workflow from the `edge` branch. Enter the version number without the `v` prefix (e.g., `0.56.0`).
 
-### Step 9: Run validation workflows
+### Step 8: Run validation workflows
 
 1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch. Enter the final version number without the `v` prefix as the version (e.g., `0.56.0`).
 
@@ -437,3 +396,9 @@ Monitor and verify:
    > If tests fail, check logs and existing issues in the samples repo. Flaky tests may pass on re-run. If failures persist, file an issue and raise it with maintainers.
 
 If all workflows pass, the patch release is complete. Post a final update in the Teams release thread announcing the successful patch and summarizing the timeline.
+
+## After every release
+
+### Review and improve this document
+
+Review this document while the release experience is fresh. Identify any stale instructions, missing details, unclear language, unnecessary complexity, or troubleshooting guidance that would improve the next release. Submit a pull request against `main` with the updates.
