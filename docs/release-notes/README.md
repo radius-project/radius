@@ -30,15 +30,12 @@ While the full changelog and release notes contain every PR and commit that went
 
 Within the template is the `## Full changelog` section, which is a complete list of commits merged since the last release.
 
-To generate the release notes:
+To populate the release notes:
 
-1. Visit [Generate a new release](https://github.com/radius-project/radius/releases/new) in the radius repository.
-   - _Note that you will not be creating the release through the UI, just generating the list of merged PRs. This could be automated in the future using the [GitHub API](https://docs.github.com/en/rest/commits/commits?apiVersion=2022-11-28#compare-two-commits)_
-2. Dropdown the `Choose a tag` menu and manually enter the tag for the upcoming release (_e.g. `v0.21.0`_). Keep `Target` as 'main'.
-3. Dropdown the `Previous tag` menu and select the tag for the previous minor release (_e.g. `v0.20.0`_). Don't select patch or RC releases.
-4. Click `Generate release notes` to generate the markdown for the release notes.
-5. Copy both the contents of `## What's Changed` and `## New Contributors` into their respective sections in the template (_make sure not to copy the headers, as they already exist in the template_).
-6. Exit out of the window without publishing the release or saving a draft.
+1. Open a pull request against `main` containing the final version update in `versions.yaml` and the draft release notes file.
+2. Wait for the [Release Radius workflow](../../.github/workflows/release.yaml) to post the **Release Information** comment on the pull request.
+3. Copy the contents under `## What's Changed` and `## New Contributors` from the comment into the corresponding sections in the release notes file. Do not copy the headings because they already exist in the template.
+4. Commit and push the completed release notes to the same pull request.
 
 ## Patch releases
 
