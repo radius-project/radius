@@ -1,0 +1,18 @@
+{
+  "name": "@radius/deploy-progress-artifact-uploader",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "ncc build src/upload.ts -o dist --minify --license third-party-licenses.txt && node -e \"const fs = require('node:fs'); const path = 'dist/third-party-licenses.txt'; fs.writeFileSync(path, fs.readFileSync(path, 'utf8').replace(/[\\t ]+$/gm, ''))\"",
+    "test": "node --experimental-strip-types --test src/upload_test.ts"
+  },
+  "dependencies": {
+    "@actions/artifact": "6.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@vercel/ncc": "0.44.1",
+    "typescript": "5.9.3"
+  }
+}

@@ -22,6 +22,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly ACTION_FILE="${SCRIPT_DIR}/action.yml"
+readonly PROGRESS_HELPER="${SCRIPT_DIR}/../deploy-progress/progress.sh"
 
 TEST_ROOT="$(mktemp -d)"
 readonly TEST_ROOT
@@ -282,7 +283,8 @@ run_publisher() {
         PATH="${STUB_BIN}:${PATH}"
         # Keep the action's `mktemp` inside the sandbox.
         TMPDIR="${PUBLISHER_TMP}"
-        export PATH TMPDIR GITHUB_OUTPUT
+        GITHUB_ACTION_PATH="${SCRIPT_DIR}"
+        export PATH TMPDIR GITHUB_OUTPUT GITHUB_ACTION_PATH
         if [[ -n "${PUBLISHER_LOCALE}" ]]; then
             LC_ALL="${PUBLISHER_LOCALE}"
             LANG="${PUBLISHER_LOCALE}"
@@ -510,6 +512,8 @@ assert_status_dir_contains_exactly "${EXPECTED_STATUS_FILES}"
 assert_progress_contract
 assert_run_state "succeeded"
 progress_jq '.runId == 4242' || fail "expected .runId to come from GITHUB_RUN_ID"
+progress_jq '.sequence == 1' ||
+    fail "expected terminal sequence 1 when no live snapshot was published"
 # shellcheck disable=SC2016
 progress_jq --arg app "todolist" '.application == $app' ||
     fail "expected .application to be the resolved app name"
@@ -541,6 +545,16 @@ jq -e 'all(.resources[]?; (.properties.containers // {}) |
 assert_status_files_differ "deploy-progress.json" "deploy-activity.log"
 assert_status_files_differ "deploy-progress.json" "deploy-controlplane.log"
 assert_status_files_differ "deploy-activity.log" "deploy-controlplane.log"
+
+# A successful live publisher checkpoint hands the terminal publisher the next
+# sequence, so the fixed-name artifact always wins over live ring snapshots.
+reset_environment
+mkdir -p "${RUNNER_TEMP}/radius-deploy-progress"
+printf '7\n' >"${RUNNER_TEMP}/radius-deploy-progress/sequence"
+run_publisher preserve
+assert_exit_zero "live sequence handoff"
+progress_jq '.sequence == 8' ||
+    fail "expected terminal sequence to follow the last live sequence"
 
 # ---------------------------------------------------------------------------
 # A failed deploy must be reported as such at the run level.
@@ -715,9 +729,9 @@ assert_fact "upload.if" "steps.generate.outputs.published == 'true'"
 # byte-wise sanitization from the buggy character-wise form, so require the
 # LC_ALL=C prefixes to stay on the sanitization pipeline.
 # ---------------------------------------------------------------------------
-grep -q "LC_ALL=C tr" "${BODY_SCRIPT}" ||
+grep -q "LC_ALL=C tr" "${PROGRESS_HELPER}" ||
     fail "artifact name sanitization must lowercase under LC_ALL=C"
-grep -q "LC_ALL=C sed" "${BODY_SCRIPT}" ||
+grep -q "LC_ALL=C sed" "${PROGRESS_HELPER}" ||
     fail "artifact name sanitization must strip invalid bytes under LC_ALL=C"
 grep -q 'rad resource list --preview -a "$APP_NAME" -o json' "${BODY_SCRIPT}" ||
     fail "deploy progress must list Radius.Core resources with --preview"

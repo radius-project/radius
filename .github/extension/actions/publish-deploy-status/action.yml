@@ -39,6 +39,8 @@ runs:
         APP_FILE: ${{ inputs.app-file }}
       run: |
         set -euo pipefail
+        # shellcheck source=.github/extension/actions/deploy-progress/progress.sh
+        source "$(dirname "$GITHUB_ACTION_PATH")/deploy-progress/progress.sh"
 
         RESULT_FILE=/tmp/radius-output/rad-commands-result.json
         # A deterministic directory, not `mktemp -d`, because the upload step below
@@ -81,7 +83,7 @@ runs:
         APP_NAME_FROM_LITERAL=1
         if [ -z "$APP_NAME" ]; then
           APP_NAME_FROM_LITERAL=0
-          APP_NAME=$(rad app list -o json 2>/dev/null | jq -r '.[0].name // .items[0].name // empty' || true)
+          APP_NAME=$(radius_resolve_application_name "$APP_FILE")
         fi
 
         if [ -z "$APP_NAME" ]; then
@@ -169,12 +171,14 @@ runs:
           echo "::warning::rad resource list --preview failed; deploy progress will contain no resources. ${RESOURCE_ERROR}"
         fi
         [[ -n "$RESOURCES_JSON" ]] || RESOURCES_JSON="[]"
+        TERMINAL_SEQUENCE=$(radius_next_terminal_sequence)
 
         jq -n \
           --argjson resources "$RESOURCES_JSON" \
           --arg application "$APP_NAME" \
           --arg environment "$ENVIRONMENT" \
           --argjson runId "${GITHUB_RUN_ID:-0}" \
+          --argjson sequence "$TERMINAL_SEQUENCE" \
           --arg updatedAt "$NOW_UTC" \
           --arg state "$RUN_STATE" \
           '{
@@ -182,7 +186,7 @@ runs:
             application: $application,
             environment: $environment,
             runId: $runId,
-            sequence: 1,
+            sequence: $sequence,
             updatedAt: $updatedAt,
             state: $state,
             resources: $resources
@@ -215,11 +219,7 @@ runs:
         # intact, and those are not valid in a GitHub artifact name. Bytewise
         # sanitization also keeps this in step with the canvas reader's own
         # derivation, so both sides agree on the name for the same app.
-        BASE_NAME=$(printf '%s-%s' "$ENVIRONMENT" "$APP_NAME" | LC_ALL=C tr '[:upper:]' '[:lower:]' | LC_ALL=C sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//' | LC_ALL=C cut -c1-80)
-        if [ -z "$BASE_NAME" ]; then
-          BASE_NAME="deploy-status"
-        fi
-        ARTIFACT_NAME="radius-deploy-status-${BASE_NAME}"
+        ARTIFACT_NAME=$(radius_deploy_artifact_name "$ENVIRONMENT" "$APP_NAME")
 
         # The canvas derives this same name from the app bicep's first
         # single-quoted `name:` literal and has no `rad app list` fallback, so a
