@@ -43,28 +43,29 @@ jobs:
       - name: Verify commit signatures
         id: verify
         run: |
-          unverified_commits="$(./.github/scripts/verify-commit-signatures.sh)"
-          count="$(jq 'length' <<< "${unverified_commits}")"
+          ./.github/scripts/verify-commit-signatures.sh > unverified-commits.json
+          if ! jq -e '
+            type == "array" and
+            all(.[]; type == "string" and test("^[0-9a-f]{40}$"))
+          ' unverified-commits.json > /dev/null; then
+            echo "Signature verifier returned invalid commit data." >&2
+            exit 1
+          fi
+
+          count="$(jq 'length' unverified-commits.json)"
 
           if [[ "${count}" == "0" ]]; then
             echo "All pull request commits have Verified signatures."
+            echo "has_unverified=false" >> "${GITHUB_OUTPUT}"
           else
             printf 'Found %s commit(s) without Verified signatures:\n' "${count}"
-            jq -r '.[] | "- \(.[0:7])"' <<< "${unverified_commits}"
+            jq -r '.[] | "- \(.[0:7])"' unverified-commits.json
+            echo "has_unverified=true" >> "${GITHUB_OUTPUT}"
           fi
 
-          printf 'unverified_commits=%s\n' "${unverified_commits}" >> "${GITHUB_OUTPUT}"
-          printf 'count=%s\n' "${count}" >> "${GITHUB_OUTPUT}"
-
       - name: Prepare signature guidance
-        if: steps.verify.outputs.count != '0'
-        env:
-          UNVERIFIED_COMMITS: ${{ steps.verify.outputs.unverified_commits }}
+        if: steps.verify.outputs.has_unverified == 'true'
         run: |
-          pr_author="$(
-            gh api "/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
-              --jq '.user.login'
-          )"
           guide_path="docs/contributing/contributing-code"
           guide_path+="/contributing-code-first-commit"
           guide_path+="/first-commit-06-creating-a-pr/index.md"
@@ -72,14 +73,15 @@ jobs:
           guide_url+="/${guide_path}#signing-your-commits"
 
           {
-            printf 'Hi @%s, thank you for contributing to Radius.\n\n' "${pr_author}"
+            echo "Thank you for contributing to Radius."
+            echo
             echo "The following commits do not currently show a GitHub **Verified** signature:"
             echo
             jq -r \
               --arg origin "${GITHUB_SERVER_URL}" \
               --arg repo "${GITHUB_REPOSITORY}" \
               '.[] | "- [`\(.[:7])`](\($origin)/\($repo)/commit/\(.))"' \
-              <<< "${UNVERIFIED_COMMITS}"
+              unverified-commits.json
             echo
             printf '%s%s%s\n' \
               "Please follow our [commit-signing guide](${guide_url}) to " \
@@ -92,7 +94,7 @@ jobs:
           } > commit-signature-guidance.md
 
       - name: Post signature guidance
-        if: steps.verify.outputs.count != '0'
+        if: steps.verify.outputs.has_unverified == 'true'
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: commit-signature-verification
