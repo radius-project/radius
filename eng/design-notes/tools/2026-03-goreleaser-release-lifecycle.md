@@ -12,15 +12,13 @@ The target flow is a resumable release transaction rather than a chain of one-sh
 
 Version selection and changelog authoring are a policy layer before GoReleaser. They can be driven by conventional commits, change fragments, pull request labels, or manual curation without changing the artifact build and publication path. This separation allows Radius to choose the process that best balances automation and release-note quality instead of making a commit convention a prerequisite for adopting GoReleaser.
 
-This approach simplifies procedures, reduces maintenance cost, removes custom workflow complexity, and aligns Radius with a widely recognized release tool in the Go ecosystem and across CNCF-adjacent projects. It also creates a cleaner path for standardized supply-chain capabilities such as code signing, SBOM generation, provenance attestations, changelog automation, and more predictable version handling.
-
 ### Value proposition
 
 Measured against the current process documented in the [release runbook](../../../docs/contributing/contributing-releases/README.md), the design delivers value on five fronts:
 
-- **Release-driver time returned.** The current runbook spans 22 manual steps across the RC, final, and patch flows. A minimal clean cycle of one RC plus a final requires roughly fifteen to twenty hands-on interventions: two manual Deployment Engine tags, two `versions.yaml` pull requests, at least one cherry-pick pull request assembled from manually copied commit hashes, eight manual workflow dispatches across three repositories, two upmerge PR approvals, and continuous transcription of every action into a Teams thread, all interleaved with waiting on builds. The target process reduces the normal path to reviewing generated release PRs, approving the release environment, and watching one release summary; the only remaining manual prerequisite is the Deployment Engine tag until the upstream signing issue is resolved. Release-driver effort shifts from performing git surgery and dispatching workflows to review and approval, and the release log writes itself through the automated summary and webhook updates.
+- **Release-engineer time returned.** The current runbook spans 22 manual steps across the RC, final, and patch flows. A minimal clean cycle of one RC plus a final requires roughly fifteen to twenty hands-on interventions: two manual Deployment Engine tags, two `versions.yaml` pull requests, at least one cherry-pick pull request assembled from manually copied commit hashes, eight manual workflow dispatches across three repositories, two upmerge PR approvals, and continuous transcription of every action into a Teams thread, all interleaved with waiting on builds. The target process reduces the normal path to reviewing generated release PRs, approving the release environment, and watching one release summary; the only remaining manual prerequisite is the Deployment Engine tag until the upstream signing issue is resolved. Release-engineer effort shifts from performing git surgery and dispatching workflows to review and approval, and the release log writes itself through the automated summary and webhook updates.
 - **Less custom code to maintain and troubleshoot.** The release path today spans roughly 1,600 lines of bespoke automation - two workflows (`release.yaml`, `build.yaml`), five release scripts in shell, Python, and JavaScript, and the production paths of `docker.mk` and `version.mk` - plus a 404-line manual runbook, each fragment with its own failure modes and no shared state model. The migration replaces the release-specific core of that with one declarative `.goreleaser.yaml` maintained by an upstream project and a thinner controller that only orchestrates and verifies. Fewer moving parts leave fewer places for version logic to disagree, and troubleshooting shifts from reverse-engineering job ordering to reading one summary that states expected state, observed state, and the exact resume action.
-- **Fewer failed and half-published releases.** Today a mid-release failure is expensive: the tag may already exist so the version can no longer be selected, remote dispatches can be duplicated, and a GitHub Release can go public while images or the chart are still failing - each of which escalates to senior maintainers for ad-hoc recovery. The publication gate, idempotent reconciliation, and `Resume Release` workflow convert those events into a classified error plus a rerun that the release driver can perform without escalation.
+- **Fewer failed and half-published releases.** Today a mid-release failure is expensive: the tag may already exist so the version can no longer be selected, remote dispatches can be duplicated, and a GitHub Release can go public while images or the chart are still failing - each of which escalates to senior maintainers for ad-hoc recovery. The publication gate, idempotent reconciliation, and `Resume Release` workflow convert those events into a classified error plus a rerun that the release engineer can perform without escalation.
 - **Release bugs surface at review time, not on release day.** Snapshot builds exercise the exact release configuration on every pull request, and the current waste of seven matrix jobs each running the broad `make build` to ship one binary apiece disappears because GoReleaser builds exactly what ships.
 - **Lower bus factor and a foundation instead of a dead end.** GoReleaser is the de facto release standard for Go projects, so new maintainers read one well-documented configuration format instead of learning Radius-specific Make, shell, Python, and workflow plumbing, and institutional knowledge moves from the runbook and release veterans' memory into executable automation. Supply-chain capabilities that are increasingly table stakes - artifact and image signing, SBOMs, provenance attestations - become incremental configuration on a standard pipeline instead of bespoke integration projects.
 
@@ -254,7 +252,7 @@ The repository adds a single `.goreleaser.yaml` file that defines:
 - A commit-based changelog fallback and support for externally prepared release notes.
 - Explicit bounded retries for GoReleaser-managed SCM API and Docker operations.
 
-The configuration targets the GoReleaser OSS edition and pins a minimum version of v2.14: `use_existing_draft` requires v2.5, `dockers_v2` requires v2.12, and the top-level `retry` configuration requires v2.14. `dockers_v2` is provisional and is planned to replace `dockers` and `docker_manifests` in GoReleaser v3, so the pinned version must be revalidated before any major-version upgrade. Every capability this design depends on is available in the OSS edition; the [GoReleaser Pro](https://goreleaser.com/pro/) features that intersect this design, and the OSS workaround adopted for each, are listed in the next section.
+The configuration targets the GoReleaser OSS edition and pins a minimum version of v2.14: `use_existing_draft` requires v2.5, `dockers_v2` requires v2.12, and the top-level `retry` configuration requires v2.14. `dockers_v2` is provisional and is planned to replace `dockers` and `docker_manifests` in GoReleaser v3, so the pinned version must be revalidated before any major-version upgrade. The Pro-edition boundary and the OSS workaround for each intersecting Pro feature are covered in the next section.
 
 `docgen` remains a local or developer build concern rather than a published artifact. Test binaries with separate Go modules remain outside the main configuration, either in independent configs or separate workflows.
 
@@ -310,8 +308,6 @@ The controller validates every required repository before mutation, reconciles s
 #### Snapshot builds for pull requests and branch pushes
 
 The same GoReleaser configuration is used in snapshot mode for pull requests and branch pushes. Snapshot mode validates the release configuration, builds the same artifacts, and can save outputs for GitHub Actions to upload when functional tests need them, without creating an official GitHub Release.
-
-This is a substantial maintainability improvement because it makes the release behavior testable earlier and more often.
 
 #### Versioning and changelog boundaries
 
@@ -475,15 +471,7 @@ The design bounds the dependency instead of hiding it: release-plan validation c
 
 #### Supply-chain and provenance readiness
 
-One reason to prefer GoReleaser over more custom scripts is not only current simplification but future extensibility. A standard release tool makes it easier to add:
-
-- Artifact signing.
-- Container image signing.
-- SBOM generation.
-- Provenance and attestation publication.
-- Richer OCI labels and metadata.
-
-This design does not require all of these on day one, but it intentionally creates a release structure where adding them is incremental rather than architectural.
+A standard release tool makes artifact and container signing, SBOM generation, provenance attestations, and richer OCI labels and metadata incremental configuration instead of architectural work. None of these are required on day one; the Security section lists the post-baseline evaluation items.
 
 #### Makefile reduction
 
@@ -545,7 +533,7 @@ The GoReleaser configuration becomes the main declarative specification for:
 - Changelog fallback grouping and externally prepared release-note input.
 - Retry policy and generated artifact metadata.
 
-Version metadata previously computed independently in Python and Make is calculated once from the approved tag and release plan, then injected through GoReleaser templates and environment variables. The approved tag and source commit remain authoritative if a changelog heading or metadata file disagrees.
+Version metadata previously computed independently in Python and Make is calculated once from the approved tag and release plan, then injected through GoReleaser templates and environment variables.
 
 #### Dockerfiles and runtime parity
 
@@ -561,8 +549,6 @@ Preserving runtime parity is a migration requirement, not an optional cleanup it
 #### `versions.yaml`
 
 `versions.yaml` remains in the repository as supported-version and channel metadata, but it is demoted from automation trigger to an output of release preparation. The preparation PR updates it and the release controller validates that the planned version is represented before creating the tag.
-
-This is a cleaner separation of concerns and reduces failure modes caused by mixing documentation intent with automation control.
 
 #### Release documentation
 
@@ -729,8 +715,7 @@ The work should be delivered in phases.
 
 ## Alternatives considered
 
-- Keep the current custom release stack and optimize individual workflows. Rejected because it does not address the structural problem of duplicated and fragmented release logic.
-- Use GoReleaser only for CLI binaries. Rejected because it captures only a small portion of the maintenance savings and leaves production image and release publication complexity largely unchanged.
+- Keeping the current custom release stack and using GoReleaser only for CLI binaries are analyzed and rejected as Option 1 and Option 2 in the Detailed Design.
 - Move every release-related activity into GoReleaser hooks. Rejected because cross-repository tags, Helm, external workflows, and recovery need independently observable and resumable orchestration rather than one-shot hooks.
 
 ## References
