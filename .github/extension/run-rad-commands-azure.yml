@@ -230,7 +230,7 @@ jobs:
 
           # Resolve the recipe pack from deploy/manifest/defaults.yaml. The pack
           # creates the Radius.Core/recipePacks and environment resources.
-          RECIPE_PACK_URL="$(radius_contrib_recipe_pack_url azure aks-recipepack.bicep)"
+          RECIPE_PACK_URL="$(radius_contrib_recipe_pack_url azure-aks azure-aks.bicep)"
           echo "Downloading recipe pack from $RECIPE_PACK_URL"
           # Place the recipe pack next to the app file so `rad deploy` resolves the
           # repo's own bicepconfig.json (which declares the `radius` extension). bicep
