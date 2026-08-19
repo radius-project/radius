@@ -147,8 +147,14 @@ func (c *resourceClient) lookupARMAPIVersion(ctx context.Context, id resources.I
 		return "", err
 	}
 
-	// We need to match on the resource type name without the provider namespace.
-	shortType := strings.TrimPrefix(id.TypeSegments()[0].Type, id.ProviderNamespace()+"/")
+	// We need to match on the resource type name without the provider namespace. For an extension
+	// resource (eg: a Microsoft.Authorization/locks resource attached to another resource), the
+	// provider namespace and type come from the extension segments, not the primary type segments.
+	segments := id.TypeSegments()
+	if len(id.ExtensionSegments()) > 0 {
+		segments = id.ExtensionSegments()
+	}
+	shortType := strings.TrimPrefix(segments[0].Type, id.ProviderNamespace()+"/")
 	for _, rt := range resp.ResourceTypes {
 		if !strings.EqualFold(shortType, *rt.ResourceType) {
 			continue
