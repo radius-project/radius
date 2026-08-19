@@ -178,10 +178,11 @@ func (r *Runner) Run(ctx context.Context) error {
 		body.IncludeIcons = to.Ptr(true)
 	}
 	if r.BicepFilePath != "" {
-		r.Output.LogInfo("Compiling %s", r.BicepFilePath)
+		displayPath := bicep.RedactTemplatePath(r.BicepFilePath)
+		r.Output.LogInfo("Compiling %s", displayPath)
 		template, err := r.Bicep.PrepareTemplate(ctx, r.BicepFilePath)
 		if err != nil {
-			return clierrors.Message("Failed to compile %q: %v", r.BicepFilePath, err)
+			return clierrors.Message("Failed to compile %q: %v", displayPath, err)
 		}
 		// ExtractDependsOnEdges returns nil when the template has no
 		// eligible dependsOn edges, leaving body.DependsOnEdges nil so
