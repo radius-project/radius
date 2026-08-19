@@ -262,7 +262,7 @@ The configuration targets the GoReleaser OSS edition and pins a minimum version 
 
 | Capability                                 | GoReleaser Pro feature                                                           | OSS workaround in this design                                                                                                                                                        |
 |--------------------------------------------|-----------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Staged publication with a gate             | Release phases: `release --prepare`, then separate `publish` and `announce`      | `release.draft: true` stages everything in a draft GitHub Release; the controller publishes the draft only after the publication gate passes                                            |
+| Staged publication with a gate             | Release phases: `goreleaser release --prepare`, then separate publish and announce steps    | `release.draft: true` stages everything in a draft GitHub Release; the controller publishes the draft only after the publication gate passes                                            |
 | Resuming a failed release                  | `goreleaser continue`                                                            | Rerun GoReleaser against the same tag with `use_existing_draft` and `replace_existing_artifacts`; the `Resume Release` workflow reconciles all non-GoReleaser stages                     |
 | Verifying published assets                 | Built-in verify that re-downloads assets and runs custom checks                  | The controller's verify stage compares `artifacts.json` and `metadata.json` against the release manifest, checks image digests and platforms, and runs the staged installation check     |
 | Previous-tag selection and version ordering | Smart SemVer tag sorting                                                         | The release plan records the current and previous tags; the controller exports `GORELEASER_CURRENT_TAG` and `GORELEASER_PREVIOUS_TAG` so no tag-sorting heuristic is ever trusted        |
@@ -428,9 +428,9 @@ GoReleaser's native retry configuration provides bounded exponential backoff for
 
 ```yaml
 retry:
-    attempts: 5
-    delay: 10s
-    max_delay: 2m
+  attempts: 5
+  delay: 10s
+  max_delay: 2m
 
 release:
     draft: true
