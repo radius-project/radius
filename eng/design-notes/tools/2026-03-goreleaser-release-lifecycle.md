@@ -99,7 +99,7 @@ Artifacts:
 - multi-architecture images for ucpd, applications-rp, dynamic-rp, controller, and pre-upgrade
 - Helm chart and required external images verified before publication
 - curated release notes rendered from the selected changelog input
-- immutable OCI image tags plus compatible release-channel aliases
+- immutable OCI image tags; mutable release-channel aliases are promoted only for final and patch releases
 ```
 
 **Sample Recipe Contract:**
@@ -244,7 +244,30 @@ The repository adds a single `.goreleaser.yaml` file that defines:
 - A commit-based changelog fallback and support for externally prepared release notes.
 - Explicit bounded retries for GoReleaser-managed SCM API and Docker operations.
 
+The configuration targets the GoReleaser OSS edition and pins a minimum version of v2.14: `use_existing_draft` requires v2.5, `dockers_v2` requires v2.12, and the top-level `retry` configuration requires v2.14. `dockers_v2` is provisional and is planned to replace `dockers` and `docker_manifests` in GoReleaser v3, so the pinned version must be revalidated before any major-version upgrade. Every capability this design depends on is available in the OSS edition; the [GoReleaser Pro](https://goreleaser.com/pro/) features that intersect this design, and the OSS workaround adopted for each, are listed in the next section.
+
 `docgen` remains a local or developer build concern rather than a published artifact. Test binaries with separate Go modules remain outside the main configuration, either in independent configs or separate workflows.
+
+#### GoReleaser Pro boundary and OSS workarounds
+
+[GoReleaser Pro](https://goreleaser.com/pro/) is a paid edition with additional features. This design is implementable entirely on the OSS edition: no stage assumes a Pro license, and every Pro capability that would otherwise be attractive has a deliberate OSS substitute. Most substitutes fall out of the release controller, which must own cross-repository orchestration in either edition.
+
+| Capability                                 | GoReleaser Pro feature                                                           | OSS workaround in this design                                                                                                                                                        |
+|--------------------------------------------|-----------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Staged publication with a gate             | Release phases: `release --prepare`, then separate `publish` and `announce`      | `release.draft: true` stages everything in a draft GitHub Release; the controller publishes the draft only after the publication gate passes                                            |
+| Resuming a failed release                  | `goreleaser continue`                                                            | Rerun GoReleaser against the same tag with `use_existing_draft` and `replace_existing_artifacts`; the `Resume Release` workflow reconciles all non-GoReleaser stages                     |
+| Verifying published assets                 | Built-in verify that re-downloads assets and runs custom checks                  | The controller's verify stage compares `artifacts.json` and `metadata.json` against the release manifest, checks image digests and platforms, and runs the staged installation check     |
+| Previous-tag selection and version ordering | Smart SemVer tag sorting                                                         | The release plan records the current and previous tags; the controller exports `GORELEASER_CURRENT_TAG` and `GORELEASER_PREVIOUS_TAG` so no tag-sorting heuristic is ever trusted        |
+| Changelog preview, subgroups, path filters | `goreleaser changelog` command and enhanced changelog options                    | The version-preparation workflow renders the notes into the reviewable release PR; prepared notes are passed with `--release-notes`, and OSS `changelog.groups` remains the fallback     |
+| Nightly and edge builds                    | Nightlies                                                                        | The separate main-branch edge workflow runs snapshot mode and keeps the existing `latest` OCI publication outside the release transaction                                                |
+| Faster multi-platform releases             | Split and merge builds across runners                                            | One release runner with QEMU and Buildx emulation; revisit only if release duration becomes unacceptable, as a license decision rather than a design change                              |
+| Dynamic Dockerfiles and copied files       | `templated_dockerfile` and `templated_extra_files` in `dockers_v2`               | Static per-component `Dockerfile.goreleaser` files, plain `extra_files` for the UCP manifests, and `build_args` for values that vary per build                                           |
+| Consuming binaries built elsewhere         | Prebuilt-binaries builder                                                        | Not used: GoReleaser builds all six binaries on the release runner itself, which is also why the single-runner model is the OSS baseline                                                 |
+| Config reuse and templating extras         | `include` keyword, custom template variables, templated files, monorepo support  | Not required: one product version, one `.goreleaser.yaml`, and all remaining templating stays within OSS template fields                                                                 |
+
+Pro features with no bearing on this design - macOS and Windows installers, notarization, NPM and Homebrew Cask publishing, DockerHub description sync, Cloudsmith and GemFury integrations, Podman builds, and OpenTelemetry trace export - are omitted from the table.
+
+If a workaround ever becomes a measurable burden - release duration from emulated multi-platform builds is the most likely candidate - adopting Pro is a cost decision that changes no architecture in this document, because the configuration and the controller contract remain identical.
 
 #### Container image publication
 
@@ -260,7 +283,13 @@ Each image retains its current base-image requirements. Separate `Dockerfile.gor
 
 This removes most custom production Docker logic currently encoded in Make and CI while preserving important image differences such as distroless, Alpine, or Debian base images. The Bicep image remains a dedicated non-Go build because it downloads an external binary and generates `bicepconfig.json`. The `testrp` and `magpiego` images remain in test workflows because they use separate Go modules and are not user-facing release artifacts. Migration cannot remove their existing channel tags until repository consumers are inventoried.
 
-GoReleaser publishes immutable tags such as `0.60.0` or `0.60.0-rc1` first. The release controller promotes the compatible mutable channel alias such as `0.60` only after all mandatory outputs pass verification. The Helm chart for a final or patch release should reference immutable full-version image tags while the channel aliases remain available for backward compatibility.
+GoReleaser publishes full-version tags such as `0.60.0` or `0.60.0-rc1` first. The release controller promotes the compatible mutable channel alias such as `0.60` only after all mandatory outputs pass verification; RC releases have no channel alias today, so alias promotion applies to final and patch releases only. The Helm chart for a final or patch release should reference immutable full-version image tags while the channel aliases remain available for backward compatibility.
+
+Three properties of this model are constraints, not implementation details:
+
+- GHCR does not enforce tag immutability. Full-version tags are immutable by policy, and the release controller enforces the policy through digest verification: a full-version tag that resolves to an unexpected digest is a non-retryable conflict, never something automation overwrites.
+- `dockers_v2` couples building and pushing for multi-architecture manifests, so full-version image tags reach the registry during staging, before the publication gate. A failed release can leave staged full-version tags behind; reruns verify their digests and accept or reject the existing state, and a wrong staged artifact is corrected by releasing a new version rather than by rewriting the tag.
+- `dockers_v2` defaults to `linux/amd64` and `linux/arm64`. The configuration must declare `linux/arm/v7` explicitly to preserve current platform coverage, and the parity manifest must treat a missing platform as a migration failure.
 
 #### Tag-driven release model
 
@@ -282,7 +311,11 @@ The release design separates three concerns:
 - **Change input** records which merged changes are notable, how users should understand them, and what SemVer impact their authors or reviewers expect.
 - **Release publication** builds from an approved tag and publishes artifacts and notes. GoReleaser owns this concern.
 
-No tool can infer compatibility impact from code with complete accuracy. Every automated option moves the human decision to a different reviewable input: a commit type, a change-fragment bump, or a pull request label. Radius must also document how these signals map to its current `0.x` versions and `-rc.N` prereleases because SemVer intentionally gives projects more latitude before `1.0.0`.
+These concerns share one invariant: exactly one authoritative version record exists per phase. Before the tag exists, the approved release plan is authoritative. From tag creation onward, the tag and its source commit are authoritative. Every other representation - `versions.yaml`, the `CHANGELOG.md` heading, the chart version, channel aliases, and the release branch name - is derived from the authoritative record and validated against it. A derived value that disagrees fails validation and stops the release; no stage silently recomputes or repairs an authoritative value.
+
+No tool can infer compatibility impact from code with complete accuracy. Every automated option moves the human decision to a different reviewable input: a commit type, a change-fragment bump, or a pull request label. Radius must also document how these signals map to its current `0.x` versions and RC prereleases because SemVer intentionally gives projects more latitude before `1.0.0`.
+
+Prerelease identifiers need one explicit decision. Radius currently tags RCs as `-rc1`, `-rc2`, and SemVer compares alphanumeric prerelease identifiers lexically, so `0.56.0-rc10` sorts before `0.56.0-rc2`. Every automation candidate in this design defaults to the dotted `-rc.N` form, which compares numerically and orders correctly. The migration should either adopt `-rc.N` for new releases - the Helm chart's prerelease detection matches any `rc` substring and is unaffected - or keep `-rcN` and enforce an `rc9` ceiling in version-selection validation as an accepted constraint.
 
 #### Common changelog output contract
 
@@ -412,7 +445,7 @@ The release controller applies the same policy only to operations outside GoRele
 Fallbacks are automation entry points, not a second undocumented command sequence:
 
 1. Automatic retries handle transient failures inside the current run.
-2. A `Resume Release` workflow accepts the version and planned source commit, recomputes observed state, skips completed work, and retries incomplete stages.
+2. A `Resume Release` workflow accepts the version and planned source commit, recomputes observed state, skips completed work, and retries incomplete stages. This controller-owned resume is the OSS substitute for GoReleaser Pro's `goreleaser continue` and split release phases.
 3. A targeted downstream retry reruns the correlated external workflow and then resumes verification; it does not recreate tags or rebuild unrelated artifacts.
 4. An approval-gated break-glass mode can waive an explicitly optional post-release task or supply repaired credentials. It cannot move a tag, replace a published immutable artifact, or bypass a mandatory release-manifest check.
 
@@ -421,6 +454,14 @@ If any mandatory stage fails before finalization, the GitHub Release stays draft
 #### Post-release coordination
 
 Only work that does not determine whether the core release is installable waits for the published release event. This includes docs and samples publication, announcements, and metadata synchronization. Required sibling images and Deployment Engine publication move before the Radius tag; Bicep and Helm publication move before the publication gate.
+
+For RC releases, coordination also covers the docs and samples upmerge workflows and the sample test workflow that installs the published RC. The controller dispatches and correlates them with the release identifier like any other remote work, and their results gate approval of the next release plan - the final release - rather than the RC's own publication. This replaces the manually dispatched upmerge and sample-test steps in the current runbook.
+
+#### Hard external dependency: Deployment Engine tag signing
+
+The one prerequisite this design cannot automate inside the Radius organization is the Deployment Engine tag. The `azure-octo` organization requires GPG-verified tags, signing is not configured in that repository's release workflow ([azure-octo/deployment-engine#456](https://github.com/azure-octo/deployment-engine/issues/456)), and a maintainer therefore signs and pushes the tag from a workstation. Until that issue is resolved, the approval-only release goal has exactly one manual prerequisite.
+
+The design bounds the dependency instead of hiding it: release-plan validation checks for the expected Deployment Engine tag before any Radius mutation and fails fast with the exact tag name and signing instructions when it is missing. Resolving the upstream issue removes the last manual step without changing any other part of this design, and it should be tracked as a named migration risk with an owner rather than as optional cleanup.
 
 #### Supply-chain and provenance readiness
 
@@ -574,7 +615,7 @@ No new end-user secrets, encryption models, or authentication flows are introduc
 
 ## Compatibility (optional)
 
-The intended compatibility goal is no user-visible change to how Radius release artifacts are consumed.
+The intended compatibility goal is no user-visible change to how Radius release artifacts are consumed, with one deliberate exception described below.
 
 Compatibility requirements:
 
@@ -584,7 +625,10 @@ Compatibility requirements:
 - Preserve Helm chart names and versions, and verify that a final or patch chart installs immutable image versions.
 - Preserve RC versus final release semantics.
 
-The main compatibility change is internal: release engineers will no longer use `versions.yaml` edits as the release trigger, and documentation must be updated accordingly.
+There are two intentional compatibility changes:
+
+- Internal: release engineers no longer use `versions.yaml` edits as the release trigger, and documentation must be updated accordingly.
+- User-visible: the Helm chart for final and patch releases switches from the mutable `major.minor` channel image tag to immutable full-version tags. Today a cluster can pick up patched component images through the moving channel alias on pod restart; after this change, patched images arrive only with the corresponding chart upgrade. This removes chart-and-image version skew and makes deployments reproducible, but it changes patch pickup behavior and must be called out in the release notes of the release that ships it.
 
 ## Monitoring and Logging
 
@@ -597,6 +641,7 @@ Recommended instrumentation and diagnostics:
 - GoReleaser `artifacts.json`, `metadata.json`, and the generated release manifest retained as workflow artifacts and attached to the draft release where appropriate.
 - Exact remote workflow identifiers and URLs for sibling and downstream publication.
 - Automated pre-publication installation verification plus the existing post-publication release verification during migration.
+- Automated posting of stage transitions and the final release summary to the team's release channel through an incoming webhook, replacing the current requirement that a release engineer manually transcribe every action into a Teams thread.
 
 For troubleshooting, maintainers should be able to answer these questions quickly:
 
@@ -662,17 +707,26 @@ The work should be delivered in phases.
 - If Radius selects Conventional Commits, should Release Please maintain the reviewable release pull request, and should enforcement apply only to squash-merge pull request titles?
 - If Radius selects change fragments, should it adopt Changie or accept the additional package-oriented behavior and Node dependency of Changesets?
 - How should patch, minor, and breaking signals map to Radius `0.x` versions, scheduled release channels, and successive RC tags?
+- Should Radius adopt dotted `-rc.N` prerelease identifiers so SemVer ordering stays correct past `rc9`, or keep `-rcN` and enforce an ordering ceiling during version selection?
 - Is `CHANGELOG.md` the canonical source rendered into GitHub Releases, or are GitHub Release notes canonical with a generated portable changelog?
 - Which outputs are mandatory publication gates, and may policy distinguish RCs from final and patch releases?
 - Should the test-module images (`testrp`, `magpiego`) retain release-channel tags or move entirely to test-specific tags after consumers are inventoried?
 - Should the Helm chart remain a dedicated workflow permanently, or should it later move to a more integrated release path?
 - Should the Bicep image stay outside GoReleaser indefinitely because it is an externally downloaded artifact, or should it eventually adopt a related release automation path?
 - Can Deployment Engine tag signing move from a maintainer workstation to an automated verified-tag mechanism so the last manual prerequisite is removed?
-- Should the first implementation use one GoReleaser runner for simplicity, or evaluate split and merge only after the selected GoReleaser edition and artifact handoff are proven?
-- Should main-branch `latest` publication remain a separate edge workflow permanently, or adopt GoReleaser nightly behavior after release parity is complete?
+- Should the first implementation use one GoReleaser runner for simplicity, or evaluate split and merge builds - a GoReleaser Pro feature - only after the selected edition and artifact handoff are proven?
+- Should main-branch `latest` publication remain a separate edge workflow permanently, or adopt GoReleaser nightly behavior - a GoReleaser Pro feature - after release parity is complete?
 
 ## Alternatives considered
 
 - Keep the current custom release stack and optimize individual workflows. Rejected because it does not address the structural problem of duplicated and fragmented release logic.
 - Use GoReleaser only for CLI binaries. Rejected because it captures only a small portion of the maintenance savings and leaves production image and release publication complexity largely unchanged.
 - Move every release-related activity into GoReleaser hooks. Rejected because cross-repository tags, Helm, external workflows, and recovery need independently observable and resumable orchestration rather than one-shot hooks.
+
+## References
+
+- [Semantic Versioning](https://semver.org/)
+- [Conventional Commits](https://www.conventionalcommits.org/)
+- [Keep a Changelog](https://keepachangelog.com/)
+- [GoReleaser](https://goreleaser.com/)
+- [GoReleaser Pro](https://goreleaser.com/pro)
