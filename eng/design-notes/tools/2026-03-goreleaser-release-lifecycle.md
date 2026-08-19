@@ -267,7 +267,7 @@ The configuration targets the GoReleaser OSS edition and pins a minimum version 
 | Verifying published assets                 | Built-in verify that re-downloads assets and runs custom checks                  | The controller's verify stage compares `artifacts.json` and `metadata.json` against the release manifest, checks image digests and platforms, and runs the staged installation check     |
 | Previous-tag selection and version ordering | Smart SemVer tag sorting                                                         | The release plan records the current and previous tags; the controller exports `GORELEASER_CURRENT_TAG` and `GORELEASER_PREVIOUS_TAG` so no tag-sorting heuristic is ever trusted        |
 | Changelog preview, subgroups, path filters | `goreleaser changelog` command and enhanced changelog options                    | The version-preparation workflow renders the notes into the reviewable release PR; prepared notes are passed with `--release-notes`, and OSS `changelog.groups` remains the fallback     |
-| Nightly and edge builds                    | Nightlies                                                                        | The separate main-branch edge workflow runs snapshot mode and keeps the existing `latest` OCI publication outside the release transaction                                                |
+| Nightly and edge builds                    | Nightlies                                                                        | The separate main-branch edge workflow runs snapshot mode and publishes the mutable `edge` tags outside the release transaction                                                          |
 | Faster multi-platform releases             | Split and merge builds across runners                                            | One release runner with QEMU and Buildx emulation; revisit only if release duration becomes unacceptable, as a license decision rather than a design change                              |
 | Dynamic Dockerfiles and copied files       | `templated_dockerfile` and `templated_extra_files` in `dockers_v2`               | Static per-component `Dockerfile.goreleaser` files, plain `extra_files` for the UCP manifests, and `build_args` for values that vary per build                                           |
 | Consuming binaries built elsewhere         | Prebuilt-binaries builder                                                        | Not used: GoReleaser builds all six binaries on the release runner itself, which is also why the single-runner model is the OSS baseline                                                 |
@@ -291,7 +291,7 @@ Each image retains its current base-image requirements. Separate `Dockerfile.gor
 
 This removes most custom production Docker logic currently encoded in Make and CI while preserving important image differences such as distroless, Alpine, or Debian base images. The Bicep image remains a dedicated non-Go build because it downloads an external binary and generates `bicepconfig.json`. The `testrp` and `magpiego` images remain in test workflows because they use separate Go modules and are not user-facing release artifacts. Migration cannot remove their existing channel tags until repository consumers are inventoried.
 
-GoReleaser publishes full-version tags such as `0.60.0` or `0.60.0-rc1` first. The release controller promotes the compatible mutable channel alias such as `0.60` only after all mandatory outputs pass verification; RC releases have no channel alias today, so alias promotion applies to final and patch releases only. The Helm chart for a final or patch release should reference immutable full-version image tags while the channel aliases remain available for backward compatibility.
+GoReleaser publishes full-version tags such as `0.60.0` or `0.60.0-rc1` first. The release controller promotes the mutable aliases - the release channel such as `0.60`, and `latest`, which always points at the most recent stable release - only after all mandatory outputs pass verification. RC releases advance no alias, so alias promotion applies to final and patch releases only. The mutable `edge` tag tracks the `main` branch and is owned by the separate edge workflow, never by the release transaction. The Helm chart for a final or patch release should reference immutable full-version image tags while the channel aliases remain available for backward compatibility.
 
 Three properties of this model are constraints, not implementation details:
 
@@ -375,7 +375,7 @@ The trade-off is ongoing release-engineer effort, possible merge conflicts in a 
 | Pull request labels                      | Automatic with a small custom workflow                                           | Pull request titles grouped by labels              | Partial unless generated notes are committed | Low contributor friction, but label discipline and custom version logic are required     |
 | Manual curation                          | None, or advisory only                                                           | Maintainer-authored changelog or release-note file | Strong                                       | Maximum control with the highest recurring release effort                                |
 
-Conventional Commits should not be a prerequisite for the GoReleaser migration. The initial migration should preserve explicit maintainer approval of the version and tag, establish the Keep a Changelog output contract, and configure GoReleaser to accept prepared release notes. Before automating version selection, the team should trial Changie fragments and Conventional Commits with Release Please against the same historical Radius release and compare missed changes, note quality, contributor overhead, and handling of release branches and RCs. Pull request labels are a lower-setup fallback, while manual curation remains a supported override and recovery path.
+**Decision**: the team selected Conventional Commits, enforced on squash-merge pull request titles, combined with a fixed version policy: while Radius is `0.x`, every scheduled full release bumps the minor version regardless of commit signals - including breaking changes - and patch releases bump the patch version. Commit types therefore drive changelog grouping and breaking-change callouts, never version selection. [git-cliff](https://git-cliff.org/) renders the canonical `CHANGELOG.md` and the release-note input for GoReleaser; Release Please was rejected because versioning-by-commit adds no value under the fixed policy and its release-PR model works against the RC and release-branch flow. Radius also adopts dotted `-rc.N` prerelease identifiers for correct SemVer ordering. Manual curation remains the override and recovery path.
 
 #### Capability ownership
 
@@ -406,7 +406,7 @@ Each release executes the following stages. Re-running the workflow always start
 4. **Stage core artifacts**: Run GoReleaser once for the tag. It builds the raw CLI assets and production server binaries, generates checksums and metadata, pushes immutable full-version image tags, and creates or reuses a draft GitHub Release. The draft remains unpublished on failure.
 5. **Stage non-Go artifacts**: Package and publish the Helm chart, build the Bicep image, and dispatch Bicep type publication with the release identifier. These jobs can run in parallel after the Radius tag exists, but each must verify its destination state.
 6. **Verify**: Compare GoReleaser's artifact metadata and a generated release manifest against the expected asset names, checksums, image platforms and digests, Helm chart version, external images, release notes, and binary linker metadata. Run the installation verification with the staged local `rad` binary so validation does not require a public GitHub Release.
-7. **Finalize**: Promote mutable release-channel image aliases to the verified immutable digests and publish the draft GitHub Release. Finalization requires the release environment approval for final and patch releases. RC publication can follow the same gate without an additional approval if repository policy permits it.
+7. **Finalize**: Promote the mutable aliases - release-channel tags and `latest` - to the verified immutable digests and publish the draft GitHub Release. Finalization requires the release environment approval for final and patch releases. RC publication can follow the same gate without an additional approval if repository policy permits it.
 8. **Coordinate**: Trigger docs and samples workflows, verify or synchronize `versions.yaml` metadata, and record links and conclusions. These tasks are independently retryable and do not mutate immutable release artifacts.
 
 No stage deletes an existing tag or published release as part of automatic recovery. If a published immutable artifact is wrong, Radius publishes a corrected version rather than rewriting history.
@@ -418,7 +418,7 @@ The release controller reconciles one explicit resource at a time using these ru
 - A branch that is absent is created at the planned commit. An existing branch is accepted only when the planned commit is reachable from it.
 - A tag that is absent is created and pushed explicitly. A tag at the planned commit is success. A tag at any other commit is a non-retryable conflict; automation never force-updates it.
 - An existing draft release for the planned tag is reused. Matching assets are retained or replaced deterministically. An already published release is verified and treated as complete only when every expected digest matches.
-- An immutable container tag that resolves to the expected digest is success. A different digest is a conflict. Mutable channel aliases are changed only during finalization and are verified after promotion.
+- An immutable container tag that resolves to the expected digest is success. A different digest is a conflict. Mutable aliases (release channels and `latest`) are changed only during finalization and are verified after promotion; `edge` belongs to the main-branch workflow and is never touched by the release.
 - A remote publisher receives a stable release identifier such as `<version>-<source-sha>`. Its workflow run name and concurrency group include that identifier. The controller finds that exact run, waits for an active run, reruns a failed retryable run, or dispatches only when no matching run exists.
 - Every stage verifies the destination, not merely the exit code of the command that attempted to create it.
 
@@ -496,7 +496,7 @@ There is an internal workflow-experience change for maintainers: a helper workfl
 The current `build.yaml` should be split so ordinary validation and privileged release publication do not share one broad workflow:
 
 - Pull request and merge queue: run `goreleaser check` and snapshot builds without registry or release permissions.
-- Main branch push: run snapshot validation and a separate edge publication job for existing `latest` CLI OCI artifacts, test images, and edge Helm behavior. Edge publication is not part of the release transaction.
+- Main branch push: run snapshot validation and a separate edge publication job that publishes mutable `edge` tags for CLI OCI artifacts, images, and edge Helm behavior. Edge publication is not part of the release transaction, and main-branch builds never touch `latest`, which always points at the most recent stable release.
 - Release tag push: invoke the resumable release controller, which calls GoReleaser in release mode and holds the GitHub Release as a draft until all gates pass.
 - Manual resume: invoke the same controller with the original version and source commit. Do not provide separate manual tag, image, or GitHub Release workflows that bypass reconciliation.
 
@@ -582,7 +582,7 @@ The migration should be validated in phases.
 - Run `goreleaser check` and `goreleaser release --snapshot --clean` locally and in CI to validate configuration, raw asset layout, and image definitions.
 - Verify that release metadata injected into binaries still reports the expected version, channel, commit, and chart version fields.
 - Verify that published container images preserve runtime behavior, base-image assumptions, and required files.
-- Validate that immutable image tags contain every expected platform, channel aliases resolve to the recorded digests, and final or patch Helm charts install immutable image versions.
+- Validate that immutable image tags contain every expected platform, channel and `latest` aliases resolve to the recorded digests, `edge` tracks the `main` branch head, and final or patch Helm charts install immutable image versions.
 - Validate that the GitHub Release contains the expected raw binaries, checksums, notes, and prerelease/final classification.
 - Validate that main-branch snapshot flows still provide the artifacts required by functional tests and edge publication.
 - Validate that the controller reconciles sibling tags, correlates required external publication, and verifies the prepared `versions.yaml` metadata before creating the Radius tag.
@@ -621,10 +621,11 @@ Compatibility requirements:
 - Preserve Helm chart names and versions, and verify that a final or patch chart installs immutable image versions.
 - Preserve RC versus final release semantics.
 
-There are two intentional compatibility changes:
+There are three intentional compatibility changes:
 
 - Internal: release engineers no longer use `versions.yaml` edits as the release trigger, and documentation must be updated accordingly.
 - User-visible: the Helm chart for final and patch releases switches from the mutable `major.minor` channel image tag to immutable full-version tags. Today a cluster can pick up patched component images through the moving channel alias on pod restart; after this change, patched images arrive only with the corresponding chart upgrade. This removes chart-and-image version skew and makes deployments reproducible, but it changes patch pickup behavior and must be called out in the release notes of the release that ships it.
+- User-visible: `latest` OCI tags currently track the `main` branch; after the migration, `latest` always points at the most recent stable release and the new `edge` tag tracks `main`. Consumers of `:latest` who want main-branch builds must switch to `:edge`. The migration publishes `edge` alongside `latest` with a deprecation announcement before `latest` is repointed at cutover.
 
 ## Monitoring and Logging
 
@@ -651,7 +652,7 @@ For troubleshooting, maintainers should be able to answer these questions quickl
 
 ## Development plan
 
-The work should be delivered in phases.
+The work should be delivered in phases. A per-PR sequencing of these phases, including the decided Conventional Commits and version-policy details.
 
 ### Phase 1: Capture compatibility and add snapshot validation
 
@@ -668,7 +669,7 @@ The work should be delivered in phases.
 - Keep the current publisher as the production path during an RC shadow run and compare outputs and timings.
 - Enable draft reuse, deterministic artifact replacement, and bounded retries; prove reruns after injected failures.
 - Preserve artifact upload points needed by tests and edge publication.
-- Keep main `latest`, Bicep, test-image, and Helm behavior separate until their parity checks pass.
+- Keep main edge publication, Bicep, test-image, and Helm behavior separate until their parity checks pass.
 
 ### Phase 3: Add the resumable release controller
 
@@ -697,21 +698,16 @@ The work should be delivered in phases.
 
 ## Open Questions
 
-- Should the initial migration include SBOM generation, or should that remain a follow-up once the core release path is stable?
-- Which source of release intent should Radius adopt: Conventional Commits, Changie-style fragments, pull request labels, or manual curation?
-- Should version automation only propose the release PR, or also request publication after the PR and release environment are approved?
-- If Radius selects Conventional Commits, should Release Please maintain the reviewable release pull request, and should enforcement apply only to squash-merge pull request titles?
-- If Radius selects change fragments, should it adopt Changie or accept the additional package-oriented behavior and Node dependency of Changesets?
-- How should patch, minor, and breaking signals map to Radius `0.x` versions, scheduled release channels, and successive RC tags?
-- Should Radius adopt dotted `-rc.N` prerelease identifiers so SemVer ordering stays correct past `rc9`, or keep `-rcN` and enforce an ordering ceiling during version selection?
-- Is `CHANGELOG.md` the canonical source rendered into GitHub Releases, or are GitHub Release notes canonical with a generated portable changelog?
-- Which outputs are mandatory publication gates, and may policy distinguish RCs from final and patch releases?
-- Should the test-module images (`testrp`, `magpiego`) retain release-channel tags or move entirely to test-specific tags after consumers are inventoried?
-- Should the Helm chart remain a dedicated workflow permanently, or should it later move to a more integrated release path?
-- Should the Bicep image stay outside GoReleaser indefinitely because it is an externally downloaded artifact, or should it eventually adopt a related release automation path?
-- Can Deployment Engine tag signing move from a maintainer workstation to an automated verified-tag mechanism so the last manual prerequisite is removed?
-- Should the first implementation use one GoReleaser runner for simplicity, or evaluate split and merge builds - a GoReleaser Pro feature - only after the selected edition and artifact handoff are proven?
-- Should main-branch `latest` publication remain a separate edge workflow permanently, or adopt GoReleaser nightly behavior - a GoReleaser Pro feature - after release parity is complete?
+All previously open questions are resolved. The change-input, version-policy, RC-identifier, and changelog-canonicality decisions are recorded in the comparison section above; the remaining decisions are:
+
+- **SBOM generation**: added in a dedicated follow-up PR immediately after the GoReleaser cutover proves parity, using GoReleaser's native syft support. Not bundled into the cutover itself and not deferred to a later supply-chain initiative.
+- **Publication gates**: the mandatory output set (production images, CLI assets and checksums, Helm chart, dashboard, Deployment Engine, Bicep outputs, release notes, install verification) is identical for every release type. Final and patch releases additionally require the release-environment approval; RCs publish automatically once the gate passes.
+- **Test-module images**: `testrp` and `magpiego` move to test-specific immutable tags published from test workflows once the consumer inventory confirms nothing pulls their channel tags; release-channel tags for them stop at that point.
+- **Helm chart**: remains a dedicated idempotent job under the publication gate permanently. Revisited only if GoReleaser gains native Helm support.
+- **Bicep image**: remains a dedicated non-Go build permanently, under the same gate and digest-verification contract as the Helm job.
+- **Deployment Engine tag signing**: adopt GitHub-App-created tags through the API, contingent on a validation spike confirming the result satisfies the `azure-octo` verified-tag requirement - GitHub's web-flow signing covers commits, not annotated tag objects, so this must be proven before the workstation step is removed. If validation fails, fall back to a bot GPG signing key stored in `azure-octo` org secrets and used by the Deployment Engine release workflow. Either path removes the maintainer-workstation step.
+- **Runner topology**: a single GoReleaser runner with QEMU and Buildx. The production Dockerfiles are copy-only, so emulation cost is trivial and Go cross-compiles natively. The release summary records total duration each cycle; the GoReleaser Pro split-and-merge evaluation reopens only if duration exceeds the agreed budget.
+- **Mutable tag semantics**: `edge` is the mutable tag published by the separate main-branch workflow for every merge to `main`, permanently outside the release transaction (consuming GoReleaser snapshot outputs after the final migration phase; GoReleaser Pro nightlies are not adopted). `latest` always points at the most recent stable release: the release controller promotes it during finalization of final and patch releases exactly like the release-channel aliases, and neither RCs nor main-branch builds ever advance it. Because `latest` carries main-branch content today, the migration first publishes `edge` alongside `latest` with a deprecation announcement, then repoints `latest` to the stable release at cutover.
 
 ## Alternatives considered
 
