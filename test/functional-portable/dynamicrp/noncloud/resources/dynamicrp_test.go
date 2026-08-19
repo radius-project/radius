@@ -576,7 +576,7 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 						Type: "test.resources/externalresource",
 					},
 					{
-						Name: "udttoudtenv",
+						Name: "udttoudtenvtf",
 						Type: validation.CoreEnvironmentsResource,
 					},
 					{

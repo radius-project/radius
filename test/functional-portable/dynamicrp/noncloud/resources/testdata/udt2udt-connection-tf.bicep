@@ -23,8 +23,8 @@ resource recipepack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   }
 }
 
-resource udttoudtenv 'Radius.Core/environments@2025-08-01-preview' = {
-  name: 'udttoudtenv'
+resource udttoudtenvtf 'Radius.Core/environments@2025-08-01-preview' = {
+  name: 'udttoudtenvtf'
   location: 'global'
   properties: {
     recipePacks: [
@@ -42,14 +42,14 @@ resource udttoudtapp 'Radius.Core/applications@2025-08-01-preview' = {
   name: 'udttoudtapp'
   location: 'global'
   properties: {
-    environment: udttoudtenv.id
+    environment: udttoudtenvtf.id
   }
 }
 
 resource udttoudtparent 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
   name: 'udttoudtparent'
   properties: {
-    environment: udttoudtenv.id
+    environment: udttoudtenvtf.id
     application: udttoudtapp.id
     connections: {
       externalresource: {
@@ -63,7 +63,7 @@ resource udttoudtchild 'Test.Resources/externalResource@2023-10-01-preview' = {
   name: 'udttoudtchild'
   location: 'global'
   properties: {
-    environment: udttoudtenv.id
+    environment: udttoudtenvtf.id
     application: udttoudtapp.id
     configMap: '{"app1.sample.properties":"property1=value1\\nproperty2=value2","app2.sample.properties":"property3=value3\\nproperty4=value4"}'
   }
