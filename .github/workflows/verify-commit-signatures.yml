@@ -105,11 +105,3 @@ jobs:
           number_force: ${{ github.event.pull_request.number || inputs.pr_number }}
           path: commit-signature-guidance.md
           skip_unchanged: true
-
-      - name: Remove resolved signature guidance
-        if: steps.verify.outputs.count == '0'
-        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        with:
-          header: commit-signature-verification
-          number_force: ${{ github.event.pull_request.number || inputs.pr_number }}
-          delete: true

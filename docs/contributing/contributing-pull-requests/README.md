@@ -47,7 +47,7 @@ We **squash** pull requests as part of the merge process, so intermediate commit
 
 The Developer Certificate of Origin (DCO) check requires every commit to include a `Signed-off-by` line. Every commit must also be cryptographically signed so that GitHub displays a **Verified** badge. These are separate requirements; see [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide for setup and remediation guidance.
 
-The commit-signature verification workflow posts a non-blocking reminder when any commit does not show a **Verified** signature. It updates that reminder after each push and removes it when all commits are verified.
+The commit-signature verification workflow posts a non-blocking reminder when any commit does not show a **Verified** signature. It updates that reminder while commits remain unverified and leaves it on the pull request after all commits are verified.
 
 ### 4. Open the pull request and fill out the template
 
