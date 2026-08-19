@@ -60,7 +60,6 @@ jobs:
         if: steps.verify.outputs.count != '0'
         env:
           UNVERIFIED_COMMITS: ${{ steps.verify.outputs.unverified_commits }}
-          UNVERIFIED_COUNT: ${{ steps.verify.outputs.count }}
         run: |
           pr_author="$(
             gh api "/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
@@ -91,11 +90,6 @@ jobs:
               "Cryptographic commit signing is separate from the DCO " \
               "\`Signed-off-by\` line; both are required."
           } > commit-signature-guidance.md
-
-          printf '%s%s%s\n' \
-            "::warning title=Unverified commit signatures::" \
-            "${UNVERIFIED_COUNT}" \
-            " commit(s) do not show a Verified signature."
 
       - name: Post signature guidance
         if: steps.verify.outputs.count != '0'
