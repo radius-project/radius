@@ -69,41 +69,80 @@ jobs:
               }
             `
 
-            const unverified = []
-            let cursor = null
-            do {
-              const result = await github.graphql(query, {
-                ...context.repo,
-                number: prNumber,
-                cursor
-              })
-              const pullRequest = result.repository.pullRequest
-              if (!pullRequest) {
-                throw new Error(`Pull request #${prNumber} was not found`)
+            function hasVerifiedSignature(commit) {
+              if (!/^[0-9a-f]{40}$/.test(commit.oid)) {
+                throw new Error('GitHub returned an invalid commit OID')
               }
 
-              const commits = pullRequest.commits
-              for (const { commit } of commits.nodes) {
-                if (!/^[0-9a-f]{40}$/.test(commit.oid)) {
-                  throw new Error('GitHub returned an invalid commit OID')
+              return (
+                commit.signature?.isValid === true &&
+                commit.signature.state === 'VALID'
+              )
+            }
+
+            async function listPullRequestCommits(number) {
+              const commits = []
+              let cursor = null
+
+              do {
+                const result = await github.graphql(query, {
+                  ...context.repo,
+                  number,
+                  cursor
+                })
+                const pullRequest = result.repository.pullRequest
+                if (!pullRequest) {
+                  throw new Error(`Pull request #${number} was not found`)
                 }
 
-                const signature = commit.signature
-                if (!signature || !signature.isValid || signature.state !== 'VALID') {
-                  unverified.push(commit.oid)
+                const page = pullRequest.commits
+                commits.push(...page.nodes.map(node => node.commit))
+                if (page.pageInfo.hasNextPage && !page.pageInfo.endCursor) {
+                  throw new Error('GitHub returned an invalid pagination cursor')
                 }
-              }
+                cursor = page.pageInfo.hasNextPage
+                  ? page.pageInfo.endCursor
+                  : null
+              } while (cursor)
 
-              if (
-                commits.pageInfo.hasNextPage &&
-                !commits.pageInfo.endCursor
-              ) {
-                throw new Error('GitHub returned an invalid pagination cursor')
-              }
-              cursor = commits.pageInfo.hasNextPage
-                ? commits.pageInfo.endCursor
-                : null
-            } while (cursor)
+              return commits
+            }
+
+            function formatGuidance(unverified, repository, serverUrl, marker) {
+              const guideUrl =
+                `${serverUrl}/radius-project/radius/blob/main/` +
+                'docs/contributing/contributing-code/' +
+                'contributing-code-first-commit/' +
+                'first-commit-06-creating-a-pr/index.md#signing-your-commits'
+              const commitLines = unverified.map(
+                oid =>
+                  `- [\`${oid.slice(0, 7)}\`](` +
+                  `${serverUrl}/${repository.owner}/` +
+                  `${repository.repo}/commit/${oid})`
+              )
+
+              return [
+                'Thank you for contributing to Radius.',
+                '',
+                'The following commits do not currently show a GitHub **Verified** signature:',
+                '',
+                ...commitLines,
+                '',
+                `Please follow our [commit-signing guide](${guideUrl}) to configure ` +
+                  'GPG, SSH, or S/MIME signing. Then re-sign the affected commits ' +
+                  'and force-push the rewritten branch with `--force-with-lease`.',
+                '',
+                'Cryptographic commit signing is separate from the DCO ' +
+                  '`Signed-off-by` line; both are required.',
+                '',
+                marker
+              ].join('\n')
+            }
+
+            const commits = await listPullRequestCommits(prNumber)
+            const unverified = commits
+              .filter(commit => !hasVerifiedSignature(commit))
+              .map(commit => commit.oid)
 
             if (unverified.length === 0) {
               core.info(
@@ -124,32 +163,12 @@ jobs:
               '<!-- Sticky Pull Request Commentcommit-signature-verification -->'
             const serverUrl =
               process.env.GITHUB_SERVER_URL || 'https://github.com'
-            const guideUrl =
-              `${serverUrl}/radius-project/radius/blob/main/` +
-              'docs/contributing/contributing-code/' +
-              'contributing-code-first-commit/' +
-              'first-commit-06-creating-a-pr/index.md#signing-your-commits'
-            const commitLines = unverified.map(
-              oid =>
-                `- [\`${oid.slice(0, 7)}\`](` +
-                `${serverUrl}/${context.repo.owner}/${context.repo.repo}/commit/${oid})`
-            )
-            const body = [
-              'Thank you for contributing to Radius.',
-              '',
-              'The following commits do not currently show a GitHub **Verified** signature:',
-              '',
-              ...commitLines,
-              '',
-              `Please follow our [commit-signing guide](${guideUrl}) to configure ` +
-                'GPG, SSH, or S/MIME signing. Then re-sign the affected commits ' +
-                'and force-push the rewritten branch with `--force-with-lease`.',
-              '',
-              'Cryptographic commit signing is separate from the DCO ' +
-                '`Signed-off-by` line; both are required.',
-              '',
+            const body = formatGuidance(
+              unverified,
+              context.repo,
+              serverUrl,
               marker
-            ].join('\n')
+            )
 
             const comments = await github.paginate(
               github.rest.issues.listComments,
