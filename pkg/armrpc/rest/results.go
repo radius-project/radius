@@ -431,6 +431,19 @@ func NewBadRequestResponse(message string) Response {
 	}
 }
 
+// NewBadRequestResponseWithCode creates a BadRequestResponse with a specific error code, so that
+// clients can distinguish this failure from a generic validation error.
+func NewBadRequestResponseWithCode(code string, message string) Response {
+	return &BadRequestResponse{
+		Body: v1.ErrorResponse{
+			Error: &v1.ErrorDetails{
+				Code:    code,
+				Message: message,
+			},
+		},
+	}
+}
+
 // NewBadRequestARMResponse creates a BadRequestResponse with error message.
 func NewBadRequestARMResponse(body v1.ErrorResponse) Response {
 	return &BadRequestResponse{
@@ -595,6 +608,20 @@ func NewConflictResponse(message string) Response {
 		Body: v1.ErrorResponse{
 			Error: &v1.ErrorDetails{
 				Code:    v1.CodeConflict,
+				Message: message,
+			},
+		},
+	}
+}
+
+// NewConflictResponseWithCode creates a ConflictResponse with a specific ARM error code. Use this
+// when clients need to distinguish one kind of conflict from another, since callers otherwise
+// cannot tell a namespace collision apart from, for example, an in-flight provisioning conflict.
+func NewConflictResponseWithCode(code string, message string) Response {
+	return &ConflictResponse{
+		Body: v1.ErrorResponse{
+			Error: &v1.ErrorDetails{
+				Code:    code,
 				Message: message,
 			},
 		},

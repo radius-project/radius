@@ -118,6 +118,16 @@ type Runner struct {
 	providers       *corerpv20250801.Providers
 }
 
+// kubernetesNamespace returns the Kubernetes namespace the environment will use, or an empty
+// string when the environment does not configure a Kubernetes provider.
+func (r *Runner) kubernetesNamespace() string {
+	if r.providers == nil || r.providers.Kubernetes == nil || r.providers.Kubernetes.Namespace == nil {
+		return ""
+	}
+
+	return *r.providers.Kubernetes.Namespace
+}
+
 // NewRunner creates a new instance of the `rad env create` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
@@ -314,6 +324,10 @@ func (r *Runner) Run(ctx context.Context) error {
 	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
 	_, err = envClient.CreateOrUpdate(ctx, r.Workspace.Scope, r.EnvironmentName, *resource, nil)
 	if err != nil {
+		if clients.IsNamespaceAlreadyInUseError(err) {
+			return clierrors.Message("The Kubernetes namespace specified (%s) is already used by another Radius Environment. Specify a unique Kubernetes namespace using the --kubernetes-namespace flag.", r.kubernetesNamespace())
+		}
+
 		return err
 	}
 

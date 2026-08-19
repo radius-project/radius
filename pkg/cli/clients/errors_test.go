@@ -69,3 +69,54 @@ func TestIs404Error(t *testing.T) {
 		t.Errorf("Expected Is404Error to return true for fake server not found response, but it returned false")
 	}
 }
+
+func TestIsNamespaceAlreadyInUseError(t *testing.T) {
+	testCases := []struct {
+		desc     string
+		err      error
+		expected bool
+	}{
+		{
+			desc:     "typed response error with the namespace code",
+			err:      &azcore.ResponseError{ErrorCode: v1.CodeNamespaceAlreadyInUse, StatusCode: http.StatusConflict},
+			expected: true,
+		},
+		{
+			desc:     "raw JSON envelope with the namespace code",
+			err:      errors.New(`{"error": {"code": "NamespaceAlreadyInUse", "message": "namespace in use"}}`),
+			expected: true,
+		},
+		{
+			// A generic conflict must not be reported as a namespace collision: the server also
+			// returns 409 when a resource is still provisioning.
+			desc:     "generic conflict",
+			err:      &azcore.ResponseError{ErrorCode: v1.CodeConflict, StatusCode: http.StatusConflict},
+			expected: false,
+		},
+		{
+			desc:     "raw JSON envelope with a different code",
+			err:      errors.New(`{"error": {"code": "Conflict"}}`),
+			expected: false,
+		},
+		{
+			desc:     "unrelated error",
+			err:      errors.New("some other error"),
+			expected: false,
+		},
+		{
+			desc:     "nil error",
+			err:      nil,
+			expected: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			t.Parallel()
+
+			if actual := IsNamespaceAlreadyInUseError(tc.err); actual != tc.expected {
+				t.Errorf("IsNamespaceAlreadyInUseError(%v) = %v, want %v", tc.err, actual, tc.expected)
+			}
+		})
+	}
+}

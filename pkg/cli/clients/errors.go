@@ -78,3 +78,33 @@ func Is404Error(err error) bool {
 
 	return false
 }
+
+// IsNamespaceAlreadyInUseError reports whether err is the server's "the requested Kubernetes
+// namespace is already claimed by another environment" response.
+//
+// It matches on the specific error code rather than on the 409 status, because the server returns
+// Conflict for unrelated reasons too (for example, a resource that is still provisioning), and
+// reporting those as a namespace collision would misdiagnose them.
+func IsNamespaceAlreadyInUseError(err error) bool {
+	return hasErrorCode(err, v1.CodeNamespaceAlreadyInUse)
+}
+
+// hasErrorCode reports whether err carries the given ARM error code, whether it arrives as a typed
+// azcore.ResponseError or as a raw JSON error envelope.
+func hasErrorCode(err error, code string) bool {
+	if err == nil {
+		return false
+	}
+
+	responseError := &azcore.ResponseError{}
+	if errors.As(err, &responseError) {
+		return responseError.ErrorCode == code
+	}
+
+	errorResponse := errorResponse{}
+	if marshallErr := json.Unmarshal([]byte(err.Error()), &errorResponse); marshallErr != nil {
+		return false
+	}
+
+	return errorResponse.Error != nil && errorResponse.Error.Code != nil && *errorResponse.Error.Code == code
+}
