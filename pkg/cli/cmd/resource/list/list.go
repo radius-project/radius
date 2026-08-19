@@ -18,6 +18,7 @@ package list
 
 import (
 	"context"
+	"strings"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -31,7 +32,10 @@ import (
 	"github.com/radius-project/radius/pkg/cli/objectformats"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
+	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +43,17 @@ import (
 // regardless of type, in an application or the default environment. It adds flags for application name,
 // environment name, resource group, output and workspace.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
+	return newCommand(factory, false)
+}
+
+// NewPreviewCommand creates the preview `rad resource list` command.
+func NewPreviewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
+	return newCommand(factory, true)
+}
+
+func newCommand(factory framework.Factory, preview bool) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
+	runner.Preview = preview
 
 	cmd := &cobra.Command{
 		Use:   "list [resourceType]",
@@ -70,6 +84,10 @@ rad resource list -e not-default-env
 
 # list all resources of any type in an application
 rad resource list -a icecream-store
+
+# list preview resources in a Radius.Core environment or application
+rad resource list -e not-default-env --preview
+rad resource list -a icecream-store --preview
 `,
 		Args: cobra.MaximumNArgs(1),
 		RunE: framework.RunCommand(runner),
@@ -88,12 +106,15 @@ rad resource list -a icecream-store
 type Runner struct {
 	ConfigHolder              *framework.ConfigHolder
 	UCPClientFactory          *v20231001preview.ClientFactory
+	RadiusCoreClientFactory   *corerpv20250801.ClientFactory
 	ConnectionFactory         connections.Factory
 	Output                    output.Interface
 	Workspace                 *workspaces.Workspace
 	ApplicationName           string
-	EnvironmentName           string
+	ApplicationID             string
+	EnvironmentNameOrID       string
 	Format                    string
+	Preview                   bool
 	ResourceType              string
 	ResourceTypeSuffix        string
 	ResourceProviderNamespace string
@@ -141,6 +162,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return clierrors.Message("The '-e/--environment' flag cannot be combined with '-a/--application'. An application belongs to a single environment.")
 	}
 
+	if r.Preview && r.ApplicationName != "" {
+		err = r.resolvePreviewApplication()
+		if err != nil {
+			return err
+		}
+	}
+
 	if len(args) > 0 {
 		r.ResourceProviderNamespace, r.ResourceTypeSuffix, err = cli.RequireFullyQualifiedResourceType(args)
 		if err != nil {
@@ -150,14 +178,14 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 		if environmentFlag != "" {
 			// A resource type was given along with the environment flag, so scope the typed list to that environment.
-			r.EnvironmentName, err = cli.RequireEnvironmentName(cmd, args, *workspace)
+			r.EnvironmentNameOrID, err = r.requireEnvironmentNameOrID(cmd, args)
 			if err != nil {
 				return err
 			}
 		}
 	} else if r.ApplicationName == "" {
 		// No resource type or application was given, so list all resources (of any type) in an environment.
-		r.EnvironmentName, err = cli.RequireEnvironmentName(cmd, args, *workspace)
+		r.EnvironmentNameOrID, err = r.requireEnvironmentNameOrID(cmd, args)
 		if err != nil {
 			return err
 		}
@@ -189,11 +217,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	var resourceList []generated.GenericResource
 	if r.ResourceType == "" {
 		if r.ApplicationName == "" {
-			resourceList, err = client.ListResourcesInEnvironment(ctx, r.EnvironmentName)
+			resourceList, err = client.ListResourcesInEnvironment(ctx, r.EnvironmentNameOrID)
 		} else {
 			err = r.requireApplicationExists(ctx, client)
 			if err == nil {
-				resourceList, err = client.ListResourcesInApplication(ctx, r.ApplicationName)
+				resourceList, err = client.ListResourcesInApplication(ctx, r.applicationNameOrID())
 			}
 		}
 	} else {
@@ -216,10 +244,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		case r.ApplicationName != "":
 			err = r.requireApplicationExists(ctx, client)
 			if err == nil {
-				resourceList, err = client.ListResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
+				resourceList, err = client.ListResourcesOfTypeInApplication(ctx, r.applicationNameOrID(), r.ResourceType)
 			}
-		case r.EnvironmentName != "":
-			resourceList, err = client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentName, r.ResourceType)
+		case r.EnvironmentNameOrID != "":
+			resourceList, err = client.ListResourcesOfTypeInEnvironment(ctx, r.EnvironmentNameOrID, r.ResourceType)
 		default:
 			resourceList, err = client.ListResourcesOfType(ctx, r.ResourceType)
 		}
@@ -233,9 +261,80 @@ func (r *Runner) Run(ctx context.Context) error {
 
 // requireApplicationExists returns a user-facing error if r.ApplicationName does not exist in the workspace.
 func (r *Runner) requireApplicationExists(ctx context.Context, client clients.ApplicationsManagementClient) error {
+	if r.Preview {
+		if r.RadiusCoreClientFactory == nil {
+			clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
+			if err != nil {
+				return err
+			}
+			r.RadiusCoreClientFactory = clientFactory
+		}
+
+		_, err := r.RadiusCoreClientFactory.NewApplicationsClient().Get(ctx, r.Workspace.Scope, r.ApplicationName, nil)
+		if clients.Is404Error(err) {
+			return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", r.ApplicationName, r.Workspace.Name)
+		}
+		return err
+	}
+
 	_, err := client.GetApplication(ctx, r.ApplicationName)
 	if clients.Is404Error(err) {
 		return clierrors.Message("The application %q could not be found in workspace %q. Make sure you specify the correct application with '-a/--application'.", r.ApplicationName, r.Workspace.Name)
 	}
 	return err
+}
+
+func (r *Runner) requireEnvironmentNameOrID(cmd *cobra.Command, args []string) (string, error) {
+	if !r.Preview {
+		return cli.RequireEnvironmentName(cmd, args, *r.Workspace)
+	}
+
+	environmentNameOrID, err := cli.RequireEnvironmentNameOrID(cmd, args, *r.Workspace)
+	if err != nil {
+		return "", err
+	}
+
+	if !strings.HasPrefix(environmentNameOrID, resources.SegmentSeparator) {
+		return resourceID(r.Workspace.Scope, datamodel.EnvironmentResourceType_v20250801preview, environmentNameOrID), nil
+	}
+
+	environmentID, err := resources.ParseResource(environmentNameOrID)
+	if err != nil {
+		return "", err
+	}
+	if !strings.EqualFold(environmentID.Type(), datamodel.EnvironmentResourceType_v20250801preview) {
+		return "", clierrors.Message("The environment ID %q must reference a %s resource when preview mode is enabled.", environmentNameOrID, datamodel.EnvironmentResourceType_v20250801preview)
+	}
+
+	return environmentID.String(), nil
+}
+
+func (r *Runner) resolvePreviewApplication() error {
+	if !strings.HasPrefix(r.ApplicationName, resources.SegmentSeparator) {
+		r.ApplicationID = resourceID(r.Workspace.Scope, datamodel.ApplicationResourceType_v20250801preview, r.ApplicationName)
+		return nil
+	}
+
+	applicationID, err := resources.ParseResource(r.ApplicationName)
+	if err != nil {
+		return err
+	}
+	if !strings.EqualFold(applicationID.Type(), datamodel.ApplicationResourceType_v20250801preview) {
+		return clierrors.Message("The application ID %q must reference a %s resource when preview mode is enabled.", r.ApplicationName, datamodel.ApplicationResourceType_v20250801preview)
+	}
+
+	r.ApplicationName = applicationID.Name()
+	r.ApplicationID = applicationID.String()
+	return nil
+}
+
+func (r *Runner) applicationNameOrID() string {
+	if r.Preview {
+		return r.ApplicationID
+	}
+	return r.ApplicationName
+}
+
+func resourceID(scope string, resourceType string, name string) string {
+	return scope + "/providers/" + resourceType + "/" + name
 }

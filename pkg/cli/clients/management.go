@@ -85,6 +85,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfType(ctx context.Cont
 }
 
 // ListResourcesOfTypeInApplication lists all resources of a given type in a given application in the configured scope.
+// Names are qualified as Applications.Core applications; pass a full resource ID for other application types.
 func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInApplication(ctx context.Context, applicationNameOrID string, resourceType string) ([]generated.GenericResource, error) {
 	applicationID, err := amc.fullyQualifyID(applicationNameOrID, "Applications.Core/applications")
 	if err != nil {
@@ -107,6 +108,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInApplication(ctx
 }
 
 // ListResourcesOfTypeInEnvironment lists all resources of a given type in a given environment in the configured scope.
+// Names are qualified as Applications.Core environments; pass a full resource ID for other environment types.
 func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInEnvironment(ctx context.Context, environmentNameOrID string, resourceType string) ([]generated.GenericResource, error) {
 	environmentID, err := amc.fullyQualifyID(environmentNameOrID, "Applications.Core/environments")
 	if err != nil {
@@ -1109,6 +1111,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx contex
 }
 
 // ListResourcesInApplication lists all resources in a given application in the configured scope.
+// Names are qualified as Applications.Core applications; pass a full resource ID for other application types.
 func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx context.Context, applicationNameOrID string) ([]generated.GenericResource, error) {
 	applicationID, err := amc.fullyQualifyID(applicationNameOrID, "Applications.Core/applications")
 	if err != nil {
@@ -1134,6 +1137,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx conte
 }
 
 // ListResourcesInEnvironment lists all resources in a given environment in the configured scope.
+// Names are qualified as Applications.Core environments; pass a full resource ID for other environment types.
 func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx context.Context, environmentNameOrID string) ([]generated.GenericResource, error) {
 	environmentID, err := amc.fullyQualifyID(environmentNameOrID, "Applications.Core/environments")
 	if err != nil {
