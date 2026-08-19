@@ -6,10 +6,15 @@ on:
   # This workflow uses the trusted base commit and never executes PR-head code.
   pull_request_target:
     types: [opened, reopened, synchronize]
-  # workflow_dispatch: # Enable during development only.
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to verify
+        required: true
+        type: number
 
 concurrency:
-  group: verify-commit-signatures-${{ github.event.pull_request.number }}
+  group: verify-commit-signatures-${{ github.event.pull_request.number || inputs.pr_number }}
   cancel-in-progress: true
 
 permissions: {}
@@ -19,6 +24,9 @@ jobs:
     name: Verify Commit Signatures
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
     permissions:
       contents: read
       pull-requests: write
@@ -26,7 +34,7 @@ jobs:
       - name: Checkout signature verifier
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
           sparse-checkout: |
             .github/scripts/verify-commit-signatures.sh
           sparse-checkout-cone-mode: false
@@ -34,9 +42,6 @@ jobs:
 
       - name: Verify commit signatures
         id: verify
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           unverified_commits="$(./.github/scripts/verify-commit-signatures.sh)"
           printf 'unverified_commits=%s\n' "${unverified_commits}" >> "${GITHUB_OUTPUT}"
@@ -45,10 +50,13 @@ jobs:
       - name: Prepare signature guidance
         if: steps.verify.outputs.count != '0'
         env:
-          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           UNVERIFIED_COMMITS: ${{ steps.verify.outputs.unverified_commits }}
           UNVERIFIED_COUNT: ${{ steps.verify.outputs.count }}
         run: |
+          pr_author="$(
+            gh api "/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
+              --jq '.user.login'
+          )"
           guide_path="docs/contributing/contributing-code"
           guide_path+="/contributing-code-first-commit"
           guide_path+="/first-commit-06-creating-a-pr/index.md"
@@ -56,7 +64,7 @@ jobs:
           guide_url+="/${guide_path}#signing-your-commits"
 
           {
-            printf 'Hi @%s, thank you for contributing to Radius.\n\n' "${PR_AUTHOR}"
+            printf 'Hi @%s, thank you for contributing to Radius.\n\n' "${pr_author}"
             echo "The following commits do not currently show a GitHub **Verified** signature:"
             echo
             jq -r \
@@ -85,6 +93,7 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: commit-signature-verification
+          number_force: ${{ github.event.pull_request.number || inputs.pr_number }}
           path: commit-signature-guidance.md
           skip_unchanged: true
 
@@ -93,4 +102,5 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: commit-signature-verification
+          number_force: ${{ github.event.pull_request.number || inputs.pr_number }}
           delete: true
