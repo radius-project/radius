@@ -6,7 +6,9 @@
 
 Radius currently uses a custom release system spread across Make includes, shell steps, Python version parsing, multiple GitHub workflows, and a long manual process documented for release engineers. The result is a release lifecycle that is expensive to maintain, difficult to reason about, and slower to evolve than the product it serves.
 
-This design proposes moving the Radius build and release lifecycle to GoReleaser as the single source of truth for Go binary compilation, archive creation, checksum generation, multi-architecture container image publication, GitHub Release creation, and release-note publication. The release flow becomes tag-driven: create a `v*` tag manually or through version automation, let GoReleaser build and publish the release, and then run lightweight post-release coordination for sibling repositories and non-Go artifacts.
+This design proposes moving the Radius core build and publication path to GoReleaser as the single source of truth for Go binary compilation, release-asset naming, checksum generation, multi-architecture production container images, GitHub Release staging, and release-note publication. Release preparation remains an automated GitHub Actions concern because GoReleaser does not create Radius release branches, coordinate sibling repositories, publish Helm charts, or dispatch external repositories.
+
+The target flow is a resumable release transaction rather than a chain of one-shot steps. Automation validates and reconciles the desired version across repositories, creates the Radius tag only after required dependencies are ready, uses GoReleaser to stage core artifacts in a draft GitHub Release, verifies every mandatory output, and publishes the release last. Transient operations retry automatically; reruns inspect existing state and continue safely; semantic conflicts stop for review instead of overwriting tags or artifacts.
 
 Version selection and changelog authoring are a policy layer before GoReleaser. They can be driven by conventional commits, change fragments, pull request labels, or manual curation without changing the artifact build and publication path. This separation allows Radius to choose the process that best balances automation and release-note quality instead of making a commit convention a prerequisite for adopting GoReleaser.
 
@@ -21,8 +23,11 @@ This approach simplifies procedures, reduces maintenance cost, removes custom wo
 - **Change fragment**: A small file committed with a pull request that records a user-facing change, its category, and optionally its semantic-version impact. A release tool later combines the fragments into a changelog section.
 - **Changelog**: A portable, curated history of notable changes across versions, typically stored in `CHANGELOG.md`.
 - **Release notes**: The description attached to one release, such as a GitHub Release body. Release notes can be rendered from the corresponding changelog section and augmented with installation or upgrade guidance.
+- **Release plan**: The immutable version, source commit, release branch, channels, required repositories, and expected outputs approved for one release attempt.
+- **Reconciliation**: An idempotent operation that reads current state, creates missing state, accepts matching state as success, and rejects conflicting state.
+- **Release transaction**: The prepare, stage, verify, and publish sequence for one version. It is resumable but is not assumed to be atomic across GitHub and multiple registries.
 - **Snapshot build**: A non-final build used for pull requests and branch validation, typically without publishing an official GitHub Release.
-- **Post-release coordination**: Follow-on automation that should remain outside the main GoReleaser configuration, such as tagging sibling repositories, dispatching external workflows, and updating documentation-only metadata.
+- **Post-release coordination**: Follow-on automation that does not determine whether the release is installable, such as publishing docs and samples, announcements, and metadata verification.
 - **Non-Go artifact**: A release output not directly produced by the main Go module builds, such as the Bicep image, Helm chart, or externally published deployment-engine assets.
 
 ## Objectives
@@ -31,11 +36,14 @@ This approach simplifies procedures, reduces maintenance cost, removes custom wo
 
 ### Goals
 
-- Make GoReleaser the single source of truth for producing and publishing Radius releasable Go artifacts, independent of how the next version and release notes are selected.
+- Make GoReleaser the single source of truth for producing and staging Radius releasable Go artifacts, independent of how the next version and release notes are selected.
 - Replace the current hand-rolled Makefile, shell, and Python release logic with declarative release configuration where practical.
 - Reduce the current workflow complexity, including the existing multi-step manual release procedure and the duplication between local build logic and CI/CD workflows.
-- Preserve existing user-facing release outputs: CLI archives, checksums, multi-arch server images, GitHub Releases, and release-channel semantics.
+- Preserve existing user-facing release outputs: raw platform-named CLI binaries, checksums, multi-arch server images, Helm charts, GitHub Releases, and release-channel semantics.
 - Keep multi-repository coordination and non-Go outputs as thin workflows around the core GoReleaser release rather than embedding that logic into Make or ad hoc scripts.
+- Prevent a release from becoming public while any mandatory binary, image, chart, or external publication is known to be missing or invalid.
+- Make every release stage safe to rerun after a timeout, runner failure, or partial cross-repository success.
+- Reduce normal release operation to reviewing an automation-created release plan and approving publication; retain an audited break-glass workflow for exceptional recovery.
 - Establish a release foundation that can be extended with signing, SBOMs, attestations, richer changelog handling, and stronger version metadata without another round of custom automation.
 - Define structured version and changelog inputs that support [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html) and produce human-oriented output compatible with [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
@@ -43,6 +51,7 @@ This approach simplifies procedures, reduces maintenance cost, removes custom wo
 
 - Rewriting every existing release-adjacent workflow in the first iteration. The scope is the core Radius build and release path.
 - Moving all non-Go assets into GoReleaser immediately. The Helm chart, Bicep image, deployment-engine publication, and sibling repository dispatch remain separate where they are operationally distinct.
+- Treating GoReleaser as a distributed transaction coordinator. Cross-repository state and downstream workflow completion remain the responsibility of GitHub Actions.
 - Changing public Radius APIs or the end-user install experience as part of this design.
 - Solving every supply-chain requirement in the first migration. This design enables later adoption of code signing, SBOMs, and attestations, but it does not require all of them on day one.
 - Changing the release-branch model. The existing `release/x.y` branching approach remains in place.
@@ -51,7 +60,7 @@ This approach simplifies procedures, reduces maintenance cost, removes custom wo
 
 #### User story 1
 
-As a Radius release engineer, I can create an RC or final release by creating a single version tag, so that I no longer have to coordinate a large number of manual release steps across custom scripts and Make targets.
+As a Radius release engineer, I can create an RC or final release by approving a validated release plan, so that automation creates the correct tag and I no longer coordinate custom scripts, sibling repositories, and publication steps manually.
 
 #### User story 2
 
@@ -67,23 +76,17 @@ As a security-focused maintainer, I can add code signing, SBOM generation, or pr
 
 ## User Experience (if applicable)
 
-The primary user experience change is for maintainers and release engineers rather than Radius end users. The release interaction model becomes tag-first instead of `versions.yaml`-first. A maintainer either pushes a release tag directly or approves automation that prepares the release notes, proposes the version, creates the tag, and ensures the release branch exists.
+The primary user experience change is for maintainers and release engineers rather than Radius end users. The release interaction model becomes approval-first and tag-driven instead of `versions.yaml`-triggered. A preparation workflow proposes or accepts the version, creates a reviewable release plan, verifies the source commit and release notes, and reconciles the release branch. After approval, the workflow creates the Radius tag with the existing release GitHub App identity; maintainers do not normally create Radius tags locally.
 
 For contributors and reviewers, the main experience improvement is consistency: the same GoReleaser configuration drives local validation, pull request snapshot builds, branch builds, and official tagged releases. The selected changelog input process is also visible during pull request review, whether that input is a structured title, a change fragment, a label, or a manually curated entry. This removes the current split between custom local build logic and custom CI logic without requiring one specific commit convention.
 
 **Sample Input:**
 
-```bash
-git tag v0.56.0-rc1
-git push origin v0.56.0-rc1
-```
-
-Or, via a helper workflow:
-
 ```text
-Workflow: Create Release Tag
+Workflow: Prepare Radius Release
 version: 0.56.0-rc1
-ref: release/0.56
+source ref: release/0.56
+mode: prepare and publish after approval
 ```
 
 **Sample Output:**
@@ -91,11 +94,12 @@ ref: release/0.56
 ```text
 GitHub Release: Radius v0.56.0-rc1
 Artifacts:
-- rad archives for supported operating systems and architectures
-- checksums.txt
+- raw rad binaries for supported operating systems and architectures
+- per-asset SHA-256 checksums and a combined checksum manifest
 - multi-architecture images for ucpd, applications-rp, dynamic-rp, controller, and pre-upgrade
+- Helm chart and required external images verified before publication
 - curated release notes rendered from the selected changelog input
-- published OCI image manifests for release tags
+- immutable OCI image tags plus compatible release-channel aliases
 ```
 
 **Sample Recipe Contract:**
@@ -106,9 +110,9 @@ N/A
 
 ### High Level Design
 
-The proposed design shifts Radius to a tag-driven release lifecycle centered on `.goreleaser.yaml`. The configuration defines how Go binaries are built, how archives and checksums are packaged, how server images are assembled and published, and how a GitHub Release is created with generated or prepared notes.
+The proposed design shifts Radius to a tag-driven core release centered on `.goreleaser.yaml`, wrapped by a small release controller in GitHub Actions. GoReleaser defines how Go binaries are built, how raw release assets and checksums are named, how production server images are assembled, and how a draft GitHub Release is populated with generated or prepared notes.
 
-The GitHub Actions layer becomes thinner. Instead of encoding the release process across multiple custom jobs, it prepares credentials and release metadata, invokes GoReleaser for either snapshot or release mode, and then runs post-release coordination for assets or repositories that do not belong in the main GoReleaser configuration.
+The GitHub Actions layer becomes thinner but remains the lifecycle owner. It prepares credentials and release metadata, reconciles branches and tags, invokes GoReleaser, runs the Helm and external publishing jobs, verifies desired state, promotes mutable channel aliases, and publishes the staged GitHub Release. Each non-Go operation is independently resumable.
 
 This preserves operational boundaries while collapsing the core release logic into a single, well-known release system. Radius keeps its release branches, keeps downstream coordination, and keeps non-Go publishing steps where needed, but stops maintaining custom infrastructure for tasks GoReleaser already solves well.
 
@@ -116,52 +120,61 @@ This preserves operational boundaries while collapsing the core release logic in
 
 ```mermaid
 flowchart TD
-    A[Changes merge] --> V[Prepare version and release notes]
-    V --> V1[Conventional commits]
-    V --> V2[Change fragments]
-    V --> V3[PR labels]
-    V --> V4[Manual curation]
+    A[Release PR or approved dispatch] --> P[Validate release plan]
+    P --> S[Reconcile release branch\nand sibling repositories]
+    S --> X[Publish and verify required\nexternal dependencies]
+    X --> T[Create Radius v* tag last]
 
-    V1 --> T[v* tag created or approved]
-    V2 --> T
-    V3 --> T
-    V4 --> T
+    T --> G[GoReleaser release]
+    G --> G1[Build raw CLI assets\nand checksums]
+    G --> G2[Publish immutable\nproduction images]
+    G --> G3[Stage draft GitHub Release]
 
-    T --> B[Build and Release workflow]
-    B --> C[Compute release metadata\nREL_CHANNEL and CHART_VERSION]
-    C --> D[GoReleaser]
+    G --> N[Run non-Go release jobs]
+    N --> N1[Publish Helm chart]
+    N --> N2[Publish Bicep artifacts]
 
-    D --> D1[Build Go binaries]
-    D --> D2[Package CLI archives and checksums]
-    D --> D3[Build and publish multi-arch images]
-    D --> D4[Create GitHub Release\nand publish release notes]
+    G1 --> V[Verify mandatory release manifest]
+    G2 --> V
+    G3 --> V
+    N1 --> V
+    N2 --> V
 
-    D4 --> E[GitHub Release published event]
-    E --> F[Release Coordination workflow]
+    V --> C[Promote release-channel aliases]
+    C --> R[Publish GitHub Release]
+    R --> O[Post-release coordination]
+    O --> O1[Docs and samples workflows]
+    O --> O2[Verify versions.yaml metadata]
 
-    F --> F1[Tag sibling repositories]
-    F --> F2[Dispatch deployment-engine image publication]
-    F --> F3[Trigger docs and samples workflows]
-    F --> F4[Open PR to update versions.yaml]
-
-    A --> G[Snapshot mode for PRs and branch pushes]
-    G --> G1[Validate same GoReleaser config without official release]
+    A --> Q[GoReleaser snapshot validation]
 ```
 
 ### Detailed Design
 
 #### Current State and Problems
 
-The current release path has several structural problems:
+The current implementation is split between `release.yaml`, `build.yaml`, Make, shell, Python, external publisher workflows, and the maintainer runbook.
 
-- Around 600 lines of Make includes are dedicated to concerns that are standard release-tool behavior: compilation, version propagation, archive layout, Docker image handling, and artifact management.
-- Version computation relies on a custom Python parser and multiple shell helpers.
-- `versions.yaml` currently acts as a release trigger, which adds indirection and turns a documentation file into an automation control plane.
-- The release process is operationally complex, involving many manual steps, multi-repository coordination, and duplicated logic between CI and local development.
-- Changelog generation is inconsistent between RC and final releases.
-- The existing workflow structure uses multiple matrix and helper jobs where one release-oriented tool can express the same intent more directly.
+1. A maintainer edits `versions.yaml`. On the pull request, `release.yaml` selects the first supported version without a Radius tag, asks GitHub to generate notes, and requires `docs/release-notes/vX.Y.Z.md` for final and patch releases.
+2. After merge, `release.yaml` checks out `radius`, `recipes`, `dashboard`, and `bicep-types-aws`. It creates release branches where absent and pushes the same tag to each repository sequentially using a GitHub App token. It then dispatches and monitors Deployment Engine image publication.
+3. The Radius tag push starts `build.yaml`. Seven matrix jobs each call the broad `make build` target to produce the platform-specific `rad` asset. Another job calls Make and Buildx to publish eight images: five production Go images, two test images, and the externally downloaded Bicep image.
+4. Separate jobs package and push the Helm chart, dispatch Bicep type publication, and create the GitHub Release. RC notes come from GitHub-generated notes; final and patch notes come from the checked-in release-note file.
+5. Release engineers manually tag Deployment Engine, run release verification, coordinate docs and samples upmerges and releases, and manually resume failed downstream work.
 
-These issues are not isolated bugs. They are symptoms of a release system whose complexity now exceeds the complexity of the product changes it is meant to ship.
+The implementation has useful safeguards, including GitHub App identities, semantic-version validation, release-note checks, tag-existence checks, job timeouts, and remote workflow monitoring. It also has structural failure modes that the migration must remove:
+
+- `versions.yaml`, Radius tags, `GITHUB_REF`, and release-note files each control a different part of the release, so there is no single immutable release plan.
+- The Radius tag is created before sibling tagging and Deployment Engine publication finish. Its push can start artifact publication while prerequisites are still incomplete.
+- Multi-repository mutation is not resumable. If the Radius tag succeeds and a later repository fails, the next run no longer selects that version because the Radius tag already exists.
+- `release-create-tag-and-branch.sh` treats an existing matching tag as an error and uses `git push --tags`, rather than reconciling one explicit tag and verifying its target commit.
+- The release job has a five-minute job timeout but its remote workflow monitor allows a ten-minute wait.
+- Remote workflow discovery correlates only by workflow name and dispatch start time. Concurrent dispatches can select the wrong run because no release identifier is matched.
+- GitHub Release publication depends on the CLI matrix but not on production images, Helm, Bicep publication, or Deployment Engine. A public release can therefore exist while mandatory outputs are failing.
+- Current image publication writes mutable channel tags directly. A failed patch release can leave a channel containing a mixture of old and new component images.
+- Most network and registry operations have no explicit retry policy. A runner rerun repeats whole jobs rather than continuing from verified state.
+- Manual copying of generated notes, Deployment Engine tagging, cherry-picking, and workflow dispatch creates avoidable opportunities to select the wrong version, branch, or commit.
+
+These issues are not isolated bugs. They are symptoms of a release system that performs a distributed operation as a linear script without a durable desired state or a publication gate.
 
 #### Option 1: Keep the current custom release system
 
@@ -192,7 +205,7 @@ These issues are not isolated bugs. They are symptoms of a release system whose 
 - Splits the release source of truth between GoReleaser and GitHub workflow YAML.
 - Delays many of the maintenance and supply-chain benefits that justify the migration.
 
-#### Option 3: Use GoReleaser as the core release source of truth and keep only lightweight post-release workflows
+#### Option 3: Use GoReleaser for core artifacts with a resumable release controller
 
 ##### Advantages of Option 3
 
@@ -224,17 +237,18 @@ The proposed design has the following main parts.
 The repository adds a single `.goreleaser.yaml` file that defines:
 
 - Six primary Go builds from the main module: `rad`, `ucpd`, `applications-rp`, `dynamic-rp`, `controller`, and `pre-upgrade`.
-- CLI archive creation for `rad` with Windows ZIP output and tarballs for other operating systems.
+- Raw `rad` assets for the current Linux, Windows, and macOS architecture matrix, preserving names such as `rad_linux_amd64` and `rad_windows_amd64.exe`.
 - Raw binary outputs for server binaries that are intended for container packaging.
-- Checksum generation.
-- GitHub Release creation.
+- Combined and compatibility sidecar checksum generation using GoReleaser where supported, with a minimal post-hook only if required to preserve the existing `.sha256` asset contract.
+- Draft GitHub Release creation with `use_existing_draft` and `replace_existing_artifacts` enabled so a failed run can resume without deleting verified assets.
 - A commit-based changelog fallback and support for externally prepared release notes.
+- Explicit bounded retries for GoReleaser-managed SCM API and Docker operations.
 
 `docgen` remains a local or developer build concern rather than a published artifact. Test binaries with separate Go modules remain outside the main configuration, either in independent configs or separate workflows.
 
 #### Container image publication
 
-GoReleaser builds and publishes the production multi-architecture server images for:
+GoReleaser `dockers_v2` builds and publishes immutable full-version tags for the production multi-architecture server images:
 
 - `ucpd`
 - `applications-rp`
@@ -242,19 +256,21 @@ GoReleaser builds and publishes the production multi-architecture server images 
 - `controller`
 - `pre-upgrade`
 
-Each image retains its current base-image requirements. Separate `Dockerfile.goreleaser` files are used where necessary to align with GoReleaser's build context while preserving the current runtime characteristics.
+Each image retains its current base-image requirements. Separate `Dockerfile.goreleaser` files are used where necessary to align with GoReleaser's build context while preserving the current runtime characteristics. `extra_files` supplies the built-in UCP manifests without rebuilding the existing Make dist tree.
 
-This removes most of the custom Docker logic currently encoded in Make and CI while preserving important image differences such as distroless, Alpine, or Debian base images and extra file inclusion for UCP manifests.
+This removes most custom production Docker logic currently encoded in Make and CI while preserving important image differences such as distroless, Alpine, or Debian base images. The Bicep image remains a dedicated non-Go build because it downloads an external binary and generates `bicepconfig.json`. The `testrp` and `magpiego` images remain in test workflows because they use separate Go modules and are not user-facing release artifacts. Migration cannot remove their existing channel tags until repository consumers are inventoried.
+
+GoReleaser publishes immutable tags such as `0.60.0` or `0.60.0-rc1` first. The release controller promotes the compatible mutable channel alias such as `0.60` only after all mandatory outputs pass verification. The Helm chart for a final or patch release should reference immutable full-version image tags while the channel aliases remain available for backward compatibility.
 
 #### Tag-driven release model
 
-The authoritative build and publication trigger becomes a pushed `v*` tag. The tag can be created explicitly by a maintainer or by an approved version-preparation workflow. The release workflow computes metadata such as `REL_CHANNEL` and `CHART_VERSION`, then invokes GoReleaser in release mode.
+The authoritative core build trigger becomes a pushed `v*` tag created by the approved version-preparation workflow. Manual Radius tag creation is a break-glass operation, not the normal path. The tag identifies the exact source commit and is never moved or recreated.
 
-This replaces the current model where `versions.yaml` changes indirectly drive release automation. `versions.yaml` remains as documentation and release metadata for humans, but it is no longer the trigger for creating artifacts.
+The controller validates every required repository before mutation, reconciles sibling branches and tags, verifies Deployment Engine readiness, and creates the Radius tag last. This replaces the current model where a `versions.yaml` change indirectly begins mutation before a complete plan exists. `versions.yaml` remains supported-version metadata but is no longer the release trigger.
 
 #### Snapshot builds for pull requests and branch pushes
 
-The same GoReleaser configuration is used in snapshot mode for pull requests and branch pushes. Snapshot mode validates the release configuration, builds the same artifacts, and can optionally publish or save artifacts needed by functional tests without creating an official GitHub Release.
+The same GoReleaser configuration is used in snapshot mode for pull requests and branch pushes. Snapshot mode validates the release configuration, builds the same artifacts, and can save outputs for GitHub Actions to upload when functional tests need them, without creating an official GitHub Release.
 
 This is a substantial maintainability improvement because it makes the release behavior testable earlier and more often.
 
@@ -284,7 +300,7 @@ Keep a Changelog defines the human-facing structure and quality bar; it does not
 
 [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) records release intent in commit subjects and footers. In a squash-merge workflow, Radius can enforce the convention on the pull request title so individual contributor commits do not need to comply. A `fix:` maps to a patch proposal, `feat:` maps to a minor proposal, and `!` or a `BREAKING CHANGE` footer maps to a major proposal.
 
-[Release Please](https://github.com/googleapis/release-please) is the safer fit for the existing controlled release cadence: it parses Conventional Commits and maintains a reviewable release pull request with the proposed version and `CHANGELOG.md`. In this design, `skip-github-release: true` keeps Release Please in release-PR-only mode; after that pull request merges, the tag helper creates the approved tag and GoReleaser remains the sole GitHub Release publisher. [semantic-release](https://github.com/semantic-release/semantic-release) is a more automatic variant that computes and publishes a release directly from a release branch, but it overlaps more substantially with GoReleaser's release responsibilities.
+[Release Please](https://github.com/googleapis/release-please) is the safer fit for the existing controlled release cadence: it parses Conventional Commits and maintains a reviewable release pull request with the proposed version and `CHANGELOG.md`. In this design, `skip-github-release: true` keeps Release Please in release-PR-only mode; after that pull request merges, the release controller creates the approved tag and GoReleaser remains the sole GitHub Release publisher. [semantic-release](https://github.com/semantic-release/semantic-release) is a more automatic variant that computes and publishes a release directly from a release branch, but it overlaps more substantially with GoReleaser's release responsibilities.
 
 This approach adds no per-change files and makes version calculation highly automatic. Its quality depends on consistently structured squash titles and sufficiently user-oriented descriptions. It also couples release behavior to commit grammar, needs explicit handling for reverts and `0.x` semantics, and can produce noisy notes unless maintainers curate the release pull request.
 
@@ -322,17 +338,89 @@ The trade-off is ongoing release-engineer effort, possible merge conflicts in a 
 
 Conventional Commits should not be a prerequisite for the GoReleaser migration. The initial migration should preserve explicit maintainer approval of the version and tag, establish the Keep a Changelog output contract, and configure GoReleaser to accept prepared release notes. Before automating version selection, the team should trial Changie fragments and Conventional Commits with Release Please against the same historical Radius release and compare missed changes, note quality, contributor overhead, and handling of release branches and RCs. Pull request labels are a lower-setup fallback, while manual curation remains a supported override and recovery path.
 
-#### Lightweight post-release coordination
+#### Capability ownership
 
-Some actions should remain outside GoReleaser because they are not native release outputs of the main Go module. These include:
+The migration should use GoReleaser directly where it has a native release primitive and keep lifecycle orchestration outside it. Hooks are not a substitute for a resumable controller because a failed hook has no durable cross-repository state.
 
-- Tagging sibling repositories such as `recipes` and `dashboard`.
-- Dispatching external publication workflows, including deployment-engine image publication.
-- Triggering docs and samples release or validation workflows.
-- Updating `versions.yaml` via an automated pull request after a successful release.
-- Publishing the Helm chart and Bicep image where separate packaging logic is still preferable.
+| Capability                                             | Current owner                                                 | Target owner                                                     |
+|--------------------------------------------------------|---------------------------------------------------------------|------------------------------------------------------------------|
+| Version proposal and curated notes                     | `versions.yaml`, GitHub-generated notes, and maintainer edits | Selected versioning tool plus a reviewable release PR            |
+| Release branch and cross-repository tags               | `release.yaml` and shell scripts                              | Idempotent GitHub Actions release controller                     |
+| Go compilation and linker metadata                     | Make plus `get_release_version.py`                            | GoReleaser builds and templates                                  |
+| Raw CLI assets and checksums                           | GitHub matrix jobs and shell loops                            | GoReleaser binary-format output and checksum pipe                |
+| Production Go images and manifests                     | Make and Docker Buildx                                        | GoReleaser `dockers_v2`                                          |
+| GitHub Release assets and notes                        | `gh release create`                                           | GoReleaser draft release and release-note input                  |
+| Helm chart                                             | Helm commands in `build.yaml`                                 | Dedicated idempotent GitHub Actions job                          |
+| Bicep image and Bicep types                            | Make plus external publisher dispatch                         | Dedicated local build and correlated external publisher workflow |
+| Test images                                            | Make and Docker Buildx                                        | Test workflow until consumers and separate modules are migrated  |
+| Deployment Engine and sibling repositories             | `release.yaml`, external workflows, and a manual tag          | Release controller plus external publisher workflows             |
+| Verification, channel promotion, and final publication | Manual verification and independent jobs                      | Release controller publication gate                              |
+| Docs and samples                                       | Manual workflow dispatch                                      | Post-release workflows with independent retries                  |
 
-This keeps the orchestration model clean: GoReleaser produces the core release, and the coordination workflow reacts to the published release.
+#### Target release transaction
+
+Each release executes the following stages. Re-running the workflow always starts by reconciling all stages; it does not assume the previous run stopped where its logs ended.
+
+1. **Prepare**: Create or update a release PR containing the selected version, release notes or changelog material, and the corresponding `versions.yaml` metadata. Record the exact source commit, release branch, full version, channel, chart version, required repositories, and expected outputs as the release plan. A later release run may not silently recompute these values from mutable branch heads.
+2. **Validate**: Run `goreleaser check` and `goreleaser release --snapshot --clean` at the planned commit. Validate SemVer, RC sequencing, release-note requirements, full git history, repository permissions, registry authentication, expected Docker platforms, and the absence of conflicting tags or releases.
+3. **Reconcile prerequisites**: Create a missing release branch from the approved commit, or verify that the approved commit is present on an existing branch. Reconcile matching tags in `recipes`, `dashboard`, and `bicep-types-aws`, and verify their downstream outputs. Verify the signed Deployment Engine tag and publish its image. Create the Radius tag last.
+4. **Stage core artifacts**: Run GoReleaser once for the tag. It builds the raw CLI assets and production server binaries, generates checksums and metadata, pushes immutable full-version image tags, and creates or reuses a draft GitHub Release. The draft remains unpublished on failure.
+5. **Stage non-Go artifacts**: Package and publish the Helm chart, build the Bicep image, and dispatch Bicep type publication with the release identifier. These jobs can run in parallel after the Radius tag exists, but each must verify its destination state.
+6. **Verify**: Compare GoReleaser's artifact metadata and a generated release manifest against the expected asset names, checksums, image platforms and digests, Helm chart version, external images, release notes, and binary linker metadata. Run the installation verification with the staged local `rad` binary so validation does not require a public GitHub Release.
+7. **Finalize**: Promote mutable release-channel image aliases to the verified immutable digests and publish the draft GitHub Release. Finalization requires the release environment approval for final and patch releases. RC publication can follow the same gate without an additional approval if repository policy permits it.
+8. **Coordinate**: Trigger docs and samples workflows, verify or synchronize `versions.yaml` metadata, and record links and conclusions. These tasks are independently retryable and do not mutate immutable release artifacts.
+
+No stage deletes an existing tag or published release as part of automatic recovery. If a published immutable artifact is wrong, Radius publishes a corrected version rather than rewriting history.
+
+#### Idempotency contract
+
+The release controller reconciles one explicit resource at a time using these rules:
+
+- A branch that is absent is created at the planned commit. An existing branch is accepted only when the planned commit is reachable from it.
+- A tag that is absent is created and pushed explicitly. A tag at the planned commit is success. A tag at any other commit is a non-retryable conflict; automation never force-updates it.
+- An existing draft release for the planned tag is reused. Matching assets are retained or replaced deterministically. An already published release is verified and treated as complete only when every expected digest matches.
+- An immutable container tag that resolves to the expected digest is success. A different digest is a conflict. Mutable channel aliases are changed only during finalization and are verified after promotion.
+- A remote publisher receives a stable release identifier such as `<version>-<source-sha>`. Its workflow run name and concurrency group include that identifier. The controller finds that exact run, waits for an active run, reruns a failed retryable run, or dispatches only when no matching run exists.
+- Every stage verifies the destination, not merely the exit code of the command that attempted to create it.
+
+#### Retry and fallback policy
+
+GoReleaser's native retry configuration provides bounded exponential backoff for its Git provider API calls and Docker operations. The initial configuration should make the budget explicit rather than depend on defaults:
+
+```yaml
+retry:
+    attempts: 5
+    delay: 10s
+    max_delay: 2m
+
+release:
+    draft: true
+    use_existing_draft: true
+    replace_existing_artifacts: true
+    prerelease: auto
+    mode: replace
+```
+
+The release controller applies the same policy only to operations outside GoReleaser:
+
+- Retry timeouts, connection resets, rate limits, and service-side `5xx` responses with exponential backoff and jitter.
+- Do not retry invalid input, missing required notes, authentication or authorization failures, conflicting tag targets, checksum mismatches, or unsupported platform configuration.
+- Before retrying a dispatch, query the correlated remote run and destination artifact. Never create duplicate work merely because monitoring timed out.
+- Size every job timeout above its complete retry and monitoring budget. A child monitor may not wait longer than its enclosing job.
+- Use release concurrency keyed by version and source commit, with cancellation disabled. A second invocation queues or reconciles the same release instead of canceling publication in progress.
+
+Fallbacks are automation entry points, not a second undocumented command sequence:
+
+1. Automatic retries handle transient failures inside the current run.
+2. A `Resume Release` workflow accepts the version and planned source commit, recomputes observed state, skips completed work, and retries incomplete stages.
+3. A targeted downstream retry reruns the correlated external workflow and then resumes verification; it does not recreate tags or rebuild unrelated artifacts.
+4. An approval-gated break-glass mode can waive an explicitly optional post-release task or supply repaired credentials. It cannot move a tag, replace a published immutable artifact, or bypass a mandatory release-manifest check.
+
+If any mandatory stage fails before finalization, the GitHub Release stays draft and mutable channel aliases do not advance. The workflow summary identifies the failed resource, observed and expected state, retry classification, remote run URL, and exact `Resume Release` inputs.
+
+#### Post-release coordination
+
+Only work that does not determine whether the core release is installable waits for the published release event. This includes docs and samples publication, announcements, and metadata synchronization. Required sibling images and Deployment Engine publication move before the Radius tag; Bicep and Helm publication move before the publication gate.
 
 #### Supply-chain and provenance readiness
 
@@ -348,9 +436,9 @@ This design does not require all of these on day one, but it intentionally creat
 
 #### Makefile reduction
 
-The Makefile should stop being the source of truth for release publishing. Release-specific includes such as binary build, docker build, version propagation, and artifact management should be removed once the GoReleaser path is validated.
+The Makefile should stop being the source of truth for production Go release publishing. Release-specific binary and production-image paths should be removed only after GoReleaser parity is validated.
 
-Make remains appropriate for developer convenience, testing, code generation, and small local helper commands, but not for expressing the release graph itself.
+Make remains appropriate for developer convenience, testing, code generation, the Bicep image, and separate-module test images until those paths have an independently justified migration. It should not express the distributed release graph.
 
 ### API design (if applicable)
 
@@ -366,28 +454,31 @@ There is an internal workflow-experience change for maintainers: a helper workfl
 
 #### GitHub workflow changes
 
-The main build workflow is simplified into clear operating modes:
+The current `build.yaml` should be split so ordinary validation and privileged release publication do not share one broad workflow:
 
-- Tag push: run GoReleaser in full release mode.
-- Pull request or branch push: run GoReleaser in snapshot mode.
-- Main branch push: optionally publish `latest` images and edge-oriented outputs.
+- Pull request and merge queue: run `goreleaser check` and snapshot builds without registry or release permissions.
+- Main branch push: run snapshot validation and a separate edge publication job for existing `latest` CLI OCI artifacts, test images, and edge Helm behavior. Edge publication is not part of the release transaction.
+- Release tag push: invoke the resumable release controller, which calls GoReleaser in release mode and holds the GitHub Release as a draft until all gates pass.
+- Manual resume: invoke the same controller with the original version and source commit. Do not provide separate manual tag, image, or GitHub Release workflows that bypass reconciliation.
 
-The workflow is responsible for environment preparation only:
+The GoReleaser job is responsible for environment preparation only:
 
 - Checking out the repository with full git history.
 - Setting up Go, QEMU, Buildx, and registry credentials.
 - Computing release metadata.
 - Loading prepared release notes when the selected versioning workflow provides them.
 - Invoking GoReleaser.
-- Uploading snapshot artifacts where later jobs need them.
+- Uploading GoReleaser metadata and snapshot artifacts where later jobs need them.
 
-This is consistent with the design principle that GitHub workflows should primarily handle setup, identity, and orchestration rather than encode the release logic itself.
+The controller owns orchestration and verification but not build recipes. Its release-level concurrency never cancels an in-progress tagged release.
 
 #### Version-preparation workflow
 
-If Radius adopts automatic or advisory version selection, a separate workflow runs before the tagged release. Depending on the chosen approach, it parses commit metadata, batches change fragments, or evaluates pull request labels. It must produce a reviewable version and changelog proposal, permit an explicit maintainer override, and create the approved tag only after required checks pass.
+If Radius adopts automatic or advisory version selection, a separate workflow runs before the tagged release. Depending on the chosen approach, it parses commit metadata, batches change fragments, or evaluates pull request labels. It must produce a reviewable version, changelog proposal, and `versions.yaml` update, permit an explicit maintainer override, and bind the approved result to a source commit.
 
-The version-preparation workflow does not build release artifacts or create the GitHub Release. It passes the tag and optional release-note file to the existing tag-driven boundary. This avoids coupling GoReleaser configuration to the selected input model and prevents two tools from racing to create or overwrite the same GitHub Release.
+For first RCs, automation creates the release branch from the approved `main` commit. For later RCs, final releases, and patches, automation opens or updates a backport PR against the existing release branch instead of asking a release engineer to copy commit hashes and run `git cherry-pick`. The merge commit of that PR becomes the planned source commit.
+
+The version-preparation workflow does not build release artifacts or create the GitHub Release. It hands the approved plan to the tag-driven boundary. This avoids coupling GoReleaser configuration to the selected input model and prevents two tools from racing to create or overwrite the same GitHub Release.
 
 Automated tag creation must also preserve the workflow handoff. Events caused by the default GitHub Actions `GITHUB_TOKEN` do not start another workflow, so the implementation must either use a narrowly scoped GitHub App or fine-grained token that can trigger the tag workflow, or invoke the GoReleaser job directly in the same trusted workflow after tag creation.
 
@@ -396,13 +487,14 @@ Automated tag creation must also preserve the workflow handoff. Events caused by
 The GoReleaser configuration becomes the main declarative specification for:
 
 - Build matrix.
-- Archive naming.
+- Raw release-asset naming.
 - Checksums.
-- Docker image definitions and manifest lists.
-- GitHub Release metadata.
+- Production Docker image definitions, immutable tags, and manifest lists.
+- Draft GitHub Release metadata and resumable artifact upload behavior.
 - Changelog fallback grouping and externally prepared release-note input.
+- Retry policy and generated artifact metadata.
 
-Version metadata previously computed in Python and Make is injected through environment variables and git-derived fields already available to GoReleaser. The approved tag remains authoritative if a proposed version, changelog heading, or metadata file disagrees.
+Version metadata previously computed independently in Python and Make is calculated once from the approved tag and release plan, then injected through GoReleaser templates and environment variables. The approved tag and source commit remain authoritative if a changelog heading or metadata file disagrees.
 
 #### Dockerfiles and runtime parity
 
@@ -417,7 +509,7 @@ Preserving runtime parity is a migration requirement, not an optional cleanup it
 
 #### `versions.yaml`
 
-`versions.yaml` remains in the repository as documentation of supported versions and channels, but it is demoted from automation trigger to post-release metadata. A successful release can open an automated pull request to update the file rather than making the file control the release.
+`versions.yaml` remains in the repository as supported-version and channel metadata, but it is demoted from automation trigger to an output of release preparation. The preparation PR updates it and the release controller validates that the planned version is represented before creating the tag.
 
 This is a cleaner separation of concerns and reduces failure modes caused by mixing documentation intent with automation control.
 
@@ -425,44 +517,43 @@ This is a cleaner separation of concerns and reduces failure modes caused by mix
 
 The existing release documentation in the main Radius repository should be updated after implementation to reflect the new process. The long manual checklist can be reduced to:
 
-- prepare release branch if needed,
-- review or prepare the proposed version and release notes,
-- approve, create, or push the release tag,
-- monitor the build and release workflow,
-- monitor the post-release coordination workflow,
-- run release verification,
-- handle any downstream approvals that remain intentionally separate.
+- review the generated release PR, source commit, version, and release notes,
+- approve the release environment when required,
+- monitor one release summary and use `Resume Release` when automation identifies a retryable failure,
+- review automated verification and downstream coordination results,
+- use the documented break-glass workflow only for exceptional recovery.
 
 ### Error Handling
 
-The new design should treat the following failure modes explicitly:
+The publication gate defines mandatory and optional work explicitly. Production Radius images, CLI assets and checksums, the Helm chart, dashboard, Deployment Engine, Bicep outputs, release notes, and install verification are mandatory. Docs, samples, announcements, and metadata synchronization after publication are retryable post-release work unless the release policy promotes one of them to a mandatory gate.
 
-- Invalid version tag: the helper workflow validates semantic version format before tag creation.
-- Missing or contradictory release intent: the version-preparation check reports the pull requests with absent fragments, invalid commit types, missing labels, or conflicting bump signals according to the selected approach.
-- Version mismatch: the release stops if the approved tag, generated changelog section, and computed channel metadata refer to different versions.
-- Missing git history: release jobs must use full fetch depth because GoReleaser depends on tag and commit metadata.
-- Image publication failure for a single architecture: the release job fails fast and does not silently publish partial manifests.
-- Changelog classification gaps: unclassified entries fall into a default group rather than failing the release.
-- Duplicate release ownership: exactly one component creates the tag and GoReleaser alone creates the GitHub Release; preparation tools only update reviewable files and metadata.
-- Post-release coordination failure: the release remains published, but follow-on jobs surface actionable failures with clear workflow summaries.
-- External-dispatch failure: downstream repository dispatch and monitoring steps report explicit failure rather than relying on manual polling.
+GoReleaser failure leaves the release draft reusable. An image or chart failure leaves immutable successful outputs in place and the next run verifies them before rebuilding. A downstream timeout does not imply failure or trigger an immediate duplicate dispatch; the controller locates the correlated run and destination first. Diagnostic log collection may use `continue-on-error`, but mandatory build, monitor, and verification steps may not.
 
-The workflow summary should provide a concise status report so release engineers can see which stage failed without reading every job log in detail.
+If finalization fails after some channel aliases move, the release remains draft. Resume verifies every alias against the release manifest and completes promotion before publishing the GitHub Release. If failure occurs after the GitHub Release is public, automation does not delete it; it retries optional coordination, or maintainers issue a corrected release when an immutable mandatory artifact is wrong.
+
+Every error summary includes the release identifier, planned source commit, stage, retryability, expected state, observed state, completed stages, and recovery action. This replaces instructions that require maintainers to infer recovery from job ordering.
 
 ## Test plan
 
 The migration should be validated in phases.
 
 - Compare current and proposed outputs for at least one RC-style build and one final release candidate in a dry-run or staging branch.
+- Capture a parity manifest from the current workflow containing all raw CLI asset names, sidecar checksums, Go version fields, production and test image names, platforms and tags, Helm metadata, release-note behavior, and downstream outputs. Treat an unexplained difference as a migration failure.
 - Replay a representative historical release through each shortlisted versioning approach and compare the proposed bump, included notable changes, category accuracy, and required manual corrections.
 - Test patch, minor, breaking, no-release, revert, prerelease, and manual-override cases, including the documented mapping for Radius `0.x` releases.
 - Verify that `CHANGELOG.md` retains an `Unreleased` section, expected Keep a Changelog categories, release dates, and comparison links, and that the same release section appears in the GitHub Release notes.
-- Run `goreleaser check` and `goreleaser release --snapshot --clean` locally and in CI to validate configuration, archive layout, and image definitions.
+- Run `goreleaser check` and `goreleaser release --snapshot --clean` locally and in CI to validate configuration, raw asset layout, and image definitions.
 - Verify that release metadata injected into binaries still reports the expected version, channel, commit, and chart version fields.
 - Verify that published container images preserve runtime behavior, base-image assumptions, and required files.
-- Validate that the GitHub Release contains the expected archives, checksums, notes, and prerelease/final classification.
+- Validate that immutable image tags contain every expected platform, channel aliases resolve to the recorded digests, and final or patch Helm charts install immutable image versions.
+- Validate that the GitHub Release contains the expected raw binaries, checksums, notes, and prerelease/final classification.
 - Validate that main-branch snapshot flows still provide the artifacts required by functional tests and edge publication.
-- Validate that post-release workflows still tag sibling repositories, dispatch external publication, and update `versions.yaml` as expected.
+- Validate that the controller reconciles sibling tags, correlates required external publication, and verifies the prepared `versions.yaml` metadata before creating the Radius tag.
+- Inject a failure after every transaction stage and rerun `Resume Release`; confirm completed state is accepted, missing state is repaired, conflicting state stops, and no duplicate remote dispatch or tag is created.
+- Simulate `429`, `5xx`, network timeout, registry push interruption, and a remote workflow that starts after the first monitoring timeout; confirm bounded retries and exact release-ID correlation.
+- Start two releases for the same version and source commit and confirm one queues or reconciles without cancellation. Start a conflicting version/source pair and confirm it is rejected.
+- Confirm that a failure before finalization leaves the GitHub Release draft, leaves channel aliases unchanged, and provides actionable resume inputs.
+- Confirm all monitor and retry budgets fit within their enclosing job timeouts.
 - Run the existing release verification workflow against a migrated RC and final release before deprecating the old process.
 
 ## Security
@@ -487,9 +578,10 @@ The intended compatibility goal is no user-visible change to how Radius release 
 
 Compatibility requirements:
 
-- Preserve existing binary names and operating-system coverage.
+- Preserve existing raw binary names, executable suffixes, sidecar checksums, and operating-system coverage.
 - Preserve current release channel behavior for tagged releases.
-- Preserve production image names and major tag conventions.
+- Preserve production image names and channel tags while adding immutable full-version tags.
+- Preserve Helm chart names and versions, and verify that a final or patch chart installs immutable image versions.
 - Preserve RC versus final release semantics.
 
 The main compatibility change is internal: release engineers will no longer use `versions.yaml` edits as the release trigger, and documentation must be updated accordingly.
@@ -500,50 +592,63 @@ The primary observability surface for this design is GitHub Actions.
 
 Recommended instrumentation and diagnostics:
 
-- Step summaries in build and coordination workflows.
-- Explicit logging of computed release metadata.
-- Clear GoReleaser output retention in workflow logs.
-- Release-coordination logs for sibling repository tagging and downstream dispatch.
-- Continued use of the existing release verification workflow as an operational validation step.
+- A single release summary keyed by version and source commit with one row for every planned output.
+- Explicit logging of planned and observed release metadata, tag targets, image digests, and channel aliases.
+- GoReleaser `artifacts.json`, `metadata.json`, and the generated release manifest retained as workflow artifacts and attached to the draft release where appropriate.
+- Exact remote workflow identifiers and URLs for sibling and downstream publication.
+- Automated pre-publication installation verification plus the existing post-publication release verification during migration.
 
 For troubleshooting, maintainers should be able to answer these questions quickly:
 
 - Was the tag valid and fetched correctly?
+- Which release-plan source commit does every repository tag reference?
 - Did GoReleaser build all expected artifacts?
-- Which image architecture, if any, failed?
-- Was the GitHub Release created?
-- Did downstream coordination complete or fail?
+- Do all immutable images and channel aliases resolve to the expected platform digests?
+- Is the GitHub Release absent, draft, or published?
+- Which mandatory or optional downstream stage is pending, running, failed, or complete?
+- Is the failure retryable, and which `Resume Release` inputs should be used?
 
 ## Development plan
 
 The work should be delivered in phases.
 
-### Phase 1: Introduce GoReleaser configuration
+### Phase 1: Capture compatibility and add snapshot validation
 
+- Generate a machine-readable parity manifest from a current RC and final release.
 - Add `.goreleaser.yaml` for the six production Go binaries.
-- Add archive, checksum, changelog fallback, external release-note input, and release configuration.
+- Add raw asset naming, checksums, production `dockers_v2` images, changelog fallback, external release-note input, retry policy, and draft release configuration.
 - Add GoReleaser-specific Dockerfiles where needed.
+- Run GoReleaser only in check and snapshot mode and compare every output to the parity manifest.
 - Define the Keep a Changelog output contract and compare the shortlisted version-selection approaches with historical release data.
 
-### Phase 2: Migrate the main build workflow
+### Phase 2: Stage core releases with GoReleaser
 
-- Replace the current custom release logic in `build.yaml` with GoReleaser release and snapshot modes.
+- Use GoReleaser for tagged Go builds, immutable production images, checksums, and a draft GitHub Release.
+- Keep the current publisher as the production path during an RC shadow run and compare outputs and timings.
+- Enable draft reuse, deterministic artifact replacement, and bounded retries; prove reruns after injected failures.
 - Preserve artifact upload points needed by tests and edge publication.
-- Validate that PR and main-branch scenarios still work.
+- Keep main `latest`, Bicep, test-image, and Helm behavior separate until their parity checks pass.
 
-### Phase 3: Add post-release coordination workflow
+### Phase 3: Add the resumable release controller
 
-- Trigger sibling repository tagging, external dispatch, and downstream notifications from the published GitHub Release event.
-- Demote `versions.yaml` to documentation and update it through an automated pull request.
+- Introduce the immutable release plan, release-level concurrency, preflight checks, and branch and tag reconciliation.
+- Add stable release identifiers to external dispatch payloads and remote workflow run names.
+- Reorder prerequisites so required sibling tags and Deployment Engine publication complete before the Radius tag.
+- Add the `Resume Release` workflow and prove recovery from partial cross-repository state.
+- Stop using `versions.yaml` changes as the trigger while retaining the file as prepared supported-version metadata.
 
-### Phase 4: Remove obsolete custom logic
+### Phase 4: Add the publication gate
 
-- Remove obsolete Make includes and version-parsing scripts.
-- Reduce release documentation to the new tag-driven process.
-- Keep only developer-centric Make targets that still provide local value.
+- Correlate and verify Helm, Bicep, dashboard, Deployment Engine, and sibling outputs.
+- Generate and validate the release manifest, automate staged installation verification, and promote channel aliases from immutable digests.
+- Publish the draft GitHub Release only after mandatory gates pass.
+- Trigger and monitor docs and samples as independently retryable post-release work.
 
-### Phase 5: Follow-up hardening
+### Phase 5: Remove obsolete release logic and harden
 
+- Remove superseded production Go build, image, checksum, and GitHub Release paths from Make, Python, shell, and `build.yaml`.
+- Retain developer, Bicep, and separate-module test targets that still have owners and consumers.
+- Replace the manual release checklist with approval, monitoring, resume, and break-glass procedures.
 - Adopt and enforce the selected changelog input policy, including an explicit exemption for changes that do not need release notes.
 - Add automatic version proposals only after the team validates the `0.x`, release-branch, RC, revert, and override behavior.
 - Evaluate signing, SBOM, and attestation additions.
@@ -553,18 +658,21 @@ The work should be delivered in phases.
 
 - Should the initial migration include SBOM generation, or should that remain a follow-up once the core release path is stable?
 - Which source of release intent should Radius adopt: Conventional Commits, Changie-style fragments, pull request labels, or manual curation?
-- Should version automation create the tag automatically, or only propose a version in a release pull request for maintainer approval?
+- Should version automation only propose the release PR, or also request publication after the PR and release environment are approved?
 - If Radius selects Conventional Commits, should Release Please maintain the reviewable release pull request, and should enforcement apply only to squash-merge pull request titles?
 - If Radius selects change fragments, should it adopt Changie or accept the additional package-oriented behavior and Node dependency of Changesets?
 - How should patch, minor, and breaking signals map to Radius `0.x` versions, scheduled release channels, and successive RC tags?
 - Is `CHANGELOG.md` the canonical source rendered into GitHub Releases, or are GitHub Release notes canonical with a generated portable changelog?
-- Should the test-module binaries (`testrp`, `magpiego`) receive their own GoReleaser configuration immediately or remain on separate build logic for now?
+- Which outputs are mandatory publication gates, and may policy distinguish RCs from final and patch releases?
+- Should the test-module images (`testrp`, `magpiego`) retain release-channel tags or move entirely to test-specific tags after consumers are inventoried?
 - Should the Helm chart remain a dedicated workflow permanently, or should it later move to a more integrated release path?
 - Should the Bicep image stay outside GoReleaser indefinitely because it is an externally downloaded artifact, or should it eventually adopt a related release automation path?
-- Can the official release job switch from a long-lived PAT to an alternative identity model without losing required GitHub Release behavior?
+- Can Deployment Engine tag signing move from a maintainer workstation to an automated verified-tag mechanism so the last manual prerequisite is removed?
+- Should the first implementation use one GoReleaser runner for simplicity, or evaluate split and merge only after the selected GoReleaser edition and artifact handoff are proven?
+- Should main-branch `latest` publication remain a separate edge workflow permanently, or adopt GoReleaser nightly behavior after release parity is complete?
 
 ## Alternatives considered
 
 - Keep the current custom release stack and optimize individual workflows. Rejected because it does not address the structural problem of duplicated and fragmented release logic.
-- Use GoReleaser only for CLI archives. Rejected because it captures only a small portion of the maintenance savings and leaves image and release orchestration complexity largely unchanged.
-- Move every release-related activity into GoReleaser immediately. Rejected because some cross-repository and non-Go operations are better modeled as follow-on workflows reacting to a published release.
+- Use GoReleaser only for CLI binaries. Rejected because it captures only a small portion of the maintenance savings and leaves production image and release publication complexity largely unchanged.
+- Move every release-related activity into GoReleaser hooks. Rejected because cross-repository tags, Helm, external workflows, and recovery need independently observable and resumable orchestration rather than one-shot hooks.
