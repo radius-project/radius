@@ -33,7 +33,7 @@ Within the template is the `## Full changelog` section, which is a complete list
 To populate the release notes:
 
 1. Open a pull request against `main` containing the final version update in `versions.yaml` and the draft release notes file.
-2. Wait for the [Release Radius workflow](../../.github/workflows/release.yaml) to post the **Release Information** comment on the pull request.
+2. Wait for the [Release Radius workflow](https://github.com/radius-project/radius/actions/workflows/release.yaml) to post the **Release Information** comment on the pull request.
 3. Copy the contents under `## What's Changed` and `## New Contributors` from the comment into the corresponding sections in the release notes file. Do not copy the headings because they already exist in the template.
 4. Commit and push the completed release notes to the same pull request.
 
