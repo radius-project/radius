@@ -44,8 +44,17 @@ jobs:
         id: verify
         run: |
           unverified_commits="$(./.github/scripts/verify-commit-signatures.sh)"
+          count="$(jq 'length' <<< "${unverified_commits}")"
+
+          if [[ "${count}" == "0" ]]; then
+            echo "All pull request commits have Verified signatures."
+          else
+            printf 'Found %s commit(s) without Verified signatures:\n' "${count}"
+            jq -r '.[] | "- \(.[0:7])"' <<< "${unverified_commits}"
+          fi
+
           printf 'unverified_commits=%s\n' "${unverified_commits}" >> "${GITHUB_OUTPUT}"
-          printf 'count=%s\n' "$(jq 'length' <<< "${unverified_commits}")" >> "${GITHUB_OUTPUT}"
+          printf 'count=%s\n' "${count}" >> "${GITHUB_OUTPUT}"
 
       - name: Prepare signature guidance
         if: steps.verify.outputs.count != '0'
