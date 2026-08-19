@@ -42,8 +42,8 @@ env:
   # ${{ vars.RADIUS_BUILD_PLATFORMS || 'linux/amd64,linux/arm64' }}. When a
   # template does not opt in, the unsubstituted placeholder disables the feature
   # and the containerImages recipe's default platforms apply (existing behavior).
-  TARGET_CLUSTER_ARCH_MODE: '{{TARGET_CLUSTER_ARCH_MODE}}'
-  TARGET_CLUSTER_ARCH_FALLBACK_PLATFORMS: '{{TARGET_CLUSTER_ARCH_FALLBACK_PLATFORMS}}'
+  TARGET_CLUSTER_ARCH_MODE: "{{TARGET_CLUSTER_ARCH_MODE}}"
+  TARGET_CLUSTER_ARCH_FALLBACK_PLATFORMS: "{{TARGET_CLUSTER_ARCH_FALLBACK_PLATFORMS}}"
 
 jobs:
   deploy:
