@@ -458,6 +458,40 @@ func TestBuildModeledGraph_NilPropertiesWhenAuthoredIsEmpty(t *testing.T) {
 	require.Nil(t, graph.Resources[0].Properties)
 }
 
+func TestBuildModeledGraph_OmitsContainerEnvironment(t *testing.T) {
+	t.Parallel()
+
+	properties := map[string]any{
+		"application": "app-id",
+		"containers": map[string]any{
+			"frontend": map[string]any{
+				"image": "frontend:latest",
+				"env":   map[string]any{"PUBLIC_VALUE": "visible", "PASSWORD": "secret"},
+			},
+		},
+	}
+	template := map[string]any{
+		"resources": []any{
+			map[string]any{
+				"type":       "Radius.Compute/containers",
+				"name":       "frontend",
+				"properties": properties,
+			},
+		},
+	}
+
+	graph, err := BuildModeledGraph(template, false)
+	require.NoError(t, err)
+	require.Len(t, graph.Resources, 1)
+	containers := graph.Resources[0].Properties["containers"].(map[string]any)
+	frontend := containers["frontend"].(map[string]any)
+	require.NotContains(t, frontend, "env")
+	require.Equal(t, "frontend:latest", frontend["image"])
+
+	originalContainers := properties["containers"].(map[string]any)
+	require.Contains(t, originalContainers["frontend"].(map[string]any), "env")
+}
+
 // TestBuildModeledGraph_SecureStringDirectReference is the base case
 // for rule A: a property value that is exactly `[parameters('name')]`
 // where the referenced parameter is `secureString` gets nulled, while a

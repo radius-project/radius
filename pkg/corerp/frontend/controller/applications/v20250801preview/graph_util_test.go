@@ -163,3 +163,36 @@ func Test_computeGraph_MergesDependsOnEdges(t *testing.T) {
 		}
 	})
 }
+
+func Test_computeGraph_OmitsContainerEnvironment(t *testing.T) {
+	t.Parallel()
+
+	const (
+		containerID = "/planes/radius/local/resourceGroups/default/providers/Radius.Compute/containers/frontend"
+		appID       = "/planes/radius/local/resourceGroups/default/providers/Radius.Core/applications/myapp"
+	)
+	properties := map[string]any{
+		"application": appID,
+		"containers": map[string]any{
+			"frontend": map[string]any{
+				"image": "frontend:latest",
+				"env":   map[string]any{"PASSWORD": "secret"},
+			},
+		},
+	}
+	graph := computeGraph([]generated.GenericResource{{
+		ID:         to.Ptr(containerID),
+		Name:       to.Ptr("frontend"),
+		Type:       to.Ptr("Radius.Compute/containers"),
+		Properties: properties,
+	}}, nil, "", nil)
+
+	require.Len(t, graph.Resources, 1)
+	containers := graph.Resources[0].Properties["containers"].(map[string]any)
+	frontend := containers["frontend"].(map[string]any)
+	require.NotContains(t, frontend, "env")
+	require.Equal(t, "frontend:latest", frontend["image"])
+
+	originalContainers := properties["containers"].(map[string]any)
+	require.Contains(t, originalContainers["frontend"].(map[string]any), "env")
+}

@@ -77,7 +77,7 @@ runs:
         # Resolve the app name from the app bicep file first (same pattern used
         # elsewhere in the run-rad-commands action), with a fallback to `rad app
         # list` when the file doesn't contain a simple literal name.
-        APP_NAME=$(grep -oP "name:\s*'\K[^']+" "$APP_FILE" 2>/dev/null | head -1 || true)
+        APP_NAME=$(sed -nE "s/.*name:[[:space:]]*'([^']+)'.*/\1/p" "$APP_FILE" 2>/dev/null | head -1 || true)
         APP_NAME_FROM_LITERAL=1
         if [ -z "$APP_NAME" ]; then
           APP_NAME_FROM_LITERAL=0
@@ -139,12 +139,13 @@ runs:
         # still recover if that mapping goes stale. Unknown states normalize to
         # in_progress, never failed, so a new Radius state cannot paint a node red.
         #
-        # `rad resource list -o json` marshals []generated.GenericResource directly
-        # (pkg/cli/cmd/resource/list/list.go), so the payload is a bare array with
-        # no object wrapper - iterate it with `.[]?` and nothing else.
+        # `rad resource list --preview -o json` marshals
+        # []generated.GenericResource directly, so the payload is a bare array
+        # with no object wrapper - iterate it with `.[]?` and nothing else.
         RESOURCES_JSON="[]"
-        if RAW_RESOURCES=$(rad resource list -a "$APP_NAME" -o json 2>/dev/null); then
-          RESOURCES_JSON=$(printf '%s' "$RAW_RESOURCES" | jq -c '
+        RESOURCE_STDERR=$(mktemp)
+        if RAW_RESOURCES=$(rad resource list --preview -a "$APP_NAME" -o json 2> "$RESOURCE_STDERR"); then
+          if ! RESOURCES_JSON=$(printf '%s' "$RAW_RESOURCES" | jq -c '
             [ .[]? | {
                 id: (.id // ""),
                 name: (.name // ""),
@@ -158,9 +159,16 @@ runs:
                     end
                 ),
                 message: (.properties.status.message // "")
-              } ]' 2>/dev/null) || RESOURCES_JSON="[]"
+              } ]' 2>/dev/null); then
+            echo "::warning::rad resource list --preview returned invalid JSON; deploy progress will contain no resources."
+            RESOURCES_JSON="[]"
+          fi
+        else
+          RESOURCE_ERROR=$(tr '\r\n' '  ' < "$RESOURCE_STDERR" | cut -c1-500)
+          RESOURCE_ERROR=$(escape_workflow_command "${RESOURCE_ERROR:-unknown error}")
+          echo "::warning::rad resource list --preview failed; deploy progress will contain no resources. ${RESOURCE_ERROR}"
         fi
-        [ -n "$RESOURCES_JSON" ] || RESOURCES_JSON="[]"
+        [[ -n "$RESOURCES_JSON" ]] || RESOURCES_JSON="[]"
 
         jq -n \
           --argjson resources "$RESOURCES_JSON" \

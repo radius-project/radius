@@ -223,6 +223,10 @@ case "${1:-} ${2:-}" in
         printf '[{"name":"%s"}]\n' "${RAD_APP_LIST_NAME-fallback-app}"
         ;;
     "resource list")
+        if [[ " $* " != *" --preview "* ]]; then
+            echo "rad: resource list must use --preview" >&2
+            exit 64
+        fi
         if [[ "${RAD_RESOURCE_LIST_SHOULD_FAIL:-false}" == "true" ]]; then
             echo "rad: could not reach the control plane" >&2
             exit 1
@@ -531,6 +535,9 @@ assert_status_file_contains "deploy-state.txt" "state=success"
 assert_status_file_contains "deploy-state.txt" "application=todolist"
 assert_status_file_contains "deploy-state.txt" "sha=deadbeefcafe"
 assert_status_file_contains "deploy-graph.json" "Radius.Compute/containers"
+jq -e 'all(.resources[]?; (.properties.containers // {}) |
+    all(.[]?; has("env") | not))' "${STATUS_DIR}/deploy-graph.json" >/dev/null ||
+    fail "deploy-graph.json must not contain container environment maps"
 assert_status_files_differ "deploy-progress.json" "deploy-activity.log"
 assert_status_files_differ "deploy-progress.json" "deploy-controlplane.log"
 assert_status_files_differ "deploy-activity.log" "deploy-controlplane.log"
@@ -561,6 +568,8 @@ assert_status_dir_contains_exactly "${EXPECTED_STATUS_FILES}"
 assert_progress_contract
 progress_jq '.resources == []' ||
     fail "expected an empty .resources array when rad resource list fails"
+assert_output_contains "::warning::rad resource list --preview failed; deploy progress will contain no resources."
+assert_output_contains "rad: could not reach the control plane"
 
 # ---------------------------------------------------------------------------
 # Non-ASCII application names must sanitize to a valid artifact name.
@@ -710,5 +719,7 @@ grep -q "LC_ALL=C tr" "${BODY_SCRIPT}" ||
     fail "artifact name sanitization must lowercase under LC_ALL=C"
 grep -q "LC_ALL=C sed" "${BODY_SCRIPT}" ||
     fail "artifact name sanitization must strip invalid bytes under LC_ALL=C"
+grep -q 'rad resource list --preview -a "$APP_NAME" -o json' "${BODY_SCRIPT}" ||
+    fail "deploy progress must list Radius.Core resources with --preview"
 
 echo "publish-deploy-status tests passed"
