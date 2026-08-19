@@ -167,7 +167,7 @@ The current implementation is split between `release.yaml`, `build.yaml`, Make, 
 2. After merge, `release.yaml` checks out `radius`, `recipes`, `dashboard`, and `bicep-types-aws`. It creates release branches where absent and pushes the same tag to each repository sequentially using a GitHub App token. It then dispatches and monitors Deployment Engine image publication.
 3. The Radius tag push starts `build.yaml`. Seven matrix jobs each call the broad `make build` target to produce the platform-specific `rad` asset. Another job calls Make and Buildx to publish eight images: five production Go images, two test images, and the externally downloaded Bicep image.
 4. Separate jobs package and push the Helm chart, dispatch Bicep type publication, and create the GitHub Release. RC notes come from GitHub-generated notes; final and patch notes come from the checked-in release-note file.
-5. Release engineers manually tag Deployment Engine, run release verification, coordinate docs and samples upmerges and releases, and manually resume failed downstream work.
+5. Release engineers manually tag Deployment Engine, run release verification, coordinate docs and samples upmerge and releases, and manually resume failed downstream work.
 
 The implementation has useful safeguards, including GitHub App identities, semantic-version validation, release-note checks, tag-existence checks, job timeouts, and remote workflow monitoring. It also has structural failure modes that the migration must remove:
 
