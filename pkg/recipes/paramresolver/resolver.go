@@ -280,6 +280,10 @@ func buildContextLookup(ctx *recipecontext.Context) map[string]string {
 		for propKey, propVal := range conn.Properties {
 			lookup[fmt.Sprintf("%s.properties.%s", prefix, propKey)] = fmt.Sprintf("%v", propVal)
 		}
+		for secretKey, secretRef := range conn.Secrets {
+			lookup[fmt.Sprintf("%s.secrets.%s.source", prefix, secretKey)] = secretRef.Source
+			lookup[fmt.Sprintf("%s.secrets.%s.key", prefix, secretKey)] = secretRef.Key
+		}
 	}
 
 	return lookup
@@ -304,6 +308,10 @@ func buildTypedContextLookup(ctx *recipecontext.Context) map[string]any {
 		prefix := fmt.Sprintf("context.resource.connections.%s", connName)
 		for propKey, propVal := range conn.Properties {
 			typed[fmt.Sprintf("%s.properties.%s", prefix, propKey)] = propVal
+		}
+		for secretKey, secretRef := range conn.Secrets {
+			typed[fmt.Sprintf("%s.secrets.%s.source", prefix, secretKey)] = secretRef.Source
+			typed[fmt.Sprintf("%s.secrets.%s.key", prefix, secretKey)] = secretRef.Key
 		}
 	}
 

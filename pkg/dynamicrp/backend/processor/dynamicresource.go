@@ -52,13 +52,9 @@ func (d *DynamicProcessor) Delete(ctx context.Context, resource *datamodel.Dynam
 	if d.SecretMaterializer == nil {
 		return nil
 	}
-	// Only resources that materialized a managed secret carry the secret reference; skip the delete call
-	// otherwise to avoid spurious requests.
-	secrets, ok := resource.Properties[schemautil.SecretsBlockPropertyName].(map[string]any)
-	if !ok {
-		return nil
-	}
-	if _, ok := secrets[schemautil.SecretNameReferenceKey]; !ok {
+	// Skip the delete call when neither the current internal references nor the legacy public name indicate
+	// that this resource materialized a managed secret.
+	if !hasManagedSecret(resource) {
 		return nil
 	}
 	return d.SecretMaterializer.Delete(ctx, resource.ID)
@@ -205,8 +201,7 @@ func (d *DynamicProcessor) materializeRecipeSecrets(ctx context.Context, resourc
 	}
 
 	// Expose only the managed secret's name via the reserved `secrets.name` reference. The secret data
-	// keys declared in the block are never populated on the owner. Merge into any existing `secrets`
-	// object so we don't clobber a declared block.
+	// keys declared in the block are never populated on the owner.
 	if resource.Properties == nil {
 		resource.Properties = map[string]any{}
 	}
@@ -215,35 +210,52 @@ func (d *DynamicProcessor) materializeRecipeSecrets(ctx context.Context, resourc
 		secrets = map[string]any{}
 		resource.Properties[schemautil.SecretsBlockPropertyName] = secrets
 	}
+	declaredSecretKeys, _ := schemautil.GetSecretsBlock(schema)
+	for _, key := range declaredSecretKeys {
+		delete(secrets, key)
+	}
 	secrets[schemautil.SecretNameReferenceKey] = result.Name
+
+	references := make(map[string]rpv1.ManagedSecretReference, len(data))
+	for key := range data {
+		references[key] = rpv1.ManagedSecretReference{Source: result.ID, Key: key}
+	}
+	resource.SetManagedSecretReferences(references)
 
 	return nil
 }
 
 // clearStaleManagedSecret cascade-deletes the managed secret an owner materialized on a prior deploy and
-// clears the reserved `secrets.name` reference, when the current update produced no secret outputs. The
-// presence of `properties.secrets.name` is the signal that a managed secret was previously materialized
-// (mirroring the Delete path); if it is absent there is nothing to clean up.
+// clears both internal key references and the public `secrets.name` reference. Internal references are the
+// current lifecycle signal; `properties.secrets.name` remains a fallback for resources persisted by older
+// versions.
 func (d *DynamicProcessor) clearStaleManagedSecret(ctx context.Context, resource *datamodel.DynamicResource) error {
-	secrets, ok := resource.Properties[schemautil.SecretsBlockPropertyName].(map[string]any)
-	if !ok {
-		return nil
-	}
-	if _, ok := secrets[schemautil.SecretNameReferenceKey]; !ok {
-		return nil
-	}
-
-	if d.SecretMaterializer != nil {
+	if hasManagedSecret(resource) && d.SecretMaterializer != nil {
 		if err := d.SecretMaterializer.Delete(ctx, resource.ID); err != nil {
 			return err
 		}
 	}
 
-	delete(secrets, schemautil.SecretNameReferenceKey)
-	if len(secrets) == 0 {
-		delete(resource.Properties, schemautil.SecretsBlockPropertyName)
+	resource.SetManagedSecretReferences(nil)
+	if secrets, ok := resource.Properties[schemautil.SecretsBlockPropertyName].(map[string]any); ok {
+		delete(secrets, schemautil.SecretNameReferenceKey)
+		if len(secrets) == 0 {
+			delete(resource.Properties, schemautil.SecretsBlockPropertyName)
+		}
 	}
 	return nil
+}
+
+func hasManagedSecret(resource *datamodel.DynamicResource) bool {
+	if len(resource.GetManagedSecretReferences()) > 0 {
+		return true
+	}
+	secrets, ok := resource.Properties[schemautil.SecretsBlockPropertyName].(map[string]any)
+	if !ok {
+		return false
+	}
+	_, ok = secrets[schemautil.SecretNameReferenceKey]
+	return ok
 }
 
 // schemaPropertyNames returns the property names declared in the schema, excluding framework-owned basic

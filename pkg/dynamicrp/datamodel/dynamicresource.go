@@ -299,6 +299,7 @@ func (d *DynamicResource) GetSecrets() map[string]rpv1.SecretValueReference {
 	if !ok {
 		return secretsMap
 	}
+
 	for k, v := range secrets {
 		// Handle SecretValueReference structs
 		if secretRef, ok := v.(rpv1.SecretValueReference); ok {
@@ -318,4 +319,55 @@ func (d *DynamicResource) GetSecrets() map[string]rpv1.SecretValueReference {
 	}
 
 	return secretsMap
+}
+
+// GetManagedSecretReferences returns non-sensitive managed secret references from framework-owned status.
+func (d *DynamicResource) GetManagedSecretReferences() map[string]rpv1.ManagedSecretReference {
+	references := map[string]rpv1.ManagedSecretReference{}
+	raw, ok := d.Status()[rpv1.ManagedSecretReferencesStatusKey]
+	if !ok {
+		return references
+	}
+
+	switch values := raw.(type) {
+	case map[string]rpv1.ManagedSecretReference:
+		for key, reference := range values {
+			if reference.Source != "" && reference.Key != "" {
+				references[key] = reference
+			}
+		}
+	case map[string]any:
+		for key, value := range values {
+			if reference, ok := parseManagedSecretReference(value); ok {
+				references[key] = reference
+			}
+		}
+	}
+	return references
+}
+
+// SetManagedSecretReferences atomically replaces framework-owned managed secret references.
+func (d *DynamicResource) SetManagedSecretReferences(references map[string]rpv1.ManagedSecretReference) {
+	status := d.Status()
+	if len(references) == 0 {
+		delete(status, rpv1.ManagedSecretReferencesStatusKey)
+		return
+	}
+
+	status[rpv1.ManagedSecretReferencesStatusKey] = references
+}
+
+func parseManagedSecretReference(value any) (rpv1.ManagedSecretReference, bool) {
+	if reference, ok := value.(rpv1.ManagedSecretReference); ok {
+		return reference, reference.Source != "" && reference.Key != ""
+	}
+
+	raw, ok := value.(map[string]any)
+	if !ok {
+		return rpv1.ManagedSecretReference{}, false
+	}
+	source, sourceOK := raw["source"].(string)
+	key, keyOK := raw["key"].(string)
+	reference := rpv1.ManagedSecretReference{Source: source, Key: key}
+	return reference, sourceOK && keyOK && source != "" && key != ""
 }

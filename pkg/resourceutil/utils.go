@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -142,4 +143,31 @@ func GetAllPropertiesFromResource[P any](resource P) (*ResourceMetadata, error) 
 		Type:       partialResource.Type,
 		Properties: partialResource.Properties,
 	}, nil
+}
+
+// GetManagedSecretReferences returns valid non-sensitive managed secret references from resource properties.
+func GetManagedSecretReferences(properties map[string]any) map[string]rpv1.ManagedSecretReference {
+	references := map[string]rpv1.ManagedSecretReference{}
+	status, ok := properties["status"].(map[string]any)
+	if !ok {
+		return references
+	}
+	values, ok := status[rpv1.ManagedSecretReferencesStatusKey].(map[string]any)
+	if !ok {
+		return references
+	}
+
+	for name, value := range values {
+		raw, ok := value.(map[string]any)
+		if !ok {
+			continue
+		}
+		source, sourceOK := raw["source"].(string)
+		key, keyOK := raw["key"].(string)
+		if !sourceOK || !keyOK || source == "" || key == "" {
+			continue
+		}
+		references[name] = rpv1.ManagedSecretReference{Source: source, Key: key}
+	}
+	return references
 }

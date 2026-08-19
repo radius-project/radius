@@ -292,17 +292,12 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 			return nil, fmt.Errorf("failed to get connected resource %s: %w", connectedResourceID, err)
 		}
 
-		connectedResourceMetadata, err := resourceutil.GetAllPropertiesFromResource(connectedResource.Data)
+		connectedResourceMetadata, err := buildConnectedResource(connectedResource.Data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get metadata from connected resource %s: %w", connectedResourceID, err)
 		}
 
-		connectedResourcesMetadata[connName] = recipes.ConnectedResource{
-			ID:         connectedResourceMetadata.ID,
-			Name:       connectedResourceMetadata.Name,
-			Type:       connectedResourceMetadata.Type,
-			Properties: connectedResourceMetadata.Properties,
-		}
+		connectedResourcesMetadata[connName] = connectedResourceMetadata
 	}
 
 	metadata := recipes.ResourceMetadata{
@@ -322,6 +317,20 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 		PreviousState: prevState,
 		Simulated:     simulated,
 	})
+}
+
+func buildConnectedResource(resource any) (recipes.ConnectedResource, error) {
+	metadata, err := resourceutil.GetAllPropertiesFromResource(resource)
+	if err != nil {
+		return recipes.ConnectedResource{}, err
+	}
+	return recipes.ConnectedResource{
+		ID:         metadata.ID,
+		Name:       metadata.Name,
+		Type:       metadata.Type,
+		Properties: metadata.Properties,
+		Secrets:    resourceutil.GetManagedSecretReferences(metadata.Properties),
+	}, nil
 }
 
 func getResourceAPIVersion[P rpv1.RadiusResourceModel](resource P) string {

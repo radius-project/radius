@@ -132,6 +132,35 @@ var successProcessorReference = processors.ResourceProcessor[*TestResource, Test
 type ErrorProcessor struct {
 }
 
+func TestBuildConnectedResource_ManagedSecretReferences(t *testing.T) {
+	data := map[string]any{
+		"id":   "resource-id",
+		"name": "resource-name",
+		"type": "Applications.Test/resources",
+		"properties": map[string]any{
+			"host": "example.com",
+			"status": map[string]any{
+				"secretReferences": map[string]any{
+					"url":       map[string]any{"source": "secret-id", "key": "url"},
+					"malformed": map[string]any{"source": "secret-id"},
+				},
+			},
+		},
+	}
+
+	connected, err := buildConnectedResource(data)
+	require.NoError(t, err)
+	require.Equal(t, data["properties"], connected.Properties)
+	require.Equal(t, map[string]rpv1.ManagedSecretReference{
+		"url": {Source: "secret-id", Key: "url"},
+	}, connected.Secrets)
+
+	delete(data["properties"].(map[string]any), "status")
+	connected, err = buildConnectedResource(data)
+	require.NoError(t, err)
+	require.Empty(t, connected.Secrets)
+}
+
 // Process always returns a processorErr.
 func (p *ErrorProcessor) Process(ctx context.Context, data *TestResource, options processors.Options) error {
 	return errProcessor

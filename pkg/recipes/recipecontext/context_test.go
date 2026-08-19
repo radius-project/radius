@@ -17,10 +17,12 @@ limitations under the License.
 package recipecontext
 
 import (
+	"encoding/json"
 	"testing"
 
 	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 
 	"github.com/stretchr/testify/require"
 )
@@ -384,6 +386,20 @@ func TestNewContext_WithConnectedResources(t *testing.T) {
 		"host": "cache-host",
 		"port": 6379,
 	}, cacheConn.Properties)
+
+	result.Resource.Connections = testMetadata.ConnectedResourcesProperties
+	result.Resource.Connections["database"] = recipes.ConnectedResource{
+		ID:         dbConn.ID,
+		Name:       dbConn.Name,
+		Type:       dbConn.Type,
+		Properties: dbConn.Properties,
+		Secrets: map[string]rpv1.ManagedSecretReference{
+			"password": {Source: "secret-id", Key: "password"},
+		},
+	}
+	data, err := json.Marshal(result)
+	require.NoError(t, err)
+	require.Contains(t, string(data), `"secrets":{"password":{"source":"secret-id","key":"password"}}`)
 }
 
 func TestNewContext_AzureProviderWithResourceGroup(t *testing.T) {

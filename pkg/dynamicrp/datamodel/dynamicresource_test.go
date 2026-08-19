@@ -546,3 +546,34 @@ func Test_DynamicResource_GetSecrets(t *testing.T) {
 		})
 	}
 }
+
+func Test_DynamicResource_ManagedSecretReferences(t *testing.T) {
+	resource := DynamicResource{Properties: map[string]any{
+		"status": map[string]any{
+			"secretReferences": map[string]any{
+				"url":       map[string]any{"source": "secret-id", "key": "url"},
+				"malformed": map[string]any{"source": "secret-id"},
+			},
+			"secrets": map[string]any{
+				"legacy": map[string]any{"Value": "plaintext"},
+			},
+		},
+	}}
+
+	require.Equal(t, map[string]rpv1.ManagedSecretReference{
+		"url": {Source: "secret-id", Key: "url"},
+	}, resource.GetManagedSecretReferences())
+	require.Equal(t, map[string]rpv1.SecretValueReference{
+		"legacy": {Value: "plaintext"},
+	}, resource.GetSecrets())
+
+	resource.SetManagedSecretReferences(map[string]rpv1.ManagedSecretReference{
+		"password": {Source: "new-secret-id", Key: "password"},
+	})
+	require.Equal(t, map[string]rpv1.ManagedSecretReference{
+		"password": {Source: "new-secret-id", Key: "password"},
+	}, resource.GetManagedSecretReferences())
+	resource.SetManagedSecretReferences(nil)
+	require.Empty(t, resource.GetManagedSecretReferences())
+	require.NotContains(t, resource.Status(), "secretReferences")
+}

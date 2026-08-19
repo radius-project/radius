@@ -19,6 +19,7 @@ package processor
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"testing"
@@ -32,6 +33,7 @@ import (
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
 	"github.com/stretchr/testify/require"
@@ -205,7 +207,7 @@ func Test_Process(t *testing.T) {
 			Name: "test-resource-secrets",
 		}}
 		p := DynamicProcessor{SecretMaterializer: mat}
-		cf, err := testUCPClientFactoryWithSecrets("connectionString")
+		cf, err := testUCPClientFactoryWithSecrets("connectionString", "password")
 		require.NoError(t, err)
 
 		resource := &datamodel.DynamicResource{
@@ -225,7 +227,7 @@ func Test_Process(t *testing.T) {
 		options := processors.Options{
 			RecipeOutput: &recipes.RecipeOutput{
 				Values:  map[string]any{"host": hostname},
-				Secrets: map[string]any{"connectionString": "secret-conn"},
+				Secrets: map[string]any{"connectionString": "secret-conn", "password": "secret-password"},
 			},
 			UcpClient: cf,
 		}
@@ -237,7 +239,7 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, resource.ID, mat.request.OwnerResourceID)
 		require.Equal(t, environment, mat.request.EnvironmentID)
 		require.Equal(t, application, mat.request.ApplicationID)
-		require.Equal(t, map[string]string{"connectionString": "secret-conn"}, mat.request.Data)
+		require.Equal(t, map[string]string{"connectionString": "secret-conn", "password": "secret-password"}, mat.request.Data)
 
 		bs, err := json.Marshal(resource.Properties)
 		require.NoError(t, err)
@@ -256,10 +258,25 @@ func Test_Process(t *testing.T) {
 		require.Equal(t, "test-resource-secrets", secrets["name"])
 		require.NotContains(t, secrets, "id")
 		require.NotContains(t, secrets, "connectionString")
+		require.NotContains(t, secrets, "password")
 
 		status, _ := properties["status"].(map[string]any)
 		_, hasSecrets := status["secrets"]
 		require.False(t, hasSecrets)
+		require.Equal(t, map[string]rpv1.ManagedSecretReference{
+			"connectionString": {Source: mat.result.ID, Key: "connectionString"},
+			"password":         {Source: mat.result.ID, Key: "password"},
+		}, resource.GetManagedSecretReferences())
+
+		// A subsequent output replaces the full reference set, removing stale keys without retaining values.
+		options.RecipeOutput.Secrets = map[string]any{"password": "rotated-password"}
+		require.NoError(t, p.Process(t.Context(), resource, options))
+		require.Equal(t, map[string]rpv1.ManagedSecretReference{
+			"password": {Source: mat.result.ID, Key: "password"},
+		}, resource.GetManagedSecretReferences())
+		serialized, err := json.Marshal(resource.Properties)
+		require.NoError(t, err)
+		require.NotContains(t, string(serialized), "rotated-password")
 	})
 
 	t.Run("materializes recipe secret outputs not declared in the schema secrets block", func(t *testing.T) {
@@ -308,6 +325,35 @@ func Test_Process(t *testing.T) {
 		secrets, ok := properties["secrets"].(map[string]any)
 		require.True(t, ok)
 		require.Equal(t, "test-resource-secrets", secrets["name"])
+	})
+
+	t.Run("preserves references when materialization fails", func(t *testing.T) {
+		mat := &fakeMaterializer{err: errors.New("materialization failed")}
+		p := DynamicProcessor{SecretMaterializer: mat}
+		cf, err := testUCPClientFactoryWithSecrets("password")
+		require.NoError(t, err)
+		resource := &datamodel.DynamicResource{
+			BaseResource: v1.BaseResource{
+				TrackedResource:  v1.TrackedResource{ID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource"},
+				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
+			},
+			Properties: map[string]any{
+				"status":  map[string]any{},
+				"secrets": map[string]any{"name": "old-secret-name"},
+			},
+		}
+		existing := map[string]rpv1.ManagedSecretReference{
+			"old": {Source: "old-secret-id", Key: "old"},
+		}
+		resource.SetManagedSecretReferences(existing)
+
+		err = p.Process(t.Context(), resource, processors.Options{
+			RecipeOutput: &recipes.RecipeOutput{Values: map[string]any{}, Secrets: map[string]any{"password": "new-value"}},
+			UcpClient:    cf,
+		})
+		require.ErrorContains(t, err, "materialization failed")
+		require.Equal(t, existing, resource.GetManagedSecretReferences())
+		require.Equal(t, "old-secret-name", resource.Properties["secrets"].(map[string]any)["name"])
 	})
 
 	t.Run("stringifies non-string secret values before materializing", func(t *testing.T) {
@@ -400,7 +446,11 @@ func Test_Process(t *testing.T) {
 			},
 			// A prior deploy materialized a managed secret and left the reference behind.
 			Properties: map[string]any{
-				"status":  map[string]any{},
+				"status": map[string]any{
+					"secretReferences": map[string]any{
+						"connectionString": map[string]any{"source": "old-secret-id", "key": "connectionString"},
+					},
+				},
 				"secrets": map[string]any{"name": "test-resource-secrets"},
 			},
 		}
@@ -419,6 +469,23 @@ func Test_Process(t *testing.T) {
 		require.False(t, mat.called, "no new secret should be materialized")
 		_, hasSecretRef := resource.Properties["secrets"]
 		require.False(t, hasSecretRef, "the stale secrets.name reference should be removed")
+		require.Empty(t, resource.GetManagedSecretReferences())
+	})
+
+	t.Run("delete uses internal managed secret references", func(t *testing.T) {
+		mat := &fakeMaterializer{}
+		p := DynamicProcessor{SecretMaterializer: mat}
+		resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource"
+		resource := &datamodel.DynamicResource{
+			BaseResource: v1.BaseResource{TrackedResource: v1.TrackedResource{ID: resourceID}},
+			Properties:   map[string]any{"status": map[string]any{}},
+		}
+		resource.SetManagedSecretReferences(map[string]rpv1.ManagedSecretReference{
+			"password": {Source: "managed-secret-id", Key: "password"},
+		})
+
+		require.NoError(t, p.Delete(t.Context(), resource, processors.Options{}))
+		require.Equal(t, []string{resourceID}, mat.deleted)
 	})
 
 	t.Run("clears a stale managed secret even when the schema no longer declares a secrets block", func(t *testing.T) {
@@ -439,8 +506,11 @@ func Test_Process(t *testing.T) {
 				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
 			},
 			Properties: map[string]any{
-				"status":  map[string]any{},
-				"secrets": map[string]any{"name": "test-resource-secrets"},
+				"status": map[string]any{
+					"secretReferences": map[string]any{
+						"connectionString": map[string]any{"source": "old-secret-id", "key": "connectionString"},
+					},
+				},
 			},
 		}
 		options := processors.Options{
@@ -456,8 +526,7 @@ func Test_Process(t *testing.T) {
 		// Cleanup keys off the owner's reference, not the schema, so the orphan is still reclaimed.
 		require.Equal(t, []string{resourceID}, mat.deleted, "the stale managed secret should be deleted")
 		require.False(t, mat.called, "no new secret should be materialized")
-		_, hasSecretRef := resource.Properties["secrets"]
-		require.False(t, hasSecretRef, "the stale secrets.name reference should be removed")
+		require.Empty(t, resource.GetManagedSecretReferences())
 	})
 
 	t.Run("reclaims a stale managed secret when the block is dropped but the recipe still emits secrets", func(t *testing.T) {
@@ -562,7 +631,9 @@ func (f *fakeMaterializer) Delete(ctx context.Context, ownerResourceID string) e
 // schemaWithSecretKeys builds a resource type schema that declares a secrets block containing the given
 // secret keys, alongside the usual base properties.
 func schemaWithSecretKeys(keys ...string) map[string]any {
-	secretProps := map[string]any{}
+	secretProps := map[string]any{
+		"name": map[string]any{"type": "string", "readOnly": true},
+	}
 	for _, key := range keys {
 		secretProps[key] = map[string]any{"type": "string", "readOnly": true}
 	}

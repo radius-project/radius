@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -134,4 +135,29 @@ func Test_DynamicResource_ConvertDataModelToVersioned_NilProperties(t *testing.T
 	require.Equal(t, map[string]any{
 		"provisioningState": fromProvisioningStateDataModel(dm.AsyncProvisioningState),
 	}, resource.Properties)
+}
+
+func Test_DynamicResource_ConvertDataModelToVersioned_HidesManagedSecretReferences(t *testing.T) {
+	references := map[string]any{
+		"url": map[string]any{
+			"source": "/planes/radius/local/resourcegroups/default/providers/Radius.Security/secrets/redis-secrets",
+			"key":    "url",
+		},
+	}
+	dm := &datamodel.DynamicResource{
+		Properties: map[string]any{
+			"status": map[string]any{
+				"recipe":                              map[string]any{"templateKind": "bicep"},
+				rpv1.ManagedSecretReferencesStatusKey: references,
+			},
+		},
+	}
+	resource := &DynamicResource{}
+
+	err := resource.ConvertFrom(dm)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{
+		"recipe": map[string]any{"templateKind": "bicep"},
+	}, resource.Properties["status"])
+	require.Equal(t, references, dm.Status()[rpv1.ManagedSecretReferencesStatusKey])
 }
