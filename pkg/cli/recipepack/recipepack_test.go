@@ -32,7 +32,7 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 	definitions := GetCoreTypesRecipeInfo()
 
 	// Verify we have the expected number of definitions
-	require.Len(t, definitions, 5)
+	require.Len(t, definitions, 6)
 
 	// Verify expected resource types
 	expectedResourceTypes := []string{
@@ -41,6 +41,7 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 		"Radius.Compute/routes",
 		"Radius.Security/secrets",
 		"Radius.Data/mySqlDatabases",
+		"Radius.Data/postgreSqlDatabases",
 	}
 	actualResourceTypes := make([]string, len(definitions))
 	for i, def := range definitions {
@@ -139,6 +140,11 @@ func Test_NewDefaultRecipePackResource(t *testing.T) {
 		"gatewayName":      DefaultRoutesGatewayName,
 		"gatewayNamespace": DefaultRoutesGatewayNamespace,
 	}, routeRecipe.Parameters)
+
+	require.Contains(t, resource.Properties.Recipes, "Radius.Data/postgreSqlDatabases")
+	postgreSQLRecipe := resource.Properties.Recipes["Radius.Data/postgreSqlDatabases"]
+	require.NotNil(t, postgreSQLRecipe)
+	require.Equal(t, "ghcr.io/radius-project/kube-recipes/postgresqldatabases:edge", *postgreSQLRecipe.Source)
 }
 
 func Test_NormalizeRecipePacks(t *testing.T) {
