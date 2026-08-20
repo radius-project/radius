@@ -238,6 +238,10 @@ func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 			Source:       "ghcr.io/radius-project/kube-recipes/containers:" + resolveRecipeTag("Radius.Compute/containers", isEdge),
 		},
 		{
+			ResourceType: "Radius.Compute/containerImages",
+			Source:       "ghcr.io/radius-project/kube-recipes/containerimages:" + resolveRecipeTag("Radius.Compute/containerImages", isEdge),
+		},
+		{
 			ResourceType: "Radius.Compute/persistentVolumes",
 			Source:       "ghcr.io/radius-project/kube-recipes/persistentvolumes:" + resolveRecipeTag("Radius.Compute/persistentVolumes", isEdge),
 		},
