@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-release-parity-manifest test-changelog-range test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-release-parity-manifest test-changelog-range test-build-summary test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -71,6 +71,10 @@ test-release-parity-manifest: ## Tests release parity manifest collection
 .PHONY: test-changelog-range
 test-changelog-range: ## Tests changelog channel boundary resolution
 	@bash ./.github/scripts/changelog-range_test.sh
+
+.PHONY: test-build-summary
+test-build-summary: ## Tests the build job summary rendering shared by the build workflows
+	@bash ./.github/scripts/build-summary_test.sh
 
 .PHONY: test-run-rad-commands-action
 test-run-rad-commands-action: ## Tests application deploy parameter filtering in the run-rad-commands action
