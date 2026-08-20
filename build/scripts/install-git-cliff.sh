@@ -97,7 +97,7 @@ main() {
     [[ -n "${version}" ]] || fail "could not determine the version to install"
 
     if command -v git-cliff >/dev/null 2>&1 &&
-        git-cliff --version 2>/dev/null | grep -Fq "${version#v}"; then
+        [[ "$(git-cliff --version 2>/dev/null | awk '{ print $2; exit }')" == "${version#v}" ]]; then
         log "git-cliff ${version} already installed: $(command -v git-cliff)"
         return 0
     fi
