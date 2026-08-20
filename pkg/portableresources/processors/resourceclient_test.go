@@ -47,6 +47,12 @@ const (
 	AWSResourceID                    = "/planes/aws/aws/accounts/0000/regions/us-east-1/providers/AWS.Kinesis/Streams/test-stream"
 	KubernetesCoreGroupResourceID    = "/planes/kubernetes/local/namespaces/test-namespace/providers/core/Secret/test-name"
 	KubernetesNonCoreGroupResourceID = "/planes/kubernetes/local/namespaces/test-namespace/providers/apps/Deployment/test-name"
+
+	// ARMExtensionResourceID is an Azure extension resource (a Microsoft.Authorization/locks resource
+	// attached to a Microsoft.DocumentDB/databaseAccounts resource), as described in
+	// https://github.com/radius-project/radius/issues/12694.
+	ARMExtensionResourceID   = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/test-account/providers/Microsoft.Authorization/locks/test-lock"
+	ARMExtensionProviderPath = "/subscriptions/0000/providers/Microsoft.Authorization"
 )
 
 func Test_Delete_InvalidResourceID(t *testing.T) {
@@ -208,6 +214,29 @@ func Test_Delete_ARM(t *testing.T) {
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 		require.Contains(t, err.Error(), "could not find API version for type \"Microsoft.Compute/virtualMachines\", no supported API versions")
+	})
+
+	t.Run("success - lookup API Version - extension resource", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc(ARMExtensionResourceID, handleDeleteSuccess())
+		mux.HandleFunc(ARMExtensionProviderPath, handleJSONResponse(t, armresources.Provider{
+			Namespace: new("Microsoft.Authorization"),
+			ResourceTypes: []*armresources.ProviderResourceType{
+				{
+					ResourceType:      new("locks"),
+					DefaultAPIVersion: new(ARMAPIVersion),
+				},
+			},
+		}, 200))
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
+		c.armClientOptions = newClientOptions(server.Client(), server.URL)
+
+		err := c.Delete(t.Context(), ARMExtensionResourceID)
+		require.NoError(t, err)
 	})
 }
 
