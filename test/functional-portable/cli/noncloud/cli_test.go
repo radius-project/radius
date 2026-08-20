@@ -897,7 +897,19 @@ func Test_RadiusCoreEnv(t *testing.T) {
 		err = cli.GroupCreate(ctx, "test-group")
 		require.NoError(t, err)
 
-		_, err = cli.EnvironmentCreatePreview(ctx, "env-test-update", "test-group", "env-test-update")
+		// The environment needs its own namespace: namespaces are unique across the plane, and
+		// the default namespace is already claimed by the install-time environment. Radius
+		// requires the namespace to exist on the cluster before the environment can claim it.
+		envNamespace := "env-test-update"
+		createKubernetesNamespace(ctx, t, options, envNamespace)
+
+		// ctx is derived from the parent test's context, which outlives this subtest's cleanup.
+		// t.Context() would be wrong here: it is canceled just before cleanup functions run.
+		t.Cleanup(func() {
+			deleteKubernetesNamespace(ctx, t, options, envNamespace)
+		})
+
+		_, err = cli.EnvironmentCreatePreview(ctx, "env-test-update", "test-group", envNamespace)
 		require.NoError(t, err)
 
 		output, err := cli.EnvironmentListPreview(ctx, "test-group")
