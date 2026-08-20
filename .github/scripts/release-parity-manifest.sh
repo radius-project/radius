@@ -52,18 +52,34 @@ require_command() {
     command -v "$1" >/dev/null 2>&1 || fail "required command not found: $1"
 }
 
-find_python() {
-    if command -v python3 >/dev/null 2>&1; then
-        command -v python3
-    elif command -v python >/dev/null 2>&1; then
-        command -v python
-    else
-        fail "required command not found: python3 or python"
-    fi
+require_any_command() {
+    local candidate
+    for candidate in "$@"; do
+        command -v "${candidate}" >/dev/null 2>&1 && return 0
+    done
+    fail "required command not found: one of $*"
 }
 
+# https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+# translated from PCRE to POSIX ERE for Bash's =~ operator.
+readonly SEMVER_PATTERN='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$'
+
+validate_semver() {
+    local version="$1"
+
+    [[ "${version}" =~ ${SEMVER_PATTERN} ]] ||
+        fail "provided version is not valid semver: ${version}"
+}
+
+# macOS ships shasum and openssl rather than GNU coreutils' sha256sum.
 sha256_file() {
-    sha256sum "$1" | cut -d ' ' -f 1
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | cut -d ' ' -f 1
+    elif command -v shasum >/dev/null 2>&1; then
+        shasum -a 256 "$1" | cut -d ' ' -f 1
+    else
+        openssl dgst -sha256 "$1" | awk '{ print $NF }'
+    fi
 }
 
 sha256_text_file() {
@@ -177,6 +193,7 @@ collect_cli_assets() {
     local api_digest
     local content_type
     local checksum_api_digest
+    local checksum_actual_sha
     local checksum_content_type
     local checksum_size
     local build_info_path
@@ -255,8 +272,8 @@ collect_cli_assets() {
                 fail "GitHub digest mismatch for ${name}"
         fi
         if [[ -n "${checksum_api_digest}" ]]; then
-            [[ "${checksum_api_digest}" == \
-                "sha256:$(sha256_file "${sidecar_path}")" ]] ||
+            checksum_actual_sha="$(sha256_file "${sidecar_path}")"
+            [[ "${checksum_api_digest}" == "sha256:${checksum_actual_sha}" ]] ||
                 fail "GitHub digest mismatch for ${name}.sha256"
         fi
 
@@ -672,7 +689,6 @@ main() {
     local release_notes_json
     local runtime_version_json
     local linux_amd64_path
-    local python_command
     local channel
     local images_json
     local helm_json
@@ -711,12 +727,10 @@ main() {
     fi
     require_command helm
     require_command oras
-    require_command sha256sum
+    require_any_command sha256sum shasum openssl
     require_command yq
     [[ -f "${TARGETS_FILE}" ]] || fail "targets file not found: ${TARGETS_FILE}"
-    python_command="$(find_python)"
-    "${python_command}" "${REPO_ROOT}/.github/scripts/validate_semver.py" \
-        "${VERSION}"
+    validate_semver "${VERSION}"
 
     TEMP_DIR="$(mktemp -d)"
     repository="$(jq -r '.repository' "${TARGETS_FILE}")"
