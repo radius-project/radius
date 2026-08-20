@@ -292,6 +292,28 @@ assert_call_present "recipe-pack show other -o json"
 assert_update_packs \
     "${CUSTOM_PACK_ID},${DEFAULT_PACK_ID},${OTHER_PACK_ID}"
 
+# Existing recipe-pack resources are references, not packs authored by this
+# template, so they are not resolved or attached.
+reset_case
+write_compiled_template '{
+  "shared": {
+    "import": "radius",
+    "existing": true,
+    "type": "Radius.Core/recipePacks@2025-08-01-preview",
+    "properties": { "name": "shared" }
+  },
+  "custom": {
+    "import": "radius",
+    "type": "Radius.Core/recipePacks@2025-08-01-preview",
+    "properties": { "name": "custom", "properties": { "recipes": {} } }
+  }
+}'
+run_action
+assert_success "ignore existing recipe-pack reference"
+assert_call_absent "recipe-pack show shared -o json"
+assert_call_present "recipe-pack show custom -o json"
+assert_update_packs "${CUSTOM_PACK_ID},${DEFAULT_PACK_ID}"
+
 # Legacy array-shaped bicep output (languageVersion 1.x) with a top-level name
 # is discovered the same way as symbolic-name object output.
 reset_case

@@ -5,8 +5,9 @@
 # types, this:
 #   1. registers those types from `.radius/custom-types.yaml` via
 #      `rad resource-type create --from-file` (skipped when the file is absent), and
-#   2. discovers the pack names declared by `.radius/custom-recipe-pack.bicep`,
-#      deploys it, then attaches those exact packs to the environment -- preserving
+#   2. discovers the non-existing pack names authored by
+#      `.radius/custom-recipe-pack.bicep`, deploys it, then attaches those exact
+#      packs to the environment -- preserving
 #      the environment's existing recipe packs (e.g. the default provider pack)
 #      without pulling in unrelated packs the control plane may know about (skipped
 #      when the file is absent).
@@ -91,7 +92,8 @@ runs:
                 ((.type // "") | ascii_downcase) as $type |
                 $type == "radius.core/recipepacks" or
                 ($type | startswith("radius.core/recipepacks@"))
-              )
+              ) |
+              select((.existing // false) != true)
             ] |
             if length == 0 then
               error(
@@ -165,11 +167,6 @@ runs:
             --argjson custom "${CUSTOM_PACKS}" \
             '($existing + $custom) | unique | join(",")'
         )
-
-        if [[ -z "${PACK_IDS}" ]]; then
-          echo "No recipe packs found to attach to environment '${ENVIRONMENT}'." >&2
-          exit 1
-        fi
 
         # Replace the environment's recipe pack list with the preserved + new set so
         # the custom types resolve alongside the default provider recipes. --preview
