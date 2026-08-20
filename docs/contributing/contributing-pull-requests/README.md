@@ -61,6 +61,8 @@ Radius uses the pull request title as the squash commit subject. Format the titl
 | `ci`       | Continuous-integration changes                        | Excluded         |
 | `chore`    | Routine maintenance that fits no user-facing category | Excluded         |
 
+Automated dependency updates keep the prefixes Dependabot is configured with, `ci(deps):` and `chore(deps):`, and are grouped under Dependencies rather than excluded.
+
 Scopes are optional. Add `!` before the colon for a breaking change. For example:
 
 ```text
