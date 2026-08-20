@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -17,11 +17,23 @@
 DIST_DIR ?= dist
 IMAGES_DIR := $(DIST_DIR)/images
 METRICS_DIR := $(DIST_DIR)/metrics
+RELEASE_PARITY_VERSION ?=
+RELEASE_PARITY_OUTPUT ?= $(DIST_DIR)/release-parity/v$(RELEASE_PARITY_VERSION).json
 
 ##@ Artifacts
 
 .PHONY: artifacts
 artifacts: docker-build docker-save-images build-metrics ## Build all artifacts needed for testing/release
+
+.PHONY: release-parity-manifest
+release-parity-manifest: ## Capture observable outputs for RELEASE_PARITY_VERSION.
+	@if [ -z "$(RELEASE_PARITY_VERSION)" ]; then \
+		echo "Error: RELEASE_PARITY_VERSION is required"; \
+		exit 1; \
+	fi
+	@bash ./.github/scripts/release-parity-manifest.sh \
+		--version "$(RELEASE_PARITY_VERSION)" \
+		--output "$(RELEASE_PARITY_OUTPUT)"
 
 .PHONY: docker-save-images
 docker-save-images: ## Save Docker images to dist/images/*.tar
