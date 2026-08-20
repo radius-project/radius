@@ -302,6 +302,8 @@ func initSubCommands() {
 	resourceCmd.AddCommand(resourceShowCmd)
 
 	resourceListCmd, _ := resource_list.NewCommand(framework)
+	previewResourceListCmd, _ := resource_list.NewPreviewCommand(framework)
+	wirePreviewSubcommand(resourceListCmd, previewResourceListCmd)
 	resourceCmd.AddCommand(resourceListCmd)
 
 	resourceCreateCmd, _ := resource_create.NewCommand(framework)
