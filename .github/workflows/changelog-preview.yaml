@@ -46,22 +46,7 @@ jobs:
         id: boundary
         shell: bash
         run: |
-          latest_stable_tag=""
-          while IFS= read -r tag; do
-            if [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              latest_stable_tag="$tag"
-              break
-            fi
-          done < <(git tag --list "v*" --sort=-version:refname)
-
-          if [[ -z "$latest_stable_tag" ]]; then
-            echo "No stable Radius release tag was found." >&2
-            exit 1
-          fi
-
-          base_commit="$(git merge-base "$latest_stable_tag" HEAD)"
-          echo "range=${base_commit}..HEAD" >> "$GITHUB_OUTPUT"
-          echo "Rendering changes since $latest_stable_tag branched at $base_commit."
+          echo "range=$(./.github/scripts/changelog-range.sh)" >> "$GITHUB_OUTPUT"
 
       - name: Install git-cliff
         run: make install-git-cliff
