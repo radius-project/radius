@@ -43,11 +43,39 @@ Fixes: #<issue>
 
 We **squash** pull requests as part of the merge process, so intermediate commit messages are appended. We prefer a single commit in the git history for each PR.
 
-### 3. Sign your commits
+### 3. Use a Conventional Commit pull request title
+
+Radius uses the pull request title as the squash commit subject. Format the title as `<type>[optional scope][!]: <description>`, using one of these types:
+
+| Type       | Use for                                               | Changelog group  |
+|------------|-------------------------------------------------------|------------------|
+| `feat`     | New user-facing functionality                         | Added            |
+| `fix`      | Bug fixes                                             | Fixed            |
+| `perf`     | Performance improvements                              | Changed          |
+| `refactor` | Internal changes that affect behavior or maintenance  | Changed          |
+| `deps`     | Dependency updates                                    | Dependencies     |
+| `revert`   | Reverted changes                                      | Reverted changes |
+| `docs`     | Documentation-only changes                            | Excluded         |
+| `test`     | Test-only changes                                     | Excluded         |
+| `build`    | Build-system changes                                  | Excluded         |
+| `ci`       | Continuous-integration changes                        | Excluded         |
+| `chore`    | Routine maintenance that fits no user-facing category | Excluded         |
+
+Scopes are optional. Add `!` before the colon for a breaking change. For example:
+
+```text
+feat(cli): add recipe validation
+fix(controller): preserve resource status
+refactor(api)!: remove the legacy response field
+```
+
+These signals determine changelog grouping only. They never select the Radius version: scheduled full releases bump the minor version while Radius is `0.x`, and patch releases bump the patch version of their release channel.
+
+### 4. Sign your commits
 
 The Developer Certificate of Origin (DCO) check requires every commit to be signed off. See [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide for how to do this.
 
-### 4. Open the pull request and fill out the template
+### 5. Open the pull request and fill out the template
 
 Open the pull request from your fork against `main`. The form is pre-populated with our [template](https://github.com/radius-project/radius/blob/main/.github/pull_request_template.md). Complete its summary, reason for change, test instructions, and per-file change summary so reviewers can understand both the intent and the verification.
 
@@ -58,7 +86,7 @@ Every non-Dependabot pull request must have exactly one release-impact label:
 
 The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
 
-### 5. (Optional) Self-review with the `radius-code-review` skill
+### 6. (Optional) Self-review with the `radius-code-review` skill
 
 If you use GitHub Copilot, you can run the [`radius-code-review`](../../../.github/skills/radius-code-review/SKILL.md) skill against your own pull request to generate an initial AI-assisted review *before* asking maintainers to look at it. This can help you catch obvious issues, missing tests, or unclear comments while you still own the change.
 
@@ -80,7 +108,7 @@ Suggested workflow:
 
 See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md#optional-ai-assisted-review-with-the-radius-code-review-skill) for the reviewer perspective on this skill.
 
-### 6. Respond to review feedback
+### 7. Respond to review feedback
 
 The maintainers or other contributors will add comments giving feedback, asking questions, and making suggestions. Respond to each comment to continue the discussion or explain whether you plan to address it. Accepting a pull request is ultimately at the maintainer's discretion.
 
