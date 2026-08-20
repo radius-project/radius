@@ -31,6 +31,10 @@ radius_progress_checkpoint() {
     printf '%s/sequence' "$(radius_progress_dir)"
 }
 
+radius_progress_stop_file() {
+    printf '%s/stop' "$(radius_progress_dir)"
+}
+
 radius_artifact_runtime_file() {
     printf '%s/artifact-runtime.json' "$(radius_progress_dir)"
 }
@@ -170,7 +174,7 @@ radius_publish_live_progress_once() {
 start_live_deploy_progress() {
     local app_file="$1"
     local environment="$2"
-    local application terminal_artifact_name interval
+    local application terminal_artifact_name interval stop_file
 
     if ! radius_load_artifact_runtime; then
         return 0
@@ -185,9 +189,11 @@ start_live_deploy_progress() {
     terminal_artifact_name=$(radius_deploy_artifact_name \
         "${environment}" "${application}")
     interval="${RADIUS_PROGRESS_INTERVAL_SECONDS:-5}"
+    stop_file=$(radius_progress_stop_file)
+    rm -f "${stop_file}"
     (
         set +e
-        while true; do
+        while [[ ! -f "${stop_file}" ]]; do
             radius_publish_live_progress_once "${application}" \
                 "${environment}" "${terminal_artifact_name}"
             sleep "${interval}"
@@ -204,9 +210,10 @@ stop_live_deploy_progress() {
         return 0
     fi
 
-    kill "${RADIUS_PROGRESS_PID}" 2>/dev/null || true
+    touch "$(radius_progress_stop_file)"
     wait "${RADIUS_PROGRESS_PID}" 2>/dev/null || true
     RADIUS_PROGRESS_PID=""
+    rm -f "$(radius_progress_stop_file)"
     radius_publish_live_progress_once \
         "${RADIUS_PROGRESS_APPLICATION}" \
         "${RADIUS_PROGRESS_ENVIRONMENT}" \

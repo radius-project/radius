@@ -17,6 +17,7 @@ limitations under the License.
 package v20250801preview
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -171,28 +172,44 @@ func Test_computeGraph_OmitsContainerEnvironment(t *testing.T) {
 		containerID = "/planes/radius/local/resourceGroups/default/providers/Radius.Compute/containers/frontend"
 		appID       = "/planes/radius/local/resourceGroups/default/providers/Radius.Core/applications/myapp"
 	)
-	properties := map[string]any{
-		"application": appID,
-		"containers": map[string]any{
-			"frontend": map[string]any{
-				"image": "frontend:latest",
-				"env":   map[string]any{"PASSWORD": "secret"},
-			},
-		},
+	tests := []struct {
+		name        string
+		environment any
+		credential  string
+	}{
+		{name: "plaintext", environment: map[string]any{"PASSWORD": "plaintext-credential"}, credential: "plaintext-credential"},
+		{name: "secure derived", environment: map[string]any{"PASSWORD": "[parameters('password')]"}, credential: "[parameters('password')]"},
+		{name: "null", environment: nil},
+		{name: "empty", environment: map[string]any{}},
+		{name: "unexpected shape", environment: "malformed-credential", credential: "malformed-credential"},
 	}
-	graph := computeGraph([]generated.GenericResource{{
-		ID:         to.Ptr(containerID),
-		Name:       to.Ptr("frontend"),
-		Type:       to.Ptr("Radius.Compute/containers"),
-		Properties: properties,
-	}}, nil, "", nil)
 
-	require.Len(t, graph.Resources, 1)
-	containers := graph.Resources[0].Properties["containers"].(map[string]any)
-	frontend := containers["frontend"].(map[string]any)
-	require.NotContains(t, frontend, "env")
-	require.Equal(t, "frontend:latest", frontend["image"])
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	originalContainers := properties["containers"].(map[string]any)
-	require.Contains(t, originalContainers["frontend"].(map[string]any), "env")
+			container := map[string]any{
+				"image": "frontend:latest",
+				"env":   tt.environment,
+			}
+			graph := computeGraph([]generated.GenericResource{{
+				ID:   to.Ptr(containerID),
+				Name: to.Ptr("frontend"),
+				Type: to.Ptr("Radius.Compute/containers"),
+				Properties: map[string]any{
+					"application": appID,
+					"containers":  map[string]any{"frontend": container},
+				},
+			}}, nil, "", nil)
+
+			require.Len(t, graph.Resources, 1)
+			payload, err := json.Marshal(graph)
+			require.NoError(t, err)
+			require.NotContains(t, string(payload), `"env"`)
+			if tt.credential != "" {
+				require.NotContains(t, string(payload), tt.credential)
+			}
+			require.Contains(t, container, "env")
+		})
+	}
 }

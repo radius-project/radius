@@ -38,6 +38,16 @@ cat >"${RADIUS_PROGRESS_NODE}" <<'EOF'
 set -euo pipefail
 
 shift
+if [[ -n "${UPLOAD_BLOCK_DIR:-}" ]]; then
+    mkdir "${UPLOAD_BLOCK_DIR}/active" 2>/dev/null ||
+        touch "${UPLOAD_BLOCK_DIR}/overlap"
+    touch "${UPLOAD_BLOCK_DIR}/started"
+    while [[ ! -f "${UPLOAD_BLOCK_DIR}/release" ]]; do
+        sleep 0.05
+    done
+    rmdir "${UPLOAD_BLOCK_DIR}/active" 2>/dev/null || true
+    touch "${UPLOAD_BLOCK_DIR}/completed"
+fi
 printf '%s\n' "$*" >>"${UPLOAD_CALLS}"
 printf '{"ok":true,"artifactId":42,"size":128}\n'
 EOF
@@ -139,6 +149,38 @@ radius_publish_live_progress_once "todo" "dev" \
 unset RAD_SHOULD_FAIL
 [[ "$(radius_last_live_sequence)" == "9" ]] ||
     fail "poll failure must not advance sequence"
+
+rm -f "$(radius_progress_dir)/last-resources.json"
+write_response "Stopping"
+export UPLOAD_BLOCK_DIR="${TEST_ROOT}/blocked-upload"
+export RADIUS_PROGRESS_INTERVAL_SECONDS=1
+mkdir -p "${UPLOAD_BLOCK_DIR}"
+start_live_deploy_progress "${literal_app_file}" "dev"
+for _ in $(seq 1 100); do
+    [[ -f "${UPLOAD_BLOCK_DIR}/started" ]] && break
+    sleep 0.05
+done
+[[ -f "${UPLOAD_BLOCK_DIR}/started" ]] ||
+    fail "blocked upload did not start"
+(
+    for _ in $(seq 1 100); do
+        [[ -f "$(radius_progress_stop_file)" ]] && break
+        sleep 0.05
+    done
+    [[ -f "$(radius_progress_stop_file)" ]] ||
+        fail "poller stop was not requested"
+    [[ -d "${UPLOAD_BLOCK_DIR}/active" ]] ||
+        fail "stop must wait for the active upload"
+    touch "${UPLOAD_BLOCK_DIR}/release"
+) &
+release_pid=$!
+stop_live_deploy_progress
+wait "${release_pid}"
+[[ -f "${UPLOAD_BLOCK_DIR}/completed" ]] ||
+    fail "stop returned before the active upload completed"
+[[ ! -f "${UPLOAD_BLOCK_DIR}/overlap" ]] ||
+    fail "final publish overlapped the active upload"
+unset UPLOAD_BLOCK_DIR RADIUS_PROGRESS_INTERVAL_SECONDS
 
 [[ "$(radius_deploy_artifact_name 'Dev Env' 'My App')" == \
     "radius-deploy-status-dev-env-my-app" ]] ||

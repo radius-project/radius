@@ -17,6 +17,7 @@ limitations under the License.
 package graph
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -461,35 +462,54 @@ func TestBuildModeledGraph_NilPropertiesWhenAuthoredIsEmpty(t *testing.T) {
 func TestBuildModeledGraph_OmitsContainerEnvironment(t *testing.T) {
 	t.Parallel()
 
-	properties := map[string]any{
-		"application": "app-id",
-		"containers": map[string]any{
-			"frontend": map[string]any{
+	tests := []struct {
+		name        string
+		environment any
+		credential  string
+	}{
+		{name: "plaintext", environment: map[string]any{"PASSWORD": "plaintext-credential"}, credential: "plaintext-credential"},
+		{name: "secure derived", environment: map[string]any{"PASSWORD": "[parameters('password')]"}, credential: "[parameters('password')]"},
+		{name: "null", environment: nil},
+		{name: "empty", environment: map[string]any{}},
+		{name: "unexpected shape", environment: "malformed-credential", credential: "malformed-credential"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			container := map[string]any{
 				"image": "frontend:latest",
-				"env":   map[string]any{"PUBLIC_VALUE": "visible", "PASSWORD": "secret"},
-			},
-		},
-	}
-	template := map[string]any{
-		"resources": []any{
-			map[string]any{
-				"type":       "Radius.Compute/containers",
-				"name":       "frontend",
-				"properties": properties,
-			},
-		},
-	}
+				"env":   tt.environment,
+			}
+			template := map[string]any{
+				"parameters": map[string]any{
+					"password": map[string]any{"type": "secureString"},
+				},
+				"resources": []any{
+					map[string]any{
+						"type": "Radius.Compute/containers",
+						"name": "frontend",
+						"properties": map[string]any{
+							"application": "app-id",
+							"containers":  map[string]any{"frontend": container},
+						},
+					},
+				},
+			}
 
-	graph, err := BuildModeledGraph(template, false)
-	require.NoError(t, err)
-	require.Len(t, graph.Resources, 1)
-	containers := graph.Resources[0].Properties["containers"].(map[string]any)
-	frontend := containers["frontend"].(map[string]any)
-	require.NotContains(t, frontend, "env")
-	require.Equal(t, "frontend:latest", frontend["image"])
-
-	originalContainers := properties["containers"].(map[string]any)
-	require.Contains(t, originalContainers["frontend"].(map[string]any), "env")
+			graph, err := BuildModeledGraph(template, false)
+			require.NoError(t, err)
+			require.Len(t, graph.Resources, 1)
+			payload, err := json.Marshal(graph)
+			require.NoError(t, err)
+			require.NotContains(t, string(payload), `"env"`)
+			if tt.credential != "" {
+				require.NotContains(t, string(payload), tt.credential)
+			}
+			require.Contains(t, container, "env")
+		})
+	}
 }
 
 // TestBuildModeledGraph_SecureStringDirectReference is the base case

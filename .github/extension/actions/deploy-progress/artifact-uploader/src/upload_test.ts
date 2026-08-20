@@ -8,6 +8,7 @@ import test from "node:test";
 import {
   type ArtifactClient,
   prepareArtifactRuntimeEnvironment,
+  run,
   uploadProgressArtifact
 } from "./upload.ts";
 
@@ -110,4 +111,41 @@ test("continues when a requested slot does not exist yet", async () => {
     "delete:deploy-live-123-slot-0",
     "upload:deploy-live-123-slot-0:/tmp/deploy-progress.json:/tmp:1"
   ]);
+});
+
+test("redacts artifact runtime credentials from upload failures", async () => {
+  const runtimeToken = "runtime-token-that-must-not-leak";
+  const resultsUrl = "https://results.example.test/private";
+  const client = new FakeArtifactClient();
+  client.uploadArtifact = async () => {
+    throw new Error(`upload failed: token=${runtimeToken} url=${resultsUrl}`);
+  };
+
+  let output = "";
+  const originalWrite = process.stdout.write;
+  process.stdout.write = ((chunk: string | Uint8Array) => {
+    output += chunk.toString();
+    return true;
+  }) as typeof process.stdout.write;
+
+  try {
+    const exitCode = await run(
+      ["deploy-live-123-slot-0", "/tmp/deploy-progress.json", "1", "false"],
+      client,
+      {
+        ACTIONS_RUNTIME_TOKEN: runtimeToken,
+        ACTIONS_RESULTS_URL: resultsUrl
+      }
+    );
+
+    assert.equal(exitCode, 1);
+    assert.deepEqual(JSON.parse(output), {
+      ok: false,
+      error: "upload failed: token=[REDACTED] url=[REDACTED]"
+    });
+    assert.doesNotMatch(output, new RegExp(runtimeToken));
+    assert.doesNotMatch(output, new RegExp(resultsUrl));
+  } finally {
+    process.stdout.write = originalWrite;
+  }
 });

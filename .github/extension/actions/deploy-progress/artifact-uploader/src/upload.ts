@@ -97,22 +97,40 @@ function parseRequest(args: string[]): UploadRequest {
   };
 }
 
-export async function run(args: string[]): Promise<number> {
+function redactRuntimeCredentials(
+  message: string,
+  env: NodeJS.ProcessEnv
+): string {
+  let redacted = message;
+  for (const credential of [
+    env.ACTIONS_RUNTIME_TOKEN,
+    env.ACTIONS_RESULTS_URL
+  ]) {
+    if (credential) {
+      redacted = redacted.replaceAll(credential, "[REDACTED]");
+    }
+  }
+  return redacted;
+}
+
+export async function run(
+  args: string[],
+  client: ArtifactClient = new DefaultArtifactClient(),
+  env: NodeJS.ProcessEnv = process.env
+): Promise<number> {
   try {
     if (args.length === 0) {
-      const runtimeFile = prepareArtifactRuntimeEnvironment();
+      const runtimeFile = prepareArtifactRuntimeEnvironment(env);
       process.stdout.write(`${JSON.stringify({ ok: true, runtimeFile })}\n`);
       return 0;
     }
     const request = parseRequest(args);
-    const result = await uploadProgressArtifact(
-      new DefaultArtifactClient(),
-      request
-    );
+    const result = await uploadProgressArtifact(client, request);
     process.stdout.write(`${JSON.stringify({ ok: true, ...result })}\n`);
     return 0;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const rawMessage = error instanceof Error ? error.message : String(error);
+    const message = redactRuntimeCredentials(rawMessage, env);
     process.stdout.write(`${JSON.stringify({ ok: false, error: message })}\n`);
     return 1;
   }
