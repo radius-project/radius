@@ -372,9 +372,10 @@ jobs:
       # Bound the deploy phase so a pathologically slow build (for example an
       # emulated cross-architecture container build) fails in minutes instead of
       # burning the job's 360-minute default. The bound is on this step and not
-      # on the job: a job-level timeout ends the job outright, so the teardown
-      # below would never run and `rad shutdown` would never persist state. A
-      # failed step lets the publish and teardown steps run on the remaining budget.
+      # on the job: a job-level timeout cancels the job, which skips the
+      # `!cancelled()` publish step below, and would fold the setup steps into
+      # the same budget. A failed step keeps publish and teardown running
+      # normally on the job's remaining budget.
       - name: Run rad commands
         timeout-minutes: ${{ fromJSON(steps.deploy-timeout.outputs.minutes) }}
         uses: radius-project/radius/.github/extension/actions/run-rad-commands@{{RADIUS_REF}}

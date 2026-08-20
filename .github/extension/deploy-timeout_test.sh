@@ -134,9 +134,11 @@ for wf in "${AZURE_WF}" "${AWS_WF}"; do
     [[ "${timeout_line}" == "${expected_timeout}" ]] ||
         fail "unexpected timeout expression in ${name}: got '${timeout_line}', want '${expected_timeout}'"
 
-    # A job-level timeout would end the job outright, skipping the teardown.
+    # A job-level timeout cancels the job. The always() teardown still runs, but
+    # the `!cancelled()` publish step is skipped, so the run loses its graph and
+    # status. Verified empirically, not assumed.
     if grep -qE '^ {4}timeout-minutes:' "${wf}"; then
-        fail "job-level 'timeout-minutes' in ${name} would skip the always() teardown; bound the step instead"
+        fail "job-level 'timeout-minutes' in ${name} cancels the job and skips the '!cancelled()' publish step; bound the deploy step instead"
     fi
 
     # --- The value reaching the timeout is validated ---------------------------
