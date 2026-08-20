@@ -257,6 +257,10 @@ func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 			ResourceType: "Radius.Data/mySqlDatabases",
 			Source:       "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + resolveRecipeTag("Radius.Data/mySqlDatabases", isEdge),
 		},
+		{
+			ResourceType: "Radius.Messaging/rabbitMQ",
+			Source:       "ghcr.io/radius-project/kube-recipes/rabbitmq:" + resolveRecipeTag("Radius.Messaging/rabbitMQ", isEdge),
+		},
 	}
 }
 
