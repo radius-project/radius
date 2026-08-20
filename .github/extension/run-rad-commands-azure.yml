@@ -339,7 +339,45 @@ jobs:
           environment: ${{ inputs.environment }}
           app-file: ${{ env.APP_FILE }}
 
+      # Resolve and validate the deploy timeout before it reaches `timeout-minutes`
+      # below. The runner applies a step timeout only when it evaluates to a value
+      # greater than zero, and an expression that fails to evaluate is recorded as
+      # an error but still leaves the step unbounded. So `0`, a negative number, or
+      # a malformed value would silently restore the very behavior this timeout
+      # exists to prevent. Reject those loudly instead. The upper bound is a
+      # ceiling, not a guarantee: the setup steps before this one draw on the same
+      # 360-minute job budget, so a value near the ceiling can still leave the job
+      # out of time for the teardown that persists Radius state.
+      - name: Resolve deploy timeout
+        id: deploy-timeout
+        env:
+          REQUESTED: ${{ vars.RADIUS_DEPLOY_TIMEOUT_MINUTES }}
+        run: |
+          set -euo pipefail
+          requested="${REQUESTED:-30}"
+          if [[ ! "$requested" =~ ^[0-9]{1,4}$ ]]; then
+            echo "ERROR: RADIUS_DEPLOY_TIMEOUT_MINUTES must be a whole number of minutes, got '${requested}'." >&2
+            exit 1
+          fi
+          # Normalize to base 10 so a value like `030` is not read as octal and does
+          # not reach fromJSON, which rejects leading zeros.
+          minutes=$((10#$requested))
+          if (( minutes < 1 || minutes > 330 )); then
+            echo "ERROR: RADIUS_DEPLOY_TIMEOUT_MINUTES must be between 1 and 330, got '${requested}'." >&2
+            exit 1
+          fi
+          echo "minutes=${minutes}" >> "$GITHUB_OUTPUT"
+          echo "Bounding the deploy step at ${minutes} minute(s)."
+
+      # Bound the deploy phase so a pathologically slow build (for example an
+      # emulated cross-architecture container build) fails in minutes instead of
+      # burning the job's 360-minute default. The bound is on this step and not
+      # on the job: a job-level timeout cancels the job, which skips the
+      # `!cancelled()` publish step below, and would fold the setup steps into
+      # the same budget. A failed step keeps publish and teardown running
+      # normally on the job's remaining budget.
       - name: Run rad commands
+        timeout-minutes: ${{ fromJSON(steps.deploy-timeout.outputs.minutes) }}
         uses: radius-project/radius/.github/extension/actions/run-rad-commands@{{RADIUS_REF}}
         with:
           environment: ${{ inputs.environment }}
