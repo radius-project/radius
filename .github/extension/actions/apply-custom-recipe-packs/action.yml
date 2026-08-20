@@ -79,8 +79,12 @@ runs:
         "${BICEP_BIN}" build "${RECIPE_PACK_BICEP}" \
           --outfile "${COMPILED_TEMPLATE}"
         PACK_NAMES=$(jq -ce '
-          if (.resources | type) != "object" then
-            error("compiled template resources must be an object")
+          # bicep build emits .resources as an object keyed by symbolic name
+          # (languageVersion 2.0, always used by Radius extensibility templates)
+          # or as an array (languageVersion 1.x). .resources[] iterates either.
+          if (.resources | type) as $shape |
+             ($shape != "object" and $shape != "array") then
+            error("compiled template resources must be an object or array")
           else
             [.resources[] |
               select(

@@ -292,7 +292,20 @@ assert_call_present "recipe-pack show other -o json"
 assert_update_packs \
     "${CUSTOM_PACK_ID},${DEFAULT_PACK_ID},${OTHER_PACK_ID}"
 
-# Optional files remain independent.
+# Legacy array-shaped bicep output (languageVersion 1.x) with a top-level name
+# is discovered the same way as symbolic-name object output.
+reset_case
+write_compiled_template '[
+  {
+    "type": "Radius.Core/recipePacks@2025-08-01-preview",
+    "name": "custom",
+    "properties": { "recipes": {} }
+  }
+]'
+run_action
+assert_success "array-shaped compiled template"
+assert_call_present "recipe-pack show custom -o json"
+assert_update_packs "${CUSTOM_PACK_ID},${DEFAULT_PACK_ID}"
 reset_case
 rm -f "${RECIPE_PACK_BICEP}"
 touch "${CUSTOM_TYPES_YAML}"
