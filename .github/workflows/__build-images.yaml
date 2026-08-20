@@ -101,6 +101,14 @@ jobs:
           DOCKER_TAG_VERSION: latest
           DOCKER_CACHE_GHA: 1
 
+      - name: Tag container images (edge)
+        if: (github.ref == 'refs/heads/main')
+        run: make docker-multi-arch-tag
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_SOURCE_TAG_VERSION: latest
+          DOCKER_TAG_VERSION: edge
+
       - name: Push container images (release)
         if: startsWith(github.ref, 'refs/tags/v')
         run: make docker-multi-arch-push

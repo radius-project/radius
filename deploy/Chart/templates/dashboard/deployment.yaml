@@ -28,7 +28,7 @@ spec:
       {{- end }}
       containers:
       - name: dashboard
-        image: "{{ include "radius.image" (dict "image" .Values.dashboard.image "tag" (.Values.dashboard.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
+        image: "{{ include "radius.image" (dict "image" .Values.dashboard.image "tag" (include "radius.externalversiontag" (.Values.dashboard.tag | default .Values.global.imageTag | default $appversion)) "global" .Values.global) }}"
         imagePullPolicy: Always
         env:
         - name: NODE_ENV
