@@ -5,6 +5,10 @@ version: 2
 project_name: radius
 dist: dist/goreleaser
 
+env:
+  - 'GORELEASER_IMAGE_REGISTRY={{ if index .Env "GORELEASER_IMAGE_REGISTRY" }}{{ .Env.GORELEASER_IMAGE_REGISTRY }}{{ else }}ghcr.io/radius-project{{ end }}'
+  - 'GORELEASER_RELEASE_DISABLE={{ if index .Env "GORELEASER_RELEASE_DISABLE" }}{{ .Env.GORELEASER_RELEASE_DISABLE }}{{ else }}false{{ end }}'
+
 builds:
   - id: rad
     main: ./cmd/rad
@@ -107,7 +111,7 @@ dockers_v2:
       - ucpd
     dockerfile: deploy/images/ucpd/Dockerfile.goreleaser
     images:
-      - ghcr.io/radius-project/ucpd
+      - "{{ .Env.GORELEASER_IMAGE_REGISTRY }}/ucpd"
     tags:
       - "{{ .Version }}"
     extra_files:
@@ -128,7 +132,7 @@ dockers_v2:
       - applications-rp
     dockerfile: deploy/images/applications-rp/Dockerfile.goreleaser
     images:
-      - ghcr.io/radius-project/applications-rp
+      - "{{ .Env.GORELEASER_IMAGE_REGISTRY }}/applications-rp"
     tags:
       - "{{ .Version }}"
     labels:
@@ -144,7 +148,7 @@ dockers_v2:
       - dynamic-rp
     dockerfile: deploy/images/dynamic-rp/Dockerfile.goreleaser
     images:
-      - ghcr.io/radius-project/dynamic-rp
+      - "{{ .Env.GORELEASER_IMAGE_REGISTRY }}/dynamic-rp"
     tags:
       - "{{ .Version }}"
     labels:
@@ -160,7 +164,7 @@ dockers_v2:
       - controller
     dockerfile: deploy/images/controller/Dockerfile.goreleaser
     images:
-      - ghcr.io/radius-project/controller
+      - "{{ .Env.GORELEASER_IMAGE_REGISTRY }}/controller"
     tags:
       - "{{ .Version }}"
     labels:
@@ -176,7 +180,7 @@ dockers_v2:
       - pre-upgrade
     dockerfile: deploy/images/pre-upgrade/Dockerfile.goreleaser
     images:
-      - ghcr.io/radius-project/pre-upgrade
+      - "{{ .Env.GORELEASER_IMAGE_REGISTRY }}/pre-upgrade"
     tags:
       - "{{ .Version }}"
     labels:
@@ -190,6 +194,7 @@ dockers_v2:
 release:
   ids:
     - rad
+  disable: "{{ .Env.GORELEASER_RELEASE_DISABLE }}"
   name_template: "Radius {{ .Tag }}"
   draft: true
   use_existing_draft: true
