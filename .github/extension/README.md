@@ -171,6 +171,8 @@ The bound is on the step rather than the job on purpose. A job-level timeout *ca
 
 Two limits of this bound are worth knowing. It covers the deploy phase only — the publish and teardown steps that follow are still bounded by the job's 360-minute default. And it stops the workflow waiting, not the deployment: server-side work already submitted continues until the control plane's own operation timeout, though for the ephemeral control plane the teardown deletes the cluster anyway.
 
+The bound also ships like a template rather than like shared logic, which matters for existing repositories. It lives in the workflow file, so a repository picks it up only when its workflows are regenerated; workflows generated before it was added keep the previous unbounded behavior until they are rewritten. The shared composite actions — the part of this folder that existing repositories do pick up automatically through the pinned ref — cannot carry the bound instead, because GitHub does not support `timeout-minutes` on steps inside a composite action ([actions/runner#1979](https://github.com/actions/runner/issues/1979)). Wrapping the commands in a shell-level `timeout` inside the action would propagate, at the cost of the runner's native step timeout accounting and cancellation semantics.
+
 A deploy that legitimately needs longer than 30 minutes should raise `RADIUS_DEPLOY_TIMEOUT_MINUTES`. Before doing so, check whether the time is going into emulated cross-architecture container builds, which the `TARGET_CLUSTER_ARCH_MODE` detection exists to avoid; raising the timeout hides that cost rather than removing it.
 
 ### Prerequisites
