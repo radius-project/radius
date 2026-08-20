@@ -324,6 +324,21 @@ run_action
 assert_failure "dynamic pack name"
 assert_call_absent "deploy "
 
+# A conditional recipe-pack resource cannot be resolved deterministically: a
+# runtime condition may skip it, and a same-named pack in restored state would
+# otherwise be attached. Reject it before deploying.
+reset_case
+write_compiled_template '{
+  "custom": {
+    "type": "Radius.Core/recipePacks@2025-08-01-preview",
+    "name": "custom",
+    "condition": "[parameters(\"enablePack\")]"
+  }
+}'
+run_action
+assert_failure "conditional pack resource"
+assert_call_absent "deploy "
+
 # Command and output failures propagate instead of producing a replacement
 # environment update with incomplete data.
 reset_case
