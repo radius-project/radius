@@ -599,6 +599,22 @@ assert_status_file_contains "deploy-state.txt" "state=failed"
 assert_status_file_contains "deploy-state.txt" "exitCode=1"
 
 # ---------------------------------------------------------------------------
+# A run killed mid-command by a step timeout is reported by run-rad-commands
+# as its pessimistic seed. That outcome is not one this action names
+# explicitly, so the `*)` arm must catch it as failed - reporting it as
+# in_progress would repeat the bug the seed exists to prevent. (Cancellation
+# kills the step the same way, but the workflows skip publishing entirely on
+# `!cancelled()`, so it does not reach this mapping.)
+# ---------------------------------------------------------------------------
+reset_environment
+printf '{"outcome":"interrupted","exitCode":1}\n' >"${RESULT_FILE}"
+run_publisher
+assert_exit_zero "interrupted deploy"
+assert_progress_contract
+assert_run_state "failed"
+assert_status_file_contains "deploy-state.txt" "state=interrupted"
+
+# ---------------------------------------------------------------------------
 # An unreachable control plane must still produce a well-formed progress file
 # rather than a malformed one the canvas cannot parse.
 # ---------------------------------------------------------------------------

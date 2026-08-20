@@ -171,9 +171,19 @@ runs:
         # Aggregate result accumulators. The result is written by a trap on EXIT so
         # the combined `rad-commands-result` artifact is complete even when a command
         # fails and the step exits early.
+        #
+        # The accumulator is pessimistic: it is seeded to `interrupted` and only
+        # promoted to `succeeded` once the command loop has actually completed. A
+        # step timeout kills bash mid-command, so no failure branch runs — but the
+        # EXIT trap still fires. With an optimistic seed that published an unearned
+        # `succeeded`; with this seed the kill reports the seed instead.
+        # `publish-deploy-status` maps unrecognized outcomes to `failed` via its
+        # `*)` arm, so `interrupted` lands correctly there. A cancelled job kills
+        # the step the same way, but the workflow templates gate publishing on
+        # `!cancelled()`, so there the seed only corrects the uploaded artifact.
         COMMANDS_JSON='[]'
-        OVERALL_OUTCOME="succeeded"
-        OVERALL_EXIT=0
+        OVERALL_OUTCOME="interrupted"
+        OVERALL_EXIT=1
         REQUESTED=0
         RAN=0
         OIDC_REFRESH_PID=""
@@ -514,6 +524,12 @@ runs:
           stop_live_deploy_progress || true
           echo "✅ Deployment complete."
         fi
+
+        # Earn the success verdict. Every failure path above exits before reaching
+        # here, and an abnormal termination never reaches here at all, so this is
+        # the only place `succeeded` is ever assigned.
+        OVERALL_OUTCOME="succeeded"
+        OVERALL_EXIT=0
 
     - name: Upload command result
       if: always()
