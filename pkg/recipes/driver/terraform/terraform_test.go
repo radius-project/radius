@@ -19,6 +19,7 @@ package terraform
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -33,6 +34,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
+	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -168,6 +170,47 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
+}
+
+func Test_Terraform_Execute_InvalidOutputMapping(t *testing.T) {
+	// The executor returns OutputMappingError before apply. The driver should classify it as a
+	// setup error.
+	invalidMappingErr := recipes_util.ValidateOutputsMapping(
+		[]string{"endpoint"},
+		map[string]string{"host": "missing"},
+		nil)
+	require.Error(t, invalidMappingErr)
+	invalidMappingErr = fmt.Errorf(`recipe "redis-azure" for resource type "Applications.Datastores/redisCaches": %w`, invalidMappingErr)
+
+	ctx := t.Context()
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, tfDriver := setup(t)
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+	envRecipe.Outputs = map[string]string{"host": "missing"}
+
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, invalidMappingErr)
+
+	output, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
+			Configuration: envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    envRecipe,
+		},
+	})
+
+	require.Nil(t, output)
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.InvalidRecipeOutputs,
+			Message: `recipe "redis-azure" for resource type "Applications.Datastores/redisCaches": invalid outputs mapping: no declared module output matches "host" -> "missing"; available module outputs: "endpoint"`,
+		},
+		DeploymentStatus: recipes_util.RecipeSetupError,
+	}, err)
 	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 

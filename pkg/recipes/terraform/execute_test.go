@@ -69,11 +69,31 @@ func TestGenerateConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			_, err = e.generateConfig(ctx, tf, tc.opts)
+			_, err = e.generateConfig(ctx, tf, tc.opts, requireValidOutputMappings)
 			require.Error(t, err)
 			require.ErrorContains(t, err, tc.err)
 		})
 	}
+}
+
+func TestValidateOutputMappings(t *testing.T) {
+	definition := &recipes.EnvironmentDefinition{
+		Name:          "service-bus",
+		ResourceType:  "Applications.Messaging/rabbitMQQueues",
+		Outputs:       map[string]string{"host": "endpoint"},
+		SecretOutputs: map[string]string{"connectionString": "primaryConnectionString"},
+	}
+	module := &moduleInspectResult{
+		OutputSensitivity: map[string]bool{
+			"endpoint": false,
+		},
+	}
+
+	err := validateOutputMappings(definition, module, requireValidOutputMappings)
+	require.EqualError(t, err, `recipe "service-bus" for resource type "Applications.Messaging/rabbitMQQueues": invalid outputs mapping: no declared module output matches "secrets.connectionString" -> "primaryConnectionString"; available module outputs: "endpoint"`)
+
+	err = validateOutputMappings(definition, module, skipOutputMappingValidation)
+	require.NoError(t, err)
 }
 
 func Test_GetTerraformConfig(t *testing.T) {

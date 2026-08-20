@@ -20,7 +20,51 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+func Test_ValidateOutputsMapping(t *testing.T) {
+	tests := []struct {
+		name             string
+		declaredOutputs  []string
+		outputsMap       map[string]string
+		secretOutputsMap map[string]string
+		expectedError    string
+	}{
+		{
+			name:             "accepts declared mappings",
+			declaredOutputs:  []string{"endpoint", "primaryConnectionString"},
+			outputsMap:       map[string]string{"host": "endpoint"},
+			secretOutputsMap: map[string]string{"connectionString": "primaryConnectionString"},
+		},
+		{
+			name:             "reports undeclared mappings and available outputs",
+			declaredOutputs:  []string{"zeta", "alpha"},
+			outputsMap:       map[string]string{"host": "missingHost"},
+			secretOutputsMap: map[string]string{"connectionString": "missingSecret"},
+			expectedError:    `invalid outputs mapping: no declared module output matches "host" -> "missingHost", "secrets.connectionString" -> "missingSecret"; available module outputs: "alpha", "zeta"`,
+		},
+		{
+			name:             "reports when the module declares no outputs",
+			secretOutputsMap: map[string]string{"connectionString": "primaryConnectionString"},
+			expectedError:    `invalid outputs mapping: no declared module output matches "secrets.connectionString" -> "primaryConnectionString"; available module outputs: none`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateOutputsMapping(tt.declaredOutputs, tt.outputsMap, tt.secretOutputsMap)
+			if tt.expectedError == "" {
+				require.NoError(t, err)
+				return
+			}
+
+			var mappingErr *OutputMappingError
+			require.ErrorAs(t, err, &mappingErr)
+			require.EqualError(t, err, tt.expectedError)
+		})
+	}
+}
 
 func Test_ApplyOutputsMapping(t *testing.T) {
 	tests := []struct {

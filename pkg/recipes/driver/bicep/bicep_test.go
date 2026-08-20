@@ -17,6 +17,8 @@ limitations under the License.
 package bicep
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -28,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
+	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/util/registrytest"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	clients "github.com/radius-project/radius/pkg/sdk/clients"
@@ -37,6 +40,16 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+type deploymentClientSpy struct {
+	clients.ResourceDeploymentsClient
+	createOrUpdateCalls int
+}
+
+func (s *deploymentClientSpy) CreateOrUpdate(_ context.Context, _ clients.Deployment, _, _ string) (clients.Poller[clients.ClientCreateOrUpdateResponse], error) {
+	s.createOrUpdateCalls++
+	return nil, errors.New("unexpected deployment")
+}
 
 func Test_CreateRecipeParameters_NoContextParameter(t *testing.T) {
 	devParams := map[string]any{}
@@ -511,6 +524,104 @@ func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 	}
 	expErr.ErrorDetails.Message = strings.Replace(expErr.ErrorDetails.Message, "<REPLACE_HOST>", ts.URL.Host, -1)
 	require.Equal(t, actualErr, &expErr)
+}
+
+func Test_Bicep_Execute_InvalidOutputMappingDoesNotDeploy(t *testing.T) {
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	deploymentClient := &deploymentClientSpy{}
+	driverBicep := &bicepDriver{
+		DeploymentClient: deploymentClient,
+		RegistryClient:   ts.TestServer.Client(),
+	}
+
+	output, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
+			Recipe: recipes.ResourceMetadata{
+				Name:          "mongo",
+				ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo",
+				EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env",
+			},
+			Definition: recipes.EnvironmentDefinition{
+				Name:          "mongo-azure",
+				Driver:        recipes.TemplateKindBicep,
+				TemplatePath:  ts.TestImageURL,
+				ResourceType:  "Applications.Datastores/mongoDatabases",
+				SecretOutputs: map[string]string{"connectionString": "primaryConnectionString"},
+			},
+		},
+	})
+
+	require.Nil(t, output)
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.InvalidRecipeOutputs,
+			Message: `recipe "mongo-azure" for resource type "Applications.Datastores/mongoDatabases": invalid outputs mapping: no declared module output matches "secrets.connectionString" -> "primaryConnectionString"; available module outputs: none`,
+		},
+		DeploymentStatus: recipes_util.RecipeSetupError,
+	}, err)
+	require.Zero(t, deploymentClient.createOrUpdateCalls)
+}
+
+func Test_ValidateOutputMappings(t *testing.T) {
+	tests := []struct {
+		name          string
+		definition    recipes.EnvironmentDefinition
+		recipeData    map[string]any
+		expectedError string
+	}{
+		{
+			name: "accepts declared outputs",
+			definition: recipes.EnvironmentDefinition{
+				Outputs: map[string]string{"endpoint": "endpoint", "password": "password"},
+			},
+			recipeData: map[string]any{
+				recipeOutputs: map[string]any{
+					"endpoint": map[string]any{"type": "string"},
+					"password": map[string]any{"type": "securestring"},
+				},
+			},
+		},
+		{
+			name: "rejects undeclared output",
+			definition: recipes.EnvironmentDefinition{
+				Name:          "test-recipe",
+				ResourceType:  "Test.Resources/widgets",
+				SecretOutputs: map[string]string{"connectionString": "missing"},
+			},
+			recipeData: map[string]any{
+				recipeOutputs: map[string]any{
+					"endpoint": map[string]any{"type": "string"},
+				},
+			},
+			expectedError: `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches "secrets.connectionString" -> "missing"; available module outputs: "endpoint"`,
+		},
+		{
+			name: "rejects non-object outputs collection",
+			definition: recipes.EnvironmentDefinition{
+				Outputs: map[string]string{"host": "endpoint"},
+			},
+			recipeData:    map[string]any{recipeOutputs: "invalid"},
+			expectedError: "recipe outputs must be an object",
+		},
+		{
+			name:       "skips template output parsing when no mappings are configured",
+			recipeData: map[string]any{recipeOutputs: "invalid"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateOutputMappings(tt.definition, tt.recipeData)
+			if tt.expectedError != "" {
+				require.EqualError(t, err, tt.expectedError)
+				return
+			}
+
+			require.NoError(t, err)
+		})
+	}
 }
 
 func Test_GetGCOutputResources(t *testing.T) {

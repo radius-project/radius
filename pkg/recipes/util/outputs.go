@@ -16,6 +16,63 @@ limitations under the License.
 
 package util
 
+import (
+	"fmt"
+	"sort"
+	"strings"
+)
+
+// OutputMappingError reports mappings that refer to undeclared module outputs.
+type OutputMappingError struct {
+	missingMappings  []string
+	availableOutputs []string
+}
+
+// Error describes invalid mappings and lists the module's declared outputs.
+func (e *OutputMappingError) Error() string {
+	return fmt.Sprintf(
+		"invalid outputs mapping: no declared module output matches %s; available module outputs: %s",
+		strings.Join(e.missingMappings, ", "),
+		formatOutputNames(e.availableOutputs))
+}
+
+// ValidateOutputsMapping checks every mapping against the module's declared outputs.
+func ValidateOutputsMapping(declaredOutputs []string, outputsMap map[string]string, secretOutputsMap map[string]string) error {
+	declared := make(map[string]struct{}, len(declaredOutputs))
+	for _, outputName := range declaredOutputs {
+		declared[outputName] = struct{}{}
+	}
+
+	missingMappings := []string{}
+	for propertyName, outputName := range outputsMap {
+		if _, ok := declared[outputName]; !ok {
+			missingMappings = append(missingMappings, fmt.Sprintf("%q -> %q", propertyName, outputName))
+		}
+	}
+
+	for propertyName, outputName := range secretOutputsMap {
+		if _, ok := declared[outputName]; !ok {
+			missingMappings = append(missingMappings, fmt.Sprintf("%q -> %q", "secrets."+propertyName, outputName))
+		}
+	}
+
+	if len(missingMappings) == 0 {
+		return nil
+	}
+
+	availableOutputs := make([]string, 0, len(declared))
+	for outputName := range declared {
+		availableOutputs = append(availableOutputs, outputName)
+	}
+	sort.Strings(missingMappings)
+	sort.Strings(availableOutputs)
+
+	return &OutputMappingError{
+		missingMappings:  missingMappings,
+		availableOutputs: availableOutputs,
+	}
+}
+
 // ApplyOutputsMapping renames a direct module's outputs onto resource property names.
 //
 // Keys in outputsMap and secretOutputsMap are resource property names; values are module output names.
@@ -61,4 +118,16 @@ func ApplyOutputsMapping(values map[string]any, secrets map[string]any, outputsM
 	}
 
 	return mappedValues, mappedSecrets
+}
+
+func formatOutputNames(outputNames []string) string {
+	if len(outputNames) == 0 {
+		return "none"
+	}
+
+	quotedOutputs := make([]string, len(outputNames))
+	for i, outputName := range outputNames {
+		quotedOutputs[i] = fmt.Sprintf("%q", outputName)
+	}
+	return strings.Join(quotedOutputs, ", ")
 }

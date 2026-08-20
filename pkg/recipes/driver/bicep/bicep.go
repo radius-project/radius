@@ -18,6 +18,7 @@ package bicep
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	reflect "reflect"
 	"slices"
@@ -54,6 +55,7 @@ const (
 	deploymentPrefix = "recipe"
 	pollFrequency    = time.Second * 5
 	recipeParameters = "parameters"
+	recipeOutputs    = "outputs"
 )
 
 var _ driver.Driver = (*bicepDriver)(nil)
@@ -118,6 +120,13 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, metrics.SuccessfulOperationState))
+
+	if err := validateOutputMappings(opts.Definition, recipeData); err != nil {
+		if _, ok := errors.AsType[*recipes_util.OutputMappingError](err); ok {
+			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
+		}
+		return nil, recipes.NewRecipeError(recipes.RecipeLanguageFailure, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
+	}
 
 	// create the context object to be passed to the recipe deployment
 	recipeContext, err := recipecontext.New(&opts.Recipe, &opts.Configuration)
@@ -326,6 +335,32 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOpt
 	}
 
 	return recipeData, nil
+}
+
+func validateOutputMappings(definition recipes.EnvironmentDefinition, recipeData map[string]any) error {
+	if len(definition.Outputs) == 0 && len(definition.SecretOutputs) == 0 {
+		return nil
+	}
+
+	declaredOutputs := []string{}
+	rawOutputs, ok := recipeData[recipeOutputs]
+	if ok && rawOutputs != nil {
+		outputs, ok := rawOutputs.(map[string]any)
+		if !ok {
+			return errors.New("recipe outputs must be an object")
+		}
+
+		declaredOutputs = make([]string, 0, len(outputs))
+		for outputName := range outputs {
+			declaredOutputs = append(declaredOutputs, outputName)
+		}
+	}
+
+	if err := recipes_util.ValidateOutputsMapping(declaredOutputs, definition.Outputs, definition.SecretOutputs); err != nil {
+		return fmt.Errorf("recipe %q for resource type %q: %w", definition.Name, definition.ResourceType, err)
+	}
+
+	return nil
 }
 
 func hasContextParameter(recipeData map[string]any) bool {

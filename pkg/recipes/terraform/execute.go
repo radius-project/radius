@@ -32,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
@@ -47,6 +48,14 @@ import (
 var (
 	// ErrRecipeNameEmpty is the error when the recipe name is empty.
 	ErrRecipeNameEmpty = errors.New("recipe name cannot be empty")
+)
+
+// outputMappingValidationMode controls declaration validation during configuration generation.
+type outputMappingValidationMode int
+
+const (
+	requireValidOutputMappings outputMappingValidationMode = iota
+	skipOutputMappingValidation
 )
 
 var _ TerraformExecutor = (*executor)(nil)
@@ -89,7 +98,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	}
 
 	// Create Terraform config in the working directory
-	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
+	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options, requireValidOutputMappings)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +143,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Create Terraform config in the working directory
-	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
+	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options, skipOutputMappingValidation)
 	if err != nil {
 		return err
 	}
@@ -316,7 +325,7 @@ func splitEnvVar(envVars []string) map[string]string {
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
-func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options) (string, error) {
+func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options, validationMode outputMappingValidationMode) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	workingDir := tf.WorkingDir()
 
@@ -327,6 +336,10 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 
 	loadedModule, err := downloadAndInspect(ctx, tf, options)
 	if err != nil {
+		return "", err
+	}
+
+	if err := validateOutputMappings(options.EnvRecipe, loadedModule, validationMode); err != nil {
 		return "", err
 	}
 
@@ -435,6 +448,23 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	}
 
 	return secretSuffix, nil
+}
+
+func validateOutputMappings(definition *recipes.EnvironmentDefinition, module *moduleInspectResult, validationMode outputMappingValidationMode) error {
+	if validationMode == skipOutputMappingValidation {
+		return nil
+	}
+
+	declaredOutputs := make([]string, 0, len(module.OutputSensitivity))
+	for outputName := range module.OutputSensitivity {
+		declaredOutputs = append(declaredOutputs, outputName)
+	}
+
+	if err := recipes_util.ValidateOutputsMapping(declaredOutputs, definition.Outputs, definition.SecretOutputs); err != nil {
+		return fmt.Errorf("recipe %q for resource type %q: %w", definition.Name, definition.ResourceType, err)
+	}
+
+	return nil
 }
 
 // getTerraformConfig initializes the Terraform json config with provided module source and saves it

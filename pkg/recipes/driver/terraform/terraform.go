@@ -118,6 +118,10 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 	}
 
 	if err != nil {
+		// OutputMappingError is raised before apply and must be reported as a setup failure.
+		if _, ok := errors.AsType[*recipes_util.OutputMappingError](err); ok {
+			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
+		}
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
