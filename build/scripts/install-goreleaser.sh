@@ -108,8 +108,11 @@ main() {
     fi
     [[ -n "${version}" ]] || fail "could not determine the version to install"
 
+    # Compare the reported version exactly; a substring match would treat
+    # 2.17.10 as satisfying a request for 2.17.1.
     if command -v goreleaser >/dev/null 2>&1 &&
-        goreleaser --version 2>/dev/null | grep -q "${version#v}"; then
+        [[ "$(goreleaser --version 2>/dev/null |
+            awk '/^GitVersion:/ { print $2; exit }')" == "${version#v}" ]]; then
         log "GoReleaser ${version} already installed: $(command -v goreleaser)"
         return 0
     fi
