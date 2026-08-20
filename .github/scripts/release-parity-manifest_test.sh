@@ -300,10 +300,10 @@ metadata:
   name: ucpd
 spec:
   template:
-  spec:
-    containers:
-    - name: ucpd
-      image: ghcr.io/radius-project/ucpd:0.60
+    spec:
+      containers:
+        - name: ucpd
+          image: ghcr.io/radius-project/ucpd:0.60
 YAML
 else
   echo "unexpected helm invocation: $*" >&2
