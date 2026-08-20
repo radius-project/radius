@@ -73,8 +73,8 @@ The automated flow after merging a `versions.yaml` change:
 Merge versions.yaml change (to main or release/* branch)
   → release.yaml detects new version in versions.yaml
     → release.yaml creates git tag + release branch (if needed)
-         → tag push triggers build-release.yaml
-            → build-release.yaml publishes artifacts + creates GitHub Release
+      → tag push triggers build-release.yaml
+        → build-release.yaml publishes artifacts + creates GitHub Release
 ```
 
 #### When does tag creation happen?
