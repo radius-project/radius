@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
 # Provider-agnostic resource delete shared by delete-azure.yml and delete-aws.yml.
 # Runs after restore-state (rad startup) has brought back the control-plane state,
 # so the environment, its recipe packs, the application, and the Terraform recipe
