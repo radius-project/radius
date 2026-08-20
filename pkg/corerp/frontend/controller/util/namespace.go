@@ -110,7 +110,7 @@ func FindEnvironmentNamespaceConflict(ctx context.Context, databaseClient databa
 // already claimed by another environment. The conflicting environment's ID is included so an
 // operator can find and resolve the collision.
 func NamespaceConflictMessage(namespace string, conflictingEnvironmentID string) string {
-	return fmt.Sprintf("The Kubernetes namespace specified (%s) is already used by another Radius Environment (%s). Specify a unique Kubernetes namespace.", namespace, conflictingEnvironmentID)
+	return fmt.Sprintf("The Kubernetes namespace specified (%s) is already used by another Radius Environment (%s). Each environment must use a unique Kubernetes namespace.", namespace, conflictingEnvironmentID)
 }
 
 // NamespaceImmutableMessage builds the error message returned when a request tries to change or

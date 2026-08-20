@@ -325,7 +325,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	_, err = envClient.CreateOrUpdate(ctx, r.Workspace.Scope, r.EnvironmentName, *resource, nil)
 	if err != nil {
 		if clients.IsNamespaceAlreadyInUseError(err) {
-			return clierrors.Message("The Kubernetes namespace specified (%s) is already used by another Radius Environment. Specify a unique Kubernetes namespace using the --kubernetes-namespace flag.", r.kubernetesNamespace())
+			// Prefer the server's message: it names the environment that already owns the
+			// namespace, which the CLI cannot determine on its own.
+			if detail := clients.NamespaceAlreadyInUseMessage(err); detail != "" {
+				return clierrors.Message("%s Specify a different namespace using the --kubernetes-namespace flag.", detail)
+			}
+
+			return clierrors.Message("The Kubernetes namespace specified (%s) is already used by another Radius Environment. Specify a different namespace using the --kubernetes-namespace flag.", r.kubernetesNamespace())
 		}
 
 		return err
