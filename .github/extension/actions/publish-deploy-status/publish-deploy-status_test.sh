@@ -733,6 +733,8 @@ grep -q "LC_ALL=C tr" "${PROGRESS_HELPER}" ||
     fail "artifact name sanitization must lowercase under LC_ALL=C"
 grep -q "LC_ALL=C sed" "${PROGRESS_HELPER}" ||
     fail "artifact name sanitization must strip invalid bytes under LC_ALL=C"
+# APP_NAME is intentionally literal because this checks the generated script.
+# shellcheck disable=SC2016
 grep -q 'rad resource list --preview -a "$APP_NAME" -o json' "${BODY_SCRIPT}" ||
     fail "deploy progress must list Radius.Core resources with --preview"
 

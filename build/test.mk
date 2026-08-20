@@ -85,7 +85,7 @@ test-deploy-progress: ## Tests live deploy progress generation
 	@bash ./.github/extension/actions/deploy-progress/progress_test.sh
 
 .PHONY: test-deploy-progress-uploader
-test-deploy-progress-uploader: ## Tests and builds the live deploy progress artifact uploader
+test-deploy-progress-uploader: generate-pnpm-installed ## Tests and builds the live deploy progress artifact uploader
 	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader install --frozen-lockfile
 	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader test
 	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader build

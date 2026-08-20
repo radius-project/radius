@@ -9,7 +9,7 @@ export interface ArtifactClient {
     name: string,
     files: string[],
     rootDirectory: string,
-    options?: { retentionDays?: number },
+    options?: { retentionDays?: number }
   ): Promise<{ id?: number; size?: number }>;
 }
 
@@ -21,7 +21,7 @@ export interface UploadRequest {
 }
 
 export function prepareArtifactRuntimeEnvironment(
-  env: NodeJS.ProcessEnv = process.env,
+  env: NodeJS.ProcessEnv = process.env
 ): string {
   const runtimeToken = env.ACTIONS_RUNTIME_TOKEN;
   const resultsUrl = env.ACTIONS_RESULTS_URL;
@@ -43,7 +43,7 @@ export function prepareArtifactRuntimeEnvironment(
   writeFileSync(
     runtimeFile,
     `${JSON.stringify({ runtimeToken, resultsUrl })}\n`,
-    { mode: 0o600 },
+    { mode: 0o600 }
   );
   chmodSync(runtimeFile, 0o600);
   return runtimeFile;
@@ -51,7 +51,7 @@ export function prepareArtifactRuntimeEnvironment(
 
 export async function uploadProgressArtifact(
   client: ArtifactClient,
-  request: UploadRequest,
+  request: UploadRequest
 ): Promise<{ artifactId: number; size: number }> {
   if (request.replaceExistingSlot) {
     try {
@@ -66,7 +66,7 @@ export async function uploadProgressArtifact(
     request.artifactName,
     [request.progressFile],
     dirname(request.progressFile),
-    { retentionDays: request.retentionDays },
+    { retentionDays: request.retentionDays }
   );
   if (result.id === undefined) {
     throw new Error("artifact upload completed without an artifact ID");
@@ -77,7 +77,7 @@ export async function uploadProgressArtifact(
 function parseRequest(args: string[]): UploadRequest {
   if (args.length !== 4) {
     throw new Error(
-      "usage: upload <artifact-name> <progress-file> <retention-days> <replace-existing-slot>",
+      "usage: upload <artifact-name> <progress-file> <retention-days> <replace-existing-slot>"
     );
   }
 
@@ -93,7 +93,7 @@ function parseRequest(args: string[]): UploadRequest {
     artifactName: args[0],
     progressFile: args[1],
     retentionDays,
-    replaceExistingSlot: args[3] === "true",
+    replaceExistingSlot: args[3] === "true"
   };
 }
 
@@ -101,15 +101,13 @@ export async function run(args: string[]): Promise<number> {
   try {
     if (args.length === 0) {
       const runtimeFile = prepareArtifactRuntimeEnvironment();
-      process.stdout.write(
-        `${JSON.stringify({ ok: true, runtimeFile })}\n`,
-      );
+      process.stdout.write(`${JSON.stringify({ ok: true, runtimeFile })}\n`);
       return 0;
     }
     const request = parseRequest(args);
     const result = await uploadProgressArtifact(
       new DefaultArtifactClient(),
-      request,
+      request
     );
     process.stdout.write(`${JSON.stringify({ ok: true, ...result })}\n`);
     return 0;
