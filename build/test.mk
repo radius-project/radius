@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-run-rad-commands-action test-build-platforms test-publish-deploy-status ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-run-rad-commands-action test-build-platforms test-publish-deploy-status test-deploy-timeout ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -75,6 +75,10 @@ test-build-platforms: ## Tests container build platform resolution and workflow 
 .PHONY: test-publish-deploy-status
 test-publish-deploy-status: ## Tests deploy status publishing in the publish-deploy-status action
 	@bash ./.github/extension/actions/publish-deploy-status/publish-deploy-status_test.sh
+
+.PHONY: test-deploy-timeout
+test-deploy-timeout: ## Tests the deploy step timeout wiring in the deploy workflow templates
+	@bash ./.github/extension/deploy-timeout_test.sh
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
