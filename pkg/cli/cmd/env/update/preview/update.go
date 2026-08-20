@@ -103,8 +103,9 @@ rad env update myenv --recipe-packs pack1 --recipe-pack-group other-group
 
 	// The Kubernetes namespace is immutable once set, so this flag can no longer do anything: it is
 	// rejected on any environment that has a namespace and is a no-op on one that does not. It is
-	// kept, hidden and deprecated, so that users who scripted it get an explanation rather than a
-	// bare "unknown flag" from Cobra. Remove it once Radius.Core leaves preview.
+	// kept so that users who scripted it get an explanation rather than a bare "unknown flag" from
+	// Cobra. MarkDeprecated also sets Hidden, so it no longer appears in help output. Remove it
+	// once Radius.Core leaves preview.
 	_ = cmd.Flags().MarkDeprecated(commonflags.ClearEnvKubernetesFlag, "the Kubernetes namespace of an environment cannot be removed; create a new environment instead")
 
 	cmd.Flags().StringSliceP("recipe-packs", "", []string{}, "Specify recipe packs to replace the environment's recipe pack list (--preview). Accepts comma-separated values.")

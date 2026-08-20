@@ -195,5 +195,5 @@ func Test_FindEnvironmentNamespaceConflict(t *testing.T) {
 
 func Test_NamespaceConflictMessage(t *testing.T) {
 	message := NamespaceConflictMessage("default", envInDefaultGroup)
-	require.Equal(t, "The Kubernetes namespace specified (default) is already used by another Radius Environment ("+envInDefaultGroup+"). Specify a unique Kubernetes namespace.", message)
+	require.Equal(t, "The Kubernetes namespace specified (default) is already used by another Radius Environment ("+envInDefaultGroup+"). Each environment must use a unique Kubernetes namespace.", message)
 }
