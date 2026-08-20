@@ -389,9 +389,10 @@ jobs:
       # greater than zero, and an expression that fails to evaluate is recorded as
       # an error but still leaves the step unbounded. So `0`, a negative number, or
       # a malformed value would silently restore the very behavior this timeout
-      # exists to prevent. Reject those loudly instead. The upper bound keeps the
-      # step inside the job's 360-minute budget with room to spare for the teardown
-      # that persists Radius state.
+      # exists to prevent. Reject those loudly instead. The upper bound is a
+      # ceiling, not a guarantee: the setup steps before this one draw on the same
+      # 360-minute job budget, so a value near the ceiling can still leave the job
+      # out of time for the teardown that persists Radius state.
       - name: Resolve deploy timeout
         id: deploy-timeout
         env:

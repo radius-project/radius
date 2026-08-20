@@ -149,10 +149,18 @@ for wf in "${AZURE_WF}" "${AWS_WF}"; do
 
     grep -qE "^id: ${RESOLVE_ID}\$" <<<"${resolve_body}" ||
         fail "'${RESOLVE_STEP}' in ${name} must declare 'id: ${RESOLVE_ID}' for the timeout expression to reference it"
-    grep -q "${TIMEOUT_VAR}" <<<"${resolve_body}" ||
-        fail "'${RESOLVE_STEP}' in ${name} must read the ${TIMEOUT_VAR} variable"
-    grep -q 'minutes=' <<<"${resolve_body}" ||
-        fail "'${RESOLVE_STEP}' in ${name} must emit a 'minutes' output"
+    # Assert the mapping itself, not just the variable name: the name also appears
+    # in the error messages, so a bare name match still passes when the `env:`
+    # mapping is dropped and the override is silently ignored.
+    expected_env="REQUESTED: \${{ vars.${TIMEOUT_VAR} }}"
+    grep -qF -- "${expected_env}" <<<"${resolve_body}" ||
+        fail "'${RESOLVE_STEP}' in ${name} must map the override with '${expected_env}' or the ${TIMEOUT_VAR} variable is ignored"
+    # Assert the write to GITHUB_OUTPUT, not any 'minutes=' assignment: the local
+    # arithmetic assignment also matches, so a looser check passes when the output
+    # write is deleted, leaving the timeout expression empty and the step unbounded.
+    # shellcheck disable=SC2016  # the literal text is the assertion; no expansion wanted
+    grep -qF -- 'echo "minutes=${minutes}" >> "$GITHUB_OUTPUT"' <<<"${resolve_body}" ||
+        fail "'${RESOLVE_STEP}' in ${name} must write the resolved value to GITHUB_OUTPUT; without it the timeout expression evaluates to empty and the runner applies no timeout"
     grep -q -- "-${DEFAULT_TIMEOUT}}" <<<"${resolve_body}" ||
         fail "'${RESOLVE_STEP}' in ${name} must default to ${DEFAULT_TIMEOUT} minutes when ${TIMEOUT_VAR} is unset or empty"
     # Assert the comparisons themselves, not just the numbers: the bounds also
