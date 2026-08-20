@@ -1,0 +1,17 @@
+FROM alpine:3.24.1
+
+ARG TARGETPLATFORM
+
+RUN apk --no-cache add ca-certificates git && \
+  addgroup -g 65532 rpuser && \
+  adduser -u 65532 -G rpuser -s /bin/sh -D rpuser
+
+WORKDIR /
+
+COPY ${TARGETPLATFORM}/applications-rp /applications-rp
+
+USER rpuser
+
+EXPOSE 8080
+
+ENTRYPOINT ["/applications-rp"]
