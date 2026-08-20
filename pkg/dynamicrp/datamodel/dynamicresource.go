@@ -40,14 +40,6 @@ type DynamicResource struct {
 
 	// Properties stores the properties of the resource being tracked.
 	Properties map[string]any `json:"properties"`
-
-	// Internal stores framework-owned metadata that is persisted but never exposed through the resource API.
-	Internal *DynamicResourceInternalMetadata `json:"_internal,omitempty"`
-}
-
-// DynamicResourceInternalMetadata stores framework-owned state for a dynamic resource.
-type DynamicResourceInternalMetadata struct {
-	ManagedSecretReferences map[string]rpv1.ManagedSecretReference `json:"managedSecretReferences,omitempty"`
 }
 
 // Status() returns the status of the resource.
@@ -327,28 +319,4 @@ func (d *DynamicResource) GetSecrets() map[string]rpv1.SecretValueReference {
 	}
 
 	return secretsMap
-}
-
-// GetManagedSecretReferences returns valid non-sensitive managed secret references from internal metadata.
-func (d *DynamicResource) GetManagedSecretReferences() map[string]rpv1.ManagedSecretReference {
-	references := map[string]rpv1.ManagedSecretReference{}
-	if d.Internal == nil {
-		return references
-	}
-	for key, reference := range d.Internal.ManagedSecretReferences {
-		if reference.Source != "" && reference.Key != "" {
-			references[key] = reference
-		}
-	}
-	return references
-}
-
-// SetManagedSecretReferences atomically replaces internal managed secret references.
-func (d *DynamicResource) SetManagedSecretReferences(references map[string]rpv1.ManagedSecretReference) {
-	if len(references) == 0 {
-		d.Internal = nil
-		return
-	}
-
-	d.Internal = &DynamicResourceInternalMetadata{ManagedSecretReferences: maps.Clone(references)}
 }

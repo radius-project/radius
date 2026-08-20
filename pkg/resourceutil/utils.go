@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 )
 
@@ -110,11 +109,10 @@ func GetConnectionNameandSourceIDs[P any](resource P) (map[string]string, error)
 
 // ResourceMetadata represents resource metadata including ID, Name, Type and Properties
 type ResourceMetadata struct {
-	ID                      string                                 `json:"id"`
-	Name                    string                                 `json:"name"`
-	Type                    string                                 `json:"type"`
-	Properties              map[string]any                         `json:"properties,omitempty"`
-	ManagedSecretReferences map[string]rpv1.ManagedSecretReference `json:"-"`
+	ID         string         `json:"id"`
+	Name       string         `json:"name"`
+	Type       string         `json:"type"`
+	Properties map[string]any `json:"properties,omitempty"`
 }
 
 // GetAllPropertiesFromResource extracts the resource metadata including ID, Name, Type and properties
@@ -126,9 +124,6 @@ func GetAllPropertiesFromResource[P any](resource P) (*ResourceMetadata, error) 
 		Name       string         `json:"name"`
 		Type       string         `json:"type"`
 		Properties map[string]any `json:"properties"`
-		Internal   struct {
-			ManagedSecretReferences map[string]rpv1.ManagedSecretReference `json:"managedSecretReferences"`
-		} `json:"_internal"`
 	}
 
 	// Use the common marshal/unmarshal helper
@@ -141,21 +136,10 @@ func GetAllPropertiesFromResource[P any](resource P) (*ResourceMetadata, error) 
 		partialResource.Properties = map[string]any{}
 	}
 
-	var references map[string]rpv1.ManagedSecretReference
-	for name, reference := range partialResource.Internal.ManagedSecretReferences {
-		if reference.Source != "" && reference.Key != "" {
-			if references == nil {
-				references = map[string]rpv1.ManagedSecretReference{}
-			}
-			references[name] = reference
-		}
-	}
-
 	return &ResourceMetadata{
-		ID:                      partialResource.ID,
-		Name:                    partialResource.Name,
-		Type:                    partialResource.Type,
-		Properties:              partialResource.Properties,
-		ManagedSecretReferences: references,
+		ID:         partialResource.ID,
+		Name:       partialResource.Name,
+		Type:       partialResource.Type,
+		Properties: partialResource.Properties,
 	}, nil
 }

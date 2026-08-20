@@ -216,19 +216,11 @@ func (d *DynamicProcessor) materializeRecipeSecrets(ctx context.Context, resourc
 	}
 	secrets[schemautil.SecretNameReferenceKey] = result.Name
 
-	references := make(map[string]rpv1.ManagedSecretReference, len(data))
-	for key := range data {
-		references[key] = rpv1.ManagedSecretReference{Source: result.ID, Key: key}
-	}
-	resource.SetManagedSecretReferences(references)
-
 	return nil
 }
 
 // clearStaleManagedSecret cascade-deletes the managed secret an owner materialized on a prior deploy and
-// clears both internal key references and the public `secrets.name` reference. Internal references are the
-// current lifecycle signal; `properties.secrets.name` remains a fallback for resources persisted by older
-// versions.
+// clears the public `secrets.name` reference.
 func (d *DynamicProcessor) clearStaleManagedSecret(ctx context.Context, resource *datamodel.DynamicResource) error {
 	if hasManagedSecret(resource) && d.SecretMaterializer != nil {
 		if err := d.SecretMaterializer.Delete(ctx, resource.ID); err != nil {
@@ -236,7 +228,6 @@ func (d *DynamicProcessor) clearStaleManagedSecret(ctx context.Context, resource
 		}
 	}
 
-	resource.SetManagedSecretReferences(nil)
 	if secrets, ok := resource.Properties[schemautil.SecretsBlockPropertyName].(map[string]any); ok {
 		delete(secrets, schemautil.SecretNameReferenceKey)
 		if len(secrets) == 0 {
@@ -247,9 +238,6 @@ func (d *DynamicProcessor) clearStaleManagedSecret(ctx context.Context, resource
 }
 
 func hasManagedSecret(resource *datamodel.DynamicResource) bool {
-	if len(resource.GetManagedSecretReferences()) > 0 {
-		return true
-	}
 	secrets, ok := resource.Properties[schemautil.SecretsBlockPropertyName].(map[string]any)
 	if !ok {
 		return false

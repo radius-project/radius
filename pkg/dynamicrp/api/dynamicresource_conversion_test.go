@@ -22,7 +22,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -135,27 +134,4 @@ func Test_DynamicResource_ConvertDataModelToVersioned_NilProperties(t *testing.T
 	require.Equal(t, map[string]any{
 		"provisioningState": fromProvisioningStateDataModel(dm.AsyncProvisioningState),
 	}, resource.Properties)
-}
-
-func Test_DynamicResource_ConvertDataModelToVersioned_HidesInternalMetadata(t *testing.T) {
-	dm := &datamodel.DynamicResource{
-		Properties: map[string]any{
-			"status": map[string]any{"secretReferences": "user-owned-status"},
-		},
-		Internal: &datamodel.DynamicResourceInternalMetadata{
-			ManagedSecretReferences: map[string]rpv1.ManagedSecretReference{
-				"url": {Source: "secret-id", Key: "url"},
-			},
-		},
-	}
-	resource := &DynamicResource{}
-
-	err := resource.ConvertFrom(dm)
-	require.NoError(t, err)
-	require.Equal(t, map[string]any{"secretReferences": "user-owned-status"}, resource.Properties["status"])
-
-	data, err := json.Marshal(resource)
-	require.NoError(t, err)
-	require.NotContains(t, string(data), "_internal")
-	require.NotContains(t, string(data), "secret-id")
 }

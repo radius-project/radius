@@ -484,7 +484,6 @@ After a recipe runs, the dynamic processor
 4. Sets the reserved `secrets.name` reference on the owner
    (`properties.secrets.name`) to the managed secret's name. The secret data
    values are never populated on the owner.
-5. Atomically replaces an internal, framework-owned `_internal.managedSecretReferences` map with one non-sensitive `{ source, key }` reference per materialized output. `source` is the full `Radius.Security/secrets` resource ID and `key` is the corresponding key in that resource. This persisted metadata is outside user-defined properties and is never exposed through public API responses. It never contains secret values; shrinking outputs removes stale entries, and empty outputs or removal of the schema `secrets` block clears it while reclaiming the managed Secret.
 
 A recipe produces secret outputs in one of two ways. A wrapped recipe returns them
 under `result.secrets`. A direct module (for example an AVM Bicep or Terraform
@@ -499,9 +498,9 @@ the recipe config loader split the nested `secrets` object back out via
 `v20250801preview.SplitRecipeOutputs`, and `pkg/recipes/util.ApplyOutputsMapping`
 applies the resulting mappings.
 
-A consuming Recipe receives each connection as `context.resource.connections.<name>`. Normal resource properties remain under `properties`, while managed output references are exposed separately under `secrets.<key>.source` and `secrets.<key>.key`. This lets Container Recipes generate normal and secret-backed connection variables from a single connection to the producer without reading plaintext from owner state. Older Recipes safely ignore the additional `secrets` map.
+A consuming Recipe receives each connection as `context.resource.connections.<name>`. Normal resource properties remain under `properties`, while managed output references are exposed separately under `secrets.<key>.source` and `secrets.<key>.key`. When building this context, Radius follows the producer's `properties.secrets.name` reference, reads the managed `Radius.Security/secrets` resource from the database, and derives one `{ source, key }` reference from each `properties.data` key. The managed Secret remains the source of truth; Radius does not persist a duplicate reference map or decrypt its values. This lets Container Recipes generate normal and secret-backed connection variables from a single connection to the producer without reading plaintext from owner state. Older Recipes safely ignore the additional `secrets` map.
 
-The public resource contract remains unchanged: `properties.secrets.name` is the managed Secret name for an explicitly authored custom `secretKeyRef`, and the declared secret-key properties remain read-only schema metadata. There is no `properties.secrets.id`; the full source ID exists only in the internal Recipe connection reference. For example:
+The public resource contract remains unchanged: `properties.secrets.name` is the managed Secret name for an explicitly authored custom `secretKeyRef`, and the declared secret-key properties remain read-only schema metadata. There is no `properties.secrets.id`; Radius derives the full source ID while constructing Recipe connection context. For example:
 
 ```bicep
 env: {

@@ -22,7 +22,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -107,20 +106,4 @@ func TestMakeUpdateFilters_DefaultsBeforeEncryption(t *testing.T) {
 	require.Contains(t, encryptedPassword, "encrypted")
 	require.Contains(t, encryptedPassword, "nonce")
 	require.Contains(t, encryptedPassword, "version")
-}
-
-func TestPreserveInternalMetadata(t *testing.T) {
-	oldResource := &datamodel.DynamicResource{}
-	oldResource.SetManagedSecretReferences(map[string]rpv1.ManagedSecretReference{
-		"password": {Source: "secret-id", Key: "password"},
-	})
-	newResource := &datamodel.DynamicResource{}
-
-	response, err := preserveInternalMetadata(t.Context(), newResource, oldResource, nil)
-	require.NoError(t, err)
-	require.Nil(t, response)
-	require.Equal(t, oldResource.GetManagedSecretReferences(), newResource.GetManagedSecretReferences())
-
-	oldResource.SetManagedSecretReferences(nil)
-	require.NotEmpty(t, newResource.GetManagedSecretReferences(), "preserved metadata must not alias the old resource")
 }

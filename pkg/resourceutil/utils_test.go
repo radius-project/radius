@@ -472,31 +472,6 @@ func TestGetAllPropertiesFromResource(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "Resource with internal managed secret references",
-			resource: map[string]any{
-				"id":         TestResourceID,
-				"name":       "tr",
-				"type":       "MyResources.Test/testResources",
-				"properties": map[string]any{"host": "localhost"},
-				"_internal": map[string]any{
-					"managedSecretReferences": map[string]any{
-						"url":       map[string]any{"source": "secret-id", "key": "url"},
-						"malformed": map[string]any{"source": "secret-id"},
-					},
-				},
-			},
-			expected: &ResourceMetadata{
-				ID:         TestResourceID,
-				Name:       "tr",
-				Type:       "MyResources.Test/testResources",
-				Properties: map[string]any{"host": "localhost"},
-				ManagedSecretReferences: map[string]rpv1.ManagedSecretReference{
-					"url": {Source: "secret-id", Key: "url"},
-				},
-			},
-			expectError: false,
-		},
-		{
 			name: "Resource with missing fields",
 			resource: &PropertiesTestResource{
 				Properties: map[string]any{
