@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-run-rad-commands-action test-build-platforms test-publish-deploy-status ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -67,6 +67,10 @@ test-update-tools-pr: ## Tests the automated tool-update pull request workflow
 .PHONY: test-run-rad-commands-action
 test-run-rad-commands-action: ## Tests application deploy parameter filtering in the run-rad-commands action
 	@bash ./.github/extension/actions/run-rad-commands/deploy-parameters_test.sh
+
+.PHONY: test-azure-oidc-refresh
+test-azure-oidc-refresh: ## Tests Azure OIDC token refresh behavior and workflow wiring
+	@bash ./.github/extension/scripts/refresh-azure-oidc-token_test.sh
 
 .PHONY: test-build-platforms
 test-build-platforms: ## Tests container build platform resolution and workflow wiring in the run-rad-commands action

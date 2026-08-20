@@ -169,6 +169,7 @@ jobs:
         with:
           resource-type: ${{ inputs.resource_type }}
           name: ${{ inputs.name }}
+          azure-oidc-token-refresh: "${{ vars.AZURE_CLIENT_ID != '' }}"
 
       - name: Teardown
         if: always()
