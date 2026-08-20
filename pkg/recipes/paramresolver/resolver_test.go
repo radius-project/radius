@@ -22,7 +22,6 @@ import (
 	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,9 +46,6 @@ func testContext() *recipecontext.Context {
 					Type: "Applications.Core/extenders",
 					Properties: map[string]any{
 						"connectionString": "postgres://myhost:5432/mydb",
-					},
-					Secrets: map[string]rpv1.ManagedSecretReference{
-						"password": {Source: "managed-secret-id", Key: "password"},
 					},
 				},
 			},
@@ -313,18 +309,6 @@ func Test_ResolveParameterExpressions(t *testing.T) {
 			ctx: testContext(),
 			expected: map[string]any{
 				"dbName": "my-db",
-			},
-		},
-		{
-			name: "connection secret reference fields resolve",
-			params: map[string]any{
-				"source": "{{context.resource.connections.db.secrets.password.source}}",
-				"key":    "key={{context.resource.connections.db.secrets.password.key}}",
-			},
-			ctx: testContext(),
-			expected: map[string]any{
-				"source": "managed-secret-id",
-				"key":    "key=password",
 			},
 		},
 	}

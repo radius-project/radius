@@ -137,18 +137,14 @@ func Test_DynamicResource_ConvertDataModelToVersioned_NilProperties(t *testing.T
 	}, resource.Properties)
 }
 
-func Test_DynamicResource_ConvertDataModelToVersioned_HidesManagedSecretReferences(t *testing.T) {
-	references := map[string]any{
-		"url": map[string]any{
-			"source": "/planes/radius/local/resourcegroups/default/providers/Radius.Security/secrets/redis-secrets",
-			"key":    "url",
-		},
-	}
+func Test_DynamicResource_ConvertDataModelToVersioned_HidesInternalMetadata(t *testing.T) {
 	dm := &datamodel.DynamicResource{
 		Properties: map[string]any{
-			"status": map[string]any{
-				"recipe":                              map[string]any{"templateKind": "bicep"},
-				rpv1.ManagedSecretReferencesStatusKey: references,
+			"status": map[string]any{"secretReferences": "user-owned-status"},
+		},
+		Internal: &datamodel.DynamicResourceInternalMetadata{
+			ManagedSecretReferences: map[string]rpv1.ManagedSecretReference{
+				"url": {Source: "secret-id", Key: "url"},
 			},
 		},
 	}
@@ -156,8 +152,10 @@ func Test_DynamicResource_ConvertDataModelToVersioned_HidesManagedSecretReferenc
 
 	err := resource.ConvertFrom(dm)
 	require.NoError(t, err)
-	require.Equal(t, map[string]any{
-		"recipe": map[string]any{"templateKind": "bicep"},
-	}, resource.Properties["status"])
-	require.Equal(t, references, dm.Status()[rpv1.ManagedSecretReferencesStatusKey])
+	require.Equal(t, map[string]any{"secretReferences": "user-owned-status"}, resource.Properties["status"])
+
+	data, err := json.Marshal(resource)
+	require.NoError(t, err)
+	require.NotContains(t, string(data), "_internal")
+	require.NotContains(t, string(data), "secret-id")
 }

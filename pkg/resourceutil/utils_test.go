@@ -388,12 +388,12 @@ func TestMarshalAndUnmarshalResource(t *testing.T) {
 			Name: "test-resource",
 			Type: "MyResources.Test/testResources",
 			Properties: map[string]any{
-				"string":  "value",
-				"int":     42,
-				"float":   3.14,
-				"bool":    true,
-				"null":    nil,
-				"array":   []string{"item1", "item2"},
+				"string": "value",
+				"int":    42,
+				"float":  3.14,
+				"bool":   true,
+				"null":   nil,
+				"array":  []string{"item1", "item2"},
 				"object": map[string]any{
 					"nested": "value",
 				},
@@ -409,12 +409,12 @@ func TestMarshalAndUnmarshalResource(t *testing.T) {
 		require.Equal(t, 3.14, result.Properties["float"])
 		require.Equal(t, true, result.Properties["bool"])
 		require.Nil(t, result.Properties["null"])
-		
+
 		// Arrays become []any after JSON processing
 		array := result.Properties["array"].([]any)
 		require.Equal(t, "item1", array[0])
 		require.Equal(t, "item2", array[1])
-		
+
 		// Objects remain as map[string]any
 		object := result.Properties["object"].(map[string]any)
 		require.Equal(t, "value", object["nested"])
@@ -472,6 +472,31 @@ func TestGetAllPropertiesFromResource(t *testing.T) {
 			expectError: false,
 		},
 		{
+			name: "Resource with internal managed secret references",
+			resource: map[string]any{
+				"id":         TestResourceID,
+				"name":       "tr",
+				"type":       "MyResources.Test/testResources",
+				"properties": map[string]any{"host": "localhost"},
+				"_internal": map[string]any{
+					"managedSecretReferences": map[string]any{
+						"url":       map[string]any{"source": "secret-id", "key": "url"},
+						"malformed": map[string]any{"source": "secret-id"},
+					},
+				},
+			},
+			expected: &ResourceMetadata{
+				ID:         TestResourceID,
+				Name:       "tr",
+				Type:       "MyResources.Test/testResources",
+				Properties: map[string]any{"host": "localhost"},
+				ManagedSecretReferences: map[string]rpv1.ManagedSecretReference{
+					"url": {Source: "secret-id", Key: "url"},
+				},
+			},
+			expectError: false,
+		},
+		{
 			name: "Resource with missing fields",
 			resource: &PropertiesTestResource{
 				Properties: map[string]any{
@@ -479,9 +504,9 @@ func TestGetAllPropertiesFromResource(t *testing.T) {
 				},
 			},
 			expected: &ResourceMetadata{
-				ID:         "",
-				Name:       "",
-				Type:       "",
+				ID:   "",
+				Name: "",
+				Type: "",
 				Properties: map[string]any{
 					"host": "localhost",
 				},

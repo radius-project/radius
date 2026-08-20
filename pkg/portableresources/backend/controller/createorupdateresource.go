@@ -329,7 +329,7 @@ func buildConnectedResource(resource any) (recipes.ConnectedResource, error) {
 		Name:       metadata.Name,
 		Type:       metadata.Type,
 		Properties: metadata.Properties,
-		Secrets:    resourceutil.GetManagedSecretReferences(metadata.Properties),
+		Secrets:    metadata.ManagedSecretReferences,
 	}, nil
 }
 

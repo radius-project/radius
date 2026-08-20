@@ -17,6 +17,7 @@ limitations under the License.
 package datamodel
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/portableresources"
@@ -550,13 +551,15 @@ func Test_DynamicResource_GetSecrets(t *testing.T) {
 func Test_DynamicResource_ManagedSecretReferences(t *testing.T) {
 	resource := DynamicResource{Properties: map[string]any{
 		"status": map[string]any{
-			"secretReferences": map[string]any{
-				"url":       map[string]any{"source": "secret-id", "key": "url"},
-				"malformed": map[string]any{"source": "secret-id"},
-			},
+			"secretReferences": "user-owned-status",
 			"secrets": map[string]any{
 				"legacy": map[string]any{"Value": "plaintext"},
 			},
+		},
+	}, Internal: &DynamicResourceInternalMetadata{
+		ManagedSecretReferences: map[string]rpv1.ManagedSecretReference{
+			"url":       {Source: "secret-id", Key: "url"},
+			"malformed": {Source: "secret-id"},
 		},
 	}}
 
@@ -567,6 +570,12 @@ func Test_DynamicResource_ManagedSecretReferences(t *testing.T) {
 		"legacy": {Value: "plaintext"},
 	}, resource.GetSecrets())
 
+	data, err := json.Marshal(resource)
+	require.NoError(t, err)
+	persisted := DynamicResource{}
+	require.NoError(t, json.Unmarshal(data, &persisted))
+	require.Equal(t, resource.GetManagedSecretReferences(), persisted.GetManagedSecretReferences())
+
 	resource.SetManagedSecretReferences(map[string]rpv1.ManagedSecretReference{
 		"password": {Source: "new-secret-id", Key: "password"},
 	})
@@ -575,5 +584,5 @@ func Test_DynamicResource_ManagedSecretReferences(t *testing.T) {
 	}, resource.GetManagedSecretReferences())
 	resource.SetManagedSecretReferences(nil)
 	require.Empty(t, resource.GetManagedSecretReferences())
-	require.NotContains(t, resource.Status(), "secretReferences")
+	require.Equal(t, "user-owned-status", resource.Status()["secretReferences"])
 }

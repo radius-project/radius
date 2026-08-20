@@ -139,11 +139,11 @@ func TestBuildConnectedResource_ManagedSecretReferences(t *testing.T) {
 		"type": "Applications.Test/resources",
 		"properties": map[string]any{
 			"host": "example.com",
-			"status": map[string]any{
-				"secretReferences": map[string]any{
-					"url":       map[string]any{"source": "secret-id", "key": "url"},
-					"malformed": map[string]any{"source": "secret-id"},
-				},
+		},
+		"_internal": map[string]any{
+			"managedSecretReferences": map[string]any{
+				"url":       map[string]any{"source": "secret-id", "key": "url"},
+				"malformed": map[string]any{"source": "secret-id"},
 			},
 		},
 	}
@@ -155,7 +155,7 @@ func TestBuildConnectedResource_ManagedSecretReferences(t *testing.T) {
 		"url": {Source: "secret-id", Key: "url"},
 	}, connected.Secrets)
 
-	delete(data["properties"].(map[string]any), "status")
+	delete(data, "_internal")
 	connected, err = buildConnectedResource(data)
 	require.NoError(t, err)
 	require.Empty(t, connected.Secrets)

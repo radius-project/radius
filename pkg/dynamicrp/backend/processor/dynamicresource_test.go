@@ -446,12 +446,12 @@ func Test_Process(t *testing.T) {
 			},
 			// A prior deploy materialized a managed secret and left the reference behind.
 			Properties: map[string]any{
-				"status": map[string]any{
-					"secretReferences": map[string]any{
-						"connectionString": map[string]any{"source": "old-secret-id", "key": "connectionString"},
-					},
-				},
 				"secrets": map[string]any{"name": "test-resource-secrets"},
+			},
+			Internal: &datamodel.DynamicResourceInternalMetadata{
+				ManagedSecretReferences: map[string]rpv1.ManagedSecretReference{
+					"connectionString": {Source: "old-secret-id", Key: "connectionString"},
+				},
 			},
 		}
 		options := processors.Options{
@@ -505,11 +505,9 @@ func Test_Process(t *testing.T) {
 				},
 				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
 			},
-			Properties: map[string]any{
-				"status": map[string]any{
-					"secretReferences": map[string]any{
-						"connectionString": map[string]any{"source": "old-secret-id", "key": "connectionString"},
-					},
+			Internal: &datamodel.DynamicResourceInternalMetadata{
+				ManagedSecretReferences: map[string]rpv1.ManagedSecretReference{
+					"connectionString": {Source: "old-secret-id", Key: "connectionString"},
 				},
 			},
 		}

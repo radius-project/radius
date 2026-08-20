@@ -484,7 +484,7 @@ After a recipe runs, the dynamic processor
 4. Sets the reserved `secrets.name` reference on the owner
    (`properties.secrets.name`) to the managed secret's name. The secret data
    values are never populated on the owner.
-5. Atomically replaces an internal, framework-owned `status.secretReferences` map with one non-sensitive `{ source, key }` reference per materialized output. `source` is the full `Radius.Security/secrets` resource ID and `key` is the corresponding key in that resource. This map is filtered from public API responses and never contains secret values; shrinking outputs removes stale entries, and empty outputs or removal of the schema `secrets` block clears it while reclaiming the managed Secret.
+5. Atomically replaces an internal, framework-owned `_internal.managedSecretReferences` map with one non-sensitive `{ source, key }` reference per materialized output. `source` is the full `Radius.Security/secrets` resource ID and `key` is the corresponding key in that resource. This persisted metadata is outside user-defined properties and is never exposed through public API responses. It never contains secret values; shrinking outputs removes stale entries, and empty outputs or removal of the schema `secrets` block clears it while reclaiming the managed Secret.
 
 A recipe produces secret outputs in one of two ways. A wrapped recipe returns them
 under `result.secrets`. A direct module (for example an AVM Bicep or Terraform

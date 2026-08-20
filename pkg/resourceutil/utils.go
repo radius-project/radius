@@ -110,10 +110,11 @@ func GetConnectionNameandSourceIDs[P any](resource P) (map[string]string, error)
 
 // ResourceMetadata represents resource metadata including ID, Name, Type and Properties
 type ResourceMetadata struct {
-	ID         string         `json:"id"`
-	Name       string         `json:"name"`
-	Type       string         `json:"type"`
-	Properties map[string]any `json:"properties,omitempty"`
+	ID                      string                                 `json:"id"`
+	Name                    string                                 `json:"name"`
+	Type                    string                                 `json:"type"`
+	Properties              map[string]any                         `json:"properties,omitempty"`
+	ManagedSecretReferences map[string]rpv1.ManagedSecretReference `json:"-"`
 }
 
 // GetAllPropertiesFromResource extracts the resource metadata including ID, Name, Type and properties
@@ -125,6 +126,9 @@ func GetAllPropertiesFromResource[P any](resource P) (*ResourceMetadata, error) 
 		Name       string         `json:"name"`
 		Type       string         `json:"type"`
 		Properties map[string]any `json:"properties"`
+		Internal   struct {
+			ManagedSecretReferences map[string]rpv1.ManagedSecretReference `json:"managedSecretReferences"`
+		} `json:"_internal"`
 	}
 
 	// Use the common marshal/unmarshal helper
@@ -137,37 +141,21 @@ func GetAllPropertiesFromResource[P any](resource P) (*ResourceMetadata, error) 
 		partialResource.Properties = map[string]any{}
 	}
 
+	var references map[string]rpv1.ManagedSecretReference
+	for name, reference := range partialResource.Internal.ManagedSecretReferences {
+		if reference.Source != "" && reference.Key != "" {
+			if references == nil {
+				references = map[string]rpv1.ManagedSecretReference{}
+			}
+			references[name] = reference
+		}
+	}
+
 	return &ResourceMetadata{
-		ID:         partialResource.ID,
-		Name:       partialResource.Name,
-		Type:       partialResource.Type,
-		Properties: partialResource.Properties,
+		ID:                      partialResource.ID,
+		Name:                    partialResource.Name,
+		Type:                    partialResource.Type,
+		Properties:              partialResource.Properties,
+		ManagedSecretReferences: references,
 	}, nil
-}
-
-// GetManagedSecretReferences returns valid non-sensitive managed secret references from resource properties.
-func GetManagedSecretReferences(properties map[string]any) map[string]rpv1.ManagedSecretReference {
-	references := map[string]rpv1.ManagedSecretReference{}
-	status, ok := properties["status"].(map[string]any)
-	if !ok {
-		return references
-	}
-	values, ok := status[rpv1.ManagedSecretReferencesStatusKey].(map[string]any)
-	if !ok {
-		return references
-	}
-
-	for name, value := range values {
-		raw, ok := value.(map[string]any)
-		if !ok {
-			continue
-		}
-		source, sourceOK := raw["source"].(string)
-		key, keyOK := raw["key"].(string)
-		if !sourceOK || !keyOK || source == "" || key == "" {
-			continue
-		}
-		references[name] = rpv1.ManagedSecretReference{Source: source, Key: key}
-	}
-	return references
 }

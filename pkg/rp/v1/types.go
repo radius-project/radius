@@ -269,6 +269,3 @@ type ManagedSecretReference struct {
 	// Key is the key in the managed secret.
 	Key string `json:"key"`
 }
-
-// ManagedSecretReferencesStatusKey is the framework-owned status field containing managed secret references.
-const ManagedSecretReferencesStatusKey = "secretReferences"

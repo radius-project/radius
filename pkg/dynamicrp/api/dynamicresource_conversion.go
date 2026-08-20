@@ -22,7 +22,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 )
 
@@ -93,9 +92,6 @@ func (d *DynamicResource) ConvertFrom(src v1.DataModelInterface) error {
 	}
 	if properties == nil {
 		properties = map[string]any{}
-	}
-	if status, ok := properties["status"].(map[string]any); ok {
-		delete(status, rpv1.ManagedSecretReferencesStatusKey)
 	}
 
 	d.ID = &dm.ID

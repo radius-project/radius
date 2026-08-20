@@ -30,6 +30,18 @@ import (
 
 type defaultsUpdateFilter controller.UpdateFilter[datamodel.DynamicResource]
 
+func preserveInternalMetadata(
+	_ context.Context,
+	newResource *datamodel.DynamicResource,
+	oldResource *datamodel.DynamicResource,
+	_ *controller.Options,
+) (rest.Response, error) {
+	if newResource != nil && oldResource != nil {
+		newResource.SetManagedSecretReferences(oldResource.GetManagedSecretReferences())
+	}
+	return nil, nil
+}
+
 // makeDefaultsFilter applies schema defaults before a resource is saved.
 //
 // PUT replaces the resource, so omitted properties use current defaults instead of old values.
@@ -50,6 +62,7 @@ func makeUpdateFilters(
 ) []controller.UpdateFilter[datamodel.DynamicResource] {
 	// Distinct types prevent callers from passing encryption first.
 	return []controller.UpdateFilter[datamodel.DynamicResource]{
+		preserveInternalMetadata,
 		controller.UpdateFilter[datamodel.DynamicResource](defaultsFilter),
 		controller.UpdateFilter[datamodel.DynamicResource](encryptionFilter),
 	}
