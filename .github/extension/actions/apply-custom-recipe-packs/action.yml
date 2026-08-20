@@ -97,14 +97,20 @@ runs:
               error(
                 "conditional Radius.Core/recipePacks resources are not supported; a resource that a runtime condition may skip cannot be resolved deterministically and could collide with restored state"
               )
-            elif any(
-              (.name | type) != "string" or
-              (.name | length) == 0 or
-              (.name | startswith("["))
-            ) then
-              error("recipe pack names must be non-empty string literals that do not begin with '['")
             else
-              map(.name) | unique
+              # Radius extensibility resources carry the resource name at
+              # .properties.name in compiled ARM; fall back to a top-level
+              # .name for any non-extensibility encoding.
+              map(.properties.name // .name) |
+              if any(
+                type != "string" or
+                length == 0 or
+                startswith("[")
+              ) then
+                error("recipe pack names must be non-empty string literals that do not begin with '['")
+              else
+                unique
+              end
             end
           end
         ' "${COMPILED_TEMPLATE}")

@@ -155,8 +155,9 @@ write_compiled_template() {
 single_pack_template() {
     write_compiled_template '{
       "custom": {
+        "import": "radius",
         "type": "Radius.Core/recipePacks@2025-08-01-preview",
-        "name": "custom"
+        "properties": { "name": "custom", "properties": { "recipes": {} } }
       }
     }'
 }
@@ -274,12 +275,14 @@ assert_update_packs \
 reset_case
 write_compiled_template '{
   "custom": {
+    "import": "radius",
     "type": "Radius.Core/recipePacks@2025-08-01-preview",
-    "name": "custom"
+    "properties": { "name": "custom", "properties": { "recipes": {} } }
   },
   "other": {
+    "import": "radius",
     "type": "radius.core/recipepacks@2025-08-01-preview",
-    "name": "other"
+    "properties": { "name": "other", "properties": { "recipes": {} } }
   }
 }'
 run_action
@@ -316,8 +319,12 @@ assert_call_absent "deploy "
 reset_case
 write_compiled_template '{
   "custom": {
+    "import": "radius",
     "type": "Radius.Core/recipePacks@2025-08-01-preview",
-    "name": "[parameters(\"packName\")]"
+    "properties": {
+      "name": "[parameters(\"packName\")]",
+      "properties": { "recipes": {} }
+    }
   }
 }'
 run_action
@@ -330,9 +337,10 @@ assert_call_absent "deploy "
 reset_case
 write_compiled_template '{
   "custom": {
+    "import": "radius",
     "type": "Radius.Core/recipePacks@2025-08-01-preview",
-    "name": "custom",
-    "condition": "[parameters(\"enablePack\")]"
+    "condition": "[parameters(\"enablePack\")]",
+    "properties": { "name": "custom", "properties": { "recipes": {} } }
   }
 }'
 run_action
