@@ -1,0 +1,6 @@
+name: Prepare Radius deployment progress
+description: Make the action-scoped artifact runtime available to the Radius deploy step.
+
+runs:
+  using: node24
+  main: dist/index.js

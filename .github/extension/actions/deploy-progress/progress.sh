@@ -37,6 +37,37 @@ radius_progress_checkpoint() {
     printf '%s/sequence' "$(radius_progress_dir)"
 }
 
+radius_artifact_runtime_file() {
+    printf '%s/artifact-runtime.json' "$(radius_progress_dir)"
+}
+
+radius_load_artifact_runtime() {
+    local runtime_file runtime_token results_url
+
+    runtime_file=$(radius_artifact_runtime_file)
+    if [[ ! -f "${runtime_file}" ]]; then
+        echo "::warning::Artifact runtime was not prepared; live deployment progress is disabled."
+        return 1
+    fi
+    if ! runtime_token=$(jq -er \
+        '.runtimeToken | select(type == "string" and length > 0)' \
+        "${runtime_file}") ||
+        ! results_url=$(jq -er \
+            '.resultsUrl | select(type == "string" and length > 0)' \
+            "${runtime_file}"); then
+        echo "::warning::Artifact runtime is invalid; live deployment progress is disabled."
+        return 1
+    fi
+
+    export ACTIONS_RUNTIME_TOKEN="${runtime_token}"
+    export ACTIONS_RESULTS_URL="${results_url}"
+}
+
+radius_clear_artifact_runtime() {
+    rm -f "$(radius_artifact_runtime_file)"
+    unset ACTIONS_RUNTIME_TOKEN ACTIONS_RESULTS_URL
+}
+
 radius_last_live_sequence() {
     local checkpoint
     local sequence="0"
@@ -146,6 +177,10 @@ start_live_deploy_progress() {
     local app_file="$1"
     local environment="$2"
     local application terminal_artifact_name interval
+
+    if ! radius_load_artifact_runtime; then
+        return 0
+    fi
 
     application=$(radius_resolve_application_name "${app_file}")
     if [[ -z "${application}" ]]; then

@@ -196,6 +196,7 @@ runs:
             wait "$OIDC_REFRESH_PID" 2>/dev/null || true
           fi
           stop_live_deploy_progress || true
+          radius_clear_artifact_runtime
           write_result
         trap cleanup EXIT
 

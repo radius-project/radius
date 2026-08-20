@@ -1,5 +1,6 @@
 import { DefaultArtifactClient } from "@actions/artifact";
-import { dirname } from "node:path";
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export interface ArtifactClient {
@@ -17,6 +18,35 @@ export interface UploadRequest {
   progressFile: string;
   retentionDays: number;
   replaceExistingSlot: boolean;
+}
+
+export function prepareArtifactRuntimeEnvironment(
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const runtimeToken = env.ACTIONS_RUNTIME_TOKEN;
+  const resultsUrl = env.ACTIONS_RESULTS_URL;
+  const runnerTemp = env.RUNNER_TEMP;
+  if (!runtimeToken) {
+    throw new Error("Unable to get the ACTIONS_RUNTIME_TOKEN env variable");
+  }
+  if (!resultsUrl) {
+    throw new Error("Unable to get the ACTIONS_RESULTS_URL env variable");
+  }
+  if (!runnerTemp) {
+    throw new Error("Unable to get the RUNNER_TEMP env variable");
+  }
+
+  const progressDirectory = join(runnerTemp, "radius-deploy-progress");
+  mkdirSync(progressDirectory, { recursive: true, mode: 0o700 });
+  chmodSync(progressDirectory, 0o700);
+  const runtimeFile = join(progressDirectory, "artifact-runtime.json");
+  writeFileSync(
+    runtimeFile,
+    `${JSON.stringify({ runtimeToken, resultsUrl })}\n`,
+    { mode: 0o600 },
+  );
+  chmodSync(runtimeFile, 0o600);
+  return runtimeFile;
 }
 
 export async function uploadProgressArtifact(
@@ -69,6 +99,13 @@ function parseRequest(args: string[]): UploadRequest {
 
 export async function run(args: string[]): Promise<number> {
   try {
+    if (args.length === 0) {
+      const runtimeFile = prepareArtifactRuntimeEnvironment();
+      process.stdout.write(
+        `${JSON.stringify({ ok: true, runtimeFile })}\n`,
+      );
+      return 0;
+    }
     const request = parseRequest(args);
     const result = await uploadProgressArtifact(
       new DefaultArtifactClient(),

@@ -45,6 +45,18 @@ export PATH="${TEST_ROOT}/bin:${PATH}"
 # shellcheck source=.github/extension/actions/deploy-progress/progress.sh
 source "${SCRIPT_DIR}/progress.sh"
 
+runtime_file=$(radius_artifact_runtime_file)
+mkdir -p "$(radius_progress_dir)"
+jq -n \
+    --arg runtimeToken "runtime-token" \
+    --arg resultsUrl "https://results.example.test/path" \
+    '{runtimeToken: $runtimeToken, resultsUrl: $resultsUrl}' >"${runtime_file}"
+radius_load_artifact_runtime
+[[ "${ACTIONS_RUNTIME_TOKEN}" == "runtime-token" ]] ||
+    fail "artifact runtime token was not loaded"
+[[ "${ACTIONS_RESULTS_URL}" == "https://results.example.test/path" ]] ||
+    fail "artifact results URL was not loaded"
+
 write_response() {
     local state="$1"
     jq -n --arg state "${state}" '[{
@@ -109,5 +121,21 @@ unset RAD_SHOULD_FAIL
 [[ "$(radius_deploy_artifact_name 'Dev Env' 'My App')" == \
     "radius-deploy-status-dev-env-my-app" ]] ||
     fail "artifact name sanitization changed"
+
+radius_clear_artifact_runtime
+[[ ! -f "${runtime_file}" ]] || fail "artifact runtime file was not removed"
+[[ -z "${ACTIONS_RUNTIME_TOKEN:-}" ]] ||
+    fail "artifact runtime token was not cleared"
+[[ -z "${ACTIONS_RESULTS_URL:-}" ]] ||
+    fail "artifact results URL was not cleared"
+
+repo_root=$(cd "${SCRIPT_DIR}/../../../.." && pwd)
+for workflow in \
+    "${repo_root}/.github/extension/run-rad-commands-aws.yml" \
+    "${repo_root}/.github/extension/run-rad-commands-azure.yml"; do
+    grep -qF \
+        'actions/deploy-progress/artifact-uploader@{{RADIUS_REF}}' \
+        "${workflow}" || fail "$(basename "${workflow}") does not prepare the artifact runtime"
+done
 
 echo "deploy progress tests passed"
