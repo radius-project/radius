@@ -1,0 +1,1489 @@
+{
+  "cli": {
+    "assets": [
+      {
+        "arch": "amd64",
+        "build": {
+          "goVersion": "go1.26.5",
+          "linkerMetadata": {
+            "channel": "0.60.0-rc3",
+            "chartVersion": "0.60.0-rc3",
+            "commit": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "release": "0.60.0-rc3",
+            "terraformVersion": "1.15.8",
+            "version": "v0.60.0-rc3"
+          },
+          "module": {
+            "path": "github.com/radius-project/radius",
+            "sum": "",
+            "version": "v0.60.0-rc3"
+          },
+          "path": "github.com/radius-project/radius/cmd/rad",
+          "settings": {
+            "-buildmode": "exe",
+            "-compiler": "gc",
+            "CGO_ENABLED": "0",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOOS": "darwin",
+            "vcs": "git",
+            "vcs.modified": "false",
+            "vcs.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "vcs.time": "2026-08-18T20:59:13Z"
+          }
+        },
+        "checksum": {
+          "contentType": "application/octet-stream",
+          "declaredSha256": "b83139edf5c95e598b777b5f44ee4bbec8336bc2c48a7c989c7f3c98dbc05c75",
+          "format": "sha256sum-binary",
+          "githubDigest": "sha256:fe5dc935285dd751481927a44a40880ee701addd027b665631ba9547cf7f514c",
+          "name": "rad_darwin_amd64.sha256",
+          "sha256": "fe5dc935285dd751481927a44a40880ee701addd027b665631ba9547cf7f514c",
+          "size": 83,
+          "target": "rad_darwin_amd64",
+          "valid": true
+        },
+        "contentType": "application/octet-stream",
+        "githubDigest": "sha256:b83139edf5c95e598b777b5f44ee4bbec8336bc2c48a7c989c7f3c98dbc05c75",
+        "name": "rad_darwin_amd64",
+        "os": "darwin",
+        "sha256": "b83139edf5c95e598b777b5f44ee4bbec8336bc2c48a7c989c7f3c98dbc05c75",
+        "size": 82735104
+      },
+      {
+        "arch": "arm64",
+        "build": {
+          "goVersion": "go1.26.5",
+          "linkerMetadata": {
+            "channel": "0.60.0-rc3",
+            "chartVersion": "0.60.0-rc3",
+            "commit": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "release": "0.60.0-rc3",
+            "terraformVersion": "1.15.8",
+            "version": "v0.60.0-rc3"
+          },
+          "module": {
+            "path": "github.com/radius-project/radius",
+            "sum": "",
+            "version": "v0.60.0-rc3"
+          },
+          "path": "github.com/radius-project/radius/cmd/rad",
+          "settings": {
+            "-buildmode": "exe",
+            "-compiler": "gc",
+            "CGO_ENABLED": "0",
+            "GOARCH": "arm64",
+            "GOOS": "darwin",
+            "vcs": "git",
+            "vcs.modified": "false",
+            "vcs.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "vcs.time": "2026-08-18T20:59:13Z"
+          }
+        },
+        "checksum": {
+          "contentType": "application/octet-stream",
+          "declaredSha256": "db662ad38553c0c6c70caef44ad3a3a3782d6e096b35362ae835c8ec840e896f",
+          "format": "sha256sum-binary",
+          "githubDigest": "sha256:d5163411b57883d451405ed5bce331fcec5cbfa00091386ed5137d7649fee5cf",
+          "name": "rad_darwin_arm64.sha256",
+          "sha256": "d5163411b57883d451405ed5bce331fcec5cbfa00091386ed5137d7649fee5cf",
+          "size": 83,
+          "target": "rad_darwin_arm64",
+          "valid": true
+        },
+        "contentType": "application/octet-stream",
+        "githubDigest": "sha256:db662ad38553c0c6c70caef44ad3a3a3782d6e096b35362ae835c8ec840e896f",
+        "name": "rad_darwin_arm64",
+        "os": "darwin",
+        "sha256": "db662ad38553c0c6c70caef44ad3a3a3782d6e096b35362ae835c8ec840e896f",
+        "size": 77518914
+      },
+      {
+        "arch": "amd64",
+        "build": {
+          "goVersion": "go1.26.5",
+          "linkerMetadata": {
+            "channel": "0.60.0-rc3",
+            "chartVersion": "0.60.0-rc3",
+            "commit": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "release": "0.60.0-rc3",
+            "terraformVersion": "1.15.8",
+            "version": "v0.60.0-rc3"
+          },
+          "module": {
+            "path": "github.com/radius-project/radius",
+            "sum": "",
+            "version": "v0.60.0-rc3"
+          },
+          "path": "github.com/radius-project/radius/cmd/rad",
+          "settings": {
+            "-buildmode": "exe",
+            "-compiler": "gc",
+            "CGO_ENABLED": "0",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOOS": "linux",
+            "vcs": "git",
+            "vcs.modified": "false",
+            "vcs.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "vcs.time": "2026-08-18T20:59:13Z"
+          }
+        },
+        "checksum": {
+          "contentType": "application/octet-stream",
+          "declaredSha256": "d7ac13d465bfccd2d028a696368f62e35e1fab8629032a2f06c7f1acec99090f",
+          "format": "sha256sum-binary",
+          "githubDigest": "sha256:433cc73044c48aa62b43f084946d19a5c88597a3f77b3b22a8bf05acf9fe8bb0",
+          "name": "rad_linux_amd64.sha256",
+          "sha256": "433cc73044c48aa62b43f084946d19a5c88597a3f77b3b22a8bf05acf9fe8bb0",
+          "size": 82,
+          "target": "rad_linux_amd64",
+          "valid": true
+        },
+        "contentType": "application/octet-stream",
+        "githubDigest": "sha256:d7ac13d465bfccd2d028a696368f62e35e1fab8629032a2f06c7f1acec99090f",
+        "name": "rad_linux_amd64",
+        "os": "linux",
+        "sha256": "d7ac13d465bfccd2d028a696368f62e35e1fab8629032a2f06c7f1acec99090f",
+        "size": 80707746
+      },
+      {
+        "arch": "arm",
+        "build": {
+          "goVersion": "go1.26.5",
+          "linkerMetadata": {
+            "channel": "0.60.0-rc3",
+            "chartVersion": "0.60.0-rc3",
+            "commit": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "release": "0.60.0-rc3",
+            "terraformVersion": "1.15.8",
+            "version": "v0.60.0-rc3"
+          },
+          "module": {
+            "path": "github.com/radius-project/radius",
+            "sum": "",
+            "version": "v0.60.0-rc3"
+          },
+          "path": "github.com/radius-project/radius/cmd/rad",
+          "settings": {
+            "-buildmode": "exe",
+            "-compiler": "gc",
+            "CGO_ENABLED": "0",
+            "GOARCH": "arm",
+            "GOARM": "7",
+            "GOOS": "linux",
+            "vcs": "git",
+            "vcs.modified": "false",
+            "vcs.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "vcs.time": "2026-08-18T20:59:13Z"
+          }
+        },
+        "checksum": {
+          "contentType": "application/octet-stream",
+          "declaredSha256": "31796a98d83b7501d062a0931d99fd5832fd47c44019d42f735395b134fdfd67",
+          "format": "sha256sum-binary",
+          "githubDigest": "sha256:860d5c4e2c0866cf1c9c45ccf45fb03fca666497c60404d9fd14a415db454ea3",
+          "name": "rad_linux_arm.sha256",
+          "sha256": "860d5c4e2c0866cf1c9c45ccf45fb03fca666497c60404d9fd14a415db454ea3",
+          "size": 80,
+          "target": "rad_linux_arm",
+          "valid": true
+        },
+        "contentType": "application/octet-stream",
+        "githubDigest": "sha256:31796a98d83b7501d062a0931d99fd5832fd47c44019d42f735395b134fdfd67",
+        "name": "rad_linux_arm",
+        "os": "linux",
+        "sha256": "31796a98d83b7501d062a0931d99fd5832fd47c44019d42f735395b134fdfd67",
+        "size": 74055842
+      },
+      {
+        "arch": "arm64",
+        "build": {
+          "goVersion": "go1.26.5",
+          "linkerMetadata": {
+            "channel": "0.60.0-rc3",
+            "chartVersion": "0.60.0-rc3",
+            "commit": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "release": "0.60.0-rc3",
+            "terraformVersion": "1.15.8",
+            "version": "v0.60.0-rc3"
+          },
+          "module": {
+            "path": "github.com/radius-project/radius",
+            "sum": "",
+            "version": "v0.60.0-rc3"
+          },
+          "path": "github.com/radius-project/radius/cmd/rad",
+          "settings": {
+            "-buildmode": "exe",
+            "-compiler": "gc",
+            "CGO_ENABLED": "0",
+            "GOARCH": "arm64",
+            "GOOS": "linux",
+            "vcs": "git",
+            "vcs.modified": "false",
+            "vcs.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "vcs.time": "2026-08-18T20:59:13Z"
+          }
+        },
+        "checksum": {
+          "contentType": "application/octet-stream",
+          "declaredSha256": "fa2afeea63ae3537be606b39a656947b1bb2571a3352b4fac57c13db78658784",
+          "format": "sha256sum-binary",
+          "githubDigest": "sha256:4cda66d2c6fdae4d159492a29b39d5289a243a24103cad4882b0115d8a8d2a6f",
+          "name": "rad_linux_arm64.sha256",
+          "sha256": "4cda66d2c6fdae4d159492a29b39d5289a243a24103cad4882b0115d8a8d2a6f",
+          "size": 82,
+          "target": "rad_linux_arm64",
+          "valid": true
+        },
+        "contentType": "application/octet-stream",
+        "githubDigest": "sha256:fa2afeea63ae3537be606b39a656947b1bb2571a3352b4fac57c13db78658784",
+        "name": "rad_linux_arm64",
+        "os": "linux",
+        "sha256": "fa2afeea63ae3537be606b39a656947b1bb2571a3352b4fac57c13db78658784",
+        "size": 74973346
+      },
+      {
+        "arch": "amd64",
+        "build": {
+          "goVersion": "go1.26.5",
+          "linkerMetadata": {
+            "channel": "0.60.0-rc3",
+            "chartVersion": "0.60.0-rc3",
+            "commit": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "release": "0.60.0-rc3",
+            "terraformVersion": "1.15.8",
+            "version": "v0.60.0-rc3"
+          },
+          "module": {
+            "path": "github.com/radius-project/radius",
+            "sum": "",
+            "version": "v0.60.0-rc3"
+          },
+          "path": "github.com/radius-project/radius/cmd/rad",
+          "settings": {
+            "-buildmode": "exe",
+            "-compiler": "gc",
+            "CGO_ENABLED": "0",
+            "GOAMD64": "v1",
+            "GOARCH": "amd64",
+            "GOOS": "windows",
+            "vcs": "git",
+            "vcs.modified": "false",
+            "vcs.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "vcs.time": "2026-08-18T20:59:13Z"
+          }
+        },
+        "checksum": {
+          "contentType": "application/octet-stream",
+          "declaredSha256": "c5c0ae904c6ebdf0a1590203181c849f98decda297c5a52915187e0b2ed0dcff",
+          "format": "sha256sum-binary",
+          "githubDigest": "sha256:d26841bc8696fed08a51bd59a58277e1bebe99c5bf226202d6751c8eae96b0b2",
+          "name": "rad_windows_amd64.exe.sha256",
+          "sha256": "d26841bc8696fed08a51bd59a58277e1bebe99c5bf226202d6751c8eae96b0b2",
+          "size": 88,
+          "target": "rad_windows_amd64.exe",
+          "valid": true
+        },
+        "contentType": "application/octet-stream",
+        "githubDigest": "sha256:c5c0ae904c6ebdf0a1590203181c849f98decda297c5a52915187e0b2ed0dcff",
+        "name": "rad_windows_amd64.exe",
+        "os": "windows",
+        "sha256": "c5c0ae904c6ebdf0a1590203181c849f98decda297c5a52915187e0b2ed0dcff",
+        "size": 82703360
+      },
+      {
+        "arch": "arm64",
+        "build": {
+          "goVersion": "go1.26.5",
+          "linkerMetadata": {
+            "channel": "0.60.0-rc3",
+            "chartVersion": "0.60.0-rc3",
+            "commit": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "release": "0.60.0-rc3",
+            "terraformVersion": "1.15.8",
+            "version": "v0.60.0-rc3"
+          },
+          "module": {
+            "path": "github.com/radius-project/radius",
+            "sum": "",
+            "version": "v0.60.0-rc3"
+          },
+          "path": "github.com/radius-project/radius/cmd/rad",
+          "settings": {
+            "-buildmode": "exe",
+            "-compiler": "gc",
+            "CGO_ENABLED": "0",
+            "GOARCH": "arm64",
+            "GOOS": "windows",
+            "vcs": "git",
+            "vcs.modified": "false",
+            "vcs.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+            "vcs.time": "2026-08-18T20:59:13Z"
+          }
+        },
+        "checksum": {
+          "contentType": "application/octet-stream",
+          "declaredSha256": "86c396197658a1f54a94d80ae0269c11fe0a7325783a82d91c9b4b8f6640b959",
+          "format": "sha256sum-binary",
+          "githubDigest": "sha256:55304640f2526f3f947e92a16642482dc24b37466d0e02f33195b54044913e32",
+          "name": "rad_windows_arm64.exe.sha256",
+          "sha256": "55304640f2526f3f947e92a16642482dc24b37466d0e02f33195b54044913e32",
+          "size": 88,
+          "target": "rad_windows_arm64.exe",
+          "valid": true
+        },
+        "contentType": "application/octet-stream",
+        "githubDigest": "sha256:86c396197658a1f54a94d80ae0269c11fe0a7325783a82d91c9b4b8f6640b959",
+        "name": "rad_windows_arm64.exe",
+        "os": "windows",
+        "sha256": "86c396197658a1f54a94d80ae0269c11fe0a7325783a82d91c9b4b8f6640b959",
+        "size": 75869184
+      }
+    ],
+    "runtimeVersion": {
+      "bicep": "0.41.2",
+      "commit": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+      "release": "0.60.0-rc3",
+      "version": "v0.60.0-rc3"
+    }
+  },
+  "downstream": {
+    "ociArtifacts": [
+      {
+        "descriptor": {
+          "digest": "sha256:b1be18f3339fb32117600fe235badb6e765fbdb3435994e163227fde9eff4c81",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "size": 688
+        },
+        "manifest": {
+          "annotations": {
+            "bicep.serialization.format": "v1",
+            "org.opencontainers.image.created": "2026-08-18T21:14:23.0268018Z"
+          },
+          "artifactType": "application/vnd.ms.bicep.provider.artifact",
+          "config": {
+            "annotations": {},
+            "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "mediaType": "application/vnd.ms.bicep.provider.config.v1+json",
+            "size": 2
+          },
+          "layers": [
+            {
+              "annotations": {
+                "org.opencontainers.image.title": "types.tgz"
+              },
+              "digest": "sha256:eb711e30877f28654c315634fb84a69629a9e4907520e2e7251eae666e4cd464",
+              "mediaType": "application/vnd.ms.bicep.provider.layer.v1.tar+gzip",
+              "size": 1017459
+            }
+          ],
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "schemaVersion": 2
+        },
+        "name": "aws-bicep-types",
+        "reference": "biceptypes.azurecr.io/aws:0.60.0-rc3"
+      },
+      {
+        "descriptor": {
+          "digest": "sha256:4594c9c241a8c9ace8df0968170e686d211b2a89c81b11ac6f112a7b25f5830c",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "size": 686
+        },
+        "manifest": {
+          "annotations": {
+            "bicep.serialization.format": "v1",
+            "org.opencontainers.image.created": "2026-08-18T21:08:12.5126431Z"
+          },
+          "artifactType": "application/vnd.ms.bicep.provider.artifact",
+          "config": {
+            "annotations": {},
+            "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "mediaType": "application/vnd.ms.bicep.provider.config.v1+json",
+            "size": 2
+          },
+          "layers": [
+            {
+              "annotations": {
+                "org.opencontainers.image.title": "types.tgz"
+              },
+              "digest": "sha256:8544495036e319faab0b8fad76889a76ec0dedec1bff4552b2072503fcdc5771",
+              "mediaType": "application/vnd.ms.bicep.provider.layer.v1.tar+gzip",
+              "size": 35833
+            }
+          ],
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "schemaVersion": 2
+        },
+        "name": "radius-bicep-types",
+        "reference": "biceptypes.azurecr.io/radius:0.60.0-rc3"
+      }
+    ],
+    "repositories": [
+      {
+        "commit": "095171b9716d698bbd6cd9cc47979fcd0a0cb4be",
+        "repository": "radius-project/bicep-types-aws",
+        "tag": "v0.60.0-rc3"
+      },
+      {
+        "commit": "1cfdd45a4824377796d943bab7b5a16bb5f1e3d0",
+        "repository": "radius-project/dashboard",
+        "tag": "v0.60.0-rc3"
+      },
+      {
+        "commit": "b41ce9fdabac0e1c3afba99dd9ed3a5cbf44d465",
+        "repository": "radius-project/recipes",
+        "tag": "v0.60.0-rc3"
+      }
+    ]
+  },
+  "helm": {
+    "descriptor": {
+      "digest": "sha256:54580efd2cc4b8bf3522ace1079397c8d900a8a7d4993045145fdbd4677cd239",
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "size": 844
+    },
+    "manifest": {
+      "annotations": {
+        "org.opencontainers.image.authors": "Radius Authors",
+        "org.opencontainers.image.created": "2026-08-18T21:14:44Z",
+        "org.opencontainers.image.description": "Radius provides a declarative way to manage your infrastructure and applications.",
+        "org.opencontainers.image.source": "https://github.com/radius-project/radius/tree/main/deploy/Chart",
+        "org.opencontainers.image.title": "radius",
+        "org.opencontainers.image.url": "https://radapp.io",
+        "org.opencontainers.image.version": "0.60.0-rc3"
+      },
+      "config": {
+        "digest": "sha256:946c714684955012b8bd93d45fd52145b95b0870486b29718cea427f7df346f4",
+        "mediaType": "application/vnd.cncf.helm.config.v1+json",
+        "size": 457
+      },
+      "layers": [
+        {
+          "digest": "sha256:c7eec9dbdb6a8326a21b3c397ee899dfc0ca83852104026031f54e2a38790d4d",
+          "mediaType": "application/vnd.cncf.helm.chart.content.v1.tar+gzip",
+          "size": 43333
+        }
+      ],
+      "schemaVersion": 2
+    },
+    "metadata": {
+      "Digest": "sha256:54580efd2cc4b8bf3522ace1079397c8d900a8a7d4993045145fdbd4677cd239",
+      "Pulled": "ghcr.io/radius-project/helm-chart/radius:0.60.0-rc3",
+      "apiVersion": "v2",
+      "appVersion": "0.60.0-rc3",
+      "description": "Radius provides a declarative way to manage your infrastructure and applications.",
+      "home": "https://radapp.io",
+      "icon": "https://radapp.io/images/logo.png",
+      "keywords": ["radius", "iac", "bicep"],
+      "maintainers": [
+        {
+          "name": "Radius Authors",
+          "url": "https://github.com/radius-project/radius"
+        }
+      ],
+      "name": "radius",
+      "sources": [
+        "https://github.com/radius-project/radius/tree/main/deploy/Chart"
+      ],
+      "version": "0.60.0-rc3"
+    },
+    "reference": "ghcr.io/radius-project/helm-chart/radius:0.60.0-rc3",
+    "releaseChannel": "0.60.0-rc3",
+    "renderedImages": [
+      "alpine:3.23.4",
+      "bitnami/kubectl@sha256:b349e60a6ae2969af84a778c0b976b050a0cc77f4fb6a4ad44307cd0a06e9d8f",
+      "ghcr.io/radius-project/applications-rp:0.60.0-rc3",
+      "ghcr.io/radius-project/bicep:0.60.0-rc3",
+      "ghcr.io/radius-project/controller:0.60.0-rc3",
+      "ghcr.io/radius-project/dashboard:0.60.0-rc3",
+      "ghcr.io/radius-project/deployment-engine:0.60.0-rc3",
+      "ghcr.io/radius-project/dynamic-rp:0.60.0-rc3",
+      "ghcr.io/radius-project/pre-upgrade:0.60.0-rc3",
+      "ghcr.io/radius-project/ucpd:0.60.0-rc3"
+    ]
+  },
+  "images": [
+    {
+      "auxiliaryManifests": [
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:c3ce9abd6f26dad968e8690984ceef371cf2e7dbe95b086bb7ba807a2dae0b12",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:72c512724e41b6ba7ee81c80e2f3367c9f584dcf023d244d30b08d0323473a6c",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 837
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:5abc71b746101efc9c9e387843904ee08467f5d13f925d1913482fa315e2215f",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:d734e01a012ed155061984b6fae3d308f0493db3f28fc99d5ec1279ab6c1ed0f",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 837
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:24b1302edde37bdaed26276fdee77228cab56b38fcdd77a6da34a6f7dd824eb8",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:ea95644d05ec0fa437e56e9e571524d678fcb1c21567f232c04462ab17307a6c",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 837
+        }
+      ],
+      "category": "production",
+      "digest": "sha256:3fd57f2ab36575b7e834bbfad4df12cf24e2ba2e853f25db11f4548e97ac88ad",
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "name": "applications-rp",
+      "platforms": [
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/applications-rp"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "applications-rp",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "rpuser",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:c3ce9abd6f26dad968e8690984ceef371cf2e7dbe95b086bb7ba807a2dae0b12",
+          "platform": "linux/amd64"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/applications-rp"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "applications-rp",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "rpuser",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:24b1302edde37bdaed26276fdee77228cab56b38fcdd77a6da34a6f7dd824eb8",
+          "platform": "linux/arm/v7"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/applications-rp"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "applications-rp",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "rpuser",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:5abc71b746101efc9c9e387843904ee08467f5d13f925d1913482fa315e2215f",
+          "platform": "linux/arm64"
+        }
+      ],
+      "reference": "ghcr.io/radius-project/applications-rp:0.60.0-rc3"
+    },
+    {
+      "auxiliaryManifests": [
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:cb92e7a9c0e374259a9061c5d2bad5b93018fb748e0eb502ea44e917d9abe2c2",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:30e26aaf0491a06b1e41e33d719ae4529d52f521163c7443a6ccaaa301d95241",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 837
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:82c910d5405c6fd38af2961e13d52e89b1ee29f14d20fa0cd549461e6ca8d4b8",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:40bb3700e99f15d15e1aa9506840019e609c75b0605495c764807cfac21bacaf",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 837
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:1c2415524d3ed055a5b0477a2f48235c6f310a1e6fcf06a3c7c7964af09ba629",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:e5c689892cea43204656cf276be4041f5f860a83d011b30eb0dd3336226fac25",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 837
+        }
+      ],
+      "category": "non-go",
+      "digest": "sha256:59c11925bb6b75764eeca5aba8c874961c4c07c385793091f04758d5c7e4cf6a",
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "name": "bicep",
+      "platforms": [
+        {
+          "config": {
+            "command": ["/bin/sh"],
+            "entrypoint": [],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "bicep",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:cb92e7a9c0e374259a9061c5d2bad5b93018fb748e0eb502ea44e917d9abe2c2",
+          "platform": "linux/amd64"
+        },
+        {
+          "config": {
+            "command": ["/bin/sh"],
+            "entrypoint": [],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "bicep",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:82c910d5405c6fd38af2961e13d52e89b1ee29f14d20fa0cd549461e6ca8d4b8",
+          "platform": "linux/arm/v7"
+        },
+        {
+          "config": {
+            "command": ["/bin/sh"],
+            "entrypoint": [],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "bicep",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:1c2415524d3ed055a5b0477a2f48235c6f310a1e6fcf06a3c7c7964af09ba629",
+          "platform": "linux/arm64"
+        }
+      ],
+      "reference": "ghcr.io/radius-project/bicep:0.60.0-rc3"
+    },
+    {
+      "auxiliaryManifests": [
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:abbb0d6de7e66bab94c9e975283291d76163cc5589c4c0c9aaac3534ca37b6c8",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:3578078f71c785fc8588099665d494d137e140837eb918f40f75589f141d5b61",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:fe0415dbb3ef154f4f8ee5ebdb422251725f070cba3837ad9eb51d1b1db95880",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:36f5bcb43aa93800edaa0fa03d44815cfd5df31ee9561ae031a60e4f73d17d30",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:93f93de87ef0c653852e39da7af2ff2cb58b2044822b55e78ba450a8a25c1ba7",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:93d63a39880dcede9af634544f16da034f6454ead62ce8800733c580408b1229",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        }
+      ],
+      "category": "production",
+      "digest": "sha256:3b947a57bffeddaff61b19cac812eb5f2237f5595b09966ca22f12e217cb53e9",
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "name": "controller",
+      "platforms": [
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/controller"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1",
+              "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "controller",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "controlleruser",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:fe0415dbb3ef154f4f8ee5ebdb422251725f070cba3837ad9eb51d1b1db95880",
+          "platform": "linux/amd64"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/controller"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1",
+              "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "controller",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "controlleruser",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:abbb0d6de7e66bab94c9e975283291d76163cc5589c4c0c9aaac3534ca37b6c8",
+          "platform": "linux/arm/v7"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/controller"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1",
+              "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "controller",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "controlleruser",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:93f93de87ef0c653852e39da7af2ff2cb58b2044822b55e78ba450a8a25c1ba7",
+          "platform": "linux/arm64"
+        }
+      ],
+      "reference": "ghcr.io/radius-project/controller:0.60.0-rc3"
+    },
+    {
+      "auxiliaryManifests": [],
+      "category": "downstream",
+      "digest": "sha256:2627aaa1773ba14672a31df8ae3e30f8d7fdc0cfbfffec82f01651ee864b3a9d",
+      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+      "name": "dashboard",
+      "platforms": [
+        {
+          "config": {
+            "command": [
+              "node",
+              "packages/backend",
+              "--config",
+              "app-config.yaml",
+              "--config",
+              "app-config.dashboard.yaml"
+            ],
+            "entrypoint": ["docker-entrypoint.sh"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "NODE_VERSION=24.19.0",
+              "YARN_VERSION=1.22.22",
+              "NODE_ENV=development"
+            ],
+            "labels": {},
+            "user": "node",
+            "workingDirectory": "/app"
+          },
+          "digest": "sha256:2627aaa1773ba14672a31df8ae3e30f8d7fdc0cfbfffec82f01651ee864b3a9d",
+          "platform": "linux/amd64"
+        }
+      ],
+      "reference": "ghcr.io/radius-project/dashboard:0.60.0-rc3"
+    },
+    {
+      "auxiliaryManifests": [
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:3d5f05eaf0fd0c128a433c46aa9daf3d747afcf7e8e9e8959adea853d28cf7c7",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:bf855ba59089f781d3b87a2edfb4d834d4f25e169b2f18de79aa3555beac21f0",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:a3fef893678646d2681af56103882b6dd25ce41362bc02057a8eeb68f235c452",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:e7ef1d83b704956e562a96eaafbe753a6cec6c99746095fe3a8b82dee97afa08",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:f7352b111ac39f7e5eec510d907135b911ec8ea7adf4f8c4aa39feed128da9af",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:ebf78b2845b910f4bd49bdb52f3e54eef230e56067ddef544368c2b684a1552a",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        }
+      ],
+      "category": "downstream",
+      "digest": "sha256:073f87fe27f87a28dddb34f47c70cf36fb20adc3ffb20ec911c94c46d97b6f94",
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "name": "deployment-engine",
+      "platforms": [
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/app/arm-de"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "APP_UID=1654",
+              "ASPNETCORE_HTTP_PORTS=8080",
+              "DOTNET_RUNNING_IN_CONTAINER=true",
+              "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false",
+              "LC_ALL=en_US.UTF-8",
+              "LANG=en_US.UTF-8"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "",
+              "org.opencontainers.image.ref": "refs/tags/v0.60.0-rc3",
+              "org.opencontainers.image.revision": "79d0d54c1269f582342905c5444c4d68cf38022f",
+              "org.opencontainers.image.source": "https://github.com//"
+            },
+            "user": "",
+            "workingDirectory": "/app"
+          },
+          "digest": "sha256:f7352b111ac39f7e5eec510d907135b911ec8ea7adf4f8c4aa39feed128da9af",
+          "platform": "linux/amd64"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/app/arm-de"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "APP_UID=1654",
+              "ASPNETCORE_HTTP_PORTS=8080",
+              "DOTNET_RUNNING_IN_CONTAINER=true",
+              "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false",
+              "LC_ALL=en_US.UTF-8",
+              "LANG=en_US.UTF-8"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "",
+              "org.opencontainers.image.ref": "refs/tags/v0.60.0-rc3",
+              "org.opencontainers.image.revision": "79d0d54c1269f582342905c5444c4d68cf38022f",
+              "org.opencontainers.image.source": "https://github.com//"
+            },
+            "user": "",
+            "workingDirectory": "/app"
+          },
+          "digest": "sha256:3d5f05eaf0fd0c128a433c46aa9daf3d747afcf7e8e9e8959adea853d28cf7c7",
+          "platform": "linux/arm/v7"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/app/arm-de"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "APP_UID=1654",
+              "ASPNETCORE_HTTP_PORTS=8080",
+              "DOTNET_RUNNING_IN_CONTAINER=true",
+              "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false",
+              "LC_ALL=en_US.UTF-8",
+              "LANG=en_US.UTF-8"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "",
+              "org.opencontainers.image.ref": "refs/tags/v0.60.0-rc3",
+              "org.opencontainers.image.revision": "79d0d54c1269f582342905c5444c4d68cf38022f",
+              "org.opencontainers.image.source": "https://github.com//"
+            },
+            "user": "",
+            "workingDirectory": "/app"
+          },
+          "digest": "sha256:a3fef893678646d2681af56103882b6dd25ce41362bc02057a8eeb68f235c452",
+          "platform": "linux/arm64"
+        }
+      ],
+      "reference": "ghcr.io/radius-project/deployment-engine:0.60.0-rc3"
+    },
+    {
+      "auxiliaryManifests": [
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:ffabc2b6b869c4f9690b6c9578f7e150ab820d5a321caa92b41a69c8867b1361",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:4504cad021352d08b43d480e98113b60e18cbfce2b5f4813f81a193eff8b1456",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 837
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:6ef5e7ba7b928c4d03e829bdcbb314c07738da5c514f9259971e4662dfb8c33b",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:7edd6f5779420355f0ea0c49f933c1ecf31e5133cc7eacab43ed8070dd826453",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 837
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:c0b7da744b846e31837f2c4483a65b09c208cbe4d1a382e43c92b0863c4dfcbe",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:d1248e2362d73ac1c7358dda456aa17e6b9c5d1e0e6d625837e2f30503c897de",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 837
+        }
+      ],
+      "category": "production",
+      "digest": "sha256:009088a1a11f71efd4b5b12a5cb6407482d5b43251ffb0f8dc2e751b9b7d2155",
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "name": "dynamic-rp",
+      "platforms": [
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/dynamic-rp"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "dynamic-rp",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "rpuser",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:6ef5e7ba7b928c4d03e829bdcbb314c07738da5c514f9259971e4662dfb8c33b",
+          "platform": "linux/amd64"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/dynamic-rp"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "dynamic-rp",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "rpuser",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:ffabc2b6b869c4f9690b6c9578f7e150ab820d5a321caa92b41a69c8867b1361",
+          "platform": "linux/arm/v7"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/dynamic-rp"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "dynamic-rp",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "rpuser",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:c0b7da744b846e31837f2c4483a65b09c208cbe4d1a382e43c92b0863c4dfcbe",
+          "platform": "linux/arm64"
+        }
+      ],
+      "reference": "ghcr.io/radius-project/dynamic-rp:0.60.0-rc3"
+    },
+    {
+      "auxiliaryManifests": [
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:70eb689c22af77f4910b94eb6209fb9c5a1c3c9a5e2d9d4b43ac22577c1ec62d",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:7ec0bbba5dc54a8fa6c8bcca9c396ab394d1daf67d6f5ac118df27e49b4c8db3",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:8f8d825ba03795a198854aba0236ea18c711924ab37b6c9c8689f97a8ec9874e",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:8c35c33b1e1cbd06ccd2aa99a80363497e54ff56d023496e636a7a9ab9a870db",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:5676537b9df5eb7a06ebf3f5c2b3d0c64c1beea2333ea7c6c84f61c01b4fab12",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:b025dbcbf3425e4fbeace4bc07fc59c211a9e96b8a7022d7b66f0c5bfa6eb2bc",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        }
+      ],
+      "category": "test",
+      "digest": "sha256:d9826fac154ae461f9fc2d1d64ef8d47304faf5125e1240922bce2d4a6a1a07c",
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "name": "magpiego",
+      "platforms": [
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/magpiego"],
+            "environment": [
+              "PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "GOLANG_VERSION=1.22.12",
+              "GOTOOLCHAIN=local",
+              "GOPATH=/go"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "magpiego",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:8f8d825ba03795a198854aba0236ea18c711924ab37b6c9c8689f97a8ec9874e",
+          "platform": "linux/amd64"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/magpiego"],
+            "environment": [
+              "PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "GOLANG_VERSION=1.22.12",
+              "GOTOOLCHAIN=local",
+              "GOPATH=/go"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "magpiego",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:5676537b9df5eb7a06ebf3f5c2b3d0c64c1beea2333ea7c6c84f61c01b4fab12",
+          "platform": "linux/arm/v7"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/magpiego"],
+            "environment": [
+              "PATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "GOLANG_VERSION=1.22.12",
+              "GOTOOLCHAIN=local",
+              "GOPATH=/go"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "magpiego",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:70eb689c22af77f4910b94eb6209fb9c5a1c3c9a5e2d9d4b43ac22577c1ec62d",
+          "platform": "linux/arm64"
+        }
+      ],
+      "reference": "ghcr.io/radius-project/magpiego:0.60.0-rc3"
+    },
+    {
+      "auxiliaryManifests": [
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:b47c7f8cc61b5af40bd71f0638eeb7a1d81ad4f26f310dabf395b0dd2ec1cfa7",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:188abb867cf73b03678c7c9730622515e5ed0cdcf54cef45e9c548e6c33e117b",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:c0d109a4cc867f89e8746681ba68ef5016503f775421a50acae7497c27fba1f0",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:dff5cca2b571773bbbb4886d4a462e2ef2abc177d65c0eac554e54dd169153ef",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:ca78e555b2a2d7f1ead9061db04ee3452bea7c69f9262ae75a522552cae22b1f",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:f34cac91bd1e72e1f2e682245e2b2fe3d192b6b427f08f00e11f6730c51dc1bd",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        }
+      ],
+      "category": "production",
+      "digest": "sha256:672b2b841ad7690f6c518e4a74330dc6a3acc23bf0662461ff4446e83193f1a6",
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "name": "pre-upgrade",
+      "platforms": [
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/pre-upgrade"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "pre-upgrade",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "65532:65532",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:ca78e555b2a2d7f1ead9061db04ee3452bea7c69f9262ae75a522552cae22b1f",
+          "platform": "linux/amd64"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/pre-upgrade"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "pre-upgrade",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "65532:65532",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:c0d109a4cc867f89e8746681ba68ef5016503f775421a50acae7497c27fba1f0",
+          "platform": "linux/arm/v7"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/pre-upgrade"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "pre-upgrade",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "65532:65532",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:b47c7f8cc61b5af40bd71f0638eeb7a1d81ad4f26f310dabf395b0dd2ec1cfa7",
+          "platform": "linux/arm64"
+        }
+      ],
+      "reference": "ghcr.io/radius-project/pre-upgrade:0.60.0-rc3"
+    },
+    {
+      "auxiliaryManifests": [
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:a85c0c5e0726fa83dc5e93ba94e741843ddde1537d7dce816850a470ef312847",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:843ac914fbc1f45aee0c440310444231fac830219298027a67127fd77e26ccf3",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:75e42ea1c6a1d58601617ef559094196fd173f604801a9c37d84e5a8dbe14c18",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:a9a04804aa4e2feda79a316f1950aa6e5540c2ef0567b04a5cfc86ff4edfada8",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:0961875a9548996d0f110161cbca75c3103fe2b90d2660a065b86e810ff37e0e",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:c56144203d195db8436316b8c5ed0abba901c04e636c13d4c98da8acf3ea4a27",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        }
+      ],
+      "category": "test",
+      "digest": "sha256:ee9c6e0bcb89d747cd094b7036f1ffe5fa71ba0ff38ad5dc2fef94f84ac77fdb",
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "name": "testrp",
+      "platforms": [
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/testrp"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "testrp",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "65532:65532",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:75e42ea1c6a1d58601617ef559094196fd173f604801a9c37d84e5a8dbe14c18",
+          "platform": "linux/amd64"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/testrp"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "testrp",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "65532:65532",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:a85c0c5e0726fa83dc5e93ba94e741843ddde1537d7dce816850a470ef312847",
+          "platform": "linux/arm/v7"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/testrp"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "testrp",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "65532:65532",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:0961875a9548996d0f110161cbca75c3103fe2b90d2660a065b86e810ff37e0e",
+          "platform": "linux/arm64"
+        }
+      ],
+      "reference": "ghcr.io/radius-project/testrp:0.60.0-rc3"
+    },
+    {
+      "auxiliaryManifests": [
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:d8780e0694212a59b362a71e388d3e8fa64de97bae009a9394227a6ed02f2573",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:0f7f4de6a9f05f961f8ac20a6991a95387d8b3a39431052bc80e1d1f34b8c02e",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:e790fa2f5e02c30dc2881abaafcd62d712bba2244e9d739a05df735b6f6df4ad",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:85e1fb0cb1847be86959a4dc96adb287c18bd8a8813ee08a6dc99d7b2d162cf2",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        },
+        {
+          "annotations": {
+            "vnd.docker.reference.digest": "sha256:2490c0041dbd085f7d8377dfd95ebae8364d78e8ce4cce8a68e6c78a1fc2f86b",
+            "vnd.docker.reference.type": "attestation-manifest"
+          },
+          "digest": "sha256:a3c5dc50cc73e71ed846307e510965ff096cc51c1c977e040a8d07bac7f445e4",
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "platform": "unknown/unknown",
+          "size": 838
+        }
+      ],
+      "category": "production",
+      "digest": "sha256:35c36243d6529c808ec35cde220ed42bc0b63dea5772974f5aab8b5356899a27",
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "name": "ucpd",
+      "platforms": [
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/ucpd"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "ucpd",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "65532:65532",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:d8780e0694212a59b362a71e388d3e8fa64de97bae009a9394227a6ed02f2573",
+          "platform": "linux/amd64"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/ucpd"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "ucpd",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "65532:65532",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:2490c0041dbd085f7d8377dfd95ebae8364d78e8ce4cce8a68e6c78a1fc2f86b",
+          "platform": "linux/arm/v7"
+        },
+        {
+          "config": {
+            "command": [],
+            "entrypoint": ["/ucpd"],
+            "environment": [
+              "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+              "SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt"
+            ],
+            "labels": {
+              "org.opencontainers.image.description": "ucpd",
+              "org.opencontainers.image.revision": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+              "org.opencontainers.image.source": "https://github.com/radius-project/radius",
+              "org.opencontainers.image.version": "0.60.0-rc3"
+            },
+            "user": "65532:65532",
+            "workingDirectory": "/"
+          },
+          "digest": "sha256:e790fa2f5e02c30dc2881abaafcd62d712bba2244e9d739a05df735b6f6df4ad",
+          "platform": "linux/arm64"
+        }
+      ],
+      "reference": "ghcr.io/radius-project/ucpd:0.60.0-rc3"
+    }
+  ],
+  "observedAt": "2026-08-19T22:51:04Z",
+  "release": {
+    "draft": false,
+    "htmlUrl": "https://github.com/radius-project/radius/releases/tag/v0.60.0-rc3",
+    "notes": {
+      "bodySha256": "471aef6e8a40c4d1870a9d60b7eaf25c01e8ee9215baf5e949284733322b10dd",
+      "matchesSource": false,
+      "source": {
+        "path": "",
+        "sha256": "",
+        "type": "github-generated"
+      }
+    },
+    "prerelease": true,
+    "publishedAt": "2026-08-18T21:10:49Z",
+    "repository": "radius-project/radius",
+    "sourceCommit": "fe4a2bf0f1c20ec4d57f99e2412bbba71aaa9fda",
+    "tag": "v0.60.0-rc3",
+    "title": "Radius v0.60.0-rc3",
+    "version": "0.60.0-rc3"
+  },
+  "schemaVersion": 1
+}
