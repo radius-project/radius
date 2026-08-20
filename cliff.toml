@@ -88,17 +88,22 @@ filter_unconventional = false
 require_conventional = false
 split_commits = false
 commit_parsers = [
-  { message = "^feat", group = "<!-- 1 -->Added" },
-  { message = "^fix", group = "<!-- 2 -->Fixed" },
-  { message = "^perf", group = "<!-- 3 -->Changed" },
-  { message = "^refactor", group = "<!-- 3 -->Changed" },
-  { message = "^deps", group = "<!-- 4 -->Dependencies" },
-  { message = "^revert", group = "<!-- 5 -->Reverted changes" },
-  { message = "^docs", skip = true },
-  { message = "^test", skip = true },
-  { message = "^build", skip = true },
-  { message = "^ci", skip = true },
-  { message = "^chore", skip = true },
+  # Dependabot is configured in .github/dependabot.yml (synced from
+  # radius-project/.github) with the `ci` and `chore` prefixes plus `include: scope`,
+  # so dependency updates arrive as `ci(deps):` and `chore(deps):`. Match them
+  # before the type-wide skip rules below, otherwise they are dropped silently.
+  { message = "^(?:chore|ci)\\(deps\\)", group = "<!-- 4 -->Dependencies" },
+  { message = "^feat(?:\\([^)]*\\))?!?:", group = "<!-- 1 -->Added" },
+  { message = "^fix(?:\\([^)]*\\))?!?:", group = "<!-- 2 -->Fixed" },
+  { message = "^perf(?:\\([^)]*\\))?!?:", group = "<!-- 3 -->Changed" },
+  { message = "^refactor(?:\\([^)]*\\))?!?:", group = "<!-- 3 -->Changed" },
+  { message = "^deps(?:\\([^)]*\\))?!?:", group = "<!-- 4 -->Dependencies" },
+  { message = "^revert(?:\\([^)]*\\))?!?:", group = "<!-- 5 -->Reverted changes" },
+  { message = "^docs(?:\\([^)]*\\))?!?:", skip = true },
+  { message = "^test(?:\\([^)]*\\))?!?:", skip = true },
+  { message = "^build(?:\\([^)]*\\))?!?:", skip = true },
+  { message = "^ci(?:\\([^)]*\\))?!?:", skip = true },
+  { message = "^chore(?:\\([^)]*\\))?!?:", skip = true },
   { message = ".*", group = "<!-- 6 -->Other changes", default_scope = "other" },
 ]
 protect_breaking_commits = true
