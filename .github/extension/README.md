@@ -146,7 +146,7 @@ Triggers and permissions live on the **dispatcher** (`run-rad-commands.yml`); th
 
 The workflow reads cloud and cluster configuration from GitHub Actions **variables** (`vars`). Configure the relevant provider's set on the target GitHub Environment:
 
-- Common: `KUBERNETES_NAMESPACE` (default `default`), `RADIUS_BUILD_REGISTRY` (default `ghcr.io/<owner>/<repo>`), `RADIUS_RAD_COMMANDS` (optional fallback for `rad_commands`), `RADIUS_GRAPH_REGISTRY` (optional OCI repository for the `rad` CLI's modeled graph archive)
+- Common: `KUBERNETES_NAMESPACE` (default `default`), `RADIUS_BUILD_REGISTRY` (default `ghcr.io/<owner>/<repo>`), `RADIUS_RAD_COMMANDS` (optional fallback for `rad_commands`), `RADIUS_GRAPH_REGISTRY` (optional OCI repository for the `rad` CLI's modeled graph archive), `RADIUS_DEPLOY_TIMEOUT_MINUTES` (default `30`, a whole number between 1 and 330 — see [Deploy step timeout](#deploy-step-timeout))
 - Azure (`run-rad-commands-azure.yml`): `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_AKS_CLUSTER_NAME`
 - AWS (`run-rad-commands-aws.yml`): `AWS_ROLE_ARN`, `AWS_REGION`, `AWS_ACCOUNT_ID`, `AWS_EKS_CLUSTER_NAME`, `RADIUS_VPC_ID`, `RADIUS_SUBNET_IDS`
 
@@ -162,6 +162,16 @@ This workflow also reads GitHub Actions **secrets** for image push and applicati
 ### State persistence (`rad startup` / `rad shutdown`)
 
 `rad startup` and `rad shutdown` are kind-agnostic CLI commands that restore and back up all durable Radius state (control-plane PostgreSQL + Terraform recipe-state Secrets). These workflows use the OCI-backed state archive by default — the `RADIUS_STATE_*` variables select an OCI repository and the workflow logs in to GHCR before `rad startup`/`rad shutdown` — and fall back to the `radius-state` git orphan branch only when `RADIUS_STATE_BACKEND=git`. They do not manage cluster lifecycle — the workflow owns creating and destroying the ephemeral control plane around them. `rad startup` runs after the install (so `rad deploy` plans against prior state) and `rad shutdown` runs after the commands with `if: always()` (so state survives a failed deploy).
+
+### Deploy step timeout
+
+The `Run rad commands` step is bounded by `timeout-minutes`, defaulting to **30** and overridable per environment with the `RADIUS_DEPLOY_TIMEOUT_MINUTES` variable. A preceding `Resolve deploy timeout` step validates the value and fails the run if it is not a whole number between 1 and 330. That validation is not decoration: the runner applies a step timeout only when it evaluates to more than zero, and treats an expression it cannot evaluate as no timeout at all, so an unchecked `0`, negative, or malformed value would silently restore the unbounded behavior this exists to prevent. The upper bound keeps the step inside the job's 360-minute budget with room for teardown.
+
+The bound is on the step rather than the job on purpose. A job-level timeout ends the job outright, so the `if: always()` teardown would never run and `rad shutdown` would never persist state. A failed step leaves the publish and teardown steps to run on the job's remaining budget.
+
+Two limits of this bound are worth knowing. It covers the deploy phase only — the publish and teardown steps that follow are still bounded by the job's 360-minute default. And it stops the workflow waiting, not the deployment: server-side work already submitted continues until the control plane's own operation timeout, though for the ephemeral control plane the teardown deletes the cluster anyway.
+
+A deploy that legitimately needs longer than 30 minutes should raise `RADIUS_DEPLOY_TIMEOUT_MINUTES`. Before doing so, check whether the time is going into emulated cross-architecture container builds, which the `TARGET_CLUSTER_ARCH_MODE` detection exists to avoid; raising the timeout hides that cost rather than removing it.
 
 ### Prerequisites
 
