@@ -4,15 +4,9 @@
 
 radius_resolve_application_name() {
     local app_file="$1"
-    local app_name
 
-    app_name=$(sed -nE "s/.*name:[[:space:]]*'([^']+)'.*/\1/p" \
-        "${app_file}" 2>/dev/null | head -1 || true)
-    if [[ -z "${app_name}" ]]; then
-        app_name=$(rad app list -o json 2>/dev/null |
-            jq -r '.[0].name // .items[0].name // empty' || true)
-    fi
-    printf '%s' "${app_name}"
+    sed -nE "s/.*name:[[:space:]]*'([^']+)'.*/\1/p" \
+        "${app_file}" 2>/dev/null | head -1 || true
 }
 
 radius_deploy_artifact_name() {

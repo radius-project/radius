@@ -613,21 +613,17 @@ assert_exit_zero "app name needing sanitization"
 assert_step_outputs "radius-deploy-status-aks-dev-my-app-prod" "true"
 
 # ---------------------------------------------------------------------------
-# An app name resolved from `rad app list` must warn: the canvas derives the
-# artifact name only from the literal name in the app bicep and has no fallback,
-# so it would never request the artifact this run publishes.
+# A nonliteral app name must disable graph publication even when restored state
+# contains another application. Publishing that app would expose unrelated data.
 # ---------------------------------------------------------------------------
 reset_environment
 export APP_FILE="${NO_LITERAL_APP_FILE}"
 export RAD_APP_LIST_NAME="fallback-app"
 run_publisher
-assert_exit_zero "rad app list fallback"
-assert_step_outputs "radius-deploy-status-aks-dev-fallback-app" "true"
-assert_output_contains "::warning::Application name 'fallback-app' came from"
-
-reset_environment
-run_publisher
-assert_output_lacks "came from 'rad app list'"
+assert_exit_zero "nonliteral application name"
+assert_step_outputs "" "false"
+assert_output_contains "::warning::Could not determine application name"
+assert_status_dir_contains_exactly ""
 
 # ---------------------------------------------------------------------------
 # Publishing status is best-effort reporting: a failure warns, exits 0 and
@@ -644,15 +640,6 @@ assert_output_contains "::warning::Failed to generate deployed graph"
 # inside STATUS_DIR, where it would ship to users inside the artifact.
 assert_output_contains "rad: application not found in environment"
 assert_status_dir_contains_exactly "deploy-graph.json"
-
-reset_environment
-export APP_FILE="${NO_LITERAL_APP_FILE}"
-export RAD_APP_LIST_NAME=""
-run_publisher
-assert_exit_zero "unresolvable app name"
-assert_step_outputs "" "false"
-assert_output_contains "::warning::Could not determine application name"
-assert_status_dir_contains_exactly ""
 
 # ---------------------------------------------------------------------------
 # A missing rad-commands-result.json must not break the publish.

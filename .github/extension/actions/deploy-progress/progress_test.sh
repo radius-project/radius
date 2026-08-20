@@ -19,13 +19,15 @@ export GITHUB_RUN_ID=12345
 export RADIUS_PROGRESS_NODE="${TEST_ROOT}/bin/node"
 export RADIUS_PROGRESS_UPLOADER="${TEST_ROOT}/uploader.js"
 export RAD_RESPONSE_FILE="${TEST_ROOT}/rad-response.json"
+export RAD_CALLS="${TEST_ROOT}/rad-calls"
 export UPLOAD_CALLS="${TEST_ROOT}/upload-calls"
-touch "${UPLOAD_CALLS}" "${RADIUS_PROGRESS_UPLOADER}"
+touch "${RAD_CALLS}" "${UPLOAD_CALLS}" "${RADIUS_PROGRESS_UPLOADER}"
 
 cat >"${TEST_ROOT}/bin/rad" <<'EOF'
 #!/bin/bash
 set -euo pipefail
 
+printf '%s\n' "$*" >>"${RAD_CALLS}"
 [[ "$*" == "resource list --preview --application todo --output json" ]]
 [[ "${RAD_SHOULD_FAIL:-false}" != "true" ]]
 cat "${RAD_RESPONSE_FILE}"
@@ -45,6 +47,19 @@ export PATH="${TEST_ROOT}/bin:${PATH}"
 # shellcheck source=.github/extension/actions/deploy-progress/progress.sh
 source "${SCRIPT_DIR}/progress.sh"
 
+literal_app_file="${TEST_ROOT}/literal-app.bicep"
+dynamic_app_file="${TEST_ROOT}/dynamic-app.bicep"
+printf "resource app 'Radius.Core/applications@2025-08-01-preview' = { name: 'todo' }\n" \
+    >"${literal_app_file}"
+printf "resource app 'Radius.Core/applications@2025-08-01-preview' = { name: appName }\n" \
+    >"${dynamic_app_file}"
+[[ "$(radius_resolve_application_name "${literal_app_file}")" == "todo" ]] ||
+    fail "literal application name was not resolved"
+[[ -z "$(radius_resolve_application_name "${dynamic_app_file}")" ]] ||
+    fail "dynamic application name must disable live progress"
+[[ ! -s "${RAD_CALLS}" ]] ||
+    fail "application name resolution must not call rad app list"
+
 runtime_file=$(radius_artifact_runtime_file)
 mkdir -p "$(radius_progress_dir)"
 jq -n \
@@ -56,6 +71,13 @@ radius_load_artifact_runtime
     fail "artifact runtime token was not loaded"
 [[ "${ACTIONS_RESULTS_URL}" == "https://results.example.test/path" ]] ||
     fail "artifact results URL was not loaded"
+start_output=$(start_live_deploy_progress "${dynamic_app_file}" "dev")
+[[ "${start_output}" == *"Could not determine application name"* ]] ||
+    fail "dynamic application name must warn that live progress is disabled"
+[[ -z "${RADIUS_PROGRESS_PID:-}" ]] ||
+    fail "dynamic application name must not start live progress"
+[[ ! -s "${RAD_CALLS}" ]] ||
+    fail "disabled live progress must not call rad"
 
 write_response() {
     local state="$1"

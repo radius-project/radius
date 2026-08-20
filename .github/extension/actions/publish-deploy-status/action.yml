@@ -76,15 +76,9 @@ runs:
           printf '%s' "$escaped"
         }
 
-        # Resolve the app name from the app bicep file first (same pattern used
-        # elsewhere in the run-rad-commands action), with a fallback to `rad app
-        # list` when the file doesn't contain a simple literal name.
-        APP_NAME=$(sed -nE "s/.*name:[[:space:]]*'([^']+)'.*/\1/p" "$APP_FILE" 2>/dev/null | head -1 || true)
-        APP_NAME_FROM_LITERAL=1
-        if [ -z "$APP_NAME" ]; then
-          APP_NAME_FROM_LITERAL=0
-          APP_NAME=$(radius_resolve_application_name "$APP_FILE")
-        fi
+        # Resolve only a literal application name from the deployed template.
+        # Global control-plane state can contain unrelated restored applications.
+        APP_NAME=$(radius_resolve_application_name "$APP_FILE")
 
         if [ -z "$APP_NAME" ]; then
           echo "::warning::Could not determine application name; skipping deployed graph publish."
@@ -220,14 +214,6 @@ runs:
         # sanitization also keeps this in step with the canvas reader's own
         # derivation, so both sides agree on the name for the same app.
         ARTIFACT_NAME=$(radius_deploy_artifact_name "$ENVIRONMENT" "$APP_NAME")
-
-        # The canvas derives this same name from the app bicep's first
-        # single-quoted `name:` literal and has no `rad app list` fallback, so a
-        # name resolved that way publishes under a name it will never request.
-        # Say so explicitly instead of leaving an empty Deployed tab to debug.
-        if [ "$APP_NAME_FROM_LITERAL" -eq 0 ]; then
-          echo "::warning::Application name '$(escape_workflow_command "$APP_NAME")' came from 'rad app list', not a literal name in $(escape_workflow_command "$APP_FILE"). Publishing as '$(escape_workflow_command "$ARTIFACT_NAME")', but the canvas derives the name from the bicep literal and will not find this artifact. Set a literal name in the app bicep."
-        fi
 
         emit_outputs "$ARTIFACT_NAME" true
 
