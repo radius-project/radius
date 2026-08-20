@@ -1,0 +1,136 @@
+{
+  "repository": "radius-project/radius",
+  "cliAssets": [
+    {
+      "arch": "amd64",
+      "name": "rad_darwin_amd64",
+      "os": "darwin"
+    },
+    {
+      "arch": "arm64",
+      "name": "rad_darwin_arm64",
+      "os": "darwin"
+    },
+    {
+      "arch": "amd64",
+      "name": "rad_linux_amd64",
+      "os": "linux"
+    },
+    {
+      "arch": "arm",
+      "name": "rad_linux_arm",
+      "os": "linux"
+    },
+    {
+      "arch": "arm64",
+      "name": "rad_linux_arm64",
+      "os": "linux"
+    },
+    {
+      "arch": "amd64",
+      "name": "rad_windows_amd64.exe",
+      "os": "windows"
+    },
+    {
+      "arch": "arm64",
+      "name": "rad_windows_arm64.exe",
+      "os": "windows"
+    }
+  ],
+  "images": [
+    {
+      "category": "production",
+      "name": "applications-rp",
+      "radiusBuild": true,
+      "requiredPlatforms": ["linux/amd64", "linux/arm/v7", "linux/arm64"]
+    },
+    {
+      "category": "non-go",
+      "name": "bicep",
+      "radiusBuild": true,
+      "requiredPlatforms": ["linux/amd64", "linux/arm/v7", "linux/arm64"]
+    },
+    {
+      "category": "production",
+      "name": "controller",
+      "radiusBuild": true,
+      "requiredPlatforms": ["linux/amd64", "linux/arm/v7", "linux/arm64"]
+    },
+    {
+      "category": "downstream",
+      "name": "dashboard",
+      "radiusBuild": false,
+      "requiredPlatforms": ["linux/amd64"]
+    },
+    {
+      "category": "downstream",
+      "name": "deployment-engine",
+      "radiusBuild": false,
+      "requiredPlatforms": ["linux/amd64", "linux/arm/v7", "linux/arm64"]
+    },
+    {
+      "category": "production",
+      "name": "dynamic-rp",
+      "radiusBuild": true,
+      "requiredPlatforms": ["linux/amd64", "linux/arm/v7", "linux/arm64"]
+    },
+    {
+      "category": "test",
+      "name": "magpiego",
+      "radiusBuild": true,
+      "requiredPlatforms": ["linux/amd64", "linux/arm/v7", "linux/arm64"]
+    },
+    {
+      "category": "production",
+      "name": "pre-upgrade",
+      "radiusBuild": true,
+      "requiredPlatforms": ["linux/amd64", "linux/arm/v7", "linux/arm64"]
+    },
+    {
+      "category": "test",
+      "name": "testrp",
+      "radiusBuild": true,
+      "requiredPlatforms": ["linux/amd64", "linux/arm/v7", "linux/arm64"]
+    },
+    {
+      "category": "production",
+      "name": "ucpd",
+      "radiusBuild": true,
+      "requiredPlatforms": ["linux/amd64", "linux/arm/v7", "linux/arm64"]
+    }
+  ],
+  "imageRegistry": "ghcr.io/radius-project",
+  "helm": {
+    "expectedImages": [
+      "alpine",
+      "applications-rp",
+      "bicep",
+      "controller",
+      "dashboard",
+      "deployment-engine",
+      "dynamic-rp",
+      "kubectl",
+      "pre-upgrade",
+      "ucpd"
+    ],
+    "ociReference": "oci://ghcr.io/radius-project/helm-chart/radius",
+    "orasReference": "ghcr.io/radius-project/helm-chart/radius"
+  },
+  "siblingRepositories": [
+    "radius-project/bicep-types-aws",
+    "radius-project/dashboard",
+    "radius-project/recipes"
+  ],
+  "ociArtifacts": [
+    {
+      "artifactType": "application/vnd.ms.bicep.provider.artifact",
+      "name": "aws-bicep-types",
+      "repository": "biceptypes.azurecr.io/aws"
+    },
+    {
+      "artifactType": "application/vnd.ms.bicep.provider.artifact",
+      "name": "radius-bicep-types",
+      "repository": "biceptypes.azurecr.io/radius"
+    }
+  ]
+}
