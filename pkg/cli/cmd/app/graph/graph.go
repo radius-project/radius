@@ -248,10 +248,11 @@ func (r *Runner) runDeployed(ctx context.Context) error {
 // under <source-branch>/app-graph.json; otherwise it is written to
 // ./app-graph.json in the current working directory.
 func (r *Runner) runModeled(ctx context.Context) error {
-	r.Output.LogInfo("Compiling %s", r.BicepFilePath)
+	displayPath := bicep.RedactTemplatePath(r.BicepFilePath)
+	r.Output.LogInfo("Compiling %s", displayPath)
 	template, err := r.Bicep.PrepareTemplate(ctx, r.BicepFilePath)
 	if err != nil {
-		return clierrors.Message("Failed to compile %q: %v", r.BicepFilePath, err)
+		return clierrors.Message("Failed to compile %q: %v", displayPath, err)
 	}
 
 	graph, err := cligraph.BuildModeledGraph(template, r.IncludeIcons)

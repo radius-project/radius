@@ -18,6 +18,7 @@ package preview
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -26,6 +27,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/group/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/recipepack"
@@ -86,6 +88,9 @@ rad env update myenv --clear-kubernetes
 
 ## Set recipe packs to environment (--preview)
 rad env update myenv --recipe-packs pack1,pack2
+
+## Set recipe packs from a different resource group to environment (--preview)
+rad env update myenv --recipe-packs pack1 --recipe-pack-group other-group
 `,
 		RunE: framework.RunCommand(runner),
 	}
@@ -96,6 +101,7 @@ rad env update myenv --recipe-packs pack1,pack2
 	cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "Specify if aws provider needs to be cleared on env")
 	cmd.Flags().Bool(commonflags.ClearEnvKubernetesFlag, false, "Specify if kubernetes provider needs to be cleared on env (--preview)")
 	cmd.Flags().StringSliceP("recipe-packs", "", []string{}, "Specify recipe packs to replace the environment's recipe pack list (--preview). Accepts comma-separated values.")
+	cmd.Flags().StringP("recipe-pack-group", "", "", "Specify the resource group containing the recipe packs named in --recipe-packs, if different from the environment's resource group (--preview).")
 	commonflags.AddAzureScopeFlags(cmd)
 	commonflags.AddAWSScopeFlags(cmd)
 	commonflags.AddKubernetesScopeFlags(cmd)
@@ -119,6 +125,7 @@ type Runner struct {
 	providers          *corerpv20250801.Providers
 	noFlagsSet         bool
 	recipePacks        []string
+	recipePackGroup    string
 }
 
 // NewRunner creates a new instance of the `rad env update` preview runner.
@@ -214,6 +221,27 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	r.recipePacks = recipepack.NormalizeRecipePacks(recipePacks)
+
+	// Reject an explicitly provided but effectively empty --recipe-packs value
+	// (e.g. "," or "  ") rather than silently skipping the recipe-pack update.
+	if cmd.Flags().Changed("recipe-packs") && len(r.recipePacks) == 0 {
+		return clierrors.Message("No valid recipe packs were provided. Specify one or more recipe pack names or IDs with --recipe-packs.")
+	}
+
+	r.recipePackGroup, err = cmd.Flags().GetString("recipe-pack-group")
+	if err != nil {
+		return err
+	}
+
+	if r.recipePackGroup != "" && !cmd.Flags().Changed("recipe-packs") {
+		return clierrors.Message("--recipe-pack-group can only be used together with --recipe-packs.")
+	}
+
+	if r.recipePackGroup != "" {
+		if err := common.ValidateResourceGroupName(r.recipePackGroup); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -341,8 +369,17 @@ func (r *Runner) resolveRecipePacks(ctx context.Context) ([]*string, error) {
 	recipePackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
 	recipePackIDs := make([]*string, 0, len(r.recipePacks))
 
+	recipePackScope := r.Workspace.Scope
+	if r.recipePackGroup != "" {
+		workspaceScopeID, err := resources.ParseScope(r.Workspace.Scope)
+		if err != nil {
+			return nil, err
+		}
+		recipePackScope = fmt.Sprintf("%s/resourceGroups/%s", workspaceScopeID.PlaneScope(), r.recipePackGroup)
+	}
+
 	for _, recipePack := range r.recipePacks {
-		recipePackID, isFullID, err := recipepack.ResolveID(recipePack, r.Workspace.Scope)
+		recipePackID, isFullID, err := recipepack.ResolveID(recipePack, recipePackScope)
 		if err != nil {
 			return nil, err
 		}

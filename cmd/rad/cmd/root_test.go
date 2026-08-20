@@ -430,6 +430,13 @@ func Test_EnvCreate_ExposesPreviewRecipePacksFlag(t *testing.T) {
 		"rad env create must accept --preview together with --recipe-packs")
 }
 
+func Test_ResourceList_ExposesPreviewFlag(t *testing.T) {
+	listCmd, _, err := RootCmd.Find([]string{"resource", "list"})
+	require.NoError(t, err)
+	require.Equal(t, "list", listCmd.Name())
+	require.NotNil(t, listCmd.Flags().Lookup("preview"), "rad resource list must expose --preview")
+}
+
 // Test_EnvPreviewOnlyFlagsRejectedWithoutPreview drives the real, fully-assembled command tree
 // and asserts that each preview-only flag is rejected when preview mode is off. This guards
 // against a preview-only flag being added to a command without also being registered in the

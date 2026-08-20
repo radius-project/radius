@@ -152,9 +152,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 // The Run function prepares a Bicep template, extracts the destination, publishes the template to the target, and logs
 // a success message if no errors are encountered. An error is returned if any of the steps fail.
 func (r *Runner) Run(ctx context.Context) error {
+	// Redact any credentials embedded in a remote template URL before displaying it.
+	displayFile := bicep.RedactTemplatePath(r.File)
+
 	template, err := r.Bicep.PrepareTemplate(ctx, r.File)
 	if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to prepare Bicep file %q.", r.File)
+		return clierrors.MessageWithCause(err, "Failed to prepare Bicep file %q.", displayFile)
 	}
 	r.Template = template
 
@@ -173,13 +176,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	digest, err := r.publish(ctx)
 	var httpErr *errcode.ErrorResponse
 	if errors.As(err, &httpErr) {
-		message := fmt.Sprintf("Failed to publish Bicep file %q to %q", r.File, r.Target)
+		message := fmt.Sprintf("Failed to publish Bicep file %q to %q", displayFile, r.Target)
 		return handleErrorResponse(httpErr, message)
 	} else if err != nil {
-		return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q", r.File, r.Target)
+		return clierrors.MessageWithCause(err, "Failed to publish Bicep file %q to %q", displayFile, r.Target)
 	}
 
-	r.Output.LogInfo("Successfully published Bicep file %q to %q", r.File, r.Target)
+	r.Output.LogInfo("Successfully published Bicep file %q to %q", displayFile, r.Target)
 	r.Output.LogInfo("To immutably pin the artifact, use the following Recipe url: %s", computeImmutableRecipeUrl(r.Target, digest.String()))
 
 	return nil

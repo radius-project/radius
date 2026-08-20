@@ -322,6 +322,43 @@ func Test_Validate(t *testing.T) {
 				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
 			},
 		},
+		{
+			Name:          "Create command with --recipe-pack-group flag",
+			Input:         []string{"testingenv", "--recipe-packs", "pack1", "--recipe-pack-group", "other-group"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.Equal(t, "other-group", r.recipePackGroup)
+			},
+		},
+		{
+			Name:          "Create command with --recipe-pack-group flag but no --recipe-packs",
+			Input:         []string{"testingenv", "--recipe-pack-group", "other-group"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+		},
+		{
+			Name:          "Create command with invalid --recipe-pack-group value",
+			Input:         []string{"testingenv", "--recipe-packs", "pack1", "--recipe-pack-group", "invalid group name!"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				Config: configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				expectResourceGroupSuccess(mocks.ApplicationManagementClient, "test-resource-group")
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
@@ -681,6 +718,50 @@ func Test_Run(t *testing.T) {
 		// The environment is added to the referencedBy list of the pack in its own scope.
 		require.Len(t, referencedByUpdate, 1)
 		require.Contains(t, *referencedByUpdate[0], "Radius.Core/environments/testenv")
+	})
+
+	t.Run("resolves a bare recipe pack name against recipePackGroup", func(t *testing.T) {
+		var capturedEnv v20250801preview.EnvironmentResource
+
+		capturingEnvServer := func() corerpfake.EnvironmentsServer {
+			return corerpfake.EnvironmentsServer{
+				CreateOrUpdate: func(
+					ctx context.Context,
+					rootScope string,
+					environmentName string,
+					resource v20250801preview.EnvironmentResource,
+					options *v20250801preview.EnvironmentsClientCreateOrUpdateOptions,
+				) (resp azfake.Responder[v20250801preview.EnvironmentsClientCreateOrUpdateResponse], errResp azfake.ErrorResponder) {
+					capturedEnv = resource
+					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientCreateOrUpdateResponse{EnvironmentResource: resource}, nil)
+					return
+				},
+			}
+		}
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			capturingEnvServer,
+			test_client_factory.WithRecipePackServerNoError,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "testenv",
+			ResourceGroupName:       "test-resource-group",
+			recipePacks:             []string{"mypack"},
+			recipePackGroup:         "other-group",
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+
+		// The bare name is resolved against recipePackGroup, not the workspace's own resource group.
+		require.Len(t, capturedEnv.Properties.RecipePacks, 1)
+		require.Equal(t, "/planes/radius/local/resourceGroups/other-group/providers/Radius.Core/recipePacks/mypack", *capturedEnv.Properties.RecipePacks[0])
 	})
 
 	t.Run("returns error when specified recipe pack does not exist", func(t *testing.T) {

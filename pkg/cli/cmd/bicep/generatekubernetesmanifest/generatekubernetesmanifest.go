@@ -141,9 +141,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// If the destination file is not provided, use the base name of the file with a .yaml extension
+	// If the destination file is not provided, use the base name of the file with a .yaml extension.
+	// The name is derived from the template file name only, so a credential in a remote URL's query
+	// string is never used to build an on-disk file name.
 	if r.DestinationFile == "" {
-		r.DestinationFile = strings.TrimSuffix(filepath.Base(r.FilePath), filepath.Ext(r.FilePath)) + ".yaml"
+		templateFileName := bicep.TemplateFileName(r.FilePath)
+		r.DestinationFile = strings.TrimSuffix(templateFileName, filepath.Ext(templateFileName)) + ".yaml"
 	}
 
 	if filepath.Ext(r.DestinationFile) != ".yaml" && filepath.Ext(r.DestinationFile) != ".yml" {
@@ -175,7 +178,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	deploymentTemplate, err := r.generateDeploymentTemplate(filepath.Base(r.FilePath), template, r.Parameters)
+	// The template name is written into the generated manifest, so derive it from the template file
+	// name only to keep credentials in a remote URL out of the generated output.
+	deploymentTemplate, err := r.generateDeploymentTemplate(bicep.TemplateFileName(r.FilePath), template, r.Parameters)
 	if err != nil {
 		return err
 	}

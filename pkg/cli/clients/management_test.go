@@ -2574,6 +2574,12 @@ func Test_fullyQualifyID(t *testing.T) {
 		require.Equal(t, "/planes/radius/local/resourceGroups/my-rg/providers/Applications.Core/environments/my-env", id)
 	})
 
+	t.Run("preserves Radius.Core resource id", func(t *testing.T) {
+		id, err := client.fullyQualifyID("/planes/radius/local/resourceGroups/my-rg/providers/Radius.Core/environments/my-env", "Applications.Core/environments")
+		require.NoError(t, err)
+		require.Equal(t, "/planes/radius/local/resourceGroups/my-rg/providers/Radius.Core/environments/my-env", id)
+	})
+
 	t.Run("valid name", func(t *testing.T) {
 		id, err := client.fullyQualifyID("my-env", "Applications.Core/environments")
 		require.NoError(t, err)
