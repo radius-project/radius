@@ -62,7 +62,7 @@ Two GitHub Actions workflows drive the release process. **No one manually create
    > - Add the new release version at the top of the `supported` list in `versions.yaml`.
    > - Change only one version per PR.
    > - If more than one new untagged version is present in `supported`, `release.yaml` fails rather than guessing which one to release.
-2. **[Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml)** (`build.yaml`): Triggered by `v*` tag pushes (created by `release.yaml` above). This workflow:
+2. **[Release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml)** (`build-release.yaml`): Triggered by `v*` tag pushes (created by `release.yaml` above). This workflow:
    - Builds CLI binaries and container images
    - Dispatches Bicep types publishing
    - Creates the GitHub Release (auto-generated notes for RCs, or from `docs/release-notes/` for final and patch releases)
@@ -73,8 +73,8 @@ The automated flow after merging a `versions.yaml` change:
 Merge versions.yaml change (to main or release/* branch)
   → release.yaml detects new version in versions.yaml
     → release.yaml creates git tag + release branch (if needed)
-      → tag push triggers build.yaml
-        → build.yaml publishes artifacts + creates GitHub Release
+         → tag push triggers build-release.yaml
+            → build-release.yaml publishes artifacts + creates GitHub Release
 ```
 
 #### When does tag creation happen?
@@ -169,13 +169,13 @@ After approval, merge the PR to `main`.
 
 After merging, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on `main`.
 
-- **First RC**: The workflow creates the `release/X.Y` branch from `main` and pushes the `vX.Y.Z-rcN` tag. The tag push then triggers the [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow. No manual tag creation is needed. Verify the release using the checklist below.
+- **First RC**: The workflow creates the `release/X.Y` branch from `main` and pushes the `vX.Y.Z-rcN` tag. The tag push then triggers the [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow. No manual tag creation is needed. Verify the release using the checklist below.
 - **Subsequent RCs**: The workflow detects that the release branch already exists and **skips tag creation**. This is expected — the tag will be created when the cherry-pick lands on the release branch in [Step 6](#step-6-cherry-pick-additional-changes-subsequent-rcs-only). Skip ahead to Step 6 for now and return to verify after completing it.
 
 Monitor and verify:
 
 1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully. For the first RC, confirm it created the `release/X.Y` [branch](https://github.com/radius-project/radius/branches) and the `vX.Y.Z-rcN` [tag](https://github.com/radius-project/radius/tags).
-2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the tag push) completes successfully. This workflow also dispatches Bicep types publishing automatically.
+2. The [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow (triggered by the tag push) completes successfully. This workflow also dispatches Bicep types publishing automatically.
 3. An RC release marked as pre-release appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
 ### Step 6: Cherry-pick additional changes (subsequent RCs only)
@@ -296,12 +296,12 @@ After approval, merge the PR.
 
 ### Step 6: Verify the automated release
 
-After the cherry-pick PR is merged to the `release/X.Y` branch, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on a `release/*` branch. It reads the final version from `versions.yaml`, creates and pushes the `vX.Y.Z` tag, and the tag push triggers the [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow. No manual tag creation is needed.
+After the cherry-pick PR is merged to the `release/X.Y` branch, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on a `release/*` branch. It reads the final version from `versions.yaml`, creates and pushes the `vX.Y.Z` tag, and the tag push triggers the [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow. No manual tag creation is needed.
 
 Monitor and verify:
 
 1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully and creates the `vX.Y.Z` [tag](https://github.com/radius-project/radius/tags).
-2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the tag push) completes successfully. Allow up to ~20 minutes for release assets to be published.
+2. The [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow (triggered by the tag push) completes successfully. Allow up to ~20 minutes for release assets to be published.
 3. A final release (not pre-release) appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
 ### Step 7: Publish docs and samples
@@ -379,12 +379,12 @@ After approval, merge the PR.
 
 ### Step 5: Verify the automated release
 
-After the cherry-pick PR is merged to the `release/X.Y` branch, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on a `release/*` branch. It reads the patch version from `versions.yaml`, creates and pushes the `vX.Y.Z` tag, and the tag push triggers the [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow. No manual tag creation is needed.
+After the cherry-pick PR is merged to the `release/X.Y` branch, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on a `release/*` branch. It reads the patch version from `versions.yaml`, creates and pushes the `vX.Y.Z` tag, and the tag push triggers the [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow. No manual tag creation is needed.
 
 Monitor and verify:
 
 1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully and creates the `vX.Y.Z` [tag](https://github.com/radius-project/radius/tags).
-2. The [Build and Test](https://github.com/radius-project/radius/actions/workflows/build.yaml) workflow (triggered by the tag push) completes successfully. Allow up to ~20 minutes for release assets to be published.
+2. The [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow (triggered by the tag push) completes successfully. Allow up to ~20 minutes for release assets to be published.
 3. A patch release appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
 ### Step 6: Run validation workflows
