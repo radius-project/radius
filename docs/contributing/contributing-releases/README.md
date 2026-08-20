@@ -67,6 +67,8 @@ Two GitHub Actions workflows drive the release process. **No one manually create
    - Dispatches Bicep types publishing
    - Creates the GitHub Release (auto-generated notes for RCs, or from `docs/release-notes/` for final and patch releases)
 
+   During the GoReleaser migration, this workflow also runs advisory shadow jobs. They publish full-version production-image candidates only under `ghcr.io/radius-project/dev`, upload candidate CLI binaries and checksums as workflow artifacts, and compare them with the production outputs from the same tag. The parity report is attached as `goreleaser-shadow-parity-<commit>`. A shadow failure does not block or alter the current production release; inspect and resolve unexplained differences before the GoReleaser cutover.
+
 The automated flow after merging a `versions.yaml` change:
 
 ```text

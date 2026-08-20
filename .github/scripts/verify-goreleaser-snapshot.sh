@@ -22,9 +22,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 readonly REPO_ROOT
-readonly DIST_DIR="${1:-${REPO_ROOT}/dist/goreleaser}"
+DIST_DIR="${REPO_ROOT}/dist/goreleaser"
 readonly TARGETS_FILE="${REPO_ROOT}/.github/release-parity/targets.json"
-readonly CONFIG_FILE="${REPO_ROOT}/.goreleaser.yaml"
+readonly CONFIG_FILE="${GORELEASER_CONFIG_FILE:-${REPO_ROOT}/.goreleaser.yaml}"
 
 fail() {
     echo "Error: $*" >&2
@@ -69,11 +69,26 @@ verify_native_checksum_config() {
 }
 
 verify_release_config() {
+    local global_environment
+    local expected_disable='{{ .Env.GORELEASER_RELEASE_DISABLE }}'
+
     yq -e '
-        (((.release.ids | length) == 1)
-          and (.release.ids[0] == "rad"))
+        ((.release.ids | length) == 1)
+        and (.release.ids[0] == "rad")
     ' "${CONFIG_FILE}" >/dev/null ||
-        fail "GoReleaser release artifact selection is not rad-only"
+        fail "GoReleaser release settings do not match the parity contract"
+    [[ "$(yq -r '.release.disable' "${CONFIG_FILE}")" == "${expected_disable}" ]] ||
+        fail "GoReleaser release disable switch is not parameterized"
+
+    global_environment="$(yq -r '.env[]' "${CONFIG_FILE}")"
+    if ! grep -Fq 'GORELEASER_IMAGE_REGISTRY=' <<<"${global_environment}" ||
+        ! grep -Fq 'ghcr.io/radius-project' <<<"${global_environment}"; then
+        fail "GoReleaser image registry does not have a production default"
+    fi
+    if ! grep -Fq 'GORELEASER_RELEASE_DISABLE=' <<<"${global_environment}" ||
+        ! grep -Fq 'else }}false{{ end }}' <<<"${global_environment}"; then
+        fail "GoReleaser release disable switch does not default to false"
+    fi
 }
 
 verify_cli_assets() {
@@ -145,6 +160,7 @@ verify_cli_assets() {
 }
 
 verify_build_matrix() {
+    local mode="${1:-}"
     local expected_builds
     local actual_builds
     local expected_rad_targets
@@ -162,6 +178,10 @@ verify_build_matrix() {
         yq -o=json '.builds | map(.id) | sort' "${CONFIG_FILE}"
     )"
     assert_json_equal "${actual_builds}" "${expected_builds}" "build IDs"
+
+    if [[ "${mode}" == "--config-only" ]]; then
+        return
+    fi
 
     expected_rad_targets="$(jq -c '[
         .cliAssets[]
@@ -193,6 +213,9 @@ verify_image_definitions() {
     local expected_platforms
     local actual_platforms
     local dockerfile
+    local image_repository
+    local image_repository_count
+    local expected_repository
 
     expected_images="$(jq -c '[
         .images[]
@@ -222,13 +245,10 @@ verify_image_definitions() {
         assert_json_equal "${actual_platforms}" "${expected_platforms}" \
             "${image} image platforms"
 
-        IMAGE="${image}" \
-            IMAGE_REPOSITORY="ghcr.io/radius-project/${image}" yq -e '
+        IMAGE="${image}" yq -e '
             .dockers_v2[]
                         | select(.id == strenv(IMAGE))
-                        | (((.images | length) == 1)
-                            and (.images[0] == strenv(IMAGE_REPOSITORY))
-                            and ((.ids | length) == 1)
+                        | (((.ids | length) == 1)
                             and (.ids[0] == strenv(IMAGE))
                             and ((.tags | length) == 1)
                             and (.tags[0] == "{{ .Version }}")
@@ -241,6 +261,23 @@ verify_image_definitions() {
                             and ((.labels."org.opencontainers.image.revision" | length) > 0))
         ' "${CONFIG_FILE}" >/dev/null ||
             fail "${image} image metadata does not match the parity contract"
+
+        image_repository="$(IMAGE="${image}" yq -r '
+            .dockers_v2[]
+            | select(.id == strenv(IMAGE))
+            | .images[0]
+        ' "${CONFIG_FILE}")"
+        image_repository_count="$(IMAGE="${image}" yq -r '
+            .dockers_v2[]
+            | select(.id == strenv(IMAGE))
+            | .images
+            | length
+        ' "${CONFIG_FILE}")"
+        [[ "${image_repository_count}" == "1" ]] ||
+            fail "${image} must publish to exactly one image repository"
+        expected_repository="{{ .Env.GORELEASER_IMAGE_REGISTRY }}/${image}"
+        [[ "${image_repository}" == "${expected_repository}" ]] ||
+            fail "${image} image repository is not parameterized"
 
         dockerfile="$(IMAGE="${image}" yq -r '
             .dockers_v2[]
@@ -265,18 +302,98 @@ verify_image_definitions() {
         fail "ucpd image does not include the built-in provider manifests"
 }
 
+# Directives that define the image runtime contract. COPY and ARG are excluded
+# because the production and GoReleaser build contexts expose the binaries at
+# different paths by design.
+readonly DOCKERFILE_DIRECTIVES='FROM|RUN|ENV|USER|WORKDIR|EXPOSE|ENTRYPOINT|CMD'
+
+# Emit the runtime directives of a Dockerfile with comments removed, line
+# continuations joined, and whitespace collapsed, so that two Dockerfiles can be
+# compared on meaning rather than formatting.
+normalize_dockerfile() {
+    local file="$1"
+
+    awk '
+        /^[[:space:]]*#/ { next }
+        /^[[:space:]]*$/ { next }
+        {
+            line = $0
+            sub(/^[[:space:]]+/, "", line)
+            buffer = buffer line
+            if (buffer ~ /\\$/) {
+                sub(/\\$/, " ", buffer)
+                next
+            }
+            print buffer
+            buffer = ""
+        }
+        END { if (buffer != "") print buffer }
+    ' "${file}" |
+        sed -E 's/[[:space:]]+/ /g; s/ $//' |
+        { grep -E "^(${DOCKERFILE_DIRECTIVES}) " || true; }
+}
+
+# The shadow images are built from a separate Dockerfile, so the base image,
+# package installs, and runtime identity can drift away from production without
+# anything noticing. The shadow parity job only compares Radius-owned files
+# inside the images, so this static check is what keeps the rest honest.
+verify_dockerfile_parity() {
+    local image
+    local production
+    local shadow
+
+    while IFS= read -r image; do
+        production="${REPO_ROOT}/deploy/images/${image}/Dockerfile"
+        shadow="${production}.goreleaser"
+
+        [[ -f "${production}" ]] ||
+            fail "missing production Dockerfile for ${image}"
+        [[ -f "${shadow}" ]] ||
+            fail "missing Dockerfile.goreleaser for ${image}"
+
+        diff -u \
+            <(normalize_dockerfile "${production}") \
+            <(normalize_dockerfile "${shadow}") ||
+            fail "Dockerfile.goreleaser for ${image} does not match the" \
+                "production runtime contract"
+    done < <(jq -r '
+        .images[]
+        | select(.category == "production")
+        | .name
+    ' "${TARGETS_FILE}")
+}
+
 main() {
+    local config_only=0
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --config-only) config_only=1 ;;
+            -*) fail "unknown argument: $1" ;;
+            *) DIST_DIR="$1" ;;
+        esac
+        shift
+    done
+
     require_command jq
-    require_command sha256sum
     require_command yq
+
+    verify_native_checksum_config
+    verify_release_config
+    verify_build_matrix --config-only
+    verify_image_definitions
+    verify_dockerfile_parity
+    if [[ "${config_only}" -eq 1 ]]; then
+        echo "GoReleaser configuration matches the release parity contract"
+        return
+    fi
+
+    require_command sha256sum
 
     [[ -f "${DIST_DIR}/artifacts.json" ]] ||
         fail "missing GoReleaser artifacts metadata"
-    verify_native_checksum_config
-    verify_release_config
     verify_cli_assets "${DIST_DIR}/artifacts.json"
     verify_build_matrix
-    verify_image_definitions
     echo "GoReleaser snapshot matches the release parity contract"
 }
 
