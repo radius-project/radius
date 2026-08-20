@@ -346,15 +346,47 @@ test_edge_version_without_oras() {
 }
 
 test_edge_version_with_oras() {
-    if ! command -v oras &> /dev/null; then
-        echo "  SKIP: oras is not installed; cannot test edge download"
-        return 0
-    fi
-
-    local dir
+    local dir bin_dir oras_args expected_os expected_arch
     dir=$(make_test_dir "edge-with-oras")
-    run_installer "${INSTALLER}" --version edge --install-dir "${dir}"
+    bin_dir=$(make_test_dir "edge-with-oras-bin")
+    oras_args="${TEST_ROOT}/oras-args"
+
+    cat >"${bin_dir}/oras" <<'EOF'
+#!/bin/bash
+set -euo pipefail
+
+echo "$*" > "${ORAS_ARGS_FILE}"
+while [[ $# -gt 0 ]]; do
+    if [[ "$1" == "-o" ]]; then
+        output_dir="$2"
+        break
+    fi
+    shift
+done
+
+cat > "${output_dir}/rad" <<'RAD'
+#!/bin/bash
+if [[ "${1:-}" == "version" ]]; then
+    echo edge
+fi
+RAD
+chmod +x "${output_dir}/rad"
+EOF
+    chmod +x "${bin_dir}/oras"
+
+    ORAS_ARGS_FILE="${oras_args}" PATH="${bin_dir}:${PATH}" \
+        run_installer "${INSTALLER}" --version edge --install-dir "${dir}"
     assert_rad_installed "${dir}"
+
+    expected_os=$(uname | tr '[:upper:]' '[:lower:]')
+    expected_arch=$(uname -m)
+    case "${expected_arch}" in
+        armv7*) expected_arch="arm" ;;
+        aarch64) expected_arch="arm64" ;;
+        x86_64) expected_arch="amd64" ;;
+    esac
+    assert_contains "$(cat "${oras_args}")" \
+        "ghcr.io/radius-project/rad/${expected_os}-${expected_arch}:edge"
 }
 
 test_flag_overrides_install_dir_env() {
