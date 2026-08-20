@@ -77,34 +77,26 @@ step_names() {
     ' "$1"
 }
 
-# index_of NEEDLE HAYSTACK... -- position of NEEDLE in the remaining arguments.
-index_of() {
-    local needle="$1" i=0 candidate
-    shift
-    for candidate in "$@"; do
-        if [[ "${candidate}" == "${needle}" ]]; then
-            echo "${i}"
-            return
-        fi
-        i=$((i + 1))
-    done
-    echo "-1"
+# step_position FILE STEP -- 1-based position of the step among the file's step
+# names, or empty when absent. Avoids `mapfile`/arrays so the script still runs
+# on the bash 3.2 that ships with macOS.
+step_position() {
+    step_names "$1" | grep -n -x -F -- "$2" | head -n 1 | cut -d: -f1 || true
 }
 
 for wf in "${AZURE_WF}" "${AWS_WF}"; do
     name="$(basename "${wf}")"
 
     # --- Ordering: validate first, clean up after the bounded step -------------
-    mapfile -t names < <(step_names "${wf}")
-    resolve_at="$(index_of "${RESOLVE_STEP}" "${names[@]}")"
-    deploy_at="$(index_of "${DEPLOY_STEP}" "${names[@]}")"
-    publish_at="$(index_of "${PUBLISH_STEP}" "${names[@]}")"
-    teardown_at="$(index_of "${TEARDOWN_STEP}" "${names[@]}")"
+    resolve_at="$(step_position "${wf}" "${RESOLVE_STEP}")"
+    deploy_at="$(step_position "${wf}" "${DEPLOY_STEP}")"
+    publish_at="$(step_position "${wf}" "${PUBLISH_STEP}")"
+    teardown_at="$(step_position "${wf}" "${TEARDOWN_STEP}")"
 
-    [[ "${resolve_at}" -ge 0 ]] || fail "no '${RESOLVE_STEP}' step in ${name}"
-    [[ "${deploy_at}" -ge 0 ]] || fail "no '${DEPLOY_STEP}' step in ${name}"
-    [[ "${publish_at}" -ge 0 ]] || fail "no '${PUBLISH_STEP}' step in ${name}"
-    [[ "${teardown_at}" -ge 0 ]] || fail "no '${TEARDOWN_STEP}' step in ${name}"
+    [[ -n "${resolve_at}" ]] || fail "no '${RESOLVE_STEP}' step in ${name}"
+    [[ -n "${deploy_at}" ]] || fail "no '${DEPLOY_STEP}' step in ${name}"
+    [[ -n "${publish_at}" ]] || fail "no '${PUBLISH_STEP}' step in ${name}"
+    [[ -n "${teardown_at}" ]] || fail "no '${TEARDOWN_STEP}' step in ${name}"
 
     [[ "${resolve_at}" -lt "${deploy_at}" ]] ||
         fail "'${RESOLVE_STEP}' must precede '${DEPLOY_STEP}' in ${name}; its output feeds the timeout"
