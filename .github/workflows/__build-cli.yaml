@@ -138,6 +138,10 @@ jobs:
           cp "./dist/${GOOS}_${GOARCH}/release/rad.exe" ./rad.exe
           oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:latest" ./rad.exe --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
 
+      - name: Tag edge rad cli binary
+        if: github.ref == 'refs/heads/main' && inputs.only_changed != 'true'
+        run: oras tag "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:latest" edge
+
       - name: Skip
         if: inputs.only_changed == 'true'
         run: exit 0
