@@ -30,174 +30,21 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - name: Checkout signature verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          sparse-checkout: |
+            .github/scripts/verify-commit-signatures.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
       - name: Verify commit signatures
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           github-token: ${{ github.token }}
           script: |
-            const prNumber = Number(process.env.PR_NUMBER)
-            if (!Number.isSafeInteger(prNumber) || prNumber <= 0) {
-              throw new Error('PR_NUMBER must be a positive integer')
-            }
-
-            const query = `
-              query(
-                $owner: String!
-                $repo: String!
-                $number: Int!
-                $cursor: String
-              ) {
-                repository(owner: $owner, name: $repo) {
-                  pullRequest(number: $number) {
-                    commits(first: 100, after: $cursor) {
-                      nodes {
-                        commit {
-                          oid
-                          signature {
-                            isValid
-                            state
-                          }
-                        }
-                      }
-                      pageInfo {
-                        hasNextPage
-                        endCursor
-                      }
-                    }
-                  }
-                }
-              }
-            `
-
-            function hasVerifiedSignature(commit) {
-              if (!/^[0-9a-f]{40}$/.test(commit.oid)) {
-                throw new Error('GitHub returned an invalid commit OID')
-              }
-
-              return (
-                commit.signature?.isValid === true &&
-                commit.signature.state === 'VALID'
-              )
-            }
-
-            async function listPullRequestCommits(number) {
-              const commits = []
-              let cursor = null
-
-              do {
-                const result = await github.graphql(query, {
-                  ...context.repo,
-                  number,
-                  cursor
-                })
-                const pullRequest = result.repository.pullRequest
-                if (!pullRequest) {
-                  throw new Error(`Pull request #${number} was not found`)
-                }
-
-                const page = pullRequest.commits
-                commits.push(...page.nodes.map(node => node.commit))
-                if (page.pageInfo.hasNextPage && !page.pageInfo.endCursor) {
-                  throw new Error('GitHub returned an invalid pagination cursor')
-                }
-                cursor = page.pageInfo.hasNextPage
-                  ? page.pageInfo.endCursor
-                  : null
-              } while (cursor)
-
-              return commits
-            }
-
-            function formatGuidance(unverified, repository, serverUrl, marker) {
-              const guideUrl =
-                `${serverUrl}/radius-project/radius/blob/main/` +
-                'docs/contributing/contributing-code/' +
-                'contributing-code-first-commit/' +
-                'first-commit-06-creating-a-pr/index.md#signing-your-commits'
-              const commitLines = unverified.map(
-                oid =>
-                  `- [\`${oid.slice(0, 7)}\`](` +
-                  `${serverUrl}/${repository.owner}/` +
-                  `${repository.repo}/commit/${oid})`
-              )
-
-              return [
-                'Thank you for contributing to Radius.',
-                '',
-                'The following commits do not currently show a GitHub **Verified** signature:',
-                '',
-                ...commitLines,
-                '',
-                `Please follow our [commit-signing guide](${guideUrl}) to configure ` +
-                  'GPG, SSH, or S/MIME signing. Then re-sign the affected commits ' +
-                  'and force-push the rewritten branch with `--force-with-lease`.',
-                '',
-                'Cryptographic commit signing is separate from the DCO ' +
-                  '`Signed-off-by` line; both are required.',
-                '',
-                marker
-              ].join('\n')
-            }
-
-            const commits = await listPullRequestCommits(prNumber)
-            const unverified = commits
-              .filter(commit => !hasVerifiedSignature(commit))
-              .map(commit => commit.oid)
-
-            if (unverified.length === 0) {
-              core.info(
-                'All pull request commits have Verified signatures. ' +
-                  'Existing guidance comments are retained.'
-              )
-              return
-            }
-
-            core.warning(
-              `${unverified.length} commit(s) do not have Verified signatures.`
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/verify-commit-signatures.mjs`
             )
-            for (const oid of unverified) {
-              core.info(`- ${oid.slice(0, 7)}`)
-            }
-
-            const marker =
-              '<!-- Sticky Pull Request Commentcommit-signature-verification -->'
-            const serverUrl =
-              process.env.GITHUB_SERVER_URL || 'https://github.com'
-            const body = formatGuidance(
-              unverified,
-              context.repo,
-              serverUrl,
-              marker
-            )
-
-            const comments = await github.paginate(
-              github.rest.issues.listComments,
-              {
-                ...context.repo,
-                issue_number: prNumber,
-                per_page: 100
-              }
-            )
-            const existing = comments.find(
-              comment =>
-                comment.user?.login === 'github-actions[bot]' &&
-                comment.body?.includes(marker)
-            )
-
-            if (!existing) {
-              await github.rest.issues.createComment({
-                ...context.repo,
-                issue_number: prNumber,
-                body
-              })
-              core.info('Posted the signature guidance comment.')
-            } else if (existing.body !== body) {
-              await github.rest.issues.updateComment({
-                ...context.repo,
-                comment_id: existing.id,
-                body
-              })
-              core.info('Updated the signature guidance comment.')
-            } else {
-              core.info('The signature guidance comment is already current.')
-            }
+            await script({ github, context, core })
