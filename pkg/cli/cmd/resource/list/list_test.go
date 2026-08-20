@@ -256,6 +256,28 @@ workspaces:
 		require.Error(t, err)
 		require.Contains(t, err.Error(), datamodel.ApplicationResourceType_v20250801preview)
 	})
+
+	t.Run("rejects out-of-scope environment ID", func(t *testing.T) {
+		command, runner := newRunner(t)
+		otherScopeEnvID := "/planes/radius/local/resourceGroups/other-resource-group/providers/Radius.Core/environments/test-environment"
+		require.NoError(t, command.ParseFlags([]string{"-e", otherScopeEnvID}))
+
+		err := runner.Validate(command, []string{})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "other-resource-group")
+		require.Contains(t, err.Error(), scope)
+	})
+
+	t.Run("rejects out-of-scope application ID", func(t *testing.T) {
+		command, runner := newRunner(t)
+		otherScopeAppID := "/planes/radius/local/resourceGroups/other-resource-group/providers/Radius.Core/applications/test-app"
+		require.NoError(t, command.ParseFlags([]string{"-a", otherScopeAppID}))
+
+		err := runner.Validate(command, []string{})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "other-resource-group")
+		require.Contains(t, err.Error(), scope)
+	})
 }
 
 func Test_Run(t *testing.T) {

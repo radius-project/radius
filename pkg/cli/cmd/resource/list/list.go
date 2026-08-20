@@ -305,6 +305,9 @@ func (r *Runner) requireEnvironmentNameOrID(cmd *cobra.Command, args []string) (
 	if !strings.EqualFold(environmentID.Type(), datamodel.EnvironmentResourceType_v20250801preview) {
 		return "", clierrors.Message("The environment ID %q must reference a %s resource when preview mode is enabled.", environmentNameOrID, datamodel.EnvironmentResourceType_v20250801preview)
 	}
+	if err := r.requireWorkspaceScope(environmentID); err != nil {
+		return "", err
+	}
 
 	return environmentID.String(), nil
 }
@@ -322,10 +325,23 @@ func (r *Runner) resolvePreviewApplication() error {
 	if !strings.EqualFold(applicationID.Type(), datamodel.ApplicationResourceType_v20250801preview) {
 		return clierrors.Message("The application ID %q must reference a %s resource when preview mode is enabled.", r.ApplicationName, datamodel.ApplicationResourceType_v20250801preview)
 	}
+	if err := r.requireWorkspaceScope(applicationID); err != nil {
+		return err
+	}
 
 	r.ApplicationName = applicationID.Name()
 	r.ApplicationID = applicationID.String()
 	return nil
+}
+
+// requireWorkspaceScope rejects resource IDs outside the workspace scope. Listing only enumerates
+// resources within the workspace scope, so an out-of-scope ID would silently filter everything out.
+func (r *Runner) requireWorkspaceScope(id resources.ID) error {
+	if strings.EqualFold(id.RootScope(), r.Workspace.Scope) {
+		return nil
+	}
+
+	return clierrors.Message("The resource ID %q is in scope %q, but workspace %q is scoped to %q. Switch to a workspace with a matching scope to list its resources.", id.String(), id.RootScope(), r.Workspace.Name, r.Workspace.Scope)
 }
 
 func (r *Runner) applicationNameOrID() string {
