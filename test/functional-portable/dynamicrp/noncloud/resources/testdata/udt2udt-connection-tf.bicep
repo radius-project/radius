@@ -38,33 +38,33 @@ resource udttoudtenvtf 'Radius.Core/environments@2025-08-01-preview' = {
   }
 }
 
-resource udttoudtapp 'Radius.Core/applications@2025-08-01-preview' = {
-  name: 'udttoudtapp'
+resource udttoudtapptf 'Radius.Core/applications@2025-08-01-preview' = {
+  name: 'udttoudtapptf'
   location: 'global'
   properties: {
     environment: udttoudtenvtf.id
   }
 }
 
-resource udttoudtparent 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
-  name: 'udttoudtparent'
+resource udttoudtparenttf 'Test.Resources/userTypeAlpha@2023-10-01-preview' = {
+  name: 'udttoudtparenttf'
   properties: {
     environment: udttoudtenvtf.id
-    application: udttoudtapp.id
+    application: udttoudtapptf.id
     connections: {
       externalresource: {
-        source: udttoudtchild.id
+        source: udttoudtchildtf.id
       }
     }
   }
 }
 
-resource udttoudtchild 'Test.Resources/externalResource@2023-10-01-preview' = {
-  name: 'udttoudtchild'
+resource udttoudtchildtf 'Test.Resources/externalResource@2023-10-01-preview' = {
+  name: 'udttoudtchildtf'
   location: 'global'
   properties: {
     environment: udttoudtenvtf.id
-    application: udttoudtapp.id
+    application: udttoudtapptf.id
     configMap: '{"app1.sample.properties":"property1=value1\\nproperty2=value2","app2.sample.properties":"property3=value3\\nproperty4=value4"}'
   }
 }
