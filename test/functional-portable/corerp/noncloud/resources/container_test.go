@@ -416,3 +416,45 @@ func Test_Container_FailDueToBadHealthProbe(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_Container_Secrets(t *testing.T) {
+	template := "testdata/corerp-resources-container-secrets.bicep"
+	name := "corerp-resources-container-secrets"
+	appNamespace := "corerp-resources-container-secrets"
+
+	test := rp.NewRPTest(t, name, []rp.TestStep{
+		{
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{
+						Name: name,
+						Type: validation.CoreApplicationsResource,
+					},
+					{
+						Name: "cntr-cntr-secrets",
+						Type: validation.ComputeContainersResource,
+						App:  name,
+					},
+					{
+						Name: "saltysecret",
+						Type: validation.SecuritySecretsResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "cntr-cntr-secrets"),
+					},
+				},
+			},
+		},
+	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+
+	test.Test(t)
+}
