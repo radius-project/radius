@@ -19,7 +19,6 @@ package terraform
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -174,44 +173,67 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 }
 
 func Test_Terraform_Execute_InvalidOutputMapping(t *testing.T) {
-	// The executor returns OutputMappingError before apply. The driver should classify it as a
-	// setup error.
 	invalidMappingErr := recipes_util.ValidateOutputsMapping(
+		"redis-azure",
+		"Applications.Datastores/redisCaches",
 		[]string{"endpoint"},
 		map[string]string{"host": "missing"},
 		nil)
 	require.Error(t, invalidMappingErr)
-	invalidMappingErr = fmt.Errorf(`recipe "redis-azure" for resource type "Applications.Datastores/redisCaches": %w`, invalidMappingErr)
 
-	ctx := t.Context()
-	armCtx := &v1.ARMRequestContext{
-		OperationID: uuid.New(),
+	tests := []struct {
+		name           string
+		executionError error
+		expectedCode   string
+		expectedStatus recipes_util.RecipeDeploymentStatus
+	}{
+		{
+			name:           "classifies OutputMappingError as setup error",
+			executionError: invalidMappingErr,
+			expectedCode:   recipes.InvalidRecipeOutputs,
+			expectedStatus: recipes_util.RecipeSetupError,
+		},
+		{
+			name:           "does not classify plain error with same message as setup error",
+			executionError: errors.New(invalidMappingErr.Error()),
+			expectedCode:   recipes.RecipeDeploymentFailed,
+			expectedStatus: recipes_util.ExecutionError,
+		},
 	}
-	ctx = v1.WithARMRequestContext(ctx, armCtx)
 
-	tfExecutor, tfDriver := setup(t)
-	envConfig, recipeMetadata, envRecipe := buildTestInputs()
-	envRecipe.Outputs = map[string]string{"host": "missing"}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			armCtx := &v1.ARMRequestContext{
+				OperationID: uuid.New(),
+			}
+			ctx = v1.WithARMRequestContext(ctx, armCtx)
 
-	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, invalidMappingErr)
+			tfExecutor, tfDriver := setup(t)
+			envConfig, recipeMetadata, envRecipe := buildTestInputs()
+			envRecipe.Outputs = map[string]string{"host": "missing"}
 
-	output, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
-	})
+			tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, tt.executionError)
 
-	require.Nil(t, output)
-	require.Equal(t, &recipes.RecipeError{
-		ErrorDetails: v1.ErrorDetails{
-			Code:    recipes.InvalidRecipeOutputs,
-			Message: `recipe "redis-azure" for resource type "Applications.Datastores/redisCaches": invalid outputs mapping: no declared module output matches "host" -> "missing"; available module outputs: "endpoint"`,
-		},
-		DeploymentStatus: recipes_util.RecipeSetupError,
-	}, err)
-	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
+			output, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+				BaseOptions: driver.BaseOptions{
+					Configuration: envConfig,
+					Recipe:        recipeMetadata,
+					Definition:    envRecipe,
+				},
+			})
+
+			require.Nil(t, output)
+			require.Equal(t, &recipes.RecipeError{
+				ErrorDetails: v1.ErrorDetails{
+					Code:    tt.expectedCode,
+					Message: invalidMappingErr.Error(),
+				},
+				DeploymentStatus: tt.expectedStatus,
+			}, err)
+			verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
+		})
+	}
 }
 
 func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
@@ -503,6 +525,46 @@ func Test_Terraform_Delete_Failure(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, &expErr, err)
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
+}
+
+func Test_Terraform_Execute_MissingSecretOutput(t *testing.T) {
+	ctx := t.Context()
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, tfDriver := setup(t)
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+	envRecipe.SecretOutputs = map[string]string{"connectionString": "primaryConnectionString"}
+
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(&tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				"name":                    {Value: "myhub"},
+				"primaryConnectionString": {Value: nil},
+			},
+			RootModule: &tfjson.StateModule{},
+		},
+	}, nil)
+
+	output, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+		BaseOptions: driver.BaseOptions{
+			Configuration: envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    envRecipe,
+		},
+	})
+
+	require.Nil(t, output)
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.InvalidRecipeOutputs,
+			Message: `recipe "redis-azure" for resource type "Applications.Datastores/redisCaches": invalid outputs mapping: missing deployment output values for secrets["connectionString"] -> "primaryConnectionString"; available deployment outputs: "name"`,
+		},
+		DeploymentStatus: recipes_util.ExecutionError,
+	}, err)
 	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 
@@ -1115,6 +1177,30 @@ func Test_Terraform_PrepareRecipeResponse_DirectModule(t *testing.T) {
 			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})
 	}
+}
+
+func Test_Terraform_PrepareRecipeResponse_MissingSecretOutput(t *testing.T) {
+	d := &terraformDriver{}
+	definition := recipes.EnvironmentDefinition{
+		Name:          "eventhub",
+		ResourceType:  "Demo.Messaging/kafka",
+		SecretOutputs: map[string]string{"connectionString": "primaryConnectionString"},
+	}
+	state := &tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				"name":                    {Value: "myhub"},
+				"primaryConnectionString": {Value: nil},
+			},
+		},
+	}
+
+	response, err := d.prepareRecipeResponse(t.Context(), definition, recipes.Configuration{}, state)
+	require.Equal(t, &recipes.RecipeOutput{}, response)
+	require.EqualError(t, err, `recipe "eventhub" for resource type "Demo.Messaging/kafka": invalid outputs mapping: missing deployment output values for secrets["connectionString"] -> "primaryConnectionString"; available deployment outputs: "name"`)
+
+	var missingOutputErr *recipes_util.MissingOutputValuesError
+	require.ErrorAs(t, err, &missingOutputErr)
 }
 
 func Test_FindSecretIDs(t *testing.T) {

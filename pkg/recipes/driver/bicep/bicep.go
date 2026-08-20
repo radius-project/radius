@@ -122,10 +122,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, metrics.SuccessfulOperationState))
 
 	if err := validateOutputMappings(opts.Definition, recipeData); err != nil {
-		if _, ok := errors.AsType[*recipes_util.OutputMappingError](err); ok {
-			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
-		}
-		return nil, recipes.NewRecipeError(recipes.RecipeLanguageFailure, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
+		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
 	}
 
 	// create the context object to be passed to the recipe deployment
@@ -195,6 +192,9 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 
 	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
+		if _, ok := errors.AsType[*recipes_util.MissingOutputValuesError](err); ok {
+			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+		}
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
@@ -342,12 +342,15 @@ func validateOutputMappings(definition recipes.EnvironmentDefinition, recipeData
 		return nil
 	}
 
-	declaredOutputs := []string{}
+	var declaredOutputs []string
 	rawOutputs, ok := recipeData[recipeOutputs]
 	if ok && rawOutputs != nil {
 		outputs, ok := rawOutputs.(map[string]any)
 		if !ok {
-			return errors.New("recipe outputs must be an object")
+			return fmt.Errorf(
+				"recipe %q for resource type %q: recipe outputs must be an object",
+				definition.Name,
+				definition.ResourceType)
 		}
 
 		declaredOutputs = make([]string, 0, len(outputs))
@@ -356,11 +359,12 @@ func validateOutputMappings(definition recipes.EnvironmentDefinition, recipeData
 		}
 	}
 
-	if err := recipes_util.ValidateOutputsMapping(declaredOutputs, definition.Outputs, definition.SecretOutputs); err != nil {
-		return fmt.Errorf("recipe %q for resource type %q: %w", definition.Name, definition.ResourceType, err)
-	}
-
-	return nil
+	return recipes_util.ValidateOutputsMapping(
+		definition.Name,
+		definition.ResourceType,
+		declaredOutputs,
+		definition.Outputs,
+		definition.SecretOutputs)
 }
 
 func hasContextParameter(recipeData map[string]any) bool {
@@ -452,32 +456,35 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 // collection. For us this mostly means Kubernetes resources - the user has to be explicit.
 func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefinition, outputs any, resources []*armdeployments.ResourceReference) (*recipes.RecipeOutput, error) {
 	recipeResponse := &recipes.RecipeOutput{}
-	out, ok := outputs.(map[string]any)
-	if ok && len(out) > 0 {
-		hasOutputsMapping := len(definition.Outputs) > 0 || len(definition.SecretOutputs) > 0
-		_, hasResultOutput := out[recipes.ResultPropertyName]
+	out, _ := outputs.(map[string]any)
+	hasOutputsMapping := len(definition.Outputs) > 0 || len(definition.SecretOutputs) > 0
+	_, hasResultOutput := out[recipes.ResultPropertyName]
 
-		switch {
-		case hasOutputsMapping:
-			// Direct module with an outputs mapping — collect all ARM outputs flat (splitting
-			// secure-typed outputs into secrets), then apply the mapping.
-			values, secrets := collectARMOutputs(out)
-			recipeResponse.Values, recipeResponse.Secrets = recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs, definition.SecretOutputs)
-		case hasResultOutput:
-			// Wrapped recipe — use the existing 'result' output parsing.
-			if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {
-				if resultValue, ok := result["value"].(map[string]any); ok {
-					err := recipeResponse.PrepareRecipeResponse(resultValue)
-					if err != nil {
-						return &recipes.RecipeOutput{}, err
-					}
+	switch {
+	case hasOutputsMapping:
+		// Direct module with an outputs mapping — collect all ARM outputs flat (splitting
+		// secure-typed outputs into secrets), then apply the mapping.
+		values, secrets := collectARMOutputs(out)
+		mappedValues, mappedSecrets, err := recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs, definition.SecretOutputs)
+		if err != nil {
+			return &recipes.RecipeOutput{}, fmt.Errorf("recipe %q for resource type %q: %w", definition.Name, definition.ResourceType, err)
+		}
+		recipeResponse.Values = mappedValues
+		recipeResponse.Secrets = mappedSecrets
+	case len(out) > 0 && hasResultOutput:
+		// Wrapped recipe — use the existing 'result' output parsing.
+		if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {
+			if resultValue, ok := result["value"].(map[string]any); ok {
+				err := recipeResponse.PrepareRecipeResponse(resultValue)
+				if err != nil {
+					return &recipes.RecipeOutput{}, err
 				}
 			}
-		default:
-			// Direct module without a mapping — pass through all ARM outputs unchanged, routing
-			// secure-typed outputs to Secrets so they are not exposed as plain values.
-			recipeResponse.Values, recipeResponse.Secrets = collectARMOutputs(out)
 		}
+	case len(out) > 0:
+		// Direct module without a mapping — pass through all ARM outputs unchanged, routing
+		// secure-typed outputs to Secrets so they are not exposed as plain values.
+		recipeResponse.Values, recipeResponse.Secrets = collectARMOutputs(out)
 	}
 
 	recipeResponse.Status = &rpv1.RecipeStatus{

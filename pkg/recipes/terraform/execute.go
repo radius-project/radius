@@ -339,8 +339,11 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		return "", err
 	}
 
-	if err := validateOutputMappings(options.EnvRecipe, loadedModule, validationMode); err != nil {
-		return "", err
+	useOutputMappings := usesOutputMappings(options.EnvRecipe, loadedModule, validationMode)
+	if useOutputMappings {
+		if err := validateOutputMappings(options.EnvRecipe, loadedModule, validationMode); err != nil {
+			return "", err
+		}
 	}
 
 	// Generate Terraform providers configuration for required providers and add it to the Terraform configuration.
@@ -415,13 +418,9 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 			tfConfig.Module[options.EnvRecipe.Name].SetParams(config.RecipeParams(resolvedParams))
 		}
 	}
-	if loadedModule.ResultOutputExists {
-		if err = tfConfig.AddOutputs(options.EnvRecipe.Name); err != nil {
-			return "", err
-		}
-	} else if len(options.EnvRecipe.Outputs) > 0 || len(options.EnvRecipe.SecretOutputs) > 0 {
-		// Direct module with an outputs and/or secretOutputs mapping: generate an output block for each
-		// referenced module output so the values are available in the Terraform state for output mapping.
+	if useOutputMappings {
+		// Explicit mappings take precedence over a wrapped result output during deployment, matching
+		// prepareRecipeResponse. Generate each referenced output so it is available in Terraform state.
 		if err = tfConfig.AddMappedOutputs(options.EnvRecipe.Name, options.EnvRecipe.Outputs, loadedModule.OutputSensitivity, false); err != nil {
 			return "", err
 		}
@@ -429,6 +428,10 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		// a module output the module did not itself mark sensitive (e.g. AVM primaryConnectionString) is
 		// still redacted in Terraform's stdout/stderr, which Radius streams into logs.
 		if err = tfConfig.AddMappedOutputs(options.EnvRecipe.Name, options.EnvRecipe.SecretOutputs, loadedModule.OutputSensitivity, true); err != nil {
+			return "", err
+		}
+	} else if loadedModule.ResultOutputExists {
+		if err = tfConfig.AddOutputs(options.EnvRecipe.Name); err != nil {
 			return "", err
 		}
 	} else {
@@ -450,6 +453,11 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	return secretSuffix, nil
 }
 
+func usesOutputMappings(definition *recipes.EnvironmentDefinition, module *moduleInspectResult, validationMode outputMappingValidationMode) bool {
+	hasMappings := len(definition.Outputs) > 0 || len(definition.SecretOutputs) > 0
+	return hasMappings && (validationMode == requireValidOutputMappings || !module.ResultOutputExists)
+}
+
 func validateOutputMappings(definition *recipes.EnvironmentDefinition, module *moduleInspectResult, validationMode outputMappingValidationMode) error {
 	if validationMode == skipOutputMappingValidation {
 		return nil
@@ -460,11 +468,12 @@ func validateOutputMappings(definition *recipes.EnvironmentDefinition, module *m
 		declaredOutputs = append(declaredOutputs, outputName)
 	}
 
-	if err := recipes_util.ValidateOutputsMapping(declaredOutputs, definition.Outputs, definition.SecretOutputs); err != nil {
-		return fmt.Errorf("recipe %q for resource type %q: %w", definition.Name, definition.ResourceType, err)
-	}
-
-	return nil
+	return recipes_util.ValidateOutputsMapping(
+		definition.Name,
+		definition.ResourceType,
+		declaredOutputs,
+		definition.Outputs,
+		definition.SecretOutputs)
 }
 
 // getTerraformConfig initializes the Terraform json config with provided module source and saves it

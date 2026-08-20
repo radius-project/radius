@@ -25,11 +25,13 @@ import (
 
 func Test_ValidateOutputsMapping(t *testing.T) {
 	tests := []struct {
-		name             string
-		declaredOutputs  []string
-		outputsMap       map[string]string
-		secretOutputsMap map[string]string
-		expectedError    string
+		name              string
+		declaredOutputs   []string
+		outputsMap        map[string]string
+		secretOutputsMap  map[string]string
+		expectedError     string
+		expectedMissing   []string
+		expectedAvailable []string
 	}{
 		{
 			name:             "accepts declared mappings",
@@ -38,22 +40,47 @@ func Test_ValidateOutputsMapping(t *testing.T) {
 			secretOutputsMap: map[string]string{"connectionString": "primaryConnectionString"},
 		},
 		{
-			name:             "reports undeclared mappings and available outputs",
-			declaredOutputs:  []string{"zeta", "alpha"},
-			outputsMap:       map[string]string{"host": "missingHost"},
-			secretOutputsMap: map[string]string{"connectionString": "missingSecret"},
-			expectedError:    `invalid outputs mapping: no declared module output matches "host" -> "missingHost", "secrets.connectionString" -> "missingSecret"; available module outputs: "alpha", "zeta"`,
+			name:              "reports undeclared mappings and available outputs",
+			declaredOutputs:   []string{"zeta", "alpha"},
+			outputsMap:        map[string]string{"host": "missingHost"},
+			secretOutputsMap:  map[string]string{"connectionString": "missingSecret"},
+			expectedError:     `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches outputs["host"] -> "missingHost", secrets["connectionString"] -> "missingSecret"; available module outputs: "alpha", "zeta"`,
+			expectedMissing:   []string{`outputs["host"] -> "missingHost"`, `secrets["connectionString"] -> "missingSecret"`},
+			expectedAvailable: []string{"alpha", "zeta"},
 		},
 		{
-			name:             "reports when the module declares no outputs",
-			secretOutputsMap: map[string]string{"connectionString": "primaryConnectionString"},
-			expectedError:    `invalid outputs mapping: no declared module output matches "secrets.connectionString" -> "primaryConnectionString"; available module outputs: none`,
+			name:              "reports when the module declares no outputs",
+			secretOutputsMap:  map[string]string{"connectionString": "primaryConnectionString"},
+			expectedError:     `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches secrets["connectionString"] -> "primaryConnectionString"; available module outputs: none`,
+			expectedMissing:   []string{`secrets["connectionString"] -> "primaryConnectionString"`},
+			expectedAvailable: []string{},
+		},
+		{
+			name:              "reports empty module output name",
+			declaredOutputs:   []string{"endpoint"},
+			outputsMap:        map[string]string{"host": ""},
+			expectedError:     `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches outputs["host"] -> ""; available module outputs: "endpoint"`,
+			expectedMissing:   []string{`outputs["host"] -> ""`},
+			expectedAvailable: []string{"endpoint"},
+		},
+		{
+			name:              "distinguishes mapping categories when property names overlap",
+			outputsMap:        map[string]string{"secrets.connectionString": "missingValue"},
+			secretOutputsMap:  map[string]string{"connectionString": "missingSecret"},
+			expectedError:     `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches outputs["secrets.connectionString"] -> "missingValue", secrets["connectionString"] -> "missingSecret"; available module outputs: none`,
+			expectedMissing:   []string{`outputs["secrets.connectionString"] -> "missingValue"`, `secrets["connectionString"] -> "missingSecret"`},
+			expectedAvailable: []string{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateOutputsMapping(tt.declaredOutputs, tt.outputsMap, tt.secretOutputsMap)
+			err := ValidateOutputsMapping(
+				"test-recipe",
+				"Test.Resources/widgets",
+				tt.declaredOutputs,
+				tt.outputsMap,
+				tt.secretOutputsMap)
 			if tt.expectedError == "" {
 				require.NoError(t, err)
 				return
@@ -62,19 +89,24 @@ func Test_ValidateOutputsMapping(t *testing.T) {
 			var mappingErr *OutputMappingError
 			require.ErrorAs(t, err, &mappingErr)
 			require.EqualError(t, err, tt.expectedError)
+			require.Equal(t, tt.expectedMissing, mappingErr.MissingMappings)
+			require.Equal(t, tt.expectedAvailable, mappingErr.AvailableOutputs)
 		})
 	}
 }
 
 func Test_ApplyOutputsMapping(t *testing.T) {
 	tests := []struct {
-		name             string
-		values           map[string]any
-		secrets          map[string]any
-		outputsMap       map[string]string
-		secretOutputsMap map[string]string
-		expectedValues   map[string]any
-		expectedSecrets  map[string]any
+		name              string
+		values            map[string]any
+		secrets           map[string]any
+		outputsMap        map[string]string
+		secretOutputsMap  map[string]string
+		expectedValues    map[string]any
+		expectedSecrets   map[string]any
+		expectedError     string
+		expectedMissing   []string
+		expectedAvailable []string
 	}{
 		{
 			name:            "nil outputs map passes through values",
@@ -158,18 +190,48 @@ func Test_ApplyOutputsMapping(t *testing.T) {
 			expectedSecrets:  map[string]any{"accessKey": "abc123"},
 		},
 		{
-			name:             "secretOutputs with missing module output is skipped",
-			values:           map[string]any{"name": "myhub"},
-			secrets:          map[string]any{},
-			secretOutputsMap: map[string]string{"connectionString": "nonexistent"},
-			expectedValues:   map[string]any{},
-			expectedSecrets:  map[string]any{},
+			name:              "secretOutputs with missing module output fails",
+			values:            map[string]any{"name": "myhub"},
+			secrets:           map[string]any{},
+			secretOutputsMap:  map[string]string{"connectionString": "nonexistent"},
+			expectedError:     `invalid outputs mapping: missing deployment output values for secrets["connectionString"] -> "nonexistent"; available deployment outputs: "name"`,
+			expectedMissing:   []string{`secrets["connectionString"] -> "nonexistent"`},
+			expectedAvailable: []string{"name"},
+		},
+		{
+			name:              "secretOutputs with null module output fails",
+			values:            map[string]any{"name": "myhub", "primaryConnectionString": nil},
+			secrets:           map[string]any{},
+			secretOutputsMap:  map[string]string{"connectionString": "primaryConnectionString"},
+			expectedError:     `invalid outputs mapping: missing deployment output values for secrets["connectionString"] -> "primaryConnectionString"; available deployment outputs: "name"`,
+			expectedMissing:   []string{`secrets["connectionString"] -> "primaryConnectionString"`},
+			expectedAvailable: []string{"name"},
+		},
+		{
+			name:            "null ordinary output is skipped",
+			values:          map[string]any{"hostname": nil},
+			outputsMap:      map[string]string{"host": "hostname"},
+			expectedValues:  map[string]any{},
+			expectedSecrets: map[string]any{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			values, secrets := ApplyOutputsMapping(tt.values, tt.secrets, tt.outputsMap, tt.secretOutputsMap)
+			values, secrets, err := ApplyOutputsMapping(tt.values, tt.secrets, tt.outputsMap, tt.secretOutputsMap)
+			if tt.expectedError != "" {
+				require.EqualError(t, err, tt.expectedError)
+				require.Nil(t, values)
+				require.Nil(t, secrets)
+
+				var mappingErr *MissingOutputValuesError
+				require.ErrorAs(t, err, &mappingErr)
+				require.Equal(t, tt.expectedMissing, mappingErr.MissingMappings)
+				require.Equal(t, tt.expectedAvailable, mappingErr.AvailableOutputs)
+				return
+			}
+
+			require.NoError(t, err)
 			assert.Equal(t, tt.expectedValues, values)
 			assert.Equal(t, tt.expectedSecrets, secrets)
 		})

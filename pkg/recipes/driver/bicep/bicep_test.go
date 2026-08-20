@@ -557,7 +557,7 @@ func Test_Bicep_Execute_InvalidOutputMappingDoesNotDeploy(t *testing.T) {
 	require.Equal(t, &recipes.RecipeError{
 		ErrorDetails: v1.ErrorDetails{
 			Code:    recipes.InvalidRecipeOutputs,
-			Message: `recipe "mongo-azure" for resource type "Applications.Datastores/mongoDatabases": invalid outputs mapping: no declared module output matches "secrets.connectionString" -> "primaryConnectionString"; available module outputs: none`,
+			Message: `recipe "mongo-azure" for resource type "Applications.Datastores/mongoDatabases": invalid outputs mapping: no declared module output matches secrets["connectionString"] -> "primaryConnectionString"; available module outputs: none`,
 		},
 		DeploymentStatus: recipes_util.RecipeSetupError,
 	}, err)
@@ -595,15 +595,27 @@ func Test_ValidateOutputMappings(t *testing.T) {
 					"endpoint": map[string]any{"type": "string"},
 				},
 			},
-			expectedError: `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches "secrets.connectionString" -> "missing"; available module outputs: "endpoint"`,
+			expectedError: `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches secrets["connectionString"] -> "missing"; available module outputs: "endpoint"`,
 		},
 		{
 			name: "rejects non-object outputs collection",
 			definition: recipes.EnvironmentDefinition{
-				Outputs: map[string]string{"host": "endpoint"},
+				Name:         "test-recipe",
+				ResourceType: "Test.Resources/widgets",
+				Outputs:      map[string]string{"host": "endpoint"},
 			},
 			recipeData:    map[string]any{recipeOutputs: "invalid"},
-			expectedError: "recipe outputs must be an object",
+			expectedError: `recipe "test-recipe" for resource type "Test.Resources/widgets": recipe outputs must be an object`,
+		},
+		{
+			name: "rejects mapping when template declares no outputs",
+			definition: recipes.EnvironmentDefinition{
+				Name:         "test-recipe",
+				ResourceType: "Test.Resources/widgets",
+				Outputs:      map[string]string{"host": "endpoint"},
+			},
+			recipeData:    map[string]any{},
+			expectedError: `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches outputs["host"] -> "endpoint"; available module outputs: none`,
 		},
 		{
 			name:       "skips template output parsing when no mappings are configured",
@@ -876,6 +888,26 @@ func Test_Bicep_PrepareRecipeResponse_DirectModule(t *testing.T) {
 			require.Equal(t, tt.expectedResponse, resp)
 		})
 	}
+}
+
+func Test_Bicep_PrepareRecipeResponse_MissingSecretOutput(t *testing.T) {
+	d := &bicepDriver{}
+	definition := recipes.EnvironmentDefinition{
+		Name:          "eventhub",
+		ResourceType:  "Demo.Messaging/kafka",
+		SecretOutputs: map[string]string{"connectionString": "primaryConnectionString"},
+	}
+	outputs := map[string]any{
+		"name":                    map[string]any{"type": "string", "value": "myhub"},
+		"primaryConnectionString": map[string]any{"type": "string", "value": nil},
+	}
+
+	response, err := d.prepareRecipeResponse(definition, outputs, nil)
+	require.Equal(t, &recipes.RecipeOutput{}, response)
+	require.EqualError(t, err, `recipe "eventhub" for resource type "Demo.Messaging/kafka": invalid outputs mapping: missing deployment output values for secrets["connectionString"] -> "primaryConnectionString"; available deployment outputs: "name"`)
+
+	var missingOutputErr *recipes_util.MissingOutputValuesError
+	require.ErrorAs(t, err, &missingOutputErr)
 }
 
 func Test_WrapARMParameters(t *testing.T) {

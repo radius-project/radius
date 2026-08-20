@@ -23,11 +23,115 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-exec/tfexec"
+	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	dm "github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 )
+
+const (
+	terraformGetTestHelper = "RADIUS_TERRAFORM_GET_TEST_HELPER"
+	terraformCommandLog    = "RADIUS_TERRAFORM_COMMAND_LOG"
+)
+
+func TestMain(m *testing.M) {
+	if os.Getenv(terraformGetTestHelper) == "1" {
+		if commandLog := os.Getenv(terraformCommandLog); commandLog != "" && len(os.Args) > 1 {
+			file, err := os.OpenFile(commandLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				os.Exit(1)
+			}
+			if _, err := file.WriteString(os.Args[1] + "\n"); err != nil {
+				_ = file.Close()
+				os.Exit(1)
+			}
+			if err := file.Close(); err != nil {
+				os.Exit(1)
+			}
+		}
+
+		moduleDir := filepath.Join(".terraform", "modules", "test-recipe")
+		if err := os.MkdirAll(moduleDir, 0755); err != nil {
+			os.Exit(1)
+		}
+		if err := os.WriteFile(
+			filepath.Join(moduleDir, "outputs.tf"),
+			[]byte(`output "endpoint" { value = "declared" }`),
+			0644); err != nil {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	os.Exit(m.Run())
+}
+
+func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
+	globalDir := t.TempDir()
+	t.Setenv("TERRAFORM_TEST_GLOBAL_DIR", globalDir)
+	t.Setenv(terraformGetTestHelper, "1")
+	commandLog := filepath.Join(t.TempDir(), "terraform-commands.log")
+	t.Setenv(terraformCommandLog, commandLog)
+
+	require.NoError(t, os.Symlink(os.Args[0], filepath.Join(globalDir, "terraform")))
+	require.NoError(t, os.WriteFile(filepath.Join(globalDir, ".terraform-ready"), nil, 0644))
+
+	globalTerraformMutex.Lock()
+	previousGlobalTerraformReady := globalTerraformReady
+	globalTerraformReady = true
+	globalTerraformMutex.Unlock()
+	t.Cleanup(func() {
+		globalTerraformMutex.Lock()
+		globalTerraformReady = previousGlobalTerraformReady
+		globalTerraformMutex.Unlock()
+	})
+
+	resourceRecipe := &recipes.ResourceMetadata{
+		Name:          "widget",
+		ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Test.Resources/widgets/widget",
+		EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/test-env",
+	}
+	kubernetesClient := fake.NewSimpleClientset()
+	kubernetesClient.Fake.PrependReactor("get", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		getAction := action.(k8stesting.GetAction)
+		return true, &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      getAction.GetName(),
+				Namespace: backends.RadiusNamespace,
+			},
+		}, nil
+	})
+	kubernetesClient.Fake.PrependReactor("delete", "secrets", func(k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, nil
+	})
+	kubernetesClients := kubernetesclientprovider.KubernetesClientProvider{}
+	kubernetesClients.SetClientGoClient(kubernetesClient)
+
+	e := executor{kubernetesClients: kubernetesClients}
+	err := e.Delete(t.Context(), Options{
+		RootDir:   t.TempDir(),
+		EnvConfig: &recipes.Configuration{},
+		EnvRecipe: &recipes.EnvironmentDefinition{
+			Name:         "test-recipe",
+			TemplatePath: "test/module/source",
+			ResourceType: "Test.Resources/widgets",
+			Outputs:      map[string]string{"host": "missing"},
+		},
+		ResourceRecipe: resourceRecipe,
+	})
+	require.NoError(t, err)
+
+	commands, err := os.ReadFile(commandLog)
+	require.NoError(t, err)
+	require.Contains(t, string(commands), "destroy\n")
+}
 
 func TestGenerateConfig(t *testing.T) {
 	configTests := []struct {
@@ -76,6 +180,27 @@ func TestGenerateConfig(t *testing.T) {
 	}
 }
 
+func TestGenerateConfigRejectsInvalidOutputMappingBeforeProviderSetup(t *testing.T) {
+	workingDir := t.TempDir()
+	tf, err := tfexec.NewTerraform(workingDir, os.Args[0])
+	require.NoError(t, err)
+	require.NoError(t, tf.SetEnv(map[string]string{terraformGetTestHelper: "1"}))
+
+	options := Options{
+		EnvRecipe: &recipes.EnvironmentDefinition{
+			Name:         "test-recipe",
+			TemplatePath: "test/module/source",
+			ResourceType: "Test.Resources/widgets",
+			Outputs:      map[string]string{"host": "missing"},
+		},
+		ResourceRecipe: &recipes.ResourceMetadata{},
+	}
+
+	e := executor{}
+	_, err = e.generateConfig(t.Context(), tf, options, requireValidOutputMappings)
+	require.EqualError(t, err, `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches outputs["host"] -> "missing"; available module outputs: "endpoint"`)
+}
+
 func TestValidateOutputMappings(t *testing.T) {
 	definition := &recipes.EnvironmentDefinition{
 		Name:          "service-bus",
@@ -90,10 +215,48 @@ func TestValidateOutputMappings(t *testing.T) {
 	}
 
 	err := validateOutputMappings(definition, module, requireValidOutputMappings)
-	require.EqualError(t, err, `recipe "service-bus" for resource type "Applications.Messaging/rabbitMQQueues": invalid outputs mapping: no declared module output matches "secrets.connectionString" -> "primaryConnectionString"; available module outputs: "endpoint"`)
+	require.EqualError(t, err, `recipe "service-bus" for resource type "Applications.Messaging/rabbitMQQueues": invalid outputs mapping: no declared module output matches secrets["connectionString"] -> "primaryConnectionString"; available module outputs: "endpoint"`)
 
 	err = validateOutputMappings(definition, module, skipOutputMappingValidation)
 	require.NoError(t, err)
+}
+
+func TestUsesOutputMappings(t *testing.T) {
+	definition := &recipes.EnvironmentDefinition{
+		Outputs: map[string]string{"host": "endpoint"},
+	}
+
+	tests := []struct {
+		name           string
+		hasResult      bool
+		validationMode outputMappingValidationMode
+		expected       bool
+	}{
+		{
+			name:           "deploy uses mappings instead of result",
+			hasResult:      true,
+			validationMode: requireValidOutputMappings,
+			expected:       true,
+		},
+		{
+			name:           "delete preserves result behavior",
+			hasResult:      true,
+			validationMode: skipOutputMappingValidation,
+			expected:       false,
+		},
+		{
+			name:           "direct module deletion keeps mapped outputs",
+			validationMode: skipOutputMappingValidation,
+			expected:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			module := &moduleInspectResult{ResultOutputExists: tt.hasResult}
+			require.Equal(t, tt.expected, usesOutputMappings(definition, module, tt.validationMode))
+		})
+	}
 }
 
 func Test_GetTerraformConfig(t *testing.T) {
