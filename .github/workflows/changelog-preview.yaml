@@ -63,17 +63,17 @@ jobs:
           echo "range=${base_commit}..HEAD" >> "$GITHUB_OUTPUT"
           echo "Rendering changes since $latest_stable_tag branched at $base_commit."
 
+      - name: Install git-cliff
+        run: make install-git-cliff
+
       - name: Render unreleased changelog
-        id: git-cliff
-        uses: orhun/git-cliff-action@f50e11560dce63f7c33227798f90b924471a88b5 # v4.8.0
-        with:
-          version: v2.13.1
-          config: cliff.toml
-          args: --strip all --verbose ${{ steps.boundary.outputs.range }}
-          github_token: ${{ github.token }}
+        run: |
+          git-cliff --config cliff.toml --strip all --verbose \
+            --output changelog-preview.md "${CHANGELOG_RANGE}"
         env:
+          CHANGELOG_RANGE: ${{ steps.boundary.outputs.range }}
+          GITHUB_TOKEN: ${{ github.token }}
           GITHUB_REPO: ${{ github.repository }}
-          OUTPUT: changelog-preview.md
 
       - name: Add preview to workflow summary
         shell: bash
