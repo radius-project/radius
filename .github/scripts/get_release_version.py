@@ -26,7 +26,9 @@
 # '1.0.0-rc1' (the full version): for a tagged prerelease
 # '1.0' (major.minor): for a tagged release
 
-# We set the environment variable UPDATE_RELEASE if it's a full release (tagged and not prerelease)
+# LATEST_STABLE_CHANNEL is the first non-prerelease channel in versions.yaml.
+# We set UPDATE_RELEASE for any full release and UPDATE_LATEST when that release
+# belongs to LATEST_STABLE_CHANNEL.
 
 # We set the environment variable CHART_VERSION based on the kind of build. This is used for
 # versioning our helm chart ONLY.
@@ -51,8 +53,56 @@
 import os
 import re
 import sys
+from pathlib import Path
+
+
+def get_supported_releases(versions_file):
+    in_supported = False
+    channel_pattern = re.compile(
+        r"^\s*-\s+channel:\s*(['\"]?)(?P<channel>\d+\.\d+)\1\s*(?:#.*)?$"
+    )
+    version_pattern = re.compile(
+        r"^\s+version:\s*(['\"]?)(?P<version>v[^'\"\s]+)\1\s*(?:#.*)?$"
+    )
+    candidateChannel = None
+    releases = []
+
+    with open(versions_file, encoding="utf-8") as versions:
+        for line in versions:
+            if line.strip() == "supported:":
+                in_supported = True
+                continue
+
+            if in_supported and line and not line[0].isspace():
+                break
+
+            if in_supported:
+                channelMatch = channel_pattern.match(line)
+                if channelMatch is not None:
+                    candidateChannel = channelMatch.group("channel")
+                    continue
+
+                versionMatch = version_pattern.match(line)
+                if versionMatch is not None and candidateChannel is not None:
+                    releases.append(
+                        (
+                            candidateChannel,
+                            versionMatch.group("version").removeprefix("v"),
+                        )
+                    )
+                    candidateChannel = None
+
+    if not releases:
+        raise ValueError(
+            "Could not find supported releases in {}".format(versions_file)
+        )
+    return releases
+
 
 gitRef = os.getenv("GITHUB_REF")
+githubEnvPath = os.getenv("GITHUB_ENV")
+if githubEnvPath is None:
+    raise ValueError("GITHUB_ENV must be set")
 
 # From https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 # Group 'version' returns the whole version
@@ -60,10 +110,40 @@ gitRef = os.getenv("GITHUB_REF")
 tagRefRegex = r"^refs/tags/v(?P<version>0|(?P<major>0|[1-9]\d*)\.(?P<minor>0|[1-9]\d*)\.(?P<patch>0|[1-9]\d*)(?:-(?P<prerelease>(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+(?P<buildmetadata>[0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?)$"
 pullRefRegex = r"^refs/pull/(.*)/(.*)$"
 
-with open(os.getenv("GITHUB_ENV"), "a") as githubEnv:
+with open(githubEnvPath, "a", encoding="utf-8") as githubEnv:
+    versionsFile = os.getenv(
+        "VERSIONS_FILE", Path(__file__).resolve().parents[2] / "versions.yaml"
+    )
+    supportedReleases = get_supported_releases(versionsFile)
+    latestStableRelease = next(
+        (
+            (releaseChannel, releaseVersion.partition("+")[0])
+            for releaseChannel, releaseVersion in supportedReleases
+            if "-" not in releaseVersion.partition("+")[0]
+        ),
+        None,
+    )
+    if latestStableRelease is None:
+        raise ValueError(
+            "Could not find the latest stable release in {}".format(versionsFile)
+        )
+    latestChannel, latestVersion = latestStableRelease
+    latestStableChannel = "LATEST_STABLE_CHANNEL={}".format(latestChannel)
+    print("Setting: {}".format(latestStableChannel))
+    githubEnv.write(latestStableChannel + "\n")
+    latestStableVersion = "LATEST_STABLE_VERSION={}".format(latestVersion)
+    print("Setting: {}".format(latestStableVersion))
+    githubEnv.write(latestStableVersion + "\n")
+
+    print("Setting: UPDATE_LATEST=false")
+    githubEnv.write("UPDATE_LATEST=false" + "\n")
+    print("Setting: UPDATE_CHANNEL=false")
+    githubEnv.write("UPDATE_CHANNEL=false" + "\n")
+
     if gitRef is None:
         print(
-            "This is not running in github, GITHUB_REF is null. Assuming a local build...")
+            "This is not running in github, GITHUB_REF is null. Assuming a local build..."
+        )
 
         version = "REL_VERSION=edge"
         print("Setting: {}".format(version))
@@ -113,12 +193,23 @@ with open(os.getenv("GITHUB_ENV"), "a") as githubEnv:
             githubEnv.write(chart + "\n")
 
             channel = "REL_CHANNEL={}.{}".format(
-                match.group("major"), match.group("minor"))
+                match.group("major"), match.group("minor")
+            )
             print("Setting: {}".format(channel))
             githubEnv.write(channel + "\n")
 
             print("Setting: UPDATE_RELEASE=true")
             githubEnv.write("UPDATE_RELEASE=true" + "\n")
+
+            releaseChannel = channel.removeprefix("REL_CHANNEL=")
+            supportedVersion = dict(supportedReleases).get(releaseChannel)
+            if match.group("version") == supportedVersion:
+                print("Setting: UPDATE_CHANNEL=true")
+                githubEnv.write("UPDATE_CHANNEL=true" + "\n")
+
+            if match.group("version") == latestVersion:
+                print("Setting: UPDATE_LATEST=true")
+                githubEnv.write("UPDATE_LATEST=true" + "\n")
             sys.exit(0)
 
         else:
