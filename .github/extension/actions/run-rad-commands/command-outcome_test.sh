@@ -32,6 +32,9 @@ fail() {
 if ! command -v jq >/dev/null 2>&1; then
     fail "jq is required; run 'make install-jq'"
 fi
+if ! command -v python3 >/dev/null 2>&1; then
+    fail "python3 is required to parse action.yml"
+fi
 
 # Extract the accumulator prologue verbatim from the action - the seed, the
 # write_result writer, and the EXIT trap - so the test exercises the shipped
