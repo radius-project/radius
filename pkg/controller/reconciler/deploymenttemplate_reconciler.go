@@ -139,7 +139,7 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 		}
 
 		if !poller.Done() {
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 
 		// If we get here, the operation is complete.
@@ -365,7 +365,7 @@ func (r *DeploymentTemplateReconciler) reconcileUpdate(ctx context.Context, depl
 			return ctrl.Result{}, err
 		}
 
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 	}
 
 	// If we get here then it means we can process the result of the operation.
