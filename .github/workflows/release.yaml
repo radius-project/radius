@@ -148,7 +148,10 @@ jobs:
     name: Create a new Radius release
     if: github.repository == 'radius-project/radius' && github.event_name == 'push'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    # Must stay above the Deployment Engine monitor budget below
+    # (INPUT_MAX_WAIT_SECONDS) plus checkout and reconciliation time, otherwise
+    # the job is killed while the monitor is still waiting.
+    timeout-minutes: 20
     environment: release
     permissions:
       contents: read # Required for actions/checkout
@@ -191,6 +194,7 @@ jobs:
           ref: main
           token: ${{ steps.app-token.outputs.token }}
           path: radius
+          fetch-depth: 0 # Required for release-branch reachability checks
           persist-credentials: true
 
       - name: Checkout radius-project/recipes@main
@@ -200,6 +204,7 @@ jobs:
           ref: main
           token: ${{ steps.app-token.outputs.token }}
           path: recipes
+          fetch-depth: 0 # Required for release-branch reachability checks
           persist-credentials: true
 
       - name: Checkout radius-project/dashboard@main
@@ -209,6 +214,7 @@ jobs:
           ref: main
           token: ${{ steps.app-token.outputs.token }}
           path: dashboard
+          fetch-depth: 0 # Required for release-branch reachability checks
           persist-credentials: true
 
       - name: Checkout radius-project/bicep-types-aws@main
@@ -218,6 +224,7 @@ jobs:
           ref: main
           token: ${{ steps.app-token.outputs.token }}
           path: bicep-types-aws
+          fetch-depth: 0 # Required for release-branch reachability checks
           persist-credentials: true
 
       # Resolve the App bot's GitHub-formatted name and email (e.g.
@@ -247,40 +254,23 @@ jobs:
       - name: Determine desired release version
         id: get-version
         run: |
-          ./radius/.github/scripts/release-get-version.sh "${SUPPORTED_VERSIONS}" radius
+          ./radius/.github/scripts/release-get-version.sh \
+            "${SUPPORTED_VERSIONS}" radius recipes dashboard bicep-types-aws
         env:
           SUPPORTED_VERSIONS: ${{ steps.get-supported-versions.outputs.result }}
 
-      - name: Check if release branch exists
-        id: release-branch-exists
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          result-encoding: string
-          script: |
-            const releaseBranchName = process.env.INPUT_RELEASE_BRANCH_NAME
-            try {
-              const { data } = await github.rest.repos.getBranch({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                branch: releaseBranchName,
-              })
-
-              if (data && data.name == releaseBranchName && context.ref == 'refs/heads/main' && context.eventName == 'push') {
-                console.log(`Release branch ${releaseBranchName} already exists and this is a push to main.`)
-                return 'true'
-              } else {
-                console.log(`Release branch ${releaseBranchName} exists, but this is not a push to main; continuing release steps.`)
-                return 'false'
-              }
-            } catch (error) {
-              console.log(`Release branch ${releaseBranchName} does not exist.`)
-              return 'false'
-            }
+      - name: Check whether release should wait for the release branch
+        id: release-should-skip
+        run: |
+          bash ./radius/.github/scripts/release-should-skip.sh \
+            radius "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}" \
+            "${GITHUB_REF}" "${GITHUB_SHA}"
         env:
-          INPUT_RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
+          RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
+          RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
 
       - name: Generate release summary
-        if: steps.release-branch-exists.outputs.result == 'false'
+        if: steps.release-should-skip.outputs.result == 'false'
         run: |
           {
             echo "## Release"
@@ -296,15 +286,16 @@ jobs:
           RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
 
       - name: Release radius-project/radius version ${{ steps.get-version.outputs.release-version }}
-        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        if: success() && steps.release-should-skip.outputs.result == 'false'
         run: |
-          ./radius/.github/scripts/release-create-tag-and-branch.sh radius "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
+          ./radius/.github/scripts/release-create-tag-and-branch.sh \
+            radius "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}" "${GITHUB_SHA}"
         env:
           RELEASE_VERSION: ${{ steps.get-version.outputs.release-version }}
           RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
 
       - name: Release radius-project/recipes version ${{ steps.get-version.outputs.release-version }}
-        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        if: success() && steps.release-should-skip.outputs.result == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh recipes "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
         env:
@@ -312,7 +303,7 @@ jobs:
           RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
 
       - name: Release radius-project/dashboard version ${{ steps.get-version.outputs.release-version }}
-        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        if: success() && steps.release-should-skip.outputs.result == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh dashboard "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
         env:
@@ -320,7 +311,7 @@ jobs:
           RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
 
       - name: Release radius-project/bicep-types-aws version ${{ steps.get-version.outputs.release-version }}
-        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        if: success() && steps.release-should-skip.outputs.result == 'false'
         run: |
           ./radius/.github/scripts/release-create-tag-and-branch.sh bicep-types-aws "${RELEASE_VERSION}" "${RELEASE_BRANCH_NAME}"
         env:
@@ -328,7 +319,7 @@ jobs:
           RELEASE_BRANCH_NAME: ${{ steps.get-version.outputs.release-branch-name }}
 
       - name: Get App Token for radius-publisher
-        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        if: success() && steps.release-should-skip.outputs.result == 'false'
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: get-de-token
         with:
@@ -342,14 +333,14 @@ jobs:
             radius-publisher
 
       - name: Capture DE dispatch start time
-        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        if: success() && steps.release-should-skip.outputs.result == 'false'
         id: de-dispatch-start
         shell: bash
         run: |
           echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
       - name: Dispatch Deployment Engine image publish
-        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        if: success() && steps.release-should-skip.outputs.result == 'false'
         uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4.0.1
         with:
           token: ${{ steps.get-de-token.outputs.token }}
@@ -364,7 +355,7 @@ jobs:
             }
 
       - name: Monitor DE image publish workflow
-        if: success() && steps.release-branch-exists.outputs.result == 'false'
+        if: success() && steps.release-should-skip.outputs.result == 'false'
         id: monitor-de-workflow
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
