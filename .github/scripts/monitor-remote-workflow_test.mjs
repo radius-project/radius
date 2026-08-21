@@ -17,7 +17,7 @@ function createCore(overrides = {}) {
     CLIENT_PAYLOAD: JSON.stringify({ tag: "0.61" }),
     MAX_WAIT_SECONDS: "30",
     POLL_INTERVAL_SECONDS: "1",
-    ...overrides,
+    ...overrides
   };
   const outputs = new Map();
   const failures = [];
@@ -43,7 +43,7 @@ function createCore(overrides = {}) {
     },
     info(message) {
       infos.push(message);
-    },
+    }
   };
 }
 
@@ -53,7 +53,7 @@ function createClock() {
     now: () => time,
     sleep: async (milliseconds) => {
       time += milliseconds;
-    },
+    }
   };
 }
 
@@ -61,22 +61,45 @@ function apiError(status, message = `GitHub API returned ${status}`) {
   return Object.assign(new Error(message), { status });
 }
 
-function createGithub({ runs = [], getRun, jobs = [] } = {}) {
+function createGithub({ runs = [], getRun, jobs = [], pages } = {}) {
   const dispatches = [];
-  const calls = { list: 0, get: 0, jobs: 0 };
+  const calls = { list: 0, get: 0, jobs: 0, pages: 0 };
   let nextRunID = 1000;
+  let paginating = false;
 
   const github = {
     dispatches,
     calls,
     runs,
+    // Mirrors octokit: the map callback gets a `done` stopper, and pages are
+    // fetched until it is called or the fixture runs out of pages.
     async paginate(method, parameters, map) {
-      return map(await method(parameters));
+      const collected = [];
+      let stopped = false;
+      const done = () => {
+        stopped = true;
+      };
+      paginating = true;
+      try {
+        const pageCount = pages ? pages.length : 1;
+        for (let page = 0; page < pageCount && !stopped; page += 1) {
+          collected.push(...map(await method(parameters), done));
+        }
+      } finally {
+        paginating = false;
+      }
+      return collected;
     },
     rest: {
       actions: {
         async listWorkflowRuns() {
           calls.list += 1;
+          if (pages && paginating) {
+            calls.pages += 1;
+            return {
+              data: { workflow_runs: [...(pages[calls.pages - 1] || [])] }
+            };
+          }
           return { data: { workflow_runs: [...runs] } };
         },
         async getWorkflowRun({ run_id: runID }) {
@@ -88,12 +111,12 @@ function createGithub({ runs = [], getRun, jobs = [] } = {}) {
         async listJobsForWorkflowRun() {
           calls.jobs += 1;
           return { data: { jobs } };
-        },
+        }
       },
       repos: {
         async createDispatchEvent({
           event_type: eventType,
-          client_payload: payload,
+          client_payload: payload
         }) {
           dispatches.push({ eventType, payload });
           runs.push({
@@ -101,11 +124,11 @@ function createGithub({ runs = [], getRun, jobs = [] } = {}) {
             display_title: `${eventType} / ${payload.release_identifier}`,
             status: "completed",
             conclusion: "success",
-            html_url: `https://example.test/runs/${nextRunID - 1}`,
+            html_url: `https://example.test/runs/${nextRunID - 1}`
           });
-        },
-      },
-    },
+        }
+      }
+    }
   };
   return github;
 }
@@ -116,9 +139,67 @@ function successfulRun(id, identifier) {
     display_title: `deployment-engine / ${identifier}`,
     status: "completed",
     conclusion: "success",
-    html_url: `https://example.test/runs/${id}`,
+    html_url: `https://example.test/runs/${id}`
   };
 }
+
+test("stops paging once the identifier's run block is behind", async () => {
+  const identifier = "0.61.0-abababab";
+  const core = createCore({ RELEASE_IDENTIFIER: identifier });
+  const github = createGithub({
+    pages: [[successfulRun(42, identifier)], [], [], [], []]
+  });
+
+  await monitorRemoteWorkflow({ github, core, ...createClock() });
+
+  assert.deepEqual(core.failures, []);
+  assert.equal(github.calls.pages, 2);
+  assert.equal(github.dispatches.length, 0);
+  assert.equal(core.outputs.get("run_id"), "42");
+});
+
+test("caps the history scan when no run matches the identifier", async () => {
+  const core = createCore({ RELEASE_IDENTIFIER: "0.61.0-acacacac" });
+  const unrelated = [{ id: 7, display_title: "deployment-engine / other" }];
+  const github = createGithub({
+    pages: Array.from({ length: 8 }, () => unrelated)
+  });
+
+  await monitorRemoteWorkflow({ github, core, ...createClock() });
+
+  assert.deepEqual(core.failures, []);
+  assert.equal(github.calls.pages, 5);
+  assert.equal(github.dispatches.length, 1);
+  assert.equal(core.outputs.get("conclusion"), "success");
+});
+
+test("gives a retried lookup the full page budget", async () => {
+  const identifier = "0.61.0-adadadad";
+  const core = createCore({ RELEASE_IDENTIFIER: identifier });
+  const github = createGithub({
+    pages: [[], [], [], [successfulRun(51, identifier)], []]
+  });
+  const listWorkflowRuns = github.rest.actions.listWorkflowRuns;
+  let failed = false;
+  github.rest.actions.listWorkflowRuns = async (parameters) => {
+    if (!failed) {
+      failed = true;
+      throw apiError(500);
+    }
+    return listWorkflowRuns(parameters);
+  };
+
+  await monitorRemoteWorkflow({
+    github,
+    core,
+    ...createClock(),
+    random: () => 0
+  });
+
+  assert.deepEqual(core.failures, []);
+  assert.equal(github.dispatches.length, 0);
+  assert.equal(core.outputs.get("run_id"), "51");
+});
 
 test("reuses an existing successful run without dispatching", async () => {
   const identifier = "0.61.0-aaaaaaaa";
@@ -138,7 +219,7 @@ test("dispatches once and injects the release identifier into the payload", asyn
   const identifier = "0.61.0-bbbbbbbb";
   const core = createCore({
     RELEASE_IDENTIFIER: identifier,
-    CLIENT_PAYLOAD: JSON.stringify({ tag: "0.61", source_sha: "b".repeat(40) }),
+    CLIENT_PAYLOAD: JSON.stringify({ tag: "0.61", source_sha: "b".repeat(40) })
   });
   const github = createGithub();
   const clock = createClock();
@@ -152,8 +233,8 @@ test("dispatches once and injects the release identifier into the payload", asyn
     payload: {
       tag: "0.61",
       source_sha: "b".repeat(40),
-      release_identifier: identifier,
-    },
+      release_identifier: identifier
+    }
   });
 });
 
@@ -175,7 +256,7 @@ test("retries transient run lookups with bounded backoff", async () => {
     github,
     core,
     ...createClock(),
-    random: () => 0,
+    random: () => 0
   });
 
   assert.deepEqual(core.failures, []);
@@ -197,7 +278,7 @@ test("does not retry non-transient API failures", async () => {
     github,
     core,
     ...createClock(),
-    random: () => 0,
+    random: () => 0
   });
 
   assert.equal(attempts, 1);
@@ -223,7 +304,7 @@ test("reconciles an accepted final dispatch after a transient response error", a
     github,
     core,
     ...createClock(),
-    random: () => 0,
+    random: () => 0
   });
 
   assert.deepEqual(core.failures, []);
@@ -250,7 +331,7 @@ test("retries a rejected transient dispatch after correlated lookup", async () =
     github,
     core,
     ...createClock(),
-    random: () => 0,
+    random: () => 0
   });
 
   assert.deepEqual(core.failures, []);
@@ -265,7 +346,7 @@ test("monitors an existing active run to completion", async () => {
     id: 43,
     display_title: `deployment-engine / ${identifier}`,
     status: "in_progress",
-    conclusion: null,
+    conclusion: null
   };
   const core = createCore({ RELEASE_IDENTIFIER: identifier });
   const github = createGithub({
@@ -274,8 +355,8 @@ test("monitors an existing active run to completion", async () => {
       ...active,
       id: runID,
       status: "completed",
-      conclusion: "success",
-    }),
+      conclusion: "success"
+    })
   });
   const clock = createClock();
 
@@ -294,7 +375,7 @@ test("dispatches a retry after an existing failed run", async () => {
     display_title: `deployment-engine / ${identifier}`,
     status: "completed",
     conclusion: "failure",
-    html_url: "https://example.test/runs/44",
+    html_url: "https://example.test/runs/44"
   };
   const core = createCore({ RELEASE_IDENTIFIER: identifier });
   const github = createGithub({ runs: [failed] });
@@ -316,13 +397,13 @@ test("reports a newly dispatched failed retry with job diagnostics", async () =>
       {
         name: "Publish",
         conclusion: "failure",
-        steps: [{ name: "Copy", conclusion: "failure" }],
-      },
-    ],
+        steps: [{ name: "Copy", conclusion: "failure" }]
+      }
+    ]
   });
   github.rest.repos.createDispatchEvent = async ({
     event_type: eventType,
-    client_payload: payload,
+    client_payload: payload
   }) => {
     github.dispatches.push({ eventType, payload });
     github.runs.push({
@@ -330,7 +411,7 @@ test("reports a newly dispatched failed retry with job diagnostics", async () =>
       display_title: `${eventType} / ${payload.release_identifier}`,
       status: "completed",
       conclusion: "failure",
-      html_url: "https://example.test/runs/1001",
+      html_url: "https://example.test/runs/1001"
     });
   };
 
@@ -352,7 +433,7 @@ test("ignores concurrent runs with other identifiers", async () => {
 
   await Promise.all([
     monitorRemoteWorkflow({ github, core: firstCore, ...createClock() }),
-    monitorRemoteWorkflow({ github, core: secondCore, ...createClock() }),
+    monitorRemoteWorkflow({ github, core: secondCore, ...createClock() })
   ]);
 
   assert.deepEqual(firstCore.failures, []);
@@ -360,19 +441,19 @@ test("ignores concurrent runs with other identifiers", async () => {
   assert.equal(github.dispatches.length, 2);
   assert.notEqual(
     firstCore.outputs.get("run_id"),
-    secondCore.outputs.get("run_id"),
+    secondCore.outputs.get("run_id")
   );
   assert.equal(
     github.dispatches.find(
-      (item) => item.payload.release_identifier === firstID,
+      (item) => item.payload.release_identifier === firstID
     ).payload.release_identifier,
-    firstID,
+    firstID
   );
   assert.equal(
     github.dispatches.find(
-      (item) => item.payload.release_identifier === secondID,
+      (item) => item.payload.release_identifier === secondID
     ).payload.release_identifier,
-    secondID,
+    secondID
   );
 });
 
@@ -382,19 +463,19 @@ test("rejects malformed identifiers and mismatched payloads before API calls", a
   await monitorRemoteWorkflow({
     github: malformedGithub,
     core: malformedCore,
-    ...createClock(),
+    ...createClock()
   });
   assert.match(malformedCore.failures[0], /Release identifier/);
   assert.equal(malformedGithub.calls.list, 0);
 
   const mismatchedCore = createCore({
-    CLIENT_PAYLOAD: JSON.stringify({ release_identifier: "other" }),
+    CLIENT_PAYLOAD: JSON.stringify({ release_identifier: "other" })
   });
   const mismatchedGithub = createGithub();
   await monitorRemoteWorkflow({
     github: mismatchedGithub,
     core: mismatchedCore,
-    ...createClock(),
+    ...createClock()
   });
   assert.match(mismatchedCore.failures[0], /does not match/);
   assert.equal(mismatchedGithub.calls.list, 0);
@@ -405,12 +486,12 @@ test("uses one total timeout budget for discovery and completion", async () => {
   const core = createCore({
     RELEASE_IDENTIFIER: identifier,
     MAX_WAIT_SECONDS: "2",
-    POLL_INTERVAL_SECONDS: "1",
+    POLL_INTERVAL_SECONDS: "1"
   });
   const github = createGithub();
   github.rest.repos.createDispatchEvent = async ({
     event_type: eventType,
-    client_payload: payload,
+    client_payload: payload
   }) => {
     github.dispatches.push({ eventType, payload });
   };
@@ -429,28 +510,28 @@ test("all publisher callers use stable identifiers without time-window discovery
       identifier:
         "INPUT_RELEASE_IDENTIFIER: ${{ steps.release-metadata.outputs.release_version }}-${{ github.sha }}",
       eventType: "INPUT_EVENT_TYPE: bicep-types",
-      timeout: "timeout-minutes: 18",
+      timeout: "timeout-minutes: 18"
     },
     {
       file: "publish-de-image.yaml",
       identifier:
         "INPUT_RELEASE_IDENTIFIER: ${{ steps.payload.outputs.tag }}-${{ github.run_id }}",
       eventType: "INPUT_EVENT_TYPE: deployment-engine",
-      timeout: "timeout-minutes: 18",
+      timeout: "timeout-minutes: 18"
     },
     {
       file: "release.yaml",
       identifier:
         "INPUT_RELEASE_IDENTIFIER: ${{ steps.get-version.outputs.release-version }}-${{ github.sha }}",
       eventType: "INPUT_EVENT_TYPE: deployment-engine",
-      timeout: "timeout-minutes: 25",
-    },
+      timeout: "timeout-minutes: 25"
+    }
   ];
 
   for (const fixture of cases) {
     const contents = await readFile(
       new URL(`../workflows/${fixture.file}`, import.meta.url),
-      "utf8",
+      "utf8"
     );
     assert.match(contents, /monitor-remote-workflow\.mjs/);
     assert.ok(contents.includes(fixture.identifier), fixture.file);
@@ -459,5 +540,12 @@ test("all publisher callers use stable identifiers without time-window discovery
     assert.ok(contents.includes('INPUT_MAX_WAIT_SECONDS: "720"'), fixture.file);
     assert.doesNotMatch(contents, /INPUT_DISPATCH_STARTED_AT/);
     assert.doesNotMatch(contents, /peter-evans\/repository-dispatch/);
+
+    const payload = contents.match(
+      /INPUT_CLIENT_PAYLOAD: \|-\n([\s\S]*?)\n\s*INPUT_MAX_WAIT_SECONDS/
+    );
+    assert.ok(payload, fixture.file);
+    assert.match(payload[1], /\$\{\{ toJSON\(/, fixture.file);
+    assert.doesNotMatch(payload[1], /"\$\{\{/, fixture.file);
   }
 });

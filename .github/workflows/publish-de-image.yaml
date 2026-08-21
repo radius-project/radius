@@ -78,12 +78,14 @@ jobs:
           INPUT_WORKFLOW_FILE: publish-deployment-engine.yml
           INPUT_EVENT_TYPE: deployment-engine
           INPUT_RELEASE_IDENTIFIER: ${{ steps.payload.outputs.tag }}-${{ github.run_id }}
+          # These values arrive from an external repository_dispatch, so emit
+          # them with toJSON rather than interpolating them into JSON text.
           INPUT_CLIENT_PAYLOAD: |-
             {
-              "source_repository": "${{ github.repository }}",
-              "src_image": "${{ steps.payload.outputs.src_image }}",
-              "dest_image": "${{ steps.payload.outputs.dest_image }}",
-              "tag": "${{ steps.payload.outputs.tag }}"
+              "source_repository": ${{ toJSON(github.repository) }},
+              "src_image": ${{ toJSON(steps.payload.outputs.src_image) }},
+              "dest_image": ${{ toJSON(steps.payload.outputs.dest_image) }},
+              "tag": ${{ toJSON(steps.payload.outputs.tag) }}
             }
           INPUT_MAX_WAIT_SECONDS: "720"
           INPUT_POLL_INTERVAL_SECONDS: "15"
