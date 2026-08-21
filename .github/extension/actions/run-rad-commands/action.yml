@@ -198,6 +198,7 @@ runs:
           stop_live_deploy_progress || true
           radius_clear_artifact_runtime
           write_result
+        }
         trap cleanup EXIT
 
         # Allowed-command set. Each command's leading verb must be in this list, so
