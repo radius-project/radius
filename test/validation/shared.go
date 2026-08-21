@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"testing"
 
@@ -82,6 +83,63 @@ type OutputResourceResponse struct {
 
 type RPResourceSet struct {
 	Resources []RPResource
+}
+
+// Deletion ranks order teardown so a resource is never removed before the
+// resources that depend on it. Lower ranks are deleted first.
+const (
+	// Applications are deleted first because deleting an application cascades
+	// into the resources it owns, and those resources still need their
+	// environment and recipe pack to run their recipe's delete.
+	deletionRankApplication = iota
+
+	// Application-scoped resources (containers, databases, extenders, ...) are
+	// deleted next. Most are already gone via the application cascade above.
+	deletionRankResource
+
+	// Environments are deleted after everything scoped to them, because a
+	// recipe-backed resource's delete loads its environment configuration.
+	deletionRankEnvironment
+
+	// Recipe packs are deleted last because environments reference them.
+	deletionRankRecipePack
+)
+
+// deletionRank returns the teardown rank for a resource type.
+func deletionRank(resourceType string) int {
+	switch {
+	case strings.EqualFold(resourceType, ApplicationsResource),
+		strings.EqualFold(resourceType, CoreApplicationsResource):
+		return deletionRankApplication
+	case strings.EqualFold(resourceType, EnvironmentsResource),
+		strings.EqualFold(resourceType, CoreEnvironmentsResource):
+		return deletionRankEnvironment
+	case strings.EqualFold(resourceType, CoreRecipePacksResource):
+		return deletionRankRecipePack
+	default:
+		return deletionRankResource
+	}
+}
+
+// ResourcesInDeletionOrder returns the resources of the set ordered so that teardown removes
+// applications first, then application-scoped resources, then environments, and finally recipe
+// packs. Declaration order is preserved within each group, and a nil set yields no resources.
+//
+// Ordering is applied here rather than left to each test's declaration order because deleting an
+// environment or recipe pack before the application that uses it makes the application's delete
+// fail: a recipe-backed resource loads its environment configuration to run the recipe's delete.
+func ResourcesInDeletionOrder(set *RPResourceSet) []RPResource {
+	if set == nil || len(set.Resources) == 0 {
+		return nil
+	}
+
+	ordered := make([]RPResource, len(set.Resources))
+	copy(ordered, set.Resources)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		return deletionRank(ordered[i].Type) < deletionRank(ordered[j].Type)
+	})
+
+	return ordered
 }
 
 // DeleteRPResource deletes an environment or application resource depending on the type of the resource passed in, and

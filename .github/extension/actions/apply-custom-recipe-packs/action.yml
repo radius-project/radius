@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
 # Provider-agnostic custom resource-type / recipe-pack apply shared by
 # run-rad-commands-aws.yml and run-rad-commands-azure.yml. Runs after the
 # provider-specific "Create Radius environment and recipe pack" step. When the

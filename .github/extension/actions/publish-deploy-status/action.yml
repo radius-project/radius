@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
 # Provider-agnostic deploy-status publisher shared by run-rad-commands-aws.yml
 # and run-rad-commands-azure.yml. Captures the deployed app graph from the live
 # control plane and publishes it as a workflow artifact so the canvas "Deployed"
