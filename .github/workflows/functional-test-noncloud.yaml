@@ -49,6 +49,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ format('{0}-{1}', github.workflow, (github.event_name == 'pull_request' && github.event.pull_request.number) || github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   # Dapr runtime version. Must stay on the same minor line as the Dapr CLI
   # pinned in build/tools.yaml (DAPR_VERSION), which installs it.

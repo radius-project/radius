@@ -54,6 +54,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ format('{0}-{1}', github.workflow, (github.event_name == 'pull_request_target' && github.event.pull_request.number) || github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+
 env:
   GOPROXY: https://proxy.golang.org
   # Azure Keyvault CSI driver chart version
