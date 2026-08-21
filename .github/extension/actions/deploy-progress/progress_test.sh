@@ -97,7 +97,16 @@ write_response() {
         type: "Radius.Compute/containers",
         properties: {
             provisioningState: $state,
-            status: {message: "working"}
+            status: {
+                message: "working",
+                outputResources: [
+                    {id: "/planes/kubernetes/local/providers/core/Service/todo"},
+                    {id: "/planes/kubernetes/local/providers/apps/Deployment/todo"},
+                    {id: "/planes/kubernetes/local/providers/core/Service/todo"},
+                    {id: ""},
+                    {}
+                ]
+            }
         }
     }]' >"${RAD_RESPONSE_FILE}"
 }
@@ -113,6 +122,10 @@ jq -e '
     and .sequence == 1
     and .state == "in_progress"
     and .resources[0].status == "in_progress"
+    and .resources[0].outputResourceIds == [
+        "/planes/kubernetes/local/providers/apps/Deployment/todo",
+        "/planes/kubernetes/local/providers/core/Service/todo"
+    ]
 ' "${progress_file}" >/dev/null || fail "invalid first progress payload"
 grep -q \
     'radius-deploy-status-dev-todo-live-12345-slot-0 .* 1 false' \
@@ -181,6 +194,18 @@ wait "${release_pid}"
 [[ ! -f "${UPLOAD_BLOCK_DIR}/overlap" ]] ||
     fail "final publish overlapped the active upload"
 unset UPLOAD_BLOCK_DIR RADIUS_PROGRESS_INTERVAL_SECONDS
+
+printf '%s\n' '[{
+    "id": "/resources/no-outputs",
+    "name": "no-outputs",
+    "type": "Radius.Core/example",
+    "properties": {"provisioningState": "Succeeded"}
+}]' >"${RAD_RESPONSE_FILE}"
+rm -f "$(radius_progress_dir)/last-resources.json"
+radius_publish_live_progress_once "todo" "dev" \
+    "radius-deploy-status-dev-todo"
+jq -e '.resources[0].outputResourceIds == []' "${progress_file}" \
+    >/dev/null || fail "resources without resolved outputs need an empty ID array"
 
 [[ "$(radius_deploy_artifact_name 'Dev Env' 'My App')" == \
     "radius-deploy-status-dev-env-my-app" ]] ||
