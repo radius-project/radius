@@ -278,6 +278,10 @@ For each Radius resource, the algorithm extracts `properties.status.outputResour
 resources, etc.) that were created during deployment. These are parsed from the
 weakly-typed property bag returned by the API.
 
+#### Property Sanitization
+
+Modeled graphs and runtime `Radius.Core/2025-08-01-preview` graphs unconditionally omit `properties.containers[*].env` from `Radius.Compute/containers` nodes. Environment variables can contain credentials or other sensitive values, so this omission is part of the graph projection contract regardless of whether an individual value is marked as secret. Both producers use [`sanitization.OmitContainerEnvironment`](../../pkg/graph/sanitization/properties.go), which returns a deep copy before removing the environment maps so the source resource properties are not mutated.
+
 ### Data Model
 
 ```mermaid

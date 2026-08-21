@@ -341,6 +341,9 @@ jobs:
           environment: ${{ inputs.environment }}
           app-file: ${{ env.APP_FILE }}
 
+      - name: Prepare live deployment progress
+        uses: radius-project/radius/.github/extension/actions/deploy-progress/artifact-uploader@{{RADIUS_REF}}
+
       - name: Run rad commands
         uses: radius-project/radius/.github/extension/actions/run-rad-commands@{{RADIUS_REF}}
         with:
