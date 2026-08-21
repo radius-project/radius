@@ -213,6 +213,10 @@ set -uo pipefail
 
 case "${1:-} ${2:-}" in
     "app graph")
+        if [[ "${3:-}" != "${APP_FILE:-}" ]]; then
+            echo "rad: app graph must receive APP_FILE as its positional argument" >&2
+            exit 64
+        fi
         if [[ "${RAD_GRAPH_SHOULD_FAIL:-false}" == "true" ]]; then
             echo "rad: application not found in environment" >&2
             exit 1

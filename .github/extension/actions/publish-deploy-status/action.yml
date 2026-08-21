@@ -90,7 +90,7 @@ runs:
         # Keep stderr out of STATUS_DIR: that directory is uploaded wholesale as the
         # artifact, so anything written there becomes part of the published payload.
         GRAPH_STDERR=$(mktemp)
-        if ! rad app graph --application "$APP_NAME" --preview --include-icons --output json > "$STATUS_DIR/deploy-graph.json" 2> "$GRAPH_STDERR"; then
+        if ! rad app graph "$APP_FILE" --application "$APP_NAME" --preview --include-icons --output json > "$STATUS_DIR/deploy-graph.json" 2> "$GRAPH_STDERR"; then
           echo "::warning::Failed to generate deployed graph; skipping publish."
           cat "$GRAPH_STDERR" || true
           emit_outputs "" false
