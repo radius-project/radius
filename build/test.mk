@@ -194,6 +194,13 @@ test-functional-multicluster-noncloud: ## Runs multi-cluster functional tests th
 	# because of that extra setup.
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/multicluster/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
+.PHONY: test-functional-database-noncloud
+test-functional-database-noncloud: ## Runs the PostgreSQL-backed control plane (database.enabled=true) functional tests
+	# Requires a control plane installed with `rad install kubernetes --set database.enabled=true`.
+	# The tests fail against the default apiserver-backed install, so they are not part of
+	# test-functional-all-noncloud; CI runs them in the database-noncloud leg.
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/database/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
+
 .PHONY: test-functional-statestore-noncloud
 test-functional-statestore-noncloud: ## Runs the rad startup/shutdown state-storage lifecycle test
 	# Destructive: the test installs, uninstalls (--purge), and reinstalls Radius
