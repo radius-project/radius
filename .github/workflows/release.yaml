@@ -347,13 +347,15 @@ jobs:
           INPUT_WORKFLOW_FILE: publish-deployment-engine.yml
           INPUT_EVENT_TYPE: deployment-engine
           INPUT_RELEASE_IDENTIFIER: ${{ steps.get-version.outputs.release-version }}-${{ github.sha }}
+          # toJSON emits each value already quoted and escaped, so no computed
+          # version string can break out of the payload it is placed in.
           INPUT_CLIENT_PAYLOAD: |-
             {
-              "source_repository": "${{ github.repository }}",
-              "source_sha": "${{ github.sha }}",
+              "source_repository": ${{ toJSON(github.repository) }},
+              "source_sha": ${{ toJSON(github.sha) }},
               "src_image": "radiusdeploymentengine.azurecr.io/deployment-engine",
               "dest_image": "ghcr.io/radius-project/deployment-engine",
-              "tag": "${{ steps.get-version.outputs.release-channel }}"
+              "tag": ${{ toJSON(steps.get-version.outputs.release-channel) }}
             }
           INPUT_MAX_WAIT_SECONDS: "720"
           INPUT_POLL_INTERVAL_SECONDS: "15"
