@@ -27,7 +27,7 @@ jobs:
   build-and-push-bicep-types:
     name: Dispatch Bicep Types publish
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 18
     environment: publish-bicep
     permissions:
       contents: read # Required for actions/checkout
@@ -45,6 +45,15 @@ jobs:
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
 
+      - name: Capture release metadata
+        id: release-metadata
+        shell: bash
+        run: |
+          {
+            echo "release_version=${REL_VERSION}"
+            echo "release_channel=${REL_CHANNEL}"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Get App Token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: get-token
@@ -58,29 +67,7 @@ jobs:
           repositories: |
             radius-publisher
 
-      - name: Capture dispatch start time
-        id: dispatch-start
-        shell: bash
-        run: |
-          echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
-
-      - name: Repository Dispatch
-        id: repository-dispatch
-        uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4.0.1
-        with:
-          token: ${{ steps.get-token.outputs.token }}
-          repository: azure-octo/radius-publisher
-          event-type: bicep-types
-          client-payload: |-
-            {
-              "source_repository": "${{ github.repository }}",
-              "source_ref": "${{ github.ref }}",
-              "source_sha": "${{ github.sha }}",
-              "rel_channel": "${{ env.REL_CHANNEL }}",
-              "registry_target": "radius"
-            }
-
-      - name: Monitor remote workflow
+      - name: Dispatch or monitor correlated publisher run
         id: monitor-remote-workflow
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
@@ -92,8 +79,17 @@ jobs:
           INPUT_OWNER: azure-octo
           INPUT_REPO: radius-publisher
           INPUT_WORKFLOW_FILE: publish-bicep-types.yml
-          INPUT_DISPATCH_STARTED_AT: ${{ steps.dispatch-start.outputs.started_at }}
-          INPUT_MAX_WAIT_SECONDS: "600"
+          INPUT_EVENT_TYPE: bicep-types
+          INPUT_RELEASE_IDENTIFIER: ${{ steps.release-metadata.outputs.release_version }}-${{ github.sha }}
+          INPUT_CLIENT_PAYLOAD: |-
+            {
+              "source_repository": "${{ github.repository }}",
+              "source_ref": "${{ github.ref }}",
+              "source_sha": "${{ github.sha }}",
+              "rel_channel": "${{ steps.release-metadata.outputs.release_channel }}",
+              "registry_target": "radius"
+            }
+          INPUT_MAX_WAIT_SECONDS: "720"
           INPUT_POLL_INTERVAL_SECONDS: "15"
 
       - name: Show failed logs
