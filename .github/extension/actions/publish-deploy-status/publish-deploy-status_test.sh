@@ -222,7 +222,7 @@ case "${1:-} ${2:-}" in
             exit 1
         fi
         printf '%s\n' \
-            '{"resources":[{"name":"web","type":"Radius.Compute/containers"}]}'
+            '{"resources":[{"id":"/planes/radius/local/rg/web","name":"web","type":"Radius.Compute/containers","outputResources":[{"id":"/planes/kubernetes/local/providers/apps/Deployment/web","name":"web","type":"apps/Deployment"},{"id":"/planes/kubernetes/local/providers/core/Service/web","name":"web","type":"core/Service"}]},{"id":"/planes/radius/local/rg/db","name":"db","type":"Radius.Data/mySqlDatabases","outputResources":[{"id":"/subscriptions/test/providers/Microsoft.DBforMySQL/flexibleServers/db","name":"db","type":"Microsoft.DBforMySQL/flexibleServers"}]}]}'
         ;;
     "app list")
         printf '[{"name":"%s"}]\n' "${RAD_APP_LIST_NAME-fallback-app}"
@@ -243,11 +243,19 @@ case "${1:-} ${2:-}" in
           {"id":"/planes/radius/local/rg/web","name":"web",
            "type":"Radius.Compute/containers",
            "properties":{"provisioningState":"Succeeded",
-                         "status":{"message":"container ready"}}},
+                         "status":{"message":"container ready",
+                           "outputResources":[
+                             {"id":"/planes/kubernetes/local/providers/core/Service/web"},
+                             {"id":"/planes/kubernetes/local/providers/apps/Deployment/web"},
+                             {"id":"/planes/kubernetes/local/providers/core/Service/web"}
+                           ]}}},
           {"id":"/planes/radius/local/rg/db","name":"db",
-           "type":"Radius.Data/postgres",
+           "type":"Radius.Data/mySqlDatabases",
            "properties":{"provisioningState":"Failed",
-                         "status":{"message":"recipe execution failed"}}},
+                         "status":{"message":"recipe execution failed",
+                           "outputResources":[
+                             {"id":"/subscriptions/test/providers/Microsoft.DBforMySQL/flexibleServers/db"}
+                           ]}}},
           {"id":"/planes/radius/local/rg/queue","name":"queue",
            "type":"Radius.Messaging/rabbitMQQueues",
            "properties":{"provisioningState":"Updating"}}
@@ -430,9 +438,12 @@ $(cat "${file}")"
     # normalized status: the consumer needs the normalized value to paint the
     # graph, and the raw one to recover if the mapping goes stale.
     progress_jq 'all(.resources[]; has("id") and has("name") and has("type")
-        and has("provisioningState") and has("status") and has("message"))' ||
+        and has("provisioningState") and has("outputResourceIds")
+        and has("status") and has("message"))' ||
         fail "every .resources[] entry needs id, name, type, provisioningState,\
- status and message; got: $(jq -c '.resources' "${file}")"
+ outputResourceIds, status and message; got: $(jq -c '.resources' "${file}")"
+    progress_jq 'all(.resources[]; .outputResourceIds | type == "array")' ||
+        fail "every .resources[].outputResourceIds must be an array"
     progress_jq 'all(.resources[];
         .status == "success" or .status == "failed"
         or .status == "in_progress")' ||
@@ -535,6 +546,18 @@ progress_jq 'any(.resources[];
 progress_jq 'any(.resources[];
     .name == "web" and .message == "container ready")' ||
     fail "expected .message to carry properties.status.message"
+progress_jq 'any(.resources[]; .name == "web"
+    and .outputResourceIds == [
+      "/planes/kubernetes/local/providers/apps/Deployment/web",
+      "/planes/kubernetes/local/providers/core/Service/web"
+    ])' || fail "expected web output resource IDs to be sorted and deduplicated"
+progress_jq 'any(.resources[]; .name == "db"
+    and .outputResourceIds == [
+      "/subscriptions/test/providers/Microsoft.DBforMySQL/flexibleServers/db"
+    ])' || fail "expected MySQL progress to carry its exact resolved server ID"
+progress_jq 'any(.resources[]; .name == "queue"
+    and .outputResourceIds == [])' ||
+    fail "resources without resolved outputs need an empty ID array"
 
 assert_status_file_contains "deploy-activity.log" '"outcome":"success"'
 assert_status_file_contains "deploy-controlplane.log" "# rad version"
@@ -543,6 +566,8 @@ assert_status_file_contains "deploy-state.txt" "state=success"
 assert_status_file_contains "deploy-state.txt" "application=todolist"
 assert_status_file_contains "deploy-state.txt" "sha=deadbeefcafe"
 assert_status_file_contains "deploy-graph.json" "Radius.Compute/containers"
+assert_status_file_contains "deploy-graph.json" \
+    "Microsoft.DBforMySQL/flexibleServers"
 jq -e 'all(.resources[]?; (.properties.containers // {}) |
     all(.[]?; has("env") | not))' "${STATUS_DIR}/deploy-graph.json" >/dev/null ||
     fail "deploy-graph.json must not contain container environment maps"
