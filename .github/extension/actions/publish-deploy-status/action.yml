@@ -141,21 +141,8 @@ runs:
         RESOURCES_JSON="[]"
         RESOURCE_STDERR=$(mktemp)
         if RAW_RESOURCES=$(rad resource list --preview -a "$APP_NAME" -o json 2> "$RESOURCE_STDERR"); then
-          if ! RESOURCES_JSON=$(printf '%s' "$RAW_RESOURCES" | jq -c '
-            [ .[]? | {
-                id: (.id // ""),
-                name: (.name // ""),
-                type: (.type // ""),
-                provisioningState: (.properties.provisioningState // ""),
-                status: (
-                  (.properties.provisioningState // "") as $s
-                  | if   $s == "Succeeded" then "success"
-                    elif $s == "Failed" or $s == "Canceled" or $s == "Cancelled" then "failed"
-                    else "in_progress"
-                    end
-                ),
-                message: (.properties.status.message // "")
-              } ]' 2>/dev/null); then
+          if ! RESOURCES_JSON=$(printf '%s' "$RAW_RESOURCES" |
+            radius_normalize_resources 2>/dev/null); then
             echo "::warning::rad resource list --preview returned invalid JSON; deploy progress will contain no resources."
             RESOURCES_JSON="[]"
           fi
