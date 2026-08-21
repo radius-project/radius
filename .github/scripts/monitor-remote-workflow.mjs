@@ -5,11 +5,12 @@ const EVENT_TYPE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const API_RETRY_ATTEMPTS = 5;
 const API_RETRY_BASE_DELAY_MS = 1000;
 const API_RETRY_MAX_DELAY_MS = 15000;
+const MAX_LOOKUP_PAGES = 5;
 const RETRYABLE_NETWORK_CODES = new Set([
   "ECONNRESET",
   "ETIMEDOUT",
   "EAI_AGAIN",
-  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_CONNECT_TIMEOUT"
 ]);
 
 /** @param {string} name @param {string} value @param {number} fallback */
@@ -62,20 +63,20 @@ export default async ({
   core,
   sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   now = () => Date.now(),
-  random = () => Math.random(),
+  random = () => Math.random()
 }) => {
   try {
     const remoteOwner = core.getInput("OWNER", { required: true });
     const remoteRepo = core.getInput("REPO", { required: true });
     const remoteWorkflowFile = core.getInput("WORKFLOW_FILE", {
-      required: true,
+      required: true
     });
     const eventType = core.getInput("EVENT_TYPE", { required: true });
     const releaseIdentifier = core.getInput("RELEASE_IDENTIFIER", {
-      required: true,
+      required: true
     });
     const clientPayloadText = core.getInput("CLIENT_PAYLOAD", {
-      required: true,
+      required: true
     });
 
     if (!EVENT_TYPE_PATTERN.test(eventType)) {
@@ -83,7 +84,7 @@ export default async ({
     }
     if (!RELEASE_IDENTIFIER_PATTERN.test(releaseIdentifier)) {
       throw new Error(
-        "Release identifier must contain 1-200 letters, numbers, dots, underscores, or hyphens",
+        "Release identifier must contain 1-200 letters, numbers, dots, underscores, or hyphens"
       );
     }
 
@@ -106,12 +107,12 @@ export default async ({
     const maxWaitSeconds = positiveNumber(
       "MAX_WAIT_SECONDS",
       core.getInput("MAX_WAIT_SECONDS"),
-      900,
+      900
     );
     const pollIntervalSeconds = positiveNumber(
       "POLL_INTERVAL_SECONDS",
       core.getInput("POLL_INTERVAL_SECONDS"),
-      10,
+      10
     );
     const deadline = now() + maxWaitSeconds * 1000;
     const expectedRunName = `${eventType} / ${releaseIdentifier}`;
@@ -128,7 +129,7 @@ export default async ({
     const retryDelay = (attempt, error) => {
       const exponentialDelay = Math.min(
         API_RETRY_MAX_DELAY_MS,
-        API_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1),
+        API_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1)
       );
       const jitteredDelay =
         exponentialDelay / 2 + random() * (exponentialDelay / 2);
@@ -150,7 +151,7 @@ export default async ({
 
           const delay = retryDelay(attempt, error);
           core.info(
-            `Transient GitHub API failure during ${operationName}; retrying in ${delay}ms (attempt ${attempt + 1}/${API_RETRY_ATTEMPTS})`,
+            `Transient GitHub API failure during ${operationName}; retrying in ${delay}ms (attempt ${attempt + 1}/${API_RETRY_ATTEMPTS})`
           );
           if (!(await sleepWithinBudget(delay))) {
             throw error;
@@ -162,8 +163,20 @@ export default async ({
 
     core.setOutput("release_identifier", releaseIdentifier);
     core.info(
-      `Reconciling publisher run '${expectedRunName}' in ${remoteOwner}/${remoteRepo}`,
+      `Reconciling publisher run '${expectedRunName}' in ${remoteOwner}/${remoteRepo}`
     );
+
+    /** @param {any[]} runs */
+    const correlatedRuns = (runs) =>
+      (runs || [])
+        .filter((run) => run.display_title === expectedRunName)
+        .sort((left, right) => right.id - left.id);
+
+    /** @param {any[]} runs */
+    const selectReusableRun = (runs) =>
+      runs.find(
+        (run) => run.status === "completed" && run.conclusion === "success"
+      ) || runs.find((run) => run.status !== "completed");
 
     const matchingRuns = async ({ allPages = true } = {}) => {
       const parameters = {
@@ -171,25 +184,43 @@ export default async ({
         repo: remoteRepo,
         workflow_id: remoteWorkflowFile,
         event: "repository_dispatch",
-        per_page: 100,
+        per_page: 100
       };
-      const runs = allPages
-        ? await retryAPI("publisher run lookup", () =>
-            github.paginate(
-              github.rest.actions.listWorkflowRuns,
-              parameters,
-              (response) => response.data.workflow_runs || [],
-            ),
-          )
-        : (
-            await retryAPI("recent publisher run lookup", () =>
-              github.rest.actions.listWorkflowRuns(parameters),
-            )
-          ).data.workflow_runs || [];
 
-      return runs
-        .filter((run) => run.display_title === expectedRunName)
-        .sort((left, right) => right.id - left.id);
+      if (!allPages) {
+        const response = await retryAPI("recent publisher run lookup", () =>
+          github.rest.actions.listWorkflowRuns(parameters)
+        );
+        return correlatedRuns(response.data.workflow_runs);
+      }
+
+      let pagesRead = 0;
+      let matched = false;
+      const runs = await retryAPI("publisher run lookup", () => {
+        // Reset per attempt so a retried lookup gets the full page budget.
+        pagesRead = 0;
+        matched = false;
+        return github.paginate(
+          github.rest.actions.listWorkflowRuns,
+          parameters,
+          (response, done) => {
+            const page = correlatedRuns(response.data.workflow_runs);
+            pagesRead += 1;
+            // Pages arrive newest first and one identifier's runs are
+            // contiguous, so a long publisher history costs a bounded
+            // number of API calls.
+            if (
+              pagesRead >= MAX_LOOKUP_PAGES ||
+              (matched && page.length === 0)
+            ) {
+              done();
+            }
+            matched = matched || page.length > 0;
+            return page;
+          }
+        );
+      });
+      return correlatedRuns(runs);
     };
 
     const dispatchRun = async (previousRunID) => {
@@ -199,7 +230,7 @@ export default async ({
             owner: remoteOwner,
             repo: remoteRepo,
             event_type: eventType,
-            client_payload: clientPayload,
+            client_payload: clientPayload
           });
           return undefined;
         } catch (error) {
@@ -209,22 +240,22 @@ export default async ({
 
           const delay = Math.max(
             pollIntervalSeconds * 1000,
-            retryDelay(attempt, error),
+            retryDelay(attempt, error)
           );
           core.info(
-            `Publisher dispatch returned a transient error; checking for '${expectedRunName}' before retrying`,
+            `Publisher dispatch returned a transient error; checking for '${expectedRunName}' before retrying`
           );
           if (now() < deadline) {
             await sleepWithinBudget(delay);
           }
 
           const newRuns = (await matchingRuns({ allPages: false })).filter(
-            (candidate) => candidate.id > previousRunID,
+            (candidate) => candidate.id > previousRunID
           );
           const discoveredRun = selectReusableRun(newRuns) || newRuns[0];
           if (discoveredRun) {
             core.info(
-              `The uncertain dispatch created correlated run ${discoveredRun.id}; skipping redispatch`,
+              `The uncertain dispatch created correlated run ${discoveredRun.id}; skipping redispatch`
             );
             return discoveredRun;
           }
@@ -236,36 +267,30 @@ export default async ({
       throw new Error("Publisher dispatch exhausted its retry budget");
     };
 
-    /** @param {any[]} runs */
-    const selectReusableRun = (runs) =>
-      runs.find(
-        (run) => run.status === "completed" && run.conclusion === "success",
-      ) || runs.find((run) => run.status !== "completed");
-
     const existingRuns = await matchingRuns();
     const previousRunID = existingRuns.reduce(
       (highest, candidate) => Math.max(highest, candidate.id),
-      0,
+      0
     );
     let run = selectReusableRun(existingRuns);
     if (!run) {
       core.info(
-        existingRuns.length > 0
-          ? `Previous correlated runs failed; dispatching retry '${eventType}'`
-          : `No existing run found; dispatching '${eventType}'`,
+        existingRuns.length > 0 ?
+          `Previous correlated runs failed; dispatching retry '${eventType}'`
+        : `No existing run found; dispatching '${eventType}'`
       );
       run = await dispatchRun(previousRunID);
 
       while (!run && now() <= deadline) {
         const newRuns = (await matchingRuns({ allPages: false })).filter(
-          (candidate) => candidate.id > previousRunID,
+          (candidate) => candidate.id > previousRunID
         );
         run = selectReusableRun(newRuns) || newRuns[0];
         if (run || now() >= deadline) {
           break;
         }
         await sleep(
-          Math.min(pollIntervalSeconds * 1000, Math.max(0, deadline - now())),
+          Math.min(pollIntervalSeconds * 1000, Math.max(0, deadline - now()))
         );
       }
     } else {
@@ -274,7 +299,7 @@ export default async ({
 
     if (!run) {
       core.setFailed(
-        `Timed out waiting for publisher run '${expectedRunName}': https://github.com/${remoteOwner}/${remoteRepo}/actions/workflows/${remoteWorkflowFile}`,
+        `Timed out waiting for publisher run '${expectedRunName}': https://github.com/${remoteOwner}/${remoteRepo}/actions/workflows/${remoteWorkflowFile}`
       );
       return;
     }
@@ -300,11 +325,11 @@ export default async ({
             owner: remoteOwner,
             repo: remoteRepo,
             run_id: run.id,
-            per_page: 100,
-          }),
+            per_page: 100
+          })
         );
         const failedJobs = (jobsResponse.data.jobs || []).filter(
-          (job) => job.conclusion !== "success",
+          (job) => job.conclusion !== "success"
         );
         const failedJobText = failedJobs
           .map((job) => {
@@ -317,26 +342,26 @@ export default async ({
           .join("\n");
 
         core.setFailed(
-          `Correlated remote workflow failed with conclusion: ${conclusion}\nRemote workflow run: ${runUrl}${failedJobText ? `\nFailed jobs/steps:\n${failedJobText}` : ""}`,
+          `Correlated remote workflow failed with conclusion: ${conclusion}\nRemote workflow run: ${runUrl}${failedJobText ? `\nFailed jobs/steps:\n${failedJobText}` : ""}`
         );
         return;
       }
 
       if (now() >= deadline) {
         core.setFailed(
-          `Timed out waiting for correlated remote workflow completion: ${runUrl}`,
+          `Timed out waiting for correlated remote workflow completion: ${runUrl}`
         );
         return;
       }
       await sleep(
-        Math.min(pollIntervalSeconds * 1000, Math.max(0, deadline - now())),
+        Math.min(pollIntervalSeconds * 1000, Math.max(0, deadline - now()))
       );
       const runResponse = await retryAPI("publisher run status", () =>
         github.rest.actions.getWorkflowRun({
           owner: remoteOwner,
           repo: remoteRepo,
-          run_id: run.id,
-        }),
+          run_id: run.id
+        })
       );
       run = runResponse.data;
     }

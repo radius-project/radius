@@ -81,12 +81,14 @@ jobs:
           INPUT_WORKFLOW_FILE: publish-bicep-types.yml
           INPUT_EVENT_TYPE: bicep-types
           INPUT_RELEASE_IDENTIFIER: ${{ steps.release-metadata.outputs.release_version }}-${{ github.sha }}
+          # toJSON emits each value already quoted and escaped, so no ref or
+          # channel string can break out of the payload it is placed in.
           INPUT_CLIENT_PAYLOAD: |-
             {
-              "source_repository": "${{ github.repository }}",
-              "source_ref": "${{ github.ref }}",
-              "source_sha": "${{ github.sha }}",
-              "rel_channel": "${{ steps.release-metadata.outputs.release_channel }}",
+              "source_repository": ${{ toJSON(github.repository) }},
+              "source_ref": ${{ toJSON(github.ref) }},
+              "source_sha": ${{ toJSON(github.sha) }},
+              "rel_channel": ${{ toJSON(steps.release-metadata.outputs.release_channel) }},
               "registry_target": "radius"
             }
           INPUT_MAX_WAIT_SECONDS: "720"
