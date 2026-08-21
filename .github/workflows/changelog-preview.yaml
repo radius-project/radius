@@ -1,0 +1,78 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: changelog-preview
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: changelog-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: Render unreleased changelog
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Find current channel boundary
+        id: boundary
+        shell: bash
+        run: |
+          echo "range=$(./.github/scripts/changelog-range.sh)" >> "$GITHUB_OUTPUT"
+
+      - name: Install git-cliff
+        run: make install-git-cliff
+
+      - name: Render unreleased changelog
+        run: |
+          git-cliff --config cliff.toml --strip all --verbose \
+            --output changelog-preview.md "${CHANGELOG_RANGE}"
+        env:
+          CHANGELOG_RANGE: ${{ steps.boundary.outputs.range }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPO: ${{ github.repository }}
+
+      - name: Add preview to workflow summary
+        shell: bash
+        run: |
+          {
+            echo "## Unreleased changelog preview"
+            echo
+            cat changelog-preview.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload preview
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: changelog-preview-${{ github.sha }}
+          path: changelog-preview.md
+          if-no-files-found: error
+          retention-days: 7
