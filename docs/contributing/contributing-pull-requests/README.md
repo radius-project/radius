@@ -73,6 +73,8 @@ refactor(api)!: remove the legacy response field
 
 These signals determine changelog grouping only. They never select the Radius version: scheduled full releases bump the minor version while Radius is `0.x`, and patch releases bump the patch version of their release channel.
 
+The `Validate pull request title` check enforces this format and must pass before a pull request can merge. If it fails, edit the pull request title — the check re-runs automatically on every title edit, and no new commit is needed. While a pull request is still in progress you can prefix the title with `[WIP]`, which leaves the check pending rather than failing, so the pull request stays unmergeable without being reported as broken.
+
 ### 4. Sign your commits
 
 The Developer Certificate of Origin (DCO) check requires every commit to be signed off. See [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide for how to do this.
@@ -124,6 +126,7 @@ A pull request must pass these checkpoints to be accepted:
 
 - **Initial review** — a maintainer reviews your summary and confirms an appropriate issue is linked.
 - **Automated tests** — GitHub Actions workflows run unit, integration, and functional tests against your changes. Automation adds comments with links to logs so you can diagnose failures.
+- **Conventional Commit title** — the pull request title follows the format in [Use a Conventional Commit pull request title](#3-use-a-conventional-commit-pull-request-title).
 - **Required label** — exactly one of `pr:standard` or `pr:important` is applied.
 - **Code review** — you receive and address feedback from a maintainer or other contributors.
 
@@ -137,6 +140,7 @@ The functional-tests workflow requires approval to run. One of our approvers is 
 ## Troubleshooting
 
 - **A functional-test run hasn't started.** The functional-tests workflow requires an approver to approve the run. Approvers are notified automatically when you submit; if a run hasn't started, wait for approval or ask the maintainers.
+- **The `Validate pull request title` check fails.** The title is not a valid Conventional Commit. The check output names the problem, most often an unknown or missing type. Rename the title to `<type>[optional scope][!]: <description>` using a type from the table in [Use a Conventional Commit pull request title](#3-use-a-conventional-commit-pull-request-title); the check re-runs on the edit.
 - **CodeQL reports a security issue.** We run [CodeQL](https://codeql.github.com/) for security analysis on every PR. It is not currently required to pass for a PR to be merged, as it may be triggered by other alerts in the repo. If CodeQL fails due to your changes, work with the maintainers to resolve it.
 - **The spell check fails.** The PR check workflow runs [cspell](https://cspell.org/) with a [custom dictionary](https://github.com/radius-project/radius/blob/main/.cspellignore). Check the [workflow output](https://github.com/radius-project/radius/actions/workflows/spellcheck.yaml) for the flagged words and add correctly spelled words to `.cspellignore`. Run it locally from the repo root with:
 

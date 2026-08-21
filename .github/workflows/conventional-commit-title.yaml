@@ -18,84 +18,47 @@
 ---
 name: conventional-commit-title
 
-# pull_request_target is required so the check also runs, and can comment, on
-# pull requests from forks. No pull request code is checked out or executed
-# here, so the elevated token is never exposed to untrusted input.
+# pull_request_target runs the base branch's copy of this workflow, so a pull
+# request cannot weaken this required check by editing it. No pull request code
+# is checked out or executed here, so the token never sees untrusted input.
 on:
   pull_request_target:
     types:
       - opened
       - edited
       - reopened
+      # A required check is evaluated against the head commit, so the check has
+      # to re-run when new commits arrive.
       - synchronize
+  # A merge group has no pull request title, but the required check must still
+  # report there or queued entries stall until the queue check timeout.
+  merge_group:
+    branches:
+      - main
 
 permissions: {}
 
 concurrency:
-  group: conventional-commit-title-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: conventional-commit-title-${{ github.event.pull_request.number || github.sha }}
+  # A canceled merge queue check fails the queued entry.
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
 
 jobs:
   validate-title:
     name: Validate pull request title
+    # The title is validated on the pull request itself; in the merge queue this
+    # job is skipped and its required check reports success.
+    if: github.event_name != 'merge_group'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
-      pull-requests: write # Required to post the advisory fix-it comment
+      pull-requests: write # Required by wip to hold the check in a pending state
     steps:
       - name: Validate Conventional Commit title
-        id: validate
-        # Advisory only: the step records the failure so the comment below can
-        # explain it, without failing the pull request. Removing this line is
-        # what makes the check required.
-        continue-on-error: true
         uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
         with:
-          types: |
-            feat
-            fix
-            perf
-            refactor
-            docs
-            test
-            build
-            ci
-            chore
-            deps
-            revert
+          # A "[WIP]" title leaves the check pending instead of failing, which
+          # blocks merge without nagging an unfinished pull request.
+          wip: true
         env:
           GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Explain how to fix the title
-        if: steps.validate.outputs.error_message != ''
-        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        with:
-          header: conventional-commit-title
-          message: |
-            ### This pull request title is not a Conventional Commit
-
-            Radius squash-merges every pull request, so the title becomes the commit
-            message and drives changelog grouping.
-
-            ```text
-            ${{ steps.validate.outputs.error_message }}
-            ```
-
-            Use `<type>[optional scope][!]: <description>`, for example
-            `feat(cli): add rad group switch`. Allowed types are `feat`, `fix`,
-            `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `deps`,
-            and `revert`.
-
-            The type only selects the changelog section; it never changes the
-            released version. See the
-            [pull request guide](https://github.com/radius-project/radius/blob/main/docs/contributing/contributing-pull-requests/README.md#3-use-a-conventional-commit-pull-request-title).
-
-            This check is advisory today and will become required, so please
-            rename the title now.
-
-      - name: Clear the advisory comment
-        if: steps.validate.outputs.error_message == ''
-        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        with:
-          header: conventional-commit-title
-          delete: true
