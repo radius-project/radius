@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-apply-custom-recipe-packs test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -63,6 +63,10 @@ test-manage-radius-installation: ## Tests Radius installation lifecycle reconcil
 .PHONY: test-update-tools-pr
 test-update-tools-pr: ## Tests the automated tool-update pull request workflow
 	@bash ./.github/scripts/update-tools-pr_test.sh
+
+.PHONY: test-apply-custom-recipe-packs
+test-apply-custom-recipe-packs: ## Tests custom recipe pack reconciliation in the deploy action
+	@bash ./.github/extension/actions/apply-custom-recipe-packs/apply-custom-recipe-packs_test.sh
 
 .PHONY: test-run-rad-commands-action
 test-run-rad-commands-action: ## Tests application deploy parameter filtering in the run-rad-commands action
