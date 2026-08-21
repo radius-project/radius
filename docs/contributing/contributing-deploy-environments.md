@@ -57,9 +57,8 @@ Copy the provider's template from `.github/extension/` into the target repositor
 Trigger the workflow with `workflow_dispatch`, passing the environment name as the `environment` input. The workflow:
 
 1. Authenticates via OIDC (Azure: `azure/login`; AWS: `aws-actions/configure-aws-credentials`). Azure authenticates at tenant scope first so a new role assignment can propagate without masking genuine OIDC, client, tenant, or federated-credential failures.
-2. Waits for cloud access. Azure refreshes the subscription list immediately, then retries with bounded exponential backoff for about 10 minutes before selecting `AZURE_SUBSCRIPTION_ID`; the step also has a 12-minute hard timeout for a hung Azure CLI call. AWS runs `aws sts get-caller-identity`.
-3. Verifies cloud access (Azure: `az account show`; AWS: the caller identity returned by the preceding step).
-4. Verifies cluster access (Azure: `az aks get-credentials` + `kubelogin convert-kubeconfig` + `kubectl cluster-info`; AWS: `aws eks update-kubeconfig` + `kubectl cluster-info`).
+2. Verifies cloud access. Azure refreshes the subscription list immediately, retries with bounded exponential backoff for about 10 minutes, selects `AZURE_SUBSCRIPTION_ID`, and runs `az account show`; the wait step has a 12-minute hard timeout for a hung Azure CLI call. AWS runs `aws sts get-caller-identity`.
+3. Verifies cluster access (Azure: `az aks get-credentials` + `kubelogin convert-kubeconfig` + `kubectl cluster-info`; AWS: `aws eks update-kubeconfig` + `kubectl cluster-info`).
 
 Once the run is green, the environment is ready for Radius to deploy into.
 
