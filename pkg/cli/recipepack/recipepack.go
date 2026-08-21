@@ -257,6 +257,10 @@ func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 			ResourceType: "Radius.Data/mySqlDatabases",
 			Source:       "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + resolveRecipeTag("Radius.Data/mySqlDatabases", isEdge),
 		},
+		{
+			ResourceType: "Radius.Data/redisCaches",
+			Source:       "ghcr.io/radius-project/kube-recipes/rediscaches:" + resolveRecipeTag("Radius.Data/redisCaches", isEdge),
+		},
 	}
 }
 
