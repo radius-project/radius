@@ -119,11 +119,15 @@ func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awscli
 		return err
 	}
 
-	// Wait till the delete is complete
+	// Wait till the delete is complete.
+	//
+	// Do not enable LogWaitAttempts. The SDK waiter implements it by inserting a "WaiterLogger"
+	// middleware relative to the "SetLogger" middleware, but cloudcontrol v1.32.5 removed
+	// "SetLogger" from the middleware stack in favor of a context value. The insert therefore
+	// fails and every Wait call returns "not found: WaiterLogger" immediately without ever
+	// waiting for the delete to finish.
 	maxWaitTime := 300 * time.Second
-	waiter := cloudcontrol.NewResourceRequestSuccessWaiter(client, func(options *cloudcontrol.ResourceRequestSuccessWaiterOptions) {
-		options.LogWaitAttempts = true
-	})
+	waiter := cloudcontrol.NewResourceRequestSuccessWaiter(client)
 	err = waiter.Wait(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: deleteOutput.ProgressEvent.RequestToken,
 	}, maxWaitTime)

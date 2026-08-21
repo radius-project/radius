@@ -575,28 +575,36 @@ func (ct RPTest) Test(t *testing.T) {
 					// Ensure that the resource is deleted with retries
 					notFound := false
 					baseWaitTime := 15 * time.Second
+					var lastErr error
 
 					for attempt := 1; attempt <= AWSDeletionRetryLimit; attempt++ {
 						t.Logf("validating deletion of AWS resource for %s (attempt %d/%d)", ct.Description, attempt, AWSDeletionRetryLimit)
 
 						// Use AWS CloudControl.Get method to validate that the resource is deleted
-						notFound, err = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
+						notFound, lastErr = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
 
 						if notFound {
 							t.Logf("AWS resource %s to be deleted was not found", resource.Identifier)
 							break
-						} else if err != nil {
-							t.Logf("checking existence of resource %s failed with err: %s", resource.Name, err)
-							break
-						} else {
-							// Wait with exponential backoff
-							waitTime := baseWaitTime * time.Duration(attempt)
-							t.Logf("waiting for %s before next attempt", waitTime)
-							time.Sleep(waitTime)
 						}
+
+						if lastErr != nil {
+							// A delete that is still in flight can surface as a transient error rather than
+							// ResourceNotFoundException, so keep retrying instead of failing immediately.
+							t.Logf("checking existence of resource %s failed with err: %s", resource.Name, lastErr)
+						}
+
+						if attempt == AWSDeletionRetryLimit {
+							break
+						}
+
+						// Wait with exponential backoff
+						waitTime := baseWaitTime * time.Duration(attempt)
+						t.Logf("waiting for %s before next attempt", waitTime)
+						time.Sleep(waitTime)
 					}
 
-					require.Truef(t, notFound, "AWS resource %s was present, should be not found", resource.Identifier)
+					require.Truef(t, notFound, "AWS resource %s was present, should be not found (last error: %v)", resource.Identifier, lastErr)
 					t.Logf("finished validation of deletion of AWS resource %s for %s", resource.Name, ct.Description)
 				} else {
 					t.Logf("skipping deletion of %s", resource.Name)
