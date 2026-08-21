@@ -22,12 +22,13 @@ Each workflow runs on `ubuntu-24.04`. No long-lived cloud secrets are stored —
 **`verify-azure.yml`:**
 
 1. **Inspect OIDC token claims (diagnostic breadcrumb).** Decodes the runner's GitHub OIDC token locally (the token is never printed) and logs the claims — `repository`, `repository_owner`, `sub`, `enterprise`, `aud` — to the collapsed step log. It writes nothing to the job summary, so a successful run shows no extra output. This step never fails the job.
-2. **Authenticate via OIDC.** Runs `azure/login` with the environment's Azure variables.
-3. **Report possible enterprise-claim mismatch (failure-only).** Runs only when Azure Login failed and the OIDC token's `enterprise` claim was empty. That combination is a hint, not a diagnosis — Azure Login can fail for unrelated reasons — so the job summary asks the user to confirm by checking whether the Azure Login error contains `AADSTS7002381` before applying the suggested fix. On a successful run it is skipped and adds nothing.
-4. **Verify access.** Runs `az account show` to confirm the login.
-5. **Verify AKS access.** Sets up `kubelogin`, fetches cluster credentials with `az aks get-credentials`, converts the kubeconfig, and runs `kubectl cluster-info`.
-6. **Verify GHCR package push permission.** Confirms the workflow token can push to the OCI state archive package (`RADIUS_STATE_REGISTRY`) that `rad startup` / `rad shutdown` write to. See [GHCR package push check](#ghcr-package-push-check).
-7. **Summary.** Writes the environment, provider, and GHCR check result to the job summary.
+2. **Authenticate via OIDC.** Runs `azure/login` with the environment's Azure client and tenant variables and allows the tenant-level login to succeed before Azure RBAC exposes any subscriptions. OIDC, client, tenant, and federated-credential errors still fail in this step.
+3. **Wait for subscription visibility.** Refreshes Azure CLI's subscription list immediately, then retries with bounded exponential backoff for about five minutes while a new role assignment propagates. Once `AZURE_SUBSCRIPTION_ID` is visible, the workflow selects it. A timeout reports that OIDC succeeded but RBAC may still be propagating or the identity may be missing a role assignment.
+4. **Report possible enterprise-claim mismatch (failure-only).** Runs only when Azure Login failed and the OIDC token's `enterprise` claim was empty. That combination is a hint, not a diagnosis — Azure Login can fail for unrelated reasons — so the job summary asks the user to confirm by checking whether the Azure Login error contains `AADSTS7002381` before applying the suggested fix. On a successful run it is skipped and adds nothing.
+5. **Verify access.** Runs `az account show` to confirm the login.
+6. **Verify AKS access.** Sets up `kubelogin`, fetches cluster credentials with `az aks get-credentials`, converts the kubeconfig, and runs `kubectl cluster-info`.
+7. **Verify GHCR package push permission.** Confirms the workflow token can push to the OCI state archive package (`RADIUS_STATE_REGISTRY`) that `rad startup` / `rad shutdown` write to. See [GHCR package push check](#ghcr-package-push-check).
+8. **Summary.** Writes the environment, provider, and GHCR check result to the job summary.
 
 **`verify-aws.yml`:**
 
