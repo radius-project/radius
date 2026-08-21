@@ -100,6 +100,7 @@ commit_parsers = [
   { message = "^deps(?:\\([^)]*\\))?!?:", group = "<!-- 4 -->Dependencies" },
   { message = "^revert(?:\\([^)]*\\))?!?:", group = "<!-- 5 -->Reverted changes" },
   { message = "^docs(?:\\([^)]*\\))?!?:", skip = true },
+  { message = "^style(?:\\([^)]*\\))?!?:", skip = true },
   { message = "^test(?:\\([^)]*\\))?!?:", skip = true },
   { message = "^build(?:\\([^)]*\\))?!?:", skip = true },
   { message = "^ci(?:\\([^)]*\\))?!?:", skip = true },
