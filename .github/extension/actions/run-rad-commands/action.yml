@@ -162,6 +162,9 @@ runs:
         # pipefail so a failed `rad` whose output is piped through `tee` is detected
         # via PIPESTATUS rather than masked by tee's exit code.
         set -o pipefail
+        # shellcheck source=.github/extension/actions/deploy-progress/progress.sh
+        source "$(dirname "$GITHUB_ACTION_PATH")/deploy-progress/progress.sh"
+        RADIUS_PROGRESS_UPLOADER="$(dirname "$GITHUB_ACTION_PATH")/deploy-progress/artifact-uploader/dist/index.js"
         mkdir -p /tmp/radius-output
         RESULT_FILE=/tmp/radius-output/rad-commands-result.json
 
@@ -192,8 +195,9 @@ runs:
             kill "$OIDC_REFRESH_PID" 2>/dev/null || true
             wait "$OIDC_REFRESH_PID" 2>/dev/null || true
           fi
+          stop_live_deploy_progress || true
+          radius_clear_artifact_runtime
           write_result
-        }
         trap cleanup EXIT
 
         # Allowed-command set. Each command's leading verb must be in this list, so
@@ -444,13 +448,16 @@ runs:
                     EXTRA_PARAMS+=(--parameters "$_pname=$_pval")
                   done < <(printf '%s' "$DEPLOY_PARAMS_JSON" | jq -r 'keys_unsorted[]' 2>/dev/null)
                 fi
+                start_live_deploy_progress "$APP_FILE" "$ENVIRONMENT"
               fi
               if ! record "$idx" "$cmd" rad "${CMD_ARGV[@]}" "${EXTRA_PARAMS[@]}"; then
+                stop_live_deploy_progress || true
                 OVERALL_OUTCOME="command_failed"
                 OVERALL_EXIT=1
                 echo "Command failed: rad $cmd" >&2
                 exit 1
               fi
+              stop_live_deploy_progress || true
             else
               # Intentional word-split: the command string carries its own args.
               # shellcheck disable=SC2086
@@ -494,13 +501,16 @@ runs:
           fi
           # The recorded command string omits the parameters so secret values are
           # not written into the result artifact.
+          start_live_deploy_progress "$APP_FILE" "$ENVIRONMENT"
           if ! record 0 "deploy $APP_FILE --environment $ENVIRONMENT" \
               rad deploy "$APP_FILE" --environment "$ENVIRONMENT" "${DEPLOY_PARAMS[@]}"; then
+            stop_live_deploy_progress || true
             OVERALL_OUTCOME="command_failed"
             OVERALL_EXIT=1
             echo "Deployment failed" >&2
             exit 1
           fi
+          stop_live_deploy_progress || true
           echo "✅ Deployment complete."
         fi
 
