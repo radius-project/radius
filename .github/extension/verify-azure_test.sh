@@ -119,8 +119,8 @@ if re.search(r"^\s+subscription-id:", login, re.MULTILINE):
     )
 
 wait = [line.strip() for line in named_step("Wait for Azure subscription")]
-if wait.count("timeout-minutes: 10") != 1:
-    sys.exit("wait step must set timeout-minutes: 10")
+if wait.count("timeout-minutes: 12") != 1:
+    sys.exit("wait step must set timeout-minutes: 12")
 expected_env = (
     "AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}"
 )
@@ -256,11 +256,17 @@ reset_scenario
 export AZ_VISIBLE_SUBSCRIPTION_ID="00000000-0000-0000-0000-000000000000"
 run_wait_step
 assert_exit "subscription timeout" 1
-assert_count 12 '^account list ' "${AZ_CALLS}"
+assert_count 23 '^account list ' "${AZ_CALLS}"
 assert_count 0 '^account set ' "${AZ_CALLS}"
-assert_count 11 '.' "${SLEEP_CALLS}"
+assert_count 22 '.' "${SLEEP_CALLS}"
 [[ "$(tail -1 "${SLEEP_CALLS}")" == "30" ]] ||
     fail "expected backoff to cap at 30 seconds"
+sleep_total=0
+while read -r sleep_seconds; do
+    sleep_total=$((sleep_total + sleep_seconds))
+done <"${SLEEP_CALLS}"
+((sleep_total >= 600)) ||
+    fail "expected retry delays to cover 10 minutes, got ${sleep_total}s"
 assert_log_contains "Azure OIDC authentication succeeded"
 assert_log_contains "Subscription discovery may be failing"
 assert_log_contains "Azure RBAC may still be propagating"

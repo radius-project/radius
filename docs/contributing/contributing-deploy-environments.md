@@ -57,7 +57,7 @@ Copy the provider's template from `.github/extension/` into the target repositor
 Trigger the workflow with `workflow_dispatch`, passing the environment name as the `environment` input. The workflow:
 
 1. Authenticates via OIDC (Azure: `azure/login`; AWS: `aws-actions/configure-aws-credentials`). Azure authenticates at tenant scope first so a new role assignment can propagate without masking genuine OIDC, client, tenant, or federated-credential failures.
-2. Waits for cloud access. Azure refreshes the subscription list immediately, then retries with bounded exponential backoff for about five minutes before selecting `AZURE_SUBSCRIPTION_ID`; the step also has a 10-minute hard timeout for a hung Azure CLI call. AWS runs `aws sts get-caller-identity`.
+2. Waits for cloud access. Azure refreshes the subscription list immediately, then retries with bounded exponential backoff for about 10 minutes before selecting `AZURE_SUBSCRIPTION_ID`; the step also has a 12-minute hard timeout for a hung Azure CLI call. AWS runs `aws sts get-caller-identity`.
 3. Verifies cloud access (Azure: `az account show`; AWS: the caller identity returned by the preceding step).
 4. Verifies cluster access (Azure: `az aks get-credentials` + `kubelogin convert-kubeconfig` + `kubectl cluster-info`; AWS: `aws eks update-kubeconfig` + `kubectl cluster-info`).
 
@@ -75,7 +75,7 @@ Once the run is green, the environment is ready for Radius to deploy into.
 - **`refusing to allow an OAuth App to create or update workflow .github/workflows/verify-<provider>.yml without 'workflow' scope`** — the PAT lacks the `workflow` scope. Run `gh auth refresh -s workflow`.
 - **"Workflow dispatch accepted, but no new run appeared after 30s"** — GitHub usually hasn't finished indexing a just-pushed workflow. Retry the dispatch with backoff or check the Actions tab in the browser.
 - **Azure OIDC fails with `AADSTS70021: No matching federated identity record found`** — the federated credential subject on the AAD app does not match. It must be exactly `repo:<owner>/<repo>:environment:<environment-name>`.
-- **Azure OIDC succeeds but the configured subscription remains invisible for about five minutes** — subscription discovery may be failing, Azure RBAC may still be propagating, or the identity may be missing a role assignment on the subscription or its resources. Confirm subscription discovery and the role assignment, then re-run credential verification.
+- **Azure OIDC succeeds but the configured subscription remains invisible for about 10 minutes** — subscription discovery may be failing, Azure RBAC may still be propagating, or the identity may be missing a role assignment on the subscription or its resources. Confirm subscription discovery and the role assignment, then re-run credential verification.
 - **AWS OIDC fails with `Not authorized to perform sts:AssumeRoleWithWebIdentity`** — the IAM role trust policy is missing or uses the wrong audience. Audience must be `sts.amazonaws.com`, with the subject condition `token.actions.githubusercontent.com:sub == repo:<owner>/<repo>:environment:<environment-name>`.
 
 ## Related
