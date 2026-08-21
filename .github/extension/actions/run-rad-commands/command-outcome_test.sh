@@ -2,20 +2,30 @@
 
 # Tests the result-accumulator lifecycle in the run-rad-commands composite
 # action: the outcome written by the EXIT trap must never claim success for a
-# run that was killed rather than completed.
+# run that exited before it completed.
 #
-# A step timeout kills bash mid-command, so none of the failure branches that
-# assign `command_failed` ever run - but the EXIT trap still fires and writes
-# the accumulator as it stands. The accumulator must therefore be pessimistic:
-# seeded to a non-success value and promoted to `succeeded` only after the
-# command loop has actually completed.
+# Any exit before the promotion bypasses the failure branches that assign
+# `command_failed` - but the EXIT trap still fires and writes the accumulator as
+# it stands. GitHub runs `shell: bash` steps as `bash --noprofile --norc -eo
+# pipefail {0}`, so the reachable case is an `errexit` abort; a step timeout or
+# a cancellation behaves the same way. The accumulator must therefore be
+# pessimistic: seeded to a non-success value and promoted to `succeeded` only
+# after the command loop has actually completed.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
-readonly ACTION_FILE="${SCRIPT_DIR}/action.yml"
+# Overridable so the suite can be pointed at a mutated copy of the action to
+# confirm the static assertions below actually bite.
+ACTION_FILE="${ACTION_FILE:-${SCRIPT_DIR}/action.yml}"
+readonly ACTION_FILE
 readonly STEP_NAME="Run rad commands"
+# The value the accumulator is seeded to, and the value the promotion is allowed
+# to promote *from*. Asserted exactly rather than as "anything non-success":
+# publish-deploy-status, the design note, and the promotion guard all name it.
+readonly SEED_OUTCOME="interrupted"
+readonly SEED_EXIT="1"
 TEST_ROOT="$(mktemp -d)"
 readonly TEST_ROOT
 trap 'rm -rf "${TEST_ROOT}"' EXIT
@@ -23,6 +33,7 @@ trap 'rm -rf "${TEST_ROOT}"' EXIT
 readonly PROLOGUE="${TEST_ROOT}/prologue.sh"
 readonly RESULT_FILE="${TEST_ROOT}/rad-commands-result.json"
 readonly READY_FILE="${TEST_ROOT}/ready"
+readonly VICTIM_LOG="${TEST_ROOT}/victim.log"
 
 fail() {
     echo "FAIL: $*" >&2
@@ -123,19 +134,24 @@ action_line() {
 extract_prologue
 
 # ---------------------------------------------------------------------------
-# A run killed mid-command must not publish success.
+# A run that exits mid-command must not publish success.
 #
-# Models a step timeout faithfully: the prologue runs, a command is in flight,
-# and the shell is killed by SIGTERM without any failure branch executing -
-# only the EXIT trap gets to speak. The subshell uses the same options GitHub
-# gives a `shell: bash` step (`-e -o pipefail`).
+# Models an abnormal exit faithfully: the prologue runs, a command is in flight,
+# and the shell dies without any failure branch executing - only the EXIT trap
+# gets to speak. SIGTERM stands in for the whole class (step timeout, job
+# cancellation); the `errexit` case is covered separately below. The subshell
+# uses the same options GitHub gives a `shell: bash` step (`-e -o pipefail`).
 # ---------------------------------------------------------------------------
+# The victim's own output is not asserted on, so send it to a log rather than
+# inheriting this script's stdout. SIGTERM reaps the subshell but not the
+# `sleep` it is waiting on, and an orphan holding the pipe open would stall any
+# caller that captures our output until the sleep expires.
 ENVIRONMENT="aks-dev" bash -eo pipefail -c "
     source '${PROLOGUE}'
     touch '${READY_FILE}'
     # Stands in for a long-running \`rad deploy\`.
     sleep 60
-" &
+" >"${VICTIM_LOG}" 2>&1 &
 victim=$!
 
 # Kill only once the trap is installed, so the test cannot race ahead of the
@@ -145,7 +161,7 @@ for _ in $(seq 1 100); do
     sleep 0.1
 done
 [[ -f "${READY_FILE}" ]] ||
-    fail "the extracted prologue never finished installing the EXIT trap"
+    fail "the extracted prologue never finished installing the EXIT trap$(printf '\n%s' "$(cat "${VICTIM_LOG}" 2>/dev/null)")"
 
 # The result file is written by the trap, not eagerly. If that ever changes,
 # the assertions below would be testing a file the kill had no part in.
@@ -158,23 +174,58 @@ wait "${victim}" 2>/dev/null || true
 
 [[ -f "${RESULT_FILE}" ]] ||
     fail "expected the EXIT trap to write a result file on termination"
-outcome="$(result_outcome)"
-[[ "${outcome}" != "succeeded" && "${outcome}" != "success" ]] ||
-    fail "a killed run published '${outcome}'; the seed must be pessimistic"
-[[ "$(result_exit_code)" != "0" ]] ||
-    fail "a killed run published exitCode 0; the seeded exit code must be non-zero"
 
-# publish-deploy-status maps any unrecognized outcome to `failed`, so the seed
-# only has to be non-success - but it must not be `unknown`, which that action
-# reserves for a missing result file and maps to the neutral `in_progress`.
-[[ "${outcome}" != "unknown" ]] ||
-    fail "the seed must not be 'unknown'; publish-deploy-status maps that to in_progress"
+# Assert the seed exactly. `interrupted` is not an arbitrary non-success value:
+# publish-deploy-status maps it to `failed` through its `*)` arm, it must not be
+# `unknown` (which that action reserves for a missing result file and maps to
+# the neutral `in_progress`), and the promotion in action.yml is guarded to fire
+# only from this exact value.
+outcome="$(result_outcome)"
+[[ "${outcome}" == "${SEED_OUTCOME}" ]] ||
+    fail "a killed run published '${outcome}'; expected the seed '${SEED_OUTCOME}'"
+exit_code="$(result_exit_code)"
+[[ "${exit_code}" == "${SEED_EXIT}" ]] ||
+    fail "a killed run published exitCode '${exit_code}'; expected '${SEED_EXIT}'"
 
 # ---------------------------------------------------------------------------
-# Success must be earned, not seeded.
+# An `errexit` abort must not publish success either.
 #
-# Every failure branch exits before the promotion, so `succeeded` may be
-# assigned exactly once and only after the command loop.
+# This is the reachable case today: GitHub runs `shell: bash` steps as
+# `bash --noprofile --norc -eo pipefail {0}`, so any unguarded non-zero command
+# ends the step mid-run. No failure branch assigns an outcome, and the trap
+# still fires.
+# ---------------------------------------------------------------------------
+rm -f "${RESULT_FILE}"
+ENVIRONMENT="aks-dev" bash -eo pipefail -c "
+    source '${PROLOGUE}'
+    # Stands in for any unguarded command that returns non-zero.
+    false
+    # Unreachable under errexit; present so a broken -e would be visible.
+    OVERALL_OUTCOME=\"succeeded\"
+" && fail "the errexit run exited 0; the shell must abort on the failed command"
+
+[[ -f "${RESULT_FILE}" ]] ||
+    fail "expected the EXIT trap to write a result file on an errexit abort"
+outcome="$(result_outcome)"
+[[ "${outcome}" == "${SEED_OUTCOME}" ]] ||
+    fail "an errexit abort published '${outcome}'; expected the seed '${SEED_OUTCOME}'"
+exit_code="$(result_exit_code)"
+[[ "${exit_code}" == "${SEED_EXIT}" ]] ||
+    fail "an errexit abort published exitCode '${exit_code}'; expected '${SEED_EXIT}'"
+
+# The seed must be the value the prologue actually assigns, and only that value,
+# so the assertions above cannot drift from the shipped code.
+seed_assignments="$(grep -c "^OVERALL_OUTCOME=\"${SEED_OUTCOME}\"$" "${PROLOGUE}" || true)"
+[[ "${seed_assignments}" == "1" ]] ||
+    fail "expected exactly one OVERALL_OUTCOME=\"${SEED_OUTCOME}\" seed in the prologue, found ${seed_assignments}"
+
+# ---------------------------------------------------------------------------
+# Success must be earned, not seeded - and the promotion must be guarded.
+#
+# The failure branches all exit before the promotion today, but the promotion
+# does not get to depend on that: it is guarded so it can only ever fire from
+# the seed. Assert the guard rather than trying to prove reachability by
+# scanning the source, which indentation cannot establish in shell.
 # ---------------------------------------------------------------------------
 # `grep -c` exits 1 on zero matches, which under `set -e` would abort silently -
 # report the count instead so a removed promotion names itself.
@@ -186,8 +237,20 @@ seed_line="$(action_line '^[[:space:]]*OVERALL_OUTCOME=' head)"
 success_line="$(action_line '^[[:space:]]*OVERALL_OUTCOME="succeeded"$' head)"
 last_failure_line="$(action_line '^[[:space:]]*OVERALL_OUTCOME="command_failed"$' tail)"
 [[ "${success_line}" != "${seed_line}" ]] ||
-    fail "OVERALL_OUTCOME is seeded to 'succeeded'; a killed run would inherit it"
+    fail "OVERALL_OUTCOME is seeded to 'succeeded'; an interrupted run would inherit it"
 [[ "${success_line}" -gt "${last_failure_line}" ]] ||
     fail "OVERALL_OUTCOME=\"succeeded\" must be assigned after the command loop"
+
+# The promotion fires only from the seed, so an outcome recorded by a failure
+# path that did not exit survives instead of being overwritten.
+guard_line="$(action_line "^[[:space:]]*if \[ \"\$OVERALL_OUTCOME\" = \"${SEED_OUTCOME}\" \]; then\$" tail)"
+[[ "$((success_line - guard_line))" == "1" ]] ||
+    fail "OVERALL_OUTCOME=\"succeeded\" (line ${success_line}) must be guarded by the seed test on the line above it (found the guard on line ${guard_line})"
+
+# Exit on the accumulator, so the step result cannot disagree with the artifact.
+# shellcheck disable=SC2016  # matching the literal text `exit "$OVERALL_EXIT"`
+exit_line="$(action_line '^[[:space:]]*exit "\$OVERALL_EXIT"$' tail)"
+[[ "${exit_line}" -gt "${success_line}" ]] ||
+    fail "the run block must end with 'exit \"\$OVERALL_EXIT\"' after the promotion"
 
 echo "run-rad-commands command outcome tests passed"
