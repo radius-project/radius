@@ -289,7 +289,7 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 	// If there are connected resources, we need to fetch their properties and add them to the recipe context.
 	for connName, connectedResourceID := range connectionsAndSourceIDs {
 		connectedResource, err := c.DatabaseClient().Get(ctx, connectedResourceID)
-		if errors.Is(&database.ErrNotFound{ID: connectedResourceID}, err) {
+		if errors.Is(err, &database.ErrNotFound{ID: connectedResourceID}) {
 			return nil, fmt.Errorf("connected resource %s not found: %w", connectedResourceID, err)
 		} else if err != nil {
 			return nil, fmt.Errorf("failed to get connected resource %s: %w", connectedResourceID, err)

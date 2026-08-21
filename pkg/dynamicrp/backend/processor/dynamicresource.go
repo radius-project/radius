@@ -52,8 +52,7 @@ func (d *DynamicProcessor) Delete(ctx context.Context, resource *datamodel.Dynam
 	if d.SecretMaterializer == nil {
 		return nil
 	}
-	// Skip the delete call when neither the current internal references nor the legacy public name indicate
-	// that this resource materialized a managed secret.
+	// The public secrets.name reference indicates that this resource materialized a managed secret.
 	if !hasManagedSecret(resource) {
 		return nil
 	}
