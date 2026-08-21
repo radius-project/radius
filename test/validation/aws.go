@@ -18,12 +18,15 @@ package validation
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
@@ -35,7 +38,48 @@ const (
 	AWSRDSDBInstanceResourceType    = "AWS.RDS/DBInstance"
 	AWSLogsMetricFilterResourceType = "AWS.Logs/MetricFilter"
 	AWSLogsLogGroupResourceType     = "AWS.Logs/LogGroup"
+
+	// awsLogsLogGroupCloudControlType is the CloudControl TypeName (as returned by
+	// GetResourceTypeName) for AWS::Logs::LogGroup.
+	awsLogsLogGroupCloudControlType = "AWS::Logs::LogGroup"
 )
+
+// logGroupNotFoundMessages are the CloudControl InvalidRequestException messages returned by
+// the AWS::Logs::LogGroup resource handler when the underlying log group is already absent.
+// Unlike most resource types, this handler does not return a typed ResourceNotFoundException,
+// so cleanup validation must recognize these messages to avoid treating deletion as failed.
+var logGroupNotFoundMessages = []string{
+	"log group does not exist",
+	"log group cannot be found",
+}
+
+// isAWSResourceNotFoundError checks whether err indicates that the AWS resource identified by
+// resourceType (a CloudControl TypeName) is not found. It recognizes the typed
+// ResourceNotFoundException for all resource types, plus the known InvalidRequestException
+// messages that AWS::Logs::LogGroup returns instead of a typed not-found error.
+func isAWSResourceNotFoundError(resourceType string, err error) bool {
+	if awsclient.IsAWSResourceNotFoundError(err) {
+		return true
+	}
+
+	if resourceType != awsLogsLogGroupCloudControlType {
+		return false
+	}
+
+	var invalidRequest *types.InvalidRequestException
+	if !errors.As(err, &invalidRequest) {
+		return false
+	}
+
+	message := strings.ToLower(invalidRequest.ErrorMessage())
+	for _, known := range logGroupNotFoundMessages {
+		if strings.Contains(message, known) {
+			return true
+		}
+	}
+
+	return false
+}
 
 type AWSResource struct {
 	// Type of the resource (e.g. AWS.S3/Bucket)
@@ -105,7 +149,7 @@ func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awscli
 		TypeName:   &resourceType,
 	})
 
-	notFound := awsclient.IsAWSResourceNotFoundError(err)
+	notFound := isAWSResourceNotFoundError(resourceType, err)
 	if notFound {
 		// Resource does not need to be deleted
 		return nil
@@ -147,7 +191,7 @@ func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client aw
 		TypeName:   &resourceType,
 	})
 
-	return awsclient.IsAWSResourceNotFoundError(err), err
+	return isAWSResourceNotFoundError(resourceType, err), err
 
 }
 
