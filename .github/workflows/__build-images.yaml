@@ -1,0 +1,126 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: __build-images
+
+on:
+  workflow_call:
+
+permissions: {}
+
+env:
+  CONTAINER_REGISTRY: ghcr.io/radius-project
+
+jobs:
+  build-and-push-images:
+    name: Build and publish container images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      packages: write # Required for uploading the package
+      contents: read # Required for actions/checkout
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: false
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+
+      - name: Build container images (PR)
+        if: github.event_name == 'pull_request'
+        run: make docker-build
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}/dev
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+          DOCKER_CACHE_GHA: 1
+
+      - name: Save container images to artifacts (PR)
+        if: github.event_name == 'pull_request'
+        run: make docker-save-images
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}/dev
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+
+      - name: Upload container image artifacts (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: container-images-${{ env.REL_VERSION }}
+          path: ./dist/images/
+          retention-days: 1
+
+      - name: Push container images (latest)
+        if: (github.ref == 'refs/heads/main')
+        run: make docker-multi-arch-push
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: latest
+          DOCKER_CACHE_GHA: 1
+
+      - name: Push container images (release)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: make docker-multi-arch-push
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
+          DOCKER_CACHE_GHA: 1
+
+      - name: Collect build metrics
+        if: always()
+        run: |
+          make build-metrics
+          cat dist/metrics/metrics.txt >> "$GITHUB_STEP_SUMMARY"
+        env:
+          DOCKER_REGISTRY: ${{ github.event_name == 'pull_request' && format('{0}/dev', env.CONTAINER_REGISTRY) || env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ github.event_name == 'pull_request' && env.REL_VERSION || (github.ref == 'refs/heads/main' && 'latest' || env.REL_CHANNEL) }}
+
+      - name: Upload build metrics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: build-metrics-${{ github.job }}
+          path: dist/metrics/
