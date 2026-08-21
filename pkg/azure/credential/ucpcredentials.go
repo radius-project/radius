@@ -18,8 +18,12 @@ package credential
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -34,7 +38,8 @@ import (
 
 const (
 	// DefaultExpireDuration is the default expiry duration.
-	DefaultExpireDuration = time.Second * time.Duration(30)
+	DefaultExpireDuration                      = time.Second * time.Duration(30)
+	azureFederatedTokenFileEnvironmentVariable = "AZURE_FEDERATED_TOKEN_FILE"
 )
 
 var _ azcore.TokenCredential = (*UCPCredential)(nil)
@@ -173,23 +178,30 @@ func refreshAzureWorkloadIdentityCredentials(ctx context.Context, c *UCPCredenti
 
 	logger.Info("Retrieved Azure Credential - ClientID: " + azureWorkloadIdentityCredential.ClientID)
 
-	var opt *azidentity.WorkloadIdentityCredentialOptions
+	tokenFilePath := workloadIdentityTokenFilePath(c.options.TokenFilePath)
+	if tokenFilePath == "" {
+		return errors.New("no Azure workload identity token file specified, set TokenFilePath or " + azureFederatedTokenFileEnvironmentVariable)
+	}
+
+	var opt *azidentity.ClientAssertionCredentialOptions
 	if c.options.ClientOptions != nil {
-		opt = &azidentity.WorkloadIdentityCredentialOptions{
-			ClientID:      azureWorkloadIdentityCredential.ClientID,
-			TenantID:      azureWorkloadIdentityCredential.TenantID,
-			TokenFilePath: c.options.TokenFilePath,
+		opt = &azidentity.ClientAssertionCredentialOptions{
 			ClientOptions: *c.options.ClientOptions,
-		}
-	} else {
-		opt = &azidentity.WorkloadIdentityCredentialOptions{
-			TokenFilePath: c.options.TokenFilePath,
-			ClientID:      azureWorkloadIdentityCredential.ClientID,
-			TenantID:      azureWorkloadIdentityCredential.TenantID,
 		}
 	}
 
-	azCred, err := azidentity.NewWorkloadIdentityCredential(opt)
+	// azidentity's WorkloadIdentityCredential caches the assertion file for 10 minutes because it
+	// assumes Kubernetes-rotated service account tokens. The GitHub Actions OIDC tokens the deploy
+	// workflows project expire after 5 minutes, so read the file on every exchange instead.
+	getAssertion := func(context.Context) (string, error) {
+		return readWorkloadIdentityAssertion(tokenFilePath)
+	}
+
+	azCred, err := azidentity.NewClientAssertionCredential(
+		azureWorkloadIdentityCredential.TenantID,
+		azureWorkloadIdentityCredential.ClientID,
+		getAssertion,
+		opt)
 	if err != nil {
 		return err
 	}
@@ -215,11 +227,82 @@ func (c *UCPCredential) GetToken(ctx context.Context, opts policy.TokenRequestOp
 
 	c.tokenCredMu.RLock()
 	credentialAuth := c.tokenCred
+	credential := c.credential
 	c.tokenCredMu.RUnlock()
 
 	if credentialAuth == nil {
 		return azcore.AccessToken{}, errors.New("azure credential is not ready")
 	}
 
-	return credentialAuth.GetToken(ctx, opts)
+	token, err := credentialAuth.GetToken(ctx, opts)
+	if err == nil {
+		return token, nil
+	}
+
+	if credential != nil && credential.WorkloadIdentity != nil {
+		return azcore.AccessToken{}, workloadIdentityAuthenticationError(c.options.TokenFilePath, err)
+	}
+
+	return azcore.AccessToken{}, err
+}
+
+func workloadIdentityTokenFilePath(configured string) string {
+	if configured != "" {
+		return configured
+	}
+	return os.Getenv(azureFederatedTokenFileEnvironmentVariable)
+}
+
+func readWorkloadIdentityAssertion(tokenFilePath string) (string, error) {
+	if tokenFilePath == "" {
+		return "", errors.New("azure workload identity token file is not configured")
+	}
+
+	assertion, err := os.ReadFile(tokenFilePath)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(string(assertion)), nil
+}
+
+func workloadIdentityAuthenticationError(tokenFilePath string, authErr error) error {
+	tokenFilePath = workloadIdentityTokenFilePath(tokenFilePath)
+
+	assertion, err := readWorkloadIdentityAssertion(tokenFilePath)
+	if err == nil {
+		if expiresAt, err := workloadIdentityAssertionExpiry(assertion); err == nil && !expiresAt.After(time.Now()) {
+			return fmt.Errorf(
+				"azure workload identity authentication failed; the federated assertion in %q expired at %s; refresh the mounted token: %w",
+				tokenFilePath,
+				expiresAt.UTC().Format(time.RFC3339),
+				authErr)
+		}
+	}
+
+	return fmt.Errorf("azure workload identity authentication failed: %w", authErr)
+}
+
+func workloadIdentityAssertionExpiry(assertion string) (time.Time, error) {
+	parts := strings.Split(assertion, ".")
+	if len(parts) != 3 {
+		return time.Time{}, errors.New("azure workload identity token is not a JWT")
+	}
+
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	claims := struct {
+		ExpiresAt int64 `json:"exp"`
+	}{}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return time.Time{}, err
+	}
+	if claims.ExpiresAt == 0 {
+		return time.Time{}, errors.New("azure workload identity token has no expiration")
+	}
+
+	return time.Unix(claims.ExpiresAt, 0), nil
 }
