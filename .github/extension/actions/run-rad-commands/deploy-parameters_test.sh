@@ -236,4 +236,13 @@ action_file="${SCRIPT_DIR}/action.yml"
 grep -qE "grep -oP .*head -1 \|\| true" "${action_file}" ||
     fail "expected the app-name grep in action.yml to tolerate a missing file via '|| true'"
 
+grep -q 'deploy-progress/progress.sh' "${action_file}" ||
+    fail "expected run-rad-commands to source the live progress helper"
+[[ "$(grep -c 'start_live_deploy_progress' "${action_file}")" == "2" ]] ||
+    fail "expected live progress around the custom and default app deploy paths"
+[[ "$(grep -c 'stop_live_deploy_progress' "${action_file}")" -ge "5" ]] ||
+    fail "expected live progress cleanup on success, failure, and EXIT"
+grep -q 'artifact-uploader/dist/index.js' "${action_file}" ||
+    fail "expected live progress to use the bundled official artifact client"
+
 echo "run-rad-commands deploy parameter tests passed"
