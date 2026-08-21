@@ -231,6 +231,7 @@ jobs:
             cli-noncloud,
             corerp-noncloud,
             daprrp-noncloud,
+            database-noncloud,
             kubernetes-noncloud,
             msgrp-noncloud,
             multicluster-noncloud,
@@ -455,6 +456,12 @@ jobs:
             echo "RADIUS_TEST_EXTERNAL_KUBECONFIG=${HOST_KUBECONFIG}"
           } >> "${GITHUB_ENV}"
 
+      - name: Enable the PostgreSQL-backed control plane
+        # The database-noncloud leg is the only coverage for `database.enabled=true`, which the
+        # default functional install does not exercise. See issue #12227.
+        if: matrix.name == 'database-noncloud'
+        run: echo "DATABASE_INSTALL_ARGS=--set database.enabled=true" >> "${GITHUB_ENV}"
+
       - name: Install Radius
         # The statestore leg drives its own install/uninstall/reinstall lifecycle
         # inside the test (it must reinstall to simulate an ephemeral control
@@ -496,6 +503,10 @@ jobs:
           # install time (set by the "Set up external target cluster" step). Empty
           # for all other legs.
           RAD_COMMAND="$RAD_COMMAND ${TARGET_CLUSTER_INSTALL_ARGS:-}"
+
+          # For the database leg, install the PostgreSQL-backed control plane instead of the
+          # default Kubernetes API server store. Empty for all other legs.
+          RAD_COMMAND="$RAD_COMMAND ${DATABASE_INSTALL_ARGS:-}"
 
           echo "*** Installing Radius to Kubernetes ***"
           eval $RAD_COMMAND
