@@ -40,9 +40,10 @@ limitations under the License.
 //
 //	rad install kubernetes --set database.enabled=true
 //
-// Test_DatabaseEnabled_ControlPlaneHealthy fails if it is not, so the suite cannot quietly pass
-// against an apiserver-backed control plane. In CI the `database-noncloud` matrix leg of
-// .github/workflows/functional-test-noncloud.yaml performs that install.
+// Every test asserts that precondition via requireDatabaseInstalled, so the suite cannot quietly
+// pass against an apiserver-backed control plane regardless of which test runs first. In CI the
+// `database-noncloud` matrix leg of .github/workflows/functional-test-noncloud.yaml performs that
+// install.
 package database
 
 import (
@@ -50,6 +51,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -57,6 +59,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/radius-project/radius/test"
@@ -79,12 +83,16 @@ const (
 	// replica. `rad install` already waits for the release, so this is a short confirmation rather
 	// than the primary wait.
 	databaseReadyTimeout = 3 * time.Minute
-	databaseReadyPoll    = 5 * time.Second
 
 	// controlPlaneReadyTimeout bounds the wait for the resource provider Deployments to report the
 	// Available condition. Like databaseReadyTimeout this is a backstop: `rad install` already
 	// waited on the Helm release, so in a healthy run both checks pass on the first poll.
 	controlPlaneReadyTimeout = 3 * time.Minute
+
+	// pollInterval is the cadence shared by every wait in this package. Both waits are backstops
+	// against an install that has already been waited on, so they poll at the same rate and differ
+	// only in what they are waiting for.
+	pollInterval = 5 * time.Second
 
 	// testTimeout bounds the whole test. It must exceed databaseReadyTimeout plus
 	// controlPlaneReadyTimeout so that a genuine wait fails with its own specific message rather
@@ -103,30 +111,106 @@ const (
 // must be requested by name when reading logs.
 var controlPlaneComponents = []string{"ucp", "applications-rp", "dynamic-rp"}
 
-// Test_DatabaseEnabled_ControlPlaneHealthy asserts that the PostgreSQL-backed control plane came up
-// cleanly: the database is serving, every resource provider reached Available, and no provider was
-// denied access to its tables.
+// apiServerStoreGVR is the CRD the apiserver database store persists into. It is the store the
+// control plane uses by default, and the one it must NOT be using when database.enabled=true.
+// The apiserver *queue* provider stays enabled in both modes, but it writes the separate
+// queuemessages.ucp.dev CRD, so it does not interfere with this assertion.
+var apiServerStoreGVR = schema.GroupVersionResource{
+	Group:    "ucp.dev",
+	Version:  "v1alpha1",
+	Resource: "resources",
+}
+
+// databaseInstalledOnce guards the one-time lookup behind requireDatabaseInstalled. The error is
+// cached rather than the assertion so that every caller re-asserts on its own *testing.T. Calling
+// require inside Once.Do would fail only whichever test won the race and let the other pass
+// silently, which is precisely the ordering assumption this helper exists to remove.
+var (
+	databaseInstalledOnce sync.Once
+	databaseInstalledErr  error
+)
+
+// requireDatabaseInstalled asserts that Radius was installed with database.enabled=true, by
+// requiring the PostgreSQL StatefulSet the chart renders in that mode. Every test in this package
+// calls it, so a run against a default apiserver-backed control plane fails immediately with an
+// actionable message rather than passing and proving nothing.
 //
-// It also acts as the guard that this package is running against the right install. Because
-// Test_DatabaseEnabled_MinimalDeploy calls t.Parallel() by way of the RPTest harness and pauses
-// before deploying, this test runs to completion first, so a run against a default
-// apiserver-backed control plane fails here rather than after a misleading successful deployment.
+// This is deliberately not left to test ordering. Test_DatabaseEnabled_MinimalDeploy runs in
+// parallel by way of the RPTest harness, so which test observes the cluster first depends on file
+// names and on RunSerial staying false; making both tests assert the precondition removes that
+// dependency.
+//
+// Note that a transient API error on the first caller is cached and fails both tests. That is the
+// intended trade-off: it is no worse than a single un-retried Get, and this precondition is meant
+// to fail fast rather than paper over a cluster that cannot be read.
+func requireDatabaseInstalled(ctx context.Context, t *testing.T, k8s kubernetes.Interface) {
+	t.Helper()
+
+	databaseInstalledOnce.Do(func() {
+		_, databaseInstalledErr = k8s.AppsV1().StatefulSets(radiusNamespace).Get(ctx, databaseStatefulSetName, metav1.GetOptions{})
+	})
+
+	require.NoErrorf(t, databaseInstalledErr,
+		"the %q StatefulSet was not found in %s: install Radius with --set database.enabled=true before running this test",
+		databaseStatefulSetName, radiusNamespace)
+}
+
+// requireAPIServerStoreUnused asserts that the apiserver database store holds nothing, which is the
+// evidence that the control plane is actually backed by PostgreSQL rather than merely running a
+// PostgreSQL StatefulSet alongside an apiserver-backed control plane.
+//
+// This is the assertion that distinguishes a real database.enabled=true install from a hybrid one.
+// Asserting the StatefulSet only proves PostgreSQL is running; ucp, applications-rp and dynamic-rp
+// each select their database provider independently, so any of them could still be writing here.
+//
+// The check is not vacuous. By the time any test in this package runs, the CI workflow has already
+// waited for UCP to log "Successfully registered manifests" and then run `rad group create` and
+// `rad env create` (see .github/workflows/functional-test-noncloud.yaml). Those are real writes
+// through UCP and applications-rp, so an apiserver-backed control plane is guaranteed to have rows
+// here and an empty list is a genuine signal. Deployment availability is deliberately not relied on
+// for this: the UCP Deployment has no readiness probe and serves traffic while initialization is
+// still in flight, so "Available" would prove nothing about whether the bootstrap writes landed.
+//
+// The list must succeed. A missing CRD or an unresolvable kind is a failure, not a pass: the CRD
+// ships unconditionally in deploy/Chart/crds/ucpd/, so its absence means a broken install or a
+// mistyped GVR, and treating that as success would turn this into an assertion about nothing.
+//
+// This assumes a cluster that was not previously installed without the flag. Switching providers
+// does not migrate or delete rows already written to the apiserver store, so a long-lived local
+// cluster can legitimately hold stale objects. CI creates a fresh KinD cluster, so this holds there.
+func requireAPIServerStoreUnused(ctx context.Context, t *testing.T, dynamicClient dynamic.Interface) {
+	t.Helper()
+
+	stored, err := dynamicClient.Resource(apiServerStoreGVR).Namespace(radiusNamespace).List(ctx, metav1.ListOptions{})
+	require.NoErrorf(t, err,
+		"failed to list %s in %s. This assertion cannot pass without reading the apiserver store: the CRD ships unconditionally with the chart, so a failure here means a broken install rather than an unused store.",
+		apiServerStoreGVR.Resource, radiusNamespace)
+
+	names := []string{}
+	for _, item := range stored.Items {
+		names = append(names, item.GetName())
+	}
+
+	require.Emptyf(t, names,
+		"the apiserver database store holds %d object(s) in %s (%s), so the control plane is still using the apiserver store instead of PostgreSQL. Check the databaseProvider settings in the ucp, applications-rp and dynamic-rp ConfigMaps. If this is a long-lived cluster that was previously installed without database.enabled=true, these may be stale objects from that install — re-run against a fresh cluster.",
+		len(names), radiusNamespace, strings.Join(names, ", "))
+}
+
+// Test_DatabaseEnabled_ControlPlaneHealthy asserts that the PostgreSQL-backed control plane came up
+// cleanly: the database is serving, every resource provider reached Available, no provider was
+// denied access to its tables, and nothing is still being written to the apiserver store.
 func Test_DatabaseEnabled_ControlPlaneHealthy(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), testTimeout)
 	defer cancel()
 
-	k8s := test.NewTestOptions(t).K8sClient
+	options := test.NewTestOptions(t)
+	k8s := options.K8sClient
 
-	// The database StatefulSet must exist at all. If it does not, Radius was installed without
-	// database.enabled=true and the rest of this package proves nothing — fail loudly rather than
-	// pass a meaningless run.
-	statefulSet, err := k8s.AppsV1().StatefulSets(radiusNamespace).Get(ctx, databaseStatefulSetName, metav1.GetOptions{})
-	require.NoErrorf(t, err, "the %q StatefulSet was not found in %s: install Radius with --set database.enabled=true before running this test", databaseStatefulSetName, radiusNamespace)
-	require.NotNil(t, statefulSet)
-
+	requireDatabaseInstalled(ctx, t, k8s)
 	requireDatabaseReady(ctx, t, k8s)
 	requireResourceProvidersAvailable(ctx, t, k8s)
 	requireNoPermissionDeniedInLogs(ctx, t, k8s)
+	requireAPIServerStoreUnused(ctx, t, options.DynamicClient)
 }
 
 // requireResourceProvidersAvailable waits for each resource provider Deployment to report the
@@ -168,7 +252,7 @@ func requireResourceProvidersAvailable(ctx context.Context, t *testing.T, k8s ku
 		select {
 		case <-ctx.Done():
 			require.Failf(t, "the resource providers never became available", "context ended while waiting: %v", ctx.Err())
-		case <-time.After(databaseReadyPoll):
+		case <-time.After(pollInterval):
 		}
 	}
 }
@@ -218,7 +302,7 @@ func requireDatabaseReady(ctx context.Context, t *testing.T, k8s kubernetes.Inte
 		select {
 		case <-ctx.Done():
 			require.Failf(t, "the PostgreSQL StatefulSet never became ready", "context ended while waiting: %v", ctx.Err())
-		case <-time.After(databaseReadyPoll):
+		case <-time.After(pollInterval):
 		}
 	}
 }

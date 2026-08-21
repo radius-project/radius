@@ -17,6 +17,7 @@ limitations under the License.
 package database
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -61,8 +62,20 @@ func Test_DatabaseEnabled_MinimalDeploy(t *testing.T) {
 					},
 				},
 			},
+			// The deployment above is the strongest available evidence that the control plane is
+			// backed by PostgreSQL: it writes resources through applications-rp and dynamic-rp and
+			// then reads them back. Asserting here, after validation and before the resources are
+			// deleted, proves those writes did not land in the apiserver store.
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
+				requireAPIServerStoreUnused(ctx, t, ct.Options.DynamicClient)
+			},
 		},
 	})
+
+	// Assert the install precondition before the deployment starts. t.Parallel() is only reached
+	// inside test.Test, so this still runs sequentially and fails fast on a cluster that was
+	// installed without database.enabled=true.
+	requireDatabaseInstalled(t.Context(), t, test.Options.K8sClient)
 
 	// Radius.Compute/containers is recipe-driven, so the deployment needs a preview environment,
 	// which registers the default recipe pack and owns the Kubernetes namespace the container is
