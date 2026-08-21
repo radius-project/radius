@@ -608,7 +608,7 @@ func (ct RPTest) Test(t *testing.T) {
 			continue
 		}
 
-		for _, resource := range step.RPResources.Resources {
+		for _, resource := range validation.ResourcesInDeletionOrder(step.RPResources) {
 			t.Logf("deleting %s", resource.Name)
 
 			if ct.FastCleanup {

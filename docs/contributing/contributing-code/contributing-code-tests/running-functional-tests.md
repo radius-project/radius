@@ -89,7 +89,7 @@ The Make targets accept these environment variables:
 Functional tests support two cleanup modes, selected with the `RADIUS_TEST_FAST_CLEANUP` environment variable:
 
 - **Standard cleanup** (default for local development): waits for each resource to be fully deleted before proceeding, logs the deletion process, and shows retries for resources stuck in "Updating". Best for debugging cleanup issues.
-- **Fast cleanup** (default for CI): initiates deletions in the background without waiting, which avoids deletion timeouts and dramatically reduces run time. It **skips post-delete verification**, so it is only safe for non-cloud tests where Kubernetes cluster cleanup handles orphaned resources. CI enables it with `RADIUS_TEST_FAST_CLEANUP=true`.
+- **Fast cleanup** (default for CI, including the cloud suites): initiates deletions in the background without waiting, which avoids deletion timeouts and dramatically reduces run time. It **skips post-delete verification and ignores deletion errors**, and relies on the per-run cluster and Azure resource group being deleted afterward. CI enables it with `RADIUS_TEST_FAST_CLEANUP=true`.
 
 ```bash
 # Enable fast cleanup (useful for local testing with unique resource names)
@@ -101,7 +101,13 @@ export RADIUS_TEST_FAST_CLEANUP=false
 go test ./test/functional-portable/corerp/noncloud/resources
 ```
 
-> ⚠️ **Important**: Fast cleanup is only safe for non-cloud tests. Cloud tests always use standard cleanup to ensure proper deletion of cloud resources that incur costs.
+> ⚠️ **Important**: Fast cleanup discards deletion errors, so a teardown bug stays invisible in any suite that runs with it enabled. The long-running test runs against a persistent cluster with standard cleanup, which is where such bugs surface.
+
+### Resource deletion order
+
+Tests declare the resources they expect in `RPResources`, and the framework deletes them in dependency order rather than declaration order: applications first, then application-scoped resources, then environments, and finally recipe packs. Declaration order is preserved within each of those groups.
+
+This ordering matters because deleting an application cascades into the resources it owns, and a recipe-backed resource loads its environment configuration to run the recipe's delete. Removing the environment or recipe pack first makes that delete fail with an `Internal` error wrapping a `NotFound` on the environment.
 
 ### See log output in VS Code
 
