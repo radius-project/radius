@@ -89,6 +89,15 @@ radius_normalize_resources() {
             name: (.name // ""),
             type: (.type // ""),
             provisioningState: (.properties.provisioningState // ""),
+            outputResourceIds: (
+                [
+                    (.properties.status.outputResources // [])[]?
+                    | .id // empty
+                    | select(type == "string" and length > 0)
+                ]
+                | sort
+                | unique
+            ),
             status: (
                 (.properties.provisioningState // "") as $state
                 | if $state == "Succeeded" then "success"
