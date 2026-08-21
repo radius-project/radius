@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status test-deploy-progress ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -79,6 +79,16 @@ test-build-platforms: ## Tests container build platform resolution and workflow 
 .PHONY: test-publish-deploy-status
 test-publish-deploy-status: ## Tests deploy status publishing in the publish-deploy-status action
 	@bash ./.github/extension/actions/publish-deploy-status/publish-deploy-status_test.sh
+
+.PHONY: test-deploy-progress
+test-deploy-progress: ## Tests live deploy progress generation
+	@bash ./.github/extension/actions/deploy-progress/progress_test.sh
+
+.PHONY: test-deploy-progress-uploader
+test-deploy-progress-uploader: generate-pnpm-installed ## Tests and builds the live deploy progress artifact uploader
+	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader install --frozen-lockfile
+	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader test
+	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader build
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
