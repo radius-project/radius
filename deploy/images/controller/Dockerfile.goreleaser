@@ -1,0 +1,29 @@
+# Base image, packages, and non-root user must stay identical to
+# deploy/images/controller/Dockerfile so GoReleaser output keeps parity.
+# Use a specific Debian slim image to enable running Bicep CLI.
+FROM debian:bullseye-20250317-slim
+
+ARG TARGETPLATFORM
+
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
+
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends \
+  ca-certificates \
+  openssl \
+  && update-ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+
+RUN useradd -m -s /bin/bash controlleruser && \
+  mkdir -p /home/controlleruser && \
+  chown -R controlleruser:controlleruser /home/controlleruser
+
+COPY ${TARGETPLATFORM}/controller /controller
+
+USER controlleruser
+
+WORKDIR /
+
+ENTRYPOINT ["/controller"]
