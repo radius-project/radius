@@ -598,7 +598,7 @@ func (ct RPTest) Test(t *testing.T) {
 							break
 						}
 
-						// Wait with exponential backoff
+						// Wait with linear backoff
 						waitTime := baseWaitTime * time.Duration(attempt)
 						t.Logf("waiting for %s before next attempt", waitTime)
 						time.Sleep(waitTime)
