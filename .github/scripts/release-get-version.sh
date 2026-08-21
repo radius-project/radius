@@ -16,83 +16,90 @@
 # limitations under the License.
 # ------------------------------------------------------------
 
-set -xe
+set -euo pipefail
 
-# does_tag_exist checks if a tag exists in the remote repository
-function does_tag_exist() {
-  if git ls-remote --tags origin $1 | grep -q $1; then
-    true
-  else
-    false
-  fi
+fail() {
+    echo "Error: $*" >&2
+    exit 1
 }
 
-# Comma-separated list of versions
-# (e.g. v0.1.0,v0.2.0,v0.3.0)
-VERSIONS=$1
+tag_exists() {
+    local repository="$1"
+    local tag="$2"
+    local status
 
-# Remote repository
-REPOSITORY=$2
+    set +e
+    git -C "${repository}" ls-remote --exit-code origin "refs/tags/${tag}" >/dev/null
+    status=$?
+    set -e
 
-if [[ -z "$VERSIONS" ]]; then
-  echo "Error: VERSIONS is not set."
-  exit 1
-fi
+    case "${status}" in
+        0) return 0 ;;
+        2) return 1 ;;
+        *) fail "could not query tag ${tag} in repository ${repository}" ;;
+    esac
+}
 
-if [[ -z "$REPOSITORY" ]]; then
-  echo "Error: REPOSITORY is not set."
-  exit 1
-fi
+main() {
+    local versions_csv="${1:-}"
+    shift || true
+    local -a repositories=("$@")
+    local -a versions missing
+    local version repository version_number stable_version major minor release_channel
+    local release_version=""
+    local release_branch_name=""
 
-RELEASE_VERSION=""
-RELEASE_BRANCH_NAME=""
+    [[ -n "${versions_csv}" ]] || fail "versions are required"
+    [[ "${#repositories[@]}" -gt 0 ]] || fail "at least one repository directory is required"
+    [[ -n "${GITHUB_OUTPUT:-}" ]] || fail "GITHUB_OUTPUT is not set"
 
-pushd $REPOSITORY
-for VERSION in ${VERSIONS//,/ }; do
-  # VERSION_NUMBER is the version number without the 'v' prefix (e.g. 0.1.0)
-  VERSION_NUMBER=$(echo $VERSION | cut -d 'v' -f 2)
+    for repository in "${repositories[@]}"; do
+        [[ -d "${repository}" ]] || fail "repository directory not found: ${repository}"
+    done
 
-  # BRANCH_NAME should be the major and minor version of the VERSION_NUMBER prefixed by 'release/' (e.g. release/0.1)
-  BRANCH_NAME="release/$(echo $VERSION_NUMBER | cut -d '.' -f 1,2)"
+    IFS=',' read -r -a versions <<<"${versions_csv}"
+    for version in "${versions[@]}"; do
+        missing=()
+        for repository in "${repositories[@]}"; do
+            if ! tag_exists "${repository}" "${version}"; then
+                missing+=("${repository}")
+            fi
+        done
 
-  if does_tag_exist $VERSION; then
-    echo "Tag $VERSION already exists in the remote repository $REPOSITORY. Skipping..."
-  elif [[ -z "$RELEASE_VERSION" ]]; then
-    RELEASE_VERSION=$VERSION
-    RELEASE_BRANCH_NAME=$BRANCH_NAME
-  else
-    echo "Error: Updating multiple versions at once is not supported."
-    exit 1
-  fi
-done
-popd
+        if [[ "${#missing[@]}" -eq 0 ]]; then
+            echo "Tag ${version} exists in every release repository. Skipping..."
+            continue
+        fi
+        [[ -z "${release_version}" ]] ||
+            fail "updating multiple versions at once is not supported"
 
-if [[ -z "$RELEASE_VERSION" ]]; then
-  echo "Error: No release version found."
-  exit 1
-fi
+        release_version="${version}"
+        version_number="${version#v}"
+        stable_version="${version_number%%-*}"
+        IFS='.' read -r major minor _ <<<"${stable_version}"
+        [[ -n "${major}" && -n "${minor}" ]] ||
+            fail "version does not contain a major and minor component: ${version}"
+        release_branch_name="release/${major}.${minor}"
+        echo "Selecting ${version}; tag is missing from: ${missing[*]}"
+    done
 
-if [[ -z "$RELEASE_BRANCH_NAME" ]]; then
-  echo "Error: No release branch name found."
-  exit 1
-fi
+    [[ -n "${release_version}" ]] || fail "no release version found"
 
-# REL_CHANNEL is the release channel (e.g. 0.1, 0.1.0-rc1)
-REL_CHANNEL=""
+    version_number="${release_version#v}"
+    if [[ "${version_number}" == *-rc* ]]; then
+        release_channel="${version_number}"
+    else
+        release_channel="${version_number%.*}"
+    fi
 
-# If the release version is a release candidate (e.g. 0.1.0-rc1), use the full version as the channel
-# Otherwise, use the major and minor version (e.g. 0.1)
-if [[ "$RELEASE_VERSION" == *"-rc"* ]]; then
-  REL_CHANNEL=$(echo "$RELEASE_VERSION" | cut -d 'v' -f 2)
-else
-  REL_CHANNEL=$(echo "$RELEASE_VERSION" | cut -d 'v' -f 2 | cut -d '.' -f 1,2)
-fi
+    echo "Release version: ${release_version}"
+    echo "Release branch name: ${release_branch_name}"
+    echo "Release channel: ${release_channel}"
+    {
+        echo "release-version=${release_version}"
+        echo "release-branch-name=${release_branch_name}"
+        echo "release-channel=${release_channel}"
+    } >>"${GITHUB_OUTPUT}"
+}
 
-echo "Release version: ${RELEASE_VERSION}"
-echo "Release branch name: ${RELEASE_BRANCH_NAME}"
-echo "Release channel: ${REL_CHANNEL}"
-{
-  echo "release-version=$RELEASE_VERSION"
-  echo "release-branch-name=$RELEASE_BRANCH_NAME"
-  echo "release-channel=$REL_CHANNEL"
-} >>$GITHUB_OUTPUT
+main "$@"

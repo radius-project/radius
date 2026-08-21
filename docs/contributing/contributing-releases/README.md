@@ -48,12 +48,12 @@ Radius follows a monthly release cadence. All contributions merged to `main` thr
 Two GitHub Actions workflows drive the release process. **No one manually creates tags in `radius-project` repos.** Tags for repos in the `radius-project` organization are created automatically by the `release.yaml` workflow. (The [Deployment Engine repo](https://github.com/azure-octo/deployment-engine) in the `azure-octo` organization still requires manual tagging — see the release steps below.)
 
 1. **[Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml)** (`release.yaml`): Triggered whenever `versions.yaml` is pushed to `main` or a `release/*` branch. This workflow:
-   - Scans `versions.yaml` in `.supported[]` order and selects the first `.version` entry whose git tag does not already exist
-   - Checks whether a git tag for that version already exists
+   - Scans `versions.yaml` in `.supported[]` order and selects the first `.version` whose tag is missing from any of `radius`, `recipes`, `dashboard`, or `bicep-types-aws`
    - **Automatically creates and pushes the version tag** (e.g., `v0.56.0-rc1`) for `radius`, `recipes`, `dashboard`, and `bicep-types-aws`
    - Creates the release branch (`release/<channel>`) if it does not already exist
    - Dispatches Deployment Engine image publishing to GHCR
-   - Skips tag/branch creation if the release branch already exists **and** the trigger was a push to `main` (this prevents duplicate work when `versions.yaml` is merged to `main` and later cherry-picked to the release branch)
+   - Reconciles matching existing branches and tags as successful state, rejects conflicting tag targets, and resumes any repositories left incomplete by a failed run
+   - Waits on a `main` push only when the release branch exists but does not yet contain the triggering commit (this prevents duplicate work before the `versions.yaml` change is cherry-picked)
 
    > **Note**: The workflow always checks out and reads `versions.yaml` from `main`, even when triggered by a push to a `release/*` branch. This means the version must be merged into `main` before the cherry-pick to the release branch triggers tag creation.
    >
@@ -61,7 +61,7 @@ Two GitHub Actions workflows drive the release process. **No one manually create
    >
    > - Add the new release version at the top of the `supported` list in `versions.yaml`.
    > - Change only one version per PR.
-   > - If more than one new untagged version is present in `supported`, `release.yaml` fails rather than guessing which one to release.
+   > - If more than one incomplete version is present in `supported`, `release.yaml` fails rather than guessing which one to release.
 2. **[Release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml)** (`build-release.yaml`): Triggered by `v*` tag pushes (created by `release.yaml` above). This workflow:
    - Builds CLI binaries and container images
    - Dispatches Bicep types publishing
