@@ -32,11 +32,12 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 	definitions := GetCoreTypesRecipeInfo()
 
 	// Verify we have the expected number of definitions
-	require.Len(t, definitions, 5)
+	require.Len(t, definitions, 6)
 
 	// Verify expected resource types
 	expectedResourceTypes := []string{
 		"Radius.Compute/containers",
+		"Radius.Compute/containerImages",
 		"Radius.Compute/persistentVolumes",
 		"Radius.Compute/routes",
 		"Radius.Security/secrets",
@@ -48,6 +49,8 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 		require.NotEmpty(t, def.Source, "Source should not be empty for %s", def.ResourceType)
 	}
 	require.ElementsMatch(t, expectedResourceTypes, actualResourceTypes)
+
+	require.Equal(t, "ghcr.io/radius-project/kube-recipes/containerimages:edge", definitions[1].Source)
 }
 
 func Test_GetDefaultRecipePackDefinition_UsesEdgeTagForEdgeChannel(t *testing.T) {
