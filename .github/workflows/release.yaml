@@ -148,7 +148,10 @@ jobs:
     name: Create a new Radius release
     if: github.repository == 'radius-project/radius' && github.event_name == 'push'
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    # Must stay above the Deployment Engine monitor budget below
+    # (INPUT_MAX_WAIT_SECONDS) plus checkout and reconciliation time, otherwise
+    # the job is killed while the monitor is still waiting.
+    timeout-minutes: 20
     environment: release
     permissions:
       contents: read # Required for actions/checkout
