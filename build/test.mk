@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-release-parity-manifest test-changelog-range test-build-summary test-goreleaser-shadow test-capture-release-image-digests test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-release-parity-manifest test-changelog-range test-build-summary test-goreleaser-shadow test-capture-release-image-digests test-release-tag-and-branch test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -83,6 +83,10 @@ test-goreleaser-shadow: ## Tests GoReleaser shadow output parity verification
 .PHONY: test-capture-release-image-digests
 test-capture-release-image-digests: ## Tests production release image digest capture
 	@bash ./.github/scripts/capture-release-image-digests_test.sh
+
+.PHONY: test-release-tag-and-branch
+test-release-tag-and-branch: ## Tests release tag and branch reconciliation
+	@bash ./.github/scripts/release-create-tag-and-branch_test.sh
 
 .PHONY: test-run-rad-commands-action
 test-run-rad-commands-action: ## Tests application deploy parameter filtering in the run-rad-commands action
