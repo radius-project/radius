@@ -83,35 +83,49 @@ open(out_file, "w", encoding="utf-8").write("\n".join(body) + "\n")
 PYTHON
 }
 
-assert_login_contract() {
+assert_workflow_contract() {
     python3 - "${WORKFLOW_FILE}" <<'PYTHON'
 import re
 import sys
 
 lines = open(sys.argv[1], encoding="utf-8").read().splitlines()
-names = [
-    i for i, line in enumerate(lines)
-    if re.match(r"^\s*-\s+name:\s+Azure Login \(OIDC\)\s*$", line)
-]
-if len(names) != 1:
-    sys.exit("expected exactly one Azure Login (OIDC) step")
 
-start = names[0]
-step_indent = len(lines[start]) - len(lines[start].lstrip(" "))
-block = []
-for line in lines[start + 1:]:
-    indent = len(line) - len(line.lstrip(" "))
-    if line.strip() and indent <= step_indent:
-        break
-    block.append(line)
 
-text = "\n".join(block)
-if not re.search(r"^\s+allow-no-subscriptions:\s+true\s*$", text, re.MULTILINE):
+def named_step(name):
+    pattern = re.compile(r"^\s*-\s+name:\s+" + re.escape(name) + r"\s*$")
+    matches = [i for i, line in enumerate(lines) if pattern.match(line)]
+    if len(matches) != 1:
+        sys.exit("expected exactly one %s step" % name)
+
+    start = matches[0]
+    step_indent = len(lines[start]) - len(lines[start].lstrip(" "))
+    block = []
+    for line in lines[start + 1:]:
+        indent = len(line) - len(line.lstrip(" "))
+        if line.strip() and indent <= step_indent:
+            break
+        block.append(line)
+    return block
+
+
+login = "\n".join(named_step("Azure Login (OIDC)"))
+if not re.search(
+    r"^\s+allow-no-subscriptions:\s+true\s*$", login, re.MULTILINE
+):
     sys.exit("Azure Login must set allow-no-subscriptions: true")
-if re.search(r"^\s+subscription-id:", text, re.MULTILINE):
+if re.search(r"^\s+subscription-id:", login, re.MULTILINE):
     sys.exit(
         "Azure Login must not select the subscription before RBAC propagation"
     )
+
+wait = [line.strip() for line in named_step("Wait for Azure subscription")]
+if wait.count("timeout-minutes: 10") != 1:
+    sys.exit("wait step must set timeout-minutes: 10")
+expected_env = (
+    "AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}"
+)
+if wait.count(expected_env) != 1:
+    sys.exit("wait step must map AZURE_SUBSCRIPTION_ID from the environment")
 PYTHON
 }
 
@@ -204,7 +218,7 @@ reset_scenario() {
 }
 
 extract_wait_step
-assert_login_contract
+assert_workflow_contract
 write_stubs
 
 # The common case checks immediately, compares IDs case-insensitively, and
@@ -248,6 +262,7 @@ assert_count 11 '.' "${SLEEP_CALLS}"
 [[ "$(tail -1 "${SLEEP_CALLS}")" == "30" ]] ||
     fail "expected backoff to cap at 30 seconds"
 assert_log_contains "Azure OIDC authentication succeeded"
+assert_log_contains "Subscription discovery may be failing"
 assert_log_contains "Azure RBAC may still be propagating"
 
 # Azure CLI errors are not mistaken for propagation and fail immediately.

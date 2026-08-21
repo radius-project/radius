@@ -83,6 +83,7 @@ jobs:
           allow-no-subscriptions: true
 
       - name: Wait for Azure subscription
+        timeout-minutes: 10
         env:
           AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
         run: |
@@ -109,7 +110,7 @@ jobs:
             fi
 
             if ((attempt == MAX_ATTEMPTS)); then
-              echo "::error::Azure OIDC authentication succeeded, but the configured subscription was not visible after about 5 minutes. Azure RBAC may still be propagating, or the identity may be missing a role assignment on the subscription or its resources. Confirm the role assignment, then re-run credential verification."
+              echo "::error::Azure OIDC authentication succeeded, but the configured subscription was not visible after about 5 minutes. Subscription discovery may be failing, Azure RBAC may still be propagating, or the identity may be missing a role assignment on the subscription or its resources. Confirm Azure subscription discovery and the role assignment, then re-run credential verification."
               exit 1
             fi
 
