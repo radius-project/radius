@@ -119,8 +119,9 @@ runs:
         # makes `in_progress` reachable today, on a run that has already finished:
         # it means "no verdict", not "still running". Real
         # non-success outcomes from run-rad-commands (command_failed,
-        # disallowed_command) must still map to failed, or a broken deploy would be
-        # reported as merely unfinished.
+        # disallowed_command, and the `interrupted` seed left behind by a step that
+        # exited abnormally before completing) must still map to failed, or a
+        # broken deploy would be reported as merely unfinished.
         case "$OUTCOME" in
           succeeded|success) RUN_STATE="succeeded" ;;
           unknown)           RUN_STATE="in_progress" ;;
