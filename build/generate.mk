@@ -87,7 +87,7 @@ generate-cleanup: ## Deletes all generated code.
 # TypeSpec project's configured module and package name remain authoritative.
 define generate-typespec-go-client
 @set -e; \
-	output_dir=$$(mktemp -d); \
+	output_dir=$$(mktemp -d "$${TMPDIR:-/tmp}/radius-typespec-go.XXXXXX"); \
 	trap 'rm -rf "$$output_dir"' EXIT; \
 	(cd "$(1)" && pnpm exec tsp compile . --emit=@azure-tools/typespec-go --option="@azure-tools/typespec-go.emitter-output-dir=$$output_dir"); \
 	rm -f "$(2)"/zz_generated_*.go; \
