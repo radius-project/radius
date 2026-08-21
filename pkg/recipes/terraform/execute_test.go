@@ -17,6 +17,7 @@ limitations under the License.
 package terraform
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	reflect "reflect"
@@ -42,35 +43,45 @@ const (
 )
 
 func TestMain(m *testing.M) {
+	exitCode := 0
 	if os.Getenv(terraformGetTestHelper) == "1" {
-		if commandLog := os.Getenv(terraformCommandLog); commandLog != "" && len(os.Args) > 1 {
-			file, err := os.OpenFile(commandLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				os.Exit(1)
-			}
-			if _, err := file.WriteString(os.Args[1] + "\n"); err != nil {
-				_ = file.Close()
-				os.Exit(1)
-			}
-			if err := file.Close(); err != nil {
-				os.Exit(1)
-			}
+		if err := runTerraformTestHelper(); err != nil {
+			fmt.Fprintf(os.Stderr, "terraform test helper failed: %v\n", err)
+			exitCode = 1
 		}
-
-		moduleDir := filepath.Join(".terraform", "modules", "test-recipe")
-		if err := os.MkdirAll(moduleDir, 0755); err != nil {
-			os.Exit(1)
-		}
-		if err := os.WriteFile(
-			filepath.Join(moduleDir, "outputs.tf"),
-			[]byte(`output "endpoint" { value = "declared" }`),
-			0644); err != nil {
-			os.Exit(1)
-		}
-		os.Exit(0)
+	} else {
+		exitCode = m.Run()
 	}
 
-	os.Exit(m.Run())
+	os.Exit(exitCode) //nolint:forbidigo // This is OK inside the TestMain function.
+}
+
+func runTerraformTestHelper() error {
+	if commandLog := os.Getenv(terraformCommandLog); commandLog != "" && len(os.Args) > 1 {
+		file, err := os.OpenFile(commandLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return fmt.Errorf("opening command log: %w", err)
+		}
+		if _, err := file.WriteString(os.Args[1] + "\n"); err != nil {
+			_ = file.Close()
+			return fmt.Errorf("writing command log: %w", err)
+		}
+		if err := file.Close(); err != nil {
+			return fmt.Errorf("closing command log: %w", err)
+		}
+	}
+
+	moduleDir := filepath.Join(".terraform", "modules", "test-recipe")
+	if err := os.MkdirAll(moduleDir, 0755); err != nil {
+		return fmt.Errorf("creating test module directory: %w", err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(moduleDir, "outputs.tf"),
+		[]byte(`output "endpoint" { value = "declared" }`),
+		0644); err != nil {
+		return fmt.Errorf("writing test module outputs: %w", err)
+	}
+	return nil
 }
 
 func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
