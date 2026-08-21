@@ -321,17 +321,17 @@ main() {
         fail "global release was accepted while a scoped release exists."
     fi
 
-    azure_ref="$(radius_contrib_catalog_field recipePacks azure ref)"
+    azure_ref="$(radius_contrib_catalog_field recipePacks azure-aks ref)"
     kubernetes_ref="$(radius_contrib_catalog_field recipePacks kubernetes ref)"
     assert_equal \
         "${azure_ref}" \
-        "$(radius_contrib_recipe_pack_url azure aks-recipepack.bicep | sed -E 's|.*/([0-9a-f]{40})/recipe-packs/.*|\1|')" \
+        "$(radius_contrib_recipe_pack_url azure-aks azure-aks.bicep | sed -E 's|.*/([0-9a-f]{40})/recipe-packs/.*|\1|')" \
         "Azure recipe pack catalog ref"
     [[ "${kubernetes_ref}" =~ ^[0-9a-f]{40}$ ]] ||
         fail "Kubernetes recipe pack is not pinned in defaults.yaml."
     assert_equal \
         "${kubernetes_ref}" \
-        "$(radius_contrib_recipe_pack_url kubernetes default-recipepack.bicep | sed -E 's|.*/([0-9a-f]{40})/recipe-packs/.*|\1|')" \
+        "$(radius_contrib_recipe_pack_url kubernetes default.bicep | sed -E 's|.*/([0-9a-f]{40})/recipe-packs/.*|\1|')" \
         "Kubernetes recipe pack catalog ref"
 
     data_repo="$(radius_contrib_catalog_field resourceTypes Radius.Data repo)"
