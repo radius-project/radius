@@ -61,22 +61,45 @@ function apiError(status, message = `GitHub API returned ${status}`) {
   return Object.assign(new Error(message), { status });
 }
 
-function createGithub({ runs = [], getRun, jobs = [] } = {}) {
+function createGithub({ runs = [], getRun, jobs = [], pages } = {}) {
   const dispatches = [];
-  const calls = { list: 0, get: 0, jobs: 0 };
+  const calls = { list: 0, get: 0, jobs: 0, pages: 0 };
   let nextRunID = 1000;
+  let paginating = false;
 
   const github = {
     dispatches,
     calls,
     runs,
+    // Mirrors octokit: the map callback gets a `done` stopper, and pages are
+    // fetched until it is called or the fixture runs out of pages.
     async paginate(method, parameters, map) {
-      return map(await method(parameters));
+      const collected = [];
+      let stopped = false;
+      const done = () => {
+        stopped = true;
+      };
+      paginating = true;
+      try {
+        const pageCount = pages ? pages.length : 1;
+        for (let page = 0; page < pageCount && !stopped; page += 1) {
+          collected.push(...map(await method(parameters), done));
+        }
+      } finally {
+        paginating = false;
+      }
+      return collected;
     },
     rest: {
       actions: {
         async listWorkflowRuns() {
           calls.list += 1;
+          if (pages && paginating) {
+            calls.pages += 1;
+            return {
+              data: { workflow_runs: [...(pages[calls.pages - 1] || [])] },
+            };
+          }
           return { data: { workflow_runs: [...runs] } };
         },
         async getWorkflowRun({ run_id: runID }) {
@@ -119,6 +142,64 @@ function successfulRun(id, identifier) {
     html_url: `https://example.test/runs/${id}`,
   };
 }
+
+test("stops paging once the identifier's run block is behind", async () => {
+  const identifier = "0.61.0-abababab";
+  const core = createCore({ RELEASE_IDENTIFIER: identifier });
+  const github = createGithub({
+    pages: [[successfulRun(42, identifier)], [], [], [], []],
+  });
+
+  await monitorRemoteWorkflow({ github, core, ...createClock() });
+
+  assert.deepEqual(core.failures, []);
+  assert.equal(github.calls.pages, 2);
+  assert.equal(github.dispatches.length, 0);
+  assert.equal(core.outputs.get("run_id"), "42");
+});
+
+test("caps the history scan when no run matches the identifier", async () => {
+  const core = createCore({ RELEASE_IDENTIFIER: "0.61.0-acacacac" });
+  const unrelated = [{ id: 7, display_title: "deployment-engine / other" }];
+  const github = createGithub({
+    pages: Array.from({ length: 8 }, () => unrelated),
+  });
+
+  await monitorRemoteWorkflow({ github, core, ...createClock() });
+
+  assert.deepEqual(core.failures, []);
+  assert.equal(github.calls.pages, 5);
+  assert.equal(github.dispatches.length, 1);
+  assert.equal(core.outputs.get("conclusion"), "success");
+});
+
+test("gives a retried lookup the full page budget", async () => {
+  const identifier = "0.61.0-adadadad";
+  const core = createCore({ RELEASE_IDENTIFIER: identifier });
+  const github = createGithub({
+    pages: [[], [], [], [successfulRun(51, identifier)], []],
+  });
+  const listWorkflowRuns = github.rest.actions.listWorkflowRuns;
+  let failed = false;
+  github.rest.actions.listWorkflowRuns = async (parameters) => {
+    if (!failed) {
+      failed = true;
+      throw apiError(500);
+    }
+    return listWorkflowRuns(parameters);
+  };
+
+  await monitorRemoteWorkflow({
+    github,
+    core,
+    ...createClock(),
+    random: () => 0,
+  });
+
+  assert.deepEqual(core.failures, []);
+  assert.equal(github.dispatches.length, 0);
+  assert.equal(core.outputs.get("run_id"), "51");
+});
 
 test("reuses an existing successful run without dispatching", async () => {
   const identifier = "0.61.0-aaaaaaaa";
@@ -459,5 +540,12 @@ test("all publisher callers use stable identifiers without time-window discovery
     assert.ok(contents.includes('INPUT_MAX_WAIT_SECONDS: "720"'), fixture.file);
     assert.doesNotMatch(contents, /INPUT_DISPATCH_STARTED_AT/);
     assert.doesNotMatch(contents, /peter-evans\/repository-dispatch/);
+
+    const payload = contents.match(
+      /INPUT_CLIENT_PAYLOAD: \|-\n([\s\S]*?)\n\s*INPUT_MAX_WAIT_SECONDS/,
+    );
+    assert.ok(payload, fixture.file);
+    assert.match(payload[1], /\$\{\{ toJSON\(/, fixture.file);
+    assert.doesNotMatch(payload[1], /"\$\{\{/, fixture.file);
   }
 });

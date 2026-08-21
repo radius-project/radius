@@ -5,6 +5,7 @@ const EVENT_TYPE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const API_RETRY_ATTEMPTS = 5;
 const API_RETRY_BASE_DELAY_MS = 1000;
 const API_RETRY_MAX_DELAY_MS = 15000;
+const MAX_LOOKUP_PAGES = 5;
 const RETRYABLE_NETWORK_CODES = new Set([
   "ECONNRESET",
   "ETIMEDOUT",
@@ -165,6 +166,18 @@ export default async ({
       `Reconciling publisher run '${expectedRunName}' in ${remoteOwner}/${remoteRepo}`,
     );
 
+    /** @param {any[]} runs */
+    const correlatedRuns = (runs) =>
+      (runs || [])
+        .filter((run) => run.display_title === expectedRunName)
+        .sort((left, right) => right.id - left.id);
+
+    /** @param {any[]} runs */
+    const selectReusableRun = (runs) =>
+      runs.find(
+        (run) => run.status === "completed" && run.conclusion === "success",
+      ) || runs.find((run) => run.status !== "completed");
+
     const matchingRuns = async ({ allPages = true } = {}) => {
       const parameters = {
         owner: remoteOwner,
@@ -173,23 +186,41 @@ export default async ({
         event: "repository_dispatch",
         per_page: 100,
       };
-      const runs = allPages
-        ? await retryAPI("publisher run lookup", () =>
-            github.paginate(
-              github.rest.actions.listWorkflowRuns,
-              parameters,
-              (response) => response.data.workflow_runs || [],
-            ),
-          )
-        : (
-            await retryAPI("recent publisher run lookup", () =>
-              github.rest.actions.listWorkflowRuns(parameters),
-            )
-          ).data.workflow_runs || [];
 
-      return runs
-        .filter((run) => run.display_title === expectedRunName)
-        .sort((left, right) => right.id - left.id);
+      if (!allPages) {
+        const response = await retryAPI("recent publisher run lookup", () =>
+          github.rest.actions.listWorkflowRuns(parameters),
+        );
+        return correlatedRuns(response.data.workflow_runs);
+      }
+
+      let pagesRead = 0;
+      let matched = false;
+      const runs = await retryAPI("publisher run lookup", () => {
+        // Reset per attempt so a retried lookup gets the full page budget.
+        pagesRead = 0;
+        matched = false;
+        return github.paginate(
+          github.rest.actions.listWorkflowRuns,
+          parameters,
+          (response, done) => {
+            const page = correlatedRuns(response.data.workflow_runs);
+            pagesRead += 1;
+            // Pages arrive newest first and one identifier's runs are
+            // contiguous, so a long publisher history costs a bounded
+            // number of API calls.
+            if (
+              pagesRead >= MAX_LOOKUP_PAGES ||
+              (matched && page.length === 0)
+            ) {
+              done();
+            }
+            matched = matched || page.length > 0;
+            return page;
+          },
+        );
+      });
+      return correlatedRuns(runs);
     };
 
     const dispatchRun = async (previousRunID) => {
@@ -235,12 +266,6 @@ export default async ({
       }
       throw new Error("Publisher dispatch exhausted its retry budget");
     };
-
-    /** @param {any[]} runs */
-    const selectReusableRun = (runs) =>
-      runs.find(
-        (run) => run.status === "completed" && run.conclusion === "success",
-      ) || runs.find((run) => run.status !== "completed");
 
     const existingRuns = await matchingRuns();
     const previousRunID = existingRuns.reduce(
