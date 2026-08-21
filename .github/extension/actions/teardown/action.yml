@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
 # Provider-agnostic teardown shared by run-rad-commands-aws.yml and
 # run-rad-commands-azure.yml. Persists durable state via `rad shutdown`, collects
 # logs on failure, and always tears the k3d control plane down. Invoked with
