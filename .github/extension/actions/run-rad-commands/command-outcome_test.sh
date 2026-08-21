@@ -21,6 +21,10 @@ readonly SCRIPT_DIR
 ACTION_FILE="${ACTION_FILE:-${SCRIPT_DIR}/action.yml}"
 readonly ACTION_FILE
 readonly STEP_NAME="Run rad commands"
+# The step sources this before the accumulator, and `cleanup` calls into it, so
+# the extracted prologue needs it too. Sourced for real rather than stubbed, so
+# a change to those helpers is exercised here instead of hidden behind a stub.
+readonly PROGRESS_LIB="${SCRIPT_DIR}/../deploy-progress/progress.sh"
 # The value the accumulator is seeded to, and the value the promotion is allowed
 # to promote *from*. Asserted exactly rather than as "anything non-success":
 # publish-deploy-status, the design note, and the promotion guard all name it.
@@ -46,6 +50,8 @@ fi
 if ! command -v python3 >/dev/null 2>&1; then
     fail "python3 is required to parse action.yml"
 fi
+[[ -f "${PROGRESS_LIB}" ]] ||
+    fail "expected the deploy-progress helpers at ${PROGRESS_LIB}; the accumulator's EXIT trap calls into them"
 
 # Extract the accumulator prologue verbatim from the action - the seed, the
 # write_result writer, and the EXIT trap - so the test exercises the shipped
@@ -146,7 +152,9 @@ extract_prologue
 # inheriting this script's stdout. SIGTERM reaps the subshell but not the
 # `sleep` it is waiting on, and an orphan holding the pipe open would stall any
 # caller that captures our output until the sleep expires.
-ENVIRONMENT="aks-dev" bash -eo pipefail -c "
+# RUNNER_TEMP keeps the progress helpers' scratch files inside the sandbox.
+ENVIRONMENT="aks-dev" RUNNER_TEMP="${TEST_ROOT}" bash -eo pipefail -c "
+    source '${PROGRESS_LIB}'
     source '${PROLOGUE}'
     touch '${READY_FILE}'
     # Stands in for a long-running \`rad deploy\`.
@@ -196,7 +204,8 @@ exit_code="$(result_exit_code)"
 # still fires.
 # ---------------------------------------------------------------------------
 rm -f "${RESULT_FILE}"
-ENVIRONMENT="aks-dev" bash -eo pipefail -c "
+ENVIRONMENT="aks-dev" RUNNER_TEMP="${TEST_ROOT}" bash -eo pipefail -c "
+    source '${PROGRESS_LIB}'
     source '${PROLOGUE}'
     # Stands in for any unguarded command that returns non-zero.
     false
