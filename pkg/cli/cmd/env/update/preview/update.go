@@ -19,6 +19,7 @@ package preview
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -81,10 +82,9 @@ rad env update myenv --clear-azure
 rad env update myenv --clear-aws
 
 ## Add Kubernetes cloud provider (preview)
+## The namespace can only be set on an environment that does not already have one; it is
+## immutable afterwards.
 rad env update myenv --kubernetes-namespace mynamespace
-
-## Remove Kubernetes cloud provider (preview)
-rad env update myenv --clear-kubernetes
 
 ## Set recipe packs to environment (--preview)
 rad env update myenv --recipe-packs pack1,pack2
@@ -100,6 +100,14 @@ rad env update myenv --recipe-packs pack1 --recipe-pack-group other-group
 	cmd.Flags().Bool(commonflags.ClearEnvAzureFlag, false, "Specify if azure provider needs to be cleared on env")
 	cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "Specify if aws provider needs to be cleared on env")
 	cmd.Flags().Bool(commonflags.ClearEnvKubernetesFlag, false, "Specify if kubernetes provider needs to be cleared on env (--preview)")
+
+	// The Kubernetes namespace is immutable once set, so this flag can no longer do anything: it is
+	// rejected on any environment that has a namespace and is a no-op on one that does not. It is
+	// kept so that users who scripted it get an explanation rather than a bare "unknown flag" from
+	// Cobra. MarkDeprecated also sets Hidden, so it no longer appears in help output. Remove it
+	// once Radius.Core leaves preview.
+	_ = cmd.Flags().MarkDeprecated(commonflags.ClearEnvKubernetesFlag, "the Kubernetes namespace of an environment cannot be removed; create a new environment instead")
+
 	cmd.Flags().StringSliceP("recipe-packs", "", []string{}, "Specify recipe packs to replace the environment's recipe pack list (--preview). Accepts comma-separated values.")
 	cmd.Flags().StringP("recipe-pack-group", "", "", "Specify the resource group containing the recipe packs named in --recipe-packs, if different from the environment's resource group (--preview).")
 	commonflags.AddAzureScopeFlags(cmd)
@@ -275,6 +283,25 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// SystemData is owned by the service; do not send it back on update.
 	env.SystemData = nil
+
+	// The Kubernetes namespace is immutable once an environment has one: changing it would leave
+	// everything already deployed into the old namespace orphaned, and clearing it would release a
+	// claim that other environments were validated against. The server enforces this too, but
+	// failing here gives a better message and avoids a pointless round trip.
+	currentNamespace := ""
+	if env.Properties != nil && env.Properties.Providers != nil && env.Properties.Providers.Kubernetes != nil && env.Properties.Providers.Kubernetes.Namespace != nil {
+		currentNamespace = *env.Properties.Providers.Kubernetes.Namespace
+	}
+
+	if currentNamespace != "" {
+		if r.clearEnvKubernetes {
+			return clierrors.Message("Cannot clear the Kubernetes provider on environment %q: its namespace (%s) cannot be removed because resources already deployed into it would be orphaned. Create a new environment instead.", r.EnvironmentName, currentNamespace)
+		}
+
+		if r.providers.Kubernetes != nil && r.providers.Kubernetes.Namespace != nil && !strings.EqualFold(*r.providers.Kubernetes.Namespace, currentNamespace) {
+			return clierrors.Message("Cannot change the Kubernetes namespace of environment %q from %q to %q: resources already deployed into %s would be orphaned. Create a new environment instead.", r.EnvironmentName, currentNamespace, *r.providers.Kubernetes.Namespace, currentNamespace)
+		}
+	}
 
 	// only update azure provider info if user requires it.
 	if r.clearEnvAzure && env.Properties.Providers != nil {
