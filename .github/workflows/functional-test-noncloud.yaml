@@ -457,8 +457,8 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Enable the PostgreSQL-backed control plane
-        # The database-noncloud leg is the only coverage for `database.enabled=true`, which the
-        # default functional install does not exercise. See issue #12227.
+        # Installs the database-backed store for this leg so the functional tests below run against
+        # PostgreSQL rather than the default Kubernetes API server store. See issue #12227.
         if: matrix.name == 'database-noncloud'
         run: echo "DATABASE_INSTALL_ARGS=--set database.enabled=true" >> "${GITHUB_ENV}"
 

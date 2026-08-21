@@ -183,8 +183,8 @@ test-functional-multicluster-noncloud: ## Runs multi-cluster functional tests th
 .PHONY: test-functional-database-noncloud
 test-functional-database-noncloud: ## Runs the PostgreSQL-backed control plane (database.enabled=true) functional tests
 	# Requires a control plane installed with `rad install kubernetes --set database.enabled=true`.
-	# The tests fail immediately against the default apiserver-backed install, so they are not part
-	# of test-functional-all-noncloud; CI runs them in the database-noncloud leg.
+	# The tests fail against the default apiserver-backed install, so they are not part of
+	# test-functional-all-noncloud; CI runs them in the database-noncloud leg.
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/database/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
 .PHONY: test-functional-statestore-noncloud

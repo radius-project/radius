@@ -69,7 +69,7 @@ For database tests, install Radius with the PostgreSQL-backed control plane firs
 rad install kubernetes --set database.enabled=true
 ```
 
-Running `make test-functional-database-noncloud` against a default (API server-backed) install fails immediately, because the tests check that the PostgreSQL StatefulSet is present before asserting anything else.
+Running `make test-functional-database-noncloud` against a default (API server-backed) install fails, because the tests check that the PostgreSQL StatefulSet is present before asserting anything else.
 
 For multicluster tests, create the namespace and Secret before installing Radius. The kubeconfig stored in the Secret must use an API-server address reachable from the Radius pods:
 

@@ -18,22 +18,31 @@ limitations under the License.
 // PostgreSQL-backed control plane (`--set database.enabled=true`).
 //
 // The default functional suite installs with `database.enabled=false` (the Kubernetes API server
-// store), so nothing exercised the PostgreSQL path end to end. Two blocking bugs reached review of
-// PR #12214 as a result: the database StatefulSet pointed at a registry-mirror tag that did not
-// exist (ImagePullBackOff), and the per-RP database users were never granted access to the
-// `resources` table (`permission denied for table resources`). See issue #12227.
+// store). Two blocking bugs reached review of PR #12214 as a result: the database StatefulSet
+// pointed at a registry-mirror tag that did not exist (ImagePullBackOff), and the per-RP database
+// users were never granted access to the `resources` table (`permission denied for table
+// resources`). See issue #12227.
 //
-// The chart's helm-unittest suite (deploy/Chart/tests/database_test.yaml) guards the *rendering* of
-// both fixes. This package guards the *runtime*: the control plane must actually come up against
-// PostgreSQL, and a real deployment must round-trip through the PostgreSQL store.
+// This is one of three complementary layers, and deliberately the cheapest and most direct:
+//
+//   - deploy/Chart/tests/database_test.yaml guards the *rendering* of both fixes with helm-unittest.
+//   - The statestore-noncloud leg also installs with database.enabled=true, but as part of a
+//     40-minute destructive shutdown/startup lifecycle whose failures are ambiguous.
+//   - This package is a plain install-and-deploy check, so a failure here means the
+//     PostgreSQL-backed control plane itself is broken.
+//
+// Note that `rad install` waits on the Helm release, so both of the original bugs would already
+// fail the install rather than reaching these tests. The lasting value here is
+// Test_DatabaseEnabled_MinimalDeploy: a real deployment that round-trips through the PostgreSQL
+// store using the resource providers' own database identities.
 //
 // These tests assume Radius is ALREADY installed with the database enabled:
 //
 //	rad install kubernetes --set database.enabled=true
 //
-// Test_DatabaseEnabled_ControlPlaneHealthy fails immediately if it is not, so the suite cannot
-// quietly pass against an apiserver-backed control plane. In CI the `database-noncloud` matrix leg
-// of .github/workflows/functional-test-noncloud.yaml performs that install.
+// Test_DatabaseEnabled_ControlPlaneHealthy fails if it is not, so the suite cannot quietly pass
+// against an apiserver-backed control plane. In CI the `database-noncloud` matrix leg of
+// .github/workflows/functional-test-noncloud.yaml performs that install.
 package database
 
 import (
@@ -45,6 +54,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -71,23 +81,38 @@ const (
 	databaseReadyTimeout = 3 * time.Minute
 	databaseReadyPoll    = 5 * time.Second
 
+	// controlPlaneReadyTimeout bounds the wait for the resource provider Deployments to report the
+	// Available condition. Like databaseReadyTimeout this is a backstop: `rad install` already
+	// waited on the Helm release, so in a healthy run both checks pass on the first poll.
+	controlPlaneReadyTimeout = 3 * time.Minute
+
+	// testTimeout bounds the whole test. It must exceed databaseReadyTimeout plus
+	// controlPlaneReadyTimeout so that a genuine wait fails with its own specific message rather
+	// than an opaque context deadline.
+	testTimeout = 7 * time.Minute
+
 	// logTailLines bounds how much of each control-plane log is fetched for the permission scan.
 	// The failure this guards against happens during startup, so a tail of the log is enough and
 	// keeps the request cheap on a chatty control plane.
 	logTailLines = int64(2000)
 )
 
-// controlPlaneContainers are the main containers of the resource providers that talk to PostgreSQL.
-// Their Deployments are named the same as the container in each pod, and the pods can carry
-// sidecars, so the container must be requested by name when reading logs.
-var controlPlaneContainers = []string{"ucp", "applications-rp", "dynamic-rp"}
+// controlPlaneComponents are the resource providers that talk to PostgreSQL. For each of them the
+// Deployment name and the name of the main container in its pod are identical, so this one list
+// drives both the availability check and the log scan. Pods can carry sidecars, so the container
+// must be requested by name when reading logs.
+var controlPlaneComponents = []string{"ucp", "applications-rp", "dynamic-rp"}
 
 // Test_DatabaseEnabled_ControlPlaneHealthy asserts that the PostgreSQL-backed control plane came up
-// cleanly. It is deliberately narrow: `rad install` already waits on the Helm release, so this
-// test's job is to turn the two known failure modes into named, immediately readable failures
-// instead of an opaque timeout somewhere later in the suite.
+// cleanly: the database is serving, every resource provider reached Available, and no provider was
+// denied access to its tables.
+//
+// It also acts as the guard that this package is running against the right install. Because
+// Test_DatabaseEnabled_MinimalDeploy calls t.Parallel() by way of the RPTest harness and pauses
+// before deploying, this test runs to completion first, so a run against a default
+// apiserver-backed control plane fails here rather than after a misleading successful deployment.
 func Test_DatabaseEnabled_ControlPlaneHealthy(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Minute)
+	ctx, cancel := context.WithTimeout(t.Context(), testTimeout)
 	defer cancel()
 
 	k8s := test.NewTestOptions(t).K8sClient
@@ -100,7 +125,61 @@ func Test_DatabaseEnabled_ControlPlaneHealthy(t *testing.T) {
 	require.NotNil(t, statefulSet)
 
 	requireDatabaseReady(ctx, t, k8s)
+	requireResourceProvidersAvailable(ctx, t, k8s)
 	requireNoPermissionDeniedInLogs(ctx, t, k8s)
+}
+
+// requireResourceProvidersAvailable waits for each resource provider Deployment to report the
+// Available condition. This is the assertion that actually establishes control-plane health: a
+// ready PostgreSQL StatefulSet proves the database came up, not that the providers can use it.
+//
+// Transient crashes are tolerated on purpose — the database StatefulSet has no readiness probe, so
+// a provider can legitimately crash and recover while init-db is still running. What is not
+// tolerated is a provider that never reaches Available, which is how the missing per-RP GRANTs
+// manifest.
+func requireResourceProvidersAvailable(ctx context.Context, t *testing.T, k8s kubernetes.Interface) {
+	t.Helper()
+
+	deadline := time.Now().Add(controlPlaneReadyTimeout)
+	for {
+		pending := []string{}
+		for _, name := range controlPlaneComponents {
+			deployment, err := k8s.AppsV1().Deployments(radiusNamespace).Get(ctx, name, metav1.GetOptions{})
+			if err != nil {
+				pending = append(pending, fmt.Sprintf("%s (read failed: %v)", name, err))
+				continue
+			}
+			if !deploymentAvailable(deployment) {
+				pending = append(pending, fmt.Sprintf("%s (%d/%d ready)", name, deployment.Status.ReadyReplicas, deployment.Status.Replicas))
+			}
+		}
+
+		if len(pending) == 0 {
+			return
+		}
+
+		if time.Now().After(deadline) {
+			require.Failf(t, "the resource providers never became available",
+				"still not Available after %s: %s. A resource provider that cannot reach its PostgreSQL tables crash-loops on startup.",
+				controlPlaneReadyTimeout, strings.Join(pending, ", "))
+		}
+
+		t.Logf("waiting for control-plane deployments: %s", strings.Join(pending, ", "))
+		select {
+		case <-ctx.Done():
+			require.Failf(t, "the resource providers never became available", "context ended while waiting: %v", ctx.Err())
+		case <-time.After(databaseReadyPoll):
+		}
+	}
+}
+
+func deploymentAvailable(deployment *appsv1.Deployment) bool {
+	for _, condition := range deployment.Status.Conditions {
+		if condition.Type == appsv1.DeploymentAvailable && condition.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+	return false
 }
 
 // requireDatabaseReady waits for the PostgreSQL StatefulSet to report a ready replica, giving up
@@ -181,6 +260,10 @@ func databaseImagePullFailure(ctx context.Context, t *testing.T, k8s kubernetes.
 // guard for the "permission denied for table resources" crash. Both the current and the previous
 // container instance are scanned: the error crash-loops the RP, so by the time the test runs the
 // evidence may only survive in the previous instance's log.
+//
+// The scan must not pass vacuously. A log read that fails, a pod that never appears, or a container
+// name that stops matching would all silently turn this into an assertion about nothing, so the
+// function requires that every expected provider's current log was actually read.
 func requireNoPermissionDeniedInLogs(ctx context.Context, t *testing.T, k8s kubernetes.Interface) {
 	t.Helper()
 
@@ -189,16 +272,24 @@ func requireNoPermissionDeniedInLogs(ctx context.Context, t *testing.T, k8s kube
 	})
 	require.NoError(t, err, "failed to list control-plane pods")
 
+	// scanned records the containers whose current log was read successfully, so the assertion
+	// below can prove the scan actually covered every resource provider.
+	scanned := map[string]bool{}
+
 	for _, pod := range pods.Items {
 		for _, container := range containersToScan(pod) {
 			for _, previous := range []bool{false, true} {
 				logs, err := readContainerLogs(ctx, k8s, pod.Name, container, previous)
 				if err != nil {
-					// A missing previous instance is the normal, healthy case and the API returns
-					// an error for it. Never fail the test on a log-read error; the assertion is
-					// about what the logs contain, not about whether they could be read.
+					// Not fatal on its own: a pod may be terminating or replaced, and a missing
+					// previous instance is the normal healthy case that the API reports as an
+					// error. The `scanned` check below is what prevents this from failing open.
 					t.Logf("skipping logs for pod %s container %s (previous=%t): %v", pod.Name, container, previous, err)
 					continue
+				}
+
+				if !previous {
+					scanned[container] = true
 				}
 
 				if line, found := findLine(logs, permissionDeniedMarker); found {
@@ -209,6 +300,14 @@ func requireNoPermissionDeniedInLogs(ctx context.Context, t *testing.T, k8s kube
 			}
 		}
 	}
+
+	missing := []string{}
+	for _, container := range controlPlaneComponents {
+		if !scanned[container] {
+			missing = append(missing, container)
+		}
+	}
+	require.Emptyf(t, missing, "could not read current logs for %s, so the permission scan proved nothing", strings.Join(missing, ", "))
 }
 
 // containersToScan returns the control-plane containers present in the pod. Pods can carry
@@ -216,7 +315,7 @@ func requireNoPermissionDeniedInLogs(ctx context.Context, t *testing.T, k8s kube
 func containersToScan(pod corev1.Pod) []string {
 	matched := []string{}
 	for _, container := range pod.Spec.Containers {
-		for _, wanted := range controlPlaneContainers {
+		for _, wanted := range controlPlaneComponents {
 			if container.Name == wanted {
 				matched = append(matched, container.Name)
 				break
