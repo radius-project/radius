@@ -23,13 +23,15 @@ Before starting a release, ensure you have:
 
 ## Terminology
 
-| Term                | Description                                                                                                   | Example                      |
-|---------------------|---------------------------------------------------------------------------------------------------------------|------------------------------|
-| **RC release**      | A release candidate for internal validation before public release. Create additional RCs if validation fails. | `v0.56.0-rc1`, `v0.56.0-rc2` |
-| **Final release**   | A public release, built from the last validated RC.                                                           | `v0.56.0`                    |
-| **Patch release**   | A bug-fix release for an existing final release.                                                              | `v0.56.1`                    |
-| **Release channel** | A `<major>.<minor>` pair that groups all releases for a version.                                              | `0.56`                       |
-| **Release branch**  | A branch in the format `release/<channel>` that holds release code.                                           | `release/0.56`               |
+| Term                | Description                                                                                                   | Example                        |
+|---------------------|---------------------------------------------------------------------------------------------------------------|--------------------------------|
+| **RC release**      | A release candidate for internal validation before public release. Create additional RCs if validation fails. | `v0.56.0-rc.1`, `v0.56.0-rc.2` |
+| **Final release**   | A public release, built from the last validated RC.                                                           | `v0.56.0`                      |
+| **Patch release**   | A bug-fix release for an existing final release.                                                              | `v0.56.1`                      |
+| **Release channel** | A `<major>.<minor>` pair that groups all releases for a version.                                              | `0.56`                         |
+| **Release branch**  | A branch in the format `release/<channel>` that holds release code.                                           | `release/0.56`                 |
+
+New release candidates use the dotted SemVer form `-rc.N`, starting at `-rc.1`. Historical `-rcN` releases remain valid inputs for verification and upgrade tooling, but do not use that form for new tags.
 
 ## How releases work
 
@@ -49,7 +51,7 @@ Two GitHub Actions workflows drive the release process. **No one manually create
 
 1. **[Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml)** (`release.yaml`): Triggered whenever `versions.yaml` is pushed to `main` or a `release/*` branch. This workflow:
    - Scans `versions.yaml` in `.supported[]` order and selects the first `.version` whose tag is missing from any of `radius`, `recipes`, `dashboard`, or `bicep-types-aws`
-   - **Automatically creates and pushes the version tag** (e.g., `v0.56.0-rc1`) for `radius`, `recipes`, `dashboard`, and `bicep-types-aws`
+   - **Automatically creates and pushes the version tag** (e.g., `v0.56.0-rc.1`) for `radius`, `recipes`, `dashboard`, and `bicep-types-aws`
    - Creates the release branch (`release/<channel>`) if it does not already exist
    - Dispatches Deployment Engine image publishing to GHCR
    - Reconciles matching existing branches and tags as successful state, rejects conflicting tag targets, and resumes any repositories left incomplete by a failed run
@@ -109,7 +111,7 @@ When starting the release process, first create an RC release. If validation fai
 
 ### Step 1: Start a Teams release thread
 
-Before performing any release actions, start and join a meeting in the team's Microsoft Teams channel dedicated to releases. Title the thread with the target final release version for the entire release cycle (for example, use "Release v0.56.0", not "Release v0.56.0-rc1").
+Before performing any release actions, start and join a meeting in the team's Microsoft Teams channel dedicated to releases. Title the thread with the target final release version for the entire release cycle (for example, use "Release v0.56.0", not "Release v0.56.0-rc.1").
 
 Turn on transcription for the meeting. Recording is not necessary. Verbally announce each step as you perform it, and post updates in the thread with the same information. This creates a detailed timeline of the release process that can be reviewed later for improvements and serves as a record of the release.
 
@@ -123,13 +125,13 @@ This detailed release log helps the team improve future releases by reviewing th
 
 ### Step 2: Tag the Deployment Engine
 
-Run the following in a local clone of the [Deployment Engine repo](https://github.com/azure-octo/deployment-engine), replacing `vX.Y.Z-rcN` with the RC version (e.g., `v0.56.0-rc1`):
+Run the following in a local clone of the [Deployment Engine repo](https://github.com/azure-octo/deployment-engine), replacing `vX.Y.Z-rc.N` with the RC version (e.g., `v0.56.0-rc.1`):
 
 ```bash
 git checkout main
 git pull origin main
-git tag vX.Y.Z-rcN
-git push origin vX.Y.Z-rcN
+git tag vX.Y.Z-rc.N
+git push origin vX.Y.Z-rc.N
 ```
 
 > **Note**: This manual tagging step is a temporary workaround. Ideally the [Deployment Engine Release Workflow](https://github.com/azure-octo/deployment-engine/actions/workflows/release.yaml) would handle this, but GPG signing is not yet configured there. See [azure-octo/deployment-engine#456](https://github.com/azure-octo/deployment-engine/issues/456).
@@ -141,7 +143,7 @@ Create a branch from `main` in the `radius-project/radius` repo:
 ```bash
 git checkout main
 git pull origin main
-git checkout -b <USERNAME>/release-X.Y.0-rcN
+git checkout -b <USERNAME>/release-X.Y.0-rc.N
 ```
 
 Edit `versions.yaml` to add the new RC as a supported version. Move the oldest supported version to the `deprecated` list if needed ([example PR](https://github.com/radius-project/radius/pull/6077/files)).
@@ -149,7 +151,7 @@ Edit `versions.yaml` to add the new RC as a supported version. Move the oldest s
 ```yaml
 supported:
   - channel: '0.56'
-    version: 'v0.56.0-rc1'
+    version: 'v0.56.0-rc.1'
   - channel: '0.55'
     version: 'v0.55.0'
 deprecated:
@@ -162,7 +164,7 @@ deprecated:
 Push the branch and create a PR against `main`:
 
 ```bash
-git push origin <USERNAME>/release-X.Y.0-rcN
+git push origin <USERNAME>/release-X.Y.0-rc.N
 ```
 
 After approval, merge the PR to `main`.
@@ -171,12 +173,12 @@ After approval, merge the PR to `main`.
 
 After merging, the [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow automatically runs because `versions.yaml` changed on `main`.
 
-- **First RC**: The workflow creates the `release/X.Y` branch from `main` and pushes the `vX.Y.Z-rcN` tag. The tag push then triggers the [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow. No manual tag creation is needed. Verify the release using the checklist below.
+- **First RC**: The workflow creates the `release/X.Y` branch from `main` and pushes the `vX.Y.Z-rc.N` tag. The tag push then triggers the [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow. No manual tag creation is needed. Verify the release using the checklist below.
 - **Subsequent RCs**: The workflow detects that the release branch already exists and **skips tag creation**. This is expected — the tag will be created when the cherry-pick lands on the release branch in [Step 6](#step-6-cherry-pick-additional-changes-subsequent-rcs-only). Skip ahead to Step 6 for now and return to verify after completing it.
 
 Monitor and verify:
 
-1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully. For the first RC, confirm it created the `release/X.Y` [branch](https://github.com/radius-project/radius/branches) and the `vX.Y.Z-rcN` [tag](https://github.com/radius-project/radius/tags).
+1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully. For the first RC, confirm it created the `release/X.Y` [branch](https://github.com/radius-project/radius/branches) and the `vX.Y.Z-rc.N` [tag](https://github.com/radius-project/radius/tags).
 2. The [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow (triggered by the tag push) completes successfully. This workflow also dispatches Bicep types publishing automatically.
 3. An RC release marked as pre-release appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
@@ -184,12 +186,12 @@ Monitor and verify:
 
 > **Skip this step for the first RC.** The release branch was just created from `main` and already contains all changes.
 
-For subsequent RCs (`rc2`, `rc3`, etc.), cherry-pick the `versions.yaml` update and any bug fixes onto the release branch:
+For subsequent RCs (`rc.2`, `rc.3`, etc.), cherry-pick the `versions.yaml` update and any bug fixes onto the release branch:
 
 ```bash
 git checkout release/X.Y
 git pull origin release/X.Y
-git checkout -b <USERNAME>/cherry-pick-rcN-to-release-branch
+git checkout -b <USERNAME>/cherry-pick-rc.N-to-release-branch
 git cherry-pick -x <VERSIONS_YAML_COMMIT_HASH>
 git cherry-pick -x <OPTIONAL_FIX_COMMIT_HASH>
 ```
@@ -199,14 +201,14 @@ git cherry-pick -x <OPTIONAL_FIX_COMMIT_HASH>
 Push and create a PR targeting the release branch:
 
 ```bash
-git push origin <USERNAME>/cherry-pick-rcN-to-release-branch
+git push origin <USERNAME>/cherry-pick-rc.N-to-release-branch
 ```
 
 After approval, merge the PR. This triggers the release automation on the release branch, creating the new RC tag. Return to [Step 5](#step-5-verify-the-automated-release) to verify the release completed successfully.
 
 ### Step 7: Run validation workflows
 
-1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch. Enter the RC version number without the `v` prefix as the version (e.g., `0.56.0-rc1`).
+1. In `radius-project/radius`, run the [Release verification](https://github.com/radius-project/radius/actions/workflows/release-verification.yaml) workflow from the `release/X.Y` branch. Enter the RC version number without the `v` prefix as the version (e.g., `0.56.0-rc.1`).
 
 2. In `radius-project/docs`, run the [Upmerge docs to edge](https://github.com/radius-project/docs/actions/workflows/upmerge.yaml) workflow from the **previous** release branch (e.g., run from `v0.55` when releasing `v0.56`).
 
@@ -216,7 +218,7 @@ After approval, merge the PR. This triggers the release automation on the releas
 
    > This generates a PR. Get approval and merge it before proceeding. The PR excludes `bicepconfig.json`.
 
-4. In `radius-project/samples`, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow from the `edge` branch. Enter the RC version number without the `v` prefix as the version (e.g., `0.56.0-rc1`).
+4. In `radius-project/samples`, run the [Test Samples](https://github.com/radius-project/samples/actions/workflows/test.yaml) workflow from the `edge` branch. Enter the RC version number without the `v` prefix as the version (e.g., `0.56.0-rc.1`).
 
    > Run this only after the upmerge PR has been merged to `edge`. If tests fail, check logs and existing issues in the samples repo. Flaky tests may pass on re-run. If failures persist, file an issue and raise it with maintainers.
 
@@ -224,7 +226,7 @@ After approval, merge the PR. This triggers the release automation on the releas
 
 If all validation workflows pass, proceed to [creating the final release](#creating-the-final-release).
 
-If validation fails, fix the issues on `main`, then create a new RC (increment the RC number, e.g., `rc2`, `rc3`) by repeating the steps above.
+If validation fails, fix the issues on `main`, then create a new RC (increment the RC number, e.g., `rc.2`, `rc.3`) by repeating the steps above.
 
 ## Creating the final release
 
@@ -262,7 +264,7 @@ git checkout -b <USERNAME>/final-release-X.Y.0
    ```yaml
    supported:
      - channel: '0.56'
-       version: 'v0.56.0'   # was v0.56.0-rc1
+       version: 'v0.56.0'   # was v0.56.0-rc.1
    ```
 
 2. **Create a draft release notes file**: Add `docs/release-notes/vX.Y.Z.md` using the [release notes template](../../release-notes/template.md). See the [release notes README](../../release-notes/README.md) for instructions ([example PR](https://github.com/radius-project/radius/pull/6092/files)).
