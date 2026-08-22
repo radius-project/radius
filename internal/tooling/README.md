@@ -146,7 +146,7 @@ The `replace` prefix must occur exactly once. Terraform uses `versionFiles` for 
 - Checksums are refreshed for every configured platform at the selected version.
 - The manifest, generated Make include, Terraform compatibility file, and declared version consumers are updated only after source checks succeed.
 - When CI requests a pull request body file, adopted versions with a GitHub repository link to their release pages.
-- The weekly workflow delegates branch, commit, and pull request maintenance to the pinned `peter-evans/create-pull-request` action. It uses the GitHub App token with DCO signoff and bot commit signing enabled, then fails if the action reports that the pull request commits are not verified.
+- The weekly workflow delegates branch, commit, and pull request maintenance to the pinned `peter-evans/create-pull-request` action. It uses the GitHub App token with DCO signoff and bot commit signing enabled, then queries the pull request's commits through the GitHub API and fails if any commit signature is not verified.
 
 ## Verification
 
