@@ -222,6 +222,7 @@ tools:
     version: 1.15.8
     source:
       type: hashicorp-checkpoint
+      repository: hashicorp/terraform
       latestURL: https://checkpoint-api.hashicorp.com/v1/check/terraform
     downloadTemplate: https://releases.hashicorp.com/terraform/{version}/terraform_{version}_{os}_{arch}.zip
     platforms:
