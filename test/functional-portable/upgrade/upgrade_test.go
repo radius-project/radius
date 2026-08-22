@@ -66,6 +66,11 @@ const (
 	// after uninstalling the Helm release.
 	cleanupTimeout = 2 * time.Minute
 
+	// cleanupCommandTimeout bounds the best-effort uninstall registered with
+	// t.Cleanup. The test context is already canceled when cleanup runs, so the
+	// cleanup uses a detached context with its own deadline.
+	cleanupCommandTimeout = 5 * time.Minute
+
 	// apiServiceDeregistrationTimeout is the maximum time to wait for the
 	// Kubernetes aggregated API service to deregister after Radius pods terminate.
 	apiServiceDeregistrationTimeout = 30 * time.Second
@@ -100,9 +105,11 @@ func Test_PreflightContainer(t *testing.T) {
 	t.Log("Installing Radius with preflight enabled and custom configuration")
 	require.NoError(t, helmInstall(ctx, image, tag, preflightEnabledValues()), "Failed to install Radius")
 
-	// t.Context is canceled before cleanup functions run, so the uninstall needs a
-	// context that outlives it.
-	t.Cleanup(func() { helmUninstall(t, context.WithoutCancel(ctx)) })
+	t.Cleanup(func() {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupCommandTimeout)
+		defer cancel()
+		helmUninstall(t, cleanupCtx)
+	})
 
 	// The chart's post-install hook verifies the aggregated API through
 	// kube-apiserver before Helm returns, so no test-specific readiness wait is
@@ -111,7 +118,9 @@ func Test_PreflightContainer(t *testing.T) {
 
 	// The subtests are given the parent's context rather than their own so the shared
 	// release outlives any single subtest.
-	t.Run("Enabled", func(t *testing.T) { testPreflightEnabled(t, ctx, release) })
+	if !t.Run("Enabled", func(t *testing.T) { testPreflightEnabled(t, ctx, release) }) {
+		return
+	}
 	t.Run("Disabled", func(t *testing.T) { testPreflightDisabled(t, ctx, release) })
 }
 
@@ -381,8 +390,14 @@ func cleanupAndWait(t *testing.T, ctx context.Context, k8sClient kubernetes.Inte
 	t.Helper()
 
 	t.Log("Cleaning up any existing Radius installation")
-	_ = exec.CommandContext(ctx, "helm", "uninstall", helmReleaseName,
-		"--namespace", radiusNamespace, "--ignore-not-found", "--wait").Run()
+	err := runCommand(ctx, []string{
+		"helm", "uninstall", helmReleaseName,
+		"--namespace", radiusNamespace,
+		"--ignore-not-found",
+		"--wait",
+		"--timeout", helmTimeout,
+	})
+	require.NoError(t, err, "Failed to clean up existing Radius installation")
 
 	// Wait for Radius pods to terminate. The Kubernetes aggregated API service needs
 	// time to deregister after pods are gone, so we must wait for Radius pods to be
