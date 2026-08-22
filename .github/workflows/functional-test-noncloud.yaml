@@ -35,7 +35,7 @@ on:
     # Expected client_payload:
     #   src_image: Source image in ACR (e.g. radiusdeploymentengine.azurecr.io/deployment-engine)
     #   dest_image: Destination image in GHCR (e.g. ghcr.io/radius-project/deployment-engine)
-    #   tag: Tag for the image (e.g. latest, 0.1, 0.1.0-rc1, pr-123)
+    #   tag: Tag for the image (e.g. latest, 0.1, 0.61.0-rc.1, pr-123)
   pull_request:
     branches:
       - main
