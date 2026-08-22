@@ -21,19 +21,23 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/radius-project/radius/test/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
 
-// newTestRESTClient returns a REST client pointed at a test HTTP server that
-// serves the given handler.
-func newTestRESTClient(t *testing.T, handler http.Handler) rest.Interface {
+// The polling, timeout, and last-failure reporting behavior of the readiness gate is
+// covered by testutil.WaitForControlPlaneReady's own tests. These tests cover the
+// wiring in this package: which client the gate probes and when it is disabled.
+
+// newTestKubernetesClient returns a Kubernetes client pointed at a test HTTP server
+// that serves the given handler.
+func newTestKubernetesClient(t *testing.T, handler http.Handler) kubernetes.Interface {
 	t.Helper()
 
 	server := httptest.NewServer(handler)
@@ -42,60 +46,51 @@ func newTestRESTClient(t *testing.T, handler http.Handler) rest.Interface {
 	client, err := kubernetes.NewForConfig(&rest.Config{Host: server.URL})
 	require.NoError(t, err)
 
-	return client.Discovery().RESTClient()
+	return client
 }
 
-func Test_WaitForControlPlaneReady_ReturnsWhenAggregatedAPIServes(t *testing.T) {
+func Test_NewControlPlaneReadyWaiter_ProbesAggregatedAPI(t *testing.T) {
 	t.Parallel()
 	var mu sync.Mutex
 	var paths []string
-	client := newTestRESTClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	client := newTestKubernetesClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mu.Lock()
 		paths = append(paths, r.URL.Path)
 		mu.Unlock()
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	require.NoError(t, waitForControlPlaneReady(t.Context(), t, client, time.Millisecond))
+	waiter := newControlPlaneReadyWaiter(t, client)
+	require.NotNil(t, waiter)
+
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+
+	require.NoError(t, waiter(ctx))
 
 	// A single probe of the aggregated path is enough: it cannot succeed unless
 	// the kube-apiserver and its aggregation layer are both serving.
 	mu.Lock()
 	defer mu.Unlock()
-	assert.Equal(t, []string{radiusAggregatedAPIPath}, paths)
+	assert.Equal(t, []string{testutil.RadiusAggregatedAPIPath}, paths)
 }
 
-func Test_WaitForControlPlaneReady_PollsUntilHealthy(t *testing.T) {
+func Test_NewControlPlaneReadyWaiter_ReturnsErrorWhenAggregatedAPIStaysUnavailable(t *testing.T) {
 	t.Parallel()
-	var requests atomic.Int32
-	// The kube-apiserver can be up while the UCP APIService behind the
-	// aggregation layer is still unavailable, which surfaces as a 503. The gate
-	// must keep polling rather than let a retry proceed in that window.
-	client := newTestRESTClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if requests.Add(1) < 3 {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
+	// The kube-apiserver can be up while the UCP APIService behind the aggregation
+	// layer is still unavailable, which surfaces as a 503. The gate must report that
+	// as an error rather than let a retry proceed.
+	client := newTestKubernetesClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
 	}))
 
-	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
-	defer cancel()
-
-	require.NoError(t, waitForControlPlaneReady(ctx, t, client, time.Millisecond))
-	assert.Equal(t, int32(3), requests.Load())
-}
-
-func Test_WaitForControlPlaneReady_ReportsLastProbeFailureOnTimeout(t *testing.T) {
-	t.Parallel()
-	client := newTestRESTClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
+	waiter := newControlPlaneReadyWaiter(t, client)
+	require.NotNil(t, waiter)
 
 	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
 
-	err := waitForControlPlaneReady(ctx, t, client, time.Millisecond)
+	err := waiter(ctx)
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.Contains(t, err.Error(), "last probe failure")

@@ -18,8 +18,12 @@ package upgrade_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
+	"sort"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -28,6 +32,7 @@ import (
 	"github.com/stretchr/testify/require"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -73,6 +78,31 @@ const (
 	// Contour is deployed as a separate Helm release in the same namespace and
 	// must be excluded from cleanup checks — its pods will remain running.
 	radiusPodSelector = "app.kubernetes.io/part-of=radius"
+
+	// ucpServiceName is the Service the kube-apiserver aggregation layer forwards
+	// api.ucp.dev requests to.
+	ucpServiceName = "ucp"
+
+	// ucpPodSelector and ucpContainerName identify the workload behind that Service.
+	ucpPodSelector   = "app.kubernetes.io/name=ucp"
+	ucpContainerName = "ucp"
+
+	// ucpAPIServicePath addresses the aggregated APIService object. It is fetched as
+	// raw JSON because k8s.io/kube-aggregator is not a dependency of this module.
+	ucpAPIServiceName = "v1alpha3.api.ucp.dev"
+	ucpAPIServicePath = "/apis/apiregistration.k8s.io/v1/apiservices/" + ucpAPIServiceName
+
+	// controlPlaneDiagnosticsTimeout bounds the diagnostics dump emitted when
+	// readiness times out, so a wedged API server cannot hang the test run.
+	controlPlaneDiagnosticsTimeout = 30 * time.Second
+
+	// ucpLogTailLines is how many lines of UCP container logs to include in the
+	// readiness failure diagnostics.
+	ucpLogTailLines = 100
+
+	// recentEventLimit is how many of the most recent namespace events to include in
+	// the readiness failure diagnostics.
+	recentEventLimit = 30
 )
 
 // Test_PreflightContainer runs all preflight container upgrade tests as sequential
@@ -235,25 +265,241 @@ func runCommand(ctx context.Context, args []string) error {
 	return nil
 }
 
-// waitForControlPlane polls until the Radius control plane API is reachable.
-// It treats transient errors (including 503 from the aggregated APIService) as
-// retryable and keeps polling until the timeout expires.
+// waitForControlPlane blocks until the Radius aggregated API is serving, then builds
+// the test options.
+//
+// A transient 503 immediately after install is normal and unavoidable: the APIService
+// Available condition is owned by the kube-apiserver aggregator, which re-checks the
+// backend on its own schedule and can keep returning a stale unavailable result for
+// several seconds after the UCP pod is Ready and serving.
+//
+// Readiness is polled with an error-returning probe rather than by calling
+// rp.NewRPTestOptions in a retry callback. NewRPTestOptions asserts with require.*,
+// which calls t.FailNow and therefore runtime.Goexit. Goexit is not a panic, so
+// recover() cannot see it; a condition goroutine that exits that way never reports
+// back to testify's Eventually loop, which only re-arms its retry ticker when the
+// condition returns a value. The result was a single readiness attempt followed by an
+// idle wait for the full timeout. rp.NewRPTestOptions is therefore called exactly
+// once, on the test goroutine, after readiness has already succeeded.
 func waitForControlPlane(t *testing.T, ctx context.Context) rp.RPTestOptions {
 	t.Helper()
-	var options rp.RPTestOptions
-	require.Eventually(t, func() bool {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					// NewRPTestOptions calls require.NoError internally, catch panics
-					t.Logf("Control plane not ready yet: %v", r)
-				}
-			}()
-			options = rp.NewRPTestOptions(t)
-		}()
-		return options.ManagementClient != nil
-	}, controlPlaneTimeout, controlPlanePollInterval, "Control plane did not become available within timeout")
-	return options
+
+	k8sClient, err := newKubernetesClient()
+	require.NoError(t, err, "Failed to create Kubernetes client")
+
+	readyCtx, cancel := context.WithTimeout(ctx, controlPlaneTimeout)
+	defer cancel()
+
+	if err := testutil.WaitForControlPlaneReady(readyCtx, t, k8sClient.Discovery().RESTClient(), controlPlanePollInterval); err != nil {
+		logControlPlaneDiagnostics(t, ctx, k8sClient)
+		require.NoError(t, err, "Control plane did not become available within timeout")
+	}
+
+	return rp.NewRPTestOptions(t)
+}
+
+// newKubernetesClient builds a Kubernetes client from the ambient kubeconfig.
+func newKubernetesClient() (*kubernetes.Clientset, error) {
+	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		clientcmd.NewDefaultClientConfigLoadingRules(), nil).ClientConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load kubeconfig: %w", err)
+	}
+	return kubernetes.NewForConfig(config)
+}
+
+// logControlPlaneDiagnostics dumps the state of the Radius aggregated API and the UCP
+// workload behind it, so a readiness timeout can be diagnosed from the CI log without
+// a rerun.
+//
+// It runs on a context detached from ctx because the usual reason for calling it is an
+// expired deadline, which would otherwise cancel every diagnostic request.
+func logControlPlaneDiagnostics(t *testing.T, ctx context.Context, k8sClient kubernetes.Interface) {
+	t.Helper()
+	t.Log("Control plane readiness diagnostics")
+
+	diagnosticsCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), controlPlaneDiagnosticsTimeout)
+	defer cancel()
+
+	logAPIServiceConditions(t, diagnosticsCtx, k8sClient)
+	logUCPService(t, diagnosticsCtx, k8sClient)
+	logUCPPods(t, diagnosticsCtx, k8sClient)
+	logRecentEvents(t, diagnosticsCtx, k8sClient)
+}
+
+// logAPIServiceConditions reports the aggregator's own view of the Radius APIService.
+// This distinguishes "the aggregator never contacted UCP" from "UCP answered badly".
+func logAPIServiceConditions(t *testing.T, ctx context.Context, k8sClient kubernetes.Interface) {
+	t.Helper()
+
+	raw, err := k8sClient.Discovery().RESTClient().Get().AbsPath(ucpAPIServicePath).DoRaw(ctx)
+	if err != nil {
+		t.Logf("failed to get APIService %s: %v", ucpAPIServiceName, err)
+		return
+	}
+
+	var apiService struct {
+		Status struct {
+			Conditions []struct {
+				Type    string `json:"type"`
+				Status  string `json:"status"`
+				Reason  string `json:"reason"`
+				Message string `json:"message"`
+			} `json:"conditions"`
+		} `json:"status"`
+	}
+	if err := json.Unmarshal(raw, &apiService); err != nil {
+		t.Logf("failed to decode APIService %s (raw: %s): %v", ucpAPIServiceName, string(raw), err)
+		return
+	}
+
+	if len(apiService.Status.Conditions) == 0 {
+		t.Logf("APIService %s reports no status conditions", ucpAPIServiceName)
+		return
+	}
+	for _, condition := range apiService.Status.Conditions {
+		t.Logf("APIService %s condition %s=%s reason=%s message=%s",
+			ucpAPIServiceName, condition.Type, condition.Status, condition.Reason, condition.Message)
+	}
+}
+
+// logUCPService reports the Service the aggregator routes through and its
+// EndpointSlices, which show whether a Ready backend was actually registered.
+func logUCPService(t *testing.T, ctx context.Context, k8sClient kubernetes.Interface) {
+	t.Helper()
+
+	service, err := k8sClient.CoreV1().Services(radiusNamespace).Get(ctx, ucpServiceName, metav1.GetOptions{})
+	if err != nil {
+		t.Logf("failed to get Service %s/%s: %v", radiusNamespace, ucpServiceName, err)
+	} else {
+		ports := make([]string, 0, len(service.Spec.Ports))
+		for _, port := range service.Spec.Ports {
+			ports = append(ports, fmt.Sprintf("%s:%d->%s/%s", port.Name, port.Port, port.TargetPort.String(), port.Protocol))
+		}
+		t.Logf("Service %s/%s: clusterIP=%s ports=%s selector=%v",
+			service.Namespace, service.Name, service.Spec.ClusterIP, strings.Join(ports, ","), service.Spec.Selector)
+	}
+
+	endpointSlices, err := k8sClient.DiscoveryV1().EndpointSlices(radiusNamespace).List(ctx, metav1.ListOptions{
+		LabelSelector: discoveryv1.LabelServiceName + "=" + ucpServiceName,
+	})
+	if err != nil {
+		t.Logf("failed to list EndpointSlices for Service %s/%s: %v", radiusNamespace, ucpServiceName, err)
+		return
+	}
+	if len(endpointSlices.Items) == 0 {
+		t.Logf("Service %s/%s has no EndpointSlices", radiusNamespace, ucpServiceName)
+		return
+	}
+
+	for _, endpointSlice := range endpointSlices.Items {
+		endpoints := make([]string, 0, len(endpointSlice.Endpoints))
+		for _, endpoint := range endpointSlice.Endpoints {
+			endpoints = append(endpoints, fmt.Sprintf("%s ready=%s serving=%s terminating=%s",
+				strings.Join(endpoint.Addresses, ","),
+				optionalBool(endpoint.Conditions.Ready),
+				optionalBool(endpoint.Conditions.Serving),
+				optionalBool(endpoint.Conditions.Terminating)))
+		}
+		t.Logf("EndpointSlice %s/%s: endpoints=[%s]", endpointSlice.Namespace, endpointSlice.Name, strings.Join(endpoints, "; "))
+	}
+}
+
+// logUCPPods reports pod and container status plus recent UCP logs.
+func logUCPPods(t *testing.T, ctx context.Context, k8sClient kubernetes.Interface) {
+	t.Helper()
+
+	pods, err := k8sClient.CoreV1().Pods(radiusNamespace).List(ctx, metav1.ListOptions{LabelSelector: ucpPodSelector})
+	if err != nil {
+		t.Logf("failed to list pods matching %q in %s: %v", ucpPodSelector, radiusNamespace, err)
+		return
+	}
+	if len(pods.Items) == 0 {
+		t.Logf("no pods matching %q in %s", ucpPodSelector, radiusNamespace)
+		return
+	}
+
+	tailLines := int64(ucpLogTailLines)
+	for _, pod := range pods.Items {
+		t.Logf("Pod %s/%s: phase=%s podIP=%s", pod.Namespace, pod.Name, pod.Status.Phase, pod.Status.PodIP)
+		for _, condition := range pod.Status.Conditions {
+			t.Logf("  condition %s=%s reason=%s message=%s", condition.Type, condition.Status, condition.Reason, condition.Message)
+		}
+		for _, containerStatus := range pod.Status.ContainerStatuses {
+			t.Logf("  container %s: ready=%t restarts=%d state=%s",
+				containerStatus.Name, containerStatus.Ready, containerStatus.RestartCount, containerState(containerStatus.State))
+		}
+
+		logs, err := k8sClient.CoreV1().Pods(pod.Namespace).
+			GetLogs(pod.Name, &corev1.PodLogOptions{Container: ucpContainerName, TailLines: &tailLines}).
+			DoRaw(ctx)
+		if err != nil {
+			t.Logf("  failed to get logs for %s/%s: %v", pod.Namespace, pod.Name, err)
+			continue
+		}
+		t.Logf("  last %d log lines for %s/%s:\n%s", ucpLogTailLines, pod.Namespace, pod.Name, string(logs))
+	}
+}
+
+// logRecentEvents reports the most recent events in the Radius namespace.
+func logRecentEvents(t *testing.T, ctx context.Context, k8sClient kubernetes.Interface) {
+	t.Helper()
+
+	events, err := k8sClient.CoreV1().Events(radiusNamespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		t.Logf("failed to list events in %s: %v", radiusNamespace, err)
+		return
+	}
+	if len(events.Items) == 0 {
+		t.Logf("no events in %s", radiusNamespace)
+		return
+	}
+
+	items := events.Items
+	sort.Slice(items, func(i, j int) bool { return eventTime(items[i]).Before(eventTime(items[j])) })
+	if len(items) > recentEventLimit {
+		items = items[len(items)-recentEventLimit:]
+	}
+
+	for _, event := range items {
+		t.Logf("Event %s %s/%s: type=%s reason=%s message=%s",
+			eventTime(event).Format(time.RFC3339), event.InvolvedObject.Kind, event.InvolvedObject.Name,
+			event.Type, event.Reason, event.Message)
+	}
+}
+
+// eventTime returns the most meaningful timestamp available on an event. Events written
+// through the newer events.k8s.io API leave LastTimestamp empty.
+func eventTime(event corev1.Event) time.Time {
+	switch {
+	case !event.LastTimestamp.IsZero():
+		return event.LastTimestamp.Time
+	case !event.EventTime.IsZero():
+		return event.EventTime.Time
+	default:
+		return event.CreationTimestamp.Time
+	}
+}
+
+func containerState(state corev1.ContainerState) string {
+	switch {
+	case state.Running != nil:
+		return fmt.Sprintf("running since %s", state.Running.StartedAt.Format(time.RFC3339))
+	case state.Waiting != nil:
+		return fmt.Sprintf("waiting reason=%s message=%s", state.Waiting.Reason, state.Waiting.Message)
+	case state.Terminated != nil:
+		return fmt.Sprintf("terminated reason=%s exitCode=%d message=%s",
+			state.Terminated.Reason, state.Terminated.ExitCode, state.Terminated.Message)
+	default:
+		return "unknown"
+	}
+}
+
+func optionalBool(value *bool) string {
+	if value == nil {
+		return "unknown"
+	}
+	return strconv.FormatBool(*value)
 }
 
 // cleanupAndWait uninstalls the Radius Helm release and waits for all Radius pods in
@@ -274,15 +520,7 @@ func cleanupAndWait(t *testing.T, ctx context.Context) {
 	// Wait for Radius pods to terminate. The Kubernetes aggregated API service needs
 	// time to deregister after pods are gone, so we must wait for Radius pods to be
 	// fully removed before starting a new install.
-	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		clientcmd.NewDefaultClientConfigLoadingRules(), nil).ClientConfig()
-	if err != nil {
-		t.Logf("Warning: could not create k8s client for cleanup wait: %v", err)
-		time.Sleep(cleanupFallbackWait)
-		return
-	}
-
-	k8sClient, err := kubernetes.NewForConfig(config)
+	k8sClient, err := newKubernetesClient()
 	if err != nil {
 		t.Logf("Warning: could not create k8s client for cleanup wait: %v", err)
 		time.Sleep(cleanupFallbackWait)

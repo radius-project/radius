@@ -18,32 +18,16 @@ package step
 
 import (
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
+	"github.com/radius-project/radius/test/testutil"
 	k8s "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
-const (
-	// controlPlaneReadyPollInterval is how long to wait between readiness
-	// probes while the control plane is recovering.
-	controlPlaneReadyPollInterval = 5 * time.Second
-
-	// controlPlaneProbeTimeout bounds a single readiness probe so a hung
-	// kube-apiserver cannot consume the caller's entire retry budget in one
-	// request.
-	controlPlaneProbeTimeout = 10 * time.Second
-
-	// radiusAggregatedAPIPath is the aggregated API discovery path that rad
-	// itself requests when it opens a workspace connection (see
-	// pkg/cli/workspaces.Connection). Probing it exercises the whole chain a
-	// deployment depends on: the kube-apiserver, its aggregation layer, and the
-	// UCP APIService behind it. A healthy response here implies the
-	// kube-apiserver is serving, so no separate /readyz probe is needed.
-	radiusAggregatedAPIPath = "/apis/api.ucp.dev/v1alpha3"
-)
+// controlPlaneReadyPollInterval is how long to wait between readiness probes
+// while the control plane is recovering.
+const controlPlaneReadyPollInterval = 5 * time.Second
 
 // newControlPlaneReadyWaiter returns a function that blocks until the Radius
 // aggregated API is serving again, or until ctx is done.
@@ -67,35 +51,6 @@ func newControlPlaneReadyWaiter(t *testing.T, client k8s.Interface) func(context
 	}
 
 	return func(ctx context.Context) error {
-		return waitForControlPlaneReady(ctx, t, restClient, controlPlaneReadyPollInterval)
+		return testutil.WaitForControlPlaneReady(ctx, t, restClient, controlPlaneReadyPollInterval)
 	}
-}
-
-// waitForControlPlaneReady polls until the control plane is ready or ctx is
-// done. The error returned on timeout includes the last probe failure so the
-// test log records what was still unavailable.
-func waitForControlPlaneReady(ctx context.Context, t *testing.T, client rest.Interface, pollInterval time.Duration) error {
-	for {
-		lastErr := probe(ctx, client, radiusAggregatedAPIPath)
-		if lastErr == nil {
-			return nil
-		}
-
-		t.Logf("waiting for the Radius control plane to become ready: %v", lastErr)
-
-		timer := time.NewTimer(pollInterval)
-		select {
-		case <-timer.C:
-		case <-ctx.Done():
-			timer.Stop()
-			return fmt.Errorf("control plane did not become ready: %w (last probe failure: %v)", ctx.Err(), lastErr)
-		}
-	}
-}
-
-func probe(ctx context.Context, client rest.Interface, path string) error {
-	probeCtx, cancel := context.WithTimeout(ctx, controlPlaneProbeTimeout)
-	defer cancel()
-
-	return client.Get().AbsPath(path).Do(probeCtx).Error()
 }
