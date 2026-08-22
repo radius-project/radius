@@ -17,9 +17,12 @@ limitations under the License.
 package upgrade_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"testing"
 	"time"
 
@@ -36,30 +39,32 @@ import (
 
 const (
 	radiusNamespace   = "radius-system"
+	helmReleaseName   = "radius"
 	preUpgradeJobName = "pre-upgrade"
 	helmTimeout       = "5m"
 
 	relativeChartPath = "../../../deploy/Chart"
 
-	// Polling intervals for waiting on Kubernetes state changes.
-	controlPlanePollInterval = 3 * time.Second
-	cleanupPollInterval      = 3 * time.Second
-	jobPollInterval          = 1 * time.Second
-	jobPollAttempts          = 15
+	// helmStatusDeployed is the Helm release status that means the last operation
+	// succeeded and the release is ready to be upgraded again.
+	helmStatusDeployed = "deployed"
 
-	// controlPlaneTimeout is the maximum time to wait for the control plane API
-	// to become available after Helm install/upgrade completes. This needs to be
-	// generous because the UCP aggregated APIService may briefly return 503 while
-	// pods are rolling.
-	controlPlaneTimeout = 4 * time.Minute
+	// preflightJobTTLSeconds is the ttlSecondsAfterFinished the test configures on the
+	// pre-upgrade Job and then asserts was applied.
+	preflightJobTTLSeconds = 60
+
+	// Polling intervals for waiting on Kubernetes state changes.
+	cleanupPollInterval = 3 * time.Second
+	jobPollInterval     = 1 * time.Second
+	jobPollAttempts     = 15
+
+	// jobDeletionTimeout is the maximum time to wait for a deleted pre-upgrade Job to
+	// disappear from the API server.
+	jobDeletionTimeout = 60 * time.Second
 
 	// cleanupTimeout is the maximum time to wait for Radius pods to terminate
 	// after uninstalling the Helm release.
 	cleanupTimeout = 2 * time.Minute
-
-	// cleanupFallbackWait is the fallback sleep duration when unable to create
-	// a Kubernetes client for cleanup polling.
-	cleanupFallbackWait = 10 * time.Second
 
 	// apiServiceDeregistrationTimeout is the maximum time to wait for the
 	// Kubernetes aggregated API service to deregister after Radius pods terminate.
@@ -75,89 +80,103 @@ const (
 	radiusPodSelector = "app.kubernetes.io/part-of=radius"
 )
 
-// Test_PreflightContainer runs all preflight container upgrade tests as sequential
-// subtests. These tests cannot run in parallel because they share the same Helm
-// release name and Kubernetes namespace. Consolidating into subtests reduces the
-// number of full install/uninstall cycles (from 4 to 2) and eliminates redundant
-// test logic.
+// Test_PreflightContainer exercises the chart's pre-upgrade Helm hook.
+//
+// The hook only runs on helm upgrade, so installing Radius is setup cost rather than the
+// subject of the test. The parent installs once with the hook enabled and uninstalls
+// once; the chart's post-install hook guarantees the aggregated API is serving before
+// the test client is constructed. The subtests then run in sequence against that single
+// release, upgrading first with the hook enabled and then again with it disabled. They
+// share a Helm release name and a Kubernetes namespace and so must not run in parallel.
 func Test_PreflightContainer(t *testing.T) {
-	t.Run("Enabled", testPreflightEnabled)
-	t.Run("Disabled", testPreflightDisabled)
+	ctx := t.Context()
+	image, tag := getPreUpgradeImage()
+
+	k8sClient, err := newKubernetesClient()
+	require.NoError(t, err, "Failed to create Kubernetes client")
+
+	cleanupAndWait(t, ctx, k8sClient)
+
+	t.Log("Installing Radius with preflight enabled and custom configuration")
+	require.NoError(t, helmInstall(ctx, image, tag, preflightEnabledValues()), "Failed to install Radius")
+
+	// t.Context is canceled before cleanup functions run, so the uninstall needs a
+	// context that outlives it.
+	t.Cleanup(func() { helmUninstall(t, context.WithoutCancel(ctx)) })
+
+	// The chart's post-install hook verifies the aggregated API through
+	// kube-apiserver before Helm returns, so no test-specific readiness wait is
+	// needed here.
+	release := preflightRelease{options: rp.NewRPTestOptions(t), image: image, tag: tag}
+
+	// The subtests are given the parent's context rather than their own so the shared
+	// release outlives any single subtest.
+	t.Run("Enabled", func(t *testing.T) { testPreflightEnabled(t, ctx, release) })
+	t.Run("Disabled", func(t *testing.T) { testPreflightDisabled(t, ctx, release) })
+}
+
+// preflightRelease is the state the preflight subtests share: the single Helm release
+// they upgrade in sequence and the clients used to observe it.
+type preflightRelease struct {
+	options rp.RPTestOptions
+	image   string
+	tag     string
+}
+
+// preflightEnabledValues returns the Helm values that enable the pre-upgrade hook with
+// the Job configuration the Enabled subtest asserts on.
+func preflightEnabledValues() map[string]string {
+	return map[string]string{
+		"preupgrade.enabled":                 "true",
+		"preupgrade.ttlSecondsAfterFinished": strconv.Itoa(preflightJobTTLSeconds),
+		"preupgrade.checks.version":          "true",
+	}
 }
 
 // testPreflightEnabled verifies that when preflight is enabled:
 //   - The pre-upgrade Helm hook creates a job during upgrade
 //   - Custom job configuration (TTL, version check) is applied correctly
 //   - Job logs and status are accessible
-func testPreflightEnabled(t *testing.T) {
-	ctx := t.Context()
-	image, tag := getPreUpgradeImage()
-
-	cleanupAndWait(t, ctx)
-
-	helmValues := map[string]string{
-		"preupgrade.enabled":                 "true",
-		"preupgrade.ttlSecondsAfterFinished": "60",
-		"preupgrade.checks.version":          "true",
-	}
-
-	t.Log("Installing Radius with preflight enabled and custom configuration")
-	err := helmInstall(ctx, image, tag, helmValues)
-	require.NoError(t, err, "Failed to install Radius")
-
-	options := waitForControlPlane(t, ctx)
-
+func testPreflightEnabled(t *testing.T, ctx context.Context, release preflightRelease) {
 	t.Log("Upgrading to trigger pre-upgrade hook")
-	// Upgrade may fail due to version issues, but should trigger the Helm hook.
-	// The key assertion is that the job gets created.
-	_ = helmUpgrade(ctx, image, tag, helmValues)
+	// The upgrade itself is allowed to fail: the preflight checks may legitimately
+	// reject it. The assertion is that the hook created the job.
+	if err := helmUpgrade(ctx, release.image, release.tag, preflightEnabledValues()); err != nil {
+		t.Logf("Upgrade with preflight enabled failed, which is expected when the preflight checks reject it: %v", err)
+	}
 
 	t.Log("Verifying preflight job was created and configured correctly")
-	job := findPreflightJob(t, ctx, options)
-	if job != nil {
-		logJobDetails(t, ctx, options, job)
+	job := findPreflightJob(t, ctx, release.options)
+	require.NotNil(t, job, "Preflight job not found - upgrade likely failed before hooks triggered")
 
-		// Verify custom configuration was applied
-		require.NotNil(t, job.Spec.TTLSecondsAfterFinished, "TTLSecondsAfterFinished should be set")
-		require.Equal(t, int32(60), *job.Spec.TTLSecondsAfterFinished)
-		t.Log("Job configuration verified")
-	} else {
-		t.Fatal("Preflight job not found - upgrade likely failed before hooks triggered")
-	}
+	logJobDetails(t, ctx, release.options, job)
 
-	helmUninstall(t, ctx)
+	require.NotNil(t, job.Spec.TTLSecondsAfterFinished, "TTLSecondsAfterFinished should be set")
+	require.Equal(t, int32(preflightJobTTLSeconds), *job.Spec.TTLSecondsAfterFinished)
+	t.Log("Job configuration verified")
 }
 
-// testPreflightDisabled verifies that when preflight is disabled, the pre-upgrade
-// Helm hook does not create a job during upgrade.
-func testPreflightDisabled(t *testing.T) {
-	ctx := t.Context()
-	image, tag := getPreUpgradeImage()
-
-	cleanupAndWait(t, ctx)
-
-	helmValues := map[string]string{
-		"preupgrade.enabled": "false",
-	}
-
-	t.Log("Installing Radius with preflight disabled")
-	err := helmInstall(ctx, image, tag, helmValues)
-	require.NoError(t, err, "Failed to install Radius")
-
-	options := waitForControlPlane(t, ctx)
-
-	// Ensure no leftover job exists before upgrade
-	_ = options.K8sClient.BatchV1().Jobs(radiusNamespace).Delete(ctx, preUpgradeJobName, metav1.DeleteOptions{})
+// testPreflightDisabled verifies that upgrading with preflight disabled does not create a
+// pre-upgrade job.
+//
+// It upgrades the release the Enabled subtest left behind, so it first restores that
+// release to a state Helm will upgrade and removes the job from the previous subtest.
+func testPreflightDisabled(t *testing.T, ctx context.Context, release preflightRelease) {
+	requireDeployedRelease(t, ctx)
+	deletePreflightJob(t, ctx, release.options)
 
 	t.Log("Upgrading with preflight disabled")
-	_ = helmUpgrade(ctx, image, tag, helmValues)
+	// With the hook disabled there is no job to reject the upgrade, so it must succeed.
+	// Otherwise the assertion below would pass simply because no upgrade ran.
+	err := helmUpgrade(ctx, release.image, release.tag, map[string]string{"preupgrade.enabled": "false"})
+	require.NoError(t, err, "Upgrade with preflight disabled should succeed")
 
 	t.Log("Verifying no preflight job was created")
 	// Poll several times to confirm no job was created. The helm upgrade --wait
 	// flag ensures the upgrade is fully complete before returning, so if a job
 	// was going to be created it would exist by now. We poll briefly to be safe.
 	for i := range jobPollAttempts {
-		_, err = options.K8sClient.BatchV1().Jobs(radiusNamespace).Get(ctx, preUpgradeJobName, metav1.GetOptions{})
+		_, err := release.options.K8sClient.BatchV1().Jobs(radiusNamespace).Get(ctx, preUpgradeJobName, metav1.GetOptions{})
 		switch {
 		case apierrors.IsNotFound(err):
 			if i < jobPollAttempts-1 {
@@ -165,15 +184,76 @@ func testPreflightDisabled(t *testing.T) {
 			}
 			continue
 		case err == nil:
-			t.Error("Expected preflight job to not exist when disabled, but it was found")
-			return
+			t.Fatal("Expected preflight job to not exist when disabled, but it was found")
 		default:
 			t.Fatalf("Unexpected error checking for preflight job: %v", err)
 		}
 	}
 	t.Log("Preflight job correctly not created when disabled")
+}
 
-	helmUninstall(t, ctx)
+// requireDeployedRelease makes sure the Radius Helm release will accept another upgrade.
+//
+// The Enabled subtest tolerates a failed upgrade because the preflight checks may reject
+// it, which leaves the release in "failed" or, if Helm was interrupted partway, in
+// "pending-upgrade". Helm refuses to start a new operation on a pending release
+// ("another operation (install/upgrade/rollback) is in progress"), so recover by rolling
+// back to the last deployed revision rather than letting the next upgrade fail with that
+// error.
+func requireDeployedRelease(t *testing.T, ctx context.Context) {
+	t.Helper()
+
+	info, err := helmReleaseStatus(ctx)
+	require.NoError(t, err, "Failed to read the status of Helm release %q", helmReleaseName)
+	if info.Status == helmStatusDeployed {
+		return
+	}
+
+	t.Logf("Helm release %q is %q (%s); rolling back to the last deployed revision",
+		helmReleaseName, info.Status, info.Description)
+	err = runCommand(ctx, []string{
+		"helm", "rollback", helmReleaseName,
+		"--namespace", radiusNamespace,
+		"--wait",
+		"--timeout", helmTimeout,
+	})
+	require.NoError(t, err, "Failed to roll back Helm release %q from status %q (%s)",
+		helmReleaseName, info.Status, info.Description)
+
+	info, err = helmReleaseStatus(ctx)
+	require.NoError(t, err, "Failed to read the status of Helm release %q after rollback", helmReleaseName)
+	require.Equal(t, helmStatusDeployed, info.Status,
+		"Helm release %q is still not deployed after rollback: %s", helmReleaseName, info.Description)
+}
+
+// deletePreflightJob removes the pre-upgrade job left behind by the previous subtest and
+// blocks until the API server reports it gone.
+//
+// Helm does not remove the job itself: its helm.sh/hook-delete-policy is
+// before-hook-creation, which only deletes the job when a later upgrade recreates it, and
+// the upgrade with preflight disabled never renders one. Without this the assertion that
+// no job was created would observe the job from the enabled run.
+func deletePreflightJob(t *testing.T, ctx context.Context, options rp.RPTestOptions) {
+	t.Helper()
+	t.Log("Deleting the preflight job left by the previous subtest")
+
+	jobs := options.K8sClient.BatchV1().Jobs(radiusNamespace)
+	propagation := metav1.DeletePropagationForeground
+	err := jobs.Delete(ctx, preUpgradeJobName, metav1.DeleteOptions{PropagationPolicy: &propagation})
+	if !apierrors.IsNotFound(err) {
+		require.NoError(t, err, "Failed to delete job %s/%s", radiusNamespace, preUpgradeJobName)
+	}
+
+	require.Eventually(t, func() bool {
+		_, err := jobs.Get(ctx, preUpgradeJobName, metav1.GetOptions{})
+		if apierrors.IsNotFound(err) {
+			return true
+		}
+		if err != nil {
+			t.Logf("Warning: failed to get job %s/%s: %v", radiusNamespace, preUpgradeJobName, err)
+		}
+		return false
+	}, jobDeletionTimeout, jobPollInterval, "Job %s/%s was not deleted within timeout", radiusNamespace, preUpgradeJobName)
 }
 
 // Helper functions
@@ -187,7 +267,7 @@ func getPreUpgradeImage() (image string, tag string) {
 // helmInstall runs helm install with the given image, tag, and additional values.
 func helmInstall(ctx context.Context, image, tag string, values map[string]string) error {
 	args := []string{
-		"helm", "install", "radius", relativeChartPath,
+		"helm", "install", helmReleaseName, relativeChartPath,
 		"--namespace", radiusNamespace,
 		"--create-namespace",
 		"--set", fmt.Sprintf("preupgrade.image=%s", image),
@@ -202,13 +282,19 @@ func helmInstall(ctx context.Context, image, tag string, values map[string]strin
 }
 
 // helmUpgrade runs helm upgrade with the given image, tag, and additional values.
+//
+// --cleanup-on-fail is set because a caller may tolerate a failed upgrade and then
+// upgrade again: it removes resources the failed attempt created rather than leaving
+// them for the next attempt to reconcile. It does not remove the pre-upgrade job, which
+// Helm tracks as a hook rather than as a resource created from the release manifest.
 func helmUpgrade(ctx context.Context, image, tag string, values map[string]string) error {
 	args := []string{
-		"helm", "upgrade", "radius", relativeChartPath,
+		"helm", "upgrade", helmReleaseName, relativeChartPath,
 		"--namespace", radiusNamespace,
 		"--set", fmt.Sprintf("preupgrade.image=%s", image),
 		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
 		"--wait",
+		"--cleanup-on-fail",
 		"--timeout", helmTimeout,
 	}
 	for k, v := range values {
@@ -221,8 +307,46 @@ func helmUpgrade(ctx context.Context, image, tag string, values map[string]strin
 func helmUninstall(t *testing.T, ctx context.Context) {
 	t.Helper()
 	t.Log("Uninstalling Radius")
-	err := runCommand(ctx, []string{"helm", "uninstall", "radius", "--namespace", radiusNamespace})
+	err := runCommand(ctx, []string{"helm", "uninstall", helmReleaseName, "--namespace", radiusNamespace})
 	require.NoError(t, err, "Failed to uninstall Radius")
+}
+
+// helmReleaseInfo is the subset of "helm status --output json" this test reads.
+type helmReleaseInfo struct {
+	// Status is the Helm release status, for example "deployed", "failed" or
+	// "pending-upgrade".
+	Status string `json:"status"`
+
+	// Description is Helm's summary of the last operation and carries the reason a
+	// release failed.
+	Description string `json:"description"`
+}
+
+// helmReleaseStatus reports the current state of the Radius Helm release.
+//
+// Only stdout is parsed. Helm writes diagnostics such as the insecure kubeconfig
+// permissions warning to stderr, and mixing those into the JSON would make a successful
+// "helm status --output json" undecodable.
+func helmReleaseStatus(ctx context.Context) (helmReleaseInfo, error) {
+	cmd := exec.CommandContext(ctx, "helm", "status", helmReleaseName,
+		"--namespace", radiusNamespace, "--output", "json")
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	stdout, err := cmd.Output()
+	if err != nil {
+		return helmReleaseInfo{}, fmt.Errorf("helm status failed: %w, stderr: %s", err, stderr.String())
+	}
+
+	var release struct {
+		Info helmReleaseInfo `json:"info"`
+	}
+	if err := json.Unmarshal(stdout, &release); err != nil {
+		return helmReleaseInfo{}, fmt.Errorf("failed to decode helm status output %q (stderr: %s): %w",
+			string(stdout), stderr.String(), err)
+	}
+	return release.Info, nil
 }
 
 // runCommand executes a shell command and returns an error if it fails.
@@ -235,25 +359,14 @@ func runCommand(ctx context.Context, args []string) error {
 	return nil
 }
 
-// waitForControlPlane polls until the Radius control plane API is reachable.
-// It treats transient errors (including 503 from the aggregated APIService) as
-// retryable and keeps polling until the timeout expires.
-func waitForControlPlane(t *testing.T, ctx context.Context) rp.RPTestOptions {
-	t.Helper()
-	var options rp.RPTestOptions
-	require.Eventually(t, func() bool {
-		func() {
-			defer func() {
-				if r := recover(); r != nil {
-					// NewRPTestOptions calls require.NoError internally, catch panics
-					t.Logf("Control plane not ready yet: %v", r)
-				}
-			}()
-			options = rp.NewRPTestOptions(t)
-		}()
-		return options.ManagementClient != nil
-	}, controlPlaneTimeout, controlPlanePollInterval, "Control plane did not become available within timeout")
-	return options
+// newKubernetesClient builds a Kubernetes client from the ambient kubeconfig.
+func newKubernetesClient() (*kubernetes.Clientset, error) {
+	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
+		clientcmd.NewDefaultClientConfigLoadingRules(), nil).ClientConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load kubeconfig: %w", err)
+	}
+	return kubernetes.NewForConfig(config)
 }
 
 // cleanupAndWait uninstalls the Radius Helm release and waits for all Radius pods in
@@ -264,31 +377,16 @@ func waitForControlPlane(t *testing.T, ctx context.Context) rp.RPTestOptions {
 // Only Radius-owned pods (labeled app.kubernetes.io/part-of=radius) are monitored.
 // Contour is deployed as a separate Helm release in the same namespace and its pods
 // are expected to remain running.
-func cleanupAndWait(t *testing.T, ctx context.Context) {
+func cleanupAndWait(t *testing.T, ctx context.Context, k8sClient kubernetes.Interface) {
 	t.Helper()
 
 	t.Log("Cleaning up any existing Radius installation")
-	_ = exec.CommandContext(ctx, "helm", "uninstall", "radius",
+	_ = exec.CommandContext(ctx, "helm", "uninstall", helmReleaseName,
 		"--namespace", radiusNamespace, "--ignore-not-found", "--wait").Run()
 
 	// Wait for Radius pods to terminate. The Kubernetes aggregated API service needs
 	// time to deregister after pods are gone, so we must wait for Radius pods to be
 	// fully removed before starting a new install.
-	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		clientcmd.NewDefaultClientConfigLoadingRules(), nil).ClientConfig()
-	if err != nil {
-		t.Logf("Warning: could not create k8s client for cleanup wait: %v", err)
-		time.Sleep(cleanupFallbackWait)
-		return
-	}
-
-	k8sClient, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		t.Logf("Warning: could not create k8s client for cleanup wait: %v", err)
-		time.Sleep(cleanupFallbackWait)
-		return
-	}
-
 	require.Eventually(t, func() bool {
 		pods, err := k8sClient.CoreV1().Pods(radiusNamespace).List(ctx, metav1.ListOptions{
 			LabelSelector: radiusPodSelector,
