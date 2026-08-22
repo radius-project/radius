@@ -111,6 +111,16 @@ tests:
           value: test.registry/pre-upgrade:test-tag
         template: control-plane-readiness/job.yaml
 
+  - it: honors an explicitly configured pre-upgrade image
+    set:
+      preupgrade.image: local.registry/pre-upgrade
+      preupgrade.tag: local-tag
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: local.registry/pre-upgrade:local-tag
+        template: control-plane-readiness/job.yaml
+
   - it: supports an explicit readiness image override
     set:
       controlPlaneReadiness.image: custom.registry/readiness

@@ -5,14 +5,21 @@
 {{- $requestTimeoutSeconds := get $readiness "requestTimeoutSeconds" | default 10 }}
 {{- $ttlSecondsAfterFinished := get $readiness "ttlSecondsAfterFinished" | default 300 }}
 {{- $readinessImage := get $readiness "image" | default "" }}
+{{- $readinessTag := get $readiness "tag" | default "" }}
 {{- if not $readinessImage }}
-  {{- if contains "/" .Values.ucp.image }}
-    {{- $readinessImage = regexReplaceAll "/[^/]+$" .Values.ucp.image "/pre-upgrade" }}
+  {{- if ne .Values.preupgrade.image "pre-upgrade" }}
+    {{- $readinessImage = .Values.preupgrade.image }}
+    {{- $readinessTag = $readinessTag | default .Values.preupgrade.tag }}
   {{- else }}
-    {{- $readinessImage = "pre-upgrade" }}
+    {{- if contains "/" .Values.ucp.image }}
+      {{- $readinessImage = regexReplaceAll "/[^/]+$" .Values.ucp.image "/pre-upgrade" }}
+    {{- else }}
+      {{- $readinessImage = "pre-upgrade" }}
+    {{- end }}
+    {{- $readinessTag = $readinessTag | default .Values.ucp.tag }}
   {{- end }}
 {{- end }}
-{{- $readinessTag := get $readiness "tag" | default .Values.ucp.tag | default .Values.global.imageTag | default $appversion }}
+{{- $readinessTag = $readinessTag | default .Values.global.imageTag | default $appversion }}
 apiVersion: batch/v1
 kind: Job
 metadata:
