@@ -92,7 +92,7 @@ For contributors and reviewers, the main experience improvement is consistency: 
 
 ```text
 Workflow: Prepare Radius Release
-version: 0.56.0-rc1
+version: 0.56.0-rc.1
 source ref: release/0.56
 mode: prepare and publish after approval
 ```
@@ -100,7 +100,7 @@ mode: prepare and publish after approval
 **Sample Output:**
 
 ```text
-GitHub Release: Radius v0.56.0-rc1
+GitHub Release: Radius v0.56.0-rc.1
 Artifacts:
 - raw rad binaries for supported operating systems and architectures
 - per-asset SHA-256 checksums and a combined checksum manifest
@@ -260,18 +260,18 @@ The configuration targets the GoReleaser OSS edition and pins a minimum version 
 
 [GoReleaser Pro](https://goreleaser.com/pro/) is a paid edition with additional features. This design is implementable entirely on the OSS edition: no stage assumes a Pro license, and every Pro capability that would otherwise be attractive has a deliberate OSS substitute. Most substitutes fall out of the release controller, which must own cross-repository orchestration in either edition.
 
-| Capability                                 | GoReleaser Pro feature                                                           | OSS workaround in this design                                                                                                                                                        |
-|--------------------------------------------|-----------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Staged publication with a gate             | Release phases: `goreleaser release --prepare`, then separate publish and announce steps    | `release.draft: true` stages everything in a draft GitHub Release; the controller publishes the draft only after the publication gate passes                                            |
-| Resuming a failed release                  | `goreleaser continue`                                                            | Rerun GoReleaser against the same tag with `use_existing_draft` and `replace_existing_artifacts`; the `Resume Release` workflow reconciles all non-GoReleaser stages                     |
-| Verifying published assets                 | Built-in verify that re-downloads assets and runs custom checks                  | The controller's verify stage compares `artifacts.json` and `metadata.json` against the release manifest, checks image digests and platforms, and runs the staged installation check     |
-| Previous-tag selection and version ordering | Smart SemVer tag sorting                                                         | The release plan records the current and previous tags; the controller exports `GORELEASER_CURRENT_TAG` and `GORELEASER_PREVIOUS_TAG` so no tag-sorting heuristic is ever trusted        |
-| Changelog preview, subgroups, path filters | `goreleaser changelog` command and enhanced changelog options                    | The version-preparation workflow renders the notes into the reviewable release PR; prepared notes are passed with `--release-notes`, and OSS `changelog.groups` remains the fallback     |
-| Nightly and edge builds                    | Nightlies                                                                        | The separate main-branch edge workflow runs snapshot mode and publishes the mutable `edge` tags outside the release transaction                                                          |
-| Faster multi-platform releases             | Split and merge builds across runners                                            | One release runner with QEMU and Buildx emulation; revisit only if release duration becomes unacceptable, as a license decision rather than a design change                              |
-| Dynamic Dockerfiles and copied files       | `templated_dockerfile` and `templated_extra_files` in `dockers_v2`               | Static per-component `Dockerfile.goreleaser` files, plain `extra_files` for the UCP manifests, and `build_args` for values that vary per build                                           |
-| Consuming binaries built elsewhere         | Prebuilt-binaries builder                                                        | Not used: GoReleaser builds all six binaries on the release runner itself, which is also why the single-runner model is the OSS baseline                                                 |
-| Config reuse and templating extras         | `include` keyword, custom template variables, templated files, monorepo support  | Not required: one product version, one `.goreleaser.yaml`, and all remaining templating stays within OSS template fields                                                                 |
+| Capability                                  | GoReleaser Pro feature                                                                   | OSS workaround in this design                                                                                                                                                        |
+|---------------------------------------------|------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Staged publication with a gate              | Release phases: `goreleaser release --prepare`, then separate publish and announce steps | `release.draft: true` stages everything in a draft GitHub Release; the controller publishes the draft only after the publication gate passes                                         |
+| Resuming a failed release                   | `goreleaser continue`                                                                    | Rerun GoReleaser against the same tag with `use_existing_draft` and `replace_existing_artifacts`; the `Resume Release` workflow reconciles all non-GoReleaser stages                 |
+| Verifying published assets                  | Built-in verify that re-downloads assets and runs custom checks                          | The controller's verify stage compares `artifacts.json` and `metadata.json` against the release manifest, checks image digests and platforms, and runs the staged installation check |
+| Previous-tag selection and version ordering | Smart SemVer tag sorting                                                                 | The release plan records the current and previous tags; the controller exports `GORELEASER_CURRENT_TAG` and `GORELEASER_PREVIOUS_TAG` so no tag-sorting heuristic is ever trusted    |
+| Changelog preview, subgroups, path filters  | `goreleaser changelog` command and enhanced changelog options                            | The version-preparation workflow renders the notes into the reviewable release PR; prepared notes are passed with `--release-notes`, and OSS `changelog.groups` remains the fallback |
+| Nightly and edge builds                     | Nightlies                                                                                | The separate main-branch edge workflow runs snapshot mode and publishes the mutable `edge` tags outside the release transaction                                                      |
+| Faster multi-platform releases              | Split and merge builds across runners                                                    | One release runner with QEMU and Buildx emulation; revisit only if release duration becomes unacceptable, as a license decision rather than a design change                          |
+| Dynamic Dockerfiles and copied files        | `templated_dockerfile` and `templated_extra_files` in `dockers_v2`                       | Static per-component `Dockerfile.goreleaser` files, plain `extra_files` for the UCP manifests, and `build_args` for values that vary per build                                       |
+| Consuming binaries built elsewhere          | Prebuilt-binaries builder                                                                | Not used: GoReleaser builds all six binaries on the release runner itself, which is also why the single-runner model is the OSS baseline                                             |
+| Config reuse and templating extras          | `include` keyword, custom template variables, templated files, monorepo support          | Not required: one product version, one `.goreleaser.yaml`, and all remaining templating stays within OSS template fields                                                             |
 
 Pro features with no bearing on this design - macOS and Windows installers, notarization, NPM and Homebrew Cask publishing, DockerHub description sync, Cloudsmith and GemFury integrations, Podman builds, and OpenTelemetry trace export - are omitted from the table.
 
@@ -291,7 +291,7 @@ Each image retains its current base-image requirements. Separate `Dockerfile.gor
 
 This removes most custom production Docker logic currently encoded in Make and CI while preserving important image differences such as distroless, Alpine, or Debian base images. The Bicep image remains a dedicated non-Go build because it downloads an external binary and generates `bicepconfig.json`. The `testrp` and `magpiego` images remain in test workflows because they use separate Go modules and are not user-facing release artifacts. Migration cannot remove their existing channel tags until repository consumers are inventoried.
 
-GoReleaser publishes full-version tags such as `0.60.0` or `0.60.0-rc1` first. The release controller promotes the mutable aliases - the release channel such as `0.60`, and `latest`, which always points at the most recent stable release - only after all mandatory outputs pass verification. RC releases advance no alias, so alias promotion applies to final and patch releases only. The mutable `edge` tag tracks the `main` branch and is owned by the separate edge workflow, never by the release transaction. The Helm chart for a final or patch release should reference immutable full-version image tags while the channel aliases remain available for backward compatibility.
+GoReleaser publishes full-version tags such as `0.60.0` or `0.60.0-rc.1` first. The release controller promotes the mutable aliases - the release channel such as `0.60`, and `latest`, which always points at the most recent stable release - only after all mandatory outputs pass verification. RC releases advance no alias, so alias promotion applies to final and patch releases only. The mutable `edge` tag tracks the `main` branch and is owned by the separate edge workflow, never by the release transaction. The Helm chart for a final or patch release should reference immutable full-version image tags while the channel aliases remain available for backward compatibility.
 
 Four properties of this model are constraints, not implementation details:
 
@@ -322,7 +322,7 @@ These concerns share one invariant: exactly one authoritative version record exi
 
 No tool can infer compatibility impact from code with complete accuracy. Every automated option moves the human decision to a different reviewable input: a commit type, a change-fragment bump, or a pull request label. Radius must also document how these signals map to its current `0.x` versions and RC prereleases because SemVer intentionally gives projects more latitude before `1.0.0`.
 
-Prerelease identifiers need one explicit decision. Radius currently tags RCs as `-rc1`, `-rc2`, and SemVer compares alphanumeric prerelease identifiers lexically, so `0.56.0-rc10` sorts before `0.56.0-rc2`. Every automation candidate in this design defaults to the dotted `-rc.N` form, which compares numerically and orders correctly. The migration should either adopt `-rc.N` for new releases - the Helm chart's prerelease detection matches any `rc` substring and is unaffected - or keep `-rcN` and enforce an `rc9` ceiling in version-selection validation as an accepted constraint.
+Radius historically tagged RCs as `-rc1`, `-rc2`, and SemVer compares those alphanumeric prerelease identifiers lexically, so `0.56.0-rc10` sorts before `0.56.0-rc2`. New releases use the dotted `-rc.N` form, whose numeric identifier orders correctly. Historical `-rcN` tags remain readable for previous-tag selection and upgrade compatibility; they are not rewritten. The Helm chart's prerelease detection matches any `rc` substring and is unaffected.
 
 #### Common changelog output contract
 
