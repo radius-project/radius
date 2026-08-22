@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/radius-project/radius/internal/tooling"
@@ -50,5 +51,26 @@ func TestSyncVersionFilesUpdatesEveryTool(t *testing.T) {
 		if got := string(contents); got != want {
 			t.Errorf("%s = %q, want %q", path, got, want)
 		}
+	}
+}
+
+func TestWritePullRequestBody(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "pull-request-body.md")
+	result := tooling.UpdateResult{VersionUpdates: []tooling.VersionUpdate{{
+		Tool:            "tool",
+		PreviousVersion: "v1.0.0",
+		NewVersion:      "v2.0.0",
+		ReleaseURL:      "https://github.com/example/tool/releases/tag/v2.0.0",
+	}}}
+
+	if err := writePullRequestBody(path, result); err != nil {
+		t.Fatalf("writePullRequestBody() error = %v", err)
+	}
+	contents, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(contents), result.VersionUpdates[0].ReleaseURL) {
+		t.Fatalf("release notes do not contain %q: %s", result.VersionUpdates[0].ReleaseURL, contents)
 	}
 }

@@ -37,6 +37,8 @@ To invoke the compiled updater directly:
 bin/tool-updater.exe update --manifest build/tools.yaml --makefile build/tools.generated.mk
 ```
 
+Pass `--pr-body-output <path>` to write the complete automated pull request body. Each adopted tool with a configured `source.repository` links to that version's GitHub release page. The weekly workflow passes this file to the pull request action.
+
 Use `bin/tool-updater` instead of `bin/tool-updater.exe` on non-Windows systems. The other subcommand regenerates only the Make include:
 
 ```sh
@@ -76,7 +78,7 @@ The manifest is YAML with the following top-level properties:
 | Property     | Type   | Allowed or required values                                 | Description                                                              |
 |--------------|--------|------------------------------------------------------------|--------------------------------------------------------------------------|
 | `type`       | string | `github-release`, `stable-text`, or `hashicorp-checkpoint` | Version source parser selected by the updater.                           |
-| `repository` | string | `owner/repository`; required for `github-release`          | GitHub repository; `stable-text` uses it for release dates.              |
+| `repository` | string | `owner/repository`; required for `github-release`          | GitHub repository used for release dates and release-note links.         |
 | `tagPrefix`  | string | Optional                                                   | Prefix added to the pinned version to form a release tag, such as `jq-`. |
 | `latestURL`  | string | Non-empty HTTPS URL                                        | Endpoint queried for the latest version.                                 |
 
@@ -143,6 +145,8 @@ The `replace` prefix must occur exactly once. Terraform uses `versionFiles` for 
 - A tool with `update: false` remains pinned, but its source and current-version checks still run.
 - Checksums are refreshed for every configured platform at the selected version.
 - The manifest, generated Make include, Terraform compatibility file, and declared version consumers are updated only after source checks succeed.
+- When CI requests a pull request body file, adopted versions with a GitHub repository link to their release pages.
+- The weekly workflow delegates branch, commit, and pull request maintenance to the pinned `peter-evans/create-pull-request` action. It uses the GitHub App token with DCO signoff and bot commit signing enabled, then queries the pull request's commits through the GitHub API and fails if any commit signature is not verified.
 
 ## Verification
 
