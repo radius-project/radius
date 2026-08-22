@@ -18,9 +18,30 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR
+# shellcheck source=.github/scripts/release-version.sh
+source "${SCRIPT_DIR}/release-version.sh"
+
 fail() {
     echo "Error: $*" >&2
     exit 1
+}
+
+validate_release_version() {
+    local version="$1"
+    local version_number="${version#v}"
+    local canonical_version
+
+    if [[ "${version}" != v* ]] || ! is_radius_release_version "${version_number}"; then
+        fail "unsupported release version ${version}; expected vX.Y.Z or vX.Y.Z-rc.N"
+    fi
+
+    if is_legacy_rc_version "${version_number}"; then
+        canonical_version="$(canonical_radius_rc_version "${version_number}")"
+        printf 'Warning: %s uses the historical RC form; use v%s for new releases.\n' \
+            "${version}" "${canonical_version}" >&2
+    fi
 }
 
 tag_exists() {
@@ -59,6 +80,7 @@ main() {
 
     IFS=',' read -r -a versions <<<"${versions_csv}"
     for version in "${versions[@]}"; do
+        validate_release_version "${version}"
         missing=()
         for repository in "${repositories[@]}"; do
             if ! tag_exists "${repository}" "${version}"; then
