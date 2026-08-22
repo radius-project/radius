@@ -886,6 +886,7 @@ jobs:
             --set "ucp.image=${CONTAINER_REGISTRY}/ucpd,ucp.tag=${REL_VERSION}" \
             --set "de.image=${DE_IMAGE},de.tag=${DE_TAG}" \
             --set "bicep.image=${CONTAINER_REGISTRY}/bicep,bicep.tag=${REL_VERSION}" \
+            --set "preupgrade.image=${CONTAINER_REGISTRY}/pre-upgrade,preupgrade.tag=${REL_VERSION}" \
             --set global.azureWorkloadIdentity.enabled=true \
             --set global.aws.irsa.enabled=true
 

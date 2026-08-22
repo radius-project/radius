@@ -69,6 +69,27 @@ tests:
           value: 105
         template: control-plane-readiness/job.yaml
 
+  - it: uses backward-compatible defaults when reused values omit readiness settings
+    set:
+      controlPlaneReadiness: null
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value:
+            - wait-for-control-plane
+            - --timeout=240s
+            - --poll-interval=2s
+            - --request-timeout=10s
+        template: control-plane-readiness/job.yaml
+      - equal:
+          path: spec.activeDeadlineSeconds
+          value: 270
+        template: control-plane-readiness/job.yaml
+      - equal:
+          path: spec.ttlSecondsAfterFinished
+          value: 300
+        template: control-plane-readiness/job.yaml
+
   - it: retains failed jobs and exposes their logs
     asserts:
       - equal:

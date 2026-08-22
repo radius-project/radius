@@ -1,4 +1,9 @@
 {{- $appversion := include "radius.versiontag" . }}
+{{- $readiness := .Values.controlPlaneReadiness | default dict }}
+{{- $timeoutSeconds := get $readiness "timeoutSeconds" | default 240 }}
+{{- $pollIntervalSeconds := get $readiness "pollIntervalSeconds" | default 2 }}
+{{- $requestTimeoutSeconds := get $readiness "requestTimeoutSeconds" | default 10 }}
+{{- $ttlSecondsAfterFinished := get $readiness "ttlSecondsAfterFinished" | default 300 }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -15,8 +20,8 @@ metadata:
     "helm.sh/hook-output-log-policy": hook-failed
 spec:
   backoffLimit: 0
-  activeDeadlineSeconds: {{ add .Values.controlPlaneReadiness.timeoutSeconds 30 }}
-  ttlSecondsAfterFinished: {{ .Values.controlPlaneReadiness.ttlSecondsAfterFinished }}
+  activeDeadlineSeconds: {{ add $timeoutSeconds 30 }}
+  ttlSecondsAfterFinished: {{ $ttlSecondsAfterFinished }}
   template:
     metadata:
       labels:
@@ -36,9 +41,9 @@ spec:
           imagePullPolicy: Always
           args:
             - wait-for-control-plane
-            - "--timeout={{ .Values.controlPlaneReadiness.timeoutSeconds }}s"
-            - "--poll-interval={{ .Values.controlPlaneReadiness.pollIntervalSeconds }}s"
-            - "--request-timeout={{ .Values.controlPlaneReadiness.requestTimeoutSeconds }}s"
+            - "--timeout={{ $timeoutSeconds }}s"
+            - "--poll-interval={{ $pollIntervalSeconds }}s"
+            - "--request-timeout={{ $requestTimeoutSeconds }}s"
           terminationMessagePolicy: FallbackToLogsOnError
           resources:
             {{- toYaml .Values.preupgrade.resources | nindent 12 }}
