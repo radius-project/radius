@@ -17,6 +17,7 @@ limitations under the License.
 package upgrade_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -354,18 +355,28 @@ type helmReleaseInfo struct {
 }
 
 // helmReleaseStatus reports the current state of the Radius Helm release.
+//
+// Only stdout is parsed. Helm writes diagnostics such as the insecure kubeconfig
+// permissions warning to stderr, and mixing those into the JSON would make a successful
+// "helm status --output json" undecodable.
 func helmReleaseStatus(ctx context.Context) (helmReleaseInfo, error) {
-	output, err := exec.CommandContext(ctx, "helm", "status", helmReleaseName,
-		"--namespace", radiusNamespace, "--output", "json").CombinedOutput()
+	cmd := exec.CommandContext(ctx, "helm", "status", helmReleaseName,
+		"--namespace", radiusNamespace, "--output", "json")
+
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	stdout, err := cmd.Output()
 	if err != nil {
-		return helmReleaseInfo{}, fmt.Errorf("helm status failed: %w, output: %s", err, string(output))
+		return helmReleaseInfo{}, fmt.Errorf("helm status failed: %w, stderr: %s", err, stderr.String())
 	}
 
 	var release struct {
 		Info helmReleaseInfo `json:"info"`
 	}
-	if err := json.Unmarshal(output, &release); err != nil {
-		return helmReleaseInfo{}, fmt.Errorf("failed to decode helm status output %q: %w", string(output), err)
+	if err := json.Unmarshal(stdout, &release); err != nil {
+		return helmReleaseInfo{}, fmt.Errorf("failed to decode helm status output %q (stderr: %s): %w",
+			string(stdout), stderr.String(), err)
 	}
 	return release.Info, nil
 }
