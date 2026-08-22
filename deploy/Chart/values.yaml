@@ -273,6 +273,11 @@ controlPlaneReadiness:
   # Helm post-install/post-upgrade hook settings. The hook waits until the Radius
   # aggregated API is serving through kube-apiserver, so successful Helm completion
   # means clients can use the control plane immediately.
+  # Image override. When unset, the hook uses the pre-upgrade image from the same
+  # registry and tag as UCP. This keeps custom and CI builds aligned without requiring
+  # every installer to set another image value.
+  image: ""
+  tag: ""
   # This also covers UCP cold-start time when the chart is installed directly
   # without --wait. Keep it below Helm's operation timeout so hook failure details
   # can be reported before Helm cancels the operation.
@@ -284,8 +289,9 @@ controlPlaneReadiness:
 preupgrade:
   # Enable pre-upgrade preflight checks
   enabled: false
-  # Container image shared by pre-upgrade checks and the mandatory post-install/
-  # post-upgrade control-plane readiness hook.
+  # Container image for pre-upgrade checks. The control-plane readiness hook runs the
+  # same binary but derives its image from UCP unless controlPlaneReadiness.image/tag
+  # override it.
   # Can be overridden with a full registry path (e.g., myregistry.azurecr.io/pre-upgrade)
   # or use just the image name to use global.imageRegistry
   image: pre-upgrade

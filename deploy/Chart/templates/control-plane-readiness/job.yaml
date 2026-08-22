@@ -4,6 +4,15 @@
 {{- $pollIntervalSeconds := get $readiness "pollIntervalSeconds" | default 2 }}
 {{- $requestTimeoutSeconds := get $readiness "requestTimeoutSeconds" | default 10 }}
 {{- $ttlSecondsAfterFinished := get $readiness "ttlSecondsAfterFinished" | default 300 }}
+{{- $readinessImage := get $readiness "image" | default "" }}
+{{- if not $readinessImage }}
+  {{- if contains "/" .Values.ucp.image }}
+    {{- $readinessImage = regexReplaceAll "/[^/]+$" .Values.ucp.image "/pre-upgrade" }}
+  {{- else }}
+    {{- $readinessImage = "pre-upgrade" }}
+  {{- end }}
+{{- end }}
+{{- $readinessTag := get $readiness "tag" | default .Values.ucp.tag | default .Values.global.imageTag | default $appversion }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -37,7 +46,7 @@ spec:
       {{- end }}
       containers:
         - name: radius-api-readiness
-          image: "{{ include "radius.image" (dict "image" .Values.preupgrade.image "tag" (.Values.preupgrade.tag | default .Values.global.imageTag | default $appversion) "global" .Values.global) }}"
+          image: "{{ include "radius.image" (dict "image" $readinessImage "tag" $readinessTag "global" .Values.global) }}"
           imagePullPolicy: Always
           args:
             - wait-for-control-plane

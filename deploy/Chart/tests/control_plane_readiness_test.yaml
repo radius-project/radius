@@ -101,15 +101,26 @@ tests:
           value: hook-failed
         template: control-plane-readiness/job.yaml
 
-  - it: uses the build-under-test pre-upgrade image
+  - it: derives the build-under-test pre-upgrade image from UCP
     set:
-      global.imageRegistry: test.registry
-      preupgrade.image: custom-readiness
-      preupgrade.tag: test-tag
+      ucp.image: test.registry/ucpd
+      ucp.tag: test-tag
     asserts:
       - equal:
           path: spec.template.spec.containers[0].image
-          value: test.registry/custom-readiness:test-tag
+          value: test.registry/pre-upgrade:test-tag
+        template: control-plane-readiness/job.yaml
+
+  - it: supports an explicit readiness image override
+    set:
+      controlPlaneReadiness.image: custom.registry/readiness
+      controlPlaneReadiness.tag: custom-tag
+      ucp.image: ignored.registry/ucpd
+      ucp.tag: ignored-tag
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: custom.registry/readiness:custom-tag
         template: control-plane-readiness/job.yaml
 
   - it: renders image pull secrets and non-root security settings
