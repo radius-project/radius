@@ -168,7 +168,7 @@ func (r *DeploymentReconciler) reconcileOperation(ctx context.Context, deploymen
 		}
 
 		if !poller.Done() {
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 
 		// If we get here, the operation is complete.
@@ -186,7 +186,7 @@ func (r *DeploymentReconciler) reconcileOperation(ctx context.Context, deploymen
 				return ctrl.Result{}, err
 			}
 
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 
 		// If we get here, the operation was a success. Update the status and continue.
@@ -207,7 +207,7 @@ func (r *DeploymentReconciler) reconcileOperation(ctx context.Context, deploymen
 		}
 
 		if !poller.Done() {
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 
 		// If we get here, the operation is complete.
@@ -225,7 +225,7 @@ func (r *DeploymentReconciler) reconcileOperation(ctx context.Context, deploymen
 				return ctrl.Result{}, err
 			}
 
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 
 		// If we get here, the operation was a success. Update the status and continue.
@@ -325,7 +325,7 @@ func (r *DeploymentReconciler) reconcileUpdate(ctx context.Context, deployment *
 			return ctrl.Result{}, err
 		}
 
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 	} else if deletePoller != nil {
 		// We've successfully started an operation. Update the status and requeue.
 		token, err := deletePoller.ResumeToken()
@@ -340,7 +340,7 @@ func (r *DeploymentReconciler) reconcileUpdate(ctx context.Context, deployment *
 			return ctrl.Result{}, err
 		}
 
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 	}
 
 	// If we get here then it means we can process the result of the operation.
@@ -382,7 +382,7 @@ func (r *DeploymentReconciler) reconcileDelete(ctx context.Context, deployment *
 			return ctrl.Result{}, err
 		}
 
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 	}
 
 	logger.Info("Resource is deleted.")
