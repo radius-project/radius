@@ -58,10 +58,14 @@ func StartHost(t *testing.T, host *hosting.Host, baseURL string) *TestHost {
 	}
 	t.Cleanup(th.Close)
 
-	// Parse the URL before polling. The polling condition runs in a goroutine that testify does not
-	// recover panics from, so any failure must be reported on the test goroutine instead.
+	// Resolve the address to dial before polling. The polling condition runs in a goroutine that
+	// testify does not recover panics from, so any failure must be reported on the test goroutine
+	// instead. url.Parse accepts URLs that cannot be dialed, so the host and port are validated too;
+	// otherwise the poll would spin until its timeout and report a misleading failure.
 	u, err := url.Parse(baseURL)
 	require.NoErrorf(t, err, "invalid URL: %q", baseURL)
+	require.NotEmptyf(t, u.Hostname(), "URL is missing a host: %q", baseURL)
+	require.NotEmptyf(t, u.Port(), "URL is missing a port: %q", baseURL)
 
 	address := net.JoinHostPort(u.Hostname(), u.Port())
 
