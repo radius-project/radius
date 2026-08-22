@@ -92,9 +92,16 @@ jobs:
           readonly MAX_ATTEMPTS=23
           readonly INITIAL_DELAY_SECONDS=5
           readonly MAX_DELAY_SECONDS=30
+          GUID_PATTERN='^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-'
+          GUID_PATTERN+='[[:xdigit:]]{4}-[[:xdigit:]]{12}$'
+          readonly GUID_PATTERN
 
           if [[ -z "${AZURE_SUBSCRIPTION_ID}" ]]; then
             echo "::error::AZURE_SUBSCRIPTION_ID is not configured for this environment."
+            exit 1
+          fi
+          if [[ ! "${AZURE_SUBSCRIPTION_ID}" =~ ${GUID_PATTERN} ]]; then
+            echo "::error::AZURE_SUBSCRIPTION_ID must be a valid GUID."
             exit 1
           fi
 

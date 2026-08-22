@@ -241,6 +241,15 @@ assert_exit "missing subscription ID" 1
 assert_count 0 '.' "${AZ_CALLS}"
 assert_log_contains "AZURE_SUBSCRIPTION_ID is not configured"
 
+# A malformed subscription ID fails before querying Azure or sleeping.
+reset_scenario
+TEST_SUBSCRIPTION_ID="abcdef00-1111-2222-3333"
+run_wait_step
+assert_exit "malformed subscription ID" 1
+assert_count 0 '.' "${AZ_CALLS}"
+assert_count 0 '.' "${SLEEP_CALLS}"
+assert_log_contains "AZURE_SUBSCRIPTION_ID must be a valid GUID"
+
 # Delayed visibility uses bounded exponential backoff before selecting.
 reset_scenario
 export AZ_VISIBLE_ON_ATTEMPT=4
