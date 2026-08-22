@@ -75,8 +75,7 @@ func (client *GenericResourcesClient) createOrUpdate(ctx context.Context, resour
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -143,8 +142,7 @@ func (client *GenericResourcesClient) deleteOperation(ctx context.Context, resou
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -189,12 +187,7 @@ func (client *GenericResourcesClient) Get(ctx context.Context, resourceName stri
 	if err != nil {
 		return GenericResourcesClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return GenericResourcesClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -224,8 +217,11 @@ func (client *GenericResourcesClient) getCreateRequest(ctx context.Context, reso
 }
 
 // getHandleResponse handles the Get response.
-func (client *GenericResourcesClient) getHandleResponse(resp *http.Response) (GenericResourcesClientGetResponse, error) {
+func (client *GenericResourcesClient) getHandleResponse(resp *http.Response, successCodes ...int) (GenericResourcesClientGetResponse, error) {
 	result := GenericResourcesClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.GenericResource); err != nil {
 		return GenericResourcesClientGetResponse{}, err
 	}
@@ -246,42 +242,56 @@ func (client *GenericResourcesClient) NewListByRootScopePager(options *GenericRe
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listByRootScopeCreateRequest(ctx, options)
-			}, nil)
+			req, err := client.listByRootScopeCreateRequest(ctx, nextLink, options)
 			if err != nil {
 				return GenericResourcesClientListByRootScopeResponse{}, err
 			}
-			return client.listByRootScopeHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return GenericResourcesClientListByRootScopeResponse{}, err
+			}
+			return client.listByRootScopeHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
-func (client *GenericResourcesClient) listByRootScopeCreateRequest(ctx context.Context, _ *GenericResourcesClientListByRootScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/{resourceType}"
-	if client.resourceType == "" {
-		return nil, errors.New("parameter client.resourceType cannot be empty")
+func (client *GenericResourcesClient) listByRootScopeCreateRequest(ctx context.Context, nextLink string, _ *GenericResourcesClientListByRootScopeOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/{rootScope}/providers/{resourceType}"
+		if client.resourceType == "" {
+			return nil, errors.New("parameter client.resourceType cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
+		if client.rootScope == "" {
+			return nil, errors.New("parameter client.rootScope cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
-	if client.rootScope == "" {
-		return nil, errors.New("parameter client.rootScope cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listByRootScopeHandleResponse handles the ListByRootScope response.
-func (client *GenericResourcesClient) listByRootScopeHandleResponse(resp *http.Response) (GenericResourcesClientListByRootScopeResponse, error) {
+func (client *GenericResourcesClient) listByRootScopeHandleResponse(resp *http.Response, successCodes ...int) (GenericResourcesClientListByRootScopeResponse, error) {
 	result := GenericResourcesClientListByRootScopeResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.GenericResourcesList); err != nil {
 		return GenericResourcesClientListByRootScopeResponse{}, err
 	}
@@ -304,12 +314,7 @@ func (client *GenericResourcesClient) ListSecrets(ctx context.Context, resourceN
 	if err != nil {
 		return GenericResourcesClientListSecretsResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return GenericResourcesClientListSecretsResponse{}, err
-	}
-	resp, err := client.listSecretsHandleResponse(httpResp)
-	return resp, err
+	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
 }
 
 // listSecretsCreateRequest creates the ListSecrets request.
@@ -339,8 +344,11 @@ func (client *GenericResourcesClient) listSecretsCreateRequest(ctx context.Conte
 }
 
 // listSecretsHandleResponse handles the ListSecrets response.
-func (client *GenericResourcesClient) listSecretsHandleResponse(resp *http.Response) (GenericResourcesClientListSecretsResponse, error) {
+func (client *GenericResourcesClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (GenericResourcesClientListSecretsResponse, error) {
 	result := GenericResourcesClientListSecretsResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.Value); err != nil {
 		return GenericResourcesClientListSecretsResponse{}, err
 	}

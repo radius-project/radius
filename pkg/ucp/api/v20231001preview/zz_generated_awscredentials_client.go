@@ -55,12 +55,7 @@ func (client *AwsCredentialsClient) CreateOrUpdate(ctx context.Context, planeNam
 	if err != nil {
 		return AwsCredentialsClientCreateOrUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return AwsCredentialsClientCreateOrUpdateResponse{}, err
-	}
-	resp, err := client.createOrUpdateHandleResponse(httpResp)
-	return resp, err
+	return client.createOrUpdateHandleResponse(httpResp, http.StatusOK, http.StatusCreated)
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
@@ -90,8 +85,11 @@ func (client *AwsCredentialsClient) createOrUpdateCreateRequest(ctx context.Cont
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *AwsCredentialsClient) createOrUpdateHandleResponse(resp *http.Response) (AwsCredentialsClientCreateOrUpdateResponse, error) {
+func (client *AwsCredentialsClient) createOrUpdateHandleResponse(resp *http.Response, successCodes ...int) (AwsCredentialsClientCreateOrUpdateResponse, error) {
 	result := AwsCredentialsClientCreateOrUpdateResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.AwsCredentialResource); err != nil {
 		return AwsCredentialsClientCreateOrUpdateResponse{}, err
 	}
@@ -115,8 +113,7 @@ func (client *AwsCredentialsClient) Delete(ctx context.Context, planeName string
 		return AwsCredentialsClientDeleteResponse{}, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return AwsCredentialsClientDeleteResponse{}, err
+		return AwsCredentialsClientDeleteResponse{}, runtime.NewResponseError(httpResp)
 	}
 	return AwsCredentialsClientDeleteResponse{}, nil
 }
@@ -158,12 +155,7 @@ func (client *AwsCredentialsClient) Get(ctx context.Context, planeName string, c
 	if err != nil {
 		return AwsCredentialsClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return AwsCredentialsClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -189,8 +181,11 @@ func (client *AwsCredentialsClient) getCreateRequest(ctx context.Context, planeN
 }
 
 // getHandleResponse handles the Get response.
-func (client *AwsCredentialsClient) getHandleResponse(resp *http.Response) (AwsCredentialsClientGetResponse, error) {
+func (client *AwsCredentialsClient) getHandleResponse(resp *http.Response, successCodes ...int) (AwsCredentialsClientGetResponse, error) {
 	result := AwsCredentialsClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.AwsCredentialResource); err != nil {
 		return AwsCredentialsClientGetResponse{}, err
 	}
@@ -211,38 +206,52 @@ func (client *AwsCredentialsClient) NewListPager(planeName string, options *AwsC
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listCreateRequest(ctx, planeName, options)
-			}, nil)
+			req, err := client.listCreateRequest(ctx, planeName, nextLink, options)
 			if err != nil {
 				return AwsCredentialsClientListResponse{}, err
 			}
-			return client.listHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return AwsCredentialsClientListResponse{}, err
+			}
+			return client.listHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listCreateRequest creates the List request.
-func (client *AwsCredentialsClient) listCreateRequest(ctx context.Context, planeName string, _ *AwsCredentialsClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/aws/{planeName}/providers/System.AWS/credentials"
-	if planeName == "" {
-		return nil, errors.New("parameter planeName cannot be empty")
+func (client *AwsCredentialsClient) listCreateRequest(ctx context.Context, planeName string, nextLink string, _ *AwsCredentialsClientListOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/planes/aws/{planeName}/providers/System.AWS/credentials"
+		if planeName == "" {
+			return nil, errors.New("parameter planeName cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *AwsCredentialsClient) listHandleResponse(resp *http.Response) (AwsCredentialsClientListResponse, error) {
+func (client *AwsCredentialsClient) listHandleResponse(resp *http.Response, successCodes ...int) (AwsCredentialsClientListResponse, error) {
 	result := AwsCredentialsClientListResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.AwsCredentialResourceListResult); err != nil {
 		return AwsCredentialsClientListResponse{}, err
 	}
@@ -266,12 +275,7 @@ func (client *AwsCredentialsClient) Update(ctx context.Context, planeName string
 	if err != nil {
 		return AwsCredentialsClientUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return AwsCredentialsClientUpdateResponse{}, err
-	}
-	resp, err := client.updateHandleResponse(httpResp)
-	return resp, err
+	return client.updateHandleResponse(httpResp, http.StatusOK)
 }
 
 // updateCreateRequest creates the Update request.
@@ -301,8 +305,11 @@ func (client *AwsCredentialsClient) updateCreateRequest(ctx context.Context, pla
 }
 
 // updateHandleResponse handles the Update response.
-func (client *AwsCredentialsClient) updateHandleResponse(resp *http.Response) (AwsCredentialsClientUpdateResponse, error) {
+func (client *AwsCredentialsClient) updateHandleResponse(resp *http.Response, successCodes ...int) (AwsCredentialsClientUpdateResponse, error) {
 	result := AwsCredentialsClientUpdateResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.AwsCredentialResource); err != nil {
 		return AwsCredentialsClientUpdateResponse{}, err
 	}

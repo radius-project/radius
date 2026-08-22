@@ -141,7 +141,7 @@ tools:
 
   - name: helm
     makePrefix: HELM
-    version: v4.2.3
+    version: v4.2.4
     source:
       type: github-release
       repository: helm/helm
@@ -150,16 +150,16 @@ tools:
     platforms:
       linux_amd64:
         asset: helm-{version}-linux-amd64.tar.gz
-        checksum: e9b88b4ee95b18c706839c28d3a0220e5bc470e9cd9262410c90793c45ff8b7c
+        checksum: c306b46f719b0a4da32d0f78ee21bf90ce8d602f15b22ab753f0674d1670a7f3
       linux_arm64:
         asset: helm-{version}-linux-arm64.tar.gz
-        checksum: 21abd9354d39b2cd79a8d76be6912cd137a983cbf997193503fb8a6a6e2f2785
+        checksum: 564de2191b881e9f71b5606b25345821ea1682f06ab90499d3ab22b530176da1
       darwin_amd64:
         asset: helm-{version}-darwin-amd64.tar.gz
-        checksum: ff3ac86755a45f3422473bc1200776aac0fe04c5766abe6ca66699f7b564b23b
+        checksum: 6c163d687ca03c3b5c01928e53bbbcf9518278f47ce7a2f249a5a08e8bdaa2bc
       darwin_arm64:
         asset: helm-{version}-darwin-arm64.tar.gz
-        checksum: 048ecf5ad3160f83d918f9fe945238d2132b079640f7b106175331c25f242c64
+        checksum: d747eb4e28bd2727173d15b759fa0a17822291ec09db7ced3d55af290a3661a2
     checksumSource:
       type: url-file
       urlTemplate: https://get.helm.sh/{asset}.sha256sum
@@ -222,6 +222,7 @@ tools:
     version: 1.15.8
     source:
       type: hashicorp-checkpoint
+      repository: hashicorp/terraform
       latestURL: https://checkpoint-api.hashicorp.com/v1/check/terraform
     downloadTemplate: https://releases.hashicorp.com/terraform/{version}/terraform_{version}_{os}_{arch}.zip
     platforms:

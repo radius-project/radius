@@ -26,6 +26,7 @@ import (
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/graph/edges"
+	"github.com/radius-project/radius/pkg/graph/sanitization"
 	"github.com/radius-project/radius/pkg/to"
 )
 
@@ -536,7 +537,7 @@ func buildModeledResource(entry map[string]any, secureParams map[string]struct{}
 		OutputResources:   []*corerpv20250801preview.ApplicationGraphOutputResource{},
 		DiffHash:          to.Ptr(hash),
 		IconHash:          resolveIconHash(resourceType),
-		Properties:        resolveGraphProperties(properties, secureParams),
+		Properties:        sanitization.OmitContainerEnvironment(resourceType, resolveGraphProperties(properties, secureParams)),
 	}, nil
 }
 
