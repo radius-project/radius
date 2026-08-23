@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status test-extension-action-shell-syntax test-deploy-progress ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status test-extension-action-shell-syntax test-deploy-progress test-verify-azure ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -75,6 +75,10 @@ test-build-platforms: ## Tests container build platform resolution and workflow 
 .PHONY: test-publish-deploy-status
 test-publish-deploy-status: ## Tests deploy status publishing in the publish-deploy-status action
 	@bash ./.github/extension/actions/publish-deploy-status/publish-deploy-status_test.sh
+
+.PHONY: test-verify-azure
+test-verify-azure: ## Tests Azure verification subscription visibility retry behavior
+	@bash ./.github/extension/verify-azure_test.sh
 
 .PHONY: test-extension-action-shell-syntax
 test-extension-action-shell-syntax: ## Tests bash syntax of run blocks in extension composite actions
