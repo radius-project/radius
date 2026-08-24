@@ -217,7 +217,7 @@ func makeRecipe(name types.NamespacedName, environmentName string, applicationNa
 func waitForRecipeReady(t *testing.T, ctx context.Context, name types.NamespacedName, client controller_runtime.WithWatch, initialVersion string) (*radappiov1alpha3.Recipe, error) {
 	// Based on https://gist.github.com/PrasadG193/52faed6499d2ec739f9630b9d044ffdc
 	lister := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+		ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
 			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
 			recipes := &radappiov1alpha3.RecipeList{}
 			err := client.List(ctx, recipes, listOptions)
@@ -227,7 +227,7 @@ func waitForRecipeReady(t *testing.T, ctx context.Context, name types.Namespaced
 
 			return recipes, nil
 		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+		WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
 			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
 			recipes := &radappiov1alpha3.RecipeList{}
 			return client.Watch(ctx, recipes, listOptions)

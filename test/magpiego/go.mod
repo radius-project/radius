@@ -1,6 +1,6 @@
 module github.com/radius-project/radius/test/magpiego
 
-go 1.26.5
+go 1.27.0
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.22.0
