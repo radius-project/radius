@@ -204,6 +204,24 @@ func waitForRecipeDeleted(t *testing.T, client client.Client, name types.Namespa
 	}, recipeTestWaitDuration, recipeTestWaitInterval, "recipe still exists")
 }
 
+// waitForSecretData waits until a secret contains the expected data. The test client reads from the
+// informer cache, and the recipe status and its secret are delivered by independent informers, so
+// observing the recipe as ready does not guarantee the secret's data is visible yet.
+func waitForSecretData(t *testing.T, client client.Client, name types.NamespacedName, expected map[string][]byte) {
+	ctx := t.Context()
+
+	logger := t
+	require.EventuallyWithTf(t, func(t *assert.CollectT) {
+		logger.Logf("Fetching Secret: %+v", name)
+		secret := corev1.Secret{}
+		if !assert.NoError(t, client.Get(ctx, name, &secret)) {
+			return
+		}
+
+		assert.Equal(t, expected, secret.Data)
+	}, recipeTestWaitDuration, recipeTestWaitInterval, "secret data does not match")
+}
+
 func makeDeployment(name types.NamespacedName) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
