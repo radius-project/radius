@@ -132,6 +132,94 @@ var successProcessorReference = processors.ResourceProcessor[*TestResource, Test
 type ErrorProcessor struct {
 }
 
+func TestBuildConnectedResource_ManagedSecretReferences(t *testing.T) {
+	databaseClient := database.NewMockClient(gomock.NewController(t))
+	resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/resources/resource-name"
+	secretID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Security/secrets/resource-name-secrets"
+	data := map[string]any{
+		"id":   resourceID,
+		"name": "resource-name",
+		"type": "Applications.Test/resources",
+		"properties": map[string]any{
+			"host":    "example.com",
+			"secrets": map[string]any{"name": "resource-name-secrets"},
+		},
+	}
+	databaseClient.EXPECT().Get(gomock.Any(), secretID).Return(&database.Object{Data: map[string]any{
+		"properties": map[string]any{
+			"data": map[string]any{
+				"url":      map[string]any{"value": map[string]any{"encrypted": "ciphertext"}},
+				"password": map[string]any{"value": map[string]any{"encrypted": "ciphertext"}},
+			},
+		},
+	}}, nil)
+
+	connected, err := buildConnectedResource(t.Context(), databaseClient, data)
+	require.NoError(t, err)
+	require.Equal(t, data["properties"], connected.Properties)
+	require.Equal(t, map[string]rpv1.ManagedSecretReference{
+		"url":      {Source: secretID, Key: "url"},
+		"password": {Source: secretID, Key: "password"},
+	}, connected.Secrets)
+}
+
+func TestBuildConnectedResource_NoManagedSecret(t *testing.T) {
+	data := map[string]any{
+		"id":   "resource-id",
+		"name": "resource-name",
+		"type": "Applications.Test/resources",
+		"properties": map[string]any{
+			"host":    "example.com",
+			"secrets": map[string]any{"input": "user-authored-value"},
+		},
+	}
+
+	connected, err := buildConnectedResource(t.Context(), nil, data)
+	require.NoError(t, err)
+	require.Empty(t, connected.Secrets)
+}
+
+func TestBuildConnectedResource_ManagedSecretErrors(t *testing.T) {
+	resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/resources/resource-name"
+	secretID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Security/secrets/resource-name-secrets"
+
+	t.Run("invalid secret name", func(t *testing.T) {
+		data := map[string]any{
+			"id":         resourceID,
+			"properties": map[string]any{"secrets": map[string]any{"name": 123}},
+		}
+
+		_, err := buildConnectedResource(t.Context(), nil, data)
+		require.ErrorContains(t, err, "invalid secrets.name reference")
+	})
+
+	t.Run("missing managed secret", func(t *testing.T) {
+		databaseClient := database.NewMockClient(gomock.NewController(t))
+		databaseClient.EXPECT().Get(gomock.Any(), secretID).Return(nil, &database.ErrNotFound{ID: secretID})
+		data := map[string]any{
+			"id":         resourceID,
+			"properties": map[string]any{"secrets": map[string]any{"name": "resource-name-secrets"}},
+		}
+
+		_, err := buildConnectedResource(t.Context(), databaseClient, data)
+		require.ErrorContains(t, err, "failed to get managed secret")
+	})
+
+	t.Run("invalid managed secret data", func(t *testing.T) {
+		databaseClient := database.NewMockClient(gomock.NewController(t))
+		databaseClient.EXPECT().Get(gomock.Any(), secretID).Return(&database.Object{Data: map[string]any{
+			"properties": map[string]any{"data": "invalid"},
+		}}, nil)
+		data := map[string]any{
+			"id":         resourceID,
+			"properties": map[string]any{"secrets": map[string]any{"name": "resource-name-secrets"}},
+		}
+
+		_, err := buildConnectedResource(t.Context(), databaseClient, data)
+		require.ErrorContains(t, err, "has invalid data")
+	})
+}
+
 // Process always returns a processorErr.
 func (p *ErrorProcessor) Process(ctx context.Context, data *TestResource, options processors.Options) error {
 	return errProcessor
