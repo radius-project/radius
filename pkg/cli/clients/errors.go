@@ -37,7 +37,8 @@ type errorResponse struct {
 }
 
 type errorDetail struct {
-	Code *string `json:"code,omitempty"`
+	Code    *string `json:"code,omitempty"`
+	Message *string `json:"message,omitempty"`
 }
 
 // Is404Error returns true if the error is a 404 payload from an autorest operation.
@@ -77,4 +78,70 @@ func Is404Error(err error) bool {
 	}
 
 	return false
+}
+
+// IsNamespaceAlreadyInUseError reports whether err is the server's "the requested Kubernetes
+// namespace is already claimed by another environment" response.
+//
+// It matches on the specific error code rather than on the 409 status, because the server returns
+// Conflict for unrelated reasons too (for example, a resource that is still provisioning), and
+// reporting those as a namespace collision would misdiagnose them.
+func IsNamespaceAlreadyInUseError(err error) bool {
+	return hasErrorCode(err, v1.CodeNamespaceAlreadyInUse)
+}
+
+// NamespaceAlreadyInUseMessage returns the server's message for a namespace conflict, or an empty
+// string when err is not a namespace conflict or the message cannot be recovered. The server names
+// the environment that currently owns the namespace, which the CLI cannot determine on its own.
+func NamespaceAlreadyInUseMessage(err error) string {
+	if !IsNamespaceAlreadyInUseError(err) {
+		return ""
+	}
+
+	detail := decodeErrorDetail(err)
+	if detail == nil || detail.Message == nil {
+		return ""
+	}
+
+	return *detail.Message
+}
+
+// hasErrorCode reports whether err carries the given ARM error code, whether it arrives as a typed
+// azcore.ResponseError or as a raw JSON error envelope.
+func hasErrorCode(err error, code string) bool {
+	if err == nil {
+		return false
+	}
+
+	responseError := &azcore.ResponseError{}
+	if errors.As(err, &responseError) {
+		return responseError.ErrorCode == code
+	}
+
+	detail := decodeErrorDetail(err)
+
+	return detail != nil && detail.Code != nil && *detail.Code == code
+}
+
+// decodeErrorDetail recovers the ARM error envelope from err, returning nil when it cannot be
+// found. A raw envelope error is JSON in its entirety, while an azcore.ResponseError renders the
+// response body embedded in surrounding diagnostic text, so decoding starts at the first brace and
+// ignores whatever follows the first complete JSON value.
+func decodeErrorDetail(err error) *errorDetail {
+	if err == nil {
+		return nil
+	}
+
+	text := err.Error()
+	start := strings.Index(text, "{")
+	if start < 0 {
+		return nil
+	}
+
+	response := errorResponse{}
+	if decodeErr := json.NewDecoder(strings.NewReader(text[start:])).Decode(&response); decodeErr != nil {
+		return nil
+	}
+
+	return response.Error
 }
