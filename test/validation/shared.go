@@ -55,7 +55,8 @@ const (
 	SecuritySecretsResource = "radius.security/secrets"
 
 	// Radius.Data resource types (new provider).
-	DataMySQLDatabasesResource = "radius.data/mySqlDatabases"
+	DataMySQLDatabasesResource      = "radius.data/mySqlDatabases"
+	DataPostgreSQLDatabasesResource = "radius.data/postgreSqlDatabases"
 
 	RabbitMQQueuesResource          = "applications.messaging/rabbitMQQueues"
 	DaprPubSubBrokersResource       = "applications.dapr/pubSubBrokers"
