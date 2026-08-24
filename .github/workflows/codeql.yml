@@ -109,17 +109,11 @@ jobs:
           config-file: .github/configs/.codeql.yml
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+          analysis-kinds: code-scanning,code-quality
 
-      - name: Auto build
-        if: matrix.build-mode == 'autobuild'
-        uses: github/codeql-action/autobuild@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
-        with:
-          working-directory: ${{ matrix.working-directory }}
-
-      - name: Build (${{ matrix.language }})
-        if: matrix.language == 'go' && matrix.build-mode == 'manual'
-        run: |
-          make build
+      - name: Build Go
+        if: matrix.language == 'go'
+        run: make build
         working-directory: ${{ matrix.working-directory }}
 
       - name: Perform GoSec Analysis
@@ -159,6 +153,18 @@ jobs:
         uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
         with:
           sarif_file: ${{ format('{0}/{1}.sarif', steps.codeql-analyze.outputs.sarif-output, matrix.language) }}
+          wait-for-processing: true
+
+      # Code quality results land in a separate `<language>.quality.sarif`, which only
+      # exists for languages that ship quality queries.
+      - name: Upload CodeQL code quality result
+        if: >-
+          ${{ always() && github.event_name != 'merge_group' &&
+          !startsWith(matrix.language, 'custom-') &&
+          hashFiles(format('.codeql-results/{0}.quality.sarif', matrix.language)) != '' }}
+        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          sarif_file: ${{ format('{0}/{1}.quality.sarif', steps.codeql-analyze.outputs.sarif-output, matrix.language) }}
           wait-for-processing: true
 
   check-codeql:
