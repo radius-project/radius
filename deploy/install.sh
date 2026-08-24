@@ -256,69 +256,35 @@ warnExistingRadiusElsewhere() {
     echo "============================================================================"
 }
 
-# Fetch the releases payload and write it to stdout. On failure the HTTP status
-# and response body are reported, because the body carries the actionable
-# message for conditions such as API rate limiting.
-fetchReleases() {
-    local url="$1"
-
-    if [[ "${RADIUS_HTTP_REQUEST_CLI}" != "curl" ]]; then
-        # wget discards the error body, but writes its diagnostics to stderr,
-        # which the caller's command substitution does not capture.
-        local wget_body=""
-        if ! wget_body=$(wget --no-verbose \
-            --header="Accept: application/json" -O - "${url}"); then
-            echo "Error: request to ${url} failed" >&2
-            return 1
-        fi
-        printf '%s\n' "${wget_body}"
-        return 0
-    fi
-
-    # --write-out appends the status code so the body is preserved for
-    # diagnostics, which --fail would discard.
-    local response=""
-    if ! response=$(curl --show-error --silent --location \
-        --write-out '\n%{http_code}' "${url}"); then
-        echo "Error: request to ${url} failed" >&2
-        return 1
-    fi
-
-    local http_code="${response##*$'\n'}"
-    local body="${response%$'\n'*}"
-
-    if [[ "${http_code}" != 2* ]]; then
-        echo "Error: ${url} returned HTTP ${http_code}" >&2
-        echo "${body}" >&2
-        return 1
-    fi
-
-    printf '%s\n' "${body}"
-}
-
 getLatestRelease() {
     local radReleaseUrl="https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/releases"
-    local releases=""
+    local response=""
     local latest_release=""
 
-    if ! releases=$(fetchReleases "${radReleaseUrl}"); then
-        exit 1
+    if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
+        # -S preserves curl's error output while -s hides the progress meter.
+        if ! response=$(curl -sS "${radReleaseUrl}"); then
+            exit 1
+        fi
+    else
+        if ! response=$(wget --no-verbose \
+            --header="Accept: application/json" -O - "${radReleaseUrl}"); then
+            exit 1
+        fi
     fi
 
-    # Tolerate a payload without matches so the diagnostic below is reachable;
-    # otherwise pipefail aborts the script before it can report anything.
     if [[ "${INCLUDE_RC}" == "true" ]]; then
-        latest_release=$(printf '%s\n' "${releases}" | grep \"tag_name\" |
+        latest_release=$(printf '%s\n' "${response}" | grep \"tag_name\" |
             awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p') || true
     else
-        latest_release=$(printf '%s\n' "${releases}" | grep \"tag_name\" |
+        latest_release=$(printf '%s\n' "${response}" | grep \"tag_name\" |
             grep -v rc | awk 'NR==1{print $2}' |
             sed -n 's/\"\(.*\)\",/\1/p') || true
     fi
 
     if [[ -z "${latest_release}" ]]; then
-        echo "Error: could not determine latest release from ${radReleaseUrl}" >&2
-        echo "Response: ${releases:0:500}" >&2
+        echo "Error: could not determine latest release" >&2
+        echo "Response: ${response:0:500}" >&2
         exit 1
     fi
 
@@ -356,10 +322,9 @@ downloadFile() {
 
         echo "Downloading ${download_url}..."
         if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
-            curl --fail --show-error --silent --location "${download_url}" \
-                -o "${artifact_tmp_file}"
+            curl -SsL "${download_url}" -o "${artifact_tmp_file}"
         else
-            wget --no-verbose -O "${artifact_tmp_file}" "${download_url}"
+            wget -q -O "${artifact_tmp_file}" "${download_url}"
         fi
     fi
 

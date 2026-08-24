@@ -398,17 +398,15 @@ test_api_error_body_visible() {
     dir=$(make_test_dir "api-error-body")
     bin_dir=$(make_stub_curl_bin "api-error-body-bin" '#!/bin/bash
 printf "%s" "{\"message\":\"API rate limit exceeded for 203.0.113.5.\"}"
-printf "\n403"
 exit 0')
 
     echo "  CMD: PATH=<rate-limited-curl> ${INSTALLER} --install-dir ${dir}"
     if LAST_OUTPUT=$(PATH="${bin_dir}" "${INSTALLER}" \
         --install-dir "${dir}" 2>&1); then
-        echo "  ASSERT FAILED: expected non-zero exit for HTTP 403"
+        echo "  ASSERT FAILED: expected non-zero exit for API error response"
         return 1
     fi
     echo "${LAST_OUTPUT}"
-    assert_contains "${LAST_OUTPUT}" "HTTP 403"
     assert_contains "${LAST_OUTPUT}" "API rate limit exceeded"
 }
 
