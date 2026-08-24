@@ -92,7 +92,7 @@ export RESOURCE_TYPES_REF RESOURCE_TYPES_NAMESPACE RESOURCE_TYPES_PINS
 # recipe-pack/<pack>/vX.Y.Z tag series, so their pins advance independently.
 # Examples:
 #   make update-recipe-packs
-#   make update-recipe-packs RECIPE_PACKS_REF=recipe-pack/azure/v0.2.0 RECIPE_PACKS_NAME=azure
+#   make update-recipe-packs RECIPE_PACKS_REF=recipe-pack/azure-aks/v0.2.0 RECIPE_PACKS_NAME=azure-aks
 RECIPE_PACKS_REF ?= main
 RECIPE_PACKS_NAME ?=
 RECIPE_PACKS_PINS ?=

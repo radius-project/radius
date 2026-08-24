@@ -13,13 +13,13 @@
 #                        prefix: <namespace>/<typeName>/<typeName>.yaml.
 #
 # Pin entries in both sections share one shape:
-#   name  namespace (Radius.Compute) or recipe pack folder (azure)
+#   name  namespace (Radius.Compute) or recipe pack folder (azure-aks)
 #   repo  upstream repository, without a scheme
 #   ref   immutable commit SHA that is fetched (Phase A)
 #   tag   stable upstream release tag `ref` was resolved from, or "" only when
 #         that unit has no stable release and `ref` is an edge commit. Namespace
 #         tags look like Radius.Compute/v0.2.0, recipe pack tags like
-#         recipe-pack/azure/v0.2.0, and legacy repository-wide tags like
+#         recipe-pack/azure-aks/v0.2.0, and legacy repository-wide tags like
 #         v0.57.0. Prerelease tags are never selected.
 #
 # Updates prefer stable unit-scoped SemVer tags. Incoming edge refs cannot
@@ -32,7 +32,7 @@
 #   make update-resource-types                   # all namespaces
 #   make update-resource-types RESOURCE_TYPES_NAMESPACE=Radius.Compute
 #   make update-recipe-packs                                      # all packs
-#   make update-recipe-packs RECIPE_PACKS_NAME=azure
+#   make update-recipe-packs RECIPE_PACKS_NAME=azure-aks
 #
 # To add a new default resource type:
 #   1. Merge the manifest in resource-types-contrib.
@@ -71,10 +71,15 @@ resourceTypes:
     ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
     tag: "Radius.Storage/v0.1.0"
 recipePacks:
-  - name: azure
+  # TODO(resource-types-contrib#292): placeholder refs; re-pin azure-aks/azure-aci with `make update-recipe-packs` after #292 merges.
+  - name: azure-aks
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "recipe-pack/azure/v0.1.0"
+    ref: pending-contrib-292
+    tag: ""
+  - name: azure-aci
+    repo: github.com/radius-project/resource-types-contrib
+    ref: pending-contrib-292
+    tag: ""
   - name: kubernetes
     repo: github.com/radius-project/resource-types-contrib
     ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
