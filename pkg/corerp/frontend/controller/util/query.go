@@ -40,9 +40,8 @@ func FindResources(ctx context.Context, rootScope, resourceType, filterKey, filt
 // findResourcesRecursive behaves like FindResources but applies rootScope recursively, so a plane
 // scope such as "/planes/radius/local" matches resources in every resource group beneath it.
 //
-// No QueryOptions are passed, which leaves MaxQueryItemCount unset and the underlying SQL LIMIT
-// null. That matters: the Postgres client applies Filters in Go *after* the query returns, so a
-// limit would silently reduce this to "check only the first page of resources".
+// No max item count is set, because this uniqueness check has to see every match: a limited query
+// returns only the first batch of resources, so a conflict beyond it would go unnoticed.
 func findResourcesRecursive(ctx context.Context, rootScope, resourceType, filterKey, filterValue string, databaseClient database.Client) (*database.ObjectQueryResult, error) {
 	query := database.Query{
 		RootScope:      rootScope,
