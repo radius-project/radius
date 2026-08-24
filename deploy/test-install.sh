@@ -113,7 +113,7 @@ make_stub_curl_bin() {
     bin_dir=$(make_test_dir "${name}")
 
     local tool tool_path
-    for tool in bash mktemp uname tr grep awk sed; do
+    for tool in bash mktemp rm uname tr grep awk sed; do
         tool_path=$(command -v "${tool}" 2>/dev/null) || continue
         ln -sf "${tool_path}" "${bin_dir}/"
     done
