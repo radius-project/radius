@@ -111,6 +111,15 @@ tests:
           value: test.registry/pre-upgrade:test-tag
         template: control-plane-readiness/job.yaml
 
+  - it: preserves a tag embedded in a full UCP image path
+    set:
+      ucp.image: custom-registry.io/ucpd:custom-tag
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: custom-registry.io/pre-upgrade:custom-tag
+        template: control-plane-readiness/job.yaml
+
   - it: honors an explicitly configured pre-upgrade image
     set:
       preupgrade.image: local.registry/pre-upgrade

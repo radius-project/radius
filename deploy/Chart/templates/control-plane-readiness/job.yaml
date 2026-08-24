@@ -11,12 +11,17 @@
     {{- $readinessImage = .Values.preupgrade.image }}
     {{- $readinessTag = $readinessTag | default .Values.preupgrade.tag }}
   {{- else }}
+    {{- $ucpImageName := last (splitList "/" .Values.ucp.image) }}
+    {{- $ucpEmbeddedTag := "" }}
+    {{- if contains ":" $ucpImageName }}
+      {{- $ucpEmbeddedTag = regexReplaceAll "^.*:" $ucpImageName "" }}
+    {{- end }}
     {{- if contains "/" .Values.ucp.image }}
       {{- $readinessImage = regexReplaceAll "/[^/]+$" .Values.ucp.image "/pre-upgrade" }}
     {{- else }}
       {{- $readinessImage = "pre-upgrade" }}
     {{- end }}
-    {{- $readinessTag = $readinessTag | default .Values.ucp.tag }}
+    {{- $readinessTag = $readinessTag | default $ucpEmbeddedTag | default .Values.ucp.tag }}
   {{- end }}
 {{- end }}
 {{- $readinessTag = $readinessTag | default .Values.global.imageTag | default $appversion }}
