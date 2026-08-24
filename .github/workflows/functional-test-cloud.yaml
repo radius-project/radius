@@ -805,7 +805,7 @@ jobs:
           openssl pkey -pubin -in sa.pub -noout >/dev/null
           openssl pkey -in sa.key -check -noout >/dev/null
 
-          cat <<EOF | kind create cluster --name radius --config=-
+          kind create cluster --name radius --config=- <<EOF
           kind: Cluster
           apiVersion: kind.x-k8s.io/v1alpha4
           nodes:

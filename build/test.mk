@@ -53,16 +53,12 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-apply-custom-recipe-packs test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status ## Runs unit tests, excluding kubernetes controller tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
+test: test-get-envtools test-helm test-manage-radius-installation test-apply-custom-recipe-packs test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status test-extension-action-shell-syntax test-deploy-progress test-verify-azure ## Runs unit tests, excluding kubernetes controller tests
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
 	@bash ./.github/scripts/manage-radius-installation_test.sh
-
-.PHONY: test-update-tools-pr
-test-update-tools-pr: ## Tests the automated tool-update pull request workflow
-	@bash ./.github/scripts/update-tools-pr_test.sh
 
 .PHONY: test-apply-custom-recipe-packs
 test-apply-custom-recipe-packs: ## Tests custom recipe pack reconciliation in the deploy action
@@ -83,6 +79,24 @@ test-build-platforms: ## Tests container build platform resolution and workflow 
 .PHONY: test-publish-deploy-status
 test-publish-deploy-status: ## Tests deploy status publishing in the publish-deploy-status action
 	@bash ./.github/extension/actions/publish-deploy-status/publish-deploy-status_test.sh
+
+.PHONY: test-verify-azure
+test-verify-azure: ## Tests Azure verification subscription visibility retry behavior
+	@bash ./.github/extension/verify-azure_test.sh
+
+.PHONY: test-extension-action-shell-syntax
+test-extension-action-shell-syntax: ## Tests bash syntax of run blocks in extension composite actions
+	@bash ./.github/extension/actions/action-shell-syntax_test.sh
+
+.PHONY: test-deploy-progress
+test-deploy-progress: ## Tests live deploy progress generation
+	@bash ./.github/extension/actions/deploy-progress/progress_test.sh
+
+.PHONY: test-deploy-progress-uploader
+test-deploy-progress-uploader: generate-pnpm-installed ## Tests and builds the live deploy progress artifact uploader
+	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader install --frozen-lockfile
+	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader test
+	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader build
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them

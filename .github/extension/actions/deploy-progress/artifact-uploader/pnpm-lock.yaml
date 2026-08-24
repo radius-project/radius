@@ -1,0 +1,1349 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@actions/artifact':
+        specifier: 6.2.1
+        version: 6.2.1
+    devDependencies:
+      '@types/node':
+        specifier: 24.10.1
+        version: 24.10.1
+      '@vercel/ncc':
+        specifier: 0.44.1
+        version: 0.44.1
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
+packages:
+
+  '@actions/artifact@6.2.1':
+    resolution: {integrity: sha1-P4E9QtCNjRBfpGAQ9s4rs14pK2Y=}
+
+  '@actions/core@3.0.1':
+    resolution: {integrity: sha1-D02LFFJ+5R4NsGHu3CSiBsn5jCM=}
+
+  '@actions/exec@3.0.0':
+    resolution: {integrity: sha1-jDRk0g8KpAaHB3VwIdfjwBp+4gM=}
+
+  '@actions/github@9.1.1':
+    resolution: {integrity: sha1-uTvkw2pGzGfMlNbf0zweM7nFmm8=}
+
+  '@actions/http-client@3.0.2':
+    resolution: {integrity: sha1-PbnIOvnSnVGsjDC0W8F/cBS+sbI=}
+
+  '@actions/http-client@4.0.1':
+    resolution: {integrity: sha1-IqI6diW6EybZuhVAEsqDAaJ/iKM=}
+
+  '@actions/io@3.0.2':
+    resolution: {integrity: sha1-b4myehWdEJg22YPvooOZfCO5IoQ=}
+
+  '@azure/abort-controller@2.2.0':
+    resolution: {integrity: sha1-k+DoKwGGLn6jtbaZWHGdPz/SyKw=}
+    engines: {node: '>=22.0.0'}
+
+  '@azure/core-auth@1.11.0':
+    resolution: {integrity: sha1-Ha7/32LRqHHSK4ZfnzFkpj6h9XU=}
+    engines: {node: '>=22.0.0'}
+
+  '@azure/core-client@1.11.0':
+    resolution: {integrity: sha1-5z0JrHl33l17QVaWt+1F0/3rZ7A=}
+    engines: {node: '>=22.0.0'}
+
+  '@azure/core-http-compat@2.5.0':
+    resolution: {integrity: sha1-14BmGln4pDL+yyt8b6LVgi3KHeo=}
+    engines: {node: '>=22.0.0'}
+    peerDependencies:
+      '@azure/core-client': ^1.10.0
+      '@azure/core-rest-pipeline': ^1.22.0
+
+  '@azure/core-lro@2.7.2':
+    resolution: {integrity: sha1-eHEFAnog5Fx3ZRqYsBpNOwG3Wgg=}
+    engines: {node: '>=18.0.0'}
+
+  '@azure/core-paging@1.7.0':
+    resolution: {integrity: sha1-WVl6L1Q4ujxsh4n8hw9p4OeFMag=}
+    engines: {node: '>=22.0.0'}
+
+  '@azure/core-rest-pipeline@1.25.0':
+    resolution: {integrity: sha1-kupJEu27H3OV9IKaMAYxF0qoLwg=}
+    engines: {node: '>=22.0.0'}
+
+  '@azure/core-tracing@1.4.0':
+    resolution: {integrity: sha1-1lenAOJNJW0ZXmKKeV22qMxHXqs=}
+    engines: {node: '>=22.0.0'}
+
+  '@azure/core-util@1.14.0':
+    resolution: {integrity: sha1-fOn+V5WPEy3UIlc4VuWkXHIyuwQ=}
+    engines: {node: '>=22.0.0'}
+
+  '@azure/core-xml@1.6.0':
+    resolution: {integrity: sha1-EI8JIOG834owuffoh5ibOhIIK9k=}
+    engines: {node: '>=22.0.0'}
+
+  '@azure/logger@1.4.0':
+    resolution: {integrity: sha1-PVpif+WaJ27OdIenndkq1cUIwzk=}
+    engines: {node: '>=22.0.0'}
+
+  '@azure/storage-blob@12.33.0':
+    resolution: {integrity: sha1-EK1FhvSSJzG4t5zIa+ytp1Z6H6s=}
+    engines: {node: '>=22.0.0'}
+
+  '@azure/storage-common@12.5.0':
+    resolution: {integrity: sha1-nbHWmPJu9LVqVKYABGp2XqG7oxY=}
+    engines: {node: '>=22.0.0'}
+
+  '@bufbuild/protobuf@2.13.0':
+    resolution: {integrity: sha1-kq4J1kEsZYpWs8LNhnOGhQBkyQE=}
+
+  '@bufbuild/protoplugin@2.13.0':
+    resolution: {integrity: sha1-CtIzen1vyxOP3V0/wIfSn4QQTKQ=}
+
+  '@isaacs/cliui@8.0.2':
+    resolution: {integrity: sha1-s3Znt7wYHBaHgiWbq0JHT79StVA=}
+    engines: {node: '>=12'}
+
+  '@nodable/entities@3.0.0':
+    resolution: {integrity: sha1-aUcDvIZNMOrtVcLj3vANvWFJNnA=}
+
+  '@octokit/auth-token@6.0.0':
+    resolution: {integrity: sha1-sC6cCKLYk33wmiqYHyJq0hkXTFM=}
+    engines: {node: '>= 20'}
+
+  '@octokit/core@7.0.7':
+    resolution: {integrity: sha1-OZ7OSFRjrZJwkkBP8JGsoJ9Gux0=}
+    engines: {node: '>= 20'}
+
+  '@octokit/endpoint@11.0.4':
+    resolution: {integrity: sha1-GP8eV1wrMNzcGZftyNLrB3PFAzQ=}
+    engines: {node: '>= 20'}
+
+  '@octokit/graphql@9.0.4':
+    resolution: {integrity: sha1-0exF/WoPlbqScKa00s5Adi7n3pU=}
+    engines: {node: '>= 20'}
+
+  '@octokit/openapi-types@27.0.0':
+    resolution: {integrity: sha1-N06lN4GWX9AqnTbKy5fhUs7/8S0=}
+
+  '@octokit/openapi-types@28.0.0':
+    resolution: {integrity: sha1-qOR2kcFgL0d2Tn8V0WXW9mc2sAU=}
+
+  '@octokit/plugin-paginate-rest@14.0.0':
+    resolution: {integrity: sha1-RNyf/y2ssUjUxceItXPdwERQMCY=}
+    engines: {node: '>= 20'}
+    peerDependencies:
+      '@octokit/core': '>=6'
+
+  '@octokit/plugin-request-log@6.0.0':
+    resolution: {integrity: sha1-3hweVX32wIrbYxv3gmT6dB4Bsxc=}
+    engines: {node: '>= 20'}
+    peerDependencies:
+      '@octokit/core': '>=6'
+
+  '@octokit/plugin-rest-endpoint-methods@17.0.0':
+    resolution: {integrity: sha1-jFQ5fTpAYDVqHIqXQZHr+UWSQQU=}
+    engines: {node: '>= 20'}
+    peerDependencies:
+      '@octokit/core': '>=6'
+
+  '@octokit/plugin-retry@8.1.1':
+    resolution: {integrity: sha1-66jGcMMSilR06NH2K9GxX/8JxYM=}
+    engines: {node: '>= 20'}
+    peerDependencies:
+      '@octokit/core': '>=7'
+
+  '@octokit/request-error@7.1.1':
+    resolution: {integrity: sha1-zZKNljVXQoU5Bb6Ee7erbsan1Rg=}
+    engines: {node: '>= 20'}
+
+  '@octokit/request@10.0.13':
+    resolution: {integrity: sha1-RxvSMka7cdm8lUIBmZpvbI2gHKk=}
+    engines: {node: '>= 20'}
+
+  '@octokit/types@16.0.0':
+    resolution: {integrity: sha1-+9f6WQwu8ir4gbHXl1i/qiNNu3w=}
+
+  '@octokit/types@17.0.0':
+    resolution: {integrity: sha1-wPpAkLjZV92bZaUR9x+H7hQDdpQ=}
+
+  '@pkgjs/parseargs@0.11.0':
+    resolution: {integrity: sha1-p36nQvqyV3UUVDTrHSMoz1ATrDM=}
+    engines: {node: '>=14'}
+
+  '@protobuf-ts/plugin@2.11.1':
+    resolution: {integrity: sha1-yBn/msoQIgnSCWQUs9IkDdJAy9s=}
+    hasBin: true
+
+  '@protobuf-ts/protoc@2.11.1':
+    resolution: {integrity: sha1-Wuhqd3ys3Fjdx+OO4QenQ0KobjA=}
+    hasBin: true
+
+  '@protobuf-ts/runtime-rpc@2.11.1':
+    resolution: {integrity: sha1-pusvOEvOro0joB0LDjf68K82wXk=}
+
+  '@protobuf-ts/runtime@2.11.1':
+    resolution: {integrity: sha1-7ivy+sbi2N6sDKY0cad0gVSOVVM=}
+
+  '@types/node@24.10.1':
+    resolution: {integrity: sha1-kekhgsk9uL1iJPygMeI3DO+ajwE=}
+
+  '@typescript/vfs@1.6.4':
+    resolution: {integrity: sha1-dUOjvZYXJ+tRyL2vw+1eD7X1bf8=}
+    peerDependencies:
+      typescript: '*'
+
+  '@typespec/ts-http-runtime@0.3.8':
+    resolution: {integrity: sha1-tN7lpeeXGu3HCVO7fS2/V4P0LTg=}
+    engines: {node: '>=22.0.0'}
+
+  '@vercel/ncc@0.44.1':
+    resolution: {integrity: sha1-W+zGUAoUlOW5eGFQ2mN00LLXZx0=}
+    hasBin: true
+
+  abort-controller@3.0.0:
+    resolution: {integrity: sha1-6vVNU7YrrkE46AnKIlyEOabvs5I=}
+    engines: {node: '>=6.5'}
+
+  agent-base@7.1.4:
+    resolution: {integrity: sha1-48121MVI7oldPD/Y3B9sW5Ay56g=}
+    engines: {node: '>= 14'}
+
+  ansi-regex@5.0.1:
+    resolution: {integrity: sha1-CCyyyJyf6GWaMRpTvWpNxTAdswQ=}
+    engines: {node: '>=8'}
+
+  ansi-regex@6.3.0:
+    resolution: {integrity: sha1-JHyOe3ChpDsQzhTAIm/L9Y6IFdU=}
+    engines: {node: '>=12'}
+
+  ansi-styles@4.3.0:
+    resolution: {integrity: sha1-7dgDYornHATIWuegkG7a00tkiTc=}
+    engines: {node: '>=8'}
+
+  ansi-styles@6.2.3:
+    resolution: {integrity: sha1-wETV3MUhoHZBNHJZehrLHxA8QEE=}
+    engines: {node: '>=12'}
+
+  anynum@1.0.1:
+    resolution: {integrity: sha1-KqwA4I3603JsHUYuYNvC+DFlmkQ=}
+
+  archiver-utils@5.0.2:
+    resolution: {integrity: sha1-Y7xxnZUYA+/HLPlhpW74EHYN0U0=}
+    engines: {node: '>= 14'}
+
+  archiver@7.0.1:
+    resolution: {integrity: sha1-ydkcNQNiBAuJJzeceqacBlUSL2E=}
+    engines: {node: '>= 14'}
+
+  async@3.2.6:
+    resolution: {integrity: sha1-Gwco4Ukp1RuFtEm38G4nwRReOM4=}
+
+  b4a@1.8.1:
+    resolution: {integrity: sha1-fxYzTKgBJ66yYGSiiEGsvxdIQKQ=}
+    peerDependencies:
+      react-native-b4a: '*'
+    peerDependenciesMeta:
+      react-native-b4a:
+        optional: true
+
+  balanced-match@1.0.2:
+    resolution: {integrity: sha1-6D46fj8wCzTLnYf2FfoMvzV2kO4=}
+
+  bare-events@2.9.1:
+    resolution: {integrity: sha1-XIZhaWY0O8sDobMVX+qyU+rb80k=}
+    peerDependencies:
+      bare-abort-controller: '*'
+    peerDependenciesMeta:
+      bare-abort-controller:
+        optional: true
+
+  bare-fs@4.8.0:
+    resolution: {integrity: sha1-jA+RaDOuEebZ00f54Kf0b3N1u48=}
+    engines: {bare: '>=1.28.0'}
+    peerDependencies:
+      bare-buffer: '*'
+    peerDependenciesMeta:
+      bare-buffer:
+        optional: true
+
+  bare-path@3.1.1:
+    resolution: {integrity: sha1-1KIHwIhgm0Zjp1VqRqlzQjmL9+I=}
+
+  bare-stream@2.13.3:
+    resolution: {integrity: sha1-9hhsfLtLv1OkVg815IsWNzulHOY=}
+    peerDependencies:
+      bare-abort-controller: '*'
+      bare-buffer: '*'
+      bare-events: '*'
+    peerDependenciesMeta:
+      bare-abort-controller:
+        optional: true
+      bare-buffer:
+        optional: true
+      bare-events:
+        optional: true
+
+  bare-url@2.5.2:
+    resolution: {integrity: sha1-6Nr67721aJGg+8Kw4cBRKW0kHNY=}
+
+  base64-js@1.5.1:
+    resolution: {integrity: sha1-GxtEAWClv3rUC2UPCVljSBkDkwo=}
+
+  before-after-hook@4.0.0:
+    resolution: {integrity: sha1-zxRHq5Fg32pA82Idpk1v/DYFDLk=}
+
+  binary@0.3.0:
+    resolution: {integrity: sha1-n2BVO8XOjDOG87VTz/R0Yq3sqnk=}
+
+  bottleneck@2.19.5:
+    resolution: {integrity: sha1-XfC5D1n9R2VuvmPHiphBkgXK3ZE=}
+
+  brace-expansion@2.1.4:
+    resolution: {integrity: sha1-WJ2rEcABjQNmvmTNi/Esjb7MgyY=}
+
+  buffer-crc32@1.0.0:
+    resolution: {integrity: sha1-oQmTuQVQgdVTBL2f60oHLeF59AU=}
+    engines: {node: '>=8.0.0'}
+
+  buffer@6.0.3:
+    resolution: {integrity: sha1-Ks5XhFnMj74qcKqo9S7mO2p0xsY=}
+
+  buffers@0.1.1:
+    resolution: {integrity: sha1-skV5w77U1tOWru5tmorn9Ugqt7s=}
+    engines: {node: '>=0.2.0'}
+
+  chainsaw@0.1.0:
+    resolution: {integrity: sha1-XqtQsor+WAdNDVgpE4iCi15fvJg=}
+
+  color-convert@2.0.1:
+    resolution: {integrity: sha1-ctOmjVmMm9s68q0ehPIdiWq9TeM=}
+    engines: {node: '>=7.0.0'}
+
+  color-name@1.1.4:
+    resolution: {integrity: sha1-wqCah6y95pVD3m9j+jmVyCbFNqI=}
+
+  compress-commons@6.0.2:
+    resolution: {integrity: sha1-JtMSUaZrnWuiOoQGTs06anHSYJ4=}
+    engines: {node: '>= 14'}
+
+  content-type@2.0.0:
+    resolution: {integrity: sha1-L7Pt5p3/oK94ynxM51iWgGOLVt8=}
+    engines: {node: '>=18'}
+
+  core-util-is@1.0.3:
+    resolution: {integrity: sha1-pgQtNjTCsn6TKPg3uWX6yDgI24U=}
+
+  crc-32@1.2.2:
+    resolution: {integrity: sha1-PK01qTS4v3HyXKUkttpR+36s4v8=}
+    engines: {node: '>=0.8'}
+    hasBin: true
+
+  crc32-stream@6.0.0:
+    resolution: {integrity: sha1-hSmjho+LJ6u5FfbDYXwPre2/lDA=}
+    engines: {node: '>= 14'}
+
+  cross-spawn@7.0.6:
+    resolution: {integrity: sha1-ilj+ePANzXDDcEUXWd+/rwPo7p8=}
+    engines: {node: '>= 8'}
+
+  debug@4.4.3:
+    resolution: {integrity: sha1-xq5DLZvZZiWC/OCHCbA4xY6ePWo=}
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+
+  eastasianwidth@0.2.0:
+    resolution: {integrity: sha1-aWzi7Aqg5uqTo5f/zySqeEDIJ8s=}
+
+  emoji-regex@8.0.0:
+    resolution: {integrity: sha1-6Bj9ac5cz8tARZT4QpY79TFkzDc=}
+
+  emoji-regex@9.2.2:
+    resolution: {integrity: sha1-hAyIA7DYBH9P8M+WMXazLU7z7XI=}
+
+  event-target-shim@5.0.1:
+    resolution: {integrity: sha1-XU0+vflYPWOlMzzi3rdICrKwV4k=}
+    engines: {node: '>=6'}
+
+  events-universal@1.0.1:
+    resolution: {integrity: sha1-tWqE/WEbZhDgotDwn4D9+THi3+Y=}
+
+  events@3.3.0:
+    resolution: {integrity: sha1-Mala0Kkk4tLEGagTrrLE6HjqdAA=}
+    engines: {node: '>=0.8.x'}
+
+  fast-fifo@1.3.2:
+    resolution: {integrity: sha1-KG4x3pbrltOKl4mYFXQLoqTzZAw=}
+
+  fast-xml-builder@1.3.0:
+    resolution: {integrity: sha1-vISYBHlv5Hv5FQIt2Tmw/DC6RV0=}
+
+  fast-xml-parser@5.10.1:
+    resolution: {integrity: sha1-GTE/fJOGxH+kod5SdUe3PtLPzt4=}
+    hasBin: true
+
+  foreground-child@3.3.1:
+    resolution: {integrity: sha1-Mujp7Rtoo0l777msK2rfkqY4V28=}
+    engines: {node: '>=14'}
+
+  glob@10.5.0:
+    resolution: {integrity: sha1-jsA1WRnNMzjChCiiPU8k7MX+c4w=}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+    hasBin: true
+
+  graceful-fs@4.2.11:
+    resolution: {integrity: sha1-QYPk6L8Iu24Fu7L30uDI9xLKQOM=}
+
+  http-proxy-agent@7.0.2:
+    resolution: {integrity: sha1-mosfJGhmwChQlIZYX2K48sGMJw4=}
+    engines: {node: '>= 14'}
+
+  https-proxy-agent@7.0.6:
+    resolution: {integrity: sha1-2o3+rH2hMLBcK6S1nJts1mYRprk=}
+    engines: {node: '>= 14'}
+
+  ieee754@1.2.1:
+    resolution: {integrity: sha1-jrehCmP/8l0VpXsAFYbRd9Gw01I=}
+
+  inherits@2.0.4:
+    resolution: {integrity: sha1-D6LGT5MpF8NDOg3tVTY6rjdBa3w=}
+
+  is-fullwidth-code-point@3.0.0:
+    resolution: {integrity: sha1-8Rb4Bk/pCz94RKOJl8C3UFEmnx0=}
+    engines: {node: '>=8'}
+
+  is-stream@2.0.1:
+    resolution: {integrity: sha1-+sHj1TuXrVqdCunO8jifWBClwHc=}
+    engines: {node: '>=8'}
+
+  is-unsafe@2.0.0:
+    resolution: {integrity: sha1-wNzk4GdCZi3eJjYBYOQU6kh9ouk=}
+
+  isarray@1.0.0:
+    resolution: {integrity: sha1-u5NdSFgsuhaMBoNJV6VKPgcSTxE=}
+
+  isexe@2.0.0:
+    resolution: {integrity: sha1-6PvzdNxVb/iUehDcsFctYz8s+hA=}
+
+  jackspeak@3.4.3:
+    resolution: {integrity: sha1-iDOp2Jq0rN5hiJQr0cU7Y5DtWoo=}
+
+  json-with-bigint@3.5.10:
+    resolution: {integrity: sha1-HeYIpVIOxHdJ5RR7CzpobJebHHw=}
+
+  jwt-decode@4.0.0:
+    resolution: {integrity: sha1-InA1JCX9QTeFsvrxH251XFFRvUs=}
+    engines: {node: '>=18'}
+
+  lazystream@1.0.1:
+    resolution: {integrity: sha1-SUyDEGLx+UCCUexE2xy6KSQqJjg=}
+    engines: {node: '>= 0.6.3'}
+
+  lodash@4.18.1:
+    resolution: {integrity: sha1-/ytmwfYybVlRPeJAe/iBQ5gSdxw=}
+
+  lru-cache@10.4.3:
+    resolution: {integrity: sha1-QQ/IoXtw5ZgBPfJXwkRrfzOD8Rk=}
+
+  minimatch@5.1.9:
+    resolution: {integrity: sha1-EpPvFdsAmLOUVA6Pn3RPn9qN7ks=}
+    engines: {node: '>=10'}
+
+  minimatch@9.0.9:
+    resolution: {integrity: sha1-mwy5/LeAh/b9fqur4lEcTT1gV04=}
+    engines: {node: '>=16 || 14 >=14.17'}
+
+  minimist@1.2.8:
+    resolution: {integrity: sha1-waRk52kzAuCCoHXO4MBXdBrEdyw=}
+
+  minipass@7.1.3:
+    resolution: {integrity: sha1-eTibTrG7LQA6m7qH1JLyvTe9xls=}
+    engines: {node: '>=16 || 14 >=14.17'}
+
+  mkdirp@0.5.6:
+    resolution: {integrity: sha1-fe8D0kMtyuS6HWEURcSDlgYiVfY=}
+    hasBin: true
+
+  ms@2.1.3:
+    resolution: {integrity: sha1-V0yBOM4dK1hh8LRFedut1gxmFbI=}
+
+  normalize-path@3.0.0:
+    resolution: {integrity: sha1-Dc1p/yOhybEf0JeDFmRKA4ghamU=}
+    engines: {node: '>=0.10.0'}
+
+  package-json-from-dist@1.0.1:
+    resolution: {integrity: sha1-TxRxoBCCeob5TP2bByfjbSZ95QU=}
+
+  path-expression-matcher@1.6.2:
+    resolution: {integrity: sha1-VnxzwHGX6dzvJOkO3NxXEFZZkWg=}
+    engines: {node: '>=14.0.0'}
+
+  path-key@3.1.1:
+    resolution: {integrity: sha1-WB9q3mWMu6ZaDTOA3ndTKVBU83U=}
+    engines: {node: '>=8'}
+
+  path-scurry@1.11.1:
+    resolution: {integrity: sha1-eWCmaIiFlKByCxKpEdGnQqufEdI=}
+    engines: {node: '>=16 || 14 >=14.18'}
+
+  process-nextick-args@2.0.1:
+    resolution: {integrity: sha1-eCDZsWEgzFXKmud5JoCufbptf+I=}
+
+  process@0.11.10:
+    resolution: {integrity: sha1-czIwDoQBYb2j5podHZGn1LwW8YI=}
+    engines: {node: '>= 0.6.0'}
+
+  readable-stream@2.3.8:
+    resolution: {integrity: sha1-kRJegEK7obmIf0k0X2J3Anzovps=}
+
+  readable-stream@4.7.0:
+    resolution: {integrity: sha1-ztvYoRRsE9//jasUBoAo1YwVrJE=}
+    engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+
+  readdir-glob@1.1.3:
+    resolution: {integrity: sha1-w9gx9R9ee/pi+i/75LUIxkDwlYQ=}
+
+  safe-buffer@5.1.2:
+    resolution: {integrity: sha1-mR7GnSluAxN0fVm9/St0XDX4go0=}
+
+  safe-buffer@5.2.1:
+    resolution: {integrity: sha1-Hq+fqb2x/dTsdfWPnNtOa3gn7sY=}
+
+  shebang-command@2.0.0:
+    resolution: {integrity: sha1-zNCvT4g1+9wmW4JGGq8MNmY/NOo=}
+    engines: {node: '>=8'}
+
+  shebang-regex@3.0.0:
+    resolution: {integrity: sha1-rhbxZE2HPsrYQ7AwexQzYtTEIXI=}
+    engines: {node: '>=8'}
+
+  signal-exit@4.1.0:
+    resolution: {integrity: sha1-lSGIwcvVRgcOLdIND0HArgUwywQ=}
+    engines: {node: '>=14'}
+
+  streamx@2.28.0:
+    resolution: {integrity: sha1-A1q1YFe37SIRtR1TLmlz8PmfvxE=}
+
+  string-width@4.2.3:
+    resolution: {integrity: sha1-JpxxF9J7Ba0uU2gwqOyJXvnG0BA=}
+    engines: {node: '>=8'}
+
+  string-width@5.1.2:
+    resolution: {integrity: sha1-FPja7G2B5yIdKjV+Zoyrc728p5Q=}
+    engines: {node: '>=12'}
+
+  string_decoder@1.1.1:
+    resolution: {integrity: sha1-nPFhG6YmhdcDCunkujQUnDrwP8g=}
+
+  string_decoder@1.3.0:
+    resolution: {integrity: sha1-QvEUWUpGzxqOMLCoT1bHjD7awh4=}
+
+  strip-ansi@6.0.1:
+    resolution: {integrity: sha1-nibGPTD1NEPpSJSVshBdN7Z6hdk=}
+    engines: {node: '>=8'}
+
+  strip-ansi@7.2.0:
+    resolution: {integrity: sha1-0iomlSKDamJ6+NBLXD/Sx/o+MuM=}
+    engines: {node: '>=12'}
+
+  strnum@2.4.1:
+    resolution: {integrity: sha1-hUF/aDETut6g/n4XInZ2+In/flg=}
+
+  tar-stream@3.2.0:
+    resolution: {integrity: sha1-DQBk2bZ+o8n1q94VXjX6qw3zdZE=}
+
+  teex@1.0.1:
+    resolution: {integrity: sha1-uPpyRe+Ojv+oB4KBlGyFq3gKCxI=}
+
+  text-decoder@1.2.7:
+    resolution: {integrity: sha1-XQc6mnS5wKnSjfrcq5a2BK9X2Lo=}
+
+  traverse@0.3.9:
+    resolution: {integrity: sha1-cXuPIgzAu3tE5AUUwisui7xw2Lk=}
+
+  tslib@2.8.1:
+    resolution: {integrity: sha1-YS7+TtI11Wfoq6Xypfq3AoCt6D8=}
+
+  tunnel@0.0.6:
+    resolution: {integrity: sha1-cvExSzSlsZLbASMk3yzFh8pH+Sw=}
+    engines: {node: '>=0.6.11 <=0.7.0 || >=0.7.3'}
+
+  typescript@3.9.10:
+    resolution: {integrity: sha1-cPORCselHta+952ngAaQsZv3eLg=}
+    engines: {node: '>=4.2.0'}
+    hasBin: true
+
+  typescript@5.4.5:
+    resolution: {integrity: sha1-QszvLFcf29D2cYsdH15uXvAG9hE=}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+  typescript@5.9.3:
+    resolution: {integrity: sha1-W09Z4VMQqxeiFvXWz1PuR27eZw8=}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+  undici-types@7.16.0:
+    resolution: {integrity: sha1-/8zf82rqSITL/OmnUKBYAiT1ikY=}
+
+  undici@6.28.0:
+    resolution: {integrity: sha1-nw44V0T+9QIdZZbFvM14P2EZPBw=}
+    engines: {node: '>=18.17'}
+
+  universal-user-agent@7.0.3:
+    resolution: {integrity: sha1-wFhwpYElotwAQx8t+BWnf+aXNr4=}
+
+  unzip-stream@0.3.4:
+    resolution: {integrity: sha1-tFdnVQYYCc8hC3ds8miI1qeCPq0=}
+
+  util-deprecate@1.0.2:
+    resolution: {integrity: sha1-RQ1Nyfpw3nMnYvvS1KKJgUGaDM8=}
+
+  which@2.0.2:
+    resolution: {integrity: sha1-fGqN0KY2oDJ+ELWckobu6T8/UbE=}
+    engines: {node: '>= 8'}
+    hasBin: true
+
+  wrap-ansi@7.0.0:
+    resolution: {integrity: sha1-Z+FFz/UQpqaYS98RUpEdadLrnkM=}
+    engines: {node: '>=10'}
+
+  wrap-ansi@8.1.0:
+    resolution: {integrity: sha1-VtwiNo7lcPrOG0mBmXXZuaXq0hQ=}
+    engines: {node: '>=12'}
+
+  xml-naming@0.3.0:
+    resolution: {integrity: sha1-RsHhi/4oWEeZgt0qzPNNFudJ7aI=}
+    engines: {node: '>=16.0.0'}
+
+  zip-stream@6.0.1:
+    resolution: {integrity: sha1-4UG5MO1gzK9df6nIJg4NF0iiu/s=}
+    engines: {node: '>= 14'}
+
+snapshots:
+
+  '@actions/artifact@6.2.1':
+    dependencies:
+      '@actions/core': 3.0.1
+      '@actions/github': 9.1.1
+      '@actions/http-client': 4.0.1
+      '@azure/storage-blob': 12.33.0
+      '@octokit/core': 7.0.7
+      '@octokit/plugin-request-log': 6.0.0(@octokit/core@7.0.7)
+      '@octokit/plugin-retry': 8.1.1(@octokit/core@7.0.7)
+      '@octokit/request': 10.0.13
+      '@octokit/request-error': 7.1.1
+      '@protobuf-ts/plugin': 2.11.1
+      '@protobuf-ts/runtime': 2.11.1
+      archiver: 7.0.1
+      jwt-decode: 4.0.0
+      unzip-stream: 0.3.4
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - bare-buffer
+      - react-native-b4a
+      - supports-color
+
+  '@actions/core@3.0.1':
+    dependencies:
+      '@actions/exec': 3.0.0
+      '@actions/http-client': 4.0.1
+
+  '@actions/exec@3.0.0':
+    dependencies:
+      '@actions/io': 3.0.2
+
+  '@actions/github@9.1.1':
+    dependencies:
+      '@actions/http-client': 3.0.2
+      '@octokit/core': 7.0.7
+      '@octokit/plugin-paginate-rest': 14.0.0(@octokit/core@7.0.7)
+      '@octokit/plugin-rest-endpoint-methods': 17.0.0(@octokit/core@7.0.7)
+      '@octokit/request': 10.0.13
+      '@octokit/request-error': 7.1.1
+      undici: 6.28.0
+
+  '@actions/http-client@3.0.2':
+    dependencies:
+      tunnel: 0.0.6
+      undici: 6.28.0
+
+  '@actions/http-client@4.0.1':
+    dependencies:
+      tunnel: 0.0.6
+      undici: 6.28.0
+
+  '@actions/io@3.0.2': {}
+
+  '@azure/abort-controller@2.2.0':
+    dependencies:
+      tslib: 2.8.1
+
+  '@azure/core-auth@1.11.0':
+    dependencies:
+      '@azure/abort-controller': 2.2.0
+      '@azure/core-util': 1.14.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/core-client@1.11.0':
+    dependencies:
+      '@azure/abort-controller': 2.2.0
+      '@azure/core-auth': 1.11.0
+      '@azure/core-rest-pipeline': 1.25.0
+      '@azure/core-tracing': 1.4.0
+      '@azure/core-util': 1.14.0
+      '@azure/logger': 1.4.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/core-http-compat@2.5.0(@azure/core-client@1.11.0)(@azure/core-rest-pipeline@1.25.0)':
+    dependencies:
+      '@azure/abort-controller': 2.2.0
+      '@azure/core-client': 1.11.0
+      '@azure/core-rest-pipeline': 1.25.0
+
+  '@azure/core-lro@2.7.2':
+    dependencies:
+      '@azure/abort-controller': 2.2.0
+      '@azure/core-util': 1.14.0
+      '@azure/logger': 1.4.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/core-paging@1.7.0':
+    dependencies:
+      tslib: 2.8.1
+
+  '@azure/core-rest-pipeline@1.25.0':
+    dependencies:
+      '@azure/abort-controller': 2.2.0
+      '@azure/core-auth': 1.11.0
+      '@azure/core-tracing': 1.4.0
+      '@azure/core-util': 1.14.0
+      '@azure/logger': 1.4.0
+      '@typespec/ts-http-runtime': 0.3.8
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/core-tracing@1.4.0':
+    dependencies:
+      tslib: 2.8.1
+
+  '@azure/core-util@1.14.0':
+    dependencies:
+      '@azure/abort-controller': 2.2.0
+      '@typespec/ts-http-runtime': 0.3.8
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/core-xml@1.6.0':
+    dependencies:
+      fast-xml-parser: 5.10.1
+      tslib: 2.8.1
+
+  '@azure/logger@1.4.0':
+    dependencies:
+      '@typespec/ts-http-runtime': 0.3.8
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/storage-blob@12.33.0':
+    dependencies:
+      '@azure/abort-controller': 2.2.0
+      '@azure/core-auth': 1.11.0
+      '@azure/core-client': 1.11.0
+      '@azure/core-http-compat': 2.5.0(@azure/core-client@1.11.0)(@azure/core-rest-pipeline@1.25.0)
+      '@azure/core-lro': 2.7.2
+      '@azure/core-paging': 1.7.0
+      '@azure/core-rest-pipeline': 1.25.0
+      '@azure/core-tracing': 1.4.0
+      '@azure/core-util': 1.14.0
+      '@azure/core-xml': 1.6.0
+      '@azure/logger': 1.4.0
+      '@azure/storage-common': 12.5.0(@azure/core-client@1.11.0)
+      events: 3.3.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@azure/storage-common@12.5.0(@azure/core-client@1.11.0)':
+    dependencies:
+      '@azure/abort-controller': 2.2.0
+      '@azure/core-auth': 1.11.0
+      '@azure/core-http-compat': 2.5.0(@azure/core-client@1.11.0)(@azure/core-rest-pipeline@1.25.0)
+      '@azure/core-rest-pipeline': 1.25.0
+      '@azure/core-tracing': 1.4.0
+      '@azure/core-util': 1.14.0
+      '@azure/logger': 1.4.0
+      events: 3.3.0
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - '@azure/core-client'
+      - supports-color
+
+  '@bufbuild/protobuf@2.13.0': {}
+
+  '@bufbuild/protoplugin@2.13.0':
+    dependencies:
+      '@bufbuild/protobuf': 2.13.0
+      '@typescript/vfs': 1.6.4(typescript@5.4.5)
+      typescript: 5.4.5
+    transitivePeerDependencies:
+      - supports-color
+
+  '@isaacs/cliui@8.0.2':
+    dependencies:
+      string-width: 5.1.2
+      string-width-cjs: string-width@4.2.3
+      strip-ansi: 7.2.0
+      strip-ansi-cjs: strip-ansi@6.0.1
+      wrap-ansi: 8.1.0
+      wrap-ansi-cjs: wrap-ansi@7.0.0
+
+  '@nodable/entities@3.0.0': {}
+
+  '@octokit/auth-token@6.0.0': {}
+
+  '@octokit/core@7.0.7':
+    dependencies:
+      '@octokit/auth-token': 6.0.0
+      '@octokit/graphql': 9.0.4
+      '@octokit/request': 10.0.13
+      '@octokit/request-error': 7.1.1
+      '@octokit/types': 17.0.0
+      before-after-hook: 4.0.0
+      universal-user-agent: 7.0.3
+
+  '@octokit/endpoint@11.0.4':
+    dependencies:
+      '@octokit/types': 17.0.0
+      universal-user-agent: 7.0.3
+
+  '@octokit/graphql@9.0.4':
+    dependencies:
+      '@octokit/request': 10.0.13
+      '@octokit/types': 17.0.0
+      universal-user-agent: 7.0.3
+
+  '@octokit/openapi-types@27.0.0': {}
+
+  '@octokit/openapi-types@28.0.0': {}
+
+  '@octokit/plugin-paginate-rest@14.0.0(@octokit/core@7.0.7)':
+    dependencies:
+      '@octokit/core': 7.0.7
+      '@octokit/types': 16.0.0
+
+  '@octokit/plugin-request-log@6.0.0(@octokit/core@7.0.7)':
+    dependencies:
+      '@octokit/core': 7.0.7
+
+  '@octokit/plugin-rest-endpoint-methods@17.0.0(@octokit/core@7.0.7)':
+    dependencies:
+      '@octokit/core': 7.0.7
+      '@octokit/types': 16.0.0
+
+  '@octokit/plugin-retry@8.1.1(@octokit/core@7.0.7)':
+    dependencies:
+      '@octokit/core': 7.0.7
+      '@octokit/request-error': 7.1.1
+      '@octokit/types': 17.0.0
+      bottleneck: 2.19.5
+
+  '@octokit/request-error@7.1.1':
+    dependencies:
+      '@octokit/types': 17.0.0
+
+  '@octokit/request@10.0.13':
+    dependencies:
+      '@octokit/endpoint': 11.0.4
+      '@octokit/request-error': 7.1.1
+      '@octokit/types': 17.0.0
+      content-type: 2.0.0
+      json-with-bigint: 3.5.10
+      universal-user-agent: 7.0.3
+
+  '@octokit/types@16.0.0':
+    dependencies:
+      '@octokit/openapi-types': 27.0.0
+
+  '@octokit/types@17.0.0':
+    dependencies:
+      '@octokit/openapi-types': 28.0.0
+
+  '@pkgjs/parseargs@0.11.0':
+    optional: true
+
+  '@protobuf-ts/plugin@2.11.1':
+    dependencies:
+      '@bufbuild/protobuf': 2.13.0
+      '@bufbuild/protoplugin': 2.13.0
+      '@protobuf-ts/protoc': 2.11.1
+      '@protobuf-ts/runtime': 2.11.1
+      '@protobuf-ts/runtime-rpc': 2.11.1
+      typescript: 3.9.10
+    transitivePeerDependencies:
+      - supports-color
+
+  '@protobuf-ts/protoc@2.11.1': {}
+
+  '@protobuf-ts/runtime-rpc@2.11.1':
+    dependencies:
+      '@protobuf-ts/runtime': 2.11.1
+
+  '@protobuf-ts/runtime@2.11.1': {}
+
+  '@types/node@24.10.1':
+    dependencies:
+      undici-types: 7.16.0
+
+  '@typescript/vfs@1.6.4(typescript@5.4.5)':
+    dependencies:
+      debug: 4.4.3
+      typescript: 5.4.5
+    transitivePeerDependencies:
+      - supports-color
+
+  '@typespec/ts-http-runtime@0.3.8':
+    dependencies:
+      http-proxy-agent: 7.0.2
+      https-proxy-agent: 7.0.6
+      tslib: 2.8.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@vercel/ncc@0.44.1': {}
+
+  abort-controller@3.0.0:
+    dependencies:
+      event-target-shim: 5.0.1
+
+  agent-base@7.1.4: {}
+
+  ansi-regex@5.0.1: {}
+
+  ansi-regex@6.3.0: {}
+
+  ansi-styles@4.3.0:
+    dependencies:
+      color-convert: 2.0.1
+
+  ansi-styles@6.2.3: {}
+
+  anynum@1.0.1: {}
+
+  archiver-utils@5.0.2:
+    dependencies:
+      glob: 10.5.0
+      graceful-fs: 4.2.11
+      is-stream: 2.0.1
+      lazystream: 1.0.1
+      lodash: 4.18.1
+      normalize-path: 3.0.0
+      readable-stream: 4.7.0
+
+  archiver@7.0.1:
+    dependencies:
+      archiver-utils: 5.0.2
+      async: 3.2.6
+      buffer-crc32: 1.0.0
+      readable-stream: 4.7.0
+      readdir-glob: 1.1.3
+      tar-stream: 3.2.0
+      zip-stream: 6.0.1
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - bare-buffer
+      - react-native-b4a
+
+  async@3.2.6: {}
+
+  b4a@1.8.1: {}
+
+  balanced-match@1.0.2: {}
+
+  bare-events@2.9.1: {}
+
+  bare-fs@4.8.0:
+    dependencies:
+      bare-events: 2.9.1
+      bare-path: 3.1.1
+      bare-stream: 2.13.3(bare-events@2.9.1)
+      bare-url: 2.5.2
+      fast-fifo: 1.3.2
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - react-native-b4a
+
+  bare-path@3.1.1: {}
+
+  bare-stream@2.13.3(bare-events@2.9.1):
+    dependencies:
+      b4a: 1.8.1
+      streamx: 2.28.0
+      teex: 1.0.1
+    optionalDependencies:
+      bare-events: 2.9.1
+    transitivePeerDependencies:
+      - react-native-b4a
+
+  bare-url@2.5.2:
+    dependencies:
+      bare-path: 3.1.1
+
+  base64-js@1.5.1: {}
+
+  before-after-hook@4.0.0: {}
+
+  binary@0.3.0:
+    dependencies:
+      buffers: 0.1.1
+      chainsaw: 0.1.0
+
+  bottleneck@2.19.5: {}
+
+  brace-expansion@2.1.4:
+    dependencies:
+      balanced-match: 1.0.2
+
+  buffer-crc32@1.0.0: {}
+
+  buffer@6.0.3:
+    dependencies:
+      base64-js: 1.5.1
+      ieee754: 1.2.1
+
+  buffers@0.1.1: {}
+
+  chainsaw@0.1.0:
+    dependencies:
+      traverse: 0.3.9
+
+  color-convert@2.0.1:
+    dependencies:
+      color-name: 1.1.4
+
+  color-name@1.1.4: {}
+
+  compress-commons@6.0.2:
+    dependencies:
+      crc-32: 1.2.2
+      crc32-stream: 6.0.0
+      is-stream: 2.0.1
+      normalize-path: 3.0.0
+      readable-stream: 4.7.0
+
+  content-type@2.0.0: {}
+
+  core-util-is@1.0.3: {}
+
+  crc-32@1.2.2: {}
+
+  crc32-stream@6.0.0:
+    dependencies:
+      crc-32: 1.2.2
+      readable-stream: 4.7.0
+
+  cross-spawn@7.0.6:
+    dependencies:
+      path-key: 3.1.1
+      shebang-command: 2.0.0
+      which: 2.0.2
+
+  debug@4.4.3:
+    dependencies:
+      ms: 2.1.3
+
+  eastasianwidth@0.2.0: {}
+
+  emoji-regex@8.0.0: {}
+
+  emoji-regex@9.2.2: {}
+
+  event-target-shim@5.0.1: {}
+
+  events-universal@1.0.1:
+    dependencies:
+      bare-events: 2.9.1
+    transitivePeerDependencies:
+      - bare-abort-controller
+
+  events@3.3.0: {}
+
+  fast-fifo@1.3.2: {}
+
+  fast-xml-builder@1.3.0:
+    dependencies:
+      path-expression-matcher: 1.6.2
+      xml-naming: 0.3.0
+
+  fast-xml-parser@5.10.1:
+    dependencies:
+      '@nodable/entities': 3.0.0
+      fast-xml-builder: 1.3.0
+      is-unsafe: 2.0.0
+      path-expression-matcher: 1.6.2
+      strnum: 2.4.1
+      xml-naming: 0.3.0
+
+  foreground-child@3.3.1:
+    dependencies:
+      cross-spawn: 7.0.6
+      signal-exit: 4.1.0
+
+  glob@10.5.0:
+    dependencies:
+      foreground-child: 3.3.1
+      jackspeak: 3.4.3
+      minimatch: 9.0.9
+      minipass: 7.1.3
+      package-json-from-dist: 1.0.1
+      path-scurry: 1.11.1
+
+  graceful-fs@4.2.11: {}
+
+  http-proxy-agent@7.0.2:
+    dependencies:
+      agent-base: 7.1.4
+      debug: 4.4.3
+    transitivePeerDependencies:
+      - supports-color
+
+  https-proxy-agent@7.0.6:
+    dependencies:
+      agent-base: 7.1.4
+      debug: 4.4.3
+    transitivePeerDependencies:
+      - supports-color
+
+  ieee754@1.2.1: {}
+
+  inherits@2.0.4: {}
+
+  is-fullwidth-code-point@3.0.0: {}
+
+  is-stream@2.0.1: {}
+
+  is-unsafe@2.0.0: {}
+
+  isarray@1.0.0: {}
+
+  isexe@2.0.0: {}
+
+  jackspeak@3.4.3:
+    dependencies:
+      '@isaacs/cliui': 8.0.2
+    optionalDependencies:
+      '@pkgjs/parseargs': 0.11.0
+
+  json-with-bigint@3.5.10: {}
+
+  jwt-decode@4.0.0: {}
+
+  lazystream@1.0.1:
+    dependencies:
+      readable-stream: 2.3.8
+
+  lodash@4.18.1: {}
+
+  lru-cache@10.4.3: {}
+
+  minimatch@5.1.9:
+    dependencies:
+      brace-expansion: 2.1.4
+
+  minimatch@9.0.9:
+    dependencies:
+      brace-expansion: 2.1.4
+
+  minimist@1.2.8: {}
+
+  minipass@7.1.3: {}
+
+  mkdirp@0.5.6:
+    dependencies:
+      minimist: 1.2.8
+
+  ms@2.1.3: {}
+
+  normalize-path@3.0.0: {}
+
+  package-json-from-dist@1.0.1: {}
+
+  path-expression-matcher@1.6.2: {}
+
+  path-key@3.1.1: {}
+
+  path-scurry@1.11.1:
+    dependencies:
+      lru-cache: 10.4.3
+      minipass: 7.1.3
+
+  process-nextick-args@2.0.1: {}
+
+  process@0.11.10: {}
+
+  readable-stream@2.3.8:
+    dependencies:
+      core-util-is: 1.0.3
+      inherits: 2.0.4
+      isarray: 1.0.0
+      process-nextick-args: 2.0.1
+      safe-buffer: 5.1.2
+      string_decoder: 1.1.1
+      util-deprecate: 1.0.2
+
+  readable-stream@4.7.0:
+    dependencies:
+      abort-controller: 3.0.0
+      buffer: 6.0.3
+      events: 3.3.0
+      process: 0.11.10
+      string_decoder: 1.3.0
+
+  readdir-glob@1.1.3:
+    dependencies:
+      minimatch: 5.1.9
+
+  safe-buffer@5.1.2: {}
+
+  safe-buffer@5.2.1: {}
+
+  shebang-command@2.0.0:
+    dependencies:
+      shebang-regex: 3.0.0
+
+  shebang-regex@3.0.0: {}
+
+  signal-exit@4.1.0: {}
+
+  streamx@2.28.0:
+    dependencies:
+      events-universal: 1.0.1
+      fast-fifo: 1.3.2
+      text-decoder: 1.2.7
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - react-native-b4a
+
+  string-width@4.2.3:
+    dependencies:
+      emoji-regex: 8.0.0
+      is-fullwidth-code-point: 3.0.0
+      strip-ansi: 6.0.1
+
+  string-width@5.1.2:
+    dependencies:
+      eastasianwidth: 0.2.0
+      emoji-regex: 9.2.2
+      strip-ansi: 7.2.0
+
+  string_decoder@1.1.1:
+    dependencies:
+      safe-buffer: 5.1.2
+
+  string_decoder@1.3.0:
+    dependencies:
+      safe-buffer: 5.2.1
+
+  strip-ansi@6.0.1:
+    dependencies:
+      ansi-regex: 5.0.1
+
+  strip-ansi@7.2.0:
+    dependencies:
+      ansi-regex: 6.3.0
+
+  strnum@2.4.1:
+    dependencies:
+      anynum: 1.0.1
+
+  tar-stream@3.2.0:
+    dependencies:
+      b4a: 1.8.1
+      bare-fs: 4.8.0
+      fast-fifo: 1.3.2
+      streamx: 2.28.0
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - bare-buffer
+      - react-native-b4a
+
+  teex@1.0.1:
+    dependencies:
+      streamx: 2.28.0
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - react-native-b4a
+
+  text-decoder@1.2.7:
+    dependencies:
+      b4a: 1.8.1
+    transitivePeerDependencies:
+      - react-native-b4a
+
+  traverse@0.3.9: {}
+
+  tslib@2.8.1: {}
+
+  tunnel@0.0.6: {}
+
+  typescript@3.9.10: {}
+
+  typescript@5.4.5: {}
+
+  typescript@5.9.3: {}
+
+  undici-types@7.16.0: {}
+
+  undici@6.28.0: {}
+
+  universal-user-agent@7.0.3: {}
+
+  unzip-stream@0.3.4:
+    dependencies:
+      binary: 0.3.0
+      mkdirp: 0.5.6
+
+  util-deprecate@1.0.2: {}
+
+  which@2.0.2:
+    dependencies:
+      isexe: 2.0.0
+
+  wrap-ansi@7.0.0:
+    dependencies:
+      ansi-styles: 4.3.0
+      string-width: 4.2.3
+      strip-ansi: 6.0.1
+
+  wrap-ansi@8.1.0:
+    dependencies:
+      ansi-styles: 6.2.3
+      string-width: 5.1.2
+      strip-ansi: 7.2.0
+
+  xml-naming@0.3.0: {}
+
+  zip-stream@6.0.1:
+    dependencies:
+      archiver-utils: 5.0.2
+      compress-commons: 6.0.2
+      readable-stream: 4.7.0

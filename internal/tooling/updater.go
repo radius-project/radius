@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -72,11 +73,45 @@ type Release struct {
 	PublishedAt time.Time
 }
 
+// VersionUpdate describes one adopted tool release and its release page when
+// the manifest identifies a GitHub repository.
+type VersionUpdate struct {
+	Tool            string
+	PreviousVersion string
+	NewVersion      string
+	ReleaseURL      string
+}
+
 // UpdateResult reports the manifest values the updater changed and the newer
 // releases it deferred because they are still inside the cooldown.
 type UpdateResult struct {
-	Changes []string
-	Held    []string
+	Changes        []string
+	Held           []string
+	VersionUpdates []VersionUpdate
+}
+
+// PullRequestBodyMarkdown renders the automated tool-update pull request body.
+func (result UpdateResult) PullRequestBodyMarkdown() string {
+	var output strings.Builder
+	output.WriteString("This automated PR refreshes the pinned command-line tool versions and SHA-256\n" +
+		"checksums from the release sources declared in `build/tools.yaml`.\n\n" +
+		"`build/tools.generated.mk` is generated from the manifest and committed with\n" +
+		"it. Bicep remains intentionally held at its compatibility-pinned version until\n" +
+		"local `br:localhost` functional tests support a newer release.\n")
+	if len(result.VersionUpdates) == 0 {
+		return output.String()
+	}
+
+	output.WriteString("\n## Updated tool releases\n\n")
+	for _, update := range result.VersionUpdates {
+		fmt.Fprintf(&output, "- `%s`: `%s` -> ", update.Tool, update.PreviousVersion)
+		if update.ReleaseURL == "" {
+			fmt.Fprintf(&output, "`%s`\n", update.NewVersion)
+			continue
+		}
+		fmt.Fprintf(&output, "[`%s` release notes](%s)\n", update.NewVersion, update.ReleaseURL)
+	}
+	return output.String()
 }
 
 // UpdateManifest refreshes versions and checksums in memory. It writes no
@@ -113,6 +148,12 @@ func UpdateManifest(ctx context.Context, manifest *Manifest, client *Client) (Up
 				result.Held = append(result.Held, fmt.Sprintf("%s %s published %s, less than %d days ago",
 					tool.Name, latest.Version, latest.PublishedAt.UTC().Format(time.DateOnly), manifest.CooldownDays))
 			} else {
+				result.VersionUpdates = append(result.VersionUpdates, VersionUpdate{
+					Tool:            tool.Name,
+					PreviousVersion: tool.Version,
+					NewVersion:      latest.Version,
+					ReleaseURL:      toolReleaseURL(*tool, latest.Version),
+				})
 				result.Changes = append(result.Changes, fmt.Sprintf("%s version %s -> %s", tool.Name, tool.Version, latest.Version))
 				targetVersion = latest.Version
 			}
@@ -143,6 +184,19 @@ func UpdateManifest(ctx context.Context, manifest *Manifest, client *Client) (Up
 		}
 	}
 	return result, nil
+}
+
+func toolReleaseURL(tool Tool, version string) string {
+	repository := strings.TrimSpace(tool.Source.Repository)
+	if repository == "" {
+		return ""
+	}
+	releaseURL := url.URL{
+		Scheme: "https",
+		Host:   "github.com",
+		Path:   fmt.Sprintf("/%s/releases/tag/%s", repository, tool.TagForVersion(version)),
+	}
+	return releaseURL.String()
 }
 
 // heldByCooldown reports whether a candidate release is still too new to adopt.
