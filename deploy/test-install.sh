@@ -113,7 +113,7 @@ make_stub_curl_bin() {
     bin_dir=$(make_test_dir "${name}")
 
     local tool tool_path
-    for tool in bash uname tr grep awk sed; do
+    for tool in bash mktemp uname tr grep awk sed; do
         tool_path=$(command -v "${tool}" 2>/dev/null) || continue
         ln -sf "${tool_path}" "${bin_dir}/"
     done
@@ -410,6 +410,23 @@ exit 0')
     assert_contains "${LAST_OUTPUT}" "API rate limit exceeded"
 }
 
+test_artifact_download_error_visible() {
+    local dir bin_dir
+    dir=$(make_test_dir "artifact-download-error")
+    bin_dir=$(make_stub_curl_bin "artifact-download-error-bin" '#!/bin/bash
+echo "curl: (22) The requested URL returned error: 404" >&2
+exit 22')
+
+    echo "  CMD: PATH=<failing-curl> ${INSTALLER} --version ${PINNED_VERSION} --install-dir ${dir}"
+    if LAST_OUTPUT=$(PATH="${bin_dir}" "${INSTALLER}" \
+        --version "${PINNED_VERSION}" --install-dir "${dir}" 2>&1); then
+        echo "  ASSERT FAILED: expected non-zero exit for download error"
+        return 1
+    fi
+    echo "${LAST_OUTPUT}"
+    assert_contains "${LAST_OUTPUT}" "curl: (22)"
+}
+
 test_flag_overrides_install_dir_env() {
     local env_dir flag_dir
     env_dir=$(make_test_dir "env-dir-ignored")
@@ -554,6 +571,7 @@ run_test "edge version without oras fails" test_edge_version_without_oras
 run_test "edge version with oras succeeds" test_edge_version_with_oras
 run_test "latest release transport error is visible" test_transport_error_visible
 run_test "latest release API error body is visible" test_api_error_body_visible
+run_test "artifact download error is visible" test_artifact_download_error_visible
 run_test "--install-dir flag overrides INSTALL_DIR env" test_flag_overrides_install_dir_env
 run_test "INSTALL_DIR env overrides RADIUS_INSTALL_DIR" test_install_dir_env_overrides_radius_install_dir
 run_test "warning for existing rad elsewhere in PATH" test_warn_existing_rad_elsewhere

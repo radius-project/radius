@@ -322,9 +322,10 @@ downloadFile() {
 
         echo "Downloading ${download_url}..."
         if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
-            curl -SsL "${download_url}" -o "${artifact_tmp_file}"
+            curl --fail --show-error --silent --location "${download_url}" \
+                -o "${artifact_tmp_file}"
         else
-            wget -q -O "${artifact_tmp_file}" "${download_url}"
+            wget --no-verbose -O "${artifact_tmp_file}" "${download_url}"
         fi
     fi
 
