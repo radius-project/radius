@@ -81,6 +81,27 @@ spec:
           name: metrics
           protocol: TCP
         {{- end }}
+        # The kube-apiserver aggregation layer forwards api.ucp.dev requests to this
+        # pod through the ucp Service. Without a readiness gate the pod is added to
+        # the Service endpoints as soon as the container starts, so the aggregator can
+        # route to a backend that is not listening yet and return 503 to callers.
+        #
+        # The probe targets the Kubernetes discovery document, which is the same
+        # endpoint the aggregator polls to decide APIService availability and is
+        # served without authentication. UCP only begins listening after its modules
+        # and default planes are configured, so a successful response here means the
+        # Radius API is genuinely serving. This also makes `helm --wait` and
+        # `rad install kubernetes` return only once the API answers, rather than as
+        # soon as the process starts.
+        readinessProbe:
+          httpGet:
+            path: /apis/api.ucp.dev/v1alpha3
+            port: ucp
+            scheme: HTTPS
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 3
         securityContext:
           allowPrivilegeEscalation: false
         {{- if .Values.ucp.resources }}
