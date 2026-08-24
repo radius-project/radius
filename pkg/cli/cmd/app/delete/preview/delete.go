@@ -22,11 +22,9 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/sync/errgroup"
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
-	generated "github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
@@ -36,7 +34,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/prompt"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
-	"github.com/radius-project/radius/pkg/corerp/datamodel"
 )
 
 const (
@@ -187,9 +184,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// Build the fully qualified Radius.Core application ID for ownership matching
-	applicationID := r.Workspace.Scope + "/providers/" + datamodel.ApplicationResourceType_v20250801preview + "/" + r.ApplicationName
+	applicationID := cmd.PreviewApplicationID(r.Workspace.Scope, r.ApplicationName)
 
-	resourcesList, err := listResourcesOwnedByApplication(ctx, managementClient, applicationID)
+	resourcesList, err := managementClient.ListResourcesInApplication(ctx, applicationID)
 	if err != nil && !clients.Is404Error(err) {
 		return err
 	}
@@ -198,26 +195,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if len(resourcesList) > 0 {
 		r.Output.LogInfo(msgDeletingResources, len(resourcesList), r.ApplicationName)
 
-		g, groupCtx := errgroup.WithContext(ctx)
-		for _, resource := range resourcesList {
-			if resource.ID != nil && resource.Type != nil {
-				// Log before launching the goroutine; output.Interface implementations
-				// (including the MockOutput used in tests) are not guaranteed to be
-				// thread-safe, and ordering the log here keeps output deterministic.
-				r.Output.LogInfo("  Deleting %s...", *resource.ID)
-				resourceType := *resource.Type
-				resourceID := *resource.ID
-				g.Go(func() error {
-					_, err := managementClient.DeleteResource(groupCtx, resourceType, resourceID, r.Force)
-					if err != nil && !clients.Is404Error(err) {
-						return err
-					}
-					return nil
-				})
-			}
-		}
-
-		if err := g.Wait(); err != nil {
+		if err := cmd.DeleteResourcesInParallel(ctx, managementClient, r.Output, resourcesList, r.Force); err != nil {
 			return clierrors.Message("Failed to delete resources for application '%s': %v", r.ApplicationName, err)
 		}
 	}
@@ -236,47 +214,4 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo(msgApplicationDeletedPreview)
 	return nil
-}
-
-// listResourcesOwnedByApplication lists resources whose properties.application field
-// matches the given application ID. This is an ownership-based query that only returns
-// resources explicitly owned by the application, unlike GetGraph which returns a
-// connectivity graph that may include shared/environment resources.
-func listResourcesOwnedByApplication(ctx context.Context, client clients.ApplicationsManagementClient, applicationID string) ([]generated.GenericResource, error) {
-	resourceTypesList, err := client.ListAllResourceTypesNames(ctx, "local")
-	if err != nil {
-		return nil, err
-	}
-
-	var results []generated.GenericResource
-	for _, resourceType := range resourceTypesList {
-		resources, err := client.ListResourcesOfType(ctx, resourceType)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, resource := range resources {
-			if isResourceOwnedByApplication(resource, applicationID) {
-				results = append(results, resource)
-			}
-		}
-	}
-
-	return results, nil
-}
-
-// isResourceOwnedByApplication checks if a resource's properties.application field
-// matches the given application ID (case-insensitive).
-func isResourceOwnedByApplication(resource generated.GenericResource, applicationID string) bool {
-	obj, found := resource.Properties["application"]
-	if !found {
-		return false
-	}
-
-	associatedAppID, ok := obj.(string)
-	if !ok || associatedAppID == "" {
-		return false
-	}
-
-	return strings.EqualFold(associatedAppID, applicationID)
 }

@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
@@ -97,8 +96,8 @@ func Test_Validate(t *testing.T) {
 func mockManagementClientNoResources(ctrl *gomock.Controller) clients.ApplicationsManagementClient {
 	mock := clients.NewMockApplicationsManagementClient(ctrl)
 	mock.EXPECT().
-		ListAllResourceTypesNames(gomock.Any(), "local").
-		Return([]string{}, nil).
+		ListResourcesInApplication(gomock.Any(), gomock.Any()).
+		Return([]generated.GenericResource{}, nil).
 		AnyTimes()
 	return mock
 }
@@ -112,18 +111,11 @@ func mockManagementClientWithResources(ctrl *gomock.Controller, appID string, fo
 	resourceType := "Applications.Datastores/redisCaches"
 
 	mock.EXPECT().
-		ListAllResourceTypesNames(gomock.Any(), "local").
-		Return([]string{resourceType}, nil).
-		Times(1)
-	mock.EXPECT().
-		ListResourcesOfType(gomock.Any(), resourceType).
+		ListResourcesInApplication(gomock.Any(), appID).
 		Return([]generated.GenericResource{
 			{
 				ID:   &resourceID,
 				Type: &resourceType,
-				Properties: map[string]any{
-					"application": appID,
-				},
 			},
 		}, nil).
 		Times(1)
@@ -323,15 +315,10 @@ func Test_Run(t *testing.T) {
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mockMgmt.EXPECT().
-			ListAllResourceTypesNames(gomock.Any(), "local").
-			Return([]string{resourceType}, nil).
-			Times(1)
-		mockMgmt.EXPECT().
-			ListResourcesOfType(gomock.Any(), resourceType).
+			ListResourcesInApplication(gomock.Any(), appID).
 			Return([]generated.GenericResource{{
-				ID:         &resourceID,
-				Type:       &resourceType,
-				Properties: map[string]any{"application": appID},
+				ID:   &resourceID,
+				Type: &resourceType,
 			}}, nil).
 			Times(1)
 		mockMgmt.EXPECT().
@@ -353,7 +340,7 @@ func Test_Run(t *testing.T) {
 		require.Contains(t, err.Error(), "Failed to delete resources for application 'test-app'")
 	})
 
-	t.Run("Failure: ListAllResourceTypesNames failure surfaces error", func(t *testing.T) {
+	t.Run("Failure: resource enumeration failure surfaces error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -362,7 +349,7 @@ func Test_Run(t *testing.T) {
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mockMgmt.EXPECT().
-			ListAllResourceTypesNames(gomock.Any(), "local").
+			ListResourcesInApplication(gomock.Any(), gomock.Any()).
 			Return(nil, fmt.Errorf("simulated list error")).
 			Times(1)
 
@@ -380,40 +367,21 @@ func Test_Run(t *testing.T) {
 		require.Contains(t, err.Error(), "simulated list error")
 	})
 
-	t.Run("Success: resources owned by other applications are filtered out", func(t *testing.T) {
+	t.Run("Success: ownership query uses the fully qualified Radius.Core application ID", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
 		require.NoError(t, err)
 
-		appID := workspace.Scope + "/providers/Radius.Core/applications/test-app"
-		otherAppID := workspace.Scope + "/providers/Radius.Core/applications/other-app"
-		ownedResourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/owned"
-		unrelatedResourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/unrelated"
-		orphanResourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/orphan"
-		resourceType := "Applications.Datastores/redisCaches"
+		// The management client filters on properties.application, so the runner must hand it a
+		// Radius.Core ID. A bare name would be qualified as Applications.Core and match nothing.
+		expectedAppID := workspace.Scope + "/providers/Radius.Core/applications/test-app"
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mockMgmt.EXPECT().
-			ListAllResourceTypesNames(gomock.Any(), "local").
-			Return([]string{resourceType}, nil).
-			Times(1)
-		mockMgmt.EXPECT().
-			ListResourcesOfType(gomock.Any(), resourceType).
-			Return([]generated.GenericResource{
-				// Owned by our app — should be deleted.
-				{ID: &ownedResourceID, Type: &resourceType, Properties: map[string]any{"application": appID}},
-				// Owned by another app — must NOT be deleted.
-				{ID: &unrelatedResourceID, Type: &resourceType, Properties: map[string]any{"application": otherAppID}},
-				// No application property — must NOT be deleted.
-				{ID: &orphanResourceID, Type: &resourceType, Properties: map[string]any{}},
-			}, nil).
-			Times(1)
-		// Only the owned resource is deleted.
-		mockMgmt.EXPECT().
-			DeleteResource(gomock.Any(), resourceType, ownedResourceID, false).
-			Return(true, nil).
+			ListResourcesInApplication(gomock.Any(), expectedAppID).
+			Return([]generated.GenericResource{}, nil).
 			Times(1)
 
 		runner := &Runner{
@@ -429,31 +397,27 @@ func Test_Run(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("Success: case-insensitive ownership match", func(t *testing.T) {
+	t.Run("Success: resources without an ID or type are skipped", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
 		require.NoError(t, err)
 
-		// Resource records the application ID in a different case from the constructed ID.
-		ownedAppID := strings.ToUpper(workspace.Scope) + "/providers/Radius.Core/applications/TEST-APP"
+		appID := workspace.Scope + "/providers/Radius.Core/applications/test-app"
 		resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Datastores/redisCaches/my-redis"
 		resourceType := "Applications.Datastores/redisCaches"
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mockMgmt.EXPECT().
-			ListAllResourceTypesNames(gomock.Any(), "local").
-			Return([]string{resourceType}, nil).
+			ListResourcesInApplication(gomock.Any(), appID).
+			Return([]generated.GenericResource{
+				{ID: &resourceID, Type: &resourceType},
+				{ID: nil, Type: &resourceType},
+				{ID: &resourceID, Type: nil},
+			}, nil).
 			Times(1)
-		mockMgmt.EXPECT().
-			ListResourcesOfType(gomock.Any(), resourceType).
-			Return([]generated.GenericResource{{
-				ID:         &resourceID,
-				Type:       &resourceType,
-				Properties: map[string]any{"application": ownedAppID},
-			}}, nil).
-			Times(1)
+		// Only the well-formed resource is deleted.
 		mockMgmt.EXPECT().
 			DeleteResource(gomock.Any(), resourceType, resourceID, false).
 			Return(true, nil).

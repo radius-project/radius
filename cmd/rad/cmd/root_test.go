@@ -437,6 +437,18 @@ func Test_ResourceList_ExposesPreviewFlag(t *testing.T) {
 	require.NotNil(t, listCmd.Flags().Lookup("preview"), "rad resource list must expose --preview")
 }
 
+// Test_EnvDelete_ExposesPreviewAndForceFlags asserts against the fully-assembled command tree that
+// `rad env delete` exposes both flags. The preview runner reads --force during Validate, so if the
+// wired command does not declare it, every `rad env delete --preview` invocation fails with
+// "flag accessed but not defined: force".
+func Test_EnvDelete_ExposesPreviewAndForceFlags(t *testing.T) {
+	deleteCmd, _, err := RootCmd.Find([]string{"env", "delete"})
+	require.NoError(t, err)
+	require.Equal(t, "delete", deleteCmd.Name())
+	require.NotNil(t, deleteCmd.Flags().Lookup("preview"), "rad env delete must expose --preview")
+	require.NotNil(t, deleteCmd.Flags().Lookup("force"), "rad env delete must expose --force")
+}
+
 // Test_EnvPreviewOnlyFlagsRejectedWithoutPreview drives the real, fully-assembled command tree
 // and asserts that each preview-only flag is rejected when preview mode is off. This guards
 // against a preview-only flag being added to a command without also being registered in the
@@ -452,6 +464,7 @@ func Test_EnvPreviewOnlyFlagsRejectedWithoutPreview(t *testing.T) {
 		{command: "create", flag: "recipe-packs", value: "p1"},
 		{command: "update", flag: "recipe-packs", value: "p1"},
 		{command: "update", flag: "clear-kubernetes", value: "true"},
+		{command: "delete", flag: "force", value: "true"},
 	}
 
 	for _, tc := range testcases {

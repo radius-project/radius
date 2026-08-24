@@ -2689,6 +2689,99 @@ func setCapture(ctx context.Context, response *http.Response) {
 	}
 }
 
+// Test_isResourceInApplication covers the ownership matching that rad app delete and
+// rad env delete rely on to find the resources owned by an application. The match must be
+// case-insensitive, because resource IDs are not case-normalized on the wire.
+func Test_isResourceInApplication(t *testing.T) {
+	applicationID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/applications/test-app"
+
+	testcases := []struct {
+		name       string
+		properties map[string]any
+		expected   bool
+	}{
+		{
+			name:       "exact match",
+			properties: map[string]any{"application": applicationID},
+			expected:   true,
+		},
+		{
+			name:       "case-insensitive match",
+			properties: map[string]any{"application": strings.ToUpper(applicationID)},
+			expected:   true,
+		},
+		{
+			name:       "different application",
+			properties: map[string]any{"application": applicationID + "-other"},
+			expected:   false,
+		},
+		{
+			name:       "no application property",
+			properties: map[string]any{},
+			expected:   false,
+		},
+		{
+			name:       "empty application property",
+			properties: map[string]any{"application": ""},
+			expected:   false,
+		},
+		{
+			name:       "non-string application property",
+			properties: map[string]any{"application": 42},
+			expected:   false,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			resource := generated.GenericResource{Properties: tc.properties}
+			require.Equal(t, tc.expected, isResourceInApplication(resource, applicationID))
+		})
+	}
+}
+
+// Test_isResourceInEnvironment covers the environment matching that rad env delete relies on
+// to find the resources deployed into an environment.
+func Test_isResourceInEnvironment(t *testing.T) {
+	environmentID := "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/environments/test-env"
+
+	testcases := []struct {
+		name       string
+		properties map[string]any
+		expected   bool
+	}{
+		{
+			name:       "exact match",
+			properties: map[string]any{"environment": environmentID},
+			expected:   true,
+		},
+		{
+			name:       "case-insensitive match",
+			properties: map[string]any{"environment": strings.ToUpper(environmentID)},
+			expected:   true,
+		},
+		{
+			name:       "different environment",
+			properties: map[string]any{"environment": environmentID + "-other"},
+			expected:   false,
+		},
+		{
+			name:       "no environment property",
+			properties: map[string]any{},
+			expected:   false,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			resource := generated.GenericResource{Properties: tc.properties}
+			require.Equal(t, tc.expected, isResourceInEnvironment(resource, environmentID))
+		})
+	}
+}
+
 func testCapture(ctx context.Context, capture **http.Response) context.Context {
 	return context.WithValue(ctx, holder{}, &holder{capture})
 }
