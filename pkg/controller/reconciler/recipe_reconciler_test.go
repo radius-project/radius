@@ -286,16 +286,12 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	// Recipe will update after operation completes
 	status = waitForRecipeStateReady(t, client, name)
 
-	secret := corev1.Secret{}
-	err = client.Get(ctx, name, &secret)
-	require.NoError(t, err)
-
 	expectedData := map[string][]byte{
 		"a-value":  []byte("a"),
 		"b-secret": []byte("b"),
 	}
 
-	require.Equal(t, expectedData, secret.Data)
+	waitForSecretData(t, client, name, expectedData)
 
 	extender, err := radius.Resources(status.Scope, "Applications.Core/extenders").Get(ctx, name.Name)
 	require.NoError(t, err)
@@ -320,10 +316,7 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 		return apierrors.IsNotFound(err)
 	}, recipeTestWaitDuration, recipeTestWaitInterval, "old secret should be deleted")
 
-	secret = corev1.Secret{}
-	err = client.Get(ctx, types.NamespacedName{Namespace: name.Namespace, Name: "new-secret-name"}, &secret)
-	require.NoError(t, err)
-	require.Equal(t, expectedData, secret.Data)
+	waitForSecretData(t, client, types.NamespacedName{Namespace: name.Namespace, Name: "new-secret-name"}, expectedData)
 
 	// Now we'll delete the recipe.
 	err = client.Delete(ctx, recipe)
