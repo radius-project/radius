@@ -31,9 +31,6 @@ import (
 func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 	definitions := GetCoreTypesRecipeInfo()
 
-	// Verify we have the expected number of definitions
-	require.Len(t, definitions, 6)
-
 	// Verify expected resource types
 	expectedResourceTypes := []string{
 		"Radius.Compute/containers",
@@ -43,6 +40,8 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 		"Radius.Data/mySqlDatabases",
 		"Radius.Data/postgreSqlDatabases",
 	}
+	require.Len(t, definitions, len(expectedResourceTypes))
+
 	actualResourceTypes := make([]string, len(definitions))
 	for i, def := range definitions {
 		actualResourceTypes[i] = def.ResourceType
