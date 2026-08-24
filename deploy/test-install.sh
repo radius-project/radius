@@ -104,6 +104,25 @@ make_test_dir() {
     echo "${dir}"
 }
 
+# Create a bin directory holding the tools install.sh needs plus a stub curl,
+# so HTTP failures can be simulated without network access.
+make_stub_curl_bin() {
+    local name="$1"
+    local script="$2"
+    local bin_dir
+    bin_dir=$(make_test_dir "${name}")
+
+    local tool tool_path
+    for tool in bash uname tr grep awk sed; do
+        tool_path=$(command -v "${tool}" 2>/dev/null) || continue
+        ln -sf "${tool_path}" "${bin_dir}/"
+    done
+
+    printf '%s\n' "${script}" > "${bin_dir}/curl"
+    chmod +x "${bin_dir}/curl"
+    echo "${bin_dir}"
+}
+
 # Assert rad binary exists, is executable, and can report its version.
 assert_rad_installed() {
     local dir="$1"
@@ -357,37 +376,40 @@ test_edge_version_with_oras() {
     assert_rad_installed "${dir}"
 }
 
-test_latest_release_curl_error_visible() {
-    local dir
-    dir=$(make_test_dir "latest-release-curl-error")
-    local bin_dir
-    bin_dir=$(make_test_dir "latest-release-curl-error-bin")
-    local tool tool_path
-    for tool in bash uname tr grep awk sed; do
-        tool_path=$(command -v "${tool}" 2>/dev/null) || continue
-        ln -sf "${tool_path}" "${bin_dir}/"
-    done
-
-    cat > "${bin_dir}/curl" << 'EOF'
-#!/bin/bash
-for argument in "$@"; do
-    if [[ "${argument}" == "--show-error" ]]; then
-        echo "curl: (22) simulated HTTP error" >&2
-        break
-    fi
-done
-exit 22
-EOF
-    chmod +x "${bin_dir}/curl"
+test_transport_error_visible() {
+    local dir bin_dir
+    dir=$(make_test_dir "transport-error")
+    bin_dir=$(make_stub_curl_bin "transport-error-bin" '#!/bin/bash
+echo "curl: (7) Failed to connect to api.github.com port 443" >&2
+exit 7')
 
     echo "  CMD: PATH=<failing-curl> ${INSTALLER} --install-dir ${dir}"
     if LAST_OUTPUT=$(PATH="${bin_dir}" "${INSTALLER}" \
         --install-dir "${dir}" 2>&1); then
-        echo "  ASSERT FAILED: expected non-zero exit for HTTP error"
+        echo "  ASSERT FAILED: expected non-zero exit for transport error"
         return 1
     fi
     echo "${LAST_OUTPUT}"
-    assert_contains "${LAST_OUTPUT}" "curl: (22) simulated HTTP error"
+    assert_contains "${LAST_OUTPUT}" "curl: (7) Failed to connect"
+}
+
+test_api_error_body_visible() {
+    local dir bin_dir
+    dir=$(make_test_dir "api-error-body")
+    bin_dir=$(make_stub_curl_bin "api-error-body-bin" '#!/bin/bash
+printf "%s" "{\"message\":\"API rate limit exceeded for 203.0.113.5.\"}"
+printf "\n403"
+exit 0')
+
+    echo "  CMD: PATH=<rate-limited-curl> ${INSTALLER} --install-dir ${dir}"
+    if LAST_OUTPUT=$(PATH="${bin_dir}" "${INSTALLER}" \
+        --install-dir "${dir}" 2>&1); then
+        echo "  ASSERT FAILED: expected non-zero exit for HTTP 403"
+        return 1
+    fi
+    echo "${LAST_OUTPUT}"
+    assert_contains "${LAST_OUTPUT}" "HTTP 403"
+    assert_contains "${LAST_OUTPUT}" "API rate limit exceeded"
 }
 
 test_flag_overrides_install_dir_env() {
@@ -532,7 +554,8 @@ run_test "PATH hint shown for non-PATH dir" test_path_hint_shown
 run_test "version with v prefix" test_version_with_v_prefix
 run_test "edge version without oras fails" test_edge_version_without_oras
 run_test "edge version with oras succeeds" test_edge_version_with_oras
-run_test "latest release curl error is visible" test_latest_release_curl_error_visible
+run_test "latest release transport error is visible" test_transport_error_visible
+run_test "latest release API error body is visible" test_api_error_body_visible
 run_test "--install-dir flag overrides INSTALL_DIR env" test_flag_overrides_install_dir_env
 run_test "INSTALL_DIR env overrides RADIUS_INSTALL_DIR" test_install_dir_env_overrides_radius_install_dir
 run_test "warning for existing rad elsewhere in PATH" test_warn_existing_rad_elsewhere

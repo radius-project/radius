@@ -140,10 +140,12 @@ jobs:
           persist-credentials: false
 
       - name: Install Radius CLI from official release
+        # bash runs with -eo pipefail, so a failure fetching the installer
+        # fails the step instead of being masked by the pipe.
+        shell: bash
         run: |
           # Install the latest Radius CLI, including release candidates if available.
           # INSTALL_DIR places rad directly into the workspace bin directory — no copy needed.
-          set -o pipefail
           mkdir -p "$GITHUB_WORKSPACE/bin"
           wget --no-verbose "https://raw.githubusercontent.com/radius-project/radius/main/deploy/install.sh" -O - | INSTALL_DIR="$GITHUB_WORKSPACE/bin" INCLUDE_RC=true /bin/bash
 
