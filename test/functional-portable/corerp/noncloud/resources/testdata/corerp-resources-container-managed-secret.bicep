@@ -1,0 +1,116 @@
+extension radius
+
+@description('Specifies the image used by the connection-checking containers.')
+param magpieimage string
+
+@description('Specifies the published resource-types-contrib Recipe tag. Radius PR functional tests use edge, which must include resource-types-contrib#300.')
+param recipeTag string = 'edge'
+
+var applicationName = 'corerp-container-managed-secret'
+var environmentName = '${applicationName}-env'
+var namespace = applicationName
+
+// This dedicated pack makes the cross-repository dependency explicit. The test
+// can run after resource-types-contrib#300 publishes the Container Recipe to edge.
+resource recipePack 'Radius.Core/recipePacks@2025-08-01-preview' = {
+  name: 'managed-secret-recipe-pack'
+  location: 'global'
+  properties: {
+    recipes: {
+      'Radius.Compute/containers': {
+        kind: 'bicep'
+        source: 'ghcr.io/radius-project/kube-recipes/containers:${recipeTag}'
+      }
+      'Radius.Data/redisCaches': {
+        kind: 'bicep'
+        source: 'ghcr.io/radius-project/kube-recipes/rediscaches:${recipeTag}'
+      }
+      'Radius.Security/secrets': {
+        kind: 'bicep'
+        source: 'ghcr.io/radius-project/kube-recipes/secrets:${recipeTag}'
+      }
+    }
+  }
+}
+
+resource environment 'Radius.Core/environments@2025-08-01-preview' = {
+  name: environmentName
+  location: 'global'
+  properties: {
+    recipePacks: [
+      recipePack.id
+    ]
+    providers: {
+      kubernetes: {
+        namespace: namespace
+      }
+    }
+  }
+}
+
+resource application 'Radius.Core/applications@2025-08-01-preview' = {
+  name: applicationName
+  location: 'global'
+  properties: {
+    environment: environment.id
+  }
+}
+
+resource redis 'Radius.Data/redisCaches@2025-08-01-preview' = {
+  name: 'managed-redis'
+  location: 'global'
+  properties: {
+    application: application.id
+    environment: environment.id
+  }
+}
+
+resource consumer 'Radius.Compute/containers@2025-08-01-preview' = {
+  name: 'secret-consumer'
+  location: 'global'
+  properties: {
+    application: application.id
+    environment: environment.id
+    containers: {
+      connectioncheck: {
+        initContainer: true
+        image: magpieimage
+        command: [
+          '/bin/sh'
+          '-c'
+        ]
+        args: [
+          '''
+            test -n "$CONNECTION_REDIS_HOST"
+            test "$CONNECTION_REDIS_PORT" = "6379"
+            test -n "$CONNECTION_REDIS_URL"
+            case "$CONNECTION_REDIS_URL" in redis://*) ;; *) exit 1 ;; esac
+            echo managed-secret-init-ready
+          '''
+        ]
+      }
+      app: {
+        image: magpieimage
+        command: [
+          '/bin/sh'
+          '-c'
+        ]
+        args: [
+          '''
+            test -n "$CONNECTION_REDIS_HOST"
+            test "$CONNECTION_REDIS_PORT" = "6379"
+            test -n "$CONNECTION_REDIS_URL"
+            case "$CONNECTION_REDIS_URL" in redis://*) ;; *) exit 1 ;; esac
+            echo managed-secret-connection-ready
+            while true; do sleep 30; done
+          '''
+        ]
+      }
+    }
+    connections: {
+      redis: {
+        source: redis.id
+      }
+    }
+  }
+}
