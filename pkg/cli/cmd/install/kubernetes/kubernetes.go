@@ -256,9 +256,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// Helm is configured with Wait=true for the Radius chart (see PopulateDefaultClusterOptions),
-	// so by the time InstallRadius returns the control plane pods are Ready and the UCP API is
-	// reachable. We can therefore call the management client immediately without an extra wait.
+	// The Radius chart's post-install hook waits until the aggregated API responds through
+	// kube-apiserver. A successful InstallRadius call therefore guarantees that the management
+	// client can connect without a second readiness wait here.
 	return r.createDefaultGroupAndEnvironment(ctx)
 }
 

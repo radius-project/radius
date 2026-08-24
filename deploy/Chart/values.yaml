@@ -269,10 +269,30 @@ networkPolicies:
   # Example: ["10.0.0.0/16"]
   controlPlaneCIDRs: []
 
+controlPlaneReadiness:
+  # Helm post-install/post-upgrade hook settings. The hook waits until the Radius
+  # aggregated API is serving through kube-apiserver, so successful Helm completion
+  # means clients can use the control plane immediately.
+  # Image override. When unset, the hook honors an explicitly configured preupgrade
+  # image; otherwise it uses the pre-upgrade image from the same registry and tag as
+  # UCP. This keeps custom and CI builds aligned without requiring every installer to
+  # set another image value.
+  image: ""
+  tag: ""
+  # This also covers UCP cold-start time when the chart is installed directly
+  # without --wait. Keep it below Helm's operation timeout so hook failure details
+  # can be reported before Helm cancels the operation.
+  timeoutSeconds: 240
+  pollIntervalSeconds: 2
+  requestTimeoutSeconds: 10
+  ttlSecondsAfterFinished: 300
+
 preupgrade:
   # Enable pre-upgrade preflight checks
   enabled: false
-  # Container image for pre-upgrade checks
+  # Container image for pre-upgrade checks. The control-plane readiness hook runs the
+  # same binary but derives its image from UCP unless controlPlaneReadiness.image/tag
+  # override it.
   # Can be overridden with a full registry path (e.g., myregistry.azurecr.io/pre-upgrade)
   # or use just the image name to use global.imageRegistry
   image: pre-upgrade
@@ -305,7 +325,7 @@ preupgrade:
   retryDelaySeconds: 2 # Delay between retry attempts
   # Job configuration
   ttlSecondsAfterFinished: 300
-  # Resource requirements
+  # Resource requirements shared by both hook jobs
   resources:
     requests:
       cpu: "100m"
@@ -313,7 +333,7 @@ preupgrade:
     limits:
       cpu: "200m"
       memory: "128Mi"
-  # Security context for the container
+  # Security context shared by both hook containers
   securityContext:
     allowPrivilegeEscalation: false
     capabilities:
@@ -325,7 +345,7 @@ preupgrade:
     runAsGroup: 65532
     seccompProfile:
       type: RuntimeDefault
-  # Pod security context
+  # Pod security context shared by both hook pods
   podSecurityContext:
     runAsNonRoot: true
     runAsUser: 65532
