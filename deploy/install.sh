@@ -262,15 +262,25 @@ getLatestRelease() {
 
     if [[ "${INCLUDE_RC}" == "true" ]]; then
         if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
-            latest_release=$(curl -s "${radReleaseUrl}" | grep \"tag_name\" | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
+            latest_release=$(curl --fail --show-error --silent --location \
+                "${radReleaseUrl}" | grep \"tag_name\" | awk 'NR==1{print $2}' |
+                sed -n 's/\"\(.*\)\",/\1/p')
         else
-            latest_release=$(wget -q --header="Accept: application/json" -O - "${radReleaseUrl}" | grep \"tag_name\" | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
+            latest_release=$(wget --no-verbose \
+                --header="Accept: application/json" -O - "${radReleaseUrl}" |
+                grep \"tag_name\" | awk 'NR==1{print $2}' |
+                sed -n 's/\"\(.*\)\",/\1/p')
         fi
     else
         if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
-            latest_release=$(curl -s "${radReleaseUrl}" | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
+            latest_release=$(curl --fail --show-error --silent --location \
+                "${radReleaseUrl}" | grep \"tag_name\" | grep -v rc |
+                awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
         else
-            latest_release=$(wget -q --header="Accept: application/json" -O - "${radReleaseUrl}" | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
+            latest_release=$(wget --no-verbose \
+                --header="Accept: application/json" -O - "${radReleaseUrl}" |
+                grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' |
+                sed -n 's/\"\(.*\)\",/\1/p')
         fi
     fi
 
@@ -313,9 +323,10 @@ downloadFile() {
 
         echo "Downloading ${download_url}..."
         if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
-            curl -SsL "${download_url}" -o "${artifact_tmp_file}"
+            curl --fail --show-error --silent --location "${download_url}" \
+                -o "${artifact_tmp_file}"
         else
-            wget -q -O "${artifact_tmp_file}" "${download_url}"
+            wget --no-verbose -O "${artifact_tmp_file}" "${download_url}"
         fi
     fi
 
