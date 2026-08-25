@@ -31,9 +31,6 @@ import (
 func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 	definitions := GetCoreTypesRecipeInfo()
 
-	// Verify we have the expected number of definitions
-	require.Len(t, definitions, 6)
-
 	// Verify expected resource types
 	expectedResourceTypes := []string{
 		"Radius.Compute/containers",
@@ -41,8 +38,11 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 		"Radius.Compute/routes",
 		"Radius.Security/secrets",
 		"Radius.Data/mySqlDatabases",
+		"Radius.Data/postgreSqlDatabases",
 		"Radius.Messaging/rabbitMQ",
 	}
+	require.Len(t, definitions, len(expectedResourceTypes))
+
 	actualResourceTypes := make([]string, len(definitions))
 	for i, def := range definitions {
 		actualResourceTypes[i] = def.ResourceType
@@ -144,6 +144,10 @@ func Test_NewDefaultRecipePackResource(t *testing.T) {
 		"gatewayName":      DefaultRoutesGatewayName,
 		"gatewayNamespace": DefaultRoutesGatewayNamespace,
 	}, routeRecipe.Parameters)
+
+	require.Contains(t, resource.Properties.Recipes, "Radius.Data/postgreSqlDatabases")
+	postgreSQLRecipe := resource.Properties.Recipes["Radius.Data/postgreSqlDatabases"]
+	require.NotNil(t, postgreSQLRecipe)
 }
 
 func Test_NormalizeRecipePacks(t *testing.T) {

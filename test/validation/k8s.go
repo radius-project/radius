@@ -79,6 +79,20 @@ func NewK8sPodForResource(application string, name string) K8sObject {
 	}
 }
 
+// NewK8sDeploymentForResource creates a new K8sObject for a deployment with the selector labels for the
+// application and resource.
+func NewK8sDeploymentForResource(application string, name string) K8sObject {
+	return K8sObject{
+		GroupVersionResource: schema.GroupVersionResource{
+			Group:    "apps",
+			Version:  "v1",
+			Resource: "deployments",
+		},
+		Kind:   "Deployment",
+		Labels: kuberneteskeys.MakeSelectorLabels(application, name),
+	}
+}
+
 // ValidateLabels creates a copy of the K8sObject and sets the SkipLabelValidation field based on the validate parameter.
 func (k K8sObject) ValidateLabels(validate bool) K8sObject {
 	copy := k
