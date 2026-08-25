@@ -1,0 +1,315 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: prepare-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-type:
+        description: Release type
+        required: true
+        type: choice
+        options:
+          - rc
+          - final
+          - patch
+      channel:
+        description: Release channel in X.Y format
+        required: true
+        type: string
+      backport-pr-numbers:
+        description: Optional comma-separated merged main PRs to include
+        required: false
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: prepare-release-${{ inputs.channel }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare ${{ inputs.release-type }} for ${{ inputs.channel }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout main with release history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch release branches
+        run: |
+          git fetch origin \
+            '+refs/heads/release/*:refs/remotes/origin/release/*'
+
+      - name: Install release tools
+        run: make install-yq install-jq install-git-cliff
+
+      - name: Create release App token
+        if: github.repository == 'radius-project/radius'
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: radius
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+
+      - name: Get release bot details
+        if: github.repository == 'radius-project/radius'
+        id: bot-details
+        uses: raven-actions/bot-details@ee8966a9ff6e7e42cbfc4a56b4ddb60a9d1b40a6 # v1.2.0
+        with:
+          bot-slug-name: ${{ steps.app-token.outputs.app-slug }}
+
+      - name: Validate release prerequisites
+        id: preflight
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          RELEASE_TYPE: ${{ inputs.release-type }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          output_dir="${RUNNER_TEMP}/release-preflight"
+          bash ./.github/scripts/prepare-release.sh \
+            --release-type "${RELEASE_TYPE}" \
+            --channel "${CHANNEL}" \
+            --output-dir "${output_dir}" \
+            --version-only
+          version="$(<"${output_dir}/version.txt")"
+          branch="$(<"${output_dir}/pr-branch.txt")"
+
+          bash ./.github/scripts/verify-deployment-engine-tag.sh "${version}"
+
+          existing="$(
+            gh pr list --repo "${GITHUB_REPOSITORY}" --state open \
+              --head "${branch}" --base main --json number,url,headRefOid \
+              --jq '.[0] // empty'
+          )"
+          if [[ -n "${existing}" ]]; then
+            echo "existing=true" >> "${GITHUB_OUTPUT}"
+            echo "existing-number=$(jq -r .number <<< "${existing}")" \
+              >> "${GITHUB_OUTPUT}"
+            echo "existing-url=$(jq -r .url <<< "${existing}")" \
+              >> "${GITHUB_OUTPUT}"
+            echo "existing-head=$(jq -r .headRefOid <<< "${existing}")" \
+              >> "${GITHUB_OUTPUT}"
+          else
+            set +e
+            git ls-remote --exit-code origin "refs/heads/${branch}" \
+              >/dev/null
+            branch_status=$?
+            set -e
+            case "${branch_status}" in
+              2) ;;
+              0)
+                echo "Branch ${branch} exists without an open PR." >&2
+                exit 1
+                ;;
+              *)
+                echo "Could not query branch ${branch}." >&2
+                exit "${branch_status}"
+                ;;
+            esac
+            echo "existing=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+          {
+            echo "version=${version}"
+            echo "branch=${branch}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Read curated notes from existing release pull request
+        if: >-
+          steps.preflight.outputs.existing == 'true' &&
+          inputs.release-type != 'patch'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          VERSION: ${{ steps.preflight.outputs.version }}
+          HEAD_SHA: ${{ steps.preflight.outputs.existing-head }}
+        run: |
+          output="${RUNNER_TEMP}/existing-release-notes.md"
+          gh api \
+            "repos/${GITHUB_REPOSITORY}/contents/docs/release-notes/${VERSION}.md?ref=${HEAD_SHA}" \
+            --jq .content | tr -d '\n' | base64 --decode > "${output}"
+
+      - name: Collect selected backports
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          CHANNEL: ${{ inputs.channel }}
+          EXPLICIT_PRS: ${{ inputs.backport-pr-numbers }}
+        run: |
+          bash ./.github/scripts/collect-release-backports.sh \
+            --repository "${GITHUB_REPOSITORY}" \
+            --channel "${CHANNEL}" \
+            --explicit-prs "${EXPLICIT_PRS}" \
+            --output "${RUNNER_TEMP}/release-backports.json"
+
+      - name: Request incomplete explicit backports
+        if: >-
+          github.repository == 'radius-project/radius' &&
+          inputs.backport-pr-numbers != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BACKPORT_PRS: ${{ inputs.backport-pr-numbers }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          release_branch="refs/remotes/origin/release/${CHANNEL}"
+          git show-ref --verify --quiet "${release_branch}" || {
+            echo "Explicit backports require release/${CHANNEL} to exist." >&2
+            exit 1
+          }
+
+          label="backport release/${CHANNEL}"
+          gh label create "${label}" --repo "${GITHUB_REPOSITORY}" \
+            --color 5319E7 --description "Backport to release/${CHANNEL}" \
+            --force
+          IFS=',' read -r -a pull_requests <<< "${BACKPORT_PRS}"
+          for pull_request in "${pull_requests[@]}"; do
+            pull_request="${pull_request//[[:space:]]/}"
+            gh pr edit "${pull_request}" --repo "${GITHUB_REPOSITORY}" \
+              --add-label "${label}"
+          done
+
+      - name: Prepare release changes and plan
+        id: prepare
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          GITHUB_REPO: ${{ github.repository }}
+          RELEASE_TYPE: ${{ inputs.release-type }}
+          CHANNEL: ${{ inputs.channel }}
+          PREFLIGHT_VERSION: ${{ steps.preflight.outputs.version }}
+        run: |
+          output_dir="${RUNNER_TEMP}/release-preparation"
+          bash ./.github/scripts/prepare-release.sh \
+            --release-type "${RELEASE_TYPE}" \
+            --channel "${CHANNEL}" \
+            --backports-file "${RUNNER_TEMP}/release-backports.json" \
+            --output-dir "${output_dir}"
+
+          version="$(<"${output_dir}/version.txt")"
+          requires_backport="$(<"${output_dir}/requires-backport.txt")"
+          backport_label=""
+          if [[ "${requires_backport}" == "true" ]]; then
+            backport_label="backport release/${CHANNEL}"
+          fi
+          {
+            echo "version=${version}"
+            echo "title=$(<"${output_dir}/pr-title.txt")"
+            echo "branch=$(<"${output_dir}/pr-branch.txt")"
+            echo "backport-label=${backport_label}"
+          } >> "${GITHUB_OUTPUT}"
+
+          [[ "${version}" == "${PREFLIGHT_VERSION}" ]] || {
+            echo "Release state changed after preflight." >&2
+            exit 1
+          }
+
+      - name: Preserve curated release note sections
+        if: >-
+          steps.preflight.outputs.existing == 'true' &&
+          inputs.release-type != 'patch'
+        env:
+          VERSION: ${{ steps.prepare.outputs.version }}
+        run: |
+          bash ./.github/scripts/preserve-release-note-sections.sh \
+            "docs/release-notes/${VERSION}.md" \
+            "${RUNNER_TEMP}/existing-release-notes.md"
+      - name: Ensure generated backport label exists
+        if: >-
+          github.repository == 'radius-project/radius' &&
+          steps.prepare.outputs.backport-label != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          LABEL: ${{ steps.prepare.outputs.backport-label }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          gh label create "${LABEL}" --repo "${GITHUB_REPOSITORY}" \
+            --color 5319E7 --description "Backport to release/${CHANNEL}" \
+            --force
+
+      - name: Create or update release pull request
+        if: github.repository == 'radius-project/radius'
+        id: create-pr
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          branch: ${{ steps.prepare.outputs.branch }}
+          base: main
+          commit-message: ${{ steps.prepare.outputs.title }}
+          committer: ${{ steps.bot-details.outputs.name-email }}
+          signoff: true
+          sign-commits: true
+          title: ${{ steps.prepare.outputs.title }}
+          body-path: ${{ runner.temp }}/release-preparation/release-pr-body.md
+          labels: ${{ steps.prepare.outputs.backport-label }}
+          draft: true
+          delete-branch: true
+          add-paths: |
+            versions.yaml
+            CHANGELOG.md
+            docs/release-notes/*.md
+
+      - name: Verify release pull request commit signature
+        if: >-
+          steps.create-pr.outputs.pull-request-operation == 'created' ||
+          steps.create-pr.outputs.pull-request-operation == 'updated'
+        env:
+          COMMITS_VERIFIED: >-
+            ${{ steps.create-pr.outputs.pull-request-commits-verified }}
+        run: |
+          [[ "${COMMITS_VERIFIED}" == "true" ]] || {
+            echo "The release App did not create a verified commit." >&2
+            exit 1
+          }
+
+      - name: Upload release plan
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-plan-${{ steps.prepare.outputs.version }}
+          path: |
+            ${{ runner.temp }}/release-preparation/release-plan.yaml
+            ${{ runner.temp }}/release-preparation/changelog-section.md
+            ${{ runner.temp }}/release-backports.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Summarize preparation
+        env:
+          VERSION: ${{ steps.prepare.outputs.version }}
+          PR_URL: ${{ steps.create-pr.outputs.pull-request-url }}
+        run: |
+          {
+            echo "## Prepared ${VERSION}"
+            echo
+            if [[ -n "${PR_URL}" ]]; then
+              echo "Release pull request: ${PR_URL}"
+            else
+              echo "PR creation was skipped outside radius-project/radius."
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
