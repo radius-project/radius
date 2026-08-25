@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
 	"sync"
 	"testing"
 
@@ -189,8 +188,9 @@ func Test_Run_Cascade(t *testing.T) {
 		require.NoError(t, err)
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
+		// An environment with no applications must still be enumerated, with an empty application list.
 		mockMgmt.EXPECT().
-			ListResourcesInEnvironment(gomock.Any(), testEnvironmentID).
+			ListResourcesInEnvironmentOrApplications(gomock.Any(), testEnvironmentID, []string{}).
 			Return([]generated.GenericResource{}, nil).
 			Times(1)
 
@@ -234,13 +234,15 @@ func Test_Run_Cascade(t *testing.T) {
 		require.NoError(t, err)
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
+		// The application IDs are asserted exactly: the cascade must ask for the applications it
+		// found in this environment, and no others.
 		mockMgmt.EXPECT().
-			ListResourcesInEnvironment(gomock.Any(), testEnvironmentID).
-			Return([]generated.GenericResource{resource("env-scoped")}, nil).
-			Times(1)
-		mockMgmt.EXPECT().
-			ListResourcesInApplication(gomock.Any(), testScope+"/providers/Radius.Core/applications/app-a").
-			Return([]generated.GenericResource{resource("app-owned")}, nil).
+			ListResourcesInEnvironmentOrApplications(
+				gomock.Any(),
+				testEnvironmentID,
+				[]string{testScope + "/providers/Radius.Core/applications/app-a"},
+			).
+			Return([]generated.GenericResource{resource("env-scoped"), resource("app-owned")}, nil).
 			Times(1)
 		mockMgmt.EXPECT().
 			DeleteResource(gomock.Any(), testResourceType, resourceIDFor("env-scoped"), false).
@@ -279,55 +281,6 @@ func Test_Run_Cascade(t *testing.T) {
 		}, formats)
 	})
 
-	t.Run("Success: a resource in both queries is deleted once", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
-
-		apps := []*corerpv20250801.ApplicationResource{application("app-a", testEnvironmentID)}
-
-		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
-			testScope,
-			test_client_factory.WithEnvironmentServerNoError,
-			nil,
-			applicationsServerWithEnvironment(apps, &deletedApplications{}, false),
-		)
-		require.NoError(t, err)
-
-		shared := resource("shared")
-		// The same resource, reported with different casing by the two queries.
-		sharedUpper := generated.GenericResource{
-			ID:   to.Ptr(strings.ToUpper(*shared.ID)),
-			Type: shared.Type,
-		}
-
-		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
-		mockMgmt.EXPECT().
-			ListResourcesInEnvironment(gomock.Any(), testEnvironmentID).
-			Return([]generated.GenericResource{shared}, nil).
-			Times(1)
-		mockMgmt.EXPECT().
-			ListResourcesInApplication(gomock.Any(), gomock.Any()).
-			Return([]generated.GenericResource{sharedUpper}, nil).
-			Times(1)
-		// Exactly one delete, using the ID from the first list.
-		mockMgmt.EXPECT().
-			DeleteResource(gomock.Any(), testResourceType, resourceIDFor("shared"), false).
-			Return(true, nil).
-			Times(1)
-
-		runner := &Runner{
-			RadiusCoreClientFactory: factory,
-			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
-			Workspace:               testWorkspace(),
-			Output:                  &output.MockOutput{},
-			EnvironmentName:         "test-env",
-			Confirm:                 true,
-		}
-
-		err = runner.Run(t.Context())
-		require.NoError(t, err)
-	})
-
 	t.Run("Success: prompt reports the resource count and deletion proceeds on yes", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -351,7 +304,7 @@ func Test_Run_Cascade(t *testing.T) {
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mockMgmt.EXPECT().
-			ListResourcesInEnvironment(gomock.Any(), testEnvironmentID).
+			ListResourcesInEnvironmentOrApplications(gomock.Any(), testEnvironmentID, gomock.Any()).
 			Return([]generated.GenericResource{resource("env-scoped")}, nil).
 			Times(1)
 		mockMgmt.EXPECT().
@@ -403,11 +356,7 @@ func Test_Run_Cascade(t *testing.T) {
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mockMgmt.EXPECT().
-			ListResourcesInEnvironment(gomock.Any(), testEnvironmentID).
-			Return([]generated.GenericResource{}, nil).
-			Times(1)
-		mockMgmt.EXPECT().
-			ListResourcesInApplication(gomock.Any(), gomock.Any()).
+			ListResourcesInEnvironmentOrApplications(gomock.Any(), testEnvironmentID, gomock.Any()).
 			Return([]generated.GenericResource{}, nil).
 			Times(1)
 
@@ -449,7 +398,7 @@ func Test_Run_Cascade(t *testing.T) {
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mockMgmt.EXPECT().
-			ListResourcesInEnvironment(gomock.Any(), testEnvironmentID).
+			ListResourcesInEnvironmentOrApplications(gomock.Any(), testEnvironmentID, gomock.Any()).
 			Return([]generated.GenericResource{}, nil).
 			Times(1)
 
@@ -492,12 +441,8 @@ func Test_Run_Cascade(t *testing.T) {
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mockMgmt.EXPECT().
-			ListResourcesInEnvironment(gomock.Any(), testEnvironmentID).
+			ListResourcesInEnvironmentOrApplications(gomock.Any(), testEnvironmentID, gomock.Any()).
 			Return([]generated.GenericResource{resource("env-scoped")}, nil).
-			Times(1)
-		mockMgmt.EXPECT().
-			ListResourcesInApplication(gomock.Any(), gomock.Any()).
-			Return([]generated.GenericResource{}, nil).
 			Times(1)
 		// No DeleteResource call is expected.
 
@@ -532,7 +477,7 @@ func Test_Run_Cascade(t *testing.T) {
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mockMgmt.EXPECT().
-			ListResourcesInEnvironment(gomock.Any(), testEnvironmentID).
+			ListResourcesInEnvironmentOrApplications(gomock.Any(), testEnvironmentID, gomock.Any()).
 			Return([]generated.GenericResource{resource("env-scoped")}, nil).
 			Times(1)
 		mockMgmt.EXPECT().
@@ -556,6 +501,108 @@ func Test_Run_Cascade(t *testing.T) {
 		require.Equal(t, msgForceWarning, logFormats(outputSink)[0])
 	})
 
+	t.Run("Success: the force warning is shown before the confirmation prompt", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		outputSink := &output.MockOutput{}
+		var logsAtPromptTime []string
+
+		// The warning explains that force can leave orphaned external resources, so it is only
+		// useful if the user sees it before consenting to the cascade.
+		promptMock := prompt.NewMockInterface(ctrl)
+		promptMock.EXPECT().
+			GetListInput(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(choices []string, promptMsg string) (string, error) {
+				logsAtPromptTime = logFormats(outputSink)
+				return prompt.ConfirmYes, nil
+			}).
+			Times(1)
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			testScope,
+			test_client_factory.WithEnvironmentServerNoError,
+			nil,
+			applicationsServerWithEnvironment(nil, nil, false),
+		)
+		require.NoError(t, err)
+
+		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
+		mockMgmt.EXPECT().
+			ListResourcesInEnvironmentOrApplications(gomock.Any(), testEnvironmentID, gomock.Any()).
+			Return([]generated.GenericResource{resource("env-scoped")}, nil).
+			Times(1)
+		mockMgmt.EXPECT().
+			DeleteResource(gomock.Any(), testResourceType, resourceIDFor("env-scoped"), true).
+			Return(true, nil).
+			Times(1)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+			Workspace:               testWorkspace(),
+			Output:                  outputSink,
+			InputPrompter:           promptMock,
+			EnvironmentName:         "test-env",
+			Confirm:                 false,
+			Force:                   true,
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+		require.Contains(t, logsAtPromptTime, msgForceWarning,
+			"the force warning must be logged before the user is asked to confirm")
+	})
+
+	t.Run("Success: an application without a name is reported instead of skipped silently", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		// An application that reports no name cannot be addressed, so the cascade cannot delete
+		// it. It must say so rather than deleting the environment and orphaning it in silence.
+		unnamed := &corerpv20250801.ApplicationResource{
+			ID: to.Ptr(testScope + "/providers/Radius.Core/applications/unnamed"),
+			Properties: &corerpv20250801.ApplicationProperties{
+				Environment: to.Ptr(testEnvironmentID),
+			},
+		}
+
+		deleted := &deletedApplications{}
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			testScope,
+			test_client_factory.WithEnvironmentServerNoError,
+			nil,
+			applicationsServerWithEnvironment(
+				[]*corerpv20250801.ApplicationResource{application("named", testEnvironmentID), unnamed},
+				deleted,
+				false,
+			),
+		)
+		require.NoError(t, err)
+
+		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
+		mockMgmt.EXPECT().
+			ListResourcesInEnvironmentOrApplications(gomock.Any(), testEnvironmentID, gomock.Any()).
+			Return([]generated.GenericResource{}, nil).
+			Times(1)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+			Workspace:               testWorkspace(),
+			Output:                  outputSink,
+			EnvironmentName:         "test-env",
+			Confirm:                 true,
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+
+		require.Equal(t, []string{"named"}, deleted.list())
+		require.Contains(t, logFormats(outputSink), msgSkippingApplication)
+	})
+
 	t.Run("Failure: resource delete failure stops before the environment is deleted", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -570,7 +617,7 @@ func Test_Run_Cascade(t *testing.T) {
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mockMgmt.EXPECT().
-			ListResourcesInEnvironment(gomock.Any(), testEnvironmentID).
+			ListResourcesInEnvironmentOrApplications(gomock.Any(), testEnvironmentID, gomock.Any()).
 			Return([]generated.GenericResource{resource("env-scoped")}, nil).
 			Times(1)
 		mockMgmt.EXPECT().
@@ -610,11 +657,7 @@ func Test_Run_Cascade(t *testing.T) {
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mockMgmt.EXPECT().
-			ListResourcesInEnvironment(gomock.Any(), testEnvironmentID).
-			Return([]generated.GenericResource{}, nil).
-			Times(1)
-		mockMgmt.EXPECT().
-			ListResourcesInApplication(gomock.Any(), gomock.Any()).
+			ListResourcesInEnvironmentOrApplications(gomock.Any(), testEnvironmentID, gomock.Any()).
 			Return([]generated.GenericResource{}, nil).
 			Times(1)
 
@@ -648,7 +691,7 @@ func Test_Run_Cascade(t *testing.T) {
 
 		mockMgmt := clients.NewMockApplicationsManagementClient(ctrl)
 		mockMgmt.EXPECT().
-			ListResourcesInEnvironment(gomock.Any(), testEnvironmentID).
+			ListResourcesInEnvironmentOrApplications(gomock.Any(), testEnvironmentID, gomock.Any()).
 			Return(nil, fmt.Errorf("simulated list error")).
 			Times(1)
 

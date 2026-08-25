@@ -24,7 +24,6 @@ import (
 
 	"github.com/radius-project/radius/pkg/cli"
 	"github.com/radius-project/radius/pkg/cli/clients"
-	generated "github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
@@ -42,6 +41,7 @@ const (
 	msgDeletingResources          = "Deleting %d resource(s) in environment %s...\n"
 	msgDeletingApplications       = "Deleting %d application(s) in environment %s...\n"
 	msgDeletingApplication        = "  Deleting application %s..."
+	msgSkippingApplication        = "  Warning: skipping an application that reports no name. It must be deleted manually."
 	msgForceWarning               = "WARNING: Force deleting an environment. Resources in non-terminal states may leave orphaned external resources that require manual cleanup."
 )
 
@@ -193,27 +193,25 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Resources are collected from two directions: those that reference the environment directly,
 	// and those owned by an application in the environment. A resource usually carries both
 	// properties, but neither query is guaranteed to be a superset of the other, so both are
-	// merged and de-duplicated by resource ID.
-	resourcesInEnvironment, err := managementClient.ListResourcesInEnvironment(ctx, environmentID)
-	if err != nil && !clients.Is404Error(err) {
-		return err
-	}
-
-	resourceLists := [][]generated.GenericResource{resourcesInEnvironment}
+	// applied. This is a single enumeration pass; listing per application would re-fetch the same
+	// data once per application.
+	applicationIDs := make([]string, 0, len(applications))
 	for _, application := range applications {
 		if application.ID == nil {
 			continue
 		}
 
-		resourcesInApplication, err := managementClient.ListResourcesInApplication(ctx, *application.ID)
-		if err != nil && !clients.Is404Error(err) {
-			return err
-		}
-
-		resourceLists = append(resourceLists, resourcesInApplication)
+		applicationIDs = append(applicationIDs, *application.ID)
 	}
 
-	resourcesToDelete := cmd.MergeResourcesByID(resourceLists...)
+	resourcesToDelete, err := managementClient.ListResourcesInEnvironmentOrApplications(ctx, environmentID, applicationIDs)
+	if err != nil && !clients.Is404Error(err) {
+		return err
+	}
+
+	if r.Force {
+		r.Output.LogInfo(msgForceWarning)
+	}
 
 	// Prompt user to confirm deletion
 	if !r.Confirm {
@@ -239,10 +237,6 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	if r.Force {
-		r.Output.LogInfo(msgForceWarning)
-	}
-
 	if len(resourcesToDelete) > 0 {
 		r.Output.LogInfo(msgDeletingResources, len(resourcesToDelete), r.EnvironmentName)
 
@@ -259,6 +253,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		appClient := r.RadiusCoreClientFactory.NewApplicationsClient()
 		for _, application := range applications {
 			if application.Name == nil {
+				// An application that cannot be addressed cannot be deleted. Warn rather than
+				// skipping silently, so the cascade does not report success for an application it
+				// leaves behind when the environment goes away.
+				r.Output.LogInfo(msgSkippingApplication)
 				continue
 			}
 

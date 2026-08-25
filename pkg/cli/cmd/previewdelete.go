@@ -33,6 +33,15 @@ import (
 // MsgDeletingResource is logged for each resource before its deletion is started.
 const MsgDeletingResource = "  Deleting %s..."
 
+// MsgSkippingResource is logged for each resource the cascade cannot delete, so the count shown in
+// the confirmation prompt cannot quietly disagree with what was actually deleted.
+const MsgSkippingResource = "  Warning: skipping %s because its resource ID or type is missing. It must be deleted manually."
+
+// maxParallelDeletes bounds the number of deletions in flight. Each delete holds a long-running
+// operation poller open against the RP, and an environment cascade can span every resource in
+// every application, so the fan-out is capped to avoid overwhelming the server.
+const maxParallelDeletes = 10
+
 // PreviewResourceID builds a fully qualified Radius.Core resource ID from a workspace
 // scope, resource type and resource name.
 func PreviewResourceID(scope string, resourceType string, name string) string {
@@ -50,13 +59,27 @@ func PreviewEnvironmentID(scope string, environmentName string) string {
 }
 
 // DeleteResourcesInParallel deletes the given resources concurrently, tolerating resources that
-// have already been deleted. Resources missing an ID or type are skipped. The ID of each
-// resource is logged before its deletion is started, because output.Interface implementations are
-// not guaranteed to be thread-safe and logging up front keeps the output deterministic.
+// have already been deleted. The ID of each resource is logged before its deletion is started,
+// because output.Interface implementations are not guaranteed to be thread-safe and logging up
+// front keeps the output deterministic.
+//
+// A resource missing an ID or type cannot be addressed and is skipped with a warning rather than
+// silently dropped, so the caller's reported count cannot disagree with what was deleted.
+//
+// Deletions are limited to maxParallelDeletes at a time. On the first failure errgroup cancels the
+// shared context, which abandons every other delete. Those deletes are left in mixed states: some
+// were already accepted by the server and are still running there, some were canceled before the
+// request was sent, and some queued behind the concurrency limit may never have started. The
+// command reports a single error, so the outcome of the rest is unknown. Re-running the command is
+// the way to converge, which is safe because deleting an already-deleted resource is treated as
+// success.
 func DeleteResourcesInParallel(ctx context.Context, client clients.ApplicationsManagementClient, out output.Interface, resources []generated.GenericResource, force bool) error {
 	g, groupCtx := errgroup.WithContext(ctx)
+	g.SetLimit(maxParallelDeletes)
+
 	for _, resource := range resources {
 		if resource.ID == nil || resource.Type == nil {
+			out.LogInfo(MsgSkippingResource, describeResource(resource))
 			continue
 		}
 
@@ -74,6 +97,19 @@ func DeleteResourcesInParallel(ctx context.Context, client clients.ApplicationsM
 	}
 
 	return g.Wait()
+}
+
+// describeResource returns the most identifying label available for a resource, for use in
+// messages about resources that cannot be deleted.
+func describeResource(resource generated.GenericResource) string {
+	switch {
+	case resource.ID != nil:
+		return *resource.ID
+	case resource.Name != nil:
+		return *resource.Name
+	default:
+		return "an unnamed resource"
+	}
 }
 
 // ListPreviewApplicationsInEnvironment lists the Radius.Core applications in the workspace scope
@@ -100,34 +136,4 @@ func ListPreviewApplicationsInEnvironment(ctx context.Context, client *corerpv20
 	}
 
 	return results, nil
-}
-
-// MergeResourcesByID concatenates the given resource lists, dropping duplicates by
-// case-insensitive resource ID. Resources without an ID are dropped, since they cannot be deleted.
-// When the same resource ID appears more than once, a representation carrying a type is preferred
-// over one without, because a resource missing its type cannot be deleted.
-func MergeResourcesByID(lists ...[]generated.GenericResource) []generated.GenericResource {
-	indexes := map[string]int{}
-	results := []generated.GenericResource{}
-
-	for _, list := range lists {
-		for _, resource := range list {
-			if resource.ID == nil {
-				continue
-			}
-
-			key := strings.ToLower(*resource.ID)
-			if index, ok := indexes[key]; ok {
-				if results[index].Type == nil && resource.Type != nil {
-					results[index] = resource
-				}
-				continue
-			}
-
-			indexes[key] = len(results)
-			results = append(results, resource)
-		}
-	}
-
-	return results
 }

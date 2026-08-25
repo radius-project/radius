@@ -302,6 +302,50 @@ func Test_Run(t *testing.T) {
 		require.Contains(t, firstLog.Format, "Force deleting an application")
 	})
 
+	t.Run("Success: the force warning is shown before the confirmation prompt", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
+		require.NoError(t, err)
+
+		appID := workspace.Scope + "/providers/Radius.Core/applications/test-app"
+		mockMgmt := mockManagementClientWithResources(ctrl, appID, true)
+
+		outputSink := &output.MockOutput{}
+		var logsAtPromptTime []any
+
+		// The warning explains that force can leave orphaned external resources, so it is only
+		// useful if the user sees it before consenting to the delete.
+		promptMock := prompt.NewMockInterface(ctrl)
+		promptMock.EXPECT().
+			GetListInput(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(choices []string, promptMsg string) (string, error) {
+				logsAtPromptTime = append([]any{}, outputSink.Writes...)
+				return prompt.ConfirmYes, nil
+			}).
+			Times(1)
+
+		runner := &Runner{
+			RadiusCoreClientFactory: factory,
+			ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: mockMgmt},
+			Workspace:               workspace,
+			Output:                  outputSink,
+			InputPrompter:           promptMock,
+			ApplicationName:         "test-app",
+			Confirm:                 false,
+			Force:                   true,
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+
+		require.NotEmpty(t, logsAtPromptTime, "the force warning must be logged before the user is asked to confirm")
+		firstLog, ok := logsAtPromptTime[0].(output.LogOutput)
+		require.True(t, ok)
+		require.Contains(t, firstLog.Format, "Force deleting an application")
+	})
+
 	t.Run("Failure: child resource delete failure surfaces error", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()

@@ -159,6 +159,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	if r.Force {
+		r.Output.LogInfo("WARNING: Force deleting an application. Resources in non-terminal states may leave orphaned external resources that require manual cleanup.")
+	}
+
 	if !r.Confirm {
 		promptMsg := fmt.Sprintf("Are you sure you want to delete application '%s'?", r.ApplicationName)
 		confirmed, err := prompt.YesOrNoPrompt(promptMsg, prompt.ConfirmNo, r.InputPrompter)
@@ -169,10 +173,6 @@ func (r *Runner) Run(ctx context.Context) error {
 			r.Output.LogInfo("Application %q NOT deleted", r.ApplicationName)
 			return nil
 		}
-	}
-
-	if r.Force {
-		r.Output.LogInfo("WARNING: Force deleting an application. Resources in non-terminal states may leave orphaned external resources that require manual cleanup.")
 	}
 
 	// Use the management client to discover and delete owned resources.

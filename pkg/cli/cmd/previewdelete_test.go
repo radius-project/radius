@@ -19,7 +19,6 @@ package cmd
 import (
 	"fmt"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -49,42 +48,6 @@ func Test_PreviewResourceIDs(t *testing.T) {
 	require.Equal(t, testScope+"/providers/Radius.Core/environments/my-env", PreviewEnvironmentID(testScope, "my-env"))
 }
 
-func Test_MergeResourcesByID(t *testing.T) {
-	first := testResource("a")
-	second := testResource("b")
-
-	// Same resource as first, reported with different casing.
-	duplicate := generated.GenericResource{ID: to.Ptr(strings.ToUpper(*first.ID)), Type: first.Type}
-
-	// Resources without an ID cannot be deleted and are dropped.
-	noID := generated.GenericResource{Type: to.Ptr(testResourceType)}
-
-	merged := MergeResourcesByID(
-		[]generated.GenericResource{first, noID},
-		[]generated.GenericResource{duplicate, second},
-	)
-
-	require.Equal(t, []generated.GenericResource{first, second}, merged)
-}
-
-func Test_MergeResourcesByID_PrefersRepresentationWithType(t *testing.T) {
-	// A resource can be reported by one enumeration without its type, which makes it
-	// undeletable. When another enumeration reports the same ID with a type, the deletable
-	// representation must win regardless of which one is seen first.
-	typed := testResource("a")
-	untyped := generated.GenericResource{ID: to.Ptr(strings.ToUpper(*typed.ID))}
-
-	require.Equal(t,
-		[]generated.GenericResource{typed},
-		MergeResourcesByID([]generated.GenericResource{untyped}, []generated.GenericResource{typed}),
-		"a later typed duplicate should replace an earlier untyped one")
-
-	require.Equal(t,
-		[]generated.GenericResource{typed},
-		MergeResourcesByID([]generated.GenericResource{typed}, []generated.GenericResource{untyped}),
-		"an earlier typed entry should not be replaced by a later untyped duplicate")
-}
-
 func Test_DeleteResourcesInParallel(t *testing.T) {
 	t.Run("deletes every resource and logs each one", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -103,25 +66,44 @@ func Test_DeleteResourcesInParallel(t *testing.T) {
 		require.Len(t, sink.Writes, 2)
 	})
 
-	t.Run("skips resources without an ID or type", func(t *testing.T) {
+	t.Run("warns about resources without an ID or type instead of skipping them silently", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
 		valid := testResource("a")
+		noID := generated.GenericResource{Type: to.Ptr(testResourceType)}
+		noType := generated.GenericResource{ID: to.Ptr(testScope + "/providers/" + testResourceType + "/c")}
 
 		mock := clients.NewMockApplicationsManagementClient(ctrl)
 		mock.EXPECT().DeleteResource(gomock.Any(), testResourceType, *valid.ID, false).Return(true, nil).Times(1)
 
-		resources := []generated.GenericResource{
-			valid,
-			{Type: to.Ptr(testResourceType)},
-			{ID: to.Ptr(testScope + "/providers/" + testResourceType + "/c")},
-		}
+		sink := &output.MockOutput{}
+		err := DeleteResourcesInParallel(t.Context(), mock, sink, []generated.GenericResource{valid, noID, noType}, false)
+		require.NoError(t, err)
+
+		// The caller reports a count to the user before calling this function, so every resource
+		// that is not deleted must produce a message rather than disappearing.
+		require.Equal(t, []any{
+			output.LogOutput{Format: MsgDeletingResource, Params: []any{*valid.ID}},
+			output.LogOutput{Format: MsgSkippingResource, Params: []any{"an unnamed resource"}},
+			output.LogOutput{Format: MsgSkippingResource, Params: []any{*noType.ID}},
+		}, sink.Writes)
+	})
+
+	t.Run("identifies a skipped resource by name when it has no ID", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mock := clients.NewMockApplicationsManagementClient(ctrl)
+		named := generated.GenericResource{Name: to.Ptr("my-resource")}
 
 		sink := &output.MockOutput{}
-		err := DeleteResourcesInParallel(t.Context(), mock, sink, resources, false)
+		err := DeleteResourcesInParallel(t.Context(), mock, sink, []generated.GenericResource{named}, false)
 		require.NoError(t, err)
-		require.Len(t, sink.Writes, 1)
+
+		require.Equal(t, []any{
+			output.LogOutput{Format: MsgSkippingResource, Params: []any{"my-resource"}},
+		}, sink.Writes)
 	})
 
 	t.Run("tolerates resources that are already deleted", func(t *testing.T) {
