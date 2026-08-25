@@ -140,6 +140,14 @@ func requireResourceDeleted(ctx context.Context, t *testing.T, ct rp.RPTest, res
 			return
 		}
 
+		// Stop retrying once the test context is done, so a canceled or timed-out run fails
+		// immediately instead of burning the full deadline.
+		if err := ctx.Err(); err != nil {
+			require.Failf(t, "context ended before the resource was deleted",
+				"gave up waiting for %s to be deleted: %v (last error: %v)", resourceID, err, lastErr)
+			return
+		}
+
 		if time.Now().After(deadline) {
 			break
 		}

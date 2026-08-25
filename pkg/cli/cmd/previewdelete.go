@@ -50,7 +50,7 @@ func PreviewEnvironmentID(scope string, environmentName string) string {
 }
 
 // DeleteResourcesInParallel deletes the given resources concurrently, tolerating resources that
-// have already been deleted. Resources missing an ID or type are skipped. The name of each
+// have already been deleted. Resources missing an ID or type are skipped. The ID of each
 // resource is logged before its deletion is started, because output.Interface implementations are
 // not guaranteed to be thread-safe and logging up front keeps the output deterministic.
 func DeleteResourcesInParallel(ctx context.Context, client clients.ApplicationsManagementClient, out output.Interface, resources []generated.GenericResource, force bool) error {
