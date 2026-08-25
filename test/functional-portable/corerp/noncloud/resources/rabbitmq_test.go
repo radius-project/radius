@@ -20,12 +20,15 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/validation"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -63,14 +66,31 @@ func Test_RabbitMQ(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
 				labelset := kubernetes.MakeSelectorLabels(name, resourceName)
-				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, metav1.ListOptions{
+				listOptions := metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
-				})
-				require.NoError(t, err)
-				require.Len(t, deployments.Items, 1, "expected one RabbitMQ Deployment")
+				}
 
-				deployment := deployments.Items[0]
-				require.Equal(t, int32(1), deployment.Status.AvailableReplicas, "RabbitMQ Deployment should have one available replica")
+				// The test framework only waits for the Pod to become Ready. The Deployment's
+				// status is written separately by the deployment controller, so it can still
+				// report zero available replicas at this point. Poll instead of asserting on a
+				// single point-in-time read.
+				var deployment appsv1.Deployment
+				require.EventuallyWithT(t, func(c *assert.CollectT) {
+					deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(ctx, listOptions)
+					if !assert.NoError(c, err) {
+						return
+					}
+					if !assert.Len(c, deployments.Items, 1, "expected one RabbitMQ Deployment") {
+						return
+					}
+
+					if !assert.Equal(c, int32(1), deployments.Items[0].Status.AvailableReplicas, "RabbitMQ Deployment should have one available replica") {
+						return
+					}
+
+					deployment = deployments.Items[0]
+				}, time.Minute*2, time.Second*2)
+
 				require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
 				require.Equal(t, "rabbitmq", deployment.Spec.Template.Spec.Containers[0].Name)
 				require.Len(t, deployment.Spec.Template.Spec.Containers[0].Ports, 1)
