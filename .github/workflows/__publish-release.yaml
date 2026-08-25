@@ -59,13 +59,13 @@ jobs:
           cd "${RELEASE_PATH}" && for i in *; do sha256sum -b "$i" > "$i.sha256"; done && cd -
           ls -l "${RELEASE_PATH}"
 
-      - name: Create GitHub RC Release (pre-release and auto-generate release notes)
+      - name: Create GitHub RC Release
         if: ${{ contains(env.REL_VERSION, 'rc') }}
         run: |
           gh release create "v${REL_VERSION}" \
             "${RELEASE_PATH}"/* \
             --title "Radius v${REL_VERSION}" \
-            --generate-notes \
+            --notes-file "docs/release-notes/v${REL_VERSION}.md" \
             --verify-tag \
             --prerelease
         env:
