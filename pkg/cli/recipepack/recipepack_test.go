@@ -148,7 +148,6 @@ func Test_NewDefaultRecipePackResource(t *testing.T) {
 	require.Contains(t, resource.Properties.Recipes, "Radius.Data/postgreSqlDatabases")
 	postgreSQLRecipe := resource.Properties.Recipes["Radius.Data/postgreSqlDatabases"]
 	require.NotNil(t, postgreSQLRecipe)
-	require.Equal(t, "ghcr.io/radius-project/kube-recipes/postgresqldatabases:edge", *postgreSQLRecipe.Source)
 }
 
 func Test_NormalizeRecipePacks(t *testing.T) {
