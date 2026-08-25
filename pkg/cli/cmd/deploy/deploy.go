@@ -306,6 +306,13 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Use the template that was prepared during validation
 	template := r.Template
 
+	// Warn about legacy Applications.* resource types before deploying, so the message is visible
+	// above the deployment progress output.
+	if warning := bicep.FormatDeprecationWarning(r.TemplateInspectionResult.DeprecatedResources); warning != "" {
+		r.Output.LogInfo("")
+		r.Output.LogInfo("%s", warning)
+	}
+
 	// This is the earliest point where we can inject parameters, we have
 	// to wait until the template is prepared.
 	err := r.injectAutomaticParameters(template)

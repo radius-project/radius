@@ -717,6 +717,70 @@ func Test_Run(t *testing.T) {
 		require.Empty(t, outputSink.Writes)
 	})
 
+	t.Run("Deprecated Applications.* resource types produce a warning", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		bicepMock := bicep.NewMockInterface(ctrl)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name: "kind-kind",
+		}
+		provider := &clients.Providers{
+			Radius: &clients.RadiusProvider{
+				EnvironmentID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+			},
+		}
+
+		deployMock := deploy.NewMockInterface(ctrl)
+		deployMock.EXPECT().
+			DeployWithProgress(gomock.Any(), gomock.Any()).
+			Return(clients.DeploymentResult{}, nil).
+			Times(1)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			Bicep:               bicepMock,
+			Deploy:              deployMock,
+			Output:              outputSink,
+			FilePath:            "app.bicep",
+			EnvironmentNameOrID: radcli.TestEnvironmentID,
+			Parameters:          map[string]map[string]any{},
+			Workspace:           workspace,
+			Providers:           provider,
+			Template:            map[string]any{},
+			TemplateInspectionResult: bicep.TemplateInspectionResult{
+				DeprecatedResources: []bicep.DeprecatedResource{
+					{
+						FullType:    "Applications.Core/containers@2023-10-01-preview",
+						Replacement: "Radius.Compute/containers@2025-08-01-preview",
+					},
+					{FullType: "Applications.Core/extenders@2023-10-01-preview"},
+				},
+			},
+		}
+
+		err := runner.Run(t.Context())
+		require.NoError(t, err)
+
+		expected := []any{
+			output.LogOutput{Format: ""},
+			output.LogOutput{
+				Format: "%s",
+				Params: []any{
+					"WARNING: The following resource types use the deprecated Applications.* namespace with API version 2023-10-01-preview and will be removed in a future release:\n" +
+						"  - Applications.Core/containers@2023-10-01-preview: use Radius.Compute/containers@2025-08-01-preview instead.\n" +
+						"  - Applications.Core/extenders@2023-10-01-preview: no direct replacement. Define an equivalent resource type and register a recipe pack that provides it to your environment.\n",
+				},
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
+	})
+
 	t.Run("Remote template URL credentials are redacted in progress text", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
