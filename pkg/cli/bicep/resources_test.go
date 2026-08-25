@@ -834,3 +834,203 @@ func Test_FormatDeprecationWarning(t *testing.T) {
 		})
 	}
 }
+
+// Test_GetDeprecatedResources_IsDeterministic guards the stable ordering and spelling of the
+// warning. Resource types are case-insensitive, so a template may declare the same type with
+// different casing. De-duplication keeps the first spelling encountered, which made the rendered
+// output vary between runs while map iteration order was unsorted.
+func Test_GetDeprecatedResources_IsDeterministic(t *testing.T) {
+	t.Parallel()
+
+	template := map[string]any{
+		"resources": map[string]any{
+			"containerUpper": map[string]any{
+				"type": "Applications.Core/containers@2023-10-01-preview",
+				"name": "container-upper",
+			},
+			"containerLower": map[string]any{
+				"type": "applications.core/CONTAINERS@2023-10-01-preview",
+				"name": "container-lower",
+			},
+			"app": map[string]any{
+				"type": "Applications.Core/applications@2023-10-01-preview",
+				"name": "my-app",
+			},
+			"module": map[string]any{
+				"type": "Microsoft.Resources/deployments",
+				"name": "my-module",
+				"properties": map[string]any{
+					"template": map[string]any{
+						"resources": map[string]any{
+							"gatewayA": map[string]any{
+								"type": "Applications.Core/gateways@2023-10-01-preview",
+								"name": "gateway-a",
+							},
+							"gatewayB": map[string]any{
+								"type": "APPLICATIONS.CORE/GATEWAYS@2023-10-01-preview",
+								"name": "gateway-b",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Pin the exact spelling that wins de-duplication rather than comparing runs
+	// against each other. Sorted key traversal makes the lowest-sorting symbolic
+	// name win ("containerLower" over "containerUpper", "gatewayA" over
+	// "gatewayB"), and the authored casing is preserved rather than canonicalized.
+	expected := []string{
+		"Applications.Core/applications@2023-10-01-preview",
+		"Applications.Core/gateways@2023-10-01-preview",
+		"applications.core/CONTAINERS@2023-10-01-preview",
+	}
+
+	// Repeat enough times to reliably surface randomized map iteration order.
+	for range 100 {
+		actual := GetDeprecatedResources(template)
+		require.Len(t, actual, 3, "the two casing variants of each type should collapse to one entry")
+
+		fullTypes := make([]string, 0, len(actual))
+		for _, resource := range actual {
+			fullTypes = append(fullTypes, resource.FullType)
+		}
+		require.Equal(t, expected, fullTypes)
+	}
+}
+
+func Test_GetDeprecatedResources_MalformedTemplates(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		template map[string]any
+	}{
+		{
+			name: "Resources value is not a map or array",
+			template: map[string]any{
+				"resources": "not-a-collection",
+			},
+		},
+		{
+			name: "Resource entry is not a map",
+			template: map[string]any{
+				"resources": map[string]any{
+					"bad": "not-a-map",
+				},
+			},
+		},
+		{
+			name: "Array entry is not a map",
+			template: map[string]any{
+				"resources": []any{"not-a-map", 42, nil},
+			},
+		},
+		{
+			name: "Resource type is not a string",
+			template: map[string]any{
+				"resources": map[string]any{
+					"bad": map[string]any{"type": 42},
+				},
+			},
+		},
+		{
+			name: "Module properties are not a map",
+			template: map[string]any{
+				"resources": map[string]any{
+					"module": map[string]any{
+						"type":       "Microsoft.Resources/deployments",
+						"properties": "not-a-map",
+					},
+				},
+			},
+		},
+		{
+			name: "Module template is not a map",
+			template: map[string]any{
+				"resources": map[string]any{
+					"module": map[string]any{
+						"type": "Microsoft.Resources/deployments",
+						"properties": map[string]any{
+							"template": "not-a-map",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			// Malformed input must be skipped rather than panic. A panic would
+			// fail the test on its own, so no NotPanics wrapper is needed.
+			require.Empty(t, GetDeprecatedResources(tt.template))
+		})
+	}
+}
+
+func Test_GetEnvironmentResources(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Returns only Radius.Core environment resources", func(t *testing.T) {
+		t.Parallel()
+
+		radiusEnv := map[string]any{
+			"type": "Radius.Core/environments@2025-08-01-preview",
+			"name": "my-env",
+		}
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": radiusEnv,
+				"legacyEnv": map[string]any{
+					"type": "Applications.Core/environments@2023-10-01-preview",
+					"name": "legacy-env",
+				},
+				"app": map[string]any{
+					"type": "Radius.Core/applications@2025-08-01-preview",
+					"name": "my-app",
+				},
+			},
+		}
+
+		require.Equal(t, []map[string]any{radiusEnv}, GetEnvironmentResources(template))
+	})
+
+	t.Run("Returns nil when no environment resources are present", func(t *testing.T) {
+		t.Parallel()
+
+		require.Nil(t, GetEnvironmentResources(nil))
+		require.Nil(t, GetEnvironmentResources(map[string]any{}))
+		require.Nil(t, GetEnvironmentResources(map[string]any{
+			"resources": map[string]any{
+				"app": map[string]any{"type": "Radius.Core/applications@2025-08-01-preview"},
+			},
+		}))
+	})
+
+	t.Run("Environment resources inside modules are intentionally not returned", func(t *testing.T) {
+		t.Parallel()
+
+		// Environment detection is deliberately top-level only, because it drives deployment
+		// behavior. Only the deprecation scan recurses into modules.
+		template := map[string]any{
+			"resources": map[string]any{
+				"module": map[string]any{
+					"type": "Microsoft.Resources/deployments",
+					"properties": map[string]any{
+						"template": map[string]any{
+							"resources": map[string]any{
+								"env": map[string]any{"type": "Radius.Core/environments@2025-08-01-preview"},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		require.Nil(t, GetEnvironmentResources(template))
+		require.False(t, ContainsEnvironmentResource(template))
+	})
+}

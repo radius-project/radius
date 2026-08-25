@@ -303,8 +303,18 @@ func collectDeprecatedResources(template map[string]any, seen map[string]struct{
 	var resourceValues []any
 	switch typed := resourcesValue.(type) {
 	case map[string]any:
-		for _, resourceValue := range typed {
-			resourceValues = append(resourceValues, resourceValue)
+		// Visit map entries in sorted key order. Go randomizes map iteration, and de-duplication
+		// keeps the first spelling of a type it encounters, so an unordered walk would render a
+		// different casing of the same type from run to run when a template declares it more than
+		// once with different casing (resource types are case-insensitive).
+		names := make([]string, 0, len(typed))
+		for name := range typed {
+			names = append(names, name)
+		}
+		sort.Strings(names)
+
+		for _, name := range names {
+			resourceValues = append(resourceValues, typed[name])
 		}
 	case []any:
 		resourceValues = typed
