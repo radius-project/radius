@@ -22,12 +22,16 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/test/k8sutil"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -424,4 +428,69 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 		})
 	}
+}
+
+// TestCreateOrUpdateEnvironment_NamespaceConflictError verifies the namespace conflict response for
+// Applications.Core/environments. Enforcement here is deliberately unchanged -- it stays scoped to
+// the current resource group and resource type, because this type is deprecated and widening it
+// would break writes on existing installs. Only the error surface improved: a distinct code the
+// CLI can recognize, and a message that names the conflicting environment.
+func TestCreateOrUpdateEnvironment_NamespaceConflictError(t *testing.T) {
+	mctrl := gomock.NewController(t)
+	defer mctrl.Finish()
+
+	databaseClient := database.NewMockClient(mctrl)
+	ctx := t.Context()
+
+	const conflictingEnvID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/existing-env"
+
+	envInput, _, _ := getTestModels20231001preview()
+	w := httptest.NewRecorder()
+	req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodPut, testHeaderfile, envInput)
+	require.NoError(t, err)
+	ctx = rpctest.NewARMRequestContext(req)
+
+	databaseClient.EXPECT().
+		Get(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+			return nil, &database.ErrNotFound{ID: id}
+		})
+
+	// A different environment in the same resource group already holds the namespace.
+	conflicting := &datamodel.Environment{}
+	conflicting.ID = conflictingEnvID
+	conflicting.Properties.Compute = rpv1.EnvironmentCompute{
+		Kind:              rpv1.KubernetesComputeKind,
+		KubernetesCompute: rpv1.KubernetesComputeProperties{Namespace: "default"},
+	}
+
+	databaseClient.EXPECT().
+		Query(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+			// Enforcement must remain scoped to this resource group and resource type.
+			require.False(t, query.ScopeRecursive, "Applications.Core enforcement must not search the whole plane")
+			require.Equal(t, "applications.core/environments", strings.ToLower(query.ResourceType))
+
+			return &database.ObjectQueryResult{
+				Items: []database.Object{{Metadata: database.Metadata{ID: conflictingEnvID}, Data: conflicting}},
+			}, nil
+		})
+
+	opts := ctrl.Options{
+		DatabaseClient: databaseClient,
+		KubeClient:     k8sutil.NewFakeKubeClient(nil),
+	}
+
+	ctl, err := NewCreateOrUpdateEnvironment(opts)
+	require.NoError(t, err)
+
+	resp, err := ctl.Run(ctx, w, req)
+	require.NoError(t, err)
+	require.NoError(t, resp.Apply(ctx, w, req))
+	require.Equal(t, 409, w.Result().StatusCode)
+
+	errorResponse := &v1.ErrorResponse{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), errorResponse))
+	require.Equal(t, v1.CodeNamespaceAlreadyInUse, errorResponse.Error.Code)
+	require.Contains(t, errorResponse.Error.Message, conflictingEnvID)
 }

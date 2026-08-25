@@ -35,6 +35,16 @@ const (
 	// Used for CodeConflict error.
 	CodeConflict = "Conflict"
 
+	// Used when the Kubernetes namespace requested by an environment is already claimed by
+	// another environment. This is distinct from CodeConflict so that clients can recognize
+	// the namespace collision specifically rather than treating every 409 the same way.
+	CodeNamespaceAlreadyInUse = "NamespaceAlreadyInUse"
+
+	// Used when a request attempts to change or clear the Kubernetes namespace of an environment
+	// that already has one. The namespace is immutable once established, because changing it
+	// would orphan resources already deployed into the previous namespace.
+	CodeNamespaceImmutable = "NamespaceImmutable"
+
 	// Used for CodeInvalidResourceType.
 	CodeInvalidResourceType = "InvalidResourceType"
 

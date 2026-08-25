@@ -58,6 +58,9 @@ const (
 	DataMySQLDatabasesResource      = "radius.data/mySqlDatabases"
 	DataPostgreSQLDatabasesResource = "radius.data/postgreSqlDatabases"
 
+	// Radius.Messaging resource types (new provider).
+	MessagingRabbitMQResource = "radius.messaging/rabbitMQ"
+
 	RabbitMQQueuesResource          = "applications.messaging/rabbitMQQueues"
 	DaprPubSubBrokersResource       = "applications.dapr/pubSubBrokers"
 	DaprSecretStoresResource        = "applications.dapr/secretStores"

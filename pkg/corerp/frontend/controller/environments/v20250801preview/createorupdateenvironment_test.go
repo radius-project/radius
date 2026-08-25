@@ -26,6 +26,7 @@ import (
 	"strings"
 	"testing"
 
+	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
@@ -112,7 +113,7 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 						return &database.ObjectQueryResult{
 							Items: []database.Object{},
 						}, nil
-					})
+					}).Times(2)
 			}
 
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
@@ -190,16 +191,8 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 					}, nil
 				})
 
-			if !tt.shouldFail {
-				databaseClient.
-					EXPECT().
-					Query(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
-						return &database.ObjectQueryResult{
-							Items: []database.Object{},
-						}, nil
-					})
-			}
+			// No namespace uniqueness query is expected: the environment already has a
+			// namespace and this update does not change it, so the check is skipped.
 
 			if !tt.shouldFail {
 				databaseClient.
@@ -278,7 +271,7 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 						return &database.ObjectQueryResult{
 							Items: []database.Object{},
 						}, nil
-					})
+					}).Times(2)
 			}
 
 			defaultNamespace := &corev1.Namespace{
@@ -333,16 +326,8 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 					}, nil
 				})
 
-			if !tt.shouldFail {
-				databaseClient.
-					EXPECT().
-					Query(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
-						return &database.ObjectQueryResult{
-							Items: []database.Object{},
-						}, nil
-					})
-			}
+			// No namespace uniqueness query is expected: the environment already has a
+			// namespace and this patch does not change it, so the check is skipped.
 
 			if !tt.shouldFail {
 				databaseClient.
@@ -379,6 +364,137 @@ func TestCreateOrUpdateEnvironmentRun_20250801Preview(t *testing.T) {
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 			}
+		})
+	}
+}
+
+// TestCreateOrUpdateEnvironment_NamespaceUniqueness covers the constraint that a Kubernetes
+// namespace may be claimed by only one environment across the entire plane. The check used to be
+// scoped to a single resource group, which meant creating a second resource group silently
+// bypassed it (issue #12420).
+func TestCreateOrUpdateEnvironment_NamespaceUniqueness(t *testing.T) {
+	ctx := t.Context()
+
+	const (
+		// The environment under test, as declared by the request fixture.
+		requestEnvID = "/planes/radius/local/resourceGroups/testGroup/providers/Radius.Core/environments/my-k8s-env"
+
+		// An environment in a *different* resource group holding the same namespace.
+		otherGroupEnvID = "/planes/radius/local/resourceGroups/otherGroup/providers/Radius.Core/environments/other-env"
+	)
+
+	// conflictingEnvironment returns a stored Radius.Core environment using the "default" namespace.
+	conflictingEnvironment := func(id string) database.Object {
+		env := &datamodel.Environment_v20250801preview{
+			BaseResource: v1.BaseResource{TrackedResource: v1.TrackedResource{ID: id}},
+		}
+		env.Properties.Providers = &datamodel.Providers_v20250801preview{
+			Kubernetes: &datamodel.ProvidersKubernetes_v20250801preview{Namespace: "default"},
+		}
+
+		return database.Object{Metadata: database.Metadata{ID: id}, Data: env}
+	}
+
+	testCases := []struct {
+		desc               string
+		queryResults       []database.Object
+		expectedStatusCode int
+		expectSaved        bool
+	}{
+		{
+			desc:               "conflicts with an environment in another resource group",
+			queryResults:       []database.Object{conflictingEnvironment(otherGroupEnvID)},
+			expectedStatusCode: 409,
+		},
+		{
+			desc: "ignores the environment being updated but still finds a later conflict",
+			queryResults: []database.Object{
+				conflictingEnvironment(requestEnvID),
+				conflictingEnvironment(otherGroupEnvID),
+			},
+			expectedStatusCode: 409,
+		},
+		{
+			desc:               "allows re-applying the same environment",
+			queryResults:       []database.Object{conflictingEnvironment(requestEnvID)},
+			expectedStatusCode: 200,
+			expectSaved:        true,
+		},
+		{
+			desc:               "allows a free namespace",
+			queryResults:       nil,
+			expectedStatusCode: 200,
+			expectSaved:        true,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			mctrl := gomock.NewController(t)
+			databaseClient := database.NewMockClient(mctrl)
+
+			envInput, envDataModel, _ := getTestModelsv20250801preview()
+			w := httptest.NewRecorder()
+			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodPut, testHeaderfilev20250801preview, envInput)
+			require.NoError(t, err)
+			ctx := rpctest.NewARMRequestContext(req)
+
+			databaseClient.EXPECT().
+				Get(gomock.Any(), testRecipePackID).
+				Return(testRecipePackObject(), nil).
+				AnyTimes()
+
+			databaseClient.EXPECT().
+				Get(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+					return nil, &database.ErrNotFound{ID: id}
+				}).AnyTimes()
+
+			databaseClient.EXPECT().
+				Query(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {
+					// The environments in this test are all Radius.Core; the legacy type is empty.
+					if !strings.EqualFold(query.ResourceType, datamodel.EnvironmentResourceType_v20250801preview) {
+						return &database.ObjectQueryResult{}, nil
+					}
+
+					return &database.ObjectQueryResult{Items: tt.queryResults}, nil
+				}).AnyTimes()
+
+			if tt.expectSaved {
+				databaseClient.EXPECT().
+					Save(gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, obj *database.Object, opts ...database.SaveOptions) error {
+						obj.ETag = "new-resource-etag"
+						obj.Data = envDataModel
+						return nil
+					}).Times(1)
+			}
+
+			opts := ctrl.Options{
+				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}}),
+			}
+
+			ctl, err := NewCreateOrUpdateEnvironmentv20250801preview(opts)
+			require.NoError(t, err)
+
+			resp, err := ctl.Run(ctx, w, req)
+			require.NoError(t, err)
+			require.NoError(t, resp.Apply(ctx, w, req))
+			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
+
+			if tt.expectedStatusCode != 409 {
+				return
+			}
+
+			// The response must carry a code the CLI can key on, and name the conflicting
+			// environment so an operator can find it.
+			errorResponse := &v1.ErrorResponse{}
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), errorResponse))
+			require.Equal(t, v1.CodeNamespaceAlreadyInUse, errorResponse.Error.Code)
+			require.Contains(t, errorResponse.Error.Message, "The Kubernetes namespace specified (default) is already used by another Radius Environment")
+			require.Contains(t, errorResponse.Error.Message, otherGroupEnvID)
 		})
 	}
 }
@@ -715,7 +831,7 @@ func TestCreateOrUpdateEnvironment_RecipePackValidation(t *testing.T) {
 			// Mock kubernetes namespace query - this happens before recipe pack validation
 			databaseClient.EXPECT().
 				Query(gomock.Any(), gomock.Any()).
-				Return(&database.ObjectQueryResult{Items: []database.Object{}}, nil).MaxTimes(1)
+				Return(&database.ObjectQueryResult{Items: []database.Object{}}, nil).MaxTimes(2)
 
 			// Mock Save only for successful cases
 			if tt.expectedStatusCode == 200 {
@@ -828,7 +944,7 @@ func TestCreateOrUpdateEnvironment_RecipePackNormalization(t *testing.T) {
 
 	databaseClient.EXPECT().
 		Query(gomock.Any(), gomock.Any()).
-		Return(&database.ObjectQueryResult{Items: []database.Object{}}, nil).MaxTimes(1)
+		Return(&database.ObjectQueryResult{Items: []database.Object{}}, nil).MaxTimes(2)
 
 	var savedRecipePacks []string
 	databaseClient.EXPECT().
@@ -856,4 +972,134 @@ func TestCreateOrUpdateEnvironment_RecipePackNormalization(t *testing.T) {
 
 	require.Equal(t, 200, w.Result().StatusCode)
 	require.Equal(t, []string{resolvedByName, fullID}, savedRecipePacks)
+}
+
+// TestCreateOrUpdateEnvironment_NamespaceImmutability covers the update-side rules for the
+// namespace. Once an environment has a namespace it cannot be changed or removed, and because it
+// cannot change, an update that leaves it alone skips the uniqueness query entirely. That last
+// part is what keeps unrelated writes -- registering a recipe, syncing recipe pack references --
+// from failing on installs that predate the constraint.
+func TestCreateOrUpdateEnvironment_NamespaceImmutability(t *testing.T) {
+	ctx := t.Context()
+
+	testCases := []struct {
+		desc               string
+		storedNamespace    string
+		clearKubernetes    bool
+		expectedStatusCode int
+		expectedErrorCode  string
+		expectQueries      bool
+		expectSaved        bool
+	}{
+		{
+			desc:               "unchanged namespace is saved without a uniqueness query",
+			storedNamespace:    "default",
+			expectedStatusCode: 200,
+			expectSaved:        true,
+		},
+		{
+			desc:               "changing the namespace is rejected",
+			storedNamespace:    "previous-namespace",
+			expectedStatusCode: 400,
+			expectedErrorCode:  v1.CodeNamespaceImmutable,
+		},
+		{
+			desc:               "removing the kubernetes provider is rejected",
+			storedNamespace:    "default",
+			clearKubernetes:    true,
+			expectedStatusCode: 400,
+			expectedErrorCode:  v1.CodeNamespaceImmutable,
+		},
+		{
+			desc:               "claiming a namespace for the first time is validated",
+			storedNamespace:    "",
+			expectedStatusCode: 200,
+			expectQueries:      true,
+			expectSaved:        true,
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			mctrl := gomock.NewController(t)
+			databaseClient := database.NewMockClient(mctrl)
+
+			envInput, envDataModel, _ := getTestModelsv20250801preview()
+
+			// The stored environment is what the request is compared against.
+			stored := *envDataModel
+			if tt.storedNamespace == "" {
+				stored.Properties.Providers = nil
+			} else {
+				stored.Properties.Providers = &datamodel.Providers_v20250801preview{
+					Kubernetes: &datamodel.ProvidersKubernetes_v20250801preview{Namespace: tt.storedNamespace},
+				}
+			}
+
+			if tt.clearKubernetes {
+				envInput.Properties.Providers = nil
+			}
+
+			w := httptest.NewRecorder()
+			req, err := rpctest.NewHTTPRequestFromJSON(ctx, http.MethodPut, testHeaderfilev20250801preview, envInput)
+			require.NoError(t, err)
+			ctx := rpctest.NewARMRequestContext(req)
+
+			databaseClient.EXPECT().
+				Get(gomock.Any(), testRecipePackID).
+				Return(testRecipePackObject(), nil).
+				AnyTimes()
+
+			databaseClient.EXPECT().
+				Get(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
+					return &database.Object{
+						Metadata: database.Metadata{ID: id, ETag: "resource-etag"},
+						Data:     &stored,
+					}, nil
+				}).AnyTimes()
+
+			queryCall := databaseClient.EXPECT().
+				Query(gomock.Any(), gomock.Any()).
+				Return(&database.ObjectQueryResult{}, nil)
+			if tt.expectQueries {
+				// Both environment resource types are searched.
+				queryCall.Times(2)
+			} else {
+				queryCall.Times(0)
+			}
+
+			if tt.expectSaved {
+				databaseClient.EXPECT().
+					Save(gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, obj *database.Object, opts ...database.SaveOptions) error {
+						obj.ETag = "new-resource-etag"
+						obj.Data = envDataModel
+						return nil
+					}).Times(1)
+			}
+
+			opts := ctrl.Options{
+				DatabaseClient: databaseClient,
+				KubeClient:     k8sutil.NewFakeKubeClient(nil, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "default"}}),
+			}
+
+			ctl, err := NewCreateOrUpdateEnvironmentv20250801preview(opts)
+			require.NoError(t, err)
+
+			resp, err := ctl.Run(ctx, w, req)
+			require.NoError(t, err)
+			require.NoError(t, resp.Apply(ctx, w, req))
+			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
+
+			if tt.expectedErrorCode == "" {
+				return
+			}
+
+			errorResponse := &v1.ErrorResponse{}
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), errorResponse))
+			require.Equal(t, tt.expectedErrorCode, errorResponse.Error.Code)
+			require.Contains(t, errorResponse.Error.Message, tt.storedNamespace)
+		})
+	}
 }

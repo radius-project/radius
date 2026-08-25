@@ -39,6 +39,7 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 		"Radius.Security/secrets",
 		"Radius.Data/mySqlDatabases",
 		"Radius.Data/postgreSqlDatabases",
+		"Radius.Messaging/rabbitMQ",
 	}
 	require.Len(t, definitions, len(expectedResourceTypes))
 
@@ -48,6 +49,10 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 		require.NotEmpty(t, def.Source, "Source should not be empty for %s", def.ResourceType)
 	}
 	require.ElementsMatch(t, expectedResourceTypes, actualResourceTypes)
+	require.Contains(t, definitions, CoreTypesRecipeInfo{
+		ResourceType: "Radius.Messaging/rabbitMQ",
+		Source:       "ghcr.io/radius-project/kube-recipes/rabbitmq:edge",
+	})
 }
 
 func Test_GetDefaultRecipePackDefinition_UsesEdgeTagForEdgeChannel(t *testing.T) {
