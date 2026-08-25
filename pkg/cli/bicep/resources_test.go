@@ -534,3 +534,303 @@ func Test_HasOnlyRadiusResourceTypes(t *testing.T) {
 		})
 	}
 }
+
+func Test_GetDeprecatedResources(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		template map[string]any
+		expected []DeprecatedResource
+	}{
+		{
+			name:     "Nil template",
+			template: nil,
+			expected: nil,
+		},
+		{
+			name:     "Empty template",
+			template: map[string]any{},
+			expected: nil,
+		},
+		{
+			name: "Template with empty resources map",
+			template: map[string]any{
+				"resources": map[string]any{},
+			},
+			expected: nil,
+		},
+		{
+			name: "Deprecated type with a known replacement",
+			template: map[string]any{
+				"resources": map[string]any{
+					"container": map[string]any{
+						"type": "Applications.Core/containers@2023-10-01-preview",
+						"name": "my-container",
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{
+					FullType:    "Applications.Core/containers@2023-10-01-preview",
+					Replacement: "Radius.Compute/containers@2025-08-01-preview",
+				},
+			},
+		},
+		{
+			name: "Deprecated type without a known replacement",
+			template: map[string]any{
+				"resources": map[string]any{
+					"store": map[string]any{
+						"type": "Applications.Dapr/stateStores@2023-10-01-preview",
+						"name": "my-store",
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{FullType: "Applications.Dapr/stateStores@2023-10-01-preview"},
+			},
+		},
+		{
+			name: "Deprecated type matching is case-insensitive",
+			template: map[string]any{
+				"resources": map[string]any{
+					"gateway": map[string]any{
+						"type": "applications.core/GATEWAYS@2023-10-01-PREVIEW",
+						"name": "my-gateway",
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{
+					FullType:    "applications.core/GATEWAYS@2023-10-01-PREVIEW",
+					Replacement: "Radius.Compute/routes@2025-08-01-preview",
+				},
+			},
+		},
+		{
+			name: "Applications type with a different API version is not deprecated",
+			template: map[string]any{
+				"resources": map[string]any{
+					"container": map[string]any{
+						"type": "Applications.Core/containers@2025-08-01-preview",
+						"name": "my-container",
+					},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "Radius namespace type is not deprecated",
+			template: map[string]any{
+				"resources": map[string]any{
+					"container": map[string]any{
+						"type": "Radius.Compute/containers@2025-08-01-preview",
+						"name": "my-container",
+					},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "Non-Radius type with the deprecated API version is not flagged",
+			template: map[string]any{
+				"resources": map[string]any{
+					"storage": map[string]any{
+						"type": "Microsoft.Storage/storageAccounts@2023-10-01-preview",
+						"name": "my-storage",
+					},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "Resource type without an API version is not flagged",
+			template: map[string]any{
+				"resources": map[string]any{
+					"container": map[string]any{
+						"type": "Applications.Core/containers",
+						"name": "my-container",
+					},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "Repeated resources of the same type are reported once",
+			template: map[string]any{
+				"resources": map[string]any{
+					"containera": map[string]any{
+						"type": "Applications.Core/containers@2023-10-01-preview",
+						"name": "container-a",
+					},
+					"containerb": map[string]any{
+						"type": "Applications.Core/containers@2023-10-01-preview",
+						"name": "container-b",
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{
+					FullType:    "Applications.Core/containers@2023-10-01-preview",
+					Replacement: "Radius.Compute/containers@2025-08-01-preview",
+				},
+			},
+		},
+		{
+			name: "Deprecated resource inside a Bicep module is detected",
+			template: map[string]any{
+				"resources": map[string]any{
+					"env": map[string]any{
+						"type": "Applications.Core/environments@2023-10-01-preview",
+						"name": "my-env",
+					},
+					"module": map[string]any{
+						"type": "Microsoft.Resources/deployments",
+						"name": "my-module",
+						"properties": map[string]any{
+							"template": map[string]any{
+								"resources": map[string]any{
+									"app": map[string]any{
+										"type": "Applications.Core/applications@2023-10-01-preview",
+										"name": "my-app",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{
+					FullType:    "Applications.Core/applications@2023-10-01-preview",
+					Replacement: "Radius.Core/applications@2025-08-01-preview",
+				},
+				{
+					FullType:    "Applications.Core/environments@2023-10-01-preview",
+					Replacement: "Radius.Core/environments@2025-08-01-preview",
+				},
+			},
+		},
+		{
+			name: "Deprecated resource inside a nested module and an array-shaped template is detected",
+			template: map[string]any{
+				"resources": map[string]any{
+					"outer": map[string]any{
+						"type": "Microsoft.Resources/deployments",
+						"name": "outer-module",
+						"properties": map[string]any{
+							"template": map[string]any{
+								"resources": []any{
+									map[string]any{
+										"type": "Microsoft.Resources/deployments",
+										"name": "inner-module",
+										"properties": map[string]any{
+											"template": map[string]any{
+												"resources": map[string]any{
+													"container": map[string]any{
+														"type": "Applications.Core/containers@2023-10-01-preview",
+														"name": "my-container",
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{
+					FullType:    "Applications.Core/containers@2023-10-01-preview",
+					Replacement: "Radius.Compute/containers@2025-08-01-preview",
+				},
+			},
+		},
+		{
+			name: "Mixed resources are reported in sorted order",
+			template: map[string]any{
+				"resources": map[string]any{
+					"container": map[string]any{
+						"type": "Applications.Core/containers@2023-10-01-preview",
+						"name": "my-container",
+					},
+					"app": map[string]any{
+						"type": "Applications.Core/applications@2023-10-01-preview",
+						"name": "my-app",
+					},
+					"extender": map[string]any{
+						"type": "Applications.Core/extenders@2023-10-01-preview",
+						"name": "my-extender",
+					},
+					"modern": map[string]any{
+						"type": "Radius.Core/environments@2025-08-01-preview",
+						"name": "my-env",
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{
+					FullType:    "Applications.Core/applications@2023-10-01-preview",
+					Replacement: "Radius.Core/applications@2025-08-01-preview",
+				},
+				{
+					FullType:    "Applications.Core/containers@2023-10-01-preview",
+					Replacement: "Radius.Compute/containers@2025-08-01-preview",
+				},
+				{FullType: "Applications.Core/extenders@2023-10-01-preview"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.expected, GetDeprecatedResources(tt.template))
+		})
+	}
+}
+
+func Test_FormatDeprecationWarning(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		deprecated []DeprecatedResource
+		expected   string
+	}{
+		{
+			name:       "No deprecated resources returns an empty string",
+			deprecated: nil,
+			expected:   "",
+		},
+		{
+			name: "Resource with a replacement names the replacement type",
+			deprecated: []DeprecatedResource{
+				{
+					FullType:    "Applications.Core/containers@2023-10-01-preview",
+					Replacement: "Radius.Compute/containers@2025-08-01-preview",
+				},
+			},
+			expected: "WARNING: The following resource types use the deprecated Applications.* namespace with API version 2023-10-01-preview and will be removed in a future release:\n" +
+				"  - Applications.Core/containers@2023-10-01-preview: use Radius.Compute/containers@2025-08-01-preview instead.\n",
+		},
+		{
+			name: "Resource without a replacement falls back to recipe pack guidance",
+			deprecated: []DeprecatedResource{
+				{FullType: "Applications.Core/extenders@2023-10-01-preview"},
+			},
+			expected: "WARNING: The following resource types use the deprecated Applications.* namespace with API version 2023-10-01-preview and will be removed in a future release:\n" +
+				"  - Applications.Core/extenders@2023-10-01-preview: no direct replacement. Define an equivalent resource type and register a recipe pack that provides it to your environment.\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.expected, FormatDeprecationWarning(tt.deprecated))
+		})
+	}
+}
