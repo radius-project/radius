@@ -91,7 +91,7 @@ func Test_Container_ManagedSecretConnection(t *testing.T) {
 					name: {
 						validation.NewK8sPodForResource(name, producerName),
 						validation.NewK8sServiceForResource(name, producerName),
-						validation.NewK8sSecretForResource(name, managedSecretName),
+						validation.NewK8sSecretForResourceWithResourceName(managedSecretName),
 						validation.NewK8sPodForResource(name, containerName),
 					},
 				},
