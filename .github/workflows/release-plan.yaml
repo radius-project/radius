@@ -1,0 +1,301 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: release-plan
+
+# Use the base branch's trusted validator and read PR metadata through the API.
+# Pull request code is never checked out or executed.
+on:
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - opened
+      - edited
+      - ready_for_review
+      - reopened
+      - synchronize
+  merge_group:
+    branches:
+      - main
+
+permissions: {}
+
+concurrency:
+  group: release-plan-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name != 'merge_group' }}
+
+jobs:
+  validate:
+    name: Validate release plan
+    if: >-
+      github.event_name == 'pull_request_target' &&
+      startsWith(github.event.pull_request.head.ref, 'automation/prepare-release-')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout trusted validator at the PR base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fetch release branches
+        run: |
+          git fetch origin \
+            '+refs/heads/release/*:refs/remotes/origin/release/*'
+
+      - name: Read pull request body and changed files
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          BODY_FILE: ${{ runner.temp }}/release-pr-body.md
+          FILES_FILE: ${{ runner.temp }}/release-pr-files.json
+          HEAD_DIR: ${{ runner.temp }}/release-pr-head
+        with:
+          script: |
+            const fs = require('node:fs')
+            const path = require('node:path')
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100,
+            })
+            fs.writeFileSync(
+              process.env.BODY_FILE,
+              context.payload.pull_request.body ?? '',
+            )
+            fs.writeFileSync(
+              process.env.FILES_FILE,
+              JSON.stringify(files.map((file) => file.filename)),
+            )
+            const root = path.resolve(process.env.HEAD_DIR)
+            for (const file of files) {
+              const target = path.resolve(root, file.filename)
+              if (!target.startsWith(`${root}${path.sep}`)) {
+                throw new Error(`Unsafe pull request path: ${file.filename}`)
+              }
+              const { data } = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: file.filename,
+                ref: context.payload.pull_request.head.sha,
+              })
+              if (Array.isArray(data) || data.type !== 'file' || !data.content) {
+                throw new Error(`Expected a file at ${file.filename}`)
+              }
+              fs.mkdirSync(path.dirname(target), { recursive: true })
+              fs.writeFileSync(target, Buffer.from(data.content, 'base64'))
+            }
+
+      - name: Install plan validation tools
+        run: make install-yq install-jq install-git-cliff
+
+      - name: Validate release plan
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          bash ./.github/scripts/validate-release-plan.sh \
+            --body-file "${RUNNER_TEMP}/release-pr-body.md" \
+            --files-file "${RUNNER_TEMP}/release-pr-files.json" \
+            --base-sha "${BASE_SHA}" \
+            --head-dir "${RUNNER_TEMP}/release-pr-head" \
+            --repository "${GITHUB_REPOSITORY}"
+
+  validate-merge-group:
+    name: Validate release plan
+    if: github.event_name == 'merge_group'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout trusted validator at the merge-group base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.base_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Find open generated release pull requests
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CANDIDATES_FILE: ${{ runner.temp }}/release-pr-candidates.json
+        with:
+          script: |
+            const fs = require('node:fs')
+            const pulls = await github.paginate(github.rest.pulls.list, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              base: 'main',
+              state: 'open',
+              per_page: 100,
+            })
+            const candidates = []
+            for (const pull of pulls.filter((item) => item.head.ref.startsWith(
+              'automation/prepare-release-',
+            ))) {
+              const files = await github.paginate(github.rest.pulls.listFiles, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pull.number,
+                per_page: 100,
+              })
+              candidates.push({
+                number: pull.number,
+                head_sha: pull.head.sha,
+                body: pull.body ?? '',
+                files: files.map((file) => file.filename).sort(),
+              })
+            }
+            fs.writeFileSync(
+              process.env.CANDIDATES_FILE,
+              JSON.stringify(candidates),
+            )
+
+      - name: Fetch merge group and generated release PR heads
+        run: |
+          git fetch --no-tags origin "${GITHUB_SHA}"
+          [[ "$(git rev-parse FETCH_HEAD)" == "${GITHUB_SHA}" ]] || {
+            echo "Merge-group SHA changed while validating." >&2
+            exit 1
+          }
+          while IFS=$'\t' read -r number expected_sha; do
+            git fetch --no-tags origin "refs/pull/${number}/head"
+            actual_sha="$(git rev-parse FETCH_HEAD)"
+            [[ "${actual_sha}" == "${expected_sha}" ]] || {
+              echo "PR #${number} changed while validating the merge group." >&2
+              exit 1
+            }
+          done < <(
+            jq -r '.[] | [.number, .head_sha] | @tsv' \
+              "${RUNNER_TEMP}/release-pr-candidates.json" | tr -d '\r'
+          )
+
+      - name: Install merge-group validation tools
+        run: make install-yq install-jq install-git-cliff
+
+      - name: Validate merge group contents
+        id: select
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha }}
+        run: |
+          selected_file="${RUNNER_TEMP}/selected-release-pr.txt"
+          bash ./.github/scripts/validate-release-merge-group.sh \
+            --candidates-file "${RUNNER_TEMP}/release-pr-candidates.json" \
+            --merge-group-sha "${GITHUB_SHA}" \
+            --base-sha "${BASE_SHA}" \
+            --output-file "${selected_file}"
+          echo "number=$(<"${selected_file}")" >> "${GITHUB_OUTPUT}"
+
+      - name: Read queued release pull request data
+        if: steps.select.outputs.number != ''
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PULL_NUMBER: ${{ steps.select.outputs.number }}
+          BODY_FILE: ${{ runner.temp }}/release-pr-body.md
+          FILES_FILE: ${{ runner.temp }}/release-pr-files.json
+          HEAD_DIR: ${{ runner.temp }}/release-pr-head
+          CANDIDATES_FILE: ${{ runner.temp }}/release-pr-candidates.json
+        with:
+          script: |
+            const fs = require('node:fs')
+            const path = require('node:path')
+            const pull_number = Number(process.env.PULL_NUMBER)
+            const candidates = JSON.parse(
+              fs.readFileSync(process.env.CANDIDATES_FILE, 'utf8'),
+            )
+            const snapshot = candidates.find(
+              (candidate) => candidate.number === pull_number,
+            )
+            if (!snapshot) {
+              throw new Error(`No snapshot for release PR #${pull_number}`)
+            }
+            const { data: pull } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number,
+            })
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number,
+              per_page: 100,
+            })
+            const liveFiles = files.map((file) => file.filename).sort()
+            if (
+              pull.head.sha !== snapshot.head_sha ||
+              (pull.body ?? '') !== snapshot.body ||
+              JSON.stringify(liveFiles) !== JSON.stringify(snapshot.files)
+            ) {
+              throw new Error(
+                `Release PR #${pull_number} changed during merge-group validation`,
+              )
+            }
+            fs.writeFileSync(process.env.BODY_FILE, snapshot.body)
+            fs.writeFileSync(
+              process.env.FILES_FILE,
+              JSON.stringify(snapshot.files),
+            )
+            const root = path.resolve(process.env.HEAD_DIR)
+            for (const filename of snapshot.files) {
+              const target = path.resolve(root, filename)
+              if (!target.startsWith(`${root}${path.sep}`)) {
+                throw new Error(`Unsafe pull request path: ${filename}`)
+              }
+              const { data } = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: filename,
+                ref: snapshot.head_sha,
+              })
+              if (Array.isArray(data) || data.type !== 'file' || !data.content) {
+                throw new Error(`Expected a file at ${filename}`)
+              }
+              fs.mkdirSync(path.dirname(target), { recursive: true })
+              fs.writeFileSync(target, Buffer.from(data.content, 'base64'))
+            }
+
+      - name: Fetch release branches
+        if: steps.select.outputs.number != ''
+        run: |
+          git fetch origin \
+            '+refs/heads/release/*:refs/remotes/origin/release/*'
+
+      - name: Revalidate queued release plan and live state
+        if: steps.select.outputs.number != ''
+        env:
+          BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          bash ./.github/scripts/validate-release-plan.sh \
+            --body-file "${RUNNER_TEMP}/release-pr-body.md" \
+            --files-file "${RUNNER_TEMP}/release-pr-files.json" \
+            --base-sha "${BASE_SHA}" \
+            --head-dir "${RUNNER_TEMP}/release-pr-head" \
+            --repository "${GITHUB_REPOSITORY}"

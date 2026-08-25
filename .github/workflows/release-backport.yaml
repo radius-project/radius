@@ -1,0 +1,351 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: release-backport
+
+on:
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - labeled
+      - closed
+  push:
+    branches:
+      - release/*
+
+permissions: {}
+
+concurrency:
+  group: >-
+    release-backport-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  select-channels:
+    name: Select release channels
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      (github.event_name == 'push' || github.event.pull_request.merged == true)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+    outputs:
+      backports: ${{ steps.channels.outputs.result }}
+    steps:
+      - name: Checkout trusted backport selector
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Read backport labels
+        id: channels
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          result-encoding: string
+          script: |
+            const selector = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/select-release-backports.mjs`
+            )
+
+            if (context.eventName !== 'push') {
+              return JSON.stringify(
+                selector.entriesForMergedPull(context.payload.pull_request),
+              )
+            }
+
+            const channelMatch = context.ref.match(
+              /^refs\/heads\/release\/(\d+\.\d+)$/,
+            )
+            if (!channelMatch) {
+              return '[]'
+            }
+            const channel = channelMatch[1]
+            const releaseBranch = `release/${channel}`
+            const openBackports = await github.paginate(
+              github.rest.pulls.list,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                base: releaseBranch,
+                state: 'open',
+                per_page: 100,
+              },
+            )
+            const issues = await github.paginate(
+              github.rest.issues.listForRepo,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                labels: `backport release/${channel}`,
+                state: 'closed',
+                per_page: 100,
+              },
+            )
+            const sources = []
+            for (const issue of issues.filter((item) => item.pull_request)) {
+              const { data: pull } = await github.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: issue.number,
+              })
+              if (pull.merged_at && pull.base.ref === 'main') {
+                sources.push(pull)
+              }
+            }
+            const historical = await github.paginate(
+              github.rest.pulls.list,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                base: releaseBranch,
+                state: 'closed',
+                per_page: 100,
+              },
+            )
+            const historicalWithCommits = []
+            for (const pull of historical) {
+              const commits = pull.merged_at
+                ? await github.paginate(github.rest.pulls.listCommits, {
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: pull.number,
+                    per_page: 100,
+                  })
+                : []
+              historicalWithCommits.push({ ...pull, commits })
+            }
+            return JSON.stringify(
+              selector.selectNextBackport({
+                channel,
+                sources,
+                openBackports,
+                historicalBackports: historicalWithCommits,
+              }),
+            )
+
+  backport:
+    name: Backport to release/${{ matrix.channel }}
+    needs: select-channels
+    if: needs.select-channels.outputs.backports != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.select-channels.outputs.backports) }}
+    concurrency:
+      group: release-backport-channel-${{ matrix.channel }}
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      SOURCE_PR: ${{ matrix.source_pr }}
+      SOURCE_COMMIT: ${{ matrix.source_commit }}
+      SOURCE_TITLE: ${{ matrix.source_title }}
+      SOURCE_URL: ${{ matrix.source_url }}
+      CHANNEL: ${{ matrix.channel }}
+      EXPECTED_BASE: ${{ matrix.expected_base }}
+    steps:
+      - name: Create release App token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: radius
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
+
+      - name: Checkout trusted backport tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: true
+
+      - name: Fetch source commit and release branch
+        run: |
+          git fetch origin "${SOURCE_COMMIT}"
+          git fetch origin \
+            "refs/heads/release/${CHANNEL}:refs/remotes/origin/release/${CHANNEL}"
+
+      - name: Find an existing backport pull request
+        id: existing
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          branch="automation/backport-${SOURCE_PR}-to-${CHANNEL}"
+          bash ./.github/scripts/collect-release-backports.sh \
+            --repository "${GITHUB_REPOSITORY}" --channel "${CHANNEL}" \
+            --explicit-prs "${SOURCE_PR}" \
+            --output "${RUNNER_TEMP}/source-backport.json"
+          source_entry="$(
+            jq -c --argjson source_pr "${SOURCE_PR}" \
+              '[.[] | select(.source_pr == $source_pr)]' \
+              "${RUNNER_TEMP}/source-backport.json"
+          )"
+          [[ "$(jq 'length' <<< "${source_entry}")" == "1" ]] || {
+            echo "Expected exactly one backport record for #${SOURCE_PR}." >&2
+            exit 1
+          }
+          if [[ "$(jq -r '.[0].backport_merged' \
+            <<< "${source_entry}")" == "true" ]]; then
+            {
+              echo "exists=true"
+              echo "url=$(jq -r '.[0].backport_url' <<< "${source_entry}")"
+            } >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          result="$(
+            gh pr list --repo "${GITHUB_REPOSITORY}" --state open \
+              --base "release/${CHANNEL}" --json number,url,headRefName \
+              --jq '[.[] | select(.headRefName | startswith("automation/backport-"))][0] // empty'
+          )"
+          if [[ -n "${result}" ]]; then
+            {
+              echo "exists=true"
+              echo "url=$(jq -r .url <<< "${result}")"
+              echo "deferred=$(
+                jq -r --arg branch "${branch}" '.headRefName != $branch' \
+                  <<< "${result}"
+              )"
+            } >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          remote_sha="$(
+            git ls-remote origin "refs/heads/${branch}" | awk '{print $1}'
+          )"
+          if [[ -n "${remote_sha}" ]]; then
+            echo "Branch ${branch} exists without an open pull request." >&2
+            echo "Inspect it before deleting or recreating the backport." >&2
+            exit 1
+          fi
+          echo "exists=false" >> "${GITHUB_OUTPUT}"
+          echo "deferred=false" >> "${GITHUB_OUTPUT}"
+
+      - name: Get release bot details
+        id: bot-details
+        uses: raven-actions/bot-details@ee8966a9ff6e7e42cbfc4a56b4ddb60a9d1b40a6 # v1.2.0
+        with:
+          bot-slug-name: ${{ steps.app-token.outputs.app-slug }}
+
+      - name: Build backport branch
+        if: steps.existing.outputs.exists != 'true'
+        id: build
+        run: |
+          output_dir="${RUNNER_TEMP}/release-backport"
+          args=(
+            --source-pr "${SOURCE_PR}"
+            --source-commit "${SOURCE_COMMIT}"
+            --source-title "${SOURCE_TITLE}"
+            --source-url "${SOURCE_URL}"
+            --channel "${CHANNEL}"
+            --output-dir "${output_dir}"
+          )
+          if [[ -n "${EXPECTED_BASE}" ]]; then
+            args+=(--expected-base "${EXPECTED_BASE}")
+          fi
+          bash ./.github/scripts/create-release-backport.sh "${args[@]}"
+          {
+            echo "status=$(<"${output_dir}/status.txt")"
+            echo "branch=$(<"${output_dir}/branch.txt")"
+            echo "title=$(<"${output_dir}/title.txt")"
+          } >> "${GITHUB_OUTPUT}"
+          delimiter="release_commit_$(openssl rand -hex 16)"
+          {
+            echo "commit-message<<${delimiter}"
+            cat "${output_dir}/commit-message.txt"
+            echo "${delimiter}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Create backport pull request
+        if: steps.existing.outputs.exists != 'true'
+        id: pull-request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          branch: ${{ steps.build.outputs.branch }}
+          base: release/${{ matrix.channel }}
+          commit-message: ${{ steps.build.outputs.commit-message }}
+          committer: ${{ steps.bot-details.outputs.name-email }}
+          signoff: true
+          sign-commits: true
+          title: ${{ steps.build.outputs.title }}
+          body-path: ${{ runner.temp }}/release-backport/pull-request-body.md
+          draft: ${{ steps.build.outputs.status == 'conflict' }}
+          delete-branch: true
+
+      - name: Verify backport commit signature
+        if: >-
+          steps.pull-request.outputs.pull-request-operation == 'created' ||
+          steps.pull-request.outputs.pull-request-operation == 'updated'
+        env:
+          COMMITS_VERIFIED: >-
+            ${{ steps.pull-request.outputs.pull-request-commits-verified }}
+        run: |
+          [[ "${COMMITS_VERIFIED}" == "true" ]] || {
+            echo "The release App did not create a verified commit." >&2
+            exit 1
+          }
+
+      - name: Comment with conflict handoff
+        if: >-
+          steps.existing.outputs.exists != 'true' &&
+          steps.build.outputs.status == 'conflict' &&
+          steps.pull-request.outputs.pull-request-operation == 'created'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BACKPORT_URL: ${{ steps.pull-request.outputs.pull-request-url }}
+        run: |
+          comment="${RUNNER_TEMP}/release-backport-comment.md"
+          {
+            echo "The automated backport to \`release/${CHANNEL}\` conflicted."
+            echo
+            echo "Draft backport PR: ${BACKPORT_URL}"
+            echo
+            cat "${RUNNER_TEMP}/release-backport/conflict-handoff.md"
+          } > "${comment}"
+          gh pr comment "${SOURCE_PR}" --repo "${GITHUB_REPOSITORY}" \
+            --body-file "${comment}"
+
+      - name: Summarize backport
+        run: |
+          {
+            echo "## Backport #${SOURCE_PR} to release/${CHANNEL}"
+            echo
+            echo "Status: ${STATUS}"
+            if [[ "${DEFERRED}" == "true" ]]; then
+              echo "Deferred until the current channel backport merges."
+            fi
+            echo "Pull request: ${BACKPORT_URL}"
+          } >> "${GITHUB_STEP_SUMMARY}"
+        env:
+          STATUS: ${{ steps.build.outputs.status || 'existing' }}
+          DEFERRED: ${{ steps.existing.outputs.deferred || 'false' }}
+          BACKPORT_URL: >-
+            ${{ steps.pull-request.outputs.pull-request-url || steps.existing.outputs.url }}
