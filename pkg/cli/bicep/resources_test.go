@@ -17,9 +17,13 @@ limitations under the License.
 package bicep
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/yaml"
 )
 
 func Test_InspectTemplateResources(t *testing.T) {
@@ -535,7 +539,7 @@ func Test_HasOnlyRadiusResourceTypes(t *testing.T) {
 	}
 }
 
-func Test_GetDeprecatedResources(t *testing.T) {
+func Test_InspectDeprecatedResources(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -788,7 +792,7 @@ func Test_GetDeprecatedResources(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			require.Equal(t, tt.expected, GetDeprecatedResources(tt.template))
+			require.Equal(t, tt.expected, inspectDeprecatedResources(tt.template))
 		})
 	}
 }
@@ -835,11 +839,11 @@ func Test_FormatDeprecationWarning(t *testing.T) {
 	}
 }
 
-// Test_GetDeprecatedResources_IsDeterministic guards the stable ordering and spelling of the
+// Test_InspectDeprecatedResources_IsDeterministic guards the stable ordering and spelling of the
 // warning. Resource types are case-insensitive, so a template may declare the same type with
 // different casing. De-duplication keeps the first spelling encountered, which made the rendered
 // output vary between runs while map iteration order was unsorted.
-func Test_GetDeprecatedResources_IsDeterministic(t *testing.T) {
+func Test_InspectDeprecatedResources_IsDeterministic(t *testing.T) {
 	t.Parallel()
 
 	template := map[string]any{
@@ -889,7 +893,7 @@ func Test_GetDeprecatedResources_IsDeterministic(t *testing.T) {
 
 	// Repeat enough times to reliably surface randomized map iteration order.
 	for range 100 {
-		actual := GetDeprecatedResources(template)
+		actual := inspectDeprecatedResources(template)
 		require.Len(t, actual, 3, "the two casing variants of each type should collapse to one entry")
 
 		fullTypes := make([]string, 0, len(actual))
@@ -900,7 +904,7 @@ func Test_GetDeprecatedResources_IsDeterministic(t *testing.T) {
 	}
 }
 
-func Test_GetDeprecatedResources_MalformedTemplates(t *testing.T) {
+func Test_InspectDeprecatedResources_MalformedTemplates(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -966,7 +970,7 @@ func Test_GetDeprecatedResources_MalformedTemplates(t *testing.T) {
 			t.Parallel()
 			// Malformed input must be skipped rather than panic. A panic would
 			// fail the test on its own, so no NotPanics wrapper is needed.
-			require.Empty(t, GetDeprecatedResources(tt.template))
+			require.Empty(t, inspectDeprecatedResources(tt.template))
 		})
 	}
 }
@@ -1033,4 +1037,123 @@ func Test_GetEnvironmentResources(t *testing.T) {
 		require.Nil(t, GetEnvironmentResources(template))
 		require.False(t, ContainsEnvironmentResource(template))
 	})
+}
+
+// Test_InspectDeprecatedResources_OnlyRecursesIntoNestedDeployments guards against walking
+// arbitrary resource properties that happen to be named "template". Applications.Core/extenders
+// accepts free-form properties, so without a resource type check an extender could make the CLI
+// warn about resources the deployment never creates.
+func Test_InspectDeprecatedResources_OnlyRecursesIntoNestedDeployments(t *testing.T) {
+	t.Parallel()
+
+	// The deprecated type is buried under a non-deployment resource's properties.template.
+	decoy := map[string]any{
+		"template": map[string]any{
+			"resources": map[string]any{
+				"inner": map[string]any{
+					"type": "Applications.Core/containers@2023-10-01-preview",
+					"name": "not-a-real-resource",
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name         string
+		resourceType string
+		expectFound  bool
+	}{
+		{
+			name:         "Nested deployment is walked",
+			resourceType: nestedDeploymentResourceType,
+			expectFound:  true,
+		},
+		{
+			name:         "Nested deployment is matched case-insensitively",
+			resourceType: "microsoft.resources/DEPLOYMENTS",
+			expectFound:  true,
+		},
+		{
+			name:         "Extender template property is not walked",
+			resourceType: "Applications.Core/extenders@2025-08-01-preview",
+			expectFound:  false,
+		},
+		{
+			name:         "Arbitrary resource template property is not walked",
+			resourceType: "Radius.Compute/containers@2025-08-01-preview",
+			expectFound:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			template := map[string]any{
+				"resources": map[string]any{
+					"outer": map[string]any{
+						"type":       tt.resourceType,
+						"name":       "outer",
+						"properties": decoy,
+					},
+				},
+			}
+
+			actual := inspectDeprecatedResources(template)
+			if tt.expectFound {
+				require.Len(t, actual, 1)
+				require.Equal(t, "Applications.Core/containers@2023-10-01-preview", actual[0].FullType)
+				return
+			}
+
+			require.Empty(t, actual, "a non-deployment resource's properties must not be walked as a nested template")
+		})
+	}
+}
+
+// Test_DeprecatedTypeReplacements_ExistInManifests keeps deprecatedTypeReplacements honest against
+// the built-in provider manifests. The first attempt at this warning was reverted because it
+// pointed users at Radius.* types that did not exist, so every replacement must name a real type
+// that declares replacementAPIVersion.
+func Test_DeprecatedTypeReplacements_ExistInManifests(t *testing.T) {
+	t.Parallel()
+
+	manifestDir := filepath.Join("..", "..", "..", "deploy", "manifest", "built-in-providers", "self-hosted")
+	entries, err := filepath.Glob(filepath.Join(manifestDir, "*.yaml"))
+	require.NoError(t, err)
+	require.NotEmpty(t, entries, "no provider manifests found under %s", manifestDir)
+
+	// declared maps a lowercased "<namespace>/<typeName>" to the API versions it declares.
+	declared := map[string][]string{}
+	for _, entry := range entries {
+		data, err := os.ReadFile(entry)
+		require.NoError(t, err, "failed to read %s", entry)
+
+		var provider struct {
+			Namespace string `json:"namespace"`
+			Types     map[string]struct {
+				APIVersions map[string]any `json:"apiVersions"`
+			} `json:"types"`
+		}
+		require.NoError(t, yaml.Unmarshal(data, &provider), "failed to parse %s", entry)
+
+		for typeName, typeDef := range provider.Types {
+			key := strings.ToLower(provider.Namespace + "/" + typeName)
+			for apiVersion := range typeDef.APIVersions {
+				declared[key] = append(declared[key], apiVersion)
+			}
+		}
+	}
+
+	require.NotEmpty(t, declared, "parsed no resource types from %s", manifestDir)
+
+	for legacyType, replacement := range deprecatedTypeReplacements {
+		apiVersions, ok := declared[strings.ToLower(replacement)]
+		require.Truef(t, ok,
+			"%q maps to %q, which no built-in provider manifest declares. Update the mapping or the manifests.",
+			legacyType, replacement)
+		require.Containsf(t, apiVersions, replacementAPIVersion,
+			"%q maps to %q, which does not declare API version %s.",
+			legacyType, replacement, replacementAPIVersion)
+	}
 }

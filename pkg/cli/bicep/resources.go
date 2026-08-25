@@ -38,13 +38,21 @@ const (
 	// replacementAPIVersion is the API version of the extensible Radius.* resource types that
 	// replace the legacy Applications.* resource types.
 	replacementAPIVersion = "2025-08-01-preview"
+
+	// nestedDeploymentResourceType is the resource type a Bicep module compiles to. Its inline
+	// template is the only place a nested template legitimately appears.
+	nestedDeploymentResourceType = "Microsoft.Resources/deployments"
 )
 
 // deprecatedTypeReplacements maps a lowercased legacy Applications.* resource type to the
 // extensible Radius.* resource type that replaces it. Types that are absent from this map have no
 // direct one-to-one replacement and are reported with generic recipe pack guidance instead.
 //
-// Keep this in sync with the built-in resource types in deploy/manifest/defaults.yaml.
+// Keep this in sync with the resource types declared by the built-in provider manifests in
+// deploy/manifest/built-in-providers/{dev,self-hosted}/. The Radius.Core types live in
+// radius_core.yaml; the remaining namespaces are mirrored from resource-types-contrib and are
+// listed for default registration in deploy/manifest/defaults.yaml.
+// Test_DeprecatedTypeReplacements_ExistInManifests enforces this.
 var deprecatedTypeReplacements = map[string]string{
 	"applications.core/applications":         "Radius.Core/applications",
 	"applications.core/environments":         "Radius.Core/environments",
@@ -328,7 +336,8 @@ func collectDeprecatedResources(template map[string]any, seen map[string]struct{
 			continue
 		}
 
-		if resourceType, ok := resource["type"].(string); ok {
+		resourceType, hasType := resource["type"].(string)
+		if hasType {
 			if deprecated, isDeprecated := newDeprecatedResource(resourceType); isDeprecated {
 				key := strings.ToLower(deprecated.FullType)
 				if _, alreadySeen := seen[key]; !alreadySeen {
@@ -338,7 +347,15 @@ func collectDeprecatedResources(template map[string]any, seen map[string]struct{
 			}
 		}
 
-		// Recurse into the inline template of a nested deployment (a Bicep module).
+		// Recurse into the inline template of a nested deployment (a Bicep module). Only
+		// Microsoft.Resources/deployments carries one. Other resource types can hold arbitrary
+		// user-supplied properties -- Applications.Core/extenders in particular -- so recursing on
+		// the presence of a "template" object alone would walk data that is not a template and
+		// report resources the deployment never creates.
+		if !hasType || !strings.EqualFold(resourceType, nestedDeploymentResourceType) {
+			continue
+		}
+
 		properties, ok := resource["properties"].(map[string]any)
 		if !ok {
 			continue
@@ -365,12 +382,6 @@ func ContainsEnvironmentResource(template map[string]any) bool {
 func GetEnvironmentResources(template map[string]any) []map[string]any {
 	_, environmentResources := inspectEnvironmentResources(template)
 	return environmentResources
-}
-
-// GetDeprecatedResources inspects the compiled Radius Bicep template's resources and returns the
-// resources that use a legacy Applications.* resource type with the deprecated API version.
-func GetDeprecatedResources(template map[string]any) []DeprecatedResource {
-	return inspectDeprecatedResources(template)
 }
 
 // FormatDeprecationWarning builds the user-facing warning message for the given deprecated
