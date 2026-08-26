@@ -95,10 +95,11 @@ jobs:
         run: make install-shellcheck
 
       # Run the independent, read-only linters concurrently. Each parallel step is
-      # self-contained; the TypeSpec and Prettier checks share a pnpm/corepack
-      # toolchain, so they are grouped into one step to avoid racing on that
-      # shared install. The group has an implicit wait that aggregates results:
-      # every linter runs and any failure fails this job (a single status check).
+      # self-contained; the TypeSpec, Prettier, and deploy progress uploader
+      # checks share a pnpm/corepack toolchain, so they are grouped into one step
+      # to avoid racing on that shared install. The group has an implicit wait
+      # that aggregates results: every linter runs and any failure fails this job
+      # (a single status check).
       - parallel:
           - name: Go lint
             run: make lint-go
@@ -108,13 +109,11 @@ jobs:
               helm lint "${HELM_CHARTS_DIR}"
               make test-helm
 
-          - name: TypeSpec and Prettier format checks
+          - name: pnpm-based checks
             run: |
               make tsp-format-check
               make format-check || { echo "Format check failed. Run 'make format-write' to fix the formatting issues."; exit 1; }
-
-          - name: Deploy progress artifact uploader
-            run: make test-deploy-progress-uploader
+              make test-deploy-progress-uploader
 
           - name: Shell lint
             run: make lint-shell
