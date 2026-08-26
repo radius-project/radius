@@ -177,7 +177,7 @@ jobs:
       # still generated and uploaded as artifacts above for inspection.
       - name: Sync reference docs to docs repository
         if: env.PUBLISH_DOCS == 'true'
-        uses: raven-actions/repo-files-sync@a4c9248f592fa5c5d19d70f630b7bd0d4772ab67 # v0.1.0-rc.12
+        uses: raven-actions/repo-files-sync@511c602835ac7dd8529673f91afe348db8d08185 # v0.1.0-rc.18
         with:
           # The App installation token authenticates as <app-slug>[bot]. Passing it as
           # GH_TOKEN makes repo-files-sync create verified commits through
