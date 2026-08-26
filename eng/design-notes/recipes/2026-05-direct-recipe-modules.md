@@ -357,8 +357,8 @@ Radius determines sensitivity from the Resource Type schema — any output mappe
 
 ## Edge cases
 
-1. **Module with no outputs** — A module that produces no outputs results in an empty Values map on the resource. The resource is still created successfully but has no populated properties from the Recipe. Radius logs a warning indicating that the module produced no outputs to help platform engineers catch misconfiguration early.
-2. **Output name mismatch** — If the `outputs` mapping references a module output that does not exist, the mapped property is left empty (nil) on the resource. Radius logs a warning indicating the unresolved output name, so platform engineers can identify and fix the mapping without blocking deployment.
+1. **Module with no outputs** — A module that declares no outputs succeeds when the Recipe configures no output mappings. If the Recipe maps an undeclared output, Radius returns `InvalidRecipeOutputs` before deployment.
+2. **Missing mapped output** — Radius rejects `outputs` and `outputs.secrets` mappings that reference undeclared module outputs. If a declared output is absent or null at runtime, an ordinary `outputs` mapping remains unset, while an `outputs.secrets` mapping fails with `InvalidRecipeOutputs` rather than silently clearing previously materialized secret data.
 3. **Required parameters not supplied** — If the module requires an input variable that is not provided through `parameters` or environment-level `recipeParameters`, Radius surfaces the error from IaC engine indicating which variable is missing.
 4. **Invalid `{{context.*}}` expression path** — If a template expression references a context path that does not exist (e.g., `{{context.resource.properties.nonexistent}}`), the expression resolves to an empty string. The IaC engine may then fail if the parameter requires a non-empty value.
 5. **Large module with many unused variables** — Some community modules expose dozens of input variables with defaults. Only variables explicitly mapped in `parameters` are passed; all others use the module's defaults. This is expected behavior.

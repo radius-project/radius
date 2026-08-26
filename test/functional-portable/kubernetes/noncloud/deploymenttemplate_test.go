@@ -303,7 +303,7 @@ func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig 
 func waitForDeploymentTemplateReady(t *testing.T, ctx context.Context, name types.NamespacedName, client controller_runtime.WithWatch, initialVersion string) (*radappiov1alpha3.DeploymentTemplate, error) {
 	// Based on https://gist.github.com/PrasadG193/52faed6499d2ec739f9630b9d044ffdc
 	lister := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+		ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
 			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
 			deploymentTemplates := &radappiov1alpha3.DeploymentTemplateList{}
 			err := client.List(ctx, deploymentTemplates, listOptions)
@@ -313,7 +313,7 @@ func waitForDeploymentTemplateReady(t *testing.T, ctx context.Context, name type
 
 			return deploymentTemplates, nil
 		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+		WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
 			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
 			deploymentTemplates := &radappiov1alpha3.DeploymentTemplateList{}
 			return client.Watch(ctx, deploymentTemplates, listOptions)

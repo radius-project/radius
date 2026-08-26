@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: radius-api-readiness
+  labels:
+    control-plane: radius-api-readiness
+    app.kubernetes.io/name: radius-api-readiness
+    app.kubernetes.io/part-of: radius
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+subjects:
+  - kind: ServiceAccount
+    name: radius-api-readiness
+    namespace: "{{ .Release.Namespace }}"
+roleRef:
+  kind: ClusterRole
+  name: radius-api-readiness
+  apiGroup: rbac.authorization.k8s.io

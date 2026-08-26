@@ -787,7 +787,7 @@ func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
 		require.Equal(t, "user-ns", *captured.Properties.Providers.Kubernetes.Namespace)
 	})
 
-	t.Run("--clear-kubernetes is respected and default is not applied", func(t *testing.T) {
+	t.Run("--clear-kubernetes is rejected once a namespace is established", func(t *testing.T) {
 		var captured v20250801preview.EnvironmentResource
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 			workspace.Scope,
@@ -807,10 +807,69 @@ func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
 		}
 
 		err = runner.Run(t.Context())
+
+		// Clearing the provider would release a namespace claim that other environments were
+		// validated against, and orphan anything already deployed into it.
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "existing-ns")
+		require.Nil(t, captured.Properties, "the environment must not be updated")
+	})
+
+	t.Run("changing an established namespace is rejected", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(kubernetesOnly("existing-ns"), &captured),
+			nil,
+		)
 		require.NoError(t, err)
 
-		require.NotNil(t, captured.Properties.Providers)
-		require.Nil(t, captured.Properties.Providers.Kubernetes, "clear-kubernetes must not be overridden by the default")
+		runner := &Runner{
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers: &v20250801preview.Providers{
+				Kubernetes: &v20250801preview.ProvidersKubernetes{
+					Namespace: to.Ptr("new-ns"),
+				},
+			},
+		}
+
+		err = runner.Run(t.Context())
+
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "existing-ns")
+		require.Contains(t, err.Error(), "new-ns")
+		require.Nil(t, captured.Properties, "the environment must not be updated")
+	})
+
+	t.Run("re-specifying the same namespace is allowed", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(kubernetesOnly("existing-ns"), &captured),
+			nil,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers: &v20250801preview.Providers{
+				Kubernetes: &v20250801preview.ProvidersKubernetes{
+					Namespace: to.Ptr("existing-ns"),
+				},
+			},
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, "existing-ns", *captured.Properties.Providers.Kubernetes.Namespace)
 	})
 
 	t.Run("env with Azure provider does not get default namespace", func(t *testing.T) {

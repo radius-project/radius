@@ -22,6 +22,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly ACTION_FILE="${SCRIPT_DIR}/action.yml"
+readonly PROGRESS_HELPER="${SCRIPT_DIR}/../deploy-progress/progress.sh"
 
 TEST_ROOT="$(mktemp -d)"
 readonly TEST_ROOT
@@ -212,17 +213,25 @@ set -uo pipefail
 
 case "${1:-} ${2:-}" in
     "app graph")
+        if [[ "${3:-}" != "${APP_FILE:-}" ]]; then
+            echo "rad: app graph must receive APP_FILE as its positional argument" >&2
+            exit 64
+        fi
         if [[ "${RAD_GRAPH_SHOULD_FAIL:-false}" == "true" ]]; then
             echo "rad: application not found in environment" >&2
             exit 1
         fi
         printf '%s\n' \
-            '{"resources":[{"name":"web","type":"Radius.Compute/containers"}]}'
+            '{"resources":[{"id":"/planes/radius/local/rg/web","name":"web","type":"Radius.Compute/containers","outputResources":[{"id":"/planes/kubernetes/local/providers/apps/Deployment/web","name":"web","type":"apps/Deployment"},{"id":"/planes/kubernetes/local/providers/core/Service/web","name":"web","type":"core/Service"}]},{"id":"/planes/radius/local/rg/db","name":"db","type":"Radius.Data/mySqlDatabases","outputResources":[{"id":"/subscriptions/test/providers/Microsoft.DBforMySQL/flexibleServers/db","name":"db","type":"Microsoft.DBforMySQL/flexibleServers"}]}]}'
         ;;
     "app list")
         printf '[{"name":"%s"}]\n' "${RAD_APP_LIST_NAME-fallback-app}"
         ;;
     "resource list")
+        if [[ " $* " != *" --preview "* ]]; then
+            echo "rad: resource list must use --preview" >&2
+            exit 64
+        fi
         if [[ "${RAD_RESOURCE_LIST_SHOULD_FAIL:-false}" == "true" ]]; then
             echo "rad: could not reach the control plane" >&2
             exit 1
@@ -234,11 +243,19 @@ case "${1:-} ${2:-}" in
           {"id":"/planes/radius/local/rg/web","name":"web",
            "type":"Radius.Compute/containers",
            "properties":{"provisioningState":"Succeeded",
-                         "status":{"message":"container ready"}}},
+                         "status":{"message":"container ready",
+                           "outputResources":[
+                             {"id":"/planes/kubernetes/local/providers/core/Service/web"},
+                             {"id":"/planes/kubernetes/local/providers/apps/Deployment/web"},
+                             {"id":"/planes/kubernetes/local/providers/core/Service/web"}
+                           ]}}},
           {"id":"/planes/radius/local/rg/db","name":"db",
-           "type":"Radius.Data/postgres",
+           "type":"Radius.Data/mySqlDatabases",
            "properties":{"provisioningState":"Failed",
-                         "status":{"message":"recipe execution failed"}}},
+                         "status":{"message":"recipe execution failed",
+                           "outputResources":[
+                             {"id":"/subscriptions/test/providers/Microsoft.DBforMySQL/flexibleServers/db"}
+                           ]}}},
           {"id":"/planes/radius/local/rg/queue","name":"queue",
            "type":"Radius.Messaging/rabbitMQQueues",
            "properties":{"provisioningState":"Updating"}}
@@ -278,7 +295,8 @@ run_publisher() {
         PATH="${STUB_BIN}:${PATH}"
         # Keep the action's `mktemp` inside the sandbox.
         TMPDIR="${PUBLISHER_TMP}"
-        export PATH TMPDIR GITHUB_OUTPUT
+        GITHUB_ACTION_PATH="${SCRIPT_DIR}"
+        export PATH TMPDIR GITHUB_OUTPUT GITHUB_ACTION_PATH
         if [[ -n "${PUBLISHER_LOCALE}" ]]; then
             LC_ALL="${PUBLISHER_LOCALE}"
             LANG="${PUBLISHER_LOCALE}"
@@ -420,9 +438,12 @@ $(cat "${file}")"
     # normalized status: the consumer needs the normalized value to paint the
     # graph, and the raw one to recover if the mapping goes stale.
     progress_jq 'all(.resources[]; has("id") and has("name") and has("type")
-        and has("provisioningState") and has("status") and has("message"))' ||
+        and has("provisioningState") and has("outputResourceIds")
+        and has("status") and has("message"))' ||
         fail "every .resources[] entry needs id, name, type, provisioningState,\
- status and message; got: $(jq -c '.resources' "${file}")"
+ outputResourceIds, status and message; got: $(jq -c '.resources' "${file}")"
+    progress_jq 'all(.resources[]; .outputResourceIds | type == "array")' ||
+        fail "every .resources[].outputResourceIds must be an array"
     progress_jq 'all(.resources[];
         .status == "success" or .status == "failed"
         or .status == "in_progress")' ||
@@ -506,6 +527,8 @@ assert_status_dir_contains_exactly "${EXPECTED_STATUS_FILES}"
 assert_progress_contract
 assert_run_state "succeeded"
 progress_jq '.runId == 4242' || fail "expected .runId to come from GITHUB_RUN_ID"
+progress_jq '.sequence == 1' ||
+    fail "expected terminal sequence 1 when no live snapshot was published"
 # shellcheck disable=SC2016
 progress_jq --arg app "todolist" '.application == $app' ||
     fail "expected .application to be the resolved app name"
@@ -523,6 +546,18 @@ progress_jq 'any(.resources[];
 progress_jq 'any(.resources[];
     .name == "web" and .message == "container ready")' ||
     fail "expected .message to carry properties.status.message"
+progress_jq 'any(.resources[]; .name == "web"
+    and .outputResourceIds == [
+      "/planes/kubernetes/local/providers/apps/Deployment/web",
+      "/planes/kubernetes/local/providers/core/Service/web"
+    ])' || fail "expected web output resource IDs to be sorted and deduplicated"
+progress_jq 'any(.resources[]; .name == "db"
+    and .outputResourceIds == [
+      "/subscriptions/test/providers/Microsoft.DBforMySQL/flexibleServers/db"
+    ])' || fail "expected MySQL progress to carry its exact resolved server ID"
+progress_jq 'any(.resources[]; .name == "queue"
+    and .outputResourceIds == [])' ||
+    fail "resources without resolved outputs need an empty ID array"
 
 assert_status_file_contains "deploy-activity.log" '"outcome":"success"'
 assert_status_file_contains "deploy-controlplane.log" "# rad version"
@@ -531,9 +566,24 @@ assert_status_file_contains "deploy-state.txt" "state=success"
 assert_status_file_contains "deploy-state.txt" "application=todolist"
 assert_status_file_contains "deploy-state.txt" "sha=deadbeefcafe"
 assert_status_file_contains "deploy-graph.json" "Radius.Compute/containers"
+assert_status_file_contains "deploy-graph.json" \
+    "Microsoft.DBforMySQL/flexibleServers"
+jq -e 'all(.resources[]?; (.properties.containers // {}) |
+    all(.[]?; has("env") | not))' "${STATUS_DIR}/deploy-graph.json" >/dev/null ||
+    fail "deploy-graph.json must not contain container environment maps"
 assert_status_files_differ "deploy-progress.json" "deploy-activity.log"
 assert_status_files_differ "deploy-progress.json" "deploy-controlplane.log"
 assert_status_files_differ "deploy-activity.log" "deploy-controlplane.log"
+
+# A successful live publisher checkpoint hands the terminal publisher the next
+# sequence, so the fixed-name artifact always wins over live ring snapshots.
+reset_environment
+mkdir -p "${RUNNER_TEMP}/radius-deploy-progress"
+printf '7\n' >"${RUNNER_TEMP}/radius-deploy-progress/sequence"
+run_publisher preserve
+assert_exit_zero "live sequence handoff"
+progress_jq '.sequence == 8' ||
+    fail "expected terminal sequence to follow the last live sequence"
 
 # ---------------------------------------------------------------------------
 # A failed deploy must be reported as such at the run level.
@@ -561,6 +611,8 @@ assert_status_dir_contains_exactly "${EXPECTED_STATUS_FILES}"
 assert_progress_contract
 progress_jq '.resources == []' ||
     fail "expected an empty .resources array when rad resource list fails"
+assert_output_contains "::warning::rad resource list --preview failed; deploy progress will contain no resources."
+assert_output_contains "rad: could not reach the control plane"
 
 # ---------------------------------------------------------------------------
 # Non-ASCII application names must sanitize to a valid artifact name.
@@ -590,21 +642,17 @@ assert_exit_zero "app name needing sanitization"
 assert_step_outputs "radius-deploy-status-aks-dev-my-app-prod" "true"
 
 # ---------------------------------------------------------------------------
-# An app name resolved from `rad app list` must warn: the canvas derives the
-# artifact name only from the literal name in the app bicep and has no fallback,
-# so it would never request the artifact this run publishes.
+# A nonliteral app name must disable graph publication even when restored state
+# contains another application. Publishing that app would expose unrelated data.
 # ---------------------------------------------------------------------------
 reset_environment
 export APP_FILE="${NO_LITERAL_APP_FILE}"
 export RAD_APP_LIST_NAME="fallback-app"
 run_publisher
-assert_exit_zero "rad app list fallback"
-assert_step_outputs "radius-deploy-status-aks-dev-fallback-app" "true"
-assert_output_contains "::warning::Application name 'fallback-app' came from"
-
-reset_environment
-run_publisher
-assert_output_lacks "came from 'rad app list'"
+assert_exit_zero "nonliteral application name"
+assert_step_outputs "" "false"
+assert_output_contains "::warning::Could not determine application name"
+assert_status_dir_contains_exactly ""
 
 # ---------------------------------------------------------------------------
 # Publishing status is best-effort reporting: a failure warns, exits 0 and
@@ -621,15 +669,6 @@ assert_output_contains "::warning::Failed to generate deployed graph"
 # inside STATUS_DIR, where it would ship to users inside the artifact.
 assert_output_contains "rad: application not found in environment"
 assert_status_dir_contains_exactly "deploy-graph.json"
-
-reset_environment
-export APP_FILE="${NO_LITERAL_APP_FILE}"
-export RAD_APP_LIST_NAME=""
-run_publisher
-assert_exit_zero "unresolvable app name"
-assert_step_outputs "" "false"
-assert_output_contains "::warning::Could not determine application name"
-assert_status_dir_contains_exactly ""
 
 # ---------------------------------------------------------------------------
 # A missing rad-commands-result.json must not break the publish.
@@ -706,9 +745,13 @@ assert_fact "upload.if" "steps.generate.outputs.published == 'true'"
 # byte-wise sanitization from the buggy character-wise form, so require the
 # LC_ALL=C prefixes to stay on the sanitization pipeline.
 # ---------------------------------------------------------------------------
-grep -q "LC_ALL=C tr" "${BODY_SCRIPT}" ||
+grep -q "LC_ALL=C tr" "${PROGRESS_HELPER}" ||
     fail "artifact name sanitization must lowercase under LC_ALL=C"
-grep -q "LC_ALL=C sed" "${BODY_SCRIPT}" ||
+grep -q "LC_ALL=C sed" "${PROGRESS_HELPER}" ||
     fail "artifact name sanitization must strip invalid bytes under LC_ALL=C"
+# APP_NAME is intentionally literal because this checks the generated script.
+# shellcheck disable=SC2016
+grep -q 'rad resource list --preview -a "$APP_NAME" -o json' "${BODY_SCRIPT}" ||
+    fail "deploy progress must list Radius.Core resources with --preview"
 
 echo "publish-deploy-status tests passed"

@@ -430,6 +430,43 @@ func Test_EnvCreate_ExposesPreviewRecipePacksFlag(t *testing.T) {
 		"rad env create must accept --preview together with --recipe-packs")
 }
 
+func Test_ResourceList_ExposesPreviewFlag(t *testing.T) {
+	listCmd, _, err := RootCmd.Find([]string{"resource", "list"})
+	require.NoError(t, err)
+	require.Equal(t, "list", listCmd.Name())
+	require.NotNil(t, listCmd.Flags().Lookup("preview"), "rad resource list must expose --preview")
+}
+
+// Test_EnvDelete_ExposesPreviewAndForceFlags asserts against the fully-assembled command tree that
+// `rad env delete` exposes both flags. The preview runner reads --force during Validate, so if the
+// wired command does not declare it, every `rad env delete --preview` invocation fails with
+// "flag accessed but not defined: force".
+func Test_EnvDelete_ExposesPreviewAndForceFlags(t *testing.T) {
+	deleteCmd, _, err := RootCmd.Find([]string{"env", "delete"})
+	require.NoError(t, err)
+	require.Equal(t, "delete", deleteCmd.Name())
+	require.NotNil(t, deleteCmd.Flags().Lookup("preview"), "rad env delete must expose --preview")
+	require.NotNil(t, deleteCmd.Flags().Lookup("force"), "rad env delete must expose --force")
+}
+
+// Test_EnvDelete_ExposesFlagsLegacyRunnerReads guards the coupling created by registering the
+// preview command as the base for `rad env delete`: the legacy runner now validates against the
+// preview command's flag set. If any of these flags is dropped from the preview command, plain
+// `rad env delete` (without --preview) breaks at runtime with "flag accessed but not defined".
+// Test_EnvPreviewOnlyFlagsRejectedWithoutPreview cannot catch this, because it returns in the
+// --force guard before it ever reaches the legacy runner.
+func Test_EnvDelete_ExposesFlagsLegacyRunnerReads(t *testing.T) {
+	deleteCmd, _, err := RootCmd.Find([]string{"env", "delete"})
+	require.NoError(t, err)
+
+	// Read by the legacy runner's Validate, directly or via cli.RequireWorkspace,
+	// cli.RequireEnvironmentNameArgs and cli.RequireOutput.
+	for _, flag := range []string{"workspace", "group", "environment", "yes", "output"} {
+		require.NotNilf(t, deleteCmd.Flags().Lookup(flag),
+			"rad env delete must expose --%s: the legacy runner reads it during Validate", flag)
+	}
+}
+
 // Test_EnvPreviewOnlyFlagsRejectedWithoutPreview drives the real, fully-assembled command tree
 // and asserts that each preview-only flag is rejected when preview mode is off. This guards
 // against a preview-only flag being added to a command without also being registered in the
@@ -445,6 +482,7 @@ func Test_EnvPreviewOnlyFlagsRejectedWithoutPreview(t *testing.T) {
 		{command: "create", flag: "recipe-packs", value: "p1"},
 		{command: "update", flag: "recipe-packs", value: "p1"},
 		{command: "update", flag: "clear-kubernetes", value: "true"},
+		{command: "delete", flag: "force", value: "true"},
 	}
 
 	for _, tc := range testcases {

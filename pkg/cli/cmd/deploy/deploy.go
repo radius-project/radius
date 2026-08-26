@@ -266,7 +266,14 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if envResult == nil {
-			return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` first. You could also provide the environment ID if the environment exists in a different group.", r.EnvironmentNameOrID, r.Workspace.Scope)
+			// If a full environment ID was provided (or came from the workspace default),
+			// report the scope encoded in that ID rather than the possibly-different
+			// --group scope, since that's the scope that was actually checked.
+			errScope := r.Workspace.Scope
+			if envID, parseErr := resources.Parse(r.EnvironmentNameOrID); parseErr == nil {
+				errScope = envID.RootScope()
+			}
+			return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` first. You could also provide the environment ID if the environment exists in a different group.", r.EnvironmentNameOrID, errScope)
 		}
 		r.EnvResult = envResult
 	}
@@ -298,6 +305,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 func (r *Runner) Run(ctx context.Context) error {
 	// Use the template that was prepared during validation
 	template := r.Template
+
+	// Warn about legacy Applications.* resource types before deploying, so the message is visible
+	// above the deployment progress output.
+	if warning := bicep.FormatDeprecationWarning(r.TemplateInspectionResult.DeprecatedResources); warning != "" {
+		r.Output.LogInfo("")
+		r.Output.LogInfo("%s", warning)
+	}
 
 	// This is the earliest point where we can inject parameters, we have
 	// to wait until the template is prepared.
@@ -551,7 +565,7 @@ func (r *Runner) getApplicationsCoreEnvironment(ctx context.Context, id string) 
 }
 
 // getRadiusCoreEnvironment retrieves environment using Radius Core client and returns as Applications.Core format
-func (r *Runner) getRadiusCoreEnvironment(ctx context.Context, name string) (*v20250801preview.EnvironmentResource, error) {
+func (r *Runner) getRadiusCoreEnvironment(ctx context.Context, scope, name string) (*v20250801preview.EnvironmentResource, error) {
 	if r.RadiusCoreClientFactory == nil {
 		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
@@ -561,7 +575,7 @@ func (r *Runner) getRadiusCoreEnvironment(ctx context.Context, name string) (*v2
 	}
 
 	environmentClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
-	env, err := environmentClient.Get(ctx, r.Workspace.Scope, name, nil)
+	env, err := environmentClient.Get(ctx, scope, name, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -629,14 +643,20 @@ func (r *Runner) FetchEnvironment(ctx context.Context, envNameOrID string) (*Env
 		}
 	}
 	if fetchRadiusCoreEnv {
+		// If it's a full ID, look it up in the scope encoded in the ID itself (which may
+		// differ from the workspace/--group scope, e.g. when the environment lives in a
+		// different resource group than the one being deployed into). Otherwise, resolve
+		// the name within the current workspace scope.
 		var radCoreEnvName string
+		radCoreScope := r.Workspace.Scope
 		if isID {
 			radCoreEnvName = envID.Name()
+			radCoreScope = envID.RootScope()
 		} else {
 			radCoreEnvName = envNameOrID
 		}
 
-		radiusCoreEnv, err := r.getRadiusCoreEnvironment(ctx, radCoreEnvName)
+		radiusCoreEnv, err := r.getRadiusCoreEnvironment(ctx, radCoreScope, radCoreEnvName)
 		if err != nil {
 			if !clients.Is404Error(err) {
 				return nil, err

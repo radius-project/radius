@@ -132,7 +132,7 @@ func (r *RecipeReconciler) reconcileOperation(ctx context.Context, recipe *radap
 		}
 
 		if !poller.Done() {
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 
 		// If we get here, the operation is complete.
@@ -150,7 +150,7 @@ func (r *RecipeReconciler) reconcileOperation(ctx context.Context, recipe *radap
 				return ctrl.Result{}, err
 			}
 
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 
 		// If we get here, the operation was a success. Update the status and continue.
@@ -172,7 +172,7 @@ func (r *RecipeReconciler) reconcileOperation(ctx context.Context, recipe *radap
 		}
 
 		if !poller.Done() {
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 
 		// If we get here, the operation is complete.
@@ -190,7 +190,7 @@ func (r *RecipeReconciler) reconcileOperation(ctx context.Context, recipe *radap
 				return ctrl.Result{}, err
 			}
 
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 
 		// If we get here, the operation was a success. Update the status and continue.
@@ -273,7 +273,7 @@ func (r *RecipeReconciler) reconcileUpdate(ctx context.Context, recipe *radappio
 			return ctrl.Result{}, err
 		}
 
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 	} else if deletePoller != nil {
 		// We've successfully started an operation. Update the status and requeue.
 		token, err := deletePoller.ResumeToken()
@@ -288,7 +288,7 @@ func (r *RecipeReconciler) reconcileUpdate(ctx context.Context, recipe *radappio
 			return ctrl.Result{}, err
 		}
 
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 	}
 
 	// If we get here then it means we can process the result of the operation.
@@ -337,7 +337,7 @@ func (r *RecipeReconciler) reconcileDelete(ctx context.Context, recipe *radappio
 			return ctrl.Result{}, err
 		}
 
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 	}
 
 	logger.Info("Resource is deleted.")

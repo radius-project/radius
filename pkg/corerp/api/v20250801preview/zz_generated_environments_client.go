@@ -56,12 +56,7 @@ func (client *EnvironmentsClient) CreateOrUpdate(ctx context.Context, rootScope 
 	if err != nil {
 		return EnvironmentsClientCreateOrUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return EnvironmentsClientCreateOrUpdateResponse{}, err
-	}
-	resp, err := client.createOrUpdateHandleResponse(httpResp)
-	return resp, err
+	return client.createOrUpdateHandleResponse(httpResp, http.StatusOK, http.StatusCreated)
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
@@ -91,8 +86,11 @@ func (client *EnvironmentsClient) createOrUpdateCreateRequest(ctx context.Contex
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *EnvironmentsClient) createOrUpdateHandleResponse(resp *http.Response) (EnvironmentsClientCreateOrUpdateResponse, error) {
+func (client *EnvironmentsClient) createOrUpdateHandleResponse(resp *http.Response, successCodes ...int) (EnvironmentsClientCreateOrUpdateResponse, error) {
 	result := EnvironmentsClientCreateOrUpdateResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.EnvironmentResource); err != nil {
 		return EnvironmentsClientCreateOrUpdateResponse{}, err
 	}
@@ -117,8 +115,7 @@ func (client *EnvironmentsClient) Delete(ctx context.Context, rootScope string, 
 		return EnvironmentsClientDeleteResponse{}, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return EnvironmentsClientDeleteResponse{}, err
+		return EnvironmentsClientDeleteResponse{}, runtime.NewResponseError(httpResp)
 	}
 	return EnvironmentsClientDeleteResponse{}, nil
 }
@@ -161,12 +158,7 @@ func (client *EnvironmentsClient) Get(ctx context.Context, rootScope string, env
 	if err != nil {
 		return EnvironmentsClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return EnvironmentsClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -192,8 +184,11 @@ func (client *EnvironmentsClient) getCreateRequest(ctx context.Context, rootScop
 }
 
 // getHandleResponse handles the Get response.
-func (client *EnvironmentsClient) getHandleResponse(resp *http.Response) (EnvironmentsClientGetResponse, error) {
+func (client *EnvironmentsClient) getHandleResponse(resp *http.Response, successCodes ...int) (EnvironmentsClientGetResponse, error) {
 	result := EnvironmentsClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.EnvironmentResource); err != nil {
 		return EnvironmentsClientGetResponse{}, err
 	}
@@ -216,38 +211,52 @@ func (client *EnvironmentsClient) NewListByScopePager(rootScope string, options 
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listByScopeCreateRequest(ctx, rootScope, options)
-			}, nil)
+			req, err := client.listByScopeCreateRequest(ctx, rootScope, nextLink, options)
 			if err != nil {
 				return EnvironmentsClientListByScopeResponse{}, err
 			}
-			return client.listByScopeHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return EnvironmentsClientListByScopeResponse{}, err
+			}
+			return client.listByScopeHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *EnvironmentsClient) listByScopeCreateRequest(ctx context.Context, rootScope string, _ *EnvironmentsClientListByScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Radius.Core/environments"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
+func (client *EnvironmentsClient) listByScopeCreateRequest(ctx context.Context, rootScope string, nextLink string, _ *EnvironmentsClientListByScopeOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/{rootScope}/providers/Radius.Core/environments"
+		if rootScope == "" {
+			return nil, errors.New("parameter rootScope cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20250801Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20250801Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listByScopeHandleResponse handles the ListByScope response.
-func (client *EnvironmentsClient) listByScopeHandleResponse(resp *http.Response) (EnvironmentsClientListByScopeResponse, error) {
+func (client *EnvironmentsClient) listByScopeHandleResponse(resp *http.Response, successCodes ...int) (EnvironmentsClientListByScopeResponse, error) {
 	result := EnvironmentsClientListByScopeResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.EnvironmentResourceListResult); err != nil {
 		return EnvironmentsClientListByScopeResponse{}, err
 	}
@@ -272,12 +281,7 @@ func (client *EnvironmentsClient) Update(ctx context.Context, rootScope string, 
 	if err != nil {
 		return EnvironmentsClientUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return EnvironmentsClientUpdateResponse{}, err
-	}
-	resp, err := client.updateHandleResponse(httpResp)
-	return resp, err
+	return client.updateHandleResponse(httpResp, http.StatusOK)
 }
 
 // updateCreateRequest creates the Update request.
@@ -307,8 +311,11 @@ func (client *EnvironmentsClient) updateCreateRequest(ctx context.Context, rootS
 }
 
 // updateHandleResponse handles the Update response.
-func (client *EnvironmentsClient) updateHandleResponse(resp *http.Response) (EnvironmentsClientUpdateResponse, error) {
+func (client *EnvironmentsClient) updateHandleResponse(resp *http.Response, successCodes ...int) (EnvironmentsClientUpdateResponse, error) {
 	result := EnvironmentsClientUpdateResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.EnvironmentResource); err != nil {
 		return EnvironmentsClientUpdateResponse{}, err
 	}

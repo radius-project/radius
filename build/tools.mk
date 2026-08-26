@@ -22,6 +22,12 @@ TOOL_UPDATER_GOOS := $(shell go env GOHOSTOS)
 TOOL_UPDATER_GOARCH := $(shell go env GOHOSTARCH)
 TOOL_UPDATER_BINARY := bin/tool-updater$(if $(filter windows,$(TOOL_UPDATER_GOOS)),.exe,)
 TOOL_UPDATER_SOURCES := $(wildcard cmd/tool-updater/*.go) $(wildcard internal/tooling/*.go)
+TOOL_UPDATE_PR_BODY_OUTPUT ?=
+TOOL_UPDATE_ARGS := --manifest "$(TOOL_MANIFEST)"
+TOOL_UPDATE_ARGS += --makefile "$(TOOL_MAKE_INCLUDE)"
+ifneq ($(strip $(TOOL_UPDATE_PR_BODY_OUTPUT)),)
+TOOL_UPDATE_ARGS += --pr-body-output "$(TOOL_UPDATE_PR_BODY_OUTPUT)"
+endif
 
 include $(TOOL_MAKE_INCLUDE)
 
@@ -34,7 +40,7 @@ $(TOOL_MAKE_INCLUDE): $(TOOL_MANIFEST) $(TOOL_UPDATER_BINARY)
 
 .PHONY: update-tools
 update-tools: $(TOOL_UPDATER_BINARY) ## Check tool releases and refresh versions and checksums in the manifest.
-	@"$(TOOL_UPDATER_BINARY)" update --manifest "$(TOOL_MANIFEST)" --makefile "$(TOOL_MAKE_INCLUDE)"
+	@"$(TOOL_UPDATER_BINARY)" update $(TOOL_UPDATE_ARGS)
 
 .PHONY: install-yq
 install-yq: ## Install the pinned yq YAML processor into a user-owned bin dir (no sudo).

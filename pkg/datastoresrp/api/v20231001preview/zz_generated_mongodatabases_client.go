@@ -73,8 +73,7 @@ func (client *MongoDatabasesClient) createOrUpdate(ctx context.Context, rootScop
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -140,8 +139,7 @@ func (client *MongoDatabasesClient) deleteOperation(ctx context.Context, rootSco
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusAccepted, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -183,12 +181,7 @@ func (client *MongoDatabasesClient) Get(ctx context.Context, rootScope string, m
 	if err != nil {
 		return MongoDatabasesClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return MongoDatabasesClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -214,8 +207,11 @@ func (client *MongoDatabasesClient) getCreateRequest(ctx context.Context, rootSc
 }
 
 // getHandleResponse handles the Get response.
-func (client *MongoDatabasesClient) getHandleResponse(resp *http.Response) (MongoDatabasesClientGetResponse, error) {
+func (client *MongoDatabasesClient) getHandleResponse(resp *http.Response, successCodes ...int) (MongoDatabasesClientGetResponse, error) {
 	result := MongoDatabasesClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDatabaseResource); err != nil {
 		return MongoDatabasesClientGetResponse{}, err
 	}
@@ -237,38 +233,52 @@ func (client *MongoDatabasesClient) NewListByScopePager(rootScope string, option
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listByScopeCreateRequest(ctx, rootScope, options)
-			}, nil)
+			req, err := client.listByScopeCreateRequest(ctx, rootScope, nextLink, options)
 			if err != nil {
 				return MongoDatabasesClientListByScopeResponse{}, err
 			}
-			return client.listByScopeHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return MongoDatabasesClientListByScopeResponse{}, err
+			}
+			return client.listByScopeHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *MongoDatabasesClient) listByScopeCreateRequest(ctx context.Context, rootScope string, _ *MongoDatabasesClientListByScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Datastores/mongoDatabases"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
+func (client *MongoDatabasesClient) listByScopeCreateRequest(ctx context.Context, rootScope string, nextLink string, _ *MongoDatabasesClientListByScopeOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/{rootScope}/providers/Applications.Datastores/mongoDatabases"
+		if rootScope == "" {
+			return nil, errors.New("parameter rootScope cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listByScopeHandleResponse handles the ListByScope response.
-func (client *MongoDatabasesClient) listByScopeHandleResponse(resp *http.Response) (MongoDatabasesClientListByScopeResponse, error) {
+func (client *MongoDatabasesClient) listByScopeHandleResponse(resp *http.Response, successCodes ...int) (MongoDatabasesClientListByScopeResponse, error) {
 	result := MongoDatabasesClientListByScopeResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDatabaseResourceListResult); err != nil {
 		return MongoDatabasesClientListByScopeResponse{}, err
 	}
@@ -293,12 +303,7 @@ func (client *MongoDatabasesClient) ListSecrets(ctx context.Context, rootScope s
 	if err != nil {
 		return MongoDatabasesClientListSecretsResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return MongoDatabasesClientListSecretsResponse{}, err
-	}
-	resp, err := client.listSecretsHandleResponse(httpResp)
-	return resp, err
+	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
 }
 
 // listSecretsCreateRequest creates the ListSecrets request.
@@ -328,8 +333,11 @@ func (client *MongoDatabasesClient) listSecretsCreateRequest(ctx context.Context
 }
 
 // listSecretsHandleResponse handles the ListSecrets response.
-func (client *MongoDatabasesClient) listSecretsHandleResponse(resp *http.Response) (MongoDatabasesClientListSecretsResponse, error) {
+func (client *MongoDatabasesClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (MongoDatabasesClientListSecretsResponse, error) {
 	result := MongoDatabasesClientListSecretsResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDatabaseListSecretsResult); err != nil {
 		return MongoDatabasesClientListSecretsResponse{}, err
 	}
@@ -372,8 +380,7 @@ func (client *MongoDatabasesClient) update(ctx context.Context, rootScope string
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
