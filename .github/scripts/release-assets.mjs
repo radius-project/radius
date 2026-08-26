@@ -23,7 +23,7 @@ async function getRelease(github, owner, repo, tag) {
   const releases = await github.paginate(github.rest.repos.listReleases, {
     owner,
     repo,
-    per_page: 100,
+    per_page: 100
   });
   const matches = releases.filter((release) => release.tag_name === tag);
   if (matches.length !== 1) {
@@ -38,7 +38,7 @@ async function listAssets(github, owner, repo, releaseID) {
     owner,
     repo,
     release_id: releaseID,
-    per_page: 100,
+    per_page: 100
   });
 }
 
@@ -50,8 +50,8 @@ async function downloadAsset(github, owner, repo, assetID) {
       owner,
       repo,
       asset_id: assetID,
-      headers: { accept: "application/octet-stream" },
-    },
+      headers: { accept: "application/octet-stream" }
+    }
   );
   return asBuffer(response.data);
 }
@@ -75,12 +75,11 @@ async function uploadAssetData(github, owner, repo, release, name, data) {
       release_id: release.id,
       name,
       headers: {
-        "content-type": name.endsWith(".json")
-          ? "application/json"
-          : "text/plain",
-        "content-length": data.length,
+        "content-type":
+          name.endsWith(".json") ? "application/json" : "text/plain",
+        "content-length": data.length
       },
-      data,
+      data
     });
   } catch (error) {
     assets = await listAssets(github, owner, repo, release.id);
@@ -150,15 +149,19 @@ async function uploadFile(github, core, owner, repo, release, file) {
       return;
     }
     if (immutable) {
-      throw new Error(`Immutable release asset ${name} differs from local data`);
+      throw new Error(
+        `Immutable release asset ${name} differs from local data`
+      );
     }
     if (!release.draft) {
-      throw new Error(`Published release asset ${name} differs from local data`);
+      throw new Error(
+        `Published release asset ${name} differs from local data`
+      );
     }
     await github.rest.repos.deleteReleaseAsset({
       owner,
       repo,
-      asset_id: existing.id,
+      asset_id: existing.id
     });
   } else if (!release.draft) {
     throw new Error(`Cannot add ${name} to a published release`);
@@ -170,7 +173,7 @@ async function uploadFile(github, core, owner, repo, release, file) {
     repo,
     release,
     name,
-    data,
+    data
   );
   core.setOutput("asset_id", String(uploaded.id));
   core.setOutput("reused", "false");
@@ -179,8 +182,9 @@ async function uploadFile(github, core, owner, repo, release, file) {
 /** @param {any} github @param {any} core @param {string} owner @param {string} repo @param {any} release */
 async function uploadFiles(github, core, owner, repo, release) {
   const filesInput = core.getInput("FILES");
-  const files = filesInput
-    ? JSON.parse(filesInput)
+  const files =
+    filesInput ?
+      JSON.parse(filesInput)
     : [core.getInput("FILE", { required: true })];
   if (!Array.isArray(files) || files.some((file) => typeof file !== "string")) {
     throw new Error("FILES must be a JSON array of strings");
@@ -198,7 +202,7 @@ async function reconcileCliAssets(
   owner,
   repo,
   release,
-  normalize,
+  normalize
 ) {
   const targetsFile = core.getInput("TARGETS_FILE", { required: true });
   const targets = JSON.parse(await readFile(targetsFile, "utf8"));
@@ -224,7 +228,7 @@ async function reconcileCliAssets(
         repo,
         release,
         `${name}.sha256`,
-        expected,
+        expected
       );
       continue;
     }
@@ -247,7 +251,7 @@ async function reconcileCliAssets(
       await github.rest.repos.deleteReleaseAsset({
         owner,
         repo,
-        asset_id: checksumAsset.id,
+        asset_id: checksumAsset.id
       });
       await uploadAssetData(
         github,
@@ -255,7 +259,7 @@ async function reconcileCliAssets(
         repo,
         release,
         `${name}.sha256`,
-        expected,
+        expected
       );
     } else if (!normalize && checksum !== expected.toString("utf8").trim()) {
       throw new Error(`Release checksum is not Radius-compatible: ${name}`);

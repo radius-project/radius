@@ -184,6 +184,7 @@ test_release_resume_contract() {
     local published_guards
     local retry_count
     local immutable_count
+    local restage_gates
 
     # shellcheck disable=SC2016 # Literal workflow expressions under test.
     for marker in \
@@ -217,6 +218,12 @@ test_release_resume_contract() {
     fi
     if [[ "$(grep -Fc 'assert-images-absent' "${RELEASE_WORKFLOW}")" != "2" ]]; then
         fail_test "unlocked immutable images are not guarded before pushes"
+        return
+    fi
+    restage_gates="$(grep -Fc "outputs.state == 'absent'" \
+        "${RELEASE_WORKFLOW}")"
+    if [[ "${restage_gates}" != "2" ]]; then
+        fail_test "a partial image set cannot be re-staged"
         return
     fi
     # shellcheck disable=SC2016 # Literal workflow expression under test.

@@ -77,6 +77,7 @@ inspect_image() {
     local error
     local status
     local delay
+    local missing
 
     for ((attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++)); do
         if docker buildx imagetools inspect --format '{{json .}}' \
@@ -86,12 +87,16 @@ inspect_image() {
             status=$?
         fi
         error="$(cat "${output}")"
+        # A single missing read is never trusted: the registry must report the
+        # tag missing on every attempt before it counts as absent.
+        case "${error,,}" in
+            *"manifest unknown"* | *"not found"* | *404*) missing=true ;;
+            *) missing=false ;;
+        esac
         if ((attempt == RETRY_ATTEMPTS)); then
-            case "${error,,}" in
-                *"manifest unknown"* | *"not found"* | *404*) return 3 ;;
-            esac
-        fi
-        if ((attempt == RETRY_ATTEMPTS)); then
+            if [[ "${missing}" == "true" ]]; then
+                return 3
+            fi
             echo "${error}" >&2
             return "${status}"
         fi
@@ -103,7 +108,11 @@ inspect_image() {
         if ((delay > RETRY_MAX_DELAY_SECONDS)); then
             delay="${RETRY_MAX_DELAY_SECONDS}"
         fi
-        echo "Transient image lookup failure for ${reference}; retrying." >&2
+        if [[ "${missing}" == "true" ]]; then
+            echo "${reference} is missing; confirming absence." >&2
+        else
+            echo "Transient lookup failure for ${reference}; retrying." >&2
+        fi
         if [[ "${RELEASE_RETRY_NO_SLEEP:-}" != "true" ]]; then
             sleep "${delay}.$(printf '%03d' "$((RANDOM % 1000))")"
         fi
@@ -171,6 +180,7 @@ main() {
     local actual_revisions
     local actual_versions
     local inspect_status
+    local state
     local selected=0
     local captured=0
 
@@ -180,6 +190,9 @@ main() {
     [[ -n "${REGISTRY}" ]] || fail "registry is required"
     [[ -n "${TAG}" ]] || fail "tag is required"
     [[ -n "${OUTPUT}" ]] || fail "output path is required"
+    if [[ "${ALLOW_ABSENT}" == "true" && -z "${STATE_OUTPUT}" ]]; then
+        fail "--allow-absent requires --state-output"
+    fi
     if [[ ! "${SOURCE_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
         fail "source SHA must be a full commit SHA"
     fi
@@ -291,26 +304,26 @@ main() {
     if ((selected == 0)); then
         fail "no Radius-built images match the selection"
     fi
-    if ((captured > 0 && captured < selected)); then
+    if [[ "${ALLOW_ABSENT}" != "true" ]] && ((captured != selected)); then
         fail "only ${captured} of ${selected} expected images exist"
     fi
 
     mkdir -p "$(dirname "${OUTPUT}")"
     jq -S -s 'sort_by(.name)' "${entries}" > "${OUTPUT}"
     if [[ -n "${STATE_OUTPUT}" ]]; then
-        mkdir -p "$(dirname "${STATE_OUTPUT}")"
         if ((captured == selected)); then
-            printf 'complete\n' > "${STATE_OUTPUT}"
+            state=complete
+        elif ((captured == 0)); then
+            state=absent
         else
-            printf 'absent\n' > "${STATE_OUTPUT}"
+            # No durable lock covers a partial set, so no consumer can have
+            # resolved these tags yet and staging may still overwrite them.
+            state=partial
         fi
+        mkdir -p "$(dirname "${STATE_OUTPUT}")"
+        printf '%s\n' "${state}" > "${STATE_OUTPUT}"
     fi
-    if [[ "${ALLOW_ABSENT}" != "true" ]]; then
-        if ((captured != selected)); then
-            fail "expected images are absent"
-        fi
-    fi
-    echo "Captured production image digests in ${OUTPUT}"
+    echo "Captured release image digests in ${OUTPUT}"
 }
 
 main "$@"

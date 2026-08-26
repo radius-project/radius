@@ -384,9 +384,7 @@ jobs:
         if: steps.image-lock.outputs.locked != 'true'
         run: |
           make capture-release-image-digests
-          state="$(<dist/production-image-state.txt)"
-          echo "adopted=$([[ "${state}" == "complete" ]] && echo true || echo false)" \
-            >>"${GITHUB_OUTPUT}"
+          echo "state=$(<dist/production-image-state.txt)" >>"${GITHUB_OUTPUT}"
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
@@ -396,7 +394,7 @@ jobs:
       - name: Verify production image tags are unclaimed
         if: >-
           steps.image-lock.outputs.locked != 'true' &&
-          steps.image-adoption.outputs.adopted != 'true'
+          steps.image-adoption.outputs.state == 'absent'
         run: |
           bash ./.github/scripts/release-oci-artifacts.sh \
             assert-images-absent \
@@ -412,13 +410,13 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           GORELEASER_ARGS: >-
             ${{ (steps.image-lock.outputs.locked == 'true' ||
-            steps.image-adoption.outputs.adopted == 'true') &&
+            steps.image-adoption.outputs.state == 'complete') &&
             '--skip=docker' || '' }}
 
       - name: Verify and lock immutable production images
         if: >-
           steps.image-lock.outputs.locked != 'true' &&
-          steps.image-adoption.outputs.adopted != 'true'
+          steps.image-adoption.outputs.state != 'complete'
         run: make capture-release-image-digests
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
@@ -713,12 +711,8 @@ jobs:
         if: steps.remaining-lock.outputs.locked != 'true'
         run: |
           make capture-release-image-digests
-          state="$(<"dist/${IMAGE_NAME}-image-state.txt")"
-          if [[ "${state}" == "complete" ]]; then
-            echo "adopted=true" >>"${GITHUB_OUTPUT}"
-          else
-            echo "adopted=false" >>"${GITHUB_OUTPUT}"
-          fi
+          echo "state=$(<"dist/${IMAGE_NAME}-image-state.txt")" \
+            >>"${GITHUB_OUTPUT}"
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
@@ -733,7 +727,7 @@ jobs:
       - name: Verify retained image tag is unclaimed
         if: >-
           steps.remaining-lock.outputs.locked != 'true' &&
-          steps.remaining-adoption.outputs.adopted != 'true'
+          steps.remaining-adoption.outputs.state == 'absent'
         run: |
           bash ./.github/scripts/release-oci-artifacts.sh \
             assert-images-absent \
@@ -747,7 +741,7 @@ jobs:
       - name: Publish immutable retained images
         if: >-
           steps.remaining-lock.outputs.locked != 'true' &&
-          steps.remaining-adoption.outputs.adopted != 'true'
+          steps.remaining-adoption.outputs.state != 'complete'
         run: make "docker-multi-arch-push-${IMAGE_NAME}"
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
@@ -758,7 +752,7 @@ jobs:
       - name: Verify and lock retained images
         if: >-
           steps.remaining-lock.outputs.locked != 'true' &&
-          steps.remaining-adoption.outputs.adopted != 'true'
+          steps.remaining-adoption.outputs.state != 'complete'
         run: make capture-release-image-digests
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
