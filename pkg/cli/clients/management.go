@@ -1162,6 +1162,68 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx conte
 	return results, nil
 }
 
+// ListResourcesInEnvironmentOrApplications lists the resources that belong to the given environment
+// or to any of the given applications, without duplicates.
+//
+// This produces the same set as merging ListResourcesInEnvironment with ListResourcesInApplication
+// for each application, but enumerates each resource type once rather than once per application.
+// The per-type listing returns every resource of that type in the scope and both membership checks
+// run client side, so repeating the listing per application re-fetches identical data.
+func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironmentOrApplications(ctx context.Context, environmentNameOrID string, applicationNameOrIDs []string) ([]generated.GenericResource, error) {
+	environmentID, err := amc.fullyQualifyID(environmentNameOrID, "Applications.Core/environments")
+	if err != nil {
+		return nil, err
+	}
+
+	applicationIDs := make([]string, 0, len(applicationNameOrIDs))
+	for _, applicationNameOrID := range applicationNameOrIDs {
+		applicationID, err := amc.fullyQualifyID(applicationNameOrID, "Applications.Core/applications")
+		if err != nil {
+			return nil, err
+		}
+
+		applicationIDs = append(applicationIDs, applicationID)
+	}
+
+	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
+	if err != nil {
+		return nil, err
+	}
+
+	results := []generated.GenericResource{}
+	for _, resourceType := range resourceTypesList {
+		resources, err := amc.ListResourcesOfType(ctx, resourceType)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, resource := range resources {
+			if isResourceInEnvironmentOrApplications(resource, environmentID, applicationIDs) {
+				results = append(results, resource)
+			}
+		}
+	}
+
+	return results, nil
+}
+
+// isResourceInEnvironmentOrApplications reports whether the resource belongs to the given
+// environment or to any of the given applications. A resource is appended at most once by the
+// caller, so the two directions cannot produce duplicates.
+func isResourceInEnvironmentOrApplications(resource generated.GenericResource, environmentID string, applicationIDs []string) bool {
+	if isResourceInEnvironment(resource, environmentID) {
+		return true
+	}
+
+	for _, applicationID := range applicationIDs {
+		if isResourceInApplication(resource, applicationID) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // CreateOrUpdateResourceType creates or updates a resource type in the configured plane.
 func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceType(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, resource *ucpv20231001.ResourceTypeResource) (ucpv20231001.ResourceTypeResource, error) {
 	client, err := amc.createResourceTypeClient()

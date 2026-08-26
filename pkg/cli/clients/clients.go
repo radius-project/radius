@@ -176,6 +176,14 @@ type ApplicationsManagementClient interface {
 	// Names target Applications.Core; use a full resource ID for other environment types.
 	ListResourcesInEnvironment(ctx context.Context, environmentNameOrID string) ([]generated.GenericResource, error)
 
+	// ListResourcesInEnvironmentOrApplications lists the resources that belong to the given
+	// environment or to any of the given applications, without duplicates.
+	//
+	// This is equivalent to merging ListResourcesInEnvironment with ListResourcesInApplication for
+	// each application, but enumerates each resource type once instead of once per application.
+	// Names target Applications.Core; use full resource IDs for other environment and application types.
+	ListResourcesInEnvironmentOrApplications(ctx context.Context, environmentNameOrID string, applicationNameOrIDs []string) ([]generated.GenericResource, error)
+
 	// GetResource retrieves a resource by its type and name (or id).
 	GetResource(ctx context.Context, resourceType string, resourceNameOrID string) (generated.GenericResource, error)
 
