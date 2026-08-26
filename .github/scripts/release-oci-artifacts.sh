@@ -317,10 +317,16 @@ cli_artifact_matches() {
     local artifact="$2"
     local artifact_name
     local pull_dir
+    local pull_status=0
 
     artifact_name="$(basename "${artifact}")"
     pull_dir="$(mktemp -d "${TEMP_DIR}/pull-XXXXXX")"
-    if ! pull_cli_artifact "${reference}" "${pull_dir}"; then
+    pull_cli_artifact "${reference}" "${pull_dir}" || pull_status=$?
+    if ((pull_status != 0)); then
+        rm -rf "${pull_dir}"
+        # 3 means the tag resolved and then vanished, which the caller
+        # reports differently from an unreadable artifact.
+        ((pull_status == 3)) && return 3
         return 2
     fi
     if [[ ! -f "${pull_dir}/${artifact_name}" ]]; then
@@ -414,20 +420,35 @@ reconcile_cli_reference() {
     done
 }
 
+# A subshell function so the directory change cannot leak. oras names the
+# layer after the path it is given, so the canonical basename must be the
+# argument and the staging directory must be the working directory.
+stage_cli_reference() (
+    local reference="$1"
+    local artifact_dir="$2"
+    local artifact_name="$3"
+    local reference_state
+
+    cd "${artifact_dir}"
+    reference_state="$(
+        reconcile_cli_reference "${reference}" "./${artifact_name}"
+    )"
+    if [[ "${reference_state}" == "absent" ]]; then
+        push_cli_artifact "${reference}" "./${artifact_name}"
+    fi
+)
+
 stage_cli() {
     local entries
     local name
     local os
     local arch
     local path
-    local artifact_dir
-    local artifact_name
     local canonical_name
     local staging_dir
     local repository
     local reference
     local digest
-    local reference_state
 
     require_command jq
     require_command oras
@@ -459,19 +480,9 @@ stage_cli() {
         staging_dir="${TEMP_DIR}/artifacts/${name}"
         mkdir -p "${staging_dir}"
         cp "${path}" "${staging_dir}/${canonical_name}"
-        artifact_dir="${staging_dir}"
-        artifact_name="${canonical_name}"
         repository="${REGISTRY}/rad/${os}-${arch}"
         reference="${repository}:${VERSION}"
-        (   
-            cd "${artifact_dir}"
-            reference_state="$(
-                reconcile_cli_reference "${reference}" "./${artifact_name}"
-            )"
-            if [[ "${reference_state}" == "absent" ]]; then
-                push_cli_artifact "${reference}" "./${artifact_name}"
-            fi
-        )
+        stage_cli_reference "${reference}" "${staging_dir}" "${canonical_name}"
         digest="$(
             retry_read "CLI OCI digest lookup" oras resolve "${reference}"
         )"
