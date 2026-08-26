@@ -143,6 +143,11 @@ jobs:
               }),
             )
 
+  # korthout/backport-action was evaluated and rejected here: it commits and
+  # pushes with git, so it cannot produce the API-signed commits this job
+  # verifies, it opens every labelled backport at once instead of serialising
+  # one per channel, and its conflict mode commits conflict markers. Revisit if
+  # release/* ever requires strict up-to-date merges and signing moves to a key.
   backport:
     name: Backport to release/${{ matrix.channel }}
     needs: select-channels
