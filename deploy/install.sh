@@ -136,10 +136,24 @@ needsSudo() {
         return 1
     fi
 
-    # If the parent directory is writable (dir doesn't exist yet), no sudo
-    local parent_dir
-    parent_dir=$(dirname "${install_dir}")
-    if [[ -d "${parent_dir}" && -w "${parent_dir}" ]]; then
+    # Walk up to the nearest existing ancestor. If we can write to it, we can
+    # create the (possibly nested) install dir ourselves with `mkdir -p`, so no
+    # sudo is needed. This matters for $HOME/.local/bin when neither .local/bin
+    # nor .local exists yet: the whole tree is under a writable $HOME, so
+    # escalating to sudo here would create it root-owned and break later
+    # user-owned installs into the same dir (e.g. `make install-yq`).
+    local ancestor
+    ancestor=$(dirname "${install_dir}")
+    while [[ ! -d "${ancestor}" ]]; do
+        local parent
+        parent=$(dirname "${ancestor}")
+        # Stop at the filesystem root to avoid an infinite loop.
+        if [[ "${parent}" == "${ancestor}" ]]; then
+            break
+        fi
+        ancestor="${parent}"
+    done
+    if [[ -d "${ancestor}" && -w "${ancestor}" ]]; then
         return 1
     fi
 
