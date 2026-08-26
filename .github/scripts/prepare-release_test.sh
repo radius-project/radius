@@ -427,16 +427,16 @@ EOF
 }
 
 test_publisher_uses_prepared_notes_for_every_release() {
-    local workflow="${SCRIPT_DIR}/../workflows/__publish-release.yaml"
-    local notes_count
+    local makefile="${SCRIPT_DIR}/../../build/artifacts.mk"
 
-    if grep -Fq -- '--generate-notes' "${workflow}"; then
+    if grep -Fq -- '--generate-notes' "${makefile}"; then
         fail_test "release publisher still bypasses canonical prepared notes"
         return
     fi
-    notes_count="$(grep -Fc -- '--notes-file "docs/release-notes/' "${workflow}")"
-    if [[ "${notes_count}" != "2" ]]; then
-        fail_test "both RC and stable publishers must use prepared notes"
+    # shellcheck disable=SC2016 # Literal Make expression under test.
+    if ! grep -Fq -- \
+        '--release-notes "$(GORELEASER_RELEASE_NOTES)"' "${makefile}"; then
+        fail_test "GoReleaser does not use canonical prepared notes"
         return
     fi
     ((++PASS))

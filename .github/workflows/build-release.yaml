@@ -28,94 +28,181 @@ permissions: {}
 
 env:
   CONTAINER_REGISTRY: ghcr.io/radius-project
-  GORELEASER_SHADOW_REGISTRY: ghcr.io/radius-project/dev
 
 concurrency:
-  group: build-${{ github.ref }}-${{ github.sha }}
-  cancel-in-progress: true
+  group: build-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  changes:
-    name: Changes
-    uses: ./.github/workflows/__changes.yml
-    permissions:
-      contents: read # Required for actions/checkout
-      pull-requests: read # Required for change detection
-
-  build-and-push-cli:
-    needs: [changes]
-    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
-    uses: ./.github/workflows/__build-cli.yaml
-    with:
-      only_changed: ${{ needs.changes.outputs.only_changed }}
-    permissions:
-      packages: write # Required for uploading the package
-      contents: read # Required for actions/checkout
-      issues: read # Required for publishing test results
-      checks: write # Required for publishing test results
-      pull-requests: write # Required for publishing test results
-
-  build-check:
-    if: always()
-    name: Build Check
-    needs: [build-and-push-cli]
+  release-preflight:
+    name: Validate and reconcile release
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    permissions: {}
-    steps:
-      - name: Check build matrix results
-        if: ${{ needs.build-and-push-cli.result != 'success' && needs.build-and-push-cli.result != 'skipped' }}
-        run: |
-          echo "::error::Build and push CLI jobs failed or were cancelled"
-          exit 1
-
-      - name: Build matrix succeeded
-        if: ${{ needs.build-and-push-cli.result == 'success' || needs.build-and-push-cli.result == 'skipped' }}
-        run: |
-          echo "All build matrix jobs completed successfully"
-          exit 0
-
-  build-and-push-images:
-    needs: [changes]
-    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
-    uses: ./.github/workflows/__build-images.yaml
+    timeout-minutes: 10
     permissions:
-      packages: write # Required for uploading the package
-      contents: read # Required for actions/checkout
-
-  build-and-push-helm-chart:
-    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v') && needs.changes.outputs.only_changed != 'true'
-    needs: [build-and-push-images, changes]
-    uses: ./.github/workflows/__build-helm-chart.yaml
-    permissions:
-      packages: write # Required for uploading the package
-      contents: read # Required for actions/checkout
-
-  build-and-push-bicep-types:
-    needs: [changes]
-    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v') && needs.changes.outputs.only_changed != 'true'
-    uses: ./.github/workflows/__build-bicep-types.yaml
-    permissions:
-      contents: read # Required for actions/checkout
-
-  publish-release:
-    needs: [changes, build-and-push-cli]
-    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v') && needs.changes.outputs.only_changed != 'true'
-    uses: ./.github/workflows/__publish-release.yaml
-    permissions:
-      contents: write # Required for creating releases
-
-  goreleaser-shadow:
-    name: Shadow GoReleaser release
-    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v')
-    continue-on-error: true
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
+      contents: read # Required for release and source inspection
+      packages: read # Required for immutable image and OCI verification
     outputs:
-      published: ${{ steps.publish.outputs.published }}
+      release-state: ${{ steps.release-state.outputs.result }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+
+      - name: Parse and validate release tag
+        run: |
+          source ./.github/scripts/release-version.sh
+          version="${GITHUB_REF_NAME#v}"
+          is_radius_release_version "${version}" || {
+            echo "Invalid Radius release tag: ${GITHUB_REF_NAME}" >&2
+            exit 1
+          }
+          ! is_legacy_rc_version "${version}" || {
+            echo "New release tags must use the -rc.N form." >&2
+            exit 1
+          }
+          python ./.github/scripts/get_release_version.py
+          echo "SOURCE_SHA=$(git rev-parse HEAD)" >>"${GITHUB_ENV}"
+          [[ -f "docs/release-notes/v${version}.md" ]] || {
+            echo "Prepared release notes are missing for v${version}." >&2
+            exit 1
+          }
+
+      - name: Read release state
+        id: release-state
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 5
+          result-encoding: string
+          script: |
+            const releases = await github.paginate(
+              github.rest.repos.listReleases,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+              },
+            )
+            const matches = releases.filter(
+              (release) => release.tag_name === context.ref.replace('refs/tags/', ''),
+            )
+            if (matches.length > 1) {
+              throw new Error(`Multiple releases found for ${context.ref}`)
+            }
+            if (matches.length === 0) {
+              return 'absent'
+            }
+            return matches[0].draft ? 'draft' : 'published'
+
+      - name: Login to GitHub Container Registry
+        if: steps.release-state.outputs.result == 'published'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Setup Docker Buildx
+        if: steps.release-state.outputs.result == 'published'
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Install reconciliation tools
+        if: steps.release-state.outputs.result == 'published'
+        run: make install-jq install-oras
+
+      - name: Download completed release locks
+        if: steps.release-state.outputs.result == 'published'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: download
+          INPUT_NAMES: >-
+            ["core-release-lock.json","release-image-digests.json"]
+          INPUT_OUTPUT_DIR: dist/preflight
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Verify completed release assets
+        if: steps.release-state.outputs.result == 'published'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: verify-cli
+          INPUT_TARGETS_FILE: .github/release-parity/targets.json
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Verify completed release metadata
+        if: steps.release-state.outputs.result == 'published'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_NOTES_FILE: docs/release-notes/${{ github.ref_name }}.md
+          INPUT_PRERELEASE: ${{ contains(github.ref_name, '-') }}
+          INPUT_MAKE_LATEST: "false"
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-draft-release.mjs`
+            )
+            await script({ github, core })
+
+      - name: Verify completed release
+        if: steps.release-state.outputs.result == 'published'
+        run: |
+          jq -e --arg version "${REL_VERSION}" \
+            --arg sourceSha "${SOURCE_SHA}" \
+            '.version == $version and .sourceSha == $sourceSha' \
+            dist/preflight/core-release-lock.json
+          jq '.cli' dist/preflight/core-release-lock.json \
+            >dist/preflight/release-cli-oci.json
+
+          args=(
+            verify
+            --version "${REL_VERSION}"
+            --source-sha "${SOURCE_SHA}"
+            --image-lock dist/preflight/release-image-digests.json
+            --cli-lock dist/preflight/release-cli-oci.json
+          )
+          bash ./.github/scripts/release-oci-artifacts.sh "${args[@]}"
+
+  goreleaser-release:
+    name: Stage release with GoReleaser
+    needs: [release-preflight]
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      startsWith(github.ref, 'refs/tags/v') &&
+      needs.release-preflight.outputs.release-state != 'published'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
     permissions:
-      contents: read # Required for actions/checkout
-      packages: write # Required for shadow image publication
+      contents: write # Required for staging the draft GitHub Release
+      packages: write # Required for immutable image and CLI OCI publication
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -129,7 +216,9 @@ jobs:
           python-version-file: .python-version
 
       - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
+        run: |
+          python ./.github/scripts/get_release_version.py
+          echo "SOURCE_SHA=$(git rev-parse HEAD)" >>"${GITHUB_ENV}"
 
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -153,22 +242,319 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
 
-      - name: Install GoReleaser and comparison tools
-        run: make install-goreleaser install-jq install-yq
+      - name: Install release tools
+        run: >-
+          make install-goreleaser install-jq install-yq install-oras
 
-      - name: Check GoReleaser configuration
-        run: make goreleaser-check
+      - name: Ensure source-bound draft release
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
-          GORELEASER_IMAGE_REGISTRY: ${{ env.GORELEASER_SHADOW_REGISTRY }}
-          GORELEASER_RELEASE_DISABLE: true
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_SOURCE_SHA: ${{ env.SOURCE_SHA }}
+          INPUT_NOTES_FILE: docs/release-notes/${{ github.ref_name }}.md
+          INPUT_PRERELEASE: ${{ contains(github.ref_name, '-') }}
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/ensure-draft-release.mjs`
+            )
+            await script({ github, core })
 
-      - name: Publish shadow release
-        run: make goreleaser-shadow
+      - name: Prepare production image intent
+        run: |
+          mkdir -p dist
+          jq -n \
+            --arg version "${REL_VERSION}" \
+            --arg sourceSha "${SOURCE_SHA}" \
+            --argjson images "$(
+              jq -c '[
+                .images[]
+                | select(.category == "production" and .radiusBuild == true)
+                | .name
+              ] | sort' .github/release-parity/targets.json
+            )" '
+            {version: $version, sourceSha: $sourceSha, images: $images}
+          ' >dist/production-image-intent.json
 
-      - name: Upload shadow binaries and metadata
+      - name: Persist production image intent
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: upload
+          INPUT_FILE: dist/production-image-intent.json
+          INPUT_IMMUTABLE: "true"
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Download locked production images
+        id: image-lock-download
+        if: needs.release-preflight.outputs.release-state == 'draft'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: download
+          INPUT_NAMES: '["production-image-digests.json"]'
+          INPUT_OUTPUT_DIR: dist
+          INPUT_OPTIONAL: "true"
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Reconcile locked production images
+        id: image-lock
+        run: |
+          echo "locked=false" >>"${GITHUB_OUTPUT}"
+          if [[ "${IMAGE_LOCK_FOUND}" != "true" ]]; then
+            exit 0
+          fi
+          bash ./.github/scripts/release-oci-artifacts.sh verify \
+            --version "${REL_VERSION}" \
+            --source-sha "${SOURCE_SHA}" \
+            --categories production \
+            --image-lock dist/production-image-digests.json
+          echo "locked=true" >>"${GITHUB_OUTPUT}"
+        env:
+          IMAGE_LOCK_FOUND: >-
+            ${{ steps.image-lock-download.outputs.all_found || 'false' }}
+
+      - name: Download locked CLI OCI artifacts
+        id: cli-lock-download
+        if: needs.release-preflight.outputs.release-state == 'draft'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: download
+          INPUT_NAMES: '["release-cli-oci.json"]'
+          INPUT_OUTPUT_DIR: dist
+          INPUT_OPTIONAL: "true"
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Reconcile locked CLI OCI artifacts
+        id: cli-lock
+        run: |
+          echo "locked=false" >>"${GITHUB_OUTPUT}"
+          if [[ "${CLI_LOCK_FOUND}" != "true" ]]; then
+            exit 0
+          fi
+          bash ./.github/scripts/release-oci-artifacts.sh verify \
+            --version "${REL_VERSION}" \
+            --source-sha "${SOURCE_SHA}" \
+            --cli-lock dist/release-cli-oci.json
+          echo "locked=true" >>"${GITHUB_OUTPUT}"
+        env:
+          CLI_LOCK_FOUND: >-
+            ${{ steps.cli-lock-download.outputs.all_found || 'false' }}
+
+      - name: Verify checkpoint ordering
+        run: |
+          if [[ "${CLI_LOCKED}" == "true" && "${IMAGES_LOCKED}" != "true" ]]; then
+            echo "CLI lock exists without its prerequisite image lock." >&2
+            exit 1
+          fi
+        env:
+          CLI_LOCKED: ${{ steps.cli-lock.outputs.locked }}
+          IMAGES_LOCKED: ${{ steps.image-lock.outputs.locked }}
+
+      - name: Reconcile uncheckpointed production images
+        id: image-adoption
+        if: steps.image-lock.outputs.locked != 'true'
+        run: |
+          make capture-release-image-digests
+          state="$(<dist/production-image-state.txt)"
+          echo "adopted=$([[ "${state}" == "complete" ]] && echo true || echo false)" \
+            >>"${GITHUB_OUTPUT}"
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+          GORELEASER_IMAGE_ALLOW_ABSENT: true
+          GORELEASER_IMAGE_STATE: dist/production-image-state.txt
+
+      - name: Verify production image tags are unclaimed
+        if: >-
+          steps.image-lock.outputs.locked != 'true' &&
+          steps.image-adoption.outputs.adopted != 'true'
+        run: |
+          bash ./.github/scripts/release-oci-artifacts.sh \
+            assert-images-absent \
+            --registry "${CONTAINER_REGISTRY}" \
+            --version "${REL_VERSION}" \
+            --source-sha "${SOURCE_SHA}" \
+            --categories production
+
+      - name: Stage immutable artifacts and draft release
+        if: steps.cli-lock.outputs.locked != 'true'
+        run: make goreleaser-release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GORELEASER_ARGS: >-
+            ${{ (steps.image-lock.outputs.locked == 'true' ||
+            steps.image-adoption.outputs.adopted == 'true') &&
+            '--skip=docker' || '' }}
+
+      - name: Verify and lock immutable production images
+        if: >-
+          steps.image-lock.outputs.locked != 'true' &&
+          steps.image-adoption.outputs.adopted != 'true'
+        run: make capture-release-image-digests
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+
+      - name: Persist the production image lock
+        if: steps.image-lock.outputs.locked != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: upload
+          INPUT_FILE: dist/production-image-digests.json
+          INPUT_IMMUTABLE: "true"
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Normalize and verify staged release assets
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: normalize-cli
+          INPUT_TARGETS_FILE: .github/release-parity/targets.json
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Download staged CLI binaries
+        if: steps.cli-lock.outputs.locked != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: download
+          INPUT_NAMES: >-
+            ["rad_darwin_amd64","rad_darwin_arm64",
+            "rad_linux_amd64","rad_linux_arm","rad_linux_arm64",
+            "rad_windows_amd64.exe","rad_windows_arm64.exe"]
+          INPUT_OUTPUT_DIR: dist/release-cli
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Stage immutable CLI OCI artifacts
+        if: steps.cli-lock.outputs.locked != 'true'
+        run: make release-cli-oci
+        env:
+          GORELEASER_CLI_ARTIFACTS_DIR: dist/release-cli
+
+      - name: Persist the CLI OCI lock
+        if: steps.cli-lock.outputs.locked != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: upload
+          INPUT_FILE: dist/release-cli-oci.json
+          INPUT_IMMUTABLE: "true"
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Prepare the core release lock
+        run: |
+          jq -n \
+            --arg version "${REL_VERSION}" \
+            --arg sourceSha "${SOURCE_SHA}" \
+            --slurpfile images dist/production-image-digests.json \
+            --slurpfile cli dist/release-cli-oci.json \
+            '{
+              version: $version,
+              sourceSha: $sourceSha,
+              images: $images[0],
+              cli: $cli[0]
+            }' >dist/core-release-lock.json
+
+      - name: Persist the core release lock
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: upload
+          INPUT_FILE: dist/core-release-lock.json
+          INPUT_IMMUTABLE: "true"
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Verify draft release state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          expected_prerelease=false
+          if [[ "${REL_VERSION}" == *-* ]]; then
+            expected_prerelease=true
+          fi
+          gh release view "v${REL_VERSION}" \
+            --json isDraft,isPrerelease,tagName |
+            jq -e \
+              --arg tag "v${REL_VERSION}" \
+              --argjson prerelease "${expected_prerelease}" \
+              '.tagName == $tag and .isDraft and
+                .isPrerelease == $prerelease'
+
+      - name: Upload GoReleaser metadata
+        if: steps.cli-lock.outputs.locked != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: goreleaser-shadow-${{ github.sha }}
+          name: goreleaser-release-${{ github.sha }}
           path: |
             dist/goreleaser/artifacts.json
             dist/goreleaser/metadata.json
@@ -177,25 +563,41 @@ jobs:
             dist/goreleaser/rad_*/rad.exe
           if-no-files-found: error
           retention-days: 30
+          overwrite: true
 
-      # The parity job reads this output instead of the job result, because
-      # continue-on-error reports a failed job as successful to needs contexts.
-      - name: Record shadow publication
-        id: publish
-        run: echo "published=true" >>"$GITHUB_OUTPUT"
+      - name: Upload core release locks
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: core-release-locks-${{ github.sha }}
+          path: |
+            dist/production-image-digests.json
+            dist/release-cli-oci.json
+            dist/core-release-lock.json
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: true
 
-  capture-production-image-digests:
-    name: Capture production image digests
-    needs: [build-and-push-images]
-    if: always() && needs.build-and-push-images.result == 'success' && github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v')
-    continue-on-error: true
+  build-and-push-remaining-images:
+    name: Publish retained ${{ matrix.image }} image
+    needs:
+      - release-preflight
+      - goreleaser-release
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      startsWith(github.ref, 'refs/tags/v') &&
+      needs.release-preflight.outputs.release-state != 'published'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    outputs:
-      captured: ${{ steps.capture.outputs.captured }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - bicep
+          - magpiego
+          - testrp
     permissions:
-      contents: read # Required for actions/checkout
-      packages: read # Required for authenticated image inspection
+      contents: write # Required for the durable retained-image lock
+      packages: write # Required for immutable image publication
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -208,17 +610,18 @@ jobs:
           python-version-file: .python-version
 
       - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
+        run: |
+          python ./.github/scripts/get_release_version.py
+          echo "SOURCE_SHA=$(git rev-parse HEAD)" >>"${GITHUB_ENV}"
 
       - name: Setup Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-          cache-dependency-path: go.sum
+          cache-dependency-path: |
+            go.sum
+            test/magpiego/go.sum
           cache: false
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -227,43 +630,219 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Install comparison tools
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+
+      - name: Install image verification tools
         run: make install-jq
 
-      - name: Capture production image digests
+      - name: Prepare retained image intent
+        run: |
+          mkdir -p dist
+          jq -n \
+            --arg version "${REL_VERSION}" \
+            --arg sourceSha "${SOURCE_SHA}" \
+            --arg image "${IMAGE_NAME}" '
+            {version: $version, sourceSha: $sourceSha, images: [$image]}
+          ' >"dist/${IMAGE_NAME}-image-intent.json"
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+
+      - name: Persist retained image intent
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: upload
+          INPUT_FILE: >-
+            dist/${{ matrix.image }}-image-intent.json
+          INPUT_IMMUTABLE: "true"
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Download locked retained images
+        id: remaining-lock-download
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: download
+          INPUT_NAMES: '["${{ matrix.image }}-image-digests.json"]'
+          INPUT_OUTPUT_DIR: dist
+          INPUT_OPTIONAL: "true"
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Reconcile locked retained images
+        id: remaining-lock
+        run: |
+          echo "locked=false" >>"${GITHUB_OUTPUT}"
+          if [[ "${REMAINING_LOCK_FOUND}" != "true" ]]; then
+            exit 0
+          fi
+          bash ./.github/scripts/release-oci-artifacts.sh verify \
+            --version "${REL_VERSION}" \
+            --source-sha "${SOURCE_SHA}" \
+            --names "${IMAGE_NAME}" \
+            --image-lock "dist/${IMAGE_NAME}-image-digests.json"
+          echo "locked=true" >>"${GITHUB_OUTPUT}"
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+          REMAINING_LOCK_FOUND: >-
+            ${{ steps.remaining-lock-download.outputs.all_found }}
+
+      - name: Reconcile uncheckpointed retained image
+        id: remaining-adoption
+        if: steps.remaining-lock.outputs.locked != 'true'
+        run: |
+          make capture-release-image-digests
+          state="$(<"dist/${IMAGE_NAME}-image-state.txt")"
+          if [[ "${state}" == "complete" ]]; then
+            echo "adopted=true" >>"${GITHUB_OUTPUT}"
+          else
+            echo "adopted=false" >>"${GITHUB_OUTPUT}"
+          fi
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+          GORELEASER_IMAGE_NAMES: ${{ matrix.image }}
+          GORELEASER_IMAGE_ALLOW_ABSENT: true
+          GORELEASER_IMAGE_STATE: >-
+            dist/${{ matrix.image }}-image-state.txt
+          GORELEASER_PRODUCTION_IMAGE_LOCK: >-
+            dist/${{ matrix.image }}-image-digests.json
+          IMAGE_NAME: ${{ matrix.image }}
+
+      - name: Verify retained image tag is unclaimed
+        if: >-
+          steps.remaining-lock.outputs.locked != 'true' &&
+          steps.remaining-adoption.outputs.adopted != 'true'
+        run: |
+          bash ./.github/scripts/release-oci-artifacts.sh \
+            assert-images-absent \
+            --registry "${CONTAINER_REGISTRY}" \
+            --version "${REL_VERSION}" \
+            --source-sha "${SOURCE_SHA}" \
+            --names "${IMAGE_NAME}"
+        env:
+          IMAGE_NAME: ${{ matrix.image }}
+
+      - name: Publish immutable retained images
+        if: >-
+          steps.remaining-lock.outputs.locked != 'true' &&
+          steps.remaining-adoption.outputs.adopted != 'true'
+        run: make "docker-multi-arch-push-${IMAGE_NAME}"
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+          DOCKER_CACHE_GHA: 1
+          IMAGE_NAME: ${{ matrix.image }}
+
+      - name: Verify and lock retained images
+        if: >-
+          steps.remaining-lock.outputs.locked != 'true' &&
+          steps.remaining-adoption.outputs.adopted != 'true'
         run: make capture-release-image-digests
         env:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+          GORELEASER_IMAGE_NAMES: ${{ matrix.image }}
+          GORELEASER_PRODUCTION_IMAGE_LOCK: >-
+            dist/${{ matrix.image }}-image-digests.json
 
-      - name: Upload production image digests
+      - name: Persist the retained image lock
+        if: steps.remaining-lock.outputs.locked != 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: upload
+          INPUT_FILE: >-
+            dist/${{ matrix.image }}-image-digests.json
+          INPUT_IMMUTABLE: "true"
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Upload retained image metadata
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: production-image-digests-${{ github.sha }}
-          path: dist/production-image-digests.json
+          name: >-
+            remaining-image-digest-${{ matrix.image }}-${{ github.sha }}
+          path: dist/${{ matrix.image }}-image-digests.json
           if-no-files-found: error
           retention-days: 30
+          overwrite: true
 
-      # See the note on the shadow publication output above.
-      - name: Record digest capture
-        id: capture
-        run: echo "captured=true" >>"$GITHUB_OUTPUT"
+  build-and-push-helm-chart:
+    name: Publish Helm chart
+    needs:
+      - release-preflight
+      - goreleaser-release
+      - build-and-push-remaining-images
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      startsWith(github.ref, 'refs/tags/v') &&
+      needs.release-preflight.outputs.release-state != 'published'
+    uses: ./.github/workflows/__build-helm-chart.yaml
+    permissions:
+      packages: write # Required for uploading the package
+      contents: read # Required for actions/checkout
 
-  verify-goreleaser-shadow:
-    name: Verify GoReleaser shadow parity
-    needs: [build-and-push-cli, capture-production-image-digests, goreleaser-shadow]
-    if: |
-      always() && github.repository == 'radius-project/radius'
-      && startsWith(github.ref, 'refs/tags/v')
-      && needs.build-and-push-cli.result == 'success'
-      && needs.goreleaser-shadow.outputs.published == 'true'
-      && needs.capture-production-image-digests.outputs.captured == 'true'
-    continue-on-error: true
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
+  build-and-push-bicep-types:
+    name: Publish Bicep types
+    needs:
+      - release-preflight
+      - goreleaser-release
+      - build-and-push-remaining-images
+      - build-and-push-helm-chart
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      startsWith(github.ref, 'refs/tags/v') &&
+      needs.release-preflight.outputs.release-state != 'published'
+    uses: ./.github/workflows/__build-bicep-types.yaml
     permissions:
       contents: read # Required for actions/checkout
-      packages: read # Required for authenticated image inspection
+
+  finalize-release:
+    name: Promote aliases and publish release
+    needs:
+      - release-preflight
+      - goreleaser-release
+      - build-and-push-remaining-images
+      - build-and-push-helm-chart
+      - build-and-push-bicep-types
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      startsWith(github.ref, 'refs/tags/v') &&
+      needs.release-preflight.outputs.release-state != 'published'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write # Required for publishing the draft GitHub Release
+      packages: write # Required for promoting image and CLI OCI aliases
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -276,17 +855,9 @@ jobs:
           python-version-file: .python-version
 
       - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
-
-      - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-          cache: false
-
-      - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        run: |
+          python ./.github/scripts/get_release_version.py
+          echo "SOURCE_SHA=$(git rev-parse HEAD)" >>"${GITHUB_ENV}"
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -295,63 +866,93 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
-      - name: Install comparison tools
-        run: make install-jq install-yq
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
-      - name: Download shadow artifacts
+      - name: Install promotion tools
+        run: make install-jq install-oras
+
+      - name: Download staged release metadata
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: goreleaser-shadow-${{ github.sha }}
-          path: dist/goreleaser-shadow
-
-      - name: Download production CLI artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: rad_cli_*
-          merge-multiple: true
-          path: release
-
-      - name: Download production image digests
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: production-image-digests-${{ github.sha }}
+          name: core-release-locks-${{ github.sha }}
           path: dist
 
-      - name: Verify shadow parity
-        run: make verify-goreleaser-shadow
-        env:
-          GORELEASER_SHADOW_DIR: dist/goreleaser-shadow
-          GORELEASER_PRODUCTION_DIR: release
-          GORELEASER_PRODUCTION_IMAGE_LOCK: dist/production-image-digests.json
-          GORELEASER_PRODUCTION_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
-
-      - name: Add parity report to workflow summary
-        if: always() && hashFiles('dist/goreleaser-shadow-parity.json') != ''
-        run: |
-          {
-            echo "## GoReleaser shadow parity"
-            echo
-            jq -r '
-              "Baseline: `v\(.baselineVersion)`  ",
-              "Shadow: `v\(.shadowVersion)`  ",
-              "Source: `\(.sourceCommit)`  ",
-              "Known differences: \(.knownDifferences | length)"
-            ' dist/goreleaser-shadow-parity.json
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload parity report
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Download retained image metadata
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: goreleaser-shadow-parity-${{ github.sha }}
-          path: dist/goreleaser-shadow-parity.json
-          if-no-files-found: warn
-          retention-days: 30
+          pattern: remaining-image-digest-*-${{ github.sha }}
+          merge-multiple: true
+          path: dist/remaining
+
+      - name: Verify immutable release outputs
+        run: |
+          jq -s 'add | sort_by(.name)' \
+            dist/production-image-digests.json \
+            dist/remaining/*-image-digests.json \
+            >dist/release-image-digests.json
+          args=(
+            verify
+            --version "${REL_VERSION}"
+            --source-sha "${SOURCE_SHA}"
+            --image-lock dist/release-image-digests.json
+            --cli-lock dist/release-cli-oci.json
+          )
+          if [[ "${UPDATE_RELEASE:-}" == "true" ]]; then
+            args+=(--channel "${REL_CHANNEL}")
+          fi
+          bash ./.github/scripts/release-oci-artifacts.sh "${args[@]}"
+
+      - name: Persist the complete image lock
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: upload
+          INPUT_FILE: dist/release-image-digests.json
+          INPUT_IMMUTABLE: "true"
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Promote stable aliases
+        if: env.UPDATE_RELEASE == 'true'
+        run: |
+          GORELEASER_PRODUCTION_IMAGE_LOCK=dist/release-image-digests.json \
+            make promote-release-aliases
+
+      - name: Publish and verify draft GitHub Release
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_NOTES_FILE: docs/release-notes/${{ github.ref_name }}.md
+          INPUT_PRERELEASE: ${{ contains(github.ref_name, '-') }}
+          INPUT_MAKE_LATEST: ${{ !contains(github.ref_name, '-') }}
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-draft-release.mjs`
+            )
+            await script({ github, core })
 
   build-summary:
-    if: always()
     name: Build Summary
-    needs: [build-check, build-and-push-images, build-and-push-bicep-types]
+    needs:
+      - release-preflight
+      - goreleaser-release
+      - build-and-push-remaining-images
+      - build-and-push-helm-chart
+      - build-and-push-bicep-types
+      - finalize-release
+    if: always() && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -363,12 +964,19 @@ jobs:
           persist-credentials: false
 
       - name: Check all build jobs
+        env:
+          GORELEASER_RESULT: ${{ needs.goreleaser-release.result }}
+          PREFLIGHT_RESULT: ${{ needs.release-preflight.result }}
+          REMAINING_IMAGES_RESULT: >-
+            ${{ needs.build-and-push-remaining-images.result }}
+          HELM_RESULT: ${{ needs.build-and-push-helm-chart.result }}
+          BICEP_RESULT: ${{ needs.build-and-push-bicep-types.result }}
+          FINALIZE_RESULT: ${{ needs.finalize-release.result }}
         run: |
           ./.github/scripts/build-summary.sh \
-            "build-check:${BUILD_CHECK_RESULT}" \
-            "build-and-push-images:${BUILD_AND_PUSH_IMAGES_RESULT}" \
-            "build-and-push-bicep-types:${BUILD_AND_PUSH_BICEP_TYPES_RESULT}"
-        env:
-          BUILD_CHECK_RESULT: ${{ needs.build-check.result }}
-          BUILD_AND_PUSH_IMAGES_RESULT: ${{ needs.build-and-push-images.result }}
-          BUILD_AND_PUSH_BICEP_TYPES_RESULT: ${{ needs.build-and-push-bicep-types.result }}
+            "release-preflight:${PREFLIGHT_RESULT}" \
+            "goreleaser-release:${GORELEASER_RESULT}" \
+            "remaining-images:${REMAINING_IMAGES_RESULT}" \
+            "build-and-push-helm-chart:${HELM_RESULT}" \
+            "build-and-push-bicep-types:${BICEP_RESULT}" \
+            "finalize-release:${FINALIZE_RESULT}"

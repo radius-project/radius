@@ -21,12 +21,16 @@ RELEASE_PARITY_VERSION ?=
 RELEASE_PARITY_OUTPUT ?= $(DIST_DIR)/release-parity/v$(RELEASE_PARITY_VERSION).json
 GORELEASER ?= goreleaser
 GORELEASER_ARGS ?=
-GORELEASER_SHADOW_REGISTRY ?= ghcr.io/radius-project/dev
-GORELEASER_SHADOW_DIR ?= $(DIST_DIR)/goreleaser
-GORELEASER_PRODUCTION_DIR ?= release
+GORELEASER_DIST_DIR ?= $(DIST_DIR)/goreleaser
 GORELEASER_PRODUCTION_REGISTRY ?= ghcr.io/radius-project
 GORELEASER_PRODUCTION_IMAGE_LOCK ?= $(DIST_DIR)/production-image-digests.json
-GORELEASER_PARITY_REPORT ?= $(DIST_DIR)/goreleaser-shadow-parity.json
+GORELEASER_IMAGE_CATEGORIES ?= production
+GORELEASER_IMAGE_NAMES ?=
+GORELEASER_IMAGE_ALLOW_ABSENT ?= false
+GORELEASER_IMAGE_STATE ?=
+GORELEASER_RELEASE_NOTES ?= docs/release-notes/v$(REL_VERSION).md
+GORELEASER_CLI_LOCK ?= $(DIST_DIR)/release-cli-oci.json
+GORELEASER_CLI_ARTIFACTS_DIR ?=
 
 ##@ Artifacts
 
@@ -60,42 +64,57 @@ goreleaser-snapshot: ## Build and verify a GoReleaser snapshot
 		GIT_VERSION="$(GIT_VERSION)" \
 		TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
 		$(GORELEASER) release --snapshot --clean $(GORELEASER_ARGS)
+	@bash ./.github/scripts/normalize-release-checksums.sh
 	@bash ./.github/scripts/verify-goreleaser-snapshot.sh
 
-.PHONY: goreleaser-shadow
-goreleaser-shadow: ## Publish a tag-based GoReleaser shadow build without creating a GitHub Release
-	@GORELEASER_IMAGE_REGISTRY="$(GORELEASER_SHADOW_REGISTRY)" \
-		GORELEASER_RELEASE_DISABLE=true \
+.PHONY: goreleaser-release
+goreleaser-release: ## Stage immutable release artifacts and a draft GitHub Release
+	@if [ ! -f "$(GORELEASER_RELEASE_NOTES)" ]; then \
+		echo "Error: prepared release notes not found: $(GORELEASER_RELEASE_NOTES)"; \
+		exit 1; \
+	fi
+	@GORELEASER_IMAGE_REGISTRY="$(GORELEASER_PRODUCTION_REGISTRY)" \
+		GORELEASER_RELEASE_DISABLE=false \
 		bash ./.github/scripts/verify-goreleaser-snapshot.sh --config-only
-	@GORELEASER_IMAGE_REGISTRY="$(GORELEASER_SHADOW_REGISTRY)" \
-		GORELEASER_RELEASE_DISABLE=true \
+	@GORELEASER_IMAGE_REGISTRY="$(GORELEASER_PRODUCTION_REGISTRY)" \
+		GORELEASER_RELEASE_DISABLE=false \
 		REL_CHANNEL="$(REL_CHANNEL)" \
 		REL_VERSION="$(REL_VERSION)" \
 		CHART_VERSION="$(CHART_VERSION)" \
 		GIT_VERSION="$(GIT_VERSION)" \
 		TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
-		$(GORELEASER) release --clean $(GORELEASER_ARGS)
+		$(GORELEASER) release --clean $(GORELEASER_ARGS) \
+			--release-notes "$(GORELEASER_RELEASE_NOTES)"
+	@bash ./.github/scripts/normalize-release-checksums.sh
 	@bash ./.github/scripts/verify-goreleaser-snapshot.sh
 
-.PHONY: verify-goreleaser-shadow
-verify-goreleaser-shadow: ## Compare GoReleaser shadow outputs with production outputs from the same tag
-	@GORELEASER_SHADOW_DIR="$(GORELEASER_SHADOW_DIR)" \
-		GORELEASER_PRODUCTION_DIR="$(GORELEASER_PRODUCTION_DIR)" \
-		GORELEASER_SHADOW_REGISTRY="$(GORELEASER_SHADOW_REGISTRY)" \
-		GORELEASER_PRODUCTION_REGISTRY="$(GORELEASER_PRODUCTION_REGISTRY)" \
-		GORELEASER_PRODUCTION_IMAGE_LOCK="$(GORELEASER_PRODUCTION_IMAGE_LOCK)" \
-		GORELEASER_PARITY_REPORT="$(GORELEASER_PARITY_REPORT)" \
-		REL_CHANNEL="$(REL_CHANNEL)" \
-		REL_VERSION="$(REL_VERSION)" \
-		CHART_VERSION="$(CHART_VERSION)" \
-		GIT_COMMIT="$(GIT_COMMIT)" \
-		bash ./.github/scripts/verify-goreleaser-shadow.sh
+.PHONY: release-cli-oci
+release-cli-oci: ## Publish immutable CLI OCI artifacts and record their digests
+	@bash ./.github/scripts/release-oci-artifacts.sh stage-cli \
+		--registry "$(GORELEASER_PRODUCTION_REGISTRY)" \
+		--version "$(REL_VERSION)" \
+		--source-sha "$(GIT_COMMIT)" \
+		$(if $(GORELEASER_CLI_ARTIFACTS_DIR),--artifacts-dir "$(GORELEASER_CLI_ARTIFACTS_DIR)",--artifacts "$(GORELEASER_DIST_DIR)/artifacts.json") \
+		--output "$(GORELEASER_CLI_LOCK)"
 
+.PHONY: promote-release-aliases
+promote-release-aliases: ## Promote channel and latest aliases from immutable digests
+	@bash ./.github/scripts/release-oci-artifacts.sh promote \
+		--version "$(REL_VERSION)" \
+		--channel "$(REL_CHANNEL)" \
+		--source-sha "$(GIT_COMMIT)" \
+		--image-lock "$(GORELEASER_PRODUCTION_IMAGE_LOCK)" \
+		--cli-lock "$(GORELEASER_CLI_LOCK)"
 .PHONY: capture-release-image-digests
-capture-release-image-digests: ## Capture immutable digests for production images published under a release channel
+capture-release-image-digests: ## Verify full-version production images and capture immutable digests
 	@bash ./.github/scripts/capture-release-image-digests.sh \
 		--registry "$(DOCKER_REGISTRY)" \
 		--tag "$(DOCKER_TAG_VERSION)" \
+		--categories "$(GORELEASER_IMAGE_CATEGORIES)" \
+		--names "$(GORELEASER_IMAGE_NAMES)" \
+		--source-sha "$(GIT_COMMIT)" \
+		$(if $(filter true 1,$(GORELEASER_IMAGE_ALLOW_ABSENT)),--allow-absent,) \
+		$(if $(GORELEASER_IMAGE_STATE),--state-output "$(GORELEASER_IMAGE_STATE)",) \
 		--output "$(GORELEASER_PRODUCTION_IMAGE_LOCK)"
 
 .PHONY: docker-save-images

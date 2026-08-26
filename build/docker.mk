@@ -16,7 +16,6 @@
 
 DOCKER_REGISTRY?=$(shell whoami)
 DOCKER_TAG_VERSION?=latest
-DOCKER_SOURCE_TAG_VERSION?=latest
 IMAGE_SRC?=https://github.com/radius-project/radius
 MANIFEST_DIR?=deploy/manifest/built-in-providers/self-hosted
 
@@ -64,15 +63,6 @@ endif
 docker-push-$(1):
 	@echo "$(ARROW) Pushing image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
 	docker push $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)
-endef
-
-define generateDockerMultiArchTagTargets
-.PHONY: docker-multi-arch-tag-$(1)
-docker-multi-arch-tag-$(1):
-	@echo "$(ARROW) Tagging $(DOCKER_REGISTRY)/$(1):$(DOCKER_SOURCE_TAG_VERSION) as $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
-	docker buildx imagetools create \
-		--tag $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
-		$(DOCKER_REGISTRY)/$(1):$(DOCKER_SOURCE_TAG_VERSION)
 endef
 
 define generateDockerMultiArches
@@ -155,9 +145,6 @@ $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP)) $(call generateDockerTa
 # This command will dynamically generate the multi-arch targets for each image in the APPS_MAP list.
 $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP)) $(call generateDockerMultiArches,$(NAME),.,$(DIR)/Dockerfile)))
 
-# This command will dynamically generate tag targets for each image in the APPS_MAP list.
-$(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP)) $(call generateDockerMultiArchTagTargets,$(NAME))))
-
 # list of 'outputs' to build all images
 DOCKER_BUILD_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-build-$(NAME))
 
@@ -169,9 +156,6 @@ DOCKER_BUILD_MULTI_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$
 
 # list of 'outputs' to push all multi arch images
 DOCKER_PUSH_MULTI_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-multi-arch-push-$(NAME))
-
-# list of 'outputs' to alias all multi arch images
-DOCKER_TAG_MULTI_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-multi-arch-tag-$(NAME))
 
 # targets to build development images
 .PHONY: docker-build
@@ -187,6 +171,3 @@ docker-multi-arch-build: copy-manifests $(DOCKER_BUILD_MULTI_TARGETS) ## Builds 
 
 .PHONY: docker-multi-arch-push
 docker-multi-arch-push: copy-manifests $(DOCKER_PUSH_MULTI_TARGETS) ## Pushes all docker images for multiple architectures after building.
-
-.PHONY: docker-multi-arch-tag
-docker-multi-arch-tag: $(DOCKER_TAG_MULTI_TARGETS) ## Adds a tag to all published multi-architecture images.

@@ -198,6 +198,7 @@ collect_cli_assets() {
     local checksum_size
     local build_info_path
     local expected_assets
+    local allowed_assets
     local actual_assets
 
     mkdir -p "${assets_dir}"
@@ -207,8 +208,30 @@ collect_cli_assets() {
             | .name, (.name + ".sha256")
         ] | sort' "${TARGETS_FILE}"
     )"
+    allowed_assets="$(jq -c -n \
+        --argjson expected "${expected_assets}" '
+        ($expected + [
+            "bicep-image-digests.json",
+            "bicep-image-intent.json",
+            "core-release-lock.json",
+            "magpiego-image-digests.json",
+            "magpiego-image-intent.json",
+            "production-image-digests.json",
+            "production-image-intent.json",
+            "release-cli-oci.json",
+            "release-image-digests.json",
+            "testrp-image-digests.json",
+            "testrp-image-intent.json"
+        ]) | sort
+    ')"
     actual_assets="$(jq -c '[.assets[].name] | sort' "${release_json}")"
-    [[ "${actual_assets}" == "${expected_assets}" ]] ||
+    jq -e -n \
+        --argjson expected "${expected_assets}" \
+        --argjson allowed "${allowed_assets}" \
+        --argjson actual "${actual_assets}" '
+        (($expected - $actual) | length) == 0
+        and (($actual - $allowed) | length) == 0
+    ' >/dev/null ||
         fail "GitHub release assets do not match the expected set"
 
     gh release download "v${VERSION}" \
