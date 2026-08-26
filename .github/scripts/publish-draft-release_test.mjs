@@ -15,7 +15,7 @@ function fixture({ draft = true, prerelease = false } = {}) {
     prerelease,
     name: "Radius v0.61.0",
     body: "prepared notes\n",
-    html_url: "https://example.test/releases/v0.61.0",
+    html_url: "https://example.test/releases/v0.61.0"
   };
   const outputs = {};
   const inputs = {
@@ -24,7 +24,7 @@ function fixture({ draft = true, prerelease = false } = {}) {
     TAG: "v0.61.0",
     PRERELEASE: "false",
     MAKE_LATEST: "true",
-    NOTES_FILE: "",
+    NOTES_FILE: ""
   };
   const github = {
     paginate: async (method) => method(),
@@ -36,15 +36,15 @@ function fixture({ draft = true, prerelease = false } = {}) {
           release.draft = request.draft;
           release.prerelease = request.prerelease;
         },
-        getLatestRelease: async () => ({ data: { tag_name: release.tag_name } }),
-      },
-    },
+        getLatestRelease: async () => ({ data: { tag_name: release.tag_name } })
+      }
+    }
   };
   const core = {
     getInput: (name) => inputs[name] ?? "",
     setOutput: (name, value) => {
       outputs[name] = value;
-    },
+    }
   };
   return { core, github, inputs, outputs, release, updates };
 }
@@ -111,17 +111,19 @@ test("reconciles publication accepted before a network error", async () => {
 
 test("rejects a published release with the wrong classification", async () => {
   const state = fixture({ draft: false, prerelease: true });
-  await assert.rejects(() =>
-    withNotes(state, () => publishDraftRelease(state)),
-  /wrong classification/);
+  await assert.rejects(
+    () => withNotes(state, () => publishDraftRelease(state)),
+    /wrong classification/
+  );
   assert.deepEqual(state.updates, []);
 });
 
 test("rejects release notes that drift from the prepared file", async () => {
   const state = fixture();
   state.release.body = "edited on GitHub";
-  await assert.rejects(() =>
-    withNotes(state, () => publishDraftRelease(state)),
-  /prepared notes/);
+  await assert.rejects(
+    () => withNotes(state, () => publishDraftRelease(state)),
+    /prepared notes/
+  );
   assert.deepEqual(state.updates, []);
 });
