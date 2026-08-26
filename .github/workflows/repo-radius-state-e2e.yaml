@@ -146,7 +146,7 @@ jobs:
   cleanup-state-version:
     name: Ensure state version cleanup
     needs: state-rehydration
-    if: always()
+    if: always() && (github.event_name == 'workflow_dispatch' || github.repository == vars.RADIUS_REPOSITORY)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
