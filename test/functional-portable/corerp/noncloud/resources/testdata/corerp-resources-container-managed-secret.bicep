@@ -3,15 +3,13 @@ extension radius
 @description('Specifies the image used by the connection-checking containers.')
 param magpieimage string
 
-@description('Specifies the published resource-types-contrib Recipe tag. Radius PR functional tests use edge, which must include resource-types-contrib#300.')
+@description('Specifies the published resource-types-contrib Recipe tag.')
 param recipeTag string = 'edge'
 
 var applicationName = 'corerp-container-managed-secret'
 var environmentName = '${applicationName}-env'
 var namespace = applicationName
 
-// This dedicated pack makes the cross-repository dependency explicit. The test
-// can run after resource-types-contrib#300 publishes the Container Recipe to edge.
 resource recipePack 'Radius.Core/recipePacks@2025-08-01-preview' = {
   name: 'managed-secret-recipe-pack'
   location: 'global'
