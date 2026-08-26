@@ -48,12 +48,17 @@ write_outputs() {
     if [[ "${status}" == "conflict" ]]; then
         printf 'chore(backport): hand off #%s conflict\n' "${SOURCE_PR}" \
             > "${commit_message_file}"
+        # The placeholder is the bot's own work, so it keeps the bot as author
+        # and the caller substitutes the bot identity for this empty file.
+        : > "${OUTPUT_DIR}/author.txt"
     else
         {
             git show -s --format=%B "${SOURCE_COMMIT}"
             echo
             echo "(cherry picked from commit ${SOURCE_COMMIT})"
         } > "${commit_message_file}"
+        git show -s --format='%an <%ae>' "${SOURCE_COMMIT}" \
+            > "${OUTPUT_DIR}/author.txt"
     fi
 
     printf '%s\n' "${status}" > "${OUTPUT_DIR}/status.txt"
