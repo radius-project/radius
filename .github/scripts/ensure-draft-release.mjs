@@ -7,7 +7,7 @@ async function findRelease(github, owner, repo, tag) {
   const releases = await github.paginate(github.rest.repos.listReleases, {
     owner,
     repo,
-    per_page: 100,
+    per_page: 100
   });
   const matches = releases.filter((release) => release.tag_name === tag);
   if (matches.length > 1) {
@@ -56,7 +56,7 @@ export default async function ensureDraftRelease({ github, core }) {
         body: notes,
         draft: true,
         prerelease,
-        make_latest: "false",
+        make_latest: "false"
       });
     } catch (error) {
       release = await findRelease(github, owner, repo, tag);
