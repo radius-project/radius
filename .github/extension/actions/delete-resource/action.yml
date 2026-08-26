@@ -25,6 +25,64 @@ inputs:
 runs:
   using: composite
   steps:
+    # `rad` reaches the control plane through the Kubernetes API-server proxy, but a
+    # paginated LIST returns a nextLink built from the serving RP's own address (for
+    # example http://dynamic-rp.radius-system:8082/...). The CLI follows that URL
+    # verbatim, bypassing the proxy, and the in-cluster name does not resolve on the
+    # runner -- so deleting an application with more than one page of resources of a
+    # single type fails while enumerating, before anything is deleted. Alias the
+    # control-plane services onto loopback so the directly dialled nextLink still
+    # reaches them. Runs here rather than in setup-control-plane because the earlier
+    # target-credential refresh restarts these deployments, which would drop the
+    # forwards. The forwards are left running for the delete below; the runner
+    # reclaims them when the job ends.
+    - name: Make control-plane services reachable for paginated listings
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        port_open() {
+          # The subshell closes the descriptor when it exits, so this only probes.
+          (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
+        }
+
+        for service in dynamic-rp applications-rp ucp; do
+          port=$(kubectl get service "${service}" -n radius-system \
+            -o jsonpath='{.spec.ports[0].port}' 2>/dev/null || echo "")
+          if [[ -z "${port}" ]]; then
+            echo "Skipping ${service}: no service port found."
+            continue
+          fi
+
+          # A port already in use would satisfy the readiness probe below and alias
+          # the service to whatever else is listening.
+          if port_open "${port}"; then
+            echo "::warning::Port ${port} is already in use; not aliasing ${service}."
+            continue
+          fi
+
+          kubectl port-forward -n radius-system "service/${service}" \
+            "${port}:${port}" --address 127.0.0.1 >/dev/null 2>&1 &
+
+          ready=""
+          for _ in {1..30}; do
+            if port_open "${port}"; then
+              ready="yes"
+              break
+            fi
+            sleep 1
+          done
+
+          if [[ -z "${ready}" ]]; then
+            echo "::warning::Could not port-forward ${service} on port ${port}; paginated listings naming it may fail."
+            continue
+          fi
+
+          echo "127.0.0.1 ${service}.radius-system ${service}.radius-system.svc ${service}.radius-system.svc.cluster.local" \
+            | sudo tee -a /etc/hosts >/dev/null
+          echo "✅ ${service} reachable on 127.0.0.1:${port}"
+        done
+
     - name: Delete Radius resource
       shell: bash
       env:
