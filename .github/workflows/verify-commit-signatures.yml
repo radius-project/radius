@@ -24,8 +24,6 @@ jobs:
     name: Verify Commit Signatures
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    env:
-      PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
     permissions:
       contents: read
       pull-requests: write
@@ -41,6 +39,8 @@ jobs:
 
       - name: Verify commit signatures
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
         with:
           github-token: ${{ github.token }}
           script: |

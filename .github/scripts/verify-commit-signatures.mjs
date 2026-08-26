@@ -131,59 +131,75 @@ export function formatGuidance(unverified, repository, serverUrl) {
 
 /** @param {import('@actions/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
 export default async ({ github, context, core }) => {
-  const prNumber = Number(process.env.PR_NUMBER);
-  if (!Number.isSafeInteger(prNumber) || prNumber <= 0) {
-    throw new Error("PR_NUMBER must be a positive integer");
-  }
-
-  const commits = await listPullRequestCommits(github, context.repo, prNumber);
-  const unverified = commits
-    .filter((commit) => !hasVerifiedSignature(commit))
-    .map((commit) => commit.oid);
-
-  if (unverified.length === 0) {
-    core.info(
-      "All pull request commits have Verified signatures. " +
-        "Existing guidance comments are retained.",
+  try {
+    const prNumber = Number(
+      core.getInput("PR_NUMBER", {
+        required: true,
+      }),
     );
-    return;
-  }
+    if (!Number.isSafeInteger(prNumber) || prNumber <= 0) {
+      throw new Error("PR_NUMBER must be a positive integer");
+    }
 
-  core.warning(
-    `${unverified.length} commit(s) do not have Verified signatures.`,
-  );
-  for (const oid of unverified) {
-    core.info(`- ${oid.slice(0, 7)}`);
-  }
+    const commits = await listPullRequestCommits(
+      github,
+      context.repo,
+      prNumber,
+    );
+    const unverified = commits
+      .filter((commit) => !hasVerifiedSignature(commit))
+      .map((commit) => commit.oid);
 
-  const serverUrl = process.env.GITHUB_SERVER_URL || "https://github.com";
-  const body = formatGuidance(unverified, context.repo, serverUrl);
-  const comments = await github.paginate(github.rest.issues.listComments, {
-    ...context.repo,
-    issue_number: prNumber,
-    per_page: 100,
-  });
-  const existing = comments.find(
-    (comment) =>
-      comment.user?.login === "github-actions[bot]" &&
-      comment.body?.includes(COMMENT_MARKER),
-  );
+    if (unverified.length === 0) {
+      core.info(
+        "All pull request commits have Verified signatures. " +
+          "Existing guidance comments are retained.",
+      );
+      return;
+    }
 
-  if (!existing) {
-    await github.rest.issues.createComment({
+    core.warning(
+      `${unverified.length} commit(s) do not have Verified signatures.`,
+    );
+    for (const oid of unverified) {
+      core.info(`- ${oid.slice(0, 7)}`);
+    }
+
+    const serverUrl = process.env.GITHUB_SERVER_URL || "https://github.com";
+    const body = formatGuidance(unverified, context.repo, serverUrl);
+    const comments = await github.paginate(github.rest.issues.listComments, {
       ...context.repo,
       issue_number: prNumber,
-      body,
+      per_page: 100,
     });
-    core.info("Posted the signature guidance comment.");
-  } else if (existing.body !== body) {
-    await github.rest.issues.updateComment({
-      ...context.repo,
-      comment_id: existing.id,
-      body,
-    });
-    core.info("Updated the signature guidance comment.");
-  } else {
-    core.info("The signature guidance comment is already current.");
+    const existing = comments.find(
+      (comment) =>
+        comment.user?.login === "github-actions[bot]" &&
+        comment.body?.includes(COMMENT_MARKER),
+    );
+
+    if (!existing) {
+      await github.rest.issues.createComment({
+        ...context.repo,
+        issue_number: prNumber,
+        body,
+      });
+      core.info("Posted the signature guidance comment.");
+    } else if (existing.body !== body) {
+      await github.rest.issues.updateComment({
+        ...context.repo,
+        comment_id: existing.id,
+        body,
+      });
+      core.info("Updated the signature guidance comment.");
+    } else {
+      core.info("The signature guidance comment is already current.");
+    }
+  } catch (error) {
+    core.setFailed(
+      error instanceof Error
+        ? error.message
+        : `Unexpected error: ${String(error)}`,
+    );
   }
 };
