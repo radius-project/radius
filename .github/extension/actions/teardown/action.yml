@@ -34,7 +34,9 @@ runs:
       if: always()
       shell: bash
       run: |
-        rad app list || true
+        # The pipeline deploys Radius.Core applications, so list them via the
+        # preview API surface to match; the legacy plane would show nothing.
+        rad app list --preview || true
 
     - name: Collect Radius logs
       if: failure()

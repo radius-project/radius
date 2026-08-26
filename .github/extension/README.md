@@ -122,7 +122,7 @@ The dispatcher routes to the matching provider workflow, which runs on `ubuntu-2
 
     Workflow artifacts are the transport because the REST API can read them **while the run is still in progress** (`GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts`), which is what lets the canvas show deployment state as it happens; `GET /repos/{owner}/{repo}/actions/artifacts?name=<name>` finds the newest one later without knowing the run. They also require no extra registry, no `packages: write` permission, and no name derivation duplicated between this action and the canvas reader.
 15. **Persist state (`rad shutdown`).** Backs the control-plane databases and Terraform recipe-state Secrets up to the state archive — the OCI-backed archive by default (pushed to GHCR, selected by the `RADIUS_STATE_*` variables), or the `radius-state` git orphan branch when `RADIUS_STATE_BACKEND=git`. This runs even when the deploy fails (`if: always()`), so a partially-applied Terraform run is not lost — but only when `rad startup` restored state earlier in the run. If the run fails before `rad startup` completes, this step is skipped so the durable archive is not overwritten with uninitialized state.
-16. **Tear down.** Runs `rad app list`, and always deletes the ephemeral `radius-cp` cluster. On failure, Radius and application logs are collected and uploaded as the `radius-logs` artifact (three-day retention).
+16. **Tear down.** Runs `rad app list --preview` (the pipeline deploys `Radius.Core` apps, so the preview API surface is used), and always deletes the ephemeral `radius-cp` cluster. On failure, Radius and application logs are collected and uploaded as the `radius-logs` artifact (three-day retention).
 
 ### Triggers and permissions
 
