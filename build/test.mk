@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-apply-custom-recipe-packs test-run-rad-commands-action test-command-outcome test-azure-oidc-refresh test-build-platforms test-publish-deploy-status test-extension-action-shell-syntax test-deploy-progress test-verify-azure ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-apply-custom-recipe-packs test-run-rad-commands-action test-command-outcome test-azure-oidc-refresh test-build-platforms test-publish-deploy-status test-extension-action-shell-syntax test-state-persistence-guard test-deploy-progress test-verify-azure ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -91,6 +91,10 @@ test-verify-azure: ## Tests Azure verification subscription visibility retry beh
 .PHONY: test-extension-action-shell-syntax
 test-extension-action-shell-syntax: ## Tests bash syntax of run blocks in extension composite actions
 	@bash ./.github/extension/actions/action-shell-syntax_test.sh
+
+.PHONY: test-state-persistence-guard
+test-state-persistence-guard: ## Tests that teardown persists state only after rad startup restored it
+	@bash ./.github/extension/actions/teardown/state-persistence-guard_test.sh
 
 .PHONY: test-deploy-progress
 test-deploy-progress: ## Tests live deploy progress generation

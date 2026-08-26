@@ -49,3 +49,12 @@ runs:
         git config --global user.email "radius-deploy@users.noreply.github.com"
         git config --global user.name "radius-deploy"
         rad startup
+
+        # Record that state was successfully restored in this run. Teardown reads
+        # this marker to decide whether persisting state is safe: if the workflow
+        # fails before `rad startup` completes, the control-plane databases were
+        # never restored, and `rad shutdown` must not overwrite the durable archive
+        # with that uninitialized state. On the first ever run `rad startup` is a
+        # no-op restore but still succeeds, so the marker is written and teardown
+        # seeds the archive as expected.
+        touch "${RUNNER_TEMP}/radius-state-restored"
