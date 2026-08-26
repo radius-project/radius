@@ -143,7 +143,7 @@ needsSudo() {
     # escalating to sudo here would create it root-owned and break later
     # user-owned installs into the same dir (e.g. `make install-yq`).
     local ancestor
-    ancestor=$(dirname "${install_dir}")
+    ancestor="${install_dir}"
     while [[ ! -d "${ancestor}" ]]; do
         local parent
         parent=$(dirname "${ancestor}")
