@@ -18,7 +18,6 @@ package controller
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/url"
@@ -286,7 +285,7 @@ func TestGetNextLinkURL(t *testing.T) {
 		return req
 	}
 
-	ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
+	ctx := v1.WithARMRequestContext(t.Context(), &v1.ARMRequestContext{
 		APIVersion: "2025-08-01-preview",
 		Top:        10,
 	})
