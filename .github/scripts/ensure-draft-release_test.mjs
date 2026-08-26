@@ -18,7 +18,7 @@ async function fixture(existing) {
     TAG: "v0.61.0",
     SOURCE_SHA: "a".repeat(40),
     NOTES_FILE: notesFile,
-    PRERELEASE: "false",
+    PRERELEASE: "false"
   };
   const outputs = {};
   const github = {
@@ -35,17 +35,17 @@ async function fixture(existing) {
             name: request.name,
             body: request.body,
             draft: request.draft,
-            prerelease: request.prerelease,
+            prerelease: request.prerelease
           });
-        },
-      },
-    },
+        }
+      }
+    }
   };
   const core = {
     getInput: (name) => inputs[name] ?? "",
     setOutput: (name, value) => {
       outputs[name] = value;
-    },
+    }
   };
   return { core, created, github, inputs, outputs, releases, root };
 }
@@ -70,7 +70,7 @@ test("reuses a matching draft release", async () => {
     name: "Radius v0.61.0",
     body: "prepared notes\n",
     draft: true,
-    prerelease: false,
+    prerelease: false
   });
   try {
     await ensureDraftRelease(state);
@@ -89,7 +89,7 @@ test("rejects a draft with different prepared notes", async () => {
     name: "Radius v0.61.0",
     body: "different notes\n",
     draft: true,
-    prerelease: false,
+    prerelease: false
   });
   try {
     await assert.rejects(() => ensureDraftRelease(state), /prepared notes/);
