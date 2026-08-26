@@ -218,7 +218,7 @@ main() {
           "requiredPlatforms":["linux/amd64","linux/arm/v7","linux/arm64"]
         }]' "${TEST_ROOT}/targets.json" > "${TEST_ROOT}/targets.tmp"
         mv "${TEST_ROOT}/targets.tmp" "${TEST_ROOT}/targets.json"
-        if PATH="${TEST_ROOT}/bin:${PATH}" \
+        PATH="${TEST_ROOT}/bin:${PATH}" \
         DOCKER_ARGS_FILE="${TEST_ROOT}/docker-args" \
         MISSING_IMAGE_NAME=controller \
         RELEASE_RETRY_NO_SLEEP=true \
@@ -230,8 +230,35 @@ main() {
           --source-sha "${SOURCE_SHA}" \
           --allow-absent \
           --state-output "${TEST_ROOT}/partial-state.txt" \
-          --output "${TEST_ROOT}/partial.json" > /dev/null 2>&1; then
-          echo "collector accepted a partially published image set" >&2
+          --output "${TEST_ROOT}/partial.json" > /dev/null
+        [[ "$(< "${TEST_ROOT}/partial-state.txt")" == "partial" ]]
+
+        if PATH="${TEST_ROOT}/bin:${PATH}" \
+        DOCKER_ARGS_FILE="${TEST_ROOT}/docker-args" \
+        MISSING_IMAGE_NAME=controller \
+        RELEASE_RETRY_NO_SLEEP=true \
+        GORELEASER_PARITY_TARGETS="${TEST_ROOT}/targets.json" \
+          bash "${SCRIPT}" \
+          --registry ghcr.io/radius-project \
+          --tag 0.61 \
+          --categories production \
+          --source-sha "${SOURCE_SHA}" \
+          --output "${TEST_ROOT}/strict.json" > /dev/null 2>&1; then
+          echo "strict capture accepted a partial image set" >&2
+          exit 1
+    fi
+
+        if PATH="${TEST_ROOT}/bin:${PATH}" \
+        DOCKER_ARGS_FILE="${TEST_ROOT}/docker-args" \
+        GORELEASER_PARITY_TARGETS="${TEST_ROOT}/targets.json" \
+          bash "${SCRIPT}" \
+          --registry ghcr.io/radius-project \
+          --tag 0.61 \
+          --categories production \
+          --source-sha "${SOURCE_SHA}" \
+          --allow-absent \
+          --output "${TEST_ROOT}/unreported.json" > /dev/null 2>&1; then
+          echo "absence tolerance was accepted without a state output" >&2
           exit 1
     fi
 
