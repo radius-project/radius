@@ -94,11 +94,28 @@ release_branch_ref() {
     return 1
 }
 
+# Channel-scoped patterns are built from the shared policy constants so the
+# RC and patch number rules stay defined in exactly one place.
+channel_rc_pattern() {
+    printf '^v%s\\.0-rc\\.?(%s)$' "${CHANNEL//./\\.}" "${RADIUS_RC_NUMBER}"
+}
+
+channel_patch_pattern() {
+    printf '^v%s\\.%s$' "${CHANNEL//./\\.}" "${RADIUS_SEMVER_NUMBER}"
+}
+
+is_stable_release_tag() {
+    local number="${1#v}"
+
+    [[ "${number}" != *-* ]] && is_radius_release_version "${number}"
+}
+
 highest_rc_number() {
     local tag
     local highest=0
-    local pattern="^v${CHANNEL//./\\.}\\.0-rc\\.?([1-9][0-9]*)$"
+    local pattern
 
+    pattern="$(channel_rc_pattern)"
     while IFS= read -r tag; do
         if [[ "${tag}" =~ ${pattern} ]]; then
             if ((10#${BASH_REMATCH[1]} > highest)); then
@@ -114,7 +131,7 @@ newest_stable_tag() {
     local tag
 
     while IFS= read -r tag; do
-        if [[ "${tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        if is_stable_release_tag "${tag}"; then
             printf '%s\n' "${tag}"
             return 0
         fi
@@ -146,7 +163,7 @@ calculate_version() {
                 if [[ -n "${branch_ref}" ]]; then
                     fail "release/${CHANNEL} exists but has no RC tags"
                 fi
-                if [[ ! "${latest}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                if ! is_stable_release_tag "${latest}"; then
                     fail "latest supported version must be stable"
                 fi
                 if [[ "${CHANNEL}" != "$(next_channel "${latest}")" ]]; then
@@ -158,7 +175,7 @@ calculate_version() {
             if [[ -z "${branch_ref}" ]]; then
                 fail "release/${CHANNEL} is required for another RC"
             fi
-            current_rc_pattern="^v${CHANNEL//./\.}\\.0-rc\\.?([1-9][0-9]*)$"
+            current_rc_pattern="$(channel_rc_pattern)"
             if [[ ! "${current}" =~ ${current_rc_pattern} ]]; then
                 fail "versions.yaml has no current RC for ${CHANNEL}"
             fi
@@ -175,10 +192,11 @@ calculate_version() {
             if [[ -z "${branch_ref}" ]]; then
                 fail "release/${CHANNEL} is required for a final release"
             fi
-            if [[ ! "${current}" =~ ^v${CHANNEL//./\.}\.0-rc\.?[0-9]+$ ]]; then
+            local rc_pattern rc_commit branch_commit
+            rc_pattern="$(channel_rc_pattern)"
+            if [[ ! "${current}" =~ ${rc_pattern} ]]; then
                 fail "versions.yaml has no RC for ${CHANNEL}"
             fi
-            local rc_commit branch_commit
             if ! rc_commit="$(
                 git rev-parse --verify "refs/tags/${current}^{commit}"
             )"; then
@@ -194,7 +212,9 @@ calculate_version() {
             if [[ -z "${branch_ref}" ]]; then
                 fail "release/${CHANNEL} is required for a patch"
             fi
-            if [[ ! "${current}" =~ ^v${CHANNEL//./\.}\.([0-9]+)$ ]]; then
+            local patch_pattern
+            patch_pattern="$(channel_patch_pattern)"
+            if [[ ! "${current}" =~ ${patch_pattern} ]]; then
                 fail "versions.yaml has no stable ${CHANNEL} release"
             fi
             if ! git rev-parse --verify --quiet \

@@ -349,6 +349,22 @@ test_final_rejects_unvalidated_branch_tip() {
     ((++PASS))
 }
 
+test_final_rejects_out_of_policy_rc_number() {
+    setup_repo "v0.60.0-rc.0"
+    make_release_branch 0.60
+    git -C "${REPO}" tag v0.60.0-rc.0
+    run_prepare final 0.60
+    if ((LAST_STATUS == 0)); then
+        fail_test "expected rc.0 to be rejected as a final release base"
+        return
+    fi
+    if [[ "${LAST_OUTPUT}" != *"has no RC"* ]]; then
+        fail_test "out-of-policy RC failure was unclear: ${LAST_OUTPUT}"
+        return
+    fi
+    ((++PASS))
+}
+
 test_version_only_does_not_mutate_files() {
     local before
     local output_dir="${TEST_ROOT}/version-only-output"
@@ -500,6 +516,7 @@ main() {
     test_subsequent_rc_rejects_divergent_branch
     test_final
     test_final_rejects_unvalidated_branch_tip
+    test_final_rejects_out_of_policy_rc_number
     test_version_only_does_not_mutate_files
     test_patch
     test_unmerged_backport_fails
