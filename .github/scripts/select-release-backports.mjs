@@ -15,23 +15,23 @@
 // ------------------------------------------------------------
 
 function expectedBase(pull) {
-  if (!pull.head.ref.startsWith('automation/prepare-release-')) {
-    return ''
+  if (!pull.head.ref.startsWith("automation/prepare-release-")) {
+    return "";
   }
-  const body = pull.body ?? ''
-  const start = '<!-- radius-release-plan:start -->'
-  const end = '<!-- radius-release-plan:end -->'
+  const body = pull.body ?? "";
+  const start = "<!-- radius-release-plan:start -->";
+  const end = "<!-- radius-release-plan:end -->";
   if (body.split(start).length !== 2 || body.split(end).length !== 2) {
-    throw new Error('Generated release PR has no unique release plan')
+    throw new Error("Generated release PR has no unique release plan");
   }
-  const plan = body.split(start)[1].split(end)[0]
+  const plan = body.split(start)[1].split(end)[0];
   const matches = [
-    ...plan.matchAll(/^\s*productCommit:\s*([0-9a-f]{40})\s*$/gm),
-  ]
+    ...plan.matchAll(/^\s*productCommit:\s*([0-9a-f]{40})\s*$/gm)
+  ];
   if (matches.length !== 1) {
-    throw new Error('Release plan has no unique productCommit')
+    throw new Error("Release plan has no unique productCommit");
   }
-  return matches[0][1]
+  return matches[0][1];
 }
 
 export function backportEntry(pull, channel) {
@@ -41,59 +41,61 @@ export function backportEntry(pull, channel) {
     source_commit: pull.merge_commit_sha,
     source_title: pull.title,
     source_url: pull.html_url,
-    expected_base: expectedBase(pull),
-  }
+    expected_base: expectedBase(pull)
+  };
 }
 
 export function entriesForMergedPull(pull) {
   const channels = pull.labels
     .map((label) => label.name.match(/^backport release\/(\d+\.\d+)$/))
     .filter(Boolean)
-    .map((match) => match[1])
+    .map((match) => match[1]);
   return [...new Set(channels)]
     .sort()
-    .map((channel) => backportEntry(pull, channel))
+    .map((channel) => backportEntry(pull, channel));
 }
 
 export function selectNextBackport({
   channel,
   sources,
   openBackports,
-  historicalBackports,
+  historicalBackports
 }) {
-  if (openBackports.some((pull) =>
-    pull.head.ref.startsWith('automation/backport-')
-  )) {
-    return []
+  if (
+    openBackports.some((pull) =>
+      pull.head.ref.startsWith("automation/backport-")
+    )
+  ) {
+    return [];
   }
 
-  const sourceByNumber = new Map(sources.map((pull) => [pull.number, pull]))
-  const completed = new Set()
+  const sourceByNumber = new Map(sources.map((pull) => [pull.number, pull]));
+  const completed = new Set();
   for (const backport of historicalBackports.filter((pull) => pull.merged_at)) {
     const markers = [
-      ...(backport.body ?? '').matchAll(
-        /<!-- radius-backport-source: #(\d+) -->/g,
-      ),
-    ]
+      ...(backport.body ?? "").matchAll(
+        /<!-- radius-backport-source: #(\d+) -->/g
+      )
+    ];
     if (markers.length !== 1) {
-      continue
+      continue;
     }
-    const sourceNumber = Number(markers[0][1])
-    const source = sourceByNumber.get(sourceNumber)
+    const sourceNumber = Number(markers[0][1]);
+    const source = sourceByNumber.get(sourceNumber);
     if (!source) {
-      continue
+      continue;
     }
-    const trailer = `(cherry picked from commit ${source.merge_commit_sha})`
+    const trailer = `(cherry picked from commit ${source.merge_commit_sha})`;
     const hasTrailer = (backport.commits ?? []).some((entry) =>
-      (entry.commit?.message ?? '').split(/\r?\n/).includes(trailer)
-    )
+      (entry.commit?.message ?? "").split(/\r?\n/).includes(trailer)
+    );
     if (hasTrailer) {
-      completed.add(sourceNumber)
+      completed.add(sourceNumber);
     }
   }
 
   const pending = sources
     .filter((pull) => !completed.has(pull.number))
-    .sort((left, right) => left.number - right.number)
-  return pending.length === 0 ? [] : [backportEntry(pending[0], channel)]
+    .sort((left, right) => left.number - right.number);
+  return pending.length === 0 ? [] : [backportEntry(pending[0], channel)];
 }
