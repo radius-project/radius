@@ -28,11 +28,10 @@ runs:
             kubectl --kubeconfig "$TARGET_KUBECONFIG" create namespace "$NAMESPACE"
         fi
 
-        # The Radius.Core/environments resource (with its recipe pack and
-        # cloud providers) is created later via Bicep. `rad install kubernetes`
-        # installs only the control plane and does not create a resource group,
-        # so we create the 'default' group explicitly (idempotent), then set up
-        # the local CLI workspace and point it at that group.
+        # The Radius.Core/environments resource (with its recipe pack and cloud
+        # providers) is created later via Bicep, so this pipeline intentionally
+        # does not use `rad init`. `rad install kubernetes` installs the control
+        # plane only.
         rad workspace create kubernetes default
         rad group create default
         rad group switch default
