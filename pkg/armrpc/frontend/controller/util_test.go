@@ -18,8 +18,10 @@ package controller
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/google/uuid"
@@ -182,4 +184,148 @@ func TestValidateEtag_IfNoneMatch(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetURLFromReqWithQueryParameters(t *testing.T) {
+	urlTests := []struct {
+		name     string
+		host     string
+		scheme   string
+		headers  map[string]string
+		expected string
+	}{
+		{
+			name:     "uses the request host when the request was not proxied",
+			host:     "ucp.example.com",
+			scheme:   "https",
+			expected: "https://ucp.example.com/planes/radius/local?top=10",
+		},
+		{
+			name:     "defaults the scheme when the request URL has none",
+			host:     "ucp.example.com",
+			expected: "http://ucp.example.com/planes/radius/local?top=10",
+		},
+		{
+			name:   "prefers the forwarded host over the internal request host",
+			host:   "dynamic-rp.radius-system:8082",
+			scheme: "http",
+			headers: map[string]string{
+				"X-Forwarded-Host": "ucp.example.com",
+			},
+			expected: "http://ucp.example.com/planes/radius/local?top=10",
+		},
+		{
+			name:   "prefers the forwarded scheme over the request scheme",
+			host:   "ucp.example.com",
+			scheme: "http",
+			headers: map[string]string{
+				"X-Forwarded-Proto": "https",
+			},
+			expected: "https://ucp.example.com/planes/radius/local?top=10",
+		},
+		{
+			name:   "applies the forwarded host and scheme together",
+			host:   "dynamic-rp.radius-system:8082",
+			scheme: "http",
+			headers: map[string]string{
+				"X-Forwarded-Host":  "ucp.example.com",
+				"X-Forwarded-Proto": "https",
+			},
+			expected: "https://ucp.example.com/planes/radius/local?top=10",
+		},
+		{
+			name:   "uses the first entry of a forwarded header set by a proxy chain",
+			host:   "dynamic-rp.radius-system:8082",
+			scheme: "http",
+			headers: map[string]string{
+				"X-Forwarded-Host":  "ucp.example.com, inner.example.com",
+				"X-Forwarded-Proto": "https, http",
+			},
+			expected: "https://ucp.example.com/planes/radius/local?top=10",
+		},
+		{
+			name:   "falls back to the request values when the forwarded headers are empty",
+			host:   "ucp.example.com",
+			scheme: "https",
+			headers: map[string]string{
+				"X-Forwarded-Host":  "",
+				"X-Forwarded-Proto": "",
+			},
+			expected: "https://ucp.example.com/planes/radius/local?top=10",
+		},
+	}
+
+	for _, tc := range urlTests {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, "/planes/radius/local", nil)
+			require.NoError(t, err)
+			req.Host = tc.host
+			req.URL.Scheme = tc.scheme
+			for key, value := range tc.headers {
+				req.Header.Set(key, value)
+			}
+
+			qps := url.Values{}
+			qps.Add("top", "10")
+
+			require.Equal(t, tc.expected, GetURLFromReqWithQueryParameters(req, qps).String())
+		})
+	}
+}
+
+func TestGetNextLinkURL(t *testing.T) {
+	newRequest := func(t *testing.T) *http.Request {
+		t.Helper()
+		// A LIST that UCP proxied downstream: the provider sees its own
+		// cluster-internal address as the host, and the caller-visible one only in
+		// X-Forwarded-Host.
+		req, err := http.NewRequest(http.MethodGet, "/planes/radius/local/resourceGroups/default/providers/Radius.Compute/containers", nil)
+		require.NoError(t, err)
+		req.Host = "dynamic-rp.radius-system:8082"
+		req.URL.Scheme = "http"
+		return req
+	}
+
+	ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
+		APIVersion: "2025-08-01-preview",
+		Top:        10,
+	})
+
+	t.Run("returns an empty link when there are no further pages", func(t *testing.T) {
+		require.Empty(t, GetNextLinkURL(ctx, newRequest(t), ""))
+	})
+
+	t.Run("returns a link the original caller can reach", func(t *testing.T) {
+		req := newRequest(t)
+		req.Header.Set("X-Forwarded-Host", "ucp.example.com")
+		req.Header.Set("X-Forwarded-Proto", "https")
+
+		nextLink, err := url.Parse(GetNextLinkURL(ctx, req, "skip-token"))
+		require.NoError(t, err)
+
+		require.Equal(t, "https", nextLink.Scheme)
+		require.Equal(t, "ucp.example.com", nextLink.Host)
+		require.Equal(t, "/planes/radius/local/resourceGroups/default/providers/Radius.Compute/containers", nextLink.Path)
+		require.Equal(t, "2025-08-01-preview", nextLink.Query().Get("api-version"))
+		require.Equal(t, "skip-token", nextLink.Query().Get("skipToken"))
+		require.Equal(t, "10", nextLink.Query().Get("top"))
+	})
+
+	t.Run("does not leak the provider's cluster-internal address", func(t *testing.T) {
+		req := newRequest(t)
+		req.Header.Set("X-Forwarded-Host", "ucp.example.com")
+
+		require.NotContains(t, GetNextLinkURL(ctx, req, "skip-token"), "dynamic-rp.radius-system")
+	})
+
+	t.Run("uses the request host when the request was not proxied", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/planes/radius/local/providers/Radius.Compute/containers", nil)
+		require.NoError(t, err)
+		req.Host = "localhost:8080"
+		req.URL.Scheme = "http"
+
+		nextLink, err := url.Parse(GetNextLinkURL(ctx, req, "skip-token"))
+		require.NoError(t, err)
+		require.Equal(t, "localhost:8080", nextLink.Host)
+	})
 }

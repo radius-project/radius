@@ -115,13 +115,38 @@ func checkIfNoneMatchHeader(ifNoneMatchETag string, etag string) error {
 	return nil
 }
 
-// GetURLFromReqWithQueryParameters function builds a URL from the request and query parameters
+// forwardedHeaderValue returns the first entry of a possibly comma-separated
+// X-Forwarded-* header, or an empty string when the header is absent.
+func forwardedHeaderValue(req *http.Request, header string) string {
+	value := req.Header.Get(header)
+	if value == "" {
+		return ""
+	}
+
+	first, _, _ := strings.Cut(value, ",")
+	return strings.TrimSpace(first)
+}
+
+// GetURLFromReqWithQueryParameters function builds a URL from the request and query parameters.
+//
+// When a request reaches a resource provider through UCP's proxy, req.Host is the
+// provider's own cluster-internal address (for example dynamic-rp.radius-system:8082),
+// which the original caller cannot resolve. The proxy forwards the caller-visible host
+// and scheme as X-Forwarded-Host and X-Forwarded-Proto, so prefer those when present.
 func GetURLFromReqWithQueryParameters(req *http.Request, qps url.Values) *url.URL {
 	url := url.URL{
 		Host:     req.Host,
 		Scheme:   req.URL.Scheme,
 		Path:     req.URL.Path,
 		RawQuery: qps.Encode(),
+	}
+
+	if host := forwardedHeaderValue(req, "X-Forwarded-Host"); host != "" {
+		url.Host = host
+	}
+
+	if scheme := forwardedHeaderValue(req, "X-Forwarded-Proto"); scheme != "" {
+		url.Scheme = scheme
 	}
 
 	if url.Scheme == "" {
