@@ -74,7 +74,7 @@ export async function listPullRequestCommits(github, repository, number) {
     const result = await github.graphql(COMMITS_QUERY, {
       ...repository,
       number,
-      cursor,
+      cursor
     });
     const pullRequest = result.repository.pullRequest;
     if (!pullRequest) {
@@ -108,7 +108,7 @@ export function formatGuidance(unverified, repository, serverUrl) {
     (oid) =>
       `- [\`${oid.slice(0, 7)}\`](` +
       `${serverUrl}/${repository.owner}/` +
-      `${repository.repo}/commit/${oid})`,
+      `${repository.repo}/commit/${oid})`
   );
 
   return [
@@ -125,7 +125,7 @@ export function formatGuidance(unverified, repository, serverUrl) {
     "Cryptographic commit signing is separate from the DCO " +
       "`Signed-off-by` line; both are required.",
     "",
-    COMMENT_MARKER,
+    COMMENT_MARKER
   ].join("\n");
 }
 
@@ -134,8 +134,8 @@ export default async ({ github, context, core }) => {
   try {
     const prNumber = Number(
       core.getInput("PR_NUMBER", {
-        required: true,
-      }),
+        required: true
+      })
     );
     if (!Number.isSafeInteger(prNumber) || prNumber <= 0) {
       throw new Error("PR_NUMBER must be a positive integer");
@@ -144,7 +144,7 @@ export default async ({ github, context, core }) => {
     const commits = await listPullRequestCommits(
       github,
       context.repo,
-      prNumber,
+      prNumber
     );
     const unverified = commits
       .filter((commit) => !hasVerifiedSignature(commit))
@@ -153,13 +153,13 @@ export default async ({ github, context, core }) => {
     if (unverified.length === 0) {
       core.info(
         "All pull request commits have Verified signatures. " +
-          "Existing guidance comments are retained.",
+          "Existing guidance comments are retained."
       );
       return;
     }
 
     core.warning(
-      `${unverified.length} commit(s) do not have Verified signatures.`,
+      `${unverified.length} commit(s) do not have Verified signatures.`
     );
     for (const oid of unverified) {
       core.info(`- ${oid.slice(0, 7)}`);
@@ -170,26 +170,26 @@ export default async ({ github, context, core }) => {
     const comments = await github.paginate(github.rest.issues.listComments, {
       ...context.repo,
       issue_number: prNumber,
-      per_page: 100,
+      per_page: 100
     });
     const existing = comments.find(
       (comment) =>
         comment.user?.login === "github-actions[bot]" &&
-        comment.body?.includes(COMMENT_MARKER),
+        comment.body?.includes(COMMENT_MARKER)
     );
 
     if (!existing) {
       await github.rest.issues.createComment({
         ...context.repo,
         issue_number: prNumber,
-        body,
+        body
       });
       core.info("Posted the signature guidance comment.");
     } else if (existing.body !== body) {
       await github.rest.issues.updateComment({
         ...context.repo,
         comment_id: existing.id,
-        body,
+        body
       });
       core.info("Updated the signature guidance comment.");
     } else {
@@ -197,9 +197,9 @@ export default async ({ github, context, core }) => {
     }
   } catch (error) {
     core.setFailed(
-      error instanceof Error
-        ? error.message
-        : `Unexpected error: ${String(error)}`,
+      error instanceof Error ?
+        error.message
+      : `Unexpected error: ${String(error)}`
     );
   }
 };
