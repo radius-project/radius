@@ -46,7 +46,7 @@ make test-functional-daprrp
 make test-functional-datastoresrp
 ```
 
-To run a single group directly, call its `make` target — for example `make test-functional-corerp-noncloud` for the non-cloud Core RP tests, or `make test-functional-all-noncloud` for the standard non-cloud groups. The groups (`ucp`, `kubernetes`, `corerp`, `cli`, `msgrp`, `daprrp`, `datastoresrp`, `dynamicrp`, `samples`, `upgrade`, `multicluster`, and `statestore`) and the variants each group supports are defined in [`build/test.mk`](../../../../build/test.mk).
+To run a single group directly, call its `make` target — for example `make test-functional-corerp-noncloud` for the non-cloud Core RP tests, or `make test-functional-all-noncloud` for the standard non-cloud groups. The groups (`ucp`, `kubernetes`, `corerp`, `cli`, `msgrp`, `daprrp`, `datastoresrp`, `dynamicrp`, `samples`, `upgrade`, `multicluster`, `database`, and `statestore`) and the variants each group supports are defined in [`build/test.mk`](../../../../build/test.mk).
 
 You can also run or debug individual tests from VS Code.
 
@@ -54,13 +54,24 @@ You can also run or debug individual tests from VS Code.
 
 The aggregate `make test-functional-all-noncloud` target intentionally excludes these isolated groups:
 
-| Target                                       | Requirements and behavior                                                                                                                      |
-|----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| `make test-functional-multicluster-noncloud` | Requires a second Kubernetes cluster, a target-cluster Secret mounted into Radius, and `RADIUS_TEST_EXTERNAL_KUBECONFIG` for the test process. |
-| `make test-functional-statestore-noncloud`   | Destructive lifecycle test that installs, purges, and reinstalls Radius. Run it only on a dedicated cluster.                                   |
-| `make test-functional-upgrade-noncloud`      | Exercises the Radius upgrade path and performs its own install/upgrade lifecycle.                                                              |
+| Target                                       | Requirements and behavior                                                                                                                          |
+|----------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `make test-functional-multicluster-noncloud` | Requires a second Kubernetes cluster, a target-cluster Secret mounted into Radius, and `RADIUS_TEST_EXTERNAL_KUBECONFIG` for the test process.     |
+| `make test-functional-database-noncloud`     | Requires Radius installed with `--set database.enabled=true` (PostgreSQL-backed control plane) instead of the default Kubernetes API server store. |
+| `make test-functional-statestore-noncloud`   | Destructive lifecycle test that installs, purges, and reinstalls Radius. Run it only on a dedicated cluster.                                       |
+| `make test-functional-upgrade-noncloud`      | Exercises the Radius upgrade path and performs its own install/upgrade lifecycle.                                                                  |
 
-The multicluster and statestore groups run as isolated CI legs in `functional-test-noncloud.yaml`; do not run them against a shared development cluster.
+The multicluster, database, and statestore groups run as isolated CI legs in `functional-test-noncloud.yaml`; do not run them against a shared development cluster.
+
+For database tests, install Radius with the PostgreSQL-backed control plane first:
+
+```bash
+rad install kubernetes --set database.enabled=true
+```
+
+Running `make test-functional-database-noncloud` against a default (API server-backed) install fails, because the tests check that the PostgreSQL StatefulSet is present before asserting anything else.
+
+Use a cluster that has never had a default install. The tests also assert that the API server store holds no objects, which is how they prove the resource providers actually switched to PostgreSQL rather than only running it alongside. Switching providers does not migrate or delete rows already written to the API server store, so a cluster that was previously installed without `database.enabled=true` keeps those objects and fails that assertion even when the PostgreSQL-backed control plane is healthy. CI creates a fresh cluster for every run.
 
 For multicluster tests, create the namespace and Secret before installing Radius. The kubeconfig stored in the Secret must use an API-server address reachable from the Radius pods:
 
