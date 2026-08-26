@@ -60,6 +60,11 @@ if [[ "$1 $2" == "pr view" ]]; then
 '"url":"https://example.test/104","mergeCommit":{"oid":"source-104"},'\
 '"mergedAt":"2026-08-20T00:00:00Z","baseRefName":"main"}'
             ;;
+        105)
+            printf '%s\n' '{"number":105,"title":"fix: ambiguous",'\
+'"url":"https://example.test/105","mergeCommit":{"oid":"source-105"},'\
+'"mergedAt":"2026-08-20T00:00:00Z","baseRefName":"main"}'
+            ;;
     esac
     exit 0
 fi
@@ -90,7 +95,13 @@ else
 '"body":"<!-- radius-backport-source: #104 -->",'\
 '"state":"MERGED","mergedAt":"2026-08-21T00:00:00Z",'\
 '"mergeCommit":{"oid":"placeholder-104"},'\
-'"commits":[{"messageBody":"conflict handoff only"}]}]'
+'"commits":[{"messageBody":"conflict handoff only"}]},'\
+'{"number":205,"url":"https://example.test/205",'\
+'"body":"<!-- radius-backport-source: #105 -->\n'\
+'<!-- radius-backport-source: #999 -->",'\
+'"state":"MERGED","mergedAt":"2026-08-21T00:00:00Z",'\
+'"mergeCommit":{"oid":"backport-105"},'\
+'"commits":[{"messageBody":"(cherry picked from commit source-105)"}]}]'
 fi
 EOF
     chmod +x "${TEST_ROOT}/gh"
@@ -136,12 +147,28 @@ test_rejects_unmerged_explicit_pr() {
     ((++PASS))
 }
 
+test_ambiguous_backport_body_is_not_trusted() {
+    local output="${TEST_ROOT}/ambiguous.json"
+
+    GH="${TEST_ROOT}/gh" bash "${SCRIPT}" \
+        --repository radius-project/radius --channel 0.60 \
+        --explicit-prs '105' --output "${output}"
+
+    if [[ "$(jq -r '.[] | select(.source_pr == 105) | .backport_merged' \
+        "${output}")" != "false" ]]; then
+        fail_test "a body naming two sources must not satisfy the backport"
+        return
+    fi
+    ((++PASS))
+}
+
 main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/collect-backports-test-XXXXXX")"
     setup_fake_gh
 
     test_collects_labeled_and_explicit_prs
     test_rejects_unmerged_explicit_pr
+    test_ambiguous_backport_body_is_not_trusted
 
     if ((FAIL > 0)); then
         echo "collect release backports tests failed: ${PASS} passed, ${FAIL} failed"

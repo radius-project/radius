@@ -139,11 +139,16 @@ main() {
             . as $source |
             ($backports[0] |
                 map(select(
-                    (.body // "") |
-                    contains(
-                        "<!-- radius-backport-source: #" +
-                        "\($source.number) -->"
-                    )
+                    # A body naming more than one source cannot identify
+                    # which backport it is, so it is never trusted.
+                    ((.body // "") |
+                        [scan("<!-- radius-backport-source: #[0-9]+ -->")] |
+                        length) == 1 and
+                    ((.body // "") |
+                        contains(
+                            "<!-- radius-backport-source: #" +
+                            "\($source.number) -->"
+                        ))
                 )) |
                 sort_by([(.mergedAt != null), .number]) |
                 last
