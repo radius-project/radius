@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
 # Provider-agnostic GHCR package push-permission check shared by verify-aws.yml
 # and verify-azure.yml. Radius stores its control-plane state as an OCI archive
 # in GHCR (RADIUS_STATE_REGISTRY); `rad startup` / `rad shutdown` push to that

@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
 name: Radius - Verify Credentials
 on:
   workflow_dispatch:
@@ -80,7 +82,54 @@ jobs:
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          allow-no-subscriptions: true
+
+      - name: Wait for Azure subscription
+        timeout-minutes: 12
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+
+          readonly MAX_ATTEMPTS=23
+          readonly INITIAL_DELAY_SECONDS=5
+          readonly MAX_DELAY_SECONDS=30
+          GUID_PATTERN='^[[:xdigit:]]{8}-[[:xdigit:]]{4}-[[:xdigit:]]{4}-'
+          GUID_PATTERN+='[[:xdigit:]]{4}-[[:xdigit:]]{12}$'
+          readonly GUID_PATTERN
+
+          if [[ -z "${AZURE_SUBSCRIPTION_ID}" ]]; then
+            echo "::error::AZURE_SUBSCRIPTION_ID is not configured for this environment."
+            exit 1
+          fi
+          if [[ ! "${AZURE_SUBSCRIPTION_ID}" =~ ${GUID_PATTERN} ]]; then
+            echo "::error::AZURE_SUBSCRIPTION_ID must be a valid GUID."
+            exit 1
+          fi
+
+          delay_seconds="${INITIAL_DELAY_SECONDS}"
+          for ((attempt = 1; attempt <= MAX_ATTEMPTS; attempt++)); do
+            subscriptions="$(az account list --refresh --only-show-errors --output json)"
+            if jq -e --arg subscription_id "${AZURE_SUBSCRIPTION_ID}" \
+              'any(.[]; ((.id? // "") | ascii_downcase) == ($subscription_id | ascii_downcase))' \
+              <<<"${subscriptions}" >/dev/null; then
+              az account set --subscription "${AZURE_SUBSCRIPTION_ID}"
+              echo "Azure subscription is visible and selected."
+              break
+            fi
+
+            if ((attempt == MAX_ATTEMPTS)); then
+              echo "::error::Azure OIDC authentication succeeded, but the configured subscription was not visible after about 10 minutes. Subscription discovery may be failing, Azure RBAC may still be propagating, or the identity may be missing a role assignment on the subscription or its resources. Confirm Azure subscription discovery and the role assignment, then re-run credential verification."
+              exit 1
+            fi
+
+            echo "Configured Azure subscription is not visible yet; retrying in ${delay_seconds}s (${attempt}/${MAX_ATTEMPTS})."
+            sleep "${delay_seconds}"
+            delay_seconds=$((delay_seconds * 2))
+            if ((delay_seconds > MAX_DELAY_SECONDS)); then
+              delay_seconds="${MAX_DELAY_SECONDS}"
+            fi
+          done
 
       - name: Report possible GitHub enterprise-claim mismatch
         # Fires only when Azure Login failed AND the OIDC token carried an empty

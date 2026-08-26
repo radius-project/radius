@@ -34,7 +34,7 @@ make generate
 `make generate` runs the full pipeline: it deletes stale generated code, compiles the resource-provider namespaces' TypeSpec to OpenAPI specs (`make generate-openapi-spec` — `UCP`, `Applications.Core`, `Applications.Dapr`, `Applications.Messaging`, `Applications.Datastores`, and `Radius.Core`), runs the TypeSpec Go emitter to produce each namespace's Go client, runs `go generate ./...` (mockgen), generates the Bicep extensibility types, and generates the CRDs. (Not every TypeSpec project emits OpenAPI — for example `typespec/GenericResource` produces only the generic CLI Go client via `make generate-genericcliclient`.) The two halves of the pipeline are:
 
 - **TypeSpec → Swagger.** The [`@azure-tools/typespec-autorest`](https://github.com/Azure/typespec-azure) emitter writes each API namespace's OpenAPI document to `swagger/specification/<service>/resource-manager/<service-name>/<status>/<version>/openapi.json`. The output directory is set per namespace by the `emitter-output-dir` option in that namespace's `tspconfig.yaml` (for example `typespec/Applications.Core/tspconfig.yaml` emits to `swagger/specification/applications`).
-- **TypeSpec → Go.** The [`@azure-tools/typespec-go`](https://github.com/Azure/typespec-azure) emitter writes generated client code to a temporary `.tsp-go-tmp` folder, which the per-namespace `make generate-rad-<namespace>-client` targets copy into the matching `pkg/<namespace>/api/<version>/` directory and run `go fmt` over. Generated files are prefixed `zz_generated_`.
+- **TypeSpec → Go.** The per-namespace `make generate-rad-<namespace>-client` targets create a fresh directory under `${TMPDIR:-/tmp}` for each [`@azure-tools/typespec-go`](https://github.com/Azure/typespec-azure) invocation. Generating outside the repository prevents the emitter from replacing the module configured in the namespace's `tspconfig.yaml` with the repository's root Go module. Each target copies the generated client into the matching `pkg/<namespace>/api/<version>/` directory, runs `go fmt`, and removes the temporary directory. Generated files are prefixed `zz_generated_`.
 
 #### Alternative: generate a single namespace manually
 
@@ -46,13 +46,13 @@ You normally only need `make generate`. To regenerate one namespace by hand, run
    cd typespec/Applications.Core && pnpm exec tsp compile .
    ```
 
-2. Generate the Go client for that namespace with the TypeSpec Go emitter:
+2. Generate and copy the Go client for that namespace with its Make target:
 
    ```bash
-   cd typespec/Applications.Core && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
+   make generate-rad-corerp-client
    ```
 
-   The emitter configuration lives in each namespace's `tspconfig.yaml` (under the `@azure-tools/typespec-go` options block). The generated files land in `.tsp-go-tmp` and must be copied into the matching `pkg/<namespace>/api/<version>/` directory; the per-namespace `make generate-rad-<namespace>-client` targets (for example `make generate-rad-corerp-client`) automate that copy-and-format step, so prefer them over copying by hand.
+   The emitter configuration lives in each namespace's `tspconfig.yaml` under the `@azure-tools/typespec-go` options block. Use the Make target instead of invoking the Go emitter directly because the target creates an external temporary output directory, copies the generated files into the configured package, formats them, and cleans up the temporary directory.
 
 ### 3. Wire up and test the change
 

@@ -115,7 +115,7 @@ tools:
 
   - name: dapr
     makePrefix: DAPR
-    version: v1.18.0
+    version: v1.18.1
     source:
       type: github-release
       repository: dapr/cli
@@ -124,16 +124,16 @@ tools:
     platforms:
       linux_amd64:
         asset: dapr_linux_amd64.tar.gz
-        checksum: 2a94739e0aa101289d88418225319562bc6800db273b3d9cf819a0efd1ea1bfe
+        checksum: 025026626ddd40004273a1f5cac4eb53dfe6979e624c1c083531f483403ed3f1
       linux_arm64:
         asset: dapr_linux_arm64.tar.gz
-        checksum: 99d93e1dde04225204e2feb33191a1df97c87bb7d88abd10d1523f29a88d35d2
+        checksum: fbe1a29e17c7553ae43ec2090b8d28ee98a485628b27ac2219880183bf49ebe6
       darwin_amd64:
         asset: dapr_darwin_amd64.tar.gz
-        checksum: 2a7b7f3e4dfa5f8408b183bf840ab518766d91c3338e540cf84e16b5eb561604
+        checksum: bc806045297294f53b14b20bb4dd03086e1cd4d49a394f547ac86ab1b26881ca
       darwin_arm64:
         asset: dapr_darwin_arm64.tar.gz
-        checksum: 7d564d6aa29a68caab53e9aa4bcb4aabd9da5829992f3c8c297df3095ef5678b
+        checksum: 62cbdb53bc6771e9b7288c8acc6bc335da741cc0fdf63abec3bcbbbf15861838
     checksumSource:
       type: github-release-file
       fileTemplate: "{asset}.sha256"
@@ -141,7 +141,7 @@ tools:
 
   - name: helm
     makePrefix: HELM
-    version: v4.2.3
+    version: v4.2.4
     source:
       type: github-release
       repository: helm/helm
@@ -150,16 +150,16 @@ tools:
     platforms:
       linux_amd64:
         asset: helm-{version}-linux-amd64.tar.gz
-        checksum: e9b88b4ee95b18c706839c28d3a0220e5bc470e9cd9262410c90793c45ff8b7c
+        checksum: c306b46f719b0a4da32d0f78ee21bf90ce8d602f15b22ab753f0674d1670a7f3
       linux_arm64:
         asset: helm-{version}-linux-arm64.tar.gz
-        checksum: 21abd9354d39b2cd79a8d76be6912cd137a983cbf997193503fb8a6a6e2f2785
+        checksum: 564de2191b881e9f71b5606b25345821ea1682f06ab90499d3ab22b530176da1
       darwin_amd64:
         asset: helm-{version}-darwin-amd64.tar.gz
-        checksum: ff3ac86755a45f3422473bc1200776aac0fe04c5766abe6ca66699f7b564b23b
+        checksum: 6c163d687ca03c3b5c01928e53bbbcf9518278f47ce7a2f249a5a08e8bdaa2bc
       darwin_arm64:
         asset: helm-{version}-darwin-arm64.tar.gz
-        checksum: 048ecf5ad3160f83d918f9fe945238d2132b079640f7b106175331c25f242c64
+        checksum: d747eb4e28bd2727173d15b759fa0a17822291ec09db7ced3d55af290a3661a2
     checksumSource:
       type: url-file
       urlTemplate: https://get.helm.sh/{asset}.sha256sum
@@ -193,7 +193,7 @@ tools:
 
   - name: golangci-lint
     makePrefix: GOLANGCI_LINT
-    version: v2.12.2
+    version: v2.13.1
     source:
       type: github-release
       repository: golangci/golangci-lint
@@ -202,16 +202,16 @@ tools:
     platforms:
       linux_amd64:
         asset: golangci-lint-{version_no_v}-linux-amd64.tar.gz
-        checksum: 8df580d2670fed8fa984aac0507099af8df275e665215f5c7a2ae3943893a553
+        checksum: b17bfbc9d4aaa48be7f4f1ce3240bc3d8200c870c072bacf15c26219e2cfb9cc
       linux_arm64:
         asset: golangci-lint-{version_no_v}-linux-arm64.tar.gz
-        checksum: 44cd40a8c76c86755375adfeea52cfd3533cb43d7bd647771e0ae065e166df3a
+        checksum: 908317c23db18448f924e853b3d8a659fd919614cd438f224810a4053daa2607
       darwin_amd64:
         asset: golangci-lint-{version_no_v}-darwin-amd64.tar.gz
-        checksum: f6f06d94b6241521c53d15450c5209b028270bf966f842afb11c030c79f5bc16
+        checksum: 2c373363953e4e0bee2a03b7fe864a5eb6a3822927cb077d9ca33f2ae3cb2da2
       darwin_arm64:
         asset: golangci-lint-{version_no_v}-darwin-arm64.tar.gz
-        checksum: a9c54498731b3128f79e090be6110f3e5fffccc617b08142ed244d4126c73f29
+        checksum: 0c9818baf6fb8ad26c6d2ef51b68d5a1e260ef07727036b1431647cc44637c7c
     checksumSource:
       type: github-release-file
       fileTemplate: golangci-lint-{version_no_v}-checksums.txt
@@ -222,6 +222,7 @@ tools:
     version: 1.15.8
     source:
       type: hashicorp-checkpoint
+      repository: hashicorp/terraform
       latestURL: https://checkpoint-api.hashicorp.com/v1/check/terraform
     downloadTemplate: https://releases.hashicorp.com/terraform/{version}/terraform_{version}_{os}_{arch}.zip
     platforms:

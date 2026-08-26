@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
 # Provider-agnostic deploy-status publisher shared by run-rad-commands-aws.yml
 # and run-rad-commands-azure.yml. Captures the deployed app graph from the live
 # control plane and publishes it as a workflow artifact so the canvas "Deployed"
@@ -37,6 +39,8 @@ runs:
         APP_FILE: ${{ inputs.app-file }}
       run: |
         set -euo pipefail
+        # shellcheck source=.github/extension/actions/deploy-progress/progress.sh
+        source "$(dirname "$GITHUB_ACTION_PATH")/deploy-progress/progress.sh"
 
         RESULT_FILE=/tmp/radius-output/rad-commands-result.json
         # A deterministic directory, not `mktemp -d`, because the upload step below
@@ -72,15 +76,9 @@ runs:
           printf '%s' "$escaped"
         }
 
-        # Resolve the app name from the app bicep file first (same pattern used
-        # elsewhere in the run-rad-commands action), with a fallback to `rad app
-        # list` when the file doesn't contain a simple literal name.
-        APP_NAME=$(grep -oP "name:\s*'\K[^']+" "$APP_FILE" 2>/dev/null | head -1 || true)
-        APP_NAME_FROM_LITERAL=1
-        if [ -z "$APP_NAME" ]; then
-          APP_NAME_FROM_LITERAL=0
-          APP_NAME=$(rad app list -o json 2>/dev/null | jq -r '.[0].name // .items[0].name // empty' || true)
-        fi
+        # Resolve only a literal application name from the deployed template.
+        # Global control-plane state can contain unrelated restored applications.
+        APP_NAME=$(radius_resolve_application_name "$APP_FILE")
 
         if [ -z "$APP_NAME" ]; then
           echo "::warning::Could not determine application name; skipping deployed graph publish."
@@ -92,7 +90,7 @@ runs:
         # Keep stderr out of STATUS_DIR: that directory is uploaded wholesale as the
         # artifact, so anything written there becomes part of the published payload.
         GRAPH_STDERR=$(mktemp)
-        if ! rad app graph --application "$APP_NAME" --preview --include-icons --output json > "$STATUS_DIR/deploy-graph.json" 2> "$GRAPH_STDERR"; then
+        if ! rad app graph "$APP_FILE" --application "$APP_NAME" --preview --include-icons --output json > "$STATUS_DIR/deploy-graph.json" 2> "$GRAPH_STDERR"; then
           echo "::warning::Failed to generate deployed graph; skipping publish."
           cat "$GRAPH_STDERR" || true
           emit_outputs "" false
@@ -137,34 +135,31 @@ runs:
         # still recover if that mapping goes stale. Unknown states normalize to
         # in_progress, never failed, so a new Radius state cannot paint a node red.
         #
-        # `rad resource list -o json` marshals []generated.GenericResource directly
-        # (pkg/cli/cmd/resource/list/list.go), so the payload is a bare array with
-        # no object wrapper - iterate it with `.[]?` and nothing else.
+        # `rad resource list --preview -o json` marshals
+        # []generated.GenericResource directly, so the payload is a bare array
+        # with no object wrapper - iterate it with `.[]?` and nothing else.
         RESOURCES_JSON="[]"
-        if RAW_RESOURCES=$(rad resource list -a "$APP_NAME" -o json 2>/dev/null); then
-          RESOURCES_JSON=$(printf '%s' "$RAW_RESOURCES" | jq -c '
-            [ .[]? | {
-                id: (.id // ""),
-                name: (.name // ""),
-                type: (.type // ""),
-                provisioningState: (.properties.provisioningState // ""),
-                status: (
-                  (.properties.provisioningState // "") as $s
-                  | if   $s == "Succeeded" then "success"
-                    elif $s == "Failed" or $s == "Canceled" or $s == "Cancelled" then "failed"
-                    else "in_progress"
-                    end
-                ),
-                message: (.properties.status.message // "")
-              } ]' 2>/dev/null) || RESOURCES_JSON="[]"
+        RESOURCE_STDERR=$(mktemp)
+        if RAW_RESOURCES=$(rad resource list --preview -a "$APP_NAME" -o json 2> "$RESOURCE_STDERR"); then
+          if ! RESOURCES_JSON=$(printf '%s' "$RAW_RESOURCES" |
+            radius_normalize_resources 2>/dev/null); then
+            echo "::warning::rad resource list --preview returned invalid JSON; deploy progress will contain no resources."
+            RESOURCES_JSON="[]"
+          fi
+        else
+          RESOURCE_ERROR=$(tr '\r\n' '  ' < "$RESOURCE_STDERR" | cut -c1-500)
+          RESOURCE_ERROR=$(escape_workflow_command "${RESOURCE_ERROR:-unknown error}")
+          echo "::warning::rad resource list --preview failed; deploy progress will contain no resources. ${RESOURCE_ERROR}"
         fi
-        [ -n "$RESOURCES_JSON" ] || RESOURCES_JSON="[]"
+        [[ -n "$RESOURCES_JSON" ]] || RESOURCES_JSON="[]"
+        TERMINAL_SEQUENCE=$(radius_next_terminal_sequence)
 
         jq -n \
           --argjson resources "$RESOURCES_JSON" \
           --arg application "$APP_NAME" \
           --arg environment "$ENVIRONMENT" \
           --argjson runId "${GITHUB_RUN_ID:-0}" \
+          --argjson sequence "$TERMINAL_SEQUENCE" \
           --arg updatedAt "$NOW_UTC" \
           --arg state "$RUN_STATE" \
           '{
@@ -172,7 +167,7 @@ runs:
             application: $application,
             environment: $environment,
             runId: $runId,
-            sequence: 1,
+            sequence: $sequence,
             updatedAt: $updatedAt,
             state: $state,
             resources: $resources
@@ -205,19 +200,7 @@ runs:
         # intact, and those are not valid in a GitHub artifact name. Bytewise
         # sanitization also keeps this in step with the canvas reader's own
         # derivation, so both sides agree on the name for the same app.
-        BASE_NAME=$(printf '%s-%s' "$ENVIRONMENT" "$APP_NAME" | LC_ALL=C tr '[:upper:]' '[:lower:]' | LC_ALL=C sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//' | LC_ALL=C cut -c1-80)
-        if [ -z "$BASE_NAME" ]; then
-          BASE_NAME="deploy-status"
-        fi
-        ARTIFACT_NAME="radius-deploy-status-${BASE_NAME}"
-
-        # The canvas derives this same name from the app bicep's first
-        # single-quoted `name:` literal and has no `rad app list` fallback, so a
-        # name resolved that way publishes under a name it will never request.
-        # Say so explicitly instead of leaving an empty Deployed tab to debug.
-        if [ "$APP_NAME_FROM_LITERAL" -eq 0 ]; then
-          echo "::warning::Application name '$(escape_workflow_command "$APP_NAME")' came from 'rad app list', not a literal name in $(escape_workflow_command "$APP_FILE"). Publishing as '$(escape_workflow_command "$ARTIFACT_NAME")', but the canvas derives the name from the bicep literal and will not find this artifact. Set a literal name in the app bicep."
-        fi
+        ARTIFACT_NAME=$(radius_deploy_artifact_name "$ENVIRONMENT" "$APP_NAME")
 
         emit_outputs "$ARTIFACT_NAME" true
 

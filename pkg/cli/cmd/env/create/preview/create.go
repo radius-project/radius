@@ -18,6 +18,7 @@ package preview
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/group/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -70,6 +72,9 @@ rad env create myenv --kubernetes-namespace mynamespace
 
 ## Create environment with recipe packs (--preview)
 rad env create myenv --preview --recipe-packs pack1,pack2
+
+## Create environment with recipe packs from a different resource group (--preview)
+rad env create myenv --preview --recipe-packs pack1 --recipe-pack-group other-group
 `,
 		RunE: framework.RunCommand(runner),
 	}
@@ -88,6 +93,7 @@ rad env create myenv --preview --recipe-packs pack1,pack2
 	commonflags.MarkNamespaceFlagDeprecated(cmd)
 	cmd.MarkFlagsMutuallyExclusive(commonflags.KubernetesNamespaceFlag, commonflags.NamespaceFlag)
 	cmd.Flags().StringSliceP("recipe-packs", "", []string{}, "Specify recipe packs to assign to the environment (--preview). Accepts comma-separated values.")
+	cmd.Flags().StringP("recipe-pack-group", "", "", "Specify the resource group containing the recipe packs named in --recipe-packs, if different from the environment's resource group (--preview).")
 
 	return cmd, runner
 }
@@ -107,8 +113,19 @@ type Runner struct {
 	ConfigFileInterface       framework.ConfigFileInterface
 	ConnectionFactory         connections.Factory
 
-	recipePacks []string
-	providers   *corerpv20250801.Providers
+	recipePacks     []string
+	recipePackGroup string
+	providers       *corerpv20250801.Providers
+}
+
+// kubernetesNamespace returns the Kubernetes namespace the environment will use, or an empty
+// string when the environment does not configure a Kubernetes provider.
+func (r *Runner) kubernetesNamespace() string {
+	if r.providers == nil || r.providers.Kubernetes == nil || r.providers.Kubernetes.Namespace == nil {
+		return ""
+	}
+
+	return *r.providers.Kubernetes.Namespace
 }
 
 // NewRunner creates a new instance of the `rad env create` runner.
@@ -237,6 +254,21 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return clierrors.Message("No valid recipe packs were provided. Specify one or more recipe pack names or IDs with --recipe-packs.")
 	}
 
+	r.recipePackGroup, err = cmd.Flags().GetString("recipe-pack-group")
+	if err != nil {
+		return err
+	}
+
+	if r.recipePackGroup != "" && !cmd.Flags().Changed("recipe-packs") {
+		return clierrors.Message("--recipe-pack-group can only be used together with --recipe-packs.")
+	}
+
+	if r.recipePackGroup != "" {
+		if err := common.ValidateResourceGroupName(r.recipePackGroup); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -292,6 +324,16 @@ func (r *Runner) Run(ctx context.Context) error {
 	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
 	_, err = envClient.CreateOrUpdate(ctx, r.Workspace.Scope, r.EnvironmentName, *resource, nil)
 	if err != nil {
+		if clients.IsNamespaceAlreadyInUseError(err) {
+			// Prefer the server's message: it names the environment that already owns the
+			// namespace, which the CLI cannot determine on its own.
+			if detail := clients.NamespaceAlreadyInUseMessage(err); detail != "" {
+				return clierrors.Message("%s Specify a different namespace using the --kubernetes-namespace flag.", detail)
+			}
+
+			return clierrors.Message("The Kubernetes namespace specified (%s) is already used by another Radius Environment. Specify a different namespace using the --kubernetes-namespace flag.", r.kubernetesNamespace())
+		}
+
 		return err
 	}
 
@@ -320,9 +362,18 @@ func (r *Runner) resolveRecipePacks(ctx context.Context) ([]*string, error) {
 
 	recipePackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
 
+	recipePackScope := r.Workspace.Scope
+	if r.recipePackGroup != "" {
+		workspaceScopeID, err := resources.ParseScope(r.Workspace.Scope)
+		if err != nil {
+			return nil, err
+		}
+		recipePackScope = fmt.Sprintf("%s/resourceGroups/%s", workspaceScopeID.PlaneScope(), r.recipePackGroup)
+	}
+
 	recipePackIDs := make([]*string, 0, len(r.recipePacks))
 	for _, recipePack := range r.recipePacks {
-		recipePackID, isFullID, err := recipepack.ResolveID(recipePack, r.Workspace.Scope)
+		recipePackID, isFullID, err := recipepack.ResolveID(recipePack, recipePackScope)
 		if err != nil {
 			return nil, err
 		}

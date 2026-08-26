@@ -74,8 +74,7 @@ func (client *ResourceTypesClient) createOrUpdate(ctx context.Context, planeName
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -146,8 +145,7 @@ func (client *ResourceTypesClient) deleteOperation(ctx context.Context, planeNam
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -194,12 +192,7 @@ func (client *ResourceTypesClient) Get(ctx context.Context, planeName string, re
 	if err != nil {
 		return ResourceTypesClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return ResourceTypesClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -229,8 +222,11 @@ func (client *ResourceTypesClient) getCreateRequest(ctx context.Context, planeNa
 }
 
 // getHandleResponse handles the Get response.
-func (client *ResourceTypesClient) getHandleResponse(resp *http.Response) (ResourceTypesClientGetResponse, error) {
+func (client *ResourceTypesClient) getHandleResponse(resp *http.Response, successCodes ...int) (ResourceTypesClientGetResponse, error) {
 	result := ResourceTypesClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceTypeResource); err != nil {
 		return ResourceTypesClientGetResponse{}, err
 	}
@@ -257,12 +253,7 @@ func (client *ResourceTypesClient) GetIcon(ctx context.Context, planeName string
 	if err != nil {
 		return ResourceTypesClientGetIconResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return ResourceTypesClientGetIconResponse{}, err
-	}
-	resp, err := client.getIconHandleResponse(httpResp)
-	return resp, err
+	return client.getIconHandleResponse(httpResp, http.StatusOK)
 }
 
 // getIconCreateRequest creates the GetIcon request.
@@ -297,14 +288,18 @@ func (client *ResourceTypesClient) getIconCreateRequest(ctx context.Context, pla
 }
 
 // getIconHandleResponse handles the GetIcon response.
-func (client *ResourceTypesClient) getIconHandleResponse(resp *http.Response) (ResourceTypesClientGetIconResponse, error) {
-	result := ResourceTypesClientGetIconResponse{Body: resp.Body}
-	if val := resp.Header.Get("cache-control"); val != "" {
+func (client *ResourceTypesClient) getIconHandleResponse(resp *http.Response, successCodes ...int) (ResourceTypesClientGetIconResponse, error) {
+	result := ResourceTypesClientGetIconResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
+	if val := resp.Header.Get("Cache-Control"); val != "" {
 		result.CacheControl = &val
 	}
-	if val := resp.Header.Get("content-type"); val != "" {
+	if val := resp.Header.Get("Content-Type"); val != "" {
 		result.ContentType = &val
 	}
+	result.Body = resp.Body
 	return result, nil
 }
 
@@ -323,42 +318,56 @@ func (client *ResourceTypesClient) NewListPager(planeName string, resourceProvid
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listCreateRequest(ctx, planeName, resourceProviderName, options)
-			}, nil)
+			req, err := client.listCreateRequest(ctx, planeName, resourceProviderName, nextLink, options)
 			if err != nil {
 				return ResourceTypesClientListResponse{}, err
 			}
-			return client.listHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return ResourceTypesClientListResponse{}, err
+			}
+			return client.listHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listCreateRequest creates the List request.
-func (client *ResourceTypesClient) listCreateRequest(ctx context.Context, planeName string, resourceProviderName string, _ *ResourceTypesClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes"
-	if planeName == "" {
-		return nil, errors.New("parameter planeName cannot be empty")
+func (client *ResourceTypesClient) listCreateRequest(ctx context.Context, planeName string, resourceProviderName string, nextLink string, _ *ResourceTypesClientListOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders/{resourceProviderName}/resourcetypes"
+		if planeName == "" {
+			return nil, errors.New("parameter planeName cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+		if resourceProviderName == "" {
+			return nil, errors.New("parameter resourceProviderName cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{resourceProviderName}", url.PathEscape(resourceProviderName))
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
-	if resourceProviderName == "" {
-		return nil, errors.New("parameter resourceProviderName cannot be empty")
-	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceProviderName}", url.PathEscape(resourceProviderName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *ResourceTypesClient) listHandleResponse(resp *http.Response) (ResourceTypesClientListResponse, error) {
+func (client *ResourceTypesClient) listHandleResponse(resp *http.Response, successCodes ...int) (ResourceTypesClientListResponse, error) {
 	result := ResourceTypesClientListResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceTypeResourceListResult); err != nil {
 		return ResourceTypesClientListResponse{}, err
 	}

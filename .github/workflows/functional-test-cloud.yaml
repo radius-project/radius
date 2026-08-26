@@ -54,6 +54,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ format('{0}-{1}', github.workflow, (github.event_name == 'pull_request_target' && github.event.pull_request.number) || github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+
 env:
   GOPROXY: https://proxy.golang.org
   # Azure Keyvault CSI driver chart version
@@ -64,8 +68,16 @@ env:
   CONTAINER_REGISTRY: ${{ vars.FUNCTIONAL_TEST_CONTAINER_REGISTRY }}
   # Container registry for storing Bicep recipe artifacts
   BICEP_RECIPE_REGISTRY: ${{ vars.FUNCTIONAL_TEST_BICEP_RECIPE_REGISTRY }}
-  # The radius functional test timeout
-  FUNCTIONALTEST_TIMEOUT: 60m
+  # The radius functional test timeout. This bounds `go test` and must stay
+  # comfortably below the job's timeout-minutes: the job also pays for ~10
+  # minutes of setup (KinD cluster, Radius install, Helm charts, cloud logins)
+  # before the tests start, and must still have time afterwards to collect
+  # cluster diagnostics and upload artifacts. If `go test` is allowed to run to
+  # the job timeout, GitHub cancels the job mid-test and the post-test steps -
+  # including diagnostics collection - never run, which is exactly the evidence
+  # needed to debug a hang. The cloud legs normally spend about 5 minutes in
+  # `go test`, so this leaves a wide margin.
+  FUNCTIONALTEST_TIMEOUT: 30m
   # The Azure Location to store test resources
   AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
   # The base directory for storing test logs
@@ -793,7 +805,7 @@ jobs:
           openssl pkey -pubin -in sa.pub -noout >/dev/null
           openssl pkey -in sa.key -check -noout >/dev/null
 
-          cat <<EOF | kind create cluster --name radius --config=-
+          kind create cluster --name radius --config=- <<EOF
           kind: Cluster
           apiVersion: kind.x-k8s.io/v1alpha4
           nodes:
@@ -983,6 +995,12 @@ jobs:
           # Restore AWS Bicep types
           bicep restore ./test/functional-portable/corerp/cloud/resources/testdata/aws-logs-loggroup.bicep --force
       - name: Run functional tests
+        # A step-level timeout, unlike the job-level one, still lets the
+        # `if: always()` steps below run - so a hung suite is followed by
+        # diagnostics collection rather than a cancelled job. Kept above
+        # FUNCTIONALTEST_TIMEOUT so `go test` times out first and prints its
+        # goroutine dump. Mirrors the pattern in long-running-azure.yaml.
+        timeout-minutes: 35
         run: |
           set -euo pipefail
 

@@ -30,7 +30,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -591,15 +590,10 @@ func unpackArchiveEntries(reader io.Reader, root string) error {
 
 func archivePath(root, name string) (string, error) {
 	cleanName := filepath.Clean(filepath.FromSlash(name))
-	if cleanName == "." || filepath.IsAbs(cleanName) || cleanName == ".." || strings.HasPrefix(cleanName, ".."+string(filepath.Separator)) {
+	if cleanName == "." || !filepath.IsLocal(cleanName) {
 		return "", fmt.Errorf("invalid archive path %q", name)
 	}
-	path := filepath.Join(root, cleanName)
-	rel, err := filepath.Rel(root, path)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("invalid archive path %q", name)
-	}
-	return path, nil
+	return filepath.Join(root, cleanName), nil
 }
 
 var (

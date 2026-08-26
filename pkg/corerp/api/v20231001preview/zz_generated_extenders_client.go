@@ -73,8 +73,7 @@ func (client *ExtendersClient) createOrUpdate(ctx context.Context, rootScope str
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -139,8 +138,7 @@ func (client *ExtendersClient) deleteOperation(ctx context.Context, rootScope st
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusAccepted, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -182,12 +180,7 @@ func (client *ExtendersClient) Get(ctx context.Context, rootScope string, extend
 	if err != nil {
 		return ExtendersClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return ExtendersClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -213,8 +206,11 @@ func (client *ExtendersClient) getCreateRequest(ctx context.Context, rootScope s
 }
 
 // getHandleResponse handles the Get response.
-func (client *ExtendersClient) getHandleResponse(resp *http.Response) (ExtendersClientGetResponse, error) {
+func (client *ExtendersClient) getHandleResponse(resp *http.Response, successCodes ...int) (ExtendersClientGetResponse, error) {
 	result := ExtendersClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResource); err != nil {
 		return ExtendersClientGetResponse{}, err
 	}
@@ -236,38 +232,52 @@ func (client *ExtendersClient) NewListByScopePager(rootScope string, options *Ex
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listByScopeCreateRequest(ctx, rootScope, options)
-			}, nil)
+			req, err := client.listByScopeCreateRequest(ctx, rootScope, nextLink, options)
 			if err != nil {
 				return ExtendersClientListByScopeResponse{}, err
 			}
-			return client.listByScopeHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return ExtendersClientListByScopeResponse{}, err
+			}
+			return client.listByScopeHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *ExtendersClient) listByScopeCreateRequest(ctx context.Context, rootScope string, _ *ExtendersClientListByScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Core/extenders"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
+func (client *ExtendersClient) listByScopeCreateRequest(ctx context.Context, rootScope string, nextLink string, _ *ExtendersClientListByScopeOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/{rootScope}/providers/Applications.Core/extenders"
+		if rootScope == "" {
+			return nil, errors.New("parameter rootScope cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listByScopeHandleResponse handles the ListByScope response.
-func (client *ExtendersClient) listByScopeHandleResponse(resp *http.Response) (ExtendersClientListByScopeResponse, error) {
+func (client *ExtendersClient) listByScopeHandleResponse(resp *http.Response, successCodes ...int) (ExtendersClientListByScopeResponse, error) {
 	result := ExtendersClientListByScopeResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResourceListResult); err != nil {
 		return ExtendersClientListByScopeResponse{}, err
 	}
@@ -291,12 +301,7 @@ func (client *ExtendersClient) ListSecrets(ctx context.Context, rootScope string
 	if err != nil {
 		return ExtendersClientListSecretsResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return ExtendersClientListSecretsResponse{}, err
-	}
-	resp, err := client.listSecretsHandleResponse(httpResp)
-	return resp, err
+	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
 }
 
 // listSecretsCreateRequest creates the ListSecrets request.
@@ -326,8 +331,11 @@ func (client *ExtendersClient) listSecretsCreateRequest(ctx context.Context, roo
 }
 
 // listSecretsHandleResponse handles the ListSecrets response.
-func (client *ExtendersClient) listSecretsHandleResponse(resp *http.Response) (ExtendersClientListSecretsResponse, error) {
+func (client *ExtendersClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (ExtendersClientListSecretsResponse, error) {
 	result := ExtendersClientListSecretsResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderListSecretResponse); err != nil {
 		return ExtendersClientListSecretsResponse{}, err
 	}
@@ -369,8 +377,7 @@ func (client *ExtendersClient) update(ctx context.Context, rootScope string, ext
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }

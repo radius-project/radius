@@ -73,8 +73,7 @@ func (client *RedisCachesClient) createOrUpdate(ctx context.Context, rootScope s
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -139,8 +138,7 @@ func (client *RedisCachesClient) deleteOperation(ctx context.Context, rootScope 
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusAccepted, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -182,12 +180,7 @@ func (client *RedisCachesClient) Get(ctx context.Context, rootScope string, redi
 	if err != nil {
 		return RedisCachesClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return RedisCachesClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -213,8 +206,11 @@ func (client *RedisCachesClient) getCreateRequest(ctx context.Context, rootScope
 }
 
 // getHandleResponse handles the Get response.
-func (client *RedisCachesClient) getHandleResponse(resp *http.Response) (RedisCachesClientGetResponse, error) {
+func (client *RedisCachesClient) getHandleResponse(resp *http.Response, successCodes ...int) (RedisCachesClientGetResponse, error) {
 	result := RedisCachesClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheResource); err != nil {
 		return RedisCachesClientGetResponse{}, err
 	}
@@ -236,38 +232,52 @@ func (client *RedisCachesClient) NewListByScopePager(rootScope string, options *
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listByScopeCreateRequest(ctx, rootScope, options)
-			}, nil)
+			req, err := client.listByScopeCreateRequest(ctx, rootScope, nextLink, options)
 			if err != nil {
 				return RedisCachesClientListByScopeResponse{}, err
 			}
-			return client.listByScopeHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return RedisCachesClientListByScopeResponse{}, err
+			}
+			return client.listByScopeHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *RedisCachesClient) listByScopeCreateRequest(ctx context.Context, rootScope string, _ *RedisCachesClientListByScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Datastores/redisCaches"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
+func (client *RedisCachesClient) listByScopeCreateRequest(ctx context.Context, rootScope string, nextLink string, _ *RedisCachesClientListByScopeOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/{rootScope}/providers/Applications.Datastores/redisCaches"
+		if rootScope == "" {
+			return nil, errors.New("parameter rootScope cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listByScopeHandleResponse handles the ListByScope response.
-func (client *RedisCachesClient) listByScopeHandleResponse(resp *http.Response) (RedisCachesClientListByScopeResponse, error) {
+func (client *RedisCachesClient) listByScopeHandleResponse(resp *http.Response, successCodes ...int) (RedisCachesClientListByScopeResponse, error) {
 	result := RedisCachesClientListByScopeResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheResourceListResult); err != nil {
 		return RedisCachesClientListByScopeResponse{}, err
 	}
@@ -291,12 +301,7 @@ func (client *RedisCachesClient) ListSecrets(ctx context.Context, rootScope stri
 	if err != nil {
 		return RedisCachesClientListSecretsResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return RedisCachesClientListSecretsResponse{}, err
-	}
-	resp, err := client.listSecretsHandleResponse(httpResp)
-	return resp, err
+	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
 }
 
 // listSecretsCreateRequest creates the ListSecrets request.
@@ -326,8 +331,11 @@ func (client *RedisCachesClient) listSecretsCreateRequest(ctx context.Context, r
 }
 
 // listSecretsHandleResponse handles the ListSecrets response.
-func (client *RedisCachesClient) listSecretsHandleResponse(resp *http.Response) (RedisCachesClientListSecretsResponse, error) {
+func (client *RedisCachesClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (RedisCachesClientListSecretsResponse, error) {
 	result := RedisCachesClientListSecretsResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheListSecretsResult); err != nil {
 		return RedisCachesClientListSecretsResponse{}, err
 	}
@@ -369,8 +377,7 @@ func (client *RedisCachesClient) update(ctx context.Context, rootScope string, r
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }

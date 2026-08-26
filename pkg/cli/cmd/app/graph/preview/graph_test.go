@@ -376,7 +376,7 @@ func Test_Run_EnrichedMode(t *testing.T) {
 
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
-		PrepareTemplate("./app.bicep").
+		PrepareTemplate(gomock.Any(), "./app.bicep").
 		Return(template, nil).
 		Times(1)
 
@@ -438,7 +438,7 @@ func Test_Run_EnrichedMode_CompileError_Wrapped(t *testing.T) {
 
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
-		PrepareTemplate("./bad.bicep").
+		PrepareTemplate(gomock.Any(), "./bad.bicep").
 		Return(nil, clierrors.Message("syntax error"))
 
 	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)

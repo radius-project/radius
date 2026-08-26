@@ -127,13 +127,13 @@ func Test_RadiusCore_AzureMySql_PortalLink(t *testing.T) {
 				"azureSubscriptionId="+azureSubscriptionID,
 				"azureResourceGroupName="+azureResourceGroupName,
 				"password=not-prod-password",
-			).WithRetry(2, 60*time.Second, isTransientAzureError),
+			).WithRetry(5*time.Minute, 60*time.Second, isTransientCloudDeployError),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
-					{Name: recipePackName, Type: validation.CoreRecipePacksResource},
-					{Name: envName, Type: validation.CoreEnvironmentsResource},
 					{Name: appName, Type: validation.CoreApplicationsResource, App: appName},
 					{Name: mysqlName, Type: validation.DataMySQLDatabasesResource, App: appName},
+					{Name: envName, Type: validation.CoreEnvironmentsResource},
+					{Name: recipePackName, Type: validation.CoreRecipePacksResource},
 				},
 			},
 			SkipKubernetesOutputResourceValidation: true,

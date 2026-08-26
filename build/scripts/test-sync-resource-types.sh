@@ -69,8 +69,91 @@ test_azure_recipe_pack_pinning() {
     rm -rf "${fixture}"
 }
 
-# Stub the one git operation exercised by the selection helpers. The fixtures
-# deliberately include a newer prerelease and numerically ambiguous versions.
+# Regression guard for the drift that broke Azure deploys (#12688): the Azure
+# pack shipped a sixth Kubernetes recipe (RabbitMQ) that the hardcoded pin list
+# never covered, so it survived to the mutable-tag guard and failed the step.
+# The workflow now derives the pin set from the pack, so this asserts that
+# derivation pins every kube recipe a pack ships and leaves the guard nothing to
+# reject, and that the guard still fires for a recipe that cannot be mapped.
+test_azure_recipe_pack_pin_coverage() {
+    local workflow run_block region fixture
+    local sha="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    workflow="${REPO_ROOT}/.github/extension/run-rad-commands-azure.yml"
+    run_block="$(
+        yq -r '
+            .jobs.deploy.steps[] |
+            select(.name == "Create Radius environment and recipe pack") |
+            .run
+        ' "${workflow}"
+    )"
+    # The self-contained pinning region under test: the pin_kube_recipe helper,
+    # the loop that derives recipes from the pack, and the mutable-tag guard.
+    region="$(
+        printf '%s\n' "${run_block}" |
+            awk '/^pin_kube_recipe\(\) \{$/ { c = 1 } c { print } c && /^fi$/ { exit }'
+    )"
+    [[ -n "${region}" ]] ||
+        fail "kube-recipe pinning region not found in ${workflow}."
+
+    fixture="$(mktemp -d)"
+
+    # A pack shipping two Kubernetes recipes (one of them RabbitMQ, the recipe the
+    # old hardcoded list omitted) plus a managed AVM recipe that must be left
+    # untouched. Derivation must pin both kube recipes and the guard must pass.
+    cat >"${fixture}/pack.bicep" <<'PACK'
+      'Radius.Compute/containers': {
+        kind: 'bicep'
+        source: 'ghcr.io/radius-project/kube-recipes/containers:latest'
+      }
+      'Radius.Data/redisCaches': {
+        kind: 'bicep'
+        source: 'mcr.microsoft.com/bicep/avm/res/cache/redis-enterprise:0.5.1'
+      }
+      'Radius.Messaging/rabbitMQ': {
+        kind: 'bicep'
+        source: 'ghcr.io/radius-project/kube-recipes/rabbitmq:latest'
+      }
+PACK
+    (
+        # shellcheck disable=SC2329 # Invoked by the sourced workflow region.
+        radius_contrib_kube_recipe_source() {
+            printf 'ghcr.io/radius-project/kube-recipes/%s:%s' "$2" "${sha}"
+        }
+        ENV_BICEP="${fixture}/pack.bicep"
+        # shellcheck disable=SC1090 # Generated from the workflow under test.
+        eval "${region}"
+    ) || fail "derivation rejected a pack whose kube recipes are all mappable."
+    ! grep -Eq 'kube-recipes/[a-z0-9._-]+:latest' "${fixture}/pack.bicep" ||
+        fail "a pack kube recipe was left unpinned by the derivation."
+    grep -Fq "kube-recipes/rabbitmq:${sha}" "${fixture}/pack.bicep" ||
+        fail "the RabbitMQ recipe was not pinned by the derivation."
+    grep -Fq "kube-recipes/containers:${sha}" "${fixture}/pack.bicep" ||
+        fail "the containers recipe was not pinned by the derivation."
+    grep -Fq 'redis-enterprise:0.5.1' "${fixture}/pack.bicep" ||
+        fail "the managed AVM recipe was altered by the derivation."
+
+    # A kube recipe not keyed by a Radius resource type cannot be mapped to a
+    # namespace ref, so the guard must catch the leftover mutable tag.
+    cat >"${fixture}/drift.bicep" <<'PACK'
+      'somethingElse': {
+        kind: 'bicep'
+        source: 'ghcr.io/radius-project/kube-recipes/mysteryservice:latest'
+      }
+PACK
+    if (
+        # shellcheck disable=SC2329 # Invoked by the sourced workflow region.
+        radius_contrib_kube_recipe_source() {
+            printf 'ghcr.io/radius-project/kube-recipes/%s:%s' "$2" "${sha}"
+        }
+        ENV_BICEP="${fixture}/drift.bicep"
+        # shellcheck disable=SC1090 # Generated from the workflow under test.
+        eval "${region}"
+    ) 2>/dev/null; then
+        fail "the guard accepted a pack with an unmappable mutable kube recipe."
+    fi
+
+    rm -rf "${fixture}"
+}
 git() {
     [[ "$1" == "ls-remote" ]] || return 2
     if [[ "$2" == "--tags" && "$3" == "--refs" ]]; then
@@ -270,7 +353,7 @@ main() {
     done
 
     test_azure_recipe_pack_pinning
-
+    test_azure_recipe_pack_pin_coverage
     invariant_fixture="$(mktemp -d)"
     cat >"${invariant_fixture}/bad.yml" <<'EOF'
 ---

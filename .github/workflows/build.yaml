@@ -69,8 +69,7 @@ jobs:
   build-and-push-cli:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
     needs: [changes]
-    # if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
-    if: github.repository == 'radius-project/radius'
+    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -240,7 +239,7 @@ jobs:
         uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
 

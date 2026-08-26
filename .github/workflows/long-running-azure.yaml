@@ -410,16 +410,18 @@ jobs:
           GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
-          # The released v0.59 test code predates two incompatibilities with main:
+          # The released test code predates fixes and compatibility updates on main:
           #   - Test_ACI: tracked in #12044 (cleanup timeout flake).
           #   - Test_RecipePack, Test_RadiusCoreEnv: the v0.59 recipe-pack fixture
           #     uses the old recipeKind/recipeLocation properties that were renamed
           #     to kind/source in PR #12104 (merged 2026-06-22), four days after the
           #     v0.59.0 release (2026-06-18). The old names produce a BCP037 compile
           #     error against the mutable latest Bicep extension.
+          #   - Test_RadiusCore_AzureMySql_PortalLink: v0.60 deletes the environment
+          #     before its application, so recipe cleanup fails. Tracked in #12701.
           # Skip these exact tests until a release that includes the fixes is cut.
-          # See #12044, #12104, #12163, #12247, and #12392.
-          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RecipePack|Test_RadiusCoreEnv)$$'"
+          # See #12044, #12104, #12163, #12247, #12392, and #12701.
+          GOTEST_OPTS: "-skip='^(Test_ACI|Test_RecipePack|Test_RadiusCoreEnv|Test_RadiusCore_AzureMySql_PortalLink)$$'"
         working-directory: ${{ steps.checkout-release-codebase.outputs.release-dir }}
         run: |
           set -euo pipefail
@@ -452,21 +454,16 @@ jobs:
           make test-functional-all-cloud
           make test-functional-all-noncloud
 
-      - name: Collect Pod details
+      - name: Collect cluster diagnostics
         if: always()
-        # Diagnostic-only snapshot of cluster-wide pod state for post-mortem. A
-        # `kubectl describe pods -A` can race pod teardown and return a transient
-        # NotFound, so never let it fail the job.
+        # Diagnostic-only post-mortem snapshot. The script records each command's
+        # failure inline and keeps going, because the failures worth debugging are
+        # usually the ones where the control plane is unreachable.
         continue-on-error: true
-        run: |
-          POD_STATE_LOG_FILENAME="${RADIUS_CONTAINER_LOG_BASE}/all-tests-pod-states.log"
-          mkdir -p $(dirname $POD_STATE_LOG_FILENAME)
-          {
-            echo "kubectl get pods -A"
-            kubectl get pods -A
-            echo "kubectl describe pods -A"
-            kubectl describe pods -A
-          } >> "${POD_STATE_LOG_FILENAME}"
+        env:
+          RADIUS_CONTAINER_LOG_PATH: ${{ github.workspace }}/${{ env.RADIUS_CONTAINER_LOG_BASE }}
+          DIAGNOSTICS_NAME: all
+        run: ./.github/scripts/collect-cluster-diagnostics.sh
 
       - name: Upload container logs
         if: always()
