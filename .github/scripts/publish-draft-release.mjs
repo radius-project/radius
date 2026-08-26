@@ -7,7 +7,7 @@ async function getRelease(github, owner, repo, tag) {
   const releases = await github.paginate(github.rest.repos.listReleases, {
     owner,
     repo,
-    per_page: 100,
+    per_page: 100
   });
   const matches = releases.filter((release) => release.tag_name === tag);
   if (matches.length !== 1) {
@@ -23,7 +23,8 @@ export default async function publishDraftRelease({ github, core }) {
   const tag = core.getInput("TAG", { required: true });
   const notesFile = core.getInput("NOTES_FILE", { required: true });
   const prerelease = core.getInput("PRERELEASE", { required: true }) === "true";
-  const makeLatest = core.getInput("MAKE_LATEST", { required: true }) === "true";
+  const makeLatest =
+    core.getInput("MAKE_LATEST", { required: true }) === "true";
   if (prerelease && makeLatest) {
     throw new Error("A prerelease cannot be marked latest");
   }
@@ -48,7 +49,7 @@ export default async function publishDraftRelease({ github, core }) {
         release_id: release.id,
         draft: false,
         prerelease,
-        make_latest: makeLatest ? "true" : "false",
+        make_latest: makeLatest ? "true" : "false"
       });
     } catch (error) {
       release = await getRelease(github, owner, repo, tag);

@@ -105,6 +105,7 @@ promote-release-aliases: ## Promote channel and latest aliases from immutable di
 		--source-sha "$(GIT_COMMIT)" \
 		--image-lock "$(GORELEASER_PRODUCTION_IMAGE_LOCK)" \
 		--cli-lock "$(GORELEASER_CLI_LOCK)"
+
 .PHONY: capture-release-image-digests
 capture-release-image-digests: ## Verify full-version production images and capture immutable digests
 	@bash ./.github/scripts/capture-release-image-digests.sh \

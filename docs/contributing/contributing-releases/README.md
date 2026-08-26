@@ -76,7 +76,7 @@ Four GitHub Actions workflows drive release preparation, backports, and publicat
    - Verifies the expected image platform sets and promotes the channel and `latest` image and CLI OCI aliases from the recorded immutable digests for final and patch releases; RCs advance no mutable aliases
    - Publishes the draft GitHub Release only after GoReleaser, Helm, Bicep types, and alias promotion succeed
 
-   The draft carries internal JSON lock assets for the core, retained images, and complete image set. A rerun verifies these locks, skips matching immutable work, and fails on divergence instead of rebuilding or moving a full-version tag. Main-branch builds publish Radius images and CLI OCI artifacts only as `edge`. The `latest` alias always points to the most recent stable release after this cutover.
+   The release carries internal JSON lock assets for the core, retained images, and complete image set. A rerun verifies these locks and skips the immutable work they already cover; a full-version tag that no longer matches its lock stops the release instead of being rebuilt or moved. Tags pushed by an interrupted attempt are not yet locked, so a rerun re-stages them rather than stranding the release. Main-branch builds publish Radius images and CLI OCI artifacts only as `edge`. The `latest` alias always points to the most recent stable release after this cutover.
 
 The automated flow after dispatching Prepare Release:
 
