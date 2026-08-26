@@ -65,6 +65,7 @@ setup_repo() {
 
     printf 'source change\n' > "${seed}/file.txt"
     git -C "${seed}" commit -qam "fix: source change" \
+        --author "Source Author <source@example.test>" \
         -m $'BREAKING CHANGE: preserve this source footer\n\nEOF\nbranch=attacker'
     SOURCE_COMMIT="$(git -C "${seed}" rev-parse HEAD)"
     git clone -q --bare "${seed}" "${REMOTE}"
@@ -128,6 +129,10 @@ test_successful_backport() {
         fail_test "backport PR body did not bind the release base"
         return
     fi
+    if [[ "$(cat "${REPO}/out/author.txt")" != "Source Author <source@example.test>" ]]; then
+        fail_test "successful backport did not preserve the source author"
+        return
+    fi
     ((++PASS))
 }
 
@@ -184,6 +189,10 @@ test_conflict_creates_safe_handoff() {
         return
     fi
     git -C "${fresh}" cherry-pick --abort
+    if [[ -s "${REPO}/out/author.txt" ]]; then
+        fail_test "conflict handoff must stay authored by the bot"
+        return
+    fi
     ((++PASS))
 }
 
