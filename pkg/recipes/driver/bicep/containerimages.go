@@ -25,12 +25,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -55,6 +59,26 @@ const (
 	scriptLogLineLimit                     = 4096
 	scriptLogTruncationMarker              = " [truncated]"
 )
+
+// Variables rather than constants so tests can shorten them; they are not configurable at
+// runtime.
+var (
+	// imageBuildTimeout bounds a single containerImages build. Without it the build is
+	// capped only by the deployment engine's four-hour extensible-resource timeout, so a
+	// pathological build (for example an emulated cross-architecture build) can occupy a
+	// deployment for hours. This sits below that ceiling to leave room to report failure.
+	imageBuildTimeout = 3 * time.Hour
+
+	// scriptDrainGrace is how long to wait after cancellation for the script's output
+	// pipes to reach EOF on their own before closing them. Killing the process group does
+	// not close a pipe that a descendant which left the group still holds open, and the
+	// output drains block until EOF, so without this the build could never time out.
+	scriptDrainGrace = 5 * time.Second
+)
+
+// errImageBuildTimeout identifies a build stopped by imageBuildTimeout, so it can be told
+// apart from an inherited cancellation such as the async worker's operation timeout.
+var errImageBuildTimeout = errors.New("container image build timed out")
 
 func supportsImageBuildHook(resourceType string) bool {
 	return strings.EqualFold(resourceType, containerImagesResourceType)
@@ -237,6 +261,13 @@ func imageBuildEnvironment(env []string, dockerConfigDir, resultPath string) []s
 func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, buildInputs map[string]any, registry, registrySecretName string, opts driver.ExecuteOptions) (string, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 
+	// Bound the whole build hook, including credential retrieval, so a hung build fails
+	// here instead of running until an outer timeout hours later. WithTimeoutCause lets the
+	// error below distinguish this from an inherited cancellation.
+	ctx, cancel := context.WithTimeoutCause(ctx, imageBuildTimeout, errImageBuildTimeout)
+	defer cancel()
+	started := time.Now()
+
 	args, err := imageBuildArguments(buildInputs)
 	if err != nil {
 		return "", err
@@ -252,7 +283,7 @@ func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, buil
 	if registrySecretName != "" {
 		dockerConfigDir = filepath.Join(tempDir, "docker")
 		if err := d.writeDockerConfig(ctx, registry, registrySecretName, dockerConfigDir, opts); err != nil {
-			return "", err
+			return "", annotateImageBuildTimeout(ctx, started, err)
 		}
 	}
 
@@ -261,6 +292,7 @@ func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, buil
 	env := imageBuildEnvironment(os.Environ(), dockerConfigDir, resultPath)
 	stderrTail, err := runScript(ctx, script, args, env, tempDir, logger)
 	if err != nil {
+		err = annotateImageBuildTimeout(ctx, started, err)
 		if stderrTail != "" {
 			return "", fmt.Errorf("recipe %q script failed: %w\nstderr (tail):\n%s", imageBuildOutputName, err, stderrTail)
 		}
@@ -268,6 +300,19 @@ func (d *bicepDriver) executeImageBuild(ctx context.Context, script string, buil
 	}
 
 	return readScriptResult(resultPath)
+}
+
+// annotateImageBuildTimeout replaces err with an explicit timeout error when the build
+// exceeded imageBuildTimeout. Reporting the budget and elapsed time distinguishes a build
+// this driver stopped from one cancelled by a caller, such as the async worker's own
+// operation timeout, which is otherwise indistinguishable at this layer.
+func annotateImageBuildTimeout(ctx context.Context, started time.Time, err error) error {
+	if !errors.Is(context.Cause(ctx), errImageBuildTimeout) {
+		return err
+	}
+
+	return fmt.Errorf("%w after %s (limit %s): %w",
+		errImageBuildTimeout, time.Since(started).Round(time.Second), imageBuildTimeout, err)
 }
 
 // writeDockerConfig writes registry credentials to a docker config file.
@@ -357,7 +402,19 @@ func runScript(ctx context.Context, script string, args, env []string, workDir s
 	done := make(chan error, 2)
 	go func() { done <- drainScriptStream(stdout, "imageBuild: ", logger, nil, 0) }()
 	go func() { done <- drainScriptStream(stderr, "imageBuild(stderr): ", logger, tail, stderrTailLimit) }()
-	streamErr := errors.Join(<-done, <-done)
+
+	// Killing the process group does not reach a descendant that left it (via setsid) while
+	// holding the inherited output pipes, and the drains above only finish at EOF. Close the
+	// read ends after a grace period so cancellation cannot block here forever.
+	forced := forceCloseAfterCancel(ctx, stdout, stderr)
+	stdoutErr, stderrErr := <-done, <-done
+	if forced() {
+		// Discard only the read error our own forced close caused. Filtering each drain
+		// separately keeps a genuine failure on the other stream.
+		stdoutErr = ignoreClosedPipe(stdoutErr)
+		stderrErr = ignoreClosedPipe(stderrErr)
+	}
+	streamErr := errors.Join(stdoutErr, stderrErr)
 
 	err = cmd.Wait()
 	if err != nil {
@@ -370,6 +427,51 @@ func runScript(ctx context.Context, script string, args, env []string, workDir s
 		return tail.String(), fmt.Errorf("failed to read script output: %w", streamErr)
 	}
 	return tail.String(), nil
+}
+
+// forceCloseAfterCancel closes the script's output pipes if they are still open
+// scriptDrainGrace after ctx is done. It returns a function that stops the watchdog and
+// reports whether the pipes were closed this way, so the caller can ignore the resulting
+// "file already closed" read error. The returned function must be called once the readers
+// have finished.
+func forceCloseAfterCancel(ctx context.Context, readers ...io.Closer) func() bool {
+	stop := make(chan struct{})
+	closed := make(chan struct{})
+	var forced atomic.Bool
+
+	go func() {
+		defer close(closed)
+		select {
+		case <-stop:
+			return
+		case <-ctx.Done():
+		}
+
+		select {
+		case <-stop:
+		case <-time.After(scriptDrainGrace):
+			forced.Store(true)
+			for _, reader := range readers {
+				_ = reader.Close()
+			}
+		}
+	}()
+
+	var once sync.Once
+	return func() bool {
+		once.Do(func() { close(stop) })
+		<-closed
+		return forced.Load()
+	}
+}
+
+// ignoreClosedPipe drops the read error produced by forceCloseAfterCancel closing a pipe
+// out from under a drain, which is expected rather than a failure.
+func ignoreClosedPipe(err error) error {
+	if errors.Is(err, fs.ErrClosed) {
+		return nil
+	}
+	return err
 }
 
 // drainScriptStream logs each line of the stream. If tail is non-nil, it also retains the
