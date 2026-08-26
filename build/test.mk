@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-apply-custom-recipe-packs test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status test-extension-action-shell-syntax test-deploy-progress test-verify-azure ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-apply-custom-recipe-packs test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status test-extension-action-shell-syntax test-deploy-progress test-verify-azure test-deploy-timeout ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -97,6 +97,10 @@ test-deploy-progress-uploader: generate-pnpm-installed ## Tests and builds the l
 	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader install --frozen-lockfile
 	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader test
 	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader build
+
+.PHONY: test-deploy-timeout
+test-deploy-timeout: ## Tests the deploy step timeout wiring in the deploy workflow templates
+	@bash ./.github/extension/deploy-timeout_test.sh
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them

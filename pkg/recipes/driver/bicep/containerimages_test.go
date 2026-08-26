@@ -26,6 +26,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -610,6 +611,128 @@ func Test_RunScript_CancelKillsSpawnedProcesses(t *testing.T) {
 	require.ErrorIs(t, err, context.DeadlineExceeded)
 	require.Contains(t, err.Error(), "canceled or timed out")
 	require.Less(t, time.Since(start), 10*time.Second)
+}
+
+func Test_RunScript_CancelClosesPipesHeldByEscapedDescendant(t *testing.T) {
+	requireScriptShell(t)
+	if _, err := exec.LookPath("setsid"); err != nil {
+		t.Skip("requires setsid to detach a descendant from the process group")
+	}
+
+	// The killed process group cannot reach a descendant that called setsid, and that
+	// descendant still holds the inherited output pipes. Without the forced close the
+	// output drains never see EOF and runScript blocks forever.
+	withScriptDrainGrace(t, 200*time.Millisecond)
+
+	dir := t.TempDir()
+	pidPath := filepath.Join(dir, "escaped.pid")
+	t.Cleanup(func() { killRecordedProcess(t, pidPath) })
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	// Cancel only once the detached descendant is running, so the test cannot pass by
+	// cancelling before it has inherited and is holding the pipes.
+	go func() {
+		for ctx.Err() == nil {
+			if pid := readRecordedPID(pidPath); pid > 0 {
+				cancel()
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
+
+	// The PID file is written atomically so the poll above never observes a partial write.
+	script := fmt.Sprintf(`setsid sh -c 'echo $$ > %[1]q.tmp && mv %[1]q.tmp %[1]q; sleep 60' & sleep 60`, pidPath)
+	start := time.Now()
+	_, err := runScript(ctx, script, nil, os.Environ(), dir, logr.Discard())
+	require.Error(t, err)
+	require.ErrorIs(t, err, context.Canceled)
+	require.Less(t, time.Since(start), 15*time.Second)
+	// The forced close must not be reported as an output-read failure.
+	require.NotContains(t, err.Error(), "failed to read script output")
+	require.Positive(t, readRecordedPID(pidPath), "descendant never started; test did not exercise the watchdog")
+}
+
+func readRecordedPID(path string) int {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0
+	}
+	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return 0
+	}
+	return pid
+}
+
+// killRecordedProcess reaps the descendant that deliberately escaped the process group, so
+// it does not outlive the test.
+func killRecordedProcess(t *testing.T, path string) {
+	t.Helper()
+	pid := readRecordedPID(path)
+	if pid <= 0 {
+		return
+	}
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return
+	}
+	_ = process.Kill()
+}
+
+func Test_ExecuteImageBuild_TimesOut(t *testing.T) {
+	requireScriptShell(t)
+
+	withImageBuildTimeout(t, 300*time.Millisecond)
+	withScriptDrainGrace(t, 200*time.Millisecond)
+
+	start := time.Now()
+	_, err := (&bicepDriver{}).executeImageBuild(t.Context(), "sleep 60", map[string]any{}, "", "", driver.ExecuteOptions{})
+	require.Error(t, err)
+	require.ErrorIs(t, err, errImageBuildTimeout)
+	require.Contains(t, err.Error(), "limit 300ms")
+	require.Less(t, time.Since(start), 15*time.Second)
+}
+
+func Test_ExecuteImageBuild_InheritedCancellationIsNotReportedAsBuildTimeout(t *testing.T) {
+	requireScriptShell(t)
+
+	withScriptDrainGrace(t, 200*time.Millisecond)
+
+	// The caller's deadline, not the build timeout, ends this build. Reporting it as a
+	// build timeout would misdirect the user to the wrong limit.
+	ctx, cancel := context.WithTimeout(t.Context(), 300*time.Millisecond)
+	defer cancel()
+	_, err := (&bicepDriver{}).executeImageBuild(ctx, "sleep 60", map[string]any{}, "", "", driver.ExecuteOptions{})
+	require.Error(t, err)
+	require.NotErrorIs(t, err, errImageBuildTimeout)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func Test_ExecuteImageBuild_SucceedsWithinTimeout(t *testing.T) {
+	requireScriptShell(t)
+
+	withImageBuildTimeout(t, 30*time.Second)
+
+	script := `printf '{"imageReference":"registry/app:v1"}' > "$RADIUS_EXEC_OUTPUT"`
+	imageReference, err := (&bicepDriver{}).executeImageBuild(t.Context(), script, map[string]any{}, "", "", driver.ExecuteOptions{})
+	require.NoError(t, err)
+	require.Equal(t, "registry/app:v1", imageReference)
+}
+
+func withImageBuildTimeout(t *testing.T, d time.Duration) {
+	t.Helper()
+	previous := imageBuildTimeout
+	imageBuildTimeout = d
+	t.Cleanup(func() { imageBuildTimeout = previous })
+}
+
+func withScriptDrainGrace(t *testing.T, d time.Duration) {
+	t.Helper()
+	previous := scriptDrainGrace
+	scriptDrainGrace = d
+	t.Cleanup(func() { scriptDrainGrace = previous })
 }
 
 func Test_ReadScriptResult_InvalidJSON(t *testing.T) {
