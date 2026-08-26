@@ -29,8 +29,13 @@ fail() {
 
 main() {
     local reference object_type object_sha verification recovery
+    local tag_pattern
 
-    if [[ ! "${TAG}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[1-9][0-9]*)?$ ]]; then
+    # Numeric identifiers reject leading zeros, matching the semver policy in
+    # .github/scripts/release-version.sh.
+    tag_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+    tag_pattern+='(-rc\.[1-9][0-9]*)?$'
+    if [[ ! "${TAG}" =~ ${tag_pattern} ]]; then
         fail "tag must use vX.Y.Z or vX.Y.Z-rc.N format"
     fi
     command -v "${GH}" > /dev/null || fail "required command not found: ${GH}"

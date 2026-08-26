@@ -333,15 +333,17 @@ main() {
     release_date="$(plan_value '.releaseDate')"
     chart_version="$(plan_value '.chartVersion')"
     release_branch="$(plan_value '.releaseBranch')"
-    canonical_version_pattern='^v[0-9]+\.[0-9]+\.[0-9]+'
-    canonical_version_pattern+='(-rc\.[1-9][0-9]*)?$'
+    # Numeric identifiers reject leading zeros, matching the semver policy in
+    # .github/scripts/release-version.sh.
+    canonical_version_pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+    canonical_version_pattern+='\.(0|[1-9][0-9]*)(-rc\.[1-9][0-9]*)?$'
     if [[ ! "${version}" =~ ${canonical_version_pattern} ]]; then
         fail "planned version is not canonical"
     fi
     if [[ ! "${release_type}" =~ ^(rc|final|patch)$ ]]; then
         fail "planned release type is invalid"
     fi
-    if [[ ! "${channel}" =~ ^[0-9]+\.[0-9]+$ ]]; then
+    if [[ ! "${channel}" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
         fail "planned channel is invalid"
     fi
     if [[ ! "${release_date}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
