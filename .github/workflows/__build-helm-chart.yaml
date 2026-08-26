@@ -68,4 +68,8 @@ jobs:
           GH_ACTOR: ${{ github.actor }}
         run: |
           echo "${GH_TOKEN}" | helm registry login -u "${GH_ACTOR}" --password-stdin "${OCI_REGISTRY}"
-          helm push "${ARTIFACT_DIR}/${HELM_PACKAGE_DIR}/radius-${CHART_VERSION}.tgz" "oci://${OCI_REGISTRY}/${OCI_REPOSITORY}"
+          bash ./.github/scripts/publish-helm-chart.sh \
+            --archive "${ARTIFACT_DIR}/${HELM_PACKAGE_DIR}/radius-${CHART_VERSION}.tgz" \
+            --repository "oci://${OCI_REGISTRY}/${OCI_REPOSITORY}" \
+            --name radius \
+            --version "${CHART_VERSION}"

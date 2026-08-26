@@ -110,6 +110,12 @@ verify_release_config() {
     yq -e '
         ((.release.ids | length) == 1)
         and (.release.ids[0] == "rad")
+        and (.release.draft == true)
+        and (.release.use_existing_draft == true)
+        and (.release.replace_existing_artifacts == true)
+        and (.release.prerelease == "auto")
+        and (.release.make_latest == false)
+        and (.release.mode == "replace")
     ' "${CONFIG_FILE}" >/dev/null ||
         fail "GoReleaser release settings do not match the parity contract"
     [[ "$(yq -r '.release.disable' "${CONFIG_FILE}")" == "${expected_disable}" ]] ||
@@ -182,7 +188,7 @@ verify_cli_assets() {
         checksum_path="$(resolve_path "${checksum_artifact_path}")"
         [[ -f "${checksum_path}" ]] ||
             fail "missing checksum sidecar: ${asset}.sha256"
-        declared_hash="$(tr -d '\r\n' <"${checksum_path}")"
+        declared_hash="$(awk 'NR == 1 { print $1 }' "${checksum_path}")"
         if [[ ! "${declared_hash}" =~ ^[0-9a-f]{64}$ ]]; then
             fail "invalid checksum format for ${asset}.sha256"
         fi
@@ -478,7 +484,7 @@ main() {
     else
         verify_built_images "${DIST_DIR}/artifacts.json"
     fi
-    echo "GoReleaser snapshot matches the release parity contract"
+    echo "GoReleaser output matches the release parity contract"
 }
 
 main "$@"
