@@ -171,9 +171,21 @@ runs:
         # Aggregate result accumulators. The result is written by a trap on EXIT so
         # the combined `rad-commands-result` artifact is complete even when a command
         # fails and the step exits early.
+        #
+        # The accumulator is pessimistic: it is seeded to `interrupted` and only
+        # promoted to `succeeded` once the command loop has actually completed, so
+        # any exit before that point reports the seed rather than an unearned
+        # success. That covers every abnormal exit that still runs the trap: most
+        # reachably an `errexit` abort, since GitHub runs `shell: bash` steps as
+        # `bash --noprofile --norc -eo pipefail {0}`, and equally a step timeout
+        # (see #12746, which adds that bound) or a cancellation.
+        # `publish-deploy-status` maps unrecognized outcomes to `failed` via its
+        # `*)` arm, so `interrupted` lands correctly there. On a cancelled job the
+        # workflow templates gate publishing on `!cancelled()`, so no status is
+        # published and only the artifact carries the corrected outcome.
         COMMANDS_JSON='[]'
-        OVERALL_OUTCOME="succeeded"
-        OVERALL_EXIT=0
+        OVERALL_OUTCOME="interrupted"
+        OVERALL_EXIT=1
         REQUESTED=0
         RAN=0
         OIDC_REFRESH_PID=""
@@ -514,6 +526,19 @@ runs:
           stop_live_deploy_progress || true
           echo "✅ Deployment complete."
         fi
+
+        # Earn the success verdict. Promote only from the seed, so an outcome a
+        # failure path recorded is never overwritten - the failure paths above all
+        # exit first today, but the promotion does not depend on them continuing
+        # to. An abnormal exit never reaches here at all.
+        if [ "$OVERALL_OUTCOME" = "interrupted" ]; then
+          OVERALL_OUTCOME="succeeded"
+          OVERALL_EXIT=0
+        fi
+        # Exit on the accumulator so the step result and the artifact agree. Without
+        # this the block would end on a successful assignment and report success even
+        # when the accumulator holds a failure.
+        exit "$OVERALL_EXIT"
 
     - name: Upload command result
       if: always()
