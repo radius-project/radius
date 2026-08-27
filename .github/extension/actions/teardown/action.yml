@@ -7,18 +7,39 @@
 name: Radius - Teardown
 description: Persist state (rad shutdown), collect logs on failure, and delete the k3d control plane.
 
+inputs:
+  state-restored:
+    description: >-
+      Set to "true" by the restore-state action (its `state-restored` output) when
+      `rad startup` restored state in this run. When it is not "true", teardown
+      skips `rad shutdown` so a run that failed before/at `rad startup` cannot
+      overwrite the durable state archive with uninitialized state. This must be
+      wired from a restore-state step in the SAME job as this teardown step.
+    required: false
+    default: ""
+
 runs:
   using: composite
   steps:
     - name: Persist Radius state (rad shutdown)
       if: always()
       shell: bash
+      env:
+        STATE_RESTORED: ${{ inputs.state-restored }}
       run: |
-        # rad shutdown backs up the control-plane PostgreSQL databases and the
-        # Terraform recipe-state Secrets to the `radius-state` git orphan branch and
-        # pushes it to origin (contents: write). It runs even when a command fails so
-        # a partially-applied Terraform run is not lost. It does not manage the
-        # cluster; the cleanup step tears k3d down afterwards.
+        # Only persist state when `rad startup` successfully restored it earlier in
+        # this run (signalled by the restore-state action's `state-restored` output,
+        # passed in as STATE_RESTORED). If the workflow failed before startup ran,
+        # the control-plane databases were never restored, so backing them up now
+        # would overwrite the durable archive with blank/uninitialized state and
+        # corrupt it for every future run. rad shutdown still runs after a *later*
+        # failure (e.g. a partially-applied Terraform deploy) so that work is not
+        # lost. This relies on restore-state and teardown running in the SAME job.
+        # It does not manage the cluster; the cleanup step tears k3d down afterwards.
+        if [ "${STATE_RESTORED}" != "true" ]; then
+          echo "::warning title=Radius state not persisted::rad startup did not restore state in this run (state-restored='${STATE_RESTORED}'); skipping rad shutdown to preserve the existing state archive."
+          exit 0
+        fi
         git config --global user.email "radius-deploy@users.noreply.github.com"
         git config --global user.name "radius-deploy"
         rad shutdown
@@ -27,7 +48,12 @@ runs:
       if: always()
       shell: bash
       run: |
-        rad app list || true
+        # The pipeline deploys Radius.Core applications, so list them via the
+        # preview API surface to match; the legacy plane would show nothing. This is
+        # best-effort status output at teardown, so a failure must not fail the job
+        # -- but surface it instead of swallowing it silently, so a broken listing
+        # (e.g. wrong API plane) is visible in the log rather than looking empty.
+        rad app list --preview || echo "::warning title=Application status unavailable::rad app list --preview failed during teardown; continuing."
 
     - name: Collect Radius logs
       if: failure()
