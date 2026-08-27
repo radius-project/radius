@@ -22,8 +22,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/require"
@@ -252,6 +254,10 @@ func TestGetNextLinkURL_IsRelativeSoTheClientSuppliesTheAddress(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, parsed.Scheme, "link must not be absolute")
 			require.Empty(t, parsed.Host, "link must not carry an authority")
+
+			// The link must be an absolute-path reference. azcore concatenates it onto the endpoint,
+			// so a relative-path reference would silently produce a URL missing a separator.
+			require.True(t, strings.HasPrefix(link, "/"), "link must start at the root")
 		})
 	}
 }
@@ -278,18 +284,18 @@ func TestGetNextLinkURL_ResolvesAgainstTheEndpointTheClientDialed(t *testing.T) 
 		t.Run(tt.name, func(t *testing.T) {
 			link := GetNextLinkURL(nextLinkContext(t), nextLinkRequest(t, "dynamic-rp.radius-system:8082", tt.path), "page2")
 
-			// This mirrors how a generated client resolves the link: azcore joins a relative
-			// nextLink onto the endpoint it was configured with.
-			base, err := url.Parse(endpoint)
+			// Resolve the link exactly as a generated client does, rather than modelling it. azcore
+			// concatenates a scheme-less link onto the endpoint, which is not the same as RFC 3986
+			// reference resolution: the latter would treat the link as replacing the endpoint's path
+			// and drop the path base, producing a URL the API server does not route.
+			req, err := runtime.NewRequestForNextLink(t.Context(), http.MethodGet, endpoint, link)
 			require.NoError(t, err)
-			resolved, err := url.Parse(link)
-			require.NoError(t, err)
-			resolved = base.ResolveReference(resolved)
 
-			// Whichever server produced the link, the client ends up at the same reachable URL.
+			// Whichever server produced the link, the client ends up at the same URL, and it is the
+			// one UCP is served on through the aggregated APIService.
 			require.Equal(t,
-				"https://kubernetes.example.com/planes/radius/local/resourcegroups/default/providers/Radius.Compute/containers?api-version=2025-08-01-preview&skipToken=page2&top=10",
-				resolved.String())
+				"https://kubernetes.example.com/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourcegroups/default/providers/Radius.Compute/containers?api-version=2025-08-01-preview&skipToken=page2&top=10",
+				req.Raw().URL.String())
 		})
 	}
 }
