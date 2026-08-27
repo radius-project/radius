@@ -26,6 +26,7 @@ readonly -a REQUIRED_CRDS=(
     "gatewayclasses.gateway.networking.k8s.io"
     "gateways.gateway.networking.k8s.io"
     "httproutes.gateway.networking.k8s.io"
+    "backendtlspolicies.gateway.networking.k8s.io"
     "referencegrants.gateway.networking.k8s.io"
     "grpcroutes.gateway.networking.k8s.io"
     "tcproutes.gateway.networking.k8s.io"
@@ -36,6 +37,7 @@ readonly -a GATEWAY_API_OBJECTS=(
     "gatewayclasses.gateway.networking.k8s.io"
     "gateways.gateway.networking.k8s.io"
     "httproutes.gateway.networking.k8s.io"
+    "backendtlspolicies.gateway.networking.k8s.io"
     "grpcroutes.gateway.networking.k8s.io"
     "tcproutes.gateway.networking.k8s.io"
     "tlsroutes.gateway.networking.k8s.io"
@@ -515,10 +517,20 @@ desired_service_type() {
     fi
 }
 
+desired_external_traffic_policy() {
+    if [[ "${EXPOSURE}" == "public" ]]; then
+        printf 'Local\n'
+    else
+        printf '\n'
+    fi
+}
+
 upgrade_managed_contour() {
     local service_type
+    local external_traffic_policy
     local attempt
     service_type="$(desired_service_type)"
+    external_traffic_policy="$(desired_external_traffic_policy)"
     for ((attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++)); do
         if helm_target upgrade --install "${CONTOUR_RELEASE}" contour \
             --repo "${CONTOUR_CHART_REPO}" \
@@ -530,6 +542,8 @@ upgrade_managed_contour() {
             --set-string \
             "configInline.gateway.gatewayRef.namespace=${DEFAULT_GATEWAY_NAMESPACE}" \
             --set-string "envoy.service.type=${service_type}" \
+            --set-string \
+            "envoy.service.externalTrafficPolicy=${external_traffic_policy}" \
             --set-string \
             "commonLabels.app\\.kubernetes\\.io/managed-by=${MANAGED_BY}" \
             --set-string \

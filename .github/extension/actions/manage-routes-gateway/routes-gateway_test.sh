@@ -373,6 +373,7 @@ case "${resource}" in
     gatewayclasses.gateway.networking.k8s.io | \
     gateways.gateway.networking.k8s.io | \
     httproutes.gateway.networking.k8s.io | \
+    backendtlspolicies.gateway.networking.k8s.io | \
     grpcroutes.gateway.networking.k8s.io | \
     tcproutes.gateway.networking.k8s.io | \
     tlsroutes.gateway.networking.k8s.io | \
@@ -470,7 +471,8 @@ reset_case() {
           apiVersion:"v1",
           kind:"List",
           items:[
-            "gatewayclasses","gateways","httproutes","referencegrants",
+            "gatewayclasses","gateways","httproutes","backendtlspolicies",
+            "referencegrants",
             "grpcroutes","tcproutes","tlsroutes","udproutes"
           ] | map({
             apiVersion:"apiextensions.k8s.io/v1",
@@ -747,6 +749,16 @@ assert_output "PUBLIC ROUTES EXPOSURE"
 assert_output "alpha, beta"
 
 reset_case
+HELM_STATE='present'
+HELM_OWNED='true'
+SERVICE_TYPE='ClusterIP'
+export HELM_STATE HELM_OWNED SERVICE_TYPE
+run_action ensure public
+assert_success "private to public"
+assert_call "envoy.service.type=LoadBalancer"
+assert_call "envoy.service.externalTrafficPolicy=Local"
+
+reset_case
 RAD_DISCOVERY_FAIL='app'
 export RAD_DISCOVERY_FAIL
 run_action ensure public
@@ -764,6 +776,7 @@ export HELM_STATE HELM_OWNED SERVICE_TYPE
 run_action ensure private
 assert_success "public to private"
 assert_call "envoy.service.type=ClusterIP"
+assert_call "envoy.service.externalTrafficPolicy= --set-string"
 
 reset_case
 HELM_STATE='present'
@@ -792,6 +805,8 @@ assert_call "kubectl --kubeconfig ${TARGET_KUBECONFIG_OVERRIDE} create --dry-run
 assert_call "gateway-api/releases/download/v1.2.1/experimental-install.yaml"
 assert_call "version 0.1.0"
 assert_call "gatewayAPI.manageCRDs=false"
+assert_call "envoy.service.externalTrafficPolicy= --set-string"
+assert_call "backendtlspolicies.gateway.networking.k8s.io"
 assert_call "radius-project.io/routes-gateway-lifecycle: v1"
 
 # Repeated ensures reuse complete unowned resources without adopting them.
@@ -997,6 +1012,7 @@ assert_call "kubectl delete gateway radius"
 assert_call "kubectl delete gatewayclass contour"
 assert_call "helm uninstall contour"
 assert_call "kubectl delete customresourcedefinition gatewayclasses.gateway.networking.k8s.io"
+assert_call "kubectl delete customresourcedefinition backendtlspolicies.gateway.networking.k8s.io"
 inventory_line="$(
     grep -n 'kubectl get gatewayclasses.gateway.networking.k8s.io -A -o json' \
         "${CALLS}" | head -1 | cut -d: -f1
