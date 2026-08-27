@@ -34,6 +34,10 @@ permissions:
   contents: write
   packages: write
 
+concurrency:
+  group: radius-environment-${{ github.repository }}-${{ inputs.environment }}
+  cancel-in-progress: false
+
 env:
   ENVIRONMENT: ${{ inputs.environment }}
   APP_FILE: '{{APP_FILE}}'
@@ -64,6 +68,7 @@ jobs:
       RADIUS_STATE_REGISTRY: ${{ vars.RADIUS_STATE_REGISTRY }}
       RADIUS_STATE_ARCHIVE: ${{ vars.RADIUS_STATE_ARCHIVE }}
       RADIUS_GRAPH_REGISTRY: ${{ vars.RADIUS_GRAPH_REGISTRY }}
+      RADIUS_TARGET_KUBECONFIG: ${{ vars.AWS_EKS_CLUSTER_NAME != '' && format('{0}/.radius-target-kubeconfig', github.workspace) || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
@@ -92,8 +97,11 @@ jobs:
 
       - name: Get target cluster kubeconfig
         run: |
-          mkdir -p "$HOME/.kube"
-          echo "RADIUS_TARGET_KUBECONFIG=$HOME/.kube/target-cluster" >> "$GITHUB_ENV"
+          if [ -z "$RADIUS_TARGET_KUBECONFIG" ]; then
+            echo "No external EKS cluster configured; using the control-plane cluster."
+            exit 0
+          fi
+          mkdir -p "$(dirname "$RADIUS_TARGET_KUBECONFIG")"
 
       - name: Connect to EKS cluster
         if: ${{ vars.AWS_EKS_CLUSTER_NAME != '' }}
@@ -276,7 +284,7 @@ jobs:
           CONTAINERIMAGES_SOURCE="$(radius_contrib_kube_recipe_source Radius.Compute/containerImages containerimages)"
           CONTAINERS_SOURCE="$(radius_contrib_resource_git_source Radius.Compute/containers recipes/kubernetes/terraform)"
           PERSISTENTVOLUMES_SOURCE="$(radius_contrib_resource_git_source Radius.Compute/persistentVolumes recipes/kubernetes/terraform)"
-          ROUTES_SOURCE="$(radius_contrib_resource_git_source Radius.Compute/routes recipes/kubernetes/terraform)"
+          ROUTES_SOURCE="$(radius_contrib_kube_recipe_source Radius.Compute/routes routes)"
           POSTGRESQL_SOURCE="$(radius_contrib_resource_git_source Radius.Data/postgreSqlDatabases recipes/kubernetes/terraform)"
           MYSQL_SOURCE="$(radius_contrib_resource_git_source Radius.Data/mySqlDatabases recipes/aws/terraform)"
           SECRETS_SOURCE="$(radius_contrib_resource_git_source Radius.Security/secrets recipes/kubernetes/terraform)"
@@ -341,8 +349,12 @@ jobs:
                   source: '$PERSISTENTVOLUMES_SOURCE'
                 }
                 'Radius.Compute/routes': {
-                  kind: 'terraform'
+                  kind: 'bicep'
                   source: '$ROUTES_SOURCE'
+                  parameters: {
+                    gatewayName: '${{ vars.RADIUS_ROUTES_GATEWAY_NAME || 'radius' }}'
+                    gatewayNamespace: '${{ vars.RADIUS_ROUTES_GATEWAY_NAMESPACE || 'radius-system' }}'
+                  }
                 }
                 'Radius.Data/postgreSqlDatabases': {
                   kind: 'terraform'
@@ -385,6 +397,18 @@ jobs:
         with:
           environment: ${{ inputs.environment }}
           app-file: ${{ env.APP_FILE }}
+
+      - name: Ensure routes Gateway infrastructure
+        uses: radius-project/radius/.github/extension/actions/manage-routes-gateway@{{RADIUS_REF}}
+        with:
+          mode: ensure
+          target-kubeconfig: ${{ env.RADIUS_TARGET_KUBECONFIG }}
+          environment-name: ${{ inputs.environment }}
+          app-file: ${{ env.APP_FILE }}
+          gateway-name: ${{ vars.RADIUS_ROUTES_GATEWAY_NAME }}
+          gateway-namespace: ${{ vars.RADIUS_ROUTES_GATEWAY_NAMESPACE }}
+          gateway-explicit: "${{ vars.RADIUS_ROUTES_GATEWAY_NAME != '' }}"
+          exposure: ${{ vars.RADIUS_ROUTES_EXPOSURE }}
 
       - name: Prepare live deployment progress
         uses: radius-project/radius/.github/extension/actions/deploy-progress/artifact-uploader@{{RADIUS_REF}}

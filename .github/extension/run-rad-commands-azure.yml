@@ -34,6 +34,10 @@ permissions:
   contents: write
   packages: write
 
+concurrency:
+  group: radius-environment-${{ github.repository }}-${{ inputs.environment }}
+  cancel-in-progress: false
+
 env:
   ENVIRONMENT: ${{ inputs.environment }}
   APP_FILE: '{{APP_FILE}}'
@@ -64,6 +68,7 @@ jobs:
       RADIUS_STATE_REGISTRY: ${{ vars.RADIUS_STATE_REGISTRY }}
       RADIUS_STATE_ARCHIVE: ${{ vars.RADIUS_STATE_ARCHIVE }}
       RADIUS_GRAPH_REGISTRY: ${{ vars.RADIUS_GRAPH_REGISTRY }}
+      RADIUS_TARGET_KUBECONFIG: ${{ vars.AZURE_AKS_CLUSTER_NAME != '' && format('{0}/.radius-target-kubeconfig', github.workspace) || '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
@@ -93,8 +98,11 @@ jobs:
 
       - name: Get target cluster kubeconfig
         run: |
-          mkdir -p "$HOME/.kube"
-          echo "RADIUS_TARGET_KUBECONFIG=$HOME/.kube/target-cluster" >> "$GITHUB_ENV"
+          if [ -z "$RADIUS_TARGET_KUBECONFIG" ]; then
+            echo "No external AKS cluster configured; using the control-plane cluster."
+            exit 0
+          fi
+          mkdir -p "$(dirname "$RADIUS_TARGET_KUBECONFIG")"
 
       - name: Connect to AKS cluster
         if: ${{ vars.AZURE_AKS_CLUSTER_NAME != '' }}
@@ -314,11 +322,11 @@ jobs:
             exit 1
           fi
 
-          # routesGatewayName is a required pack parameter, but it only matters when
-          # a Radius.Compute/routes resource is actually deployed. Default to empty
-          # unless the repo configures an existing Kubernetes Gateway.
-          ROUTES_GATEWAY_NAME="${{ vars.RADIUS_ROUTES_GATEWAY_NAME }}"
-          ROUTES_GATEWAY_NAMESPACE="${{ vars.RADIUS_ROUTES_GATEWAY_NAMESPACE || 'default' }}"
+          # The default routes recipe always receives a concrete Gateway reference.
+          # A separately-passed boolean tells the lifecycle action whether this is a
+          # user-owned Gateway or the Radius-managed default.
+          ROUTES_GATEWAY_NAME="${{ vars.RADIUS_ROUTES_GATEWAY_NAME || 'radius' }}"
+          ROUTES_GATEWAY_NAMESPACE="${{ vars.RADIUS_ROUTES_GATEWAY_NAMESPACE || 'radius-system' }}"
 
           echo "Recipe pack file:"
           cat "$ENV_BICEP"
@@ -340,6 +348,18 @@ jobs:
         with:
           environment: ${{ inputs.environment }}
           app-file: ${{ env.APP_FILE }}
+
+      - name: Ensure routes Gateway infrastructure
+        uses: radius-project/radius/.github/extension/actions/manage-routes-gateway@{{RADIUS_REF}}
+        with:
+          mode: ensure
+          target-kubeconfig: ${{ env.RADIUS_TARGET_KUBECONFIG }}
+          environment-name: ${{ inputs.environment }}
+          app-file: ${{ env.APP_FILE }}
+          gateway-name: ${{ vars.RADIUS_ROUTES_GATEWAY_NAME }}
+          gateway-namespace: ${{ vars.RADIUS_ROUTES_GATEWAY_NAMESPACE }}
+          gateway-explicit: "${{ vars.RADIUS_ROUTES_GATEWAY_NAME != '' }}"
+          exposure: ${{ vars.RADIUS_ROUTES_EXPOSURE }}
 
       - name: Prepare live deployment progress
         uses: radius-project/radius/.github/extension/actions/deploy-progress/artifact-uploader@{{RADIUS_REF}}

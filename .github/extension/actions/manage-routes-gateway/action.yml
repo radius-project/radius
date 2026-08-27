@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
+name: Radius - Manage routes Gateway
+description: >-
+  Ensure or clean up the target-cluster Gateway API infrastructure used by the
+  Radius default routes recipe.
+
+inputs:
+  mode:
+    description: Lifecycle operation, either ensure or cleanup.
+    required: true
+  target-kubeconfig:
+    description: Kubeconfig for the workload cluster.
+    required: false
+    default: ""
+  environment-name:
+    description: Radius environment whose effective routes recipe is inspected.
+    required: true
+  application-name:
+    description: Application being deployed or deleted, used in diagnostics.
+    required: false
+    default: ""
+  app-file:
+    description: Application Bicep file inspected by ensure mode.
+    required: false
+    default: ""
+  gateway-name:
+    description: Effective Gateway name passed to the routes recipe.
+    required: false
+    default: ""
+  gateway-namespace:
+    description: Effective Gateway namespace passed to the routes recipe.
+    required: false
+    default: ""
+  gateway-explicit:
+    description: Whether RADIUS_ROUTES_GATEWAY_NAME was explicitly configured.
+    required: false
+    default: "false"
+  exposure:
+    description: Managed Gateway exposure; empty/private or public.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Manage routes Gateway infrastructure
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        TARGET_KUBECONFIG: ${{ inputs.target-kubeconfig }}
+        ENVIRONMENT_NAME: ${{ inputs.environment-name }}
+        APPLICATION_NAME: ${{ inputs.application-name }}
+        APP_FILE: ${{ inputs.app-file }}
+        GATEWAY_NAME: ${{ inputs.gateway-name }}
+        GATEWAY_NAMESPACE: ${{ inputs.gateway-namespace }}
+        GATEWAY_EXPLICIT: ${{ inputs.gateway-explicit }}
+        EXPOSURE: ${{ inputs.exposure }}
+      run: |
+        bash "${GITHUB_ACTION_PATH}/routes-gateway.sh"
