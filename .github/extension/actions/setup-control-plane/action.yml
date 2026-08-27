@@ -48,8 +48,9 @@ runs:
         # before running it, rather than piping from main. The CLI channel stays
         # `edge` so the workflow still exercises the latest control-plane build.
         # Pinned to the commit carrying the install.sh sudo fix so consumers pick it
-        # up without waiting for a patch release.
-        RADIUS_INSTALL_REF: 3fd9e2a5514fcc8e8048300eadfb0d3e2ae7aac1
+        # up without waiting for a patch release. Use an unambiguous abbreviated ref;
+        # the checksum below verifies the exact script contents.
+        RADIUS_INSTALL_REF: 3fd9e2a5514f
         RADIUS_INSTALL_SHA256: 6a00f7b8793337deda816759422bd1d9441b80a7ef15c7d76be1aec4d0a51b14
       run: |
         curl -sSL "https://raw.githubusercontent.com/radius-project/radius/${RADIUS_INSTALL_REF}/deploy/install.sh" -o install-rad.sh
