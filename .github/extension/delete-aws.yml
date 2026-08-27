@@ -32,6 +32,19 @@ permissions:
   contents: write
   packages: write
 
+concurrency:
+  # All four repo-based deploy/delete workflows (this one, the Azure delete
+  # counterpart, and the AWS/Azure deploy workflows) share a single durable
+  # state archive per environment (the OCI package or the radius-state git
+  # branch) restored by rad startup and persisted by rad shutdown. The group
+  # deliberately omits github.workflow so a delete and a deploy against the
+  # same environment also serialize, not just two runs of this same
+  # workflow. cancel-in-progress stays false so a queued run waits its turn
+  # instead of cancelling a run that is already mid-flight, which would
+  # abandon it before rad shutdown can persist its state.
+  group: radius-state-archive-${{ inputs.environment }}
+  cancel-in-progress: false
+
 env:
   ENVIRONMENT: ${{ inputs.environment }}
 
