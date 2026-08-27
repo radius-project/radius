@@ -44,11 +44,13 @@ runs:
     - name: Install Radius CLI
       shell: bash
       env:
-        # Pin the Radius install script to a released tag and verify its checksum
+        # Pin the Radius install script to an immutable ref and verify its checksum
         # before running it, rather than piping from main. The CLI channel stays
         # `edge` so the workflow still exercises the latest control-plane build.
-        RADIUS_INSTALL_REF: v0.59.0
-        RADIUS_INSTALL_SHA256: cf96794af522b266f56985f195e9c2bdd4f7e8d9e5267ae0595b9d37cb225e7b
+        # Pinned to the commit carrying the install.sh sudo fix so consumers pick it
+        # up without waiting for a patch release.
+        RADIUS_INSTALL_REF: 3fd9e2a5514fcc8e8048300eadfb0d3e2ae7aac1
+        RADIUS_INSTALL_SHA256: 6a00f7b8793337deda816759422bd1d9441b80a7ef15c7d76be1aec4d0a51b14
       run: |
         curl -sSL "https://raw.githubusercontent.com/radius-project/radius/${RADIUS_INSTALL_REF}/deploy/install.sh" -o install-rad.sh
         echo "${RADIUS_INSTALL_SHA256}  install-rad.sh" | sha256sum -c -
