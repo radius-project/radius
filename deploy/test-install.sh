@@ -424,6 +424,22 @@ test_default_dir_nonroot() {
     HOME="${fake_home}" run_installer "${INSTALLER}" \
         --version "${PINNED_VERSION}"
     assert_rad_installed "${fake_home}/.local/bin"
+
+    # The tree must be created as the current user. Without this the test
+    # still passes when the installer sudo-creates it root-owned (#12835):
+    # on runners with passwordless sudo the binary lands 0755 root:root, so
+    # the -f/-x/runnable checks in assert_rad_installed all succeed. Bash's
+    # -O (owned by the effective UID) is what actually pins the fix, and it
+    # avoids the GNU/BSD `stat` split since contributors run this on macOS.
+    # Check .local too: `sudo mkdir -p` roots the whole tree, and .local is
+    # the dir the other build/scripts/install-*.sh tools trip over.
+    local d
+    for d in "${fake_home}/.local" "${fake_home}/.local/bin"; do
+        if [[ ! -O "${d}" ]]; then
+            echo "  ASSERT FAILED: ${d} is not owned by the current user"
+            return 1
+        fi
+    done
 }
 
 test_nonwritable_dir_no_sudo_fails() {
