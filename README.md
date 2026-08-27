@@ -2,6 +2,9 @@
 
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/radius-project/radius/badge)](https://scorecard.dev/viewer/?uri=github.com/radius-project/radius) [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11971/badge)](https://www.bestpractices.dev/projects/11971)
 
+> [!NOTE]
+> GitHub Copilot app integration is available as [Radius Canvas](https://github.com/radius-project/ai-extensions).
+
 Radius is an open source, cloud-native application platform that enables developers and the platform engineers that support them to collaborate on delivering and managing cloud-native applications that follow organizational best practices for cost, operations and security, by default. It enables developers and platform engineers to model an entire application — its services and the infrastructure they depend on (databases, message queues, caches, and more) — as a single, self-contained definition. Developers describe their application in a format that is portable across environments; platform engineers supply Recipes that provision that infrastructure with built-in compliance. Radius runs on Kubernetes and deploys applications across local, private cloud, Microsoft Azure, and Amazon Web Services environments, with more cloud providers to come.
 
 Radius is a [Cloud Native Computing Foundation (CNCF) sandbox project](https://www.cncf.io/sandbox-projects/).
@@ -65,6 +68,7 @@ In addition, we have the below repositories:
 
 | Repository | Description |
 |:-----|:------------|
+| [AI Extensions](https://github.com/radius-project/ai-extensions) | This repository contains the Radius Canvas integration for the GitHub Copilot app.
 | [Docs](https://github.com/radius-project/docs) | This repository contains the source for the Radius documentation.
 | [Samples](https://github.com/radius-project/samples) | This repository contains the source code for quickstarts, reference apps, and tutorials for Radius.
 | [Resource Types and Recipes](https://github.com/radius-project/resource-types-contrib) | This repository contains commonly used Resource Types and Recipe templates for Radius Environments.
