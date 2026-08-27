@@ -416,13 +416,30 @@ test_default_dir_nonroot() {
     local fake_home
     fake_home=$(make_test_dir "fakehome")
 
-    # Pre-create the expected default directory so needsSudo() sees a
-    # writable dir and doesn't try to escalate.
-    mkdir -p "${fake_home}/.local/bin"
+    # Intentionally do NOT pre-create $HOME/.local/bin. The installer must
+    # detect that the whole tree is under a writable $HOME and create it
+    # without sudo. Pre-creating it would mask a regression in needsSudo()
+    # (this is the #12835 scenario).
 
     HOME="${fake_home}" run_installer "${INSTALLER}" \
         --version "${PINNED_VERSION}"
     assert_rad_installed "${fake_home}/.local/bin"
+
+    # The tree must be created as the current user. Without this the test
+    # still passes when the installer sudo-creates it root-owned (#12835):
+    # on runners with passwordless sudo the binary lands 0755 root:root, so
+    # the -f/-x/runnable checks in assert_rad_installed all succeed. Bash's
+    # -O (owned by the effective UID) is what actually pins the fix, and it
+    # avoids the GNU/BSD `stat` split since contributors run this on macOS.
+    # Check .local too: `sudo mkdir -p` roots the whole tree, and .local is
+    # the dir the other build/scripts/install-*.sh tools trip over.
+    local d
+    for d in "${fake_home}/.local" "${fake_home}/.local/bin"; do
+        if [[ ! -O "${d}" ]]; then
+            echo "  ASSERT FAILED: ${d} is not owned by the current user"
+            return 1
+        fi
+    done
 }
 
 test_nonwritable_dir_no_sudo_fails() {
@@ -433,13 +450,15 @@ test_nonwritable_dir_no_sudo_fails() {
         return 0
     fi
 
-    # Both the target AND its parent must be non-writable so needsSudo()
-    # returns true (it checks both).
+    # The install dir itself exists but is non-writable, while its parent
+    # stays writable. needsSudo() must still return true because it cannot
+    # write into the existing target; chmod only the dir (not the parent) so
+    # this pins the fix in 3fd9e2a (start the ancestor walk at install_dir).
     local parent
     parent=$(make_test_dir "noperm-parent")
     local dir="${parent}/bin"
     mkdir -p "${dir}"
-    chmod 555 "${dir}" "${parent}"
+    chmod 555 "${dir}"
 
     # Build a PATH containing only the tools the installer needs,
     # notably excluding sudo.
