@@ -141,7 +141,8 @@ needsSudo() {
     # sudo is needed. This matters for $HOME/.local/bin when neither .local/bin
     # nor .local exists yet: the whole tree is under a writable $HOME, so
     # escalating to sudo here would create it root-owned and break later
-    # user-owned installs into the same dir (e.g. `make install-yq`).
+    # user-owned installs into the same dir (the build/scripts/install-*.sh
+    # tools all default to $HOME/.local/bin and install without sudo).
     local ancestor
     ancestor="${install_dir}"
     while [[ ! -d "${ancestor}" ]]; do
