@@ -187,8 +187,11 @@ runs:
           echo "# rad version"
           rad version 2>&1 || true
           echo ""
-          echo "# rad env list"
-          rad env list -o json 2>&1 || true
+          # --preview reads Radius.Core/environments, which is what this pipeline
+          # creates. Without it `rad env list` dispatches to the legacy
+          # Applications.Core surface and always reports an empty list.
+          echo "# rad env list --preview"
+          rad env list --preview -o json 2>&1 || true
         } > "$STATUS_DIR/deploy-controlplane.log" 2>&1 || true
 
         printf 'state=%s\nexitCode=%s\napplication=%s\nenvironment=%s\nupdatedAt=%s\nsha=%s\n' \
