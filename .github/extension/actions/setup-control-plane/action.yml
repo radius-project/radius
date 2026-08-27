@@ -91,12 +91,22 @@ runs:
         #
         # database.enabled=true installs the control-plane PostgreSQL so durable
         # Radius state can be backed up and restored by `rad shutdown`/`rad startup`.
+        #
+        # The chart's default database CPU request (2 cores) is sized for a real
+        # cluster. GitHub-hosted standard runners for private/internal repos get
+        # only 2 vCPU total, so that request alone can consume the entire node
+        # and leave BuildKit/CoreDNS/metrics-server pods unschedulable, stalling
+        # `rad install` until Helm times out waiting for the control plane.
+        # Lower just the scheduling request for this ephemeral, low-traffic
+        # control plane; the CPU limit stays at the chart default so PostgreSQL
+        # can still burst on runners with more headroom.
         TARGET_FLAGS=()
         if [ -f "$RADIUS_TARGET_KUBECONFIG" ]; then
           TARGET_FLAGS+=(--set global.targetCluster.enabled=true)
         fi
         rad install kubernetes \
           --set database.enabled=true \
+          --set database.resources.requests.cpu=250m \
           --set rp.publicEndpointOverride=localhost \
           --set dynamicrp.buildkit.enabled=true \
           "${TARGET_FLAGS[@]}"
