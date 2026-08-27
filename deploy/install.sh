@@ -270,22 +270,38 @@ warnExistingRadiusElsewhere() {
     echo "============================================================================"
 }
 
+# Fetch a GitHub API URL. When GITHUB_TOKEN is set the request is authenticated
+# to avoid the unauthenticated rate limit (60 requests/hour per IP), which is
+# easily exhausted on shared CI runners and behind corporate NAT.
+githubApiGet() {
+    local url="$1"
+
+    if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
+        if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+            curl -s -H "Authorization: Bearer ${GITHUB_TOKEN}" "${url}"
+        else
+            curl -s "${url}"
+        fi
+    else
+        if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+            wget -q --header="Authorization: Bearer ${GITHUB_TOKEN}" --header="Accept: application/json" -O - "${url}"
+        else
+            wget -q --header="Accept: application/json" -O - "${url}"
+        fi
+    fi
+}
+
 getLatestRelease() {
     local radReleaseUrl="https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/releases"
     local latest_release=""
+    local releases_json=""
+
+    releases_json=$(githubApiGet "${radReleaseUrl}")
 
     if [[ "${INCLUDE_RC}" == "true" ]]; then
-        if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
-            latest_release=$(curl -s "${radReleaseUrl}" | grep \"tag_name\" | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
-        else
-            latest_release=$(wget -q --header="Accept: application/json" -O - "${radReleaseUrl}" | grep \"tag_name\" | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
-        fi
+        latest_release=$(echo "${releases_json}" | grep \"tag_name\" | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p') || true
     else
-        if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
-            latest_release=$(curl -s "${radReleaseUrl}" | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
-        else
-            latest_release=$(wget -q --header="Accept: application/json" -O - "${radReleaseUrl}" | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
-        fi
+        latest_release=$(echo "${releases_json}" | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p') || true
     fi
 
     if [[ -z "${latest_release}" ]]; then
