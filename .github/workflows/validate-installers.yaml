@@ -101,11 +101,6 @@ jobs:
 
       - name: Run installer test script
         shell: powershell
-        # Authenticate GitHub API calls to avoid the unauthenticated rate limit
-        # (60 requests/hour per IP) that is easily exhausted on shared runners.
-        env:
-          GITHUB_USER: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ github.token }}
         run: deploy/test-pwsh-install.ps1
 
   verify-bash-installer:
@@ -126,8 +121,4 @@ jobs:
         run: make install-oras
 
       - name: Run installer test script
-        # Authenticate GitHub API calls to avoid the unauthenticated rate limit
-        # (60 requests/hour per IP) that is easily exhausted on shared runners.
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: deploy/test-install.sh
