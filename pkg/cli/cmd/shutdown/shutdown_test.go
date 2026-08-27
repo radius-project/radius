@@ -19,6 +19,8 @@ package shutdown
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -30,6 +32,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+// nonEmptyUCPDump is a minimal pg_dump-shaped dump of the "resources" table with one data row,
+// standing in for a healthy control-plane backup.
+const nonEmptyUCPDump = `COPY public.resources (id, original_id, resource_type, root_scope, routing_scope, etag, resource_data) FROM stdin;
+/planes/radius/local/resourcegroups/default	/planes/radius/local/resourcegroups/default	resourcegroups	/planes/radius/local	resourcegroups/default	abc123	{}
+\.
+`
 
 func Test_CommandValidation(t *testing.T) {
 	radcli.SharedCommandValidation(t, NewCommand)
@@ -71,19 +80,28 @@ workspaces:
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-// fakeStateBackupClient records calls and returns canned errors.
+// fakeStateBackupClient records calls, returns canned errors, and simulates BackupDatabases by
+// writing ucpDump (defaulting to a non-empty dump) to stateDir/ucp.sql.
 type fakeStateBackupClient struct {
 	backupDBErr  error
 	backupTFErr  error
 	dbCalled     bool
 	tfCalled     bool
 	stateDirSeen string
+	ucpDump      string
+}
+
+func newFakeStateBackupClient() *fakeStateBackupClient {
+	return &fakeStateBackupClient{ucpDump: nonEmptyUCPDump}
 }
 
 func (f *fakeStateBackupClient) BackupDatabases(ctx context.Context, kubeContext, namespace, stateDir string) error {
 	f.dbCalled = true
 	f.stateDirSeen = stateDir
-	return f.backupDBErr
+	if f.backupDBErr != nil {
+		return f.backupDBErr
+	}
+	return os.WriteFile(filepath.Join(stateDir, "ucp.sql"), []byte(f.ucpDump), 0o644)
 }
 
 func (f *fakeStateBackupClient) BackupTerraform(ctx context.Context, kubeContext, namespace, stateDir string) error {
@@ -125,7 +143,7 @@ func Test_Run_BacksUpBothStoresAndCommits(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	client := &fakeStateBackupClient{}
+	client := newFakeStateBackupClient()
 	r, session, stateDir := newTestRunner(t, ctrl, client)
 	session.EXPECT().Commit(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
@@ -135,6 +153,24 @@ func Test_Run_BacksUpBothStoresAndCommits(t *testing.T) {
 	require.True(t, client.dbCalled, "databases should be backed up")
 	require.True(t, client.tfCalled, "terraform state should be backed up")
 	require.Equal(t, stateDir, client.stateDirSeen, "backup must target the archive path")
+}
+
+// Test_Run_EmptyControlPlaneStopsBeforeCommit verifies that a degenerate backup (no rows in the
+// "resources" table, e.g. from a postgres pod crash-loop after a successful "rad startup") is
+// rejected before it is committed, so the durable archive is never overwritten with it.
+func Test_Run_EmptyControlPlaneStopsBeforeCommit(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	client := newFakeStateBackupClient()
+	client.ucpDump = "COPY public.resources (id) FROM stdin;\n\\.\n"
+	// Commit is intentionally not expected: an empty backup must stop before committing. The
+	// deferred session.Close is still expected (verified by the mock at ctrl.Finish).
+	r, _, _ := newTestRunner(t, ctrl, client)
+
+	err := r.Run(t.Context())
+	require.ErrorContains(t, err, "Refusing to persist state")
+	require.False(t, client.tfCalled, "terraform backup should not run after an empty control-plane backup")
 }
 
 func Test_Run_DatabaseBackupFailureStopsBeforeCommit(t *testing.T) {
@@ -155,7 +191,7 @@ func Test_Run_CommitFailureIsReturned(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	client := &fakeStateBackupClient{}
+	client := newFakeStateBackupClient()
 	r, session, _ := newTestRunner(t, ctrl, client)
 	session.EXPECT().Commit(gomock.Any(), gomock.Any()).Return(errors.New("push rejected")).Times(1)
 
@@ -172,7 +208,7 @@ func Test_Run_ArchiveOpenFailureIsReturned(t *testing.T) {
 	archive := statearchive.NewMockArchive(ctrl)
 	archive.EXPECT().Open(gomock.Any(), pgbackup.StateBranchName()).Return(nil, errors.New("not a git repo")).Times(1)
 
-	client := &fakeStateBackupClient{}
+	client := newFakeStateBackupClient()
 	r := &Runner{
 		Output:      &output.MockOutput{},
 		Workspace:   kubernetesWorkspace(),
