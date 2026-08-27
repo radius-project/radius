@@ -265,6 +265,10 @@ case "${1:-} ${2:-}" in
         echo "RELEASE VERSION 0.99.0-test"
         ;;
     "env list")
+        if [[ " $* " != *" --preview "* ]]; then
+            echo "rad: env list must use --preview" >&2
+            exit 64
+        fi
         printf '%s\n' '[{"name":"aks-dev"}]'
         ;;
     *)
@@ -561,7 +565,8 @@ progress_jq 'any(.resources[]; .name == "queue"
 
 assert_status_file_contains "deploy-activity.log" '"outcome":"success"'
 assert_status_file_contains "deploy-controlplane.log" "# rad version"
-assert_status_file_contains "deploy-controlplane.log" "# rad env list"
+assert_status_file_contains "deploy-controlplane.log" "# rad env list --preview"
+assert_status_file_contains "deploy-controlplane.log" "aks-dev"
 assert_status_file_contains "deploy-state.txt" "state=success"
 assert_status_file_contains "deploy-state.txt" "application=todolist"
 assert_status_file_contains "deploy-state.txt" "sha=deadbeefcafe"
