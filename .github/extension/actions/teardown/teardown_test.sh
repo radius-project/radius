@@ -18,8 +18,10 @@
 #   6. teardown lists applications via the Radius.Core preview API surface
 #      (`rad app list --preview`), and surfaces a warning if that listing fails
 #      instead of swallowing it silently.
-#   7. Every workflow that uses the teardown action wires state-restored from a
-#      restore-state step (id: restore-state) in the SAME job.
+#   7. Every workflow that uses the teardown action (discovered dynamically)
+#      wires state-restored from a restore-state step (id: restore-state) in the
+#      SAME job, uses both actions together, and the check is proven to reject
+#      broken wiring (missing id, missing output pass-through, cross-job split).
 
 set -euo pipefail
 
@@ -46,12 +48,14 @@ repo_root = pathlib.Path(sys.argv[1])
 ext_root = repo_root / ".github/extension"
 restore_action = ext_root / "actions/restore-state/action.yml"
 teardown_action = ext_root / "actions/teardown/action.yml"
-workflow_files = [
-    ext_root / "run-rad-commands-aws.yml",
-    ext_root / "run-rad-commands-azure.yml",
-    ext_root / "delete-aws.yml",
-    ext_root / "delete-azure.yml",
-]
+
+# Discover the workflow files dynamically instead of hardcoding, so a newly
+# added workflow that uses the teardown action is covered automatically.
+teardown_use = re.compile(r"actions/teardown@")
+restore_use = re.compile(r"actions/restore-state@")
+all_workflows = sorted(p for p in ext_root.glob("*.yml"))
+teardown_workflows = [p for p in all_workflows if teardown_use.search(p.read_text(encoding="utf-8"))]
+restore_workflows = [p for p in all_workflows if restore_use.search(p.read_text(encoding="utf-8"))]
 
 failures = []
 
@@ -234,28 +238,75 @@ status_fail_stdout, _, _, _ = run_block(status_block, rad_fail_on="app list")
 if "::warning" not in status_fail_stdout:
     fail("teardown status step must warn (not swallow) when `rad app list --preview` fails")
 
-# 7. Every workflow using teardown wires state-restored from a same-job
-#    restore-state step.
-teardown_use = re.compile(r"actions/teardown@")
+# 7. Every workflow using the teardown action wires state-restored from a
+#    same-job restore-state step. Checked against every workflow discovered
+#    dynamically, with negative cases proving the check rejects broken wiring.
 restore_id = re.compile(r"^\s*id:\s*restore-state\s*$")
 wiring = re.compile(r"state-restored:\s*\$\{\{\s*steps\.restore-state\.outputs\.state-restored\s*\}\}")
-for wf in workflow_files:
-    lines = wf.read_text(encoding="utf-8").splitlines()
+
+
+def wiring_problems(lines):
+    """Return a list of wiring problems for a workflow's lines (empty == OK)."""
+    problems = []
     teardown_idx = next((i for i, l in enumerate(lines) if teardown_use.search(l)), None)
     if teardown_idx is None:
-        continue  # workflow doesn't use teardown; nothing to wire
+        return problems  # workflow doesn't use teardown; nothing to wire
     id_idx = next((i for i, l in enumerate(lines) if restore_id.match(l)), None)
     wire_idx = next((i for i, l in enumerate(lines) if wiring.search(l)), None)
     if id_idx is None:
-        fail(f"{wf.name}: uses teardown but has no `id: restore-state` step")
-        continue
+        problems.append("uses teardown but has no `id: restore-state` step")
+        return problems
     if wire_idx is None:
-        fail(f"{wf.name}: teardown must be passed `state-restored: ${{{{ steps.restore-state.outputs.state-restored }}}}`")
-        continue
+        problems.append("teardown is not passed the state-restored output")
+        return problems
     teardown_job = job_at_line(lines, teardown_idx)
     restore_job = job_at_line(lines, id_idx)
     if teardown_job is None or teardown_job != restore_job:
-        fail(f"{wf.name}: restore-state ({restore_job}) and teardown ({teardown_job}) must be in the same job")
+        problems.append(
+            f"restore-state ({restore_job}) and teardown ({teardown_job}) are not in the same job"
+        )
+    return problems
+
+
+# Coverage guard: there must be workflows to check, and any workflow that uses
+# the teardown action must also use the restore-state action (and vice versa),
+# so a new caller cannot land wired to one but not the other.
+if not teardown_workflows:
+    fail("no workflow uses the teardown action; expected the deploy/delete workflows to")
+if set(teardown_workflows) != set(restore_workflows):
+    only_teardown = sorted(p.name for p in set(teardown_workflows) - set(restore_workflows))
+    only_restore = sorted(p.name for p in set(restore_workflows) - set(teardown_workflows))
+    fail(
+        "teardown and restore-state must be used by the same workflows; "
+        f"teardown-only={only_teardown}, restore-only={only_restore}"
+    )
+
+for wf in teardown_workflows:
+    lines = wf.read_text(encoding="utf-8").splitlines()
+
+    # Positive: the real workflow wires it correctly.
+    for problem in wiring_problems(lines):
+        fail(f"{wf.name}: {problem}")
+
+    # Negative cases: each mutation of the real workflow must be rejected.
+    without_id = [l for l in lines if not restore_id.match(l)]
+    if not wiring_problems(without_id):
+        fail(f"{wf.name}: check must reject a workflow missing `id: restore-state`")
+
+    without_wire = [l for l in lines if not wiring.search(l)]
+    if not wiring_problems(without_wire):
+        fail(f"{wf.name}: check must reject a workflow that does not pass the state-restored output")
+
+    # Split restore-state and teardown into different jobs by inserting a new
+    # job header immediately before the teardown step.
+    teardown_idx = next((i for i, l in enumerate(lines) if teardown_use.search(l)), None)
+    # Walk back to the `- name:` line that starts the teardown step.
+    step_start = teardown_idx
+    while step_start > 0 and not re.match(r"^\s*-\s*name:", lines[step_start]):
+        step_start -= 1
+    split = lines[:step_start] + ["  injected-other-job:", "    runs-on: ubuntu-latest", "    steps:"] + lines[step_start:]
+    if not wiring_problems(split):
+        fail(f"{wf.name}: check must reject restore-state and teardown living in different jobs")
 
 shutil.rmtree(scratch_root, ignore_errors=True)
 
