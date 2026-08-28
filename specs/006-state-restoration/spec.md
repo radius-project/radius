@@ -11,86 +11,136 @@ Repo Radius (the ephemeral k3d control plane the GitHub workflows spin up on eve
 
 That is not sufficient when the previous run was interrupted while a resource was mid-operation. The archive can preserve a resource in a non-terminal state — for example `provisioningState: "Updating"` — that never actually completed. On the next run, the control plane accepts that state as authoritative, so every subsequent operation against the resource is blocked with `409 Conflict / target resource is in progress`. The delete workflow loops on that 409 forever and the application becomes undeletable through Radius.
 
-This feature adds a reconciliation pass at the end of `rad startup`: for every resource the archive restored in a non-terminal `provisioningState`, query the resource's actual current state (through the resource provider that owns it) and update the state store to match reality — including marking the resource as gone when the underlying resource does not exist.
+This feature adds a reconciliation pass triggered by `rad startup` and executed against the running control plane: for every application in the plane, an application-scoped `reconcile` action asks each resource's owning resource provider to check its actual current state and rewrite the state store to match reality — including removing entries when the underlying resource does not exist.
 
-The scope is deliberately narrow: reconcile hydrated state so operations that follow see reality. It does not change the delete command, does not add a `--force` flag, and does not touch the control-plane runtime for regular (non-Repo) Radius, which already reconciles asynchronously through its own resource providers.
+The scope is deliberately narrow: reconcile hydrated state so operations that follow see reality. It does not change the delete command, does not add a `--force` flag, and does not touch the regular (non-Repo) Radius runtime — the action exists but is never invoked there.
 
 ## Non-goals
 
 - **A `rad app delete --force` flag was considered and explicitly rejected.** With two concurrent deletes (for example, a user re-runs `rad app delete` after their terminal died), a force option that bypasses state can convert an in-progress happy-path delete into a broken one by overwriting the state store while the first delete is still driving to a terminal state. Fixing hydration removes the need for the flag.
 - **No user-facing message when a resource is genuinely still updating.** If reconciliation finds the resource actually is in `Updating` state, the hydrated state is accurate — leave it, do not warn.
-- **Regular Radius (persistent control plane) is out of scope.** Its resource providers reconcile continuously; this bug is specific to the ephemeral archive-hydrated topology.
+- **The persistent Radius control plane's async controllers are not changed.** They already reconcile continuously; the new action is dormant unless `rad startup` (or a test) invokes it.
 - **The concurrent-`rad app delete` behavior is out of scope** — tracked as a separate follow-up (see [Follow-up](#follow-up)).
 
 ## Decisions
 
-### Reconciliation runs at the end of `rad startup`, before it returns success
+### The client-facing endpoint is an application-scoped custom action, mirroring `getGraph`
 
-`rad startup` today performs three stages, in order:
+Reconciliation is a per-application operation: walk the application's children, check each one's reality, roll the results back into the state store. That is the same shape as [`getGraph`](../../pkg/corerp/frontend/controller/applications/v20250801preview/getgraph.go) — an application-scoped custom action registered on `Radius.Core/applications` that walks children across resource providers. `reconcile` therefore reuses the exact pattern, up to and including the corerp orchestrator that already knows how to fan out across RPs through the UCP proxy.
 
-1. [`ScaleDown`](../../pkg/cli/cmd/startup/stateclient.go) the resource-provider deployments so no live pgx connections hold the databases open.
-2. [`RestoreDatabases`](../../pkg/cli/cmd/startup/stateclient.go) — load the PostgreSQL dumps.
-3. [`RestoreTerraform`](../../pkg/cli/cmd/startup/stateclient.go) — recreate the Terraform recipe state Secrets.
-4. [`ScaleUp`](../../pkg/cli/cmd/startup/stateclient.go) — bring the resource providers back online.
+```text
+POST /planes/radius/local/resourceGroups/{rg}/providers/Radius.Core/applications/{app}/reconcile?api-version=2025-08-01-preview
+Content-Type: application/json
+{}
+```
 
-Reconciliation adds a fifth stage that runs after ScaleUp and after the resource providers have finished their readiness probes: enumerate every resource in the restored state store whose `provisioningState` is non-terminal (`Accepted`, `Provisioning`, `Updating`, `Deleting`, or any other state that is neither `Succeeded` nor `Failed`), query its owning resource provider for the resource's current state, and rewrite the state-store entry accordingly. The whole reconciliation completes before `rad startup` exits, so downstream steps in the workflow (deploy, delete, or plain `rad` commands) observe an accurate state store from their first request.
+- Registered in [pkg/corerp/setup/setup.go](../../pkg/corerp/setup/setup.go) under the `Custom` map on the application resource, next to `getGraph`.
+- Handler in `pkg/corerp/frontend/controller/applications/v20250801preview/reconcile.go`.
+- Response is the standard ARM-RPC async pattern: `202 Accepted` with a `Location` header. The client polls to completion. This matches every other write-shaped action in Radius and keeps `rad startup` from holding a synchronous connection open while UCP proxies to many RPs.
 
-Running after ScaleUp is required because the reconciliation queries flow through the same UCP/RP path that regular clients use — the resource providers must be ready to answer. Reconciliation must not talk directly to the database; that would re-introduce the class of bug Nicole flagged, where a database write bypasses the resource provider's state machine.
+Naming: `reconcile`, lowercase, matches the codebase convention (`getGraph`, `join`, `getmetadata`). Not `refresh`, not `reconcileStatus` — the action is exactly analogous to the RP-internal reconciliation the persistent control plane already does asynchronously.
+
+### The corerp handler orchestrates; UCP is the proxy
+
+corerp's [`GetGraphv20250801preview`](../../pkg/corerp/frontend/controller/applications/v20250801preview/getgraph.go) already receives a `sdk.Connection` at construction, enumerates an application's children by walking resource types across resource providers, and issues per-resource GETs that UCP proxies to the owning RP. `reconcile` reuses that walk and issues a per-resource `reconcile` POST to each non-terminal child instead of a GET.
+
+Concretely, the handler:
+
+1. Loads the application record.
+2. Traverses the same resource-type registration list `getGraph` uses (via UCP's `System.Resources/resourceProviders`) to build the child set.
+3. Filters to children whose current `provisioningState` is non-terminal — anything other than `Succeeded` or `Failed`. Terminal-state children are left alone; the archive captured a settled state and the next user operation will refresh it through the normal path.
+4. For each such child, issues:
+
+    ```text
+    POST /planes/…/providers/{Namespace}/{resourceType}/{name}/reconcile?api-version=…
+    ```
+
+    in parallel (bounded fan-out), through the UCP-fronted connection the handler already has.
+5. After every child response returns, reconciles the application record itself: if all children are now terminal, transition the application accordingly; if any child remains non-terminal, leave the application in its hydrated state.
+6. Aggregates per-child outcomes into a report and completes the async operation.
+
+UCP is not a smart orchestrator here — it is the proxy layer that already routes `/planes/…/providers/{ns}/…` to the owning RP. That is enough. "UCP asks every RP" is satisfied by construction because every per-child call goes through UCP.
+
+### Per-resource-type `reconcile` custom action, opt-in
+
+Each resource type that participates registers `reconcile` as a `Custom` action alongside the type's existing `Put`/`Patch`/`Delete` operations. Registration is the same three-line addition `getGraph` uses on the application resource; nothing new in the armrpc builder.
+
+```go
+Custom: map[string]builder.Operation[datamodel.ContainerResource]{
+    "reconcile": {
+        APIController: func(opt apictrl.Options) (apictrl.Controller, error) {
+            return ctr_ctrl.NewReconcile(opt)
+        },
+    },
+},
+```
+
+The per-resource handler is the only component that knows how to check reality for its type. It:
+
+- Queries the underlying provider (the Kubernetes API for containers/gateways/secretstores in corerp; the recipe engine's provider client for dynamic-rp types backed by Terraform / Azure / AWS).
+- Interprets the response according to the table in [What "reality" is for each resource](#what-reality-is-for-each-resource).
+- Writes the result back through the RP's normal state-store path — the same `PATCH` code path the async operation controller uses. **No direct SQL.**
+- Returns the new state, or an error the corerp orchestrator will record in the report.
+
+A resource type that has not opted in is skipped by the corerp orchestrator with a warning in the report. Opt-in is per-type so we can ship the fix incrementally (see [Acceptance](#acceptance) — `Radius.Compute/containers` first).
 
 ### What "reality" is for each resource
 
-For each hydrated non-terminal resource, `rad startup` issues a GET against the resource-provider surface (UCP → RP) and interprets the response:
+| Hydrated `provisioningState` | Reality query result       | Action                                                                                             |
+| ---------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------- |
+| any non-terminal             | terminal (settled)         | Rewrite the state-store entry with the observed terminal state (`Succeeded` / `Failed` / etc.).    |
+| any non-terminal             | still non-terminal         | Leave as-is. The hydrated state is accurate.                                                       |
+| any non-terminal             | not found                  | Delete the state-store entry. The resource does not exist.                                         |
+| any non-terminal             | error (network, 5xx, etc.) | Leave as-is; record the error in the response. Reconciliation is best-effort and never fails.      |
 
-| Hydrated `provisioningState` | RP response          | Action                                                                                             |
-| ---------------------------- | -------------------- | -------------------------------------------------------------------------------------------------- |
-| any non-terminal             | `200`, terminal      | Rewrite the state-store entry with the RP-reported terminal state (`Succeeded` / `Failed` / etc.). |
-| any non-terminal             | `200`, still non-terminal | Leave as-is. The hydrated state is accurate.                                                       |
-| any non-terminal             | `404`                | Delete the state-store entry. The resource does not exist.                                         |
-| any non-terminal             | error (network, 5xx) | Leave as-is; log a warning. Reconciliation is best-effort and never blocks startup.                |
-
-Terminal-state entries (`Succeeded`, `Failed`) are not reconciled. The archive captured a settled state; if it drifts, the next operation the user issues will refresh it through the normal path.
+Terminal-state entries are never reconciled by this action.
 
 ### Reconciliation is best-effort and does not fail `rad startup`
 
-`rad startup` today already treats a failed archive open as fatal, because without the archive the control plane has nothing to serve. Reconciliation is different: a reconciliation failure on any single resource, or on the reconciliation pass as a whole, must not fail startup. The workflow's subsequent commands then run against the un-reconciled state, which is no worse than today's behavior. Every reconciliation outcome (skipped, unchanged, updated, deleted, failed to query) is written to the `rad startup` log so it is visible in the workflow log.
+A failed per-resource `reconcile` does not fail the application's `reconcile`. A failed application `reconcile` does not fail `rad startup`. Every outcome (skipped, unchanged, updated, deleted, failed to query) is written to the `rad startup` log so it is visible in the workflow log.
 
-This preserves the guarantee that a run can always at least *try* to make progress. It also means the fix is safe to ship without a fallback flag: at worst the reconciliation pass is a no-op.
+This preserves the guarantee that a run can always at least *try* to make progress. It also means the change is safe to ship without a fallback flag: at worst the pass is a no-op.
 
-### Scope of resources reconciled
+### The client-side stage
 
-The reconciler enumerates every resource in every restored resource-provider database. It does not filter by resource type, by application, or by environment. Filtering would require the reconciler to know which resource types can transition non-terminal states on their own (they all can) and would create carve-outs to keep in sync as new resource types land.
+`rad startup` today performs four stages ([pkg/cli/cmd/startup/stateclient.go](../../pkg/cli/cmd/startup/stateclient.go)): `ScaleDown` → `RestoreDatabases` → `RestoreTerraform` → `ScaleUp`. A fifth stage, `ReconcileHydratedState`, is added after `ScaleUp` and after the resource-provider deployments are ready to serve. It:
 
-Applications and environments are themselves tracked resources and are included. If an application is hydrated in `Updating`, its record is reconciled the same way as any container or database inside it.
+1. Lists applications in the plane through UCP.
+2. For each application, POSTs `.../applications/{app}/reconcile` and polls the async operation to completion (with a bounded timeout).
+3. Logs the per-application report.
+4. Always returns success.
 
-### Reconciliation semantics for children
+No workflow-level change. [restore-state/action.yml](../../.github/extension/actions/restore-state/action.yml) already runs `rad startup`; the reconciliation is transparent.
 
-An application's child resources (containers, databases, gateways, etc.) each have their own `provisioningState` and are reconciled independently. The reconciler does not need to walk the application graph; it enumerates directly from the resource store. If an application is hydrated in `Succeeded` but a container inside it was hydrated in `Updating`, only the container is reconciled.
+### Why the persistent control plane is not disrupted
+
+The `reconcile` action is dormant unless something calls it. Regular Radius never does — the persistent control plane's async operation controller and health controller reconcile continuously through their own polling loops, and stuck non-terminal states resolve within the RP's own interval. The archive-hydrate topology short-circuits that: state is loaded from disk and immediately trusted. `rad startup` calling `reconcile` closes that gap only for the ephemeral topology, without changing the runtime for the persistent one.
 
 ## System Context
 
 ### Where the bug manifests today
 
 - The GitHub delete workflow ([.github/extension/delete-azure.yml](../../.github/extension/delete-azure.yml), [.github/extension/delete-aws.yml](../../.github/extension/delete-aws.yml)) runs [`restore-state`](../../.github/extension/actions/restore-state/action.yml) which shells out to `rad startup`, then [`delete-resource`](../../.github/extension/actions/delete-resource/action.yml) which shells out to `rad app delete <name> --yes --preview`.
-- The failure mode: `rad app delete` retries a `409 Conflict / target resource is in progress` indefinitely because the hydrated state store reports a resource in a non-terminal state that never actually existed (or that has since settled underneath). The specific transcript case was an application whose deployment had failed, leaving nothing in the cloud, while the state store insisted the resource was `Updating`.
+- The failure mode: `rad app delete` retries `409 Conflict / target resource is in progress` indefinitely because the hydrated state store reports a resource in a non-terminal state that never actually existed (or that has since settled underneath). The transcript's specific case was an application whose deployment had failed, leaving nothing in the cloud, while the state store insisted the resource was `Updating`.
 
 ### Where the change lives
 
-- The `rad startup` command in [pkg/cli/cmd/startup/startup.go](../../pkg/cli/cmd/startup/startup.go) and its state client in [pkg/cli/cmd/startup/stateclient.go](../../pkg/cli/cmd/startup/stateclient.go). A new stage (call it `ReconcileHydrated`) is added there.
-- The reconciler enumerates state through the standard UCP list endpoints and queries individual resources via the standard RP GET endpoints. It does not import the resource providers' internal packages.
-- No workflow-level change. [restore-state/action.yml](../../.github/extension/actions/restore-state/action.yml) already runs `rad startup`; the reconciliation is transparent.
-- No CLI change to `rad app delete`. Once reconciliation runs, the delete sees an accurate state store and proceeds normally.
+- Client-side stage: [pkg/cli/cmd/startup/startup.go](../../pkg/cli/cmd/startup/startup.go) and [pkg/cli/cmd/startup/stateclient.go](../../pkg/cli/cmd/startup/stateclient.go).
+- Application-scoped orchestrator: `pkg/corerp/frontend/controller/applications/v20250801preview/reconcile.go` (new), registered in [pkg/corerp/setup/setup.go](../../pkg/corerp/setup/setup.go) beside `getGraph`.
+- First per-resource handler (prototype scope): `pkg/corerp/frontend/controller/containers/reconcile.go` (new), registered on the `containers` resource type in the same `setup.go`.
+- API surface: additive `reconcile` custom action on `Radius.Core/applications/{name}` and on the participating resource type(s), authored in [typespec/](../../typespec/) and regenerated via `make generate`.
 
-### Why regular Radius is not as much affected
-
-A persistently running Radius control plane has resource providers that reconcile their world continuously — the async operation controller polls, the health controller polls, and stuck non-terminal states resolve within the RP's own polling interval. The archive-hydrate topology short-circuits that: the state is loaded from disk and immediately trusted. Reconciliation on hydrate closes that gap only for the ephemeral topology.
+Nothing outside these files needs to change.
 
 ## Acceptance
 
-- Deleting an application whose state archive contains at least one child resource in a non-terminal `provisioningState` succeeds when the underlying cloud resource does not exist. Today it loops on `409`.
-- Deleting an application whose state archive contains a child resource in `Updating` and whose underlying cloud resource genuinely is still updating waits normally and does not falsely succeed. The reconciliation must observe the RP-reported state and leave the store unchanged.
+- Deleting an application whose state archive contains at least one child resource in a non-terminal `provisioningState` succeeds when the underlying cloud/Kubernetes resource does not exist. Today it loops on `409`.
+- Deleting an application whose state archive contains a child resource in `Updating` and whose underlying resource genuinely is still updating waits normally and does not falsely succeed. The reconciler must observe the reality-reported state and leave the store unchanged.
 - `rad startup` never fails because reconciliation could not reach a resource provider. The workflow log records the failure and startup returns success.
-- The reconciliation pass runs no direct SQL against the resource-provider databases. Every state change goes through the RP, so state machines stay intact.
+- The reconciler runs no direct SQL against any resource-provider database. Every state change goes through the RP's normal write path, so state machines stay intact.
+- The prototype covers `Radius.Compute/containers` end-to-end: an application containing only containers is deletable after a `rad startup` from an archive that hydrated the containers in `Updating`, whether or not the container objects exist in Kubernetes.
 
 ## Follow-up
 
-A separate issue is filed to verify that concurrent `rad app delete` against the same application from two terminals is handled correctly by a regular (persistent) Radius control plane. That case is not affected by hydration — a persistent control plane already tracks in-flight operations — but it needs an explicit test so a future change cannot regress it. See [radius-project/radius#12870](https://github.com/radius-project/radius/issues/12870).
+- A separate issue tracks verifying that concurrent `rad app delete` against the same application from two terminals is handled correctly by a regular (persistent) Radius control plane. That case is not affected by hydration — a persistent control plane already tracks in-flight operations — but it needs an explicit test so a future change cannot regress it. See [radius-project/radius#12870](https://github.com/radius-project/radius/issues/12870).
+- Per-resource `reconcile` handlers for the remaining resource types (`Radius.Compute/gateways`, `Radius.Compute/secretstores`, and the dynamic-rp Terraform-backed types) are follow-up work. Each is a new handler that registers the same custom action; no framework changes are required to add them.
