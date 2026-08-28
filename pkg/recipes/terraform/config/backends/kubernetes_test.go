@@ -176,10 +176,8 @@ func Test_BuildBackend_ExistingLegacyStateUsesLegacySuffix(t *testing.T) {
 	// Simulate a Terraform state secret created by an older version of Radius (legacy SHA-1 suffix).
 	clientset := fake.NewClientset()
 	_, err = clientset.CoreV1().Secrets(RadiusNamespace).Create(t.Context(), &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      KubernetesBackendNamePrefix + legacySuffix,
-			Namespace: RadiusNamespace,
-		},
+		Name:      KubernetesBackendNamePrefix + legacySuffix,
+		Namespace: RadiusNamespace,
 	}, metav1.CreateOptions{})
 	require.NoError(t, err)
 
@@ -195,10 +193,8 @@ func Test_BuildBackend_ExistingLegacyStateUsesLegacySuffix(t *testing.T) {
 func Test_ValidateBackendExists(t *testing.T) {
 	clientset := fake.NewClientset()
 	secret := &v1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-secret",
-			Namespace: RadiusNamespace,
-		},
+		Name:      "test-secret",
+		Namespace: RadiusNamespace,
 		Data: map[string][]byte{
 			"key": []byte("value"),
 		},

@@ -246,9 +246,7 @@ func TestGetGraphRun_ComputeGraphSuccess(t *testing.T) {
 		EXPECT().
 		Get(gomock.Any(), gomock.Any()).
 		Return(rpctest.FakeStoreObject(&datamodel.Application{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{ID: appIDStr},
-			},
+			ID: appIDStr,
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{Environment: envIDStr},
 			},

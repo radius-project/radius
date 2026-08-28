@@ -26,8 +26,6 @@ import (
 
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/dynamicrp/backend/secret"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
@@ -52,15 +50,9 @@ func Test_Process(t *testing.T) {
 	application := "test-application"
 	t.Run("success", func(t *testing.T) {
 		resource := &datamodel.DynamicResource{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
-					Type: "Applications.Test/testRecipeResources",
-				},
-				InternalMetadata: v1.InternalMetadata{
-					UpdatedAPIVersion: "2024-01-01",
-				},
-			},
+			ID:                "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+			Type:              "Applications.Test/testRecipeResources",
+			UpdatedAPIVersion: "2024-01-01",
 			Properties: map[string]any{
 				"status": map[string]any{},
 			},
@@ -125,15 +117,9 @@ func Test_Process(t *testing.T) {
 	// test to check if the properties like environment, application , status etc are not overwritten if they are provided as part of the recipe output.
 	t.Run("do not overwite basic properties", func(t *testing.T) {
 		resource := &datamodel.DynamicResource{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
-					Type: "Applications.Test/testRecipeResources",
-				},
-				InternalMetadata: v1.InternalMetadata{
-					UpdatedAPIVersion: "2024-01-01",
-				},
-			},
+			ID:                "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+			Type:              "Applications.Test/testRecipeResources",
+			UpdatedAPIVersion: "2024-01-01",
 			Properties: map[string]any{
 				"environment": environment,
 				"application": application,
@@ -211,13 +197,9 @@ func Test_Process(t *testing.T) {
 		require.NoError(t, err)
 
 		resource := &datamodel.DynamicResource{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
-					Type: "Applications.Test/testRecipeResources",
-				},
-				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
-			},
+			ID:                "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+			Type:              "Applications.Test/testRecipeResources",
+			UpdatedAPIVersion: "2024-01-01",
 			Properties: map[string]any{
 				"environment": environment,
 				"application": application,
@@ -282,14 +264,10 @@ func Test_Process(t *testing.T) {
 		require.NoError(t, err)
 
 		resource := &datamodel.DynamicResource{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
-					Type: "Applications.Test/testRecipeResources",
-				},
-				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
-			},
-			Properties: map[string]any{"status": map[string]any{}},
+			ID:                "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+			Type:              "Applications.Test/testRecipeResources",
+			UpdatedAPIVersion: "2024-01-01",
+			Properties:        map[string]any{"status": map[string]any{}},
 		}
 		options := processors.Options{
 			RecipeOutput: &recipes.RecipeOutput{
@@ -325,10 +303,8 @@ func Test_Process(t *testing.T) {
 		cf, err := testUCPClientFactoryWithSecrets("password")
 		require.NoError(t, err)
 		resource := &datamodel.DynamicResource{
-			BaseResource: v1.BaseResource{
-				TrackedResource:  v1.TrackedResource{ID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource"},
-				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
-			},
+			ID:                "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+			UpdatedAPIVersion: "2024-01-01",
 			Properties: map[string]any{
 				"status":  map[string]any{},
 				"secrets": map[string]any{"name": "old-secret-name"},
@@ -349,14 +325,10 @@ func Test_Process(t *testing.T) {
 		require.NoError(t, err)
 
 		resource := &datamodel.DynamicResource{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
-					Type: "Applications.Test/testRecipeResources",
-				},
-				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
-			},
-			Properties: map[string]any{"status": map[string]any{}},
+			ID:                "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+			Type:              "Applications.Test/testRecipeResources",
+			UpdatedAPIVersion: "2024-01-01",
+			Properties:        map[string]any{"status": map[string]any{}},
 		}
 		options := processors.Options{
 			RecipeOutput: &recipes.RecipeOutput{
@@ -388,14 +360,10 @@ func Test_Process(t *testing.T) {
 		require.NoError(t, err)
 
 		resource := &datamodel.DynamicResource{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
-					Type: "Applications.Test/testRecipeResources",
-				},
-				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
-			},
-			Properties: map[string]any{"status": map[string]any{}},
+			ID:                "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+			Type:              "Applications.Test/testRecipeResources",
+			UpdatedAPIVersion: "2024-01-01",
+			Properties:        map[string]any{"status": map[string]any{}},
 		}
 		options := processors.Options{
 			RecipeOutput: &recipes.RecipeOutput{
@@ -423,13 +391,9 @@ func Test_Process(t *testing.T) {
 
 		resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource"
 		resource := &datamodel.DynamicResource{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID:   resourceID,
-					Type: "Applications.Test/testRecipeResources",
-				},
-				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
-			},
+			ID:                resourceID,
+			Type:              "Applications.Test/testRecipeResources",
+			UpdatedAPIVersion: "2024-01-01",
 			// A prior deploy materialized a managed secret and left the reference behind.
 			Properties: map[string]any{
 				"secrets": map[string]any{"name": "test-resource-secrets"},
@@ -457,7 +421,7 @@ func Test_Process(t *testing.T) {
 		p := DynamicProcessor{SecretMaterializer: mat}
 		resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource"
 		resource := &datamodel.DynamicResource{
-			BaseResource: v1.BaseResource{TrackedResource: v1.TrackedResource{ID: resourceID}},
+			ID: resourceID,
 			Properties: map[string]any{
 				"status":  map[string]any{},
 				"secrets": map[string]any{"name": "test-resource-secrets"},
@@ -478,13 +442,9 @@ func Test_Process(t *testing.T) {
 
 		resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource"
 		resource := &datamodel.DynamicResource{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID:   resourceID,
-					Type: "Applications.Test/testRecipeResources",
-				},
-				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
-			},
+			ID:                resourceID,
+			Type:              "Applications.Test/testRecipeResources",
+			UpdatedAPIVersion: "2024-01-01",
 			Properties: map[string]any{
 				"secrets": map[string]any{"name": "test-resource-secrets"},
 			},
@@ -514,13 +474,9 @@ func Test_Process(t *testing.T) {
 
 		resourceID := "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource"
 		resource := &datamodel.DynamicResource{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID:   resourceID,
-					Type: "Applications.Test/testRecipeResources",
-				},
-				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
-			},
+			ID:                resourceID,
+			Type:              "Applications.Test/testRecipeResources",
+			UpdatedAPIVersion: "2024-01-01",
 			Properties: map[string]any{
 				"status":  map[string]any{},
 				"secrets": map[string]any{"name": "test-resource-secrets"},
@@ -559,14 +515,10 @@ func Test_Process(t *testing.T) {
 		require.NoError(t, err)
 
 		resource := &datamodel.DynamicResource{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID:   "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
-					Type: "Applications.Test/testRecipeResources",
-				},
-				InternalMetadata: v1.InternalMetadata{UpdatedAPIVersion: "2024-01-01"},
-			},
-			Properties: map[string]any{"status": map[string]any{}},
+			ID:                "/planes/radius/local/resourceGroups/test-group/providers/Applications.Test/testRecipeResources/test-resource",
+			Type:              "Applications.Test/testRecipeResources",
+			UpdatedAPIVersion: "2024-01-01",
+			Properties:        map[string]any{"status": map[string]any{}},
 		}
 		options := processors.Options{
 			RecipeOutput: &recipes.RecipeOutput{
@@ -637,10 +589,8 @@ func testUCPClientFactoryWithSchema(schema map[string]any) (*v20231001preview.Cl
 	apiVersionServer := fake.APIVersionsServer{
 		Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.APIVersionsClientGetResponse{
-				APIVersionResource: v20231001preview.APIVersionResource{
-					Properties: &v20231001preview.APIVersionProperties{
-						Schema: schema,
-					},
+				Properties: &v20231001preview.APIVersionProperties{
+					Schema: schema,
 				},
 			}
 			resp.SetResponse(http.StatusOK, response, nil)
@@ -649,11 +599,9 @@ func testUCPClientFactoryWithSchema(schema map[string]any) (*v20231001preview.Cl
 	}
 
 	return v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
-				APIVersionsServer: apiVersionServer,
-			}),
-		},
+		Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+			APIVersionsServer: apiVersionServer,
+		}),
 	})
 }
 
@@ -661,17 +609,15 @@ func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {
 	apiVersionServer := fake.APIVersionsServer{
 		Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.APIVersionsClientGetResponse{
-				APIVersionResource: v20231001preview.APIVersionResource{
-					Properties: &v20231001preview.APIVersionProperties{
-						Schema: map[string]any{
-							"properties": map[string]any{
-								"environment": map[string]any{},
-								"application": map[string]any{},
-								"host":        map[string]any{},
-								"database":    map[string]any{},
-								"port":        map[string]any{},
-								"username":    map[string]any{},
-							},
+				Properties: &v20231001preview.APIVersionProperties{
+					Schema: map[string]any{
+						"properties": map[string]any{
+							"environment": map[string]any{},
+							"application": map[string]any{},
+							"host":        map[string]any{},
+							"database":    map[string]any{},
+							"port":        map[string]any{},
+							"username":    map[string]any{},
 						},
 					},
 				},
@@ -683,11 +629,9 @@ func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {
 	}
 
 	return v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
-				APIVersionsServer: apiVersionServer,
-			}),
-		},
+		Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+			APIVersionsServer: apiVersionServer,
+		}),
 	})
 }
 
@@ -736,11 +680,9 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		}
 
 		clientFactory, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
-			ClientOptions: policy.ClientOptions{
-				Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
-					APIVersionsServer: apiVersionServer,
-				}),
-			},
+			Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+				APIVersionsServer: apiVersionServer,
+			}),
 		})
 		require.NoError(t, err)
 
@@ -759,10 +701,8 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		apiVersionServer := fake.APIVersionsServer{
 			Get: func(ctx context.Context, planeName string, providerNamespace string, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
 				response := v20231001preview.APIVersionsClientGetResponse{
-					APIVersionResource: v20231001preview.APIVersionResource{
-						Properties: &v20231001preview.APIVersionProperties{
-							Schema: nil, // No schema
-						},
+					Properties: &v20231001preview.APIVersionProperties{
+						Schema: nil, // No schema
 					},
 				}
 				resp.SetResponse(http.StatusOK, response, nil)
@@ -771,11 +711,9 @@ func TestGetSchemaForResourceType(t *testing.T) {
 		}
 
 		clientFactory, err := v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
-			ClientOptions: policy.ClientOptions{
-				Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
-					APIVersionsServer: apiVersionServer,
-				}),
-			},
+			Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+				APIVersionsServer: apiVersionServer,
+			}),
 		})
 		require.NoError(t, err)
 

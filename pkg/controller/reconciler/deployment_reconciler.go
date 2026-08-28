@@ -28,7 +28,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -537,7 +536,7 @@ func (r *DeploymentReconciler) updateDeployment(ctx context.Context, deployment 
 		removeSecretReference(deployment, fmt.Sprintf("%s-connections", deployment.Name))
 		delete(deployment.Spec.Template.ObjectMeta.Annotations, kubernetes.AnnotationSecretHash)
 
-		err := r.Client.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: secretName.Namespace, Name: secretName.Name}})
+		err := r.Client.Delete(ctx, &corev1.Secret{Namespace: secretName.Namespace, Name: secretName.Name})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete secret %s: %w", secretName.Name, err)
 		}
@@ -635,7 +634,7 @@ func (r *DeploymentReconciler) cleanupDeployment(ctx context.Context, deployment
 	delete(deployment.Spec.Template.ObjectMeta.Annotations, kubernetes.AnnotationSecretHash)
 
 	secretName := client.ObjectKey{Namespace: deployment.Namespace, Name: fmt.Sprintf("%s-connections", deployment.Name)}
-	err := r.Client.Delete(ctx, &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: secretName.Namespace, Name: secretName.Name}})
+	err := r.Client.Delete(ctx, &corev1.Secret{Namespace: secretName.Namespace, Name: secretName.Name})
 	if err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("failed to delete secret %s: %w", secretName.Name, err)
 	}
@@ -677,10 +676,8 @@ func (r *DeploymentReconciler) findDeploymentsForRecipe(ctx context.Context, obj
 	requests := []reconcile.Request{}
 	for _, item := range deployments.Items {
 		requests = append(requests, reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      item.GetName(),
-				Namespace: item.GetNamespace(),
-			},
+			Name:      item.GetName(),
+			Namespace: item.GetNamespace(),
 		})
 	}
 	return requests
