@@ -105,6 +105,23 @@ checksum:
   ids:
     - rad
 
+sboms:
+  - id: rad-sbom
+    artifacts: binary
+    ids:
+      - rad
+    documents:
+      - "{{ .ArtifactName }}.sbom.json"
+    cmd: syft
+    # Narrower than GoReleaser's 'all' default: rad is a static Go binary, so
+    # this bounds enrichment to the Go module cache, vendor dir, and proxy.
+    args:
+      - "${artifact}"
+      - --output
+      - "spdx-json=${document}"
+      - --enrich
+      - golang
+
 dockers_v2:
   - id: ucpd
     ids:
@@ -125,7 +142,7 @@ dockers_v2:
       - linux/amd64
       - linux/arm64
       - linux/arm/v7
-    sbom: false
+    sbom: true
 
   - id: applications-rp
     ids:
@@ -141,7 +158,7 @@ dockers_v2:
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.revision: "{{ .FullCommit }}"
     platforms: *image_platforms
-    sbom: false
+    sbom: true
 
   - id: dynamic-rp
     ids:
@@ -157,7 +174,7 @@ dockers_v2:
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.revision: "{{ .FullCommit }}"
     platforms: *image_platforms
-    sbom: false
+    sbom: true
 
   - id: controller
     ids:
@@ -173,7 +190,7 @@ dockers_v2:
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.revision: "{{ .FullCommit }}"
     platforms: *image_platforms
-    sbom: false
+    sbom: true
 
   - id: pre-upgrade
     ids:
@@ -189,11 +206,12 @@ dockers_v2:
       org.opencontainers.image.version: "{{ .Version }}"
       org.opencontainers.image.revision: "{{ .FullCommit }}"
     platforms: *image_platforms
-    sbom: false
+    sbom: true
 
 release:
   ids:
     - rad
+    - rad-sbom
   disable: "{{ .Env.GORELEASER_RELEASE_DISABLE }}"
   name_template: "Radius {{ .Tag }}"
   draft: true
