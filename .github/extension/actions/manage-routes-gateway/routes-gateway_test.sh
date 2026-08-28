@@ -887,6 +887,19 @@ assert_output "invalid JSON"
 assert_no_call "kubectl delete"
 
 reset_case
+APP_LIST_JSON='null'
+export APP_LIST_JSON
+run_action cleanup
+assert_success "empty application discovery"
+
+reset_case
+APP_LIST_JSON="$(jq -nc '[{name:"empty"}]')"
+RESOURCE_JSON_OVERRIDE='null'
+export APP_LIST_JSON RESOURCE_JSON_OVERRIDE
+run_action cleanup
+assert_success "empty resource discovery"
+
+reset_case
 APP_LIST_JSON="$(jq -nc '[{name:"broken"}]')"
 RESOURCE_JSON_OVERRIDE="$(jq -nc '{unexpected:true}')"
 export APP_LIST_JSON RESOURCE_JSON_OVERRIDE

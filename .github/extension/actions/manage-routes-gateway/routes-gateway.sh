@@ -829,12 +829,14 @@ validate_envoy_service() {
 normalize_items_json() {
     local json="$1"
     local context="$2"
-    jq -sce '
+    local allow_null="${3:-false}"
+    jq -sce --argjson allow_null "${allow_null}" '
       if length != 1 then
         error("expected one JSON document")
       elif (.[0] | type) == "array" then .[0]
       elif (.[0].items | type) == "array" then .[0].items
       elif (.[0].value | type) == "array" then .[0].value
+      elif $allow_null and .[0] == null then []
       else error("expected an array, items array, or value array")
       end
     ' <<<"${json}" ||
@@ -845,7 +847,9 @@ radius_app_names_json() {
     local apps_json
     apps_json="$(rad app list --preview -o json)" ||
         fail "failed to list Radius applications"
-    apps_json="$(normalize_items_json "${apps_json}" "Radius application discovery")"
+    apps_json="$(
+        normalize_items_json "${apps_json}" "Radius application discovery" true
+    )"
     jq -ce '
       if any(.[];
              type != "object" or
@@ -867,7 +871,7 @@ app_resources_json() {
     )" || fail "failed to inspect resources for Radius application ${app}"
     resources_json="$(
         normalize_items_json \
-            "${resources_json}" "resource discovery for application ${app}"
+            "${resources_json}" "resource discovery for application ${app}" true
     )"
     jq -ce '
       if any(.[];
