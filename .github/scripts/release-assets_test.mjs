@@ -51,6 +51,22 @@ function fixture({ draft = true, assets = [] } = {}) {
   return { calls, core, github, inputs, outputs };
 }
 
+function spdxDocument(overrides = {}) {
+  return JSON.stringify({
+    spdxVersion: "SPDX-2.3",
+    SPDXID: "SPDXRef-DOCUMENT",
+    dataLicense: "CC0-1.0",
+    documentNamespace: "https://anchore.com/syft/file/rad-test",
+    creationInfo: {
+      created: "2026-08-28T00:00:00Z",
+      creators: ["Organization: Anchore, Inc", "Tool: syft-1.51.0"]
+    },
+    packages: [{ SPDXID: "SPDXRef-Package-radius", name: "radius" }],
+    relationships: [],
+    ...overrides
+  });
+}
+
 test("downloads exact release assets", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));
   try {
@@ -237,6 +253,89 @@ test("verifies release binaries against split checksums", async () => {
     });
     await releaseAssets(state);
     assert.equal(state.outputs.verified_assets, "1");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("verifies the exact release SBOM set as SPDX JSON", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));
+  try {
+    const targets = path.join(root, "targets.json");
+    await writeFile(targets, '{"cliAssets":[{"name":"rad_linux_amd64"}]}');
+    const state = fixture({
+      assets: [
+        {
+          id: 1,
+          name: "rad_linux_amd64.sbom.json",
+          contents: spdxDocument()
+        }
+      ]
+    });
+    Object.assign(state.inputs, {
+      OWNER: "radius-project",
+      REPO: "radius",
+      TAG: "v0.61.0",
+      MODE: "verify-sboms",
+      TARGETS_FILE: targets
+    });
+    await releaseAssets(state);
+    assert.equal(state.outputs.verified_sboms, "1");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects a malformed release SBOM", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));
+  try {
+    const targets = path.join(root, "targets.json");
+    await writeFile(targets, '{"cliAssets":[{"name":"rad_linux_amd64"}]}');
+    const state = fixture({
+      assets: [
+        {
+          id: 1,
+          name: "rad_linux_amd64.sbom.json",
+          contents: spdxDocument({ packages: [] })
+        }
+      ]
+    });
+    Object.assign(state.inputs, {
+      OWNER: "radius-project",
+      REPO: "radius",
+      TAG: "v0.61.0",
+      MODE: "verify-sboms",
+      TARGETS_FILE: targets
+    });
+    await assert.rejects(() => releaseAssets(state), /valid SPDX document/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("rejects an unexpected release SBOM asset", async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "release-assets-"));
+  try {
+    const targets = path.join(root, "targets.json");
+    await writeFile(targets, '{"cliAssets":[{"name":"rad_linux_amd64"}]}');
+    const state = fixture({
+      assets: [
+        {
+          id: 1,
+          name: "rad_linux_amd64.sbom.json",
+          contents: spdxDocument()
+        },
+        { id: 2, name: "unexpected.sbom.json", contents: spdxDocument() }
+      ]
+    });
+    Object.assign(state.inputs, {
+      OWNER: "radius-project",
+      REPO: "radius",
+      TAG: "v0.61.0",
+      MODE: "verify-sboms",
+      TARGETS_FILE: targets
+    });
+    await assert.rejects(() => releaseAssets(state), /expected set/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
