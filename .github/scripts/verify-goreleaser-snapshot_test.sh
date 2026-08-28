@@ -61,10 +61,34 @@ CORRUPT_CHECKSUM=""    # write a wrong hash into this asset's sidecar
 EXTRA_TARGET="false"   # add a rad build for a platform outside the contract
 OMIT_PLATFORM=""       # <image>:<platform> to leave out of the built images
 WITHOUT_IMAGES="false" # emulate a snapshot that ran with --skip=docker
+OMIT_SBOM=""           # drop this CLI asset's SBOM from the metadata
+INVALID_SBOM=""        # write a document that is not SPDX for this CLI asset
+
+# The smallest document that satisfies the verifier's SPDX checks.
+write_sbom() {
+    local asset="$1"
+    local path="$2"
+
+    jq -n --arg asset "${asset}" '
+        {
+            spdxVersion: "SPDX-2.3",
+            SPDXID: "SPDXRef-DOCUMENT",
+            dataLicense: "CC0-1.0",
+            name: $asset,
+            documentNamespace: ("https://radius.example/spdx/" + $asset),
+            creationInfo: {
+                created: "2026-09-10T00:00:00Z",
+                creators: ["Tool: syft-1.0.0"]
+            },
+            packages: [{SPDXID: "SPDXRef-Package-rad", name: "rad"}],
+            relationships: []
+        }
+    ' >"${path}"
+}
 
 write_cli_fixture() {
     local asset os arch goarm
-    local binary_dir binary_path hash sidecar
+    local binary_dir binary_path hash sidecar sbom
 
     while IFS=$'\t' read -r asset os arch; do
         [[ "${asset}" != "${OMIT_ASSET}" ]] || continue
@@ -101,6 +125,22 @@ write_cli_fixture() {
                 path: $path,
                 type: "Checksum",
                 extra: {ChecksumOf: $checksum_of}
+            }
+        ' >>"${ENTRIES}"
+
+        [[ "${asset}" != "${OMIT_SBOM}" ]] || continue
+        sbom="${DIST}/${asset}.sbom.json"
+        if [[ "${asset}" == "${INVALID_SBOM}" ]]; then
+            printf '{"name":"%s"}\n' "${asset}" >"${sbom}"
+        else
+            write_sbom "${asset}" "${sbom}"
+        fi
+        jq -n -c --arg name "${asset}.sbom.json" --arg path "${sbom}" '
+            {
+                name: $name,
+                path: $path,
+                type: "SBOM",
+                extra: {ID: "rad-sbom"}
             }
         ' >>"${ENTRIES}"
     done < <(jq -r '.cliAssets[] | [.name, .os, .arch] | @tsv' "${TARGETS}")
@@ -232,6 +272,16 @@ OMIT_PLATFORM="ucpd:linux/arm/v7"
 write_fixture
 expect_failure "a production image missing a required platform"
 OMIT_PLATFORM=""
+
+OMIT_SBOM="rad_darwin_arm64"
+write_fixture
+expect_failure "a CLI asset without an SBOM"
+OMIT_SBOM=""
+
+INVALID_SBOM="rad_linux_amd64"
+write_fixture
+expect_failure "a CLI SBOM that is not an SPDX document"
+INVALID_SBOM=""
 
 # Configuration drift is caught before any artifact is inspected. The copy is
 # exploded first so editing one image cannot silently follow a YAML anchor.

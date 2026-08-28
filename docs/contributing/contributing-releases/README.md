@@ -81,6 +81,20 @@ Four GitHub Actions workflows drive release preparation, backports, and publicat
 
    Finalization is serialized across release versions. A patch to an older supported channel updates that channel without replacing global `latest`; an older version finishing after a newer version in the same channel changes neither alias. Builds remain parallel, and alias promotion uses the recorded digests without rebuilding artifacts.
 
+   #### Release SBOMs
+
+   Each raw `rad` binary has an SPDX 2.x JSON SBOM beside it on the GitHub Release, named by adding `.sbom.json` to the binary asset name. For example, `rad_linux_amd64.sbom.json` describes `rad_linux_amd64`. The release workflow generates these documents with the pinned Syft version and verifies their structure before publication. SBOM assets deliberately carry no `.sha256` sidecar, so the split checksum contract still covers exactly the `rad` binaries.
+
+   Production image SBOMs are SPDX JSON predicates in per-platform BuildKit attestations attached to the immutable full-version OCI image index. BuildKit generates them with its own bundled scanner during the image build, so they are independent of the pinned Syft used for the CLI assets. They are not duplicate GitHub Release assets. Inspect one by immutable digest with Docker Buildx:
+
+   ```bash
+   docker buildx imagetools inspect \
+      "ghcr.io/radius-project/ucpd@sha256:<digest>" \
+      --format '{{ json (index .SBOM "linux/amd64").SPDX }}'
+   ```
+
+   The release workflow requires a valid attestation for every published production-image platform before it locks the image digest or publishes the GitHub Release.
+
 The automated flow after dispatching Prepare Release:
 
 ```text
