@@ -198,6 +198,7 @@ collect_cli_assets() {
     local checksum_size
     local build_info_path
     local expected_assets
+    local expected_sboms
     local allowed_assets
     local actual_assets
 
@@ -208,9 +209,13 @@ collect_cli_assets() {
             | .name, (.name + ".sha256")
         ] | sort' "${TARGETS_FILE}"
     )"
+    expected_sboms="$(jq -c '[
+        .cliAssets[] | .name + ".sbom.json"
+    ] | sort' "${TARGETS_FILE}")"
     allowed_assets="$(jq -c -n \
-        --argjson expected "${expected_assets}" '
-        ($expected + [
+        --argjson expected "${expected_assets}" \
+        --argjson sboms "${expected_sboms}" '
+        ($expected + $sboms + [
             "bicep-image-digests.json",
             "bicep-image-intent.json",
             "core-release-lock.json",

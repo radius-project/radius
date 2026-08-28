@@ -154,6 +154,23 @@ jobs:
             )
             await script({ github, core })
 
+      - name: Verify completed release SBOM assets
+        if: steps.release-state.outputs.result == 'published'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: verify-sboms
+          INPUT_TARGETS_FILE: .github/release-parity/targets.json
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
       - name: Verify completed release metadata
         if: steps.release-state.outputs.result == 'published'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -188,6 +205,7 @@ jobs:
             --source-sha "${SOURCE_SHA}"
             --image-lock dist/preflight/release-image-digests.json
             --cli-lock dist/preflight/release-cli-oci.json
+            --sboms
           )
           bash ./.github/scripts/release-oci-artifacts.sh "${args[@]}"
 
@@ -244,7 +262,7 @@ jobs:
 
       - name: Install release tools
         run: >-
-          make install-goreleaser install-jq install-yq install-oras
+          make install-goreleaser install-syft install-jq install-yq install-oras
 
       - name: Ensure source-bound draft release
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -422,6 +440,15 @@ jobs:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
 
+      - name: Verify production image SBOMs
+        run: |
+          bash ./.github/scripts/release-oci-artifacts.sh verify \
+            --version "${REL_VERSION}" \
+            --source-sha "${SOURCE_SHA}" \
+            --categories production \
+            --image-lock dist/production-image-digests.json \
+            --sboms
+
       - name: Persist the production image lock
         if: steps.image-lock.outputs.locked != 'true'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -447,6 +474,22 @@ jobs:
           INPUT_REPO: radius
           INPUT_TAG: ${{ github.ref_name }}
           INPUT_MODE: normalize-cli
+          INPUT_TARGETS_FILE: .github/release-parity/targets.json
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Verify staged CLI SBOM assets
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: verify-sboms
           INPUT_TARGETS_FILE: .github/release-parity/targets.json
         with:
           retries: 5
@@ -557,6 +600,7 @@ jobs:
             dist/goreleaser/artifacts.json
             dist/goreleaser/metadata.json
             dist/goreleaser/*.sha256
+            dist/goreleaser/*.sbom.json
             dist/goreleaser/rad_*/rad
             dist/goreleaser/rad_*/rad.exe
           if-no-files-found: error
@@ -891,6 +935,7 @@ jobs:
             --source-sha "${SOURCE_SHA}"
             --image-lock dist/release-image-digests.json
             --cli-lock dist/release-cli-oci.json
+            --sboms
           )
           if [[ "${UPDATE_RELEASE:-}" == "true" ]]; then
             args+=(--channel "${REL_CHANNEL}")

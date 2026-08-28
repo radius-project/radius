@@ -243,6 +243,32 @@ tools:
       fileTemplate: checksums.txt
       format: standard
 
+  - name: syft
+    makePrefix: SYFT
+    version: v1.51.0
+    source:
+      type: github-release
+      repository: anchore/syft
+      latestURL: https://api.github.com/repos/anchore/syft/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: syft_{version_no_v}_linux_amd64.tar.gz
+        checksum: 2a2e837a2c8d59ec9af5472ee22d3b04ee463c4e44476ecf993fd1e5ab6ebc7f
+      linux_arm64:
+        asset: syft_{version_no_v}_linux_arm64.tar.gz
+        checksum: 6c0466811541ea03add5213a60a1562f0851e4c0b0ecfdee1a694a9455285900
+      darwin_amd64:
+        asset: syft_{version_no_v}_darwin_amd64.tar.gz
+        checksum: cddf9a044145caf0a1a3194d00d1dd51a1666f4814f2919cdb4768a0c062ad95
+      darwin_arm64:
+        asset: syft_{version_no_v}_darwin_arm64.tar.gz
+        checksum: 4f37f4c7fefce0a68e4cf71ba3f5f9829a99e65d89b29f7ee41b8c2c10ea8c59
+    checksumSource:
+      type: github-release-file
+      fileTemplate: syft_{version_no_v}_checksums.txt
+      format: standard
+
   - name: git-cliff
     makePrefix: GIT_CLIFF
     version: v2.13.1

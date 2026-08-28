@@ -78,6 +78,20 @@ Four GitHub Actions workflows drive release preparation, backports, and publicat
 
    The release carries internal JSON lock assets for the core, retained images, and complete image set. A rerun verifies these locks and skips the immutable work they already cover; a full-version tag that no longer matches its lock stops the release instead of being rebuilt or moved. Tags pushed by an interrupted attempt are not yet locked, so a rerun re-stages them rather than stranding the release. Main-branch builds publish Radius images and CLI OCI artifacts only as `edge`. The `latest` alias always points to the most recent stable release after this cutover.
 
+   #### Release SBOMs
+
+   Each raw `rad` binary has an SPDX 2.x JSON SBOM beside it on the GitHub Release, named by adding `.sbom.json` to the binary asset name. For example, `rad_linux_amd64.sbom.json` describes `rad_linux_amd64`. The release workflow generates these documents with the pinned Syft version and verifies their structure before publication. SBOM assets deliberately carry no `.sha256` sidecar, so the split checksum contract still covers exactly the `rad` binaries.
+
+   Production image SBOMs are SPDX JSON predicates in per-platform BuildKit attestations attached to the immutable full-version OCI image index. BuildKit generates them with its own bundled scanner during the image build, so they are independent of the pinned Syft used for the CLI assets. They are not duplicate GitHub Release assets. Inspect one by immutable digest with Docker Buildx:
+
+   ```bash
+   docker buildx imagetools inspect \
+      "ghcr.io/radius-project/ucpd@sha256:<digest>" \
+      --format '{{ json (index .SBOM "linux/amd64").SPDX }}'
+   ```
+
+   The release workflow requires a valid attestation for every published production-image platform before it locks the image digest or publishes the GitHub Release.
+
 The automated flow after dispatching Prepare Release:
 
 ```text

@@ -420,6 +420,12 @@ jq '.assets += [{"name":"core-release-lock.json"}]' \
 mv "${FIXTURES}/release-lock.json" "${FIXTURES}/release.json"
 run_collector
 
+printf '{}\n' >"${ASSETS}/rad_linux_amd64.sbom.json"
+jq '.assets += [{"name":"rad_linux_amd64.sbom.json"}]' \
+  "${FIXTURES}/release.json" >"${FIXTURES}/release-sbom.json"
+mv "${FIXTURES}/release-sbom.json" "${FIXTURES}/release.json"
+run_collector
+
 printf 'unexpected\n' >"${ASSETS}/unexpected.txt"
 jq '.assets += [{"name":"unexpected.txt"}]' \
   "${FIXTURES}/release.json" >"${FIXTURES}/release-extra.json"

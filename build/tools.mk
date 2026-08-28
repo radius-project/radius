@@ -132,6 +132,16 @@ install-goreleaser: ## Install the pinned GoReleaser CLI into a user-owned bin d
 		GORELEASER_INSTALL_DIR="$(GORELEASER_INSTALL_DIR)" \
 		./build/scripts/install-goreleaser.sh
 
+.PHONY: install-syft
+install-syft: ## Install the pinned Syft SBOM generator into a user-owned bin dir (no sudo).
+	@SYFT_VERSION="$(SYFT_VERSION)" \
+		SYFT_CHECKSUM_LINUX_AMD64="$(SYFT_CHECKSUM_LINUX_AMD64)" \
+		SYFT_CHECKSUM_LINUX_ARM64="$(SYFT_CHECKSUM_LINUX_ARM64)" \
+		SYFT_CHECKSUM_DARWIN_AMD64="$(SYFT_CHECKSUM_DARWIN_AMD64)" \
+		SYFT_CHECKSUM_DARWIN_ARM64="$(SYFT_CHECKSUM_DARWIN_ARM64)" \
+		SYFT_INSTALL_DIR="$(SYFT_INSTALL_DIR)" \
+		./build/scripts/install-syft.sh
+
 .PHONY: install-git-cliff
 install-git-cliff: ## Install the pinned git-cliff CLI into a user-owned bin dir (no sudo).
 	@GIT_CLIFF_VERSION="$(GIT_CLIFF_VERSION)" \
