@@ -80,7 +80,7 @@ An application's child resources (containers, databases, gateways, etc.) each ha
 - No workflow-level change. [restore-state/action.yml](../../.github/extension/actions/restore-state/action.yml) already runs `rad startup`; the reconciliation is transparent.
 - No CLI change to `rad app delete`. Once reconciliation runs, the delete sees an accurate state store and proceeds normally.
 
-### Why regular Radius is unaffected
+### Why regular Radius is not as much affected
 
 A persistently running Radius control plane has resource providers that reconcile their world continuously — the async operation controller polls, the health controller polls, and stuck non-terminal states resolve within the RP's own polling interval. The archive-hydrate topology short-circuits that: the state is loaded from disk and immediately trusted. Reconciliation on hydrate closes that gap only for the ephemeral topology.
 
@@ -90,7 +90,6 @@ A persistently running Radius control plane has resource providers that reconcil
 - Deleting an application whose state archive contains a child resource in `Updating` and whose underlying cloud resource genuinely is still updating waits normally and does not falsely succeed. The reconciliation must observe the RP-reported state and leave the store unchanged.
 - `rad startup` never fails because reconciliation could not reach a resource provider. The workflow log records the failure and startup returns success.
 - The reconciliation pass runs no direct SQL against the resource-provider databases. Every state change goes through the RP, so state machines stay intact.
-- No `--force` flag is added to `rad app delete` (or to any other command) as part of this feature.
 
 ## Follow-up
 
