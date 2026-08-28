@@ -36,11 +36,10 @@ func (r *noop) Render(ctx context.Context, dm apiv1.DataModelInterface, options 
 		Namespace:  "test-namespace",
 		Kind:       "Deployment",
 		APIVersion: "apps/v1",
-	}
 
-	// Populate Meta labels with existing values
-	deployment.Annotations = map[string]string{"prior.MetaAnnotation1": "prior.MetaAnnotationVal1", "prior.MetaAnnotation2": "prior.MetaAnnotationVal2"}
-	deployment.Labels = map[string]string{"prior.MetaLabel1": "prior.MetaLabelVal1", "prior.MetaLabel2": "prior.MetaLabelVal2"}
+		// Populate Meta labels with existing values
+		Annotations: map[string]string{"prior.MetaAnnotation1": "prior.MetaAnnotationVal1", "prior.MetaAnnotation2": "prior.MetaAnnotationVal2"},
+		Labels:      map[string]string{"prior.MetaLabel1": "prior.MetaLabelVal1", "prior.MetaLabel2": "prior.MetaLabelVal2"}}
 
 	resources := []rpv1.OutputResource{rpv1.NewKubernetesOutputResource(rpv1.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
 
