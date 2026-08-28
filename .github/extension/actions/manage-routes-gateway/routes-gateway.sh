@@ -613,8 +613,6 @@ gateway_class_valid() {
         "${controller}" != "${expected_controller}" ]]; then
         return 1
     fi
-    kube wait --for=condition=Accepted "gatewayclass/${class_name}" \
-        --timeout="${WAIT_TIMEOUT}" >/dev/null
 }
 
 managed_gateway_spec_valid() {
@@ -709,9 +707,12 @@ validate_byo() {
 }
 
 create_gateway_class_if_missing() {
-    if kube get gatewayclass "${DEFAULT_GATEWAY_CLASS}" >/dev/null 2>&1; then
-        gateway_class_valid \
-            "${DEFAULT_GATEWAY_CLASS}" "${CONTOUR_CONTROLLER}" ||
+    local controller
+    if controller="$(
+        kube get gatewayclass "${DEFAULT_GATEWAY_CLASS}" \
+            -o jsonpath='{.spec.controllerName}' 2>/dev/null
+    )"; then
+        [[ "${controller}" == "${CONTOUR_CONTROLLER}" ]] ||
             fail "GatewayClass contour conflicts with the Radius Contour controller"
         return 0
     fi
@@ -731,16 +732,15 @@ EOF
         kube get gatewayclass "${DEFAULT_GATEWAY_CLASS}" >/dev/null 2>&1 ||
             fail "failed to create GatewayClass ${DEFAULT_GATEWAY_CLASS}"
     fi
-    gateway_class_valid \
-        "${DEFAULT_GATEWAY_CLASS}" "${CONTOUR_CONTROLLER}" ||
-        fail "GatewayClass contour was not accepted by Contour"
 }
 
 create_gateway_if_missing() {
-    if kube get gateway "${DEFAULT_GATEWAY_NAME}" \
-        -n "${DEFAULT_GATEWAY_NAMESPACE}" >/dev/null 2>&1; then
-        gateway_valid "${DEFAULT_GATEWAY_NAME}" \
-            "${DEFAULT_GATEWAY_NAMESPACE}" "${DEFAULT_GATEWAY_CLASS}" ||
+    local gateway_json
+    if gateway_json="$(
+        kube get gateway "${DEFAULT_GATEWAY_NAME}" \
+            -n "${DEFAULT_GATEWAY_NAMESPACE}" -o json 2>/dev/null
+    )"; then
+        managed_gateway_spec_valid "${gateway_json}" ||
             fail "Gateway radius conflicts with the Radius Contour Gateway"
         return 0
     fi
@@ -777,6 +777,12 @@ EOF
             -n "${DEFAULT_GATEWAY_NAMESPACE}" >/dev/null 2>&1 ||
             fail "failed to create Gateway radius"
     fi
+}
+
+validate_managed_gateway_ready() {
+    gateway_class_valid \
+        "${DEFAULT_GATEWAY_CLASS}" "${CONTOUR_CONTROLLER}" ||
+        fail "GatewayClass contour conflicts with the Radius Contour controller"
     gateway_valid "${DEFAULT_GATEWAY_NAME}" \
         "${DEFAULT_GATEWAY_NAMESPACE}" "${DEFAULT_GATEWAY_CLASS}" ||
         fail "Gateway radius did not become Programmed"
@@ -1083,6 +1089,7 @@ ensure_gateway() {
     ensure_contour
     create_gateway_class_if_missing
     create_gateway_if_missing
+    validate_managed_gateway_ready
     validate_envoy_service
     echo "Routes Gateway is ready with $(desired_service_type) exposure."
 }

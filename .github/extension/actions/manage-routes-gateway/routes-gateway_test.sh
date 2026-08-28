@@ -808,6 +808,8 @@ assert_call "gatewayAPI.manageCRDs=false"
 assert_call "envoy.service.externalTrafficPolicy= --set-string"
 assert_call "backendtlspolicies.gateway.networking.k8s.io"
 assert_call "radius-project.io/routes-gateway-lifecycle: v1"
+assert_no_call "wait --for=condition=Accepted gatewayclass/contour"
+assert_call "wait --for=condition=Programmed gateway/radius"
 
 # Repeated ensures reuse complete unowned resources without adopting them.
 reset_case
@@ -830,7 +832,7 @@ WAIT_FAIL='gateway/radius'
 export WAIT_FAIL
 run_action ensure
 assert_failure "Gateway readiness"
-assert_output "Gateway radius conflicts"
+assert_output "Gateway radius did not become Programmed"
 
 reset_case
 GATEWAY_LISTENERS_VALID='false'
