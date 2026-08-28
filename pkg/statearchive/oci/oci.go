@@ -34,7 +34,6 @@ import (
 	"time"
 
 	"github.com/opencontainers/go-digest"
-	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -384,11 +383,11 @@ func createArtifact(ctx context.Context, name, root string) (*artifact, error) {
 	}
 
 	manifest := ocispec.Manifest{
-		Versioned:    specs.Versioned{SchemaVersion: 2},
-		MediaType:    ocispec.MediaTypeImageManifest,
-		ArtifactType: configMediaType,
-		Config:       configDesc,
-		Layers:       []ocispec.Descriptor{layerDesc},
+		SchemaVersion: 2,
+		MediaType:     ocispec.MediaTypeImageManifest,
+		ArtifactType:  configMediaType,
+		Config:        configDesc,
+		Layers:        []ocispec.Descriptor{layerDesc},
 	}
 	manifestBytes, err := json.Marshal(manifest)
 	if err != nil {

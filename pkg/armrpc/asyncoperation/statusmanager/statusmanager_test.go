@@ -70,12 +70,10 @@ var reqCtx = &v1.ARMRequestContext{
 var opID = uuid.New()
 
 var testAos = &Status{
-	AsyncOperationStatus: v1.AsyncOperationStatus{
-		ID:        opID.String(),
-		Name:      opID.String(),
-		Status:    v1.ProvisioningStateUpdating,
-		StartTime: time.Now().UTC(),
-	},
+	ID:               opID.String(),
+	Name:             opID.String(),
+	Status:           v1.ProvisioningStateUpdating,
+	StartTime:        time.Now().UTC(),
 	LinkedResourceID: uuid.New().String(),
 	Location:         "test-location",
 	RetryAfter:       opererationRetryAfterDuration,
@@ -231,8 +229,8 @@ func TestGetAsyncOperationStatus(t *testing.T) {
 			Desc:   "get_success",
 			GetErr: nil,
 			Obj: &database.Object{
-				Metadata: database.Metadata{ID: opID.String(), ETag: "etag"},
-				Data:     testAos,
+				ID: opID.String(), ETag: "etag",
+				Data: testAos,
 			},
 		},
 		{
@@ -281,8 +279,8 @@ func TestUpdateAsyncOperationStatus(t *testing.T) {
 			Desc:   "update_success",
 			GetErr: nil,
 			Obj: &database.Object{
-				Metadata: database.Metadata{ID: opID.String(), ETag: "etag"},
-				Data:     testAos,
+				ID: opID.String(), ETag: "etag",
+				Data: testAos,
 			},
 			SaveErr: nil,
 		},

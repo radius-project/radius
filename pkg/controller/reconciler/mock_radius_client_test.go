@@ -265,7 +265,7 @@ func (ec *mockEnvironmentClient) List(ctx context.Context, options *corerpv20231
 		}
 	}
 
-	return corerpv20231001preview.EnvironmentsClientListByScopeResponse{EnvironmentResourceListResult: corerpv20231001preview.EnvironmentResourceListResult{Value: environments}}, nil
+	return corerpv20231001preview.EnvironmentsClientListByScopeResponse{Value: environments}, nil
 }
 
 var _ ResourceGroupClient = (*mockResourceGroupClient)(nil)

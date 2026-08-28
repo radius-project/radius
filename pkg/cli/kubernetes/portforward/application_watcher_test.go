@@ -158,11 +158,9 @@ func stopDeploymentWatchers(aw *applicationWatcher) {
 
 func createDeployment(name, value, revision string) *appsv1.Deployment {
 	return &appsv1.Deployment{
-		ObjectMeta: v1.ObjectMeta{
-			Name: name,
-			Annotations: map[string]string{
-				"deployment.kubernetes.io/revision": revision,
-			},
+		Name: name,
+		Annotations: map[string]string{
+			"deployment.kubernetes.io/revision": revision,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &v1.LabelSelector{

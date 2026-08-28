@@ -25,21 +25,15 @@ import (
 // ConvertTo converts from the versioned TerraformSettings resource to version-agnostic datamodel.
 func (src *TerraformSettingsResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.TerraformSettings{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				CreatedAPIVersion:      Version,
-				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			},
-		},
-		Properties: datamodel.TerraformSettingsResourceProperties{},
+		ID:                     to.String(src.ID),
+		Name:                   to.String(src.Name),
+		Type:                   to.String(src.Type),
+		Location:               to.String(src.Location),
+		Tags:                   to.StringMap(src.Tags),
+		CreatedAPIVersion:      Version,
+		UpdatedAPIVersion:      Version,
+		AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+		Properties:             datamodel.TerraformSettingsResourceProperties{},
 	}
 
 	if src.Properties.Terraformrc != nil {

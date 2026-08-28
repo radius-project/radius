@@ -47,12 +47,10 @@ const (
 var (
 	testResourceType    = "Applications.Core/environments"
 	testOperationStatus = &manager.Status{
-		AsyncOperationStatus: v1.AsyncOperationStatus{
-			ID:        uuid.NewString(),
-			Name:      "operation-status",
-			Status:    v1.ProvisioningStateUpdating,
-			StartTime: time.Now().UTC(),
-		},
+		ID:               uuid.NewString(),
+		Name:             "operation-status",
+		Status:           v1.ProvisioningStateUpdating,
+		StartTime:        time.Now().UTC(),
 		LinkedResourceID: uuid.New().String(),
 		Location:         "test-location",
 		HomeTenantID:     "test-home-tenant-id",
@@ -209,7 +207,7 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	// The operation is not yet terminal, so the max-retry path completes it with the generic message.
 	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(&manager.Status{
-			AsyncOperationStatus: v1.AsyncOperationStatus{Status: v1.ProvisioningStateUpdating},
+			Status: v1.ProvisioningStateUpdating,
 		}, nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Eq(v1.ProvisioningStateFailed), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
@@ -275,7 +273,7 @@ func TestStart_MaxDequeueCount_AlreadyTerminal(t *testing.T) {
 	// The operation is already terminal (Failed) from a prior attempt.
 	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(&manager.Status{
-			AsyncOperationStatus: v1.AsyncOperationStatus{Status: v1.ProvisioningStateFailed},
+			Status: v1.ProvisioningStateFailed,
 		}, nil).AnyTimes()
 	// No Update must happen: the recorded terminal status must not be overwritten.
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)

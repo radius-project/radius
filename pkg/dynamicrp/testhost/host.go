@@ -41,7 +41,6 @@ import (
 	ucptesthost "github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -181,10 +180,8 @@ func setupFakeKubernetesClient(t *testing.T, options *dynamicrp.Options) {
 
 	// Create the encryption key secret
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      encryption.DefaultEncryptionKeySecretName,
-			Namespace: encryption.RadiusNamespace,
-		},
+		Name:      encryption.DefaultEncryptionKeySecretName,
+		Namespace: encryption.RadiusNamespace,
 		Data: map[string][]byte{
 			encryption.DefaultEncryptionKeySecretKey: keyStoreJSON,
 		},

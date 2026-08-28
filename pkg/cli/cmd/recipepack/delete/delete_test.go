@@ -124,11 +124,9 @@ func Test_Run(t *testing.T) {
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientGetResponse{
-						EnvironmentResource: v20250801preview.EnvironmentResource{
-							Name: to.Ptr(environmentName),
-							Properties: &v20250801preview.EnvironmentProperties{
-								RecipePacks: []*string{to.Ptr(packFullID)},
-							},
+						Name: to.Ptr(environmentName),
+						Properties: &v20250801preview.EnvironmentProperties{
+							RecipePacks: []*string{to.Ptr(packFullID)},
 						},
 					}, nil)
 					return
@@ -389,11 +387,9 @@ func Test_Run(t *testing.T) {
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientGetResponse{
-						EnvironmentResource: v20250801preview.EnvironmentResource{
-							Name: to.Ptr(environmentName),
-							Properties: &v20250801preview.EnvironmentProperties{
-								RecipePacks: []*string{to.Ptr(packFullID)},
-							},
+						Name: to.Ptr(environmentName),
+						Properties: &v20250801preview.EnvironmentProperties{
+							RecipePacks: []*string{to.Ptr(packFullID)},
 						},
 					}, nil)
 					return
@@ -490,11 +486,9 @@ func Test_Run(t *testing.T) {
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientGetResponse{
-						EnvironmentResource: v20250801preview.EnvironmentResource{
-							Name: to.Ptr(environmentName),
-							Properties: &v20250801preview.EnvironmentProperties{
-								RecipePacks: []*string{to.Ptr(packFullID)},
-							},
+						Name: to.Ptr(environmentName),
+						Properties: &v20250801preview.EnvironmentProperties{
+							RecipePacks: []*string{to.Ptr(packFullID)},
 						},
 					}, nil)
 					return
@@ -568,13 +562,11 @@ func Test_Run(t *testing.T) {
 					_ *v20250801preview.EnvironmentsClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 					resp.SetResponse(http.StatusOK, v20250801preview.EnvironmentsClientGetResponse{
-						EnvironmentResource: v20250801preview.EnvironmentResource{
-							Name: to.Ptr(environmentName),
-							Properties: &v20250801preview.EnvironmentProperties{
-								RecipePacks: []*string{
-									to.Ptr(mixedCasePackID),  // should be removed (case-insensitive match)
-									to.Ptr(otherScopePackID), // must NOT be removed
-								},
+						Name: to.Ptr(environmentName),
+						Properties: &v20250801preview.EnvironmentProperties{
+							RecipePacks: []*string{
+								to.Ptr(mixedCasePackID),  // should be removed (case-insensitive match)
+								to.Ptr(otherScopePackID), // must NOT be removed
 							},
 						},
 					}, nil)

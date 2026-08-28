@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 
@@ -37,17 +36,11 @@ func Test_APIVersion_VersionedToDataModel(t *testing.T) {
 		{
 			filename: "apiversion_resource.json",
 			expected: &datamodel.APIVersion{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources/apiVersions/2025-01-01",
-						Name: "2025-01-01",
-						Type: datamodel.APIVersionResourceType,
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
-					},
-				},
-				Properties: datamodel.APIVersionProperties{},
+				ID:                "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources/apiVersions/2025-01-01",
+				Name:              "2025-01-01",
+				Type:              datamodel.APIVersionResourceType,
+				UpdatedAPIVersion: Version,
+				Properties:        datamodel.APIVersionProperties{},
 			},
 		},
 	}
