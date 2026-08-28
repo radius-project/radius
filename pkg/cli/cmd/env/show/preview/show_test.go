@@ -220,13 +220,11 @@ func Test_Run_RecipeSortOrder(t *testing.T) {
 				options *corerpv20250801.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[corerpv20250801.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 				result := corerpv20250801.EnvironmentsClientGetResponse{
-					EnvironmentResource: corerpv20250801.EnvironmentResource{
-						Name: new(environmentName),
-						Properties: &corerpv20250801.EnvironmentProperties{
-							RecipePacks: []*string{
-								new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/pack-b"),
-								new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/pack-a"),
-							},
+					Name: new(environmentName),
+					Properties: &corerpv20250801.EnvironmentProperties{
+						RecipePacks: []*string{
+							new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/pack-b"),
+							new("/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/pack-a"),
 						},
 					},
 				}
@@ -265,11 +263,9 @@ func Test_Run_RecipeSortOrder(t *testing.T) {
 					}
 				}
 				result := corerpv20250801.RecipePacksClientGetResponse{
-					RecipePackResource: corerpv20250801.RecipePackResource{
-						Name: new(recipePackName),
-						Properties: &corerpv20250801.RecipePackProperties{
-							Recipes: recipes,
-						},
+					Name: new(recipePackName),
+					Properties: &corerpv20250801.RecipePackProperties{
+						Recipes: recipes,
 					},
 				}
 				resp.SetResponse(http.StatusOK, result, nil)

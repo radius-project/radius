@@ -33,7 +33,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -91,7 +90,7 @@ func Test_DeploymentReconciler_StartDeleteOperationIfNeeded_OwnershipMismatch_Bl
 		EventRecorder: record.NewFakeRecorder(10),
 	}
 
-	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "current-app", Namespace: "current-namespace"}}
+	deployment := &appsv1.Deployment{Name: "current-app", Namespace: "current-namespace"}
 	containerID := "/planes/radius/local/resourceGroups/tenant-b/providers/Applications.Core/containers/other-container"
 
 	radius.Update(func() {
@@ -123,7 +122,7 @@ func Test_DeploymentReconciler_StartPutOrDeleteOperationIfNeeded_OwnershipMismat
 		EventRecorder: record.NewFakeRecorder(10),
 	}
 
-	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "current-app", Namespace: "current-namespace"}}
+	deployment := &appsv1.Deployment{Name: "current-app", Namespace: "current-namespace"}
 	otherContainerID := "/planes/radius/local/resourceGroups/tenant-b/providers/Applications.Core/containers/other-container"
 
 	radius.Update(func() {
@@ -164,7 +163,7 @@ func Test_DeploymentReconciler_StartDeleteOperationIfNeeded_OwnershipMatch_Allow
 		EventRecorder: record.NewFakeRecorder(10),
 	}
 
-	deployment := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "current-app", Namespace: "current-namespace"}}
+	deployment := &appsv1.Deployment{Name: "current-app", Namespace: "current-namespace"}
 	containerID := "/planes/radius/local/resourceGroups/tenant-a/providers/Applications.Core/containers/current-app"
 
 	radius.Update(func() {
@@ -203,7 +202,7 @@ func Test_DeploymentReconciler_RadiusEnabled_ThenDeploymentDeleted(t *testing.T)
 	radius, client := SetupDeploymentTest(t)
 
 	name := types.NamespacedName{Namespace: "deployment-enabled-deleted", Name: "test-deployment-enabled-deleted"}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	deployment := makeDeployment(name)
@@ -249,7 +248,7 @@ func Test_DeploymentReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 	radius, client := SetupDeploymentTest(t)
 
 	name := types.NamespacedName{Namespace: "deployment-change-envapp", Name: "test-deployment-change-envapp"}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	deployment := makeDeployment(name)
@@ -323,7 +322,7 @@ func Test_DeploymentReconciler_RadiusEnabled_ThenRadiusDisabled(t *testing.T) {
 	radius, client := SetupDeploymentTest(t)
 
 	name := types.NamespacedName{Namespace: "deployment-enabled-disabled", Name: "test-deployment-enabled-disabled"}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	deployment := makeDeployment(name)
@@ -375,7 +374,7 @@ func Test_DeploymentReconciler_Connections(t *testing.T) {
 
 	name := types.NamespacedName{Namespace: "deployment-connections", Name: "test-deployment-connections"}
 	secretName := types.NamespacedName{Namespace: name.Namespace, Name: fmt.Sprintf("%s-connections", name.Name)}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	deployment := makeDeployment(name)
@@ -487,8 +486,8 @@ func Test_DeploymentReconciler_Connections(t *testing.T) {
 	expectedEnvFrom := []corev1.EnvFromSource{
 		{
 			SecretRef: &corev1.SecretEnvSource{
-				LocalObjectReference: corev1.LocalObjectReference{Name: fmt.Sprintf("%s-connections", deployment.Name)},
-				Optional:             new(false),
+				Name:     fmt.Sprintf("%s-connections", deployment.Name),
+				Optional: new(false),
 			},
 		},
 	}
@@ -568,7 +567,7 @@ func Test_DeploymentReconciler_RadiusDisabled_ThenRadiusDisabled_ByAnnotation(t 
 		Namespace: "deployment-disabled-disabled-by-annotation",
 		Name:      "test-deployment-disabled-disabled-by-annotation",
 	}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	deployment := makeDeployment(name)
@@ -614,7 +613,7 @@ func Test_DeploymentReconciler_RadiusDisabled_ThenRadiusDisabled(t *testing.T) {
 		Namespace: "deployment-disabled-disabled",
 		Name:      "test-deployment-disabled-disabled",
 	}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	deployment := makeDeployment(name)

@@ -40,13 +40,9 @@ func Test_ListResources(t *testing.T) {
 		Name: new("test-app"),
 	}
 	entryDatamodel := datamodel.GenericResource{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   "ignored",
-				Type: "ignored",
-				Name: "ignored",
-			},
-		},
+		ID:   "ignored",
+		Type: "ignored",
+		Name: "ignored",
 		Properties: datamodel.GenericResourceProperties{
 			ID:   *entryResource.ID,
 			Type: *entryResource.Type,

@@ -22,7 +22,6 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -38,8 +37,8 @@ const (
 
 func testResource(name string) generated.GenericResource {
 	return generated.GenericResource{
-		ID:   to.Ptr(testScope + "/providers/" + testResourceType + "/" + name),
-		Type: to.Ptr(testResourceType),
+		ID:   new(testScope + "/providers/" + testResourceType + "/" + name),
+		Type: new(testResourceType),
 	}
 }
 
@@ -71,8 +70,8 @@ func Test_DeleteResourcesInParallel(t *testing.T) {
 		defer ctrl.Finish()
 
 		valid := testResource("a")
-		noID := generated.GenericResource{Type: to.Ptr(testResourceType)}
-		noType := generated.GenericResource{ID: to.Ptr(testScope + "/providers/" + testResourceType + "/c")}
+		noID := generated.GenericResource{Type: new(testResourceType)}
+		noType := generated.GenericResource{ID: new(testScope + "/providers/" + testResourceType + "/c")}
 
 		mock := clients.NewMockApplicationsManagementClient(ctrl)
 		mock.EXPECT().DeleteResource(gomock.Any(), testResourceType, *valid.ID, false).Return(true, nil).Times(1)
@@ -95,7 +94,7 @@ func Test_DeleteResourcesInParallel(t *testing.T) {
 		defer ctrl.Finish()
 
 		mock := clients.NewMockApplicationsManagementClient(ctrl)
-		named := generated.GenericResource{Name: to.Ptr("my-resource")}
+		named := generated.GenericResource{Name: new("my-resource")}
 
 		sink := &output.MockOutput{}
 		err := DeleteResourcesInParallel(t.Context(), mock, sink, []generated.GenericResource{named}, false)

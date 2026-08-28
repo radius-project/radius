@@ -34,7 +34,6 @@ import (
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/test/k8sutil"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/google/uuid"
@@ -113,7 +112,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 			}
 
 			if tt.existingNamespace {
-				err = opts.KubeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: envDataModel.Properties.Compute.KubernetesCompute.Namespace}})
+				err = opts.KubeClient.Create(ctx, &corev1.Namespace{Name: envDataModel.Properties.Compute.KubernetesCompute.Namespace})
 				require.NoError(t, err)
 			}
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
@@ -163,8 +162,8 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 					return &database.Object{
-						Metadata: database.Metadata{ID: id, ETag: tt.resourceETag},
-						Data:     envDataModel,
+						ID: id, ETag: tt.resourceETag,
+						Data: envDataModel,
 					}, nil
 				})
 
@@ -296,8 +295,8 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 					return &database.Object{
-						Metadata: database.Metadata{ID: id, ETag: tt.resourceEtag},
-						Data:     envDataModel,
+						ID: id, ETag: tt.resourceEtag,
+						Data: envDataModel,
 					}, nil
 				})
 
@@ -376,8 +375,8 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 					return &database.Object{
-						Metadata: database.Metadata{ID: id, ETag: tt.resourceEtag},
-						Data:     envDataModel,
+						ID: id, ETag: tt.resourceEtag,
+						Data: envDataModel,
 					}, nil
 				})
 
@@ -385,9 +384,7 @@ func TestCreateOrUpdateEnvironmentRun_20231001Preview(t *testing.T) {
 
 			items := []database.Object{
 				{
-					Metadata: database.Metadata{
-						ID: uuid.New().String(),
-					},
+					ID:   uuid.New().String(),
 					Data: conflictDataModel,
 				},
 			}
@@ -472,7 +469,7 @@ func TestCreateOrUpdateEnvironment_NamespaceConflictError(t *testing.T) {
 			require.Equal(t, "applications.core/environments", strings.ToLower(query.ResourceType))
 
 			return &database.ObjectQueryResult{
-				Items: []database.Object{{Metadata: database.Metadata{ID: conflictingEnvID}, Data: conflicting}},
+				Items: []database.Object{{ID: conflictingEnvID, Data: conflicting}},
 			}, nil
 		})
 

@@ -41,23 +41,17 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "Manual provisioning of a DaprPubSubBroker",
 			file: "pubsubbroker_manual_resource.json",
 			expected: &datamodel.DaprPubSubBroker{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb",
-						Name:     "test-dpsb",
-						Type:     dapr_ctrl.DaprPubSubBrokersResourceType,
-						Location: v1.LocationGlobal,
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
+				ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb",
+				Name:     "test-dpsb",
+				Type:     dapr_ctrl.DaprPubSubBrokersResourceType,
+				Location: v1.LocationGlobal,
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.DaprPubSubBrokerProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
@@ -83,23 +77,17 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "Provisioning by a Recipe of a pubSubBroker",
 			file: "pubsubbroker_recipe_resource.json",
 			expected: &datamodel.DaprPubSubBroker{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb",
-						Name:     "test-dpsb",
-						Type:     dapr_ctrl.DaprPubSubBrokersResourceType,
-						Location: v1.LocationGlobal,
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
+				ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/pubSubBrokers/test-dpsb",
+				Name:     "test-dpsb",
+				Type:     dapr_ctrl.DaprPubSubBrokersResourceType,
+				Location: v1.LocationGlobal,
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.DaprPubSubBrokerProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",

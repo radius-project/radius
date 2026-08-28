@@ -49,9 +49,7 @@ func runRecipePacksDeploymentTest(t *testing.T, template, appName, appNamespace,
 			// The first step in this test is to create the Kubernetes namespace.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
 				_, err := options.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: appNamespace,
-					},
+					Name: appNamespace,
 				}, metav1.CreateOptions{})
 				if err != nil && !strings.Contains(err.Error(), "already exists") {
 					require.NoError(t, err)

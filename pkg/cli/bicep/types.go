@@ -220,8 +220,7 @@ func urlFileName(urlPath string) string {
 // embeds (which may contain credentials). It applies to both url.Parse failures and http.Client
 // transport failures, since both return *url.Error.
 func urlParseReason(err error) error {
-	var urlErr *url.Error
-	if errors.As(err, &urlErr) {
+	if urlErr, ok := errors.AsType[*url.Error](err); ok {
 		return urlErr.Err
 	}
 	return err

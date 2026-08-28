@@ -89,8 +89,8 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return &database.Object{
-					Metadata: database.Metadata{ID: id},
-					Data:     sqlDataModel,
+					ID:   id,
+					Data: sqlDataModel,
 				}, nil
 			})
 
@@ -127,8 +127,8 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return &database.Object{
-					Metadata: database.Metadata{ID: id},
-					Data:     sqlDataModel,
+					ID:   id,
+					Data: sqlDataModel,
 				}, nil
 			})
 
@@ -187,8 +187,8 @@ func TestListSecrets_20231001Preview(t *testing.T) {
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return &database.Object{
-					Metadata: database.Metadata{ID: id},
-					Data:     sqlDataModel,
+					ID:   id,
+					Data: sqlDataModel,
 				}, nil
 			})
 

@@ -177,8 +177,8 @@ func TestIsDuplicated(t *testing.T) {
 
 	t.Run("updating status refreshed recently is duplicated", func(t *testing.T) {
 		sm.EXPECT().Get(gomock.Any(), rID, opID).Return(&manager.Status{
-			AsyncOperationStatus: v1.AsyncOperationStatus{Status: v1.ProvisioningStateUpdating},
-			LastUpdatedTime:      time.Now().UTC().Add(-5 * time.Second),
+			Status:          v1.ProvisioningStateUpdating,
+			LastUpdatedTime: time.Now().UTC().Add(-5 * time.Second),
 		}, nil)
 
 		dup, err := worker.isDuplicated(t.Context(), resourceID, opID)
@@ -188,8 +188,8 @@ func TestIsDuplicated(t *testing.T) {
 
 	t.Run("updating status older than dedup window is not duplicated", func(t *testing.T) {
 		sm.EXPECT().Get(gomock.Any(), rID, opID).Return(&manager.Status{
-			AsyncOperationStatus: v1.AsyncOperationStatus{Status: v1.ProvisioningStateUpdating},
-			LastUpdatedTime:      time.Now().UTC().Add(-2 * time.Minute),
+			Status:          v1.ProvisioningStateUpdating,
+			LastUpdatedTime: time.Now().UTC().Add(-2 * time.Minute),
 		}, nil)
 
 		dup, err := worker.isDuplicated(t.Context(), resourceID, opID)
@@ -199,8 +199,8 @@ func TestIsDuplicated(t *testing.T) {
 
 	t.Run("terminal status is duplicated", func(t *testing.T) {
 		sm.EXPECT().Get(gomock.Any(), rID, opID).Return(&manager.Status{
-			AsyncOperationStatus: v1.AsyncOperationStatus{Status: v1.ProvisioningStateFailed},
-			LastUpdatedTime:      time.Now().UTC().Add(-10 * time.Minute),
+			Status:          v1.ProvisioningStateFailed,
+			LastUpdatedTime: time.Now().UTC().Add(-10 * time.Minute),
 		}, nil)
 
 		dup, err := worker.isDuplicated(t.Context(), resourceID, opID)
