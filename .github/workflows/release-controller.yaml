@@ -1,0 +1,149 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: release-controller
+run-name: >-
+  Release controller ${{ github.event.client_payload.version ||
+  github.event.pull_request.title }}
+
+# Only trusted default-branch code runs, and the resolver accepts merged,
+# same-repository generated release branches before any secret-bearing job.
+on: # zizmor: ignore[dangerous-triggers]
+  pull_request_target:
+    branches:
+      - main
+      - release/*
+    types:
+      - closed
+  repository_dispatch:
+    types:
+      - release-controller.approve
+      - release-controller.resume
+
+permissions: {}
+
+jobs:
+  resolve:
+    name: Resolve approved release plan
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      (github.event_name == 'repository_dispatch' ||
+      (github.event.pull_request.merged == true &&
+      (startsWith(github.event.pull_request.head.ref,
+      'automation/prepare-release-') ||
+      startsWith(github.event.pull_request.head.ref,
+      'automation/backport-'))))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      selected: ${{ steps.resolve.outputs.selected }}
+      source-pr-number: ${{ steps.resolve.outputs.source-pr-number }}
+      source-pr-commit: ${{ steps.resolve.outputs.source-pr-commit }}
+      version: ${{ steps.resolve.outputs.version }}
+      release-commit: ${{ steps.resolve.outputs.release-commit }}
+      trigger: ${{ steps.resolve.outputs.trigger }}
+    steps:
+      - name: Checkout trusted release resolver
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Resolve release controller input
+        id: resolve
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: >-
+            ${{ github.event_name == 'repository_dispatch' &&
+            'dispatch' || 'event' }}
+          INPUT_VERSION: ${{ github.event.client_payload.version }}
+          INPUT_SOURCE_SHA: ${{ github.event.client_payload.source_commit }}
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/resolve-release-controller.mjs`)
+            await script({context, github, core})
+
+  reconcile:
+    name: Reconcile release
+    needs: resolve
+    if: needs.resolve.outputs.selected == 'true'
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/__release-controller.yaml
+    with:
+      source-pr-number: ${{ needs.resolve.outputs.source-pr-number }}
+      source-pr-commit: ${{ needs.resolve.outputs.source-pr-commit }}
+      version: ${{ needs.resolve.outputs.version }}
+      source-commit: ${{ needs.resolve.outputs.release-commit }}
+      trigger: ${{ needs.resolve.outputs.trigger }}
+    secrets:
+      RADIUS_RELEASE_BOT_CLIENT_ID: >-
+        ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+      RADIUS_RELEASE_BOT_PRIVATE_KEY: >-
+        ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+      RADIUS_PUBLISHER_BOT_CLIENT_ID: >-
+        ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
+      RADIUS_PUBLISHER_BOT_PRIVATE_KEY: >-
+        ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+
+  summary:
+    name: Release controller entry summary
+    needs: [resolve, reconcile]
+    if: >-
+      always() && github.repository == 'radius-project/radius' &&
+      (github.event_name == 'repository_dispatch' ||
+      startsWith(github.event.pull_request.head.ref,
+      'automation/prepare-release-') ||
+      startsWith(github.event.pull_request.head.ref,
+      'automation/backport-'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Summarize entry resolution
+        env:
+          RESOLVE_RESULT: ${{ needs.resolve.result }}
+          RECONCILE_RESULT: ${{ needs.reconcile.result }}
+          SELECTED: ${{ needs.resolve.outputs.selected }}
+          VERSION: >-
+            ${{ needs.resolve.outputs.version ||
+            github.event.client_payload.version }}
+          SOURCE_COMMIT: >-
+            ${{ needs.resolve.outputs.release-commit ||
+            github.event.client_payload.source_commit ||
+            github.event.pull_request.merge_commit_sha }}
+        run: |
+          {
+            echo "## Release controller entry"
+            echo
+            echo "- Plan resolution: ${RESOLVE_RESULT}"
+            echo "- Controller: ${RECONCILE_RESULT}"
+            echo "- Selected release: ${SELECTED:-false}"
+            [[ -z "${VERSION}" ]] || echo "- Version: ${VERSION}"
+            [[ -z "${SOURCE_COMMIT}" ]] || \
+              echo "- Source commit: ${SOURCE_COMMIT}"
+            if [[ "${RESOLVE_RESULT}" != "success" ]]; then
+              echo
+              echo "Correct the generated release plan or event metadata,"
+              echo "then rerun Prepare Release or Approve Release."
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
