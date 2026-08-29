@@ -30,6 +30,8 @@
 
 set -euo pipefail
 
+CHECK_ONLY="${RELEASE_RECONCILE_CHECK_ONLY:-false}"
+
 usage() {
     cat <<EOF
 Usage: $0 <repository-directory> <tag-name> <release-branch-name> [planned-commit]
@@ -104,6 +106,11 @@ reconcile_branch() {
     fi
 
     release_commit="${planned_commit:-$(git rev-parse HEAD)}"
+    if [[ "${CHECK_ONLY}" == "true" ]]; then
+        echo "Release branch ${branch} is absent and can be created at ${release_commit}" >&2
+        printf '%s' "${release_commit}"
+        return
+    fi
     echo "Creating release branch ${branch} at ${release_commit}" >&2
     if ! git push --force-with-lease="refs/heads/${branch}:" \
         origin "${release_commit}:refs/heads/${branch}"; then
@@ -150,6 +157,11 @@ reconcile_tag() {
         return
     fi
 
+    if [[ "${CHECK_ONLY}" == "true" ]]; then
+        echo "Tag ${tag} is absent and can be created at ${release_commit}"
+        return
+    fi
+
     echo "Creating tag ${tag} at ${release_commit}"
     if ! git push --force-with-lease="refs/tags/${tag}:" \
         origin "${release_commit}:refs/tags/${tag}"; then
@@ -181,6 +193,8 @@ main() {
         fail "repository directory, tag name, and release branch name are required"
     fi
     [[ -d "${repository}" ]] || fail "repository directory not found: ${repository}"
+    [[ "${CHECK_ONLY}" =~ ^(true|false)$ ]] ||
+        fail "RELEASE_RECONCILE_CHECK_ONLY must be true or false"
 
     cd "${repository}"
 
