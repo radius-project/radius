@@ -28,7 +28,8 @@ fail() {
 }
 
 main() {
-    local reference object_type object_sha verification recovery
+    local reference object_type object_sha tag_object verification
+    local signed_tag_name target_type target_sha recovery
     local tag_pattern
 
     # Numeric identifiers reject leading zeros, matching the semver policy in
@@ -38,8 +39,8 @@ main() {
     if [[ ! "${TAG}" =~ ${tag_pattern} ]]; then
         fail "tag must use vX.Y.Z or vX.Y.Z-rc.N format"
     fi
-    command -v "${GH}" > /dev/null || fail "required command not found: ${GH}"
-    command -v jq > /dev/null || fail "required command not found: jq"
+    command -v "${GH}" >/dev/null || fail "required command not found: ${GH}"
+    command -v jq >/dev/null || fail "required command not found: jq"
 
     recovery="git tag -s ${TAG} -m 'release tag ${TAG}'"
     recovery+=" && git push origin ${TAG}"
@@ -48,21 +49,33 @@ main() {
     )"; then
         fail "Create the signed tag with: ${recovery}"
     fi
-    object_type="$(jq -r '.object.type' <<< "${reference}")"
-    object_sha="$(jq -r '.object.sha' <<< "${reference}")"
+    object_type="$(jq -r '.object.type' <<<"${reference}")"
+    object_sha="$(jq -r '.object.sha' <<<"${reference}")"
     if [[ "${object_type}" != "tag" ]]; then
         fail "Deployment Engine tag ${TAG} is lightweight, not signed"
     fi
 
-    verification="$(
-        "${GH}" api "repos/${REPOSITORY}/git/tags/${object_sha}" \
-            --jq '.verification.verified'
-    )"
+    tag_object="$("${GH}" api "repos/${REPOSITORY}/git/tags/${object_sha}")"
+    verification="$(jq -r '.verification.verified' <<<"${tag_object}")"
     if [[ "${verification}" != "true" ]]; then
         fail "Deployment Engine tag ${TAG} has no valid signature"
     fi
+    signed_tag_name="$(jq -r '.tag' <<<"${tag_object}")"
+    if [[ "${signed_tag_name}" != "${TAG}" ]]; then
+        fail "Deployment Engine tag object names ${signed_tag_name}, expected ${TAG}"
+    fi
+    target_type="$(jq -r '.object.type' <<<"${tag_object}")"
+    target_sha="$(jq -r '.object.sha' <<<"${tag_object}")"
+    if [[ "${target_type}" != "commit" ||
+        ! "${target_sha}" =~ ^[0-9a-f]{40}$ ]]; then
+        fail "Deployment Engine tag ${TAG} does not target a commit"
+    fi
 
-    echo "Verified signed Deployment Engine tag ${TAG}."
+    if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+        echo "commit=${target_sha}" >>"${GITHUB_OUTPUT}"
+    fi
+
+    echo "Verified signed Deployment Engine tag ${TAG} at ${target_sha}."
 }
 
 main "$@"

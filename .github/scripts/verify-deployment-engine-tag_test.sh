@@ -41,21 +41,24 @@ fail_test() {
 write_fake_gh() {
     local type="$1"
     local verified="$2"
+    local target_type="${3:-commit}"
+    local target_sha="${4:-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}"
+    local signed_tag="${5:-v0.61.0-rc.1}"
 
-    cat > "${TEST_ROOT}/gh" << EOF
+    cat >"${TEST_ROOT}/gh" <<EOF
 #!/bin/bash
 set -euo pipefail
 if [[ "\$*" == *"git/ref/tags/"* ]]; then
     printf '%s\n' '{"object":{"type":"${type}","sha":"tag-object"}}'
 else
-    printf '%s\n' '${verified}'
+    printf '%s\n' '{"tag":"${signed_tag}","verification":{"verified":${verified}},"object":{"type":"${target_type}","sha":"${target_sha}"}}'
 fi
 EOF
     chmod +x "${TEST_ROOT}/gh"
 }
 
 write_missing_fake_gh() {
-    cat > "${TEST_ROOT}/gh" << 'EOF'
+    cat >"${TEST_ROOT}/gh" <<'EOF'
 #!/bin/bash
 exit 1
 EOF
@@ -63,10 +66,17 @@ EOF
 }
 
 test_accepts_verified_annotated_tag() {
+    local outputs="${TEST_ROOT}/outputs"
+
     write_fake_gh tag true
-    if ! GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0-rc.1 \
-        > /dev/null; then
+    if ! GITHUB_OUTPUT="${outputs}" GH="${TEST_ROOT}/gh" \
+        bash "${SCRIPT}" v0.61.0-rc.1 \
+        >/dev/null; then
         fail_test "expected a verified annotated tag to pass"
+        return
+    fi
+    if [[ "$(<"${outputs}")" != "commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ]]; then
+        fail_test "verified tag target commit was not emitted"
         return
     fi
     ((++PASS))
@@ -74,7 +84,7 @@ test_accepts_verified_annotated_tag() {
 
 test_rejects_lightweight_tag() {
     write_fake_gh commit true
-    if GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0 > /dev/null 2>&1; then
+    if GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0 >/dev/null 2>&1; then
         fail_test "expected a lightweight tag to fail"
         return
     fi
@@ -83,8 +93,30 @@ test_rejects_lightweight_tag() {
 
 test_rejects_unverified_tag() {
     write_fake_gh tag false
-    if GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0 > /dev/null 2>&1; then
+    if GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0 >/dev/null 2>&1; then
         fail_test "expected an unverified tag to fail"
+        return
+    fi
+    ((++PASS))
+}
+
+test_rejects_non_commit_tag_target() {
+    write_fake_gh tag true tree aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+        v0.61.0
+    if GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0 \
+        >/dev/null 2>&1; then
+        fail_test "expected a non-commit tag target to fail"
+        return
+    fi
+    ((++PASS))
+}
+
+test_rejects_mismatched_signed_tag_name() {
+    write_fake_gh tag true commit \
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa v0.60.0
+    if GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0-rc.1 \
+        >/dev/null 2>&1; then
+        fail_test "expected a mismatched signed tag name to fail"
         return
     fi
     ((++PASS))
@@ -116,6 +148,8 @@ main() {
     test_accepts_verified_annotated_tag
     test_rejects_lightweight_tag
     test_rejects_unverified_tag
+    test_rejects_non_commit_tag_target
+    test_rejects_mismatched_signed_tag_name
     test_missing_tag_prints_recovery_command
 
     if ((FAIL > 0)); then

@@ -15,6 +15,8 @@ function createCore(overrides = {}) {
     EVENT_TYPE: "deployment-engine",
     RELEASE_IDENTIFIER: "0.61.0-aaaaaaaa",
     CLIENT_PAYLOAD: JSON.stringify({ tag: "0.61" }),
+    REUSE_SUCCESSFUL: "true",
+    DISPATCH_IF_MISSING: "true",
     MAX_WAIT_SECONDS: "30",
     POLL_INTERVAL_SECONDS: "1",
     ...overrides
@@ -213,6 +215,54 @@ test("reuses an existing successful run without dispatching", async () => {
   assert.equal(github.dispatches.length, 0);
   assert.equal(core.outputs.get("run_id"), "42");
   assert.equal(core.outputs.get("conclusion"), "success");
+});
+
+test("prefers a newer active retry over an older success", async () => {
+  const identifier = "0.61.0-a0a0a0a0";
+  const success = successfulRun(41, identifier);
+  const active = {
+    ...successfulRun(42, identifier),
+    status: "in_progress",
+    conclusion: null
+  };
+  const core = createCore({ RELEASE_IDENTIFIER: identifier });
+  const github = createGithub({
+    runs: [success, active],
+    getRun: () => ({ ...active, status: "completed", conclusion: "success" })
+  });
+
+  await monitorRemoteWorkflow({ github, core, ...createClock() });
+
+  assert.deepEqual(core.failures, []);
+  assert.equal(core.outputs.get("run_id"), "42");
+  assert.deepEqual(github.dispatches, []);
+});
+
+test("query-only mode does not dispatch when no run exists", async () => {
+  const core = createCore({ DISPATCH_IF_MISSING: "false" });
+  const github = createGithub();
+
+  await monitorRemoteWorkflow({ github, core, ...createClock() });
+
+  assert.deepEqual(core.failures, []);
+  assert.deepEqual(github.dispatches, []);
+  assert.equal(core.outputs.get("run_state"), "absent");
+});
+
+test("retries a successful run when its destination is absent", async () => {
+  const identifier = "0.61.0-a1a1a1a1";
+  const previous = successfulRun(41, identifier);
+  const core = createCore({
+    RELEASE_IDENTIFIER: identifier,
+    REUSE_SUCCESSFUL: "false"
+  });
+  const github = createGithub({ runs: [previous] });
+
+  await monitorRemoteWorkflow({ github, core, ...createClock() });
+
+  assert.deepEqual(core.failures, []);
+  assert.equal(github.dispatches.length, 1);
+  assert.notEqual(core.outputs.get("run_id"), "41");
 });
 
 test("dispatches once and injects the release identifier into the payload", async () => {
@@ -520,11 +570,11 @@ test("all publisher callers use stable identifiers without time-window discovery
       timeout: "timeout-minutes: 18"
     },
     {
-      file: "release.yaml",
+      file: "__release-controller.yaml",
       identifier:
-        "INPUT_RELEASE_IDENTIFIER: ${{ steps.get-version.outputs.release-version }}-${{ github.sha }}",
+        "INPUT_RELEASE_IDENTIFIER: ${{ needs.validate.outputs.release-identifier }}",
       eventType: "INPUT_EVENT_TYPE: deployment-engine",
-      timeout: "timeout-minutes: 25"
+      timeout: "timeout-minutes: 18"
     }
   ];
 

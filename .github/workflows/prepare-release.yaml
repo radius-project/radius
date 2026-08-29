@@ -112,13 +112,10 @@ jobs:
               --jq '.[0] // empty'
           )"
           if [[ -n "${existing}" ]]; then
-            echo "existing=true" >> "${GITHUB_OUTPUT}"
-            echo "existing-number=$(jq -r .number <<< "${existing}")" \
-              >> "${GITHUB_OUTPUT}"
-            echo "existing-url=$(jq -r .url <<< "${existing}")" \
-              >> "${GITHUB_OUTPUT}"
-            echo "existing-head=$(jq -r .headRefOid <<< "${existing}")" \
-              >> "${GITHUB_OUTPUT}"
+            existing_state=true
+            existing_number="$(jq -r .number <<< "${existing}")"
+            existing_url="$(jq -r .url <<< "${existing}")"
+            existing_head="$(jq -r .headRefOid <<< "${existing}")"
           else
             set +e
             git ls-remote --exit-code origin "refs/heads/${branch}" \
@@ -136,10 +133,17 @@ jobs:
                 exit "${branch_status}"
                 ;;
             esac
-            echo "existing=false" >> "${GITHUB_OUTPUT}"
+            existing_state=false
+            existing_number=""
+            existing_url=""
+            existing_head=""
           fi
 
           {
+            echo "existing=${existing_state}"
+            echo "existing-number=${existing_number}"
+            echo "existing-url=${existing_url}"
+            echo "existing-head=${existing_head}"
             echo "version=${version}"
             echo "branch=${branch}"
           } >> "${GITHUB_OUTPUT}"
@@ -169,6 +173,14 @@ jobs:
             --channel "${CHANNEL}" \
             --explicit-prs "${EXPLICIT_PRS}" \
             --output "${RUNNER_TEMP}/release-backports.json"
+
+      - name: Capture sibling repository commits
+        env:
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          bash ./.github/scripts/capture-release-sibling-commits.sh \
+            --channel "${CHANNEL}" \
+            --output "${RUNNER_TEMP}/release-siblings.json"
 
       - name: Request incomplete explicit backports
         if: >-
@@ -210,6 +222,8 @@ jobs:
             --release-type "${RELEASE_TYPE}" \
             --channel "${CHANNEL}" \
             --backports-file "${RUNNER_TEMP}/release-backports.json" \
+            --sibling-repositories-file \
+              "${RUNNER_TEMP}/release-siblings.json" \
             --output-dir "${output_dir}"
 
           version="$(<"${output_dir}/version.txt")"
@@ -271,6 +285,7 @@ jobs:
           draft: true
           delete-branch: true
           add-paths: |
+            .github/release-plans/*.yaml
             versions.yaml
             CHANGELOG.md
             docs/release-notes/*.md
@@ -296,6 +311,7 @@ jobs:
             ${{ runner.temp }}/release-preparation/release-plan.yaml
             ${{ runner.temp }}/release-preparation/changelog-section.md
             ${{ runner.temp }}/release-backports.json
+            ${{ runner.temp }}/release-siblings.json
           if-no-files-found: error
           retention-days: 30
 

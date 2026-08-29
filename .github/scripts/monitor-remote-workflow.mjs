@@ -78,6 +78,17 @@ export default async ({
     const clientPayloadText = core.getInput("CLIENT_PAYLOAD", {
       required: true
     });
+    const reuseSuccessfulText = core.getInput("REUSE_SUCCESSFUL") || "true";
+    if (!/^(true|false)$/.test(reuseSuccessfulText)) {
+      throw new Error("REUSE_SUCCESSFUL must be true or false");
+    }
+    const reuseSuccessful = reuseSuccessfulText === "true";
+    const dispatchIfMissingText =
+      core.getInput("DISPATCH_IF_MISSING") || "true";
+    if (!/^(true|false)$/.test(dispatchIfMissingText)) {
+      throw new Error("DISPATCH_IF_MISSING must be true or false");
+    }
+    const dispatchIfMissing = dispatchIfMissingText === "true";
 
     if (!EVENT_TYPE_PATTERN.test(eventType)) {
       throw new Error(`Invalid event type: ${eventType}`);
@@ -174,9 +185,11 @@ export default async ({
 
     /** @param {any[]} runs */
     const selectReusableRun = (runs) =>
-      runs.find(
-        (run) => run.status === "completed" && run.conclusion === "success"
-      ) || runs.find((run) => run.status !== "completed");
+      runs.find((run) => run.status !== "completed") ||
+      (reuseSuccessful &&
+        runs.find(
+          (run) => run.status === "completed" && run.conclusion === "success"
+        ));
 
     const matchingRuns = async ({ allPages = true } = {}) => {
       const parameters = {
@@ -274,6 +287,13 @@ export default async ({
     );
     let run = selectReusableRun(existingRuns);
     if (!run) {
+      if (!dispatchIfMissing) {
+        core.info(
+          `No active correlated run found for '${expectedRunName}'; dispatch is not required`
+        );
+        core.setOutput("run_state", "absent");
+        return;
+      }
       core.info(
         existingRuns.length > 0 ?
           `Previous correlated runs failed; dispatching retry '${eventType}'`
