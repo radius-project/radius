@@ -55,7 +55,7 @@ setup_repo() {
     git -C "${REPO}" config user.name "Radius Test"
     git -C "${REPO}" config user.email "test@example.com"
     git -C "${REPO}" config commit.gpgsign false
-    printf 'base\n' > "${REPO}/base.txt"
+    printf 'base\n' >"${REPO}/base.txt"
     git -C "${REPO}" add base.txt
     if [[ "${trusted_validator}" == true ]]; then
         mkdir -p "${REPO}/.github/scripts"
@@ -66,16 +66,20 @@ setup_repo() {
     BASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
 
     git -C "${REPO}" checkout -q -b release-pr
-    mkdir -p "${REPO}/docs/release-notes"
-    printf 'supported: []\n' > "${REPO}/versions.yaml"
-    printf '# Changelog\n' > "${REPO}/CHANGELOG.md"
+    mkdir -p "${REPO}/docs/release-notes" \
+        "${REPO}/.github/release-plans"
+    printf 'supported: []\n' >"${REPO}/versions.yaml"
+    printf '# Changelog\n' >"${REPO}/CHANGELOG.md"
     printf '# Release notes\n' \
-        > "${REPO}/docs/release-notes/v0.61.0-rc.1.md"
-    git -C "${REPO}" add versions.yaml CHANGELOG.md docs/release-notes
+        >"${REPO}/docs/release-notes/v0.61.0-rc.1.md"
+    printf 'schemaVersion: 2\n' \
+        >"${REPO}/.github/release-plans/v0.61.0-rc.1.yaml"
+    git -C "${REPO}" add versions.yaml CHANGELOG.md docs/release-notes \
+        .github/release-plans
     git -C "${REPO}" commit -q -m "chore(release): prepare v0.61.0-rc.1"
     RELEASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
-    cat > "${REPO}/candidates.json" << EOF
-[{"number":123,"head_sha":"${RELEASE_SHA}","files":["CHANGELOG.md","docs/release-notes/v0.61.0-rc.1.md","versions.yaml"]}]
+    cat >"${REPO}/candidates.json" <<EOF
+[{"number":123,"head_sha":"${RELEASE_SHA}","files":[".github/release-plans/v0.61.0-rc.1.yaml","CHANGELOG.md","docs/release-notes/v0.61.0-rc.1.md","versions.yaml"]}]
 EOF
 }
 
@@ -86,15 +90,15 @@ create_squash_group() {
     git -C "${REPO}" checkout -q main
     git -C "${REPO}" reset -q --hard "${BASE_SHA}"
     if [[ "${advance_base}" == "true" ]]; then
-        printf 'already on main\n' > "${REPO}/advanced-base.txt"
+        printf 'already on main\n' >"${REPO}/advanced-base.txt"
         git -C "${REPO}" add advanced-base.txt
         git -C "${REPO}" commit -q -m "fix: advance main before queueing"
     fi
     GROUP_BASE_SHA="$(git -C "${REPO}" rev-parse HEAD)"
-    git -C "${REPO}" diff --binary "${BASE_SHA}" "${RELEASE_SHA}" \
-                                                                  | git -C "${REPO}" apply --index
+    git -C "${REPO}" diff --binary "${BASE_SHA}" "${RELEASE_SHA}" |
+        git -C "${REPO}" apply --index
     if [[ "${extra_change}" == "true" ]]; then
-        printf 'other\n' > "${REPO}/other.txt"
+        printf 'other\n' >"${REPO}/other.txt"
         git -C "${REPO}" add other.txt
     fi
     git -C "${REPO}" commit -q -m "squash merge group"
@@ -105,14 +109,14 @@ run_validator() {
     local merge_group_sha="$1"
     local status
 
-    pushd "${REPO}" > /dev/null
+    pushd "${REPO}" >/dev/null
     set +e
     bash "${SCRIPT}" --candidates-file candidates.json \
         --merge-group-sha "${merge_group_sha}" --base-sha "${GROUP_BASE_SHA}" \
         --output-file selected.txt
     status=$?
     set -e
-    popd > /dev/null
+    popd >/dev/null
     return "${status}"
 }
 
@@ -125,11 +129,11 @@ test_accepts_squash_release_only_group() {
         fail_test "fixture must not make the PR head an ancestor"
         return
     fi
-    if ! run_validator "${group_sha}" > /dev/null; then
+    if ! run_validator "${group_sha}" >/dev/null; then
         fail_test "expected a squash release-only group to pass"
         return
     fi
-    if [[ "$(< "${REPO}/selected.txt")" != "123" ]]; then
+    if [[ "$(<"${REPO}/selected.txt")" != "123" ]]; then
         fail_test "selector did not identify release PR #123"
         return
     fi
@@ -140,7 +144,7 @@ test_rejects_group_with_extra_changes() {
     local group_sha
     create_squash_group true
     group_sha="${GROUP_SHA}"
-    if run_validator "${group_sha}" > /dev/null 2>&1; then
+    if run_validator "${group_sha}" >/dev/null 2>&1; then
         fail_test "expected a batched merge group to fail"
         return
     fi
@@ -155,7 +159,7 @@ test_selects_release_pr_on_advanced_base() {
         fail_test "fixture must produce different complete trees"
         return
     fi
-    if ! run_validator "${group_sha}" > /dev/null; then
+    if ! run_validator "${group_sha}" >/dev/null; then
         fail_test "expected selector to identify the release PR on a newer base"
         return
     fi
@@ -277,7 +281,8 @@ main() {
         test_accepts_group_without_release_pr "${file}"
     done
     for file in CHANGELOG.md versions.yaml docs/release-notes/v0.61.0.md \
-        docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md; do
+        docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md \
+        .github/release-plans/v0.61.0-rc.1.yaml; do
         setup_repo
         test_accepts_group_without_release_pr "${file}" true
     done
@@ -286,7 +291,8 @@ main() {
         test_workflow_bootstrap "${file}" false
     done
     for file in CHANGELOG.md versions.yaml docs/release-notes/v0.61.0.md \
-        docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md; do
+        docs/release-notes/v0.61.0-rc.1.md docs/release-notes/v0.61.0-rc1.md \
+        .github/release-plans/v0.61.0-rc.1.yaml; do
         test_workflow_bootstrap "${file}" true
     done
     test_workflow_uses_existing_trusted_validator
