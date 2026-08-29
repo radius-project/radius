@@ -23,7 +23,6 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -221,10 +220,8 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 				}
 
 				deploymentResource := &radappiov1alpha3.DeploymentResource{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: deploymentTemplate.Namespace,
-					},
+					Name:      resourceName,
+					Namespace: deploymentTemplate.Namespace,
 					Spec: radappiov1alpha3.DeploymentResourceSpec{
 						Id: outputResourceId,
 					},
@@ -256,10 +253,8 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 				}
 
 				err = r.Client.Delete(ctx, &radappiov1alpha3.DeploymentResource{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: deploymentTemplate.Namespace,
-					},
+					Name:      resourceName,
+					Namespace: deploymentTemplate.Namespace,
 				})
 				if client.IgnoreNotFound(err) != nil {
 					return ctrl.Result{}, err

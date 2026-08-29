@@ -442,10 +442,8 @@ func (r *RecipeReconciler) updateSecret(ctx context.Context, recipe *radappiov1a
 	if recipe.Spec.SecretName != recipe.Status.Secret.Name && recipe.Status.Secret.Name != "" {
 		logger.Info("Deleting stale secret", "secret", recipe.Status.Secret.Name)
 		err := r.Client.Delete(ctx, &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      recipe.Status.Secret.Name,
-				Namespace: recipe.Namespace,
-			},
+			Name:      recipe.Status.Secret.Name,
+			Namespace: recipe.Namespace,
 		})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete stale secret %s: %w", recipe.Status.Secret.Name, err)
@@ -476,12 +474,10 @@ func (r *RecipeReconciler) updateSecret(ctx context.Context, recipe *radappiov1a
 	// Initialize the secret if it doesn't exist.
 	if secret == nil {
 		secret = &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      recipe.Spec.SecretName,
-				Namespace: recipe.Namespace,
-				OwnerReferences: []metav1.OwnerReference{
-					*metav1.NewControllerRef(recipe, radappiov1alpha3.GroupVersion.WithKind("Recipe")),
-				},
+			Name:      recipe.Spec.SecretName,
+			Namespace: recipe.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(recipe, radappiov1alpha3.GroupVersion.WithKind("Recipe")),
 			},
 		}
 
@@ -539,10 +535,8 @@ func (r *RecipeReconciler) deleteSecret(ctx context.Context, recipe *radappiov1a
 	if recipe.Status.Secret.Name != "" {
 		logger.Info("Deleting secret.", "secret", recipe.Status.Secret.Name)
 		err := r.Client.Delete(ctx, &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      recipe.Status.Secret.Name,
-				Namespace: recipe.Namespace,
-			},
+			Name:      recipe.Status.Secret.Name,
+			Namespace: recipe.Namespace,
 		})
 		if err != nil && !apierrors.IsNotFound(err) {
 			return fmt.Errorf("failed to delete secret %s: %w", recipe.Status.Secret.Name, err)

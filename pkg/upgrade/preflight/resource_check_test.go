@@ -25,7 +25,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	clienttesting "k8s.io/client-go/testing"
@@ -181,7 +180,7 @@ func TestKubernetesResourceCheck_NoClientset(t *testing.T) {
 
 func createNode(name, cpu, memory string) *corev1.Node {
 	return &corev1.Node{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Name: name,
 		Status: corev1.NodeStatus{
 			Conditions: []corev1.NodeCondition{
 				{Type: corev1.NodeReady, Status: corev1.ConditionTrue},
@@ -201,11 +200,9 @@ func createNode(name, cpu, memory string) *corev1.Node {
 
 func createRadiusDeployment(name, cpu, memory string, replicas int32) *appsv1.Deployment {
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: "radius-system",
-			Labels:    map[string]string{"app.kubernetes.io/part-of": "radius"},
-		},
+		Name:      name,
+		Namespace: "radius-system",
+		Labels:    map[string]string{"app.kubernetes.io/part-of": "radius"},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &replicas,
 			Template: corev1.PodTemplateSpec{

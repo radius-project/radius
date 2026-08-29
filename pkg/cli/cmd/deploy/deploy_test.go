@@ -560,14 +560,12 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 				_ *v20250801preview.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 				resp.SetResponse(200, v20250801preview.EnvironmentsClientGetResponse{
-					EnvironmentResource: v20250801preview.EnvironmentResource{
-						ID: new("/planes/radius/local/resourceGroups/test-resource-group/providers/Radius.Core/environments/conflictenv"),
-						Properties: &v20250801preview.EnvironmentProperties{
-							Providers: &v20250801preview.Providers{
-								Azure: &v20250801preview.ProvidersAzure{
-									SubscriptionID:    new("test-sub-id"),
-									ResourceGroupName: new("test-rg-name"),
-								},
+					ID: new("/planes/radius/local/resourceGroups/test-resource-group/providers/Radius.Core/environments/conflictenv"),
+					Properties: &v20250801preview.EnvironmentProperties{
+						Providers: &v20250801preview.Providers{
+							Azure: &v20250801preview.ProvidersAzure{
+								SubscriptionID:    new("test-sub-id"),
+								ResourceGroupName: new("test-rg-name"),
 							},
 						},
 					},
@@ -1003,7 +1001,7 @@ func Test_Run(t *testing.T) {
 					capturedAppName = applicationName
 					capturedResource = resource
 					resp.SetResponse(http.StatusOK, v20250801preview.ApplicationsClientCreateOrUpdateResponse{
-						ApplicationResource: v20250801preview.ApplicationResource{Name: to.Ptr(applicationName)},
+						Name: to.Ptr(applicationName),
 					}, nil)
 					return
 				},
@@ -1105,7 +1103,7 @@ func Test_Run(t *testing.T) {
 					createdRadiusCoreApp = true
 					capturedResource = resource
 					resp.SetResponse(http.StatusOK, v20250801preview.ApplicationsClientCreateOrUpdateResponse{
-						ApplicationResource: v20250801preview.ApplicationResource{Name: to.Ptr(applicationName)},
+						Name: to.Ptr(applicationName),
 					}, nil)
 					return
 				},
@@ -2061,10 +2059,8 @@ func Test_FetchEnvironment_RadiusCoreEnvironmentUsesOwnGroup(t *testing.T) {
 				return
 			}
 			resp.SetResponse(200, v20250801preview.EnvironmentsClientGetResponse{
-				EnvironmentResource: v20250801preview.EnvironmentResource{
-					Name: to.Ptr(environmentName),
-					ID:   to.Ptr(envID),
-				},
+				Name: to.Ptr(environmentName),
+				ID:   to.Ptr(envID),
 			}, nil)
 			return
 		},

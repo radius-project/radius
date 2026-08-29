@@ -23,7 +23,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -81,9 +80,7 @@ func applicationsServerWithEnvironment(applications []*corerpv20250801.Applicati
 				resp.AddPage(
 					http.StatusOK,
 					corerpv20250801.ApplicationsClientListByScopeResponse{
-						ApplicationResourceListResult: corerpv20250801.ApplicationResourceListResult{
-							Value: applications,
-						},
+						Value: applications,
 					},
 					nil,
 				)
@@ -113,10 +110,10 @@ func applicationsServerWithEnvironment(applications []*corerpv20250801.Applicati
 // application builds a Radius.Core application resource in the test scope pointing at environmentID.
 func application(name string, environmentID string) *corerpv20250801.ApplicationResource {
 	return &corerpv20250801.ApplicationResource{
-		Name: to.Ptr(name),
-		ID:   to.Ptr(testScope + "/providers/Radius.Core/applications/" + name),
+		Name: new(name),
+		ID:   new(testScope + "/providers/Radius.Core/applications/" + name),
 		Properties: &corerpv20250801.ApplicationProperties{
-			Environment: to.Ptr(environmentID),
+			Environment: new(environmentID),
 		},
 	}
 }
@@ -124,8 +121,8 @@ func application(name string, environmentID string) *corerpv20250801.Application
 // resource builds a generic resource with the given name.
 func resource(name string) generated.GenericResource {
 	return generated.GenericResource{
-		ID:   to.Ptr(testScope + "/providers/" + testResourceType + "/" + name),
-		Type: to.Ptr(testResourceType),
+		ID:   new(testScope + "/providers/" + testResourceType + "/" + name),
+		Type: new(testResourceType),
 	}
 }
 
@@ -561,9 +558,9 @@ func Test_Run_Cascade(t *testing.T) {
 		// An application that reports no name cannot be addressed, so the cascade cannot delete
 		// it. It must say so rather than deleting the environment and orphaning it in silence.
 		unnamed := &corerpv20250801.ApplicationResource{
-			ID: to.Ptr(testScope + "/providers/Radius.Core/applications/unnamed"),
+			ID: new(testScope + "/providers/Radius.Core/applications/unnamed"),
 			Properties: &corerpv20250801.ApplicationProperties{
-				Environment: to.Ptr(testEnvironmentID),
+				Environment: new(testEnvironmentID),
 			},
 		}
 
