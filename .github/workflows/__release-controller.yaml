@@ -447,7 +447,7 @@ jobs:
             bicep-types-aws
           permission-contents: write
 
-      - name: Checkout radius-project/recipes@main
+      - name: Checkout planned recipes source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: radius-project/recipes
@@ -457,7 +457,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Checkout radius-project/dashboard@main
+      - name: Checkout planned dashboard source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: radius-project/dashboard
@@ -467,7 +467,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Checkout radius-project/bicep-types-aws@main
+      - name: Checkout planned bicep-types-aws source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: radius-project/bicep-types-aws
