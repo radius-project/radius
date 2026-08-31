@@ -1501,7 +1501,7 @@ func (amc *UCPApplicationsManagementClient) captureResponse(ctx context.Context,
 
 // getApiVersionsForResourceType retrieves the API versions for a given resource type in the configured scope.
 func (amc *UCPApplicationsManagementClient) getApiVersionsForResourceType(ctx context.Context, resourceType string) ([]string, error) {
-	provider := strings.Split(resourceType, "/")[0]
+	provider, _, _ := strings.Cut(resourceType, "/")
 	summary, err := amc.GetResourceProviderSummary(ctx, "local", provider)
 	if err != nil {
 		if clientv2.Is404Error(err) {

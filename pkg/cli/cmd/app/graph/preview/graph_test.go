@@ -141,15 +141,13 @@ func Test_Run(t *testing.T) {
 				containerType := "Applications.Core/containers"
 
 				resp.SetResponse(http.StatusOK, corerpv20250801.ApplicationsClientGetGraphResponse{
-					ApplicationGraphResponse: corerpv20250801.ApplicationGraphResponse{
-						Resources: []*corerpv20250801.ApplicationGraphResource{
-							{
-								ID:              &containerID,
-								Name:            &containerName,
-								Type:            &containerType,
-								Connections:     []*corerpv20250801.ApplicationGraphConnection{},
-								OutputResources: []*corerpv20250801.ApplicationGraphOutputResource{},
-							},
+					Resources: []*corerpv20250801.ApplicationGraphResource{
+						{
+							ID:              &containerID,
+							Name:            &containerName,
+							Type:            &containerType,
+							Connections:     []*corerpv20250801.ApplicationGraphConnection{},
+							OutputResources: []*corerpv20250801.ApplicationGraphOutputResource{},
 						},
 					},
 				}, nil)

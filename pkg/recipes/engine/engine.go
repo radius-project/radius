@@ -97,13 +97,11 @@ func (e *engine) executeCore(ctx context.Context, recipe recipes.ResourceMetadat
 	}
 
 	res, err := driver.Execute(ctx, recipedriver.ExecuteOptions{
-		BaseOptions: recipedriver.BaseOptions{
-			Configuration: *configuration,
-			Recipe:        recipe,
-			Definition:    *definition,
-			Secrets:       secrets,
-		},
-		PrevState: prevState,
+		Configuration: *configuration,
+		Recipe:        recipe,
+		Definition:    *definition,
+		Secrets:       secrets,
+		PrevState:     prevState,
 	})
 	if err != nil {
 		return nil, definition, err
@@ -156,12 +154,10 @@ func (e *engine) deleteCore(ctx context.Context, recipe recipes.ResourceMetadata
 		return nil, err
 	}
 	err = driver.Delete(ctx, recipedriver.DeleteOptions{
-		BaseOptions: recipedriver.BaseOptions{
-			Configuration: *configuration,
-			Recipe:        recipe,
-			Definition:    *definition,
-			Secrets:       secrets,
-		},
+		Configuration:   *configuration,
+		Recipe:          recipe,
+		Definition:      *definition,
+		Secrets:         secrets,
 		OutputResources: outputResources,
 	})
 	if err != nil {

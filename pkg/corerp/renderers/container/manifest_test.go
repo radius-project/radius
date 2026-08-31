@@ -21,7 +21,6 @@ import (
 	"strings"
 	"testing"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
 	"github.com/radius-project/radius/pkg/kubeutil"
@@ -37,13 +36,9 @@ import (
 
 var (
 	testResource = &datamodel.ContainerResource{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
-				Name: "test-container",
-				Type: "Applications.Core/containers",
-			},
-		},
+		ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
+		Name: "test-container",
+		Type: "Applications.Core/containers",
 	}
 	testOptions = &renderers.RenderOptions{Environment: renderers.EnvironmentOptions{Namespace: "test-ns"}}
 )
@@ -269,23 +264,19 @@ func TestGetDeploymentBase(t *testing.T) {
 			name:     "without base manifest",
 			manifest: kubeutil.ObjectManifest{},
 			expected: &appsv1.Deployment{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Deployment",
-					APIVersion: "apps/v1",
+				Kind:       "Deployment",
+				APIVersion: "apps/v1",
+				Name:       "test-container",
+				Namespace:  "test-ns",
+				Labels: map[string]string{
+					"app.kubernetes.io/managed-by": "radius-rp",
+					"app.kubernetes.io/name":       "test-container",
+					"app.kubernetes.io/part-of":    "test",
+					"radapp.io/application":        "test",
+					"radapp.io/resource":           "test-container",
+					"radapp.io/resource-type":      "applications.core-containers",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-container",
-					Namespace: "test-ns",
-					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": "radius-rp",
-						"app.kubernetes.io/name":       "test-container",
-						"app.kubernetes.io/part-of":    "test",
-						"radapp.io/application":        "test",
-						"radapp.io/resource":           "test-container",
-						"radapp.io/resource-type":      "applications.core-containers",
-					},
-					Annotations: map[string]string{},
-				},
+				Annotations: map[string]string{},
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{},
 					Template: corev1.PodTemplateSpec{
@@ -309,18 +300,14 @@ func TestGetDeploymentBase(t *testing.T) {
 			manifest: kubeutil.ObjectManifest{
 				appsv1.SchemeGroupVersion.WithKind("Deployment"): []runtime.Object{
 					&appsv1.Deployment{
-						TypeMeta: metav1.TypeMeta{
-							Kind:       "Deployment",
-							APIVersion: "apps/v1",
+						Kind:       "Deployment",
+						APIVersion: "apps/v1",
+						Name:       "test-container",
+						Labels: map[string]string{
+							"label0": "value0",
 						},
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "test-container",
-							Labels: map[string]string{
-								"label0": "value0",
-							},
-							Annotations: map[string]string{
-								"annotation0": "value0",
-							},
+						Annotations: map[string]string{
+							"annotation0": "value0",
 						},
 						Spec: appsv1.DeploymentSpec{
 							Selector: &metav1.LabelSelector{},
@@ -342,25 +329,21 @@ func TestGetDeploymentBase(t *testing.T) {
 				},
 			},
 			expected: &appsv1.Deployment{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Deployment",
-					APIVersion: "apps/v1",
+				Kind:       "Deployment",
+				APIVersion: "apps/v1",
+				Name:       "test-container",
+				Namespace:  "test-ns",
+				Labels: map[string]string{
+					"app.kubernetes.io/managed-by": "radius-rp",
+					"app.kubernetes.io/name":       "test-container",
+					"app.kubernetes.io/part-of":    "test",
+					"label0":                       "value0",
+					"radapp.io/application":        "test",
+					"radapp.io/resource":           "test-container",
+					"radapp.io/resource-type":      "applications.core-containers",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-container",
-					Namespace: "test-ns",
-					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": "radius-rp",
-						"app.kubernetes.io/name":       "test-container",
-						"app.kubernetes.io/part-of":    "test",
-						"label0":                       "value0",
-						"radapp.io/application":        "test",
-						"radapp.io/resource":           "test-container",
-						"radapp.io/resource-type":      "applications.core-containers",
-					},
-					Annotations: map[string]string{
-						"annotation0": "value0",
-					},
+				Annotations: map[string]string{
+					"annotation0": "value0",
 				},
 				Spec: appsv1.DeploymentSpec{
 					Selector: &metav1.LabelSelector{},
@@ -403,23 +386,19 @@ func TestGetServiceBase(t *testing.T) {
 			name:     "without base manifest",
 			manifest: kubeutil.ObjectManifest{},
 			expected: &corev1.Service{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Service",
-					APIVersion: "v1",
+				Kind:       "Service",
+				APIVersion: "v1",
+				Name:       "test-container",
+				Namespace:  "test-ns",
+				Labels: map[string]string{
+					"app.kubernetes.io/managed-by": "radius-rp",
+					"app.kubernetes.io/name":       "test-container",
+					"app.kubernetes.io/part-of":    "test",
+					"radapp.io/application":        "test",
+					"radapp.io/resource":           "test-container",
+					"radapp.io/resource-type":      "applications.core-containers",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-container",
-					Namespace: "test-ns",
-					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": "radius-rp",
-						"app.kubernetes.io/name":       "test-container",
-						"app.kubernetes.io/part-of":    "test",
-						"radapp.io/application":        "test",
-						"radapp.io/resource":           "test-container",
-						"radapp.io/resource-type":      "applications.core-containers",
-					},
-					Annotations: map[string]string{},
-				},
+				Annotations: map[string]string{},
 				Spec: corev1.ServiceSpec{
 					Selector: map[string]string{},
 					Type:     corev1.ServiceTypeClusterIP,
@@ -431,18 +410,14 @@ func TestGetServiceBase(t *testing.T) {
 			manifest: kubeutil.ObjectManifest{
 				corev1.SchemeGroupVersion.WithKind("Service"): []runtime.Object{
 					&corev1.Service{
-						TypeMeta: metav1.TypeMeta{
-							Kind:       "Service",
-							APIVersion: "v1",
+						Kind:       "Service",
+						APIVersion: "v1",
+						Name:       "test-container",
+						Labels: map[string]string{
+							"label0": "value0",
 						},
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "test-container",
-							Labels: map[string]string{
-								"label0": "value0",
-							},
-							Annotations: map[string]string{
-								"annotation0": "value0",
-							},
+						Annotations: map[string]string{
+							"annotation0": "value0",
 						},
 						Spec: corev1.ServiceSpec{
 							Selector: map[string]string{},
@@ -451,25 +426,21 @@ func TestGetServiceBase(t *testing.T) {
 				},
 			},
 			expected: &corev1.Service{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Service",
-					APIVersion: "v1",
+				Kind:       "Service",
+				APIVersion: "v1",
+				Name:       "test-container",
+				Namespace:  "test-ns",
+				Labels: map[string]string{
+					"app.kubernetes.io/managed-by": "radius-rp",
+					"app.kubernetes.io/name":       "test-container",
+					"app.kubernetes.io/part-of":    "test",
+					"label0":                       "value0",
+					"radapp.io/application":        "test",
+					"radapp.io/resource":           "test-container",
+					"radapp.io/resource-type":      "applications.core-containers",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-container",
-					Namespace: "test-ns",
-					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": "radius-rp",
-						"app.kubernetes.io/name":       "test-container",
-						"app.kubernetes.io/part-of":    "test",
-						"label0":                       "value0",
-						"radapp.io/application":        "test",
-						"radapp.io/resource":           "test-container",
-						"radapp.io/resource-type":      "applications.core-containers",
-					},
-					Annotations: map[string]string{
-						"annotation0": "value0",
-					},
+				Annotations: map[string]string{
+					"annotation0": "value0",
 				},
 				Spec: corev1.ServiceSpec{
 					Selector: map[string]string{},
@@ -496,23 +467,19 @@ func TestGetServiceAccountBase(t *testing.T) {
 			name:     "without base manifest",
 			manifest: kubeutil.ObjectManifest{},
 			expected: &corev1.ServiceAccount{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "ServiceAccount",
-					APIVersion: "v1",
+				Kind:       "ServiceAccount",
+				APIVersion: "v1",
+				Name:       "test-container",
+				Namespace:  "test-ns",
+				Labels: map[string]string{
+					"app.kubernetes.io/managed-by": "radius-rp",
+					"app.kubernetes.io/name":       "test-container",
+					"app.kubernetes.io/part-of":    "test",
+					"radapp.io/application":        "test",
+					"radapp.io/resource":           "test-container",
+					"radapp.io/resource-type":      "applications.core-containers",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-container",
-					Namespace: "test-ns",
-					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": "radius-rp",
-						"app.kubernetes.io/name":       "test-container",
-						"app.kubernetes.io/part-of":    "test",
-						"radapp.io/application":        "test",
-						"radapp.io/resource":           "test-container",
-						"radapp.io/resource-type":      "applications.core-containers",
-					},
-					Annotations: map[string]string{},
-				},
+				Annotations: map[string]string{},
 			},
 		},
 		{
@@ -520,42 +487,34 @@ func TestGetServiceAccountBase(t *testing.T) {
 			manifest: kubeutil.ObjectManifest{
 				corev1.SchemeGroupVersion.WithKind("ServiceAccount"): []runtime.Object{
 					&corev1.ServiceAccount{
-						TypeMeta: metav1.TypeMeta{
-							Kind:       "ServiceAccount",
-							APIVersion: "v1",
+						Kind:       "ServiceAccount",
+						APIVersion: "v1",
+						Name:       "test-container",
+						Labels: map[string]string{
+							"label0": "value0",
 						},
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "test-container",
-							Labels: map[string]string{
-								"label0": "value0",
-							},
-							Annotations: map[string]string{
-								"annotation0": "value0",
-							},
+						Annotations: map[string]string{
+							"annotation0": "value0",
 						},
 					},
 				},
 			},
 			expected: &corev1.ServiceAccount{
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "ServiceAccount",
-					APIVersion: "v1",
+				Kind:       "ServiceAccount",
+				APIVersion: "v1",
+				Name:       "test-container",
+				Namespace:  "test-ns",
+				Labels: map[string]string{
+					"app.kubernetes.io/managed-by": "radius-rp",
+					"app.kubernetes.io/name":       "test-container",
+					"app.kubernetes.io/part-of":    "test",
+					"label0":                       "value0",
+					"radapp.io/application":        "test",
+					"radapp.io/resource":           "test-container",
+					"radapp.io/resource-type":      "applications.core-containers",
 				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-container",
-					Namespace: "test-ns",
-					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": "radius-rp",
-						"app.kubernetes.io/name":       "test-container",
-						"app.kubernetes.io/part-of":    "test",
-						"label0":                       "value0",
-						"radapp.io/application":        "test",
-						"radapp.io/resource":           "test-container",
-						"radapp.io/resource-type":      "applications.core-containers",
-					},
-					Annotations: map[string]string{
-						"annotation0": "value0",
-					},
+				Annotations: map[string]string{
+					"annotation0": "value0",
 				},
 			},
 		},

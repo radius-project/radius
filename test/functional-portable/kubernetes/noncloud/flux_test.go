@@ -203,11 +203,9 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 
 	// Create the secret for the Flux GitRepository.
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      gitRepoName,
-			Namespace: fluxSystemNamespace,
-		},
-		Type: corev1.SecretTypeBasicAuth,
+		Name:      gitRepoName,
+		Namespace: fluxSystemNamespace,
+		Type:      corev1.SecretTypeBasicAuth,
 		Data: map[string][]byte{
 			"username": []byte(gitUsername),
 			"password": []byte(gitPassword),
@@ -222,10 +220,8 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 
 	// Create the Flux GitRepository object.
 	fluxGitRepository := &sourcev1.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      gitRepoName,
-			Namespace: fluxSystemNamespace,
-		},
+		Name:      gitRepoName,
+		Namespace: fluxSystemNamespace,
 		Spec: sourcev1.GitRepositorySpec{
 			URL: fmt.Sprintf(gitServerInternalRepoURLFormat, gitRepoName),
 			SecretRef: &meta.LocalObjectReference{

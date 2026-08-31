@@ -65,7 +65,7 @@ func GetSchema(ctx context.Context, ucpClient *v20231001preview.ClientFactory, r
 
 	plane := ID.PlaneNamespace()
 	planeName := strings.Split(plane, "/")[1]
-	resourceProvider := strings.Split(resourceType, "/")[0]
+	resourceProvider, _, _ := strings.Cut(resourceType, "/")
 	resourceTypeName := strings.Split(resourceType, "/")[1]
 
 	// Fetch the API version resource which contains the schema

@@ -55,17 +55,15 @@ func TestGetTimeFromString(t *testing.T) {
 
 func TestCopyMessage(t *testing.T) {
 	msg := &queue.Message{
-		Metadata: queue.Metadata{ID: "testid"},
+		ID: "testid",
 	}
 	now := time.Now()
 	queueM := &v1alpha1.QueueMessage{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "applications.core.10101010",
-			Namespace: "radius-test",
-			Labels: map[string]string{
-				LabelNextVisibleAt: int64toa(now.UnixNano()),
-				LabelQueueName:     "applications.core",
-			},
+		Name:      "applications.core.10101010",
+		Namespace: "radius-test",
+		Labels: map[string]string{
+			LabelNextVisibleAt: int64toa(now.UnixNano()),
+			LabelQueueName:     "applications.core",
 		},
 		Spec: v1alpha1.QueueMessageSpec{
 			DequeueCount: 2,

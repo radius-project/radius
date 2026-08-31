@@ -41,23 +41,17 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "rabbitmq manual resource",
 			file: "rabbitmq_manual_resource.json",
 			expected: &datamodel.RabbitMQQueue{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0",
-						Name:     "rabbitmq0",
-						Type:     msg_ctrl.RabbitMQQueuesResourceType,
-						Location: v1.LocationGlobal,
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
+				ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0",
+				Name:     "rabbitmq0",
+				Type:     msg_ctrl.RabbitMQQueuesResourceType,
+				Location: v1.LocationGlobal,
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.RabbitMQQueueProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
@@ -81,23 +75,17 @@ func TestRabbitMQQueue_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "rabbitmq recipe resource",
 			file: "rabbitmq_recipe_resource.json",
 			expected: &datamodel.RabbitMQQueue{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0",
-						Name:     "rabbitmq0",
-						Type:     msg_ctrl.RabbitMQQueuesResourceType,
-						Location: v1.LocationGlobal,
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
+				ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Messaging/rabbitMQQueues/rabbitmq0",
+				Name:     "rabbitmq0",
+				Type:     msg_ctrl.RabbitMQQueuesResourceType,
+				Location: v1.LocationGlobal,
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.RabbitMQQueueProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",

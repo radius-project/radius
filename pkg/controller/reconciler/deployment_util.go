@@ -42,8 +42,8 @@ func addSecretReference(deployment *appsv1.Deployment, secretName string) bool {
 
 	from := corev1.EnvFromSource{
 		SecretRef: &corev1.SecretEnvSource{
-			LocalObjectReference: corev1.LocalObjectReference{Name: secretName},
-			Optional:             new(false),
+			Name:     secretName,
+			Optional: new(false),
 		},
 	}
 

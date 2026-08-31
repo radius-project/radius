@@ -22,7 +22,6 @@ import (
 	"strings"
 	"testing"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -41,28 +40,24 @@ const (
 // legacyEnvironment builds a stored Applications.Core/environments record.
 func legacyEnvironment(id string, namespace string, kind rpv1.EnvironmentComputeKind) database.Object {
 	env := &datamodel.Environment{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{ID: id},
-		},
+		ID: id,
 	}
 	env.Properties.Compute.Kind = kind
 	env.Properties.Compute.KubernetesCompute.Namespace = namespace
 
-	return database.Object{Metadata: database.Metadata{ID: id}, Data: env}
+	return database.Object{ID: id, Data: env}
 }
 
 // previewEnvironment builds a stored Radius.Core/environments record.
 func previewEnvironment(id string, namespace string) database.Object {
 	env := &datamodel.Environment_v20250801preview{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{ID: id},
-		},
+		ID: id,
 	}
 	env.Properties.Providers = &datamodel.Providers_v20250801preview{
 		Kubernetes: &datamodel.ProvidersKubernetes_v20250801preview{Namespace: namespace},
 	}
 
-	return database.Object{Metadata: database.Metadata{ID: id}, Data: env}
+	return database.Object{ID: id, Data: env}
 }
 
 // expectQueries stubs the two namespace queries, returning legacyItems for the

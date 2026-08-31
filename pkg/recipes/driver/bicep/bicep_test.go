@@ -316,13 +316,11 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 	}
 
 	opts := driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Definition: recipes.EnvironmentDefinition{
-				Name:         "mongo-azure",
-				Driver:       recipes.TemplateKindBicep,
-				TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
-				ResourceType: "Applications.Datastores/mongoDatabases",
-			},
+		Definition: recipes.EnvironmentDefinition{
+			Name:         "mongo-azure",
+			Driver:       recipes.TemplateKindBicep,
+			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+			ResourceType: "Applications.Datastores/mongoDatabases",
 		},
 		PrevState: []string{},
 	}
@@ -537,19 +535,17 @@ func Test_Bicep_Execute_InvalidOutputMappingDoesNotDeploy(t *testing.T) {
 	}
 
 	output, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Recipe: recipes.ResourceMetadata{
-				Name:          "mongo",
-				ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo",
-				EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env",
-			},
-			Definition: recipes.EnvironmentDefinition{
-				Name:          "mongo-azure",
-				Driver:        recipes.TemplateKindBicep,
-				TemplatePath:  ts.TestImageURL,
-				ResourceType:  "Applications.Datastores/mongoDatabases",
-				SecretOutputs: map[string]string{"connectionString": "primaryConnectionString"},
-			},
+		Recipe: recipes.ResourceMetadata{
+			Name:          "mongo",
+			ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env",
+		},
+		Definition: recipes.EnvironmentDefinition{
+			Name:          "mongo-azure",
+			Driver:        recipes.TemplateKindBicep,
+			TemplatePath:  ts.TestImageURL,
+			ResourceType:  "Applications.Datastores/mongoDatabases",
+			SecretOutputs: map[string]string{"connectionString": "primaryConnectionString"},
 		},
 	})
 

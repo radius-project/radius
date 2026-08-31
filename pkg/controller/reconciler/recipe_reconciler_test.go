@@ -73,7 +73,7 @@ func Test_RecipeReconciler_WithoutSecret(t *testing.T) {
 	radius, client := SetupRecipeTest(t)
 
 	name := types.NamespacedName{Namespace: "recipe-without-secret", Name: "test-recipe-withoutsecret"}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	recipe := makeRecipe(name, "Applications.Core/extenders")
@@ -115,7 +115,7 @@ func Test_RecipeReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
 	radius, client := SetupRecipeTest(t)
 
 	name := types.NamespacedName{Namespace: "recipe-change-envapp", Name: "test-recipe-change-envapp"}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	recipe := makeRecipe(name, "Applications.Core/extenders")
@@ -192,7 +192,7 @@ func Test_RecipeReconciler_FailureRecovery(t *testing.T) {
 	radius, client := SetupRecipeTest(t)
 
 	name := types.NamespacedName{Namespace: "recipe-failure-recovery", Name: "test-recipe-failure-recovery"}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	recipe := makeRecipe(name, "Applications.Core/extenders")
@@ -256,7 +256,7 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	radius, client := SetupRecipeTest(t)
 
 	name := types.NamespacedName{Namespace: "recipe-withsecret", Name: "test-recipe-withsecret"}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	recipe := makeRecipe(name, "Applications.Core/extenders")

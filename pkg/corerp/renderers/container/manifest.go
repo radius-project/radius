@@ -62,10 +62,8 @@ func getDeploymentBase(manifest kubeutil.ObjectManifest, appName string, r *data
 	name := kubernetes.NormalizeResourceName(r.Name)
 
 	defaultDeployment := &appsv1.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Deployment",
-			APIVersion: "apps/v1",
-		},
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{},
 			Template: corev1.PodTemplateSpec{
@@ -125,10 +123,8 @@ func getDeploymentBase(manifest kubeutil.ObjectManifest, appName string, r *data
 // Otherwise, populate default resources.
 func getServiceBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) *corev1.Service {
 	defaultService := &corev1.Service{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Service",
-			APIVersion: "v1",
-		},
+		Kind:       "Service",
+		APIVersion: "v1",
 		Spec: corev1.ServiceSpec{
 			Selector: map[string]string{},
 			Type:     corev1.ServiceTypeClusterIP,
@@ -146,10 +142,8 @@ func getServiceBase(manifest kubeutil.ObjectManifest, appName string, r *datamod
 // Otherwise, populate default resources.
 func getServiceAccountBase(manifest kubeutil.ObjectManifest, appName string, r *datamodel.ContainerResource, options *renderers.RenderOptions) *corev1.ServiceAccount {
 	defaultAccount := &corev1.ServiceAccount{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ServiceAccount",
-			APIVersion: "v1",
-		},
+		Kind:       "ServiceAccount",
+		APIVersion: "v1",
 	}
 
 	if resource := manifest.GetFirst(corev1.SchemeGroupVersion.WithKind("ServiceAccount")); resource != nil {

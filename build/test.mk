@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-apply-custom-recipe-packs test-run-rad-commands-action test-azure-oidc-refresh test-build-platforms test-publish-deploy-status test-extension-action-shell-syntax test-deploy-progress test-verify-azure ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-apply-custom-recipe-packs test-run-rad-commands-action test-command-outcome test-azure-oidc-refresh test-build-platforms test-publish-deploy-status test-extension-action-shell-syntax test-teardown test-deploy-progress test-verify-azure ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -67,6 +67,10 @@ test-apply-custom-recipe-packs: ## Tests custom recipe pack reconciliation in th
 .PHONY: test-run-rad-commands-action
 test-run-rad-commands-action: ## Tests application deploy parameter filtering in the run-rad-commands action
 	@bash ./.github/extension/actions/run-rad-commands/deploy-parameters_test.sh
+
+.PHONY: test-command-outcome
+test-command-outcome: ## Tests the result-accumulator outcome lifecycle in the run-rad-commands action
+	@bash ./.github/extension/actions/run-rad-commands/command-outcome_test.sh
 
 .PHONY: test-azure-oidc-refresh
 test-azure-oidc-refresh: ## Tests Azure OIDC token refresh behavior and workflow wiring
@@ -87,6 +91,10 @@ test-verify-azure: ## Tests Azure verification subscription visibility retry beh
 .PHONY: test-extension-action-shell-syntax
 test-extension-action-shell-syntax: ## Tests bash syntax of run blocks in extension composite actions
 	@bash ./.github/extension/actions/action-shell-syntax_test.sh
+
+.PHONY: test-teardown
+test-teardown: ## Tests the teardown state-persistence guard and application-status listing
+	@bash ./.github/extension/actions/teardown/teardown_test.sh
 
 .PHONY: test-deploy-progress
 test-deploy-progress: ## Tests live deploy progress generation
@@ -201,6 +209,13 @@ test-functional-multicluster-noncloud: ## Runs multi-cluster functional tests th
 	# recipe-created resources land there. Not part of test-functional-all-noncloud
 	# because of that extra setup.
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/multicluster/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
+
+.PHONY: test-functional-database-noncloud
+test-functional-database-noncloud: ## Runs the PostgreSQL-backed control plane (database.enabled=true) functional tests
+	# Requires a control plane installed with `rad install kubernetes --set database.enabled=true`.
+	# The tests fail against the default apiserver-backed install, so they are not part of
+	# test-functional-all-noncloud; CI runs them in the database-noncloud leg.
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/database/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
 .PHONY: test-functional-statestore-noncloud
 test-functional-statestore-noncloud: ## Runs the rad startup/shutdown state-storage lifecycle test
