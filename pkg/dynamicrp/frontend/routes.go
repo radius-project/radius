@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel/converter"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/validator"
+	"k8s.io/client-go/discovery"
 )
 
 func (s *Service) registerRoutes(
@@ -36,6 +37,7 @@ func (s *Service) registerRoutes(
 	controllerOptions controller.Options,
 	ucpClient *v20231001preview.ClientFactory,
 	handler *encryption.SensitiveDataHandler,
+	discoveryClient discovery.DiscoveryInterface,
 ) error {
 	// Return ARM errors for invalid requests.
 	r.NotFound(validator.APINotFoundHandler())
@@ -108,7 +110,7 @@ func (s *Service) registerRoutes(
 				}))
 			r.Post("/{resourceName}/reconcile", dynamicOperationHandler(v1.OperationPost, controllerOptions,
 				func(opts controller.Options) (controller.Controller, error) {
-					return NewReconcile(opts, resourceOptions, ucpClient)
+					return NewReconcile(opts, resourceOptions, ucpClient, discoveryClient)
 				}))
 		})
 	})

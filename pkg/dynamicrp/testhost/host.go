@@ -41,8 +41,11 @@ import (
 	ucptesthost "github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	k8stest "github.com/radius-project/radius/test/k8sutil"
 )
 
 // TestHostOptions supports configuring the dynamic-rp test host.
@@ -199,4 +202,11 @@ func setupFakeKubernetesClient(t *testing.T, options *dynamicrp.Options) {
 
 	// Set the runtime client on the Kubernetes provider
 	options.KubernetesProvider.SetRuntimeClient(fakeClient)
+
+	// The frontend service's reconcile route needs a discovery client to resolve API versions
+	// for outputResource GETs; wire an empty fake so plane bring-up succeeds. Individual tests
+	// that exercise reconcile can override this via SetDiscoveryClient.
+	options.KubernetesProvider.SetDiscoveryClient(&k8stest.DiscoveryClient{
+		Resources: []*metav1.APIResourceList{},
+	})
 }
