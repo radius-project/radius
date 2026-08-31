@@ -64,8 +64,8 @@ func TestDefaultSyncDelete(t *testing.T) {
 			mds.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				Return(&database.Object{
-					Metadata: database.Metadata{ID: appDataModel.ID},
-					Data:     appDataModel,
+					ID:   appDataModel.ID,
+					Data: appDataModel,
 				}, tt.getErr).
 				Times(1)
 

@@ -170,13 +170,11 @@ func (c *Client) Enqueue(ctx context.Context, msg *queue.Message, options ...que
 	}
 
 	resource := &v1alpha1.QueueMessage{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      id,
-			Namespace: c.opts.Namespace,
-			Labels: map[string]string{
-				LabelNextVisibleAt: int64toa(now.UnixNano()),
-				LabelQueueName:     c.opts.Name,
-			},
+		Name:      id,
+		Namespace: c.opts.Namespace,
+		Labels: map[string]string{
+			LabelNextVisibleAt: int64toa(now.UnixNano()),
+			LabelQueueName:     c.opts.Name,
 		},
 		Spec: v1alpha1.QueueMessageSpec{
 			DequeueCount: 0,

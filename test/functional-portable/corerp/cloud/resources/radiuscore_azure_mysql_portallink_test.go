@@ -95,7 +95,7 @@ func Test_RadiusCore_AzureMySql_PortalLink(t *testing.T) {
 			// auto-creates it). Pre-create it so the environment resource can bind.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, opts test.TestOptions) {
 				_, err := opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{Name: appNamespace},
+					Name: appNamespace,
 				}, metav1.CreateOptions{})
 				if err != nil && !strings.Contains(err.Error(), "already exists") {
 					require.NoError(t, err)

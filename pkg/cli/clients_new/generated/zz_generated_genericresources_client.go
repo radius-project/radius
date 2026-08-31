@@ -31,6 +31,12 @@ type GenericResourcesClient struct {
 //   - credential - used to authorize requests. Usually a credential from azidentity.
 //   - options - Contains optional client configuration. Pass nil to accept the default values.
 func NewGenericResourcesClient(resourceType string, rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*GenericResourcesClient, error) {
+	if resourceType == "" {
+		return nil, errors.New("parameter resourceType cannot be empty")
+	}
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
 	cl, err := arm.NewClient(moduleName, moduleVersion, credential, options)
 	if err != nil {
 		return nil, err
@@ -83,13 +89,7 @@ func (client *GenericResourcesClient) createOrUpdate(ctx context.Context, resour
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *GenericResourcesClient) createOrUpdateCreateRequest(ctx context.Context, resourceName string, genericResourceParameters GenericResource, _ *GenericResourcesClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}"
-	if client.resourceType == "" {
-		return nil, errors.New("parameter client.resourceType cannot be empty")
-	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
-	if client.rootScope == "" {
-		return nil, errors.New("parameter client.rootScope cannot be empty")
-	}
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if resourceName == "" {
 		return nil, errors.New("parameter resourceName cannot be empty")
@@ -150,13 +150,7 @@ func (client *GenericResourcesClient) deleteOperation(ctx context.Context, resou
 // deleteCreateRequest creates the Delete request.
 func (client *GenericResourcesClient) deleteCreateRequest(ctx context.Context, resourceName string, _ *GenericResourcesClientBeginDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}"
-	if client.resourceType == "" {
-		return nil, errors.New("parameter client.resourceType cannot be empty")
-	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
-	if client.rootScope == "" {
-		return nil, errors.New("parameter client.rootScope cannot be empty")
-	}
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if resourceName == "" {
 		return nil, errors.New("parameter resourceName cannot be empty")
@@ -193,13 +187,7 @@ func (client *GenericResourcesClient) Get(ctx context.Context, resourceName stri
 // getCreateRequest creates the Get request.
 func (client *GenericResourcesClient) getCreateRequest(ctx context.Context, resourceName string, _ *GenericResourcesClientGetOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}"
-	if client.resourceType == "" {
-		return nil, errors.New("parameter client.resourceType cannot be empty")
-	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
-	if client.rootScope == "" {
-		return nil, errors.New("parameter client.rootScope cannot be empty")
-	}
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if resourceName == "" {
 		return nil, errors.New("parameter resourceName cannot be empty")
@@ -262,13 +250,7 @@ func (client *GenericResourcesClient) listByRootScopeCreateRequest(ctx context.C
 	var err error
 	if firstPage {
 		urlPath := "/{rootScope}/providers/{resourceType}"
-		if client.resourceType == "" {
-			return nil, errors.New("parameter client.resourceType cannot be empty")
-		}
 		urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
-		if client.rootScope == "" {
-			return nil, errors.New("parameter client.rootScope cannot be empty")
-		}
 		urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	} else {
@@ -320,13 +302,7 @@ func (client *GenericResourcesClient) ListSecrets(ctx context.Context, resourceN
 // listSecretsCreateRequest creates the ListSecrets request.
 func (client *GenericResourcesClient) listSecretsCreateRequest(ctx context.Context, resourceName string, _ *GenericResourcesClientListSecretsOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/{resourceType}/{resourceName}/listSecrets"
-	if client.resourceType == "" {
-		return nil, errors.New("parameter client.resourceType cannot be empty")
-	}
 	urlPath = strings.ReplaceAll(urlPath, "{resourceType}", client.resourceType)
-	if client.rootScope == "" {
-		return nil, errors.New("parameter client.rootScope cannot be empty")
-	}
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if resourceName == "" {
 		return nil, errors.New("parameter resourceName cannot be empty")

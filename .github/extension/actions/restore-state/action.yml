@@ -12,6 +12,17 @@ inputs:
     required: false
     default: default
 
+outputs:
+  state-restored:
+    description: >-
+      "true" when `rad startup` successfully restored control-plane state in this
+      run. The teardown action consumes this (as its `state-restored` input) to
+      decide whether persisting state is safe: if the workflow fails before/at
+      `rad startup`, this output is never set, so teardown skips `rad shutdown`
+      and does not overwrite the durable archive with uninitialized state. Wire it
+      from a restore-state step in the SAME job as teardown.
+    value: ${{ steps.startup.outputs.state-restored }}
+
 runs:
   using: composite
   steps:
@@ -28,25 +39,49 @@ runs:
             kubectl --kubeconfig "$TARGET_KUBECONFIG" create namespace "$NAMESPACE"
         fi
 
-        # The Radius.Core/environments resource (with its recipe pack and
-        # cloud providers) is created later via Bicep. `rad install kubernetes`
-        # already creates the 'default' resource group server-side, but we create
-        # it explicitly (idempotent) as a defensive measure against older control
-        # planes, then set up the local CLI workspace and point it at that group.
+        # The Radius.Core/environments resource (with its recipe pack and cloud
+        # providers) is created later via Bicep, so this pipeline intentionally
+        # does not use `rad init`. `rad install kubernetes` installs the control
+        # plane only. Create just the local CLI workspace here -- this is the
+        # client-side config `rad startup` needs to resolve the target cluster.
+        # The `default` resource group is server-side control-plane state, so it
+        # is created *after* `rad startup` below (the restore replaces the
+        # control-plane database wholesale, dropping anything created before it).
         rad workspace create kubernetes default
-        rad group create default
-        rad group switch default
 
     - name: Restore Radius state (rad startup)
+      id: startup
       shell: bash
       run: |
         # rad startup restores the control-plane PostgreSQL databases and the
         # Terraform recipe-state Secrets saved by the previous run's `rad shutdown`
         # from the `radius-state` git orphan branch, so commands plan against prior
         # state instead of an empty backend. On the first ever run there is nothing
-        # to restore and it is a no-op. It needs the workspace created above and
-        # waits for PostgreSQL to be ready itself. Configure a git identity so it can
-        # manage the state branch.
+        # to restore and it is a no-op that still succeeds. It needs the workspace
+        # created above and waits for PostgreSQL to be ready itself. Configure a git
+        # identity so it can manage the state branch.
         git config --global user.email "radius-deploy@users.noreply.github.com"
         git config --global user.name "radius-deploy"
         rad startup
+
+        # Record that the control-plane databases were successfully restored, for
+        # the teardown action to gate `rad shutdown` on (see the `state-restored`
+        # output above). Set it here -- immediately after `rad startup` succeeds and
+        # before the group create below -- because at this point the restore is
+        # done and persisting the databases at teardown is safe, regardless of what
+        # a later step does. On the first ever run `rad startup` is a no-op restore
+        # but still exits 0, so this is set and teardown seeds the archive.
+        echo "state-restored=true" >> "$GITHUB_OUTPUT"
+
+        # Create the `default` resource group the environment and application
+        # deploy into, *after* the restore. `rad startup` replaces the
+        # control-plane database wholesale (`pg_dump --clean --if-exists`), so a
+        # group created before it is dropped when the restored snapshot lacks it.
+        # `rad install kubernetes` no longer seeds this group server-side
+        # (radius-project/radius#12829), so creating it here -- on top of whatever
+        # the restore produced -- makes it present for the deploy and persisted by
+        # the next `rad shutdown`, so a group-less archive self-heals on the next
+        # run. `rad group create` is idempotent (PUT), so this is safe whether or
+        # not the restored state already contained the group.
+        rad group create default
+        rad group switch default

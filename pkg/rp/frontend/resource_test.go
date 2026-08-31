@@ -92,26 +92,18 @@ type ResourceStatus struct {
 // ConvertTo converts a TestResource object to a TestResourceDataModel object and returns it.
 func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &TestResourceDataModel{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion:      testAPIVersion,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			},
-		},
+		ID:                     to.String(src.ID),
+		Name:                   to.String(src.Name),
+		Type:                   to.String(src.Type),
+		Location:               to.String(src.Location),
+		Tags:                   to.StringMap(src.Tags),
+		UpdatedAPIVersion:      testAPIVersion,
+		AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 		Properties: &TestResourceDataModelProperties{
-			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Environment: to.String(src.Properties.Environment),
-				Application: to.String(src.Properties.Application),
-			},
-			PropertyA: to.String(src.Properties.PropertyA),
-			PropertyB: to.String(src.Properties.PropertyB),
+			Environment: to.String(src.Properties.Environment),
+			Application: to.String(src.Properties.Application),
+			PropertyA:   to.String(src.Properties.PropertyA),
+			PropertyB:   to.String(src.Properties.PropertyB),
 		},
 	}
 	return converted, nil

@@ -65,7 +65,7 @@ Functional tests (also called end-to-end tests) use Radius to deploy an applicat
 make test-functional-all-noncloud
 ```
 
-The multicluster, state-store lifecycle, and upgrade groups have additional setup or isolation requirements. They are documented under [special test groups](./running-functional-tests.md#run-a-special-test-group) and are not all included in the aggregate non-cloud target.
+The multicluster, database, state-store lifecycle, and upgrade groups have additional setup or isolation requirements. They are documented under [special test groups](./running-functional-tests.md#run-a-special-test-group) and are not all included in the aggregate non-cloud target.
 
 ### Local-iteration loop
 

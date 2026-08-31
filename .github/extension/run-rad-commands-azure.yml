@@ -189,6 +189,7 @@ jobs:
           echo "External deployment target configured."
 
       - name: Restore Radius state
+        id: restore-state
         uses: radius-project/radius/.github/extension/actions/restore-state@{{RADIUS_REF}}
         with:
           namespace: ${{ vars.KUBERNETES_NAMESPACE || 'default' }}
@@ -373,3 +374,5 @@ jobs:
       - name: Teardown
         if: always()
         uses: radius-project/radius/.github/extension/actions/teardown@{{RADIUS_REF}}
+        with:
+          state-restored: ${{ steps.restore-state.outputs.state-restored }}

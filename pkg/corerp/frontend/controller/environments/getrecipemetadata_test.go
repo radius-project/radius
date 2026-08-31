@@ -55,8 +55,8 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return &database.Object{
-					Metadata: database.Metadata{ID: id, ETag: "etag"},
-					Data:     envDataModel,
+					ID: id, ETag: "etag",
+					Data: envDataModel,
 				}, nil
 			})
 		ctx := rpctest.NewARMRequestContext(req)
@@ -76,10 +76,8 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 			},
 		}
 		mEngine.EXPECT().GetRecipeMetadata(ctx, engine.GetRecipeMetadataOptions{
-			BaseOptions: engine.BaseOptions{
-				Recipe: recipes.ResourceMetadata{
-					EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
-				},
+			Recipe: recipes.ResourceMetadata{
+				EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
 			},
 			RecipeDefinition: recipeDefinition,
 		}).Return(recipeData, nil)
@@ -110,8 +108,8 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return &database.Object{
-					Metadata: database.Metadata{ID: id, ETag: "etag"},
-					Data:     envDataModel,
+					ID: id, ETag: "etag",
+					Data: envDataModel,
 				}, nil
 			})
 		ctx := rpctest.NewARMRequestContext(req)
@@ -131,10 +129,8 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 			},
 		}
 		mEngine.EXPECT().GetRecipeMetadata(ctx, engine.GetRecipeMetadataOptions{
-			BaseOptions: engine.BaseOptions{
-				Recipe: recipes.ResourceMetadata{
-					EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
-				},
+			Recipe: recipes.ResourceMetadata{
+				EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
 			},
 			RecipeDefinition: recipeDefinition,
 		}).Return(recipeData, nil)
@@ -202,8 +198,8 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return &database.Object{
-					Metadata: database.Metadata{ID: id, ETag: "etag"},
-					Data:     envDataModel,
+					ID: id, ETag: "etag",
+					Data: envDataModel,
 				}, nil
 			})
 
@@ -241,8 +237,8 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...database.GetOptions) (*database.Object, error) {
 				return &database.Object{
-					Metadata: database.Metadata{ID: id, ETag: "etag"},
-					Data:     envDataModel,
+					ID: id, ETag: "etag",
+					Data: envDataModel,
 				}, nil
 			})
 		ctx := rpctest.NewARMRequestContext(req)
@@ -256,10 +252,8 @@ func TestGetRecipeMetadataRun_20231001Preview(t *testing.T) {
 		}
 		engineErr := fmt.Errorf("could not find driver %s", "invalidDriver")
 		mEngine.EXPECT().GetRecipeMetadata(ctx, engine.GetRecipeMetadataOptions{
-			BaseOptions: engine.BaseOptions{
-				Recipe: recipes.ResourceMetadata{
-					EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
-				},
+			Recipe: recipes.ResourceMetadata{
+				EnvironmentID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
 			},
 			RecipeDefinition: recipeDefinition,
 		}).Return(nil, engineErr)

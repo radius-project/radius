@@ -27,7 +27,6 @@ import (
 	"time"
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -262,16 +261,12 @@ func MakeRootHTTPProxy(ctx context.Context, options renderers.RenderOptions, gat
 
 	// The root HTTPProxy object acts as the Gateway
 	rootHTTPProxy := &contourv1.HTTPProxy{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "HTTPProxy",
-			APIVersion: contourv1.SchemeGroupVersion.String(),
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        kubernetes.NormalizeResourceName(resourceName),
-			Namespace:   options.Environment.Namespace,
-			Labels:      renderers.GetLabels(options, applicationName, resourceName, gateway.ResourceTypeName()),
-			Annotations: renderers.GetAnnotations(options),
-		},
+		Kind:        "HTTPProxy",
+		APIVersion:  contourv1.SchemeGroupVersion.String(),
+		Name:        kubernetes.NormalizeResourceName(resourceName),
+		Namespace:   options.Environment.Namespace,
+		Labels:      renderers.GetLabels(options, applicationName, resourceName, gateway.ResourceTypeName()),
+		Annotations: renderers.GetAnnotations(options),
 		Spec: contourv1.HTTPProxySpec{
 			VirtualHost: virtualHost,
 			Includes:    includes,
@@ -376,16 +371,12 @@ func MakeRoutesHTTPProxies(ctx context.Context, options renderers.RenderOptions,
 		}
 
 		httpProxyObject := &contourv1.HTTPProxy{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       "HTTPProxy",
-				APIVersion: contourv1.SchemeGroupVersion.String(),
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        routeResourceName,
-				Namespace:   options.Environment.Namespace,
-				Labels:      renderers.GetLabels(options, applicationName, routeName, resource.ResourceTypeName()),
-				Annotations: renderers.GetAnnotations(options),
-			},
+			Kind:        "HTTPProxy",
+			APIVersion:  contourv1.SchemeGroupVersion.String(),
+			Name:        routeResourceName,
+			Namespace:   options.Environment.Namespace,
+			Labels:      renderers.GetLabels(options, applicationName, routeName, resource.ResourceTypeName()),
+			Annotations: renderers.GetAnnotations(options),
 			Spec: contourv1.HTTPProxySpec{
 				Routes: []contourv1.Route{
 					{

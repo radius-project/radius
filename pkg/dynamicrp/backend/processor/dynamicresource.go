@@ -269,7 +269,7 @@ func GetSchemaForResourceType(ctx context.Context, ucp *v20231001preview.ClientF
 
 	plane := ID.PlaneNamespace()
 	planeName := strings.Split(plane, "/")[1]
-	resourceProvider := strings.Split(ID.ProviderNamespace(), "/")[0]
+	resourceProvider, _, _ := strings.Cut(ID.ProviderNamespace(), "/")
 	resourceType := strings.Split(ID.Type(), "/")[1]
 
 	response, err := ucp.NewAPIVersionsClient().Get(

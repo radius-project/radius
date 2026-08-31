@@ -35,7 +35,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -151,7 +150,7 @@ func CreateAppScopedNamespace(ctx context.Context, newResource, oldResource *dat
 		return nil, err
 	}
 
-	err = namespaceClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}})
+	err = namespaceClient.Create(ctx, &corev1.Namespace{Name: kubeNamespace})
 	if apierrors.IsAlreadyExists(err) {
 		logger.Info("Using existing namespace", "namespace", kubeNamespace)
 	} else if err != nil {

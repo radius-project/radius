@@ -111,9 +111,7 @@ func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out
 // SaveResource is the helper to save the resource via database client.
 func (c *Operation[P, T]) SaveResource(ctx context.Context, id string, in *T, etag string) (string, error) {
 	nr := &database.Object{
-		Metadata: database.Metadata{
-			ID: id,
-		},
+		ID:   id,
 		Data: in,
 	}
 	err := c.DatabaseClient().Save(ctx, nr, database.WithETag(etag))

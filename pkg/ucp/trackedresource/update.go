@@ -235,9 +235,7 @@ func (u *Updater) run(ctx context.Context, id resources.ID, destination *url.URL
 	}
 
 	obj = &database.Object{
-		Metadata: database.Metadata{
-			ID: trackingID.String(),
-		},
+		ID:   trackingID.String(),
 		Data: entry,
 	}
 	logger.V(ucplog.LevelDebug).Info("updating tracked resource entry")
