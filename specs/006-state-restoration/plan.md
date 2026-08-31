@@ -8,7 +8,7 @@ Add a `reconcile` custom action to `Radius.Core/applications/{name}` (mirror of 
 
 ## Technical Context
 
-**Language/Version**: Go 1.26.5 (per `go.mod`)
+**Language/Version**: Go 1.27.0 (per `go.mod`)
 **Primary Dependencies**: no new external dependencies. Reuses `k8s.io/client-go` (dynamic-rp's per-output reality check), dynamic-rp's existing routing scaffold, and the internal `pkg/armrpc/builder` custom-action mechanism (for the app-scoped orchestrator on corerp).
 **Storage**: no schema changes. Reconciliation writes go through the RPs' existing state-store paths.
 **Testing**: `go test` with `stretchr/testify`; table-driven unit tests for the corerp orchestrator and the dynamic-rp `reconcile` handler; a `httptest`-backed integration test that mounts the whole custom-action flow end to end. Existing `rad startup` tests get a new fake for `ReconcileHydratedState`.

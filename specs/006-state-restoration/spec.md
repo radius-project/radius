@@ -11,7 +11,7 @@ Repo Radius (the ephemeral k3d control plane the GitHub workflows spin up on eve
 
 That is not sufficient when the previous run was interrupted while a resource was mid-operation. The archive can preserve a resource in a non-terminal state — for example `provisioningState: "Updating"` — that never actually completed. On the next run, the control plane accepts that state as authoritative, so every subsequent operation against the resource is blocked with `409 Conflict / target resource is in progress`. The delete workflow loops on that 409 forever and the application becomes undeletable through Radius.
 
-This feature adds a reconciliation pass triggered by `rad startup` and executed against the running control plane: for every application in the plane, an application-scoped `reconcile` action asks each resource's owning resource provider to check its actual current state and rewrite the state store to match reality — including removing entries when the underlying resource does not exist.
+This feature adds a reconciliation pass triggered by `rad startup` and executed against the running control plane: for every application in the plane, an application-scoped `reconcile` action asks each resource's owning resource provider to check its actual current state and rewrite the state store to match reality — including marking entries as `Failed` when the underlying resource does not exist, so the next normal `rad app delete` cleans them up through the standard state machine.
 
 The scope is deliberately narrow: reconcile hydrated state so operations that follow see reality.
 
@@ -39,7 +39,7 @@ ERROR CODE: Conflict
 Reconciliation is a per-application operation: walk the application's children, check each one's reality, roll the results back into the state store. That is the same shape as [`getGraph`](../../pkg/corerp/frontend/controller/applications/v20250801preview/getgraph.go) — an application-scoped custom action registered on `Radius.Core/applications` that walks children across resource providers. `reconcile` therefore reuses the exact pattern, up to and including the corerp orchestrator that already knows how to fan out across RPs through the UCP proxy.
 
 ```text
-POST /planes/radius/local/resourceGroups/{rg}/providers/Radius.Core/applications/{app}/reconcile?api-version=2025-08-01-preview
+POST /planes/radius/local/resourcegroups/{rg}/providers/Radius.Core/applications/{app}/reconcile?api-version=2025-08-01-preview
 Content-Type: application/json
 {}
 ```
@@ -58,7 +58,7 @@ Concretely, the handler:
 
 1. Loads the application record.
 2. Traverses the same resource-type registration list `getGraph` uses (via UCP's `System.Resources/resourceProviders`) to build the child set.
-3. Filters to children whose current `provisioningState` is non-terminal — anything other than `Succeeded` or `Failed`. Terminal-state children are left alone; the archive captured a settled state and the next user operation will refresh it through the normal path.
+3. Filters to children whose current `provisioningState` is non-terminal. "Terminal" here matches [`v1.ProvisioningState.IsTerminal()`](../../pkg/armrpc/api/v1/types.go): `Succeeded`, `Failed`, `Canceled`, or the empty string (which the RP writes for synchronous resources that have already settled). Terminal-state children are left alone; the archive captured a settled state and the next user operation will refresh it through the normal path.
 4. For each such child, issues:
 
     ```text
@@ -94,7 +94,7 @@ For a single resource, the dynamic-rp handler:
 | ---------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------- |
 | any non-terminal             | terminal (settled)         | Rewrite the state-store entry with the observed terminal state (`Succeeded` / `Failed` / etc.).    |
 | any non-terminal             | still non-terminal         | Leave as-is. The hydrated state is accurate.                                                       |
-| any non-terminal             | not found                  | Delete the state-store entry. The resource does not exist.                                         |
+| any non-terminal             | not found                  | PATCH `provisioningState` to `Failed` and keep the state-store row so the next normal `rad app delete` can clean it up through the standard state machine. |
 | any non-terminal             | error (network, 5xx, etc.) | Leave as-is; record the error in the response. Reconciliation is best-effort and never fails.      |
 
 Terminal-state entries are never reconciled by this action.
