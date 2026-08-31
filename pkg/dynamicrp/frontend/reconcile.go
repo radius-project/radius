@@ -22,12 +22,20 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rest"
+	"github.com/radius-project/radius/pkg/azure/clientv2"
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/clients"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
-	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/sdk"
+	ucp_credentials "github.com/radius-project/radius/pkg/ucp/credentials"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -62,27 +70,24 @@ type ReconcileResponse struct {
 // non-terminal child resource. The handler walks the resource's outputResources, checks each one
 // against its underlying provider, and updates provisioningState to reflect reality.
 //
-// This is the Phase 1 reality-check implementation. For each output resource we do a Kubernetes
-// GET via the runtime client the RP already holds and categorize the result as gone (404),
-// settled (present), or skipped (unknown provider / transient error). We then aggregate: all
-// outputs gone → Failed, all settled → Succeeded, otherwise the current state is retained. Cloud
-// outputs (Terraform-backed Azure / AWS resources) are recorded as skipped without being touched
-// — that lives in a follow-up commit.
+// For each output resource we query its underlying provider and categorize the result as gone
+// (404), settled (present), or skipped (unknown provider / transient error). We then aggregate:
+// all outputs gone → Failed, all settled → Succeeded, otherwise the current state is retained.
 type Reconcile struct {
 	ctrl.Operation[*datamodel.DynamicResource, datamodel.DynamicResource]
 	resourceOptions ctrl.ResourceOptions[datamodel.DynamicResource]
-	ucpClient       *v20231001preview.ClientFactory
+	ucpConnection   sdk.Connection
 	discovery       discovery.DiscoveryInterface
 }
 
 // NewReconcile constructs the reconcile controller for a dynamic resource type. The runtime
 // client is read from opts.KubeClient at request time so the same handler serves every dynamic
 // type without per-type wiring.
-func NewReconcile(opts ctrl.Options, resourceOptions ctrl.ResourceOptions[datamodel.DynamicResource], ucpClient *v20231001preview.ClientFactory, discovery discovery.DiscoveryInterface) (ctrl.Controller, error) {
+func NewReconcile(opts ctrl.Options, resourceOptions ctrl.ResourceOptions[datamodel.DynamicResource], ucpConnection sdk.Connection, discovery discovery.DiscoveryInterface) (ctrl.Controller, error) {
 	return &Reconcile{
 		Operation:       ctrl.NewOperation(opts, resourceOptions),
 		resourceOptions: resourceOptions,
-		ucpClient:       ucpClient,
+		ucpConnection:   ucpConnection,
 		discovery:       discovery,
 	}, nil
 }
@@ -151,11 +156,13 @@ func (c *Reconcile) Run(ctx context.Context, w http.ResponseWriter, req *http.Re
 func (c *Reconcile) checkOutput(ctx context.Context, out rpv1.OutputResource) outputCheck {
 	idStr := out.ID.String()
 
-	// Only Kubernetes outputs are reality-checked in this prototype. Terraform-backed cloud
-	// outputs (Azure, AWS) are reported as skipped so the caller can act on them separately.
+	if resources_azure.IsAzureResource(out.ID) {
+		return c.checkAzureOutput(ctx, out.ID)
+	}
+
 	scopes := out.ID.ScopeSegments()
 	if len(scopes) == 0 || !strings.EqualFold(scopes[0].Type, resources_kubernetes.PlaneTypeKubernetes) {
-		return outputCheck{id: idStr, status: outputSkipped, reason: "cloud output not yet reality-checked"}
+		return outputCheck{id: idStr, status: outputSkipped, reason: "unsupported output resource provider"}
 	}
 
 	kubeClient := c.Options().KubeClient
@@ -182,6 +189,97 @@ func (c *Reconcile) checkOutput(ctx context.Context, out rpv1.OutputResource) ou
 	default:
 		return outputCheck{id: idStr, status: outputSettled}
 	}
+}
+
+func (c *Reconcile) checkAzureOutput(ctx context.Context, id resources.ID) outputCheck {
+	idStr := id.String()
+	if c.ucpConnection == nil {
+		return outputCheck{id: idStr, status: outputSkipped, reason: "UCP connection not configured"}
+	}
+
+	armID := id
+	azurePlaneScope := "/planes/azure/" + ucp_credentials.AzureCloud
+	if id.IsUCPQualified() {
+		var err error
+		armID, err = resources.ParseResource(resources.MakeRelativeID(id.ScopeSegments()[1:], id.TypeSegments(), id.ExtensionSegments()))
+		if err != nil {
+			return outputCheck{id: idStr, status: outputSkipped, reason: fmt.Sprintf("could not normalize Azure resource ID: %v", err)}
+		}
+		azurePlaneScope = id.PlaneScope()
+	}
+
+	clientOptions := sdk.NewClientOptions(&endpointConnection{
+		Connection: c.ucpConnection,
+		endpoint:   strings.TrimRight(c.ucpConnection.Endpoint(), "/") + azurePlaneScope,
+	})
+	apiVersion, err := lookupAzureAPIVersion(ctx, armID, clientOptions)
+	if err != nil {
+		return outputCheck{id: idStr, status: outputSkipped, reason: fmt.Sprintf("could not resolve Azure API version: %v", err)}
+	}
+
+	client, err := clientv2.NewGenericResourceClient(
+		armID.FindScope(resources_azure.ScopeSubscriptions),
+		&clientv2.Options{Cred: &aztoken.AnonymousCredential{}},
+		clientOptions,
+	)
+	if err != nil {
+		return outputCheck{id: idStr, status: outputSkipped, reason: fmt.Sprintf("could not create Azure resource client: %v", err)}
+	}
+
+	_, err = client.GetByID(ctx, armID.String(), apiVersion, &armresources.ClientGetByIDOptions{})
+	switch {
+	case clients.Is404Error(err):
+		return outputCheck{id: idStr, status: outputGone, reason: "Azure resource not found"}
+	case err != nil:
+		return outputCheck{id: idStr, status: outputSkipped, reason: fmt.Sprintf("Azure GET failed: %v", err)}
+	default:
+		return outputCheck{id: idStr, status: outputSettled}
+	}
+}
+
+func lookupAzureAPIVersion(ctx context.Context, id resources.ID, clientOptions *arm.ClientOptions) (string, error) {
+	client, err := clientv2.NewProvidersClient(
+		id.FindScope(resources_azure.ScopeSubscriptions),
+		&clientv2.Options{Cred: &aztoken.AnonymousCredential{}},
+		clientOptions,
+	)
+	if err != nil {
+		return "", err
+	}
+
+	provider, err := client.Get(ctx, id.ProviderNamespace(), nil)
+	if err != nil {
+		return "", err
+	}
+
+	segments := id.TypeSegments()
+	if len(id.ExtensionSegments()) > 0 {
+		segments = id.ExtensionSegments()
+	}
+	shortType := strings.TrimPrefix(segments[0].Type, id.ProviderNamespace()+"/")
+	for _, resourceType := range provider.ResourceTypes {
+		if resourceType.ResourceType == nil || !strings.EqualFold(shortType, *resourceType.ResourceType) {
+			continue
+		}
+		if resourceType.DefaultAPIVersion != nil && *resourceType.DefaultAPIVersion != "" {
+			return *resourceType.DefaultAPIVersion, nil
+		}
+		if len(resourceType.APIVersions) > 0 && resourceType.APIVersions[0] != nil {
+			return *resourceType.APIVersions[0], nil
+		}
+		return "", fmt.Errorf("no supported API versions for type %q", id.Type())
+	}
+
+	return "", fmt.Errorf("resource type %q was not found", id.Type())
+}
+
+type endpointConnection struct {
+	sdk.Connection
+	endpoint string
+}
+
+func (c *endpointConnection) Endpoint() string {
+	return c.endpoint
 }
 
 // lookupKubernetesAPIVersion resolves the preferred API version for a group+kind via the

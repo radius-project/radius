@@ -110,7 +110,7 @@ func (s *Service) registerRoutes(
 				}))
 			r.Post("/{resourceName}/reconcile", dynamicOperationHandler(v1.OperationPost, controllerOptions,
 				func(opts controller.Options) (controller.Controller, error) {
-					return NewReconcile(opts, resourceOptions, ucpClient, discoveryClient)
+					return NewReconcile(opts, resourceOptions, s.options.UCP, discoveryClient)
 				}))
 		})
 	})

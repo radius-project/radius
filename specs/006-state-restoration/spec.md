@@ -13,6 +13,11 @@ That is not sufficient when the previous run was interrupted while a resource wa
 
 This feature adds a reconciliation pass triggered by `rad startup` and executed against the running control plane: for every application in the plane, an application-scoped `reconcile` action asks each resource's owning resource provider to check its actual current state and rewrite the state store to match reality — including marking entries as `Failed` when the underlying resource does not exist, so the next normal `rad app delete` cleans them up through the standard state machine.
 
+Throughout this specification, provisioning-state classification follows [`v1.ProvisioningState.IsTerminal()`](../../pkg/armrpc/api/v1/types.go) exactly:
+
+- **Terminal:** `Succeeded`, `Failed`, `Canceled`, and the empty string (`""`). The empty string is terminal because synchronous resources may settle without storing an explicit provisioning state.
+- **Non-terminal:** every other value, including `None`, `Updating`, `Deleting`, `Accepted`, `Provisioning`, `Provisioned`, and `NotSpecified`. Reconciliation treats these values as in progress even when a name such as `Provisioned` might sound complete; it does not infer semantics beyond `IsTerminal()`.
+
 The scope is deliberately narrow: reconcile hydrated state so operations that follow see reality.
 
 ## Non-goals
@@ -58,7 +63,7 @@ Concretely, the handler:
 
 1. Loads the application record.
 2. Traverses the same resource-type registration list `getGraph` uses (via UCP's `System.Resources/resourceProviders`) to build the child set.
-3. Filters to children whose current `provisioningState` is non-terminal. "Terminal" here matches [`v1.ProvisioningState.IsTerminal()`](../../pkg/armrpc/api/v1/types.go): `Succeeded`, `Failed`, `Canceled`, or the empty string (which the RP writes for synchronous resources that have already settled). Terminal-state children are left alone; the archive captured a settled state and the next user operation will refresh it through the normal path.
+3. Filters to children whose current `provisioningState` is non-terminal according to the definition above (`None`, `Updating`, `Deleting`, `Accepted`, `Provisioning`, `Provisioned`, `NotSpecified`, or any other non-empty value not recognized as terminal). Terminal-state children (`Succeeded`, `Failed`, `Canceled`, or `""`) are left alone; the archive captured a settled state and the next user operation will refresh it through the normal path.
 4. For each such child, issues:
 
     ```text
@@ -80,24 +85,22 @@ Dynamic-rp implements `reconcile` once and serves it for every dynamic type — 
 For a single resource, the dynamic-rp handler:
 
 1. Loads the resource from dynamic-rp's own store.
-2. If `provisioningState` is terminal, returns unchanged.
+2. If `provisioningState` is terminal (`Succeeded`, `Failed`, `Canceled`, or `""`), returns unchanged. Otherwise, including for `None`, `Updating`, `Deleting`, `Accepted`, `Provisioning`, `Provisioned`, and `NotSpecified`, continues reconciliation.
 3. Reads the resource's `properties.status.outputResources` — the concrete backing objects the recipe engine recorded when the resource was deployed.
-4. For each output resource, queries its underlying provider:
-    - Kubernetes objects → GET via the target-cluster Kubernetes client the RP already holds.
-    - Terraform-backed cloud outputs (Azure/AWS resource IDs) → **out of scope for the prototype**; record `skipped: cloud output not yet reality-checked` in the per-output report. Follow-up work adds the cloud-SDK branches inside the same handler.
+4. For each output resource, queries its underlying provider. Kubernetes objects use GET via the target-cluster Kubernetes client the RP already holds. Azure resources produced by any recipe driver, including Bicep and Terraform, use the same UCP/ARM ID classification as the application graph; the handler resolves the resource type's API version from Azure provider metadata and GETs the resource through its UCP Azure plane. AWS resources are **out of scope for the prototype** and are recorded as skipped; follow-up work adds the AWS SDK branch inside the same handler.
 5. Aggregates outcomes per the table in [What "reality" is for each resource](#what-reality-is-for-each-resource) and writes the result back through dynamic-rp's normal `PATCH` code path. **No direct SQL.**
 6. Returns the new state, or an error the corerp orchestrator will record in the report.
 
 ### What "reality" is for each resource
 
-| Hydrated `provisioningState` | Reality query result       | Action                                                                                             |
-| ---------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------- |
-| any non-terminal             | terminal (settled)         | Rewrite the state-store entry with the observed terminal state (`Succeeded` / `Failed` / etc.).    |
-| any non-terminal             | still non-terminal         | Leave as-is. The hydrated state is accurate.                                                       |
-| any non-terminal             | not found                  | PATCH `provisioningState` to `Failed` and keep the state-store row so the next normal `rad app delete` can clean it up through the standard state machine. |
-| any non-terminal             | error (network, 5xx, etc.) | Leave as-is; record the error in the response. Reconciliation is best-effort and never fails.      |
+| Hydrated `provisioningState` | Reality GET result           | Action                                                                                                                                                       |
+|------------------------------|------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| terminal                     | not queried                  | Leave unchanged. Terminal means `Succeeded`, `Failed`, `Canceled`, or `""`.                                                                                  |
+| non-terminal                 | present (`2xx`)              | Set `provisioningState` to `Succeeded`. Non-terminal includes `None`, `Updating`, `Deleting`, `Accepted`, `Provisioning`, `Provisioned`, and `NotSpecified`. |
+| non-terminal                 | not found (`404`)            | Set `provisioningState` to `Failed` and keep the state-store row so the next normal `rad app delete` can clean it up through the standard state machine.     |
+| non-terminal                 | error (network, `5xx`, etc.) | Leave unchanged and record the error in the response. Reconciliation is best-effort and never fails `rad startup`.                                           |
 
-Terminal-state entries are never reconciled by this action.
+The underlying Kubernetes and Azure GETs establish whether each output resource is present; they do not interpret provider-specific provisioning-state fields. For a Radius resource with multiple outputs, all present means `Succeeded`, all missing means `Failed`, and any skipped/error or a mix of present and missing leaves the hydrated state unchanged.
 
 ### Reconciliation is best-effort and does not fail `rad startup`
 
@@ -142,9 +145,9 @@ Nothing outside these files needs to change.
 - Deleting an application whose state archive contains a child resource in `Updating` and whose underlying resource genuinely is still updating waits normally and does not falsely succeed. The reconciler must observe the reality-reported state and leave the store unchanged.
 - `rad startup` never fails because reconciliation could not reach a resource provider. The workflow log records the failure and startup returns success.
 - The reconciler runs no direct SQL against any resource-provider database. Every state change goes through the RP's normal write path, so state machines stay intact.
-- The prototype covers dynamic-rp resources with Kubernetes `outputResources` end-to-end (the transcript's failing case): an application whose containers/gateways/secretstores were hydrated in `Updating` is deletable after `rad startup`, whether or not the underlying Kubernetes objects still exist. Terraform-backed cloud outputs record `skipped` and are follow-ups.
+- The prototype covers dynamic-rp resources with Kubernetes and Azure `outputResources` end-to-end (the transcript's failing case): an application whose resources were hydrated in `Updating` is deletable after `rad startup` when the underlying Kubernetes or Azure resources no longer exist. Azure resources produced by Bicep and Terraform recipes are both covered, using either UCP-qualified Azure IDs or legacy relative ARM IDs. AWS outputs record `skipped` and remain follow-up work.
 
 ## Follow-up
 
 - A separate issue tracks verifying that concurrent `rad app delete` against the same application from two terminals is handled correctly by a regular (persistent) Radius control plane. That case is not affected by hydration — a persistent control plane already tracks in-flight operations — but it needs an explicit test so a future change cannot regress it. See [radius-project/radius#12870](https://github.com/radius-project/radius/issues/12870).
-- Reality-checking Terraform-backed cloud `outputResources` (Azure/AWS resources managed via recipes) is follow-up work. Adds cloud-SDK branches inside the same dynamic-rp `reconcile` handler; no framework changes.
+- Reality-checking AWS `outputResources` is follow-up work. It adds an AWS SDK branch inside the same dynamic-rp `reconcile` handler; no framework changes.

@@ -23,12 +23,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/dynamicrp/datamodel/converter"
+	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
+	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	k8stest "github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -44,6 +48,7 @@ const reconcileTestURL = "/planes/radius/local/resourceGroups/test-group/provide
 const (
 	deploymentOutputID = "/planes/kubernetes/local/namespaces/default/providers/apps/Deployment/my-deployment"
 	azureOutputID      = "/planes/azure/mycloud/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg1/providers/Microsoft.Storage/storageAccounts/mystorage"
+	azureRelativeID    = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg1/providers/Microsoft.Storage/storageAccounts/mystorage"
 )
 
 // scheme registers the built-in Kubernetes types the reconcile handler will look up.
@@ -76,8 +81,12 @@ func reconcileTestDiscovery() *k8stest.DiscoveryClient {
 	}
 }
 
-func newReconcileController(t *testing.T, databaseClient database.Client, kubeClient runtimeclient.Client) controller.Controller {
+func newReconcileController(t *testing.T, databaseClient database.Client, kubeClient runtimeclient.Client, connections ...sdk.Connection) controller.Controller {
 	t.Helper()
+	var connection sdk.Connection
+	if len(connections) > 0 {
+		connection = connections[0]
+	}
 
 	opts := controller.Options{
 		DatabaseClient: databaseClient,
@@ -88,7 +97,7 @@ func newReconcileController(t *testing.T, databaseClient database.Client, kubeCl
 		ResponseConverter: converter.DynamicResourceDataModelToVersioned,
 	}
 
-	c, err := NewReconcile(opts, resourceOpts, nil, reconcileTestDiscovery())
+	c, err := NewReconcile(opts, resourceOpts, connection, reconcileTestDiscovery())
 	require.NoError(t, err)
 	return c
 }
@@ -142,6 +151,50 @@ func decodeReconcileResponse(t *testing.T, w *httptest.ResponseRecorder) Reconci
 	var body ReconcileResponse
 	require.NoError(t, json.NewDecoder(w.Result().Body).Decode(&body))
 	return body
+}
+
+func newAzureReconcileTestConnection(t *testing.T, resourceStatus int) (sdk.Connection, func()) {
+	t.Helper()
+	mux := http.NewServeMux()
+	for _, planeName := range []string{"mycloud", "azurecloud"} {
+		planePrefix := "/planes/azure/" + planeName
+		mux.HandleFunc(planePrefix+"/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Storage", func(w http.ResponseWriter, _ *http.Request) {
+			require.NoError(t, json.NewEncoder(w).Encode(armresources.Provider{
+				Namespace: new("Microsoft.Storage"),
+				ResourceTypes: []*armresources.ProviderResourceType{{
+					ResourceType:      new("storageAccounts"),
+					DefaultAPIVersion: new("2023-05-01"),
+				}},
+			}))
+		})
+		mux.HandleFunc(planePrefix+"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg1/providers/Microsoft.Storage/storageAccounts/mystorage", func(w http.ResponseWriter, req *http.Request) {
+			require.Equal(t, "2023-05-01", req.URL.Query().Get("api-version"))
+			w.WriteHeader(resourceStatus)
+			if resourceStatus == http.StatusOK {
+				require.NoError(t, json.NewEncoder(w).Encode(armresources.GenericResource{}))
+			}
+		})
+	}
+	server := httptest.NewServer(mux)
+	connection, err := sdk.NewDirectConnection(server.URL)
+	require.NoError(t, err)
+	return connection, server.Close
+}
+
+func TestReconcile_IdentifiesAzureResourceIDs(t *testing.T) {
+	connection, closeServer := newAzureReconcileTestConnection(t, http.StatusOK)
+	defer closeServer()
+	controller := &Reconcile{ucpConnection: connection}
+
+	for _, resourceID := range []string{azureOutputID, azureRelativeID} {
+		t.Run(resourceID, func(t *testing.T) {
+			id, err := resources.ParseResource(resourceID)
+			require.NoError(t, err)
+
+			check := controller.checkOutput(t.Context(), rpv1.OutputResource{ID: id})
+			require.Equal(t, outputSettled, check.status)
+		})
+	}
 }
 
 func TestReconcile_NotFound(t *testing.T) {
@@ -253,9 +306,7 @@ func TestReconcile_KubernetesSettled_TransitionsToSucceeded(t *testing.T) {
 	require.Contains(t, body.Resources[0].Reason, "settled")
 }
 
-// A Terraform-backed cloud output cannot be reality-checked in Phase 1: it is recorded as
-// "skipped" and the resource's provisioningState is left unchanged. No Save must be issued.
-func TestReconcile_CloudOutput_Skipped(t *testing.T) {
+func TestReconcile_AzureGone_TransitionsToFailed(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
@@ -265,9 +316,18 @@ func TestReconcile_CloudOutput_Skipped(t *testing.T) {
 
 	databaseClient := database.NewMockClient(mctrl)
 	databaseClient.EXPECT().Get(gomock.Any(), testResourceID).Return(storeObject, nil)
-	// Save must not be called: skipped output → state unchanged.
+	databaseClient.EXPECT().
+		Save(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *database.Object, _ ...database.SaveOptions) error {
+			saved := obj.Data.(*datamodel.DynamicResource)
+			require.Equal(t, v1.ProvisioningStateFailed, saved.ProvisioningState())
+			return nil
+		})
 
-	c := newReconcileController(t, databaseClient, k8stest.NewFakeKubeClient(reconcileTestScheme(t)))
+	connection, closeServer := newAzureReconcileTestConnection(t, http.StatusNotFound)
+	defer closeServer()
+
+	c := newReconcileController(t, databaseClient, k8stest.NewFakeKubeClient(reconcileTestScheme(t)), connection)
 
 	w := runReconcile(t, c)
 	require.Equal(t, http.StatusOK, w.Result().StatusCode)
@@ -275,7 +335,61 @@ func TestReconcile_CloudOutput_Skipped(t *testing.T) {
 	body := decodeReconcileResponse(t, w)
 	require.Len(t, body.Resources, 1)
 	require.Equal(t, string(v1.ProvisioningStateUpdating), body.Resources[0].From)
+	require.Equal(t, string(v1.ProvisioningStateFailed), body.Resources[0].To)
+	require.Contains(t, body.Resources[0].Reason, "gone")
+	require.Contains(t, body.Resources[0].Reason, "Azure resource not found")
+}
+
+func TestReconcile_AzureSettled_TransitionsToSucceeded(t *testing.T) {
+	mctrl := gomock.NewController(t)
+	defer mctrl.Finish()
+
+	resource := newReconcileResource(v1.ProvisioningStateUpdating, azureOutputID)
+	storeObject := rpctest.FakeStoreObject(resource)
+	storeObject.Metadata = database.Metadata{ID: testResourceID, ETag: "etag-1"}
+
+	databaseClient := database.NewMockClient(mctrl)
+	databaseClient.EXPECT().Get(gomock.Any(), testResourceID).Return(storeObject, nil)
+	databaseClient.EXPECT().
+		Save(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, obj *database.Object, _ ...database.SaveOptions) error {
+			saved := obj.Data.(*datamodel.DynamicResource)
+			require.Equal(t, v1.ProvisioningStateSucceeded, saved.ProvisioningState())
+			return nil
+		})
+
+	connection, closeServer := newAzureReconcileTestConnection(t, http.StatusOK)
+	defer closeServer()
+	c := newReconcileController(t, databaseClient, k8stest.NewFakeKubeClient(reconcileTestScheme(t)), connection)
+
+	w := runReconcile(t, c)
+	require.Equal(t, http.StatusOK, w.Result().StatusCode)
+	body := decodeReconcileResponse(t, w)
+	require.Len(t, body.Resources, 1)
+	require.Equal(t, string(v1.ProvisioningStateSucceeded), body.Resources[0].To)
+	require.Contains(t, body.Resources[0].Reason, "settled")
+}
+
+func TestReconcile_AzureGetFailure_LeavesStateUnchanged(t *testing.T) {
+	mctrl := gomock.NewController(t)
+	defer mctrl.Finish()
+
+	resource := newReconcileResource(v1.ProvisioningStateUpdating, azureOutputID)
+	storeObject := rpctest.FakeStoreObject(resource)
+	storeObject.Metadata = database.Metadata{ID: testResourceID, ETag: "etag-1"}
+
+	databaseClient := database.NewMockClient(mctrl)
+	databaseClient.EXPECT().Get(gomock.Any(), testResourceID).Return(storeObject, nil)
+
+	connection, closeServer := newAzureReconcileTestConnection(t, http.StatusInternalServerError)
+	defer closeServer()
+	c := newReconcileController(t, databaseClient, k8stest.NewFakeKubeClient(reconcileTestScheme(t)), connection)
+
+	w := runReconcile(t, c)
+	require.Equal(t, http.StatusOK, w.Result().StatusCode)
+	body := decodeReconcileResponse(t, w)
+	require.Len(t, body.Resources, 1)
 	require.Equal(t, string(v1.ProvisioningStateUpdating), body.Resources[0].To)
 	require.Contains(t, body.Resources[0].Reason, "skipped")
-	require.Contains(t, body.Resources[0].Reason, "cloud output")
+	require.Contains(t, body.Resources[0].Reason, "Azure GET failed")
 }
