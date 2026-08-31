@@ -67,10 +67,8 @@ func (rdc *MockResourceDeploymentsClient) CreateOrUpdate(ctx context.Context, pa
 	defer rdc.lock.Unlock()
 
 	value := ClientCreateOrUpdateResponse{
-		DeploymentExtended: armdeployments.DeploymentExtended{
-			ID:         &resourceID,
-			Properties: &armdeployments.DeploymentPropertiesExtended{},
-		},
+		ID:         &resourceID,
+		Properties: &armdeployments.DeploymentPropertiesExtended{},
 	}
 	state := &OperationState{
 		Kind:       http.MethodPut,

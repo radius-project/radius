@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
@@ -30,9 +31,6 @@ import (
 func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 	definitions := GetCoreTypesRecipeInfo()
 
-	// Verify we have the expected number of definitions
-	require.Len(t, definitions, 5)
-
 	// Verify expected resource types
 	expectedResourceTypes := []string{
 		"Radius.Compute/containers",
@@ -40,13 +38,21 @@ func Test_GetDefaultRecipePackDefinition(t *testing.T) {
 		"Radius.Compute/routes",
 		"Radius.Security/secrets",
 		"Radius.Data/mySqlDatabases",
+		"Radius.Data/postgreSqlDatabases",
+		"Radius.Messaging/rabbitMQ",
 	}
+	require.Len(t, definitions, len(expectedResourceTypes))
+
 	actualResourceTypes := make([]string, len(definitions))
 	for i, def := range definitions {
 		actualResourceTypes[i] = def.ResourceType
 		require.NotEmpty(t, def.Source, "Source should not be empty for %s", def.ResourceType)
 	}
 	require.ElementsMatch(t, expectedResourceTypes, actualResourceTypes)
+	require.Contains(t, definitions, CoreTypesRecipeInfo{
+		ResourceType: "Radius.Messaging/rabbitMQ",
+		Source:       "ghcr.io/radius-project/kube-recipes/rabbitmq:edge",
+	})
 }
 
 func Test_GetDefaultRecipePackDefinition_UsesEdgeTagForEdgeChannel(t *testing.T) {
@@ -138,6 +144,10 @@ func Test_NewDefaultRecipePackResource(t *testing.T) {
 		"gatewayName":      DefaultRoutesGatewayName,
 		"gatewayNamespace": DefaultRoutesGatewayNamespace,
 	}, routeRecipe.Parameters)
+
+	require.Contains(t, resource.Properties.Recipes, "Radius.Data/postgreSqlDatabases")
+	postgreSQLRecipe := resource.Properties.Recipes["Radius.Data/postgreSqlDatabases"]
+	require.NotNil(t, postgreSQLRecipe)
 }
 
 func Test_NormalizeRecipePacks(t *testing.T) {
@@ -232,4 +242,105 @@ func Test_RefExists(t *testing.T) {
 			require.Equal(t, tc.expected, RefExists(tc.refs, tc.id))
 		})
 	}
+}
+
+func Test_ResolveID(t *testing.T) {
+	const scope = "/planes/radius/local/resourceGroups/test-group"
+
+	tests := []struct {
+		name           string
+		recipePack     string
+		expectedID     string
+		expectedFullID bool
+	}{
+		{
+			name:       "bare name is scoped to the workspace resource group",
+			recipePack: "my-pack",
+			expectedID: scope + "/providers/Radius.Core/recipePacks/my-pack",
+		},
+		{
+			name:           "full resource ID is used as-is",
+			recipePack:     "/planes/radius/local/resourceGroups/other-group/providers/Radius.Core/recipePacks/my-pack",
+			expectedID:     "/planes/radius/local/resourceGroups/other-group/providers/Radius.Core/recipePacks/my-pack",
+			expectedFullID: true,
+		},
+		{
+			name:           "trailing slash on a full resource ID is normalized",
+			recipePack:     "/planes/radius/local/resourceGroups/other-group/providers/Radius.Core/recipePacks/my-pack/",
+			expectedID:     "/planes/radius/local/resourceGroups/other-group/providers/Radius.Core/recipePacks/my-pack",
+			expectedFullID: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			id, isFullID, err := ResolveID(tt.recipePack, scope)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedID, id.String())
+			require.Equal(t, tt.expectedFullID, isFullID)
+		})
+	}
+
+	t.Run("returns an error for an invalid workspace scope", func(t *testing.T) {
+		t.Parallel()
+
+		_, _, err := ResolveID("my-pack", "not-a-scope")
+		require.Error(t, err)
+	})
+
+	rejected := []struct {
+		name       string
+		recipePack string
+	}{
+		{
+			name:       "resource ID of another type",
+			recipePack: "/planes/radius/local/resourceGroups/test-group/providers/Radius.Core/environments/my-env",
+		},
+		{
+			name:       "resource group scope",
+			recipePack: "/planes/radius/local/resourceGroups/test-group",
+		},
+		{
+			name:       "plane scope",
+			recipePack: "/planes/radius/local",
+		},
+	}
+
+	for _, tt := range rejected {
+		t.Run("rejects "+tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			_, _, err := ResolveID(tt.recipePack, scope)
+			require.Error(t, err)
+			require.True(t, clierrors.IsFriendlyError(err))
+			require.Contains(t, err.Error(), "is not a recipe pack resource ID")
+		})
+	}
+}
+
+func Test_NotFoundError(t *testing.T) {
+	t.Run("bare name names the resource group and shows the full ID form", func(t *testing.T) {
+		t.Parallel()
+
+		id, isFullID, err := ResolveID("my-pack", "/planes/radius/local/resourceGroups/test-group")
+		require.NoError(t, err)
+
+		require.Equal(t,
+			`Recipe pack "my-pack" does not exist in resource group "test-group". To reference a recipe pack in another resource group, pass its full resource ID, for example: /planes/radius/local/resourceGroups/test-group/providers/Radius.Core/recipePacks/my-pack`,
+			NotFoundError("my-pack", id, isFullID).Error())
+	})
+
+	t.Run("full resource ID omits the cross-group hint", func(t *testing.T) {
+		t.Parallel()
+
+		packID := "/planes/radius/local/resourceGroups/other-group/providers/Radius.Core/recipePacks/my-pack"
+		id, isFullID, err := ResolveID(packID, "/planes/radius/local/resourceGroups/test-group")
+		require.NoError(t, err)
+
+		require.Equal(t,
+			`Recipe pack "`+packID+`" does not exist. Please provide a valid recipe pack to set on the environment.`,
+			NotFoundError(packID, id, isFullID).Error())
+	})
 }

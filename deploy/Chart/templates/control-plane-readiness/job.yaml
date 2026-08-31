@@ -1,0 +1,74 @@
+{{- $appversion := include "radius.versiontag" . }}
+{{- $readiness := .Values.controlPlaneReadiness | default dict }}
+{{- $timeoutSeconds := get $readiness "timeoutSeconds" | default 240 }}
+{{- $pollIntervalSeconds := get $readiness "pollIntervalSeconds" | default 2 }}
+{{- $requestTimeoutSeconds := get $readiness "requestTimeoutSeconds" | default 10 }}
+{{- $ttlSecondsAfterFinished := get $readiness "ttlSecondsAfterFinished" | default 300 }}
+{{- $readinessImage := get $readiness "image" | default "" }}
+{{- $readinessTag := get $readiness "tag" | default "" }}
+{{- if not $readinessImage }}
+  {{- if ne .Values.preupgrade.image "pre-upgrade" }}
+    {{- $readinessImage = .Values.preupgrade.image }}
+    {{- $readinessTag = $readinessTag | default .Values.preupgrade.tag }}
+  {{- else }}
+    {{- $ucpImageName := last (splitList "/" .Values.ucp.image) }}
+    {{- $ucpEmbeddedTag := "" }}
+    {{- if contains ":" $ucpImageName }}
+      {{- $ucpEmbeddedTag = regexReplaceAll "^.*:" $ucpImageName "" }}
+    {{- end }}
+    {{- if contains "/" .Values.ucp.image }}
+      {{- $readinessImage = regexReplaceAll "/[^/]+$" .Values.ucp.image "/pre-upgrade" }}
+    {{- else }}
+      {{- $readinessImage = "pre-upgrade" }}
+    {{- end }}
+    {{- $readinessTag = $readinessTag | default $ucpEmbeddedTag | default .Values.ucp.tag }}
+  {{- end }}
+{{- end }}
+{{- $readinessTag = $readinessTag | default .Values.global.imageTag | default $appversion }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: radius-api-readiness
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    control-plane: radius-api-readiness
+    app.kubernetes.io/name: radius-api-readiness
+    app.kubernetes.io/part-of: radius
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-output-log-policy": hook-failed
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: {{ add $timeoutSeconds 30 }}
+  ttlSecondsAfterFinished: {{ $ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        control-plane: radius-api-readiness
+        app.kubernetes.io/name: radius-api-readiness
+        app.kubernetes.io/part-of: radius
+    spec:
+      restartPolicy: Never
+      serviceAccountName: radius-api-readiness
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.global.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: radius-api-readiness
+          image: "{{ include "radius.image" (dict "image" $readinessImage "tag" $readinessTag "global" .Values.global) }}"
+          imagePullPolicy: Always
+          args:
+            - wait-for-control-plane
+            - "--timeout={{ $timeoutSeconds }}s"
+            - "--poll-interval={{ $pollIntervalSeconds }}s"
+            - "--request-timeout={{ $requestTimeoutSeconds }}s"
+          terminationMessagePolicy: FallbackToLogsOnError
+          resources:
+            {{- toYaml .Values.preupgrade.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.preupgrade.securityContext | nindent 12 }}
+      securityContext:
+        {{- toYaml .Values.preupgrade.podSecurityContext | nindent 8 }}

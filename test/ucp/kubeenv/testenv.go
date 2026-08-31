@@ -25,7 +25,6 @@ import (
 
 	ucpv1alpha1 "github.com/radius-project/radius/pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1"
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -91,9 +90,7 @@ func getKubeAssetsDir() (string, error) {
 // created.
 func EnsureNamespace(ctx context.Context, client runtimeclient.Client, namespace string) error {
 	nsObject := v1.Namespace{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: namespace,
-		},
+		Name: namespace,
 	}
 	return client.Create(ctx, &nsObject, &runtimeclient.CreateOptions{})
 }

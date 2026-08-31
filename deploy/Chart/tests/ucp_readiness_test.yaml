@@ -1,0 +1,61 @@
+suite: test UCP readiness probe
+templates:
+  - ucp/deployment.yaml
+  - ucp/configmaps.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: gates readiness on the aggregated API discovery document
+    # The kube-apiserver aggregation layer routes api.ucp.dev traffic to this pod
+    # through the ucp Service. The probe must target the discovery document over
+    # HTTPS so the pod stays out of the Service endpoints until UCP actually serves,
+    # otherwise the aggregator forwards to a backend that is not listening and
+    # returns 503.
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /apis/api.ucp.dev/v1alpha3
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.scheme
+          value: HTTPS
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: ucp
+        template: ucp/deployment.yaml
+
+  - it: probes the named port the UCP container serves on
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].name
+          value: ucp
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].ports[0].containerPort
+          value: 9443
+        template: ucp/deployment.yaml
+
+  - it: keeps the readiness probe path aligned with the configured server path base
+    # UCP serves the discovery document at server.pathBase. If the path base changes
+    # without the probe, readiness would poll a route that returns 404 and the pod
+    # would never become Ready.
+    asserts:
+      - matchRegex:
+          path: data["ucp-config.yaml"]
+          pattern: 'pathBase: /apis/api\.ucp\.dev/v1alpha3'
+        template: ucp/configmaps.yaml
+
+  - it: keeps the readiness probe configured when Prometheus adds a metrics port
+    set:
+      global.prometheus.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.port
+          value: ucp
+        template: ucp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].ports[1].name
+          value: metrics
+        template: ucp/deployment.yaml

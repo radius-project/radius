@@ -23,13 +23,57 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/helm"
 	corerpv20250801 "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001 "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
+	"github.com/radius-project/radius/pkg/ucp/resources"
+	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/version"
 )
+
+// ResourceType is the resource type of a recipe pack.
+const ResourceType = "Radius.Core/recipePacks"
+
+// ResolveID resolves a recipe pack reference to a full resource ID. The reference
+// may be a full recipe pack resource ID, in which case it is used as-is and isFullID
+// is true, or a bare name, which is scoped to workspaceScope. A value that parses as
+// a resource ID but is not a Radius.Core/recipePacks resource is rejected, so that a
+// mistyped ID of another type is not silently looked up as a recipe pack name.
+func ResolveID(recipePack string, workspaceScope string) (id resources.ID, isFullID bool, err error) {
+	if recipePackID, parseErr := resources.Parse(recipePack); parseErr == nil {
+		if !recipePackID.IsResource() || !strings.EqualFold(recipePackID.Type(), ResourceType) {
+			return resources.ID{}, false, clierrors.Message("%q is not a recipe pack resource ID. Provide a recipe pack name, or a resource ID of the form /planes/radius/local/resourceGroups/<group>/providers/%s/<name>.", recipePack, ResourceType)
+		}
+
+		return recipePackID, true, nil
+	}
+
+	scopeID, err := resources.ParseScope(workspaceScope)
+	if err != nil {
+		return resources.ID{}, false, err
+	}
+
+	return scopeID.Append(resources.TypeSegment{
+		Type: ResourceType,
+		Name: recipePack,
+	}), false, nil
+}
+
+// NotFoundError builds the error returned when a recipe pack passed to --recipe-packs
+// cannot be found. When the user supplied a bare name, the message names the resource
+// group that was searched and shows how to reference a pack in another resource group.
+func NotFoundError(recipePack string, recipePackID resources.ID, isFullID bool) error {
+	resourceGroup := recipePackID.FindScope(resources_radius.ScopeResourceGroups)
+	if isFullID || resourceGroup == "" {
+		return clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to set on the environment.", recipePack)
+	}
+
+	return clierrors.Message("Recipe pack %q does not exist in resource group %q. To reference a recipe pack in another resource group, pass its full resource ID, for example: %s",
+		recipePack, resourceGroup, recipePackID.String())
+}
 
 // NormalizeRecipePacks splits comma-separated values, trims whitespace, and
 // removes empty entries and duplicates while preserving the first-seen order.
@@ -212,6 +256,14 @@ func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 		{
 			ResourceType: "Radius.Data/mySqlDatabases",
 			Source:       "ghcr.io/radius-project/kube-recipes/mysqldatabases:" + resolveRecipeTag("Radius.Data/mySqlDatabases", isEdge),
+		},
+		{
+			ResourceType: "Radius.Data/postgreSqlDatabases",
+			Source:       "ghcr.io/radius-project/kube-recipes/postgresqldatabases:" + resolveRecipeTag("Radius.Data/postgreSqlDatabases", isEdge),
+		},
+		{
+			ResourceType: "Radius.Messaging/rabbitMQ",
+			Source:       "ghcr.io/radius-project/kube-recipes/rabbitmq:" + resolveRecipeTag("Radius.Messaging/rabbitMQ", isEdge),
 		},
 	}
 }

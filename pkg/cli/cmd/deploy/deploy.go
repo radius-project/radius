@@ -72,6 +72,10 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 The deploy command compiles a Bicep or ARM template and deploys it to your default environment (unless otherwise specified).
 
+The template can be a local file path or an http(s) URL. Remote templates are downloaded before
+being compiled and deployed, similar to how tools such as kubectl accept remote URLs. Remote
+templates must be self-contained; relative imports and other local file dependencies are not supported.
+
 You can combine Radius types as as well as other types that are available in Bicep such as Azure resources. See
 the Radius documentation for information about describing your application and resources with Bicep.
 
@@ -94,6 +98,9 @@ rad deploy myapp.bicep
 
 # deploy an ARM template (json)
 rad deploy myapp.json
+
+# deploy a Bicep template from a remote URL
+rad deploy https://example.com/myapp.bicep
 
 # deploy to a specific workspace
 rad deploy myapp.bicep --workspace production
@@ -204,7 +211,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// Prepare the template early to check if it contains an environment resource.
 	// This allows us to skip environment validation if the template will create one.
-	r.Template, err = r.Bicep.PrepareTemplate(r.FilePath)
+	r.Template, err = r.Bicep.PrepareTemplate(cmd.Context(), r.FilePath)
 	if err != nil {
 		return err
 	}
@@ -259,7 +266,14 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if envResult == nil {
-			return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` first. You could also provide the environment ID if the environment exists in a different group.", r.EnvironmentNameOrID, r.Workspace.Scope)
+			// If a full environment ID was provided (or came from the workspace default),
+			// report the scope encoded in that ID rather than the possibly-different
+			// --group scope, since that's the scope that was actually checked.
+			errScope := r.Workspace.Scope
+			if envID, parseErr := resources.Parse(r.EnvironmentNameOrID); parseErr == nil {
+				errScope = envID.RootScope()
+			}
+			return clierrors.Message("The environment %q does not exist in scope %q. Run `rad env create` first. You could also provide the environment ID if the environment exists in a different group.", r.EnvironmentNameOrID, errScope)
 		}
 		r.EnvResult = envResult
 	}
@@ -291,6 +305,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 func (r *Runner) Run(ctx context.Context) error {
 	// Use the template that was prepared during validation
 	template := r.Template
+
+	// Warn about legacy Applications.* resource types before deploying, so the message is visible
+	// above the deployment progress output.
+	if warning := bicep.FormatDeprecationWarning(r.TemplateInspectionResult.DeprecatedResources); warning != "" {
+		r.Output.LogInfo("")
+		r.Output.LogInfo("%s", warning)
+	}
 
 	// This is the earliest point where we can inject parameters, we have
 	// to wait until the template is prepared.
@@ -337,15 +358,18 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
+	// Redact any credentials embedded in a remote template URL before displaying it.
+	displayPath := bicep.RedactTemplatePath(r.FilePath)
+
 	progressText := ""
 	if r.ApplicationName == "" {
 		progressText = fmt.Sprintf(
 			"Deploying template '%v' into environment '%v' from workspace '%v'...\n\n"+
-				"Deployment In Progress...", r.FilePath, r.EnvironmentNameOrID, r.Workspace.Name)
+				"Deployment In Progress...", displayPath, r.EnvironmentNameOrID, r.Workspace.Name)
 	} else {
 		progressText = fmt.Sprintf(
 			"Deploying template '%v' for application '%v' and environment '%v' from workspace '%v'...\n\n"+
-				"Deployment In Progress... ", r.FilePath, r.ApplicationName, r.EnvironmentNameOrID, r.Workspace.Name)
+				"Deployment In Progress... ", displayPath, r.ApplicationName, r.EnvironmentNameOrID, r.Workspace.Name)
 	}
 
 	// Before deploying, set up recipe packs for any Radius.Core environments in the
@@ -439,7 +463,7 @@ func (r *Runner) reportMissingParameters(template map[string]any) error {
 		details = append(details, fmt.Sprintf("  - %v", errors[key]))
 	}
 
-	return clierrors.Message("The template %q could not be deployed because of the following errors:\n\n%v", r.FilePath, strings.Join(details, "\n"))
+	return clierrors.Message("The template %q could not be deployed because of the following errors:\n\n%v", bicep.RedactTemplatePath(r.FilePath), strings.Join(details, "\n"))
 }
 
 // resolvePreview reports whether the deploy command should use the Radius.Core preview
@@ -541,7 +565,7 @@ func (r *Runner) getApplicationsCoreEnvironment(ctx context.Context, id string) 
 }
 
 // getRadiusCoreEnvironment retrieves environment using Radius Core client and returns as Applications.Core format
-func (r *Runner) getRadiusCoreEnvironment(ctx context.Context, name string) (*v20250801preview.EnvironmentResource, error) {
+func (r *Runner) getRadiusCoreEnvironment(ctx context.Context, scope, name string) (*v20250801preview.EnvironmentResource, error) {
 	if r.RadiusCoreClientFactory == nil {
 		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
 		if err != nil {
@@ -551,7 +575,7 @@ func (r *Runner) getRadiusCoreEnvironment(ctx context.Context, name string) (*v2
 	}
 
 	environmentClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
-	env, err := environmentClient.Get(ctx, r.Workspace.Scope, name, nil)
+	env, err := environmentClient.Get(ctx, scope, name, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -619,14 +643,20 @@ func (r *Runner) FetchEnvironment(ctx context.Context, envNameOrID string) (*Env
 		}
 	}
 	if fetchRadiusCoreEnv {
+		// If it's a full ID, look it up in the scope encoded in the ID itself (which may
+		// differ from the workspace/--group scope, e.g. when the environment lives in a
+		// different resource group than the one being deployed into). Otherwise, resolve
+		// the name within the current workspace scope.
 		var radCoreEnvName string
+		radCoreScope := r.Workspace.Scope
 		if isID {
 			radCoreEnvName = envID.Name()
+			radCoreScope = envID.RootScope()
 		} else {
 			radCoreEnvName = envNameOrID
 		}
 
-		radiusCoreEnv, err := r.getRadiusCoreEnvironment(ctx, radCoreEnvName)
+		radiusCoreEnv, err := r.getRadiusCoreEnvironment(ctx, radCoreScope, radCoreEnvName)
 		if err != nil {
 			if !clients.Is404Error(err) {
 				return nil, err
@@ -913,8 +943,7 @@ func isProviderNotConfiguredError(message string) bool {
 }
 
 func extractDeploymentEngineErrorDetails(err error) (*v1.ErrorDetails, bool) {
-	var clientErr *v1.ErrClientRP
-	if errors.As(err, &clientErr) {
+	if clientErr, ok := errors.AsType[*v1.ErrClientRP](err); ok {
 		return &v1.ErrorDetails{Code: clientErr.Code, Message: clientErr.Message}, true
 	}
 

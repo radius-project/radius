@@ -41,6 +41,7 @@ import (
 	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	corerpfake "github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/pkg/to"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
@@ -65,7 +66,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
@@ -86,7 +87,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
@@ -108,7 +109,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 				// Since environment id indicates a applications core environment, only that will be fetched
@@ -132,7 +133,7 @@ func Test_Validate(t *testing.T) {
 				// The guard rejects the flag before any environment is fetched, so only
 				// PrepareTemplate is exercised.
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 			},
@@ -147,7 +148,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 				// Since environment id indicates a applications core environment, only that will be fetched
@@ -169,7 +170,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
@@ -217,7 +218,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 			},
@@ -232,7 +233,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 				mocks.ApplicationManagementClient.EXPECT().
@@ -258,7 +259,7 @@ func Test_Validate(t *testing.T) {
 					},
 				}
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(templateWithEnv, nil).
 					Times(1)
 			},
@@ -280,7 +281,7 @@ func Test_Validate(t *testing.T) {
 					},
 				}
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(templateWithEnv, nil).
 					Times(1)
 				// When env flag is explicitly provided, we honor it and validate even if template creates environment
@@ -307,7 +308,7 @@ func Test_Validate(t *testing.T) {
 					},
 				}
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(templateWithEnv, nil).
 					Times(1)
 				// Since workspace has default environment (full ID), we validate it even though template creates one
@@ -327,7 +328,7 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				mocks.Bicep.EXPECT().
-					PrepareTemplate("app.bicep").
+					PrepareTemplate(gomock.Any(), "app.bicep").
 					Return(map[string]any{}, nil).
 					Times(1)
 			},
@@ -358,7 +359,7 @@ func Test_ValidatePreviewEnvVarWithoutApplication(t *testing.T) {
 
 	mockBicep := bicep.NewMockInterface(ctrl)
 	mockBicep.EXPECT().
-		PrepareTemplate("app.bicep").
+		PrepareTemplate(gomock.Any(), "app.bicep").
 		Return(map[string]any{}, nil).
 		Times(1)
 
@@ -442,7 +443,7 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 
 		mockBicep := bicep.NewMockInterface(ctrl)
 		mockBicep.EXPECT().
-			PrepareTemplate("app.bicep").
+			PrepareTemplate(gomock.Any(), "app.bicep").
 			Return(map[string]any{}, nil).
 			Times(1)
 
@@ -514,7 +515,7 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 
 		mockBicep := bicep.NewMockInterface(ctrl)
 		mockBicep.EXPECT().
-			PrepareTemplate("app.bicep").
+			PrepareTemplate(gomock.Any(), "app.bicep").
 			Return(map[string]any{}, nil).
 			Times(1)
 
@@ -559,14 +560,12 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 				_ *v20250801preview.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 				resp.SetResponse(200, v20250801preview.EnvironmentsClientGetResponse{
-					EnvironmentResource: v20250801preview.EnvironmentResource{
-						ID: new("/planes/radius/local/resourceGroups/test-resource-group/providers/Radius.Core/environments/conflictenv"),
-						Properties: &v20250801preview.EnvironmentProperties{
-							Providers: &v20250801preview.Providers{
-								Azure: &v20250801preview.ProvidersAzure{
-									SubscriptionID:    new("test-sub-id"),
-									ResourceGroupName: new("test-rg-name"),
-								},
+					ID: new("/planes/radius/local/resourceGroups/test-resource-group/providers/Radius.Core/environments/conflictenv"),
+					Properties: &v20250801preview.EnvironmentProperties{
+						Providers: &v20250801preview.Providers{
+							Azure: &v20250801preview.ProvidersAzure{
+								SubscriptionID:    new("test-sub-id"),
+								ResourceGroupName: new("test-rg-name"),
 							},
 						},
 					},
@@ -608,7 +607,7 @@ func Test_ValidateRadiusCoreEnvProvider(t *testing.T) {
 
 		mockBicep := bicep.NewMockInterface(ctrl)
 		mockBicep.EXPECT().
-			PrepareTemplate("app.bicep").
+			PrepareTemplate(gomock.Any(), "app.bicep").
 			Return(map[string]any{}, nil).
 			Times(1)
 
@@ -714,6 +713,119 @@ func Test_Run(t *testing.T) {
 		// All of the output in this command is being done by functions that we mock for testing, so this
 		// is always empty.
 		require.Empty(t, outputSink.Writes)
+	})
+
+	t.Run("Deprecated Applications.* resource types produce a warning", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		bicepMock := bicep.NewMockInterface(ctrl)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name: "kind-kind",
+		}
+		provider := &clients.Providers{
+			Radius: &clients.RadiusProvider{
+				EnvironmentID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+			},
+		}
+
+		deployMock := deploy.NewMockInterface(ctrl)
+		deployMock.EXPECT().
+			DeployWithProgress(gomock.Any(), gomock.Any()).
+			Return(clients.DeploymentResult{}, nil).
+			Times(1)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			Bicep:               bicepMock,
+			Deploy:              deployMock,
+			Output:              outputSink,
+			FilePath:            "app.bicep",
+			EnvironmentNameOrID: radcli.TestEnvironmentID,
+			Parameters:          map[string]map[string]any{},
+			Workspace:           workspace,
+			Providers:           provider,
+			Template:            map[string]any{},
+			TemplateInspectionResult: bicep.TemplateInspectionResult{
+				DeprecatedResources: []bicep.DeprecatedResource{
+					{
+						FullType:    "Applications.Core/containers@2023-10-01-preview",
+						Replacement: "Radius.Compute/containers@2025-08-01-preview",
+					},
+					{FullType: "Applications.Core/extenders@2023-10-01-preview"},
+				},
+			},
+		}
+
+		err := runner.Run(t.Context())
+		require.NoError(t, err)
+
+		expected := []any{
+			output.LogOutput{Format: ""},
+			output.LogOutput{
+				Format: "%s",
+				Params: []any{
+					"WARNING: The following resource types use the deprecated Applications.* namespace with API version 2023-10-01-preview and will be removed in a future release:\n" +
+						"  - Applications.Core/containers@2023-10-01-preview: use Radius.Compute/containers@2025-08-01-preview instead.\n" +
+						"  - Applications.Core/extenders@2023-10-01-preview: no direct replacement. Define an equivalent resource type and register a recipe pack that provides it to your environment.\n",
+				},
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
+	})
+
+	t.Run("Remote template URL credentials are redacted in progress text", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		bicep := bicep.NewMockInterface(ctrl)
+
+		workspace := &workspaces.Workspace{
+			Connection: map[string]any{
+				"kind":    "kubernetes",
+				"context": "kind-kind",
+			},
+			Name: "kind-kind",
+		}
+		provider := &clients.Providers{
+			Radius: &clients.RadiusProvider{
+				EnvironmentID: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
+			},
+		}
+
+		var captured deploy.Options
+		deployMock := deploy.NewMockInterface(ctrl)
+		deployMock.EXPECT().
+			DeployWithProgress(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, o deploy.Options) (clients.DeploymentResult, error) {
+				captured = o
+				return clients.DeploymentResult{}, nil
+			}).
+			Times(1)
+
+		outputSink := &output.MockOutput{}
+		runner := &Runner{
+			Bicep:               bicep,
+			Deploy:              deployMock,
+			Output:              outputSink,
+			FilePath:            "https://example.com/app.bicep?sig=TOPSECRET",
+			EnvironmentNameOrID: radcli.TestEnvironmentID,
+			Parameters:          map[string]map[string]any{},
+			Workspace:           workspace,
+			Providers:           provider,
+			Template:            map[string]any{},
+		}
+
+		err := runner.Run(t.Context())
+		require.NoError(t, err)
+
+		require.NotContains(t, captured.ProgressText, "TOPSECRET")
+		require.Contains(t, captured.ProgressText, "sig=redacted")
 	})
 
 	t.Run("Environment-scoped deployment with aws provider", func(t *testing.T) {
@@ -889,7 +1001,7 @@ func Test_Run(t *testing.T) {
 					capturedAppName = applicationName
 					capturedResource = resource
 					resp.SetResponse(http.StatusOK, v20250801preview.ApplicationsClientCreateOrUpdateResponse{
-						ApplicationResource: v20250801preview.ApplicationResource{Name: to.Ptr(applicationName)},
+						Name: to.Ptr(applicationName),
 					}, nil)
 					return
 				},
@@ -991,7 +1103,7 @@ func Test_Run(t *testing.T) {
 					createdRadiusCoreApp = true
 					capturedResource = resource
 					resp.SetResponse(http.StatusOK, v20250801preview.ApplicationsClientCreateOrUpdateResponse{
-						ApplicationResource: v20250801preview.ApplicationResource{Name: to.Ptr(applicationName)},
+						Name: to.Ptr(applicationName),
 					}, nil)
 					return
 				},
@@ -1873,7 +1985,7 @@ func Test_getRadiusCoreEnvironment(t *testing.T) {
 			command:         &cobra.Command{},
 			args:            []string{"template.bicep"},
 			expectedEnv: &v20250801preview.EnvironmentResource{
-				Name: new("/planes/radius/local/resourceGroups/test/providers/Radius.Core/environments/myenv"),
+				Name: new("myenv"),
 			},
 			shouldError: false,
 		},
@@ -1893,7 +2005,15 @@ func Test_getRadiusCoreEnvironment(t *testing.T) {
 				},
 			}
 
-			env, err := runner.getRadiusCoreEnvironment(t.Context(), tc.environmentName)
+			// The Radius Core EnvironmentsClient.Get API takes (scope, environmentName), not a
+			// full resource ID. Callers (e.g. FetchEnvironment) extract scope/name from a full
+			// ID before calling getRadiusCoreEnvironment, so mirror that here.
+			callScope, callName := scope, tc.environmentName
+			if parsedID, parseErr := resources.Parse(tc.environmentName); parseErr == nil {
+				callScope, callName = parsedID.RootScope(), parsedID.Name()
+			}
+
+			env, err := runner.getRadiusCoreEnvironment(t.Context(), callScope, callName)
 
 			if tc.shouldError {
 				require.Error(t, err)
@@ -1910,6 +2030,63 @@ func Test_getRadiusCoreEnvironment(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test_FetchEnvironment_RadiusCoreEnvironmentUsesOwnGroup is a regression test for
+// https://github.com/radius-project/radius/issues/12573: a Radius.Core environment
+// referenced by full ID (e.g. the workspace's stored default environment) must be looked
+// up in the resource group encoded in that ID, not in the (possibly different)
+// --group-overridden workspace scope used for the deployment itself.
+func Test_FetchEnvironment_RadiusCoreEnvironmentUsesOwnGroup(t *testing.T) {
+	envScope := "/planes/radius/local/resourceGroups/default"
+	envID := envScope + "/providers/Radius.Core/environments/default"
+	deployScope := "/planes/radius/local/resourceGroups/test"
+
+	// Only succeed when queried in the environment's own scope; 404 for any other scope
+	// (such as the --group-overridden deploy scope) to catch a regression.
+	envServer := corerpfake.EnvironmentsServer{
+		Get: func(
+			_ context.Context,
+			rootScope string,
+			environmentName string,
+			_ *v20250801preview.EnvironmentsClientGetOptions,
+		) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
+			// The fake HTTP transport strips the leading slash from the rootScope path
+			// segment, so compare against the trimmed form.
+			if rootScope != strings.TrimPrefix(envScope, "/") {
+				errResp.SetError(fmt.Errorf("environment not found"))
+				errResp.SetResponseError(404, "Not Found")
+				return
+			}
+			resp.SetResponse(200, v20250801preview.EnvironmentsClientGetResponse{
+				Name: to.Ptr(environmentName),
+				ID:   to.Ptr(envID),
+			}, nil)
+			return
+		},
+	}
+
+	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+		deployScope,
+		func() corerpfake.EnvironmentsServer { return envServer },
+		nil,
+	)
+	require.NoError(t, err)
+
+	runner := &Runner{
+		RadiusCoreClientFactory: factory,
+		Workspace: &workspaces.Workspace{
+			// Simulates `-g test` overriding the deploy scope while the workspace's
+			// default environment still lives in the "default" resource group.
+			Scope: deployScope,
+		},
+	}
+
+	result, err := runner.FetchEnvironment(t.Context(), envID)
+	require.NoError(t, err)
+	require.NotNil(t, result, "environment should resolve using the ID's own resource group, not the --group-overridden workspace scope")
+	require.False(t, result.UseApplicationsCore)
+	require.Equal(t, envID, runner.EnvironmentNameOrID)
 }
 
 func Test_constructApplicationsCoreEnvironmentID(t *testing.T) {

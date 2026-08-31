@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 
@@ -37,19 +36,13 @@ func Test_ResourceProvider_VersionedToDataModel(t *testing.T) {
 		{
 			filename: "resourceprovider_resource.json",
 			expected: &datamodel.ResourceProvider{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test",
-						Name:     "Applications.Test",
-						Type:     datamodel.ResourceProviderResourceType,
-						Location: "global",
-						Tags:     map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
-					},
-				},
-				Properties: datamodel.ResourceProviderProperties{},
+				ID:                "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test",
+				Name:              "Applications.Test",
+				Type:              datamodel.ResourceProviderResourceType,
+				Location:          "global",
+				Tags:              map[string]string{},
+				UpdatedAPIVersion: Version,
+				Properties:        datamodel.ResourceProviderProperties{},
 			},
 		},
 	}

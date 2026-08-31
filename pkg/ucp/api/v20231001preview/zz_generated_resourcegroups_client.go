@@ -55,12 +55,7 @@ func (client *ResourceGroupsClient) CreateOrUpdate(ctx context.Context, planeNam
 	if err != nil {
 		return ResourceGroupsClientCreateOrUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return ResourceGroupsClientCreateOrUpdateResponse{}, err
-	}
-	resp, err := client.createOrUpdateHandleResponse(httpResp)
-	return resp, err
+	return client.createOrUpdateHandleResponse(httpResp, http.StatusOK, http.StatusCreated)
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
@@ -90,8 +85,11 @@ func (client *ResourceGroupsClient) createOrUpdateCreateRequest(ctx context.Cont
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *ResourceGroupsClient) createOrUpdateHandleResponse(resp *http.Response) (ResourceGroupsClientCreateOrUpdateResponse, error) {
+func (client *ResourceGroupsClient) createOrUpdateHandleResponse(resp *http.Response, successCodes ...int) (ResourceGroupsClientCreateOrUpdateResponse, error) {
 	result := ResourceGroupsClientCreateOrUpdateResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceGroupResource); err != nil {
 		return ResourceGroupsClientCreateOrUpdateResponse{}, err
 	}
@@ -115,8 +113,7 @@ func (client *ResourceGroupsClient) Delete(ctx context.Context, planeName string
 		return ResourceGroupsClientDeleteResponse{}, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return ResourceGroupsClientDeleteResponse{}, err
+		return ResourceGroupsClientDeleteResponse{}, runtime.NewResponseError(httpResp)
 	}
 	return ResourceGroupsClientDeleteResponse{}, nil
 }
@@ -158,12 +155,7 @@ func (client *ResourceGroupsClient) Get(ctx context.Context, planeName string, r
 	if err != nil {
 		return ResourceGroupsClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return ResourceGroupsClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -189,8 +181,11 @@ func (client *ResourceGroupsClient) getCreateRequest(ctx context.Context, planeN
 }
 
 // getHandleResponse handles the Get response.
-func (client *ResourceGroupsClient) getHandleResponse(resp *http.Response) (ResourceGroupsClientGetResponse, error) {
+func (client *ResourceGroupsClient) getHandleResponse(resp *http.Response, successCodes ...int) (ResourceGroupsClientGetResponse, error) {
 	result := ResourceGroupsClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceGroupResource); err != nil {
 		return ResourceGroupsClientGetResponse{}, err
 	}
@@ -211,38 +206,52 @@ func (client *ResourceGroupsClient) NewListPager(planeName string, options *Reso
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listCreateRequest(ctx, planeName, options)
-			}, nil)
+			req, err := client.listCreateRequest(ctx, planeName, nextLink, options)
 			if err != nil {
 				return ResourceGroupsClientListResponse{}, err
 			}
-			return client.listHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return ResourceGroupsClientListResponse{}, err
+			}
+			return client.listHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listCreateRequest creates the List request.
-func (client *ResourceGroupsClient) listCreateRequest(ctx context.Context, planeName string, _ *ResourceGroupsClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/radius/{planeName}/resourcegroups"
-	if planeName == "" {
-		return nil, errors.New("parameter planeName cannot be empty")
+func (client *ResourceGroupsClient) listCreateRequest(ctx context.Context, planeName string, nextLink string, _ *ResourceGroupsClientListOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/planes/radius/{planeName}/resourcegroups"
+		if planeName == "" {
+			return nil, errors.New("parameter planeName cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *ResourceGroupsClient) listHandleResponse(resp *http.Response) (ResourceGroupsClientListResponse, error) {
+func (client *ResourceGroupsClient) listHandleResponse(resp *http.Response, successCodes ...int) (ResourceGroupsClientListResponse, error) {
 	result := ResourceGroupsClientListResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceGroupResourceListResult); err != nil {
 		return ResourceGroupsClientListResponse{}, err
 	}
@@ -266,12 +275,7 @@ func (client *ResourceGroupsClient) Update(ctx context.Context, planeName string
 	if err != nil {
 		return ResourceGroupsClientUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return ResourceGroupsClientUpdateResponse{}, err
-	}
-	resp, err := client.updateHandleResponse(httpResp)
-	return resp, err
+	return client.updateHandleResponse(httpResp, http.StatusOK)
 }
 
 // updateCreateRequest creates the Update request.
@@ -301,8 +305,11 @@ func (client *ResourceGroupsClient) updateCreateRequest(ctx context.Context, pla
 }
 
 // updateHandleResponse handles the Update response.
-func (client *ResourceGroupsClient) updateHandleResponse(resp *http.Response) (ResourceGroupsClientUpdateResponse, error) {
+func (client *ResourceGroupsClient) updateHandleResponse(resp *http.Response, successCodes ...int) (ResourceGroupsClientUpdateResponse, error) {
 	result := ResourceGroupsClientUpdateResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceGroupResource); err != nil {
 		return ResourceGroupsClientUpdateResponse{}, err
 	}

@@ -8,7 +8,7 @@ Radius ships a set of default resource type manifests (for example `Radius.Compu
 
 That model is sound. The problem is the **transport** it uses to fetch a pinned snapshot of upstream files: it turns `resource-types-contrib` into a **Go module** (a `go.mod` plus a placeholder `doc.go`) solely so Go's module cache can be used as a versioned file downloader, adds it to Radius's `go.mod`, and keeps it from being garbage-collected by `go mod tidy` with a blank import in `pkg/resourcetypescontrib/import.go`. The repository has no Go in it; the module exists only to game Go tooling. This is the "fake Go module" the rest of this document proposes to remove.
 
-This design keeps everything good about the 2026-04 model - Radius-side ownership of the default set, full YAML diff visibility in Radius PRs, version pinning, and CI drift detection - and replaces only the fetch transport with a mechanism that pins and downloads files directly from the upstream repository. It proposes a pragmatic first phase (pin-by-git-ref fetch) that can be implemented today, and a strategic end state (a versioned GitHub Release asset, optionally hardened with a signed OCI artifact) that aligns with the radius core repo's [GoReleaser release-lifecycle refactor](https://github.com/radius-project/design-notes/blob/main/tools/2026-03-goreleaser-release-lifecycle.md). GoReleaser is adopted by the radius core repo only; `resource-types-contrib` keeps its own minimal release workflow. The two phases share the same on-disk skeleton, so moving from one to the other changes a single fetch step and nothing else. From the start the pin is bumped by a Dependabot-like bot that opens a reviewable PR - tracking the moving `main`/`edge`/`latest` channel now and release tags once upstream publishes them - so automated sync is part of Phase A, not a later add-on.
+This design keeps everything good about the 2026-04 model - Radius-side ownership of the default set, full YAML diff visibility in Radius PRs, version pinning, and CI drift detection - and replaces only the fetch transport with a mechanism that pins and downloads files directly from the upstream repository. It proposes a pragmatic first phase (pin-by-git-ref fetch) that can be implemented today, and a strategic end state (a versioned GitHub Release asset, optionally hardened with a signed OCI artifact) that aligns with the radius core repo's [GoReleaser release-lifecycle refactor](https://github.com/radius-project/design-notes/blob/main/tools/2026-03-goreleaser-release-lifecycle.md). GoReleaser is adopted by the radius core repo only; `resource-types-contrib` keeps its own minimal release workflow. The two phases share the same on-disk skeleton, so moving from one to the other changes a single fetch step and nothing else. From the start a Dependabot-like bot opens reviewable pin PRs. Each unit follows upstream `main` only until its first stable release; after that, edge events cannot replace its stable pin.
 
 ## Terms and definitions
 
@@ -36,7 +36,7 @@ This design shares the goals of the [2026-04 automated default registration desi
 3. **Pin to an immutable, auditable revision** of upstream (commit SHA, tag, or OCI digest) with a readable record of what version is in use.
 4. **Align with the radius GoReleaser refactor.** The mechanism must require no Go-module machinery and must model the manifest bundle as a non-Go release artifact that a thin, tag-driven workflow in `resource-types-contrib` can publish and that a small coordination PR on the radius side can bump - the shape the GoReleaser note prescribes for non-Go assets. GoReleaser itself runs only in the radius core repo, not in `resource-types-contrib`.
 5. **Keep the on-disk skeleton stable across phases**, so the transport can evolve (git ref → OCI digest) without touching `defaults.yaml` semantics, the copy/prune logic, the drift check, or `RegisterDirectory`.
-6. **Automate the bump as a reviewable PR from the start.** A Dependabot-like bot opens a PR that bumps the affected `resourceTypes[].ref` entries and re-syncs - tracking the moving `main`/`edge`/`latest` channel continuously and namespace-scoped release tags at release time - so `latest`/`edge` builds never silently lag upstream and every bump is auditable with a full YAML diff.
+6. **Automate the bump as a reviewable PR from the start.** A Dependabot-like bot opens a PR that bumps the affected pins and re-syncs. Stable unit-scoped releases are preferred; `main` is an edge fallback only for units with no stable release. Every bump remains auditable with a full YAML diff.
 
 ### Non goals
 
@@ -87,7 +87,7 @@ The model keeps a fixed **skeleton** and makes the **transport** swappable:
 
 - **Skeleton (unchanged across phases):** `defaults.yaml` declares the default set and records the upstream pin → `make sync-resource-types` copies the selected manifests into `built-in-providers/{dev,self-hosted}/` and prunes stale managed files → the copies are committed → a CI drift check re-runs the copy and fails on any diff → `RegisterDirectory` loads the committed files at startup.
 - **Transport (the only thing that changes):** how `sync-resource-types` obtains the pinned snapshot of upstream files. Today: the Go module cache. Phase A: a pinned git ref fetched directly. Phase B: a versioned GitHub Release asset verified by checksum (optionally a signed OCI artifact pulled by digest).
-- **Bump (automated from the start):** a Dependabot-like bot opens a reviewable PR that advances the affected `resourceTypes[].ref` entries - the moving `main`/`edge`/`latest` commit or namespace-scoped release tags - and re-runs the copy. The bump is never silent: it lands as a PR with the full YAML diff, the drift check, and CI.
+- **Bump (automated from the start):** a Dependabot-like bot opens a reviewable PR that advances affected pins to stable unit-scoped releases, falling back to the moving `main` commit only for unreleased units, and re-runs the copy. The bump is never silent: it lands as a PR with the full YAML diff, the drift check, and CI.
 
 Because each pin is a plain string in `defaults.yaml` and the copy/prune/drift logic is transport-agnostic, swapping transports is a localized change to the sync implementation. The bump mechanism is likewise transport-agnostic - the bot rewrites the same `resourceTypes[].ref` entries regardless of how `sync` fetches them.
 
@@ -243,11 +243,11 @@ A hardening of Option 4: instead of (or alongside) a release asset, the contrib 
 
 #### Option 6 - Automated, Dependabot-like PR sync (adopted in Phase A+)
 
-A bot opens (or refreshes) a Radius PR that runs `make update-resource-types` with the affected namespace refs, rewriting the matching `resourceTypes[].ref` entries so pins advance continuously, not only by hand at release time. This already exists as [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml): `resource-types-contrib` dispatches `resource-types-contrib-updated` for both pushes to `main` and published releases, and the Radius consumer opens a cumulative `bot/update-resource-types` PR. A GitHub App token makes that PR trigger CI (including the drift check) like a human PR.
+A bot opens (or refreshes) a Radius PR that runs the atomic sync target with affected namespace and recipe-pack refs. Unreleased units advance with `main`; released units advance only through stable releases. This already exists as [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml): `resource-types-contrib` dispatches `resource-types-contrib-updated` for both pushes to `main` and published releases, and the Radius consumer opens a cumulative `bot/update-resource-types` PR. A GitHub App token makes that PR trigger CI (including the drift check) like a human PR.
 
 ##### Advantages
 
-- **Keeps `latest`/`edge` current.** Contrib `main` moves continuously; the bot keeps the lag to one reviewable PR instead of a silent gap closed only at release time.
+- **Keeps unreleased units current without downgrading released units.** Contrib `main` moves continuously, but stable-first selection prevents an edge event from replacing a stable pin.
 - **Removes manual bump toil** while preserving every review gate: the bump is a PR with the full YAML diff, the drift check, and CI.
 - **Reuses an existing capability** - the workflow is already in the repo.
 
@@ -361,7 +361,7 @@ defaultRegistration:
 
 ##### Recipe pack pins
 
-`resource-types-contrib` also publishes **recipe packs** - the folders under `recipe-packs/` (`azure`, `kubernetes`) - on their own `recipe-pack/<pack>/vX.Y.Z` tag series, released independently of the namespace series ([resource-types-contrib#263](https://github.com/radius-project/resource-types-contrib/pull/263)). Radius does not vendor recipe packs: the extension deploy workflows fetch a pack's Bicep directly from upstream at deploy time. They are still recorded in `defaults.yaml` under a `recipePacks` list that reuses the `resourceTypes` entry shape, so there is one catalog of everything Radius consumes from upstream and one place to see which pack revision the workflows target.
+`resource-types-contrib` also publishes **recipe packs** under their own `recipe-pack/<pack>/vX.Y.Z` tag series, released independently of the namespace series ([resource-types-contrib#263](https://github.com/radius-project/resource-types-contrib/pull/263)). Radius does not vendor recipe packs: extension deploy workflows fetch consumed packs directly from upstream at deploy time. Consumed packs are recorded in `defaults.yaml` under a `recipePacks` list that reuses the `resourceTypes` entry shape. The generated workflows use a shared resolver to read recipe-pack and resource Recipe sources directly from this catalog; they contain no duplicated contrib refs.
 
 ```yaml
 recipePacks:
@@ -375,7 +375,7 @@ recipePacks:
     tag: ""
 ```
 
-`make update-recipe-packs` (`RECIPE_PACKS_REF` / `RECIPE_PACKS_NAME`, or a `RECIPE_PACKS_PINS` JSON batch) resolves and rewrites these pins exactly like `make update-resource-types` does for namespaces, but copies nothing - so the drift check does not apply to them. The upstream notifier currently classifies a `recipe-pack/` tag as a non-namespace scope and sends no dispatch; the Radius consumer already accepts an optional `recipe_packs` array in the payload, so enabling the dispatch upstream needs no further change here.
+`make update-recipe-packs` (`RECIPE_PACKS_REF` / `RECIPE_PACKS_NAME`, or a `RECIPE_PACKS_PINS` JSON batch) resolves and rewrites these pins exactly like `make update-resource-types` does for namespaces, but copies no pack files. The upstream notifier dispatches recipe-pack pushes and stable releases through the optional `recipe_packs` payload array. CI validates tag-to-SHA consistency and tests the runtime catalog resolver used by generated workflows.
 
 ###### Advantages
 
@@ -412,18 +412,18 @@ Concretely, two separate workflows: (1) a minimal `resource-types-contrib` relea
 
 The per-namespace pins in `defaults.yaml` are bumped by an **automated, Dependabot-like job that opens a reviewable PR**, not only by hand at release time. This is Phase A+: the immutable-pin transport (Option 3) and automated PR sync (Option 6) are adopted together as a **hybrid** - immutable `resourceTypes[].ref` entries plus a bot that proposes each affected ref as a PR carrying the full YAML diff, the drift check, and CI.
 
-The bot exists as [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml): the `resource-types-contrib` notifier emits a `resource-types-contrib-updated` `repository_dispatch` with a `namespaces` array of `{namespace, ref}` objects for both edge pushes and published releases, plus an optional `recipe_packs` array of `{name, ref}` objects. The Radius consumer accumulates those pins on `bot/update-resource-types`, runs `make update-resource-types` and `make update-recipe-packs`, and opens or refreshes the PR. A scoped GitHub App token makes that PR trigger CI (including the drift check) exactly like a human PR.
+The bot exists as [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml): the `resource-types-contrib` notifier emits a `resource-types-contrib-updated` `repository_dispatch` with a `namespaces` array of `{namespace, ref}` objects for both edge pushes and published releases, plus an optional `recipe_packs` array of `{name, ref}` objects. The Radius consumer accumulates those pins on `bot/update-resource-types`, atomically runs `make update-resource-types-and-recipe-packs`, and opens or refreshes the PR. A scoped GitHub App token makes that PR trigger CI (including the drift check) exactly like a human PR.
 
 **Channels.** Each affected `resourceTypes[].ref` follows one of two upstream channels, both stored as immutable commit SHAs:
 
-| Channel                    | Affected `resourceTypes[].ref` points to                                            | Trigger                                                                      | Status                                               |
-|----------------------------|-------------------------------------------------------------------------------------|------------------------------------------------------------------------------|------------------------------------------------------|
-| `main` / `edge` / `latest` | The pushed upstream `main` commit SHA for each affected namespace                   | Contrib notifier dispatch after a push to `main`                             | In place (Phase A+)                                  |
-| release                    | The commit behind each affected namespace-scoped tag; future asset digest alongside | Contrib notifier dispatch after the corresponding `release: published` event | In place; release-asset verification remains Phase B |
+| Channel         | Affected `resourceTypes[].ref` points to                                                  | Trigger                                                                      | Status                                               |
+|-----------------|-------------------------------------------------------------------------------------------|------------------------------------------------------------------------------|------------------------------------------------------|
+| `main` / `edge` | The pushed upstream `main` commit SHA, only while the affected unit has no stable release | Contrib notifier dispatch after a push to `main`                             | In place (Phase A+)                                  |
+| release         | The commit behind each affected namespace-scoped tag; future asset digest alongside       | Contrib notifier dispatch after the corresponding `release: published` event | In place; release-asset verification remains Phase B |
 
-The moving channel keeps Radius `latest`/`edge` builds current with contrib `main`; the release channel pins a stable upstream tag at Radius release time. The manual `make update-resource-types` in the [release guide](../../../docs/contributing/contributing-releases/README.md) is the human equivalent of the release-channel bump and remains the fallback. Both channels deliver the bump as a PR, so nothing is fetched at build or runtime without review.
+The moving channel keeps unreleased units current with contrib `main`. Once a unit has a stable release, only stable scoped releases (or a legacy repository-wide stable release when no scoped release exists) may advance it. The atomic manual target in the [release guide](../../../docs/contributing/contributing-releases/README.md) remains the fallback. Both channels deliver the bump as a PR, so nothing is fetched at build or runtime without review.
 
-**Why automate from the start.** Manual-only bumps drift: contrib `main` moves, Radius `latest` silently lags, and the gap is closed only at release time. A continuous bot PR keeps the lag to a single reviewable diff, makes every bump auditable, and runs the same drift check and CI a human bump would - so the automation is strictly the human path with the toil removed, not a new trust surface.
+**Why automate from the start.** Manual-only bumps drift. For unreleased units, the bot keeps edge lag to a single reviewable diff; for released units, it proposes new stable tags without allowing later edge pushes to downgrade them. Every bump runs the same drift check and CI as a human bump, so the automation is the human path with the toil removed, not a new trust surface.
 
 ### Error Handling
 
@@ -464,7 +464,7 @@ The moving channel keeps Radius `latest`/`edge` builds current with contrib `mai
 1. **PR 1 (radius):** add the namespace-scoped `resourceTypes` list to `defaults.yaml`; rewrite `build/resource-types.mk` to fetch by pinned ref (Option 3); update `verify-resource-types-manifest.yaml` (drop Go setup and `go.mod`/`go.sum` path filters); remove the `require` line and run `go mod tidy`; delete `pkg/resourcetypescontrib/import.go`. Verify drift CI and startup tests pass.
 2. **PR 2 (resource-types-contrib):** delete `go.mod` and `doc.go`.
 3. **PR 3 (radius):** update the release process doc and the contrib README to describe the ref-based bump.
-4. **Automated sync (Phase A+):** the `resource-types-contrib` notifier dispatches namespace-scoped refs for both pushes to `main` and published releases. [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml) validates that contract, accumulates pending namespace changes, runs `make update-resource-types`, surfaces the full YAML diff, and gates on the drift check + CI.
+4. **Automated sync (Phase A+):** the `resource-types-contrib` notifier dispatches namespace- and recipe-pack-scoped refs for both pushes to `main` and published releases. [`update-resource-types.yaml`](../../../.github/workflows/update-resource-types.yaml) validates that contract, accumulates pending changes, runs `make update-resource-types-and-recipe-packs`, surfaces the full YAML diff, and gates on the drift check + CI.
 5. **Phase B (contrib release assets + radius coordination):** extend namespace-scoped releases to attach manifest bundles + `checksums.txt` (Option 4); switch the Radius fetch step to download and verify each asset; record checksum/digest metadata alongside the affected `resourceTypes[].ref` entries. Optionally harden to signed OCI artifacts (Option 5: `oras pull … @digest` + `cosign verify`/SBOM). Sequenced with the radius core repo's GoReleaser work.
 
 ## Open Questions

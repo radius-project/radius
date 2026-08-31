@@ -18,6 +18,8 @@ package preview
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -26,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/group/common"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/recipepack"
@@ -79,13 +82,15 @@ rad env update myenv --clear-azure
 rad env update myenv --clear-aws
 
 ## Add Kubernetes cloud provider (preview)
+## The namespace can only be set on an environment that does not already have one; it is
+## immutable afterwards.
 rad env update myenv --kubernetes-namespace mynamespace
-
-## Remove Kubernetes cloud provider (preview)
-rad env update myenv --clear-kubernetes
 
 ## Set recipe packs to environment (--preview)
 rad env update myenv --recipe-packs pack1,pack2
+
+## Set recipe packs from a different resource group to environment (--preview)
+rad env update myenv --recipe-packs pack1 --recipe-pack-group other-group
 `,
 		RunE: framework.RunCommand(runner),
 	}
@@ -95,7 +100,16 @@ rad env update myenv --recipe-packs pack1,pack2
 	cmd.Flags().Bool(commonflags.ClearEnvAzureFlag, false, "Specify if azure provider needs to be cleared on env")
 	cmd.Flags().Bool(commonflags.ClearEnvAWSFlag, false, "Specify if aws provider needs to be cleared on env")
 	cmd.Flags().Bool(commonflags.ClearEnvKubernetesFlag, false, "Specify if kubernetes provider needs to be cleared on env (--preview)")
+
+	// The Kubernetes namespace is immutable once set, so this flag can no longer do anything: it is
+	// rejected on any environment that has a namespace and is a no-op on one that does not. It is
+	// kept so that users who scripted it get an explanation rather than a bare "unknown flag" from
+	// Cobra. MarkDeprecated also sets Hidden, so it no longer appears in help output. Remove it
+	// once Radius.Core leaves preview.
+	_ = cmd.Flags().MarkDeprecated(commonflags.ClearEnvKubernetesFlag, "the Kubernetes namespace of an environment cannot be removed; create a new environment instead")
+
 	cmd.Flags().StringSliceP("recipe-packs", "", []string{}, "Specify recipe packs to replace the environment's recipe pack list (--preview). Accepts comma-separated values.")
+	cmd.Flags().StringP("recipe-pack-group", "", "", "Specify the resource group containing the recipe packs named in --recipe-packs, if different from the environment's resource group (--preview).")
 	commonflags.AddAzureScopeFlags(cmd)
 	commonflags.AddAWSScopeFlags(cmd)
 	commonflags.AddKubernetesScopeFlags(cmd)
@@ -119,6 +133,7 @@ type Runner struct {
 	providers          *corerpv20250801.Providers
 	noFlagsSet         bool
 	recipePacks        []string
+	recipePackGroup    string
 }
 
 // NewRunner creates a new instance of the `rad env update` preview runner.
@@ -215,6 +230,27 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	r.recipePacks = recipepack.NormalizeRecipePacks(recipePacks)
 
+	// Reject an explicitly provided but effectively empty --recipe-packs value
+	// (e.g. "," or "  ") rather than silently skipping the recipe-pack update.
+	if cmd.Flags().Changed("recipe-packs") && len(r.recipePacks) == 0 {
+		return clierrors.Message("No valid recipe packs were provided. Specify one or more recipe pack names or IDs with --recipe-packs.")
+	}
+
+	r.recipePackGroup, err = cmd.Flags().GetString("recipe-pack-group")
+	if err != nil {
+		return err
+	}
+
+	if r.recipePackGroup != "" && !cmd.Flags().Changed("recipe-packs") {
+		return clierrors.Message("--recipe-pack-group can only be used together with --recipe-packs.")
+	}
+
+	if r.recipePackGroup != "" {
+		if err := common.ValidateResourceGroupName(r.recipePackGroup); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -247,6 +283,25 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// SystemData is owned by the service; do not send it back on update.
 	env.SystemData = nil
+
+	// The Kubernetes namespace is immutable once an environment has one: changing it would leave
+	// everything already deployed into the old namespace orphaned, and clearing it would release a
+	// claim that other environments were validated against. The server enforces this too, but
+	// failing here gives a better message and avoids a pointless round trip.
+	currentNamespace := ""
+	if env.Properties != nil && env.Properties.Providers != nil && env.Properties.Providers.Kubernetes != nil && env.Properties.Providers.Kubernetes.Namespace != nil {
+		currentNamespace = *env.Properties.Providers.Kubernetes.Namespace
+	}
+
+	if currentNamespace != "" {
+		if r.clearEnvKubernetes {
+			return clierrors.Message("Cannot clear the Kubernetes provider on environment %q: its namespace (%s) cannot be removed because resources already deployed into it would be orphaned. Create a new environment instead.", r.EnvironmentName, currentNamespace)
+		}
+
+		if r.providers.Kubernetes != nil && r.providers.Kubernetes.Namespace != nil && !strings.EqualFold(*r.providers.Kubernetes.Namespace, currentNamespace) {
+			return clierrors.Message("Cannot change the Kubernetes namespace of environment %q from %q to %q: resources already deployed into %s would be orphaned. Create a new environment instead.", r.EnvironmentName, currentNamespace, *r.providers.Kubernetes.Namespace, currentNamespace)
+		}
+	}
 
 	// only update azure provider info if user requires it.
 	if r.clearEnvAzure && env.Properties.Providers != nil {
@@ -297,51 +352,24 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	newRecipePacks := []*string{}
-
 	// Update recipe packs if specified: replace the environment's recipe pack list,
 	// keeping referencedBy on each recipe pack in sync.
 	if len(r.recipePacks) > 0 {
+		envID := *env.ID
+
+		// Resolve and validate all recipe packs before mutating anything or warning the
+		// user. Validating first keeps a failure from being printed underneath the
+		// replacement warning, where it reads as part of the warning instead of an error.
+		newRecipePacks, err := r.resolveRecipePacks(ctx)
+		if err != nil {
+			return err
+		}
+
 		if len(env.Properties.RecipePacks) > 0 {
 			r.Output.LogInfo("WARNING: The existing recipe pack list will be replaced with the specified packs.")
 		}
 
-		envID := *env.ID
-
-		// Resolve all new recipe packs to full IDs.
-		for _, recipePack := range r.recipePacks {
-			var rClientFactory *corerpv20250801.ClientFactory
-			recipePackID, err := resources.Parse(recipePack)
-			// If the provided recipe pack value is an ID, parse its scope.
-			if err == nil {
-				rClientFactory, err = cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
-				if err != nil {
-					return err
-				}
-			} else {
-				rClientFactory = r.RadiusCoreClientFactory
-				scopeID, err := resources.ParseScope(r.Workspace.Scope)
-				if err != nil {
-					return err
-				}
-
-				recipePackID = scopeID.Append(resources.TypeSegment{
-					Type: "Radius.Core/recipePacks",
-					Name: recipePack,
-				})
-			}
-
-			cfclient := rClientFactory.NewRecipePacksClient()
-
-			_, err = cfclient.Get(ctx, recipePackID.RootScope(), recipePackID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
-			if err != nil {
-				return clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to set on the environment.", recipePack)
-			}
-
-			newRecipePacks = append(newRecipePacks, to.Ptr(recipePackID.String()))
-		}
-
-		err := syncRecipePackReferences(ctx, envID, env.Properties.RecipePacks, newRecipePacks, r.Workspace, r.RadiusCoreClientFactory)
+		err = syncRecipePackReferences(ctx, envID, env.Properties.RecipePacks, newRecipePacks, r.Workspace, r.RadiusCoreClientFactory)
 		if err != nil {
 			return err
 		}
@@ -358,6 +386,42 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Radius.Core/environments/%s updated", r.EnvironmentName)
 
 	return nil
+}
+
+// resolveRecipePacks resolves each value passed to --recipe-packs to a full recipe
+// pack resource ID and verifies that the recipe pack exists. A bare name is scoped
+// to the workspace's resource group; a full resource ID is used as-is, which allows
+// referencing a recipe pack in another resource group.
+func (r *Runner) resolveRecipePacks(ctx context.Context) ([]*string, error) {
+	recipePackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
+	recipePackIDs := make([]*string, 0, len(r.recipePacks))
+
+	recipePackScope := r.Workspace.Scope
+	if r.recipePackGroup != "" {
+		workspaceScopeID, err := resources.ParseScope(r.Workspace.Scope)
+		if err != nil {
+			return nil, err
+		}
+		recipePackScope = fmt.Sprintf("%s/resourceGroups/%s", workspaceScopeID.PlaneScope(), r.recipePackGroup)
+	}
+
+	for _, recipePack := range r.recipePacks {
+		recipePackID, isFullID, err := recipepack.ResolveID(recipePack, recipePackScope)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = recipePackClient.Get(ctx, recipePackID.RootScope(), recipePackID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+		if clients.Is404Error(err) {
+			return nil, recipepack.NotFoundError(recipePack, recipePackID, isFullID)
+		} else if err != nil {
+			return nil, clierrors.MessageWithCause(err, "Failed to look up recipe pack %q.", recipePack)
+		}
+
+		recipePackIDs = append(recipePackIDs, to.Ptr(recipePackID.String()))
+	}
+
+	return recipePackIDs, nil
 }
 
 // syncRecipePackReferences updates the referencedBy field on recipe packs to reflect

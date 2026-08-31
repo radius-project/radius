@@ -53,20 +53,58 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-run-rad-commands-action ## Runs unit tests, excluding kubernetes controller tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
+test: test-get-envtools test-helm test-manage-radius-installation test-apply-custom-recipe-packs test-run-rad-commands-action test-command-outcome test-azure-oidc-refresh test-build-platforms test-publish-deploy-status test-extension-action-shell-syntax test-teardown test-deploy-progress test-verify-azure ## Runs unit tests, excluding kubernetes controller tests
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
 	@bash ./.github/scripts/manage-radius-installation_test.sh
 
-.PHONY: test-update-tools-pr
-test-update-tools-pr: ## Tests the automated tool-update pull request workflow
-	@bash ./.github/scripts/update-tools-pr_test.sh
+.PHONY: test-apply-custom-recipe-packs
+test-apply-custom-recipe-packs: ## Tests custom recipe pack reconciliation in the deploy action
+	@bash ./.github/extension/actions/apply-custom-recipe-packs/apply-custom-recipe-packs_test.sh
 
 .PHONY: test-run-rad-commands-action
 test-run-rad-commands-action: ## Tests application deploy parameter filtering in the run-rad-commands action
 	@bash ./.github/extension/actions/run-rad-commands/deploy-parameters_test.sh
+
+.PHONY: test-command-outcome
+test-command-outcome: ## Tests the result-accumulator outcome lifecycle in the run-rad-commands action
+	@bash ./.github/extension/actions/run-rad-commands/command-outcome_test.sh
+
+.PHONY: test-azure-oidc-refresh
+test-azure-oidc-refresh: ## Tests Azure OIDC token refresh behavior and workflow wiring
+	@bash ./.github/extension/scripts/refresh-azure-oidc-token_test.sh
+
+.PHONY: test-build-platforms
+test-build-platforms: ## Tests container build platform resolution and workflow wiring in the run-rad-commands action
+	@bash ./.github/extension/actions/run-rad-commands/compute-build-platforms_test.sh
+
+.PHONY: test-publish-deploy-status
+test-publish-deploy-status: ## Tests deploy status publishing in the publish-deploy-status action
+	@bash ./.github/extension/actions/publish-deploy-status/publish-deploy-status_test.sh
+
+.PHONY: test-verify-azure
+test-verify-azure: ## Tests Azure verification subscription visibility retry behavior
+	@bash ./.github/extension/verify-azure_test.sh
+
+.PHONY: test-extension-action-shell-syntax
+test-extension-action-shell-syntax: ## Tests bash syntax of run blocks in extension composite actions
+	@bash ./.github/extension/actions/action-shell-syntax_test.sh
+
+.PHONY: test-teardown
+test-teardown: ## Tests the teardown state-persistence guard and application-status listing
+	@bash ./.github/extension/actions/teardown/teardown_test.sh
+
+.PHONY: test-deploy-progress
+test-deploy-progress: ## Tests live deploy progress generation
+	@bash ./.github/extension/actions/deploy-progress/progress_test.sh
+
+.PHONY: test-deploy-progress-uploader
+test-deploy-progress-uploader: generate-pnpm-installed ## Tests and builds the live deploy progress artifact uploader
+	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader install --frozen-lockfile
+	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader test
+	@pnpm --dir ./.github/extension/actions/deploy-progress/artifact-uploader build
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
@@ -171,6 +209,13 @@ test-functional-multicluster-noncloud: ## Runs multi-cluster functional tests th
 	# recipe-created resources land there. Not part of test-functional-all-noncloud
 	# because of that extra setup.
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/multicluster/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
+
+.PHONY: test-functional-database-noncloud
+test-functional-database-noncloud: ## Runs the PostgreSQL-backed control plane (database.enabled=true) functional tests
+	# Requires a control plane installed with `rad install kubernetes --set database.enabled=true`.
+	# The tests fail against the default apiserver-backed install, so they are not part of
+	# test-functional-all-noncloud; CI runs them in the database-noncloud leg.
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/database/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
 .PHONY: test-functional-statestore-noncloud
 test-functional-statestore-noncloud: ## Runs the rad startup/shutdown state-storage lifecycle test

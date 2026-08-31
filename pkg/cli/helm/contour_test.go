@@ -73,10 +73,8 @@ func Test_prepareContourChart_LoadChartError(t *testing.T) {
 	helmAction := NewHelmAction(mockHelmClient)
 
 	options := ContourChartOptions{
-		ChartOptions: ChartOptions{
-			Namespace: "radius-system",
-			ChartPath: "bad-contour-chart",
-		},
+		Namespace: "radius-system",
+		ChartPath: "bad-contour-chart",
 	}
 
 	_, _, _, err := prepareContourChart(helmAction, options, "")
@@ -100,10 +98,8 @@ func Test_prepareContourChart_DoesNotMutateChartValues(t *testing.T) {
 	helmAction := NewHelmAction(mockHelmClient)
 
 	options := ContourChartOptions{
-		ChartOptions: ChartOptions{
-			Namespace: "radius-system",
-			ChartPath: "test-contour-chart",
-		},
+		Namespace:   "radius-system",
+		ChartPath:   "test-contour-chart",
 		HostNetwork: true,
 	}
 

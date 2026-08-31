@@ -41,19 +41,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresource-with-workload-identity.json",
 			expected: &datamodel.Environment{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-						Name: "env0",
-						Type: "Applications.Core/environments",
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2023-10-01-preview",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+				Name:                   "env0",
+				Type:                   "Applications.Core/environments",
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "2023-10-01-preview",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 				Properties: datamodel.EnvironmentProperties{
 					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
@@ -98,19 +92,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresource.json",
 			expected: &datamodel.Environment{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-						Name: "env0",
-						Type: "Applications.Core/environments",
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2023-10-01-preview",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+				Name:                   "env0",
+				Type:                   "Applications.Core/environments",
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "2023-10-01-preview",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 				Properties: datamodel.EnvironmentProperties{
 					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
@@ -219,19 +207,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresourceemptyext.json",
 			expected: &datamodel.Environment{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-						Name: "env0",
-						Type: "Applications.Core/environments",
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2023-10-01-preview",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+				Name:                   "env0",
+				Type:                   "Applications.Core/environments",
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "2023-10-01-preview",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 				Properties: datamodel.EnvironmentProperties{
 					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
@@ -261,19 +243,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresourceemptyext2.json",
 			expected: &datamodel.Environment{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-						Name: "env0",
-						Type: "Applications.Core/environments",
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2023-10-01-preview",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+				Name:                   "env0",
+				Type:                   "Applications.Core/environments",
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "2023-10-01-preview",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 				Properties: datamodel.EnvironmentProperties{
 					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
@@ -303,19 +279,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresource-with-simulated-enabled.json",
 			expected: &datamodel.Environment{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-						Name: "env0",
-						Type: "Applications.Core/environments",
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2023-10-01-preview",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+				Name:                   "env0",
+				Type:                   "Applications.Core/environments",
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "2023-10-01-preview",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 				Properties: datamodel.EnvironmentProperties{
 					Compute: rpv1.EnvironmentCompute{
 						Kind: "kubernetes",
@@ -332,19 +302,13 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresource-with-acicompute.json",
 			expected: &datamodel.Environment{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-						Name: "env0",
-						Type: "Applications.Core/environments",
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2023-10-01-preview",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+				Name:                   "env0",
+				Type:                   "Applications.Core/environments",
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "2023-10-01-preview",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 				Properties: datamodel.EnvironmentProperties{
 					Compute: rpv1.EnvironmentCompute{
 						Kind: "aci",

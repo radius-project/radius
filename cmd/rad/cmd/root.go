@@ -302,6 +302,8 @@ func initSubCommands() {
 	resourceCmd.AddCommand(resourceShowCmd)
 
 	resourceListCmd, _ := resource_list.NewCommand(framework)
+	previewResourceListCmd, _ := resource_list.NewPreviewCommand(framework)
+	wirePreviewSubcommand(resourceListCmd, previewResourceListCmd)
 	resourceCmd.AddCommand(resourceListCmd)
 
 	resourceCreateCmd, _ := resource_create.NewCommand(framework)
@@ -379,8 +381,8 @@ func initSubCommands() {
 
 	envDeleteCmd, _ := env_delete.NewCommand(framework)
 	previewDeleteCmd, _ := env_delete_preview.NewCommand(framework)
-	wirePreviewSubcommand(envDeleteCmd, previewDeleteCmd)
-	envCmd.AddCommand(envDeleteCmd)
+	wirePreviewSubcommandPreviewBase(previewDeleteCmd, envDeleteCmd.RunE, "Use the Radius.Core preview implementation for environment delete", "force")
+	envCmd.AddCommand(previewDeleteCmd)
 
 	envListCmd, _ := env_list.NewCommand(framework)
 	previewListCmd, _ := env_list_preview.NewCommand(framework)

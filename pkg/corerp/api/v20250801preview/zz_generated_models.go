@@ -369,12 +369,14 @@ type EnvironmentProperties struct {
 // that platform engineers configure for their developers. Every Radius Application is deployed to an Environment through
 // its `environment` property.
 // An Environment defines three things for the Applications deployed to it:
-// - **Where resources are deployed**: the target compute platform and cloud provider accounts, set through the `providers`
-// property.
-// - **Which Recipes are used**: the Recipe Packs whose Recipes provision the infrastructure backing application resources,
-// set through the `recipePacks` property.
-// - **Advanced Terraform and Bicep settings**: environment-wide Recipe parameters and Terraform or Bicep engine configuration
-// applied when Recipes run.
+//
+//   - **Where resources are deployed**: the target compute platform and cloud provider accounts, set through the `providers`
+//     property.
+//   - **Which Recipes are used**: the Recipe Packs whose Recipes provision the infrastructure backing application resources,
+//     set through the `recipePacks` property.
+//   - **Advanced Terraform and Bicep settings**: environment-wide Recipe parameters and Terraform or Bicep engine configuration
+//     applied when Recipes run.
+//
 // ## Defining an Environment
 // The simplest Environment can be created directly with the `rad environment create` command, without a Bicep file:
 // ```bash

@@ -25,21 +25,15 @@ import (
 // ConvertTo converts from the versioned BicepSettings resource to version-agnostic datamodel.
 func (src *BicepSettingsResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.BicepSettings{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				CreatedAPIVersion:      Version,
-				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			},
-		},
-		Properties: datamodel.BicepSettingsResourceProperties{},
+		ID:                     to.String(src.ID),
+		Name:                   to.String(src.Name),
+		Type:                   to.String(src.Type),
+		Location:               to.String(src.Location),
+		Tags:                   to.StringMap(src.Tags),
+		CreatedAPIVersion:      Version,
+		UpdatedAPIVersion:      Version,
+		AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+		Properties:             datamodel.BicepSettingsResourceProperties{},
 	}
 
 	if len(src.Properties.RegistryAuthentications) > 0 {

@@ -34,7 +34,6 @@ import (
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -361,11 +360,9 @@ func TestUpsertSecret(t *testing.T) {
 		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 
 		ksecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "letsencrypt-prod",
-				Namespace: "default",
-			},
-			Data: map[string][]byte{},
+			Name:      "letsencrypt-prod",
+			Namespace: "default",
+			Data:      map[string][]byte{},
 		}
 		opt := &controller.Options{
 			KubeClient: k8sutil.NewFakeKubeClient(nil, ksecret),
@@ -385,10 +382,8 @@ func TestUpsertSecret(t *testing.T) {
 		newResource.Properties.Resource = "default/secret"
 
 		ksecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "secret",
-				Namespace: "default",
-			},
+			Name:      "secret",
+			Namespace: "default",
 			Data: map[string][]byte{
 				"private.key": []byte("private key value"),
 			},
@@ -639,12 +634,10 @@ func TestDeleteSecret(t *testing.T) {
 		res := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 
 		ksecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "letsencrypt-prod",
-				Namespace: "default",
-				Labels: map[string]string{
-					kubernetes.LabelRadiusResourceType: "test",
-				},
+			Name:      "letsencrypt-prod",
+			Namespace: "default",
+			Labels: map[string]string{
+				kubernetes.LabelRadiusResourceType: "test",
 			},
 			Data: map[string][]byte{},
 		}
@@ -664,11 +657,9 @@ func TestDeleteSecret(t *testing.T) {
 		res := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 
 		ksecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "letsencrypt-prod",
-				Namespace: "default",
-			},
-			Data: map[string][]byte{},
+			Name:      "letsencrypt-prod",
+			Namespace: "default",
+			Data:      map[string][]byte{},
 		}
 		opt := &controller.Options{
 			KubeClient: k8sutil.NewFakeKubeClient(nil, ksecret),

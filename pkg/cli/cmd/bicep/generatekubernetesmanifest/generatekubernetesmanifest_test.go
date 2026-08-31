@@ -163,7 +163,7 @@ func Test_Run(t *testing.T) {
 
 		bicep := bicep.NewMockInterface(ctrl)
 		bicep.EXPECT().
-			PrepareTemplate(bicepFilePath).
+			PrepareTemplate(gomock.Any(), bicepFilePath).
 			Return(templateMap, nil).
 			Times(1)
 

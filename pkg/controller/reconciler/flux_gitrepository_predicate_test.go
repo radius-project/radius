@@ -18,7 +18,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	"github.com/fluxcd/pkg/apis/meta"
@@ -44,9 +43,7 @@ func TestGitRepositoryRevisionChangePredicate_Create(t *testing.T) {
 			name: "Source has no artifact",
 			event: event.CreateEvent{
 				Object: &sourcev1.GitRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-repo",
-					},
+					Name: "test-repo",
 				},
 			},
 			expected: false,
@@ -55,9 +52,7 @@ func TestGitRepositoryRevisionChangePredicate_Create(t *testing.T) {
 			name: "Source has an artifact",
 			event: event.CreateEvent{
 				Object: &sourcev1.GitRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-repo",
-					},
+					Name: "test-repo",
 					Status: sourcev1.GitRepositoryStatus{
 						Artifact: &meta.Artifact{
 							Revision: "test-revision",
@@ -89,9 +84,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 			name: "Source ObjectOld is nil",
 			event: event.UpdateEvent{
 				ObjectNew: &sourcev1.GitRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-repo",
-					},
+					Name: "test-repo",
 				},
 			},
 			expected: false,
@@ -100,9 +93,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 			name: "Source ObjectNew is nil",
 			event: event.UpdateEvent{
 				ObjectOld: &sourcev1.GitRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-repo",
-					},
+					Name: "test-repo",
 				},
 			},
 			expected: false,
@@ -112,9 +103,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 			event: event.UpdateEvent{
 				ObjectOld: &corev1.Pod{},
 				ObjectNew: &sourcev1.GitRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-repo",
-					},
+					Name: "test-repo",
 				},
 			},
 			expected: false,
@@ -123,9 +112,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 			name: "Source ObjectNew is not a sourcev1.Source",
 			event: event.UpdateEvent{
 				ObjectOld: &sourcev1.GitRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-repo",
-					},
+					Name: "test-repo",
 				},
 				ObjectNew: &corev1.Pod{},
 			},
@@ -135,14 +122,10 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 			name: "Sources ObjectOld and ObjectNew have no artifact",
 			event: event.UpdateEvent{
 				ObjectOld: &sourcev1.GitRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-repo",
-					},
+					Name: "test-repo",
 				},
 				ObjectNew: &sourcev1.GitRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-repo",
-					},
+					Name: "test-repo",
 				},
 			},
 			expected: false,
@@ -151,9 +134,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 			name: "Source ObjectNew and ObjectOld are the same",
 			event: event.UpdateEvent{
 				ObjectOld: &sourcev1.GitRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-repo",
-					},
+					Name: "test-repo",
 					Status: sourcev1.GitRepositoryStatus{
 						Artifact: &meta.Artifact{
 							Revision: "test-revision",
@@ -161,9 +142,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 					},
 				},
 				ObjectNew: &sourcev1.GitRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-repo",
-					},
+					Name: "test-repo",
 					Status: sourcev1.GitRepositoryStatus{
 						Artifact: &meta.Artifact{
 							Revision: "test-revision",
@@ -177,9 +156,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 			name: "Source ObjectNew and ObjectOld have different revisions",
 			event: event.UpdateEvent{
 				ObjectOld: &sourcev1.GitRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-repo",
-					},
+					Name: "test-repo",
 					Status: sourcev1.GitRepositoryStatus{
 						Artifact: &meta.Artifact{
 							Revision: "test-revision",
@@ -187,9 +164,7 @@ func TestGitRepositoryRevisionChangePredicate_Update(t *testing.T) {
 					},
 				},
 				ObjectNew: &sourcev1.GitRepository{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "test-repo",
-					},
+					Name: "test-repo",
 					Status: sourcev1.GitRepositoryStatus{
 						Artifact: &meta.Artifact{
 							Revision: "test-revision-different",

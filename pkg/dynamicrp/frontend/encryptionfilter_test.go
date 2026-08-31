@@ -23,7 +23,6 @@ import (
 
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/crypto/encryption"
@@ -286,9 +285,7 @@ func testUCPClientFactoryWithError() (*v20231001preview.ClientFactory, error) {
 	}
 
 	return v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: fake.NewAPIVersionsServerTransport(&apiVersionsServer),
-		},
+		Transport: fake.NewAPIVersionsServerTransport(&apiVersionsServer),
 	})
 }
 
@@ -296,11 +293,9 @@ func createFakeUCPClientFactory(schema map[string]any) (*v20231001preview.Client
 	apiVersionsServer := fake.APIVersionsServer{
 		Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (resp azfake.Responder[v20231001preview.APIVersionsClientGetResponse], errResp azfake.ErrorResponder) {
 			response := v20231001preview.APIVersionsClientGetResponse{
-				APIVersionResource: v20231001preview.APIVersionResource{
-					Name: new(apiVersionName),
-					Properties: &v20231001preview.APIVersionProperties{
-						Schema: schema,
-					},
+				Name: new(apiVersionName),
+				Properties: &v20231001preview.APIVersionProperties{
+					Schema: schema,
 				},
 			}
 			resp.SetResponse(http.StatusOK, response, nil)
@@ -309,8 +304,6 @@ func createFakeUCPClientFactory(schema map[string]any) (*v20231001preview.Client
 	}
 
 	return v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: fake.NewAPIVersionsServerTransport(&apiVersionsServer),
-		},
+		Transport: fake.NewAPIVersionsServerTransport(&apiVersionsServer),
 	})
 }

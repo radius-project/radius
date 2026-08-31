@@ -46,7 +46,7 @@ make test-functional-daprrp
 make test-functional-datastoresrp
 ```
 
-To run a single group directly, call its `make` target — for example `make test-functional-corerp-noncloud` for the non-cloud Core RP tests, or `make test-functional-all-noncloud` for the standard non-cloud groups. The groups (`ucp`, `kubernetes`, `corerp`, `cli`, `msgrp`, `daprrp`, `datastoresrp`, `dynamicrp`, `samples`, `upgrade`, `multicluster`, and `statestore`) and the variants each group supports are defined in [`build/test.mk`](../../../../build/test.mk).
+To run a single group directly, call its `make` target — for example `make test-functional-corerp-noncloud` for the non-cloud Core RP tests, or `make test-functional-all-noncloud` for the standard non-cloud groups. The groups (`ucp`, `kubernetes`, `corerp`, `cli`, `msgrp`, `daprrp`, `datastoresrp`, `dynamicrp`, `samples`, `upgrade`, `multicluster`, `database`, and `statestore`) and the variants each group supports are defined in [`build/test.mk`](../../../../build/test.mk).
 
 You can also run or debug individual tests from VS Code.
 
@@ -54,13 +54,24 @@ You can also run or debug individual tests from VS Code.
 
 The aggregate `make test-functional-all-noncloud` target intentionally excludes these isolated groups:
 
-| Target                                       | Requirements and behavior                                                                                                                      |
-|----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| `make test-functional-multicluster-noncloud` | Requires a second Kubernetes cluster, a target-cluster Secret mounted into Radius, and `RADIUS_TEST_EXTERNAL_KUBECONFIG` for the test process. |
-| `make test-functional-statestore-noncloud`   | Destructive lifecycle test that installs, purges, and reinstalls Radius. Run it only on a dedicated cluster.                                   |
-| `make test-functional-upgrade-noncloud`      | Exercises the Radius upgrade path and performs its own install/upgrade lifecycle.                                                              |
+| Target                                       | Requirements and behavior                                                                                                                          |
+|----------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `make test-functional-multicluster-noncloud` | Requires a second Kubernetes cluster, a target-cluster Secret mounted into Radius, and `RADIUS_TEST_EXTERNAL_KUBECONFIG` for the test process.     |
+| `make test-functional-database-noncloud`     | Requires Radius installed with `--set database.enabled=true` (PostgreSQL-backed control plane) instead of the default Kubernetes API server store. |
+| `make test-functional-statestore-noncloud`   | Destructive lifecycle test that installs, purges, and reinstalls Radius. Run it only on a dedicated cluster.                                       |
+| `make test-functional-upgrade-noncloud`      | Exercises the Radius upgrade path and performs its own install/upgrade lifecycle.                                                                  |
 
-The multicluster and statestore groups run as isolated CI legs in `functional-test-noncloud.yaml`; do not run them against a shared development cluster.
+The multicluster, database, and statestore groups run as isolated CI legs in `functional-test-noncloud.yaml`; do not run them against a shared development cluster.
+
+For database tests, install Radius with the PostgreSQL-backed control plane first:
+
+```bash
+rad install kubernetes --set database.enabled=true
+```
+
+Running `make test-functional-database-noncloud` against a default (API server-backed) install fails, because the tests check that the PostgreSQL StatefulSet is present before asserting anything else.
+
+Use a cluster that has never had a default install. The tests also assert that the API server store holds no objects, which is how they prove the resource providers actually switched to PostgreSQL rather than only running it alongside. Switching providers does not migrate or delete rows already written to the API server store, so a cluster that was previously installed without `database.enabled=true` keeps those objects and fails that assertion even when the PostgreSQL-backed control plane is healthy. CI creates a fresh cluster for every run.
 
 For multicluster tests, create the namespace and Secret before installing Radius. The kubeconfig stored in the Secret must use an API-server address reachable from the Radius pods:
 
@@ -89,7 +100,7 @@ The Make targets accept these environment variables:
 Functional tests support two cleanup modes, selected with the `RADIUS_TEST_FAST_CLEANUP` environment variable:
 
 - **Standard cleanup** (default for local development): waits for each resource to be fully deleted before proceeding, logs the deletion process, and shows retries for resources stuck in "Updating". Best for debugging cleanup issues.
-- **Fast cleanup** (default for CI): initiates deletions in the background without waiting, which avoids deletion timeouts and dramatically reduces run time. It **skips post-delete verification**, so it is only safe for non-cloud tests where Kubernetes cluster cleanup handles orphaned resources. CI enables it with `RADIUS_TEST_FAST_CLEANUP=true`.
+- **Fast cleanup** (default for CI, including the cloud suites): initiates deletions in the background without waiting, which avoids deletion timeouts and dramatically reduces run time. It **skips post-delete verification and ignores deletion errors**, and relies on the per-run cluster and Azure resource group being deleted afterward. CI enables it with `RADIUS_TEST_FAST_CLEANUP=true`.
 
 ```bash
 # Enable fast cleanup (useful for local testing with unique resource names)
@@ -101,7 +112,13 @@ export RADIUS_TEST_FAST_CLEANUP=false
 go test ./test/functional-portable/corerp/noncloud/resources
 ```
 
-> ⚠️ **Important**: Fast cleanup is only safe for non-cloud tests. Cloud tests always use standard cleanup to ensure proper deletion of cloud resources that incur costs.
+> ⚠️ **Important**: Fast cleanup discards deletion errors, so a teardown bug stays invisible in any suite that runs with it enabled. The long-running test runs against a persistent cluster with standard cleanup, which is where such bugs surface.
+
+### Resource deletion order
+
+Tests declare the resources they expect in `RPResources`, and the framework deletes them in dependency order rather than declaration order: applications first, then application-scoped resources, then environments, and finally recipe packs. Declaration order is preserved within each of those groups.
+
+This ordering matters because deleting an application cascades into the resources it owns, and a recipe-backed resource loads its environment configuration to run the recipe's delete. Removing the environment or recipe pack first makes that delete fail with an `Internal` error wrapping a `NotFound` on the environment.
 
 ### See log output in VS Code
 

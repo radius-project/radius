@@ -288,10 +288,10 @@ func (r *ResourceTypesServerTransport) dispatchGetIcon(req *http.Request) (*http
 		return nil, err
 	}
 	if val := server.GetResponse(respr).CacheControl; val != nil {
-		resp.Header.Set("cache-control", "public, max-age=31536000, immutable")
+		resp.Header.Set("Cache-Control", "public, max-age=31536000, immutable")
 	}
 	if val := server.GetResponse(respr).ContentType; val != nil {
-		resp.Header.Set("content-type", "image/svg+xml")
+		resp.Header.Set("Content-Type", "image/svg+xml")
 	}
 	return resp, nil
 }

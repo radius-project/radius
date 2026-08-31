@@ -56,7 +56,7 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 	applicationName := namespace
 
 	// Create the namespace, if it already exists we can ignore the error.
-	_, err := opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
+	_, err := opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{Name: namespace}, metav1.CreateOptions{})
 	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
 
 	cli := radcli.NewCLI(t, "")
@@ -160,15 +160,13 @@ func Test_TutorialApplication_KubernetesManifests(t *testing.T) {
 
 func makeDeployment(name types.NamespacedName, environmentName string, applicationName string) *appsv1.Deployment {
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name.Name,
-			Namespace: name.Namespace,
-			Annotations: map[string]string{
-				"radapp.io/enabled":          "true",
-				"radapp.io/connection-redis": "db",
-				"radapp.io/environment":      environmentName,
-				"radapp.io/application":      applicationName,
-			},
+		Name:      name.Name,
+		Namespace: name.Namespace,
+		Annotations: map[string]string{
+			"radapp.io/enabled":          "true",
+			"radapp.io/connection-redis": "db",
+			"radapp.io/environment":      environmentName,
+			"radapp.io/application":      applicationName,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
@@ -198,13 +196,11 @@ func makeDeployment(name types.NamespacedName, environmentName string, applicati
 
 func makeRecipe(name types.NamespacedName, environmentName string, applicationName string) *radappiov1alpha3.Recipe {
 	return &radappiov1alpha3.Recipe{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name.Name,
-			Namespace: name.Namespace,
-			Annotations: map[string]string{
-				"radapp.io/enabled":          "true",
-				"radapp.io/connection-redis": "db",
-			},
+		Name:      name.Name,
+		Namespace: name.Namespace,
+		Annotations: map[string]string{
+			"radapp.io/enabled":          "true",
+			"radapp.io/connection-redis": "db",
 		},
 		Spec: radappiov1alpha3.RecipeSpec{
 			Type:        "Applications.Datastores/redisCaches",
@@ -217,7 +213,7 @@ func makeRecipe(name types.NamespacedName, environmentName string, applicationNa
 func waitForRecipeReady(t *testing.T, ctx context.Context, name types.NamespacedName, client controller_runtime.WithWatch, initialVersion string) (*radappiov1alpha3.Recipe, error) {
 	// Based on https://gist.github.com/PrasadG193/52faed6499d2ec739f9630b9d044ffdc
 	lister := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+		ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
 			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
 			recipes := &radappiov1alpha3.RecipeList{}
 			err := client.List(ctx, recipes, listOptions)
@@ -227,7 +223,7 @@ func waitForRecipeReady(t *testing.T, ctx context.Context, name types.Namespaced
 
 			return recipes, nil
 		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+		WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
 			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
 			recipes := &radappiov1alpha3.RecipeList{}
 			return client.Watch(ctx, recipes, listOptions)

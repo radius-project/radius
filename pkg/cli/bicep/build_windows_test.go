@@ -86,14 +86,14 @@ func TestHelperProcess(t *testing.T) {
 	}
 	if _, err := os.Stat(readyFile); err != nil {
 		fmt.Fprintf(os.Stderr, "fake bicep did not signal readiness within deadline: %v\n", err)
-		os.Exit(2)
+		os.Exit(2) //nolint:forbidigo // Intentional: terminate the helper subprocess on setup failure.
 	}
 	// Exit while fake bicep may still be alive.  This is the crux of the test:
 	// any stderr handle that bicep inherited will keep the caller's pipe open
 	// after we exit; with StderrPipe() bicep never has the caller's handle, so
 	// the pipe closes as soon as we do.
 	fmt.Fprintln(os.Stderr, "rad helper exiting")
-	os.Exit(0)
+	os.Exit(0) //nolint:forbidigo // Intentional: exit while the fake bicep process is still alive.
 }
 
 // TestVersion_ClosesCallerStderrPipePromptly is a Windows-only regression test

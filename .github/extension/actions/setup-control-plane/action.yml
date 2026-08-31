@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+---
 # Provider-agnostic control-plane setup shared by run-rad-commands-aws.yml and
 # run-rad-commands-azure.yml. Installs the runner tooling, stands up the ephemeral
 # k3d control-plane cluster, stores the target-cluster kubeconfig as a Secret, and
@@ -37,16 +39,19 @@ runs:
         kubectl wait --for=condition=Ready node --all --timeout=120s
 
     - name: Install oras
-      uses: oras-project/setup-oras@22ce207df3b08e061f537244349aac6ae1d214f6 # v1
+      uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d # v2.0.1
 
     - name: Install Radius CLI
       shell: bash
       env:
-        # Pin the Radius install script to a released tag and verify its checksum
+        # Pin the Radius install script to an immutable ref and verify its checksum
         # before running it, rather than piping from main. The CLI channel stays
         # `edge` so the workflow still exercises the latest control-plane build.
-        RADIUS_INSTALL_REF: v0.59.0
-        RADIUS_INSTALL_SHA256: cf96794af522b266f56985f195e9c2bdd4f7e8d9e5267ae0595b9d37cb225e7b
+        # Pinned to the main commit carrying the install.sh sudo fix so consumers
+        # pick it up without waiting for a patch release. Use an unambiguous
+        # abbreviated ref; the checksum below verifies the exact script contents.
+        RADIUS_INSTALL_REF: f4b44130e6cc
+        RADIUS_INSTALL_SHA256: d12f6e1101dea7911c491de14a0f0aef57518aaf573d46e225b29d6f103c2e86
       run: |
         curl -sSL "https://raw.githubusercontent.com/radius-project/radius/${RADIUS_INSTALL_REF}/deploy/install.sh" -o install-rad.sh
         echo "${RADIUS_INSTALL_SHA256}  install-rad.sh" | sha256sum -c -
@@ -55,7 +60,7 @@ runs:
         rad version
 
     - name: Install Terraform
-      uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+      uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
       with:
         terraform_wrapper: false
 

@@ -17,6 +17,7 @@ limitations under the License.
 package clientv2
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -196,16 +197,23 @@ func unfoldResponseError(in *azcore.ResponseError) *v1.ErrorDetails {
 	return &raw.Error
 }
 
+// readResponseBody reads the body of the given response and restores it so that
+// the body can be read again by subsequent callers. Without restoring the body,
+// a second read would observe an empty/closed reader, which previously caused
+// callers such as TryUnfoldResponseError to return nil on repeated invocations.
 func readResponseBody(resp *http.Response) ([]byte, error) {
 	if resp.Body == nil {
 		return []byte{}, nil
 	}
-	defer resp.Body.Close()
 
 	data, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
+
+	// Restore the body so it can be read again by other consumers of the response.
+	resp.Body = io.NopCloser(bytes.NewReader(data))
 
 	return data, nil
 }

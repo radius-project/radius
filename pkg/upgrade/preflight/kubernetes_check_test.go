@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	clienttesting "k8s.io/client-go/testing"
@@ -50,7 +49,7 @@ func TestKubernetesConnectivityCheck_Run(t *testing.T) {
 		// Setup: namespace exists, deployments can be listed
 		clientset := fake.NewClientset(
 			&corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{Name: RadiusSystemNamespace},
+				Name: RadiusSystemNamespace,
 			},
 		)
 
@@ -78,7 +77,7 @@ func TestKubernetesConnectivityCheck_Run(t *testing.T) {
 		// Setup: namespace exists but can't list deployments
 		clientset := fake.NewClientset(
 			&corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{Name: RadiusSystemNamespace},
+				Name: RadiusSystemNamespace,
 			},
 		)
 

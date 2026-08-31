@@ -10,7 +10,7 @@ platforms:
 tools:
   - name: yq
     makePrefix: YQ
-    version: v4.53.3
+    version: v4.53.6
     source:
       type: github-release
       repository: mikefarah/yq
@@ -19,16 +19,16 @@ tools:
     platforms:
       linux_amd64:
         asset: yq_linux_amd64
-        checksum: fa52a4e758c63d38299163fbdd1edfb4c4963247918bf9c1c5d31d84789eded4
+        checksum: c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385
       linux_arm64:
         asset: yq_linux_arm64
-        checksum: 578648e463a11c1b6db6010cbf41eafed6bee79466fcffa1bb446672cf7945ea
+        checksum: 88a1016bc1d657375a35864e4f44b6f333df8ff97b559f51bba0adcb2169df09
       darwin_amd64:
         asset: yq_darwin_amd64
-        checksum: b4ba1ecce3c47f00803f4f964de38394326c7a32eb6540616e04fb2935a0f08d
+        checksum: caa513cb04f3804b34d4752f0e0d7904fecb9e7cf1d34081289f83259319a7f6
       darwin_arm64:
         asset: yq_darwin_arm64
-        checksum: 877de31753a4dd2401aa048937aa9a7fc4d5f6ce858cf31508c5802954297213
+        checksum: cceb0b8d71ea5294334121f8429f33f92b920e7217d904a2f9f35443968ac424
     checksumSource:
       type: github-release-file
       fileTemplate: checksums
@@ -115,7 +115,7 @@ tools:
 
   - name: dapr
     makePrefix: DAPR
-    version: v1.18.0
+    version: v1.18.2
     source:
       type: github-release
       repository: dapr/cli
@@ -124,16 +124,16 @@ tools:
     platforms:
       linux_amd64:
         asset: dapr_linux_amd64.tar.gz
-        checksum: 2a94739e0aa101289d88418225319562bc6800db273b3d9cf819a0efd1ea1bfe
+        checksum: ccfff008fd16f50096a9192ad56697ac7052e3add6fa0a07789d87b4c4df8c40
       linux_arm64:
         asset: dapr_linux_arm64.tar.gz
-        checksum: 99d93e1dde04225204e2feb33191a1df97c87bb7d88abd10d1523f29a88d35d2
+        checksum: 356e40cffc3ee4ebaa0396edde31a6e33bc0351162a6a9ea98550baebb8d039f
       darwin_amd64:
         asset: dapr_darwin_amd64.tar.gz
-        checksum: 2a7b7f3e4dfa5f8408b183bf840ab518766d91c3338e540cf84e16b5eb561604
+        checksum: 50f92e8fcaf6db561ac87c5d84d444e727de04a00004186cae3c97864814599f
       darwin_arm64:
         asset: dapr_darwin_arm64.tar.gz
-        checksum: 7d564d6aa29a68caab53e9aa4bcb4aabd9da5829992f3c8c297df3095ef5678b
+        checksum: 597454b453e2a9242ee8638ff24d0ecf274e4ed59d3dd34ac1cc789c22af1f12
     checksumSource:
       type: github-release-file
       fileTemplate: "{asset}.sha256"
@@ -141,7 +141,7 @@ tools:
 
   - name: helm
     makePrefix: HELM
-    version: v4.2.3
+    version: v4.2.4
     source:
       type: github-release
       repository: helm/helm
@@ -150,16 +150,16 @@ tools:
     platforms:
       linux_amd64:
         asset: helm-{version}-linux-amd64.tar.gz
-        checksum: e9b88b4ee95b18c706839c28d3a0220e5bc470e9cd9262410c90793c45ff8b7c
+        checksum: c306b46f719b0a4da32d0f78ee21bf90ce8d602f15b22ab753f0674d1670a7f3
       linux_arm64:
         asset: helm-{version}-linux-arm64.tar.gz
-        checksum: 21abd9354d39b2cd79a8d76be6912cd137a983cbf997193503fb8a6a6e2f2785
+        checksum: 564de2191b881e9f71b5606b25345821ea1682f06ab90499d3ab22b530176da1
       darwin_amd64:
         asset: helm-{version}-darwin-amd64.tar.gz
-        checksum: ff3ac86755a45f3422473bc1200776aac0fe04c5766abe6ca66699f7b564b23b
+        checksum: 6c163d687ca03c3b5c01928e53bbbcf9518278f47ce7a2f249a5a08e8bdaa2bc
       darwin_arm64:
         asset: helm-{version}-darwin-arm64.tar.gz
-        checksum: 048ecf5ad3160f83d918f9fe945238d2132b079640f7b106175331c25f242c64
+        checksum: d747eb4e28bd2727173d15b759fa0a17822291ec09db7ced3d55af290a3661a2
     checksumSource:
       type: url-file
       urlTemplate: https://get.helm.sh/{asset}.sha256sum
@@ -193,7 +193,7 @@ tools:
 
   - name: golangci-lint
     makePrefix: GOLANGCI_LINT
-    version: v2.12.2
+    version: v2.13.1
     source:
       type: github-release
       repository: golangci/golangci-lint
@@ -202,16 +202,16 @@ tools:
     platforms:
       linux_amd64:
         asset: golangci-lint-{version_no_v}-linux-amd64.tar.gz
-        checksum: 8df580d2670fed8fa984aac0507099af8df275e665215f5c7a2ae3943893a553
+        checksum: b17bfbc9d4aaa48be7f4f1ce3240bc3d8200c870c072bacf15c26219e2cfb9cc
       linux_arm64:
         asset: golangci-lint-{version_no_v}-linux-arm64.tar.gz
-        checksum: 44cd40a8c76c86755375adfeea52cfd3533cb43d7bd647771e0ae065e166df3a
+        checksum: 908317c23db18448f924e853b3d8a659fd919614cd438f224810a4053daa2607
       darwin_amd64:
         asset: golangci-lint-{version_no_v}-darwin-amd64.tar.gz
-        checksum: f6f06d94b6241521c53d15450c5209b028270bf966f842afb11c030c79f5bc16
+        checksum: 2c373363953e4e0bee2a03b7fe864a5eb6a3822927cb077d9ca33f2ae3cb2da2
       darwin_arm64:
         asset: golangci-lint-{version_no_v}-darwin-arm64.tar.gz
-        checksum: a9c54498731b3128f79e090be6110f3e5fffccc617b08142ed244d4126c73f29
+        checksum: 0c9818baf6fb8ad26c6d2ef51b68d5a1e260ef07727036b1431647cc44637c7c
     checksumSource:
       type: github-release-file
       fileTemplate: golangci-lint-{version_no_v}-checksums.txt
@@ -222,6 +222,7 @@ tools:
     version: 1.15.8
     source:
       type: hashicorp-checkpoint
+      repository: hashicorp/terraform
       latestURL: https://checkpoint-api.hashicorp.com/v1/check/terraform
     downloadTemplate: https://releases.hashicorp.com/terraform/{version}/terraform_{version}_{os}_{arch}.zip
     platforms:
@@ -358,7 +359,7 @@ tools:
 
   - name: dlv
     makePrefix: DLV
-    version: v1.27.0
+    version: v1.27.1
     source:
       type: github-release
       repository: go-delve/delve

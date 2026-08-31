@@ -17,9 +17,13 @@ limitations under the License.
 package bicep
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/yaml"
 )
 
 func Test_InspectTemplateResources(t *testing.T) {
@@ -532,5 +536,624 @@ func Test_HasOnlyRadiusResourceTypes(t *testing.T) {
 			result := HasOnlyRadiusResourceTypes(tt.template)
 			require.Equal(t, tt.expected, result)
 		})
+	}
+}
+
+func Test_InspectDeprecatedResources(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		template map[string]any
+		expected []DeprecatedResource
+	}{
+		{
+			name:     "Nil template",
+			template: nil,
+			expected: nil,
+		},
+		{
+			name:     "Empty template",
+			template: map[string]any{},
+			expected: nil,
+		},
+		{
+			name: "Template with empty resources map",
+			template: map[string]any{
+				"resources": map[string]any{},
+			},
+			expected: nil,
+		},
+		{
+			name: "Deprecated type with a known replacement",
+			template: map[string]any{
+				"resources": map[string]any{
+					"container": map[string]any{
+						"type": "Applications.Core/containers@2023-10-01-preview",
+						"name": "my-container",
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{
+					FullType:    "Applications.Core/containers@2023-10-01-preview",
+					Replacement: "Radius.Compute/containers@2025-08-01-preview",
+				},
+			},
+		},
+		{
+			name: "Deprecated type without a known replacement",
+			template: map[string]any{
+				"resources": map[string]any{
+					"store": map[string]any{
+						"type": "Applications.Dapr/stateStores@2023-10-01-preview",
+						"name": "my-store",
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{FullType: "Applications.Dapr/stateStores@2023-10-01-preview"},
+			},
+		},
+		{
+			name: "Deprecated type matching is case-insensitive",
+			template: map[string]any{
+				"resources": map[string]any{
+					"gateway": map[string]any{
+						"type": "applications.core/GATEWAYS@2023-10-01-PREVIEW",
+						"name": "my-gateway",
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{
+					FullType:    "applications.core/GATEWAYS@2023-10-01-PREVIEW",
+					Replacement: "Radius.Compute/routes@2025-08-01-preview",
+				},
+			},
+		},
+		{
+			name: "Applications type with a different API version is not deprecated",
+			template: map[string]any{
+				"resources": map[string]any{
+					"container": map[string]any{
+						"type": "Applications.Core/containers@2025-08-01-preview",
+						"name": "my-container",
+					},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "Radius namespace type is not deprecated",
+			template: map[string]any{
+				"resources": map[string]any{
+					"container": map[string]any{
+						"type": "Radius.Compute/containers@2025-08-01-preview",
+						"name": "my-container",
+					},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "Non-Radius type with the deprecated API version is not flagged",
+			template: map[string]any{
+				"resources": map[string]any{
+					"storage": map[string]any{
+						"type": "Microsoft.Storage/storageAccounts@2023-10-01-preview",
+						"name": "my-storage",
+					},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "Resource type without an API version is not flagged",
+			template: map[string]any{
+				"resources": map[string]any{
+					"container": map[string]any{
+						"type": "Applications.Core/containers",
+						"name": "my-container",
+					},
+				},
+			},
+			expected: nil,
+		},
+		{
+			name: "Repeated resources of the same type are reported once",
+			template: map[string]any{
+				"resources": map[string]any{
+					"containera": map[string]any{
+						"type": "Applications.Core/containers@2023-10-01-preview",
+						"name": "container-a",
+					},
+					"containerb": map[string]any{
+						"type": "Applications.Core/containers@2023-10-01-preview",
+						"name": "container-b",
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{
+					FullType:    "Applications.Core/containers@2023-10-01-preview",
+					Replacement: "Radius.Compute/containers@2025-08-01-preview",
+				},
+			},
+		},
+		{
+			name: "Deprecated resource inside a Bicep module is detected",
+			template: map[string]any{
+				"resources": map[string]any{
+					"env": map[string]any{
+						"type": "Applications.Core/environments@2023-10-01-preview",
+						"name": "my-env",
+					},
+					"module": map[string]any{
+						"type": "Microsoft.Resources/deployments",
+						"name": "my-module",
+						"properties": map[string]any{
+							"template": map[string]any{
+								"resources": map[string]any{
+									"app": map[string]any{
+										"type": "Applications.Core/applications@2023-10-01-preview",
+										"name": "my-app",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{
+					FullType:    "Applications.Core/applications@2023-10-01-preview",
+					Replacement: "Radius.Core/applications@2025-08-01-preview",
+				},
+				{
+					FullType:    "Applications.Core/environments@2023-10-01-preview",
+					Replacement: "Radius.Core/environments@2025-08-01-preview",
+				},
+			},
+		},
+		{
+			name: "Deprecated resource inside a nested module and an array-shaped template is detected",
+			template: map[string]any{
+				"resources": map[string]any{
+					"outer": map[string]any{
+						"type": "Microsoft.Resources/deployments",
+						"name": "outer-module",
+						"properties": map[string]any{
+							"template": map[string]any{
+								"resources": []any{
+									map[string]any{
+										"type": "Microsoft.Resources/deployments",
+										"name": "inner-module",
+										"properties": map[string]any{
+											"template": map[string]any{
+												"resources": map[string]any{
+													"container": map[string]any{
+														"type": "Applications.Core/containers@2023-10-01-preview",
+														"name": "my-container",
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{
+					FullType:    "Applications.Core/containers@2023-10-01-preview",
+					Replacement: "Radius.Compute/containers@2025-08-01-preview",
+				},
+			},
+		},
+		{
+			name: "Mixed resources are reported in sorted order",
+			template: map[string]any{
+				"resources": map[string]any{
+					"container": map[string]any{
+						"type": "Applications.Core/containers@2023-10-01-preview",
+						"name": "my-container",
+					},
+					"app": map[string]any{
+						"type": "Applications.Core/applications@2023-10-01-preview",
+						"name": "my-app",
+					},
+					"extender": map[string]any{
+						"type": "Applications.Core/extenders@2023-10-01-preview",
+						"name": "my-extender",
+					},
+					"modern": map[string]any{
+						"type": "Radius.Core/environments@2025-08-01-preview",
+						"name": "my-env",
+					},
+				},
+			},
+			expected: []DeprecatedResource{
+				{
+					FullType:    "Applications.Core/applications@2023-10-01-preview",
+					Replacement: "Radius.Core/applications@2025-08-01-preview",
+				},
+				{
+					FullType:    "Applications.Core/containers@2023-10-01-preview",
+					Replacement: "Radius.Compute/containers@2025-08-01-preview",
+				},
+				{FullType: "Applications.Core/extenders@2023-10-01-preview"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.expected, inspectDeprecatedResources(tt.template))
+		})
+	}
+}
+
+func Test_FormatDeprecationWarning(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		deprecated []DeprecatedResource
+		expected   string
+	}{
+		{
+			name:       "No deprecated resources returns an empty string",
+			deprecated: nil,
+			expected:   "",
+		},
+		{
+			name: "Resource with a replacement names the replacement type",
+			deprecated: []DeprecatedResource{
+				{
+					FullType:    "Applications.Core/containers@2023-10-01-preview",
+					Replacement: "Radius.Compute/containers@2025-08-01-preview",
+				},
+			},
+			expected: "WARNING: The following resource types use the deprecated Applications.* namespace with API version 2023-10-01-preview and will be removed in a future release:\n" +
+				"  - Applications.Core/containers@2023-10-01-preview: use Radius.Compute/containers@2025-08-01-preview instead.\n",
+		},
+		{
+			name: "Resource without a replacement falls back to recipe pack guidance",
+			deprecated: []DeprecatedResource{
+				{FullType: "Applications.Core/extenders@2023-10-01-preview"},
+			},
+			expected: "WARNING: The following resource types use the deprecated Applications.* namespace with API version 2023-10-01-preview and will be removed in a future release:\n" +
+				"  - Applications.Core/extenders@2023-10-01-preview: no direct replacement. Define an equivalent resource type and register a recipe pack that provides it to your environment.\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			require.Equal(t, tt.expected, FormatDeprecationWarning(tt.deprecated))
+		})
+	}
+}
+
+// Test_InspectDeprecatedResources_IsDeterministic guards the stable ordering and spelling of the
+// warning. Resource types are case-insensitive, so a template may declare the same type with
+// different casing. De-duplication keeps the first spelling encountered, which made the rendered
+// output vary between runs while map iteration order was unsorted.
+func Test_InspectDeprecatedResources_IsDeterministic(t *testing.T) {
+	t.Parallel()
+
+	template := map[string]any{
+		"resources": map[string]any{
+			"containerUpper": map[string]any{
+				"type": "Applications.Core/containers@2023-10-01-preview",
+				"name": "container-upper",
+			},
+			"containerLower": map[string]any{
+				"type": "applications.core/CONTAINERS@2023-10-01-preview",
+				"name": "container-lower",
+			},
+			"app": map[string]any{
+				"type": "Applications.Core/applications@2023-10-01-preview",
+				"name": "my-app",
+			},
+			"module": map[string]any{
+				"type": "Microsoft.Resources/deployments",
+				"name": "my-module",
+				"properties": map[string]any{
+					"template": map[string]any{
+						"resources": map[string]any{
+							"gatewayA": map[string]any{
+								"type": "Applications.Core/gateways@2023-10-01-preview",
+								"name": "gateway-a",
+							},
+							"gatewayB": map[string]any{
+								"type": "APPLICATIONS.CORE/GATEWAYS@2023-10-01-preview",
+								"name": "gateway-b",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Pin the exact spelling that wins de-duplication rather than comparing runs
+	// against each other. Sorted key traversal makes the lowest-sorting symbolic
+	// name win ("containerLower" over "containerUpper", "gatewayA" over
+	// "gatewayB"), and the authored casing is preserved rather than canonicalized.
+	expected := []string{
+		"Applications.Core/applications@2023-10-01-preview",
+		"Applications.Core/gateways@2023-10-01-preview",
+		"applications.core/CONTAINERS@2023-10-01-preview",
+	}
+
+	// Repeat enough times to reliably surface randomized map iteration order.
+	for range 100 {
+		actual := inspectDeprecatedResources(template)
+		require.Len(t, actual, 3, "the two casing variants of each type should collapse to one entry")
+
+		fullTypes := make([]string, 0, len(actual))
+		for _, resource := range actual {
+			fullTypes = append(fullTypes, resource.FullType)
+		}
+		require.Equal(t, expected, fullTypes)
+	}
+}
+
+func Test_InspectDeprecatedResources_MalformedTemplates(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		template map[string]any
+	}{
+		{
+			name: "Resources value is not a map or array",
+			template: map[string]any{
+				"resources": "not-a-collection",
+			},
+		},
+		{
+			name: "Resource entry is not a map",
+			template: map[string]any{
+				"resources": map[string]any{
+					"bad": "not-a-map",
+				},
+			},
+		},
+		{
+			name: "Array entry is not a map",
+			template: map[string]any{
+				"resources": []any{"not-a-map", 42, nil},
+			},
+		},
+		{
+			name: "Resource type is not a string",
+			template: map[string]any{
+				"resources": map[string]any{
+					"bad": map[string]any{"type": 42},
+				},
+			},
+		},
+		{
+			name: "Module properties are not a map",
+			template: map[string]any{
+				"resources": map[string]any{
+					"module": map[string]any{
+						"type":       "Microsoft.Resources/deployments",
+						"properties": "not-a-map",
+					},
+				},
+			},
+		},
+		{
+			name: "Module template is not a map",
+			template: map[string]any{
+				"resources": map[string]any{
+					"module": map[string]any{
+						"type": "Microsoft.Resources/deployments",
+						"properties": map[string]any{
+							"template": "not-a-map",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			// Malformed input must be skipped rather than panic. A panic would
+			// fail the test on its own, so no NotPanics wrapper is needed.
+			require.Empty(t, inspectDeprecatedResources(tt.template))
+		})
+	}
+}
+
+func Test_GetEnvironmentResources(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Returns only Radius.Core environment resources", func(t *testing.T) {
+		t.Parallel()
+
+		radiusEnv := map[string]any{
+			"type": "Radius.Core/environments@2025-08-01-preview",
+			"name": "my-env",
+		}
+		template := map[string]any{
+			"resources": map[string]any{
+				"env": radiusEnv,
+				"legacyEnv": map[string]any{
+					"type": "Applications.Core/environments@2023-10-01-preview",
+					"name": "legacy-env",
+				},
+				"app": map[string]any{
+					"type": "Radius.Core/applications@2025-08-01-preview",
+					"name": "my-app",
+				},
+			},
+		}
+
+		require.Equal(t, []map[string]any{radiusEnv}, GetEnvironmentResources(template))
+	})
+
+	t.Run("Returns nil when no environment resources are present", func(t *testing.T) {
+		t.Parallel()
+
+		require.Nil(t, GetEnvironmentResources(nil))
+		require.Nil(t, GetEnvironmentResources(map[string]any{}))
+		require.Nil(t, GetEnvironmentResources(map[string]any{
+			"resources": map[string]any{
+				"app": map[string]any{"type": "Radius.Core/applications@2025-08-01-preview"},
+			},
+		}))
+	})
+
+	t.Run("Environment resources inside modules are intentionally not returned", func(t *testing.T) {
+		t.Parallel()
+
+		// Environment detection is deliberately top-level only, because it drives deployment
+		// behavior. Only the deprecation scan recurses into modules.
+		template := map[string]any{
+			"resources": map[string]any{
+				"module": map[string]any{
+					"type": "Microsoft.Resources/deployments",
+					"properties": map[string]any{
+						"template": map[string]any{
+							"resources": map[string]any{
+								"env": map[string]any{"type": "Radius.Core/environments@2025-08-01-preview"},
+							},
+						},
+					},
+				},
+			},
+		}
+
+		require.Nil(t, GetEnvironmentResources(template))
+		require.False(t, ContainsEnvironmentResource(template))
+	})
+}
+
+// Test_InspectDeprecatedResources_OnlyRecursesIntoNestedDeployments guards against walking
+// arbitrary resource properties that happen to be named "template". Applications.Core/extenders
+// accepts free-form properties, so without a resource type check an extender could make the CLI
+// warn about resources the deployment never creates.
+func Test_InspectDeprecatedResources_OnlyRecursesIntoNestedDeployments(t *testing.T) {
+	t.Parallel()
+
+	// The deprecated type is buried under a non-deployment resource's properties.template.
+	decoy := map[string]any{
+		"template": map[string]any{
+			"resources": map[string]any{
+				"inner": map[string]any{
+					"type": "Applications.Core/containers@2023-10-01-preview",
+					"name": "not-a-real-resource",
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name         string
+		resourceType string
+		expectFound  bool
+	}{
+		{
+			name:         "Nested deployment is walked",
+			resourceType: nestedDeploymentResourceType,
+			expectFound:  true,
+		},
+		{
+			name:         "Nested deployment is matched case-insensitively",
+			resourceType: "microsoft.resources/DEPLOYMENTS",
+			expectFound:  true,
+		},
+		{
+			name:         "Extender template property is not walked",
+			resourceType: "Applications.Core/extenders@2025-08-01-preview",
+			expectFound:  false,
+		},
+		{
+			name:         "Arbitrary resource template property is not walked",
+			resourceType: "Radius.Compute/containers@2025-08-01-preview",
+			expectFound:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			template := map[string]any{
+				"resources": map[string]any{
+					"outer": map[string]any{
+						"type":       tt.resourceType,
+						"name":       "outer",
+						"properties": decoy,
+					},
+				},
+			}
+
+			actual := inspectDeprecatedResources(template)
+			if tt.expectFound {
+				require.Len(t, actual, 1)
+				require.Equal(t, "Applications.Core/containers@2023-10-01-preview", actual[0].FullType)
+				return
+			}
+
+			require.Empty(t, actual, "a non-deployment resource's properties must not be walked as a nested template")
+		})
+	}
+}
+
+// Test_DeprecatedTypeReplacements_ExistInManifests keeps deprecatedTypeReplacements honest against
+// the built-in provider manifests. The first attempt at this warning was reverted because it
+// pointed users at Radius.* types that did not exist, so every replacement must name a real type
+// that declares replacementAPIVersion.
+func Test_DeprecatedTypeReplacements_ExistInManifests(t *testing.T) {
+	t.Parallel()
+
+	manifestDir := filepath.Join("..", "..", "..", "deploy", "manifest", "built-in-providers", "self-hosted")
+	entries, err := filepath.Glob(filepath.Join(manifestDir, "*.yaml"))
+	require.NoError(t, err)
+	require.NotEmpty(t, entries, "no provider manifests found under %s", manifestDir)
+
+	// declared maps a lowercased "<namespace>/<typeName>" to the API versions it declares.
+	declared := map[string][]string{}
+	for _, entry := range entries {
+		data, err := os.ReadFile(entry)
+		require.NoError(t, err, "failed to read %s", entry)
+
+		var provider struct {
+			Namespace string `json:"namespace"`
+			Types     map[string]struct {
+				APIVersions map[string]any `json:"apiVersions"`
+			} `json:"types"`
+		}
+		require.NoError(t, yaml.Unmarshal(data, &provider), "failed to parse %s", entry)
+
+		for typeName, typeDef := range provider.Types {
+			key := strings.ToLower(provider.Namespace + "/" + typeName)
+			for apiVersion := range typeDef.APIVersions {
+				declared[key] = append(declared[key], apiVersion)
+			}
+		}
+	}
+
+	require.NotEmpty(t, declared, "parsed no resource types from %s", manifestDir)
+
+	for legacyType, replacement := range deprecatedTypeReplacements {
+		apiVersions, ok := declared[strings.ToLower(replacement)]
+		require.Truef(t, ok,
+			"%q maps to %q, which no built-in provider manifest declares. Update the mapping or the manifests.",
+			legacyType, replacement)
+		require.Containsf(t, apiVersions, replacementAPIVersion,
+			"%q maps to %q, which does not declare API version %s.",
+			legacyType, replacement, replacementAPIVersion)
 	}
 }

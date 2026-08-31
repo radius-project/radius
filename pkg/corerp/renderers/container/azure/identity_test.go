@@ -29,7 +29,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -104,15 +103,11 @@ func TestMakeRoleAssignments(t *testing.T) {
 
 func TestSetWorkloadIdentityServiceAccount(t *testing.T) {
 	base := &corev1.ServiceAccount{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ServiceAccount",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        "test-cntr",
-			Labels:      map[string]string{},
-			Annotations: map[string]string{},
-		},
+		Kind:        "ServiceAccount",
+		APIVersion:  "v1",
+		Name:        "test-cntr",
+		Labels:      map[string]string{},
+		Annotations: map[string]string{},
 	}
 
 	fi := SetWorkloadIdentityServiceAccount(base)
