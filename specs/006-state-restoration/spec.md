@@ -18,7 +18,7 @@ The scope is deliberately narrow: reconcile hydrated state so operations that fo
 ## Non-goals
 
 - **A `rad app delete --force` flag was considered and explicitly rejected.** A force option that bypasses state can convert an in-progress happy-path delete into a broken one by overwriting the state store while the first delete is still driving to a terminal state. Fixing hydration is the right approach.
-- **No user-facing message when a resource is genuinely still updating.** If reconciliation finds the resource actually is in `Updating` state, the hydrated state is accurate — leave it. The users will continue to see the rror message we see today:
+- **No user-facing message when a resource is genuinely still updating.** If reconciliation finds the resource actually is in `Updating` state, the hydrated state is accurate — leave it. Users will continue to see the same error message we surface today:
 ```
 RESPONSE 409: 409 Conflict
 ERROR CODE: Conflict
@@ -30,7 +30,7 @@ ERROR CODE: Conflict
 }
 ```
 - **The persistent Radius control plane's async controllers are not changed.** They already reconcile continuously; the new action is dormant unless `rad startup` (or a test) invokes it.
-- **The concurrent-`rad app delete` behavior evaluation as part of control plane is out of scope** — tracked as a separate follow-up (see [Follow-up](#follow-up)).
+- **Concurrent `rad app delete` behavior against a regular (persistent) Radius control plane is out of scope** — tracked as a separate follow-up (see [Follow-up](#follow-up)).
 
 ## Decisions
 
