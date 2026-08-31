@@ -114,6 +114,12 @@ type ApplicationsClientListByScopeResponse struct {
 	ApplicationResourceListResult
 }
 
+// ApplicationsClientReconcileResponse contains the response from method ApplicationsClient.Reconcile.
+type ApplicationsClientReconcileResponse struct {
+	// Response body for the reconcile action.
+	ReconcileResponse
+}
+
 // ApplicationsClientUpdateResponse contains the response from method ApplicationsClient.Update.
 type ApplicationsClientUpdateResponse struct {
 	// The `Radius.Core/applications` Resource Type represents a Radius Application: a logical grouping of the resources that

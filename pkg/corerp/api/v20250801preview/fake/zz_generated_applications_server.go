@@ -40,6 +40,10 @@ type ApplicationsServer struct {
 	// HTTP status codes to indicate success: http.StatusOK
 	NewListByScopePager func(rootScope string, options *v20250801preview.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[v20250801preview.ApplicationsClientListByScopeResponse])
 
+	// Reconcile is the fake for method ApplicationsClient.Reconcile
+	// HTTP status codes to indicate success: http.StatusOK
+	Reconcile func(ctx context.Context, rootScope string, applicationName string, body v20250801preview.ReconcileRequest, options *v20250801preview.ApplicationsClientReconcileOptions) (resp azfake.Responder[v20250801preview.ApplicationsClientReconcileResponse], errResp azfake.ErrorResponder)
+
 	// Update is the fake for method ApplicationsClient.Update
 	// HTTP status codes to indicate success: http.StatusOK
 	Update func(ctx context.Context, rootScope string, applicationName string, properties v20250801preview.ApplicationResource, options *v20250801preview.ApplicationsClientUpdateOptions) (resp azfake.Responder[v20250801preview.ApplicationsClientUpdateResponse], errResp azfake.ErrorResponder)
@@ -93,6 +97,8 @@ func (a *ApplicationsServerTransport) dispatchToMethodFake(req *http.Request, me
 				res.resp, res.err = a.dispatchGetGraph(req)
 			case "ApplicationsClient.NewListByScopePager":
 				res.resp, res.err = a.dispatchNewListByScopePager(req)
+			case "ApplicationsClient.Reconcile":
+				res.resp, res.err = a.dispatchReconcile(req)
 			case "ApplicationsClient.Update":
 				res.resp, res.err = a.dispatchUpdate(req)
 			default:
@@ -284,6 +290,43 @@ func (a *ApplicationsServerTransport) dispatchNewListByScopePager(req *http.Requ
 	}
 	if !server.PagerResponderMore(newListByScopePager) {
 		a.newListByScopePager.remove(req)
+	}
+	return resp, nil
+}
+
+func (a *ApplicationsServerTransport) dispatchReconcile(req *http.Request) (*http.Response, error) {
+	if a.srv.Reconcile == nil {
+		return nil, &nonRetriableError{errors.New("fake for method Reconcile not implemented")}
+	}
+	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/applications/(?P<applicationName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/reconcile`
+	regex := regexp.MustCompile(regexStr)
+	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
+	if len(matches) < 3 {
+		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
+	}
+	body, err := server.UnmarshalRequestAsJSON[v20250801preview.ReconcileRequest](req)
+	if err != nil {
+		return nil, err
+	}
+	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
+	if err != nil {
+		return nil, err
+	}
+	applicationNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("applicationName")])
+	if err != nil {
+		return nil, err
+	}
+	respr, errRespr := a.srv.Reconcile(req.Context(), rootScopeParam, applicationNameParam, body, nil)
+	if respErr := server.GetError(errRespr, req); respErr != nil {
+		return nil, respErr
+	}
+	respContent := server.GetResponseContent(respr)
+	if !slices.Contains([]int{http.StatusOK}, respContent.HTTPStatus) {
+		return nil, &nonRetriableError{fmt.Errorf("unexpected status code %d. acceptable values are http.StatusOK", respContent.HTTPStatus)}
+	}
+	resp, err := server.MarshalResponseAsJSON(respContent, server.GetResponse(respr).ReconcileResponse, req)
+	if err != nil {
+		return nil, err
 	}
 	return resp, nil
 }

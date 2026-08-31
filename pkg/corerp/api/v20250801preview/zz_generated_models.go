@@ -803,6 +803,35 @@ type RecipeStatus struct {
 	TemplateVersion *string
 }
 
+// ReconcileRequest - Request body for the reconcile action. Currently empty; reserved for future filters (for example, a
+// resource-type allowlist).
+type ReconcileRequest struct {
+}
+
+// ReconcileResourceOutcome - Per-resource outcome recorded by the reconcile action.
+type ReconcileResourceOutcome struct {
+	// REQUIRED; The provisioningState observed on the resource before the reality check.
+	From *string
+
+	// REQUIRED; The fully-qualified resource ID that was reconciled.
+	ResourceID *string
+
+	// REQUIRED; The provisioningState written back after the reality check. Same as `from` when no change was needed (for example,
+	// when reality confirms the resource is still updating) or when the check could not run.
+	To *string
+
+	// Short human-readable reason for the change or explanation of the outcome (for example, `underlying kubernetes object not
+	// found`, `still updating`, `provider query failed`).
+	Reason *string
+}
+
+// ReconcileResponse - Response body for the reconcile action.
+type ReconcileResponse struct {
+	// REQUIRED; Per-resource outcomes of the reconciliation pass. One entry per non-terminal child the orchestrator attempted
+	// to reconcile. Terminal-state children are skipped and do not appear.
+	Resources []*ReconcileResourceOutcome
+}
+
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
 	// The compute resource associated with the resource.

@@ -315,6 +315,70 @@ func (client *ApplicationsClient) listByScopeHandleResponse(resp *http.Response)
 	return result, nil
 }
 
+// Reconcile - Reconciles the application's resources against their underlying providers. For every non-terminal child, dynamic-rp
+// queries the recorded outputResources and updates provisioningState to match reality. Called by `rad startup` after the
+// state archive is hydrated so a subsequent `rad app delete` is not blocked by 409s on resources whose real state has moved
+// on. Returns a report of what was observed and rewritten.
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - applicationName - The application name
+//   - body - The content of the action request
+//   - options - ApplicationsClientReconcileOptions contains the optional parameters for the ApplicationsClient.Reconcile method.
+func (client *ApplicationsClient) Reconcile(ctx context.Context, rootScope string, applicationName string, body ReconcileRequest, options *ApplicationsClientReconcileOptions) (ApplicationsClientReconcileResponse, error) {
+	var err error
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ApplicationsClient.Reconcile")
+	req, err := client.reconcileCreateRequest(ctx, rootScope, applicationName, body, options)
+	if err != nil {
+		return ApplicationsClientReconcileResponse{}, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return ApplicationsClientReconcileResponse{}, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return ApplicationsClientReconcileResponse{}, err
+	}
+	resp, err := client.reconcileHandleResponse(httpResp)
+	return resp, err
+}
+
+// reconcileCreateRequest creates the Reconcile request.
+func (client *ApplicationsClient) reconcileCreateRequest(ctx context.Context, rootScope string, applicationName string, body ReconcileRequest, _ *ApplicationsClientReconcileOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Radius.Core/applications/{applicationName}/reconcile"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if applicationName == "" {
+		return nil, errors.New("parameter applicationName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20250801Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, body); err != nil {
+		return nil, err
+	}
+	return req, nil
+}
+
+// reconcileHandleResponse handles the Reconcile response.
+func (client *ApplicationsClient) reconcileHandleResponse(resp *http.Response) (ApplicationsClientReconcileResponse, error) {
+	result := ApplicationsClientReconcileResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.ReconcileResponse); err != nil {
+		return ApplicationsClientReconcileResponse{}, err
+	}
+	return result, nil
+}
+
 // Update - Update a ApplicationResource
 // If the operation fails it returns an *azcore.ResponseError type.
 //   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
