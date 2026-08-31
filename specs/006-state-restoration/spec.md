@@ -46,7 +46,7 @@ Content-Type: application/json
 
 - Registered in [pkg/corerp/setup/setup.go](../../pkg/corerp/setup/setup.go) under the `Custom` map on the application resource, next to `getGraph`.
 - Handler in `pkg/corerp/frontend/controller/applications/v20250801preview/reconcile.go`.
-- Response is the standard ARM-RPC async pattern: `202 Accepted` with a `Location` header. The client polls to completion. This matches every other write-shaped action in Radius and keeps `rad startup` from holding a synchronous connection open while UCP proxies to many RPs.
+- Response is the standard ARM-RPC synchronous pattern: `200 OK` with the report inline. This matches every existing custom action in Radius (`getGraph`, `listSecrets`, `getMetadata`, `join`). The reconcile pass only *reads* underlying providers and writes updated state through the RP's normal PATCH path — it does not provision anything — so total wall time stays bounded and sync is sufficient. If it ever grows too slow for a synchronous connection, we can flip to `ArmResourceActionAsync` in a follow-up without changing the URL.
 
 Naming: `reconcile`, lowercase, matches the codebase convention (`getGraph`, `join`, `getmetadata`). Not `refresh`, not `reconcileStatus` — the action is exactly analogous to the RP-internal reconciliation the persistent control plane already does asynchronously.
 
@@ -67,7 +67,7 @@ Concretely, the handler:
 
     in parallel (bounded fan-out), through the UCP-fronted connection the handler already has.
 5. After every child response returns, reconciles the application record itself: if all children are now terminal, transition the application accordingly; if any child remains non-terminal, leave the application in its hydrated state.
-6. Aggregates per-child outcomes into a report and completes the async operation.
+6. Aggregates per-child outcomes into a report and returns it inline in the sync response.
 
 UCP is not a smart orchestrator here — it is the proxy layer that already routes `/planes/…/providers/{ns}/…` to the owning RP. That is enough. "UCP asks every RP" is satisfied by construction because every per-child call goes through UCP.
 
@@ -110,7 +110,7 @@ This preserves the guarantee that a run can always at least *try* to make progre
 `rad startup` today performs four stages ([pkg/cli/cmd/startup/stateclient.go](../../pkg/cli/cmd/startup/stateclient.go)): `ScaleDown` → `RestoreDatabases` → `RestoreTerraform` → `ScaleUp`. A fifth stage, `ReconcileHydratedState`, is added after `ScaleUp` and after the resource-provider deployments are ready to serve. It:
 
 1. Lists applications in the plane through UCP.
-2. For each application, POSTs `.../applications/{app}/reconcile` and polls the async operation to completion (with a bounded timeout).
+2. For each application, POSTs `.../applications/{app}/reconcile` (with a bounded per-application timeout) and reads the report inline from the response.
 3. Logs the per-application report.
 4. Always returns success.
 

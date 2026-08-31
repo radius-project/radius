@@ -9,7 +9,7 @@ Add a `reconcile` custom action to `Radius.Core/applications/{name}` (mirror of 
 ## Technical Context
 
 **Language/Version**: Go 1.26.5 (per `go.mod`)
-**Primary Dependencies**: no new external dependencies. Reuses `github.com/Azure/azure-sdk-for-go/sdk/azcore` (async operation), `k8s.io/client-go` (dynamic-rp's per-output reality check), and dynamic-rp's existing routing scaffold plus the internal `pkg/armrpc/builder` custom-action mechanism (for the app-scoped orchestrator on corerp).
+**Primary Dependencies**: no new external dependencies. Reuses `k8s.io/client-go` (dynamic-rp's per-output reality check), dynamic-rp's existing routing scaffold, and the internal `pkg/armrpc/builder` custom-action mechanism (for the app-scoped orchestrator on corerp).
 **Storage**: no schema changes. Reconciliation writes go through the RPs' existing state-store paths.
 **Testing**: `go test` with `stretchr/testify`; table-driven unit tests for the corerp orchestrator and the dynamic-rp `reconcile` handler; a `httptest`-backed integration test that mounts the whole custom-action flow end to end. Existing `rad startup` tests get a new fake for `ReconcileHydratedState`.
 **Target Platform**: Radius control plane (Linux server binary) and `rad` CLI (macOS/Linux/Windows).
@@ -30,7 +30,7 @@ Add a `reconcile` custom action to `Radius.Core/applications/{name}` (mirror of 
 | IV. Testing Pyramid Discipline                       | ✅       | Unit tests for the corerp orchestrator and the dynamic-rp `reconcile` handler; a `httptest`-backed integration test that mounts the whole custom-action flow end to end.                                                             |
 | V. Collaboration-Centric Design                      | ✅       | Fixes an operator-visible failure (delete workflow loops forever) without new user-facing surface — the flag path deliberately not taken.                                                                         |
 | VI. Open Source and Community-First                  | ✅       | Spec and plan authored in the public repo; commits will carry `Signed-off-by`.                                                                                                                                    |
-| VII. Simplicity Over Cleverness                      | ✅       | Reuses the existing `Custom` action mechanism, the existing `getGraph` traversal, and the existing async-operation pattern. No new framework code.                                                                 |
+| VII. Simplicity Over Cleverness                      | ✅       | Reuses the existing `Custom` action mechanism, the existing `getGraph` traversal, and the existing sync custom-action pattern. No new framework code.                                                                 |
 | VIII. Separation of Concerns                         | ✅       | Orchestrator in corerp, reality-check logic in dynamic-rp (one handler, all dynamic types), transport through UCP. Each layer owns what it already owns.                                                                                 |
 | IX. Incremental Adoption & Backward Compatibility    | ✅       | `Radius.Core/2025-08-01-preview` is preview; adding a `Custom` action is additive. `Applications.Core` is not touched.                                                                                            |
 | XII / XIII (resource type / recipe standards)        | N/A     | No new resource types or recipes.                                                                                                                                                                                 |
@@ -88,14 +88,14 @@ pkg/cli/cmd/startup/
 
 ### Phase 0 — Wire the app-scoped action end to end with a no-op handler
 
-Goal: prove the registration, routing, async-operation lifecycle, and `rad startup` invocation before we do any reality checking.
+Goal: prove the registration, routing, sync custom-action response, and `rad startup` invocation before we do any reality checking.
 
 - Add the `reconcile` custom action on `Radius.Core/applications/{name}` in TypeSpec; regenerate.
-- Implement `pkg/corerp/frontend/controller/applications/v20250801preview/reconcile.go` as a stub that returns an immediately-succeeded async operation with an empty report.
+- Implement `pkg/corerp/frontend/controller/applications/v20250801preview/reconcile.go` as a stub that returns an empty report inline.
 - Register the action in `pkg/corerp/setup/setup.go` beside `getGraph`.
-- Add `ReconcileHydratedState(ctx, connection)` on `StateRestoreClient` in `pkg/cli/cmd/startup/stateclient.go`. Implementation lists applications, POSTs the action, polls to completion, logs the (empty) report.
+- Add `ReconcileHydratedState(ctx, connection)` on `StateRestoreClient` in `pkg/cli/cmd/startup/stateclient.go`. Implementation lists applications, POSTs the action, reads the (empty) report inline, logs it.
 - Wire the new stage in `pkg/cli/cmd/startup/startup.go` after `ScaleUp`.
-- Unit tests: fake `StateRestoreClient` records the call; corerp handler test verifies the async-operation shape.
+- Unit tests: fake `StateRestoreClient` records the call; corerp handler test verifies the sync response shape.
 
 **Exit criterion**: `rad startup` on a k3d cluster with one hydrated `Radius.Core/applications` succeeds and logs `reconciled 0 resources` for it.
 
