@@ -59,7 +59,7 @@ func Test_ValidateRecipe_Type(t *testing.T) {
 		namespace := types.NamespacedName{Namespace: defaultNamespace, Name: recipeName}
 		recipe := makeRecipe(namespace, invalidResourceType)
 
-		err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: namespace.Name}})
+		err := client.Create(ctx, &corev1.Namespace{Name: namespace.Name})
 		require.NoError(t, err)
 
 		// Webhook is expected to trigger during this call and return an error.
@@ -79,7 +79,7 @@ func Test_ValidateRecipe_Type(t *testing.T) {
 		namespace := types.NamespacedName{Namespace: defaultNamespace, Name: recipeName}
 		recipe := makeRecipe(namespace, validResourceType)
 
-		err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: namespace.Name}})
+		err := client.Create(ctx, &corev1.Namespace{Name: namespace.Name})
 		require.NoError(t, err)
 
 		err = client.Create(ctx, recipe)
@@ -109,7 +109,7 @@ func Test_ValidateRecipe_Type(t *testing.T) {
 		namespace := types.NamespacedName{Namespace: defaultNamespace, Name: recipeName}
 		recipe := makeRecipe(namespace, validResourceType)
 
-		err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: namespace.Name}})
+		err := client.Create(ctx, &corev1.Namespace{Name: namespace.Name})
 		require.NoError(t, err)
 
 		err = client.Create(ctx, recipe)

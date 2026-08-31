@@ -24,7 +24,6 @@ import (
 
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
@@ -123,9 +122,7 @@ func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {
 		Get: func(ctx context.Context, planeName, resourceProviderName, resourceTypeName string, options *v20231001preview.ResourceTypesClientGetOptions) (resp azfake.Responder[v20231001preview.ResourceTypesClientGetResponse], errResp azfake.ErrorResponder) {
 			resourceType := resourceProviderName + resources.SegmentSeparator + resourceTypeName
 			response := v20231001preview.ResourceTypesClientGetResponse{
-				ResourceTypeResource: v20231001preview.ResourceTypeResource{
-					Name: new(resourceTypeName),
-				},
+				Name: new(resourceTypeName),
 			}
 
 			switch resourceType {
@@ -147,11 +144,9 @@ func testUCPClientFactory() (*v20231001preview.ClientFactory, error) {
 	}
 
 	return v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
-				ResourceTypesServer: resourceTypesServer,
-			}),
-		},
+		Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+			ResourceTypesServer: resourceTypesServer,
+		}),
 	})
 }
 

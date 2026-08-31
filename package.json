@@ -1,6 +1,6 @@
 {
   "private": true,
-  "packageManager": "pnpm@11.10.0",
+  "packageManager": "pnpm@11.24.0",
   "devDependencies": {
     "markdown-table-formatter": "1.7.0",
     "markdownlint-cli2": "0.23.2",

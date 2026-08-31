@@ -131,11 +131,9 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
 
 	recipeOutput, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeOutput)
@@ -161,11 +159,9 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, errors.New("Failed to deploy terraform module"))
 
 	_, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
@@ -216,11 +212,9 @@ func Test_Terraform_Execute_InvalidOutputMapping(t *testing.T) {
 			tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, tt.executionError)
 
 			output, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-				BaseOptions: driver.BaseOptions{
-					Configuration: envConfig,
-					Recipe:        recipeMetadata,
-					Definition:    envRecipe,
-				},
+				Configuration: envConfig,
+				Recipe:        recipeMetadata,
+				Definition:    envRecipe,
 			})
 
 			require.Nil(t, output)
@@ -271,11 +265,9 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
 
 	_, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
@@ -295,11 +287,9 @@ func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 	}
 
 	_, err := tfDriver.Execute(t.Context(), driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &expErr)
@@ -346,11 +336,9 @@ func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
 		Return(expectedTFState, nil)
 
 	recipeOutput, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeOutput)
@@ -365,11 +353,9 @@ func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
 
 	require.Panics(t, func() {
 		_, _ = tfDriver.Execute(ctx, driver.ExecuteOptions{
-			BaseOptions: driver.BaseOptions{
-				Configuration: envConfig,
-				Recipe:        recipeMetadata,
-				Definition:    envRecipe,
-			},
+			Configuration: envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    envRecipe,
 		})
 	})
 }
@@ -460,11 +446,9 @@ func Test_Terraform_Delete_Success(t *testing.T) {
 	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).Times(1).Return(nil)
 
 	err := tfDriver.Delete(ctx, driver.DeleteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration:   envConfig,
+		Recipe:          recipeMetadata,
+		Definition:      envRecipe,
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.NoError(t, err)
@@ -484,11 +468,9 @@ func Test_Terraform_Delete_EmptyPath(t *testing.T) {
 	}
 
 	err := tfDriver.Delete(t.Context(), driver.DeleteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration:   envConfig,
+		Recipe:          recipeMetadata,
+		Definition:      envRecipe,
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.Error(t, err)
@@ -516,11 +498,9 @@ func Test_Terraform_Delete_Failure(t *testing.T) {
 	}
 
 	err := tfDriver.Delete(ctx, driver.DeleteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration:   envConfig,
+		Recipe:          recipeMetadata,
+		Definition:      envRecipe,
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.Error(t, err)
@@ -550,11 +530,9 @@ func Test_Terraform_Execute_MissingSecretOutput(t *testing.T) {
 	}, nil)
 
 	output, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 
 	require.Nil(t, output)
@@ -971,21 +949,19 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 	}
 
 	opts := driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: recipes.Configuration{
-				Providers: datamodel.Providers{
-					AWS: datamodel.ProvidersAWS{
-						Scope: "/planes/aws/aws/accounts/179022619019/regions/us-east-2",
-					},
+		Configuration: recipes.Configuration{
+			Providers: datamodel.Providers{
+				AWS: datamodel.ProvidersAWS{
+					Scope: "/planes/aws/aws/accounts/179022619019/regions/us-east-2",
 				},
 			},
-			Definition: recipes.EnvironmentDefinition{
-				Name:            "mongo-azure",
-				Driver:          recipes.TemplateKindTerraform,
-				TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
-				ResourceType:    "Applications.Datastores/mongoDatabases",
-				TemplateVersion: "1.0",
-			},
+		},
+		Definition: recipes.EnvironmentDefinition{
+			Name:            "mongo-azure",
+			Driver:          recipes.TemplateKindTerraform,
+			TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+			ResourceType:    "Applications.Datastores/mongoDatabases",
+			TemplateVersion: "1.0",
 		},
 		PrevState: []string{},
 	}

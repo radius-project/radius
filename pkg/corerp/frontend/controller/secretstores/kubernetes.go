@@ -35,7 +35,6 @@ import (
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -251,12 +250,10 @@ func UpsertSecret(ctx context.Context, newResource, old *datamodel.SecretStore, 
 
 		app, _ := resources.ParseResource(newResource.Properties.Application)
 		ksecret = &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: ns,
-				Labels:    kubernetes.MakeDescriptiveLabels(app.Name(), name, ResourceTypeName),
-			},
-			Data: map[string][]byte{},
+			Name:      name,
+			Namespace: ns,
+			Labels:    kubernetes.MakeDescriptiveLabels(app.Name(), name, ResourceTypeName),
+			Data:      map[string][]byte{},
 		}
 	} else if err != nil {
 		return nil, err

@@ -93,9 +93,7 @@ func (c *DeleteResource[P, T]) Run(ctx context.Context, request *ctrl.Request) (
 		}
 
 		err = c.engine.Delete(ctx, engine.DeleteOptions{
-			BaseOptions: engine.BaseOptions{
-				Recipe: recipeData,
-			},
+			Recipe:          recipeData,
 			OutputResources: data.OutputResources(),
 		})
 		if err != nil {

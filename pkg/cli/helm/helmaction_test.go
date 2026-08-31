@@ -65,10 +65,8 @@ func Test_isHelmGHCR403Error(t *testing.T) {
 
 func Test_parseUserValuesFromCLI(t *testing.T) {
 	options := &RadiusChartOptions{
-		ChartOptions: ChartOptions{
-			SetArgs:     []string{"global.zipkin.url=url,global.prometheus.path=path"},
-			SetFileArgs: []string{"global.rootCA.cert=./testdata/fake-ca-cert.crt"},
-		},
+		SetArgs:     []string{"global.zipkin.url=url,global.prometheus.path=path"},
+		SetFileArgs: []string{"global.rootCA.cert=./testdata/fake-ca-cert.crt"},
 	}
 
 	values, err := parseUserValuesFromCLI(options)
@@ -112,11 +110,9 @@ func Test_prepareRadiusChart_DoesNotMutateChartValues(t *testing.T) {
 	helmAction := NewHelmAction(mockHelmClient)
 
 	options := &RadiusChartOptions{
-		ChartOptions: ChartOptions{
-			Namespace: "radius-system",
-			ChartPath: "test-chart",
-			SetArgs:   []string{"global.zipkin.url=url"},
-		},
+		Namespace: "radius-system",
+		ChartPath: "test-chart",
+		SetArgs:   []string{"global.zipkin.url=url"},
 	}
 
 	_, _, values, err := prepareRadiusChart(helmAction, *options, "")
@@ -137,9 +133,7 @@ func Test_prepareRadiusChart_DoesNotMutateChartValues(t *testing.T) {
 
 func Test_parseUserValuesFromCLI_InvalidSetArg(t *testing.T) {
 	options := &RadiusChartOptions{
-		ChartOptions: ChartOptions{
-			SetArgs: []string{"invalid_no_equals"},
-		},
+		SetArgs: []string{"invalid_no_equals"},
 	}
 
 	_, err := parseUserValuesFromCLI(options)
@@ -148,9 +142,7 @@ func Test_parseUserValuesFromCLI_InvalidSetArg(t *testing.T) {
 
 func Test_parseUserValuesFromCLI_InvalidSetFileArg(t *testing.T) {
 	options := &RadiusChartOptions{
-		ChartOptions: ChartOptions{
-			SetFileArgs: []string{"key=./testdata/nonexistent-file.txt"},
-		},
+		SetFileArgs: []string{"key=./testdata/nonexistent-file.txt"},
 	}
 
 	_, err := parseUserValuesFromCLI(options)
@@ -176,10 +168,8 @@ func Test_prepareRadiusChart_LoadChartError(t *testing.T) {
 	helmAction := NewHelmAction(mockHelmClient)
 
 	options := &RadiusChartOptions{
-		ChartOptions: ChartOptions{
-			Namespace: "radius-system",
-			ChartPath: "bad-chart",
-		},
+		Namespace: "radius-system",
+		ChartPath: "bad-chart",
 	}
 
 	_, _, _, err := prepareRadiusChart(helmAction, *options, "")
@@ -196,11 +186,9 @@ func Test_prepareRadiusChart_ParseValuesError(t *testing.T) {
 	helmAction := NewHelmAction(mockHelmClient)
 
 	options := &RadiusChartOptions{
-		ChartOptions: ChartOptions{
-			Namespace: "radius-system",
-			ChartPath: "test-chart",
-			SetArgs:   []string{"invalid_no_equals"},
-		},
+		Namespace: "radius-system",
+		ChartPath: "test-chart",
+		SetArgs:   []string{"invalid_no_equals"},
 	}
 
 	_, _, _, err := prepareRadiusChart(helmAction, *options, "")
@@ -210,9 +198,7 @@ func Test_prepareRadiusChart_ParseValuesError(t *testing.T) {
 
 func Test_AddRadiusValuesOverrideWithSet(t *testing.T) {
 	options := &RadiusChartOptions{
-		ChartOptions: ChartOptions{
-			SetArgs: []string{"rp.image=ghcr.io/radius-project/applications-rp,rp.tag=latest", "global.zipkin.url=url,global.prometheus.path=path"},
-		},
+		SetArgs: []string{"rp.image=ghcr.io/radius-project/applications-rp,rp.tag=latest", "global.zipkin.url=url,global.prometheus.path=path"},
 	}
 
 	values, err := parseUserValuesFromCLI(options)

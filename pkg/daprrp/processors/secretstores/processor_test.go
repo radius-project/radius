@@ -19,7 +19,6 @@ package secretstores
 import (
 	"testing"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
 	dapr_ctrl "github.com/radius-project/radius/pkg/daprrp/frontend/controller"
 	"github.com/radius-project/radius/pkg/kubernetes"
@@ -50,11 +49,7 @@ func Test_Process(t *testing.T) {
 		}
 
 		resource := &datamodel.DaprSecretStore{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					Name: componentName,
-				},
-			},
+			Name: componentName,
 			Properties: datamodel.DaprSecretStoreProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: applicationID,
@@ -108,15 +103,11 @@ func Test_Process(t *testing.T) {
 
 	t.Run("success - values", func(t *testing.T) {
 		processor := Processor{
-			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}),
+			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{Name: "test-namespace"}),
 		}
 
 		resource := &datamodel.DaprSecretStore{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					Name: "some-other-name",
-				},
-			},
+			Name: "some-other-name",
 			Properties: datamodel.DaprSecretStoreProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: applicationID,
@@ -195,15 +186,11 @@ func Test_Process(t *testing.T) {
 
 	t.Run("success - values (no application)", func(t *testing.T) {
 		processor := Processor{
-			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}),
+			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{Name: "test-namespace"}),
 		}
 
 		resource := &datamodel.DaprSecretStore{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					Name: "some-other-name",
-				},
-			},
+			Name: "some-other-name",
 			Properties: datamodel.DaprSecretStoreProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: envID,
@@ -286,11 +273,7 @@ func Test_Process(t *testing.T) {
 		}
 
 		resource := &datamodel.DaprSecretStore{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					Name: "some-other-name",
-				},
-			},
+			Name: "some-other-name",
 			Properties: datamodel.DaprSecretStoreProperties{
 				BasicDaprResourceProperties: rpv1.BasicDaprResourceProperties{
 					ComponentName: componentName,
@@ -359,14 +342,10 @@ func Test_Process(t *testing.T) {
 		require.NoError(t, err)
 
 		processor := Processor{
-			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test-namespace"}}, &existing),
+			Client: k8sutil.NewFakeKubeClient(scheme.Scheme, &corev1.Namespace{Name: "test-namespace"}, &existing),
 		}
 		resource := &datamodel.DaprSecretStore{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					Name: "some-other-name",
-				},
-			},
+			Name: "some-other-name",
 			Properties: datamodel.DaprSecretStoreProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Application: applicationID,

@@ -39,16 +39,10 @@ func Test_ResourceType_VersionedToDataModel(t *testing.T) {
 		{
 			filename: "resourcetype_resource.json",
 			expected: &datamodel.ResourceType{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources",
-						Name: "testResources",
-						Type: datamodel.ResourceTypeResourceType,
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
-					},
-				},
+				ID:                "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources",
+				Name:              "testResources",
+				Type:              datamodel.ResourceTypeResourceType,
+				UpdatedAPIVersion: Version,
 				Properties: datamodel.ResourceTypeProperties{
 					Capabilities:      []string{},
 					DefaultAPIVersion: new("2025-01-01"),
@@ -206,13 +200,9 @@ func Test_ResourceType_ConvertTo_RejectsInvalidIcon(t *testing.T) {
 
 func Test_ResourceType_Icon_DataModelToVersioned(t *testing.T) {
 	dm := &datamodel.ResourceType{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources",
-				Name: "testResources",
-				Type: datamodel.ResourceTypeResourceType,
-			},
-		},
+		ID:   "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources",
+		Name: "testResources",
+		Type: datamodel.ResourceTypeResourceType,
 		Properties: datamodel.ResourceTypeProperties{
 			Capabilities: []string{},
 			Icon:         new(`<svg/>`),

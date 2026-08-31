@@ -25,18 +25,12 @@ import (
 // ConvertTo converts from the versioned ResourceProviderResource resource to version-agnostic datamodel.
 func (src *ResourceProviderResource) ConvertTo() (v1.DataModelInterface, error) {
 	dst := &datamodel.ResourceProvider{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     datamodel.ResourceProviderResourceType,
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
-		},
+		ID:                to.String(src.ID),
+		Name:              to.String(src.Name),
+		Type:              datamodel.ResourceProviderResourceType,
+		Location:          to.String(src.Location),
+		Tags:              to.StringMap(src.Tags),
+		UpdatedAPIVersion: Version,
 	}
 
 	return dst, nil

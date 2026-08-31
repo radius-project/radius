@@ -32,7 +32,6 @@ import (
 	"github.com/radius-project/radius/pkg/cli/output"
 
 	"github.com/opencontainers/go-digest"
-	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"oras.land/oras-go/v2"
@@ -174,8 +173,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Destination = dest
 
 	digest, err := r.publish(ctx)
-	var httpErr *errcode.ErrorResponse
-	if errors.As(err, &httpErr) {
+	if httpErr, ok := errors.AsType[*errcode.ErrorResponse](err); ok {
 		message := fmt.Sprintf("Failed to publish Bicep file %q to %q", displayFile, r.Target)
 		return handleErrorResponse(httpErr, message)
 	} else if err != nil {
@@ -361,9 +359,9 @@ func pushBlob(ctx context.Context, mediaType string, blob []byte, target oras.Ta
 // generateManifestContent generates a manifest content based on the config and layers descriptors
 func generateManifestContent(config ocispec.Descriptor, layers ...ocispec.Descriptor) ([]byte, error) {
 	content := ocispec.Manifest{
-		Config:    config,
-		Layers:    layers,
-		Versioned: specs.Versioned{SchemaVersion: 2},
+		Config:        config,
+		Layers:        layers,
+		SchemaVersion: 2,
 	}
 	return json.Marshal(content)
 }
@@ -371,6 +369,6 @@ func generateManifestContent(config ocispec.Descriptor, layers ...ocispec.Descri
 // computeImmutableRecipeUrl builds an OCI URL using the registry/repo portion of the
 // target (no leading "br:" and without the tag) and replaces the tag with the digest.
 func computeImmutableRecipeUrl(target, hash string) string {
-	host := strings.Split(target, ":")[0]
+	host, _, _ := strings.Cut(target, ":")
 	return fmt.Sprintf("%s@%s", host, hash)
 }

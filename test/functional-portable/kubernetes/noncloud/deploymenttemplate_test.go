@@ -69,7 +69,7 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create the namespace, if it already exists we can ignore the error.
-	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
+	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{Name: namespace}, metav1.CreateOptions{})
 	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
 
 	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, parametersMap)
@@ -121,7 +121,7 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+			ns := &corev1.Namespace{Name: namespace}
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
 			return apierrors.IsNotFound(err)
 		}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
@@ -150,7 +150,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create the namespace, if it already exists we can ignore the error.
-	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
+	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{Name: namespace}, metav1.CreateOptions{})
 	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
 
 	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, parametersMap)
@@ -227,7 +227,7 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create the namespace, if it already exists we can ignore the error.
-	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
+	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{Name: namespace}, metav1.CreateOptions{})
 	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
 
 	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, parametersMap)
@@ -284,10 +284,8 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 // makeDeploymentTemplate returns a DeploymentTemplate object with the given name, template, providerConfig, and parameters.
 func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig string, parameters map[string]string) *radappiov1alpha3.DeploymentTemplate {
 	deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name.Name,
-			Namespace: name.Namespace,
-		},
+		Name:      name.Name,
+		Namespace: name.Namespace,
 		Spec: radappiov1alpha3.DeploymentTemplateSpec{
 			Template:       template,
 			Parameters:     parameters,
@@ -409,7 +407,7 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 	}
 
 	require.Eventually(t, func() bool {
-		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+		ns := &corev1.Namespace{Name: namespace}
 		err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
 		return apierrors.IsNotFound(err)
 	}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
@@ -421,7 +419,7 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 // before the K8s namespace delete in functional tests.
 func deleteDeploymentTemplateAndWait(ctx context.Context, t *testing.T, nn types.NamespacedName, opts rp.RPTestOptions) {
 	dt := &radappiov1alpha3.DeploymentTemplate{
-		ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+		Name: nn.Name, Namespace: nn.Namespace,
 	}
 	err := opts.Client.Delete(ctx, dt)
 	if controller_runtime.IgnoreNotFound(err) != nil {
