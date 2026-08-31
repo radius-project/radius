@@ -81,6 +81,7 @@ When you are iterating on control-plane images (for example the applications res
 - We write unit tests in a straightforward style and use [testify](https://github.com/stretchr/testify) for assertions.
 - We favor [subtests](https://go.dev/blog/subtests) and [table-driven tests](https://dave.cheney.net/2019/05/07/prefer-table-driven-tests) and apply them where appropriate.
 - For functional tests specifically, see [writing functional tests](./writing-functional-tests.md), the [naming conventions](./tests-naming-conventions.md), [test logging](./tests-logging.md), and [using standard images in tests](./tests-images-pushtoghcr.md).
+- For the scheduled OCI state archive end-to-end test, see [Repo Radius GHCR state end-to-end test](./repo-radius-state-e2e.md).
 
 ## Verification
 
