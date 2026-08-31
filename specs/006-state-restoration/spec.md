@@ -13,18 +13,28 @@ That is not sufficient when the previous run was interrupted while a resource wa
 
 This feature adds a reconciliation pass triggered by `rad startup` and executed against the running control plane: for every application in the plane, an application-scoped `reconcile` action asks each resource's owning resource provider to check its actual current state and rewrite the state store to match reality — including removing entries when the underlying resource does not exist.
 
-The scope is deliberately narrow: reconcile hydrated state so operations that follow see reality. It does not change the delete command, does not add a `--force` flag, and does not touch the regular (non-Repo) Radius runtime — the action exists but is never invoked there.
+The scope is deliberately narrow: reconcile hydrated state so operations that follow see reality.
 
 ## Non-goals
 
-- **A `rad app delete --force` flag was considered and explicitly rejected.** With two concurrent deletes (for example, a user re-runs `rad app delete` after their terminal died), a force option that bypasses state can convert an in-progress happy-path delete into a broken one by overwriting the state store while the first delete is still driving to a terminal state. Fixing hydration removes the need for the flag.
-- **No user-facing message when a resource is genuinely still updating.** If reconciliation finds the resource actually is in `Updating` state, the hydrated state is accurate — leave it, do not warn.
+- **A `rad app delete --force` flag was considered and explicitly rejected.** A force option that bypasses state can convert an in-progress happy-path delete into a broken one by overwriting the state store while the first delete is still driving to a terminal state. Fixing hydration is the right approach.
+- **No user-facing message when a resource is genuinely still updating.** If reconciliation finds the resource actually is in `Updating` state, the hydrated state is accurate — leave it. The users will continue to see the rror message we see today:
+```
+RESPONSE 409: 409 Conflict
+ERROR CODE: Conflict
+{
+  "error": {
+    "code": "Conflict",
+    "message": "The target resource is in progress state: Updating."
+  }
+}
+```
 - **The persistent Radius control plane's async controllers are not changed.** They already reconcile continuously; the new action is dormant unless `rad startup` (or a test) invokes it.
-- **The concurrent-`rad app delete` behavior is out of scope** — tracked as a separate follow-up (see [Follow-up](#follow-up)).
+- **The concurrent-`rad app delete` behavior evaluation as part of control plane is out of scope** — tracked as a separate follow-up (see [Follow-up](#follow-up)).
 
 ## Decisions
 
-### The client-facing endpoint is an application-scoped custom action, mirroring `getGraph`
+### The client-facing endpoint is an application-scoped custom action
 
 Reconciliation is a per-application operation: walk the application's children, check each one's reality, roll the results back into the state store. That is the same shape as [`getGraph`](../../pkg/corerp/frontend/controller/applications/v20250801preview/getgraph.go) — an application-scoped custom action registered on `Radius.Core/applications` that walks children across resource providers. `reconcile` therefore reuses the exact pattern, up to and including the corerp orchestrator that already knows how to fan out across RPs through the UCP proxy.
 
