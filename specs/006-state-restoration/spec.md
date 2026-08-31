@@ -61,28 +61,22 @@ Concretely, the handler:
 
 UCP is not a smart orchestrator here — it is the proxy layer that already routes `/planes/…/providers/{ns}/…` to the owning RP. That is enough. "UCP asks every RP" is satisfied by construction because every per-child call goes through UCP.
 
-### Per-resource-type `reconcile` custom action, opt-in
+### Per-resource `reconcile` handled by dynamic-rp
 
-Each resource type that participates registers `reconcile` as a `Custom` action alongside the type's existing `Put`/`Patch`/`Delete` operations. Registration is the same three-line addition `getGraph` uses on the application resource; nothing new in the armrpc builder.
+Legacy `Applications.Core/*` / `Applications.Datastores/*` / `Applications.Dapr/*` / `Applications.Messaging/*` types are out of scope. Only the dynamic types the modern Radius application model uses are reconciled — `Radius.Compute/containers`, `Radius.Compute/gateways`, and every community-contributed type served by [dynamic-rp](../../pkg/dynamicrp/).
 
-```go
-Custom: map[string]builder.Operation[datamodel.ContainerResource]{
-    "reconcile": {
-        APIController: func(opt apictrl.Options) (apictrl.Controller, error) {
-            return ctr_ctrl.NewReconcile(opt)
-        },
-    },
-},
-```
+Dynamic-rp implements `reconcile` once and serves it for every dynamic type — no per-type registration, no per-type TypeSpec. The handler runs the algorithm you would otherwise run from the CLI (`rad resource list -a <app> --preview`, then check each resource): list the app's resources, check each one's underlying provider, PATCH state to match.
 
-The per-resource handler is the only component that knows how to check reality for its type. It:
+For a single resource, the dynamic-rp handler:
 
-- Queries the underlying provider (the Kubernetes API for containers/gateways/secretstores in corerp; the recipe engine's provider client for dynamic-rp types backed by Terraform / Azure / AWS).
-- Interprets the response according to the table in [What "reality" is for each resource](#what-reality-is-for-each-resource).
-- Writes the result back through the RP's normal state-store path — the same `PATCH` code path the async operation controller uses. **No direct SQL.**
-- Returns the new state, or an error the corerp orchestrator will record in the report.
-
-A resource type that has not opted in is skipped by the corerp orchestrator with a warning in the report. Opt-in is per-type so we can ship the fix incrementally (see [Acceptance](#acceptance) — `Radius.Compute/containers` first).
+1. Loads the resource from dynamic-rp's own store.
+2. If `provisioningState` is terminal, returns unchanged.
+3. Reads the resource's `properties.status.outputResources` — the concrete backing objects the recipe engine recorded when the resource was deployed.
+4. For each output resource, queries its underlying provider:
+    - Kubernetes objects → GET via the target-cluster Kubernetes client the RP already holds.
+    - Terraform-backed cloud outputs (Azure/AWS resource IDs) → **out of scope for the prototype**; record `skipped: cloud output not yet reality-checked` in the per-output report. Follow-up work adds the cloud-SDK branches inside the same handler.
+5. Aggregates outcomes per the table in [What "reality" is for each resource](#what-reality-is-for-each-resource) and writes the result back through dynamic-rp's normal `PATCH` code path. **No direct SQL.**
+6. Returns the new state, or an error the corerp orchestrator will record in the report.
 
 ### What "reality" is for each resource
 
@@ -127,8 +121,8 @@ The `reconcile` action is dormant unless something calls it. Regular Radius neve
 
 - Client-side stage: [pkg/cli/cmd/startup/startup.go](../../pkg/cli/cmd/startup/startup.go) and [pkg/cli/cmd/startup/stateclient.go](../../pkg/cli/cmd/startup/stateclient.go).
 - Application-scoped orchestrator: `pkg/corerp/frontend/controller/applications/v20250801preview/reconcile.go` (new), registered in [pkg/corerp/setup/setup.go](../../pkg/corerp/setup/setup.go) beside `getGraph`.
-- First per-resource handler (prototype scope): `pkg/corerp/frontend/controller/containers/reconcile.go` (new), registered on the `containers` resource type in the same `setup.go`.
-- API surface: additive `reconcile` custom action on `Radius.Core/applications/{name}` and on the participating resource type(s), authored in [typespec/](../../typespec/) and regenerated via `make generate`.
+- Per-resource handler for every dynamic type: `pkg/dynamicrp/frontend/reconcile.go` (new), wired into dynamic-rp's existing router. One implementation serves every registered dynamic type.
+- API surface: additive `reconcile` custom action on `Radius.Core/applications/{name}`, authored in [typespec/](../../typespec/) and regenerated via `make generate`. Dynamic types do not need per-type TypeSpec — dynamic-rp exposes the action once for every type it serves.
 
 Nothing outside these files needs to change.
 
@@ -138,9 +132,9 @@ Nothing outside these files needs to change.
 - Deleting an application whose state archive contains a child resource in `Updating` and whose underlying resource genuinely is still updating waits normally and does not falsely succeed. The reconciler must observe the reality-reported state and leave the store unchanged.
 - `rad startup` never fails because reconciliation could not reach a resource provider. The workflow log records the failure and startup returns success.
 - The reconciler runs no direct SQL against any resource-provider database. Every state change goes through the RP's normal write path, so state machines stay intact.
-- The prototype covers `Radius.Compute/containers` end-to-end: an application containing only containers is deletable after a `rad startup` from an archive that hydrated the containers in `Updating`, whether or not the container objects exist in Kubernetes.
+- The prototype covers dynamic-rp resources with Kubernetes `outputResources` end-to-end (the transcript's failing case): an application whose containers/gateways/secretstores were hydrated in `Updating` is deletable after `rad startup`, whether or not the underlying Kubernetes objects still exist. Terraform-backed cloud outputs record `skipped` and are follow-ups.
 
 ## Follow-up
 
 - A separate issue tracks verifying that concurrent `rad app delete` against the same application from two terminals is handled correctly by a regular (persistent) Radius control plane. That case is not affected by hydration — a persistent control plane already tracks in-flight operations — but it needs an explicit test so a future change cannot regress it. See [radius-project/radius#12870](https://github.com/radius-project/radius/issues/12870).
-- Per-resource `reconcile` handlers for the remaining resource types (`Radius.Compute/gateways`, `Radius.Compute/secretstores`, and the dynamic-rp Terraform-backed types) are follow-up work. Each is a new handler that registers the same custom action; no framework changes are required to add them.
+- Reality-checking Terraform-backed cloud `outputResources` (Azure/AWS resources managed via recipes) is follow-up work. Adds cloud-SDK branches inside the same dynamic-rp `reconcile` handler; no framework changes.
