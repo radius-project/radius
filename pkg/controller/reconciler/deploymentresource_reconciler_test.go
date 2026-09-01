@@ -97,7 +97,7 @@ func Test_DeploymentResourceReconciler_Basic(t *testing.T) {
 	_, _, k8sClient := SetupDeploymentTemplateTest(t)
 
 	name := types.NamespacedName{Namespace: TestDeploymentResourceNamespace, Name: TestDeploymentResourceName}
-	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := k8sClient.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	deployment := makeDeploymentResource(name, TestDeploymentResourceID)
@@ -125,7 +125,7 @@ func Test_DeploymentResourceReconciler_DeleteRetryBackoff(t *testing.T) {
 	_, mockDeploymentClient, k8sClient := SetupDeploymentResourceTest(t)
 
 	name := types.NamespacedName{Namespace: "deploymentresource-deleteretry", Name: TestDeploymentResourceName}
-	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := k8sClient.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	// A finalizer keeps the DR alive past Delete. The DeploymentResource must be controlled by a
@@ -140,19 +140,17 @@ func Test_DeploymentResourceReconciler_DeleteRetryBackoff(t *testing.T) {
 
 	resourceID := fmt.Sprintf("/planes/radius/local/resourcegroups/%s/providers/Applications.Core/containers/%s", name.Namespace, name.Name)
 	deployment := &radappiov1alpha3.DeploymentResource{
-		ObjectMeta: ctrl.ObjectMeta{
-			Namespace:  name.Namespace,
-			Name:       name.Name,
-			Finalizers: []string{DeploymentResourceFinalizer},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         radappiov1alpha3.GroupVersion.String(),
-					Kind:               deploymentTemplateKind,
-					Name:               owner.Name,
-					UID:                owner.UID,
-					Controller:         to.Ptr(true),
-					BlockOwnerDeletion: to.Ptr(true),
-				},
+		Namespace:  name.Namespace,
+		Name:       name.Name,
+		Finalizers: []string{DeploymentResourceFinalizer},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         radappiov1alpha3.GroupVersion.String(),
+				Kind:               deploymentTemplateKind,
+				Name:               owner.Name,
+				UID:                owner.UID,
+				Controller:         to.Ptr(true),
+				BlockOwnerDeletion: to.Ptr(true),
 			},
 		},
 		Spec: radappiov1alpha3.DeploymentResourceSpec{Id: resourceID},
@@ -195,7 +193,7 @@ func Test_DeploymentResourceReconciler_SkipsDeleteOutsideTemplateScope(t *testin
 	_, mockDeploymentClient, k8sClient := SetupDeploymentResourceTest(t)
 
 	name := types.NamespacedName{Namespace: "deploymentresource-outofscope", Name: "out-of-scope"}
-	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := k8sClient.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	// An owning DeploymentTemplate scoped to its own resource group.
@@ -209,19 +207,17 @@ func Test_DeploymentResourceReconciler_SkipsDeleteOutsideTemplateScope(t *testin
 	// Spec.Id points at a resource in a DIFFERENT resource group than the owning template's scope.
 	outOfScopeID := "/planes/radius/local/resourcegroups/other-group/providers/Applications.Core/environments/default"
 	deployment := &radappiov1alpha3.DeploymentResource{
-		ObjectMeta: ctrl.ObjectMeta{
-			Namespace:  name.Namespace,
-			Name:       name.Name,
-			Finalizers: []string{DeploymentResourceFinalizer},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         radappiov1alpha3.GroupVersion.String(),
-					Kind:               deploymentTemplateKind,
-					Name:               owner.Name,
-					UID:                owner.UID,
-					Controller:         to.Ptr(true),
-					BlockOwnerDeletion: to.Ptr(true),
-				},
+		Namespace:  name.Namespace,
+		Name:       name.Name,
+		Finalizers: []string{DeploymentResourceFinalizer},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         radappiov1alpha3.GroupVersion.String(),
+				Kind:               deploymentTemplateKind,
+				Name:               owner.Name,
+				UID:                owner.UID,
+				Controller:         to.Ptr(true),
+				BlockOwnerDeletion: to.Ptr(true),
 			},
 		},
 		Spec: radappiov1alpha3.DeploymentResourceSpec{Id: outOfScopeID},

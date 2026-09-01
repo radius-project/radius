@@ -31,7 +31,6 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
@@ -113,10 +112,8 @@ func TestDeleteSkipsOutputMappingValidation(t *testing.T) {
 	kubernetesClient.Fake.PrependReactor("get", "secrets", func(action k8stesting.Action) (bool, runtime.Object, error) {
 		getAction := action.(k8stesting.GetAction)
 		return true, &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      getAction.GetName(),
-				Namespace: backends.RadiusNamespace,
-			},
+			Name:      getAction.GetName(),
+			Namespace: backends.RadiusNamespace,
 		}, nil
 	})
 	kubernetesClient.Fake.PrependReactor("delete", "secrets", func(k8stesting.Action) (bool, runtime.Object, error) {

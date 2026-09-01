@@ -133,10 +133,8 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 		}
 
 		providerCredentialConfiguration := ProviderCredentialConfiguration{
-			CloudProviderStatus: CloudProviderStatus{
-				Name:    AzureCredential,
-				Enabled: true,
-			},
+			Name:    AzureCredential,
+			Enabled: true,
 			AzureCredentials: &AzureCredentialProperties{
 				Kind: (*string)(azureServicePrincipal.Kind),
 				ServicePrincipal: &AzureServicePrincipalCredentialProperties{
@@ -155,10 +153,8 @@ func (cpm *AzureCredentialManagementClient) Get(ctx context.Context, credentialN
 		}
 
 		providerCredentialConfiguration := ProviderCredentialConfiguration{
-			CloudProviderStatus: CloudProviderStatus{
-				Name:    AzureCredential,
-				Enabled: true,
-			},
+			Name:    AzureCredential,
+			Enabled: true,
 			AzureCredentials: &AzureCredentialProperties{
 				Kind: (*string)(azureWorkloadIdentity.Kind),
 				WorkloadIdentity: &AzureWorkloadIdentityCredentialProperties{

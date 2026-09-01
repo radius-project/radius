@@ -32,138 +32,124 @@ func Test_findStaleReplicaSets(t *testing.T) {
 
 		// Owned by d1
 		&appsv1.ReplicaSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "rs1a",
-				Namespace: "default",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion: "apps/v1",
-						Kind:       "Deployment",
-						Name:       "d1",
-					},
+			Name:      "rs1a",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "apps/v1",
+					Kind:       "Deployment",
+					Name:       "d1",
 				},
-				Labels: map[string]string{
-					kubernetes.LabelRadiusApplication: "test-app",
-				},
-				Annotations: map[string]string{
-					"deployment.kubernetes.io/revision": "1",
-				},
+			},
+			Labels: map[string]string{
+				kubernetes.LabelRadiusApplication: "test-app",
+			},
+			Annotations: map[string]string{
+				"deployment.kubernetes.io/revision": "1",
 			},
 		},
 
 		// Also owned by d1, but newer revision
 		&appsv1.ReplicaSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "rs1b",
-				Namespace: "default",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion: "apps/v1",
-						Kind:       "Deployment",
-						Name:       "d1",
-					},
+			Name:      "rs1b",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "apps/v1",
+					Kind:       "Deployment",
+					Name:       "d1",
 				},
-				Labels: map[string]string{
-					kubernetes.LabelRadiusApplication: "test-app",
-				},
-				Annotations: map[string]string{
-					"deployment.kubernetes.io/revision": "3",
-				},
+			},
+			Labels: map[string]string{
+				kubernetes.LabelRadiusApplication: "test-app",
+			},
+			Annotations: map[string]string{
+				"deployment.kubernetes.io/revision": "3",
 			},
 		},
 
 		// Also owned by d1, but newer revision (not newest, though)
 		&appsv1.ReplicaSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "rs1c",
-				Namespace: "default",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion: "apps/v1",
-						Kind:       "Deployment",
-						Name:       "d1",
-					},
+			Name:      "rs1c",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "apps/v1",
+					Kind:       "Deployment",
+					Name:       "d1",
 				},
-				Labels: map[string]string{
-					kubernetes.LabelRadiusApplication: "test-app",
-				},
-				Annotations: map[string]string{
-					"deployment.kubernetes.io/revision": "2",
-				},
+			},
+			Labels: map[string]string{
+				kubernetes.LabelRadiusApplication: "test-app",
+			},
+			Annotations: map[string]string{
+				"deployment.kubernetes.io/revision": "2",
 			},
 		},
 
 		// Owned by d2 - only one replicaset is here, so it can't be stale
 		&appsv1.ReplicaSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "rs2a",
-				Namespace: "default",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion: "apps/v1",
-						Kind:       "Deployment",
-						Name:       "d2",
-					},
+			Name:      "rs2a",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "apps/v1",
+					Kind:       "Deployment",
+					Name:       "d2",
 				},
-				Labels: map[string]string{
-					kubernetes.LabelRadiusApplication: "test-app",
-				},
-				Annotations: map[string]string{
-					"deployment.kubernetes.io/revision": "3",
-				},
+			},
+			Labels: map[string]string{
+				kubernetes.LabelRadiusApplication: "test-app",
+			},
+			Annotations: map[string]string{
+				"deployment.kubernetes.io/revision": "3",
 			},
 		},
 
 		// No owner, ignored
 		&appsv1.ReplicaSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "rs3a",
-				Namespace: "default",
-				Labels: map[string]string{
-					kubernetes.LabelRadiusApplication: "test-app",
-				},
-				Annotations: map[string]string{
-					"deployment.kubernetes.io/revision": "3",
-				},
+			Name:      "rs3a",
+			Namespace: "default",
+			Labels: map[string]string{
+				kubernetes.LabelRadiusApplication: "test-app",
+			},
+			Annotations: map[string]string{
+				"deployment.kubernetes.io/revision": "3",
 			},
 		},
 
 		// Not part of application, ignored
 		&appsv1.ReplicaSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "rs4a",
-				Namespace: "default",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion: "apps/v1",
-						Kind:       "Deployment",
-						Name:       "d4",
-					},
+			Name:      "rs4a",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "apps/v1",
+					Kind:       "Deployment",
+					Name:       "d4",
 				},
-				Annotations: map[string]string{
-					"deployment.kubernetes.io/revision": "3",
-				},
+			},
+			Annotations: map[string]string{
+				"deployment.kubernetes.io/revision": "3",
 			},
 		},
 
 		// Part of other application, ignored
 		&appsv1.ReplicaSet{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "rs5a",
-				Namespace: "default",
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion: "apps/v1",
-						Kind:       "Deployment",
-						Name:       "d5",
-					},
+			Name:      "rs5a",
+			Namespace: "default",
+			OwnerReferences: []metav1.OwnerReference{
+				{
+					APIVersion: "apps/v1",
+					Kind:       "Deployment",
+					Name:       "d5",
 				},
-				Labels: map[string]string{
-					kubernetes.LabelRadiusApplication: "another-test-app",
-				},
-				Annotations: map[string]string{
-					"deployment.kubernetes.io/revision": "3",
-				},
+			},
+			Labels: map[string]string{
+				kubernetes.LabelRadiusApplication: "another-test-app",
+			},
+			Annotations: map[string]string{
+				"deployment.kubernetes.io/revision": "3",
 			},
 		},
 	}

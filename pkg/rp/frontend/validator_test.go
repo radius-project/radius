@@ -45,16 +45,12 @@ func TestPrepareRadiusResource_OldResource_Nil(t *testing.T) {
 
 func TestPrepareRadiusResource_UnmatchedLinks(t *testing.T) {
 	oldResource := &TestResourceDataModel{Properties: &TestResourceDataModelProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-			Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-		},
+		Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+		Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
 	}}
 	newResource := &TestResourceDataModel{Properties: &TestResourceDataModelProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-			Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-		},
+		Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+		Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
 	}}
 
 	resp, err := PrepareRadiusResource(newTestARMContext(t), newResource, oldResource, &controller.Options{})
@@ -70,23 +66,19 @@ func TestPrepareRadiusResource_UnmatchedLinks(t *testing.T) {
 
 func TestPrepareRadiusResource_DeepCopy(t *testing.T) {
 	oldResource := &TestResourceDataModel{Properties: &TestResourceDataModelProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-			Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-			Status: rpv1.ResourceStatus{
-				OutputResources: []rpv1.OutputResource{
-					{
-						LocalID: "testID",
-					},
+		Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+		Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+		Status: rpv1.ResourceStatus{
+			OutputResources: []rpv1.OutputResource{
+				{
+					LocalID: "testID",
 				},
 			},
 		},
 	}}
 	newResource := &TestResourceDataModel{Properties: &TestResourceDataModelProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-			Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-		},
+		Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+		Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
 	}}
 	resp, err := PrepareRadiusResource(newTestARMContext(t), newResource, oldResource, &controller.Options{})
 	require.NoError(t, err)
@@ -104,23 +96,19 @@ func TestPrepareDaprResource(t *testing.T) {
 
 	client := k8sutil.NewFakeKubeClient(crdScheme)
 	oldResource := &TestResourceDataModel{Properties: &TestResourceDataModelProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-			Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-			Status: rpv1.ResourceStatus{
-				OutputResources: []rpv1.OutputResource{
-					{
-						LocalID: "testID",
-					},
+		Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+		Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+		Status: rpv1.ResourceStatus{
+			OutputResources: []rpv1.OutputResource{
+				{
+					LocalID: "testID",
 				},
 			},
 		},
 	}}
 	newResource := &TestResourceDataModel{Properties: &TestResourceDataModelProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-			Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-		},
+		Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+		Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
 	}}
 	expectedResp := rest.NewDependencyMissingResponse(datamodel.DaprMissingError)
 	resp, err := PrepareDaprResource(newTestARMContext(t), newResource, oldResource, &controller.Options{KubeClient: client})

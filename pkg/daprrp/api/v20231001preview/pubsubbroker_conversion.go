@@ -24,7 +24,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/daprrp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 )
 
@@ -32,10 +31,8 @@ import (
 // if the mode is not specified or if the required properties for the mode are not specified.
 func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Environment: to.String(src.Properties.Environment),
-			Application: to.String(src.Properties.Application),
-		},
+		Environment: to.String(src.Properties.Environment),
+		Application: to.String(src.Properties.Application),
 	}
 
 	trackedResource := v1.TrackedResource{

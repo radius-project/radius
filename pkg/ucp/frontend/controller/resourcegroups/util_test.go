@@ -21,7 +21,6 @@ import (
 	"net/url"
 	"testing"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -50,11 +49,7 @@ func Test_ValidateDownstream(t *testing.T) {
 	downstream := "http://localhost:7443"
 
 	plane := &datamodel.RadiusPlane{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: id.PlaneScope(),
-			},
-		},
+		ID: id.PlaneScope(),
 		Properties: datamodel.RadiusPlaneProperties{
 			ResourceProviders: map[string]string{
 				"System.TestRP": downstream,
@@ -63,22 +58,14 @@ func Test_ValidateDownstream(t *testing.T) {
 	}
 
 	resourceTypeResource := &datamodel.ResourceType{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "testResources",
-				ID:   resourceTypeID.String(),
-			},
-		},
+		Name:       "testResources",
+		ID:         resourceTypeID.String(),
 		Properties: datamodel.ResourceTypeProperties{},
 	}
 
 	locationResource := &datamodel.Location{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: location,
-				ID:   locationID.String(),
-			},
-		},
+		Name: location,
+		ID:   locationID.String(),
 		Properties: datamodel.LocationProperties{
 			Address: new("http://localhost:7443"),
 			ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
@@ -98,11 +85,7 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("success (resource group)", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		databaseClient := setup(t)
@@ -244,11 +227,7 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("resource type error", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		expected := fmt.Errorf("failed to fetch resource type %q: %w", "System.TestRP/testResources", errors.New("test error"))
@@ -266,11 +245,7 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("resource type not registered", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		databaseClient := setup(t)
@@ -286,11 +261,7 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("location error", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		expected := fmt.Errorf("failed to fetch location %q: %w", locationResource.ID, errors.New("test error"))
@@ -309,20 +280,12 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("resource type not found in location", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		locationResource := &datamodel.Location{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					Name: location,
-					ID:   locationResource.ID,
-				},
-			},
+			Name: location,
+			ID:   locationResource.ID,
 			Properties: datamodel.LocationProperties{
 				Address: new("http://localhost:7443"),
 				ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
@@ -349,20 +312,12 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("api-version not found in location", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		locationResource := &datamodel.Location{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					Name: location,
-					ID:   locationResource.ID,
-				},
-			},
+			Name: location,
+			ID:   locationResource.ID,
 			Properties: datamodel.LocationProperties{
 				Address: new("http://localhost:7443"),
 				ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
@@ -389,20 +344,12 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("location invalid URL", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		locationResource := &datamodel.Location{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					Name: location,
-					ID:   locationResource.ID,
-				},
-			},
+			Name: location,
+			ID:   locationResource.ID,
 			Properties: datamodel.LocationProperties{
 				Address: new("\ninvalid"),
 				ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{

@@ -289,7 +289,7 @@ func Test_DeploymentTemplateReconciler_Basic(t *testing.T) {
 
 	// Create k8s namespace for the test.
 	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
+	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
 	require.NoError(t, err)
 
 	// Create the DeploymentTemplate resource.
@@ -345,7 +345,7 @@ func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
 
 	// Create k8s namespace for the test.
 	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
+	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
 	require.NoError(t, err)
 
 	// Create the DeploymentTemplate resource.
@@ -365,7 +365,7 @@ func Test_DeploymentTemplateReconciler_FailureRecovery(t *testing.T) {
 		require.True(t, ok, "failed to find resource")
 
 		resource.Properties.ProvisioningState = to.Ptr(armdeployments.ProvisioningStateFailed)
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armdeployments.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
 	})
 
 	// DeploymentTemplate should (eventually) start a new provisioning operation
@@ -412,7 +412,7 @@ func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
 
 	// Create k8s namespace for the test.
 	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
+	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
 	require.NoError(t, err)
 
 	// Create the DeploymentTemplate resource.
@@ -431,7 +431,7 @@ func Test_DeploymentTemplateReconciler_WithResources(t *testing.T) {
 		resource.Properties.OutputResources = []*armdeployments.ResourceReference{
 			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-withresources/providers/Applications.Core/environments/deploymenttemplate-withresources-env")},
 		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armdeployments.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
 	})
 
 	// DeploymentTemplate should be ready after the operation completes.
@@ -489,7 +489,7 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 
 	// Create k8s namespace for the test.
 	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
+	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
 	require.NoError(t, err)
 
 	// Create the DeploymentTemplate resource.
@@ -508,7 +508,7 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 		resource.Properties.OutputResources = []*armdeployments.ResourceReference{
 			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env")},
 		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armdeployments.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
 	})
 
 	// DeploymentTemplate should be ready after the operation completes.
@@ -557,7 +557,7 @@ func Test_DeploymentTemplateReconciler_Update(t *testing.T) {
 		resource.Properties.OutputResources = []*armdeployments.ResourceReference{
 			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-update/providers/Applications.Core/environments/deploymenttemplate-update-env")},
 		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armdeployments.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
 	})
 
 	// DeploymentTemplate should be Ready again after the operation completes.
@@ -618,7 +618,7 @@ func Test_DeploymentTemplateReconciler_OutputResources(t *testing.T) {
 
 	// Create k8s namespace for the test.
 	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
+	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
 	require.NoError(t, err)
 
 	// Create the DeploymentTemplate resource.
@@ -639,7 +639,7 @@ func Test_DeploymentTemplateReconciler_OutputResources(t *testing.T) {
 			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application")},
 			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/containers/deploymenttemplate-outputresources-container")},
 		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armdeployments.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
 	})
 
 	// DeploymentTemplate should be ready after the operation completes.
@@ -708,7 +708,7 @@ func Test_DeploymentTemplateReconciler_OutputResources(t *testing.T) {
 			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/environments/deploymenttemplate-outputresources-environment")},
 			{ID: new("/planes/radius/local/resourceGroups/deploymenttemplate-outputresources/providers/Applications.Core/applications/deploymenttemplate-outputresources-application")},
 		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armdeployments.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
 	})
 
 	// Complete the delete operation on the container resource.
@@ -792,7 +792,7 @@ func Test_DeploymentTemplateReconciler_ReadyPendingCleanup(t *testing.T) {
 	require.NoError(t, err)
 
 	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
+	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
 	require.NoError(t, err)
 
 	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
@@ -815,7 +815,7 @@ func Test_DeploymentTemplateReconciler_ReadyPendingCleanup(t *testing.T) {
 			{ID: new(appID)},
 			{ID: new(containerID)},
 		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armdeployments.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
 	})
 
 	_ = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)
@@ -841,7 +841,7 @@ func Test_DeploymentTemplateReconciler_ReadyPendingCleanup(t *testing.T) {
 			{ID: new(envID)},
 			{ID: new(appID)},
 		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armdeployments.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
 	})
 
 	// The container DR's delete operation is still pending in the mock, so
@@ -890,7 +890,7 @@ func Test_DeploymentTemplateReconciler_NilOutputResourcesTriggersCleanup(t *test
 	require.NoError(t, err)
 
 	namespacedName := types.NamespacedName{Namespace: testNamespace, Name: testName}
-	err = k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: testNamespace}})
+	err = k8sClient.Create(ctx, &corev1.Namespace{Name: testNamespace})
 	require.NoError(t, err)
 
 	deploymentTemplate := makeDeploymentTemplate(namespacedName, template, providerConfig, parameters)
@@ -913,7 +913,7 @@ func Test_DeploymentTemplateReconciler_NilOutputResourcesTriggersCleanup(t *test
 			{ID: new(appID)},
 			{ID: new(containerID)},
 		}
-		state.Value = sdkclients.ClientCreateOrUpdateResponse{DeploymentExtended: armdeployments.DeploymentExtended{Properties: resource.Properties}}
+		state.Value = sdkclients.ClientCreateOrUpdateResponse{Properties: resource.Properties}
 	})
 
 	_ = waitForDeploymentTemplateStateReady(t, k8sClient, namespacedName)

@@ -29,7 +29,8 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -126,9 +127,7 @@ func TestListResourcesRun(t *testing.T) {
 			items := []database.Object{}
 			for i := 0; i < tt.batchCount; i++ {
 				item := database.Object{
-					Metadata: database.Metadata{
-						ID: uuid.New().String(),
-					},
+					ID:   uuid.New().String(),
 					Data: testResourceDataModel,
 				}
 				items = append(items, item)

@@ -38,10 +38,8 @@ type APIService struct {
 // NewAPIService creates a new instance of APIService.
 func NewAPIService(options hostoptions.HostOptions, builder []builder.Builder) *APIService {
 	return &APIService{
-		Service: server.Service{
-			ProviderName: "radius",
-			Options:      options,
-		},
+		ProviderName:   "radius",
+		Options:        options,
 		handlerBuilder: builder,
 	}
 }

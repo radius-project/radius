@@ -24,7 +24,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/azure/armauth"
@@ -245,10 +244,8 @@ func Test_Delete_Kubernetes(t *testing.T) {
 
 	t.Run("success - lookup API Version (preferred namespaced resources)", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithObjects(&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-name",
-				Namespace: "test-namespace",
-			},
+			Name:      "test-name",
+			Namespace: "test-namespace",
 		}).Build()
 
 		dc := &k8sutil.DiscoveryClient{
@@ -278,9 +275,7 @@ func Test_Delete_Kubernetes(t *testing.T) {
 
 	t.Run("success - lookup API Version (preferred empty namespace)", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithObjects(&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "test-name",
-			},
+			Name: "test-name",
 		}).Build()
 
 		dc := &k8sutil.DiscoveryClient{
@@ -310,10 +305,8 @@ func Test_Delete_Kubernetes(t *testing.T) {
 
 	t.Run("failure - lookup API Version - resource list not found", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithObjects(&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-name",
-				Namespace: "test-namespace",
-			},
+			Name:      "test-name",
+			Namespace: "test-namespace",
 		}).Build()
 
 		dc := &k8sutil.DiscoveryClient{
@@ -398,23 +391,21 @@ func newArmOptions(url string) *armauth.ArmConfig {
 
 func newClientOptions(c *http.Client, url string) *arm.ClientOptions {
 	return &arm.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: &wrapper{Client: c},
-			Cloud: cloud.Configuration{
-				Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
-					cloud.ResourceManager: {
-						Endpoint: url,
-						Audience: "https://management.core.windows.net",
-					},
+		Transport: &wrapper{Client: c},
+		Cloud: cloud.Configuration{
+			Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
+				cloud.ResourceManager: {
+					Endpoint: url,
+					Audience: "https://management.core.windows.net",
 				},
 			},
-			// When updating azcore to 1.11.1 from 1.7.0, we saw that HTTPS check for Authentication was added.
-			// Link to the check: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/azcore/runtime/policy_bearer_token.go#L118
-			//
-			// This check was failing for ARM requests over HTTP. To fix this, we set InsecureAllowCredentialWithHTTP to true.
-			// The reason it was failing is because the ARM requests are made over HTTP and the bearer token is being sent in the header.
-			InsecureAllowCredentialWithHTTP: true,
 		},
+		// When updating azcore to 1.11.1 from 1.7.0, we saw that HTTPS check for Authentication was added.
+		// Link to the check: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/azcore/runtime/policy_bearer_token.go#L118
+		//
+		// This check was failing for ARM requests over HTTP. To fix this, we set InsecureAllowCredentialWithHTTP to true.
+		// The reason it was failing is because the ARM requests are made over HTTP and the bearer token is being sent in the header.
+		InsecureAllowCredentialWithHTTP: true,
 	}
 }
 

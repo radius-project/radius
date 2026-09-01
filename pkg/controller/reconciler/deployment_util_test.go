@@ -27,13 +27,13 @@ import (
 func Test_addSecretReference_AlreadyPresent(t *testing.T) {
 	expected := []corev1.EnvFromSource{
 		{
-			SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "secret"}},
+			SecretRef: &corev1.SecretEnvSource{Name: "secret"},
 		},
 		{
-			SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "another"}},
+			SecretRef: &corev1.SecretEnvSource{Name: "another"},
 		},
 		{
-			ConfigMapRef: &corev1.ConfigMapEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "config"}},
+			ConfigMapRef: &corev1.ConfigMapEnvSource{Name: "config"},
 		},
 	}
 
@@ -49,23 +49,23 @@ func Test_addSecretReference_ReferenceAdded(t *testing.T) {
 	expected := []corev1.EnvFromSource{
 
 		{
-			SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "another"}},
+			SecretRef: &corev1.SecretEnvSource{Name: "another"},
 		},
 		{
-			ConfigMapRef: &corev1.ConfigMapEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "config"}},
+			ConfigMapRef: &corev1.ConfigMapEnvSource{Name: "config"},
 		},
 		{
-			SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "secret"}, Optional: new(false)},
+			SecretRef: &corev1.SecretEnvSource{Name: "secret", Optional: new(false)},
 		},
 	}
 
 	deployment := makeDeployment(types.NamespacedName{})
 	deployment.Spec.Template.Spec.Containers[0].EnvFrom = []corev1.EnvFromSource{
 		{
-			SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "another"}},
+			SecretRef: &corev1.SecretEnvSource{Name: "another"},
 		},
 		{
-			ConfigMapRef: &corev1.ConfigMapEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "config"}},
+			ConfigMapRef: &corev1.ConfigMapEnvSource{Name: "config"},
 		},
 	}
 
@@ -77,10 +77,10 @@ func Test_addSecretReference_ReferenceAdded(t *testing.T) {
 func Test_removeSecretReference_AlreadyRemoved(t *testing.T) {
 	expected := []corev1.EnvFromSource{
 		{
-			SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "another"}},
+			SecretRef: &corev1.SecretEnvSource{Name: "another"},
 		},
 		{
-			ConfigMapRef: &corev1.ConfigMapEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "config"}},
+			ConfigMapRef: &corev1.ConfigMapEnvSource{Name: "config"},
 		},
 	}
 
@@ -95,23 +95,23 @@ func Test_removeSecretReference_AlreadyRemoved(t *testing.T) {
 func Test_removeSecretReference_ReferenceRemoved(t *testing.T) {
 	expected := []corev1.EnvFromSource{
 		{
-			SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "another"}},
+			SecretRef: &corev1.SecretEnvSource{Name: "another"},
 		},
 		{
-			ConfigMapRef: &corev1.ConfigMapEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "config"}},
+			ConfigMapRef: &corev1.ConfigMapEnvSource{Name: "config"},
 		},
 	}
 
 	deployment := makeDeployment(types.NamespacedName{})
 	deployment.Spec.Template.Spec.Containers[0].EnvFrom = []corev1.EnvFromSource{
 		{
-			SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "secret"}},
+			SecretRef: &corev1.SecretEnvSource{Name: "secret"},
 		},
 		{
-			SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "another"}},
+			SecretRef: &corev1.SecretEnvSource{Name: "another"},
 		},
 		{
-			ConfigMapRef: &corev1.ConfigMapEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "config"}},
+			ConfigMapRef: &corev1.ConfigMapEnvSource{Name: "config"},
 		},
 	}
 

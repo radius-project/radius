@@ -20,7 +20,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -263,9 +262,7 @@ func (r *FluxController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 		// Create the namespace if it doesn't exist
 		namespaceObj := &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: namespace,
-			},
+			Name: namespace,
 		}
 
 		if err := r.Client.Create(ctx, namespaceObj); err != nil {
@@ -399,10 +396,8 @@ func (r *FluxController) createOrUpdateDeploymentTemplate(ctx context.Context, f
 
 		// If the DeploymentTemplate doesn't exist, create it
 		deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fileName,
-				Namespace: namespace,
-			},
+			Name:      fileName,
+			Namespace: namespace,
 			Spec: radappiov1alpha3.DeploymentTemplateSpec{
 				Template:       template,
 				Parameters:     parameters,

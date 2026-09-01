@@ -23,16 +23,16 @@ import (
 	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"uuid"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
 	"github.com/go-logr/logr"
-	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/cli/clients"
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/hashutil"
@@ -221,10 +221,8 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 				}
 
 				deploymentResource := &radappiov1alpha3.DeploymentResource{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: deploymentTemplate.Namespace,
-					},
+					Name:      resourceName,
+					Namespace: deploymentTemplate.Namespace,
 					Spec: radappiov1alpha3.DeploymentResourceSpec{
 						Id: outputResourceId,
 					},
@@ -256,10 +254,8 @@ func (r *DeploymentTemplateReconciler) reconcileOperation(ctx context.Context, d
 				}
 
 				err = r.Client.Delete(ctx, &radappiov1alpha3.DeploymentResource{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: deploymentTemplate.Namespace,
-					},
+					Name:      resourceName,
+					Namespace: deploymentTemplate.Namespace,
 				})
 				if client.IgnoreNotFound(err) != nil {
 					return ctrl.Result{}, err

@@ -21,7 +21,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	ucp_datamodel "github.com/radius-project/radius/pkg/ucp/datamodel"
 
 	"github.com/radius-project/radius/pkg/azure/tokencredentials"

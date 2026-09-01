@@ -23,7 +23,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
 	"github.com/radius-project/radius/pkg/cli/output"

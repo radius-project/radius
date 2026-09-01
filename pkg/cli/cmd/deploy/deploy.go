@@ -943,8 +943,7 @@ func isProviderNotConfiguredError(message string) bool {
 }
 
 func extractDeploymentEngineErrorDetails(err error) (*v1.ErrorDetails, bool) {
-	var clientErr *v1.ErrClientRP
-	if errors.As(err, &clientErr) {
+	if clientErr, ok := errors.AsType[*v1.ErrClientRP](err); ok {
 		return &v1.ErrorDetails{Code: clientErr.Code, Message: clientErr.Message}, true
 	}
 
