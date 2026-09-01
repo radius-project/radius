@@ -21,7 +21,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/components/database"

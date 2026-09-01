@@ -36,7 +36,8 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"golang.org/x/sync/semaphore"
 )
 

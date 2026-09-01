@@ -22,9 +22,10 @@ import (
 	"strings"
 	"sync"
 
+	"uuid"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	azcoreruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
