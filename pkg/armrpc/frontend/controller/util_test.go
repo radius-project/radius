@@ -25,8 +25,9 @@ import (
 	"strings"
 	"testing"
 
+	"uuid"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/require"
 )
