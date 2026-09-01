@@ -13,8 +13,8 @@ import (
 	context "context"
 	reflect "reflect"
 	time "time"
+	uuid "uuid"
 
-	uuid 	"uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	resources "github.com/radius-project/radius/pkg/ucp/resources"
 	gomock "go.uber.org/mock/gomock"
