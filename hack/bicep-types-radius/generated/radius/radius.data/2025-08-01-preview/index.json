@@ -10,10 +10,10 @@
       "$ref": "types.json#/66"
     },
     "Radius.Data/redisCaches@2025-08-01-preview": {
-      "$ref": "types.json#/89"
+      "$ref": "types.json#/90"
     },
     "Radius.Data/sqlServerDatabases@2025-08-01-preview": {
-      "$ref": "types.json#/108"
+      "$ref": "types.json#/109"
     }
   },
   "resourceFunctions": {},
