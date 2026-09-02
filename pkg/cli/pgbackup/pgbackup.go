@@ -28,10 +28,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/radius-project/radius/pkg/process"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -113,7 +113,7 @@ func Backup(ctx context.Context, kubeContext, namespace, stateDir string) error 
 	for _, db := range Databases {
 		logger.Info("Backing up database", "database", db, "stateDir", stateDir)
 
-		cmd := exec.CommandContext(ctx, "kubectl",
+		cmd := process.CommandContext(ctx, "kubectl",
 			"--context", kubeContext,
 			"-n", namespace,
 			"exec", podName, "--",
@@ -168,7 +168,7 @@ func Restore(ctx context.Context, kubeContext, namespace, stateDir string) error
 			return fmt.Errorf("failed to read backup file %q: %w", sqlPath, err)
 		}
 
-		cmd := exec.CommandContext(ctx, "kubectl",
+		cmd := process.CommandContext(ctx, "kubectl",
 			"--context", kubeContext,
 			"-n", namespace,
 			"exec", "-i", podName, "--",
@@ -196,7 +196,7 @@ func WaitForReady(ctx context.Context, kubeContext, namespace string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info("Waiting for PostgreSQL pod to be ready")
 
-	cmd := exec.CommandContext(ctx, "kubectl",
+	cmd := process.CommandContext(ctx, "kubectl",
 		"--context", kubeContext,
 		"-n", namespace,
 		"wait",
@@ -219,7 +219,7 @@ func WaitForReady(ctx context.Context, kubeContext, namespace string) error {
 
 // getPodName resolves the name of the PostgreSQL pod via its label selector.
 func getPodName(ctx context.Context, kubeContext, namespace string) (string, error) {
-	cmd := exec.CommandContext(ctx, "kubectl",
+	cmd := process.CommandContext(ctx, "kubectl",
 		"--context", kubeContext,
 		"-n", namespace,
 		"get", "pods",
