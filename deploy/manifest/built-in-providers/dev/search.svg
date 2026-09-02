@@ -1,4 +1,5 @@
-<svg width="500" height="500" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg class="resource-type-icon" width="500" height="500" viewBox="0 0 500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+<style>@media (prefers-color-scheme: dark) { .resource-type-icon { filter: invert(1); } }</style>
 <path d="M369.5 311.656C412.469 311.656 421.75 280.406 421.75 241.344C421.75 202.281 394.406 171.031 355.344 167.125C343.625 120.25 304.562 89 257.688 89C206.906 89 163.938 124.156 156.125 174.938C113.156 178.844 78 210.094 78 253.062C78 284.312 109.25 311.656 148.312 311.656H369.5Z" fill="white" stroke="black" stroke-width="15" stroke-linejoin="round"/>
 <path d="M291 379C336.84 379 374 341.84 374 296C374 250.16 336.84 213 291 213C245.16 213 208 250.16 208 296C208 341.84 245.16 379 291 379Z" fill="white" stroke="black" stroke-width="15"/>
 <path d="M355.938 360.312L406.719 411.094" stroke="black" stroke-width="15" stroke-linecap="round"/>
