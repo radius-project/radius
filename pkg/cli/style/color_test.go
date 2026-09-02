@@ -52,6 +52,19 @@ func TestAdaptiveColor_UsesDetectedBackground(t *testing.T) {
 	require.Equal(t, rgba(lipgloss.Color("#111111")), rgba(color))
 }
 
+func TestAdaptiveColor_DarkTerminalUsesDarkColor(t *testing.T) {
+	resetBackgroundDetection(t, true, func() bool {
+		return true
+	})
+
+	color := AdaptiveColor{
+		Light: lipgloss.Color("#111111"),
+		Dark:  lipgloss.Color("#EEEEEE"),
+	}
+
+	require.Equal(t, rgba(lipgloss.Color("#EEEEEE")), rgba(color))
+}
+
 func rgba(value color.Color) [4]uint32 {
 	red, green, blue, alpha := value.RGBA()
 	return [4]uint32{red, green, blue, alpha}

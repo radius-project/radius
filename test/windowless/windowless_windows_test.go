@@ -51,6 +51,7 @@ const (
 	testProcessTimeout     = 20 * time.Second
 	testJobExitCode        = 125
 	testBicepVersion       = "0.42.1"
+	testBicepStderr        = "Bicep diagnostic from test"
 	testStatusPollInterval = 25 * time.Millisecond
 )
 
@@ -105,6 +106,7 @@ func TestRadVersion_NonDetachedWindowlessProcessCompletesInsideJob(t *testing.T)
 	}
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result), stdout.String())
 	require.Equal(t, testBicepVersion, result.Bicep)
+	require.Contains(t, stderr.String(), testBicepStderr)
 
 	status := readBicepStatus(t, statusPath)
 	require.Equal(t, "false", status["console"], "Bicep must not have an attached console")
@@ -284,6 +286,7 @@ func runFakeBicep() int {
 		}
 	}
 
+	fmt.Fprintln(os.Stderr, testBicepStderr)
 	fmt.Printf("Bicep CLI version %s (test)\n", testBicepVersion)
 	return 0
 }
