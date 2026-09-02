@@ -50,6 +50,16 @@ Override the destination with `RAD_LOCATION`. The path must end in `rad` and sho
 RAD_LOCATION=/my/custom/location/rad sudo make install
 ```
 
+### Test Windows background execution
+
+Run the focused Windows process tests on a native Windows host:
+
+```powershell
+go test ./pkg/process ./pkg/cli/style ./test/windowless -count=1 -timeout=2m
+```
+
+The process unit tests verify the Windows no-window creation flags. The integration test builds `rad.exe`, launches it non-detached with piped output inside a kill-on-close Windows Job Object, and verifies `rad version --cli --output json`, a windowless Bicep child, and process-tree cancellation. CI runs these tests on Windows amd64 and arm64.
+
 ### Debug rad in VS Code
 
 The repo's [.vscode/launch.json](../../../../.vscode/launch.json) defines the **"Debug rad CLI (prompt for args)"** configuration, which launches [cmd/rad/main.go](../../../../cmd/rad/main.go) and prompts you for the command-line arguments to run.
@@ -86,6 +96,7 @@ if errors.Is(err, NotFoundError{}) {
 - `go run ./cmd/rad/main.go version` prints version information that includes your local changes.
 - After `sudo make install`, running `rad version` from any directory resolves to your freshly installed build.
 - A breakpoint set in `cmd/rad/` is hit when you run **"Debug rad CLI (prompt for args)"**.
+- On Windows, the focused process tests pass on the native architecture.
 
 ## Troubleshooting
 
