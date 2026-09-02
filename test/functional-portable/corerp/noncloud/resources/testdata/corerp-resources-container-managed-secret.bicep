@@ -79,10 +79,10 @@ resource consumer 'Radius.Compute/containers@2025-08-01-preview' = {
         ]
         args: [
           '''
-            test -n "$CONNECTION_REDIS_HOST"
-            test "$CONNECTION_REDIS_PORT" = "6379"
-            test -n "$CONNECTION_REDIS_URL"
-            case "$CONNECTION_REDIS_URL" in redis://*) ;; *) exit 1 ;; esac
+            test -n "$CONNECTION_REDIS_HOST" || { echo "CONNECTION_REDIS_HOST is empty" >&2; exit 1; }
+            test "$CONNECTION_REDIS_PORT" = "6379" || { echo "CONNECTION_REDIS_PORT is unexpected" >&2; exit 1; }
+            test -n "$CONNECTION_REDIS_URL" || { echo "CONNECTION_REDIS_URL is empty" >&2; exit 1; }
+            case "$CONNECTION_REDIS_URL" in redis://*) ;; *) echo "CONNECTION_REDIS_URL has unexpected scheme" >&2; exit 1 ;; esac
             echo managed-secret-init-ready
           '''
         ]
@@ -95,10 +95,10 @@ resource consumer 'Radius.Compute/containers@2025-08-01-preview' = {
         ]
         args: [
           '''
-            test -n "$CONNECTION_REDIS_HOST"
-            test "$CONNECTION_REDIS_PORT" = "6379"
-            test -n "$CONNECTION_REDIS_URL"
-            case "$CONNECTION_REDIS_URL" in redis://*) ;; *) exit 1 ;; esac
+            test -n "$CONNECTION_REDIS_HOST" || { echo "CONNECTION_REDIS_HOST is empty" >&2; exit 1; }
+            test "$CONNECTION_REDIS_PORT" = "6379" || { echo "CONNECTION_REDIS_PORT is unexpected" >&2; exit 1; }
+            test -n "$CONNECTION_REDIS_URL" || { echo "CONNECTION_REDIS_URL is empty" >&2; exit 1; }
+            case "$CONNECTION_REDIS_URL" in redis://*) ;; *) echo "CONNECTION_REDIS_URL has unexpected scheme" >&2; exit 1 ;; esac
             echo managed-secret-connection-ready
             while true; do sleep 30; done
           '''

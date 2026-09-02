@@ -46,6 +46,8 @@ func Test_Container_ManagedSecretConnection(t *testing.T) {
 
 	producerID, err := resources.Parse(fmt.Sprintf("%s/providers/Radius.Data/redisCaches/%s", test.Options.Workspace.Scope, producerName))
 	require.NoError(t, err)
+	// The validation set needs the deterministic name before deployment; the assertion against
+	// producer.Properties["secrets"]["name"] below verifies the public contract independently.
 	managedSecretName := backendsecret.ManagedSecretName(producerID)
 
 	test.Steps = []rp.TestStep{
@@ -63,7 +65,7 @@ func Test_Container_ManagedSecretConnection(t *testing.T) {
 					},
 					{
 						Name: producerName,
-						Type: "radius.data/redisCaches",
+						Type: validation.DataRedisCachesResource,
 						App:  name,
 					},
 					{
@@ -97,10 +99,10 @@ func Test_Container_ManagedSecretConnection(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test rp.RPTest) {
-				producer, err := test.Options.ManagementClient.GetResource(ctx, "Radius.Data/redisCaches", producerName)
+				producer, err := test.Options.ManagementClient.GetResource(ctx, validation.DataRedisCachesResource, producerName)
 				require.NoError(t, err)
 				require.Equal(t, producerName+"."+name+".svc.cluster.local", producer.Properties["host"])
-				require.Equal(t, "6379", fmt.Sprint(producer.Properties["port"]))
+				require.EqualValues(t, 6379, producer.Properties["port"])
 
 				producerSecrets, ok := producer.Properties["secrets"].(map[string]any)
 				require.True(t, ok, "producer should expose managed secret metadata")
