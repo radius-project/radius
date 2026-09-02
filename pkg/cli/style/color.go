@@ -20,21 +20,19 @@ package style
 import (
 	"image/color"
 	"os"
-	"strings"
 	"sync"
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/term"
-	"github.com/radius-project/radius/pkg/process"
 )
 
 var (
-	backgroundDetection  sync.Once
-	hasDarkBackground    bool
+	backgroundDetection sync.Once
+	hasDarkBackground   bool
+	hasTerminal         = func() bool {
+		return term.IsTerminal(os.Stdin.Fd()) && term.IsTerminal(os.Stdout.Fd())
+	}
 	detectDarkBackground = func() bool {
-		if !term.IsTerminal(os.Stdin.Fd()) || !term.IsTerminal(os.Stdout.Fd()) {
-			return true
-		}
 		return lipgloss.HasDarkBackground(os.Stdin, os.Stdout)
 	}
 )
@@ -48,7 +46,7 @@ type AdaptiveColor struct {
 // RGBA returns the color selected for the current terminal background.
 func (c AdaptiveColor) RGBA() (uint32, uint32, uint32, uint32) {
 	backgroundDetection.Do(func() {
-		if strings.EqualFold(os.Getenv(process.NoWindowEnvVar), "true") {
+		if !hasTerminal() {
 			hasDarkBackground = true
 			return
 		}

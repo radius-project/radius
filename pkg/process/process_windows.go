@@ -19,16 +19,19 @@ limitations under the License.
 package process
 
 import (
-	"os"
 	"os/exec"
-	"strings"
 	"syscall"
 
 	"golang.org/x/sys/windows"
 )
 
+var hasConsole = func() bool {
+	_, err := windows.GetConsoleCP()
+	return err == nil
+}
+
 func configure(cmd *exec.Cmd) *exec.Cmd {
-	if !strings.EqualFold(os.Getenv(NoWindowEnvVar), "true") {
+	if hasConsole() {
 		return cmd
 	}
 

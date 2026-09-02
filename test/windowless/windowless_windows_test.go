@@ -36,7 +36,6 @@ import (
 	"unsafe"
 
 	"github.com/radius-project/radius/pkg/cli/bicep"
-	"github.com/radius-project/radius/pkg/process"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/windows"
 )
@@ -197,7 +196,6 @@ func runAutomationParent() int {
 	cmd.Env = append(os.Environ(),
 		testHelperEnv+"="+testHelperBicep,
 		bicep.BicepEnvVar+"="+os.Args[0],
-		process.NoWindowEnvVar+"=true",
 	)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		HideWindow:    true,

@@ -22,14 +22,12 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
-	"github.com/radius-project/radius/pkg/process"
 	"github.com/stretchr/testify/require"
 )
 
-func TestAdaptiveColor_NoWindowUsesDarkColorWithoutTerminalQuery(t *testing.T) {
-	t.Setenv(process.NoWindowEnvVar, "true")
-	resetBackgroundDetection(t, func() bool {
-		t.Fatal("terminal background must not be queried in no-window mode")
+func TestAdaptiveColor_NoTerminalUsesDarkColorWithoutTerminalQuery(t *testing.T) {
+	resetBackgroundDetection(t, false, func() bool {
+		t.Fatal("terminal background must not be queried without a terminal")
 		return false
 	})
 
@@ -42,8 +40,7 @@ func TestAdaptiveColor_NoWindowUsesDarkColorWithoutTerminalQuery(t *testing.T) {
 }
 
 func TestAdaptiveColor_UsesDetectedBackground(t *testing.T) {
-	t.Setenv(process.NoWindowEnvVar, "")
-	resetBackgroundDetection(t, func() bool {
+	resetBackgroundDetection(t, true, func() bool {
 		return false
 	})
 
@@ -60,15 +57,20 @@ func rgba(value color.Color) [4]uint32 {
 	return [4]uint32{red, green, blue, alpha}
 }
 
-func resetBackgroundDetection(t *testing.T, detect func() bool) {
+func resetBackgroundDetection(t *testing.T, terminal bool, detect func() bool) {
 	t.Helper()
+	originalHasTerminal := hasTerminal
 	originalDetect := detectDarkBackground
 	backgroundDetection = sync.Once{}
 	hasDarkBackground = false
+	hasTerminal = func() bool {
+		return terminal
+	}
 	detectDarkBackground = detect
 	t.Cleanup(func() {
 		backgroundDetection = sync.Once{}
 		hasDarkBackground = false
+		hasTerminal = originalHasTerminal
 		detectDarkBackground = originalDetect
 	})
 }

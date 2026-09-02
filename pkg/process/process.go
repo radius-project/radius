@@ -22,9 +22,6 @@ import (
 	"os/exec"
 )
 
-// NoWindowEnvVar enables windowless Radius child processes on Windows.
-const NoWindowEnvVar = "RADIUS_CLI_NO_WINDOW"
-
 // Command returns the Cmd to execute the named program with the given arguments.
 func Command(name string, args ...string) *exec.Cmd {
 	return configure(exec.Command(name, args...))

@@ -24,9 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCommand_NoWindowIsWindowsOnly(t *testing.T) {
-	t.Setenv(NoWindowEnvVar, "true")
-
+func TestCommand_UnchangedOnNonWindows(t *testing.T) {
 	cmd := Command("test-command")
 
 	require.Nil(t, cmd.SysProcAttr)

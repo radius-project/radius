@@ -28,16 +28,16 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func TestCommand_NoWindowDisabled(t *testing.T) {
-	t.Setenv(NoWindowEnvVar, "")
+func TestCommand_ConsoleAttached(t *testing.T) {
+	setHasConsole(t, true)
 
 	cmd := Command("test-command")
 
 	require.Nil(t, cmd.SysProcAttr)
 }
 
-func TestCommand_NoWindowEnabled(t *testing.T) {
-	t.Setenv(NoWindowEnvVar, "TRUE")
+func TestCommand_NoConsole(t *testing.T) {
+	setHasConsole(t, false)
 
 	cmd := Command("test-command")
 
@@ -45,8 +45,8 @@ func TestCommand_NoWindowEnabled(t *testing.T) {
 	require.Equal(t, uint32(windows.CREATE_NO_WINDOW), cmd.SysProcAttr.CreationFlags)
 }
 
-func TestCommandContext_NoWindowEnabled(t *testing.T) {
-	t.Setenv(NoWindowEnvVar, "true")
+func TestCommandContext_NoConsole(t *testing.T) {
+	setHasConsole(t, false)
 
 	cmd := CommandContext(context.Background(), "test-command")
 
@@ -55,7 +55,7 @@ func TestCommandContext_NoWindowEnabled(t *testing.T) {
 }
 
 func TestConfigure_PreservesCreationFlags(t *testing.T) {
-	t.Setenv(NoWindowEnvVar, "true")
+	setHasConsole(t, false)
 	cmd := exec.Command("test-command")
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		CreationFlags: windows.CREATE_NEW_PROCESS_GROUP,
@@ -65,4 +65,15 @@ func TestConfigure_PreservesCreationFlags(t *testing.T) {
 
 	require.True(t, cmd.SysProcAttr.HideWindow)
 	require.Equal(t, uint32(windows.CREATE_NEW_PROCESS_GROUP|windows.CREATE_NO_WINDOW), cmd.SysProcAttr.CreationFlags)
+}
+
+func setHasConsole(t *testing.T, attached bool) {
+	t.Helper()
+	original := hasConsole
+	hasConsole = func() bool {
+		return attached
+	}
+	t.Cleanup(func() {
+		hasConsole = original
+	})
 }
