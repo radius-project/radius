@@ -39,8 +39,10 @@ place for backend business rules that belong in UCP or a resource provider.
 | `pkg/cli/config` | CLI config loading and persistence |
 | `pkg/cli/connections` | workspace connection resolution |
 | `pkg/cli/output` | formatting and output |
+| `pkg/cli/style` | lazy terminal-aware styling |
 | `pkg/cli/helm` | installation and upgrade helpers |
 | `pkg/cli/kubernetes` | cluster-facing helpers |
+| `pkg/process` | external process construction and platform policy |
 | `pkg/sdk` | Radius API clients used by commands |
 
 ## How It Works
@@ -85,6 +87,14 @@ common `NewCommand(factory)` plus `Runner.Validate` and `Runner.Run` pattern.
 That keeps command-specific behavior in `pkg/cli/cmd/...` while shared config,
 workspace resolution, connection creation, and operation helpers stay in their
 own packages.
+
+### Windows background automation
+
+Windows automation callers launch `rad.exe`; `rad.exe` does not launch or require Node.js. A Node.js caller should use `detached: false`, `windowsHide: true`, and piped stdout and stderr, and set `RADIUS_CLI_NO_WINDOW=true` in the child environment. The caller's `windowsHide` option suppresses the initial `rad.exe` console because Radius cannot change its own process creation flags after startup.
+
+When `RADIUS_CLI_NO_WINDOW=true`, [pkg/process](../../pkg/process/) applies `SysProcAttr.HideWindow` and `CREATE_NO_WINDOW` to Radius-owned child processes such as Bicep, kubectl, Git, and the direct Azure CLI wrapper. It does not set `DETACHED_PROCESS` or `CREATE_BREAKAWAY_FROM_JOB`, so `rad.exe` and its descendants remain in the automation caller's Windows Job Object for process-tree cancellation. Standard input, output, error, exit codes, and context cancellation retain their existing behavior.
+
+The environment variable is opt-in. Without it, interactive CLI behavior and child terminal access are unchanged. Azure Identity credentials create their own Azure CLI process and do not use `pkg/process`; automation that must guarantee windowless descendants should use a non-CLI authentication method such as `ServicePrincipal`, `ManagedIdentity`, or `UCPCredential`.
 
 ## Invariants And Constraints
 

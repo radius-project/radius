@@ -19,8 +19,9 @@ package azcli
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"runtime"
+
+	"github.com/radius-project/radius/pkg/process"
 )
 
 // RunCLICommand runs the Azure CLI command based on the OS type and returns an error if the command fails.
@@ -38,7 +39,7 @@ func RunCLICommand(args ...string) error {
 
 	executableArgs = append(executableArgs, args...)
 
-	c := exec.Command(executableName, executableArgs...)
+	c := process.Command(executableName, executableArgs...)
 	c.Stderr = os.Stderr
 	c.Stdout = os.Stdout
 	err := c.Run()

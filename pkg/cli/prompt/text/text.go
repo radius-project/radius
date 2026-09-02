@@ -22,8 +22,8 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"charm.land/lipgloss/v2/compat"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/radius-project/radius/pkg/cli/style"
 )
 
 var (
@@ -82,7 +82,7 @@ func NewTextModel(prompt string, options TextModelOptions) Model {
 
 	return Model{
 		Style:     lipgloss.NewStyle(), // No border or padding by default
-		ErrStyle:  lipgloss.NewStyle().Width(80).Foreground(compat.AdaptiveColor{Light: lipgloss.Color("#666666"), Dark: lipgloss.Color("#999999")}),
+		ErrStyle:  lipgloss.NewStyle().Width(80).Foreground(style.AdaptiveColor{Light: lipgloss.Color("#666666"), Dark: lipgloss.Color("#999999")}),
 		options:   options,
 		prompt:    prompt,
 		textInput: ti,
