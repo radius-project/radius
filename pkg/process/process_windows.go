@@ -26,6 +26,9 @@ import (
 )
 
 var hasConsole = func() bool {
+	// GetConsoleWindow returns zero for Windows Terminal and other pseudoconsole hosts even when
+	// the process has an attached console. GetConsoleCP succeeds for both classic consoles and
+	// pseudoconsole hosts, so it preserves interactive child behavior in either environment.
 	_, err := windows.GetConsoleCP()
 	return err == nil
 }

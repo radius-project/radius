@@ -30,12 +30,12 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 	"unsafe"
 
 	"github.com/radius-project/radius/pkg/cli/bicep"
+	"github.com/radius-project/radius/pkg/process"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/windows"
 )
@@ -57,6 +57,7 @@ const (
 
 var (
 	getConsoleWindow = windows.NewLazySystemDLL("kernel32.dll").NewProc("GetConsoleWindow")
+	freeConsole      = windows.NewLazySystemDLL("kernel32.dll").NewProc("FreeConsole")
 	radBinaryPath    string
 )
 
@@ -181,6 +182,11 @@ func newAutomationParentCommand(ctx context.Context, statusPath string, bicepMod
 }
 
 func runAutomationParent() int {
+	if result, _, err := freeConsole.Call(); result == 0 {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+
 	job, err := createKillOnCloseJob()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -194,15 +200,11 @@ func runAutomationParent() int {
 	// Keep the only job handle open for the helper lifetime. Its automatic close when the helper
 	// exits is what terminates rad and every descendant during the cancellation test.
 
-	cmd := exec.Command(os.Getenv(testRadBinaryEnv), "version", "--cli", "--output", "json")
+	cmd := process.Command(os.Getenv(testRadBinaryEnv), "version", "--cli", "--output", "json")
 	cmd.Env = append(os.Environ(),
 		testHelperEnv+"="+testHelperBicep,
 		bicep.BicepEnvVar+"="+os.Args[0],
 	)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		HideWindow:    true,
-		CreationFlags: windows.CREATE_NO_WINDOW,
-	}
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
