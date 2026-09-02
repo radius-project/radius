@@ -39,8 +39,10 @@ place for backend business rules that belong in UCP or a resource provider.
 | `pkg/cli/config` | CLI config loading and persistence |
 | `pkg/cli/connections` | workspace connection resolution |
 | `pkg/cli/output` | formatting and output |
+| `pkg/cli/style` | lazy terminal-aware styling |
 | `pkg/cli/helm` | installation and upgrade helpers |
 | `pkg/cli/kubernetes` | cluster-facing helpers |
+| `pkg/process` | external process construction and platform policy |
 | `pkg/sdk` | Radius API clients used by commands |
 
 ## How It Works
@@ -85,6 +87,14 @@ common `NewCommand(factory)` plus `Runner.Validate` and `Runner.Run` pattern.
 That keeps command-specific behavior in `pkg/cli/cmd/...` while shared config,
 workspace resolution, connection creation, and operation helpers stay in their
 own packages.
+
+### Windows background automation
+
+Windows automation callers launch `rad.exe`. A Node.js caller should use `detached: false`, `windowsHide: true`, and piped stdout and stderr. The caller's `windowsHide` option suppresses the initial `rad.exe` console because Radius cannot change its own process creation flags after startup.
+
+When `rad.exe` has no attached console, [pkg/process](../../pkg/process/) automatically applies `SysProcAttr.HideWindow` and `CREATE_NO_WINDOW` to Radius-owned child processes such as Bicep, kubectl, Git, and the direct Azure CLI wrapper. It does not set `DETACHED_PROCESS` or `CREATE_BREAKAWAY_FROM_JOB`, so `rad.exe` and its descendants remain in the automation caller's Windows Job Object for process-tree cancellation. Standard input, output, error, exit codes, and context cancellation retain their existing behavior.
+
+When `rad.exe` has an attached console, child terminal access and interactive CLI behavior are unchanged. Azure Identity credentials create their own Azure CLI process and do not use `pkg/process`; automation that must guarantee windowless descendants should use a non-CLI authentication method such as `ServicePrincipal`, `ManagedIdentity`, or `UCPCredential`.
 
 ## Invariants And Constraints
 
