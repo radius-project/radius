@@ -90,7 +90,7 @@ own packages.
 
 ### Windows background automation
 
-Windows automation callers launch `rad.exe`; `rad.exe` does not launch or require Node.js. A Node.js caller should use `detached: false`, `windowsHide: true`, and piped stdout and stderr. The caller's `windowsHide` option suppresses the initial `rad.exe` console because Radius cannot change its own process creation flags after startup.
+Windows automation callers launch `rad.exe`. A Node.js caller should use `detached: false`, `windowsHide: true`, and piped stdout and stderr. The caller's `windowsHide` option suppresses the initial `rad.exe` console because Radius cannot change its own process creation flags after startup.
 
 When `rad.exe` has no attached console, [pkg/process](../../pkg/process/) automatically applies `SysProcAttr.HideWindow` and `CREATE_NO_WINDOW` to Radius-owned child processes such as Bicep, kubectl, Git, and the direct Azure CLI wrapper. It does not set `DETACHED_PROCESS` or `CREATE_BREAKAWAY_FROM_JOB`, so `rad.exe` and its descendants remain in the automation caller's Windows Job Object for process-tree cancellation. Standard input, output, error, exit codes, and context cancellation retain their existing behavior.
 
