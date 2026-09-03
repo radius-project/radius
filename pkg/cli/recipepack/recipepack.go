@@ -262,6 +262,10 @@ func GetCoreTypesRecipeInfo() []CoreTypesRecipeInfo {
 			Source:       "ghcr.io/radius-project/kube-recipes/postgresqldatabases:" + resolveRecipeTag("Radius.Data/postgreSqlDatabases", isEdge),
 		},
 		{
+			ResourceType: "Radius.Data/redisCaches",
+			Source:       "ghcr.io/radius-project/kube-recipes/rediscaches:" + resolveRecipeTag("Radius.Data/redisCaches", isEdge),
+		},
+		{
 			ResourceType: "Radius.Messaging/rabbitMQ",
 			Source:       "ghcr.io/radius-project/kube-recipes/rabbitmq:" + resolveRecipeTag("Radius.Messaging/rabbitMQ", isEdge),
 		},

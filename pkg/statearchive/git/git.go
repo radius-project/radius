@@ -41,6 +41,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/radius-project/radius/pkg/process"
 	"github.com/radius-project/radius/pkg/statearchive"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
@@ -229,7 +230,7 @@ func gitIdentityConfigured(ctx context.Context, dir string) bool {
 // gitConfigValue returns the trimmed value of a git config key for the repository at dir, or an
 // empty string if the key is unset or git fails.
 func gitConfigValue(ctx context.Context, dir, key string) string {
-	cmd := exec.CommandContext(ctx, "git", "config", "--get", key)
+	cmd := process.CommandContext(ctx, "git", "config", "--get", key)
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
@@ -240,7 +241,7 @@ func gitConfigValue(ctx context.Context, dir, key string) string {
 
 // hasRemote reports whether a remote named origin is configured.
 func hasRemote(ctx context.Context, root string) bool {
-	cmd := exec.CommandContext(ctx, "git", "remote", "get-url", remoteName)
+	cmd := process.CommandContext(ctx, "git", "remote", "get-url", remoteName)
 	cmd.Dir = root
 	return cmd.Run() == nil
 }
@@ -252,7 +253,7 @@ func hasRemote(ctx context.Context, root string) bool {
 // proceeds to fetch and fails loudly, rather than treating an unreachable remote as "branch absent"
 // and silently creating an empty branch that would restore the wrong (empty) state.
 func remoteHasBranch(ctx context.Context, root, branch string) bool {
-	cmd := exec.CommandContext(ctx, "git", "ls-remote", "--exit-code", "--heads", remoteName, branch)
+	cmd := process.CommandContext(ctx, "git", "ls-remote", "--exit-code", "--heads", remoteName, branch)
 	cmd.Dir = root
 	err := cmd.Run()
 	if err == nil {
@@ -267,7 +268,7 @@ func remoteHasBranch(ctx context.Context, root, branch string) bool {
 
 // branchExists reports whether branch exists locally in the repository at root.
 func branchExists(ctx context.Context, root, branch string) bool {
-	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--verify", "refs/heads/"+branch)
+	cmd := process.CommandContext(ctx, "git", "rev-parse", "--verify", "refs/heads/"+branch)
 	cmd.Dir = root
 	return cmd.Run() == nil
 }
@@ -277,7 +278,7 @@ func branchExists(ctx context.Context, root, branch string) bool {
 // constant across all git repositories.
 func createOrphanBranch(ctx context.Context, root, branch string) error {
 	args := append(identityArgs(ctx, root), "commit-tree", emptyTreeSHA, "-m", "radius: init state branch")
-	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd := process.CommandContext(ctx, "git", args...)
 	cmd.Dir = root
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
@@ -292,7 +293,7 @@ func createOrphanBranch(ctx context.Context, root, branch string) error {
 
 // repoRoot returns the absolute path to the root of the current git repository.
 func repoRoot(ctx context.Context) (string, error) {
-	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--show-toplevel")
+	cmd := process.CommandContext(ctx, "git", "rev-parse", "--show-toplevel")
 	var stdout bytes.Buffer
 	cmd.Stdout = &stdout
 	if err := cmd.Run(); err != nil {
@@ -303,7 +304,7 @@ func repoRoot(ctx context.Context) (string, error) {
 
 // gitExecIn runs a git command with its working directory set to dir.
 func gitExecIn(ctx context.Context, dir string, args ...string) error {
-	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd := process.CommandContext(ctx, "git", args...)
 	cmd.Dir = dir
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr

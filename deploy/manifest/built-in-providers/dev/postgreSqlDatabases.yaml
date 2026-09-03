@@ -84,10 +84,10 @@ types:
               description: "(Optional) SQL script mounted into the PostgreSQL container's `/docker-entrypoint-initdb.d/` directory and executed whenever PGDATA is empty. With the default ephemeral storage this runs on every pod restart. If a PersistentVolumeClaim is used, the script runs only on the very first startup and subsequent changes to initSql are ignored on existing volumes. Limited to ~1 MiB. Useful for creating tables, indexes, and inserting seed data."
             host:
               type: string
-              description: The host name used to connect to the database.
+              description: "(Read Only) The host name used to connect to the database. Mapped from the recipe module's output."
               readOnly: true
             port:
-              type: string
-              description: The port number used to connect to the database.
-              readOnly: true
+              type: integer
+              default: 5432
+              description: "(Optional) The TCP port used to connect to the database. Defaults to `5432`, the standard PostgreSQL port that every Recipe in this repository provisions and the port PostgreSQL flexible server is fixed to. A Recipe that provisions the database on a different port reports the real port as an output, which overwrites this value once the deployment finishes. Setting it in an application definition changes only the value reported to connected containers, never the port the server listens on, so leave it unset."
           required: [environment,username,password]
