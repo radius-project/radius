@@ -8,11 +8,9 @@ Three things define the model:
 - **The credential model** is **OIDC with no stored secrets**.
 - **The durable state** lives in a **GHCR package** linked to the user's repository.
 
-The GitHub Environment is the unit, not the whole of what a user configures. The application model and the generated workflows are committed files, and the cloud-side OIDC trust is an object created outside GitHub. See [What the User Configures](#what-the-user-configures).
+This document explains what this repository contributes to that model, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented today.
 
-This page explains what this repository contributes to that model, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented today.
-
-> **Status as of 2026-09-03.** This page distinguishes shipped behavior from work in review. Anything described as "in review", "proposed", or linked to an open pull request is *not* current behavior. Re-check the linked items before relying on them.
+> **Status as of 2026-09-03.** This document distinguishes shipped behavior from work in review. Anything described as "in review", "proposed", or linked to an open pull request is *not* current behavior. Re-check the linked items before relying on them.
 
 ## Why This Model Exists
 
@@ -33,11 +31,9 @@ The trade is deliberate: startup cost is paid on every run in exchange for havin
 
 **A note on the word "environment", which means two different things here.** A **GitHub Environment** is the external configuration and OIDC trust boundary: it holds the cloud client ID or role ARN and the identity the run federates as. A **`Radius.Core/environments` resource** still exists inside the control plane and is what recipes, applications, and the Kubernetes namespace binding attach to. The workflow deploys one from Bicep on every run, on top of whatever the state archive restored. Repo Radius does not eliminate the Radius environment resource; it moves the *configuration and credentials* out to GitHub.
 
-Choosing a GitHub Environment as the configuration unit also inherits GitHub's **deployment protection rules**: required reviewers, wait timers, branch and tag policies, and custom gating apps. Repo Radius configures none of them. The frontend creates the environment with a bodiless `PUT /repos/{repo}/environments/{name}`, so what it creates is unprotected, and the repository owner adds any protection afterwards. They still change the timing this page assumes. A required reviewer or wait timer suspends the run *before* the job starts, so it delays `rad startup` rather than interrupting a hydrated control plane. But it can leave an approved run pending for days and then start it against an archive that later runs have already advanced. That is the concurrency hazard described under [State Durability and Reconciliation](#state-durability-and-reconciliation), widened from seconds to days. Required reviewers and wait timers also need GitHub Team or Enterprise on private repositories.
-
 ## Repository Boundary
 
-Repo Radius spans two repositories, and the split is deliberate.
+Repo Radius spans two repositories.
 
 **This repository (`radius-project/radius`)** owns everything that must be true of the `rad` binary and the control plane for Repo Radius to be *possible*: the ability to target an external cluster, the ability to export and restore state, and the graph output the frontend renders.
 
@@ -117,7 +113,7 @@ Because the control plane is destroyed after every run, its state must be export
 - **`rad startup`** ([pkg/cli/cmd/startup](../../pkg/cli/cmd/startup)) restores the previous run's control-plane PostgreSQL databases and the Terraform state Secrets.
 - **`rad shutdown`** ([pkg/cli/cmd/shutdown](../../pkg/cli/cmd/shutdown)) captures both and commits them to the archive.
 
-Both use [pkg/cli/pgbackup](../../pkg/cli/pgbackup) for the PostgreSQL databases (`ucp`, `applications_rp`, `dynamic_rp`) and [pkg/cli/tfstate](../../pkg/cli/tfstate) for the Terraform state Secrets, and both write through the pluggable **state archive** abstraction. [state-archive.md](state-archive.md) covers the archive itself: its two interfaces, its git and OCI backends, and its selection logic. Read that page before changing anything under `pkg/statearchive`.
+Both use [pkg/cli/pgbackup](../../pkg/cli/pgbackup) for the PostgreSQL databases (`ucp`, `applications_rp`, `dynamic_rp`) and [pkg/cli/tfstate](../../pkg/cli/tfstate) for the Terraform state Secrets, and both write through the pluggable **state archive** abstraction. [state-archive.md](state-archive.md) covers the archive itself: its two interfaces, its git and OCI backends, and its selection logic. Read that document before changing anything under `pkg/statearchive`.
 
 Three behaviors matter specifically for Repo Radius:
 
@@ -139,7 +135,7 @@ Deployment *status*, as distinct from graph topology, is not produced by this re
 
 ## Representative Flow
 
-A single deploy run, reduced to the steps that touch this repository. The workflow steps around them are owned by `ai-extensions` and are shown only for ordering. The phase names are this page's own grouping, not stages named anywhere in the code; indentation marks steps performed by the `rad` command above them. The RECORD phase is conditional, as noted inline: the default deploy path runs `rad deploy` only.
+A single deploy run, reduced to the steps that touch this repository. The workflow steps around them are owned by `ai-extensions` and are shown only for ordering. The phase names are this document's own grouping, not stages named anywhere in the code; indentation marks steps performed by the `rad` command above them. The RECORD phase is conditional, as noted inline: the default deploy path runs `rad deploy` only.
 
 ```text
   WF  = workflow (ai-extensions)      ARC = state archive (GHCR)
