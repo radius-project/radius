@@ -63,11 +63,11 @@ func Test_Delete_InvalidResourceID(t *testing.T) {
 func Test_Delete_ARM(t *testing.T) {
 	t.Run("failure - delete fails", func(t *testing.T) {
 		mux := http.NewServeMux()
-		mux.HandleFunc(ARMResourceID, handleJSONResponse(t, v1.ErrorResponse{
+		mux.HandleFunc(ARMResourceID, handleExistingARMResource(t, handleJSONResponse(t, v1.ErrorResponse{
 			Error: &v1.ErrorDetails{
 				Code: v1.CodeConflict,
 			},
-		}, 409))
+		}, 409)))
 
 		server := httptest.NewServer(mux)
 		defer server.Close()
@@ -132,7 +132,7 @@ func Test_Delete_ARM(t *testing.T) {
 
 	t.Run("success - deletion returns 404", func(t *testing.T) {
 		mux := http.NewServeMux()
-		mux.HandleFunc(ARMResourceID, handleNotFound(t))
+		mux.HandleFunc(ARMResourceID, handleExistingARMResource(t, handleNotFound(t)))
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
 			Namespace: new("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{
@@ -155,6 +155,77 @@ func Test_Delete_ARM(t *testing.T) {
 
 		err := c.Delete(t.Context(), ARMResourceID)
 		require.NoError(t, err)
+	})
+
+	t.Run("success - absent extension resource is not deleted", func(t *testing.T) {
+		mux := http.NewServeMux()
+		deleteCalled := false
+		mux.HandleFunc(ARMExtensionResourceID, func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodDelete {
+				deleteCalled = true
+				http.Error(w, "delete should not be called", http.StatusForbidden)
+				return
+			}
+
+			handleNotFound(t)(w, r)
+		})
+		mux.HandleFunc(ARMExtensionProviderPath, handleJSONResponse(t, armresources.Provider{
+			Namespace: new("Microsoft.Authorization"),
+			ResourceTypes: []*armresources.ProviderResourceType{
+				{
+					ResourceType:      new("locks"),
+					DefaultAPIVersion: new(ARMAPIVersion),
+				},
+			},
+		}, 200))
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
+		c.armClientOptions = newClientOptions(server.Client(), server.URL)
+
+		err := c.Delete(t.Context(), ARMExtensionResourceID)
+		require.NoError(t, err)
+		require.False(t, deleteCalled)
+	})
+
+	t.Run("failure - existence check fails", func(t *testing.T) {
+		mux := http.NewServeMux()
+		deleteCalled := false
+		mux.HandleFunc(ARMResourceID, func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodDelete {
+				deleteCalled = true
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+
+			handleJSONResponse(t, v1.ErrorResponse{
+				Error: &v1.ErrorDetails{
+					Code: "Forbidden",
+				},
+			}, http.StatusForbidden)(w, r)
+		})
+		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
+			Namespace: new("Microsoft.Compute"),
+			ResourceTypes: []*armresources.ProviderResourceType{
+				{
+					ResourceType:      new("virtualMachines"),
+					DefaultAPIVersion: new(ARMAPIVersion),
+				},
+			},
+		}, http.StatusOK))
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
+		c.armClientOptions = newClientOptions(server.Client(), server.URL)
+
+		err := c.Delete(t.Context(), ARMResourceID)
+		require.Error(t, err)
+		require.IsType(t, &ResourceError{}, err)
+		require.False(t, deleteCalled)
 	})
 
 	t.Run("failure - lookup API Version - provider not found", func(t *testing.T) {
@@ -412,7 +483,26 @@ func newClientOptions(c *http.Client, url string) *arm.ClientOptions {
 func handleDeleteSuccess() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
+		if r.Method == http.MethodGet {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte("{}"))
+			return
+		}
+
 		w.WriteHeader(204)
+	}
+}
+
+func handleExistingARMResource(t *testing.T, deleteHandler http.HandlerFunc) http.HandlerFunc {
+	t.Helper()
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			handleJSONResponse(t, armresources.GenericResource{}, http.StatusOK)(w, r)
+			return
+		}
+
+		deleteHandler(w, r)
 	}
 }
 

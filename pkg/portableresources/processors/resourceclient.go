@@ -113,6 +113,17 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 		return err
 	}
 
+	_, err = client.GetByID(ctx, id.String(), apiVersion, &armresources.ClientGetByIDOptions{})
+	if err != nil {
+		if clients.Is404Error(err) {
+			// Azure authorizes DELETE before checking existence. Probe first so deleting an absent
+			// resource does not require permissions that are only needed for a real deletion.
+			return nil
+		}
+
+		return err
+	}
+
 	poller, err := client.BeginDeleteByID(ctx, id.String(), apiVersion, &armresources.ClientBeginDeleteByIDOptions{})
 	if err != nil {
 		if clients.Is404Error(err) {
