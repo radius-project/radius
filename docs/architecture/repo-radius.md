@@ -42,31 +42,42 @@ Repo Radius spans two repositories.
 > **Historical note.** The workflow templates and composite actions previously lived in this repository under `.github/extension/`. They were removed by [#12719](https://github.com/radius-project/radius/pull/12719) and now live solely in [`radius-project/ai-extensions`](https://github.com/radius-project/ai-extensions/tree/main/.github/extension). Do not re-add them here. Their contract with any frontend is documented in that repository's [`.github/extension/README.md`](https://github.com/radius-project/ai-extensions/blob/main/.github/extension/README.md).
 
 ```text
-     radius-project/ai-extensions                   User repository
-  +--------------------------------+       +--------------------------------+
-  | Copilot canvas + skills        |--(1)->| .radius/app.bicep              |
-  |                                |--(2)->| .github/workflows/             |
-  | Workflow templates             |--(3)->|   (generated copies)           |
-  |   .github/extension/*.yml      |       +--------------------------------+
-  |                                |       |                                |
-  | Composite actions          (4) |       | GitHub Environment             |
-  |   .github/extension/actions/   |       |   + OIDC federation            |
-  |                                |       |                                |
-  +--------------------------------+       | GHCR package                   |
-                                           |   (durable state archive)      |
-                                           +--------------------------------+
+  radius-project/ai-extensions               the user's repository
+  +-------------------------------+          +-----------------------------+
+  | Copilot canvas + skills       |==(1)====>| .radius/app.bicep           |
+  |                               |          |                             |
+  | workflow templates            |==(2)====>| .github/workflows/*.yml     |
+  |   .github/extension/*.yml     |          |                             |
+  |                               |          +-----------------------------+
+  | composite actions             |<-(3)-----  uses: ...@<commit sha>
+  |   .github/extension/actions/  |
+  +-------------------------------+          +-----------------------------+
+                                             | GitHub Environment      (4) |
+  radius-project/radius                      |   variables, OIDC trust     |
+  +-------------------------------+          |                             |
+  | rad CLI                       |          | GHCR package            (5) |
+  | control-plane images          |          |   durable state archive     |
+  |   (this repository)           |          +-----------------------------+
+  +-------------------------------+
+    |
+    +--(6)--> installed into the runner on every run
 
-  Above the divider: files committed to the repository.
-  Below it: GitHub platform objects the repository is configured against.
-  The GitHub Environment is repository-scoped; the GHCR package is owned
-  by the account and linked to the repository.
+  ==>  COPIED at generation time. The copy belongs to the user and changes
+       only when the frontend regenerates it.
+  -->  REFERENCED, never copied. The workflow names a commit and GitHub
+       fetches the action at run time.
 
   (1) The canvas generates the application model.
-  (2) The canvas commits the generated workflows and dispatches a run.
-  (3) Templates are COPIED at generation time.
-  (4) Composite actions are NEVER copied. The generated workflows
-      reference them in place, at the ref the generator substitutes.
+  (2) The canvas commits the workflow files and can dispatch a run.
+  (3) Those workflows pin each composite action to one commit SHA.
+  (4) Created by the frontend. Holds variables, never secrets.
+  (5) Bootstrapped by the frontend. Must be private or internal.
+  (6) Each run installs rad and the control plane from the edge channel.
 ```
+
+The two boxes on the right differ in kind. The upper one holds files committed to the user's repository, which they can read and review in a diff. The lower one holds GitHub platform objects the repository is configured *against*, which exist only in GitHub's settings and API. The GitHub Environment is repository-scoped. The GHCR package is owned by the account and merely linked to the repository, which is why deleting the repository does not delete the state.
+
+Arrows (1) through (3) all happen at *generation* time, when the frontend writes files. Arrow (6) happens at *run* time, on every workflow run. That difference is why this repository can ship a change that reaches users immediately while `ai-extensions` cannot: `rad` is installed fresh from a channel each run, whereas the workflow files were copied once and the composite actions are pinned to a commit.
 
 That copied-versus-referenced distinction shapes how changes reach users. Because templates are copied, a user's workflow only changes when the frontend regenerates it, so the run stays reviewable in their own repository. Composite actions are referenced rather than copied, but that does not make them float.
 
