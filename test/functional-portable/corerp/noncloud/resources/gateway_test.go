@@ -297,7 +297,7 @@ func Test_Gateway_Timeout_Invalid_Duration(t *testing.T) {
 			Details: []step.DeploymentErrorDetail{
 				{
 					Code:            "InvalidProperties",
-					MessageContains: "properties.routes.timeoutPolicy.request in body should match",
+					MessageContains: "properties.routes.0.timeoutPolicy.request in body should match",
 				},
 			},
 		},
