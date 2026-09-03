@@ -2,7 +2,7 @@
 
 **Repo Radius** is a delivery model in which Radius runs *ephemerally inside a GitHub Actions runner* instead of as a persistent installation that a platform engineer operates. A run creates a throwaway control-plane cluster, restores the previous run's state, deploys the user's application to an *external* Kubernetes cluster, persists state again, and tears the control plane down.
 
-The user-visible unit of configuration is a **GitHub Environment**, the credential model is **OIDC with no stored secrets**, and the durable state lives in a **GHCR package** linked to the user's repository.
+The user-visible unit of *deployment-target* configuration is a **GitHub Environment**, the credential model is **OIDC with no stored secrets**, and the durable state lives in a **GHCR package** linked to the user's repository. A GitHub Environment is the unit, not the whole of what a user configures — the application model and the generated workflows are committed files, and the cloud-side OIDC trust is an object created outside GitHub. See [What the User Configures](#what-the-user-configures).
 
 This page explains what this repository contributes to that model, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented today.
 
@@ -193,7 +193,29 @@ The third has a different root cause and would survive a change to restore seman
 
 ## Configuration Reference
 
-Variables this repository reads. The orchestration variables consumed only by workflow templates are documented in `ai-extensions`.
+### What the User Configures
+
+The GitHub Environment is the unit that names a deployment target and groups its settings, but it is not the only surface a user touches. The others are either files committed to their repository or objects that live outside GitHub entirely.
+
+| Surface                     | Where it lives                                    | Who creates it                                                  |
+|-----------------------------|---------------------------------------------------|-----------------------------------------------------------------|
+| GitHub Environment          | Repository settings, as Actions **variables**     | Frontend, via a bodiless `PUT`, then variable writes            |
+| Application model           | `.radius/app.bicep`, committed                    | Frontend generates it; the user reviews and owns it             |
+| Deploy workflows            | `.github/workflows/`, committed copies            | Frontend generates them; updated only by regenerating           |
+| Cloud-side OIDC trust       | Azure federated credential, AWS role trust policy | The user, outside GitHub                                        |
+| Target cluster              | AKS, EKS, or any reachable cluster                | The user; Radius neither creates nor owns it                    |
+| GHCR state package          | Account-owned, linked to the repository           | Frontend bootstraps it; must be private or internal             |
+| Deployment protection rules | On the GitHub Environment                         | The user only; the frontend creates the environment unprotected |
+
+The environment holds only variables, never secrets, which is what makes OIDC the whole credential model. Those variables are the three state-archive settings from the table below plus the provider's identity and cluster coordinates — `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, and `AZURE_AKS_CLUSTER_NAME`, or `AWS_ROLE_ARN`, `AWS_REGION`, `AWS_ACCOUNT_ID`, `AWS_EKS_CLUSTER_NAME`, `RADIUS_VPC_ID`, and `RADIUS_SUBNET_IDS`.
+
+The cloud-side trust is the reason the environment's *name* is a coupling point rather than a label. In GitHub's default subject format the federated subject is `repo:<owner>/<repo>:environment:<environment-name>`. That default is not guaranteed: a repository or org can customize the claim, and GitHub's immutable-subject rollout changes the default to `repo:<owner>@<ownerId>/<repo>@<repoId>:environment:<environment-name>`, which is why [`packages/core/src/platforms/oidc-subject.ts`](https://github.com/radius-project/ai-extensions/blob/main/packages/core/src/platforms/oidc-subject.ts) computes the subject rather than hardcoding it. Every form still carries the `environment:<environment-name>` suffix, so the coupling holds regardless: renaming or recreating an environment breaks authentication at the cloud provider, which has no way to learn about the change.
+
+Note that `RADIUS_TARGET_KUBECONFIG`, the variable this repository actually reads to redirect workloads, is never set by the user. The workflow builds the kubeconfig from the environment's cluster coordinates, stores it as a Secret, and the chart mounts it.
+
+### Variables This Repository Reads
+
+The orchestration variables consumed only by workflow templates are documented in `ai-extensions`.
 
 | Variable                    | Read by                    | Purpose                                                                          |
 |-----------------------------|----------------------------|----------------------------------------------------------------------------------|
