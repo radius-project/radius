@@ -89,7 +89,7 @@ tools:
 
   - name: kubectl
     makePrefix: KUBECTL
-    version: v1.36.3
+    version: v1.37.0
     source:
       type: stable-text
       repository: kubernetes/kubernetes
@@ -98,16 +98,16 @@ tools:
     platforms:
       linux_amd64:
         asset: kubectl
-        checksum: ebbd080e7c2e275093b55915722043257eb24004363e20acb3c4d71919f88336
+        checksum: 6129359f4e1f3848a5572ccb0b26cf28b8ca08cef38c95a765b2f64a2c961a2f
       linux_arm64:
         asset: kubectl
-        checksum: 3d86f24401c41ae5a46ac50eef8865fe891d3647d324a0836f6c63757a126e62
+        checksum: 922df28df248cc00a9e025f947704f1d1482de64ece54cfe57e61f19eaf1eef3
       darwin_amd64:
         asset: kubectl
-        checksum: 158b3b46cf74e8b6bd9b1d7cd30f665e3efb2bc1ec3c843ec925bcfdd2930de0
+        checksum: d5276c0f4fde77fc446070290f345944a7f1fda153df6b960e5fde93b7a9bccd
       darwin_arm64:
         asset: kubectl
-        checksum: fc8582acde13869a606730a79379d6515f30c68afcced0b5ac8789d5d002b7d6
+        checksum: 583beedaebe422e71d3f1a96acef8b1fef86ea2f09a45ad01aa6c9ce287c1380
     checksumSource:
       type: url-file
       urlTemplate: https://dl.k8s.io/release/{version}/bin/{os}/{arch}/kubectl.sha256
