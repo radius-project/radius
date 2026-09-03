@@ -38,18 +38,21 @@ types:
       }
       ```
 
-      The connection automatically injects environment variables into the
-      container for all properties from the database. The environment variables
+      On compatible Kubernetes Container Recipes, the connection injects environment
+      variables into the container for the database properties. The variables
       are named `CONNECTION_<CONNECTION-NAME>_<PROPERTY-NAME>`. In this example
       the connection name is `mongo` so the environment variables will be:
 
       - CONNECTION_MONGO_DATABASE
       - CONNECTION_MONGO_ENDPOINT
+      - CONNECTION_MONGO_CONNECTIONSTRING (secret-backed)
 
-      The `connectionString` secret is NOT injected via the connection — it is
-      materialized into a managed `Radius.Security/secrets` resource. Bind it into
-      a container env var with a `secretKeyRef`, using `mongo.properties.secrets.name`
-      as the `secretName` and key `connectionString` (see the `secrets` property).
+      With Radius control-plane support from `radius-project/radius#12709` and
+      Kubernetes Container Recipe support from `resource-types-contrib#300` or
+      later, the same connection injects `connectionString` through a Kubernetes
+      secret reference. For custom, older, or mixed-version Kubernetes deployments,
+      use `mongo.properties.secrets.name` as the `secretName` and `connectionString`
+      as the key in an explicitly authored `secretKeyRef`.
 
       Portability note: this schema is platform-neutral so the same resource
       type works with Azure AVM, AWS Terraform modules, and Kubernetes recipes.
@@ -79,7 +82,7 @@ types:
               type: object
               description: >-
                 (Read-only) Recipe secrets. The reserved `name` sub-property references the managed
-                Radius.Security/secrets resource Radius materializes from the recipe's `outputs.secrets`;
+                Radius.Security/secrets resource Radius materializes from the Recipe's `result.secrets`;
                 the other sub-properties declare secret keys whose values are written only into that
                 managed secret (never onto this resource). Consumers bind a key into a container env var
                 via `secretKeyRef`, using `<resource>.properties.secrets.name` as `secretName`.
