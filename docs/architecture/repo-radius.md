@@ -2,7 +2,13 @@
 
 **Repo Radius** is a delivery model in which Radius runs *ephemerally inside a GitHub Actions runner* instead of as a persistent installation that a platform engineer operates. A run creates a throwaway control-plane cluster, restores the previous run's state, deploys the user's application to an *external* Kubernetes cluster, persists state again, and tears the control plane down.
 
-The user-visible unit of *deployment-target* configuration is a **GitHub Environment**, the credential model is **OIDC with no stored secrets**, and the durable state lives in a **GHCR package** linked to the user's repository. A GitHub Environment is the unit, not the whole of what a user configures — the application model and the generated workflows are committed files, and the cloud-side OIDC trust is an object created outside GitHub. See [What the User Configures](#what-the-user-configures).
+Three things define the model:
+
+- **The unit of deployment-target configuration** is a **GitHub Environment**.
+- **The credential model** is **OIDC with no stored secrets**.
+- **The durable state** lives in a **GHCR package** linked to the user's repository.
+
+The GitHub Environment is the unit, not the whole of what a user configures. The application model and the generated workflows are committed files, and the cloud-side OIDC trust is an object created outside GitHub. See [What the User Configures](#what-the-user-configures).
 
 This page explains what this repository contributes to that model, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented today.
 
