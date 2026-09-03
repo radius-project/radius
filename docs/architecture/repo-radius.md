@@ -5,7 +5,7 @@
 Three things define the model:
 
 - **The unit of deployment-target configuration** is a **GitHub Environment**.
-- **The credential model** is **OIDC with no stored secrets**.
+- **The cloud credential model** is **OIDC federation**, with no long-lived cloud credentials stored anywhere.
 - **The durable state** lives in a **GHCR package** linked to the user's repository.
 
 This document explains what this repository contributes to that model, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented today.
@@ -23,11 +23,11 @@ Repo Radius removes the persistent installation from the picture:
 | Control plane       | Long-lived, on a managed cluster           | Ephemeral k3d cluster, created and destroyed per run                                         |
 | Where state lives   | The control plane's own database           | A durable archive in GHCR, restored and persisted per run                                    |
 | Where workloads run | Usually the same cluster                   | Always an external cluster the user already owns                                             |
-| Credentials         | Stored in the control plane                | Minted per run via OIDC federation, never stored                                             |
+| Cloud credentials   | Stored in the control plane                | Minted per run via OIDC federation, never stored                                             |
 | Environment         | A Radius resource an operator creates once | A GitHub Environment, plus a Radius environment resource restored or re-provisioned each run |
 | Who upgrades it     | The platform team                          | Each run installs from the `edge` channel                                                    |
 
-The trade is deliberate: startup cost is paid on every run in exchange for having no installation to own. Note that the Radius version is not pinned per workflow. `setup-control-plane` pins the *installer script* to the plugin's source ref and then runs `install-rad.sh edge`, so each run installs the current `edge` build. The k3d version is pinned.
+The trade is deliberate: startup cost is paid on every run in exchange for having no installation to own. Note that the Radius version is not pinned per workflow. `setup-control-plane` pins the *installer script* to a hardcoded commit in this repository and verifies its checksum, then runs `install-rad.sh edge`, so each run installs the current `edge` build. The k3d version is pinned as well.
 
 **A note on the word "environment", which means two different things here.** A **GitHub Environment** is the external configuration and OIDC trust boundary: it holds the cloud client ID or role ARN and the identity the run federates as. A **`Radius.Core/environments` resource** still exists inside the control plane and is what recipes, applications, and the Kubernetes namespace binding attach to. The workflow deploys one from Bicep on every run, on top of whatever the state archive restored. Repo Radius does not eliminate the Radius environment resource; it moves the *configuration and credentials* out to GitHub.
 
@@ -70,18 +70,20 @@ Repo Radius spans two repositories.
   (1) The canvas generates the application model.
   (2) The canvas commits the workflow files and can dispatch a run.
   (3) Those workflows pin each composite action to one commit SHA.
-  (4) Created by the frontend. Holds variables, never secrets.
+  (4) Created by the frontend. Holds variables, and an optional secret.
   (5) Bootstrapped by the frontend. Must be private or internal.
   (6) Each run fetches this repository's install.sh and runs it at edge.
 ```
 
 The two boxes on the right differ in kind. The upper one holds files committed to the user's repository, which they can read and review in a diff. Three workflow files are always committed: the `run-rad-commands.yml` dispatcher plus the `run-rad-commands-azure.yml` and `run-rad-commands-aws.yml` provider workflows ([`deploy.ts:60-76`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/core/src/workflows/deploy.ts#L60-L76)). The lower box holds GitHub platform objects the repository is configured *against*, which exist only in GitHub's settings and API. The GitHub Environment is repository-scoped. The GHCR package is owned by the account and linked to the repository, and the frontend refuses to use one that is not private or internal ([`ghcr.ts:872-875`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/adapter-canvas/src/ghcr.ts#L872-L875)).
 
-Arrows (1) through (3) all happen at *generation* time, when the frontend writes files. Arrow (6) happens at *run* time, on every workflow run: `setup-control-plane` downloads this repository's `deploy/install.sh`, verifies it against a pinned SHA-256, and runs `install-rad.sh edge` ([`setup-control-plane/action.yml:56-58`](https://github.com/radius-project/ai-extensions/blob/5712652/.github/extension/actions/setup-control-plane/action.yml#L56-L58)). That difference is why a change to this repository reaches users on their next run while an `ai-extensions` change does not.
+Arrows (1) through (3) all happen at *generation* time, when the frontend writes files. Arrow (6) happens at *run* time, on every workflow run: `setup-control-plane` downloads this repository's `deploy/install.sh`, verifies it against a pinned SHA-256, and runs `install-rad.sh edge` ([`setup-control-plane/action.yml:47-58`](https://github.com/radius-project/ai-extensions/blob/5712652/.github/extension/actions/setup-control-plane/action.yml#L47-L58)).
+
+That arrow carries two different pins, and conflating them will mislead you. The *installer script* is pinned twice over: `RADIUS_INSTALL_REF` is a literal commit in this repository, currently `f4b44130e6cc`, and `RADIUS_INSTALL_SHA256` must match the bytes it fetches. The *product* is not pinned at all, because the script is then invoked as `install-rad.sh edge`. So a change to Radius itself reaches users on their next run through the `edge` channel, while a change to `deploy/install.sh` does not reach them until someone bumps that literal ref and checksum in `ai-extensions`. An `ai-extensions` change reaches nobody until they regenerate.
 
 That copied-versus-referenced distinction shapes how changes reach users. Because templates are copied, a user's workflow only changes when the frontend regenerates it, so the run stays reviewable in their own repository. Composite actions are referenced rather than copied, which sounds like it should mean they update on their own. It does not. The reference names one specific commit, so a referenced action is as frozen as a copied file.
 
-The ref those actions resolve at is worth knowing before you rely on either property. Generated workflows emit `uses: radius-project/ai-extensions/.github/extension/actions/<name>@{{RADIUS_REF}}`, and the generator substitutes `RADIUS_SOURCE_REF` ([`deploy.ts:5`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/core/src/workflows/deploy.ts#L5)). A **released** build stamps that value at bundle time with the exact `ai-extensions` commit it was built from, and rejects any explicit ref that is not a full 40-character SHA ([`build.mjs:114-141`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/adapter-canvas/build.mjs#L114-L141), [`build.mjs:553-554`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/adapter-canvas/build.mjs#L553-L554)). The `main` default is a development fallback for unstamped local builds, not what users get.
+The ref those actions resolve at is worth knowing before you rely on either property. Generated workflows emit `uses: radius-project/ai-extensions/.github/extension/actions/<name>@{{RADIUS_REF}}`, and the generator substitutes `RADIUS_SOURCE_REF` ([`deploy.ts:5`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/core/src/workflows/deploy.ts#L5)). A **released** build stamps that value at bundle time with the exact `ai-extensions` commit it was built from, and rejects any explicit ref that is not a full 40-character SHA ([`build.mjs:114-141`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/adapter-canvas/build.mjs#L114-L141), [`build.mjs:553-554`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/adapter-canvas/build.mjs#L553-L554)). The `main` literal survives only when the build can resolve no commit at all, such as one made from a source archive rather than a checkout. Absent an explicit ref, the build stamps `git rev-parse HEAD`, so even an ordinary local build pins itself, and the source notes that a build with no resolvable commit stays unstamped and is rejected by every release validator.
 
 The practical consequence is that a generated workflow pins first-party actions to one immutable commit, exactly as it pins the third-party actions in the same templates. Fixing a composite action does **not** reach already-generated workflows. Users pick it up by regenerating with a newer plugin version. Composite-action inputs are still a compatibility surface across plugin releases, but a merge to `ai-extensions` `main` cannot change what an existing user repository runs.
 
@@ -136,15 +138,19 @@ Restore is also **not transactional**. [pkg/cli/cmd/startup/startup.go](../../pk
 
 ### 3. Graph Output
 
-`rad app graph` has two forms, and only one of them is affected by Repo Radius. The **modeled** form takes a Bicep file and computes the graph the application *would* produce; the **deployed** form takes an application name and queries the running control plane. See [application-graph.md](application-graph.md) for how each is built.
+`rad app graph` has two *forms* but three *implementations*, and the difference is what makes this seam easy to get wrong. The **modeled** form takes a Bicep file and computes the graph the application *would* produce. The **deployed** form takes an application name and queries the running control plane. Both live in [pkg/cli/cmd/app/graph/graph.go](../../pkg/cli/cmd/app/graph/graph.go), where `Validate` picks between them: a single positional argument whose extension is `.bicep` selects the modeled form, and anything else falls through to the deployed one. See [application-graph.md](application-graph.md) for how each graph is built.
 
-Only the modeled form changes behavior. In [pkg/cli/cmd/app/graph/graph.go](../../pkg/cli/cmd/app/graph/graph.go), `runModeled` consults `inRepoRadiusMode()`, which tests the `GITHUB_ACTIONS` environment variable, and commits the graph to the graph archive instead of writing `./app-graph.json`, because the runner's filesystem is discarded. The graph is stored under a namespace derived from the source branch, so a pull request's graph does not overwrite the target branch's. Graph persistence lives in [pkg/graph/persistence](../../pkg/graph/persistence).
+The third implementation is the one Repo Radius actually runs. `--preview`, or `RADIUS_PREVIEW=true`, routes to a separate `Radius.Core` runner in [pkg/cli/cmd/app/graph/preview](../../pkg/cli/cmd/app/graph/preview). `wirePreviewSubcommand` in [cmd/rad/cmd/root.go](../../cmd/rad/cmd/root.go) swaps `RunE` outright, so the legacy runner above never executes. That runner accepts a Bicep path *and* `--application` together as a deliberate enriched mode: it compiles the file only to extract `dependsOn` edges, then queries the deployed graph and merges them.
 
-`runDeployed` is unchanged in Repo Radius mode: it queries the control plane and returns output to the caller as usual. If you add a new graph form, decide explicitly whether it needs archiving. The mode check is per-form, not global.
+Only the legacy modeled form changes behavior inside a runner. Its `runModeled` consults `inRepoRadiusMode()`, which tests the `GITHUB_ACTIONS` environment variable, and commits the graph to the graph archive instead of writing `./app-graph.json`, because the runner's filesystem is discarded. The graph is stored under a namespace derived from the source branch, so a pull request's graph does not overwrite the target branch's. Graph persistence lives in [pkg/graph/persistence](../../pkg/graph/persistence).
+
+**That archive path is not exercised by the generated workflows today.** Every `rad app graph` the templates issue passes `--preview`, so every one of them lands in the preview runner, which has no archive logic at all. The deploy dispatch builds `app graph --application <name> --preview --include-icons`, and `publish-deploy-status` adds a Bicep path to the same preview call. Reaching the archive takes a custom `rad_commands` entry with a *positional Bicep path* and no `--preview`; merely dropping `--preview` from an `--application` call selects the legacy deployed form, which does not archive either. `RADIUS_GRAPH_REGISTRY` is still plumbed into the workflow environment and documented as optional, so the path is reachable rather than dead. Do not read the archive code as describing what a normal run does.
+
+If you add a new graph form, decide explicitly whether it needs archiving, and check which of the three implementations your caller will actually reach. The mode check is per-form, not global.
 
 Deployment *status*, as distinct from graph topology, is not produced by this repository at all. The `publish-deploy-status` composite action in `ai-extensions` uploads it as a workflow artifact ([`action.yml:216-222`](https://github.com/radius-project/ai-extensions/blob/5712652/.github/extension/actions/publish-deploy-status/action.yml#L216-L222)), and that repository documents the payload contract.
 
-That same action is where the two graph forms collide, and the collision is worth knowing about before you change either side. It calls [`rad app graph "$APP_FILE" --application "$APP_NAME" --preview --include-icons --output json`](https://github.com/radius-project/ai-extensions/blob/5712652/.github/extension/actions/publish-deploy-status/action.yml#L93) and redirects stdout into `deploy-graph.json`. Passing `--application` reads as a request for the deployed graph, but `Run` dispatches on the Bicep path alone, so supplying `$APP_FILE` positionally selects `runModeled`. In Repo Radius mode `runModeled` commits to the archive and returns; it never serializes the graph to the output writer, and it ignores `--output`. The redirected stdout therefore captures `rad`'s progress lines rather than JSON. Treat the dispatch rule in `Run` as a public contract: a caller that supplies both a file and an application name gets the modeled form, and the flag it probably wanted is silently inert.
+One detail of that action is worth knowing before you change `rad`'s output handling. It runs [`rad app graph "$APP_FILE" --application "$APP_NAME" --preview --include-icons --output json`](https://github.com/radius-project/ai-extensions/blob/5712652/.github/extension/actions/publish-deploy-status/action.yml#L93) and redirects stdout into `deploy-graph.json`. In the enriched shape the preview runner first logs `Compiling <path>`, and `LogInfo` and `WriteFormatted` share one writer, which is stdout. The redirected file therefore begins with a plain-text line ahead of its JSON. The action checks only the command's exit status, so that file is published as-is. Treat stdout in a `--output json` path as the payload, and send progress elsewhere.
 
 ## Representative Flow
 
@@ -185,9 +191,11 @@ A single deploy run, reduced to the steps that touch this repository. The workfl
     WF  -> CLI    rad deploy app.bicep
     CP  -> TGT      apply workloads via resolved target clients
 
-  RECORD (publish-deploy-status; runs unless the job was cancelled)
-    WF  -> CLI    rad app graph app.bicep
-    CLI -> ARC      commit modeled graph under the source branch
+  RECORD (publish-deploy-status; runs unless the job was cancelled,
+          and only when the application name resolves)
+    WF  -> CLI    rad app graph app.bicep --application <app> --preview
+    CLI -> CP       query the deployed graph, enriched with bicep edges
+    WF  -> WF     upload deploy-graph.json + status files as an artifact
 
   PERSIST
     WF  -> CLI    rad shutdown
@@ -199,11 +207,11 @@ A single deploy run, reduced to the steps that touch this repository. The workfl
     WF  -> CP     delete cluster
 ```
 
-All three `[...]` notes are correctness requirements rather than conveniences, but they do not share a cause.
+Four `[...]` notes appear above. The first is descriptive: it records how `RADIUS_TARGET_KUBECONFIG` gets into the pods. The other three are correctness requirements rather than conveniences, and they do not share a cause.
 
-The first two follow from the restore being destructive: the resource group and the registered credential are both dropped if they are created before `rad startup` runs, so both must follow it. The credential additionally has to precede the environment deploy that consumes it.
+Of those three, the first two follow from the restore being destructive: the resource group and the registered credential are both dropped if they are created before `rad startup` runs, so both must follow it. The credential additionally has to precede the environment deploy that consumes it.
 
-The third has a different root cause and would survive a change to restore semantics. `rad shutdown` is gated on a successful `rad startup` because an un-restored control plane is empty regardless of *how* the restore works, and committing that empty snapshot destroys the archive it was supposed to extend. Do not remove that gate on the grounds that the restore was made non-destructive.
+The last has a different root cause and would survive a change to restore semantics. `rad shutdown` is gated on a successful `rad startup` because an un-restored control plane is empty regardless of *how* the restore works, and committing that empty snapshot destroys the archive it was supposed to extend. Do not remove that gate on the grounds that the restore was made non-destructive.
 
 ## Configuration Reference
 
@@ -211,17 +219,17 @@ The third has a different root cause and would survive a change to restore seman
 
 The GitHub Environment is the unit that names a deployment target and groups its settings, but it is not the only surface a user touches. The others are either files committed to their repository or objects that live outside GitHub entirely.
 
-| Surface                     | Where it lives                                    | Who creates it                                                  |
-|-----------------------------|---------------------------------------------------|-----------------------------------------------------------------|
-| GitHub Environment          | Repository settings, as Actions **variables**     | Frontend, via a bodiless `PUT`, then variable writes            |
-| Application model           | `.radius/app.bicep`, committed                    | Frontend generates it; the user reviews and owns it             |
-| Deploy workflows            | `.github/workflows/`, committed copies            | Frontend generates them; updated only by regenerating           |
-| Cloud-side OIDC trust       | Azure federated credential, AWS role trust policy | The user, outside GitHub                                        |
-| Target cluster              | AKS, EKS, or any reachable cluster                | The user; Radius neither creates nor owns it                    |
-| GHCR state package          | Account-owned, linked to the repository           | Frontend bootstraps it; must be private or internal             |
-| Deployment protection rules | On the GitHub Environment                         | The user only; the frontend creates the environment unprotected |
+| Surface                     | Where it lives                                                      | Who creates it                                                  |
+|-----------------------------|---------------------------------------------------------------------|-----------------------------------------------------------------|
+| GitHub Environment          | Repository settings: Actions **variables**, plus an optional secret | Frontend, via a bodiless `PUT`, then variable writes            |
+| Application model           | `.radius/app.bicep`, committed                                      | Frontend generates it; the user reviews and owns it             |
+| Deploy workflows            | `.github/workflows/`, committed copies                              | Frontend generates them; updated only by regenerating           |
+| Cloud-side OIDC trust       | Azure federated credential, AWS role trust policy                   | The user, outside GitHub                                        |
+| Target cluster              | AKS, EKS, or any reachable cluster                                  | The user; Radius neither creates nor owns it                    |
+| GHCR state package          | Account-owned, linked to the repository                             | Frontend bootstraps it; must be private or internal             |
+| Deployment protection rules | On the GitHub Environment                                           | The user only; the frontend creates the environment unprotected |
 
-The environment holds only variables, never secrets, which is what makes OIDC the whole credential model. The frontend creates the environment with a bodiless `PUT` ([`github-environment.ts:515`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/adapter-canvas/src/server/services/github-environment.ts#L515)), which is what leaves protection rules unset, and writes the settings as variables afterwards. Those variables are the three state-archive settings from the table below plus the provider's identity and cluster coordinates — `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, and `AZURE_AKS_CLUSTER_NAME`, or `AWS_ROLE_ARN`, `AWS_REGION`, `AWS_ACCOUNT_ID`, `AWS_EKS_CLUSTER_NAME`, `RADIUS_VPC_ID`, and `RADIUS_SUBNET_IDS`.
+The environment holds the cloud and cluster configuration as variables, and OIDC covers cloud authentication, so no long-lived cloud credential is ever stored. That is narrower than "no secrets". The environment can also carry `RADIUS_DEPLOY_PARAMS`, an *environment secret* the frontend provisions when the application model declares `@secure()` parameters, and workflows additionally use GitHub's built-in `GITHUB_TOKEN`. What OIDC removes is the stored cloud credential, not every secret. The frontend creates the environment with a bodiless `PUT` ([`github-environment.ts:515`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/adapter-canvas/src/server/services/github-environment.ts#L515)), which is what leaves protection rules unset, and writes the settings as variables afterwards. Those variables are the three state-archive settings from the table below plus the provider's identity and cluster coordinates — `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, and `AZURE_AKS_CLUSTER_NAME`, or `AWS_ROLE_ARN`, `AWS_REGION`, `AWS_ACCOUNT_ID`, `AWS_EKS_CLUSTER_NAME`, `RADIUS_VPC_ID`, and `RADIUS_SUBNET_IDS`.
 
 The cloud-side trust is the reason the environment's *name* is a coupling point rather than a label. In GitHub's default subject format the federated subject is `repo:<owner>/<repo>:environment:<environment-name>`. That default is not guaranteed: a repository or org can customize the claim, and GitHub's immutable-subject rollout changes the default to `repo:<owner>@<ownerId>/<repo>@<repoId>:environment:<environment-name>`, which is why [`oidc-subject.ts:3-17`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/core/src/platforms/oidc-subject.ts#L3-L17) computes the subject rather than hardcoding it. Every form still carries the `environment:<environment-name>` suffix, so the coupling holds regardless: renaming or recreating an environment breaks authentication at the cloud provider, which has no way to learn about the change.
 
@@ -240,6 +248,8 @@ The orchestration variables consumed only by workflow templates are documented i
 | `RADIUS_STATE_ARCHIVE`      | `rad startup` / `shutdown` | Archive name. Supersedes the deprecated `RADIUS_STATE_BRANCH`.                   |
 | `RADIUS_ARCHIVE_PLAIN_HTTP` | Archive factory            | Allows plain HTTP for a local registry. Testing only.                            |
 | `GITHUB_ACTIONS`            | `rad app graph`            | Detects Repo Radius mode.                                                        |
+| `GITHUB_HEAD_REF`           | `rad app graph`            | Source branch for the graph namespace. Falls back to `GITHUB_REF_NAME`.          |
+| `RADIUS_PREVIEW`            | `rad` root command         | Routes preview-wired commands to their `Radius.Core` implementation.             |
 
 ## State Durability and Reconciliation
 
@@ -288,10 +298,12 @@ Grouped by why they are missing, which matters more than the individual items.
 ## Change-Safety Guidance
 
 - **Do not add workflow templates or composite actions to this repository.** They live in `ai-extensions`. Changing orchestration here will be silently ignored by users, whose workflows resolve actions from that repository. Note also what that does *not* buy you. Because a released plugin stamps composite-action references with the commit it was built from, a fix merged to `ai-extensions` reaches an existing user repository only when that user regenerates with a newer plugin. Treat composite-action inputs as a versioned public contract, and do not assume a fix propagates on its own.
+- **`deploy/install.sh` does not reach Repo Radius users when you change it.** Everything else in this repository does, through the `edge` channel, but the installer script itself is fetched at a literal commit and checked against a recorded SHA-256 in `setup-control-plane`. Changing the script here has no effect until someone bumps both values in `ai-extensions`, and changing it without bumping the checksum breaks every run that pins the old bytes. This is the one place where "this repository ships on the next run" stops being true.
 - **Treat `RADIUS_TARGET_KUBECONFIG` as a contract, not an implementation detail.** Any new component that creates Kubernetes resources on behalf of a user's application must honor it, or those resources will land on the ephemeral control-plane cluster and vanish. The existing three consumers are the pattern to follow.
 - **Assume state restore is destructive.** Anything the control plane must contain has to be created *after* `rad startup`, or be present in the archive.
 - **Guard writes to the archive.** A commit that persists degraded state is worse than no commit, because the corruption propagates to every subsequent run. Prefer failing loudly over persisting something questionable.
-- **Preview-surface commands need `--preview`.** Repo Radius provisions `Radius.Core` resources throughout, so any command that must see them needs the flag. Today the flag is applied unevenly *within a single deploy run*: [`delete-resource`](https://github.com/radius-project/ai-extensions/blob/5712652/.github/extension/actions/delete-resource/action.yml#L140-L141) passes it and so does the graph call in [`publish-deploy-status`](https://github.com/radius-project/ai-extensions/blob/5712652/.github/extension/actions/publish-deploy-status/action.yml#L93), but the [`rad deploy`](https://github.com/radius-project/ai-extensions/blob/5712652/.github/extension/actions/run-rad-commands/action.yml#L519) that produced those resources does not. That is a live inconsistency rather than a settled design. Without the flag, `rad` falls through to the legacy `Applications.Core` implementation, which is a different plane rather than an error. The failure mode is therefore a *plausible wrong answer* rather than a diagnostic, and it varies by command: `rad app list` returns an empty list, `rad app delete` logs `Applications.Core/applications/<name> not found` and exits successfully, and `rad app show` returns a not-found error. Only the last is obviously wrong. When something "does not exist" while debugging a Repo Radius run, check the flag before believing the result.
+- **Preview-surface commands need `--preview`.** Repo Radius provisions `Radius.Core` resources throughout, so any command that must see them needs the flag, or `RADIUS_PREVIEW=true`. Two different mechanisms supply it, which is why the surface is easy to misread. Most commands are wired by `wirePreviewSubcommand` in [cmd/rad/cmd/root.go](../../cmd/rad/cmd/root.go), which swaps `RunE` to a separate `Radius.Core` runner: `rad app list`, `show`, `status`, `graph`, and `delete`; `rad resource list`; `rad env create`, `delete`, `list`, `show`, `update`, and `switch`; `rad init`; and `rad workspace create`. `rad deploy` is not wired that way. It registers its own `--preview` flag in [pkg/cli/cmd/deploy/deploy.go](../../pkg/cli/cmd/deploy/deploy.go), where the flag selects only which application resource type it creates. `rad run` embeds the same runner without registering the flag, so preview is unavailable there.
+- **The generated deploy does not pass `--preview`, and that is a live inconsistency.** `delete-resource` passes it, and so does the graph call in `publish-deploy-status`, but the `rad deploy` that created those resources does not, in either the composite action or the command the canvas builds. Omitting it routes to the legacy `Applications.Core` implementation, which is a different plane rather than an error. The failure mode is therefore a *plausible wrong answer* rather than a diagnostic, and it varies by command: `rad app list` returns an empty list, `rad app delete` logs `Applications.Core/applications/<name> not found` and exits successfully, and `rad app show` returns a not-found error. Only the last is obviously wrong. When something "does not exist" while debugging a Repo Radius run, check the flag before believing the result.
 - **Exercise the database-backed control plane.** Repo Radius installs with `database.enabled=true`, which is not the default. The `database-noncloud` functional test group exists for exactly this reason.
 
 ## Related Material
