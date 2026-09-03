@@ -30,7 +30,7 @@ change-safety guidance.
   secret, and queue abstractions used by the control-plane services.
 - [state-archive.md](state-archive.md) explains the pluggable durable state
   archive used to export and restore whole-directory snapshots of Radius state
-  (git orphan branch implementation today).
+  (git orphan branch and OCI artifact implementations today).
 - [credentials.md](credentials.md) explains how cloud credentials are stored
   and used for deployments, and how clients authenticate to a Radius install.
 - [application-graph.md](application-graph.md) explains how the application
@@ -39,6 +39,9 @@ change-safety guidance.
   `Radius.Core/terraformSettings` and `bicepSettings` resources referenced by
   environments to provide private registry auth, Terraform CLI provider
   installation rules, and recipe environment variables.
+- [repo-radius.md](repo-radius.md) explains Repo Radius, the delivery model in
+  which Radius runs ephemerally inside a GitHub Actions runner, and which seams
+  in this repository support it.
 
 ## Reading Order
 
