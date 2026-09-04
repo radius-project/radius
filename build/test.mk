@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-changelog-range test-build-summary test-goreleaser-shadow test-capture-release-image-digests test-release-version-format test-release-get-version test-release-tag-and-branch test-monitor-remote-workflow ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-changelog-range test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-build-summary test-goreleaser-shadow test-capture-release-image-digests test-release-version-format test-release-get-version test-release-tag-and-branch test-monitor-remote-workflow ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -67,6 +67,26 @@ test-release-parity-manifest: ## Tests release parity manifest collection
 .PHONY: test-changelog-range
 test-changelog-range: ## Tests changelog channel boundary resolution
 	@bash ./.github/scripts/changelog-range_test.sh
+
+.PHONY: test-prepare-release
+test-prepare-release: ## Tests release version, changelog, notes, and plan preparation
+	@bash ./.github/scripts/prepare-release_test.sh
+	@bash ./.github/scripts/verify-deployment-engine-tag_test.sh
+
+.PHONY: test-release-plan
+test-release-plan: ## Tests release plan schema, policy, source, and file validation
+	@bash ./.github/scripts/validate-release-plan_test.sh
+	@bash ./.github/scripts/validate-release-merge-group_test.sh
+
+.PHONY: test-release-backport
+test-release-backport: ## Tests release backport selection and branch construction
+	@bash ./.github/scripts/collect-release-backports_test.sh
+	@bash ./.github/scripts/create-release-backport_test.sh
+	@node --test ./.github/scripts/select-release-backports_test.mjs
+
+.PHONY: test-release-branch-commits
+test-release-branch-commits: ## Tests Conventional Commit validation for release branches
+	@node --test ./.github/scripts/validate-conventional-commits_test.mjs
 
 .PHONY: test-build-summary
 test-build-summary: ## Tests the build job summary rendering shared by the build workflows
