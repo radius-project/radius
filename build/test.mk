@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-changelog-range test-build-summary ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-changelog-range test-build-summary test-goreleaser-shadow test-capture-release-image-digests ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -71,6 +71,14 @@ test-changelog-range: ## Tests changelog channel boundary resolution
 .PHONY: test-build-summary
 test-build-summary: ## Tests the build job summary rendering shared by the build workflows
 	@bash ./.github/scripts/build-summary_test.sh
+
+.PHONY: test-goreleaser-shadow
+test-goreleaser-shadow: ## Tests GoReleaser shadow output parity verification
+	@bash ./.github/scripts/verify-goreleaser-shadow_test.sh
+
+.PHONY: test-capture-release-image-digests
+test-capture-release-image-digests: ## Tests production release image digest capture
+	@bash ./.github/scripts/capture-release-image-digests_test.sh
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
