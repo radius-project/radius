@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-changelog-range test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-build-summary test-goreleaser-shadow test-capture-release-image-digests test-release-version-format test-release-get-version test-release-tag-and-branch test-monitor-remote-workflow ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-changelog-range test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-build-summary test-capture-release-image-digests test-release-cutover test-release-oci-artifacts test-release-version-format test-release-get-version test-release-tag-and-branch test-monitor-remote-workflow ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -92,13 +92,22 @@ test-release-branch-commits: ## Tests Conventional Commit validation for release
 test-build-summary: ## Tests the build job summary rendering shared by the build workflows
 	@bash ./.github/scripts/build-summary_test.sh
 
-.PHONY: test-goreleaser-shadow
-test-goreleaser-shadow: ## Tests GoReleaser shadow output parity verification
-	@bash ./.github/scripts/verify-goreleaser-shadow_test.sh
-
 .PHONY: test-capture-release-image-digests
 test-capture-release-image-digests: ## Tests production release image digest capture
 	@bash ./.github/scripts/capture-release-image-digests_test.sh
+
+.PHONY: test-release-cutover
+test-release-cutover: ## Tests the GoReleaser tag cutover workflow contract
+	@bash ./.github/scripts/release-cutover_test.sh
+	@bash ./.github/scripts/normalize-release-checksums_test.sh
+	@bash ./.github/scripts/publish-helm-chart_test.sh
+	@node --test ./.github/scripts/ensure-draft-release_test.mjs
+	@node --test ./.github/scripts/release-assets_test.mjs
+	@node --test ./.github/scripts/publish-draft-release_test.mjs
+
+.PHONY: test-release-oci-artifacts
+test-release-oci-artifacts: install-oras ## Tests immutable OCI staging and alias promotion
+	@bash ./.github/scripts/release-oci-artifacts_test.sh
 
 .PHONY: test-release-tag-and-branch
 test-release-tag-and-branch: ## Tests release tag and branch reconciliation

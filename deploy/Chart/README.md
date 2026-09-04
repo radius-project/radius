@@ -40,7 +40,7 @@ By default, Radius pulls container images from GitHub Container Registry (ghcr.i
 
 You can specify a custom tag for all Radius images using the `global.imageTag` parameter. This is useful when you want to deploy a specific version across all components or use custom-built images.
 
-Main-branch Radius images use the mutable `edge` tag. The `latest` tag is deprecated for main-branch consumption and will point to the most recent stable release after the release-pipeline cutover. During the transition, Radius-owned images and CLI OCI artifacts are published under both tags with identical content. Use `edge` when you need builds from `main`.
+Main-branch Radius images use the mutable `edge` tag. The `latest` tag points to the most recent stable release. Use `edge` when you need builds from `main`.
 
 The Deployment Engine and dashboard are published from separate repositories. Edge charts continue to use their existing `latest` tags until those publishers adopt the `edge` convention.
 

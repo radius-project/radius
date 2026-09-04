@@ -75,6 +75,12 @@ verify_release_config() {
     yq -e '
         ((.release.ids | length) == 1)
         and (.release.ids[0] == "rad")
+        and (.release.draft == true)
+        and (.release.use_existing_draft == true)
+        and (.release.replace_existing_artifacts == true)
+        and (.release.prerelease == "auto")
+        and (.release.make_latest == false)
+        and (.release.mode == "replace")
     ' "${CONFIG_FILE}" >/dev/null ||
         fail "GoReleaser release settings do not match the parity contract"
     [[ "$(yq -r '.release.disable' "${CONFIG_FILE}")" == "${expected_disable}" ]] ||
@@ -147,7 +153,7 @@ verify_cli_assets() {
         checksum_path="${REPO_ROOT}/${checksum_artifact_path}"
         [[ -f "${checksum_path}" ]] ||
             fail "missing checksum sidecar: ${asset}.sha256"
-        declared_hash="$(tr -d '\r\n' <"${checksum_path}")"
+        declared_hash="$(awk 'NR == 1 { print $1 }' "${checksum_path}")"
         if [[ ! "${declared_hash}" =~ ^[0-9a-f]{64}$ ]]; then
             fail "invalid checksum format for ${asset}.sha256"
         fi
@@ -333,10 +339,8 @@ normalize_dockerfile() {
         { grep -E "^(${DOCKERFILE_DIRECTIVES}) " || true; }
 }
 
-# The shadow images are built from a separate Dockerfile, so the base image,
-# package installs, and runtime identity can drift away from production without
-# anything noticing. The shadow parity job only compares Radius-owned files
-# inside the images, so this static check is what keeps the rest honest.
+# GoReleaser uses separate Dockerfiles, so this static check prevents their
+# runtime contract from drifting away from the development image path.
 verify_dockerfile_parity() {
     local image
     local production
@@ -394,7 +398,7 @@ main() {
         fail "missing GoReleaser artifacts metadata"
     verify_cli_assets "${DIST_DIR}/artifacts.json"
     verify_build_matrix
-    echo "GoReleaser snapshot matches the release parity contract"
+    echo "GoReleaser output matches the release parity contract"
 }
 
 main "$@"
