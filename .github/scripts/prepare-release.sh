@@ -26,6 +26,7 @@ source "${SCRIPT_DIR}/release-version.sh"
 RELEASE_TYPE=""
 CHANNEL=""
 BACKPORTS_FILE=""
+SIBLING_REPOSITORIES_FILE=""
 OUTPUT_DIR=""
 VERSIONS_FILE="versions.yaml"
 CHANGELOG_FILE="CHANGELOG.md"
@@ -47,9 +48,10 @@ fail() {
 }
 
 usage() {
-    cat << 'EOF'
+    cat <<'EOF'
 Usage: prepare-release.sh --release-type <rc|final|patch> --channel <X.Y> \
-        --backports-file <path> --output-dir <path> [file options]
+    --backports-file <path> --sibling-repositories-file <path> \
+    --output-dir <path> [file options]
 
 File options:
     --versions-file <path>
@@ -66,7 +68,7 @@ EOF
 }
 
 require_command() {
-    command -v "$1" > /dev/null || fail "required command not found: $1"
+    command -v "$1" >/dev/null || fail "required command not found: $1"
 }
 
 channel_version() {
@@ -82,12 +84,12 @@ release_branch_ref() {
     local branch="release/${CHANNEL}"
 
     if git rev-parse --verify --quiet "refs/remotes/origin/${branch}^{commit}" \
-        > /dev/null; then
+        >/dev/null; then
         printf 'refs/remotes/origin/%s\n' "${branch}"
         return 0
     fi
     if git rev-parse --verify --quiet "refs/heads/${branch}^{commit}" \
-        > /dev/null; then
+        >/dev/null; then
         printf 'refs/heads/%s\n' "${branch}"
         return 0
     fi
@@ -145,7 +147,7 @@ next_channel() {
     local major minor
 
     stable="${stable%%-*}"
-    IFS='.' read -r major minor _ <<< "${stable}"
+    IFS='.' read -r major minor _ <<<"${stable}"
     printf '%s.%s\n' "${major}" "$((10#${minor} + 1))"
 }
 
@@ -218,7 +220,7 @@ calculate_version() {
                 fail "versions.yaml has no stable ${CHANNEL} release"
             fi
             if ! git rev-parse --verify --quiet \
-                "refs/tags/${current}^{commit}" > /dev/null; then
+                "refs/tags/${current}^{commit}" >/dev/null; then
                 fail "stable tag does not exist: ${current}"
             fi
             if ! git merge-base --is-ancestor "refs/tags/${current}" \
@@ -235,7 +237,7 @@ validate_backports() {
     local branch_ref="$1"
     local missing
 
-    if ! jq -e 'type == "array"' "${BACKPORTS_FILE}" > /dev/null; then
+    if ! jq -e 'type == "array"' "${BACKPORTS_FILE}" >/dev/null; then
         fail "backports file must contain a JSON array"
     fi
 
@@ -254,6 +256,19 @@ validate_backports() {
     fi
 }
 
+validate_sibling_repositories() {
+    CHANNEL="${CHANNEL}" jq -e '
+        type == "array" and
+        map(.name) == ["recipes", "dashboard", "bicep-types-aws"] and
+        all(.[].sourceCommit; test("^[0-9a-f]{40}$")) and
+        all(.[].repository; test("^radius-project/[^/]+$")) and
+        all(.[].sourceRef;
+            . == "main" or . == ("release/" + env.CHANNEL)) and
+        all(.[]; .repository == ("radius-project/" + .name))
+    ' "${SIBLING_REPOSITORIES_FILE}" >/dev/null ||
+        fail "sibling repository state is invalid"
+}
+
 replace_marker() {
     local document="$1"
     local marker="$2"
@@ -269,7 +284,7 @@ replace_marker() {
             next
         }
         { print }
-    ' "${document}" > "${output}"
+    ' "${document}" >"${output}"
     mv "${output}" "${document}"
 }
 
@@ -282,10 +297,10 @@ extract_section() {
         $0 == heading { active = 1; next }
         active && /^### / { exit }
         active { print }
-    ' "${document}" > "${output}"
+    ' "${document}" >"${output}"
 
     if [[ ! -s "${output}" ]]; then
-        printf 'None.\n' > "${output}"
+        printf 'None.\n' >"${output}"
     fi
 }
 
@@ -309,7 +324,7 @@ render_changelog() {
     awk -v heading="## [${version#v}] - ${RELEASE_DATE}" '
         NR == 1 && /^## \[/ { print heading; next }
         { print }
-    ' "${body_file}" > "${body_file}.tmp"
+    ' "${body_file}" >"${body_file}.tmp"
     mv "${body_file}.tmp" "${body_file}"
 }
 
@@ -359,7 +374,7 @@ update_changelog() {
             }
             close(body)
         }
-    ' "${CHANGELOG_FILE}" > "${output}"
+    ' "${CHANGELOG_FILE}" >"${output}"
     mv "${output}" "${CHANGELOG_FILE}"
 
     awk -v current="${display_version}" -v version="${version}" \
@@ -371,7 +386,7 @@ update_changelog() {
             next
         }
         { print }
-    ' "${CHANGELOG_FILE}" > "${output}"
+    ' "${CHANGELOG_FILE}" >"${output}"
     mv "${output}" "${CHANGELOG_FILE}"
 }
 
@@ -400,7 +415,7 @@ generate_release_notes() {
                 print lines[cursor]
             }
         }
-    ' "${body_file}" > "${generated}"
+    ' "${body_file}" >"${generated}"
     replace_marker "${notes_file}" \
         '<!-- PASTE THE OUTPUT OF THE GENERATED CHANGELOG HERE -->' \
         "${generated}"
@@ -423,6 +438,7 @@ write_release_plan() {
     local source_ref="$3"
     local source_commit="$4"
     local plan_file="${OUTPUT_DIR}/release-plan.yaml"
+    local tracked_plan_file=".github/release-plans/${version}.yaml"
     local body_file="${OUTPUT_DIR}/release-pr-body.md"
     local requires_backport="$5"
     local release_commit_resolution="release PR squash commit on main"
@@ -438,9 +454,11 @@ write_release_plan() {
         SOURCE_REF="${source_ref}" SOURCE_COMMIT="${source_commit}" \
         RELEASE_COMMIT_RESOLUTION="${release_commit_resolution}" \
         TARGETS_FILE="${TARGETS_FILE}" BACKPORTS_FILE="${BACKPORTS_FILE}" \
+        SIBLINGS_FILE="${SIBLING_REPOSITORIES_FILE}" \
+        TRACKED_PLAN_FILE="${tracked_plan_file}" \
         yq -n '
             {
-                "schemaVersion": 1,
+            "schemaVersion": 2,
                 "version": strenv(VERSION),
                 "releaseType": strenv(RELEASE_TYPE),
                 "channel": strenv(CHANNEL),
@@ -454,11 +472,16 @@ write_release_plan() {
                         strenv(RELEASE_COMMIT_RESOLUTION)
                 },
                 "releaseBranch": "release/" + strenv(CHANNEL),
+                "releasePlanPath": strenv(TRACKED_PLAN_FILE),
                 "previousVersion": strenv(PREVIOUS_VERSION),
+                "siblingRepositories": load(strenv(SIBLINGS_FILE)),
                 "expectedOutputs": load(strenv(TARGETS_FILE)),
                 "includedBackports": load(strenv(BACKPORTS_FILE))
             } | ... style = ""
-        ' > "${plan_file}"
+        ' >"${plan_file}"
+
+    mkdir -p "$(dirname "${tracked_plan_file}")"
+    cp "${plan_file}" "${tracked_plan_file}"
 
     {
         echo "## Release plan"
@@ -482,14 +505,14 @@ write_release_plan() {
         fi
         echo
         echo "Generated for #12814."
-    } > "${body_file}"
+    } >"${body_file}"
 
     printf 'chore(release): prepare %s\n' "${version}" \
-        > "${OUTPUT_DIR}/pr-title.txt"
+        >"${OUTPUT_DIR}/pr-title.txt"
     printf 'automation/prepare-release-%s\n' "${version#v}" \
-        > "${OUTPUT_DIR}/pr-branch.txt"
+        >"${OUTPUT_DIR}/pr-branch.txt"
     printf '%s\n' "${requires_backport}" \
-        > "${OUTPUT_DIR}/requires-backport.txt"
+        >"${OUTPUT_DIR}/requires-backport.txt"
 }
 
 main() {
@@ -507,6 +530,10 @@ main() {
                 ;;
             --backports-file)
                 BACKPORTS_FILE="${2:-}"
+                shift 2
+                ;;
+            --sibling-repositories-file)
+                SIBLING_REPOSITORIES_FILE="${2:-}"
                 shift 2
                 ;;
             --output-dir)
@@ -570,9 +597,9 @@ main() {
     branch_ref="$(release_branch_ref || true)"
     version="$(calculate_version)"
     mkdir -p "${OUTPUT_DIR}"
-    printf '%s\n' "${version}" > "${OUTPUT_DIR}/version.txt"
+    printf '%s\n' "${version}" >"${OUTPUT_DIR}/version.txt"
     printf 'automation/prepare-release-%s\n' "${version#v}" \
-        > "${OUTPUT_DIR}/pr-branch.txt"
+        >"${OUTPUT_DIR}/pr-branch.txt"
     if [[ "${VERSION_ONLY}" == "true" ]]; then
         printf 'Selected %s (%s) for release/%s.\n' \
             "${version}" "${RELEASE_TYPE}" "${CHANNEL}"
@@ -580,17 +607,20 @@ main() {
     fi
 
     [[ -f "${BACKPORTS_FILE}" ]] || fail "backports file not found"
+    [[ -f "${SIBLING_REPOSITORIES_FILE}" ]] ||
+        fail "sibling repositories file not found"
     [[ -f "${CHANGELOG_FILE}" ]] || fail "changelog file not found"
     if [[ ! -f "${RELEASE_NOTES_TEMPLATE}" ]]; then
         fail "release notes template not found"
     fi
-    [[ -f "${PATCH_NOTES_TEMPLATE}" ]] \
-                                       || fail "patch notes template not found"
+    [[ -f "${PATCH_NOTES_TEMPLATE}" ]] ||
+        fail "patch notes template not found"
     [[ -f "${TARGETS_FILE}" ]] || fail "release targets file not found"
     [[ -f "${CLIFF_CONFIG}" ]] || fail "git-cliff config not found"
     require_command jq
     require_command "${GIT_CLIFF}"
     validate_backports "${branch_ref}"
+    validate_sibling_repositories
 
     local current previous_version source_ref source_commit requires_backport
     local changelog_base_version changelog_body notes_file

@@ -1,0 +1,658 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: __release-controller
+run-name: Release ${{ inputs.version }} from ${{ inputs.source-commit }}
+
+on:
+  workflow_call:
+    inputs:
+      source-pr-number:
+        description: Generated release pull request number
+        required: true
+        type: string
+      source-pr-commit:
+        description: Squash commit of the generated release pull request
+        required: true
+        type: string
+      version:
+        description: Planned release version including the v prefix
+        required: true
+        type: string
+      source-commit:
+        description: Exact commit that the Radius tag must reference
+        required: true
+        type: string
+      trigger:
+        description: Controller entry path
+        required: true
+        type: string
+    secrets:
+      RADIUS_RELEASE_BOT_CLIENT_ID:
+        required: true
+      RADIUS_RELEASE_BOT_PRIVATE_KEY:
+        required: true
+      RADIUS_PUBLISHER_BOT_CLIENT_ID:
+        required: true
+      RADIUS_PUBLISHER_BOT_PRIVATE_KEY:
+        required: true
+
+permissions: {}
+
+# All entry workflows use this repository-wide key. queue:max preserves every
+# release attempt while the active run reconciles the same desired state.
+concurrency:
+  group: release-${{ inputs.version }}-${{ inputs.source-commit }}
+  queue: max
+
+jobs:
+  validate:
+    name: Validate release plan and source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      ready: ${{ steps.plan.outputs.ready }}
+      version: ${{ steps.plan.outputs.version }}
+      channel: ${{ steps.plan.outputs.channel }}
+      release-type: ${{ steps.plan.outputs.release-type }}
+      release-branch: ${{ steps.plan.outputs.release-branch }}
+      release-identifier: ${{ steps.plan.outputs.release-identifier }}
+      de-image-tag: ${{ steps.plan.outputs.de-image-tag }}
+      recipes-commit: ${{ steps.plan.outputs.recipes-commit }}
+      dashboard-commit: ${{ steps.plan.outputs.dashboard-commit }}
+      bicep-types-aws-commit: ${{ steps.plan.outputs.bicep-types-aws-commit }}
+    steps:
+      - name: Checkout trusted controller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve the approved release pull request
+        id: source
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: dispatch
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/resolve-release-controller.mjs`)
+            await script({context, github, core})
+
+      - name: Verify resolved pull request identity
+        env:
+          EXPECTED_PR: ${{ inputs.source-pr-number }}
+          ACTUAL_PR: ${{ steps.source.outputs.source-pr-number }}
+          EXPECTED_PR_COMMIT: ${{ inputs.source-pr-commit }}
+          ACTUAL_PR_COMMIT: ${{ steps.source.outputs.source-pr-commit }}
+        run: |
+          [[ "${ACTUAL_PR}" == "${EXPECTED_PR}" ]] || {
+            echo "Release PR changed from #${EXPECTED_PR} to #${ACTUAL_PR}." >&2
+            exit 1
+          }
+          [[ "${ACTUAL_PR_COMMIT}" == "${EXPECTED_PR_COMMIT}" ]] || {
+            echo "Release PR commit changed from ${EXPECTED_PR_COMMIT}." >&2
+            exit 1
+          }
+
+      - name: Fetch release branch and planned commits
+        env:
+          SOURCE_PR_COMMIT: ${{ inputs.source-pr-commit }}
+          RELEASE_COMMIT: ${{ inputs.source-commit }}
+        run: |
+          git fetch origin \
+            '+refs/heads/release/*:refs/remotes/origin/release/*'
+          for commit in "${SOURCE_PR_COMMIT}" "${RELEASE_COMMIT}"; do
+            git cat-file -e "${commit}^{commit}" 2>/dev/null || \
+              git fetch --no-tags origin "${commit}"
+          done
+
+      - name: Install release validation tools
+        run: make install-yq install-jq
+
+      - name: Read immutable release plan
+        env:
+          VERSION: ${{ inputs.version }}
+          SOURCE_PR_COMMIT: ${{ inputs.source-pr-commit }}
+        run: |
+          plan_path=".github/release-plans/${VERSION}.yaml"
+          git show "${SOURCE_PR_COMMIT}:${plan_path}" \
+            > "${RUNNER_TEMP}/release-plan.yaml"
+
+      - name: Bind plan to release commit
+        id: plan
+        env:
+          VERSION: ${{ inputs.version }}
+          SOURCE_PR_COMMIT: ${{ inputs.source-pr-commit }}
+          RELEASE_COMMIT: ${{ inputs.source-commit }}
+          TRIGGER: ${{ inputs.trigger }}
+        run: |
+          bash ./.github/scripts/validate-release-controller-plan.sh \
+            --plan-file "${RUNNER_TEMP}/release-plan.yaml" \
+            --version "${VERSION}" \
+            --source-pr-commit "${SOURCE_PR_COMMIT}" \
+            --release-commit "${RELEASE_COMMIT}" \
+            --trigger "${TRIGGER}" \
+            --output-dir "${RUNNER_TEMP}/release-controller"
+
+      - name: Checkout planned recipes source
+        if: steps.plan.outputs.ready == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: radius-project/recipes
+          ref: ${{ steps.plan.outputs.recipes-commit }}
+          path: controller-siblings/recipes
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout planned dashboard source
+        if: steps.plan.outputs.ready == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: radius-project/dashboard
+          ref: ${{ steps.plan.outputs.dashboard-commit }}
+          path: controller-siblings/dashboard
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout planned bicep-types-aws source
+        if: steps.plan.outputs.ready == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: radius-project/bicep-types-aws
+          ref: ${{ steps.plan.outputs.bicep-types-aws-commit }}
+          path: controller-siblings/bicep-types-aws
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Preflight every release repository
+        if: steps.plan.outputs.ready == 'true'
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+          RELEASE_BRANCH: ${{ steps.plan.outputs.release-branch }}
+          SOURCE_COMMIT: ${{ inputs.source-commit }}
+          RECIPES_COMMIT: ${{ steps.plan.outputs.recipes-commit }}
+          DASHBOARD_COMMIT: ${{ steps.plan.outputs.dashboard-commit }}
+          BICEP_TYPES_AWS_COMMIT: >-
+            ${{ steps.plan.outputs.bicep-types-aws-commit }}
+          RELEASE_RECONCILE_CHECK_ONLY: "true"
+        run: |
+          script="${GITHUB_WORKSPACE}/.github/scripts/release-create-tag-and-branch.sh"
+          bash "${script}" . "${VERSION}" "${RELEASE_BRANCH}" \
+            "${SOURCE_COMMIT}"
+          bash "${script}" controller-siblings/recipes \
+            "${VERSION}" "${RELEASE_BRANCH}" "${RECIPES_COMMIT}"
+          bash "${script}" controller-siblings/dashboard \
+            "${VERSION}" "${RELEASE_BRANCH}" "${DASHBOARD_COMMIT}"
+          bash "${script}" controller-siblings/bicep-types-aws \
+            "${VERSION}" "${RELEASE_BRANCH}" \
+            "${BICEP_TYPES_AWS_COMMIT}"
+
+      - name: Verify signed Deployment Engine tag
+        if: steps.plan.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: bash ./.github/scripts/verify-deployment-engine-tag.sh "${VERSION}"
+
+      - name: Summarize validated plan
+        env:
+          READY: ${{ steps.plan.outputs.ready }}
+          VERSION: ${{ steps.plan.outputs.version }}
+          SOURCE_COMMIT: ${{ inputs.source-commit }}
+          SOURCE_PR: ${{ inputs.source-pr-number }}
+        run: |
+          {
+            echo "## Release controller"
+            echo
+            echo "- Version: ${VERSION}"
+            echo "- Source commit: ${SOURCE_COMMIT}"
+            echo "- Release pull request: #${SOURCE_PR}"
+            if [[ "${READY}" == "true" ]]; then
+              echo "- State: validated and ready to reconcile"
+            else
+              echo "- State: waiting for the generated release backport"
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload resolved release plan
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: resolved-release-plan-${{ inputs.version }}-${{ inputs.source-commit }}
+          path: ${{ runner.temp }}/release-controller/release-plan.yaml
+          if-no-files-found: error
+          retention-days: 90
+
+  approve:
+    name: Approve release reconciliation
+    needs: validate
+    if: needs.validate.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: release
+    permissions: {}
+    steps:
+      - name: Record approval
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          SOURCE_COMMIT: ${{ inputs.source-commit }}
+        run: echo "Approved ${VERSION} from ${SOURCE_COMMIT}."
+
+  publish-deployment-engine:
+    name: Publish Deployment Engine
+    needs: [validate, approve]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    permissions:
+      contents: read
+    outputs:
+      digest: ${{ steps.verify-image.outputs.digest }}
+      source-commit: ${{ steps.de-tag.outputs.commit }}
+      run-url: ${{ steps.monitor-de-workflow.outputs.run_url }}
+      lock-branch: >-
+        ${{ steps.de-lock.outputs.branch || steps.lock-image.outputs.branch }}
+    steps:
+      - name: Checkout trusted publisher monitor
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Reverify signed Deployment Engine tag
+        id: de-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: bash ./.github/scripts/verify-deployment-engine-tag.sh "${VERSION}"
+
+      - name: Read Deployment Engine release lock
+        id: de-lock
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: read
+          INPUT_VERSION: ${{ needs.validate.outputs.version }}
+          INPUT_RELEASE_SOURCE_SHA: ${{ inputs.source-commit }}
+          INPUT_DE_SIGNED_TAG: ${{ needs.validate.outputs.version }}
+          INPUT_DE_SOURCE_SHA: ${{ steps.de-tag.outputs.commit }}
+          INPUT_DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-release-controller-lock.mjs`)
+            await script({context, github, core})
+
+      - name: Inspect unlocked Deployment Engine image
+        if: steps.de-lock.outputs.exists != 'true'
+        id: existing-image
+        continue-on-error: true
+        env:
+          DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+          DE_SOURCE_COMMIT: ${{ steps.de-tag.outputs.commit }}
+        run: |
+          bash ./.github/scripts/verify-deployment-engine-image.sh \
+            --tag "${DE_IMAGE_TAG}" \
+            --signed-tag "${RELEASE_VERSION}" \
+            --source-commit "${DE_SOURCE_COMMIT}" \
+            --output "${RUNNER_TEMP}/de-image-before.json" \
+            --allow-absent \
+            --state-output "${RUNNER_TEMP}/de-image-state.txt"
+
+      - name: Get App token for radius-publisher
+        if: steps.de-lock.outputs.exists != 'true'
+        id: publisher-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          owner: azure-octo
+          repositories: radius-publisher
+          permission-metadata: read
+          permission-actions: read
+          permission-contents: write
+
+      - name: Dispatch or monitor correlated DE publisher run
+        if: steps.de-lock.outputs.exists != 'true'
+        id: monitor-de-workflow
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ steps.publisher-token.outputs.token }}
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/monitor-remote-workflow.mjs`)
+            await script({context, github, core})
+        env:
+          INPUT_OWNER: azure-octo
+          INPUT_REPO: radius-publisher
+          INPUT_WORKFLOW_FILE: publish-deployment-engine.yml
+          INPUT_EVENT_TYPE: deployment-engine
+          INPUT_RELEASE_IDENTIFIER: ${{ needs.validate.outputs.release-identifier }}
+          INPUT_REUSE_SUCCESSFUL: >-
+            ${{ steps.existing-image.outputs.state == 'complete' &&
+            'true' || 'false' }}
+          INPUT_DISPATCH_IF_MISSING: >-
+            ${{ steps.existing-image.outputs.state == 'complete' &&
+            'false' || 'true' }}
+          INPUT_CLIENT_PAYLOAD: |-
+            {
+              "source_repository": ${{ toJSON(github.repository) }},
+              "source_sha": ${{ toJSON(inputs.source-commit) }},
+              "src_image": "radiusdeploymentengine.azurecr.io/deployment-engine",
+              "dest_image": "ghcr.io/radius-project/deployment-engine",
+              "tag": ${{ toJSON(needs.validate.outputs.de-image-tag) }}
+            }
+          INPUT_MAX_WAIT_SECONDS: "720"
+          INPUT_POLL_INTERVAL_SECONDS: "15"
+
+      - name: Verify published Deployment Engine image
+        id: verify-image
+        env:
+          DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+          DE_SOURCE_COMMIT: ${{ steps.de-tag.outputs.commit }}
+          LOCKED_DIGEST: >-
+            ${{ steps.de-lock.outputs.digest ||
+            steps.existing-image.outputs.digest }}
+        run: |
+          bash ./.github/scripts/verify-deployment-engine-image.sh \
+            --tag "${DE_IMAGE_TAG}" \
+            --signed-tag "${RELEASE_VERSION}" \
+            --source-commit "${DE_SOURCE_COMMIT}" \
+            --expected-digest "${LOCKED_DIGEST}" \
+            --output "${RUNNER_TEMP}/de-image.json"
+
+      - name: Get App token for release state
+        if: steps.de-lock.outputs.exists != 'true'
+        id: release-state-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: radius
+          permission-contents: write
+
+      - name: Lock Deployment Engine image digest
+        if: steps.de-lock.outputs.exists != 'true'
+        id: lock-image
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: create
+          INPUT_VERSION: ${{ needs.validate.outputs.version }}
+          INPUT_RELEASE_SOURCE_SHA: ${{ inputs.source-commit }}
+          INPUT_DE_SIGNED_TAG: ${{ needs.validate.outputs.version }}
+          INPUT_DE_SOURCE_SHA: ${{ steps.de-tag.outputs.commit }}
+          INPUT_DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
+          INPUT_DE_DIGEST: ${{ steps.verify-image.outputs.digest }}
+        with:
+          github-token: ${{ steps.release-state-token.outputs.token }}
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/reconcile-release-controller-lock.mjs`)
+            await script({context, github, core})
+
+      - name: Show failed Deployment Engine publish logs
+        if: failure() && steps.monitor-de-workflow.outputs.run_id != ''
+        env:
+          GH_TOKEN: ${{ steps.publisher-token.outputs.token }}
+          RUN_ID: ${{ steps.monitor-de-workflow.outputs.run_id }}
+        run: |
+          gh run view "${RUN_ID}" \
+            --repo azure-octo/radius-publisher --log-failed || true
+
+  reconcile-siblings:
+    name: Reconcile sibling repositories
+    needs: [validate, publish-deployment-engine]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout trusted reconciliation script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Get App token for sibling repositories
+        id: release-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            recipes
+            dashboard
+            bicep-types-aws
+          permission-contents: write
+
+      - name: Checkout planned recipes source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: radius-project/recipes
+          ref: ${{ needs.validate.outputs.recipes-commit }}
+          token: ${{ steps.release-token.outputs.token }}
+          path: recipes
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout planned dashboard source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: radius-project/dashboard
+          ref: ${{ needs.validate.outputs.dashboard-commit }}
+          token: ${{ steps.release-token.outputs.token }}
+          path: dashboard
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout planned bicep-types-aws source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: radius-project/bicep-types-aws
+          ref: ${{ needs.validate.outputs.bicep-types-aws-commit }}
+          token: ${{ steps.release-token.outputs.token }}
+          path: bicep-types-aws
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure git authentication
+        env:
+          GH_TOKEN: ${{ steps.release-token.outputs.token }}
+        run: gh auth setup-git
+
+      - name: Reconcile radius-project/recipes
+        env:
+          GH_TOKEN: ${{ steps.release-token.outputs.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          RELEASE_BRANCH: ${{ needs.validate.outputs.release-branch }}
+          SOURCE_COMMIT: ${{ needs.validate.outputs.recipes-commit }}
+        run: |
+          ./.github/scripts/release-create-tag-and-branch.sh \
+            recipes "${VERSION}" "${RELEASE_BRANCH}" "${SOURCE_COMMIT}"
+
+      - name: Reconcile radius-project/dashboard
+        env:
+          GH_TOKEN: ${{ steps.release-token.outputs.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          RELEASE_BRANCH: ${{ needs.validate.outputs.release-branch }}
+          SOURCE_COMMIT: ${{ needs.validate.outputs.dashboard-commit }}
+        run: |
+          ./.github/scripts/release-create-tag-and-branch.sh \
+            dashboard "${VERSION}" "${RELEASE_BRANCH}" "${SOURCE_COMMIT}"
+
+      - name: Reconcile radius-project/bicep-types-aws
+        env:
+          GH_TOKEN: ${{ steps.release-token.outputs.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          RELEASE_BRANCH: ${{ needs.validate.outputs.release-branch }}
+          SOURCE_COMMIT: >-
+            ${{ needs.validate.outputs.bicep-types-aws-commit }}
+        run: |
+          ./.github/scripts/release-create-tag-and-branch.sh \
+            bicep-types-aws "${VERSION}" "${RELEASE_BRANCH}" \
+            "${SOURCE_COMMIT}"
+
+  create-radius-tag:
+    name: Create Radius tag last
+    needs: [validate, publish-deployment-engine, reconcile-siblings]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout trusted reconciliation script
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Get App token for Radius tag creation
+        id: release-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: radius
+          permission-contents: write
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Reverify Deployment Engine image digest
+        env:
+          DE_IMAGE_TAG: ${{ needs.validate.outputs.de-image-tag }}
+          DE_IMAGE_DIGEST: ${{ needs.publish-deployment-engine.outputs.digest }}
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+          DE_SOURCE_COMMIT: ${{ needs.publish-deployment-engine.outputs.source-commit }}
+        run: |
+          bash ./.github/scripts/verify-deployment-engine-image.sh \
+            --tag "${DE_IMAGE_TAG}" \
+            --signed-tag "${RELEASE_VERSION}" \
+            --source-commit "${DE_SOURCE_COMMIT}" \
+            --expected-digest "${DE_IMAGE_DIGEST}" \
+            --output "${RUNNER_TEMP}/de-image-final.json"
+
+      - name: Checkout planned Radius source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: radius-project/radius
+          ref: ${{ inputs.source-commit }}
+          token: ${{ steps.release-token.outputs.token }}
+          path: radius
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Configure git authentication
+        env:
+          GH_TOKEN: ${{ steps.release-token.outputs.token }}
+        run: gh auth setup-git
+
+      - name: Reconcile Radius branch and tag
+        env:
+          GH_TOKEN: ${{ steps.release-token.outputs.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+          RELEASE_BRANCH: ${{ needs.validate.outputs.release-branch }}
+          SOURCE_COMMIT: ${{ inputs.source-commit }}
+        run: |
+          ./.github/scripts/release-create-tag-and-branch.sh \
+            radius "${VERSION}" "${RELEASE_BRANCH}" "${SOURCE_COMMIT}"
+
+      - name: Summarize Radius tag creation
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          SOURCE_COMMIT: ${{ inputs.source-commit }}
+        run: |
+          {
+            echo "## Radius tag created last"
+            echo
+            echo "- Tag: ${VERSION}"
+            echo "- Commit: ${SOURCE_COMMIT}"
+            echo "- Release build: build-release.yaml"
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  summary:
+    name: Release controller summary
+    needs:
+      - validate
+      - approve
+      - publish-deployment-engine
+      - reconcile-siblings
+      - create-radius-tag
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Summarize release state and recovery
+        env:
+          VERSION: ${{ needs.validate.outputs.version || inputs.version }}
+          SOURCE_COMMIT: ${{ inputs.source-commit }}
+          READY: ${{ needs.validate.outputs.ready }}
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+          APPROVE_RESULT: ${{ needs.approve.result }}
+          DE_RESULT: ${{ needs.publish-deployment-engine.result }}
+          DE_RUN_URL: ${{ needs.publish-deployment-engine.outputs.run-url }}
+          DE_LOCK_BRANCH: >-
+            ${{ needs.publish-deployment-engine.outputs.lock-branch }}
+          SIBLINGS_RESULT: ${{ needs.reconcile-siblings.result }}
+          RADIUS_RESULT: ${{ needs.create-radius-tag.result }}
+        run: |
+          {
+            echo "## Release controller result"
+            echo
+            echo "- Version: ${VERSION}"
+            echo "- Source commit: ${SOURCE_COMMIT}"
+            echo
+            echo "| Stage | Result |"
+            echo "|---|---|"
+            echo "| Validate plan and preflight | ${VALIDATE_RESULT} |"
+            echo "| Release approval | ${APPROVE_RESULT} |"
+            echo "| Deployment Engine | ${DE_RESULT} |"
+            echo "| Sibling repositories | ${SIBLINGS_RESULT} |"
+            echo "| Radius tag last | ${RADIUS_RESULT} |"
+            if [[ -n "${DE_RUN_URL}" ]]; then
+              echo
+              echo "Deployment Engine publisher: ${DE_RUN_URL}"
+            fi
+            if [[ -n "${DE_LOCK_BRANCH}" ]]; then
+              echo "Deployment Engine lock: ${DE_LOCK_BRANCH}"
+            fi
+            if [[ "${READY}" == "false" ]]; then
+              echo
+              echo "This release is waiting for its generated metadata backport."
+            elif [[ "${RADIUS_RESULT}" != "success" ]]; then
+              echo
+              echo "Completed stages are reconciled on resume. A conflicting"
+              echo "tag, branch, plan, or digest must be corrected before retry."
+              echo
+              echo "Resume with:"
+              echo '```bash'
+              printf 'gh workflow run resume-release.yaml --ref main '
+              printf -- '-f version=%q -f source-commit=%q\n' \
+                "${VERSION}" "${SOURCE_COMMIT}"
+              echo '```'
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
