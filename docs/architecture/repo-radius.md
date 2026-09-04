@@ -12,7 +12,7 @@ This document has five parts:
 
 - **Repo Radius Today** summarizes the system as of early September 2026.
 - **Vision** states what Repo Radius is, beyond its first frontend in the GitHub Copilot App.
-- **Architecture Direction** names what has to change to implement this vision
+- **Architecture Direction** names what has to change to implement this vision.
 - **Roadmap** puts those changes in dependency order.
 - The **Appendix** is the verified long-form account of the current system (as of early September 2026): what this repository contributes, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented.
 
@@ -24,7 +24,7 @@ The first four sections are the argument; the appendix is the evidence behind it
 
 This section summarizes the shipped system. [Appendix: Repo Radius v1](#appendix-repo-radius-v1) gives the full account, with a source citation behind each claim.
 
-**What a run does.** A generated GitHub Actions workflow authenticates to the cloud provider over OIDC, creates a throwaway k3d cluster, installs Radius from the `edge` channel, and restores the previous run's state from a GHCR package. It then creates a resource group, registers a cloud credential, deploys a Radius environment, and deploys the application, whose workloads land on an external cluster the user already owns. Finally it publishes a deploy-status artifact, captures state back to the archive, and deletes the cluster.
+**What a run does.** A generated GitHub Actions workflow authenticates to the cloud provider over OIDC, creates a throwaway k3d cluster, installs Radius from the `edge` channel, and restores the previous run's state from a GHCR package. It then creates a resource group, registers a cloud credential, deploys a Radius environment, and deploys the application, whose workloads land on an external cluster the user already owns. Finally it publishes a deploy-status artifact, captures state back to the archive, and deletes the cluster. If no external cluster is configured, the workflow falls back to deploying onto the control-plane cluster, which is then torn down with it.
 
 **How the work is split.** This repository owns what must be true of the `rad` binary and the control plane for the model to be possible. [`radius-project/ai-extensions`](https://github.com/radius-project/ai-extensions) owns the orchestration: the workflow templates, the composite actions, and the GitHub Copilot canvas that generates and dispatches them. The templates and actions used to live here and were removed by [#12719](https://github.com/radius-project/radius/pull/12719). They should not come back.
 
@@ -36,7 +36,7 @@ This section summarizes the shipped system. [Appendix: Repo Radius v1](#appendix
 | Durable state              | `rad startup` and `rad shutdown` bracket a run, reading and writing a pluggable archive.   | [pkg/statearchive](../../pkg/statearchive), [pkg/cli/cmd/startup](../../pkg/cli/cmd/startup), [pkg/cli/cmd/shutdown](../../pkg/cli/cmd/shutdown) |
 | Graph output               | `rad app graph`, whose modeled form commits to a graph archive when it detects a runner.   | [pkg/cli/cmd/app/graph](../../pkg/cli/cmd/app/graph), [pkg/graph/persistence](../../pkg/graph/persistence)                                       |
 
-**What is implemented.** Four of the original specification's five investments are in place, two of them still hardening. The fifth, control-plane startup time, has not been started, so every run still builds a cluster and installs Radius from scratch.
+**What is implemented.** Four of the original specification's five investments are in place, two of them still hardening. The fifth, control-plane startup time, is barely begun, so every run still builds a cluster and installs Radius from scratch.
 
 **What surprises people.** Three properties of v1 catch readers out, and each is expanded in the appendix. The state restore is *destructive*, so anything the control plane must contain has to be created after `rad startup` or be present in the archive. The `--preview` flag is supplied by two unrelated mechanisms and applied unevenly, and omitting it produces a plausible wrong answer rather than an error. And the modeled-graph archive path this repository owns is not exercised by any generated workflow, because every generated graph call passes `--preview` and lands in a different implementation.
 
@@ -72,7 +72,7 @@ Two goals follow from that picture, and they are independent of each other.
 
 **Agent-first primitives.** The caller is increasingly a program rather than a person. A person reading a rendered graph may notice an oddity. Building for agents means fewer primitives, uniform behavior across them, and output a parser can trust.
 
-These two goals reinforce each other. A backend that is safe for an agent to drive is, by construction, a backend that a new frontend can adopt without inheriting undocumented behavior.
+These two goals support each other without being the same goal. Output a program can trust is also documentation a new frontend can build against, and it removes the undocumented behavior a second frontend would otherwise have to rediscover. It does not, by itself, give that frontend the write capability it needs; that is what the port work is for.
 
 ## Architecture Direction
 
@@ -84,7 +84,7 @@ The neutral-backend intent is already written down in source. [`packages/core/sr
 
 The seam is real, and it is currently **read-only**. That file declares exactly one port, `GitHub`, with three read methods: `getContent`, `listNames`, and `treePaths`. Core decides and returns; it does not act. The mutations a run depends on live in `adapter-canvas`: creating the GitHub Environment, bootstrapping the GHCR package, provisioning the deploy-params secret, committing the generated files, dispatching the run, and, for Azure, creating the App Registration and federated credentials behind the `/api/azure-auto-setup` route.
 
-Workflow generation shows the split exactly. `generateDeployWorkflow` in [`packages/core/src/workflows/deploy.ts`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/core/src/workflows/deploy.ts#L60-L86) returns the three files as values, and the adapter commits them. Azure OIDC shows it again: [`azure-oidc.ts`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/adapter-canvas/src/azure-oidc.ts#L1-L11) keeps the pure decisions and imports `buildOidcSubject` from core, while the route spawns `az` and `gh` to do the work.
+Workflow generation shows the split exactly. `generateDeployWorkflow` in [`packages/core/src/workflows/deploy.ts`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/core/src/workflows/deploy.ts#L60-L86) returns the three files as values, and the adapter commits them. Azure OIDC shows it again: [`azure-oidc.ts`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/adapter-canvas/src/azure-oidc.ts#L1-L11) keeps the pure decisions and imports `buildOidcSubject` from core, while the adapter composes the `az` and `gh` process execution and injects it into the route. Note that this is already the port pattern, applied inside the adapter rather than across the core boundary.
 
 The cost of drawing the line there shows up as provider asymmetry. Azure has an auto-setup route and a discovery route. AWS has neither, so its trust relationship is configured by hand. Capability parked in an adapter gets built once per provider, and then again per frontend.
 
@@ -102,7 +102,7 @@ Stability is only half of it. The graph should be **open to augmentation**, so t
 
 ### 3. Collapse the Command Surface
 
-`--preview` is supplied by two unrelated mechanisms and applied unevenly inside a single run, and the resulting failure mode is the part that matters. Omitting the flag does not produce an error. It produces a plausible wrong answer: `rad app list` returns an empty list, and `rad app delete` reports success. A person debugging eventually distrusts the result. An agent records the empty list as a fact and acts on it.
+`--preview` is supplied by two unrelated mechanisms and applied unevenly inside a single run, and the resulting failure mode is the part that matters. Omitting the flag does not produce an error. It sends the command to the legacy `Applications.Core` plane, which answers about a different set of resources: on a clean plane, `rad app list` returns an empty list and `rad app delete` reports success. A person debugging eventually distrusts the result. An agent records the empty list as a fact and acts on it.
 
 The direction is to converge on one resource plane and retire the flag. Where two implementations have to coexist, the difference belongs in the output rather than in a flag the caller must remember. The general rule is to prefer failing loudly over answering plausibly, because only one of those is recoverable by a non-human caller.
 
@@ -114,32 +114,32 @@ These are prerequisites rather than enhancements. Unattended deployment means a 
 
 ### 5. Reduce the Cost of a Run
 
-Investment 5 remains untouched, and every run still builds a k3d cluster and installs Radius from scratch. This ranks low while a person deploys occasionally and high as soon as an agent iterates, because per-run cost sets the rate at which an agent can work. The specification's proposed direction, a pre-baked k3d node image and a composite rather than Docker action, is still the obvious starting point.
+Investment 5 remains largely untouched, and every run still builds a k3d cluster and installs Radius from scratch. This ranks low while a person deploys occasionally and high as soon as an agent iterates, because per-run cost sets the rate at which an agent can work. Of the two mitigations the technical design proposes, one is already done: the engine ships as composite actions rather than a Docker action, so no image pull sits on the critical path. The other, a pre-baked k3d node image with the control-plane images already loaded, is the remaining and higher-leverage half. Runner capacity is the related constraint: the control plane does not fit on the 2-vCPU runner that private repositories get ([#12857](https://github.com/radius-project/radius/issues/12857)).
 
 ### 6. Widen the Target Surface
 
-A backend that only reaches some clusters is not a general one. AWS is already a target: the AWS provider workflow is always committed, a run registers an IRSA credential, and EKS is supported. What is thin is the setup path around it. The canvas adapter has an Azure auto-setup route and an Azure discovery route and no AWS counterpart, so the AWS trust relationship is configured by hand. Beyond that, the known limits are clusters the runner cannot authenticate to ([#12550](https://github.com/radius-project/radius/issues/12550)) and clusters it cannot afford to run against ([#12857](https://github.com/radius-project/radius/issues/12857)).
+A backend that only reaches some clusters is not a general one. AWS is already a target: the AWS provider workflow is always committed, a run registers an IRSA credential, and EKS is supported. What is thin is the setup path around it. The canvas adapter has an Azure auto-setup route and an Azure discovery route and no AWS counterpart, so the AWS trust relationship is configured by hand. Beyond that, the known limit is clusters the runner cannot authenticate to ([#12550](https://github.com/radius-project/radius/issues/12550)).
 
 ## Roadmap
 
 Ordered by dependency rather than by priority. The question each row answers is what has to be true before the theme can be finished, not when anyone intends to do it. "Hard dependency" means genuinely blocked, as distinct from merely cheaper to do later.
 
-| Order | Theme                                        | Hard dependency          | Why it sits here                                                                                                    |
-|-------|----------------------------------------------|--------------------------|---------------------------------------------------------------------------------------------------------------------|
-| 1     | Trustworthy output (theme 3, and 2's stdout) | None                     | A backend that answers plausibly when it is wrong cannot be built on. Everything else assumes its output is true.   |
-| 2     | Graph as a versioned, extensible contract    | 1                        | A schema is only worth publishing once the command that emits it is unambiguous.                                    |
-| 3     | Capability behind ports                      | None                     | Sequenced after 1 by preference, not by necessity: a migration should carry settled contracts across the boundary.  |
-| 4     | Addressable, recoverable runs                | 3, for the dispatch half | The `rad`-side reconciliation and run-record work is independent of everything else here and can start immediately. |
-| 5     | Run cost                                     | None                     | Independent throughout. Becomes urgent exactly when agents start iterating.                                         |
-| 6     | Target breadth                               | None                     | Independent throughout, and paced by demand rather than by architecture.                                            |
+| Order | Theme (with its Architecture Direction section)     | Hard dependency                                | Why it sits here                                                                                                    |
+|-------|-----------------------------------------------------|------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| 1     | Trustworthy output — §3, plus the stdout half of §2 | None                                           | A backend that answers plausibly when it is wrong cannot be built on. Everything else assumes its output is true.   |
+| 2     | Graph as a versioned, extensible contract — §2      | Trustworthy output                             | A schema is only worth publishing once the command that emits it is unambiguous.                                    |
+| 3     | Capability behind ports — §1                        | None                                           | Sequenced after trustworthy output by preference, not by necessity: a migration should carry settled contracts.     |
+| 4     | Addressable, recoverable runs — §4                  | Capability behind ports, for the dispatch half | The `rad`-side reconciliation and run-record work is independent of everything else here and can start immediately. |
+| 5     | Run cost — §5                                       | None                                           | Independent throughout. Becomes urgent exactly when agents start iterating.                                         |
+| 6     | Target breadth — §6                                 | None                                           | Independent throughout, and paced by demand rather than by architecture.                                            |
 
 Three consequences are worth stating plainly.
 
-**Output correctness comes first.** Theme 3, and the stdout half of theme 2, are cheap, already diagnosed, and inherited by everything else. Doing them last would mean building the rest on a foundation that reports success when it is wrong.
+**Output correctness comes first.** Collapsing the command surface (§3), and the stdout half of the graph work (§2), are cheap, already diagnosed, and inherited by everything else. Doing them last would mean building the rest on a foundation that reports success when it is wrong.
 
-**Most of this is unblocked.** The table contains only two real constraints: the graph schema should follow the command surface, and the dispatch half of theme 4 should follow the ports. Themes 1, 3, 5, 6, and the `rad`-side half of 4 can all begin independently. The ordering above is mostly advice about what makes the rest cheaper.
+**Most of this is unblocked.** The table contains only two constraints worth honoring: the graph schema should follow the command surface, and the dispatch half of addressable runs (§4) should follow the ports (§1). Everything else — the ports, the command surface, run cost, target breadth, and the `rad`-side half of §4 — can begin independently. Even the two listed constraints are closer to strong preference than to hard blocking: a schema can be drafted before stdout is cleaned up, and addressability can be added to the existing adapter before any port moves. The ordering above is mostly advice about what makes the rest cheaper.
 
-**The port work is a migration, not a feature.** Moving the write side into core changes nothing a user can see. Its entire value is the second frontend, so it pays off only if the contracts it carries across the boundary are the settled ones. That is the reason to prefer doing it after theme 1 even though nothing forces the order.
+**The port work is a migration, not a feature.** Moving the write side into core changes nothing a user can see. Its entire value is the second frontend, so it pays off only if the contracts it carries across the boundary are the settled ones. That is the reason to prefer doing it after the output work, even though nothing forces the order.
 
 ## Appendix: Repo Radius v1
 
@@ -155,7 +155,7 @@ Repo Radius removes the persistent installation from the picture:
 |---------------------|--------------------------------------------|----------------------------------------------------------------------------------------------|
 | Control plane       | Long-lived, on a managed cluster           | Ephemeral k3d cluster, created and destroyed per run                                         |
 | Where state lives   | The control plane's own database           | A durable archive in GHCR, restored and persisted per run                                    |
-| Where workloads run | Usually the same cluster                   | Always an external cluster the user already owns                                             |
+| Where workloads run | Usually the same cluster                   | An external cluster the user already owns, when one is configured                            |
 | Cloud credentials   | Stored in the control plane                | Minted per run via OIDC federation, never stored                                             |
 | Environment         | A Radius resource an operator creates once | A GitHub Environment, plus a Radius environment resource restored or re-provisioned each run |
 | Who upgrades it     | The platform team                          | Each run installs from the `edge` channel                                                    |
@@ -230,9 +230,9 @@ The original feature specification framed the work as five investments. Their st
 | 2 | Externalize the control-plane store | Implemented, hardening | [pkg/statearchive](../../pkg/statearchive), [pkg/cli/cmd/startup](../../pkg/cli/cmd/startup), [pkg/cli/cmd/shutdown](../../pkg/cli/cmd/shutdown) |
 | 3 | Workflow with standardized I/O      | Implemented            | `ai-extensions`                                                                                                                                  |
 | 4 | Cloud credential integration (OIDC) | Implemented, hardening | `ai-extensions`, plus credential registration in the CLI                                                                                         |
-| 5 | Control-plane startup time          | **Not started**        | —                                                                                                                                                |
+| 5 | Control-plane startup time          | **Barely started**     | —                                                                                                                                                |
 
-Investment 5 is the specification's own highest-priority non-functional requirement and remains unaddressed. Every run still builds a k3d cluster and installs Radius from scratch. Nobody has implemented the proposed direction, a pre-baked k3d node image and a composite rather than Docker action.
+Investment 5 is the specification's own highest-priority non-functional requirement and remains largely unaddressed. Every run still builds a k3d cluster and installs Radius from scratch. The technical design proposes two mitigations, and only one is done: the engine is packaged as composite actions rather than a Docker action, so no image pull sits on the critical path. The other, a pre-baked k3d node image with the Radius control-plane images already loaded, is the one the design calls the highest-leverage startup optimization, and nobody has implemented it.
 
 ### Seams in This Repository
 
@@ -248,7 +248,7 @@ When the variable is unset, every component targets the cluster Radius itself ru
 - **The async worker**, in [pkg/server/asyncworker.go](../../pkg/server/asyncworker.go), so directly-rendered Kubernetes resources also land on the external cluster.
 - **The deployment engine**, for Bicep-backed recipes, which is a separate repository.
 
-Radius neither creates nor owns the target cluster. It is supplied and must already exist.
+Targeting an external cluster is conditional. When a provider's identifying variable is empty, the workflow skips the provider-specific steps, leaves `RADIUS_TARGET_KUBECONFIG` unset, and the application deploys to the ephemeral control-plane cluster instead. The composite action announces this (`No target kubeconfig; resources will deploy to the control-plane cluster.`) and the `ai-extensions` README documents it as intended behavior. Nothing in the frontend currently rejects an unconfigured cluster, so a misconfigured environment produces a run that succeeds and then discards the workloads along with the cluster. When a target *is* configured, Radius neither creates nor owns it: it is supplied and must already exist.
 
 **Target clients are resolved lazily and cached in the async worker.** [pkg/server/asyncworker.go](../../pkg/server/asyncworker.go) builds the target Kubernetes clients on the first deployment operation rather than at startup, so a not-yet-mounted or unreachable target fails a deployment instead of preventing the process from starting. A *successful* resolution is then cached for the process lifetime; only a failed resolution is retried. Rewriting the mounted kubeconfig Secret therefore does not affect an already-resolved async worker: kubelet does refresh the file in the pod, but the cached client never re-reads it. This cache is specific to the applications-rp async worker. The `ClusterAccessResolver` used by dynamic-rp has no equivalent. The chart deliberately leaves Secret refresh to the orchestration layer, so credential rotation is a workflow concern and may require restarting consumers.
 
@@ -366,7 +366,7 @@ The environment holds the cloud and cluster configuration as variables, and OIDC
 
 The cloud-side trust is the one surface in that table that lives outside GitHub, and how it gets created depends on the provider. For Azure the canvas exposes an auto-setup route that shells out to `az` and `gh` to create the App Registration and its federated credentials. For AWS there is no equivalent, so the role trust policy is written by hand. Either way the object ends up in the cloud provider, where nothing in GitHub can keep it in sync.
 
-That is why the environment's *name* is a coupling point rather than a label. In GitHub's default subject format the federated subject is `repo:<owner>/<repo>:environment:<environment-name>`. That default is not guaranteed: a repository or org can customize the claim, and GitHub's immutable-subject rollout changes the default to `repo:<owner>@<ownerId>/<repo>@<repoId>:environment:<environment-name>`, which is why [`oidc-subject.ts:3-17`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/core/src/platforms/oidc-subject.ts#L3-L17) computes the subject rather than hardcoding it. Every form still carries the `environment:<environment-name>` suffix, so the coupling holds regardless: renaming or recreating an environment breaks authentication at the cloud provider, which has no way to learn about the change.
+That is why the environment's *name* is usually a coupling point rather than a label. In GitHub's default subject format the federated subject is `repo:<owner>/<repo>:environment:<environment-name>`. That default is not guaranteed: a repository or org can customize the claim, and GitHub's immutable-subject rollout changes the default to `repo:<owner>@<ownerId>/<repo>@<repoId>:environment:<environment-name>`, which is why [`oidc-subject.ts:3-17`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/core/src/platforms/oidc-subject.ts#L3-L17) computes the subject rather than hardcoding it. Both default forms carry the `environment:<environment-name>` suffix, so for them the coupling holds: renaming or recreating an environment breaks authentication at the cloud provider, which has no way to learn about the change. A customized `include_claim_keys` list is the exception. The environment suffix is appended only for the `environment` or `context` keys ([`oidc-subject.ts:222-227`](https://github.com/radius-project/ai-extensions/blob/5712652/packages/core/src/platforms/oidc-subject.ts#L222-L227)), so a subject built without either is not name-coupled.
 
 Note that `RADIUS_TARGET_KUBECONFIG`, the variable this repository actually reads to redirect workloads, is never set by the user. The workflow builds the kubeconfig from the environment's cluster coordinates, stores it as a Secret, and the chart mounts it.
 
@@ -417,7 +417,7 @@ Cloud outputs backed by Terraform are explicitly out of scope for the first iter
 
 Grouped by why they are missing, which matters more than the individual items.
 
-**Not started.** Control-plane startup time (Investment 5), the specification's leading non-functional requirement, with no implementation.
+**Barely started.** Control-plane startup time (Investment 5), the specification's leading non-functional requirement. Composite-action packaging is in place, but the pre-baked node image that the technical design calls the highest-leverage optimization has no implementation.
 
 **Deferred by design.** What-if / preview deployment, and migration from Repo Radius to a self-hosted installation. Both were scoped out of the original specification as needing their own design.
 
@@ -438,7 +438,7 @@ Grouped by why they are missing, which matters more than the individual items.
 - **Assume state restore is destructive.** Anything the control plane must contain has to be created *after* `rad startup`, or be present in the archive.
 - **Guard writes to the archive.** A commit that persists degraded state is worse than no commit, because the corruption propagates to every subsequent run. Prefer failing loudly over persisting something questionable.
 - **Preview-surface commands need `--preview`.** Repo Radius provisions `Radius.Core` resources throughout, so any command that must see them needs the flag, or `RADIUS_PREVIEW=true`. Two different mechanisms supply it, which is why the surface is easy to misread. Most commands are wired by `wirePreviewSubcommand` in [cmd/rad/cmd/root.go](../../cmd/rad/cmd/root.go), which swaps `RunE` to a separate `Radius.Core` runner: `rad app list`, `show`, `status`, `graph`, and `delete`; `rad resource list`; `rad env create`, `delete`, `list`, `show`, `update`, and `switch`; `rad init`; and `rad workspace create`. `rad deploy` is not wired that way. It registers its own `--preview` flag in [pkg/cli/cmd/deploy/deploy.go](../../pkg/cli/cmd/deploy/deploy.go), where the flag selects only which application resource type it creates. `rad run` embeds the same runner without registering the flag, so preview is unavailable there.
-- **The generated deploy does not pass `--preview`, and that is a live inconsistency.** `delete-resource` passes it, and so does the graph call in `publish-deploy-status`, but the `rad deploy` that created those resources does not, in either the composite action or the command the canvas builds. Omitting it routes to the legacy `Applications.Core` implementation, which is a different plane rather than an error. The failure mode is therefore a *plausible wrong answer* rather than a diagnostic, and it varies by command: `rad app list` returns an empty list, `rad app delete` logs `Applications.Core/applications/<name> not found` and exits successfully, and `rad app show` returns a not-found error. Only the last is obviously wrong. When something "does not exist" while debugging a Repo Radius run, check the flag before believing the result.
+- **Querying without `--preview` misreads the plane, not the resource.** `delete-resource` passes the flag, and so does the graph call in `publish-deploy-status`. The `rad deploy` that created the resources does not, but that is harmless here: the flag only selects which application resource type `rad deploy` implicitly creates, and it does so only when `--application` is supplied, which the generated command never does. The application comes from the Bicep model, which declares `Radius.Core/applications` outright. Where omission does bite is any command run by hand against a Repo Radius run. Such a command queries `Applications.Core` instead, so the answer describes a different plane rather than failing: against a clean legacy plane, `rad app list` returns an empty list, `rad app delete` logs `Applications.Core/applications/<name> not found` and exits successfully, and `rad app show` returns a not-found error. Only the last is obviously wrong, and the exact symptom depends on what happens to exist in `Applications.Core`. When something "does not exist" while debugging a Repo Radius run, check the flag before believing the result.
 - **Exercise the database-backed control plane.** Repo Radius installs with `database.enabled=true`, which is not the default. The `database-noncloud` functional test group exists for exactly this reason.
 
 ## Related Material
