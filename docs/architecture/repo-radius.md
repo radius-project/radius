@@ -24,15 +24,14 @@ The first four sections are the argument; the appendix is the evidence behind it
 
 This section summarizes the shipped system. [Appendix: Repo Radius v1](#appendix-repo-radius-v1) gives the full account, with a source citation behind each claim.
 
-**Where the shape came from.** The work was framed as five engineering investments. No single document enumerates them, but the design notes are written against that numbering and between them account for all five: [state storage](../../eng/design-notes/2026-06-repo-radius-state-storage.md) names investments 1 through 4, and the [deploy workflow](../../eng/design-notes/environments/2026-06-repo-radius-deploy-workflow.md) note covers 3 through 5. The five are:
+**What is complete.** Four capabilities are in place, two of them still hardening:
 
-1. **Deploy to an external cluster.** The whole application, including directly-rendered resources, lands on the developer's AKS or EKS cluster while the control plane runs on the ephemeral runner cluster ([2026-06-multi-cluster.md](../../eng/design-notes/environments/2026-06-multi-cluster.md)).
-2. **Externalize the control-plane store.** Control-plane resource data and Terraform recipe state have to survive a cluster that is destroyed after every run ([2026-06-repo-radius-state-storage.md](../../eng/design-notes/2026-06-repo-radius-state-storage.md)).
-3. **A workflow with standardized inputs and outputs.** The dispatcher, provider workflows, and composite actions that run Radius on demand inside a runner ([2026-06-repo-radius-deploy-workflow.md](../../eng/design-notes/environments/2026-06-repo-radius-deploy-workflow.md)).
-4. **Cloud credential integration.** OIDC federation, so no long-lived cloud secret is stored, covered by the same design note as investment 3.
-5. **Control-plane startup time.** Startup sits on the critical path of every operation, which makes it the primary determinant of perceived responsiveness ([2026-06-repo-radius-deploy-workflow.md](../../eng/design-notes/environments/2026-06-repo-radius-deploy-workflow.md)).
+- **Deploy to an external cluster.** The whole application, including directly-rendered resources, lands on the developer's AKS or EKS cluster while the control plane runs on the ephemeral runner cluster ([2026-06-multi-cluster.md](../../eng/design-notes/environments/2026-06-multi-cluster.md)).
+- **Externalize the control-plane store.** Control-plane resource data and Terraform recipe state survive a cluster that is destroyed after every run ([2026-06-repo-radius-state-storage.md](../../eng/design-notes/2026-06-repo-radius-state-storage.md)).
+- **A workflow with standardized inputs and outputs.** The dispatcher, provider workflows, and composite actions that run Radius on demand inside a runner ([2026-06-repo-radius-deploy-workflow.md](../../eng/design-notes/environments/2026-06-repo-radius-deploy-workflow.md)).
+- **Cloud credential integration.** OIDC federation, so no long-lived cloud secret is stored, covered by the same design note as the workflow.
 
-The first four are what this document means by "the five investments" being mostly done; the fifth is the one that is not. The appendix tracks each one's status against the code.
+**What is not complete.** Control-plane startup time. Startup sits on the critical path of every operation, which makes it the primary determinant of perceived responsiveness, and every run still builds a cluster and installs Radius from scratch ([2026-06-repo-radius-deploy-workflow.md](../../eng/design-notes/environments/2026-06-repo-radius-deploy-workflow.md)). The appendix tracks each item's status against the code.
 
 **What a run does.** A generated GitHub Actions workflow authenticates to the cloud provider over OIDC, creates a throwaway k3d cluster, installs Radius from the `edge` channel, and restores the previous run's state from a GHCR package. It then creates a resource group, registers a cloud credential, deploys a Radius environment, and deploys the application, whose workloads land on an external cluster the user already owns. Finally it publishes a deploy-status artifact, captures state back to the archive, and deletes the cluster. If no external cluster is configured, the workflow falls back to deploying onto the control-plane cluster, which is then torn down with it.
 
@@ -45,8 +44,6 @@ The first four are what this document means by "the five investments" being most
 | External cluster targeting | The `RADIUS_TARGET_KUBECONFIG` environment variable. Unset means target the local cluster. | [pkg/kubeutil](../../pkg/kubeutil), [pkg/recipes/kubernetes/clusteraccess](../../pkg/recipes/kubernetes/clusteraccess)                           |
 | Durable state              | `rad startup` and `rad shutdown` bracket a run, reading and writing a pluggable archive.   | [pkg/statearchive](../../pkg/statearchive), [pkg/cli/cmd/startup](../../pkg/cli/cmd/startup), [pkg/cli/cmd/shutdown](../../pkg/cli/cmd/shutdown) |
 | Graph output               | `rad app graph`, whose modeled form commits to a graph archive when it detects a runner.   | [pkg/cli/cmd/app/graph](../../pkg/cli/cmd/app/graph), [pkg/graph/persistence](../../pkg/graph/persistence)                                       |
-
-**What is implemented.** Four of the five investments are in place, two of them still hardening. The fifth, control-plane startup time, is barely begun, so every run still builds a cluster and installs Radius from scratch.
 
 **What surprises people.** Three properties of v1 catch readers out, and each is expanded in the appendix. The state restore is *destructive*, so anything the control plane must contain has to be created after `rad startup` or be present in the archive. The `--preview` flag is supplied by two unrelated mechanisms and applied unevenly, and omitting it produces a plausible wrong answer rather than an error. And the modeled-graph archive path this repository owns is not exercised by any generated workflow, because every generated graph call passes `--preview` and lands in a different implementation.
 
@@ -124,7 +121,7 @@ These are prerequisites rather than enhancements. Unattended deployment means a 
 
 ### 5. Reduce the Cost of a Run
 
-Investment 5 remains largely untouched, and every run still builds a k3d cluster and installs Radius from scratch. This ranks low while a person deploys occasionally and high as soon as an agent iterates, because per-run cost sets the rate at which an agent can work. Of the two mitigations the technical design proposes, one is already done: the engine ships as composite actions rather than a Docker action, so no image pull sits on the critical path. The other, a pre-baked k3d node image with the control-plane images already loaded, is the remaining and higher-leverage half. Runner capacity is the related constraint: the control plane does not fit on the 2-vCPU runner that private repositories get ([#12857](https://github.com/radius-project/radius/issues/12857)).
+Control-plane startup time remains largely untouched, and every run still builds a k3d cluster and installs Radius from scratch. This ranks low while a person deploys occasionally and high as soon as an agent iterates, because per-run cost sets the rate at which an agent can work. Of the two mitigations the technical design proposes, one is already done: the engine ships as composite actions rather than a Docker action, so no image pull sits on the critical path. The other, a pre-baked k3d node image with the control-plane images already loaded, is the remaining and higher-leverage half. Runner capacity is the related constraint: the control plane does not fit on the 2-vCPU runner that private repositories get ([#12857](https://github.com/radius-project/radius/issues/12857)).
 
 ### 6. Widen the Target Surface
 
@@ -249,19 +246,19 @@ The ref those actions resolve at is worth knowing before you rely on either prop
 
 The practical consequence is that a generated workflow pins first-party actions to one immutable commit, exactly as it pins the third-party actions in the same templates. Fixing a composite action does **not** reach already-generated workflows. Users pick it up by regenerating with a newer plugin version. Composite-action inputs are still a compatibility surface across plugin releases, but a merge to `ai-extensions` `main` cannot change what an existing user repository runs.
 
-### The Five Investments
+### What Is and Is Not Complete
 
-The five investments are summarized in [Repo Radius Today](#repo-radius-today). Their status in this repository:
+The complete and incomplete work is summarized in [Repo Radius Today](#repo-radius-today). Status in this repository:
 
-| # | Investment                          | Status                 | Where it lives                                                                                                                                   |
-|---|-------------------------------------|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1 | Deploy to an external cluster       | Implemented (v1)       | [pkg/kubeutil](../../pkg/kubeutil), [pkg/recipes/kubernetes/clusteraccess](../../pkg/recipes/kubernetes/clusteraccess)                           |
-| 2 | Externalize the control-plane store | Implemented, hardening | [pkg/statearchive](../../pkg/statearchive), [pkg/cli/cmd/startup](../../pkg/cli/cmd/startup), [pkg/cli/cmd/shutdown](../../pkg/cli/cmd/shutdown) |
-| 3 | Workflow with standardized I/O      | Implemented            | `ai-extensions`                                                                                                                                  |
-| 4 | Cloud credential integration (OIDC) | Implemented, hardening | `ai-extensions`, plus credential registration in the CLI                                                                                         |
-| 5 | Control-plane startup time          | **Barely started**     | —                                                                                                                                                |
+| Work                                | Status                 | Where it lives                                                                                                                                   |
+|-------------------------------------|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| Deploy to an external cluster       | Implemented (v1)       | [pkg/kubeutil](../../pkg/kubeutil), [pkg/recipes/kubernetes/clusteraccess](../../pkg/recipes/kubernetes/clusteraccess)                           |
+| Externalize the control-plane store | Implemented, hardening | [pkg/statearchive](../../pkg/statearchive), [pkg/cli/cmd/startup](../../pkg/cli/cmd/startup), [pkg/cli/cmd/shutdown](../../pkg/cli/cmd/shutdown) |
+| Workflow with standardized I/O      | Implemented            | `ai-extensions`                                                                                                                                  |
+| Cloud credential integration (OIDC) | Implemented, hardening | `ai-extensions`, plus credential registration in the CLI                                                                                         |
+| Control-plane startup time          | **Barely started**     | —                                                                                                                                                |
 
-Investment 5 is the leading non-functional concern and remains largely unaddressed. Every run still builds a k3d cluster and installs Radius from scratch. The technical design proposes two mitigations, and only one is done: the engine is packaged as composite actions rather than a Docker action, so no image pull sits on the critical path. The other, a pre-baked k3d node image with the Radius control-plane images already loaded, is the one the design calls the highest-leverage startup optimization, and nobody has implemented it.
+Control-plane startup time is the leading non-functional concern and remains largely unaddressed. Every run still builds a k3d cluster and installs Radius from scratch. The technical design proposes two mitigations, and only one is done: the engine is packaged as composite actions rather than a Docker action, so no image pull sits on the critical path. The other, a pre-baked k3d node image with the Radius control-plane images already loaded, is the one the design calls the highest-leverage startup optimization, and nobody has implemented it.
 
 ### Seams in This Repository
 
@@ -417,7 +414,7 @@ The orchestration variables consumed only by workflow templates are documented i
 
 ### State Durability and Reconciliation
 
-The five investments treat the state archive as a faithful snapshot. Hardening work has shown it is better modeled as a **fallible authoritative checkpoint that can diverge from external reality**. The distinction matters. This is not a cache: nothing else holds the data, and no more authoritative source can rebuild it. Losing the Terraform state orphans real cloud infrastructure. The archive is authoritative *and* it can be corrupted, raced, or left describing resources that no longer exist.
+The v1 design treats the state archive as a faithful snapshot. Hardening work has shown it is better modeled as a **fallible authoritative checkpoint that can diverge from external reality**. The distinction matters. This is not a cache: nothing else holds the data, and no more authoritative source can rebuild it. Losing the Terraform state orphans real cloud infrastructure. The archive is authoritative *and* it can be corrupted, raced, or left describing resources that no longer exist.
 
 Hardening work has surfaced five distinct failure modes, each with a different fix at a different layer:
 
@@ -446,7 +443,7 @@ Cloud outputs backed by Terraform are explicitly out of scope for the first iter
 
 Grouped by why they are missing, which matters more than the individual items.
 
-**Barely started.** Control-plane startup time (Investment 5), the leading non-functional concern. Composite-action packaging is in place, but the pre-baked node image that the technical design calls the highest-leverage optimization has no implementation.
+**Barely started.** Control-plane startup time, the leading non-functional concern. Composite-action packaging is in place, but the pre-baked node image that the technical design calls the highest-leverage optimization has no implementation.
 
 **Deferred by design.** What-if / preview deployment, and migration from Repo Radius to a self-hosted installation. Both were scoped out as needing their own design.
 
