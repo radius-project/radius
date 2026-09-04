@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-changelog-range test-build-summary test-goreleaser-shadow test-capture-release-image-digests ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-changelog-range test-build-summary test-goreleaser-shadow test-capture-release-image-digests test-release-get-version test-release-tag-and-branch ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -79,6 +79,14 @@ test-goreleaser-shadow: ## Tests GoReleaser shadow output parity verification
 .PHONY: test-capture-release-image-digests
 test-capture-release-image-digests: ## Tests production release image digest capture
 	@bash ./.github/scripts/capture-release-image-digests_test.sh
+
+.PHONY: test-release-tag-and-branch
+test-release-tag-and-branch: ## Tests release tag and branch reconciliation
+	@bash ./.github/scripts/release-create-tag-and-branch_test.sh
+
+.PHONY: test-release-get-version
+test-release-get-version: ## Tests release version selection across repositories
+	@bash ./.github/scripts/release-get-version_test.sh
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
