@@ -24,7 +24,7 @@ The first four sections are the argument; the appendix is the evidence behind it
 
 This section summarizes the shipped system. [Appendix: Repo Radius v1](#appendix-repo-radius-v1) gives the full account, with a source citation behind each claim.
 
-**Where the shape came from.** A feature specification framed Repo Radius as five engineering investments, and the design notes in [eng/design-notes](../../eng/design-notes) are written against that numbering. The five are:
+**Where the shape came from.** The work was framed as five engineering investments, and the design notes in [eng/design-notes](../../eng/design-notes) are written against that numbering. The five are:
 
 1. **Deploy to an external cluster.** The whole application, including directly-rendered resources, lands on the developer's AKS or EKS cluster while the control plane runs on the ephemeral runner cluster ([2026-06-multi-cluster.md](../../eng/design-notes/environments/2026-06-multi-cluster.md)).
 2. **Externalize the control-plane store.** Control-plane resource data and Terraform recipe state have to survive a cluster that is destroyed after every run ([2026-06-repo-radius-state-storage.md](../../eng/design-notes/2026-06-repo-radius-state-storage.md)).
