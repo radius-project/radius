@@ -1,0 +1,12 @@
+FROM gcr.io/distroless/static:nonroot
+
+ARG TARGETPLATFORM
+
+WORKDIR /
+
+COPY ${TARGETPLATFORM}/ucpd /ucpd
+COPY deploy/manifest/built-in-providers/self-hosted/ /manifest/built-in-providers/
+
+USER 65532:65532
+
+ENTRYPOINT ["/ucpd"]
