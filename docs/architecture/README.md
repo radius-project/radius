@@ -40,8 +40,10 @@ change-safety guidance.
   environments to provide private registry auth, Terraform CLI provider
   installation rules, and recipe environment variables.
 - [repo-radius.md](repo-radius.md) explains Repo Radius, the delivery model in
-  which Radius runs ephemerally inside a GitHub Actions runner, and which seams
-  in this repository support it.
+  which Radius runs ephemerally inside a GitHub Actions runner. It covers the
+  vision of a single backend serving many GitHub interfaces, the seams in this
+  repository that support the model today, the architecture direction, and a
+  dependency-ordered roadmap.
 
 ## Reading Order
 
