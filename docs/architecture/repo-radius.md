@@ -11,8 +11,8 @@ Three things define the model:
 This document has five parts:
 
 - **Repo Radius Today** summarizes the system as of early September 2026.
-- **Vision** states what Repo Radius is, beyond its first frontend in the GitHub Copilot App.
-- **Architecture Direction** names what has to change to implement this vision.
+- **Vision** states what Repo Radius is going, beyond its first frontend in the GitHub Copilot App.
+- **Architecture Direction** names what is needed to implement this vision, and which of the two repositories each change lands in.
 - **Roadmap** puts those changes in dependency order.
 - The **Appendix** is the verified long-form account of the current system (as of early September 2026): what this repository contributes, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented.
 
@@ -119,6 +119,25 @@ Investment 5 remains largely untouched, and every run still builds a k3d cluster
 ### 6. Widen the Target Surface
 
 A backend that only reaches some clusters is not a general one. AWS is already a target: the AWS provider workflow is always committed, a run registers an IRSA credential, and EKS is supported. What is thin is the setup path around it. The canvas adapter has an Azure auto-setup route and an Azure discovery route and no AWS counterpart, so the AWS trust relationship is configured by hand. Beyond that, the known limit is clusters the runner cannot authenticate to ([#12550](https://github.com/radius-project/radius/issues/12550)).
+
+### Which Repository Changes
+
+The vision needs work in both repositories, and the split is uneven. This repository owns the `rad` behaviors and the control plane; `ai-extensions` owns the workflows, the composite actions, and the canvas adapter. The table below is the same six themes, divided by where the change lands.
+
+| Theme                       | In `radius-project/radius`                                                                                                                                                                                                                                                                                                                      | In `radius-project/ai-extensions`                                                                                                                                                                                                  |
+|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1. Write side behind ports  | Keep `rad` interface-independent: no assumption of a canvas, a TTY, or a human reader. Little else; the work is not here.                                                                                                                                                                                                                       | Nearly all of it. Widen `core/ports` beyond the read-only `GitHub` port, move environment creation, GHCR bootstrap, secret provisioning, commit, and dispatch from `adapter-canvas` into `core` behind those ports.                |
+| 2. Graph as a data contract | Most of it. A versioned schema, stable node and edge identity, and a `--output json` path whose stdout carries only the payload.                                                                                                                                                                                                                | Consume the versioned artifact in `publish-deploy-status` instead of capturing stdout, and stop depending on the current shape.                                                                                                    |
+| 3. Collapse command surface | All of it. Converge the two resource planes and retire `--preview` from both mechanisms that supply it.                                                                                                                                                                                                                                         | Drop `--preview` from the composite actions and the canvas-built commands once it is gone.                                                                                                                                         |
+| 4. Addressable runs         | The `rad` half: reconcile hydrated state against reality ([#12871](https://github.com/radius-project/radius/pull/12871)), and mitigate partial hydration.                                                                                                                                                                                       | The dispatch half: a `ref` input on `run-rad-commands` ([#12527](https://github.com/radius-project/radius/issues/12527)) and a GitHub Deployment record per run ([#12528](https://github.com/radius-project/radius/issues/12528)). |
+| 5. Run cost                 | Publish a control-plane node image; this repository already builds and pushes the control-plane images it would contain ([build/docker.mk](../../build/docker.mk)) and owns the chart whose resource requests do not fit a 2-vCPU runner ([deploy/Chart](../../deploy/Chart), [#12857](https://github.com/radius-project/radius/issues/12857)). | Consume that image in `setup-control-plane` rather than installing from scratch.                                                                                                                                                   |
+| 6. Target breadth           | Nothing structural. Cluster authentication is a workflow concern.                                                                                                                                                                                                                                                                               | An AWS auto-setup and discovery route to match Azure's, and runner-side support for AAD/Azure-RBAC clusters ([#12550](https://github.com/radius-project/radius/issues/12550)).                                                     |
+
+Two things follow from reading it this way.
+
+**The neutral-backend work is mostly not in this repository.** Themes 1 and 6 land almost entirely in `ai-extensions`, because that is where per-frontend and per-provider capability accumulates. What this repository contributes to the vision is a `rad` and a control plane that make no assumption about the caller. That is a constraint to hold, not a project to staff.
+
+**Issues are filed where the product lives, not where the fix lands.** #12527, #12528, and #12550 are all open in `radius-project/radius`, but each is workflow or adapter work. Read the issue before assuming which repository a Repo Radius item belongs to.
 
 ## Roadmap
 
