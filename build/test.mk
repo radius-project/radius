@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-changelog-range ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -63,6 +63,10 @@ test-manage-radius-installation: ## Tests Radius installation lifecycle reconcil
 .PHONY: test-release-parity-manifest
 test-release-parity-manifest: ## Tests release parity manifest collection
 	@bash ./.github/scripts/release-parity-manifest_test.sh
+
+.PHONY: test-changelog-range
+test-changelog-range: ## Tests changelog channel boundary resolution
+	@bash ./.github/scripts/changelog-range_test.sh
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
