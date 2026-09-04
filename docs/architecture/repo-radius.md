@@ -8,9 +8,29 @@ Three things define the model:
 - **The cloud credential model** is **OIDC federation**, with no long-lived cloud credentials stored anywhere.
 - **The durable state** lives in a **GHCR package** linked to the user's repository.
 
-This document has four parts. **Vision** states what Repo Radius is for (beyond its first frontend in the GitHub Copilot App). **Architecture Direction** names what has to change for the vision to hold. **Roadmap** puts those changes in dependency order. The **Appendix** is the verified account of the current system: what this repository contributes, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented. Read the appendix first if you want the evidence before the argument.
+This document has five parts. **Repo Radius v1** summarizes the system as shipped. **Vision** states what Repo Radius is for (beyond its first frontend in the GitHub Copilot App). **Architecture Direction** names what has to change for the vision to hold. **Roadmap** puts those changes in dependency order. The **Appendix** is the verified long-form account of the current system: what this repository contributes, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented. The first four sections are the argument; the appendix is the evidence behind it.
 
 > **Status as of 2026-09-03.** The appendix distinguishes shipped behavior from work in review. Anything described as "in review", "proposed", or linked to an open pull request is *not* current behavior. Re-check the linked items before relying on them. The *Architecture Direction* and *Roadmap* sections describe intent, not implementation, and nothing in them should be read as a commitment.
+
+## Repo Radius v1
+
+This section summarizes the shipped system. [Appendix: Repo Radius Today](#appendix-repo-radius-today) gives the full account, with a source citation behind each claim.
+
+**What a run does.** A generated GitHub Actions workflow authenticates to the cloud provider over OIDC, creates a throwaway k3d cluster, installs Radius from the `edge` channel, and restores the previous run's state from a GHCR package. It then creates a resource group, registers a cloud credential, deploys a Radius environment, and deploys the application, whose workloads land on an external cluster the user already owns. Finally it publishes a deploy-status artifact, captures state back to the archive, and deletes the cluster.
+
+**How the work is split.** This repository owns what must be true of the `rad` binary and the control plane for the model to be possible. [`radius-project/ai-extensions`](https://github.com/radius-project/ai-extensions) owns the orchestration: the workflow templates, the composite actions, and the GitHub Copilot canvas that generates and dispatches them. The templates and actions used to live here and were removed by [#12719](https://github.com/radius-project/radius/pull/12719). They should not come back.
+
+**The three seams this repository owns.**
+
+| Seam                       | Contract                                                                                   | Principal code                                                                                                                                   |
+|----------------------------|--------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| External cluster targeting | The `RADIUS_TARGET_KUBECONFIG` environment variable. Unset means target the local cluster. | [pkg/kubeutil](../../pkg/kubeutil), [pkg/recipes/kubernetes/clusteraccess](../../pkg/recipes/kubernetes/clusteraccess)                           |
+| Durable state              | `rad startup` and `rad shutdown` bracket a run, reading and writing a pluggable archive.   | [pkg/statearchive](../../pkg/statearchive), [pkg/cli/cmd/startup](../../pkg/cli/cmd/startup), [pkg/cli/cmd/shutdown](../../pkg/cli/cmd/shutdown) |
+| Graph output               | `rad app graph`, whose modeled form commits to a graph archive when it detects a runner.   | [pkg/cli/cmd/app/graph](../../pkg/cli/cmd/app/graph), [pkg/graph/persistence](../../pkg/graph/persistence)                                       |
+
+**What is implemented.** Four of the original specification's five investments are in place, two of them still hardening. The fifth, control-plane startup time, has not been started, so every run still builds a cluster and installs Radius from scratch.
+
+**What surprises people.** Three properties of v1 catch readers out, and each is expanded in the appendix. The state restore is *destructive*, so anything the control plane must contain has to be created after `rad startup` or be present in the archive. The `--preview` flag is supplied by two unrelated mechanisms and applied unevenly, and omitting it produces a plausible wrong answer rather than an error. And the modeled-graph archive path this repository owns is not exercised by any generated workflow, because every generated graph call passes `--preview` and lands in a different implementation.
 
 ## Vision: One Backend, Many Interfaces
 
@@ -42,13 +62,13 @@ Two goals follow from that picture, and they are independent of each other.
 
 **Interface neutrality.** Everything a run needs should be reachable by any frontend.
 
-**Agent-first primitives.** The caller is increasingly a program rather than a person. A person reading a rendered graph may notice an oddity. Building for agents means fewer primitives, uniform behavior across them, and output a parser can trust. It also means the data should be open to extension, so that other systems can join their own information to what Radius knows.
+**Agent-first primitives.** The caller is increasingly a program rather than a person. A person reading a rendered graph may notice an oddity. Building for agents means fewer primitives, uniform behavior across them, and output a parser can trust.
 
 These two goals reinforce each other. A backend that is safe for an agent to drive is, by construction, a backend that a new frontend can adopt without inheriting undocumented behavior.
 
 ## Architecture Direction
 
-Six themes. Each names a property the current system lacks, the evidence that it lacks it, and what would have to change. The evidence comes from [Appendix: Repo Radius Today](#appendix-repo-radius-today), which carries the source citation behind every claim restated here. Read that appendix first if you want the current system described on its own terms, before it is argued with. None of this is scheduled work.
+Six themes. Each names a property the current system lacks, the evidence that it lacks it, and what would have to change. The evidence comes from [Appendix: Repo Radius Today](#appendix-repo-radius-today), which carries the source citation behind every claim restated here. None of this is scheduled work.
 
 ### 1. Move the Write Side Behind Ports
 
@@ -115,7 +135,7 @@ Three consequences are worth stating plainly.
 
 ## Appendix: Repo Radius Today
 
-Everything in this section is verified against the source at the revisions cited. It is the baseline the Vision, Architecture Direction, and Roadmap sections above build from, and it is the part of this document to trust when the two disagree.
+Everything in this section is verified against the source at the revisions cited. It is the long form of *Repo Radius v1* and the baseline the Vision, Architecture Direction, and Roadmap sections build from. Where this appendix and any summary of it disagree, trust the appendix.
 
 ### Why This Model Exists
 
