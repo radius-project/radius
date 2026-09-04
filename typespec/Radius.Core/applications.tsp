@@ -205,6 +205,31 @@ model ApplicationGraphOutputResource {
   portalUrl?: string;
 }
 
+@doc("Request body for the reconcile action. Currently empty; reserved for future filters (for example, a resource-type allowlist).")
+model ReconcileRequest {}
+
+@doc("Response body for the reconcile action.")
+model ReconcileResponse {
+  @doc("Per-resource outcomes of the reconciliation pass. One entry per non-terminal child the orchestrator attempted to reconcile. Terminal-state children are skipped and do not appear.")
+  @extension("x-ms-identifiers", #["resourceId"])
+  resources: Array<ReconcileResourceOutcome>;
+}
+
+@doc("Per-resource outcome recorded by the reconcile action.")
+model ReconcileResourceOutcome {
+  @doc("The fully-qualified resource ID that was reconciled.")
+  resourceId: string;
+
+  @doc("The provisioningState observed on the resource before the reality check.")
+  from: string;
+
+  @doc("The provisioningState written back after the reality check. Same as `from` when no change was needed (for example, when reality confirms the resource is still updating) or when the check could not run.")
+  to: string;
+
+  @doc("Short human-readable reason for the change or explanation of the outcome (for example, `underlying kubernetes object not found`, `still updating`, `provider query failed`).")
+  reason?: string;
+}
+
 #suppress "@azure-tools/typespec-azure-core/casing-style"
 @armResourceOperations
 interface Applications {
@@ -242,6 +267,15 @@ interface Applications {
     ApplicationResource,
     GetGraphRequest,
     ApplicationGraphResponse,
+    UCPBaseParameters<ApplicationResource>
+  >;
+
+  @doc("Reconciles the application's resources against their underlying providers. For every non-terminal child, dynamic-rp queries the recorded outputResources and updates provisioningState to match reality. Called by `rad startup` after the state archive is hydrated so a subsequent `rad app delete` is not blocked by 409s on resources whose real state has moved on. Returns a report of what was observed and rewritten.")
+  @action("reconcile")
+  reconcile is ArmResourceActionSync<
+    ApplicationResource,
+    ReconcileRequest,
+    ReconcileResponse,
     UCPBaseParameters<ApplicationResource>
   >;
 }

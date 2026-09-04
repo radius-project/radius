@@ -76,10 +76,15 @@ type fakeStateRestoreClient struct {
 	waitErr      error
 	restoreDBErr error
 	restoreTFErr error
+	reconcileErr error
 
-	waited   bool
-	dbCalled bool
-	tfCalled bool
+	waited          bool
+	dbCalled        bool
+	tfCalled        bool
+	reconcileCalled bool
+
+	reconcileReports []ApplicationReconcileReport
+	reconcileArg     *workspaces.Workspace
 
 	order []string
 }
@@ -100,6 +105,16 @@ func (f *fakeStateRestoreClient) RestoreTerraform(ctx context.Context, kubeConte
 	f.tfCalled = true
 	f.order = append(f.order, "tf")
 	return f.restoreTFErr
+}
+
+func (f *fakeStateRestoreClient) ReconcileHydratedState(ctx context.Context, workspace *workspaces.Workspace) ([]ApplicationReconcileReport, error) {
+	f.reconcileCalled = true
+	f.reconcileArg = workspace
+	f.order = append(f.order, "reconcile")
+	if f.reconcileErr != nil {
+		return nil, f.reconcileErr
+	}
+	return f.reconcileReports, nil
 }
 
 // fakeScaler records scale operations and appends them to a shared order slice so tests can assert
@@ -177,10 +192,46 @@ func Test_Run_RestoresInOrderWaitDatabaseTerraform(t *testing.T) {
 	require.True(t, client.waited)
 	require.True(t, client.dbCalled)
 	require.True(t, client.tfCalled)
+	require.True(t, client.reconcileCalled)
 	require.True(t, scaler.downCalled)
 	require.True(t, scaler.upCalled)
-	require.Equal(t, []string{"scaledown", "wait", "db", "tf", "scaleup"}, client.order,
-		"must scale down, wait, restore databases, restore terraform, then scale up")
+	require.Equal(t, []string{"scaledown", "wait", "db", "tf", "scaleup", "reconcile"}, client.order,
+		"reconcile must run after scale up so the resource providers are ready to serve it")
+}
+
+// Test_Run_ReconcileFailureDoesNotFailStartup verifies the best-effort contract of the reconcile
+// stage: when ReconcileHydratedState returns an error, rad startup logs and still succeeds. Test
+// case matches the spec's acceptance criterion "rad startup never fails because reconciliation
+// could not reach a resource provider".
+func Test_Run_ReconcileFailureDoesNotFailStartup(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	client := &fakeStateRestoreClient{reconcileErr: errors.New("ucp unreachable")}
+	r, _ := newTestRunner(t, ctrl, client)
+
+	err := r.Run(t.Context())
+	require.NoError(t, err, "reconcile failure must not fail rad startup")
+	require.True(t, client.reconcileCalled)
+}
+
+// Test_Run_ReconcileReceivesWorkspace verifies that the workspace passed to the reconcile stage
+// is the runner's active workspace, so the default client can build a connection to the right
+// control plane.
+func Test_Run_ReconcileReceivesWorkspace(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	client := &fakeStateRestoreClient{
+		reconcileReports: []ApplicationReconcileReport{
+			{Name: "cool-app", ResourceCount: 3},
+		},
+	}
+	r, _ := newTestRunner(t, ctrl, client)
+
+	require.NoError(t, r.Run(t.Context()))
+	require.NotNil(t, client.reconcileArg)
+	require.Equal(t, r.Workspace, client.reconcileArg)
 }
 
 func Test_Run_ScaleDownFailureStopsBeforeRestore(t *testing.T) {

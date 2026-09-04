@@ -301,6 +301,11 @@ func SetupRadiusCoreNamespace(recipeControllerConfig *controllerconfig.RecipeCon
 					return app_v20250801_ctrl.NewGetGraphv20250801preview(opt, *recipeControllerConfig.UCPConnection)
 				},
 			},
+			"reconcile": {
+				APIController: func(opt apictrl.Options) (apictrl.Controller, error) {
+					return app_v20250801_ctrl.NewReconcilev20250801preview(opt, *recipeControllerConfig.UCPConnection)
+				},
+			},
 		},
 	})
 
