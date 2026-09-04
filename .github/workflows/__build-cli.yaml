@@ -1,0 +1,143 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: __build-cli
+
+on:
+  workflow_call:
+    inputs:
+      only_changed:
+        description: Whether only non-build files changed
+        required: true
+        type: string
+
+permissions: {}
+
+env:
+  CONTAINER_REGISTRY: ghcr.io/radius-project
+  RELEASE_PATH: ./release
+  IMAGE_SRC: https://github.com/radius-project/radius
+
+jobs:
+  build-and-push-cli:
+    name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      packages: write # Required for uploading the package
+      contents: read # Required for actions/checkout
+      issues: read # Required for publishing test results
+      checks: write # Required for publishing test results
+      pull-requests: write # Required for publishing test results
+    env:
+      GOOS: ${{ matrix.target_os }}
+      GOARCH: ${{ matrix.target_arch }}
+      GOPROXY: https://proxy.golang.org
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target_os: linux
+            target_arch: amd64
+          - target_os: linux
+            target_arch: arm64
+          - target_os: linux
+            target_arch: arm
+          - target_os: windows
+            target_arch: amd64
+          - target_os: windows
+            target_arch: arm64
+          - target_os: darwin
+            target_arch: amd64
+          - target_os: darwin
+            target_arch: arm64
+    steps:
+      - name: Checkout
+        if: inputs.only_changed != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        if: inputs.only_changed != 'true'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: false
+
+      - name: Setup Python
+        if: inputs.only_changed != 'true'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+
+      - name: Parse release version and set environment variables
+        if: inputs.only_changed != 'true'
+        run: python ./.github/scripts/get_release_version.py
+
+      - name: Make build
+        if: inputs.only_changed != 'true'
+        run: make build
+
+      - name: Copy cli binaries to release (unix-like)
+        if: matrix.target_os != 'windows' && inputs.only_changed != 'true'
+        run: |
+          mkdir -p "${RELEASE_PATH}"
+          cp "./dist/${GOOS}_${GOARCH}/release/rad" "${RELEASE_PATH}/rad_${GOOS}_${GOARCH}"
+
+      - name: Copy cli binaries to release (windows)
+        if: matrix.target_os == 'windows' && inputs.only_changed != 'true'
+        run: |
+          mkdir -p "${RELEASE_PATH}"
+          cp "./dist/${GOOS}_${GOARCH}/release/rad.exe" "${RELEASE_PATH}/rad_${GOOS}_${GOARCH}.exe"
+
+      - name: Upload CLI binary
+        if: inputs.only_changed != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
+          path: ${{ env.RELEASE_PATH }}
+
+      - name: Login to GitHub Container Registry
+        if: inputs.only_changed != 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Install oras
+        if: inputs.only_changed != 'true'
+        run: make install-oras
+
+      - name: Push latest rad cli binary to GHCR (unix-like)
+        if: github.ref == 'refs/heads/main' && matrix.target_os != 'windows' && inputs.only_changed != 'true'
+        run: |
+          cp "./dist/${GOOS}_${GOARCH}/release/rad" ./rad
+          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:latest" ./rad --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
+
+      - name: Copy cli binaries to release (windows)
+        if: github.ref == 'refs/heads/main' && matrix.target_os == 'windows' && inputs.only_changed != 'true'
+        run: |
+          cp "./dist/${GOOS}_${GOARCH}/release/rad.exe" ./rad.exe
+          oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:latest" ./rad.exe --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
+
+      - name: Skip
+        if: inputs.only_changed == 'true'
+        run: exit 0

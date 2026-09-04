@@ -1,0 +1,120 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: build-main
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+concurrency:
+  group: build-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read # Required for actions/checkout
+      pull-requests: read # Required for change detection
+
+  build-and-push-cli:
+    needs: [changes]
+    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
+    uses: ./.github/workflows/__build-cli.yaml
+    with:
+      only_changed: ${{ needs.changes.outputs.only_changed }}
+    permissions:
+      packages: write # Required for uploading the package
+      contents: read # Required for actions/checkout
+      issues: read # Required for publishing test results
+      checks: write # Required for publishing test results
+      pull-requests: write # Required for publishing test results
+
+  build-check:
+    if: always()
+    name: Build Check
+    needs: [build-and-push-cli]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Check build matrix results
+        if: ${{ needs.build-and-push-cli.result != 'success' && needs.build-and-push-cli.result != 'skipped' }}
+        run: |
+          echo "::error::Build and push CLI jobs failed or were cancelled"
+          exit 1
+
+      - name: Build matrix succeeded
+        if: ${{ needs.build-and-push-cli.result == 'success' || needs.build-and-push-cli.result == 'skipped' }}
+        run: |
+          echo "All build matrix jobs completed successfully"
+          exit 0
+
+  build-and-push-images:
+    needs: [changes]
+    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
+    uses: ./.github/workflows/__build-images.yaml
+    permissions:
+      packages: write # Required for uploading the package
+      contents: read # Required for actions/checkout
+
+  build-and-push-helm-chart:
+    if: github.repository == 'radius-project/radius' && github.ref == 'refs/heads/main' && needs.changes.outputs.only_changed != 'true'
+    needs: [build-and-push-images, changes]
+    uses: ./.github/workflows/__build-helm-chart.yaml
+    permissions:
+      packages: write # Required for uploading the package
+      contents: read # Required for actions/checkout
+
+  build-and-push-bicep-types:
+    needs: [changes]
+    if: github.repository == 'radius-project/radius' && github.ref == 'refs/heads/main' && needs.changes.outputs.only_changed != 'true'
+    uses: ./.github/workflows/__build-bicep-types.yaml
+    permissions:
+      contents: read # Required for actions/checkout
+
+  build-summary:
+    if: always()
+    name: Build Summary
+    needs: [build-check, build-and-push-images, build-and-push-bicep-types]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read # Required for actions/checkout
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check all build jobs
+        run: |
+          ./.github/scripts/build-summary.sh \
+            "build-check:${BUILD_CHECK_RESULT}" \
+            "build-and-push-images:${BUILD_AND_PUSH_IMAGES_RESULT}" \
+            "build-and-push-bicep-types:${BUILD_AND_PUSH_BICEP_TYPES_RESULT}"
+        env:
+          BUILD_CHECK_RESULT: ${{ needs.build-check.result }}
+          BUILD_AND_PUSH_IMAGES_RESULT: ${{ needs.build-and-push-images.result }}
+          BUILD_AND_PUSH_BICEP_TYPES_RESULT: ${{ needs.build-and-push-bicep-types.result }}
