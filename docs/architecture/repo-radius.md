@@ -8,13 +8,13 @@ Three things define the model:
 - **The cloud credential model** is **OIDC federation**, with no long-lived cloud credentials stored anywhere.
 - **The durable state** lives in a **GHCR package** linked to the user's repository.
 
-This document has five parts. **Repo Radius v1** summarizes the system as shipped. **Vision** states what Repo Radius is for (beyond its first frontend in the GitHub Copilot App). **Architecture Direction** names what has to change for the vision to hold. **Roadmap** puts those changes in dependency order. The **Appendix** is the verified long-form account of the current system: what this repository contributes, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented. The first four sections are the argument; the appendix is the evidence behind it.
+This document has five parts. **Repo Radius Today** summarizes the system as shipped. **Vision** states what Repo Radius is for (beyond its first frontend in the GitHub Copilot App). **Architecture Direction** names what has to change for the vision to hold. **Roadmap** puts those changes in dependency order. The **Appendix** is the verified long-form account of the current system: what this repository contributes, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented. The first four sections are the argument; the appendix is the evidence behind it.
 
 > **Status as of 2026-09-03.** The appendix distinguishes shipped behavior from work in review. Anything described as "in review", "proposed", or linked to an open pull request is *not* current behavior. Re-check the linked items before relying on them. The *Architecture Direction* and *Roadmap* sections describe intent, not implementation, and nothing in them should be read as a commitment.
 
-## Repo Radius v1
+## Repo Radius Today
 
-This section summarizes the shipped system. [Appendix: Repo Radius Today](#appendix-repo-radius-today) gives the full account, with a source citation behind each claim.
+This section summarizes the shipped system. [Appendix: Repo Radius v1](#appendix-repo-radius-v1) gives the full account, with a source citation behind each claim.
 
 **What a run does.** A generated GitHub Actions workflow authenticates to the cloud provider over OIDC, creates a throwaway k3d cluster, installs Radius from the `edge` channel, and restores the previous run's state from a GHCR package. It then creates a resource group, registers a cloud credential, deploys a Radius environment, and deploys the application, whose workloads land on an external cluster the user already owns. Finally it publishes a deploy-status artifact, captures state back to the archive, and deletes the cluster.
 
@@ -68,7 +68,7 @@ These two goals reinforce each other. A backend that is safe for an agent to dri
 
 ## Architecture Direction
 
-Six themes. Each names a property the current system lacks, the evidence that it lacks it, and what would have to change. The evidence comes from [Appendix: Repo Radius Today](#appendix-repo-radius-today), which carries the source citation behind every claim restated here. None of this is scheduled work.
+Six themes. Each names a property the current system lacks, the evidence that it lacks it, and what would have to change. The evidence comes from [Appendix: Repo Radius v1](#appendix-repo-radius-v1), which carries the source citation behind every claim restated here. Read that appendix first if you want the current system described on its own terms, before it is argued with. None of this is scheduled work.
 
 ### 1. Move the Write Side Behind Ports
 
@@ -133,9 +133,9 @@ Three consequences are worth stating plainly.
 
 **The port work is a migration, not a feature.** Moving the write side into core changes nothing a user can see. Its entire value is the second frontend, so it pays off only if the contracts it carries across the boundary are the settled ones. That is the reason to prefer doing it after theme 1 even though nothing forces the order.
 
-## Appendix: Repo Radius Today
+## Appendix: Repo Radius v1
 
-Everything in this section is verified against the source at the revisions cited. It is the long form of *Repo Radius v1* and the baseline the Vision, Architecture Direction, and Roadmap sections build from. Where this appendix and any summary of it disagree, trust the appendix.
+Everything in this section is verified against the source at the revisions cited. It is the long form of *Repo Radius Today* and the baseline the Vision, Architecture Direction, and Roadmap sections build from. Where this appendix and any summary of it disagree, trust the appendix.
 
 ### Why This Model Exists
 
