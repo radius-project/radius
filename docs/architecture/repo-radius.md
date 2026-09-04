@@ -8,7 +8,15 @@ Three things define the model:
 - **The cloud credential model** is **OIDC federation**, with no long-lived cloud credentials stored anywhere.
 - **The durable state** lives in a **GHCR package** linked to the user's repository.
 
-This document has five parts. **Repo Radius Today** summarizes the system as shipped. **Vision** states what Repo Radius is for (beyond its first frontend in the GitHub Copilot App). **Architecture Direction** names what has to change for the vision to hold. **Roadmap** puts those changes in dependency order. The **Appendix** is the verified long-form account of the current system: what this repository contributes, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented. The first four sections are the argument; the appendix is the evidence behind it.
+This document has five parts:
+
+- **Repo Radius Today** summarizes the system as of early September 2026.
+- **Vision** states what Repo Radius is, beyond its first frontend in the GitHub Copilot App.
+- **Architecture Direction** names what has to change to implement this vision
+- **Roadmap** puts those changes in dependency order.
+- The **Appendix** is the verified long-form account of the current system (as of early September 2026): what this repository contributes, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented.
+
+The first four sections are the argument; the appendix is the evidence behind it.
 
 > **Status as of 2026-09-03.** The appendix distinguishes shipped behavior from work in review. Anything described as "in review", "proposed", or linked to an open pull request is *not* current behavior. Re-check the linked items before relying on them. The *Architecture Direction* and *Roadmap* sections describe intent, not implementation, and nothing in them should be read as a commitment.
 
