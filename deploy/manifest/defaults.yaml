@@ -48,28 +48,28 @@ resourceTypes:
     repo: github.com/radius-project/resource-types-contrib
     # The sync fetch accepts git refs, but update-resource-types always records
     # a full commit SHA under ref and the stable release tag under tag.
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.Compute/v0.1.0"
+    ref: 666357debde921c9405f7a55baf32b9792504187
+    tag: "Radius.Compute/v0.2.1"
   - name: Radius.Data
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.Data/v0.1.0"
+    ref: 666357debde921c9405f7a55baf32b9792504187
+    tag: "Radius.Data/v0.2.1"
   - name: Radius.Security
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.Security/v0.1.0"
+    ref: 666357debde921c9405f7a55baf32b9792504187
+    tag: "Radius.Security/v0.2.1"
   - name: Radius.Messaging
     repo: github.com/radius-project/resource-types-contrib
-    ref: ebdeec9509036f2b2f271e41661e6fcfe45eda89
-    tag: "Radius.Messaging/v0.1.1"
+    ref: 666357debde921c9405f7a55baf32b9792504187
+    tag: "Radius.Messaging/v0.2.1"
   - name: Radius.AI
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.AI/v0.1.0"
+    ref: 666357debde921c9405f7a55baf32b9792504187
+    tag: "Radius.AI/v0.2.1"
   - name: Radius.Storage
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.Storage/v0.1.0"
+    ref: 666357debde921c9405f7a55baf32b9792504187
+    tag: "Radius.Storage/v0.2.1"
 recipePacks:
   - name: azure
     repo: github.com/radius-project/resource-types-contrib

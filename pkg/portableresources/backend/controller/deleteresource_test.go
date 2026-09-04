@@ -21,7 +21,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/components/database"
@@ -53,7 +54,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 			OperationID:      uuid.New(),
 			OperationType:    "APPLICATIONS.DATASTORES/MONGODATABASES|DELETE",
 			ResourceID:       resourceID,
-			CorrelationID:    uuid.NewString(),
+			CorrelationID:    uuid.New().String(),
 			OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 		}
 
