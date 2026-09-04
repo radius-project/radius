@@ -24,9 +24,19 @@ The first four sections are the argument; the appendix is the evidence behind it
 
 This section summarizes the shipped system. [Appendix: Repo Radius v1](#appendix-repo-radius-v1) gives the full account, with a source citation behind each claim.
 
+**Where the shape came from.** A feature specification framed Repo Radius as five engineering investments, and the design notes in [eng/design-notes](../../eng/design-notes) are written against that numbering. The five are:
+
+1. **Deploy to an external cluster.** The whole application, including directly-rendered resources, lands on the developer's AKS or EKS cluster while the control plane runs on the ephemeral runner cluster ([2026-06-multi-cluster.md](../../eng/design-notes/environments/2026-06-multi-cluster.md)).
+2. **Externalize the control-plane store.** Control-plane resource data and Terraform recipe state have to survive a cluster that is destroyed after every run ([2026-06-repo-radius-state-storage.md](../../eng/design-notes/2026-06-repo-radius-state-storage.md)).
+3. **A workflow with standardized inputs and outputs.** The dispatcher, provider workflows, and composite actions that run Radius on demand inside a runner ([2026-06-repo-radius-deploy-workflow.md](../../eng/design-notes/environments/2026-06-repo-radius-deploy-workflow.md)).
+4. **Cloud credential integration.** OIDC federation, so no long-lived cloud secret is stored, covered by the same design note as investment 3.
+5. **Control-plane startup time.** Startup sits on the critical path of every operation, which makes it the primary determinant of perceived responsiveness.
+
+The first four are what this document means by "the five investments" being mostly done; the fifth is the one that is not. The appendix tracks each one's status against the code.
+
 **What a run does.** A generated GitHub Actions workflow authenticates to the cloud provider over OIDC, creates a throwaway k3d cluster, installs Radius from the `edge` channel, and restores the previous run's state from a GHCR package. It then creates a resource group, registers a cloud credential, deploys a Radius environment, and deploys the application, whose workloads land on an external cluster the user already owns. Finally it publishes a deploy-status artifact, captures state back to the archive, and deletes the cluster. If no external cluster is configured, the workflow falls back to deploying onto the control-plane cluster, which is then torn down with it.
 
-**How the work is split.** This repository owns what must be true of the `rad` binary and the control plane for the model to be possible. [`radius-project/ai-extensions`](https://github.com/radius-project/ai-extensions) owns the orchestration: the workflow templates, the composite actions, and the GitHub Copilot canvas that generates and dispatches them. The templates and actions used to live here and were removed by [#12719](https://github.com/radius-project/radius/pull/12719). They should not come back.
+**How the work is split.** This repository owns what must be true of the `rad` binary and the control plane for the model to be possible. [`radius-project/ai-extensions`](https://github.com/radius-project/ai-extensions) owns the orchestration: the workflow templates, the composite actions, and the GitHub Copilot canvas that currently generates and dispatches them.
 
 **The three seams this repository owns.**
 
@@ -36,7 +46,7 @@ This section summarizes the shipped system. [Appendix: Repo Radius v1](#appendix
 | Durable state              | `rad startup` and `rad shutdown` bracket a run, reading and writing a pluggable archive.   | [pkg/statearchive](../../pkg/statearchive), [pkg/cli/cmd/startup](../../pkg/cli/cmd/startup), [pkg/cli/cmd/shutdown](../../pkg/cli/cmd/shutdown) |
 | Graph output               | `rad app graph`, whose modeled form commits to a graph archive when it detects a runner.   | [pkg/cli/cmd/app/graph](../../pkg/cli/cmd/app/graph), [pkg/graph/persistence](../../pkg/graph/persistence)                                       |
 
-**What is implemented.** Four of the original specification's five investments are in place, two of them still hardening. The fifth, control-plane startup time, is barely begun, so every run still builds a cluster and installs Radius from scratch.
+**What is implemented.** Four of the five investments are in place, two of them still hardening. The fifth, control-plane startup time, is barely begun, so every run still builds a cluster and installs Radius from scratch.
 
 **What surprises people.** Three properties of v1 catch readers out, and each is expanded in the appendix. The state restore is *destructive*, so anything the control plane must contain has to be created after `rad startup` or be present in the archive. The `--preview` flag is supplied by two unrelated mechanisms and applied unevenly, and omitting it produces a plausible wrong answer rather than an error. And the modeled-graph archive path this repository owns is not exercised by any generated workflow, because every generated graph call passes `--preview` and lands in a different implementation.
 
@@ -241,7 +251,7 @@ The practical consequence is that a generated workflow pins first-party actions 
 
 ### The Five Investments
 
-The original feature specification framed the work as five investments. Their status in this repository:
+The five investments are summarized in [Repo Radius Today](#repo-radius-today). Their status in this repository:
 
 | # | Investment                          | Status                 | Where it lives                                                                                                                                   |
 |---|-------------------------------------|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -251,7 +261,7 @@ The original feature specification framed the work as five investments. Their st
 | 4 | Cloud credential integration (OIDC) | Implemented, hardening | `ai-extensions`, plus credential registration in the CLI                                                                                         |
 | 5 | Control-plane startup time          | **Barely started**     | —                                                                                                                                                |
 
-Investment 5 is the specification's own highest-priority non-functional requirement and remains largely unaddressed. Every run still builds a k3d cluster and installs Radius from scratch. The technical design proposes two mitigations, and only one is done: the engine is packaged as composite actions rather than a Docker action, so no image pull sits on the critical path. The other, a pre-baked k3d node image with the Radius control-plane images already loaded, is the one the design calls the highest-leverage startup optimization, and nobody has implemented it.
+Investment 5 is the leading non-functional concern and remains largely unaddressed. Every run still builds a k3d cluster and installs Radius from scratch. The technical design proposes two mitigations, and only one is done: the engine is packaged as composite actions rather than a Docker action, so no image pull sits on the critical path. The other, a pre-baked k3d node image with the Radius control-plane images already loaded, is the one the design calls the highest-leverage startup optimization, and nobody has implemented it.
 
 ### Seams in This Repository
 
@@ -436,9 +446,9 @@ Cloud outputs backed by Terraform are explicitly out of scope for the first iter
 
 Grouped by why they are missing, which matters more than the individual items.
 
-**Barely started.** Control-plane startup time (Investment 5), the specification's leading non-functional requirement. Composite-action packaging is in place, but the pre-baked node image that the technical design calls the highest-leverage optimization has no implementation.
+**Barely started.** Control-plane startup time (Investment 5), the leading non-functional concern. Composite-action packaging is in place, but the pre-baked node image that the technical design calls the highest-leverage optimization has no implementation.
 
-**Deferred by design.** What-if / preview deployment, and migration from Repo Radius to a self-hosted installation. Both were scoped out of the original specification as needing their own design.
+**Deferred by design.** What-if / preview deployment, and migration from Repo Radius to a self-hosted installation. Both were scoped out as needing their own design.
 
 **Specified but unbuilt.** A `ref` input allowing deployment of a revision other than the latest, which is the prerequisite for any promotion flow ([#12527](https://github.com/radius-project/radius/issues/12527)); and a GitHub Deployment record per deploy, deactivated on application delete ([#12528](https://github.com/radius-project/radius/issues/12528)).
 
