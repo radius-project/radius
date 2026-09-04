@@ -48,7 +48,7 @@ These two goals reinforce each other. A backend that is safe for an agent to dri
 
 ## Architecture Direction
 
-Six themes. Each names a property the current system lacks, the evidence that it lacks it, and what would have to change. The evidence is drawn from the appendix, which carries the source citations. None of this is scheduled work.
+Six themes. Each names a property the current system lacks, the evidence that it lacks it, and what would have to change. The evidence comes from [Appendix: Repo Radius Today](#appendix-repo-radius-today), which carries the source citation behind every claim restated here. Read that appendix first if you want the current system described on its own terms, before it is argued with. None of this is scheduled work.
 
 ### 1. Move the Write Side Behind Ports
 
