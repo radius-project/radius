@@ -11,7 +11,7 @@ Three things define the model:
 This document has five parts:
 
 - **Repo Radius Today** summarizes the system as of early September 2026.
-- **Vision** states what Repo Radius is going, beyond its first frontend in the GitHub Copilot App.
+- **Vision** states what Repo Radius is going to be, beyond its first frontend in the GitHub Copilot App.
 - **Architecture Direction** names what is needed to implement this vision, and which of the two repositories each change lands in.
 - **Roadmap** puts those changes in dependency order.
 - The **Appendix** is the verified long-form account of the current system (as of early September 2026): what this repository contributes, where the boundary with `radius-project/ai-extensions` lies, and which parts are implemented.
