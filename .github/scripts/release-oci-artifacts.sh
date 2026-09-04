@@ -41,6 +41,7 @@ OUTPUT=""
 CATEGORIES="production,non-go,test"
 NAMES=""
 VERIFY_ALIASES=false
+VERIFY_SBOMS=false
 SOURCE_SHA="${RELEASE_SOURCE_SHA:-}"
 TEMP_DIR=""
 readonly RETRY_ATTEMPTS="${RELEASE_RETRY_ATTEMPTS:-5}"
@@ -148,7 +149,7 @@ Usage:
     release-oci-artifacts.sh verify --version <version> \
         [--channel <X.Y>] [--image-lock <images.json>] [--cli-lock <cli.json>] \
         [--categories <category,...>] [--names <name,...>] \
-        [--source-sha <sha>] [--aliases]
+        [--source-sha <sha>] [--aliases] [--sboms]
     release-oci-artifacts.sh assert-images-absent --registry <registry> \
         --version <version> [--categories <category,...>] [--names <name,...>] \
         [--source-sha <sha>]
@@ -211,6 +212,10 @@ parse_args() {
                 ;;
             --aliases)
                 VERIFY_ALIASES=true
+                shift
+                ;;
+            --sboms)
+                VERIFY_SBOMS=true
                 shift
                 ;;
             -h | --help)
@@ -657,6 +662,52 @@ verify_cli_alias() {
     fi
 }
 
+is_production_image() {
+    local name="$1"
+
+    jq -e --arg name "${name}" '
+        any(.images[];
+            .name == $name
+            and .category == "production"
+            and .radiusBuild == true)
+    ' "${TARGETS_FILE}" > /dev/null
+}
+
+verify_image_sboms() {
+    local immutable_reference="$1"
+    local platforms="$2"
+    local sboms
+
+    if ! sboms="$(retry_read "image SBOM lookup" \
+        docker buildx imagetools inspect \
+        --format '{{json .SBOM}}' "${immutable_reference}")"; then
+        fail "cannot inspect image SBOMs: ${immutable_reference}"
+    fi
+    if ! jq -e --argjson platforms "${platforms}" '
+        . as $sboms
+        | type == "object"
+        and all($platforms[];
+            . as $platform
+            | $sboms[$platform].SPDX as $document
+            | ($document | type == "object")
+            and ($document.spdxVersion
+                | type == "string" and test("^SPDX-2\\.[0-9]+$"))
+            and $document.SPDXID == "SPDXRef-DOCUMENT"
+            and $document.dataLicense == "CC0-1.0"
+            and ($document.documentNamespace
+                | type == "string" and startswith("https://"))
+            and ($document.creationInfo.created
+                | type == "string" and length > 0)
+            and any($document.creationInfo.creators[]?;
+                startswith("Tool: syft-"))
+            and ($document.packages | type == "array" and length > 0)
+            and ($document.relationships | type == "array")
+        )
+    ' <<< "${sboms}" > /dev/null; then
+        fail "image has missing or invalid SPDX SBOMs: ${immutable_reference}"
+    fi
+}
+
 image_aliases_match() {
     local repository="$1"
     local channel="$2"
@@ -784,6 +835,8 @@ verify_locks() {
     local repository
     local digest
     local immutable_reference
+    local name
+    local platforms
 
     require_command jq
     validate_version
@@ -803,6 +856,9 @@ verify_locks() {
     fi
     if [[ "${VERIFY_ALIASES}" == "true" && -z "${CHANNEL}" ]]; then
         fail "channel is required when verifying aliases"
+    fi
+    if [[ "${VERIFY_SBOMS}" == "true" && -z "${IMAGE_LOCK}" ]]; then
+        fail "image lock is required when verifying SBOMs"
     fi
 
     if [[ -n "${IMAGE_LOCK}" ]]; then
@@ -837,7 +893,8 @@ verify_locks() {
             fail "image lock source does not match the release source"
         fi
 
-        while IFS=$'\t' read -r reference digest immutable_reference; do
+        while IFS=$'\t' read -r name reference digest immutable_reference \
+            platforms; do
             if [[ "${reference}" != *":${VERSION}" ]]; then
                 fail "image lock has wrong version: ${reference}"
             fi
@@ -845,13 +902,23 @@ verify_locks() {
                 fail "image lock has an invalid immutable reference"
             fi
             verify_image_alias "${reference}" "${digest}"
+            if [[ "${VERIFY_SBOMS}" == "true" ]]; then
+                if is_production_image "${name}"; then
+                    if ! jq -e 'type == "array" and length > 0' \
+                        <<< "${platforms}" > /dev/null; then
+                        fail "image lock has no platforms for ${name}"
+                    fi
+                    verify_image_sboms "${immutable_reference}" "${platforms}"
+                fi
+            fi
             if [[ "${VERIFY_ALIASES}" == "true" ]]; then
                 repository="${immutable_reference%@*}"
                 verify_image_alias "${repository}:${CHANNEL}" "${digest}"
                 verify_image_alias "${repository}:latest" "${digest}"
             fi
         done < <(jq -r '.[] |
-            [.reference, .digest, .immutableReference] | @tsv
+            [.name, .reference, .digest, .immutableReference,
+                (.platforms | tojson)] | @tsv
         ' "${IMAGE_LOCK}")
     fi
 

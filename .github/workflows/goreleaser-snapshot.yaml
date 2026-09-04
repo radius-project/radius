@@ -67,8 +67,8 @@ jobs:
       - name: Install comparison tools
         run: make install-jq install-yq
 
-      - name: Install GoReleaser
-        run: make install-goreleaser
+      - name: Install release tools
+        run: make install-goreleaser install-syft
 
       - name: Check configuration
         run: make goreleaser-check
@@ -85,5 +85,6 @@ jobs:
             dist/goreleaser/artifacts.json
             dist/goreleaser/metadata.json
             dist/goreleaser/*.sha256
+            dist/goreleaser/*.sbom.json
           if-no-files-found: warn
           retention-days: 7

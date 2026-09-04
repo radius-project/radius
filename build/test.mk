@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-changelog-range test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-build-summary test-capture-release-image-digests test-release-cutover test-release-oci-artifacts test-release-version-format test-release-get-version test-release-tag-and-branch test-monitor-remote-workflow ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-changelog-range test-prepare-release test-release-plan test-release-backport test-release-branch-commits test-build-summary test-capture-release-image-digests test-release-cutover test-release-oci-artifacts test-release-sboms test-release-version-format test-release-get-version test-release-tag-and-branch test-monitor-remote-workflow ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -108,6 +108,10 @@ test-release-cutover: ## Tests the GoReleaser tag cutover workflow contract
 .PHONY: test-release-oci-artifacts
 test-release-oci-artifacts: install-oras ## Tests immutable OCI staging and alias promotion
 	@bash ./.github/scripts/release-oci-artifacts_test.sh
+
+.PHONY: test-release-sboms
+test-release-sboms: ## Tests release SBOM generation and verification wiring
+	@bash ./.github/scripts/release-sboms_test.sh
 
 .PHONY: test-release-tag-and-branch
 test-release-tag-and-branch: ## Tests release tag and branch reconciliation

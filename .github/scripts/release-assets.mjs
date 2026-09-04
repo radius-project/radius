@@ -65,6 +65,34 @@ function findAsset(assets, name) {
   return matches[0];
 }
 
+/** @param {Buffer} data @param {string} name */
+function verifySpdxDocument(data, name) {
+  let document;
+  try {
+    document = JSON.parse(data.toString("utf8"));
+  } catch (error) {
+    throw new Error(`Release SBOM ${name} is not valid JSON`, { cause: error });
+  }
+  const creators = document?.creationInfo?.creators;
+  if (
+    typeof document !== "object" ||
+    document === null ||
+    !/^SPDX-2\.\d+$/.test(document.spdxVersion) ||
+    document.SPDXID !== "SPDXRef-DOCUMENT" ||
+    document.dataLicense !== "CC0-1.0" ||
+    typeof document.documentNamespace !== "string" ||
+    !document.documentNamespace.startsWith("https://") ||
+    typeof document.creationInfo?.created !== "string" ||
+    !Array.isArray(creators) ||
+    !creators.some((creator) => /^Tool: syft-/.test(creator)) ||
+    !Array.isArray(document.packages) ||
+    document.packages.length === 0 ||
+    !Array.isArray(document.relationships)
+  ) {
+    throw new Error(`Release SBOM ${name} is not a valid SPDX document`);
+  }
+}
+
 async function uploadAssetData(github, owner, repo, release, name, data) {
   let response;
   let assets;
@@ -268,6 +296,30 @@ async function reconcileCliAssets(
   core.setOutput("verified_assets", String(names.length));
 }
 
+/** @param {any} github @param {any} core @param {string} owner @param {string} repo @param {any} release */
+async function verifySbomAssets(github, core, owner, repo, release) {
+  const targetsFile = core.getInput("TARGETS_FILE", { required: true });
+  const targets = JSON.parse(await readFile(targetsFile, "utf8"));
+  const cliAssets = /** @type {{name: string}[]} */ (targets.cliAssets);
+  const names = cliAssets.map((asset) => `${asset.name}.sbom.json`).sort();
+  const assets = /** @type {{id: number, name: string}[]} */ (
+    await listAssets(github, owner, repo, release.id)
+  );
+  const actual = assets
+    .map((asset) => asset.name)
+    .filter((name) => name.endsWith(".sbom.json"))
+    .sort();
+  if (JSON.stringify(actual) !== JSON.stringify(names)) {
+    throw new Error("Release SBOM assets do not match the expected set");
+  }
+  for (const name of names) {
+    const asset = findAsset(assets, name);
+    const data = await downloadAsset(github, owner, repo, asset.id);
+    verifySpdxDocument(data, name);
+  }
+  core.setOutput("verified_sboms", String(names.length));
+}
+
 /** @param {{github: any, core: any}} options */
 export default async function releaseAssets({ github, core }) {
   const owner = core.getInput("OWNER", { required: true });
@@ -290,6 +342,10 @@ export default async function releaseAssets({ github, core }) {
   }
   if (mode === "normalize-cli") {
     await reconcileCliAssets(github, core, owner, repo, release, true);
+    return;
+  }
+  if (mode === "verify-sboms") {
+    await verifySbomAssets(github, core, owner, repo, release);
     return;
   }
   throw new Error(`Unsupported release asset mode: ${mode}`);
