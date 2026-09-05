@@ -273,24 +273,33 @@ warnExistingRadiusElsewhere() {
 
 getLatestRelease() {
     local radReleaseUrl="https://api.github.com/repos/${GITHUB_ORG}/${GITHUB_REPO}/releases"
+    local response=""
     local latest_release=""
 
-    if [[ "${INCLUDE_RC}" == "true" ]]; then
-        if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
-            latest_release=$(curl -s "${radReleaseUrl}" | grep \"tag_name\" | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
-        else
-            latest_release=$(wget -q --header="Accept: application/json" -O - "${radReleaseUrl}" | grep \"tag_name\" | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
+    if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
+        # -S preserves curl's error output while -s hides the progress meter.
+        if ! response=$(curl -sS "${radReleaseUrl}"); then
+            exit 1
         fi
     else
-        if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
-            latest_release=$(curl -s "${radReleaseUrl}" | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
-        else
-            latest_release=$(wget -q --header="Accept: application/json" -O - "${radReleaseUrl}" | grep \"tag_name\" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p')
+        if ! response=$(wget --no-verbose \
+            --header="Accept: application/json" -O - "${radReleaseUrl}"); then
+            exit 1
         fi
     fi
 
+    if [[ "${INCLUDE_RC}" == "true" ]]; then
+        latest_release=$(printf '%s\n' "${response}" | grep \"tag_name\" |
+            awk 'NR==1{print $2}' | sed -n 's/\"\(.*\)\",/\1/p') || true
+    else
+        latest_release=$(printf '%s\n' "${response}" | grep \"tag_name\" |
+            grep -v rc | awk 'NR==1{print $2}' |
+            sed -n 's/\"\(.*\)\",/\1/p') || true
+    fi
+
     if [[ -z "${latest_release}" ]]; then
-        echo "Error: could not determine latest release"
+        echo "Error: could not determine latest release" >&2
+        echo "Response: ${response:0:500}" >&2
         exit 1
     fi
 
@@ -328,9 +337,10 @@ downloadFile() {
 
         echo "Downloading ${download_url}..."
         if [[ "${RADIUS_HTTP_REQUEST_CLI}" == "curl" ]]; then
-            curl -SsL "${download_url}" -o "${artifact_tmp_file}"
+            curl --fail --show-error --silent --location "${download_url}" \
+                -o "${artifact_tmp_file}"
         else
-            wget -q -O "${artifact_tmp_file}" "${download_url}"
+            wget --no-verbose -O "${artifact_tmp_file}" "${download_url}"
         fi
     fi
 
