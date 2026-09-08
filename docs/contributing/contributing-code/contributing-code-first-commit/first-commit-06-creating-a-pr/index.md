@@ -8,7 +8,7 @@ It's time to pick an issue to work on! External contributors using an AI agent, 
 
 ## Etiquette for issues
 
-If you find an issue you want to help with, comment on that issue and ask for one of the maintainers to assign it to you. Wait for confirmation before writing code, and make sure the issue is not assigned to someone else or already covered by an open pull request. If you have questions or anything you want to discuss, use the issue to communicate about it.
+If you find an issue you want to help with, then please comment on that issue and ask for one of the maintainers to assign it to you. If you have questions or anything you want to discuss, use the issue to communicate about it.
 
 Now you've got something to work on. Once you've developed and tested your change resume this guide.
 
