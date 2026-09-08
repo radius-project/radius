@@ -9,6 +9,7 @@ This guide explains how to open a pull request against [`radius-project/radius`]
 Before opening a pull request, make sure you have:
 
 - **Agreement on scope.** For anything beyond a trivial fix (like a typo), [choose an existing issue](https://github.com/radius-project/radius/issues) or [open a new one](https://github.com/radius-project/radius/issues/new/choose) and work with the maintainers to confirm the change is in scope *before* writing code. The maintainers have discretion over what they accept — see [this article](https://www.igvita.com/2011/12/19/dont-push-your-pull-requests/) for why. If you have any doubt whether a contribution is valuable, ask first.
+- **Eligibility for external automated contributions.** External contributors using an AI agent, coding bot, or other automation may only implement an open issue that has the `triaged` label and either the `help wanted` or `good first issue` label. Comment on the issue and wait for a maintainer to confirm that you may work on it. The issue must not be assigned to someone else or already have an open pull request. Re-check these conditions immediately before opening your pull request. If any condition is not satisfied, do not implement the issue or open a pull request; automated contributions do not receive the trivial-fix exception above.
 - **A fork of the repository.** Submit pull requests from a forked repo against the `main` branch (the default) unless otherwise instructed.
 - **A working local build.** Run the basic validations (`make build test lint format-check`) successfully before you submit. See [building the repo](../contributing-code/contributing-code-building/) for setup.
 
@@ -93,6 +94,7 @@ The maintainers or other contributors will add comments giving feedback, asking 
 A pull request must pass these checkpoints to be accepted:
 
 - **Initial review** — a maintainer reviews your summary and confirms an appropriate issue is linked.
+- **External automation eligibility** — a pull request opened through external automation links to an eligible issue with the required labels and maintainer confirmation.
 - **Automated tests** — GitHub Actions workflows run unit, integration, and functional tests against your changes. Automation adds comments with links to logs so you can diagnose failures.
 - **Required label** — exactly one of `pr:standard` or `pr:important` is applied.
 - **Code review** — you receive and address feedback from a maintainer or other contributors.

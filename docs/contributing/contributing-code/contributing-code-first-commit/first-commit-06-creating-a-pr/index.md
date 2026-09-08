@@ -4,11 +4,11 @@
 
 At this point you've experienced the basic dev flow for the `rad` CLI.
 
-It's time to pick an issue to work on! You can find a query [here](https://github.com/radius-project/radius/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22).
+It's time to pick an issue to work on! External contributors using an AI agent, coding bot, or other automation must choose an open issue that is labeled `triaged` and either [`help wanted`](https://github.com/radius-project/radius/issues?q=is%3Aopen+is%3Aissue+label%3Atriaged+label%3A%22help+wanted%22) or [`good first issue`](https://github.com/radius-project/radius/issues?q=is%3Aopen+is%3Aissue+label%3Atriaged+label%3A%22good+first+issue%22).
 
 ## Etiquette for issues
 
-If you find an issue you want to help with, then please comment on that issue and ask for one of the maintainers to assign it to you. If you have questions or anything you want to discuss, use the issue to communicate about it.
+If you find an issue you want to help with, comment on that issue and ask for one of the maintainers to assign it to you. Wait for confirmation before writing code, and make sure the issue is not assigned to someone else or already covered by an open pull request. If you have questions or anything you want to discuss, use the issue to communicate about it.
 
 Now you've got something to work on. Once you've developed and tested your change resume this guide.
 

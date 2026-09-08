@@ -2,6 +2,14 @@
 
 This is the single entry point that orients any agent (GitHub Copilot in VS Code, Copilot Cloud Agent, Copilot CLI, Claude Code) or human contributor working in this repository. It points to directories and docs rather than listing individual files. Read the linked docs on demand for depth.
 
+## External automated contributions
+
+External contributors using an AI agent, coding bot, or other automation may implement an issue and open a pull request only when the issue is open, has the `triaged` label, and has either the `help wanted` or `good first issue` label. The issue must not be assigned to another contributor or already have an open pull request.
+
+Before changing code, comment on the issue and wait for a maintainer to confirm that you may work on it. Re-check the issue's status, labels, assignment, and linked pull requests immediately before opening a pull request. If any requirement is not satisfied, you may investigate or comment on the issue, but must not implement it or open a pull request. This restriction does not apply to maintainers or project-managed automation working on internally planned changes.
+
+See the [triage process](/docs/contributing/triage/triage-process.md) and [pull-request guide](/docs/contributing/contributing-pull-requests/README.md) for details.
+
 ## 1. What this repo is
 
 Radius is a cloud-native application platform that lets developers and the platform engineers who support them collaborate on delivering and managing cloud-native applications across Kubernetes, private cloud, Microsoft Azure, and Amazon Web Services. Radius is a [CNCF sandbox project](https://www.cncf.io/sandbox-projects/).
