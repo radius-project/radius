@@ -34,6 +34,8 @@ feature:
 
     A project maintainer will review this feature request and get back to you soon.
 
+    We also welcome community contributions! If you would like to submit a pull request, please visit our [contribution guidelines](https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md) and assign this to yourself by commenting "/assign" on this issue.
+
     _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
 
 maintenance:
@@ -41,6 +43,8 @@ maintenance:
     :wave: @{issue-author} Thanks for filing this issue.
 
     A project maintainer will review this issue and get back to you soon.
+
+    We also welcome community contributions! If you would like to submit a pull request, please visit our [contribution guidelines](https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md) and assign this to yourself by commenting "/assign" on this issue.
 
     _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
 
