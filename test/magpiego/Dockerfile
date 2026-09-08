@@ -1,4 +1,6 @@
-FROM golang:1.22-alpine
+# Keep BusyBox for test consumers that use /bin/sh and the ls /tmp liveness probe.
+# Alpine includes the CA certificate bundle needed by outbound TLS connections.
+FROM alpine:3.24
 
 # Argument for target architecture
 ARG TARGETARCH
