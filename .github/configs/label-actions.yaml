@@ -60,7 +60,7 @@ triaged:
   comment: |
     :+1: We've reviewed this issue and have agreed to add it to our backlog. Please subscribe to this issue for notifications, we'll provide updates when we pick it up.
 
-    We also welcome community contributions! If you would like to pick this item up sooner and submit a pull request, please visit our [contribution guidelines](https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md) and assign this to yourself by commenting "/assign" on this issue.
+    We also welcome community contributions! If you would like to submit a pull request, please visit our [contribution guidelines](https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md) and assign this to yourself by commenting "/assign" on this issue.
 
     _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
 
@@ -68,7 +68,7 @@ important:
   comment: |
     We've prioritized work on this issue. Please subscribe to this issue for notifications, we'll provide updates as we make progress.
 
-    We also welcome community contributions! If you would like to pick this item up sooner and submit a pull request, please visit our [contribution guidelines](https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md) and assign this to yourself by commenting "/assign" on this issue.
+    We also welcome community contributions! If you would like to submit a pull request, please visit our [contribution guidelines](https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md) and assign this to yourself by commenting "/assign" on this issue.
 
     _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
 
@@ -76,7 +76,7 @@ important:
   comment: |
     This issue is a great one to pickup for new contributors. It should only require small changes and not assume a deep knowledge of the Radius architecture.
 
-    We always welcome community contributions! If you would like to pick this item up sooner and submit a pull request, please visit our [contribution guidelines](https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md) and assign this to yourself by commenting "/assign" on this issue.
+    We always welcome community contributions! If you would like to submit a pull request, please visit our [contribution guidelines](https://github.com/radius-project/radius/blob/main/CONTRIBUTING.md) and assign this to yourself by commenting "/assign" on this issue.
 
     _For more information on our triage process please visit our [triage overview](https://github.com/radius-project/radius/blob/main/docs/contributing/triage/triage-process.md)_
 
