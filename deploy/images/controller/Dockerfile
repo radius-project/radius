@@ -1,5 +1,5 @@
 # Use a specific Debian slim image to enable running Bicep CLI
-FROM debian:bullseye-20250317-slim
+FROM debian:13.6-slim@sha256:d7e12182ce18b85b93007c1dedf31f2d29e01ccf3182cc4017c709b6259bc132
 
 ARG TARGETARCH
 
