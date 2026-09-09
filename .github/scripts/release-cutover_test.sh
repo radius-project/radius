@@ -193,6 +193,7 @@ test_main_publishes_only_edge() {
 test_old_release_paths_are_deleted() {
     if [[ -e "${REPO_ROOT}/.github/workflows/__publish-release.yaml" ]] ||
         [[ -e "${REPO_ROOT}/.github/scripts/verify-goreleaser-shadow.sh" ]] ||
+        [[ -e "${REPO_ROOT}/.github/scripts/image-payload-manifest/main.go" ]] ||
         grep -Fq 'goreleaser-shadow' "${RELEASE_WORKFLOW}"; then
         fail_test "superseded tag release paths are still present"
         return
