@@ -114,7 +114,7 @@ If an explicit pull request still needs a backport, the workflow adds the channe
 
 ### Backporting changes to a release branch
 
-After a pull request is squash-merged to `main`, add the `backport release/<channel>` label to include it in a subsequent RC or patch. The release-backport workflow opens one pull request at a time from `automation/backport-<source-pr>-to-<channel>` to `release/<channel>` and records the source pull request and squash commit in its body. When that pull request merges, the release-branch push selects the next pending labeled change. This serial ordering keeps every backport pinned to the current release-branch base. Release preparation stops until every selected backport is merged.
+After a pull request is squash-merged to `main`, add the `backport release/<channel>` label to include it in a subsequent RC or patch. The release-backport workflow opens one pull request at a time from `automation/backport-<source-pr>-to-<channel>` to `release/<channel>` and records the source pull request and squash commit in its body. Both merged release-branch pull requests and release-branch pushes select the next pending labeled change; the merge event also covers older branches without a branch-local push workflow. This serial ordering keeps every backport pinned to the current release-branch base. Release preparation stops until every selected backport is merged.
 
 If the cherry-pick conflicts, the workflow opens a draft pull request containing a conflict-handoff file and posts the exact recovery commands on the source pull request. Follow those commands, force-push the resolved branch with `--force-with-lease`, delete the handoff commit by resetting to the release branch as instructed, and mark the pull request ready.
 

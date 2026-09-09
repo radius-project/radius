@@ -55,6 +55,15 @@ export function entriesForMergedPull(pull) {
     .map((channel) => backportEntry(pull, channel));
 }
 
+export function releaseChannelForEvent(context) {
+  const branch =
+    context.eventName === "push" ? context.ref.replace(/^refs\/heads\//, "")
+    : context.payload.pull_request?.merged ?
+      context.payload.pull_request.base.ref
+    : "";
+  return branch.match(/^release\/(\d+\.\d+)$/)?.[1] ?? "";
+}
+
 export function selectNextBackport({
   channel,
   sources,
