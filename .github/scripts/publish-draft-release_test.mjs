@@ -4,7 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import publishDraftRelease from "./publish-draft-release.mjs";
+import publishDraftRelease, {
+  mandatoryChecks
+} from "./publish-draft-release.mjs";
 
 function fixture({ draft = true, prerelease = false } = {}) {
   const updates = [];
@@ -24,6 +26,7 @@ function fixture({ draft = true, prerelease = false } = {}) {
     TAG: "v0.61.0",
     PRERELEASE: "false",
     MAKE_LATEST: "true",
+    SOURCE_SHA: "a".repeat(40),
     NOTES_FILE: ""
   };
   const github = {
@@ -54,6 +57,18 @@ async function withNotes(state, callback) {
   try {
     state.inputs.NOTES_FILE = path.join(root, "notes.md");
     await writeFile(state.inputs.NOTES_FILE, "prepared notes\n");
+    state.inputs.MANIFEST_FILE = path.join(root, "release-manifest.json");
+    await writeFile(
+      state.inputs.MANIFEST_FILE,
+      JSON.stringify({
+        schemaVersion: 1,
+        tag: state.inputs.TAG,
+        sourceSha: state.inputs.SOURCE_SHA,
+        checks: Object.fromEntries(
+          mandatoryChecks.map((name) => [name, "verified"])
+        )
+      })
+    );
     return await callback();
   } finally {
     await rm(root, { recursive: true, force: true });
@@ -102,7 +117,7 @@ test("selects aliases without regressing published stable versions", async () =>
       { tag_name: "v99.0.0-rc.1", draft: false, prerelease: true }
     ];
 
-    await publishDraftRelease(state);
+    await withNotes(state, () => publishDraftRelease(state));
 
     assert.equal(state.outputs.promote_channel, channel, tag);
     assert.equal(state.outputs.promote_latest, latest, tag);
@@ -167,4 +182,32 @@ test("rejects release notes that drift from the prepared file", async () => {
     /prepared notes/
   );
   assert.deepEqual(state.updates, []);
+});
+
+test("blocks publication and alias selection without complete source-bound verification", async () => {
+  for (const mode of ["publish", "select-aliases"]) {
+    for (const failure of ["missing", "digest", "installation", "source"]) {
+      const state = fixture();
+      state.inputs.MODE = mode;
+      await withNotes(state, async () => {
+        const manifest = {
+          schemaVersion: 1,
+          tag: state.inputs.TAG,
+          sourceSha: state.inputs.SOURCE_SHA,
+          checks: Object.fromEntries(
+            mandatoryChecks.map((name) => [name, "verified"])
+          )
+        };
+        if (failure === "digest") manifest.checks.images = "failed";
+        if (failure === "installation") delete manifest.checks.installation;
+        if (failure === "source") manifest.sourceSha = "b".repeat(40);
+        await writeFile(state.inputs.MANIFEST_FILE, JSON.stringify(manifest));
+        if (failure === "missing") state.inputs.MANIFEST_FILE = "";
+        await assert.rejects(() => publishDraftRelease(state), /manifest/);
+      });
+      assert.deepEqual(state.updates, [], `${mode}: ${failure}`);
+      assert.equal(state.outputs.promote_channel, undefined);
+      assert.equal(state.outputs.promote_latest, undefined);
+    }
+  }
 });

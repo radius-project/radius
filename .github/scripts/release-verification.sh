@@ -32,26 +32,31 @@ readonly GITHUB_REPO="radius"
 RELEASE_VERSION_NUMBER="${1:-}"
 OS="${2:-linux}"
 ARCH="${3:-amd64}"
+CLI_PATH="${RELEASE_VERIFY_CLI:-}"
+CHART_PATH="${RELEASE_VERIFY_CHART:-./deploy/Chart}"
+MANIFEST_FILE="${RELEASE_VERIFY_MANIFEST:-}"
+TEMP_DIR=""
+CLUSTER_NAME="radius-verification-$$"
+CLUSTER_CREATED=false
+INSTALL_ARGS=(install kubernetes --skip-contour-install)
 
 # Cleanup function to remove temporary files and cluster
 cleanup() {
-    if [[ -f "./rad" ]]; then
-        echo "Deleting downloaded ./rad binary..."
-        rm -f ./rad
+    if [[ "${CLUSTER_CREATED}" == "true" ]]; then
+        kind delete cluster --name "${CLUSTER_NAME}" || true
     fi
-    if kind get clusters 2>/dev/null | grep -q "kind"; then
-        echo "Deleting kind cluster..."
-        kind delete cluster || true
+    if [[ -n "${TEMP_DIR}" ]]; then
+        rm -rf "${TEMP_DIR}"
     fi
 }
 
 # Set up cleanup trap
-trap cleanup EXIT ERR
+trap cleanup EXIT
 
 # Validates prerequisites and environment
 validate_prerequisites() {
     # Check for required commands
-    local required_commands=("kubectl" "kind" "curl" "jq")
+    local required_commands=("kubectl" "kind" "curl" "jq" "helm")
     for cmd in "${required_commands[@]}"; do
         if ! command -v "$cmd" &> /dev/null; then
             echo "Error: Required command '$cmd' is not installed or not in PATH" >&2
@@ -65,15 +70,15 @@ validate_prerequisites() {
 get_pod_base_image() {
     local pod_prefix="$1"
     local pod_name
-    pod_name=$(kubectl get pods --no-headers -n "$NAMESPACE" -o custom-columns=":metadata.name" \
-        | grep "^${pod_prefix}" \
-        | head -n 1)
-    
+    pod_name=$(kubectl get pods --no-headers -n "$NAMESPACE" -o custom-columns=":metadata.name" |
+        grep "^${pod_prefix}" |
+        head -n 1)
+
     if [[ -z "$pod_name" ]]; then
         echo "Error: No pod found with prefix '$pod_prefix' in namespace '$NAMESPACE'" >&2
         return 1
     fi
-    
+
     kubectl get pod -n "$NAMESPACE" "$pod_name" -o jsonpath="{.spec.containers[*].image}"
 }
 
@@ -83,15 +88,15 @@ verify_pod_image() {
     local pod_prefix="$1"
     local expected_image="$2"
     local component_name="$3"
-    
+
     local actual_image
     actual_image=$(get_pod_base_image "$pod_prefix")
-    
+
     if [[ "$actual_image" != "$expected_image" ]]; then
         echo "Error: $component_name image: $actual_image does not match the desired image: $expected_image." >&2
         exit 1
     fi
-    
+
     echo "$component_name image verified: $actual_image"
 }
 
@@ -100,15 +105,14 @@ verify_pod_image() {
 # This verification checks the container image used in the pre-upgrade job.
 verify_pre_upgrade_image() {
     local expected_image="$1"
-    
-    # expect error - ignore and continue. We only want to trigger the pre-upgrade container to run as a job so that we 
-    # can verify the container image used in the job.
-    helm upgrade radius ./deploy/Chart \
+
+    helm upgrade radius "${CHART_PATH}" \
         --namespace radius-system \
-        --set global.imageTag="${EXPECTED_TAG_VERSION}" \
+        --reuse-values \
         --set preupgrade.enabled=true \
+        --set preupgrade.checks.version=false \
         --set preupgrade.targetVersion="${EXPECTED_CLI_VERSION}" \
-        --wait 2>/dev/null || true
+        --wait --timeout 5m
 
     # Extract the "image" field from the pre-upgrade job
     PRE_UPGRADE_IMAGE=$(kubectl get job pre-upgrade -n radius-system -o json | jq -r '.spec.template.spec.containers[0].image')
@@ -141,6 +145,8 @@ if ! is_radius_release_version "${RELEASE_VERSION_NUMBER}"; then
 fi
 
 validate_prerequisites
+TEMP_DIR="$(mktemp -d)"
+export KUBECONFIG="${TEMP_DIR}/kubeconfig"
 
 readonly RADIUS_CLI_ARTIFACT="rad_${OS}_${ARCH}"
 readonly DOWNLOAD_BASE="https://github.com/${GITHUB_ORG}/${GITHUB_REPO}/releases/download"
@@ -163,14 +169,46 @@ echo "ARCH: ${ARCH}"
 echo "EXPECTED_CLI_VERSION: ${EXPECTED_CLI_VERSION}"
 echo "EXPECTED_TAG_VERSION: ${EXPECTED_TAG_VERSION}"
 
-echo "Downloading ${DOWNLOAD_URL}"
-if ! curl -sSL "${DOWNLOAD_URL}" -o rad; then
-    echo "Error: Failed to download rad CLI from ${DOWNLOAD_URL}" >&2
+if [[ -z "${CLI_PATH}" ]]; then
+    CLI_PATH="${TEMP_DIR}/rad"
+    curl --fail --silent --show-error --location --retry 5 \
+        --max-time 120 "${DOWNLOAD_URL}" -o "${CLI_PATH}"
+elif [[ -z "${MANIFEST_FILE}" || ! -f "${CHART_PATH}" ]]; then
+    echo "Staged installation requires a manifest and downloaded chart." >&2
     exit 1
 fi
-chmod +x ./rad
+if [[ -n "${MANIFEST_FILE}" ]]; then
+    jq '.checks.installation = "pending"' "${MANIFEST_FILE}" \
+        > "${TEMP_DIR}/pending.json"
+    mv "${TEMP_DIR}/pending.json" "${MANIFEST_FILE}"
+    binary_digest="$(sha256sum "${CLI_PATH}" | cut -d ' ' -f 1)"
+    jq -e --arg tag "v${RELEASE_VERSION_NUMBER}" \
+        --arg name "${RADIUS_CLI_ARTIFACT}" --arg digest "${binary_digest}" '
+        .tag == $tag and
+        ([.checks | to_entries[] | select(.key != "installation") |
+          .value] | all(. == "verified")) and
+        any(.observed.cli.assets[]; .name == $name and .sha256 == $digest)
+    ' "${MANIFEST_FILE}" > /dev/null
+    chart_digest="sha256:$(sha256sum "${CHART_PATH}" | cut -d ' ' -f 1)"
+    jq -e --arg digest "${chart_digest}" '
+        [.observed.helm.manifest.layers[] |
+         select(.mediaType == "application/vnd.cncf.helm.chart.content.v1.tar+gzip") |
+         .digest] == [$digest]
+    ' "${MANIFEST_FILE}" > /dev/null
+    INSTALL_ARGS+=(--chart "${CHART_PATH}")
+    for component in rp:applications-rp controller:controller ucp:ucpd \
+        dynamicrp:dynamic-rp de:deployment-engine dashboard:dashboard \
+        bicep:bicep preupgrade:pre-upgrade; do
+        image="$(jq -er --arg name "${component#*:}" '
+            .observed.images[] | select(.name == $name) |
+            .reference + "@" + .digest
+        ' "${MANIFEST_FILE}")"
+        INSTALL_ARGS+=(--set "${component%%:*}.image=${image}")
+    done
+fi
+chmod +x "${CLI_PATH}"
 
-RAD_VERSION_JSON=$(./rad version --cli -o json)
+RAD_VERSION_JSON=$("${CLI_PATH}" version --cli -o json)
 echo "rad version output: $RAD_VERSION_JSON"
 
 RELEASE_FROM_RAD_VERSION=$(echo "$RAD_VERSION_JSON" | jq -r '.release')
@@ -187,34 +225,50 @@ if [[ "${VERSION_FROM_RAD_VERSION}" != "v${EXPECTED_CLI_VERSION}" ]]; then
 fi
 
 echo "Creating kind cluster..."
-if ! kind create cluster; then
+CLUSTER_CREATED=true
+if ! kind create cluster --name "${CLUSTER_NAME}" \
+    --kubeconfig "${KUBECONFIG}" --wait 120s; then
     echo "Error: Failed to create kind cluster" >&2
     exit 1
 fi
 
 echo "Installing Radius..."
-if ! ./rad install kubernetes --skip-contour-install; then
+if ! "${CLI_PATH}" "${INSTALL_ARGS[@]}"; then
     echo "Error: Failed to install Radius" >&2
     exit 1
 fi
+kubectl wait --for=condition=Available deployment --all \
+    --namespace "${NAMESPACE}" --timeout=300s
 
-EXPECTED_APPCORE_RP_IMAGE="ghcr.io/radius-project/applications-rp:${EXPECTED_TAG_VERSION}"
-EXPECTED_DE_IMAGE="ghcr.io/radius-project/deployment-engine:${EXPECTED_TAG_VERSION}"
-EXPECTED_CONTROLLER_IMAGE="ghcr.io/radius-project/controller:${EXPECTED_TAG_VERSION}"
-EXPECTED_DASHBOARD_IMAGE="ghcr.io/radius-project/dashboard:${EXPECTED_TAG_VERSION}"
-EXPECTED_DYNAMIC_RP_IMAGE="ghcr.io/radius-project/dynamic-rp:${EXPECTED_TAG_VERSION}"
-EXPECTED_UCP_IMAGE="ghcr.io/radius-project/ucpd:${EXPECTED_TAG_VERSION}"
-EXPECTED_PRE_UPGRADE_IMAGE="ghcr.io/radius-project/pre-upgrade:${EXPECTED_TAG_VERSION}"
+expected_image() {
+    if [[ -n "${MANIFEST_FILE}" ]]; then
+        jq -er --arg name "$1" '
+            .observed.images[] | select(.name == $name) |
+            .reference + "@" + .digest
+        ' "${MANIFEST_FILE}"
+    else
+        printf 'ghcr.io/radius-project/%s:%s\n' "$1" "${EXPECTED_TAG_VERSION}"
+    fi
+}
 
 # Verify all pod images
 echo "Verifying pod images..."
-verify_pod_image "applications-rp" "$EXPECTED_APPCORE_RP_IMAGE" "Applications RP"
-verify_pod_image "bicep-de" "$EXPECTED_DE_IMAGE" "Deployment Engine"
-verify_pod_image "controller" "$EXPECTED_CONTROLLER_IMAGE" "Controller"
-verify_pod_image "dashboard" "$EXPECTED_DASHBOARD_IMAGE" "Dashboard"
-verify_pod_image "dynamic-rp" "$EXPECTED_DYNAMIC_RP_IMAGE" "Dynamic RP"
-verify_pod_image "ucp" "$EXPECTED_UCP_IMAGE" "UCP"
-verify_pre_upgrade_image "$EXPECTED_PRE_UPGRADE_IMAGE"
+verify_pod_image "applications-rp" "$(expected_image applications-rp)" "Applications RP"
+verify_pod_image "bicep-de" "$(expected_image deployment-engine)" "Deployment Engine"
+verify_pod_image "controller" "$(expected_image controller)" "Controller"
+verify_pod_image "dashboard" "$(expected_image dashboard)" "Dashboard"
+verify_pod_image "dynamic-rp" "$(expected_image dynamic-rp)" "Dynamic RP"
+verify_pod_image "ucp" "$(expected_image ucpd)" "UCP"
+verify_pre_upgrade_image "$(expected_image pre-upgrade)"
+if [[ -n "${MANIFEST_FILE}" ]]; then
+    kubectl get pods -n "${NAMESPACE}" -o json |
+        jq -e --arg image "$(expected_image bicep)" '
+            any(.items[].spec.initContainers[]?; .image == $image)
+        ' > /dev/null
+    jq '.checks.installation = "verified"' "${MANIFEST_FILE}" \
+        > "${TEMP_DIR}/manifest.json"
+    mv "${TEMP_DIR}/manifest.json" "${MANIFEST_FILE}"
+fi
 
 echo "============================================================================"
 echo "Release verification successful."
