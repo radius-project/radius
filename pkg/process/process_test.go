@@ -106,7 +106,7 @@ func runInputHelper(t *testing.T, cmd *exec.Cmd, want string, exitCode int) {
 
 func testCommandContextCancellation(t *testing.T) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	cmd := CommandContext(ctx, os.Args[0], "-test.run=^TestProcessHelper$")
 	cmd.Env = append(os.Environ(), processHelperEnv+"=wait")
