@@ -6,7 +6,7 @@
 * **Related issues**: [#8096 External data store for Radius](https://github.com/radius-project/radius/issues/8096), [#8398 Postgres DB initialization](https://github.com/radius-project/radius/issues/8398)
 * **Supersedes prototype**: [PR #11457](https://github.com/radius-project/radius/pull/11457) (closed unmerged)
 
-> **Archive backend update:** The Git orphan-branch backend described in this original design has been removed. Durable archival now requires OCI configuration; existing Git state is not automatically copied or restored. See the [current archive architecture and migration guidance](../../docs/architecture/state-archive.md) before replacing a control plane that depends on Git state.
+> **Historical design:** For the implemented archive behavior and supported configuration, see the [current archive architecture](../../docs/architecture/state-archive.md).
 
 ## Scope
 

@@ -59,7 +59,7 @@ The root command constructs a `framework.Impl`, which provides the interfaces
 that commands use for their real work: Bicep, connections, deploy/delete,
 Kubernetes, Helm, output, prompts, and cloud clients.
 
-It also injects a [graph archive adapter](../../pkg/graph/persistence/archive/store.go) configured by `factory.NewGraphArchive`. OCI is the only durable state/graph archive backend. Missing registry configuration and invalid backend selections are reported when the archive is opened, not when the command tree is initialized. `rad startup` / `rad shutdown` require `RADIUS_STATE_REGISTRY`; modeled graph archival in GitHub Actions requires `RADIUS_GRAPH_REGISTRY`. Local `app-graph.json` output and unrelated commands do not require either. See [state-archive.md](state-archive.md) for authentication and migration from the removed Git backend.
+It also injects a [graph archive adapter](../../pkg/graph/persistence/archive/store.go) configured by `factory.NewGraphArchive`. OCI is the only durable state/graph archive backend. Missing registry configuration and invalid backend selections are reported when the archive is opened, not when the command tree is initialized. `rad startup` / `rad shutdown` require `RADIUS_STATE_REGISTRY`; modeled graph archival in GitHub Actions requires `RADIUS_GRAPH_REGISTRY`. Local `app-graph.json` output and unrelated commands do not require either. See [state-archive.md](state-archive.md) for configuration and authentication.
 
 This is the core architectural pattern for the CLI. Commands are not supposed to
 reach directly into global state; they are expected to depend on the framework

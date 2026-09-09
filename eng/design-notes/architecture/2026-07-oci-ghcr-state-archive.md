@@ -4,7 +4,7 @@
 - **Related design note**: [Repo Radius — State Storage](../2026-06-repo-radius-state-storage.md)
 - **Builds on**: [PR #12333](https://github.com/radius-project/radius/pull/12333)
 
-> **Archive backend update:** The Git selection and fallback behavior in this original design has been superseded by OCI-only durable archival. `RADIUS_STATE_BACKEND=git` is rejected, state/graph archival requires its corresponding OCI repository, and local `app-graph.json` output is unchanged. Existing Git data is not automatically migrated. See the [current archive architecture and migration guidance](../../../docs/architecture/state-archive.md).
+> **Historical design:** For the implemented archive behavior and supported configuration, see the [current archive architecture](../../../docs/architecture/state-archive.md).
 
 ## Overview
 

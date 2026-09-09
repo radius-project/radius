@@ -130,27 +130,21 @@ sequenceDiagram
 
 **Figure 2: Shutdown persists a whole-directory snapshot to OCI**
 
-The state commands do not create Git branches or worktrees; OCI sessions materialize a temporary directory and upload its contents on commit.
+OCI sessions materialize a temporary directory and upload its contents on commit.
 
 ## Selecting an Archive
 
 [pkg/statearchive/factory](../../pkg/statearchive/factory/factory.go) configures OCI for both consumers. Configuration errors are returned by `Archive.Open`, not CLI initialization, so unrelated commands such as `rad version --cli` do not need archive configuration.
 
 - `NewStateArchive` (used by `rad startup` and `rad shutdown`) requires `RADIUS_STATE_REGISTRY` when opening the archive.
-- `NewGraphArchive` (used for modeled graph output in GitHub Actions) requires `RADIUS_GRAPH_REGISTRY` when opening the archive. It no longer falls back to Git.
-- `RADIUS_STATE_BACKEND` may be unset or `oci` (case-insensitive). Explicit `git` returns removal and migration guidance; unknown values remain errors. Neither is silently reinterpreted as OCI.
+- `NewGraphArchive` (used for modeled graph output in GitHub Actions) requires `RADIUS_GRAPH_REGISTRY` when opening the archive.
+- `RADIUS_STATE_BACKEND` may be unset or `oci` (case-insensitive). Other values are rejected when the archive is opened.
 - `RADIUS_STATE_REGISTRY` and `RADIUS_GRAPH_REGISTRY` are OCI repositories without tags, for example `ghcr.io/<owner>/<repo>-state` and `ghcr.io/<owner>/<repo>-graphs`.
 - `RADIUS_ARCHIVE_PLAIN_HTTP=true` enables HTTP for a local test registry.
 
 OCI repositories are configured explicitly; Radius does not derive them from `GITHUB_REPOSITORY`. Authenticate using Docker credentials before using archival. GitHub Actions workflows must configure the relevant repository, log in (for example using `docker/login-action`), and grant the token package read/write and metadata access. GHCR packages must be private or internal; the visibility guard described below still applies.
 
-Outside GitHub Actions, `rad app graph app.bicep` continues to write local `app-graph.json` without opening an archive or requiring a registry. This is the normal local-output mode, not a fallback for failed archival. Missing registry configuration and archive read/write failures are returned to the caller without silently discarding persistence or writing elsewhere.
-
-### Migrating from Git archival
-
-Native Git orphan-branch archival has been removed. Existing local or remote `radius-state` and `radius-graph` branches, worktrees, and saved files are left untouched. There is no automatic migration, and setting an OCI repository does **not** copy or restore old Git state. A missing OCI tag opens an empty archive, even if an older Git archive exists.
-
-Before replacing a control plane that depends on Git state, retain a backup of that state. Use a CLI version that still supports Git to restore it into a compatible control plane, or use the still-running control plane whose state was archived. Then unset `RADIUS_STATE_BACKEND` (or set it to `oci`), configure and authenticate to `RADIUS_STATE_REGISTRY`, and run `rad shutdown` with the OCI-only CLI to save that live state. Confirm the OCI backup succeeded before destroying the old control plane or using `rad startup` to restore into a replacement. Modeled graphs can be regenerated with `RADIUS_GRAPH_REGISTRY` configured in GitHub Actions; their encoded source-branch namespaces and JSON layout are unchanged.
+Outside GitHub Actions, `rad app graph app.bicep` writes local `app-graph.json` without opening an archive or requiring a registry. This is the normal local-output mode, not a fallback for failed archival. Missing registry configuration and archive read/write failures are returned to the caller without silently discarding persistence or writing elsewhere.
 
 ## The OCI Implementation
 
@@ -182,7 +176,7 @@ Every consumer stores a `statearchive.Archive` (the interface) and accepts an in
 - **`rad shutdown` / `rad startup`** — both `Runner` structs expose an
   `Archive statearchive.Archive` field and drive the same
   `Open → Path → Commit → Close` shape.
-- **Tests** — consumer tests inject `MockArchive` / `MockSession` and assert on `Open`/`Commit`/`Close` calls without a Git repository. OCI tests cover durable state and graph round trips.
+- **Tests** — consumer tests inject `MockArchive` / `MockSession` and assert on `Open`/`Commit`/`Close` calls. OCI tests cover durable state and graph round trips.
 
 ```mermaid
 graph LR
@@ -202,11 +196,11 @@ The CLI supplies factory-configured OCI archives; tests supply mocks. A nil arch
 
 ## Change This Safely
 
-Run `go test ./pkg/statearchive/... ./pkg/graph/persistence/... ./pkg/cli/cmd/app/graph/... ./pkg/cli/cmd/startup ./pkg/cli/cmd/shutdown ./cmd/rad/cmd` after changing archive configuration or the graph adapter. Keep the shared interfaces, OCI format/authentication, archive names, and graph source-branch encoding consistent across these consumers. Graph adapter tests need neither Git nor a registry; the OCI package includes its own artifact fixtures.
+Run `go test ./pkg/statearchive/... ./pkg/graph/persistence/... ./pkg/cli/cmd/app/graph/... ./pkg/cli/cmd/startup ./pkg/cli/cmd/shutdown ./cmd/rad/cmd` after changing archive configuration or the graph adapter. Keep the shared interfaces, OCI format/authentication, archive names, and graph source-branch encoding consistent across these consumers. Graph adapter tests use injected archive sessions; the OCI package includes its own artifact fixtures.
 
 ## Notable Details
 
-- **`name` is a stable durable key.** OCI uses it as the artifact tag (`radius-state`, `radius-graph`). Source branches used as graph key namespaces are unrelated to storage tags; they remain percent-encoded in `<namespace>/app-graph.json`.
+- **`name` is a stable durable key.** OCI uses it as the artifact tag (`radius-state`, `radius-graph`). Graph key namespaces contain the percent-encoded source branch in `<namespace>/app-graph.json`.
 - **`Commit` on no changes is a deliberate no-op**, so idempotent callers (for example a graph `Save` that rewrites identical JSON) do not upload another artifact.
 - **`Close` never returns an error by design** — it is meant for `defer` and
   logs failures so cleanup problems cannot overwrite the real result of the

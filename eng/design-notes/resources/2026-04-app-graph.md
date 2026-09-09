@@ -2,7 +2,7 @@
 
 * **Author**: Nithya Subramanian (@nithyatsu)
 
-> **Archive backend update:** The orphan-branch storage proposed below has been replaced by OCI-only durable archival. GitHub Actions modeled graph output requires `RADIUS_GRAPH_REGISTRY` and registry authentication; local output remains `app-graph.json`. Source-branch namespaces are preserved, but old Git archives are not automatically migrated. See the [current application graph architecture](../../../docs/architecture/application-graph.md#modeled-graph-output-and-archival).
+> **Historical design:** For the implemented graph output and archival behavior, see the [current application graph architecture](../../../docs/architecture/application-graph.md#modeled-graph-output-and-archival).
 
 ## Overview
 

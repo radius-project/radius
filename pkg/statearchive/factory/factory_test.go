@@ -71,7 +71,7 @@ func TestArchiveConfiguration(t *testing.T) {
 					}
 					if tc.backend == "git" || tc.backend == "GIT" {
 						require.ErrorContains(t, err, "unset "+BackendEnvVar+" or set it to oci")
-						require.ErrorContains(t, err, "migrate")
+						require.ErrorContains(t, err, "OCI repository")
 					}
 				})
 			}

@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	// BackendEnvVar accepts "oci" or an unset value. The git backend was removed.
+	// BackendEnvVar accepts "oci" or an unset value.
 	BackendEnvVar = "RADIUS_STATE_BACKEND"
 
 	// ArchivePlainHTTPEnvVar enables HTTP for a local OCI registry.
@@ -63,7 +63,7 @@ func newFromEnvironment(registry, registryEnvVar string) statearchive.Archive {
 		}
 		return newOCIArchive(registry)
 	case "git":
-		return errorArchive{err: fmt.Errorf("the Git state archive backend has been removed; unset %s or set it to oci, configure %s, and migrate any existing Git archive data to OCI before restoring it", BackendEnvVar, registryEnvVar)}
+		return errorArchive{err: fmt.Errorf("the Git state archive backend has been removed; unset %s or set it to oci and configure %s with an OCI repository", BackendEnvVar, registryEnvVar)}
 	default:
 		return errorArchive{err: fmt.Errorf("invalid %s value %q: expected oci or an unset value", BackendEnvVar, backend)}
 	}

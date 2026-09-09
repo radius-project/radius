@@ -656,9 +656,9 @@ graph's icon set reflects the CLI's build-time snapshot.
 
 ### Modeled graph output and archival
 
-Outside GitHub Actions, `rad app graph app.bicep` writes `./app-graph.json` without a registry or control-plane connection. With `GITHUB_ACTIONS=true`, it saves to the `radius-graph` OCI archive instead and requires `RADIUS_GRAPH_REGISTRY` plus registry authentication. Missing configuration or persistence failures return an error rather than falling back to a file. The removed Git archive backend is not selected even when the command runs in a Git checkout.
+Outside GitHub Actions, `rad app graph app.bicep` writes `./app-graph.json` without a registry or control-plane connection. With `GITHUB_ACTIONS=true`, it saves to the `radius-graph` OCI archive instead and requires `RADIUS_GRAPH_REGISTRY` plus registry authentication. Missing configuration or persistence failures return an error rather than falling back to a file.
 
-The CLI uses `GITHUB_HEAD_REF`, falling back to `GITHUB_REF_NAME`, as the source-branch namespace and applies `url.QueryEscape` before saving `<encoded-source-branch>/app-graph.json`. These keys identify source branches, not orphan storage branches, and remain unchanged. The backend-neutral [graph archive adapter](../../pkg/graph/persistence/archive/store.go) requires explicit `statearchive.Archive` injection and retains JSON save/load/list/delete behavior, traversal checks, and `persistence.ErrNotFound`. See [durable state archive](state-archive.md) for OCI configuration and migration requirements.
+The CLI uses `GITHUB_HEAD_REF`, falling back to `GITHUB_REF_NAME`, as the source-branch namespace and applies `url.QueryEscape` before saving `<encoded-source-branch>/app-graph.json`. The [graph archive adapter](../../pkg/graph/persistence/archive/store.go) requires explicit `statearchive.Archive` injection and provides JSON save/load/list/delete operations, traversal checks, and `persistence.ErrNotFound`. See [durable state archive](state-archive.md) for OCI configuration.
 
 ## Notable Details
 
