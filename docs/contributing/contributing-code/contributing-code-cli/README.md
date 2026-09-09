@@ -61,10 +61,10 @@ RAD_LOCATION=/my/custom/location/rad sudo make install
 Run the focused Windows process tests on a native Windows host:
 
 ```powershell
-go test ./pkg/process ./pkg/cli/style ./test/windowless -count=1 -timeout=2m
+go test ./pkg/process ./pkg/cli/style ./pkg/cli/pgbackup ./test/windowless -count=1 -timeout=2m
 ```
 
-The process unit tests verify the Windows no-window creation flags. The integration test builds `rad.exe`, launches it non-detached with piped output inside a kill-on-close Windows Job Object, and verifies `rad version --cli --output json`, a windowless Bicep child, and process-tree cancellation. CI runs these tests on Windows amd64 and arm64.
+The process unit tests verify the Windows no-window creation flags. The PostgreSQL backup tests use fake executables and kubeconfigs to cover kubectl authentication preflight, EOF and SQL input delivery, command diagnostics, and cancellation in no-console and attached-console processes. The integration test builds `rad.exe`, launches it non-detached with piped output inside a kill-on-close Windows Job Object, and verifies `rad version --cli --output json`, a windowless Bicep child, and process-tree cancellation. CI runs these tests on Windows amd64 and arm64.
 
 ### Debug rad in VS Code
 

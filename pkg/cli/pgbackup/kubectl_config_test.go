@@ -67,6 +67,11 @@ func TestValidateExecAuth(t *testing.T) {
 		{name: "no exec auth", modify: func(c *api.Config) { c.AuthInfos["selected-user"].Exec = nil }},
 		{name: "unused invalid exec", modify: func(c *api.Config) { c.AuthInfos["unused-user"].Exec.InteractiveMode = "invalid" }},
 		{name: "explicit context overrides current", context: testContext, modify: func(c *api.Config) { c.CurrentContext = "unused" }},
+		{name: "explicit context ignores missing current", context: testContext, modify: func(c *api.Config) { c.CurrentContext = "missing" }},
+		{name: "explicit context without exec ignores missing current", context: testContext, modify: func(c *api.Config) {
+			c.CurrentContext = "missing"
+			c.AuthInfos["selected-user"].Exec = nil
+		}},
 		{name: "current context is used", modify: func(c *api.Config) { c.CurrentContext = "unused" }, wantErr: "interactiveMode: Always"},
 		{name: "missing context", context: "missing", wantErr: "context"},
 		{name: "missing current context", modify: func(c *api.Config) { c.CurrentContext = "missing" }, wantErr: "context"},

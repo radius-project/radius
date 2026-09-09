@@ -28,7 +28,14 @@ import (
 
 func kubectlCommand(ctx context.Context, kubeContext, namespace string, args ...string) (*exec.Cmd, error) {
 	if process.IsWindowless() {
-		if err := validateExecAuth(kubeContext); err != nil {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		err := validateExecAuth(kubeContext)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return nil, ctxErr
+		}
+		if err != nil {
 			return nil, err
 		}
 	}
@@ -53,7 +60,7 @@ func validateExecAuth(kubeContext string) error {
 	}
 	// MergedRawConfig validates only the selected configuration, without creating
 	// a transport, authenticating, or executing a credential plugin.
-	selected, err := clientcmd.NewNonInteractiveClientConfig(*config, "", overrides, rules).MergedRawConfig()
+	selected, err := clientcmd.NewNonInteractiveClientConfig(*config, kubeContext, overrides, rules).MergedRawConfig()
 	if err != nil {
 		return fmt.Errorf("invalid kubectl configuration: %w", err)
 	}

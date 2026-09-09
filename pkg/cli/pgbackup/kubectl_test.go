@@ -357,12 +357,19 @@ func testKubectl(t *testing.T) {
 			require.NotErrorIs(t, err, context.Canceled)
 		})
 		t.Run(operation+"/canceled before launch", func(t *testing.T) {
-			configureKubectlTest(t, api.NeverExecInteractiveMode)
-			ctx, cancel := context.WithCancel(t.Context())
-			cancel()
-			err := runKubectlPath(ctx, operation, testContext, prepareDumps(t))
-			require.ErrorIs(t, err, context.Canceled)
-			require.Empty(t, readKubectlCalls(t))
+			for _, config := range []string{"Never", "Always", "malformed"} {
+				t.Run(config, func(t *testing.T) {
+					path := configureKubectlTest(t, api.ExecInteractiveMode(config))
+					if config == "malformed" {
+						require.NoError(t, os.WriteFile(path, []byte("not: [valid yaml"), 0o600))
+					}
+					ctx, cancel := context.WithCancel(t.Context())
+					cancel()
+					err := runKubectlPath(ctx, operation, testContext, prepareDumps(t))
+					require.ErrorIs(t, err, context.Canceled)
+					require.Empty(t, readKubectlCalls(t))
+				})
+			}
 		})
 		t.Run(operation+"/cancel running child", func(t *testing.T) {
 			configureKubectlTest(t, api.NeverExecInteractiveMode)
@@ -397,6 +404,38 @@ func testKubectl(t *testing.T) {
 			require.ErrorAs(t, err, &exitErr)
 		})
 	}
+
+	t.Run("canceled during preflight", func(t *testing.T) {
+		if !process.IsWindowless() {
+			t.Skip("preflight only runs without a Windows console")
+		}
+		for _, config := range []string{"Always", "malformed"} {
+			t.Run(config, func(t *testing.T) {
+				path := configureKubectlTest(t, api.ExecInteractiveMode(config))
+				if config == "malformed" {
+					require.NoError(t, os.WriteFile(path, []byte("not: [valid yaml"), 0o600))
+				}
+				ctx, cancel := context.WithCancel(t.Context())
+				defer cancel()
+				err := WaitForReady(cancelAfterCheckContext{Context: ctx, cancel: cancel}, testContext, testNamespace)
+				require.ErrorIs(t, err, context.Canceled)
+				require.Empty(t, readKubectlCalls(t))
+			})
+		}
+	})
+}
+
+type cancelAfterCheckContext struct {
+	context.Context
+	cancel context.CancelFunc
+}
+
+func (ctx cancelAfterCheckContext) Err() error {
+	err := ctx.Context.Err()
+	// Cancel immediately after sampling the initial state, so validation's error
+	// competes with real caller cancellation without timing-dependent sleeps.
+	ctx.cancel()
+	return err
 }
 
 func assertKubectlCalls(t *testing.T, operation, kubeContext string) {
