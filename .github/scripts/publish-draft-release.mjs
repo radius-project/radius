@@ -2,13 +2,16 @@
 
 import { readFile } from "node:fs/promises";
 
-/** @param {any} github @param {string} owner @param {string} repo @param {string} tag */
-async function getRelease(github, owner, repo, tag) {
-  const releases = await github.paginate(github.rest.repos.listReleases, {
+/** @param {any} github @param {string} owner @param {string} repo */
+async function listReleases(github, owner, repo) {
+  return github.paginate(github.rest.repos.listReleases, {
     owner,
     repo,
     per_page: 100
   });
+}
+
+function findRelease(releases, tag) {
   const matches = releases.filter((release) => release.tag_name === tag);
   if (matches.length !== 1) {
     throw new Error(`Expected one release for ${tag}; found ${matches.length}`);
@@ -16,20 +19,58 @@ async function getRelease(github, owner, repo, tag) {
   return matches[0];
 }
 
+/** @param {any} github @param {string} owner @param {string} repo @param {string} tag */
+async function getRelease(github, owner, repo, tag) {
+  return findRelease(await listReleases(github, owner, repo), tag);
+}
+
+function selectAliases(releases, tag) {
+  if (!/^v\d+\.\d+\.\d+(?:-rc\.[1-9]\d*)?$/.test(tag)) {
+    throw new Error("TAG must be a Radius release tag");
+  }
+  if (tag.includes("-")) {
+    return { channel: false, latest: false };
+  }
+  const channel = tag.slice(0, tag.lastIndexOf(".") + 1);
+  const newer = releases.filter(
+    (release) =>
+      !release.draft &&
+      !release.prerelease &&
+      /^v\d+\.\d+\.\d+$/.test(release.tag_name) &&
+      release.tag_name.localeCompare(tag, "en", { numeric: true }) > 0
+  );
+  return {
+    channel: !newer.some((release) => release.tag_name.startsWith(channel)),
+    latest: newer.length === 0
+  };
+}
+
 /** @param {{github: any, core: any}} options */
 export default async function publishDraftRelease({ github, core }) {
   const owner = core.getInput("OWNER", { required: true });
   const repo = core.getInput("REPO", { required: true });
   const tag = core.getInput("TAG", { required: true });
+  const mode = core.getInput("MODE") || "publish";
+  if (mode !== "publish" && mode !== "select-aliases") {
+    throw new Error("MODE must be publish or select-aliases");
+  }
+  const releases = await listReleases(github, owner, repo);
+  const aliases = selectAliases(releases, tag);
+  if (mode === "select-aliases") {
+    core.setOutput("promote_channel", String(aliases.channel));
+    core.setOutput("promote_latest", String(aliases.latest));
+    return;
+  }
   const notesFile = core.getInput("NOTES_FILE", { required: true });
   const prerelease = core.getInput("PRERELEASE", { required: true }) === "true";
-  const makeLatest =
+  const requestedLatest =
     core.getInput("MAKE_LATEST", { required: true }) === "true";
-  if (prerelease && makeLatest) {
+  if (prerelease && requestedLatest) {
     throw new Error("A prerelease cannot be marked latest");
   }
+  const makeLatest = requestedLatest && aliases.latest;
 
-  let release = await getRelease(github, owner, repo, tag);
+  let release = findRelease(releases, tag);
   const expectedBody = (await readFile(notesFile, "utf8")).trimEnd();
   if (release.name !== `Radius ${tag}`) {
     throw new Error(`Release ${tag} has the wrong title`);

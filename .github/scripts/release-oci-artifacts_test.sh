@@ -303,9 +303,9 @@ test_stages_cli_artifacts() {
         fail_test "stage did not push every CLI artifact"
         return
     fi
-    if grep -Eq "oras push .* ${TEST_ROOT}/" "${TEST_ROOT}/calls" \
-                                                                  || ! grep -Fq ' ./rad ' "${TEST_ROOT}/calls" \
-                                                  || ! grep -Fq ' ./rad.exe ' "${TEST_ROOT}/calls"; then
+    if grep -Eq "oras push .* ${TEST_ROOT}/" "${TEST_ROOT}/calls" ||
+        ! grep -Fq ' ./rad ' "${TEST_ROOT}/calls" ||
+        ! grep -Fq ' ./rad.exe ' "${TEST_ROOT}/calls"; then
         fail_test "CLI artifacts were not pushed from basename-relative paths"
         return
     fi
@@ -342,15 +342,15 @@ EOF
         REAL_ORAS="${real_oras}" \
         GORELEASER_PARITY_TARGETS="${TEST_ROOT}/targets.json" \
         bash "${SCRIPT}" stage-cli \
-            --registry "${layout}" \
-            --version 0.61.0 \
-            --artifacts-dir "${release_dir}" \
-            --output "${TEST_ROOT}/layout-lock.json" > /dev/null
+        --registry "${layout}" \
+        --version 0.61.0 \
+        --artifacts-dir "${release_dir}" \
+        --output "${TEST_ROOT}/layout-lock.json" > /dev/null
     "${real_oras}" pull --oci-layout \
         "${layout}/rad/linux-amd64:0.61.0" \
         --output "${pull_dir}" > /dev/null
-    if [[ ! -f "${pull_dir}/rad" ]] \
-                                    || find "${pull_dir}" -mindepth 2 -type f | grep -q .; then
+    if [[ ! -f "${pull_dir}/rad" ]] ||
+        find "${pull_dir}" -mindepth 2 -type f | grep -q .; then
         fail_test "real ORAS push did not preserve the CLI basename"
         return
     fi
@@ -420,6 +420,38 @@ test_rejects_prerelease_promotion() {
     ((++PASS))
 }
 
+test_older_channel_preserves_latest() {
+    local repository
+    local latest_digest="sha256:$(digest_for newer-release)"
+
+    setup_fixture
+    stage_cli
+    write_image_lock
+    for repository in applications-rp ucpd rad/linux-amd64 rad/windows-amd64; do
+        printf 'example.test/radius/%s:latest\t%s\n' \
+            "${repository}" "${latest_digest}" >> "${TEST_ROOT}/registry-state"
+    done
+    RELEASE_PROMOTE_LATEST=false run_script promote \
+        --version 0.61.0 \
+        --channel 0.61 \
+        --image-lock "${TEST_ROOT}/image-lock.json" \
+        --cli-lock "${TEST_ROOT}/cli-lock.json"
+    if grep -q latest "${TEST_ROOT}/calls"; then
+        fail_test "older channel publication accessed latest aliases"
+        return
+    fi
+    if [[ "$(grep -c ':latest' "${TEST_ROOT}/registry-state")" != "4" ]]; then
+        fail_test "older channel publication overwrote latest"
+        return
+    fi
+    if [[ "$(grep -c '^oras tag ' "${TEST_ROOT}/calls")" != "2" ]] ||
+        [[ "$(grep -c '^docker buildx imagetools create ' "${TEST_ROOT}/calls")" != "2" ]]; then
+        fail_test "older channel publication did not promote its channel"
+        return
+    fi
+    ((++PASS))
+}
+
 test_detects_alias_divergence() {
     setup_fixture
     stage_cli
@@ -430,10 +462,10 @@ test_detects_alias_divergence() {
         FAKE_CORRUPT_ALIAS=latest \
         GORELEASER_PARITY_TARGETS="${TEST_ROOT}/targets.json" \
         bash "${SCRIPT}" promote \
-            --version 0.61.0 \
-            --channel 0.61 \
-            --image-lock "${TEST_ROOT}/image-lock.json" \
-            --cli-lock "${TEST_ROOT}/cli-lock.json" > /dev/null 2>&1; then
+        --version 0.61.0 \
+        --channel 0.61 \
+        --image-lock "${TEST_ROOT}/image-lock.json" \
+        --cli-lock "${TEST_ROOT}/cli-lock.json" > /dev/null 2>&1; then
         fail_test "promotion should reject a divergent alias"
         return
     fi
@@ -450,10 +482,10 @@ test_detects_version_tag_divergence() {
         FAKE_CORRUPT_REFERENCE=example.test/radius/ucpd:0.61.0 \
         GORELEASER_PARITY_TARGETS="${TEST_ROOT}/targets.json" \
         bash "${SCRIPT}" promote \
-            --version 0.61.0 \
-            --channel 0.61 \
-            --image-lock "${TEST_ROOT}/image-lock.json" \
-            --cli-lock "${TEST_ROOT}/cli-lock.json" > /dev/null 2>&1; then
+        --version 0.61.0 \
+        --channel 0.61 \
+        --image-lock "${TEST_ROOT}/image-lock.json" \
+        --cli-lock "${TEST_ROOT}/cli-lock.json" > /dev/null 2>&1; then
         fail_test "promotion should reject a divergent full-version tag"
         return
     fi
@@ -491,10 +523,10 @@ test_retries_transient_registry_failures() {
         RELEASE_RETRY_NO_SLEEP=true \
         GORELEASER_PARITY_TARGETS="${TEST_ROOT}/targets.json" \
         bash "${SCRIPT}" stage-cli \
-            --registry example.test/radius \
-            --version 0.61.0 \
-            --artifacts "${TEST_ROOT}/artifacts.json" \
-            --output "${TEST_ROOT}/cli-lock.json" > /dev/null
+        --registry example.test/radius \
+        --version 0.61.0 \
+        --artifacts "${TEST_ROOT}/artifacts.json" \
+        --output "${TEST_ROOT}/cli-lock.json" > /dev/null
     write_image_lock
     PATH="${TEST_ROOT}/bin:${PATH}" \
         FAKE_REGISTRY_STATE="${TEST_ROOT}/registry-state" \
@@ -504,10 +536,10 @@ test_retries_transient_registry_failures() {
         RELEASE_RETRY_NO_SLEEP=true \
         GORELEASER_PARITY_TARGETS="${TEST_ROOT}/targets.json" \
         bash "${SCRIPT}" promote \
-            --version 0.61.0 \
-            --channel 0.61 \
-            --image-lock "${TEST_ROOT}/image-lock.json" \
-            --cli-lock "${TEST_ROOT}/cli-lock.json" > /dev/null
+        --version 0.61.0 \
+        --channel 0.61 \
+        --image-lock "${TEST_ROOT}/image-lock.json" \
+        --cli-lock "${TEST_ROOT}/cli-lock.json" > /dev/null
 
     if [[ "$(grep -c '^oras push ' "${TEST_ROOT}/calls")" != "3" ]]; then
         fail_test "CLI publication did not retry one transient failure"
@@ -587,9 +619,9 @@ test_image_preflight_fails_closed_on_lookup_errors() {
             RELEASE_RETRY_NO_SLEEP=true \
             GORELEASER_PARITY_TARGETS="${TEST_ROOT}/targets.json" \
             bash "${SCRIPT}" assert-images-absent \
-                --registry example.test/radius \
-                --version 0.61.0 \
-                --categories production > /dev/null 2>&1; then
+            --registry example.test/radius \
+            --version 0.61.0 \
+            --categories production > /dev/null 2>&1; then
             fail_test "image preflight accepted ${error} lookup failure"
             return
         fi
@@ -604,6 +636,7 @@ main() {
     test_stages_downloaded_release_binaries
     test_promotes_stable_aliases
     test_rejects_prerelease_promotion
+    test_older_channel_preserves_latest
     test_detects_alias_divergence
     test_detects_version_tag_divergence
     test_rejects_lock_from_another_source

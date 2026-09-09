@@ -118,8 +118,8 @@ test_rejects_malformed_release_tag() {
 
 test_goreleaser_stages_prepared_draft() {
     # shellcheck disable=SC2016 # Literal Make expression under test.
-    if ! grep -Fq 'make goreleaser-release' "${RELEASE_WORKFLOW}" \
-                                                                  || ! grep -Fq -- '--release-notes "$(GORELEASER_RELEASE_NOTES)"' \
+    if ! grep -Fq 'make goreleaser-release' "${RELEASE_WORKFLOW}" ||
+        ! grep -Fq -- '--release-notes "$(GORELEASER_RELEASE_NOTES)"' \
             "${ARTIFACTS_MAKEFILE}"; then
         fail_test "GoReleaser does not consume the prepared release notes"
         return
@@ -137,10 +137,30 @@ test_goreleaser_stages_prepared_draft() {
 }
 
 test_finalization_is_digest_locked() {
+    if ! yq -o=json '.jobs."finalize-release".concurrency' \
+        "${RELEASE_WORKFLOW}" | jq -e '
+        .group == "release-finalization" and
+        .queue == "max" and
+        ."cancel-in-progress" == false
+    ' > /dev/null; then
+        fail_test "shared release aliases are not serialized across versions"
+        return
+    fi
+    if ! yq -o=json '.jobs."finalize-release".steps' \
+        "${RELEASE_WORKFLOW}" | jq -e '
+        any(.[]; .id == "alias-policy" and .env.INPUT_MODE == "select-aliases") and
+        any(.[]; .name == "Promote stable aliases" and
+            (.if | contains("promote_channel")) and
+            .env.RELEASE_PROMOTE_LATEST == "${{ steps.alias-policy.outputs.promote_latest }}") and
+        any(.[]; .env.INPUT_MAKE_LATEST == "${{ steps.alias-policy.outputs.promote_latest }}")
+    ' > /dev/null; then
+        fail_test "finalization can regress newer channel or latest aliases"
+        return
+    fi
     if ! grep -Fq 'make capture-release-image-digests' \
-        "${RELEASE_WORKFLOW}" \
-                              || ! grep -Fq 'make release-cli-oci' "${RELEASE_WORKFLOW}" \
-                                                                || ! grep -Fq 'make promote-release-aliases' "${RELEASE_WORKFLOW}"; then
+        "${RELEASE_WORKFLOW}" ||
+        ! grep -Fq 'make release-cli-oci' "${RELEASE_WORKFLOW}" ||
+        ! grep -Fq 'make promote-release-aliases' "${RELEASE_WORKFLOW}"; then
         fail_test "finalization is not based on immutable digest locks"
         return
     fi
@@ -162,8 +182,8 @@ test_main_publishes_only_edge() {
             return
         fi
     done
-    if ! grep -Fq ':edge"' "${CLI_WORKFLOW}" \
-                                             || ! grep -Fq 'DOCKER_TAG_VERSION: edge' "${IMAGE_WORKFLOW}"; then
+    if ! grep -Fq ':edge"' "${CLI_WORKFLOW}" ||
+        ! grep -Fq 'DOCKER_TAG_VERSION: edge' "${IMAGE_WORKFLOW}"; then
         fail_test "main publication does not write edge directly"
         return
     fi
@@ -171,9 +191,9 @@ test_main_publishes_only_edge() {
 }
 
 test_old_release_paths_are_deleted() {
-    if [[ -e "${REPO_ROOT}/.github/workflows/__publish-release.yaml" ]] \
-                                                                        || [[ -e "${REPO_ROOT}/.github/scripts/verify-goreleaser-shadow.sh" ]] \
-                                                                            || grep -Fq 'goreleaser-shadow' "${RELEASE_WORKFLOW}"; then
+    if [[ -e "${REPO_ROOT}/.github/workflows/__publish-release.yaml" ]] ||
+        [[ -e "${REPO_ROOT}/.github/scripts/verify-goreleaser-shadow.sh" ]] ||
+        grep -Fq 'goreleaser-shadow' "${RELEASE_WORKFLOW}"; then
         fail_test "superseded tag release paths are still present"
         return
     fi

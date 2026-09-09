@@ -69,6 +69,47 @@ test("publishes a stable draft and marks it latest", async () => {
   assert.equal(state.outputs.release_url, state.release.html_url);
 });
 
+test("publishes an older-channel patch without replacing latest", async () => {
+  const state = fixture();
+  const newer = { tag_name: "v0.62.0", draft: false, prerelease: false };
+  state.github.rest.repos.listReleases = async () => [state.release, newer];
+  state.github.rest.repos.getLatestRelease = async () => ({ data: newer });
+
+  await withNotes(state, () => publishDraftRelease(state));
+
+  assert.equal(state.updates[0].make_latest, "false");
+  assert.equal(state.release.draft, false);
+});
+
+test("selects aliases without regressing published stable versions", async () => {
+  for (const [tag, published, channel, latest] of [
+    ["v0.61.0", ["v0.60.9"], "true", "true"],
+    ["v0.61.1", ["v0.62.0", "v0.61.0"], "true", "false"],
+    ["v0.61.1", ["v0.61.2"], "false", "false"],
+    ["v0.100.0", ["v0.99.9"], "true", "true"],
+    ["v0.61.0-rc.1", ["v0.60.0"], "false", "false"]
+  ]) {
+    const state = fixture();
+    state.inputs.TAG = tag;
+    state.inputs.MODE = "select-aliases";
+    state.github.rest.repos.listReleases = async () => [
+      ...published.map((version) => ({
+        tag_name: version,
+        draft: false,
+        prerelease: false
+      })),
+      { tag_name: "v99.0.0", draft: true, prerelease: false },
+      { tag_name: "v99.0.0-rc.1", draft: false, prerelease: true }
+    ];
+
+    await publishDraftRelease(state);
+
+    assert.equal(state.outputs.promote_channel, channel, tag);
+    assert.equal(state.outputs.promote_latest, latest, tag);
+    assert.deepEqual(state.updates, []);
+  }
+});
+
 test("publishes a prerelease without marking it latest", async () => {
   const state = fixture();
   state.release.tag_name = "v0.61.0-rc.1";
