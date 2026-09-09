@@ -69,7 +69,7 @@ remote_ref_commit() {
 }
 
 main() {
-    local name repository source_ref source_commit release_ref
+    local name repository source_ref source_commit release_ref lookup_status
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -102,13 +102,17 @@ main() {
     for name in "${REPOSITORIES[@]}"; do
         repository="$(repository_url "${name}")"
         source_ref="release/${CHANNEL}"
-        if ! source_commit="$(
+        lookup_status=0
+        source_commit="$(
             remote_ref_commit "${repository}" "${release_ref}"
-        )"; then
+        )" || lookup_status=$?
+        if ((lookup_status == 2)); then
             source_ref="main"
             source_commit="$(
                 remote_ref_commit "${repository}" refs/heads/main
             )" || fail "${repository} has no main branch"
+        elif ((lookup_status != 0)); then
+            fail "could not resolve ${repository} ${release_ref}"
         fi
         [[ "${source_commit}" =~ ^[0-9a-f]{40}$ ]] ||
             fail "${repository} returned an invalid commit"
