@@ -19,6 +19,7 @@ import test from "node:test";
 
 import {
   entriesForMergedPull,
+  releaseChannelForEvent,
   selectNextBackport
 } from "./select-release-backports.mjs";
 
@@ -94,4 +95,34 @@ test("uses every current release label on a merged source PR", () => {
     entriesForMergedPull(pull).map((entry) => entry.channel),
     ["0.59", "0.60"]
   );
+});
+
+test("routes release pushes and merged backports to the same channel", () => {
+  for (const context of [
+    { eventName: "push", ref: "refs/heads/release/0.60" },
+    {
+      eventName: "pull_request_target",
+      payload: { pull_request: { merged: true, base: { ref: "release/0.60" } } }
+    }
+  ]) {
+    assert.equal(releaseChannelForEvent(context), "0.60");
+  }
+});
+
+test("does not select a release queue for main or unmerged pull requests", () => {
+  for (const context of [
+    { eventName: "push", ref: "refs/heads/main" },
+    {
+      eventName: "pull_request_target",
+      payload: { pull_request: { merged: true, base: { ref: "main" } } }
+    },
+    {
+      eventName: "pull_request_target",
+      payload: {
+        pull_request: { merged: false, base: { ref: "release/0.60" } }
+      }
+    }
+  ]) {
+    assert.equal(releaseChannelForEvent(context), "");
+  }
 });

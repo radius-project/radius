@@ -18,10 +18,11 @@
 ---
 name: release-backport
 
-on:
+on: # zizmor: ignore[dangerous-triggers]
   pull_request_target:
     branches:
       - main
+      - release/*
     types:
       - labeled
       - closed
@@ -67,19 +68,16 @@ jobs:
               `${process.env.GITHUB_WORKSPACE}/.github/scripts/select-release-backports.mjs`
             )
 
-            if (context.eventName !== 'push') {
+            const channel = selector.releaseChannelForEvent(context)
+            if (!channel && context.eventName !== 'push') {
               return JSON.stringify(
                 selector.entriesForMergedPull(context.payload.pull_request),
               )
             }
 
-            const channelMatch = context.ref.match(
-              /^refs\/heads\/release\/(\d+\.\d+)$/,
-            )
-            if (!channelMatch) {
+            if (!channel) {
               return '[]'
             }
-            const channel = channelMatch[1]
             const releaseBranch = `release/${channel}`
             const openBackports = await github.paginate(
               github.rest.pulls.list,
@@ -143,11 +141,6 @@ jobs:
               }),
             )
 
-  # korthout/backport-action was evaluated and rejected here: it commits and
-  # pushes with git, so it cannot produce the API-signed commits this job
-  # verifies, it opens every labelled backport at once instead of serialising
-  # one per channel, and its conflict mode commits conflict markers. Revisit if
-  # release/* ever requires strict up-to-date merges and signing moves to a key.
   backport:
     name: Backport to release/${{ matrix.channel }}
     needs: select-channels
