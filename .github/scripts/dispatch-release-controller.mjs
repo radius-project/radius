@@ -23,6 +23,56 @@ const eventTypes = new Set([
   "release-controller.resume"
 ]);
 
+export async function resumeReleasePublication({
+  github,
+  context,
+  core,
+  now = Date.now,
+  sleep = (milliseconds) =>
+    new Promise((resolve) => setTimeout(resolve, milliseconds))
+}) {
+  const version = core.getInput("VERSION", { required: true });
+  const sourceSha = core.getInput("SOURCE_SHA", { required: true });
+  if (!versionPattern.test(version) || !commitPattern.test(sourceSha))
+    throw new Error("Invalid publication resume identity");
+  const deadline = now() + 90000;
+  let run;
+  while (!run) {
+    const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+      ...context.repo,
+      workflow_id: "build-release.yaml",
+      head_sha: sourceSha,
+      per_page: 100
+    });
+    const matching = runs.filter(
+      (entry) =>
+        entry.head_sha === sourceSha &&
+        entry.head_branch === version &&
+        ["push", "workflow_dispatch"].includes(entry.event)
+    );
+    run =
+      matching
+        .filter((entry) => entry.status !== "completed")
+        .sort((left, right) => right.id - left.id)[0] ||
+      matching.sort((left, right) => right.id - left.id)[0];
+    if (!run) {
+      if (now() >= deadline)
+        throw new Error(
+          `No tag-build run found for ${version}; verify the App tag trigger, then resume`
+        );
+      await sleep(5000);
+    }
+  }
+  if (run.status === "completed" && run.conclusion !== "success") {
+    const retry =
+      run.conclusion === "failure" ?
+        github.rest.actions.reRunWorkflowFailedJobs
+      : github.rest.actions.reRunWorkflow;
+    await retry({ ...context.repo, run_id: run.id, request: { retries: 0 } });
+  }
+  core.setOutput("run-url", run.html_url);
+}
+
 /** @param {{github: any, context: any, core: any}} options */
 export default async function dispatchReleaseController({
   github,

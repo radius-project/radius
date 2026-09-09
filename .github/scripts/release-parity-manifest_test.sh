@@ -202,7 +202,7 @@ set -euo pipefail
 if [[ "$1" == "api" ]]; then
     endpoint="${*: -1}"
     case "${endpoint}" in
-        */releases/tags/v0.60.0)
+        */releases/tags/v0.60.0 | */releases/42)
             cat "${FIXTURES}/release.json"
             ;;
         */git/ref/tags/v0.60.0)
@@ -217,6 +217,8 @@ if [[ "$1" == "api" ]]; then
             exit 1
             ;;
     esac
+elif [[ "$1 $2" == "release view" ]]; then
+  echo 42
 elif [[ "$1 $2" == "release download" ]]; then
     output_dir=""
     while [[ $# -gt 0 ]]; do
@@ -451,6 +453,23 @@ jq -e '
 jq '.prerelease = false | .body = "# Radius v0.60.0\n"' \
     "${FIXTURES}/release.json" >"${FIXTURES}/release-final.json"
 mv "${FIXTURES}/release-final.json" "${FIXTURES}/release.json"
+
+jq '.draft = true' "${FIXTURES}/release.json" >"${FIXTURES}/draft.json"
+mv "${FIXTURES}/draft.json" "${FIXTURES}/release.json"
+if run_collector 2>/dev/null; then
+  fail "default collection accepted a draft"
+fi
+RELEASE_PARITY_STAGED=true \
+  RELEASE_PARITY_ASSETS_DIR="${TEST_ROOT}/staged-assets" run_collector
+jq -e '
+  .release.draft == true
+  and .release.notes.matchesSource == true
+  and .images[0].reference == "ghcr.io/radius-project/ucpd:0.60.0"
+' "${OUTPUT}" >/dev/null || fail "staged collection used mutable Radius images"
+[[ -f "${TEST_ROOT}/staged-assets/rad_linux_amd64" ]] ||
+  fail "staged collector did not retain the installation binary"
+jq '.draft = false' "${FIXTURES}/release.json" >"${FIXTURES}/final.json"
+mv "${FIXTURES}/final.json" "${FIXTURES}/release.json"
 
 printf '%064d *rad_linux_amd64\n' 0 \
     >"${ASSETS}/rad_linux_amd64.sha256"
