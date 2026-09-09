@@ -155,6 +155,8 @@ If the release controller fails after validating the plan, run [Resume Release](
 
 Resume Release resolves the merged release PR again, reads its committed plan, checks that the plan and `versions.yaml` select the same version and source, runs preflight checks for every frozen sibling commit, verifies the signed Deployment Engine tag and published image, and reconciles each destination. The first verified Deployment Engine digest is stored on `automation/release-state-<version>` and every resume rejects divergence from that lock. An existing matching tag or active correlated publisher run is accepted; a tag at another commit stops before later mutation. Never change the version or source commit to work around a conflict.
 
+Later release-branch commits do not prevent resume while the approved release commit remains reachable. The release still tags the original approved commit, not the newer branch tip. A divergent branch or metadata backport made from an unapproved parent is rejected.
+
 Use [Approve Release](https://github.com/radius-project/radius/actions/workflows/approve-release.yaml) for an explicit approved start when the automatic merge event was unavailable. It runs the same default-branch validation and reconciliation path as Resume Release without exposing release App credentials to branch-selectable workflow code.
 
 ## Creating an RC release
