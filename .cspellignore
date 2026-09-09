@@ -961,6 +961,7 @@ periodSeconds
 persistentVolume
 persistentVolumes
 pfx
+pgbackup
 pkgs
 plaidResource
 plainHTTP
