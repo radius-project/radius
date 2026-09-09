@@ -52,6 +52,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      deployments: read
     steps:
       - name: Checkout main with release history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -261,6 +262,19 @@ jobs:
             echo "Release state changed after preflight." >&2
             exit 1
           }
+          yq -o=json '.' "${output_dir}/release-plan.yaml" >"${output_dir}/plan.json"
+
+      - name: Require validated RC coordination before a final
+        if: inputs.release-type == 'final'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: check-rc
+          INPUT_PLAN_FILE: ${{ runner.temp }}/release-preparation/plan.json
+        with:
+          retries: 5
+          script: |
+            const { default: coordinate } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/coordinate-release.mjs`)
+            await coordinate({ github, context, core })
 
       - name: Preserve curated release note sections
         if: >-
