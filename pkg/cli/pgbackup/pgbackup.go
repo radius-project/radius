@@ -31,7 +31,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/radius-project/radius/pkg/process"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
 
@@ -113,9 +112,7 @@ func Backup(ctx context.Context, kubeContext, namespace, stateDir string) error 
 	for _, db := range Databases {
 		logger.Info("Backing up database", "database", db, "stateDir", stateDir)
 
-		cmd := process.CommandContext(ctx, "kubectl",
-			"--context", kubeContext,
-			"-n", namespace,
+		cmd, err := kubectlCommand(ctx, kubeContext, namespace,
 			"exec", podName, "--",
 			"pg_dump",
 			"-U", PostgresUser,
@@ -124,6 +121,9 @@ func Backup(ctx context.Context, kubeContext, namespace, stateDir string) error 
 			"--if-exists",
 			db,
 		)
+		if err != nil {
+			return err
+		}
 
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
@@ -168,14 +168,15 @@ func Restore(ctx context.Context, kubeContext, namespace, stateDir string) error
 			return fmt.Errorf("failed to read backup file %q: %w", sqlPath, err)
 		}
 
-		cmd := process.CommandContext(ctx, "kubectl",
-			"--context", kubeContext,
-			"-n", namespace,
+		cmd, err := kubectlCommand(ctx, kubeContext, namespace,
 			"exec", "-i", podName, "--",
 			"psql",
 			"-U", PostgresUser,
 			"-d", db,
 		)
+		if err != nil {
+			return err
+		}
 
 		cmd.Stdin = bytes.NewReader(sqlData)
 		var stderr bytes.Buffer
@@ -196,21 +197,22 @@ func WaitForReady(ctx context.Context, kubeContext, namespace string) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	logger.Info("Waiting for PostgreSQL pod to be ready")
 
-	cmd := process.CommandContext(ctx, "kubectl",
-		"--context", kubeContext,
-		"-n", namespace,
+	cmd, err := kubectlCommand(ctx, kubeContext, namespace,
 		"wait",
 		"--for=condition=ready",
 		"pod",
 		"-l", PodLabelSelector,
 		"--timeout=120s",
 	)
+	if err != nil {
+		return err
+	}
 
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("timed out waiting for PostgreSQL pod: %w: %s", err, stderr.String())
+		return fmt.Errorf("failed waiting for PostgreSQL pod readiness: %w: %s", err, stderr.String())
 	}
 
 	logger.Info("PostgreSQL pod is ready")
@@ -219,13 +221,14 @@ func WaitForReady(ctx context.Context, kubeContext, namespace string) error {
 
 // getPodName resolves the name of the PostgreSQL pod via its label selector.
 func getPodName(ctx context.Context, kubeContext, namespace string) (string, error) {
-	cmd := process.CommandContext(ctx, "kubectl",
-		"--context", kubeContext,
-		"-n", namespace,
+	cmd, err := kubectlCommand(ctx, kubeContext, namespace,
 		"get", "pods",
 		"-l", PodLabelSelector,
 		"-o", "jsonpath={.items[0].metadata.name}",
 	)
+	if err != nil {
+		return "", err
+	}
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
