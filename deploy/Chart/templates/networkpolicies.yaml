@@ -1,6 +1,6 @@
 {{- if .Values.networkPolicies.enabled }}
 {{- if not .Values.networkPolicies.controlPlaneCIDRs }}
-{{- fail "networkPolicies.enabled=true requires networkPolicies.controlPlaneCIDRs to be set to the cluster's node/control-plane CIDR(s) so the Kubernetes API server can reach UCP and the controller on :9443. Set networkPolicies.controlPlaneCIDRs, or set networkPolicies.enabled=false to install without these policies." }}
+{{- fail "networkPolicies.enabled=true requires networkPolicies.controlPlaneCIDRs to be set to the cluster's node/control-plane CIDR(s) so the Kubernetes API server can reach UCP on :9443. Set networkPolicies.controlPlaneCIDRs, or set networkPolicies.enabled=false to install without these policies." }}
 {{- end }}
 # Optional ingress lockdown for the Radius control-plane namespace.
 #
@@ -55,13 +55,12 @@ spec:
 # Allow ingress from the Kubernetes API server. It reaches the control plane over
 # the host network, so this traffic arrives at the destination pod with the NODE's
 # IP rather than a pod IP and cannot be matched by a pod/namespace selector:
-#   - kube-apiserver -> ucp:9443        (APIService aggregation for api.ucp.dev)
-#   - kube-apiserver -> controller:9443 (recipe admission webhook)
-# Both arrive on container port 9443, so the rule is scoped to that port to limit
+#   - kube-apiserver -> ucp:9443 (APIService aggregation for api.ucp.dev)
+# The rule is scoped to UCP on container port 9443 to limit
 # what host-network sources in these CIDRs can reach. The UCP HTTPS readiness
 # probe also originates from the node on port 9443 and is covered by this rule.
 # The dynamic-rp probes are exec probes and need no network allowance.
-# Without this policy the default-deny above blocks API aggregation and webhooks
+# Without this policy the default-deny above blocks API aggregation
 # and breaks the control plane. The CIDRs are cluster-specific (typically the node
 # subnet) and come from networkPolicies.controlPlaneCIDRs.
 apiVersion: networking.k8s.io/v1
@@ -72,7 +71,9 @@ metadata:
   labels:
     app.kubernetes.io/part-of: radius
 spec:
-  podSelector: {}
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: ucp
   policyTypes:
     - Ingress
   ingress:

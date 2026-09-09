@@ -4,8 +4,7 @@ The `controller` binary runs the Kubernetes controller-manager-based workflows
 for Radius. It watches cluster resources, reconciles them, and drives Radius
 APIs where Kubernetes-native automation is required.
 
-The controller owns reconciliation and webhook behavior. It is not the primary
-home of resource-type authoring or UCP routing logic.
+The controller owns Kubernetes reconciliation for template deployment and Flux GitOps. It does not serve admission webhooks and is not the primary home of resource-type authoring or UCP routing logic.
 
 ## Entry Points
 
@@ -17,36 +16,33 @@ home of resource-type authoring or UCP routing logic.
 
 ## Quick Reference
 
-| Topic | Start Here |
-|------|------------|
-| Startup | `cmd/controller/cmd/root.go` |
-| Manager setup | `pkg/controller/service.go` |
-| Reconciler logic | `pkg/controller/reconciler` |
-| CRD types | `pkg/controller/api` |
+| Topic            | Start Here                   |
+|------------------|------------------------------|
+| Startup          | `cmd/controller/cmd/root.go` |
+| Manager setup    | `pkg/controller/service.go`  |
+| Reconciler logic | `pkg/controller/reconciler`  |
+| CRD types        | `pkg/controller/api`         |
 
-| Test Focus | Packages |
-|-----------|----------|
-| Reconcile and webhook behavior | `./pkg/controller/reconciler/...` |
-| Broad safety check | `./pkg/controller/...` |
+| Test Focus         | Packages                          |
+|--------------------|-----------------------------------|
+| Reconcile behavior | `./pkg/controller/reconciler/...` |
+| Broad safety check | `./pkg/controller/...`            |
 
 ## Core Packages
 
-| Package | Responsibility |
-|--------|----------------|
-| `pkg/controller/service.go` | controller manager bootstrap |
-| `pkg/controller/reconciler` | reconcilers and webhook wiring |
-| `pkg/controller/api` | CRD-backed Kubernetes API types |
-| `pkg/sdk` | clients used to call back into Radius APIs |
+| Package                     | Responsibility                                                 |
+|-----------------------------|----------------------------------------------------------------|
+| `pkg/controller/service.go` | controller manager bootstrap                                   |
+| `pkg/controller/reconciler` | deployment template, deployment resource, and Flux reconcilers |
+| `pkg/controller/api`        | CRD-backed Kubernetes API types                                |
+| `pkg/sdk`                   | clients used to call back into Radius APIs                     |
 
 ## How It Works
 
 The root command builds shared host options, creates the logger, and starts a
 single `controller.Service` through shared hosting.
 
-Inside [pkg/controller/service.go](../../pkg/controller/service.go), the service
-creates a controller-runtime manager, registers API schemes, configures metrics
-and health probes, then registers reconcilers for recipe, deployment,
-deployment template, deployment resource, and Flux-oriented behavior.
+Inside [pkg/controller/service.go](../../pkg/controller/service.go), the service creates a controller-runtime manager, registers API schemes, configures metrics and health probes, then registers `DeploymentTemplateReconciler`, `DeploymentResourceReconciler`, and `FluxController`. The shared operation types in [operation_types.go](../../pkg/controller/api/radapp.io/v1alpha3/operation_types.go) preserve asynchronous operation tracking for both deployment CRDs.
 
 Some reconcilers call back into Radius APIs using SDK clients configured with
 the current UCP connection. That is the main architectural bridge between the
@@ -72,8 +68,19 @@ controller and the rest of the control plane.
 ### Suggested Test Scope
 
 - `go test ./pkg/controller/...`
-- Pay particular attention to reconciler and webhook tests in
-  `pkg/controller/reconciler/...`
+- Pay particular attention to deployment template, deployment resource, and Flux tests in `pkg/controller/reconciler/...`.
+
+### Removal Of Legacy Kubernetes Onboarding
+
+The `radapp.io/v1alpha3` `Recipe` CRD, its validating webhook, and annotation-based onboarding of `apps/v1` Deployments have been removed. `radapp.io/enabled`, `radapp.io/environment`, `radapp.io/application`, and `radapp.io/connection-*` no longer create Radius resources or inject connection secrets. The controller no longer accepts `--cert-dir` or serves a webhook TLS endpoint. This does not remove Radius recipes or recipe packs used by Bicep/ARM deployments; `DeploymentTemplate`, `DeploymentResource`, and Flux GitOps remain supported.
+
+This is a breaking change for installations using the removed flows. Before upgrading, inventory existing Recipe objects and annotated Deployments, record the Radius resource IDs and any generated Secrets they depend on, and plan their replacement with Bicep/ARM deployment or Flux GitOps. Back up application data and explicitly manage connection Secrets and pod environment variables in the replacement workflow; no automatic migration is provided.
+
+While the old controller is still running, remove obsolete Recipe objects and disable annotation-based onboarding only when their backing resources can safely be deleted. Wait for the old controller to finish cleanup and remove its `radapp.io/recipe-finalizer` and `radapp.io/deployment-finalizer` finalizers. Removing a Recipe can delete its backing Radius resource and generated Secret; disabling onboarding can delete the paired Radius container and remove injected connections. Coordinate this with application cutover rather than treating it as metadata-only cleanup.
+
+Helm does not delete CRDs installed from `crds/` during upgrade, so an existing `recipes.radapp.io` CRD and its objects can remain even though the new controller no longer reconciles them. After upgrading, stale finalizers can block deletion and generated Secrets will no longer be refreshed. Do not blindly remove finalizers or delete the CRD: first reconcile ownership and cleanup of the backing Radius resources and Secrets. Remove the obsolete CRD only after all Recipe objects have been safely migrated or removed.
+
+The Helm and existing-application tutorials in `radius-project/docs` (`docs/content/reference/samples/helm/index.md` and `docs/content/reference/samples/tutorial-add-radius/index.md`) require a coordinated update before release.
 
 ## Package Dependency View
 
