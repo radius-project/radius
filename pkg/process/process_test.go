@@ -87,10 +87,7 @@ func runInputHelper(t *testing.T, cmd *exec.Cmd, want string, exitCode int) {
 	timer := time.AfterFunc(10*time.Second, func() {
 		_ = cmd.Process.Kill()
 	})
-	t.Cleanup(func() {
-		timer.Stop()
-		_ = cmd.Process.Kill()
-	})
+	defer timer.Stop()
 	err := cmd.Wait()
 	if exitCode == 0 {
 		require.NoError(t, err, stderr.String())
@@ -113,10 +110,12 @@ func testCommandContextCancellation(t *testing.T) {
 	stdout, err := cmd.StdoutPipe()
 	require.NoError(t, err)
 	require.NoError(t, cmd.Start())
-	t.Cleanup(func() {
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-	})
+	defer func() {
+		if cmd.ProcessState == nil {
+			_ = cmd.Process.Kill()
+			_ = cmd.Wait()
+		}
+	}()
 	ready := make([]byte, len("ready"))
 	_, err = io.ReadFull(stdout, ready)
 	require.NoError(t, err)
