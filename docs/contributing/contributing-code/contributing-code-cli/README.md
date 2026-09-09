@@ -24,6 +24,12 @@ Pass arguments after the path, for example `go run ./cmd/rad/main.go env list`. 
 
 If you prefer a built binary, run `make build-rad` (see [Building the code](../contributing-code-building/README.md)) and run the binary it writes to `./dist/<GOOS>_<GOARCH>/release/rad`.
 
+### Configure durable archival
+
+`rad startup` and `rad shutdown` require `RADIUS_STATE_REGISTRY` to name an OCI repository without a tag. Modeled `rad app graph app.bicep` output in GitHub Actions requires `RADIUS_GRAPH_REGISTRY`. Authenticate to the registry with Docker credentials; workflows must grant package access and log in before invoking these commands. `RADIUS_STATE_BACKEND` may be unset or `oci`; `git` is removed and produces migration guidance when archival is used. See [Durable state archive](../../../architecture/state-archive.md#selecting-an-archive) for configuration, GHCR visibility requirements, and migration of existing Git state.
+
+Local modeled graph output still writes `app-graph.json` without a registry. Missing archive configuration does not prevent `rad version --cli` or other non-archival commands from initializing. Archive failures never fall back to local files. Unit tests for the graph archive adapter use injected archive sessions and no longer need Git repository fixtures.
+
 ### Create a wrapper script (optional)
 
 If you frequently run a local build of `rad`, wrap `go run` in a script so it behaves like the real command. Create a file named `dev-rad` on your `PATH`:
@@ -104,3 +110,4 @@ if errors.Is(err, NotFoundError{}) {
 - **The debugger never stops at your breakpoint.** Confirm you selected **"Debug rad CLI (prompt for args)"** and that the breakpoint is on an executable line in code the command actually reaches.
 - **A debugged command hangs waiting for input.** Add `--yes` to the prompted arguments (except for `rad init`).
 - **`make install` is denied.** The destination needs elevated permissions; prefix with `sudo` or point `RAD_LOCATION` at a writable directory on your `PATH`.
+- **Archival reports a missing registry or removed Git backend.** Configure `RADIUS_STATE_REGISTRY` for startup/shutdown or `RADIUS_GRAPH_REGISTRY` for GitHub Actions graph output, authenticate to that registry, and unset `RADIUS_STATE_BACKEND` or set it to `oci`. Existing Git archives are not automatically migrated; follow the [migration guidance](../../../architecture/state-archive.md#migrating-from-git-archival) before restoring into a new control plane.
