@@ -278,8 +278,8 @@ validate_backport_commit() {
     git show-ref --verify --quiet "${branch_ref}" ||
         fail "${release_branch} is not available"
     branch_commit="$(git rev-parse "${branch_ref}^{commit}")"
-    [[ "${branch_commit}" == "${RELEASE_COMMIT}" ]] ||
-        fail "${release_branch} is at ${branch_commit}, expected ${RELEASE_COMMIT}"
+    git merge-base --is-ancestor "${RELEASE_COMMIT}" "${branch_commit}" ||
+        fail "approved release commit ${RELEASE_COMMIT} is not reachable from ${release_branch} at ${branch_commit}"
     parent="$(commit_parent "${RELEASE_COMMIT}")"
     [[ "${parent}" == "${product_commit}" ]] ||
         fail "release branch advanced beyond approved commit ${product_commit}"
