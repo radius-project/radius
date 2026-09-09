@@ -827,6 +827,10 @@ jobs:
 
   finalize-release:
     name: Promote aliases and publish release
+    concurrency:
+      group: release-finalization
+      queue: max
+      cancel-in-progress: false
     needs:
       - release-preflight
       - goreleaser-release
@@ -870,6 +874,22 @@ jobs:
 
       - name: Install promotion tools
         run: make install-jq install-oras
+
+      - name: Select release aliases
+        id: alias-policy
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: select-aliases
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-draft-release.mjs`
+            )
+            await script({ github, core })
 
       - name: Download staged release metadata
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -920,7 +940,9 @@ jobs:
             await script({ github, core })
 
       - name: Promote stable aliases
-        if: env.UPDATE_RELEASE == 'true'
+        if: env.UPDATE_RELEASE == 'true' && steps.alias-policy.outputs.promote_channel == 'true'
+        env:
+          RELEASE_PROMOTE_LATEST: ${{ steps.alias-policy.outputs.promote_latest }}
         run: |
           GORELEASER_PRODUCTION_IMAGE_LOCK=dist/release-image-digests.json \
             make promote-release-aliases
@@ -933,7 +955,7 @@ jobs:
           INPUT_TAG: ${{ github.ref_name }}
           INPUT_NOTES_FILE: docs/release-notes/${{ github.ref_name }}.md
           INPUT_PRERELEASE: ${{ contains(github.ref_name, '-') }}
-          INPUT_MAKE_LATEST: ${{ !contains(github.ref_name, '-') }}
+          INPUT_MAKE_LATEST: ${{ steps.alias-policy.outputs.promote_latest }}
         with:
           retries: 5
           script: |

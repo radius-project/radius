@@ -41,6 +41,7 @@ OUTPUT=""
 CATEGORIES="production,non-go,test"
 NAMES=""
 VERIFY_ALIASES=false
+PROMOTE_LATEST="${RELEASE_PROMOTE_LATEST:-true}"
 SOURCE_SHA="${RELEASE_SOURCE_SHA:-}"
 TEMP_DIR=""
 readonly RETRY_ATTEMPTS="${RELEASE_RETRY_ATTEMPTS:-5}"
@@ -223,6 +224,8 @@ parse_args() {
 }
 
 validate_version() {
+    [[ "${PROMOTE_LATEST}" =~ ^(true|false)$ ]] ||
+        fail "RELEASE_PROMOTE_LATEST must be true or false"
     if ! is_radius_release_version "${VERSION}"; then
         fail "version must be a Radius release version"
     fi
@@ -539,8 +542,8 @@ resolve_image_digest() {
 
     retry_read "image digest lookup" \
         docker buildx imagetools inspect --format '{{json .}}' \
-        "${reference}" \
-                       | jq -er '.manifest.digest'
+        "${reference}" |
+        jq -er '.manifest.digest'
 }
 
 resolve_cli_digest() {
@@ -667,14 +670,15 @@ image_aliases_match() {
 
     channel_digest="$(
         resolve_image_digest "${repository}:${channel}" 2> /dev/null
-    )" \
-        || return 1
+    )" ||
+        return 1
+    [[ "${channel_digest}" == "${digest}" ]] || return 1
+    [[ "${PROMOTE_LATEST}" == "true" ]] || return 0
     latest_digest="$(
         resolve_image_digest "${repository}:latest" 2> /dev/null
-    )" \
-        || return 1
-    [[ "${channel_digest}" == "${digest}" &&
-        "${latest_digest}" == "${digest}" ]]
+    )" ||
+        return 1
+    [[ "${latest_digest}" == "${digest}" ]]
 }
 
 promote_image_aliases() {
@@ -685,6 +689,11 @@ promote_image_aliases() {
     local attempt
     local output
     local status
+    local -a tags=(--tag "${repository}:${channel}")
+
+    if [[ "${PROMOTE_LATEST}" == "true" ]]; then
+        tags+=(--tag "${repository}:latest")
+    fi
 
     if image_aliases_match "${repository}" "${channel}" "${digest}"; then
         return
@@ -692,12 +701,13 @@ promote_image_aliases() {
     for ((attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++)); do
         if output="$(
             docker buildx imagetools create \
-                --tag "${repository}:${channel}" \
-                --tag "${repository}:latest" \
+                "${tags[@]}" \
                 "${immutable_reference}" 2>&1
         )"; then
             verify_image_alias "${repository}:${channel}" "${digest}"
-            verify_image_alias "${repository}:latest" "${digest}"
+            if [[ "${PROMOTE_LATEST}" == "true" ]]; then
+                verify_image_alias "${repository}:latest" "${digest}"
+            fi
             return
         else
             status=$?
@@ -727,14 +737,15 @@ cli_aliases_match() {
 
     channel_digest="$(
         resolve_cli_digest "${repository}:${channel}" 2> /dev/null
-    )" \
-        || return 1
+    )" ||
+        return 1
+    [[ "${channel_digest}" == "${digest}" ]] || return 1
+    [[ "${PROMOTE_LATEST}" == "true" ]] || return 0
     latest_digest="$(
         resolve_cli_digest "${repository}:latest" 2> /dev/null
-    )" \
-        || return 1
-    [[ "${channel_digest}" == "${digest}" &&
-        "${latest_digest}" == "${digest}" ]]
+    )" ||
+        return 1
+    [[ "${latest_digest}" == "${digest}" ]]
 }
 
 promote_cli_aliases() {
@@ -745,16 +756,23 @@ promote_cli_aliases() {
     local attempt
     local output
     local status
+    local -a tags=("${channel}")
+
+    if [[ "${PROMOTE_LATEST}" == "true" ]]; then
+        tags+=(latest)
+    fi
 
     if cli_aliases_match "${repository}" "${channel}" "${digest}"; then
         return
     fi
     for ((attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++)); do
         if output="$(
-            oras tag "${immutable_reference}" "${channel}" latest 2>&1
+            oras tag "${immutable_reference}" "${tags[@]}" 2>&1
         )"; then
             verify_cli_alias "${repository}:${channel}" "${digest}"
-            verify_cli_alias "${repository}:latest" "${digest}"
+            if [[ "${PROMOTE_LATEST}" == "true" ]]; then
+                verify_cli_alias "${repository}:latest" "${digest}"
+            fi
             return
         else
             status=$?
@@ -848,7 +866,9 @@ verify_locks() {
             if [[ "${VERIFY_ALIASES}" == "true" ]]; then
                 repository="${immutable_reference%@*}"
                 verify_image_alias "${repository}:${CHANNEL}" "${digest}"
-                verify_image_alias "${repository}:latest" "${digest}"
+                if [[ "${PROMOTE_LATEST}" == "true" ]]; then
+                    verify_image_alias "${repository}:latest" "${digest}"
+                fi
             fi
         done < <(jq -r '.[] |
             [.reference, .digest, .immutableReference] | @tsv
@@ -884,7 +904,9 @@ verify_locks() {
             if [[ "${VERIFY_ALIASES}" == "true" ]]; then
                 repository="${immutable_reference%@*}"
                 verify_cli_alias "${repository}:${CHANNEL}" "${digest}"
-                verify_cli_alias "${repository}:latest" "${digest}"
+                if [[ "${PROMOTE_LATEST}" == "true" ]]; then
+                    verify_cli_alias "${repository}:latest" "${digest}"
+                fi
             fi
         done < <(jq -r '.artifacts[] |
             [.reference, .digest, .immutableReference] | @tsv
@@ -950,7 +972,7 @@ promote_aliases() {
 
     VERIFY_ALIASES=true
     verify_locks
-    echo "Promoted ${CHANNEL} and latest from immutable release digests"
+    echo "Promoted ${CHANNEL} from immutable release digests (latest: ${PROMOTE_LATEST})"
 }
 
 main() {
