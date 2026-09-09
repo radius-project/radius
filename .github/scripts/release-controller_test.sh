@@ -188,6 +188,15 @@ test_stage_order() {
 }
 
 test_identity_and_cleanup() {
+    assert_json "${ENTRY}" '.jobs.resolve.steps[0].with.ref' \
+        "\"\${{ github.workflow_sha }}\"" \
+        "resolver code must be pinned to the executing workflow commit"
+    assert_json "${CONTROLLER}" \
+        '[.jobs.validate, .jobs."publish-deployment-engine",
+          .jobs."reconcile-siblings", .jobs."create-radius-tag"] |
+          map(.steps[0].with.ref) | unique' \
+        "[\"\${{ github.workflow_sha }}\"]" \
+        "controller jobs must execute the same trusted code revision"
     assert_not_contains "${CONTROLLER}" 'persist-credentials: true' \
         "controller must not persist checkout credentials"
     assert_contains "${CONTROLLER}" 'gh auth setup-git' \
