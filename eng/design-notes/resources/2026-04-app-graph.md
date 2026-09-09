@@ -2,8 +2,6 @@
 
 * **Author**: Nithya Subramanian (@nithyatsu)
 
-> **Historical design:** For the implemented graph output and archival behavior, see the [current application graph architecture](../../../docs/architecture/application-graph.md#modeled-graph-output-and-archival).
-
 ## Overview
 
 Radius provides an **application resource** that lets teams define and deploy their entire application — including compute, relationships, and infrastructure — as a single unit. Developers express the resources that make up an application (containers, databases, message queues, etc.) along with the relationships between them. Together, these form the **Radius application graph**: a directed graph of resources and their connections.

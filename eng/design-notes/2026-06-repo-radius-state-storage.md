@@ -6,8 +6,6 @@
 * **Related issues**: [#8096 External data store for Radius](https://github.com/radius-project/radius/issues/8096), [#8398 Postgres DB initialization](https://github.com/radius-project/radius/issues/8398)
 * **Supersedes prototype**: [PR #11457](https://github.com/radius-project/radius/pull/11457) (closed unmerged)
 
-> **Historical design:** For the implemented archive behavior and supported configuration, see the [current archive architecture](../../docs/architecture/state-archive.md).
-
 ## Scope
 
 This document covers **Investment 2 of the Repo Radius feature spec: externalization of the

@@ -4,8 +4,6 @@
 - **Related design note**: [Repo Radius — State Storage](../2026-06-repo-radius-state-storage.md)
 - **Builds on**: [PR #12333](https://github.com/radius-project/radius/pull/12333)
 
-> **Historical design:** For the implemented archive behavior and supported configuration, see the [current archive architecture](../../../docs/architecture/state-archive.md).
-
 ## Overview
 
 Radius saves control-plane database dumps, Terraform state, and modeled application graphs outside an ephemeral cluster. Today those files go to git orphan branches. This design adds an OCI backend that stores the same files in GitHub Container Registry (GHCR).
