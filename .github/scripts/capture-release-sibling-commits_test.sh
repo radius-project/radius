@@ -62,6 +62,33 @@ create_repository() {
     fi
 }
 
+test_failed_release_lookup_does_not_fall_back() {
+    local fake_bin="${TEST_ROOT}/bin"
+    local real_git
+    local output="${TEST_ROOT}/failed-lookup.json"
+
+    real_git="$(command -v git)"
+    mkdir -p "${fake_bin}"
+    cat >"${fake_bin}/git" <<'EOF'
+#!/bin/bash
+if [[ "$1" == "ls-remote" && "${*: -1}" == refs/heads/release/0.61 ]]; then
+    echo 'fatal: unable to access remote repository' >&2
+    exit 128
+fi
+exec "${SIBLING_REAL_GIT}" "$@"
+EOF
+    chmod +x "${fake_bin}/git"
+    if PATH="${fake_bin}:${PATH}" SIBLING_REAL_GIT="${real_git}" \
+        SIBLING_REPOSITORY_ROOT="${TEST_ROOT}" bash "${SCRIPT}" \
+        --channel 0.61 --output "${output}" >"${TEST_ROOT}/lookup.log" 2>&1; then
+        fail_test "failed release lookup silently selected main"
+    elif [[ -e "${output}" ]]; then
+        fail_test "failed release lookup wrote a source plan"
+    else
+        ((++PASS))
+    fi
+}
+
 main() {
     local output recipes_main dashboard_release aws_main
 
@@ -104,6 +131,8 @@ main() {
     else
         ((++PASS))
     fi
+
+    test_failed_release_lookup_does_not_fall_back
 
     if ((FAIL > 0)); then
         echo "Sibling commit tests failed: ${PASS} passed, ${FAIL} failed"
