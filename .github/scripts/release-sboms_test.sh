@@ -76,7 +76,8 @@ verify_workflow_wiring() {
     if [[ "${asset_verifiers}" != "2" ]]; then
         fail "draft and published CLI SBOM verification is incomplete"
     fi
-    image_verifiers="$(grep -Fc -- '--sboms' "${RELEASE_WORKFLOW}")"
+    image_verifiers="$(grep -F -- '--sboms' "${RELEASE_WORKFLOW}" \
+        "${SCRIPT_DIR}/verify-release-publication.sh" | wc -l)"
     if [[ "${image_verifiers}" != "3" ]]; then
         fail "image SBOM verification is missing from a release path"
     fi

@@ -136,8 +136,11 @@ test_shared_controller_contract() {
 test_stage_order() {
     assert_json "${CONTROLLER}" \
         '.jobs."publish-deployment-engine".needs' \
-        '["validate","approve"]' \
-        "Deployment Engine must publish after validation and approval"
+        '["validate"]' \
+        "Deployment Engine must publish after validation"
+    assert_yq "${CONTROLLER}" \
+        '.jobs.approve == null and .jobs."publish-deployment-engine".if == "needs.validate.outputs.ready == '\''true'\''"' \
+        "publication approval must not prevent automatic RC staging"
     assert_json "${CONTROLLER}" '.jobs."reconcile-siblings".needs' \
         '["validate","publish-deployment-engine"]' \
         "sibling reconciliation must follow Deployment Engine"
