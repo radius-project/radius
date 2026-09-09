@@ -74,10 +74,12 @@ Four GitHub Actions workflows drive release preparation, backports, and publicat
    - Builds the Bicep, `testrp`, and `magpiego` images under immutable full-version tags using their existing paths until their consumers move in the final migration phase
    - Publishes immutable full-version CLI OCI artifacts and records image and CLI digests for finalization
    - Publishes the Helm chart and dispatches Bicep types publishing while the GitHub Release remains a draft
-   - Verifies the expected image platform sets and promotes the channel and `latest` image and CLI OCI aliases from the recorded immutable digests for final and patch releases; RCs advance no mutable aliases
+   - Verifies the expected image platform sets and promotes eligible channel and `latest` image and CLI OCI aliases from the recorded immutable digests for final and patch releases; RCs advance no mutable aliases
    - Publishes the draft GitHub Release only after GoReleaser, Helm, Bicep types, and alias promotion succeed
 
    The release carries internal JSON lock assets for the core, retained images, and complete image set. A rerun verifies these locks and skips the immutable work they already cover; a full-version tag that no longer matches its lock stops the release instead of being rebuilt or moved. Tags pushed by an interrupted attempt are not yet locked, so a rerun re-stages them rather than stranding the release. Main-branch builds publish Radius images and CLI OCI artifacts only as `edge`. The `latest` alias always points to the most recent stable release after this cutover.
+
+   Finalization is serialized across release versions. A patch to an older supported channel updates that channel without replacing global `latest`; an older version finishing after a newer version in the same channel changes neither alias. Builds remain parallel, and alias promotion uses the recorded digests without rebuilding artifacts.
 
 The automated flow after dispatching Prepare Release:
 
@@ -250,7 +252,7 @@ Monitor and verify:
 
 1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully and creates the `vX.Y.Z` [tag](https://github.com/radius-project/radius/tags).
 2. The [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow (triggered by the tag push) completes successfully. Its summary must show successful GoReleaser, Helm, Bicep types, and finalization jobs.
-3. A final release (not pre-release) appears on [GitHub Releases](https://github.com/radius-project/radius/releases), and the full-version, `X.Y`, and `latest` production image and CLI OCI tags resolve to the same recorded digests.
+3. A final release (not pre-release) appears on [GitHub Releases](https://github.com/radius-project/radius/releases). Its full-version tags and eligible `X.Y` and `latest` production image and CLI OCI aliases resolve to the recorded digests; aliases for newer published versions remain unchanged.
 
 ### Step 7: Publish docs and samples
 
@@ -298,7 +300,7 @@ Monitor and verify:
 
 1. The [Release Radius](https://github.com/radius-project/radius/actions/workflows/release.yaml) workflow completes successfully and creates the `vX.Y.Z` [tag](https://github.com/radius-project/radius/tags).
 2. The [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow (triggered by the tag push) completes successfully. Its summary must show successful GoReleaser, Helm, Bicep types, and finalization jobs.
-3. A patch release appears on [GitHub Releases](https://github.com/radius-project/radius/releases), and the full-version, `X.Y`, and `latest` production image and CLI OCI tags resolve to the same recorded digests.
+3. A patch release appears on [GitHub Releases](https://github.com/radius-project/radius/releases). Its full-version tags and eligible `X.Y` production image and CLI OCI aliases resolve to the recorded digests. Global `latest` changes only when the patch is the newest stable version; newer versions in the same channel are never replaced.
 
 ### Step 6: Run validation workflows
 
