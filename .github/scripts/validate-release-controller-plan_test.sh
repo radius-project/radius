@@ -314,7 +314,7 @@ test_backport_resolves_release_commit() {
     pass_test
 }
 
-test_rejects_release_branch_advance() {
+test_resume_keeps_approved_commit_after_branch_advance() {
     local source backport
 
     read -r source <"${TEST_ROOT}/existing-commits.txt"
@@ -328,7 +328,43 @@ test_rejects_release_branch_advance() {
     run_validator "${REPO}/.github/release-plans/v0.61.0.yaml" v0.61.0 \
         "${source}" "${backport}" dispatch \
         "${TEST_ROOT}/advanced-output"
-    assert_failure_contains "expected ${backport}" || return
+    assert_success || return
+    [[ "$(yq -r '.source.releaseCommit' \
+        "${TEST_ROOT}/advanced-output/release-plan.yaml")" == "${backport}" ]] || {
+        fail_test "resume changed the approved source to the newer branch tip"
+        return
+    }
+    pass_test
+}
+
+test_rejects_backport_from_unapproved_base() {
+    local source unapproved
+
+    read -r source <"${TEST_ROOT}/existing-commits.txt"
+    git -C "${REPO}" commit --quiet --allow-empty \
+        -m "chore(release): recreate release metadata" \
+        -m "(cherry picked from commit ${source})"
+    unapproved="$(git -C "${REPO}" rev-parse HEAD)"
+    git -C "${REPO}" push --quiet origin release/0.61
+    git -C "${REPO}" fetch --quiet origin \
+        '+refs/heads/release/0.61:refs/remotes/origin/release/0.61'
+    run_validator "${REPO}/.github/release-plans/v0.61.0.yaml" v0.61.0 \
+        "${source}" "${unapproved}" dispatch \
+        "${TEST_ROOT}/unapproved-base-output"
+    assert_failure_contains "advanced beyond approved commit" || return
+    pass_test
+}
+
+test_rejects_divergent_release_branch() {
+    local source backport
+
+    read -r source <"${TEST_ROOT}/existing-commits.txt"
+    backport="$(sed -n '2p' "${TEST_ROOT}/existing-commits.txt")"
+    git -C "${REPO}" update-ref refs/remotes/origin/release/0.61 "${source}"
+    run_validator "${REPO}/.github/release-plans/v0.61.0.yaml" v0.61.0 \
+        "${source}" "${backport}" dispatch \
+        "${TEST_ROOT}/divergent-output"
+    assert_failure_contains "not reachable" || return
     pass_test
 }
 
@@ -345,7 +381,9 @@ main() {
     create_existing_channel_release
     test_release_pr_waits_for_backport
     test_backport_resolves_release_commit
-    test_rejects_release_branch_advance
+    test_resume_keeps_approved_commit_after_branch_advance
+    test_rejects_backport_from_unapproved_base
+    test_rejects_divergent_release_branch
 
     if ((FAIL > 0)); then
         echo "Controller plan tests failed: ${PASS} passed, ${FAIL} failed"
