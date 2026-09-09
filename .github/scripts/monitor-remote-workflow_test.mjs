@@ -83,7 +83,10 @@ function createGithub({ runs = [], getRun, jobs = [], pages } = {}) {
       try {
         const pageCount = pages ? pages.length : 1;
         for (let page = 0; page < pageCount && !stopped; page += 1) {
-          collected.push(...map(await method(parameters), done));
+          const response = await method({ ...parameters, page: page + 1 });
+          collected.push(
+            ...map({ ...response, data: response.data.workflow_runs }, done)
+          );
         }
       } finally {
         paginating = false;
@@ -92,12 +95,12 @@ function createGithub({ runs = [], getRun, jobs = [], pages } = {}) {
     },
     rest: {
       actions: {
-        async listWorkflowRuns() {
+        async listWorkflowRuns({ page = 1 } = {}) {
           calls.list += 1;
           if (pages && paginating) {
             calls.pages += 1;
             return {
-              data: { workflow_runs: [...(pages[calls.pages - 1] || [])] }
+              data: { workflow_runs: [...(pages[page - 1] || [])] }
             };
           }
           return { data: { workflow_runs: [...runs] } };
@@ -143,37 +146,62 @@ function successfulRun(id, identifier) {
   };
 }
 
-test("stops paging once the identifier's run block is behind", async () => {
+test("finds correlated runs beyond unrelated history pages", async () => {
   const identifier = "0.61.0-abababab";
   const core = createCore({ RELEASE_IDENTIFIER: identifier });
   const github = createGithub({
-    pages: [[successfulRun(42, identifier)], [], [], [], []]
+    pages: [
+      [{ ...successfulRun(44, identifier), conclusion: "failure" }],
+      [successfulRun(43, "another-release")],
+      [successfulRun(42, identifier)]
+    ]
   });
 
   await monitorRemoteWorkflow({ github, core, ...createClock() });
 
   assert.deepEqual(core.failures, []);
-  assert.equal(github.calls.pages, 2);
+  assert.equal(github.calls.pages, 3);
   assert.equal(github.dispatches.length, 0);
   assert.equal(core.outputs.get("run_id"), "42");
 });
 
-test("caps the history scan when no run matches the identifier", async () => {
-  const core = createCore({ RELEASE_IDENTIFIER: "0.61.0-acacacac" });
+test("finds an existing run beyond five pages without redispatching", async () => {
+  const identifier = "0.61.0-acacacac";
+  const core = createCore({ RELEASE_IDENTIFIER: identifier });
   const unrelated = [{ id: 7, display_title: "deployment-engine / other" }];
   const github = createGithub({
-    pages: Array.from({ length: 8 }, () => unrelated)
+    pages: [
+      ...Array.from({ length: 7 }, () => unrelated),
+      [successfulRun(6, identifier)]
+    ]
   });
 
   await monitorRemoteWorkflow({ github, core, ...createClock() });
 
   assert.deepEqual(core.failures, []);
-  assert.equal(github.calls.pages, 5);
-  assert.equal(github.dispatches.length, 1);
+  assert.equal(github.calls.pages, 8);
+  assert.equal(github.dispatches.length, 0);
+  assert.equal(core.outputs.get("run_id"), "6");
   assert.equal(core.outputs.get("conclusion"), "success");
 });
 
-test("gives a retried lookup the full page budget", async () => {
+test("never dispatches when history discovery times out", async () => {
+  const core = createCore();
+  const clock = createClock();
+  const github = createGithub({ pages: [[], [], []] });
+  const listWorkflowRuns = github.rest.actions.listWorkflowRuns;
+  github.rest.actions.listWorkflowRuns = async (parameters) => {
+    await clock.sleep(15000);
+    return listWorkflowRuns(parameters);
+  };
+
+  await monitorRemoteWorkflow({ github, core, ...clock });
+
+  assert.match(core.failures[0], /refusing to dispatch/);
+  assert.equal(github.dispatches.length, 0);
+});
+
+test("restarts paginated discovery after a transient failure", async () => {
   const identifier = "0.61.0-adadadad";
   const core = createCore({ RELEASE_IDENTIFIER: identifier });
   const github = createGithub({
@@ -182,7 +210,7 @@ test("gives a retried lookup the full page budget", async () => {
   const listWorkflowRuns = github.rest.actions.listWorkflowRuns;
   let failed = false;
   github.rest.actions.listWorkflowRuns = async (parameters) => {
-    if (!failed) {
+    if (!failed && parameters.page === 2) {
       failed = true;
       throw apiError(500);
     }
