@@ -263,19 +263,19 @@ cat >"${FAKE_BIN}/docker" <<'EOF'
 set -euo pipefail
 
 if [[ "$*" != "buildx imagetools inspect --format {{json .}} "* ]]; then
-  echo "unexpected docker invocation: $*" >&2
-  exit 1
+    echo "unexpected docker invocation: $*" >&2
+    exit 1
 fi
 
 if [[ "${OMIT_ARM}" == "true" ]]; then
-  jq '
-    .manifest.manifests |= map(
-      select(.platform.architecture != "arm")
-    )
-    | del(.image["linux/arm/v7"])
-  ' "${FIXTURES}/image.json"
+    jq '
+        .manifest.manifests |= map(
+            select(.platform.architecture != "arm")
+        )
+        | del(.image["linux/arm/v7"])
+    ' "${FIXTURES}/image.json"
 else
-  cat "${FIXTURES}/image.json"
+    cat "${FIXTURES}/image.json"
 fi
 EOF
 chmod +x "${FAKE_BIN}/docker"
@@ -285,7 +285,7 @@ cat >"${FAKE_BIN}/helm" <<'EOF'
 set -euo pipefail
 
 if [[ "$1 $2" == "show chart" ]]; then
-  cat <<'YAML'
+    cat <<'YAML'
 apiVersion: v2
 name: radius
 version: 0.60.0
@@ -293,7 +293,7 @@ appVersion: 0.60.0
 description: Radius test chart
 YAML
 elif [[ "$1" == "template" ]]; then
-  cat <<'YAML'
+    cat <<'YAML'
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -306,8 +306,8 @@ spec:
           image: ghcr.io/radius-project/ucpd:0.60
 YAML
 else
-  echo "unexpected helm invocation: $*" >&2
-  exit 1
+    echo "unexpected helm invocation: $*" >&2
+    exit 1
 fi
 EOF
 chmod +x "${FAKE_BIN}/helm"
@@ -318,20 +318,20 @@ set -euo pipefail
 
 reference="${*: -1}"
 if [[ "${MISSING_DOWNSTREAM}" == "true" && \
-  "${reference}" == biceptypes.azurecr.io/* ]]; then
-  echo "artifact not found: ${reference}" >&2
-  exit 1
+    "${reference}" == biceptypes.azurecr.io/* ]]; then
+    echo "artifact not found: ${reference}" >&2
+    exit 1
 fi
 
 if [[ "$*" == *"--descriptor"* ]]; then
-  printf '%s\n' '{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:descriptor","size":100}'
+    printf '%s\n' '{"mediaType":"application/vnd.oci.image.manifest.v1+json","digest":"sha256:descriptor","size":100}'
 elif [[ "${reference}" == ghcr.io/radius-project/helm-chart/radius:* ]]; then
-  printf '%s\n' '{"schemaVersion":2,"config":{"mediaType":"application/vnd.cncf.helm.config.v1+json","digest":"sha256:config","size":10},"layers":[{"mediaType":"application/vnd.cncf.helm.chart.content.v1.tar+gzip","digest":"sha256:chart","size":20}]}'
+    printf '%s\n' '{"schemaVersion":2,"config":{"mediaType":"application/vnd.cncf.helm.config.v1+json","digest":"sha256:config","size":10},"layers":[{"mediaType":"application/vnd.cncf.helm.chart.content.v1.tar+gzip","digest":"sha256:chart","size":20}]}'
 elif [[ "${reference}" == biceptypes.azurecr.io/radius:* ]]; then
-  printf '%s\n' '{"schemaVersion":2,"artifactType":"application/vnd.ms.bicep.provider.artifact","config":{"mediaType":"application/vnd.ms.bicep.provider.config.v1+json","digest":"sha256:config","size":2},"layers":[{"mediaType":"application/vnd.ms.bicep.provider.layer.v1.tar+gzip","digest":"sha256:types","size":20}]}'
+    printf '%s\n' '{"schemaVersion":2,"artifactType":"application/vnd.ms.bicep.provider.artifact","config":{"mediaType":"application/vnd.ms.bicep.provider.config.v1+json","digest":"sha256:config","size":2},"layers":[{"mediaType":"application/vnd.ms.bicep.provider.layer.v1.tar+gzip","digest":"sha256:types","size":20}]}'
 else
-  echo "unexpected oras reference: ${reference}" >&2
-  exit 1
+    echo "unexpected oras reference: ${reference}" >&2
+    exit 1
 fi
 EOF
 chmod +x "${FAKE_BIN}/oras"
@@ -383,6 +383,7 @@ run_collector() {
     PATH="${FAKE_BIN}:${PATH}" \
         RELEASE_PARITY_TARGETS="${TARGETS}" \
         RELEASE_PARITY_OBSERVED_AT="2026-08-19T01:00:00Z" \
+        RELEASE_PARITY_RUNTIME_ASSET="rad_linux_amd64" \
         bash "${SCRIPT_DIR}/release-parity-manifest.sh" \
         --version 0.60.0 \
         --output "${OUTPUT}" >/dev/null
@@ -392,7 +393,7 @@ run_collector
 cp "${OUTPUT}" "${FIRST_OUTPUT}"
 run_collector
 cmp -s "${FIRST_OUTPUT}" "${OUTPUT}" ||
-  fail "collector output was not deterministic"
+    fail "collector output was not deterministic"
 
 jq -e '
     .schemaVersion == 1
@@ -415,16 +416,16 @@ jq -e '
     fail "generated manifest did not match the expected contract"
 
 jq '.prerelease = true | .body = "<!-- Release notes generated using configuration -->\n"' \
-  "${FIXTURES}/release.json" >"${FIXTURES}/release-rc.json"
+    "${FIXTURES}/release.json" >"${FIXTURES}/release-rc.json"
 mv "${FIXTURES}/release-rc.json" "${FIXTURES}/release.json"
 run_collector
 jq -e '
-  .release.prerelease == true
-  and .release.notes.source.type == "github-generated"
-  and .release.notes.matchesSource == false
+    .release.prerelease == true
+    and .release.notes.source.type == "github-generated"
+    and .release.notes.matchesSource == false
 ' "${OUTPUT}" >/dev/null || fail "collector did not identify generated RC notes"
 jq '.prerelease = false | .body = "# Radius v0.60.0\n"' \
-  "${FIXTURES}/release.json" >"${FIXTURES}/release-final.json"
+    "${FIXTURES}/release.json" >"${FIXTURES}/release-final.json"
 mv "${FIXTURES}/release-final.json" "${FIXTURES}/release.json"
 
 printf '%064d *rad_linux_amd64\n' 0 \
@@ -434,51 +435,51 @@ if run_collector 2>/dev/null; then
 fi
 
 printf '%s *%s\n' "${binary_sha}" "rad_linux_amd64" \
-  >"${ASSETS}/rad_linux_amd64.sha256"
+    >"${ASSETS}/rad_linux_amd64.sha256"
 OMIT_ARM="true"
 if run_collector 2>/dev/null; then
-  fail "collector accepted a missing runtime platform"
+    fail "collector accepted a missing runtime platform"
 fi
 OMIT_ARM="false"
 
 MISSING_DOWNSTREAM="true"
 if run_collector 2>/dev/null; then
-  fail "collector accepted a missing downstream artifact"
+    fail "collector accepted a missing downstream artifact"
 fi
 MISSING_DOWNSTREAM="false"
 
 for baseline in "${SCRIPT_DIR}/../release-parity/baselines/"*.json; do
-  jq -e --slurpfile targets "${SCRIPT_DIR}/../release-parity/targets.json" '
-    . as $manifest
-    | ($targets[0].images
-      | map({key: .name, value: (.requiredPlatforms | sort)})
-      | from_entries) as $expected_platforms
-    | .schemaVersion == 1
-    and .release.tag == ("v" + .release.version)
-    and .release.draft == false
-    and ([.cli.assets[].name] | sort)
-      == ([$targets[0].cliAssets[].name] | sort)
-    and all(.cli.assets[];
-      .checksum.valid == true
-      and .build.linkerMetadata.release == $manifest.release.version
-      and .build.linkerMetadata.commit
-        == $manifest.release.sourceCommit
-    )
-    and ([.images[].name] | sort)
-      == ([$targets[0].images[].name] | sort)
-    and all(.images[];
-      ([.platforms[].platform] | sort)
-        == $expected_platforms[.name]
-    )
-    and .helm.metadata.name == "radius"
-    and .helm.metadata.version == .release.version
-    and .helm.metadata.appVersion == .release.version
-    and ([.downstream.repositories[].repository] | sort)
-      == ($targets[0].siblingRepositories | sort)
-    and ([.downstream.ociArtifacts[].name] | sort)
-      == ([$targets[0].ociArtifacts[].name] | sort)
-  ' "${baseline}" >/dev/null ||
-    fail "committed baseline failed validation: ${baseline}"
+    jq -e --slurpfile targets "${SCRIPT_DIR}/../release-parity/targets.json" '
+        . as $manifest
+        | ($targets[0].images
+            | map({key: .name, value: (.requiredPlatforms | sort)})
+            | from_entries) as $expected_platforms
+        | .schemaVersion == 1
+        and .release.tag == ("v" + .release.version)
+        and .release.draft == false
+        and ([.cli.assets[].name] | sort)
+            == ([$targets[0].cliAssets[].name] | sort)
+        and all(.cli.assets[];
+            .checksum.valid == true
+            and .build.linkerMetadata.release == $manifest.release.version
+            and .build.linkerMetadata.commit
+                == $manifest.release.sourceCommit
+        )
+        and ([.images[].name] | sort)
+            == ([$targets[0].images[].name] | sort)
+        and all(.images[];
+            ([.platforms[].platform] | sort)
+                == $expected_platforms[.name]
+        )
+        and .helm.metadata.name == "radius"
+        and .helm.metadata.version == .release.version
+        and .helm.metadata.appVersion == .release.version
+        and ([.downstream.repositories[].repository] | sort)
+            == ($targets[0].siblingRepositories | sort)
+        and ([.downstream.ociArtifacts[].name] | sort)
+            == ([$targets[0].ociArtifacts[].name] | sort)
+    ' "${baseline}" >/dev/null ||
+        fail "committed baseline failed validation: ${baseline}"
 done
 
 echo "release parity manifest tests passed"
