@@ -4,10 +4,11 @@ This directory records the review of the 18-pull-request stack that implements t
 
 ## Review notes by pull request
 
-| PR | Branch                          | Note                                                           |
-|----|---------------------------------|----------------------------------------------------------------|
-| 1  | `dp/goreleaser-parity-manifest` | [pr-01-parity-manifest.md](./pr-01-parity-manifest.md)         |
-| 2  | `dp/goreleaser-snapshot-ci`     | [pr-02-goreleaser-snapshot.md](./pr-02-goreleaser-snapshot.md) |
+| PR | Branch                               | Note                                                                       |
+|----|--------------------------------------|----------------------------------------------------------------------------|
+| 1  | `dp/goreleaser-parity-manifest`      | [pr-01-parity-manifest.md](./pr-01-parity-manifest.md)                     |
+| 2  | `dp/goreleaser-snapshot-ci`          | [pr-02-goreleaser-snapshot.md](./pr-02-goreleaser-snapshot.md)             |
+| 3  | `dp/conventional-commit-title-check` | [pr-03-conventional-commit-title.md](./pr-03-conventional-commit-title.md) |
 
 Later notes are added as the review progresses up the stack.
 
