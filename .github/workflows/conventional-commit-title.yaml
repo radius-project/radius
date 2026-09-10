@@ -66,8 +66,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+      # The action sets error_message only when the title itself fails
+      # validation, so the three outcomes below are: an invalid title (comment),
+      # a valid title (clear the comment), and a validation that never ran.
       - name: Explain how to fix the title
-        if: steps.validate.outputs.error_message != ''
+        if: steps.validate.outcome == 'failure' && steps.validate.outputs.error_message != ''
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: conventional-commit-title
@@ -94,8 +97,18 @@ jobs:
             rename the title now.
 
       - name: Clear the advisory comment
-        if: steps.validate.outputs.error_message == ''
+        if: steps.validate.outcome == 'success'
         uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: conventional-commit-title
           delete: true
+
+      # A failure without an error message means the action stopped before it
+      # validated the title, for example on an API error. An earlier advisory
+      # comment stays in place, and the job fails so the broken check is seen
+      # instead of reporting green.
+      - name: Fail when the validation did not run
+        if: steps.validate.outcome == 'failure' && steps.validate.outputs.error_message == ''
+        run: |
+          echo "::error::The title validation did not complete; see the 'Validate Conventional Commit title' step log."
+          exit 1
