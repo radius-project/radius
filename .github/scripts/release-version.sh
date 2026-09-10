@@ -17,6 +17,14 @@
 # ------------------------------------------------------------
 
 # Shared Radius release-version policy; source this file from release scripts.
+#
+# New release candidates use the dotted SemVer form X.Y.Z-rc.N. Historical
+# X.Y.Z-rcN tags stay accepted because previous-tag selection, verification,
+# and upgrades must still read them. The two forms are never mixed within one
+# version: SemVer orders rc.2 before rc1, so a dotted RC that follows a legacy
+# RC of the same version would be rejected by the upgrade preflight as a
+# downgrade. The dotted form starts with the first RC of a version.
+#
 # The constants below are readonly, so guard against being sourced twice.
 if [[ -n "${RADIUS_RELEASE_VERSION_POLICY_LOADED:-}" ]]; then
     return 0
