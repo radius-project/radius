@@ -17,12 +17,114 @@ limitations under the License.
 package helm
 
 import (
+	"bytes"
+	"io"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 	helm "helm.sh/helm/v4/pkg/action"
+	"helm.sh/helm/v4/pkg/chart/common"
+	"helm.sh/helm/v4/pkg/chart/v2/loader"
+	kubefake "helm.sh/helm/v4/pkg/kube/fake"
+	"helm.sh/helm/v4/pkg/storage"
+	"helm.sh/helm/v4/pkg/storage/driver"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
+
+func TestHelmClientImpl_UpgradeImmutableImageDefaults(t *testing.T) {
+	t.Parallel()
+	testCases := []struct {
+		name        string
+		storedTag   string
+		clearTag    bool
+		expectedTag string
+	}{
+		{name: "chart defaults move from channel to patch", expectedTag: "0.61.1"},
+		{name: "explicit channel override survives", storedTag: "0.61", expectedTag: "0.61"},
+		{name: "cleared channel override adopts patch", storedTag: "0.61", clearTag: true, expectedTag: "0.61.1"},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			previousChart, err := loader.Load("../../../deploy/Chart")
+			require.NoError(t, err)
+			previousChart.Metadata.Version = "0.61.0"
+			previousChart.Metadata.AppVersion = "0.61.0"
+			previousChart.Files = slices.DeleteFunc(previousChart.Files, func(file *common.File) bool {
+				return strings.HasPrefix(file.Name, "crds/")
+			})
+			for _, template := range previousChart.Templates {
+				if template.Name == "templates/_helpers.tpl" {
+					require.Contains(t, string(template.Data), "{{- .Chart.AppVersion -}}")
+					template.Data = bytes.Replace(template.Data, []byte("{{- .Chart.AppVersion -}}"), []byte(`{{- $parts := splitList "." .Chart.AppVersion -}}{{- printf "%s.%s" (index $parts 0) (index $parts 1) -}}`), 1)
+				}
+			}
+			configuration := &helm.Configuration{
+				Releases:     storage.Init(driver.NewMemory()),
+				KubeClient:   &kubefake.PrintingKubeClient{Out: io.Discard},
+				Capabilities: common.DefaultCapabilities,
+			}
+			client := NewHelmClient()
+			values := map[string]any{
+				"global":     map[string]any{"imageTag": testCase.storedTag},
+				"rp":         map[string]any{"publicEndpointOverride": "retained.example.test"},
+				"preupgrade": map[string]any{"enabled": true},
+			}
+			installed, err := client.RunHelmInstall(configuration, previousChart, values, "radius", "radius-system", false)
+			require.NoError(t, err)
+			require.Contains(t, helmWorkloadImages(t, installed.Manifest), "ghcr.io/radius-project/controller:0.61")
+
+			nextChart, err := loader.Load("../../../deploy/Chart")
+			require.NoError(t, err)
+			nextChart.Metadata.Version = "0.61.1"
+			nextChart.Metadata.AppVersion = "0.61.1"
+			nextChart.Files = slices.DeleteFunc(nextChart.Files, func(file *common.File) bool {
+				return strings.HasPrefix(file.Name, "crds/")
+			})
+			overrides := map[string]any{}
+			if testCase.clearTag {
+				overrides["global"] = map[string]any{"imageTag": ""}
+			}
+			upgraded, err := client.RunHelmUpgrade(configuration, nextChart, overrides, "radius", "radius-system", false, true)
+			require.NoError(t, err)
+			require.Equal(t, 2, upgraded.Version)
+			manifest := upgraded.Manifest
+			for _, hook := range upgraded.Hooks {
+				manifest += "\n---\n" + hook.Manifest
+			}
+			images := helmWorkloadImages(t, manifest)
+			for _, image := range []string{"applications-rp", "controller", "dynamic-rp", "ucpd", "pre-upgrade", "bicep", "dashboard", "deployment-engine"} {
+				require.Contains(t, images, "ghcr.io/radius-project/"+image+":"+testCase.expectedTag)
+			}
+			require.Equal(t, "retained.example.test", upgraded.Config["rp"].(map[string]any)["publicEndpointOverride"])
+		})
+	}
+}
+
+func helmWorkloadImages(t *testing.T, manifest string) []string {
+	t.Helper()
+	decoder := yaml.NewYAMLOrJSONDecoder(strings.NewReader(manifest), 4096)
+	var images []string
+	for {
+		var workload struct {
+			Spec struct {
+				Template corev1.PodTemplateSpec `json:"template"`
+			} `json:"spec"`
+		}
+		err := decoder.Decode(&workload)
+		if err == io.EOF {
+			return images
+		}
+		require.NoError(t, err)
+		for _, container := range append(workload.Spec.Template.Spec.Containers, workload.Spec.Template.Spec.InitContainers...) {
+			images = append(images, container.Image)
+		}
+	}
+}
 
 func TestHelmClientImpl_RunHelmHistory(t *testing.T) {
 	client := &HelmClientImpl{}

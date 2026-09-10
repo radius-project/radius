@@ -27,6 +27,10 @@ echo "$*" >>"${TEST_ROOT}/helm-calls"
 EOF
 cat > "${TEST_ROOT}/bin/curl" << 'EOF'
 #!/bin/bash
+if [[ "${FAKE_PUBLIC_INSTALL:-false}" == "true" ]]; then
+    cp "${TEST_ROOT}/rad" "${@: -1}"
+    exit
+fi
 echo "Staged verification must not download a public binary" >&2
 exit 1
 EOF
@@ -42,10 +46,10 @@ case "$*" in
             bicep-de) name=deployment-engine ;;
             ucp) name=ucpd ;;
         esac
-        jq -r --arg name "${name}" '.observed.images[] | select(.name == $name) | .reference + "@" + .digest' "${TEST_ROOT}/manifest.json"
+        jq -r --arg name "${name}" '.observed.images[] | select(.name == $name) | .reference + (if env.FAKE_PUBLIC_INSTALL == "true" then "" else "@" + .digest end)' "${TEST_ROOT}/manifest.json"
         ;;
     "get job pre-upgrade "*)
-        jq '{spec:{template:{spec:{containers:[{image:(.observed.images[] | select(.name == "pre-upgrade") | .reference + "@" + .digest)}]}}}}' "${TEST_ROOT}/manifest.json"
+        jq '{spec:{template:{spec:{containers:[{image:(.observed.images[] | select(.name == "pre-upgrade") | .reference + (if env.FAKE_PUBLIC_INSTALL == "true" then "" else "@" + .digest end))}]}}}}' "${TEST_ROOT}/manifest.json"
         ;;
     "get pods "*)
         jq '{items:[{spec:{initContainers:[{image:(.observed.images[] | select(.name == "bicep") | .reference + "@" + .digest)}]}}]}' "${TEST_ROOT}/manifest.json"
@@ -98,6 +102,8 @@ jq -e '.checks.installation == "verified"' "${RELEASE_VERIFY_MANIFEST}" > /dev/n
 grep -Fq -- "--chart ${TEST_ROOT}/radius.tgz" "${TEST_ROOT}/rad-calls"
 [[ "$(grep -o '@sha256:' "${TEST_ROOT}/rad-calls" | wc -l)" == "8" ]]
 grep -Fq -- 'delete cluster --name radius-verification-' "${TEST_ROOT}/kind-calls"
+FAKE_PUBLIC_INSTALL=true RELEASE_VERIFY_CLI="" RELEASE_VERIFY_MANIFEST="" \
+    bash "${ROOT}/.github/scripts/release-verification.sh" 0.61.0 > /dev/null
 if FAIL_INSTALL=true bash "${ROOT}/.github/scripts/release-verification.sh" 0.61.0 > /dev/null 2>&1; then
     echo "A failed installation was accepted" >&2
     exit 1
@@ -115,4 +121,4 @@ if bash "${ROOT}/.github/scripts/release-verification.sh" 0.61.0 > /dev/null 2>&
     echo "A changed staged binary was accepted" >&2
     exit 1
 fi
-echo "Staged installation tests passed (5 tests)"
+echo "Release installation tests passed (6 tests)"
