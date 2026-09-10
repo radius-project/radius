@@ -38,8 +38,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read
+      pull-requests: read
+
   snapshot:
     name: GoReleaser snapshot
+    needs: changes
+    # Docs-only pull requests cannot change the snapshot, so skip the build.
+    if: needs.changes.outputs.only_changed != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
@@ -59,10 +69,10 @@ jobs:
           cache: true
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       - name: Install comparison tools
         run: make install-jq install-yq

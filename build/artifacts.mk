@@ -46,6 +46,10 @@ goreleaser-check: ## Validate the GoReleaser configuration
 		TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
 		$(GORELEASER) check
 
+# GoReleaser builds images only when it publishes, so skipping docker or publish
+# leaves no images for the verifier to inspect.
+GORELEASER_VERIFY_ARGS := $(if $(or $(findstring docker,$(GORELEASER_ARGS)),$(findstring publish,$(GORELEASER_ARGS))),--skip-images)
+
 .PHONY: goreleaser-snapshot
 goreleaser-snapshot: ## Build and verify a GoReleaser snapshot
 	@REL_CHANNEL="$(REL_CHANNEL)" \
@@ -54,7 +58,7 @@ goreleaser-snapshot: ## Build and verify a GoReleaser snapshot
 		GIT_VERSION="$(GIT_VERSION)" \
 		TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
 		$(GORELEASER) release --snapshot --clean $(GORELEASER_ARGS)
-	@bash ./.github/scripts/verify-goreleaser-snapshot.sh
+	@bash ./.github/scripts/verify-goreleaser-snapshot.sh $(GORELEASER_VERIFY_ARGS)
 
 .PHONY: docker-save-images
 docker-save-images: ## Save Docker images to dist/images/*.tar
