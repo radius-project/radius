@@ -251,6 +251,74 @@ test_old_release_paths_are_deleted() {
     ((++PASS))
 }
 
+test_final_cleanup_contract() {
+    local file workflow
+    for file in get_release_version.py release-get-version.sh; do
+        if [[ -e "${SCRIPT_DIR}/${file}" ]]; then
+            fail_test "obsolete release helper remains: ${file}"
+            return
+        fi
+    done
+    for file in release-verification.yaml goreleaser-snapshot.yaml; do
+        if [[ -e "${REPO_ROOT}/.github/workflows/${file}" ]]; then
+            fail_test "obsolete workflow remains: ${file}"
+            return
+        fi
+    done
+    if grep -Fq 'docker-multi-arch' "${REPO_ROOT}/build/docker.mk"; then
+        fail_test "legacy multi-architecture build targets remain"
+        return
+    fi
+    if ! yq -o=json '.jobs."build-and-push-remaining-images".strategy.matrix.image' \
+        "${RELEASE_WORKFLOW}" | jq -e '. == ["bicep"]' >/dev/null ||
+        ! jq -e 'all(.images[]; .category != "test")' \
+            "${REPO_ROOT}/.github/release-parity/targets.json" >/dev/null; then
+        fail_test "test images are still official release outputs"
+        return
+    fi
+    for workflow in build-main.yaml build-validation.yaml; do
+        if ! yq -o=json '.jobs' "${REPO_ROOT}/.github/workflows/${workflow}" | jq -e '
+            ."build-snapshot".uses == "./.github/workflows/__build-snapshot.yaml" and
+            (."build-and-push-cli".needs | index("build-snapshot") != null) and
+            (."build-and-push-images".needs | index("build-snapshot") != null) and
+            (."build-check".needs | index("build-snapshot") != null and index("build-and-push-images") != null)
+        ' >/dev/null; then
+            fail_test "${workflow} bypasses the shared snapshot or its required check"
+            return
+        fi
+    done
+    for workflow in "${CLI_WORKFLOW}" "${IMAGE_WORKFLOW}"; do
+        if ! yq -o=json '.jobs' "${workflow}" | jq -e '
+            ([to_entries[] | select(.key != "publish-edge") | .value.permissions.packages] | all(. == null)) and
+            (."publish-edge".if | contains("refs/heads/main") and contains("radius-project/radius")) and
+            (."publish-edge".steps | any(.id == "current-main" and (.with.script | contains("getBranch"))))
+        ' >/dev/null; then
+            fail_test "snapshot exports gained registry permissions or edge lost its main-head guard"
+            return
+        fi
+    done
+    ((++PASS))
+}
+
+test_test_image_tags_are_attempt_scoped() {
+    if ! yq -o=json '.jobs' "${REPO_ROOT}/.github/workflows/functional-test-cloud.yaml" | jq -e '
+        (.build.env.REL_VERSION | startswith("test-") and contains("github.run_id") and contains("github.run_attempt")) and
+        .build.outputs.REL_VERSION == "${{ steps.test-image-version.outputs.REL_VERSION }}" and
+        .tests.env.REL_VERSION == "${{ needs.build.outputs.REL_VERSION }}" and
+        .tests.env.BICEP_RECIPE_TAG_VERSION == .tests.env.REL_VERSION
+    ' >/dev/null; then
+        fail_test "cloud test images can reuse tags across build attempts"
+        return
+    fi
+    if ! yq -o=json '.jobs.build.steps' "${REPO_ROOT}/.github/workflows/functional-test-noncloud.yaml" | jq -e '
+        any(.[]; .id == "gen-id" and (.run | contains("REL_VERSION=test-") and contains("${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}")))
+    ' >/dev/null; then
+        fail_test "noncloud test images do not use attempt-specific tags"
+        return
+    fi
+    ((++PASS))
+}
+
 test_release_resume_contract() {
     local published_guards
     local retry_count
@@ -324,6 +392,8 @@ main() {
     test_finalization_is_digest_locked
     test_main_publishes_only_edge
     test_old_release_paths_are_deleted
+    test_final_cleanup_contract
+    test_test_image_tags_are_attempt_scoped
     test_release_resume_contract
 
     if ((FAIL > 0)); then
