@@ -14,6 +14,7 @@ This directory records the review of the 18-pull-request stack that implements t
 | 6  | `dp/edge-tags-deprecation`              | [pr-06-edge-tags.md](./pr-06-edge-tags.md)                                 |
 | 7  | `dp/goreleaser-shadow-release`          | [pr-07-goreleaser-shadow.md](./pr-07-goreleaser-shadow.md)                 |
 | 8  | `dp/conventional-commit-title-required` | [pr-08-title-check-required.md](./pr-08-title-check-required.md)           |
+| 9  | `dp/idempotent-tag-reconciliation`      | [pr-09-tag-reconciliation.md](./pr-09-tag-reconciliation.md)               |
 
 Later notes are added as the review progresses up the stack.
 
