@@ -79,7 +79,7 @@ function fixture(releaseType = "final") {
     },
     images: targets.images.map((image) => ({
       name: image.name,
-      reference: `${targets.imageRegistry}/${image.name}:${image.radiusBuild ? version : channel}`,
+      reference: `${targets.imageRegistry}/${image.name}:${version}`,
       digest,
       platforms: image.requiredPlatforms.map((platform) => ({
         platform,
@@ -91,7 +91,7 @@ function fixture(releaseType = "final") {
       descriptor: { digest },
       renderedImages: targets.images
         .filter((image) => targets.helm.expectedImages.includes(image.name))
-        .map((image) => `${targets.imageRegistry}/${image.name}:${channel}`)
+        .map((image) => `${targets.imageRegistry}/${image.name}:${version}`)
     },
     downstream: {
       repositories: targets.siblingRepositories.map((repository) => ({
@@ -253,6 +253,23 @@ test("reports expected and observed mismatches without weakening other checks", 
     assert.ok(failure, name);
     assert.notDeepEqual(failure.expected, failure.observed, name);
     assert.equal(report.checks.installation, "pending");
+  }
+});
+
+test("stable chart gates reject channel tags while preserving non-chart channel contracts", () => {
+  for (const releaseType of ["final", "patch"]) {
+    const input = fixture(releaseType);
+    for (const reference of input.observed.helm.renderedImages) {
+      const changed = structuredClone(input);
+      changed.observed.helm.renderedImages =
+        changed.observed.helm.renderedImages.map((image) =>
+          image === reference ? image.replace(/:[^:]+$/, ":0.61") : image
+        );
+      const report = verifyReleaseManifest(changed);
+      assert.equal(report.checks.helm, "failed", reference);
+      assert.equal(report.checks.metadata, "verified");
+      assert.equal(report.checks.external, "verified");
+    }
   }
 });
 

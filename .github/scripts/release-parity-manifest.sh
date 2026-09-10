@@ -536,7 +536,7 @@ collect_images() {
         category="$(jq -r '.category' <<<"${target}")"
         radius_build="$(jq -r '.radiusBuild' <<<"${target}")"
         reference="${registry}/${name}:${channel}"
-        if [[ "${STAGED}" == "true" && "${radius_build}" == "true" ]]; then
+        if [[ "${STAGED}" == "true" ]]; then
             reference="${registry}/${name}:${VERSION}"
         fi
         raw_path="${TEMP_DIR}/image-${name}-raw.json"
