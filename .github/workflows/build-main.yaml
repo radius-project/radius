@@ -91,6 +91,11 @@ jobs:
     needs: [changes]
     if: github.repository == 'radius-project/radius' && github.ref == 'refs/heads/main' && needs.changes.outputs.only_changed != 'true'
     uses: ./.github/workflows/__build-bicep-types.yaml
+    # The publisher bot credentials are read inside the called job, which is the
+    # only job that carries the publish-bicep environment. Environment secrets
+    # cannot be passed by name to a reusable workflow, so the whole secret set
+    # is inherited and the called job resolves them from its environment.
+    secrets: inherit
     permissions:
       contents: read # Required for actions/checkout
 
