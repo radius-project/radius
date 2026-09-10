@@ -20,6 +20,14 @@ name: changelog-preview
 
 on:
   workflow_dispatch:
+  # A change to the template, the range script, or this workflow renders the
+  # preview on its own pull request, so a broken template is caught before a
+  # release is prepared.
+  pull_request:
+    paths:
+      - cliff.toml
+      - .github/scripts/changelog-range.sh
+      - .github/workflows/changelog-preview.yaml
 
 permissions: {}
 

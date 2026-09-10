@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -71,6 +71,10 @@ test-verify-goreleaser-snapshot: ## Tests the GoReleaser snapshot verifier
 .PHONY: test-changelog-range
 test-changelog-range: ## Tests changelog channel boundary resolution
 	@bash ./.github/scripts/changelog-range_test.sh
+
+.PHONY: test-changelog-config
+test-changelog-config: install-git-cliff ## Tests the git-cliff configuration against fixture commits
+	@bash ./.github/scripts/changelog-config_test.sh
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
