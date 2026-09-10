@@ -151,10 +151,10 @@ jobs:
           password: ${{ github.token }}
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
 
@@ -188,6 +188,17 @@ jobs:
       - name: Record shadow publication
         id: publish
         run: echo "published=true" >>"$GITHUB_OUTPUT"
+
+      # continue-on-error keeps the run green, so the failure is reported here
+      # where the release engineer looks; the production release is unaffected.
+      - name: Report shadow publication failure
+        if: failure()
+        run: |
+          {
+            echo "## GoReleaser shadow release"
+            echo
+            echo "The shadow publication failed. Inspect the failed step above; the production release is unaffected."
+          } >> "$GITHUB_STEP_SUMMARY"
 
   capture-production-image-digests:
     name: Capture production image digests
@@ -223,7 +234,7 @@ jobs:
           cache: false
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -254,9 +265,19 @@ jobs:
         id: capture
         run: echo "captured=true" >>"$GITHUB_OUTPUT"
 
+      - name: Report digest capture failure
+        if: failure()
+        run: |
+          {
+            echo "## GoReleaser shadow parity"
+            echo
+            echo "Capturing the production image digests failed, so the parity check did not run. Inspect the failed step above."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   verify-goreleaser-shadow:
     name: Verify GoReleaser shadow parity
-    needs: [build-and-push-cli, capture-production-image-digests, goreleaser-shadow]
+    needs:
+      [build-and-push-cli, capture-production-image-digests, goreleaser-shadow]
     if: |
       always() && github.repository == 'radius-project/radius'
       && startsWith(github.ref, 'refs/tags/v')
@@ -291,7 +312,7 @@ jobs:
           cache: false
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -329,6 +350,15 @@ jobs:
           GORELEASER_PRODUCTION_DIR: release
           GORELEASER_PRODUCTION_IMAGE_LOCK: dist/production-image-digests.json
           GORELEASER_PRODUCTION_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+
+      - name: Report parity failure
+        if: failure()
+        run: |
+          {
+            echo "## GoReleaser shadow parity"
+            echo
+            echo "The shadow output does not match the production release. See the 'Verify shadow parity' step log for the expected and actual values; resolve the difference before the GoReleaser cutover."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Add parity report to workflow summary
         if: always() && hashFiles('dist/goreleaser-shadow-parity.json') != ''
