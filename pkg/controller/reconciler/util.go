@@ -22,8 +22,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
-	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -63,33 +61,6 @@ func createResourceGroupIfNotExists(ctx context.Context, radius RadiusClient, re
 	}
 
 	return nil
-}
-
-func deleteResource(ctx context.Context, radius RadiusClient, resourceID string) (sdkclients.Poller[generated.GenericResourcesClientDeleteResponse], error) {
-	id, err := resources.Parse(resourceID)
-	if err != nil {
-		return nil, err
-	}
-
-	logger := ucplog.FromContextOrDiscard(ctx).WithValues("scope", id.RootScope(), "resourceType", id.Type())
-	logger.Info("Deleting resource.")
-
-	poller, err := radius.Resources(id.RootScope(), id.Type()).BeginDelete(ctx, id.Name(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	if !poller.Done() {
-		return poller, nil
-	}
-
-	// Handle synchronous completion
-	_, err = poller.Result(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return nil, nil
 }
 
 func generateDeploymentResourceName(resourceId string) (string, error) {

@@ -1,7 +1,5 @@
 # Radius Controller Component Threat Model
 
-> Historical threat model: the Recipe CRD, annotation-based Deployment controller, and Recipe admission webhook analyzed here have been removed. See the [current controller architecture](../../../docs/architecture/controller.md) for the remaining deployment and Flux GitOps workflows.
-
 - **Author**: ytimocin
 
 ## Overview

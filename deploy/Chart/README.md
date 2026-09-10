@@ -277,12 +277,6 @@ rad install kubernetes \
   --set 'networkPolicies.controlPlaneCIDRs={10.0.0.0/16}'
 ```
 
-## Upgrading From Legacy Kubernetes Onboarding
-
-The `Recipe` CRD, annotation-based Deployment onboarding, and the Recipe admission webhook are no longer installed or reconciled. Bicep/ARM deployments, `DeploymentTemplate`, `DeploymentResource`, and Flux GitOps remain supported.
-
-Before upgrading, follow the [legacy onboarding migration guidance](../../docs/architecture/controller.md#removal-of-legacy-kubernetes-onboarding). Helm does not delete existing Recipe CRDs or custom resources on upgrade, and their finalizers can block deletion after the old controller is removed. Generated connection Secrets are no longer refreshed. This chart does not automatically migrate resources or remove finalizers.
-
 ## Verify the installation
 
 Verify that the controller is running in the radius-system namespace:

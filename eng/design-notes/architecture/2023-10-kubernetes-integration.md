@@ -1,7 +1,5 @@
 # Kubernetes Integration
 
-> Historical design: the Recipe CRD and annotation-based Deployment onboarding described here have been removed. See the [current controller architecture and migration considerations](../../../docs/architecture/controller.md#removal-of-legacy-kubernetes-onboarding).
-
 * **Author**: Ryan Nowak (`@rynowak`)
 
 ## Overview

@@ -4,7 +4,7 @@ The `controller` binary runs the Kubernetes controller-manager-based workflows
 for Radius. It watches cluster resources, reconciles them, and drives Radius
 APIs where Kubernetes-native automation is required.
 
-The controller owns Kubernetes reconciliation for template deployment and Flux GitOps. It does not serve admission webhooks and is not the primary home of resource-type authoring or UCP routing logic.
+The controller owns Kubernetes reconciliation for template deployment and Flux GitOps. It is not the primary home of resource-type authoring or UCP routing logic.
 
 ## Entry Points
 
@@ -69,18 +69,6 @@ controller and the rest of the control plane.
 
 - `go test ./pkg/controller/...`
 - Pay particular attention to deployment template, deployment resource, and Flux tests in `pkg/controller/reconciler/...`.
-
-### Removal Of Legacy Kubernetes Onboarding
-
-The `radapp.io/v1alpha3` `Recipe` CRD, its validating webhook, and annotation-based onboarding of `apps/v1` Deployments have been removed. `radapp.io/enabled`, `radapp.io/environment`, `radapp.io/application`, and `radapp.io/connection-*` no longer create Radius resources or inject connection secrets. The controller no longer accepts `--cert-dir` or serves a webhook TLS endpoint. This does not remove Radius recipes or recipe packs used by Bicep/ARM deployments; `DeploymentTemplate`, `DeploymentResource`, and Flux GitOps remain supported.
-
-This is a breaking change for installations using the removed flows. Before upgrading, inventory existing Recipe objects and annotated Deployments, record the Radius resource IDs and any generated Secrets they depend on, and plan their replacement with Bicep/ARM deployment or Flux GitOps. Back up application data and explicitly manage connection Secrets and pod environment variables in the replacement workflow; no automatic migration is provided.
-
-While the old controller is still running, remove obsolete Recipe objects and disable annotation-based onboarding only when their backing resources can safely be deleted. Wait for the old controller to finish cleanup and remove its `radapp.io/recipe-finalizer` and `radapp.io/deployment-finalizer` finalizers. Removing a Recipe can delete its backing Radius resource and generated Secret; disabling onboarding can delete the paired Radius container and remove injected connections. Coordinate this with application cutover rather than treating it as metadata-only cleanup.
-
-Helm does not delete CRDs installed from `crds/` during upgrade, so an existing `recipes.radapp.io` CRD and its objects can remain even though the new controller no longer reconciles them. After upgrading, stale finalizers can block deletion and generated Secrets will no longer be refreshed. Do not blindly remove finalizers or delete the CRD: first reconcile ownership and cleanup of the backing Radius resources and Secrets. Remove the obsolete CRD only after all Recipe objects have been safely migrated or removed.
-
-The Helm and existing-application tutorials in `radius-project/docs` (`docs/content/reference/samples/helm/index.md` and `docs/content/reference/samples/tutorial-add-radius/index.md`) require a coordinated update before release.
 
 ## Package Dependency View
 
