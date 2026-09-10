@@ -6,6 +6,8 @@ for asynchronous operations. Each subsystem is defined by a Go interface in
 `pkg/components/` and has multiple implementations that can be selected at
 startup via configuration.
 
+These are the live control-plane stores. Whole-directory backups exported by `rad shutdown` and restored by `rad startup` use the separate OCI [durable state archive](state-archive.md). Archival requires `RADIUS_STATE_REGISTRY` and registry credentials.
+
 ```mermaid
 graph TD
     subgraph "Control Plane Services"

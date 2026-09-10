@@ -26,7 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/persistence"
-	gitstore "github.com/radius-project/radius/pkg/graph/persistence/git"
+	archivestore "github.com/radius-project/radius/pkg/graph/persistence/archive"
 	"github.com/spf13/cobra"
 )
 
@@ -65,8 +65,9 @@ the command compiles the template and writes the resulting modeled graph to
 
 If the command runs inside a GitHub Actions runner (GITHUB_ACTIONS=true), the
 modeled graph is saved to <source-branch>/app-graph.json in the radius-graph
-archive instead of the local filesystem. This is auto-detected; no flag
-is required.`,
+OCI archive instead of the local filesystem. Configure RADIUS_GRAPH_REGISTRY
+with an OCI repository and authenticate to the registry. Local output does not
+require a registry.`,
 		Args: cobra.MaximumNArgs(1),
 		Example: `
 # Show graph for the deployed application named my-application.
@@ -289,7 +290,7 @@ func (r *Runner) writeToLocalFile(graph *corerpv20250801preview.ApplicationGraph
 //
 // The raw branch name is encoded with url.QueryEscape before being used as
 // the key namespace. Real PR branches routinely contain path separators
-// ("feature/foo", "dependabot/..."), which the git store rejects in a
+// ("feature/foo", "dependabot/..."), which the archive store rejects in a
 // single namespace segment. Percent-encoding collapses each branch to a
 // single safe segment while keeping distinct branches distinct (so
 // "feature/foo" and "feature-foo" do not collide).
@@ -309,9 +310,9 @@ func (r *Runner) persistToArchive(ctx context.Context, graph *corerpv20250801pre
 		Message: fmt.Sprintf("radius: update modeled graph for %s", branch),
 	}
 	if err := r.GraphStore.Save(ctx, key, graph, opts); err != nil {
-		return fmt.Errorf("save modeled graph to %s archive: %w", gitstore.DefaultGraphArchive, err)
+		return fmt.Errorf("save modeled graph to %s archive: %w", archivestore.DefaultGraphArchive, err)
 	}
 
-	r.Output.LogInfo("Parsed %d resources. Saved %s/%s.json to archive %s", len(graph.Resources), namespace, modeledGraphKeyName, gitstore.DefaultGraphArchive)
+	r.Output.LogInfo("Parsed %d resources. Saved %s/%s.json to archive %s", len(graph.Resources), namespace, modeledGraphKeyName, archivestore.DefaultGraphArchive)
 	return nil
 }
