@@ -12,16 +12,16 @@ Build Radius service images from source and push them to a container registry th
 
 The following images are built from this repository:
 
-| Image | Source |
-|-------|--------|
-| `ucpd` | `deploy/images/ucpd` |
+| Image             | Source                          |
+|-------------------|---------------------------------|
+| `ucpd`            | `deploy/images/ucpd`            |
 | `applications-rp` | `deploy/images/applications-rp` |
-| `dynamic-rp` | `deploy/images/dynamic-rp` |
-| `controller` | `deploy/images/controller` |
-| `bicep` | `deploy/images/bicep` |
-| `pre-upgrade` | `deploy/images/pre-upgrade` |
-| `testrp` | `test/testrp` |
-| `magpiego` | `test/magpiego` |
+| `dynamic-rp`      | `deploy/images/dynamic-rp`      |
+| `controller`      | `deploy/images/controller`      |
+| `bicep`           | `deploy/images/bicep`           |
+| `pre-upgrade`     | `deploy/images/pre-upgrade`     |
+| `testrp`          | `test/testrp`                   |
+| `magpiego`        | `test/magpiego`                 |
 
 > **Not built here:** The `deployment-engine` and `dashboard` images are **not** built from this repository. They are published separately to `ghcr.io/radius-project/`. When installing with a custom registry you need to pin these to their public location — see the `radius-install-custom` skill.
 
@@ -47,7 +47,7 @@ export DOCKER_TAG_VERSION=latest
 ```
 
 > **Note:** The user must already be logged in to the registry (`docker login`, `az acr login`, etc.). If you get authentication errors, ask the user to log in first.
-
+>
 > **Default:** If `DOCKER_REGISTRY` is not set, the Makefile defaults to your OS username (from `build/docker.mk`). Always set it explicitly.
 
 ### Step 3: Build and Push the Images
@@ -89,28 +89,37 @@ For native `linux/arm64` images (e.g. on Apple Silicon with an arm64 Kubernetes 
 make configure-buildx
 ```
 
-Then build and push all architectures:
+Select the builder and build the canonical core snapshot:
 
 ```sh
-DOCKER_REGISTRY=${DOCKER_REGISTRY} DOCKER_TAG_VERSION=${DOCKER_TAG_VERSION} make docker-multi-arch-push
+docker buildx use radius-builder
+export GORELEASER_IMAGE_REGISTRY="${DOCKER_REGISTRY}"
+make install-goreleaser install-syft install-jq install-yq install-oras
+make goreleaser-check goreleaser-snapshot
+make goreleaser-push-edge
+make docker-publish-bicep DOCKER_TAG_VERSION=edge
 ```
+
+This publishes the five core images and Bicep as `edge` in the selected registry. Install with that tag. Snapshot mode itself only loads platform-specific local images; the edge target assembles their registry manifests without recompiling. Functional workflows own `testrp` and `magpiego` publication with test-specific tags; retain the single-image Make targets for local testing.
 
 ## Quick Reference
 
-| Goal | Command |
-|------|---------|
-| Set registry | `export DOCKER_REGISTRY=ghcr.io/<your-registry> && export DOCKER_TAG_VERSION=latest` |
-| Build + push all images | `make docker-build docker-push` |
-| Build all images | `make docker-build` |
-| Push all images | `make docker-push` |
-| Single image build + push | `make docker-build-<name> && make docker-push-<name>` |
-| Multi-arch build + push | `make docker-multi-arch-push` |
-| Setup buildx (one-time) | `make configure-buildx` |
+| Goal                          | Command                                                                              |
+|-------------------------------|--------------------------------------------------------------------------------------|
+| Set registry                  | `export DOCKER_REGISTRY=ghcr.io/<your-registry> && export DOCKER_TAG_VERSION=latest` |
+| Build + push all images       | `make docker-build docker-push`                                                      |
+| Build all images              | `make docker-build`                                                                  |
+| Push all images               | `make docker-push`                                                                   |
+| Single image build + push     | `make docker-build-<name> && make docker-push-<name>`                                |
+| Core snapshot build           | `make goreleaser-snapshot`                                                           |
+| Publish core snapshot as edge | `make goreleaser-push-edge`                                                          |
+| Publish multi-arch Bicep      | `make docker-publish-bicep DOCKER_TAG_VERSION=edge`                                  |
+| Setup buildx (one-time)       | `make configure-buildx`                                                              |
 
 ## Key Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DOCKER_REGISTRY` | OS username (from `build/docker.mk`) | Target registry for built images. Set explicitly to your registry. |
-| `DOCKER_TAG_VERSION` | `latest` | Image tag |
-| `DOCKER_CACHE_GHA` | `0` | Set to `1` to enable GitHub Actions layer caching |
+| Variable                    | Default                              | Description                                                             |
+|-----------------------------|--------------------------------------|-------------------------------------------------------------------------|
+| `DOCKER_REGISTRY`           | OS username (from `build/docker.mk`) | Target registry for built images. Set explicitly to your registry.      |
+| `DOCKER_TAG_VERSION`        | `latest`                             | Image tag                                                               |
+| `GORELEASER_IMAGE_REGISTRY` | `ghcr.io/radius-project`             | Snapshot image registry; set it to the same value as `DOCKER_REGISTRY`. |
