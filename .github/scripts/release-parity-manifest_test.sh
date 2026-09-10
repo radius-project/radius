@@ -468,6 +468,14 @@ jq -e '
 ' "${OUTPUT}" >/dev/null || fail "staged collection used mutable Radius images"
 [[ -f "${TEST_ROOT}/staged-assets/rad_linux_amd64" ]] ||
   fail "staged collector did not retain the installation binary"
+jq '.images[0].radiusBuild = false' "${TARGETS}" >"${FIXTURES}/external-targets.json"
+mv "${FIXTURES}/external-targets.json" "${TARGETS}"
+RELEASE_PARITY_STAGED=true \
+  RELEASE_PARITY_ASSETS_DIR="${TEST_ROOT}/external-assets" run_collector
+jq -e '.images[0].reference == "ghcr.io/radius-project/ucpd:0.60.0"' \
+  "${OUTPUT}" >/dev/null || fail "staged external inspection used a channel tag"
+jq '.images[0].radiusBuild = true' "${TARGETS}" >"${FIXTURES}/radius-targets.json"
+mv "${FIXTURES}/radius-targets.json" "${TARGETS}"
 jq '.draft = false' "${FIXTURES}/release.json" >"${FIXTURES}/final.json"
 mv "${FIXTURES}/final.json" "${FIXTURES}/release.json"
 

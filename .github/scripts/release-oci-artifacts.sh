@@ -44,6 +44,7 @@ VERIFY_ALIASES=false
 VERIFY_SBOMS=false
 PROMOTE_LATEST="${RELEASE_PROMOTE_LATEST:-true}"
 SOURCE_SHA="${RELEASE_SOURCE_SHA:-}"
+EXPECTED_DIGEST=""
 TEMP_DIR=""
 readonly RETRY_ATTEMPTS="${RELEASE_RETRY_ATTEMPTS:-5}"
 readonly RETRY_MAX_DELAY_SECONDS="${RELEASE_RETRY_MAX_DELAY_SECONDS:-15}"
@@ -141,6 +142,9 @@ retry_read() {
 usage() {
     cat >&2 << 'EOF'
 Usage:
+    release-oci-artifacts.sh pin-image --registry <registry> --names <name> \
+        --version <version> --channel <published-tag> --source-sha <sha> \
+        [--expected-digest <sha256:...>]
   release-oci-artifacts.sh stage-cli --registry <registry> \
     --version <version> --artifacts <artifacts.json> --output <lock.json>
     release-oci-artifacts.sh stage-cli --registry <registry> \
@@ -209,6 +213,10 @@ parse_args() {
                 ;;
             --source-sha)
                 SOURCE_SHA="${2:-}"
+                shift 2
+                ;;
+            --expected-digest)
+                EXPECTED_DIGEST="${2:-}"
                 shift 2
                 ;;
             --aliases)
@@ -605,6 +613,78 @@ image_reference_state() {
             fail "cannot reconcile ${reference}: ${output}"
         fi
         wait_before_retry "image preflight" "${attempt}"
+    done
+}
+
+pin_image() {
+    local repository reference target raw digest expected_platforms state
+    local attempt output status
+
+    require_command docker
+    require_command oras
+    require_command jq
+    validate_version
+    validate_source_sha
+    [[ -n "${REGISTRY}" ]] || fail "registry is required"
+    [[ "${CHANNEL}" =~ ^[0-9]+\.[0-9]+$ ]] ||
+        is_radius_release_version "${CHANNEL}" || fail "invalid published tag"
+    [[ -z "${EXPECTED_DIGEST}" ||
+        "${EXPECTED_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]] ||
+        fail "invalid expected digest"
+    expected_platforms="$(jq -ce --arg name "${NAMES}" '
+        [.images[] | select(.name == $name and .radiusBuild == false)] |
+        if length == 1 then .[0].requiredPlatforms | sort
+        else error("select exactly one external image") end
+    ' "${TARGETS_FILE}")"
+    repository="${REGISTRY%/}/${NAMES}"
+    target="${repository}:${VERSION}"
+    reference="${repository}:${CHANNEL}"
+    state="$(image_reference_state "${target}")"
+    if [[ "${state}" == "exists" ]]; then
+        reference="${target}"
+    fi
+    raw="$(retry_read "external image inspection" \
+        docker buildx imagetools inspect --format '{{json .}}' "${reference}")"
+    digest="$(jq -er '.manifest.digest |
+        select(test("^sha256:[0-9a-f]{64}$"))' <<< "${raw}")"
+    jq -e --arg source "${SOURCE_SHA}" \
+        --argjson platforms "${expected_platforms}" '
+        def platform_name:
+            .os + "/" + .architecture +
+            (if (.variant // "") == "" then "" else "/" + .variant end);
+        ([if .manifest.manifests then
+            .manifest.manifests[] | select(.platform.os != "unknown") | .platform
+          else .image end | platform_name] | sort) == $platforms and
+        ([if .manifest.manifests then
+            .image | to_entries[] | select(.key != "unknown/unknown") | .value
+          else .image end | .config.Labels."org.opencontainers.image.revision"] |
+         unique) == [$source]
+    ' <<< "${raw}" > /dev/null ||
+        fail "external image source or platforms differ from the plan: ${reference}"
+    [[ -z "${EXPECTED_DIGEST}" || "${digest}" == "${EXPECTED_DIGEST}" ]] ||
+        fail "external image differs from its locked digest: ${reference}"
+    [[ "${state}" == "exists" ]] && return
+
+    for ((attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++)); do
+        if [[ "$(image_reference_state "${target}")" == "exists" ]]; then
+            verify_image_alias "${target}" "${digest}"
+            return
+        fi
+        if output="$(oras tag "${repository}@${digest}" "${VERSION}" 2>&1)"; then
+            verify_image_alias "${target}" "${digest}"
+            return
+        else
+            status=$?
+        fi
+        if [[ "$(image_reference_state "${target}")" == "exists" ]]; then
+            verify_image_alias "${target}" "${digest}"
+            return
+        fi
+        if ((attempt == RETRY_ATTEMPTS)) || ! is_retryable_error "${output}"; then
+            echo "${output}" >&2
+            return "${status}"
+        fi
+        wait_before_retry "immutable external image tag" "${attempt}"
     done
 }
 
@@ -1045,6 +1125,7 @@ promote_aliases() {
 main() {
     parse_args "$@"
     case "${COMMAND}" in
+        pin-image) pin_image ;;
         stage-cli) stage_cli ;;
         promote) promote_aliases ;;
         verify) verify_locks ;;

@@ -369,6 +369,8 @@ test_subsequent_rc_rejects_historical_form() {
 
 test_final() {
     setup_repo "v0.60.0-rc.3"
+    cp "${SCRIPT_DIR}/../../docs/release-notes/template.md" \
+        "${REPO}/docs/release-notes/template.md"
     make_release_branch 0.60
     git -C "${REPO}" tag v0.60.0-rc.3
     run_prepare final 0.60
@@ -378,6 +380,8 @@ test_final() {
     assert_file_contains "${REPO}/out/requires-backport.txt" 'true' || return
     assert_file_contains "${REPO}/docs/release-notes/v0.60.0.md" \
         '## Upgrading to Radius v0.60.0' || return
+    assert_file_contains "${REPO}/docs/release-notes/v0.60.0.md" \
+        'Restarting pods no longer picks up later patches implicitly' || return
     ((++PASS))
 }
 
@@ -466,11 +470,15 @@ test_version_only_does_not_mutate_files() {
 
 test_patch() {
     setup_repo "v0.60.2"
+    cp "${SCRIPT_DIR}/../../docs/release-notes/template_patch.md" \
+        "${REPO}/docs/release-notes/template_patch.md"
     make_release_branch 0.60
     git -C "${REPO}" tag v0.60.2
     git -C "${REPO}" tag v0.61.0
     run_prepare patch 0.60
     assert_version "v0.60.3" || return
+    assert_file_contains "${REPO}/docs/release-notes/v0.60.3.md" \
+        'Restarting pods no longer picks up later patches implicitly' || return
     assert_file_contains "${REPO}/CHANGELOG.md" \
         'compare/v0.60.2...v0.60.3' || return
     ((++PASS))
