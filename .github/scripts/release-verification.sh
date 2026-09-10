@@ -156,12 +156,6 @@ readonly DOWNLOAD_URL="${DOWNLOAD_BASE}/v${RELEASE_VERSION_NUMBER}/${RADIUS_CLI_
 EXPECTED_CLI_VERSION=$RELEASE_VERSION_NUMBER
 
 EXPECTED_TAG_VERSION="$RELEASE_VERSION_NUMBER"
-# if RELEASE_VERSION_NUMBER contains -rc, then it is a prerelease.
-# In that case, we need to set expected tag version to the major.minor of the
-# release version number
-if [[ "$RELEASE_VERSION_NUMBER" != *"rc"* ]]; then
-    EXPECTED_TAG_VERSION=$(echo "$RELEASE_VERSION_NUMBER" | cut -d '.' -f 1,2)
-fi
 
 echo "RELEASE_VERSION_NUMBER: ${RELEASE_VERSION_NUMBER}"
 echo "OS: ${OS}"

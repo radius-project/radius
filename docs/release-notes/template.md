@@ -26,6 +26,8 @@ Welcome to our new contributors who have merged their first PR in this release!
 
 ## Upgrading to Radius vX.Y.Z
 
+**Helm image pinning:** This release's Helm chart pins Radius component images to the full release version. Restarting pods no longer picks up later patches implicitly; upgrade the chart to receive patched images. Existing channel aliases remain available, and explicitly configured `global.imageTag`, component tags, or image references keep overriding chart defaults. Clear those overrides to adopt version-pinned defaults while retaining other settings.
+
 You can upgrade to this release by upgrading your Radius CLI then running `rad upgrade kubernetes`. Only incremental version upgrades are supported. Consult the [upgrade documentation](https://docs.radapp.io/guides/operations/kubernetes/kubernetes-upgrade/) for full details.
 
 ## Full changelog
