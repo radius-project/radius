@@ -48,7 +48,7 @@ gh api -H 'Accept: application/vnd.github.raw+json' \
     "repos/radius-project/radius/contents/.github/release-state/deployment-engine.json?ref=automation/release-state-${VERSION}" \
     > "${DIRECTORY}/controller-lock.json"
 bash "${ROOT}/.github/scripts/verify-deployment-engine-image.sh" \
-    --tag "$(jq -er '.deploymentEngine.imageTag' "${DIRECTORY}/controller-lock.json")" \
+    --tag "${VERSION}" \
     --signed-tag "v${VERSION}" \
     --source-commit "$(jq -er '.deploymentEngine.sourceCommit' "${DIRECTORY}/controller-lock.json")" \
     --expected-digest "$(jq -er '.deploymentEngine.digest' "${DIRECTORY}/controller-lock.json")" \
