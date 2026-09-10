@@ -27,7 +27,7 @@ jobs:
   build-and-push-helm-chart:
     name: Helm chart build
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 15
     permissions:
       packages: write # Required for uploading the package
       contents: read # Required for actions/checkout
@@ -56,6 +56,43 @@ jobs:
 
       - name: Run Helm linter
         run: helm lint "${HELM_CHARTS_DIR}"
+
+      - name: Install image pinning tools
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: make install-jq install-yq install-oras
+
+      - name: Setup Docker Buildx
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Authenticate external image pinning
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Pin external chart images
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          plan=".github/release-plans/v${REL_VERSION}.yaml"
+          lock="${RUNNER_TEMP}/deployment-engine-lock.json"
+          gh api -H 'Accept: application/vnd.github.raw+json' \
+            "repos/${GITHUB_REPOSITORY}/contents/.github/release-state/deployment-engine.json?ref=automation/release-state-${REL_VERSION}" >"${lock}"
+          jq -e --arg version "v${REL_VERSION}" --arg source "$(git rev-parse HEAD)" \
+            '.version == $version and .releaseSourceCommit == $source and .deploymentEngine.signedTag == $version' "${lock}"
+          bash ./.github/scripts/release-oci-artifacts.sh pin-image \
+            --registry ghcr.io/radius-project --names deployment-engine \
+            --version "${REL_VERSION}" --channel "$(jq -er '.deploymentEngine.imageTag' "${lock}")" \
+            --source-sha "$(jq -er '.deploymentEngine.sourceCommit' "${lock}")" \
+            --expected-digest "$(jq -er '.deploymentEngine.digest' "${lock}")"
+          bash ./.github/scripts/release-oci-artifacts.sh pin-image \
+            --registry ghcr.io/radius-project --names dashboard \
+            --version "${REL_VERSION}" --channel "${REL_CHANNEL}" \
+            --source-sha "$(yq -er '.siblingRepositories[] | select(.name == "dashboard") | .sourceCommit' "${plan}")"
 
       - name: Package Helm chart
         run: |

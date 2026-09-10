@@ -270,7 +270,11 @@ JSON
         printf '}\n'
         exit 0
     fi
-    printf '{"manifest":{"digest":"%s"}}\n' "${digest}"
+    if [[ -n "${FAKE_IMAGE_INSPECTION:-}" ]]; then
+        jq --arg digest "${digest}" '.manifest.digest = $digest' "${FAKE_IMAGE_INSPECTION}"
+    else
+        printf '{"manifest":{"digest":"%s"}}\n' "${digest}"
+    fi
     exit 0
 fi
 
@@ -361,6 +365,7 @@ test_real_oras_preserves_basename() {
     local layout
     local pull_dir
     local release_dir
+    local digest
 
     setup_fixture
     layout="${TEST_ROOT}/layout"
@@ -398,6 +403,16 @@ EOF
         fail_test "real ORAS push did not preserve the CLI basename"
         return
     fi
+    digest="$("${real_oras}" resolve --oci-layout "${layout}/rad/linux-amd64:0.61.0")"
+    "${real_oras}" tag --oci-layout "${layout}/rad/linux-amd64@${digest}" 0.61.1 > /dev/null
+    [[ "$("${real_oras}" resolve --oci-layout "${layout}/rad/linux-amd64:0.61.1")" == "${digest}" ]] || {
+        fail_test "native ORAS tagging changed the content digest"
+        return
+    }
+    [[ "$("${real_oras}" resolve --oci-layout "${layout}/rad/linux-amd64:0.61.0")" == "${digest}" ]] || {
+        fail_test "native ORAS tagging changed the source reference"
+        return
+    }
     ((++PASS))
 }
 
@@ -706,6 +721,87 @@ test_image_preflight_fails_closed_on_lookup_errors() {
     ((++PASS))
 }
 
+test_pins_external_images_without_rebuilding_or_moving_aliases() {
+    local digest source_reference target_reference
+    setup_fixture
+    digest="sha256:$(digest_for dashboard)"
+    source_reference=example.test/radius/dashboard:0.61
+    target_reference=example.test/radius/dashboard:0.61.2
+    jq '.images += [{name:"dashboard",radiusBuild:false,category:"downstream",
+        requiredPlatforms:["linux/amd64"]}]' "${TEST_ROOT}/targets.json" \
+        > "${TEST_ROOT}/external-targets.json"
+    mv "${TEST_ROOT}/external-targets.json" "${TEST_ROOT}/targets.json"
+    jq -n --arg source "${SOURCE_SHA}" '{manifest:{digest:""},image:{
+        os:"linux",architecture:"amd64",config:{Labels:{
+        "org.opencontainers.image.revision":$source}}}}' \
+        > "${TEST_ROOT}/inspection.json"
+    printf '%s\t%s\n' "${source_reference}" "${digest}" >> "${TEST_ROOT}/registry-state"
+    FAKE_IMAGE_INSPECTION="${TEST_ROOT}/inspection.json" FAKE_FAIL_TAG_ONCE=true \
+        run_script pin-image --registry example.test/radius --names dashboard \
+        --version 0.61.2 --channel 0.61 --expected-digest "${digest}"
+    [[ "$(awk -F '\t' -v ref="${target_reference}" '$1 == ref {print $2}' \
+        "${TEST_ROOT}/registry-state")" == "${digest}" ]] || {
+        fail_test "external version tag does not preserve the manifest digest"
+        return
+    }
+    : > "${TEST_ROOT}/calls"
+    FAKE_IMAGE_INSPECTION="${TEST_ROOT}/inspection.json" \
+        run_script pin-image --registry example.test/radius --names dashboard \
+        --version 0.61.2 --channel 0.61 --expected-digest "${digest}"
+    if grep -Eq '^oras tag|imagetools create|docker build ' "${TEST_ROOT}/calls"; then
+        fail_test "retry rebuilt or retagged an existing immutable image"
+        return
+    fi
+    if FAKE_IMAGE_INSPECTION="${TEST_ROOT}/inspection.json" \
+        run_script pin-image --registry example.test/radius --names dashboard \
+        --version 0.61.2 --channel 0.61 --expected-digest "sha256:$(digest_for conflict)" \
+        > /dev/null 2>&1; then
+        fail_test "pinning accepted a conflicting locked digest"
+        return
+    fi
+    if FAKE_IMAGE_INSPECTION="${TEST_ROOT}/inspection.json" \
+        run_script pin-image --registry example.test/radius --names dashboard \
+        --version 0.61.3 --channel 0.61 --source-sha bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb \
+        > /dev/null 2>&1; then
+        fail_test "pinning accepted a source mismatch"
+        return
+    fi
+    if FAKE_IMAGE_LOOKUP_ERROR=credentials \
+        run_script pin-image --registry example.test/radius --names dashboard \
+        --version 0.61.3 --channel 0.61 > /dev/null 2>&1; then
+        fail_test "pinning accepted a registry lookup failure"
+        return
+    fi
+    jq 'del(.image.config.Labels)' "${TEST_ROOT}/inspection.json" \
+        > "${TEST_ROOT}/unlabeled.json"
+    if FAKE_IMAGE_INSPECTION="${TEST_ROOT}/unlabeled.json" \
+        run_script pin-image --registry example.test/radius --names dashboard \
+        --version 0.61.3 --channel 0.61 > /dev/null 2>&1; then
+        fail_test "pinning accepted an external image without source evidence"
+        return
+    fi
+    jq '{manifest:{manifests:[{platform:{os:"linux",architecture:"amd64"}}]},
+        image:{"linux/amd64":.image}}' "${TEST_ROOT}/inspection.json" \
+        > "${TEST_ROOT}/index.json"
+    FAKE_IMAGE_INSPECTION="${TEST_ROOT}/index.json" \
+        run_script pin-image --registry example.test/radius --names dashboard \
+        --version 0.61.3 --channel 0.61 --expected-digest "${digest}"
+    jq '.manifest.manifests[0].platform.architecture = "arm64"' \
+        "${TEST_ROOT}/index.json" > "${TEST_ROOT}/wrong-platform.json"
+    if FAKE_IMAGE_INSPECTION="${TEST_ROOT}/wrong-platform.json" \
+        run_script pin-image --registry example.test/radius --names dashboard \
+        --version 0.61.4 --channel 0.61 > /dev/null 2>&1; then
+        fail_test "pinning accepted an unexpected platform set"
+        return
+    fi
+    [[ "$(awk -F '\t' -v ref="${source_reference}" '$1 == ref {print $2}' \
+        "${TEST_ROOT}/registry-state")" == "${digest}" ]] || {
+        fail_test "pinning modified the original channel alias"
+        return
+    }
+    ((++PASS))
+}
+
 main() {
     export RELEASE_SOURCE_SHA="${SOURCE_SHA}"
     test_stages_cli_artifacts
@@ -723,6 +819,7 @@ main() {
     test_rejects_stale_cli_tag_without_overwriting
     test_requires_image_lock_before_reusing_version_tag
     test_image_preflight_fails_closed_on_lookup_errors
+    test_pins_external_images_without_rebuilding_or_moving_aliases
 
     if ((FAIL > 0)); then
         echo "release OCI artifact tests failed: ${PASS} passed, ${FAIL} failed"
