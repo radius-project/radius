@@ -1,0 +1,72 @@
+---
+name: __build-snapshot
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  snapshot:
+    name: Build core snapshot
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      DOCKER_REGISTRY: ${{ github.repository == 'radius-project/radius' && github.ref == 'refs/heads/main' && 'ghcr.io/radius-project' || 'ghcr.io/radius-project/dev' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set build metadata
+        run: bash ./.github/scripts/release-version.sh >>"${GITHUB_ENV}"
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Install snapshot tools
+        run: make install-goreleaser install-syft install-jq install-yq
+
+      - name: Build and verify snapshot
+        run: make goreleaser-check goreleaser-snapshot
+        env:
+          GORELEASER_IMAGE_REGISTRY: ${{ env.DOCKER_REGISTRY }}
+
+      - name: Export snapshot images
+        run: make goreleaser-save-images DOCKER_TAG_VERSION="${REL_VERSION}"
+
+      - name: Upload native CLI artifacts and metadata
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: core-snapshot-${{ github.sha }}
+          path: |
+            dist/goreleaser/artifacts.json
+            dist/goreleaser/metadata.json
+            dist/goreleaser/rad*
+            dist/goreleaser/*.sha256
+            dist/goreleaser/*.sbom.json
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+      - name: Upload native snapshot images
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: core-snapshot-images-${{ github.sha }}
+          path: dist/images
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
