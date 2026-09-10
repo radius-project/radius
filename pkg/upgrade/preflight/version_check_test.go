@@ -157,6 +157,15 @@ func TestValidateVersionJump(t *testing.T) {
 			expectValid:    true,
 		},
 		{
+			// SemVer orders the dotted identifier before the legacy one, which is
+			// why the two forms are never mixed within one version.
+			name:           "dotted prerelease after legacy prerelease is a downgrade",
+			currentVersion: "0.61.0-rc1",
+			targetVersion:  "0.61.0-rc.2",
+			expectValid:    false,
+			expectMessage:  "Downgrading is not supported",
+		},
+		{
 			name:           "safe patch bump",
 			currentVersion: "v0.55.0",
 			targetVersion:  "v0.55.1",

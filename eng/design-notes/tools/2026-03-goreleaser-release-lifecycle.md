@@ -322,7 +322,7 @@ These concerns share one invariant: exactly one authoritative version record exi
 
 No tool can infer compatibility impact from code with complete accuracy. Every automated option moves the human decision to a different reviewable input: a commit type, a change-fragment bump, or a pull request label. Radius must also document how these signals map to its current `0.x` versions and RC prereleases because SemVer intentionally gives projects more latitude before `1.0.0`.
 
-Radius historically tagged RCs as `-rc1`, `-rc2`, and SemVer compares those alphanumeric prerelease identifiers lexically, so `0.56.0-rc10` sorts before `0.56.0-rc2`. New releases use the dotted `-rc.N` form, whose numeric identifier orders correctly. Historical `-rcN` tags remain readable for previous-tag selection and upgrade compatibility; they are not rewritten. The Helm chart's prerelease detection matches any `rc` substring and is unaffected.
+Radius historically tagged RCs as `-rc1`, `-rc2`, and SemVer compares those alphanumeric prerelease identifiers lexically, so `0.56.0-rc10` sorts before `0.56.0-rc2`. New releases use the dotted `-rc.N` form, whose numeric identifier orders correctly. Historical `-rcN` tags remain readable for previous-tag selection and upgrade compatibility; they are not rewritten. The two forms are never mixed within one version, because SemVer orders `0.61.0-rc.2` before `0.61.0-rc1` and the upgrade preflight would treat that move as a downgrade; the dotted form starts with the first RC of a version. The Helm chart's prerelease detection matches any `rc` substring and is unaffected.
 
 #### Common changelog output contract
 
