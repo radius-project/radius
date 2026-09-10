@@ -50,8 +50,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
-      pull-requests: write # Required by wip to hold the check in a pending state
-      statuses: write # Required to report the title policy on merge-group commits
+      pull-requests: read # Required to read the pull request title
+      statuses: write # Required for the status the action posts under wip, and the failure status below
     steps:
       - name: Validate Conventional Commit title
         id: validate
@@ -63,18 +63,28 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
+      # Under wip the action leaves the status pending for an invalid title, so
+      # the failure is reported explicitly. The action sets error_message only
+      # when the title itself failed; a failure without it means the validation
+      # never ran, which must block as well but is not a title problem.
       - name: Mark an invalid title as failed
         if: failure() && steps.validate.outcome == 'failure'
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ERROR_MESSAGE: ${{ steps.validate.outputs.error_message }}
         with:
           script: |
+            const invalidTitle = process.env.ERROR_MESSAGE !== ''
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha: context.payload.pull_request.head.sha,
               state: 'failure',
               context: 'action-semantic-pull-request',
-              description: 'PR title validation failed',
+              description: invalidTitle
+                ? 'PR title validation failed'
+                : 'Title validation did not run; see the workflow log',
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             })
 
   validate-merge-group:

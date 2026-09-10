@@ -68,7 +68,7 @@ build_fixture() {
     commit "chore!: drop the python build path (#105)"
     commit "chore(deps): bump the go-deps group (#106)"
     commit "ci(deps): bump the github-actions group (#107)"
-    commit "deps: bump helm (#108)"
+    commit "style: reformat the graph package (#108)"
     commit "revert: revert the graph walk change (#109)"
     commit "docs: update the guide (#110)"
     commit "test: add tests (#111)"
@@ -135,12 +135,11 @@ expect_under "Fixed" "Preserve resource status (#102)" "${UNRELEASED}"
 expect_under "Changed" "Speed up graph walks (#103)" "${UNRELEASED}"
 expect_under "Dependencies" "Bump the go-deps group (#106)" "${UNRELEASED}"
 expect_under "Dependencies" "Bump the github-actions group (#107)" "${UNRELEASED}"
-expect_under "Dependencies" "Bump helm (#108)" "${UNRELEASED}"
 expect_under "Reverted changes" "Revert the graph walk change (#109)" "${UNRELEASED}"
 expect_under "Other changes" "Legacy subject without a type (#115)" "${UNRELEASED}"
 
 # Excluded types never reach the changelog.
-for excluded in "(#110)" "(#111)" "(#112)" "(#113)" "(#114)"; do
+for excluded in "(#108)" "(#110)" "(#111)" "(#112)" "(#113)" "(#114)"; do
     expect_absent "${excluded}" "${UNRELEASED}"
 done
 
