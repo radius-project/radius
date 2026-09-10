@@ -111,7 +111,7 @@ reconcile_branch() {
             fail "could not query release branch ${branch} after push failure"
         fi
         if [[ -z "${observed}" ]]; then
-            fail "could not create release branch ${branch}; planned commit ${release_commit} is not reachable from ${observed:-<missing>}"
+            fail "could not push release branch ${branch} at ${release_commit} and the remote has no such branch; see the git error above"
         fi
         fetch_branch "${branch}"
         if ! git merge-base --is-ancestor "${release_commit}" FETCH_HEAD; then
