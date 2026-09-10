@@ -310,7 +310,10 @@ test("does not retry non-transient API failures", async () => {
   });
 
   assert.equal(attempts, 1);
-  assert.match(core.failures[0], /Invalid workflow query/);
+  assert.equal(
+    core.failures[0],
+    "publisher run lookup failed: Invalid workflow query"
+  );
 });
 
 test("reconciles an accepted final dispatch after a transient response error", async () => {
@@ -366,6 +369,55 @@ test("retries a rejected transient dispatch after correlated lookup", async () =
   assert.equal(attempts, 2);
   assert.equal(github.dispatches.length, 1);
   assert.equal(core.outputs.get("conclusion"), "success");
+});
+
+test("names the operation when lookup retries are exhausted", async () => {
+  const core = createCore();
+  const github = createGithub();
+  let attempts = 0;
+  github.rest.actions.listWorkflowRuns = async () => {
+    attempts += 1;
+    throw apiError(503);
+  };
+
+  await monitorRemoteWorkflow({
+    github,
+    core,
+    ...createClock(),
+    random: () => 0
+  });
+
+  assert.equal(attempts, 5);
+  assert.equal(github.dispatches.length, 0);
+  assert.equal(
+    core.failures[0],
+    "publisher run lookup failed after 5 attempts: GitHub API returned 503"
+  );
+});
+
+test("names the expected run when dispatch retries are exhausted", async () => {
+  const identifier = "0.61.0-bfbfbfbf";
+  const core = createCore({ RELEASE_IDENTIFIER: identifier });
+  const github = createGithub();
+  let attempts = 0;
+  github.rest.repos.createDispatchEvent = async () => {
+    attempts += 1;
+    throw apiError(502);
+  };
+
+  await monitorRemoteWorkflow({
+    github,
+    core,
+    ...createClock(),
+    random: () => 0
+  });
+
+  assert.equal(attempts, 5);
+  assert.equal(github.dispatches.length, 0);
+  assert.equal(
+    core.failures[0],
+    `publisher dispatch 'deployment-engine' failed after 5 attempts: GitHub API returned 502; no run 'deployment-engine / ${identifier}' appeared, so a rerun of this job reconciles before dispatching again`
+  );
 });
 
 test("monitors an existing active run to completion", async () => {
