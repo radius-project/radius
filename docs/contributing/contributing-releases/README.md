@@ -31,7 +31,7 @@ Before starting a release, ensure you have:
 | **Release channel** | A `<major>.<minor>` pair that groups all releases for a version.                                              | `0.56`                         |
 | **Release branch**  | A branch in the format `release/<channel>` that holds release code.                                           | `release/0.56`                 |
 
-New release candidates use the dotted SemVer form `-rc.N`, starting at `-rc.1`. Historical `-rcN` releases remain valid inputs for verification and upgrade tooling, but do not use that form for new tags.
+New release candidates use the dotted SemVer form `-rc.N`, starting at `-rc.1`. Historical `-rcN` releases remain valid inputs for verification and upgrade tooling, but do not use that form for new tags. Never mix the two forms within one version: SemVer orders every dotted candidate before every legacy candidate of the same version, so `rad upgrade` would refuse the move from a legacy candidate to a dotted one as a downgrade. Start the dotted form with the first RC of a version, never partway through an RC series.
 
 ## How releases work
 
