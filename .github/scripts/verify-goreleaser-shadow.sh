@@ -100,8 +100,10 @@ assert_json_equal() {
     local description="$3"
 
     jq -e -n --argjson actual "${actual}" --argjson expected "${expected}" \
-        '$actual == $expected' >/dev/null ||
-        fail "${description} do not match"
+        '$actual == $expected' >/dev/null && return 0
+    echo "expected ${description}: ${expected}" >&2
+    echo "actual ${description}: ${actual}" >&2
+    fail "${description} do not match"
 }
 
 select_baseline() {
@@ -281,17 +283,8 @@ verify_cli_artifacts() {
         [[ -f "${checksum_path}" ]] ||
             fail "missing shadow checksum: ${name}.sha256"
 
-        shadow_hash="$(sha256_file "${shadow_binary}")"
-        production_hash="$(sha256_file "${production_binary}")"
-        [[ "${shadow_hash}" == "${production_hash}" ]] ||
-            fail "binary digest mismatch for ${name}"
-
-        declared_hash="$(tr -d '\r\n' <"${checksum_path}")"
-        [[ "${declared_hash}" =~ ^[0-9a-f]{64}$ ]] ||
-            fail "unexpected native checksum format for ${name}.sha256"
-        [[ "${declared_hash}" == "${shadow_hash}" ]] ||
-            fail "shadow checksum mismatch for ${name}"
-
+        # Compare the embedded build metadata before the bytes: when the
+        # binaries differ, the metadata diff is what explains why.
         shadow_build_info="${TEMP_DIR}/shadow-${name}.json"
         production_build_info="${TEMP_DIR}/production-${name}.json"
         extract_build_info shadow "${name}" "${shadow_binary}" \
@@ -302,6 +295,20 @@ verify_cli_artifacts() {
             "$(jq -cS . "${shadow_build_info}")" \
             "$(jq -cS . "${production_build_info}")" \
             "embedded build metadata for ${name}"
+
+        shadow_hash="$(sha256_file "${shadow_binary}")"
+        production_hash="$(sha256_file "${production_binary}")"
+        [[ "${shadow_hash}" == "${production_hash}" ]] ||
+            fail "binary digest mismatch for ${name}" \
+                "(shadow ${shadow_hash}, production ${production_hash};" \
+                "the embedded build metadata is identical, so compare the" \
+                "toolchain inputs of the two builds)"
+
+        declared_hash="$(tr -d '\r\n' <"${checksum_path}")"
+        [[ "${declared_hash}" =~ ^[0-9a-f]{64}$ ]] ||
+            fail "unexpected native checksum format for ${name}.sha256"
+        [[ "${declared_hash}" == "${shadow_hash}" ]] ||
+            fail "shadow checksum mismatch for ${name}"
 
         jq -e \
             --arg channel "${CHANNEL}" \
