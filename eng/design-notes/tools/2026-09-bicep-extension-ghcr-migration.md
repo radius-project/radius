@@ -115,6 +115,7 @@ Extension packages contain public type metadata and are intentionally public. Pu
 
 ## Open questions
 
+- What should the exact GHCR path be for the types? The current proposal uses `ghcr.io/radius-project/bicep-types-radius` and `ghcr.io/radius-project/bicep-types-aws`.
 - How long should the dual-publish phase last?
 - Are we safe to delete old ACR bicep extensions? If so, when?
 
