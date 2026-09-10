@@ -7,7 +7,7 @@ param location string = 'global'
 param environment string
 
 @description('Specifies the tag of the image to be deployed.')
-param magpietag string = 'latest'
+param magpietag string
 
 @description('Specifies the registry of the image to be deployed.')
 param registry string

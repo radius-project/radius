@@ -60,3 +60,42 @@ canonical_radius_rc_version() {
         printf '%s\n' "${version}"
     fi
 }
+
+radius_release_environment() {
+    local reference="${GITHUB_REF:-}"
+    local version=edge channel=edge chart_version=0.42.42-dev
+    local update_release=false git_version pull_number
+
+    case "${reference}" in
+        refs/tags/*)
+            version="${reference#refs/tags/v}"
+            if [[ "${reference}" != refs/tags/v* ]] || ! is_radius_release_version "${version}"; then
+                echo "Invalid Radius release tag: ${reference}" >&2
+                return 1
+            fi
+            chart_version="${version}"
+            channel="${version}"
+            if [[ "${version}" != *-rc* ]]; then
+                channel="${version%.*}"
+                update_release=true
+            fi
+            git_version="v${version}"
+            ;;
+        refs/pull/*)
+            pull_number="${reference#refs/pull/}"
+            pull_number="${pull_number%%/*}"
+            [[ "${pull_number}" =~ ^[1-9][0-9]*$ ]] || return 1
+            version="pr-${pull_number}"
+            chart_version="0.42.42-pr-${pull_number}"
+            ;;
+    esac
+    git_version="${git_version:-$(git describe --always --abbrev=7 --dirty --tags)}"
+    printf '%s\n' "REL_VERSION=${version}" "REL_CHANNEL=${channel}" \
+        "CHART_VERSION=${chart_version}" "GIT_VERSION=${git_version}" \
+        "UPDATE_RELEASE=${update_release}"
+}
+
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    set -euo pipefail
+    radius_release_environment
+fi

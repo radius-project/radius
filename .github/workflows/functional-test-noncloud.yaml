@@ -136,11 +136,11 @@ jobs:
             BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
           fi
           UNIQUE_ID=func$(echo $BASE_STR | sha1sum | head -c 10)
-          echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
+          echo "REL_VERSION=test-${UNIQUE_ID}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> $GITHUB_ENV
 
           # Set output variables to be used in the other jobs
           {
-            echo "REL_VERSION=pr-${UNIQUE_ID}"
+            echo "REL_VERSION=test-${UNIQUE_ID}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
             echo "DE_IMAGE=${DE_IMAGE}"
             echo "DE_TAG=${DE_TAG}"
           } >> "${GITHUB_OUTPUT}"
@@ -198,6 +198,7 @@ jobs:
           name: radius_test_cli
           path: ./dist/linux_amd64/release/rad
           if-no-files-found: error
+          overwrite: true
 
       - name: Upload container image artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -205,6 +206,7 @@ jobs:
           name: radius_test_images
           path: ./dist/images
           if-no-files-found: error
+          overwrite: true
 
       - name: Upload Radius Bicep types artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -212,6 +214,7 @@ jobs:
           name: radius_test_bicep_types
           path: ./hack/bicep-types-radius/generated
           if-no-files-found: error
+          overwrite: true
 
   tests:
     name: Run ${{ matrix.name }} functional tests
@@ -244,7 +247,7 @@ jobs:
             ucp-noncloud,
             datastoresrp-noncloud,
             dynamicrp-noncloud,
-            upgrade-noncloud,
+            upgrade-noncloud
           ]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90

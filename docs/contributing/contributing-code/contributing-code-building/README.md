@@ -72,20 +72,25 @@ If you work with Radius frequently, set `DOCKER_REGISTRY` in your shell profile.
 
 #### Build multi-architecture images
 
-The multi-architecture targets build `linux/amd64`, `linux/arm64`, and `linux/arm` images with Docker Buildx. Initialize the QEMU and Buildx builder once:
+GoReleaser snapshots build the five core service images for `linux/amd64`, `linux/arm64`, and `linux/arm/v7` from the same configuration as releases. Initialize QEMU and Buildx once:
 
 ```bash
 make configure-buildx
 docker buildx use radius-builder
 ```
 
-The Make target creates and bootstraps the `radius-builder` builder when needed; `docker buildx use` selects it for the commands that follow. Then build and push a multi-architecture image index:
+Select your own registry and build the snapshot without publishing:
 
 ```bash
-DOCKER_REGISTRY=ghcr.io/my-registry DOCKER_TAG_VERSION=latest make docker-multi-arch-push
+export DOCKER_REGISTRY=ghcr.io/my-registry
+export GORELEASER_IMAGE_REGISTRY="$DOCKER_REGISTRY"
+make install-goreleaser install-syft install-jq install-yq install-oras
+make goreleaser-check goreleaser-snapshot
 ```
 
-Use `make docker-multi-arch-build` to build without pushing, or append an image name such as `make docker-multi-arch-push-applications-rp` to build and push one image.
+The snapshot loads platform-suffixed images locally and writes binary, checksum, SBOM, and image metadata under `dist/goreleaser`. To publish the already-built core images as multi-platform `edge` indices in your registry, run `make goreleaser-push-edge`. Publish Bicep separately with `make docker-publish-bicep DOCKER_TAG_VERSION=edge`. Neither command publishes test images or changes `latest`.
+
+PR and merge-queue builds use one read-only snapshot job, retain `rad_cli_<os>_<arch>` and `container-images-<version>` artifacts, and perform no registry writes. Main uses the same outputs for edge publication. Test images belong to functional workflows and use build-attempt-specific tags; test-only retries reuse their original artifacts. For local functional tests, set `DOCKER_REGISTRY`, `REL_VERSION`, and `DOCKER_TAG_VERSION` to your registry and a matching `test-<id>` tag before building and pushing. `make docker-build-testrp`, `make docker-build-magpiego`, their push targets, and the ordinary single-platform developer targets remain available.
 
 ### Generate code
 

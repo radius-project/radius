@@ -19,16 +19,18 @@ DOCKER_TAG_VERSION?=latest
 IMAGE_SRC?=https://github.com/radius-project/radius
 MANIFEST_DIR?=deploy/manifest/built-in-providers/self-hosted
 
-# Enable GitHub Actions caching by default in CI environments
-DOCKER_CACHE_GHA?=0
-DOCKER_BUILDX_CACHE_FROM:=
-DOCKER_BUILDX_CACHE_TO:=
-ifeq ($(DOCKER_CACHE_GHA),1)
-    DOCKER_BUILDX_CACHE_FROM=--cache-from type=gha
-    DOCKER_BUILDX_CACHE_TO=--cache-to type=gha,mode=max
-endif
-
 ##@ Docker Images
+
+.PHONY: docker-publish-bicep
+docker-publish-bicep: build-bicep-linux-amd64 build-bicep-linux-arm64 build-bicep-linux-arm ## Publish the non-Go Bicep image for all supported platforms
+	docker buildx build --file deploy/images/bicep/Dockerfile \
+		--platform linux/amd64,linux/arm64,linux/arm/v7 \
+		--tag "$(DOCKER_REGISTRY)/bicep:$(DOCKER_TAG_VERSION)" \
+		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
+		--label org.opencontainers.image.description=bicep \
+		--label org.opencontainers.image.version="$(REL_VERSION)" \
+		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
+		--push $(OUT_DIR)
 
 # Generate a target for each image we define
 # Params:
@@ -63,43 +65,6 @@ endif
 docker-push-$(1):
 	@echo "$(ARROW) Pushing image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
 	docker push $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)
-endef
-
-define generateDockerMultiArches
-.PHONY: docker-multi-arch-build-$(1)
-docker-multi-arch-build-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 build-$(1)-linux-arm
-	@echo "$(ARROW) Building Go image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
-	@cp -v $(3) $(OUT_DIR)/Dockerfile-$(1)
-
-	cd $(OUT_DIR) && docker buildx build -f ./Dockerfile-$(1) \
-		--platform linux/amd64,linux/arm64,linux/arm \
-		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
-		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
-		--label org.opencontainers.image.description="$(1)" \
-		--label org.opencontainers.image.version="$(REL_VERSION)" \
-		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
-		$(DOCKER_BUILDX_CACHE_FROM) \
-		$(DOCKER_BUILDX_CACHE_TO) \
-		$(2)
-
-.PHONY: docker-multi-arch-push-$(1)
-docker-multi-arch-push-$(1): build-$(1)-linux-arm64 build-$(1)-linux-amd64 build-$(1)-linux-arm
-	@echo "$(ARROW) Building and pushing Go image $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION)"
-	@cp -v $(3) $(OUT_DIR)/Dockerfile-$(1)
-
-	# Building and pushing in one step is more efficient with buildx, so we duplicate the command
-	# to build and add --push.
-	cd $(OUT_DIR) && docker buildx build -f ./Dockerfile-$(1) \
-		--platform linux/amd64,linux/arm64,linux/arm \
-		-t $(DOCKER_REGISTRY)/$(1):$(DOCKER_TAG_VERSION) \
-		--label org.opencontainers.image.source="$(IMAGE_SRC)" \
-		--label org.opencontainers.image.description="$(1)" \
-		--label org.opencontainers.image.version="$(REL_VERSION)" \
-		--label org.opencontainers.image.revision="$(GIT_COMMIT)" \
-		$(DOCKER_BUILDX_CACHE_FROM) \
-		$(DOCKER_BUILDX_CACHE_TO) \
-		--push \
-		$(2)
 endef
 
 # configure-buildx is to initialize qemu and buildx environment.
@@ -142,20 +107,11 @@ endef
 # This command will dynamically generate the targets for each image in the APPS_MAP list.
 $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP)) $(call generateDockerTargets,$(NAME),.,$(DIR)/Dockerfile,go)))
 
-# This command will dynamically generate the multi-arch targets for each image in the APPS_MAP list.
-$(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP)) $(call generateDockerMultiArches,$(NAME),.,$(DIR)/Dockerfile)))
-
 # list of 'outputs' to build all images
 DOCKER_BUILD_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-build-$(NAME))
 
 # list of 'outputs' to push all images
 DOCKER_PUSH_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-push-$(NAME))
-
-# list of 'outputs' to build all multi arch images
-DOCKER_BUILD_MULTI_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-multi-arch-build-$(NAME))
-
-# list of 'outputs' to push all multi arch images
-DOCKER_PUSH_MULTI_TARGETS := $(foreach APP,$(APPS_MAP),$(eval $(call parseApp,$(APP))) docker-multi-arch-push-$(NAME))
 
 # targets to build development images
 .PHONY: docker-build
@@ -163,11 +119,3 @@ docker-build: copy-manifests $(DOCKER_BUILD_TARGETS) ## Builds all Docker images
 
 .PHONY: docker-push
 docker-push: $(DOCKER_PUSH_TARGETS) ## Pushes all Docker images (without building).
-
-# targets to build and push multi arch images. If you run this target in your machine,
-# ensure you have qemu and buildx installed by running make configure-buildx.
-.PHONY: docker-multi-arch-build
-docker-multi-arch-build: copy-manifests $(DOCKER_BUILD_MULTI_TARGETS) ## Builds all docker images for multiple architectures.
-
-.PHONY: docker-multi-arch-push
-docker-multi-arch-push: copy-manifests $(DOCKER_PUSH_MULTI_TARGETS) ## Pushes all docker images for multiple architectures after building.

@@ -20,11 +20,6 @@ name: __build-cli
 
 on:
   workflow_call:
-    inputs:
-      only_changed:
-        description: Whether only non-build files changed
-        required: true
-        type: string
 
 permissions: {}
 
@@ -35,22 +30,17 @@ env:
 
 jobs:
   build-and-push-cli:
-    name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
+    name: Export ${{ matrix.target_os }}_${{ matrix.target_arch }} CLI
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
-      packages: write # Required for uploading the package
       contents: read # Required for actions/checkout
-      issues: read # Required for publishing test results
-      checks: write # Required for publishing test results
-      pull-requests: write # Required for publishing test results
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
-      GOPROXY: https://proxy.golang.org
     strategy:
       fail-fast: false
-      matrix:
+      matrix: &cli_platforms
         include:
           - target_os: linux
             target_arch: amd64
@@ -68,54 +58,74 @@ jobs:
             target_arch: arm64
     steps:
       - name: Checkout
-        if: inputs.only_changed != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Setup Go
-        if: inputs.only_changed != 'true'
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - name: Download snapshot outputs
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-          cache: false
+          name: core-snapshot-${{ github.sha }}
+          path: dist/goreleaser
 
-      - name: Setup Python
-        if: inputs.only_changed != 'true'
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version-file: .python-version
-
-      - name: Parse release version and set environment variables
-        if: inputs.only_changed != 'true'
-        run: python ./.github/scripts/get_release_version.py
-
-      - name: Make build
-        if: inputs.only_changed != 'true'
-        run: make build
-
-      - name: Copy cli binaries to release (unix-like)
-        if: matrix.target_os != 'windows' && inputs.only_changed != 'true'
+      - name: Select native CLI artifact
         run: |
+          name="rad_${GOOS}_${GOARCH}"
+          [[ "${GOOS}" != windows ]] || name="${name}.exe"
+          artifact="$(jq -er --arg name "${name}" '
+            [.[] | select(.type == "Binary" and .extra.ID == "rad" and .name == $name)] |
+            if length == 1 then .[0].path else error("missing or ambiguous CLI artifact") end
+          ' dist/goreleaser/artifacts.json)"
           mkdir -p "${RELEASE_PATH}"
-          cp "./dist/${GOOS}_${GOARCH}/release/rad" "${RELEASE_PATH}/rad_${GOOS}_${GOARCH}"
-
-      - name: Copy cli binaries to release (windows)
-        if: matrix.target_os == 'windows' && inputs.only_changed != 'true'
-        run: |
-          mkdir -p "${RELEASE_PATH}"
-          cp "./dist/${GOOS}_${GOARCH}/release/rad.exe" "${RELEASE_PATH}/rad_${GOOS}_${GOARCH}.exe"
+          cp "${artifact}" "${RELEASE_PATH}/${name}"
 
       - name: Upload CLI binary
-        if: inputs.only_changed != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rad_cli_${{ matrix.target_os}}_${{ matrix.target_arch}}
           path: ${{ env.RELEASE_PATH }}
+          if-no-files-found: error
+          overwrite: true
+
+  publish-edge:
+    name: Publish edge ${{ matrix.target_os }}_${{ matrix.target_arch }} CLI
+    if: github.repository == 'radius-project/radius' && github.ref == 'refs/heads/main'
+    needs: build-and-push-cli
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix: *cli_platforms
+    env:
+      GOOS: ${{ matrix.target_os }}
+      GOARCH: ${{ matrix.target_arch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check current main commit
+        id: current-main
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { data } = await github.rest.repos.getBranch({ ...context.repo, branch: 'main' })
+            core.setOutput('current', data.commit.sha === context.sha)
+            if (data.commit.sha !== context.sha) core.notice('Skipping edge publication from an older main commit')
+
+      - name: Download CLI artifact
+        if: steps.current-main.outputs.current == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: rad_cli_${{ matrix.target_os }}_${{ matrix.target_arch }}
+          path: ${{ env.RELEASE_PATH }}
 
       - name: Login to GitHub Container Registry
-        if: inputs.only_changed != 'true'
+        if: steps.current-main.outputs.current == 'true'
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
@@ -123,21 +133,17 @@ jobs:
           password: ${{ github.token }}
 
       - name: Install oras
-        if: inputs.only_changed != 'true'
+        if: steps.current-main.outputs.current == 'true'
         run: make install-oras
 
       - name: Push edge rad cli binary to GHCR (unix-like)
-        if: github.ref == 'refs/heads/main' && matrix.target_os != 'windows' && inputs.only_changed != 'true'
+        if: steps.current-main.outputs.current == 'true' && matrix.target_os != 'windows'
         run: |
-          cp "./dist/${GOOS}_${GOARCH}/release/rad" ./rad
+          cp "${RELEASE_PATH}/rad_${GOOS}_${GOARCH}" ./rad
           oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:edge" ./rad --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
 
       - name: Push edge rad cli binary to GHCR (windows)
-        if: github.ref == 'refs/heads/main' && matrix.target_os == 'windows' && inputs.only_changed != 'true'
+        if: steps.current-main.outputs.current == 'true' && matrix.target_os == 'windows'
         run: |
-          cp "./dist/${GOOS}_${GOARCH}/release/rad.exe" ./rad.exe
+          cp "${RELEASE_PATH}/rad_${GOOS}_${GOARCH}.exe" ./rad.exe
           oras push "${CONTAINER_REGISTRY}/rad/${GOOS}-${GOARCH}:edge" ./rad.exe --annotation "org.opencontainers.image.source=${IMAGE_SRC}"
-
-      - name: Skip
-        if: inputs.only_changed == 'true'
-        run: exit 0

@@ -46,42 +46,44 @@ jobs:
       contents: read # Required for actions/checkout
       pull-requests: read # Required for change detection
 
-  build-and-push-cli:
+  build-snapshot:
     needs: [changes]
-    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
+    if: needs.changes.outputs.only_changed != 'true'
+    uses: ./.github/workflows/__build-snapshot.yaml
+    permissions:
+      contents: read
+
+  build-and-push-cli:
+    needs: [changes, build-snapshot]
+    if: needs.changes.outputs.only_changed != 'true'
     uses: ./.github/workflows/__build-cli.yaml
-    with:
-      only_changed: ${{ needs.changes.outputs.only_changed }}
     permissions:
       packages: write # Required for uploading the package
       contents: read # Required for actions/checkout
-      issues: read # Required for publishing test results
-      checks: write # Required for publishing test results
-      pull-requests: write # Required for publishing test results
 
   build-check:
     if: always()
     name: Build Check
-    needs: [build-and-push-cli]
+    needs: [build-snapshot, build-and-push-cli, build-and-push-images]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
     steps:
       - name: Check build matrix results
-        if: ${{ needs.build-and-push-cli.result != 'success' && needs.build-and-push-cli.result != 'skipped' }}
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: |
-          echo "::error::Build and push CLI jobs failed or were cancelled"
+          echo "::error::Snapshot, CLI, or image jobs failed or were cancelled"
           exit 1
 
       - name: Build matrix succeeded
-        if: ${{ needs.build-and-push-cli.result == 'success' || needs.build-and-push-cli.result == 'skipped' }}
+        if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
         run: |
           echo "All build matrix jobs completed successfully"
           exit 0
 
   build-and-push-images:
-    needs: [changes]
-    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
+    needs: [changes, build-snapshot]
+    if: needs.changes.outputs.only_changed != 'true'
     uses: ./.github/workflows/__build-images.yaml
     permissions:
       packages: write # Required for uploading the package
