@@ -15,6 +15,21 @@ body = """
 https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
 {%- endmacro -%}
 
+{#- One changelog line per commit. Squash merges end the subject with the pull
+    request number, for example "Fix the thing (#123)". When the GitHub
+    integration knows the pull request, that suffix is dropped and the number is
+    rendered once, as a link; offline renders keep the plain suffix. The pull
+    request author is preferred over the commit author, which a squash merge can
+    resolve to the merging account. -#}
+{%- macro entry(commit) -%}
+{%- set subject = commit.message | split(pat="\n") | first -%}
+{%- if commit.remote.pr_number -%}
+{%- set suffix = " (#" ~ commit.remote.pr_number ~ ")" -%}
+{%- set subject = subject | replace(from=suffix, to="") -%}
+{%- endif -%}
+{{ subject | upper_first | trim }}{% if commit.remote.pr_author or commit.remote.username %} by @{{ commit.remote.pr_author | default(value=commit.remote.username) }}{% endif %}{% if commit.remote.pr_number %} in [#{{ commit.remote.pr_number }}]({{ self::remote_url() }}/pull/{{ commit.remote.pr_number }}){% endif %}
+{%- endmacro -%}
+
 {% if version -%}
 ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
 {% else -%}
@@ -26,7 +41,7 @@ https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
 ### Breaking changes
 
 {% for commit in breaking_commits -%}
-- {{ commit.message | split(pat="\n") | first | upper_first | trim }}{% if commit.remote.username %} by @{{ commit.remote.username }}{% endif %}{% if commit.remote.pr_number %} in [#{{ commit.remote.pr_number }}]({{ self::remote_url() }}/pull/{{ commit.remote.pr_number }}){% endif %}
+- {{ self::entry(commit=commit) }}
 {% endfor %}
 {% endif %}
 {% set normal_commits = commits | filter(attribute="breaking", value=false) %}
@@ -36,7 +51,7 @@ https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
 ### {{ group | striptags | trim }}
 
 {% for commit in commits -%}
-- {{ commit.message | split(pat="\n") | first | upper_first | trim }}{% if commit.remote.username %} by @{{ commit.remote.username }}{% endif %}{% if commit.remote.pr_number %} in [#{{ commit.remote.pr_number }}]({{ self::remote_url() }}/pull/{{ commit.remote.pr_number }}){% endif %}
+- {{ self::entry(commit=commit) }}
 {% endfor %}
 {% endfor %}
 {% if github %}

@@ -245,7 +245,7 @@ tools:
 
   - name: git-cliff
     makePrefix: GIT_CLIFF
-    version: v2.13.1
+    version: v2.14.1
     source:
       type: github-release
       repository: orhun/git-cliff
@@ -254,16 +254,16 @@ tools:
     platforms:
       linux_amd64:
         asset: git-cliff-{version_no_v}-x86_64-unknown-linux-gnu.tar.gz
-        checksum: 9a1263f24e59a2f508c7b3d3283c9dea94a8bf697f96dbc18cc783cac6284546
+        checksum: dfe9bef0c7a00d05fafe78e6e591a1a280d39dd495b8066764db0a559acde67f
       linux_arm64:
         asset: git-cliff-{version_no_v}-aarch64-unknown-linux-gnu.tar.gz
-        checksum: 9619b7f0c584229f8a2331c1905afe88bd938bdc9102926c2073836a42f02455
+        checksum: e99dc84135c6bc27aefc9d8226f7297119ed6750a32f45418f4587bc6cb260d8
       darwin_amd64:
         asset: git-cliff-{version_no_v}-x86_64-apple-darwin.tar.gz
-        checksum: 6e60ae390d375cecb9d8008c49f0e724a8dfe40390b532ef5501e421d2cc8acb
+        checksum: d1ca51bfd8b8c2a09434532bdb85bab50179b7c0bde2378aa48f3c1a7dc2fd36
       darwin_arm64:
         asset: git-cliff-{version_no_v}-aarch64-apple-darwin.tar.gz
-        checksum: 21547ae4a0421164070ab75c2522864ea5565858a011fabc5f583061b20f1226
+        checksum: 2e2d1f60963aa6a201dbd21df14d7f44025328b8bb33437695f15a516598615a
     checksumSource:
       type: download
 
