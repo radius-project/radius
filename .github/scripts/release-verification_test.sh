@@ -112,7 +112,7 @@ jq -e '.checks.installation == "verified"' "${RELEASE_VERIFY_MANIFEST}" > /dev/n
 grep -Fq -- "--chart ${TEST_ROOT}/radius.tgz" "${TEST_ROOT}/rad-calls"
 [[ "$(grep -o '@sha256:' "${TEST_ROOT}/rad-calls" | wc -l)" == "8" ]]
 grep -Fq -- 'delete cluster --name radius-verification-' "${TEST_ROOT}/kind-calls"
-FAKE_PUBLIC_INSTALL=true PUBLIC_TAG=0.61 RELEASE_VERIFY_CLI="" \
+FAKE_PUBLIC_INSTALL=true PUBLIC_TAG=0.61.0 RELEASE_VERIFY_CLI="" \
     RELEASE_VERIFY_CHART="" RELEASE_VERIFY_MANIFEST="" \
     bash "${ROOT}/.github/scripts/release-verification.sh" 0.61.0 > /dev/null
 if FAIL_INSTALL=true bash "${ROOT}/.github/scripts/release-verification.sh" 0.61.0 > /dev/null 2>&1; then
