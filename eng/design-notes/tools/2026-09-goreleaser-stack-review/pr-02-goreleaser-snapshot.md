@@ -52,7 +52,7 @@ The changes below make the verifier actionable and testable, guard the duplicate
 - **What changed**: the verifier now runs the static parity check that PR 13 introduces, copied verbatim (`normalize_dockerfile` and `verify_dockerfile_parity`): every production image's `Dockerfile.goreleaser` must carry the same `FROM`, `RUN`, `ENV`, `USER`, `WORKDIR`, `EXPOSE`, `ENTRYPOINT`, and `CMD` directives as its `Dockerfile`, compared on meaning rather than formatting. The test covers a changed user, a changed base image, and a missing file.
 - **Why**: this pull request introduces the duplicate Dockerfiles, so the guard belongs here rather than eleven layers up. Folding each pair into one Dockerfile was evaluated and rejected for this layer: the `Dockerfile` copies keep producing the production images through the Make path until PR 13 cuts releases over, and changing the Make build context or those Dockerfiles here would make PR 2 non-inert, contrary to its rollback story. PR 18 rewrites the Make image targets anyway, so one Dockerfile per image is decided there.
 - **Value**: drift between the pairs fails the snapshot job from the first merge, and the rebase of PR 13 carries the identical functions, so nothing is duplicated in the end state.
-- **Impact**: none on the current pairs, which match.
+- **Impact**: the guard caught its first drift during the stack rebase: `main` had pinned the dynamic-rp base image to `alpine:3.24.1` by digest after the stack was based, so `deploy/images/dynamic-rp/Dockerfile.goreleaser` now mirrors that pin.
 
 ### 7. GoReleaser pinned to v2.18.1
 
