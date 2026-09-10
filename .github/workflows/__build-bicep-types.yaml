@@ -37,13 +37,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version-file: .python-version
-
       - name: Parse release version and set environment variables
-        run: python ./.github/scripts/get_release_version.py
+        run: bash ./.github/scripts/release-version.sh >>"${GITHUB_ENV}"
 
       - name: Capture release metadata
         id: release-metadata

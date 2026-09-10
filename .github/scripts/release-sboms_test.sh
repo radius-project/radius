@@ -24,7 +24,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 readonly REPO_ROOT
 readonly WORKFLOWS_DIR="${REPO_ROOT}/.github/workflows"
 readonly RELEASE_WORKFLOW="${WORKFLOWS_DIR}/build-release.yaml"
-readonly SNAPSHOT_WORKFLOW="${WORKFLOWS_DIR}/goreleaser-snapshot.yaml"
+readonly SNAPSHOT_WORKFLOW="${WORKFLOWS_DIR}/__build-snapshot.yaml"
 readonly TOOLS_MANIFEST="${REPO_ROOT}/build/tools.yaml"
 readonly TOOLS_MAKEFILE="${REPO_ROOT}/build/tools.generated.mk"
 readonly RELEASE_DOCS_DIR="${REPO_ROOT}/docs/contributing"
