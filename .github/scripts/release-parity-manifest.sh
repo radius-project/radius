@@ -27,6 +27,7 @@ readonly DEFAULT_TARGETS="${REPO_ROOT}/.github/release-parity/targets.json"
 TARGETS_FILE="${RELEASE_PARITY_TARGETS:-${DEFAULT_TARGETS}}"
 OBSERVED_AT="${RELEASE_PARITY_OBSERVED_AT:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 IMAGE_DATA_DIR="${RELEASE_PARITY_IMAGE_DATA_DIR:-}"
+RUNTIME_ASSET="${RELEASE_PARITY_RUNTIME_ASSET:-}"
 VERSION=""
 OUTPUT_PATH=""
 TEMP_DIR=""
@@ -82,8 +83,30 @@ sha256_file() {
     fi
 }
 
-sha256_text_file() {
-    sha256_file "$1"
+# The runtime check executes a downloaded rad binary, so it must pick the asset
+# built for the host that runs this script. RELEASE_PARITY_RUNTIME_ASSET
+# overrides the detection when the caller knows better (tests, cross-runs).
+host_runtime_asset() {
+    local os arch
+
+    case "$(uname -s)" in
+        Linux) os="linux" ;;
+        Darwin) os="darwin" ;;
+        MINGW* | MSYS* | CYGWIN*) os="windows" ;;
+        *) fail "unsupported host for the runtime check: $(uname -s)" ;;
+    esac
+    case "$(uname -m)" in
+        x86_64 | amd64) arch="amd64" ;;
+        aarch64 | arm64) arch="arm64" ;;
+        armv7l | armv7) arch="arm" ;;
+        *) fail "unsupported host architecture for the runtime check: $(uname -m)" ;;
+    esac
+
+    if [[ "${os}" == "windows" ]]; then
+        printf 'rad_%s_%s.exe' "${os}" "${arch}"
+    else
+        printf 'rad_%s_%s' "${os}" "${arch}"
+    fi
 }
 
 resolve_tag_commit() {
@@ -267,12 +290,12 @@ collect_cli_assets() {
             ' "${release_json}"
         )"
         checksum_size="$(wc -c <"${sidecar_path}")"
+        checksum_actual_sha="$(sha256_file "${sidecar_path}")"
         if [[ -n "${api_digest}" ]]; then
             [[ "${api_digest}" == "sha256:${actual_sha}" ]] ||
                 fail "GitHub digest mismatch for ${name}"
         fi
         if [[ -n "${checksum_api_digest}" ]]; then
-            checksum_actual_sha="$(sha256_file "${sidecar_path}")"
             [[ "${checksum_api_digest}" == "sha256:${checksum_actual_sha}" ]] ||
                 fail "GitHub digest mismatch for ${name}.sha256"
         fi
@@ -289,7 +312,7 @@ collect_cli_assets() {
             --arg arch "${arch}" \
             --arg sha256 "${actual_sha}" \
             --arg checksum_name "${name}.sha256" \
-            --arg checksum_sha256 "$(sha256_file "${sidecar_path}")" \
+            --arg checksum_sha256 "${checksum_actual_sha}" \
             --arg github_digest "${api_digest}" \
             --arg content_type "${content_type}" \
             --arg checksum_github_digest "${checksum_api_digest}" \
@@ -352,7 +375,7 @@ collect_release_notes() {
             -H "Accept: application/vnd.github.raw+json" \
             "/repos/${repository}/contents/${repository_path}?ref=${source_commit}" \
             >"${source_path}"
-        source_sha="$(sha256_text_file "${source_path}")"
+        source_sha="$(sha256_file "${source_path}")"
         if cmp -s "${body_path}" "${source_path}"; then
             matches_source="true"
         fi
@@ -361,7 +384,7 @@ collect_release_notes() {
     jq -n \
         --arg type "${source_type}" \
         --arg path "${repository_path}" \
-        --arg body_sha "$(sha256_text_file "${body_path}")" \
+        --arg body_sha "$(sha256_file "${body_path}")" \
         --arg source_sha "${source_sha}" \
         --argjson matches_source "${matches_source}" \
         '{
@@ -688,7 +711,8 @@ main() {
     local cli_assets_json
     local release_notes_json
     local runtime_version_json
-    local linux_amd64_path
+    local runtime_asset
+    local runtime_binary_path
     local channel
     local images_json
     local helm_json
@@ -754,11 +778,12 @@ main() {
     collect_release_notes "${repository}" "${release_json}" \
         "${source_commit}" "${release_notes_json}"
 
-    linux_amd64_path="${TEMP_DIR}/assets/rad_linux_amd64"
-    [[ -f "${linux_amd64_path}" ]] ||
-        fail "rad_linux_amd64 is required for runtime metadata"
-    chmod +x "${linux_amd64_path}"
-    "${linux_amd64_path}" version --cli -o json >"${runtime_version_json}"
+    runtime_asset="${RUNTIME_ASSET:-$(host_runtime_asset)}"
+    runtime_binary_path="${TEMP_DIR}/assets/${runtime_asset}"
+    [[ -f "${runtime_binary_path}" ]] ||
+        fail "${runtime_asset} is required for runtime metadata"
+    chmod +x "${runtime_binary_path}"
+    "${runtime_binary_path}" version --cli -o json >"${runtime_version_json}"
     jq -e --arg commit "${source_commit}" '.commit == $commit' \
         "${runtime_version_json}" >/dev/null ||
         fail "runtime version commit does not match release tag"
