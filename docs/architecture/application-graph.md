@@ -654,12 +654,15 @@ different hashes across the static vs runtime graphs. Icons still render
 correctly — they just don't hash-compare across the two graphs. The static
 graph's icon set reflects the CLI's build-time snapshot.
 
+### Modeled graph output and archival
+
+Outside GitHub Actions, `rad app graph app.bicep` writes `./app-graph.json` without a registry or control-plane connection. With `GITHUB_ACTIONS=true`, it saves to the `radius-graph` OCI archive instead and requires `RADIUS_GRAPH_REGISTRY` plus registry authentication. Missing configuration or persistence failures return an error rather than falling back to a file.
+
+The CLI uses `GITHUB_HEAD_REF`, falling back to `GITHUB_REF_NAME`, as the source-branch namespace and applies `url.QueryEscape` before saving `<encoded-source-branch>/app-graph.json`. The [graph archive adapter](../../pkg/graph/persistence/archive/store.go) requires explicit `statearchive.Archive` injection and provides JSON save/load/list/delete operations, traversal checks, and `persistence.ErrNotFound`. See [durable state archive](state-archive.md) for OCI configuration.
+
 ## Notable Details
 
-- **No persistent graph store**: The graph is computed on every request. There
-  is no caching, materialized view, or graph database. This keeps the system
-  simple but means graph query latency scales with the number of resource types
-  and resources.
+- **No persistent deployed-graph store**: The deployed graph is computed on every request. There is no caching, materialized view, or graph database for the API query; its latency scales with resource types and resources. Modeled graph artifacts use the separate local-output or OCI archive path described above.
 
 - **Partial results over errors**: `computeGraph()` never returns errors. If a
   resource ID is invalid or data is corrupted, that entry is silently skipped.

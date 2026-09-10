@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package factory selects a state archive implementation from environment configuration.
+// Package factory configures OCI state archives from environment configuration.
 package factory
 
 import (
@@ -24,12 +24,11 @@ import (
 	"strings"
 
 	"github.com/radius-project/radius/pkg/statearchive"
-	archivegit "github.com/radius-project/radius/pkg/statearchive/git"
 	archiveoci "github.com/radius-project/radius/pkg/statearchive/oci"
 )
 
 const (
-	// BackendEnvVar chooses the archive implementation.
+	// BackendEnvVar accepts "oci" or an unset value.
 	BackendEnvVar = "RADIUS_STATE_BACKEND"
 
 	// ArchivePlainHTTPEnvVar enables HTTP for a local OCI registry.
@@ -42,43 +41,31 @@ const (
 	GraphRegistryEnvVar = "RADIUS_GRAPH_REGISTRY"
 )
 
-// NewStateArchive returns the archive for rad startup and rad shutdown. OCI is
-// the default: when BackendEnvVar is unset, OCI is selected even without a
-// registry, so a missing RADIUS_STATE_REGISTRY surfaces as a configuration
-// error from Archive.Open rather than silently falling back to git. Set
-// BackendEnvVar to "git" to opt into the git backend.
+// NewStateArchive returns the OCI archive for rad startup and rad shutdown.
+// Configuration errors are deferred until Archive.Open.
 func NewStateArchive(registry string) statearchive.Archive {
-	return newFromEnvironment(registry, true)
+	return newFromEnvironment(registry, StateRegistryEnvVar)
 }
 
-// NewGraphArchive returns the archive for modeled graph output. OCI is selected
-// when a registry is configured or BackendEnvVar is "oci"; otherwise git is used
-// so existing GitHub Actions workflows keep working without any configuration.
-// Set BackendEnvVar to "git" to force the git backend.
+// NewGraphArchive returns the OCI archive for durable modeled graph output.
+// Configuration errors are deferred until Archive.Open so local graph output
+// and unrelated commands do not require a registry.
 func NewGraphArchive(registry string) statearchive.Archive {
-	return newFromEnvironment(registry, false)
+	return newFromEnvironment(registry, GraphRegistryEnvVar)
 }
 
-// newFromEnvironment selects the archive implementation. BackendEnvVar overrides
-// the default: "git" always selects git and "oci" always selects OCI. When it is
-// unset, OCI is selected if a registry is configured; when no registry is set,
-// ociDefaultWhenUnset decides between OCI (state commands, so the missing
-// registry is reported) and git (graph output, which keeps a zero-config
-// fallback).
-func newFromEnvironment(registry string, ociDefaultWhenUnset bool) statearchive.Archive {
+func newFromEnvironment(registry, registryEnvVar string) statearchive.Archive {
 	backend := strings.ToLower(os.Getenv(BackendEnvVar))
 	switch backend {
-	case "":
-		if registry != "" || ociDefaultWhenUnset {
-			return newOCIArchive(registry)
+	case "", "oci":
+		if registry == "" {
+			return errorArchive{err: fmt.Errorf("OCI archive repository is not configured; set %s to an OCI repository (without a tag) and authenticate to the registry", registryEnvVar)}
 		}
-		return archivegit.NewGitArchive()
-	case "git":
-		return archivegit.NewGitArchive()
-	case "oci":
 		return newOCIArchive(registry)
+	case "git":
+		return errorArchive{err: fmt.Errorf("the Git state archive backend has been removed; unset %s or set it to oci and configure %s with an OCI repository", BackendEnvVar, registryEnvVar)}
 	default:
-		return errorArchive{err: fmt.Errorf("invalid %s value %q: expected git or oci", BackendEnvVar, backend)}
+		return errorArchive{err: fmt.Errorf("invalid %s value %q: expected oci or an unset value", BackendEnvVar, backend)}
 	}
 }
 
