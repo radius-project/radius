@@ -4,17 +4,18 @@ This directory records the review of the 18-pull-request stack that implements t
 
 ## Review notes by pull request
 
-| PR | Branch                                  | Note                                                                       |
-|----|-----------------------------------------|----------------------------------------------------------------------------|
-| 1  | `dp/goreleaser-parity-manifest`         | [pr-01-parity-manifest.md](./pr-01-parity-manifest.md)                     |
-| 2  | `dp/goreleaser-snapshot-ci`             | [pr-02-goreleaser-snapshot.md](./pr-02-goreleaser-snapshot.md)             |
-| 3  | `dp/conventional-commit-title-check`    | [pr-03-conventional-commit-title.md](./pr-03-conventional-commit-title.md) |
-| 4  | `dp/git-cliff-changelog-bootstrap`      | [pr-04-git-cliff-changelog.md](./pr-04-git-cliff-changelog.md)             |
-| 5  | `dp/split-build-workflows`              | [pr-05-split-build-workflows.md](./pr-05-split-build-workflows.md)         |
-| 6  | `dp/edge-tags-deprecation`              | [pr-06-edge-tags.md](./pr-06-edge-tags.md)                                 |
-| 7  | `dp/goreleaser-shadow-release`          | [pr-07-goreleaser-shadow.md](./pr-07-goreleaser-shadow.md)                 |
-| 8  | `dp/conventional-commit-title-required` | [pr-08-title-check-required.md](./pr-08-title-check-required.md)           |
-| 9  | `dp/idempotent-tag-reconciliation`      | [pr-09-tag-reconciliation.md](./pr-09-tag-reconciliation.md)               |
+| PR | Branch                                  | Note                                                                                 |
+|----|-----------------------------------------|--------------------------------------------------------------------------------------|
+| 1  | `dp/goreleaser-parity-manifest`         | [pr-01-parity-manifest.md](./pr-01-parity-manifest.md)                               |
+| 2  | `dp/goreleaser-snapshot-ci`             | [pr-02-goreleaser-snapshot.md](./pr-02-goreleaser-snapshot.md)                       |
+| 3  | `dp/conventional-commit-title-check`    | [pr-03-conventional-commit-title.md](./pr-03-conventional-commit-title.md)           |
+| 4  | `dp/git-cliff-changelog-bootstrap`      | [pr-04-git-cliff-changelog.md](./pr-04-git-cliff-changelog.md)                       |
+| 5  | `dp/split-build-workflows`              | [pr-05-split-build-workflows.md](./pr-05-split-build-workflows.md)                   |
+| 6  | `dp/edge-tags-deprecation`              | [pr-06-edge-tags.md](./pr-06-edge-tags.md)                                           |
+| 7  | `dp/goreleaser-shadow-release`          | [pr-07-goreleaser-shadow.md](./pr-07-goreleaser-shadow.md)                           |
+| 8  | `dp/conventional-commit-title-required` | [pr-08-title-check-required.md](./pr-08-title-check-required.md)                     |
+| 9  | `dp/idempotent-tag-reconciliation`      | [pr-09-tag-reconciliation.md](./pr-09-tag-reconciliation.md)                         |
+| 10 | `dp/release-identifier-correlation`     | [pr-10-release-identifier-correlation.md](./pr-10-release-identifier-correlation.md) |
 
 Later notes are added as the review progresses up the stack.
 

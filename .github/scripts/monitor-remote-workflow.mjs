@@ -26,6 +26,12 @@ function errorText(error) {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** @param {string} operationName @param {number} attempts @param {unknown} error */
+function describeFailure(operationName, attempts, error) {
+  const suffix = attempts > 1 ? ` after ${attempts} attempts` : "";
+  return `${operationName} failed${suffix}: ${errorText(error)}`;
+}
+
 /** @param {any} error */
 function isRetryableAPIError(error) {
   const status = Number(error?.status ?? error?.response?.status ?? 0);
@@ -145,7 +151,7 @@ export default async ({
             attempt === API_RETRY_ATTEMPTS ||
             now() >= deadline
           ) {
-            throw error;
+            throw new Error(describeFailure(operationName, attempt, error));
           }
 
           const delay = retryDelay(attempt, error);
@@ -153,7 +159,7 @@ export default async ({
             `Transient GitHub API failure during ${operationName}; retrying in ${delay}ms (attempt ${attempt + 1}/${API_RETRY_ATTEMPTS})`
           );
           if (!(await sleepWithinBudget(delay))) {
-            throw error;
+            throw new Error(describeFailure(operationName, attempt, error));
           }
         }
       }
@@ -200,7 +206,7 @@ export default async ({
           (response) => {
             if (now() >= deadline) {
               throw new Error(
-                "Publisher history lookup exceeded its timeout; refusing to dispatch without completing discovery"
+                "the monitor budget ran out before every history page was read; refusing to dispatch without completing discovery"
               );
             }
             return correlatedRuns(response.data);
@@ -211,6 +217,7 @@ export default async ({
     };
 
     const dispatchRun = async (previousRunID) => {
+      const operationName = `publisher dispatch '${eventType}'`;
       for (let attempt = 1; attempt <= API_RETRY_ATTEMPTS; attempt += 1) {
         try {
           await github.rest.repos.createDispatchEvent({
@@ -222,7 +229,7 @@ export default async ({
           return undefined;
         } catch (error) {
           if (!isRetryableAPIError(error)) {
-            throw error;
+            throw new Error(describeFailure(operationName, attempt, error));
           }
 
           const delay = Math.max(
@@ -247,7 +254,9 @@ export default async ({
             return discoveredRun;
           }
           if (attempt === API_RETRY_ATTEMPTS || now() >= deadline) {
-            throw error;
+            throw new Error(
+              `${describeFailure(operationName, attempt, error)}; no run '${expectedRunName}' appeared, so a rerun of this job reconciles before dispatching again`
+            );
           }
         }
       }
