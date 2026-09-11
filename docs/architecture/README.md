@@ -57,6 +57,10 @@ If you are new to the codebase, read these in order:
 11. [credentials.md](credentials.md)
 12. [application-graph.md](application-graph.md)
 
+## Proposed Architecture
+
+- [repo-radius.md](repo-radius.md) proposes a frontend-neutral Repo Radius operation contract using the Copilot App and Copilot CLI as frontend examples. It separates current implementation from the proposed API and migration.
+
 ## Related Material
 
 - UCP-specific background and older walkthroughs live in [../ucp](../ucp).
