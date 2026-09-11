@@ -14,10 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package git
+package archive
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"sort"
 	"testing"
 
@@ -26,13 +30,15 @@ import (
 
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/persistence"
+	"github.com/radius-project/radius/pkg/statearchive"
 	"github.com/radius-project/radius/pkg/to"
+	"go.uber.org/mock/gomock"
 )
 
-func TestNewStore_DefaultsBranch(t *testing.T) {
+func TestNewStore_DefaultsArchiveName(t *testing.T) {
 	t.Parallel()
 
-	s, err := NewStore(Options{})
+	s, err := NewStore(Options{Archive: newTestArchive(t)})
 	require.NoError(t, err)
 	require.NotNil(t, s)
 	assert.Equal(t, DefaultGraphArchive, s.archiveName)
@@ -41,7 +47,7 @@ func TestNewStore_DefaultsBranch(t *testing.T) {
 func TestNewStore_HonorsBranch(t *testing.T) {
 	t.Parallel()
 
-	s, err := NewStore(Options{Branch: "custom"})
+	s, err := NewStore(Options{Branch: "custom", Archive: newTestArchive(t)})
 	require.NoError(t, err)
 	assert.Equal(t, "custom", s.archiveName)
 }
@@ -49,7 +55,7 @@ func TestNewStore_HonorsBranch(t *testing.T) {
 func TestNewStore_HonorsArchiveName(t *testing.T) {
 	t.Parallel()
 
-	s, err := NewStore(Options{ArchiveName: "custom"})
+	s, err := NewStore(Options{ArchiveName: "custom", Archive: newTestArchive(t)})
 	require.NoError(t, err)
 	assert.Equal(t, "custom", s.archiveName)
 }
@@ -57,16 +63,117 @@ func TestNewStore_HonorsArchiveName(t *testing.T) {
 func TestNewStore_RejectsConflictingArchiveNames(t *testing.T) {
 	t.Parallel()
 
-	_, err := NewStore(Options{ArchiveName: "archive-name", Branch: "branch-name"})
+	_, err := NewStore(Options{ArchiveName: "archive-name", Branch: "branch-name", Archive: newTestArchive(t)})
 	require.ErrorContains(t, err, "conflicts with deprecated branch option")
 }
 
 func TestNewStore_AcceptsMatchingArchiveNames(t *testing.T) {
 	t.Parallel()
 
-	s, err := NewStore(Options{ArchiveName: "shared-name", Branch: "shared-name"})
+	s, err := NewStore(Options{ArchiveName: "shared-name", Branch: "shared-name", Archive: newTestArchive(t)})
 	require.NoError(t, err)
 	assert.Equal(t, "shared-name", s.archiveName)
+}
+
+func TestNewStore_RequiresArchive(t *testing.T) {
+	t.Parallel()
+
+	s, err := NewStore(Options{})
+	require.Nil(t, s)
+	require.ErrorContains(t, err, "graph store requires an Archive")
+}
+
+func TestStore_ReturnsArchiveOpenErrors(t *testing.T) {
+	t.Parallel()
+	key := persistence.Key{Namespace: "main", Name: "app-graph"}
+	for _, tc := range []struct {
+		name string
+		run  func(context.Context, *Store) error
+	}{
+		{name: "save", run: func(ctx context.Context, s *Store) error {
+			return s.Save(ctx, key, &corerpv20250801preview.ApplicationGraphResponse{}, persistence.SaveOptions{})
+		}},
+		{name: "load", run: func(ctx context.Context, s *Store) error {
+			_, err := s.Load(ctx, key)
+			return err
+		}},
+		{name: "list", run: func(ctx context.Context, s *Store) error {
+			_, err := s.List(ctx, "")
+			return err
+		}},
+		{name: "delete", run: func(ctx context.Context, s *Store) error {
+			return s.Delete(ctx, key)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			openErr := errors.New("registry unavailable")
+			archive := statearchive.NewMockArchive(gomock.NewController(t))
+			archive.EXPECT().Open(gomock.Any(), DefaultGraphArchive).Return(nil, openErr)
+			s, err := NewStore(Options{Archive: archive})
+			require.NoError(t, err)
+			require.ErrorIs(t, tc.run(t.Context(), s), openErr)
+		})
+	}
+}
+
+func TestStore_CommitsMutationsAndClosesOnFailure(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name      string
+		save      bool
+		message   string
+		commitErr error
+	}{
+		{name: "save", save: true, message: "radius: update main/app-graph.json"},
+		{name: "custom save message", save: true, message: "custom"},
+		{name: "failed save", save: true, message: "radius: update main/app-graph.json", commitErr: errors.New("upload failed")},
+		{name: "delete", message: "radius: delete main/app-graph.json"},
+		{name: "failed delete", message: "radius: delete main/app-graph.json", commitErr: errors.New("upload failed")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			dir := t.TempDir()
+			path := filepath.Join(dir, "main", "app-graph.json")
+			require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
+			require.NoError(t, os.WriteFile(path, []byte("{}"), 0o644))
+			graph := &corerpv20250801preview.ApplicationGraphResponse{
+				Resources: []*corerpv20250801preview.ApplicationGraphResource{{Name: to.Ptr("frontend")}},
+			}
+			session := statearchive.NewMockSession(ctrl)
+			session.EXPECT().Path().Return(dir)
+			session.EXPECT().Commit(gomock.Any(), tc.message).DoAndReturn(func(context.Context, string) error {
+				if tc.save {
+					data, err := os.ReadFile(path)
+					require.NoError(t, err)
+					want, err := json.MarshalIndent(graph, "", "  ")
+					require.NoError(t, err)
+					require.Equal(t, want, data)
+				} else {
+					_, err := os.Stat(path)
+					require.ErrorIs(t, err, os.ErrNotExist)
+				}
+				return tc.commitErr
+			})
+			session.EXPECT().Close(gomock.Any())
+			archive := statearchive.NewMockArchive(ctrl)
+			archive.EXPECT().Open(gomock.Any(), "custom-archive").Return(session, nil)
+			s, err := NewStore(Options{ArchiveName: "custom-archive", Archive: archive})
+			require.NoError(t, err)
+			key := persistence.Key{Namespace: "main", Name: "app-graph"}
+			if tc.save {
+				opts := persistence.SaveOptions{}
+				if tc.name == "custom save message" {
+					opts.Message = tc.message
+				}
+				err = s.Save(t.Context(), key, graph, opts)
+			} else {
+				err = s.Delete(t.Context(), key)
+			}
+			require.ErrorIs(t, err, tc.commitErr)
+		})
+	}
 }
 
 func TestKeyFromPath(t *testing.T) {
@@ -100,10 +207,7 @@ func TestKeyFromPath(t *testing.T) {
 func TestSave_RejectsNilPayload(t *testing.T) {
 	t.Parallel()
 
-	repoDir := initTestRepo(t)
-	chdir(t, repoDir)
-
-	s, err := NewStore(Options{Branch: "store-" + t.Name()})
+	s, err := NewStore(Options{Archive: newTestArchive(t)})
 	require.NoError(t, err)
 
 	err = s.Save(t.Context(), persistence.Key{Namespace: "ns", Name: "n"}, nil, persistence.SaveOptions{})
@@ -111,11 +215,10 @@ func TestSave_RejectsNilPayload(t *testing.T) {
 }
 
 func TestStore_SaveLoadDeleteRoundTrip(t *testing.T) {
-	repoDir := initTestRepo(t)
-	chdir(t, repoDir)
+	t.Parallel()
 
 	ctx := t.Context()
-	s, err := NewStore(Options{Branch: "store-" + t.Name()})
+	s, err := NewStore(Options{Archive: newTestArchive(t)})
 	require.NoError(t, err)
 
 	key := persistence.Key{Namespace: "main", Name: "app"}
@@ -147,11 +250,10 @@ func TestStore_SaveLoadDeleteRoundTrip(t *testing.T) {
 }
 
 func TestStore_LoadMissingKeyReturnsErrNotFound(t *testing.T) {
-	repoDir := initTestRepo(t)
-	chdir(t, repoDir)
+	t.Parallel()
 
 	ctx := t.Context()
-	s, err := NewStore(Options{Branch: "store-" + t.Name()})
+	s, err := NewStore(Options{Archive: newTestArchive(t)})
 	require.NoError(t, err)
 
 	_, err = s.Load(ctx, persistence.Key{Namespace: "ns", Name: "missing"})
@@ -160,10 +262,9 @@ func TestStore_LoadMissingKeyReturnsErrNotFound(t *testing.T) {
 }
 
 func TestStore_DeleteMissingKeyReturnsErrNotFound(t *testing.T) {
-	repoDir := initTestRepo(t)
-	chdir(t, repoDir)
+	t.Parallel()
 
-	s, err := NewStore(Options{Branch: "store-" + t.Name()})
+	s, err := NewStore(Options{Archive: newTestArchive(t)})
 	require.NoError(t, err)
 
 	err = s.Delete(t.Context(), persistence.Key{Namespace: "ns", Name: "missing"})
@@ -172,11 +273,10 @@ func TestStore_DeleteMissingKeyReturnsErrNotFound(t *testing.T) {
 }
 
 func TestStore_List(t *testing.T) {
-	repoDir := initTestRepo(t)
-	chdir(t, repoDir)
+	t.Parallel()
 
 	ctx := t.Context()
-	s, err := NewStore(Options{Branch: "store-" + t.Name()})
+	s, err := NewStore(Options{Archive: newTestArchive(t)})
 	require.NoError(t, err)
 
 	keys := []persistence.Key{
@@ -206,10 +306,9 @@ func TestStore_List(t *testing.T) {
 }
 
 func TestStore_ListMissingNamespaceReturnsEmpty(t *testing.T) {
-	repoDir := initTestRepo(t)
-	chdir(t, repoDir)
+	t.Parallel()
 
-	s, err := NewStore(Options{Branch: "store-" + t.Name()})
+	s, err := NewStore(Options{Archive: newTestArchive(t)})
 	require.NoError(t, err)
 
 	got, err := s.List(t.Context(), "does-not-exist")
@@ -218,10 +317,9 @@ func TestStore_ListMissingNamespaceReturnsEmpty(t *testing.T) {
 }
 
 func TestStore_ListRejectsInvalidNamespace(t *testing.T) {
-	repoDir := initTestRepo(t)
-	chdir(t, repoDir)
+	t.Parallel()
 
-	s, err := NewStore(Options{Branch: "store-" + t.Name()})
+	s, err := NewStore(Options{Archive: newTestArchive(t)})
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -301,5 +399,5 @@ func TestConstructPathForKey_AcceptsValidKey(t *testing.T) {
 }
 
 // Compile-time assertion documenting that *Store satisfies persistence.Store
-// (mirrors the runtime check in git_store.go and surfaces breakage in tests).
+// (mirrors the runtime check in store.go and surfaces breakage in tests).
 var _ persistence.Store = (*Store)(nil)

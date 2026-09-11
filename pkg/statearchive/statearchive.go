@@ -21,14 +21,12 @@ limitations under the License.
 // It is intentionally distinct from the live, record-oriented persistence
 // subsystems in pkg/components (database.Client, secret.Client, queue.Client):
 // those serve the running control plane, whereas an Archive captures a whole
-// directory of state as a durable snapshot. Today the only implementation is a
-// git orphan branch (pkg/statearchive/git), but the interface deliberately
-// hides that: a Session is just a local working directory whose contents
+// directory of state as a durable snapshot. The durable backend is an OCI
+// artifact (pkg/statearchive/oci). A Session is a local working directory whose contents
 // survive across Open calls once Commit succeeds. Callers write files into
 // Session.Path() with any tool (pg_dump, kubectl, os.WriteFile, ...), then
-// Commit to persist them. Alternative implementations (for example OCI/GHCR or
-// a plain filesystem) implement the same two interfaces without changing any
-// caller.
+// Commit to persist them. Tests can inject implementations of the same two
+// interfaces without changing any caller.
 //
 // Typical use:
 //
@@ -51,8 +49,7 @@ import "context"
 //
 // Implementations must be safe for concurrent use by multiple goroutines. An
 // implementation is free to serialize concurrent Open calls for the same name
-// when its underlying storage cannot support simultaneous sessions (the git
-// implementation does this because git refuses two worktrees on one branch).
+// when its underlying storage cannot support simultaneous sessions.
 //
 //go:generate go tool mockgen -typed -destination=./mock_archive.go -package=statearchive -self_package github.com/radius-project/radius/pkg/statearchive github.com/radius-project/radius/pkg/statearchive Archive,Session
 type Archive interface {
