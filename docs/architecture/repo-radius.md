@@ -300,12 +300,14 @@ The existing workflow/artifact contract does not yet provide every proposed guar
 
 ### Graph Resolution and Comparison
 
-Authored graphs describe resources and relationships declared in the application definition; planned graphs enrich them with expected recipe outputs for an environment; deployed graphs describe resources and relationships observed in a deployment. A planned graph is not an authoritative Terraform or cloud-provider deployment plan. Preserve the Radius graph representation and attach graph kind, source provenance, environment, and observation time in the result envelope. Rendering Mermaid is a projection, not another graph authority.
+**Shared graph orchestration** is proposed backend code in the `ai-extensions` lifecycle services, not a separate deployed service. It handles `graph.get` and `graph.diff` by coordinating source access and calls to existing `rad` graph-building and shared graph comparison code, then returns structured results for the frontend to present.
+
+Authored graphs describe resources and relationships declared in the application definition; planned graphs enrich them with expected recipe outputs for an environment; deployed graphs describe resources and relationships observed in a deployment. A planned graph is not an authoritative Terraform or cloud-provider deployment plan. Preserve the Radius graph representation and attach graph kind, source provenance, environment, and observation time in the result envelope.
 
 ```mermaid
 sequenceDiagram
     participant F as Frontend adapter
-    participant S as Graph service
+    participant S as Shared graph orchestration
     participant R as Source access interface
     participant G as rad and graph core
     F->>S: graph.diff(baseSource, headSource)
@@ -453,7 +455,7 @@ Approvals must bind to the operation, target, and source revision; editing the s
 1. **Formalize existing boundaries.** Inventory tool, workflow, graph, and artifact contracts. Publish proposed request/result schemas and fixtures in `ai-extensions`; keep their version separate from Radius resource schemas.
 2. **Extract lifecycle services.** Move context resolution and workflow coordination into shared services using typed requests and explicit dependency interfaces, preserving existing core and execution packages. Introduce frontend-independent operation IDs, explicit agent actions, and read-only status semantics.
 3. **Move Canvas onto the contract.** Retain existing tool names, inputs, and panel behavior through compatibility adapters. Compare results with existing fixtures before switching each operation; never dual-run a mutation.
-4. **Add the Copilot CLI binding.** Start with graph reads and existing deploy workflows, then cover the remaining lifecycle as capabilities permit. Add explicit correlation and completion evidence before claiming the stronger API guarantees.
+4. **Add the Copilot CLI binding if/when needed.** Start with graph reads and existing deploy workflows, then cover the remaining lifecycle as capabilities permit. Add explicit correlation and completion evidence before claiming the stronger API guarantees.
 5. **Retire compatibility paths deliberately.** Keep supported workflow/artifact versions readable during transition. Roll back adapter routing only when the execution binding can continue handling in-flight operations; never roll back by redispatching or discarding them.
 
 Future conformance tests should prove that the same authorized request and fixtures have the same semantic result across bindings. Include deployment without Canvas, worktree graph provenance, missing remote application definitions, stale-source rejection, unsupported agent capabilities, ambiguous dispatch outcomes, missing/expired artifacts, state-save failure after command success, repeated status reads that cannot initiate repair, and deletion that cannot bypass authorization.
