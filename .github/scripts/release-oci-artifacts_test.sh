@@ -270,6 +270,12 @@ JSON
         printf '}\n'
         exit 0
     fi
+    if [[ -n "${FAKE_IMAGE_INSPECTION_STALE:-}" ]] &&
+        (( $(grep -c -F -- "inspect --format {{json .}} ${reference}" "${calls}") <=
+            ${FAKE_IMAGE_INSPECTION_STALE_CALLS:-0} )); then
+        jq --arg digest "${digest}" '.manifest.digest = $digest' "${FAKE_IMAGE_INSPECTION_STALE}"
+        exit 0
+    fi
     if [[ -n "${FAKE_IMAGE_INSPECTION:-}" ]]; then
         jq --arg digest "${digest}" '.manifest.digest = $digest' "${FAKE_IMAGE_INSPECTION}"
     else
@@ -288,6 +294,7 @@ run_script() {
         FAKE_REGISTRY_STATE="${TEST_ROOT}/registry-state" \
         FAKE_REGISTRY_CALLS="${TEST_ROOT}/calls" \
         RELEASE_RETRY_NO_SLEEP=true \
+        RELEASE_EXTERNAL_IMAGE_WAIT_SECONDS="${RELEASE_EXTERNAL_IMAGE_WAIT_SECONDS:-0}" \
         RELEASE_SOURCE_SHA="${SOURCE_SHA}" \
         GORELEASER_PARITY_TARGETS="${TEST_ROOT}/targets.json" \
         bash "${SCRIPT}" "$@"
@@ -802,6 +809,62 @@ test_pins_external_images_without_rebuilding_or_moving_aliases() {
     ((++PASS))
 }
 
+test_waits_for_external_image_publisher() {
+    local digest
+    setup_fixture
+    digest="sha256:$(digest_for dashboard)"
+    jq '.images += [{name:"dashboard",radiusBuild:false,category:"downstream",
+        requiredPlatforms:["linux/amd64"]}]' "${TEST_ROOT}/targets.json" \
+        > "${TEST_ROOT}/external-targets.json"
+    mv "${TEST_ROOT}/external-targets.json" "${TEST_ROOT}/targets.json"
+    jq -n --arg source "${SOURCE_SHA}" '{manifest:{digest:""},image:{
+        os:"linux",architecture:"amd64",config:{Labels:{
+        "org.opencontainers.image.revision":$source}}}}' \
+        > "${TEST_ROOT}/inspection.json"
+    jq '.image.config.Labels."org.opencontainers.image.revision" =
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"' \
+        "${TEST_ROOT}/inspection.json" > "${TEST_ROOT}/stale.json"
+    printf '%s\t%s\n' example.test/radius/dashboard:0.61 "${digest}" \
+        >> "${TEST_ROOT}/registry-state"
+    # The channel reference still serves the previous build for the first
+    # inspections; the publisher finishes while the pin waits.
+    if ! FAKE_IMAGE_INSPECTION="${TEST_ROOT}/inspection.json" \
+        FAKE_IMAGE_INSPECTION_STALE="${TEST_ROOT}/stale.json" \
+        FAKE_IMAGE_INSPECTION_STALE_CALLS=4 \
+        RELEASE_EXTERNAL_IMAGE_WAIT_SECONDS=60 \
+        run_script pin-image --registry example.test/radius --names dashboard \
+        --version 0.61.2 --channel 0.61 2> "${TEST_ROOT}/wait.log"; then
+        fail_test "pinning did not wait for the external publisher"
+        return
+    fi
+    if ! grep -q 'Waiting for example.test/radius/dashboard:0.61 ' \
+        "${TEST_ROOT}/wait.log"; then
+        fail_test "the wait for the external publisher was not reported"
+        return
+    fi
+    [[ "$(awk -F '\t' -v ref=example.test/radius/dashboard:0.61.2 \
+        '$1 == ref {print $2}' "${TEST_ROOT}/registry-state")" == "${digest}" ]] || {
+        fail_test "the awaited image was not pinned to its digest"
+        return
+    }
+    # An existing full-version tag that differs is a conflict, never awaited.
+    : > "${TEST_ROOT}/calls"
+    if FAKE_IMAGE_INSPECTION="${TEST_ROOT}/inspection.json" \
+        FAKE_IMAGE_INSPECTION_STALE="${TEST_ROOT}/stale.json" \
+        FAKE_IMAGE_INSPECTION_STALE_CALLS=99 \
+        RELEASE_EXTERNAL_IMAGE_WAIT_SECONDS=60 \
+        run_script pin-image --registry example.test/radius --names dashboard \
+        --version 0.61.2 --channel 0.61 > /dev/null 2>&1; then
+        fail_test "an existing version tag with another source was accepted"
+        return
+    fi
+    if (($(grep -c 'imagetools inspect' "${TEST_ROOT}/calls") > 3)); then
+        fail_test "an immutable version tag was awaited instead of rejected"
+        return
+    fi
+    ((++PASS))
+}
+
 main() {
     export RELEASE_SOURCE_SHA="${SOURCE_SHA}"
     test_stages_cli_artifacts
@@ -820,6 +883,7 @@ main() {
     test_requires_image_lock_before_reusing_version_tag
     test_image_preflight_fails_closed_on_lookup_errors
     test_pins_external_images_without_rebuilding_or_moving_aliases
+    test_waits_for_external_image_publisher
 
     if ((FAIL > 0)); then
         echo "release OCI artifact tests failed: ${PASS} passed, ${FAIL} failed"
