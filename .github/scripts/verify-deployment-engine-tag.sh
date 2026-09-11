@@ -41,12 +41,19 @@ main() {
     command -v "${GH}" > /dev/null || fail "required command not found: ${GH}"
     command -v jq > /dev/null || fail "required command not found: jq"
 
+    # The repository is private, so a token without access receives the same
+    # 404 as a missing tag. Prove access first instead of asking for a tag
+    # that may already exist.
+    if ! "${GH}" api "repos/${REPOSITORY}" --jq '.full_name' > /dev/null; then
+        fail "the token cannot read ${REPOSITORY}; verify ${TAG} with a publisher App token minted for that repository with contents: read"
+    fi
+
     recovery="git tag -s ${TAG} -m 'release tag ${TAG}'"
     recovery+=" && git push origin ${TAG}"
     if ! reference="$(
         "${GH}" api "repos/${REPOSITORY}/git/ref/tags/${TAG}"
     )"; then
-        fail "Create the signed tag with: ${recovery}"
+        fail "Deployment Engine tag ${TAG} does not exist. Create the signed tag with: ${recovery}"
     fi
     object_type="$(jq -r '.object.type' <<< "${reference}")"
     object_sha="$(jq -r '.object.sha' <<< "${reference}")"

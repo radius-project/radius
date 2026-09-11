@@ -57,6 +57,18 @@ EOF
 write_missing_fake_gh() {
     cat > "${TEST_ROOT}/gh" << 'EOF'
 #!/bin/bash
+if [[ "$*" == *"git/ref/tags/"* ]]; then
+    exit 1
+fi
+printf '%s\n' 'azure-octo/deployment-engine'
+EOF
+    chmod +x "${TEST_ROOT}/gh"
+}
+
+write_unreadable_fake_gh() {
+    cat > "${TEST_ROOT}/gh" << 'EOF'
+#!/bin/bash
+echo "gh: Not Found (HTTP 404)" >&2
 exit 1
 EOF
     chmod +x "${TEST_ROOT}/gh"
@@ -110,6 +122,29 @@ test_missing_tag_prints_recovery_command() {
     ((++PASS))
 }
 
+test_unreadable_repository_is_not_reported_as_missing_tag() {
+    local output
+
+    write_unreadable_fake_gh
+    set +e
+    output="$(GH="${TEST_ROOT}/gh" bash "${SCRIPT}" v0.61.0-rc.1 2>&1)"
+    local status=$?
+    set -e
+    if ((status == 0)); then
+        fail_test "expected an unreadable repository to fail"
+        return
+    fi
+    if [[ "${output}" != *"cannot read azure-octo/deployment-engine"* ]]; then
+        fail_test "unreadable repository was not reported as an access problem"
+        return
+    fi
+    if [[ "${output}" == *"git tag -s"* ]]; then
+        fail_test "unreadable repository was reported as a missing tag"
+        return
+    fi
+    ((++PASS))
+}
+
 main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/de-tag-test-XXXXXX")"
 
@@ -117,6 +152,7 @@ main() {
     test_rejects_lightweight_tag
     test_rejects_unverified_tag
     test_missing_tag_prints_recovery_command
+    test_unreadable_repository_is_not_reported_as_missing_tag
 
     if ((FAIL > 0)); then
         echo "Deployment Engine tag tests failed: ${PASS} passed, ${FAIL} failed"
