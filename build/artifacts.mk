@@ -91,7 +91,7 @@ goreleaser-release: ## Stage immutable release artifacts and a draft GitHub Rele
 			--release-notes "$(GORELEASER_RELEASE_NOTES)"
 	@bash ./.github/scripts/normalize-release-checksums.sh
 	@GORELEASER_IMAGE_REGISTRY="$(GORELEASER_PRODUCTION_REGISTRY)" \
-		bash ./.github/scripts/verify-goreleaser-snapshot.sh
+		bash ./.github/scripts/verify-goreleaser-snapshot.sh $(GORELEASER_VERIFY_ARGS)
 
 .PHONY: release-cli-oci
 release-cli-oci: ## Publish immutable CLI OCI artifacts and record their digests
