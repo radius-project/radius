@@ -544,8 +544,19 @@ Write-Output "$cliFileName installed into $resolvedInstallDir successfully"
 # Install bicep
 Write-Output ""
 Write-Output "Installing bicep..."
-& $cliFilePath bicep download
-if ($LASTEXITCODE -ne 0) {
+
+# Bound the bicep download with a timeout. bicep is optional (a failure here is
+# non-fatal), and `rad bicep download` streams a large binary with no client-side
+# timeout, so a stalled network transfer can otherwise hang the installer
+# indefinitely. On timeout we stop the process, warn, and continue.
+$bicepTimeoutSeconds = 300
+$bicepProcess = Start-Process -FilePath $cliFilePath -ArgumentList 'bicep', 'download' -NoNewWindow -PassThru
+$bicepProcess | Wait-Process -Timeout $bicepTimeoutSeconds -ErrorAction SilentlyContinue
+if (-not $bicepProcess.HasExited) {
+    $bicepProcess | Stop-Process -Force -ErrorAction SilentlyContinue
+    Write-Warning "Timed out installing bicep after $bicepTimeoutSeconds seconds"
+}
+elseif ($bicepProcess.ExitCode -ne 0) {
     Write-Warning "Failed to install bicep"
 }
 else {
