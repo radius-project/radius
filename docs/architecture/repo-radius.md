@@ -78,11 +78,11 @@ The extension also already defines an [operation store](https://github.com/radiu
 
 The [graph workflow interface](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/server/routes/graph-workflows.ts) accepts a Canvas `instanceId` and an HTTP-shaped body. Deploy and status [tools](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/runtime/create-radius-tools.ts) locate a Canvas server and derive context from it. The [deployment status handler](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/server/routes/deployments.ts) can initiate an agent repair handoff during polling. These dependencies make a panel part of operation execution rather than just a view.
 
-Environment operations also contain shared business behavior inside the Canvas adapter. [Environment creation](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/server/routes/create-environment.ts) publishes workflows; [environment deletion](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/server/services/environment-deletion.ts) already separates several execution and persistence ports. Extract those services instead of duplicating them in new frontends.
+Environment operations also contain shared business behavior inside the Canvas adapter. [Environment creation](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/server/routes/create-environment.ts) publishes workflows; [environment deletion](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/server/services/environment-deletion.ts) already separates several execution and persistence interfaces. Extract those services instead of duplicating them in new frontends.
 
 ## Proposed Architecture
 
-Place a **versioned Repo Radius API contract** between frontend adapters and shared lifecycle services. Keep computations already in `core` there, reuse the execution adapter, and extract orchestration from Canvas routes behind explicit ports.
+Place a **versioned Repo Radius API contract** between frontend adapters and shared lifecycle services. Keep computations already in `core` there and reuse the execution adapter. Move workflow coordination out of Canvas request handlers into shared services with explicit interfaces for repository access, workflow execution, identity, agent assistance, and persistence.
 
 ```mermaid
 graph TD
@@ -91,7 +91,7 @@ graph TD
     Contract["Proposed Repo Radius API contract"]
     Services["Shared lifecycle services"]
     Core["Existing core computations"]
-    Ports["Execution and persistence ports"]
+    Interfaces["Execution and persistence interfaces"]
     Source["Repository and workspace access"]
     GitHub["GitHub workflows and artifacts"]
     Rad["rad and Radius control plane"]
@@ -102,13 +102,13 @@ graph TD
     CLI --> Contract
     Contract --> Services
     Services --> Core
-    Services --> Ports
-    Ports --> Source
-    Ports --> GitHub
-    Ports --> Rad
-    Ports --> Identity
-    Ports --> Agent
-    Ports --> Store
+    Services --> Interfaces
+    Interfaces --> Source
+    Interfaces --> GitHub
+    Interfaces --> Rad
+    Interfaces --> Identity
+    Interfaces --> Agent
+    Interfaces --> Store
 ```
 
 These are logical boundaries, not proposed network hops. An Actions runner can invoke shared services as a library, a Copilot tool can use an in-process binding, and an MCP or HTTP adapter can expose the same contract. A permanently running service is not required.
@@ -121,7 +121,7 @@ These responsibilities and ownership boundaries describe the proposed architectu
 - **API contract**: In `ai-extensions`, define versioned request/result schemas, capability discovery, errors, operation identity, and lifecycle semantics.
 - **Lifecycle services**: In `ai-extensions`, resolve source context, validate requests, enforce authorization, coordinate workflows and agent actions, interpret results, and persist operation records. No dependency on Canvas being open.
 - **Pure computations**: Reuse `packages/core` for graph normalization/diff, projections, and workflow generation. Do not introduce a second Bicep graph compiler.
-- **Execution ports**: Reuse `packages/adapter-shared` and extract existing ports for GitHub, workspaces, identity, `rad`, agent execution, and persistence. Ports describe capabilities, not a particular frontend's runtime.
+- **Execution interfaces**: Reuse `packages/adapter-shared` and extract existing interfaces for GitHub, workspaces, identity, `rad`, agent execution, and persistence. These software interfaces describe required capabilities without tying shared services to a particular implementation or frontend runtime.
 - **Radius execution**: In `radius`, provide resource APIs, CLI/control-plane behavior, canonical graph construction, deployment and recipe execution, and durable Radius state. See [CLI architecture](rad-cli.md) and [state archive](state-archive.md).
 
 Planned-graph resolution belongs to the shared lifecycle services in `ai-extensions`; it combines the Radius graph with the selected environment's recipe-pack information. For graph comparison, Radius's [`ComputeDiffHash`](../../pkg/cli/graph/diffhash.go) defines the authored-property/dependency hash, while the extension's [`computeGraphDiff`](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/core/src/graph/diff.ts) compares resource fields, connections, and that hash. These are complementary responsibilities; frontend adapters must not independently redefine graph equivalence.
@@ -295,7 +295,7 @@ Authored graphs describe resources and relationships declared in the application
 sequenceDiagram
     participant F as Frontend adapter
     participant S as Graph service
-    participant R as Source port
+    participant R as Source access interface
     participant G as rad and graph core
     F->>S: graph.diff(baseSource, headSource)
     loop Each source independently
@@ -318,7 +318,7 @@ Planned resolution must use the target environment's recipe-pack registrations. 
 
 ### Authoring Application Definitions and Agent Assistance
 
-Authoring a Radius application definition is a multi-step operation: locate the source files, record their starting content fingerprint, request authoring in a staging location, and validate the proposed files. Apply those files to the working tree only if the original definition is unchanged, so concurrent edits are not overwritten. This step is called promotion in the existing scripts; the current script also runs `git add`, but does not commit, push, or deploy the definition. It checks the managed files it may replace; the proposed fingerprint of all effective definition inputs is a broader requirement. Agent assistance is a port, not a requirement that a frontend understand a local skill path. The existing skill and safeguards remain the implementation starting point.
+Authoring a Radius application definition is a multi-step operation: locate the source files, record their starting content fingerprint, request authoring in a staging location, and validate the proposed files. Apply those files to the working tree only if the original definition is unchanged, so concurrent edits are not overwritten. This step is called promotion in the existing scripts; the current script also runs `git add`, but does not commit, push, or deploy the definition. It checks the managed files it may replace; the proposed fingerprint of all effective definition inputs is a broader requirement. Agent assistance is accessed through an explicit software interface, not a requirement that a frontend understand a local skill path. The existing skill and safeguards remain the implementation starting point.
 
 Example: authoring is waiting for an agent. The action kind `agent.author_definition` means authoring the Radius application definition. The `actionId` identifies a recorded, authorized action; arbitrary clients cannot claim completion to bypass validation.
 
@@ -433,17 +433,17 @@ Approvals must bind to the operation, target, and source revision; editing the s
 
 ### Alternatives
 
-| Alternative                             | Benefit                                                             | Cost or limitation                                                                                                                             |
-|-----------------------------------------|---------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| Wrap existing Canvas HTTP routes        | Small initial adapter change.                                       | Retains instance state and polling-triggered repair; does not establish frontend neutrality. Useful only as a temporary compatibility wrapper. |
-| Use workflows as the entire public API  | Reuses the existing GitHub Actions execution mechanism.             | Poor fit for uncommitted workspace graphs, local authoring, and interactive identity actions. Keep workflows as an execution binding.          |
-| Require a new hosted REST service       | Familiar network API and potentially centralized operations.        | Commits to hosting, authentication, and operational infrastructure before those decisions are needed. Defer.                                   |
-| Extract shared services and typed ports | Reuses working code and supports local, runner, or hosted bindings. | Requires explicit operation persistence, schema ownership, and conformance work. Recommended.                                                  |
+| Alternative                                  | Benefit                                                             | Cost or limitation                                                                                                                             |
+|----------------------------------------------|---------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| Wrap existing Canvas HTTP routes             | Small initial adapter change.                                       | Retains instance state and polling-triggered repair; does not establish frontend neutrality. Useful only as a temporary compatibility wrapper. |
+| Use workflows as the entire public API       | Reuses the existing GitHub Actions execution mechanism.             | Poor fit for uncommitted workspace graphs, local authoring, and interactive identity actions. Keep workflows as an execution binding.          |
+| Require a new hosted REST service            | Familiar network API and potentially centralized operations.        | Commits to hosting, authentication, and operational infrastructure before those decisions are needed. Defer.                                   |
+| Extract shared services and typed interfaces | Reuses working code and supports local, runner, or hosted bindings. | Requires explicit operation persistence, schema ownership, and conformance work. Recommended.                                                  |
 
 ## Migration
 
 1. **Formalize existing boundaries.** Inventory tool, workflow, graph, and artifact contracts. Publish proposed request/result schemas and fixtures in `ai-extensions`; keep their version separate from Radius resource schemas.
-2. **Extract lifecycle services.** Move context resolution and orchestration behind typed requests/ports, preserving existing core and execution packages. Extend existing operation records and persistence to provide cross-client identity and coordination; introduce explicit agent actions and read-only status semantics.
+2. **Extract lifecycle services.** Move context resolution and workflow coordination into shared services using typed requests and explicit dependency interfaces, preserving existing core and execution packages. Extend existing operation records and persistence to provide cross-client identity and coordination; introduce explicit agent actions and read-only status semantics.
 3. **Move Canvas onto the contract.** Retain existing tool names, inputs, and panel behavior through compatibility adapters. Compare results with existing fixtures before switching each operation; never dual-run a mutation.
 4. **Add the Copilot CLI binding.** Start with graph reads and existing deploy workflows, then cover the remaining lifecycle as capabilities permit. Add explicit correlation and completion evidence before claiming the stronger API guarantees.
 5. **Retire compatibility paths deliberately.** Keep supported workflow/artifact versions readable during transition. Roll back adapter routing only when persisted operation records remain compatible; never roll back by redispatching or discarding an in-flight operation.
