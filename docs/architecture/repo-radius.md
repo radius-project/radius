@@ -16,16 +16,17 @@ Operation history, recovery across sessions or process restarts, and durable ret
 
 ## Quick Reference
 
-| Topic                                       | Start Here                                      |
-|---------------------------------------------|-------------------------------------------------|
-| Existing implementation and coupling        | [Current Architecture](#current-architecture)   |
-| Shared services and frontend boundaries     | [Proposed Architecture](#proposed-architecture) |
-| Component responsibilities and ownership    | [Key Components](#key-components)               |
-| API operations and request/result semantics | [Proposed API Contract](#proposed-api-contract) |
-| Graph, authoring, and deployment flows      | [How It Works](#how-it-works)                   |
-| Copilot App and Copilot CLI integration     | [Frontend Adapters](#frontend-adapters)         |
-| Trust boundaries and trade-offs             | [Notable Details](#notable-details)             |
-| Incremental adoption and compatibility      | [Migration](#migration)                         |
+| Topic                                         | Start Here                                                      |
+|-----------------------------------------------|-----------------------------------------------------------------|
+| Existing implementation and coupling          | [Current Architecture](#current-architecture)                   |
+| Shared services and frontend boundaries       | [Proposed Architecture](#proposed-architecture)                 |
+| Component responsibilities and ownership      | [Key Components](#key-components)                               |
+| API operations and request/result semantics   | [Proposed API Contract](#proposed-api-contract)                 |
+| Graph, authoring, and deployment flows        | [How It Works](#how-it-works)                                   |
+| Workflow failures and user-facing diagnostics | [Error Detection and Reporting](#error-detection-and-reporting) |
+| Copilot App and Copilot CLI integration       | [Frontend Adapters](#frontend-adapters)                         |
+| Trust boundaries and trade-offs               | [Notable Details](#notable-details)                             |
+| Incremental adoption and compatibility        | [Migration](#migration)                                         |
 
 ## Current Architecture
 
@@ -223,6 +224,8 @@ Read operations return a typed result or a structured error. `graph.diff` can re
 
 Errors contain `code`, `message`, `retryable`, `requestId`, optional `operationId`, and redacted details or required actions. Examples include `SOURCE_CHANGED`, `DEFINITION_NOT_FOUND` (the Radius application definition is missing), `RECIPE_PACK_REQUIRED`, `CAPABILITY_UNAVAILABLE`, `FORBIDDEN`, and `VERSION_UNSUPPORTED`. A missing result after execution is `RESULT_UNAVAILABLE`, not proof of deployment failure or success.
 
+For workflow errors, details should identify the failed phase, affected target, and correlated run/attempt when available, with a workflow link and bounded, redacted diagnostics. `retryable` describes whether retrying the request that returned the error is safe; retrying a status read is not permission to repeat the deployment. See [Error Detection and Reporting](#error-detection-and-reporting) for how execution evidence becomes a user-facing result.
+
 Version the Repo Radius API separately from Radius resource API versions and workflow/artifact schema versions. Adapters can translate supported legacy formats, but must reject unknown versions rather than guess. Additive fields can evolve within a version; incompatible semantics require a new version and an explicit compatibility period.
 
 ### Long-Running Operations
@@ -411,6 +414,29 @@ The existing workflow validates `rad_commands` against an allowed-command set, a
 
 Graph artifacts and Radius deployment state serve different purposes. A cached graph cannot restore a deployment. Report missing or expired workflow artifacts explicitly instead of inferring a deployment outcome from their absence.
 
+### Error Detection and Reporting
+
+The proposed error path has three responsibilities: workflows expose execution evidence, shared lifecycle services classify it, and frontend adapters present it. These are requirements for the future contract, not a claim that current workflows already emit every required field. They do not require the operation-history storage design deferred above.
+
+**Detect failures at the execution boundary.** Workflow steps should preserve command exit codes and distinguish state restore, deployment, state save, and cleanup outcomes. Collect diagnostics and publish phase results even after a command fails where execution still permits it, without turning that failure into a successful workflow conclusion. Diagnostic collection or cleanup failures must not overwrite the original failure; report them as additional problems. Cancellation and runner loss can prevent any final result from being published.
+
+**Classify evidence in shared services.** The GitHub execution interface retrieves the correlated run's status, job/step outcomes, and available result artifacts. Shared services validate artifact identity and schema before interpreting them. Prefer structured outcomes over guessing from words such as "error" in logs; use logs for supporting diagnostics. A queued run or one waiting for GitHub approval is not a failed deployment. Report conflicting evidence explicitly rather than choosing whichever result appears successful.
+
+| Evidence                                                                          | API interpretation and user message                                                                                              |
+|-----------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| GitHub explicitly rejects dispatch                                                | Report the dispatch error and any actionable permission or configuration requirement. Do not claim deployment started.           |
+| Dispatch request times out with no confirmed run identity                         | Report that dispatch is unconfirmed and execution may have started. Do not dispatch again automatically.                         |
+| Deployment command fails                                                          | Report failure with the failed phase and diagnostics; show state-save and cleanup outcomes separately.                           |
+| Deployment command succeeds but state save fails                                  | Do not report deployment success. Explain that resources may have changed but Radius state was not saved successfully.           |
+| GitHub reports a failed or cancelled run but detailed artifacts are missing       | Report the confirmed workflow conclusion while marking detailed phase or resource outcomes unavailable.                          |
+| Status retrieval fails, or artifacts are missing while the run outcome is unknown | Report an observation problem, not a new deployment failure or success; mark previous observations stale or the outcome unknown. |
+
+**Report the same meaning in every frontend.** Return a structured error with a concise explanation of what failed, the affected repository/application/environment, the failed phase when known, and whether execution or resource changes are uncertain. Include operation and run identifiers when available, a workflow link, and a safe next action. The App can show a summary with expandable diagnostics; the CLI adapter can provide concise text and structured tool results. Both must preserve the distinction between failure, cancellation, and unavailable status rather than hide it behind a generic "something went wrong" message.
+
+For example, after a confirmed state-save failure, both adapters should convey: "The deployment command succeeded, but saving Radius state failed. Resources may have changed. Inspect the workflow's state-save failure before attempting another deployment." Include the affected target and run link alongside that message. Redact secrets before publishing diagnostics and before returning them to a frontend or agent. Bound diagnostic output, disclose truncation, and keep access to detailed logs subject to GitHub permissions.
+
+**Keep observation retries separate from repair.** Retry transient read failures with bounded backoff and respect GitHub rate limits; if observation remains unavailable, report that limitation. Do not blindly repeat mutations after timeouts, automatically grant missing permissions, or start repair from polling. A repair action must follow the contract's `operation.repair` authorization and source checks. User-actionable prerequisites can use `action_required`, but a frontend response cannot substitute for GitHub approval or prove a failed deployment recovered.
+
 ### Credentials and Deletion
 
 Identity inspection must not unexpectedly start an interactive login. Configuration can return an explicit user action, while deployment uses the environment's identity configuration and short-lived OIDC tokens in the execution boundary. Do not put raw credentials in public request/result objects, application graphs, or diagnostic output.
@@ -459,6 +485,8 @@ Approvals must bind to the operation, target, and source revision; editing the s
 5. **Retire compatibility paths deliberately.** Keep supported workflow/artifact versions readable during transition. Roll back adapter routing only when the execution binding can continue handling in-flight operations; never roll back by redispatching or discarding them.
 
 Future conformance tests should prove that the same authorized request and fixtures have the same semantic result across bindings. Include deployment without Canvas, worktree graph provenance, missing remote application definitions, stale-source rejection, unsupported agent capabilities, ambiguous dispatch outcomes, missing/expired artifacts, state-save failure after command success, repeated status reads that cannot initiate repair, and deletion that cannot bypass authorization.
+
+Error-reporting fixtures should also cover status API outages and rate limits, failed or cancelled runs without artifacts, mismatched artifact identity, conflicting phase results, deployment failure followed by cleanup failure, and secret-bearing diagnostics. Verify that adapters preserve the primary failure, distinguish observation errors from execution outcomes, and do not leak secrets or trigger duplicate mutations.
 
 ### Decisions Left Open
 
