@@ -245,7 +245,7 @@ tools:
 
   - name: syft
     makePrefix: SYFT
-    version: v1.51.0
+    version: v1.51.1
     source:
       type: github-release
       repository: anchore/syft
@@ -254,16 +254,16 @@ tools:
     platforms:
       linux_amd64:
         asset: syft_{version_no_v}_linux_amd64.tar.gz
-        checksum: 2a2e837a2c8d59ec9af5472ee22d3b04ee463c4e44476ecf993fd1e5ab6ebc7f
+        checksum: 8fcb33017a0dc1058298c923c436d19dfa68ae93968e0b423248542e3afb9fc3
       linux_arm64:
         asset: syft_{version_no_v}_linux_arm64.tar.gz
-        checksum: 6c0466811541ea03add5213a60a1562f0851e4c0b0ecfdee1a694a9455285900
+        checksum: a7fd2b784e6664acd44719270574f6cd8c6864fc2b1700bf9099bd1cccda7d7f
       darwin_amd64:
         asset: syft_{version_no_v}_darwin_amd64.tar.gz
-        checksum: cddf9a044145caf0a1a3194d00d1dd51a1666f4814f2919cdb4768a0c062ad95
+        checksum: 0e186ce1d4351ec276126851ca3ff258ed070e93e73574ed64858d4fc2339867
       darwin_arm64:
         asset: syft_{version_no_v}_darwin_arm64.tar.gz
-        checksum: 4f37f4c7fefce0a68e4cf71ba3f5f9829a99e65d89b29f7ee41b8c2c10ea8c59
+        checksum: ac063af3b9874769deb7ea1e6d76841e68f9e3bb50cd654226fc977de65532c1
     checksumSource:
       type: github-release-file
       fileTemplate: syft_{version_no_v}_checksums.txt
