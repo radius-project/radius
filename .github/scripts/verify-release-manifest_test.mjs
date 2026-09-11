@@ -291,6 +291,7 @@ test("the manifest command verifies files and rejects a changed approved snapsho
       SPDXID: "SPDXRef-DOCUMENT",
       name: "radius",
       dataLicense: "CC0-1.0",
+      name: "radius",
       documentNamespace: "https://example.test/sbom",
       creationInfo: {
         created: "2026-09-09T00:00:00Z",

@@ -893,7 +893,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     permissions:
-      contents: read
+      contents: write # the staged draft release is listed only for push access
       packages: read
       actions: read
       deployments: read
@@ -1196,6 +1196,8 @@ jobs:
           owner: ${{ github.repository_owner }}
           repositories: docs,samples
           permission-actions: write
+          permission-contents: read
+          permission-pull-requests: read
 
       - name: Reconcile downstream workflows
         id: coordinate
