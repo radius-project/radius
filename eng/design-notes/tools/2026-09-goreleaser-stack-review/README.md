@@ -19,6 +19,7 @@ This directory records the review of the 18-pull-request stack that implements t
 | 11 | `dp/dotted-rc-identifiers`              | [pr-11-dotted-rc-identifiers.md](./pr-11-dotted-rc-identifiers.md)                   |
 | 12 | `dp/prepare-release-backports`          | [pr-12-prepare-release-backports.md](./pr-12-prepare-release-backports.md)           |
 | 13 | `dp/goreleaser-tag-cutover`             | [pr-13-goreleaser-tag-cutover.md](./pr-13-goreleaser-tag-cutover.md)                 |
+| 14 | `dp/goreleaser-sboms`                   | [pr-14-goreleaser-sboms.md](./pr-14-goreleaser-sboms.md)                             |
 
 Later notes are added as the review progresses up the stack.
 
