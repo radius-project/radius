@@ -175,6 +175,17 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	scaledBackUp = true
 
+	// ReconcileHydratedState is best-effort: it POSTs the reconcile custom action per application
+	// so the state store reflects reality before the next 'rad ...' command runs. Failures are
+	// logged and the workflow still succeeds; see specs/006-state-restoration.
+	r.Output.LogInfo("Reconciling hydrated state against reality...")
+	reports, err := r.StateClient.ReconcileHydratedState(ctx, r.Workspace)
+	if err != nil {
+		r.Output.LogInfo("Reconcile skipped: %v", err)
+	} else {
+		logReconcileReports(r.Output, reports)
+	}
+
 	r.Output.LogInfo("State restored successfully.")
 	return nil
 }

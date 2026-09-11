@@ -56,7 +56,12 @@ func (client *ApplicationsClient) CreateOrUpdate(ctx context.Context, rootScope 
 	if err != nil {
 		return ApplicationsClientCreateOrUpdateResponse{}, err
 	}
-	return client.createOrUpdateHandleResponse(httpResp, http.StatusOK, http.StatusCreated)
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
+		err = runtime.NewResponseError(httpResp)
+		return ApplicationsClientCreateOrUpdateResponse{}, err
+	}
+	resp, err := client.createOrUpdateHandleResponse(httpResp)
+	return resp, err
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
@@ -86,11 +91,8 @@ func (client *ApplicationsClient) createOrUpdateCreateRequest(ctx context.Contex
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *ApplicationsClient) createOrUpdateHandleResponse(resp *http.Response, successCodes ...int) (ApplicationsClientCreateOrUpdateResponse, error) {
+func (client *ApplicationsClient) createOrUpdateHandleResponse(resp *http.Response) (ApplicationsClientCreateOrUpdateResponse, error) {
 	result := ApplicationsClientCreateOrUpdateResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationResource); err != nil {
 		return ApplicationsClientCreateOrUpdateResponse{}, err
 	}
@@ -115,7 +117,8 @@ func (client *ApplicationsClient) Delete(ctx context.Context, rootScope string, 
 		return ApplicationsClientDeleteResponse{}, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusNoContent) {
-		return ApplicationsClientDeleteResponse{}, runtime.NewResponseError(httpResp)
+		err = runtime.NewResponseError(httpResp)
+		return ApplicationsClientDeleteResponse{}, err
 	}
 	return ApplicationsClientDeleteResponse{}, nil
 }
@@ -158,7 +161,12 @@ func (client *ApplicationsClient) Get(ctx context.Context, rootScope string, app
 	if err != nil {
 		return ApplicationsClientGetResponse{}, err
 	}
-	return client.getHandleResponse(httpResp, http.StatusOK)
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return ApplicationsClientGetResponse{}, err
+	}
+	resp, err := client.getHandleResponse(httpResp)
+	return resp, err
 }
 
 // getCreateRequest creates the Get request.
@@ -184,11 +192,8 @@ func (client *ApplicationsClient) getCreateRequest(ctx context.Context, rootScop
 }
 
 // getHandleResponse handles the Get response.
-func (client *ApplicationsClient) getHandleResponse(resp *http.Response, successCodes ...int) (ApplicationsClientGetResponse, error) {
+func (client *ApplicationsClient) getHandleResponse(resp *http.Response) (ApplicationsClientGetResponse, error) {
 	result := ApplicationsClientGetResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationResource); err != nil {
 		return ApplicationsClientGetResponse{}, err
 	}
@@ -213,7 +218,12 @@ func (client *ApplicationsClient) GetGraph(ctx context.Context, rootScope string
 	if err != nil {
 		return ApplicationsClientGetGraphResponse{}, err
 	}
-	return client.getGraphHandleResponse(httpResp, http.StatusOK)
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return ApplicationsClientGetGraphResponse{}, err
+	}
+	resp, err := client.getGraphHandleResponse(httpResp)
+	return resp, err
 }
 
 // getGraphCreateRequest creates the GetGraph request.
@@ -243,11 +253,8 @@ func (client *ApplicationsClient) getGraphCreateRequest(ctx context.Context, roo
 }
 
 // getGraphHandleResponse handles the GetGraph response.
-func (client *ApplicationsClient) getGraphHandleResponse(resp *http.Response, successCodes ...int) (ApplicationsClientGetGraphResponse, error) {
+func (client *ApplicationsClient) getGraphHandleResponse(resp *http.Response) (ApplicationsClientGetGraphResponse, error) {
 	result := ApplicationsClientGetGraphResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationGraphResponse); err != nil {
 		return ApplicationsClientGetGraphResponse{}, err
 	}
@@ -270,54 +277,104 @@ func (client *ApplicationsClient) NewListByScopePager(rootScope string, options 
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			req, err := client.listByScopeCreateRequest(ctx, rootScope, nextLink, options)
+			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
+				return client.listByScopeCreateRequest(ctx, rootScope, options)
+			}, nil)
 			if err != nil {
 				return ApplicationsClientListByScopeResponse{}, err
 			}
-			resp, err := client.internal.Pipeline().Do(req)
-			if err != nil {
-				return ApplicationsClientListByScopeResponse{}, err
-			}
-			return client.listByScopeHandleResponse(resp, http.StatusOK)
+			return client.listByScopeHandleResponse(resp)
 		},
 	})
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *ApplicationsClient) listByScopeCreateRequest(ctx context.Context, rootScope string, nextLink string, _ *ApplicationsClientListByScopeOptions) (*policy.Request, error) {
-	firstPage := nextLink == ""
-	var req *policy.Request
-	var err error
-	if firstPage {
-		urlPath := "/{rootScope}/providers/Radius.Core/applications"
-		if rootScope == "" {
-			return nil, errors.New("parameter rootScope cannot be empty")
-		}
-		urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	} else {
-		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
+func (client *ApplicationsClient) listByScopeCreateRequest(ctx context.Context, rootScope string, _ *ApplicationsClientListByScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Radius.Core/applications"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
 	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	if firstPage {
-		reqQP := req.Raw().URL.Query()
-		reqQP.Set("api-version", version20250801Preview)
-		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-		req.Raw().Header["Accept"] = []string{"application/json"}
-	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20250801Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
 
 // listByScopeHandleResponse handles the ListByScope response.
-func (client *ApplicationsClient) listByScopeHandleResponse(resp *http.Response, successCodes ...int) (ApplicationsClientListByScopeResponse, error) {
+func (client *ApplicationsClient) listByScopeHandleResponse(resp *http.Response) (ApplicationsClientListByScopeResponse, error) {
 	result := ApplicationsClientListByScopeResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationResourceListResult); err != nil {
 		return ApplicationsClientListByScopeResponse{}, err
+	}
+	return result, nil
+}
+
+// Reconcile - Reconciles the application's resources against their underlying providers. For every non-terminal child, dynamic-rp
+// queries the recorded outputResources and updates provisioningState to match reality. Called by `rad startup` after the
+// state archive is hydrated so a subsequent `rad app delete` is not blocked by 409s on resources whose real state has moved
+// on. Returns a report of what was observed and rewritten.
+// If the operation fails it returns an *azcore.ResponseError type.
+//   - rootScope - The scope in which the resource is present. UCP Scope is /planes/{planeType}/{planeName}/resourceGroup/{resourcegroupID}
+//     and Azure resource scope is /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+//   - applicationName - The application name
+//   - body - The content of the action request
+//   - options - ApplicationsClientReconcileOptions contains the optional parameters for the ApplicationsClient.Reconcile method.
+func (client *ApplicationsClient) Reconcile(ctx context.Context, rootScope string, applicationName string, body ReconcileRequest, options *ApplicationsClientReconcileOptions) (ApplicationsClientReconcileResponse, error) {
+	var err error
+	ctx = context.WithValue(ctx, runtime.CtxAPINameKey{}, "ApplicationsClient.Reconcile")
+	req, err := client.reconcileCreateRequest(ctx, rootScope, applicationName, body, options)
+	if err != nil {
+		return ApplicationsClientReconcileResponse{}, err
+	}
+	httpResp, err := client.internal.Pipeline().Do(req)
+	if err != nil {
+		return ApplicationsClientReconcileResponse{}, err
+	}
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return ApplicationsClientReconcileResponse{}, err
+	}
+	resp, err := client.reconcileHandleResponse(httpResp)
+	return resp, err
+}
+
+// reconcileCreateRequest creates the Reconcile request.
+func (client *ApplicationsClient) reconcileCreateRequest(ctx context.Context, rootScope string, applicationName string, body ReconcileRequest, _ *ApplicationsClientReconcileOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Radius.Core/applications/{applicationName}/reconcile"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	if applicationName == "" {
+		return nil, errors.New("parameter applicationName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{applicationName}", url.PathEscape(applicationName))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20250801Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	req.Raw().Header["Content-Type"] = []string{"application/json"}
+	if err := runtime.MarshalAsJSON(req, body); err != nil {
+		return nil, err
+	}
+	return req, nil
+}
+
+// reconcileHandleResponse handles the Reconcile response.
+func (client *ApplicationsClient) reconcileHandleResponse(resp *http.Response) (ApplicationsClientReconcileResponse, error) {
+	result := ApplicationsClientReconcileResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.ReconcileResponse); err != nil {
+		return ApplicationsClientReconcileResponse{}, err
 	}
 	return result, nil
 }
@@ -340,7 +397,12 @@ func (client *ApplicationsClient) Update(ctx context.Context, rootScope string, 
 	if err != nil {
 		return ApplicationsClientUpdateResponse{}, err
 	}
-	return client.updateHandleResponse(httpResp, http.StatusOK)
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return ApplicationsClientUpdateResponse{}, err
+	}
+	resp, err := client.updateHandleResponse(httpResp)
+	return resp, err
 }
 
 // updateCreateRequest creates the Update request.
@@ -370,11 +432,8 @@ func (client *ApplicationsClient) updateCreateRequest(ctx context.Context, rootS
 }
 
 // updateHandleResponse handles the Update response.
-func (client *ApplicationsClient) updateHandleResponse(resp *http.Response, successCodes ...int) (ApplicationsClientUpdateResponse, error) {
+func (client *ApplicationsClient) updateHandleResponse(resp *http.Response) (ApplicationsClientUpdateResponse, error) {
 	result := ApplicationsClientUpdateResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ApplicationResource); err != nil {
 		return ApplicationsClientUpdateResponse{}, err
 	}

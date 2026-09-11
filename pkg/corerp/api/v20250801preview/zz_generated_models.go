@@ -369,14 +369,12 @@ type EnvironmentProperties struct {
 // that platform engineers configure for their developers. Every Radius Application is deployed to an Environment through
 // its `environment` property.
 // An Environment defines three things for the Applications deployed to it:
-//
-//   - **Where resources are deployed**: the target compute platform and cloud provider accounts, set through the `providers`
-//     property.
-//   - **Which Recipes are used**: the Recipe Packs whose Recipes provision the infrastructure backing application resources,
-//     set through the `recipePacks` property.
-//   - **Advanced Terraform and Bicep settings**: environment-wide Recipe parameters and Terraform or Bicep engine configuration
-//     applied when Recipes run.
-//
+// - **Where resources are deployed**: the target compute platform and cloud provider accounts, set through the `providers`
+// property.
+// - **Which Recipes are used**: the Recipe Packs whose Recipes provision the infrastructure backing application resources,
+// set through the `recipePacks` property.
+// - **Advanced Terraform and Bicep settings**: environment-wide Recipe parameters and Terraform or Bicep engine configuration
+// applied when Recipes run.
 // ## Defining an Environment
 // The simplest Environment can be created directly with the `rad environment create` command, without a Bicep file:
 // ```bash
@@ -803,6 +801,35 @@ type RecipeStatus struct {
 
 	// TemplateVersion is the version number of the template.
 	TemplateVersion *string
+}
+
+// ReconcileRequest - Request body for the reconcile action. Currently empty; reserved for future filters (for example, a
+// resource-type allowlist).
+type ReconcileRequest struct {
+}
+
+// ReconcileResourceOutcome - Per-resource outcome recorded by the reconcile action.
+type ReconcileResourceOutcome struct {
+	// REQUIRED; The provisioningState observed on the resource before the reality check.
+	From *string
+
+	// REQUIRED; The fully-qualified resource ID that was reconciled.
+	ResourceID *string
+
+	// REQUIRED; The provisioningState written back after the reality check. Same as `from` when no change was needed (for example,
+	// when reality confirms the resource is still updating) or when the check could not run.
+	To *string
+
+	// Short human-readable reason for the change or explanation of the outcome (for example, `underlying kubernetes object not
+	// found`, `still updating`, `provider query failed`).
+	Reason *string
+}
+
+// ReconcileResponse - Response body for the reconcile action.
+type ReconcileResponse struct {
+	// REQUIRED; Per-resource outcomes of the reconciliation pass. One entry per non-terminal child the orchestrator attempted
+	// to reconcile. Terminal-state children are skipped and do not appear.
+	Resources []*ReconcileResourceOutcome
 }
 
 // ResourceStatus - Status of a resource.

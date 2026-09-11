@@ -79,17 +79,30 @@ func (s *Service) initialize(ctx context.Context) (*http.Server, error) {
 		return nil, fmt.Errorf("failed to create sensitive data handler: %w", err)
 	}
 
+	// The reconcile handler reality-checks each resource's outputResources against the target
+	// cluster. Both clients are cluster-scoped and shared across every dynamic type served by
+	// dynamic-rp; failing to acquire either here is fatal — the same failure mode as the
+	// encryption key we just loaded from a Kubernetes secret.
+	kubeClient, err := s.options.KubernetesProvider.RuntimeClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Kubernetes runtime client: %w", err)
+	}
+	discoveryClient, err := s.options.KubernetesProvider.DiscoveryClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get Kubernetes discovery client: %w", err)
+	}
+
 	controllerOptions := controller.Options{
 		Address:        s.options.Config.Server.Address(),
 		PathBase:       s.options.Config.Server.PathBase,
 		DatabaseClient: databaseClient,
 		StatusManager:  s.options.StatusManager,
 
-		KubeClient:   nil, // Unused by DynamicRP
-		ResourceType: "",  // Set dynamically
+		KubeClient:   kubeClient,
+		ResourceType: "", // Set dynamically
 	}
 
-	err = s.registerRoutes(r, controllerOptions, ucpClient, sensitiveDataHandler)
+	err = s.registerRoutes(r, controllerOptions, ucpClient, sensitiveDataHandler, discoveryClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to register routes: %w", err)
 	}
