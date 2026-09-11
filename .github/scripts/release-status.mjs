@@ -130,7 +130,7 @@ export default async function reportReleaseStatus({ github, context, core }) {
     results,
     downstream: JSON.parse(core.getInput("DOWNSTREAM") || "[]"),
     releaseState:
-      !release ? "absent"
+      !release ? "not published"
       : release.draft ? "draft"
       : "published",
     runUrl: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
