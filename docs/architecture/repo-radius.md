@@ -82,13 +82,13 @@ Environment operations also contain shared business behavior inside the Canvas a
 
 ## Proposed Architecture
 
-Place a **versioned Repo Radius operation contract** between frontend adapters and shared lifecycle services. Keep computations already in `core` there, reuse the execution adapter, and extract orchestration from Canvas routes behind explicit ports.
+Place a **versioned Repo Radius API contract** between frontend adapters and shared lifecycle services. Keep computations already in `core` there, reuse the execution adapter, and extract orchestration from Canvas routes behind explicit ports.
 
 ```mermaid
 graph TD
     App["Copilot App adapter"]
     CLI["Copilot CLI adapter"]
-    Contract["Proposed Repo Radius operation contract"]
+    Contract["Proposed Repo Radius API contract"]
     Services["Shared lifecycle services"]
     Core["Existing core computations"]
     Ports["Execution and persistence ports"]
@@ -118,7 +118,7 @@ These are logical boundaries, not proposed network hops. An Actions runner can i
 These responsibilities and ownership boundaries describe the proposed architecture.
 
 - **Frontend adapters**: In `ai-extensions`, collect user intent, render results, present approval requests, and translate host interactions. Canvas instance IDs, DOM state, and Copilot SDK handles stay here.
-- **Operation contract**: In `ai-extensions`, define versioned request/result schemas, capability discovery, errors, operation identity, and lifecycle semantics.
+- **API contract**: In `ai-extensions`, define versioned request/result schemas, capability discovery, errors, operation identity, and lifecycle semantics.
 - **Lifecycle services**: In `ai-extensions`, resolve source context, validate requests, enforce authorization, coordinate workflows and agent actions, interpret results, and persist operation records. No dependency on Canvas being open.
 - **Pure computations**: Reuse `packages/core` for graph normalization/diff, projections, and workflow generation. Do not introduce a second Bicep graph compiler.
 - **Execution ports**: Reuse `packages/adapter-shared` and extract existing ports for GitHub, workspaces, identity, `rad`, agent execution, and persistence. Ports describe capabilities, not a particular frontend's runtime.
