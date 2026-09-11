@@ -27,7 +27,7 @@ We welcome small pull request contributions from anyone (docs improvements, bug 
 
 - For very minor changes like correcting a typo, human contributors may send a pull request without first opening an issue.
 - For other changes, start by [choosing an existing issue](https://github.com/radius-project/radius/issues) or [opening an issue](https://github.com/radius-project/radius/issues/new/choose).
-- External contributors using an AI agent, coding bot, or other automation must restrict their contributions to open issues labeled `triaged` and either `help wanted` or `good first issue`. The exception for minor changes does not apply to automated contributions.
+- External contributors using an AI agent, coding bot, or other automation must restrict their contributions to open issues labeled `triaged` and either `help wanted` or `good first issue`. The issue must not be assigned to another contributor or already have an open pull request. Re-check the issue's status, labels, assignment, and linked pull requests immediately before opening a pull request. The exception for minor changes does not apply to automated contributions.
 - Creating an issue or applying a label other than the required labels is not authorization to open an automated pull request.
 - If you have any doubt whether a contribution would be valuable, feel free to ask.
 
