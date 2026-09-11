@@ -128,6 +128,23 @@ Planned-graph resolution belongs to the shared lifecycle services in `ai-extensi
 
 The names and JSON envelopes in this section are illustrative **new contract elements**. They are not current tool names, HTTP endpoints, or drop-in workflow inputs. A later implementation should publish machine-readable schemas and adapter conformance fixtures as their source of truth.
 
+### Schemas and Adapter Conformance
+
+**Machine-readable schemas define the data.** For example, a JSON Schema could specify the required repository, environment, and source revision for `deployment.start`, its optional fields, and the structure of its responses and errors. Shared services and adapters could use these schemas to validate messages and generate language-specific types. JSON Schema is one possible format, not a decision to require HTTP or a hosted service.
+
+**Adapter conformance fixtures define test scenarios.** Each fixture supplies a request, controlled backend responses, and expected results or side effects. Run the same scenarios against each adapter to check that it translates requests and interprets responses consistently.
+
+| Scenario                                    | Expected behavior in either adapter                                   |
+|---------------------------------------------|-----------------------------------------------------------------------|
+| Start an authorized deployment              | Translate the request correctly and expose the returned operation ID. |
+| Request an unavailable capability           | Report the limitation, not a success.                                 |
+| Query a failed deployment's status          | Show the failure without initiating repair.                           |
+| Compare graphs when a definition is missing | Report an unavailable comparison, not an empty diff.                  |
+
+The Copilot App could render a panel while the CLI prints text. Their presentation differs, but their interpretation of the API must agree. Schemas check message structure; conformance tests check selected behaviors that schemas cannot express. Neither replaces backend authorization or broader integration testing.
+
+Keep the versioned schemas and fixtures together in `ai-extensions`, with their exact package placement left open. Adapters should use these shared definitions rather than maintain separate interpretations of the contract. This architecture document explains the design; the published contract artifacts would define precise implementation requirements. These artifacts are proposed future work, not existing implementations.
+
 ### Operation Catalog
 
 | Operation               | Behavior                                                                                                                                  | Effect or prerequisite                                                                                                      |
