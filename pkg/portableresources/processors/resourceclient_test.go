@@ -52,6 +52,10 @@ const (
 	// https://github.com/radius-project/radius/issues/12694.
 	ARMExtensionResourceID   = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/test-account/providers/Microsoft.Authorization/locks/test-lock"
 	ARMExtensionProviderPath = "/subscriptions/0000/providers/Microsoft.Authorization"
+
+	// Nested ARM type (parent/child) as listed by Providers.Get, e.g. databaseAccounts/sqlDatabases.
+	ARMNestedResourceID   = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/test-account/sqlDatabases/test-db"
+	ARMNestedProviderPath = "/subscriptions/0000/providers/Microsoft.DocumentDB"
 )
 
 func Test_Delete_InvalidResourceID(t *testing.T) {
@@ -172,8 +176,12 @@ func Test_Delete_ARM(t *testing.T) {
 		require.IsType(t, &ResourceError{}, err)
 	})
 
-	t.Run("failure - lookup API Version - resource type not found", func(t *testing.T) {
+	t.Run("success - skip delete when resource type is not found", func(t *testing.T) {
 		mux := http.NewServeMux()
+		mux.HandleFunc(ARMResourceID, func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf("delete should not be called when API version lookup misses")
+			w.WriteHeader(http.StatusInternalServerError)
+		})
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
 			Namespace:     new("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{},
@@ -186,13 +194,15 @@ func Test_Delete_ARM(t *testing.T) {
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
 		err := c.Delete(t.Context(), ARMResourceID)
-		require.Error(t, err)
-		require.IsType(t, &ResourceError{}, err)
-		require.Contains(t, err.Error(), "could not find API version for type \"Microsoft.Compute/virtualMachines\", type was not found")
+		require.NoError(t, err)
 	})
 
-	t.Run("failure - lookup API Version - no api versions", func(t *testing.T) {
+	t.Run("success - skip delete when no api versions", func(t *testing.T) {
 		mux := http.NewServeMux()
+		mux.HandleFunc(ARMResourceID, func(w http.ResponseWriter, r *http.Request) {
+			t.Errorf("delete should not be called when API version lookup misses")
+			w.WriteHeader(http.StatusInternalServerError)
+		})
 		mux.HandleFunc(ARMProviderPath, handleJSONResponse(t, armresources.Provider{
 			Namespace: new("Microsoft.Compute"),
 			ResourceTypes: []*armresources.ProviderResourceType{
@@ -210,9 +220,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
 		err := c.Delete(t.Context(), ARMResourceID)
-		require.Error(t, err)
-		require.IsType(t, &ResourceError{}, err)
-		require.Contains(t, err.Error(), "could not find API version for type \"Microsoft.Compute/virtualMachines\", no supported API versions")
+		require.NoError(t, err)
 	})
 
 	t.Run("success - lookup API Version - extension resource", func(t *testing.T) {
@@ -235,6 +243,56 @@ func Test_Delete_ARM(t *testing.T) {
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
 		err := c.Delete(t.Context(), ARMExtensionResourceID)
+		require.NoError(t, err)
+	})
+
+	t.Run("success - lookup API Version - extension resource fully-qualified type", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc(ARMExtensionResourceID, handleDeleteSuccess())
+		mux.HandleFunc(ARMExtensionProviderPath, handleJSONResponse(t, armresources.Provider{
+			Namespace: new("Microsoft.Authorization"),
+			ResourceTypes: []*armresources.ProviderResourceType{
+				{
+					ResourceType:      new("Microsoft.Authorization/locks"),
+					DefaultAPIVersion: new(ARMAPIVersion),
+				},
+			},
+		}, 200))
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
+		c.armClientOptions = newClientOptions(server.Client(), server.URL)
+
+		err := c.Delete(t.Context(), ARMExtensionResourceID)
+		require.NoError(t, err)
+	})
+
+	t.Run("success - lookup API Version - nested resource", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc(ARMNestedResourceID, handleDeleteSuccess())
+		mux.HandleFunc(ARMNestedProviderPath, handleJSONResponse(t, armresources.Provider{
+			Namespace: new("Microsoft.DocumentDB"),
+			ResourceTypes: []*armresources.ProviderResourceType{
+				{
+					ResourceType:      new("databaseAccounts"),
+					DefaultAPIVersion: new("9999-01-01"),
+				},
+				{
+					ResourceType:      new("databaseAccounts/sqlDatabases"),
+					DefaultAPIVersion: new(ARMAPIVersion),
+				},
+			},
+		}, 200))
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
+		c.armClientOptions = newClientOptions(server.Client(), server.URL)
+
+		err := c.Delete(t.Context(), ARMNestedResourceID)
 		require.NoError(t, err)
 	})
 }

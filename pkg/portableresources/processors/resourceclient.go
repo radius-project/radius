@@ -18,6 +18,7 @@ package processors
 
 import (
 	context "context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -105,6 +106,14 @@ func (c *resourceClient) deleteAzureResource(ctx context.Context, id resources.I
 
 	apiVersion, err := c.lookupARMAPIVersion(ctx, id)
 	if err != nil {
+		// A failed API-version lookup happens before any DELETE is issued, so the 404
+		// tolerance below never runs. Skipping an unresolvable output resource keeps
+		// recipe deletion from becoming permanently stuck (see radius-project/radius#12694).
+		if errors.Is(err, errARMAPIVersionNotFound) {
+			logger := ucplog.FromContextOrDiscard(ctx)
+			logger.Info(fmt.Sprintf("skipping deletion of %q: %v", id.String(), err))
+			return nil
+		}
 		return err
 	}
 
@@ -147,31 +156,39 @@ func (c *resourceClient) lookupARMAPIVersion(ctx context.Context, id resources.I
 		return "", err
 	}
 
-	// We need to match on the resource type name without the provider namespace. For an extension
-	// resource (eg: a Microsoft.Authorization/locks resource attached to another resource), the
-	// provider namespace and type come from the extension segments, not the primary type segments.
-	segments := id.TypeSegments()
-	if len(id.ExtensionSegments()) > 0 {
-		segments = id.ExtensionSegments()
-	}
-	shortType := strings.TrimPrefix(segments[0].Type, id.ProviderNamespace()+"/")
 	for _, rt := range resp.ResourceTypes {
-		if !strings.EqualFold(shortType, *rt.ResourceType) {
+		if rt.ResourceType == nil || !armResourceTypeMatches(id, *rt.ResourceType) {
 			continue
 		}
-		if rt.DefaultAPIVersion != nil {
+		if rt.DefaultAPIVersion != nil && *rt.DefaultAPIVersion != "" {
 			return *rt.DefaultAPIVersion, nil
 		}
 
-		if len(rt.APIVersions) > 0 {
-			return *rt.APIVersions[0], nil
+		for _, version := range rt.APIVersions {
+			if version != nil && *version != "" {
+				return *version, nil
+			}
 		}
 
-		return "", fmt.Errorf("could not find API version for type %q, no supported API versions", id.Type())
-
+		return "", fmt.Errorf("could not find API version for type %q, no supported API versions: %w", id.Type(), errARMAPIVersionNotFound)
 	}
 
-	return "", fmt.Errorf("could not find API version for type %q, type was not found", id.Type())
+	return "", fmt.Errorf("could not find API version for type %q, type was not found: %w", id.Type(), errARMAPIVersionNotFound)
+}
+
+// errARMAPIVersionNotFound is returned when the ARM provider listing has no usable API
+// version for the resource type. Delete treats this as skippable so one unresolvable
+// output resource cannot brick the parent.
+var errARMAPIVersionNotFound = errors.New("ARM API version not found")
+
+// armResourceTypeMatches compares an ARM resource ID to a resourceType string from
+// Providers.Get. id.Type() is extension-aware and joins nested segments, so this
+// matches both Microsoft.Authorization/locks and databaseAccounts/sqlDatabases.
+// Providers list types as either the short name ("locks") or the fully-qualified name.
+func armResourceTypeMatches(id resources.ID, listed string) bool {
+	fullType := id.Type()
+	shortType := strings.TrimPrefix(fullType, id.ProviderNamespace()+"/")
+	return strings.EqualFold(shortType, listed) || strings.EqualFold(fullType, listed)
 }
 
 func (c *resourceClient) deleteUCPResource(ctx context.Context, id resources.ID) error {
