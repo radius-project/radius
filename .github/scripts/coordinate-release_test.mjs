@@ -26,12 +26,41 @@ function fixture() {
     run_attempt: 1,
     html_url: "https://github.com/radius-project/docs/actions/runs/77"
   };
+  // The upmerge run opened one pull request while its pull-request step ran.
+  const step = {
+    name: "Create pull request",
+    conclusion: "success",
+    started_at: "2026-09-10T10:00:00Z",
+    completed_at: "2026-09-10T10:00:03Z"
+  };
+  const pulls = [
+    {
+      number: 5,
+      html_url: "https://github.com/radius-project/docs/pull/5",
+      created_at: "2026-09-10T09:30:00Z",
+      state: "closed",
+      merged: true,
+      base: { ref: "edge" },
+      head: { ref: "upmerge/2026-09-10-1a2b" }
+    },
+    {
+      number: 6,
+      html_url: "https://github.com/radius-project/docs/pull/6",
+      created_at: "2026-09-10T10:00:02Z",
+      state: "closed",
+      merged: true,
+      base: { ref: "edge" },
+      head: { ref: "upmerge/2026-09-10-3c4d" }
+    }
+  ];
   const github = {
     rest: {
       repos: {
         listDeployments: async (request) =>
           deployments.filter(
-            (entry) => entry.environment === request.environment
+            (entry) =>
+              entry.environment === request.environment &&
+              entry.task === request.task
           ),
         createDeployment: async (request) => {
           const deployment = { ...request, sha: request.ref, id: 12 };
@@ -66,7 +95,13 @@ function fixture() {
       return {};
     }
     if (route.endsWith("/{run_id}")) return { data: { ...run } };
-    if (route.includes("/compare/")) return { data: { ahead_by: 0 } };
+    if (route.endsWith("/{run_id}/jobs"))
+      return { data: { jobs: [{ steps: [{ ...step }] }] } };
+    if (route.endsWith("/pulls")) return { data: pulls.map((p) => ({ ...p })) };
+    if (route.endsWith("/{pull_number}"))
+      return {
+        data: { ...pulls.find((p) => p.number === request.pull_number) }
+      };
     if (route.endsWith("/{workflow_id}")) return { data: { id: 3 } };
     return { data: { default_branch: "v0.60" } };
   };
@@ -82,13 +117,17 @@ function fixture() {
     deployments,
     statuses,
     calls,
-    run
+    run,
+    step,
+    pulls
   };
 }
 
 test("uses native dispatch run IDs and resumes without duplicate work", async () => {
   const state = fixture();
-  assert.equal((await coordinateTask(state)).runId, 77);
+  const result = await coordinateTask(state);
+  assert.equal(result.runId, 77);
+  assert.equal(result.pullRequest, state.pulls[1].html_url);
   await coordinateTask(state);
   const dispatches = state.calls.filter((call) =>
     call.route.endsWith("/dispatches")
@@ -101,6 +140,17 @@ test("uses native dispatch run IDs and resumes without duplicate work", async ()
   assert.equal(dispatches[0].request.request.retries, 0);
   assert.deepEqual(state.deployments[0].required_contexts, []);
   assert.equal(state.deployments[0].auto_merge, false);
+  assert.equal(state.deployments[0].environment, "release-coordination");
+  assert.equal(
+    state.deployments[0].task,
+    "release-coordination:v0.61.0-rc.1:docs-upmerge"
+  );
+  assert.equal(state.statuses.at(-1).environment_url, state.pulls[1].html_url);
+  // The bound pull request is read directly; the list is searched only once.
+  assert.equal(
+    state.calls.filter((call) => call.route.endsWith("/pulls")).length,
+    1
+  );
 });
 
 test("uncertain dispatch fails closed and cannot be repeated by resume", async () => {
@@ -122,22 +172,64 @@ test("uncertain dispatch fails closed and cannot be repeated by resume", async (
 
 test("an open upmerge PR is not a successful final-release gate", async () => {
   const state = fixture();
-  const remote = state.remote;
-  state.remote = (route, request) =>
-    route.includes("/compare/") ?
-      Promise.resolve({ data: { ahead_by: 2 } })
-    : remote(route, request);
+  state.pulls[1].state = "open";
+  state.pulls[1].merged = false;
   await assert.rejects(
     () => coordinateTask(state),
-    /Merge the docs upmerge PR/
+    /Merge the docs upmerge PR https:\/\/github.com\/radius-project\/docs\/pull\/6/
   );
   assert.equal(state.statuses.at(-1).state, "in_progress");
-  state.remote = remote;
+  assert.equal(state.statuses.at(-1).environment_url, state.pulls[1].html_url);
+  // A squash merge leaves the source commits unreachable from edge; only the
+  // bound pull request's merge state decides.
+  state.pulls[1].state = "closed";
+  state.pulls[1].merged = true;
   await coordinateTask(state);
+  assert.equal(state.statuses.at(-1).state, "success");
   assert.equal(
     state.calls.filter((call) => call.route.endsWith("/dispatches")).length,
     1
   );
+  assert.equal(
+    state.calls.filter((call) => call.route.endsWith("/pulls")).length,
+    1
+  );
+});
+
+test("an upmerge run that had nothing to merge is complete without a pull request", async () => {
+  const state = fixture();
+  state.step.conclusion = "skipped";
+  const result = await coordinateTask(state);
+  assert.equal(result.state, "success");
+  assert.equal(result.pullRequest, undefined);
+  assert.equal(
+    state.calls.some((call) => call.route.endsWith("/pulls")),
+    false
+  );
+});
+
+test("an upmerge pull request that cannot be bound exactly stops for reconciliation", async () => {
+  const state = fixture();
+  state.pulls[0].created_at = state.pulls[1].created_at;
+  await assert.rejects(
+    () => coordinateTask(state),
+    /2 upmerge pull requests match/
+  );
+  assert.notEqual(state.statuses.at(-1).state, "success");
+  // An operator binding on the receipt is honored on resume.
+  state.statuses.push({
+    id: 50,
+    deployment_id: state.deployments[0].id,
+    state: "in_progress",
+    log_url: state.run.html_url,
+    environment_url: state.pulls[1].html_url
+  });
+  const result = await coordinateTask(state);
+  assert.equal(result.pullRequest, state.pulls[1].html_url);
+  state.pulls[1].merged = false;
+  state.pulls[1].state = "closed";
+  await assert.rejects(() => coordinateTask(state), /closed without merging/);
+  assert.equal(state.statuses.at(-1).state, "failure");
 });
 
 test("failed downstream work retries the same run ID", async () => {
@@ -203,7 +295,8 @@ test("final preparation accepts all source-bound RC gates and rejects a later fa
     const id = state.deployments.length + 1;
     state.deployments.push({
       id,
-      environment: `release-${state.version}-${task.id}`,
+      environment: "release-coordination",
+      task: `release-coordination:${state.version}:${task.id}`,
       sha: state.sourceSha,
       payload: { task, version: state.version, sourceSha: state.sourceSha }
     });
@@ -255,11 +348,8 @@ test("sample tests are not dispatched while either RC upmerge is incomplete", as
         outputs[name] = value;
       }
     };
-    const remote = state.remote;
-    state.remote = (route, request) =>
-      route.includes("/compare/") ?
-        Promise.resolve({ data: { ahead_by: 1 } })
-      : remote(route, request);
+    state.pulls[1].state = "open";
+    state.pulls[1].merged = false;
     await assert.rejects(() => coordinateRelease(state), /Sample tests wait/);
     assert.equal(
       state.calls.some(
