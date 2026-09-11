@@ -68,6 +68,12 @@ This is already a partially separated system. [`packages/core`](https://github.c
 
 Workflow templates and composite actions belong to `ai-extensions/.github/extension/`. Radius owns CLI/control-plane execution, resource schemas, graph construction, and state persistence. These responsibilities should remain consistent through multiple front ends.
 
+The raw `rad app graph <bicep>` command writes `app-graph.json` locally or, when `GITHUB_ACTIONS=true`, persists it to the graph archive under a branch-derived key. The existing `runRadAppGraph` helper in `packages/adapter-shared/src/rad.ts` already uses a temporary working directory and clears `GITHUB_ACTIONS` to avoid archive writes. Reuse that isolation for read-only graph requests; the raw command's archive key uses environment-derived branch identity and does not distinguish applications on the same branch.
+
+The current [planned-graph route](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/server/routes/graph-workflows.ts) fetches the default provider recipe pack for output enrichment. Resolving the target environment's actual pack registrations is a proposed requirement below, not a guarantee of this existing path.
+
+The extension also already defines an [operation store](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/operation-store.ts) with versioned records and a file-backed implementation. Its `load`/`save` interface is a starting point for persistence, not a cross-client deduplication or coordination contract.
+
 ### Coupling to Remove
 
 The [graph workflow interface](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/server/routes/graph-workflows.ts) accepts a Canvas `instanceId` and an HTTP-shaped body. Deploy and status [tools](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/runtime/create-radius-tools.ts) locate a Canvas server and derive context from it. The [deployment status handler](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/server/routes/deployments.ts) can initiate an agent repair handoff during polling. These dependencies make a panel part of operation execution rather than just a view.
@@ -118,6 +124,8 @@ These responsibilities and ownership boundaries describe the proposed architectu
 - **Execution ports**: Reuse `packages/adapter-shared` and extract existing ports for GitHub, workspaces, identity, `rad`, agent execution, and persistence. Ports describe capabilities, not a particular frontend's runtime.
 - **Radius execution**: In `radius`, provide resource APIs, CLI/control-plane behavior, canonical graph construction, deployment and recipe execution, and durable Radius state. See [CLI architecture](rad-cli.md) and [state archive](state-archive.md).
 
+Planned-graph resolution belongs to the shared lifecycle services in `ai-extensions`; it combines the Radius graph with the selected environment's recipe-pack information. For graph comparison, Radius's [`ComputeDiffHash`](../../pkg/cli/graph/diffhash.go) defines the authored-property/dependency hash, while the extension's [`computeGraphDiff`](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/core/src/graph/diff.ts) compares resource fields, connections, and that hash. These are complementary responsibilities; frontend adapters must not independently redefine graph equivalence.
+
 ## Proposed API Contract
 
 The names and JSON envelopes in this section are illustrative **new contract elements**. They are not current tool names, HTTP endpoints, or drop-in workflow inputs. A later implementation should publish machine-readable schemas and adapter conformance fixtures as their source of truth.
@@ -164,7 +172,7 @@ Every request carries `apiVersion`, `requestId`, `operation`, and an explicit `t
 
 Source is a tagged choice. A `workspace` source names an opaque, authorized workspace reference plus its branch and snapshot fingerprint; a `git` source names a ref and expected commit. The backend resolves and returns the actual provenance, validates repository-relative paths, and rejects stale expectations. It must not interpret a workspace reference as an arbitrary server filesystem path.
 
-For the current session, use its worktree and branch, including uncommitted changes to the application definition. Do not substitute the repository's default branch. For another repository or branch, read the remote application definition at a resolved commit. Graph reads and comparisons never commit or push as a side effect. Remote deployment requires published source; the requested commit must match the revision actually executed.
+For the current session, use its worktree and branch, including uncommitted changes to the application definition. Do not substitute the repository's default branch. For another repository or branch, read the remote application definition at a resolved commit. Graph reads and comparisons never commit or push as a side effect; temporary compiler output is permitted, but publishing a graph archive is a separate mutation. Remote deployment requires published source; the requested commit must match the revision actually executed.
 
 An adapter can obtain authorized workspace references and current fingerprints through its source-access integration. A fingerprint is a content hash used to detect changes to the application definition. It should cover the definition's effective inputs, including referenced local modules and relevant configuration, not just the top-level file. The `definitionPath` field below names the entry-point Bicep file; the graph kind `authored` means the graph is derived from those files.
 
@@ -204,7 +212,9 @@ Version the Repo Radius API separately from Radius resource API versions and wor
 
 ### Long-Running Operations
 
-Accepting a mutation returns a stable `operationId`, resolved target, and initial status. Persist enough information before dispatch to recover the operation after a frontend disconnects. Store workflow/run identity, attempts, progress sequence, provenance, and result references independently of any Canvas instance or Copilot session.
+Starting a long-running mutation returns a stable `operationId`, resolved target, and initial status. Control requests such as `operation.cancel` and `operation.respond` address the existing operation rather than start another deployment. Persist enough information before dispatch to recover the operation after a frontend disconnects. Store workflow/run identity, attempts, progress sequence, provenance, and result references independently of any Canvas instance or Copilot session.
+
+These guarantees require durable operation records shared by the clients coordinating a target, with atomic conditional updates for deduplication and action acceptance. A process-local cache or uncoordinated file stores cannot provide cross-client guarantees. Hosting and storage technology remain open, but an execution binding must disclose weaker capabilities until it provides the required shared coordination.
 
 Use lifecycle states `queued`, `running`, `action_required`, `succeeded`, `failed`, and `cancelled`. Keep observation quality separate: `current`, `stale`, or `unknown`. Loss of a runner or a missing artifact cannot justify inventing a terminal state. Reconciliation can later establish the outcome; it must not automatically retry an uncertain mutation.
 
@@ -308,7 +318,7 @@ Planned resolution must use the target environment's recipe-pack registrations. 
 
 ### Authoring Application Definitions and Agent Assistance
 
-Authoring a Radius application definition is a multi-step operation: locate the source files, record their starting content fingerprint, request authoring in a staging location, and validate the proposed files. Apply those files to the working tree only if the original definition is unchanged, so concurrent edits are not overwritten. This step is called promotion in the existing scripts; it does not itself commit, push, or deploy the definition. Agent assistance is a port, not a requirement that a frontend understand a local skill path. The existing skill and safeguards remain the implementation starting point.
+Authoring a Radius application definition is a multi-step operation: locate the source files, record their starting content fingerprint, request authoring in a staging location, and validate the proposed files. Apply those files to the working tree only if the original definition is unchanged, so concurrent edits are not overwritten. This step is called promotion in the existing scripts; the current script also runs `git add`, but does not commit, push, or deploy the definition. It checks the managed files it may replace; the proposed fingerprint of all effective definition inputs is a broader requirement. Agent assistance is a port, not a requirement that a frontend understand a local skill path. The existing skill and safeguards remain the implementation starting point.
 
 Example: authoring is waiting for an agent. The action kind `agent.author_definition` means authoring the Radius application definition. The `actionId` identifies a recorded, authorized action; arbitrary clients cannot claim completion to bypass validation.
 
@@ -339,13 +349,15 @@ An authorized agent binding reports completion, failure, or cancellation through
 | `user.decision` | A decision and any explicitly requested input matching the action's declared choices/schema. Only a caller authorized to answer that action may submit it. A user decision cannot stand in for an agent completion report.                                                                                                                         |
 | `agent.outcome` | An outcome of `completed`, `failed`, or `cancelled`; completion includes authorized references to staged outputs when required, while failure includes redacted diagnostics. Only an agent execution binding authorized for that action may submit it. Reporting completion does not prove that generated files are valid or approve a deployment. |
 
-Accept a response only while its action is outstanding. Persist acceptance atomically so an identical retry returns the recorded response result without resuming work twice; conflicting, stale, expired, or superseded responses return structured errors. Return the parent operation's updated state, which may remain `action_required` for another prerequisite or resume backend processing. A response does not mark the parent operation successful by itself.
+After authorizing access, check for an already accepted response with the same idempotency key and payload before checking whether the action is still outstanding. An identical retry returns the recorded response result without resuming work twice. A new response is accepted only while its action is outstanding; conflicting, stale, expired, or superseded responses return structured errors. Persist acceptance and the pending continuation atomically so processing can recover after a crash. Return the parent operation's state as recorded for that response, which may remain `action_required` for another prerequisite or resume backend processing; `operation.get` returns the latest state. A response does not mark the parent operation successful by itself.
 
 The backend still enforces unchanged-source checks, output validation, and permissions before any subsequent side effects. GitHub environment approvals remain authoritative and must be verified through the GitHub execution integration; a payload claiming approval cannot replace them. Exact per-action input schemas and transport bindings can be specified later without adding broader management operations.
 
 ### Deployment and Durable Outcomes
 
 GitHub Actions remains the existing remote execution boundary. Shared services generate and dispatch the canonical templates; the workflow restores Radius state, runs commands, publishes progress/results, and saves state. The target application cluster is separate from the ephemeral control-plane cluster used by the workflow.
+
+The existing [teardown action](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/.github/extension/actions/teardown/action.yml) runs `rad shutdown` only when the restore step reported success. It still attempts a save after a later command failure, but skips it when restore failed or never ran, to avoid replacing durable state with uninitialized state. Cancellation or runner loss can prevent teardown from completing; neither a successful save nor rollback is guaranteed in those cases.
 
 ```mermaid
 sequenceDiagram
@@ -359,10 +371,16 @@ sequenceDiagram
     S->>O: Record operation and dispatch intent
     S->>W: Dispatch and correlate execution
     S-->>F: operationId
-    W->>R: Restore state and execute commands
-    W-->>S: Run-scoped progress and command results
-    Note over W,R: Attempt state save after execution failures too
-    W->>R: Save durable state and clean up
+    W->>R: Attempt state restore
+    alt Restore succeeded
+        W->>R: Execute commands
+        W-->>S: Run-scoped progress and command results
+        Note over W,R: Attempt state save even after command failure
+        W->>R: Save durable state
+    else Restore failed or did not run
+        Note over W,R: Skip commands and state save to protect the archive
+    end
+    W->>R: Attempt control-plane cleanup
     W-->>S: Workflow conclusion and available phase results
     S->>O: Record outcome or explicit uncertainty
     F->>S: operation.get(operationId)
@@ -377,6 +395,8 @@ sequenceDiagram
 The diagram shows the proposed semantic flow, not an assumption that Actions pushes events to a hosted server. An execution adapter can retrieve artifacts and reconcile records on demand or through an event integration. Reading status may refresh observations, but never start repairs or other user mutations.
 
 Preserve the existing `rad_commands` workflow input as a compatibility boundary. New typed lifecycle operations should map through reviewed command builders, not expose an unrestricted shell API. Keep workflow templates and shared actions in `ai-extensions`, version their contracts, and retain pinned execution dependencies.
+
+The existing workflow validates `rad_commands` against an allowed-command set, and its dispatcher also auto-triggers deployment after successful credential verification. That verification-to-deployment chain must not run implicitly for the proposed `environment.configure` operation. Preserve it only as an explicitly authorized composite workflow, or separate verification from deployment in the new binding; the legacy command path must not bypass the new operation's target and approval checks.
 
 Operation records, graph artifacts, and Radius state have different lifetimes. A cached graph cannot restore a deployment; a state archive is not an operation log. Record artifact retention/expiry and run links so reconnecting clients can explain missing diagnostics without losing operation identity. Storage and reconciliation must support recovery independently of a panel, even though the concrete store remains undecided.
 
@@ -423,7 +443,7 @@ Approvals must bind to the operation, target, and source revision; editing the s
 ## Migration
 
 1. **Formalize existing boundaries.** Inventory tool, workflow, graph, and artifact contracts. Publish proposed request/result schemas and fixtures in `ai-extensions`; keep their version separate from Radius resource schemas.
-2. **Extract lifecycle services.** Move context resolution and orchestration behind typed requests/ports, preserving existing core and execution packages. Introduce durable operation identity, explicit agent actions, and read-only status semantics.
+2. **Extract lifecycle services.** Move context resolution and orchestration behind typed requests/ports, preserving existing core and execution packages. Extend existing operation records and persistence to provide cross-client identity and coordination; introduce explicit agent actions and read-only status semantics.
 3. **Move Canvas onto the contract.** Retain existing tool names, inputs, and panel behavior through compatibility adapters. Compare results with existing fixtures before switching each operation; never dual-run a mutation.
 4. **Add the Copilot CLI binding.** Start with graph reads and existing deploy workflows, then cover the remaining lifecycle as capabilities permit. Add explicit correlation and completion evidence before claiming the stronger API guarantees.
 5. **Retire compatibility paths deliberately.** Keep supported workflow/artifact versions readable during transition. Roll back adapter routing only when persisted operation records remain compatible; never roll back by redispatching or discarding an in-flight operation.
