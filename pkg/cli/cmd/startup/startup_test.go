@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/pgbackup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/statearchive"
+	archivefactory "github.com/radius-project/radius/pkg/statearchive/factory"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -225,14 +226,14 @@ func Test_Run_DatabaseRestoreFailureScalesBackUp(t *testing.T) {
 }
 
 // Test_Run_ArchiveOpenFailureIsReturned verifies that when the archive cannot be opened (for
-// example, running outside a git repository) Run returns the wrapped error before touching the
+// example, an unavailable registry) Run returns the wrapped error before touching the
 // control plane.
 func Test_Run_ArchiveOpenFailureIsReturned(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	archive := statearchive.NewMockArchive(ctrl)
-	archive.EXPECT().Open(gomock.Any(), pgbackup.StateBranchName()).Return(nil, errors.New("not a git repo")).Times(1)
+	archive.EXPECT().Open(gomock.Any(), pgbackup.StateArchiveName()).Return(nil, errors.New("registry unavailable")).Times(1)
 
 	client := &fakeStateRestoreClient{}
 	r := &Runner{
@@ -248,6 +249,23 @@ func Test_Run_ArchiveOpenFailureIsReturned(t *testing.T) {
 
 	err := r.Run(t.Context())
 	require.ErrorContains(t, err, "failed to open state archive")
-	require.ErrorContains(t, err, "not a git repo")
+	require.ErrorContains(t, err, "registry unavailable")
 	require.False(t, client.waited, "no restore should run when the archive cannot be opened")
+}
+
+func Test_Run_MissingRegistryStopsBeforeRestore(t *testing.T) {
+	t.Setenv(archivefactory.BackendEnvVar, "")
+	t.Setenv(archivefactory.StateRegistryEnvVar, "")
+	r := NewRunner(&framework.Impl{})
+	client := &fakeStateRestoreClient{}
+	r.Workspace = kubernetesWorkspace()
+	r.StateClient = client
+	r.newScaler = func(string, string) (ControlPlaneScaler, error) {
+		t.Fatal("missing registry must not scale the control plane")
+		return nil, nil
+	}
+
+	err := r.Run(t.Context())
+	require.ErrorContains(t, err, archivefactory.StateRegistryEnvVar)
+	require.Empty(t, client.order)
 }
