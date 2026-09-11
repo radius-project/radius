@@ -29,7 +29,10 @@ HEAD_DIR=""
 EXPECTED_DIR=""
 EXPECTED_PLAN=""
 EXPECTED_BACKPORTS=""
-EXPECTED_SIBLINGS=""
+SIBLING_ROOT=""
+RECIPES_COMMIT=""
+DASHBOARD_COMMIT=""
+AWS_COMMIT=""
 FAKE_PREPARE=""
 PASS=0
 FAIL=0
@@ -65,15 +68,45 @@ releaseBranch: release/0.61
 releasePlanPath: .github/release-plans/v0.61.0-rc.1.yaml
 previousVersion: v0.60.0
 siblingRepositories: [{name: recipes, repository: radius-project/recipes,
-        sourceRef: main, sourceCommit: "1111111111111111111111111111111111111111"},
+        sourceRef: main, sourceCommit: "${RECIPES_COMMIT}"},
     {name: dashboard, repository: radius-project/dashboard,
-        sourceRef: main, sourceCommit: "2222222222222222222222222222222222222222"},
+        sourceRef: main, sourceCommit: "${DASHBOARD_COMMIT}"},
     {name: bicep-types-aws, repository: radius-project/bicep-types-aws,
-        sourceRef: main, sourceCommit: "3333333333333333333333333333333333333333"}]
+        sourceRef: main, sourceCommit: "${AWS_COMMIT}"}]
 expectedOutputs:
   repository: radius-project/radius
 includedBackports: []
 EOF
+}
+
+create_sibling_repository() {
+    local name="$1"
+    local origin="${SIBLING_ROOT}/${name}.git"
+    local seed="${SIBLING_ROOT}/${name}-seed"
+
+    git init -q --bare "${origin}"
+    git init -q -b main "${seed}"
+    git -C "${seed}" config user.name "Radius Test"
+    git -C "${seed}" config user.email "test@example.com"
+    git -C "${seed}" config commit.gpgsign false
+    printf '%s main\n' "${name}" >"${seed}/state.txt"
+    git -C "${seed}" add state.txt
+    git -C "${seed}" commit -q -m "Initial ${name} state"
+    git -C "${seed}" remote add origin "${origin}"
+    git -C "${seed}" push -q origin main
+}
+
+advance_sibling_main() {
+    local name="$1"
+    local seed="${SIBLING_ROOT}/${name}-seed"
+
+    printf '%s later\n' "${name}" >>"${seed}/state.txt"
+    git -C "${seed}" commit -q -am "Later ${name} change"
+    git -C "${seed}" push -q origin main
+}
+
+sibling_main_commit() {
+    git --git-dir="${SIBLING_ROOT}/$1.git" rev-parse main
 }
 
 wrap_body() {
@@ -94,10 +127,16 @@ setup_repo() {
     EXPECTED_DIR="${TEST_ROOT}/expected"
     EXPECTED_PLAN="${TEST_ROOT}/expected-plan.yaml"
     EXPECTED_BACKPORTS="${TEST_ROOT}/expected-backports.json"
-    EXPECTED_SIBLINGS="${TEST_ROOT}/expected-siblings.json"
+    SIBLING_ROOT="${TEST_ROOT}/siblings"
     FAKE_PREPARE="${TEST_ROOT}/fake-prepare.sh"
-    rm -rf "${REPO}" "${HEAD_DIR}" "${EXPECTED_DIR}"
-    mkdir -p "${REPO}"
+    rm -rf "${REPO}" "${HEAD_DIR}" "${EXPECTED_DIR}" "${SIBLING_ROOT}"
+    mkdir -p "${REPO}" "${SIBLING_ROOT}"
+    create_sibling_repository recipes
+    create_sibling_repository dashboard
+    create_sibling_repository bicep-types-aws
+    RECIPES_COMMIT="$(sibling_main_commit recipes)"
+    DASHBOARD_COMMIT="$(sibling_main_commit dashboard)"
+    AWS_COMMIT="$(sibling_main_commit bicep-types-aws)"
     git -C "${REPO}" init -q -b main
     git -C "${REPO}" config user.name "Radius Test"
     git -C "${REPO}" config user.email "test@example.com"
@@ -160,8 +199,6 @@ EOF
     cp "${EXPECTED_PLAN}" \
         "${HEAD_DIR}/.github/release-plans/v0.61.0-rc.1.yaml"
     printf '[]\n' >"${EXPECTED_BACKPORTS}"
-    yq -o=json '.siblingRepositories' "${EXPECTED_PLAN}" \
-        >"${EXPECTED_SIBLINGS}"
     cat >"${FAKE_PREPARE}" <<'EOF'
 #!/bin/bash
 set -euo pipefail
@@ -192,7 +229,7 @@ run_validator() {
     set +e
     PREPARE_RELEASE_SCRIPT="${FAKE_PREPARE}" \
         EXPECTED_BACKPORTS_FILE="${EXPECTED_BACKPORTS}" \
-        EXPECTED_SIBLING_REPOSITORIES_FILE="${EXPECTED_SIBLINGS}" \
+        SIBLING_REPOSITORY_ROOT="${SIBLING_ROOT}" \
         EXPECTED_RELEASE_DIR="${EXPECTED_DIR}" \
         EXPECTED_PLAN_FILE="${EXPECTED_PLAN}" \
         bash "${SCRIPT}" --body-file body.md --files-file files.json \
@@ -312,12 +349,22 @@ EOF
     ((++PASS))
 }
 
-test_rejects_live_sibling_state_drift() {
-    jq '.[0].sourceCommit = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"' \
-        "${EXPECTED_SIBLINGS}" >"${EXPECTED_SIBLINGS}.tmp"
-    mv "${EXPECTED_SIBLINGS}.tmp" "${EXPECTED_SIBLINGS}"
+test_accepts_sibling_branch_advance() {
+    advance_sibling_main recipes
+    if ! run_validator >/dev/null; then
+        fail_test "expected a sibling branch that advanced after planning to pass"
+        return
+    fi
+    ((++PASS))
+}
+
+test_rejects_unreachable_planned_sibling_commit() {
+    local unreachable="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+    sed -i "s/${RECIPES_COMMIT}/${unreachable}/" "${REPO}/body.md" \
+        "${EXPECTED_PLAN}" "${HEAD_DIR}/.github/release-plans/v0.61.0-rc.1.yaml"
     if run_validator >/dev/null 2>&1; then
-        fail_test "expected live sibling state drift to fail"
+        fail_test "expected an unreachable planned sibling commit to fail"
         return
     fi
     ((++PASS))
@@ -349,7 +396,9 @@ main() {
     setup_repo
     test_rejects_live_backport_state_drift
     setup_repo
-    test_rejects_live_sibling_state_drift
+    test_accepts_sibling_branch_advance
+    setup_repo
+    test_rejects_unreachable_planned_sibling_commit
 
     if ((FAIL > 0)); then
         echo "release plan tests failed: ${PASS} passed, ${FAIL} failed"
