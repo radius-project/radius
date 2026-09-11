@@ -88,10 +88,27 @@ jobs:
         with:
           bot-slug-name: ${{ steps.app-token.outputs.app-slug }}
 
+      # The Deployment Engine repository is private and belongs to azure-octo,
+      # so neither GITHUB_TOKEN nor the release App can read its tags. The
+      # publisher App is the cross-organization identity; its installation
+      # must include deployment-engine with Contents read.
+      - name: Create Deployment Engine read token
+        if: github.repository == 'radius-project/radius'
+        id: de-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          owner: azure-octo
+          repositories: deployment-engine
+          permission-metadata: read
+          permission-contents: read
+
       - name: Validate release prerequisites
         id: preflight
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          DE_TOKEN: ${{ steps.de-token.outputs.token || github.token }}
           RELEASE_TYPE: ${{ inputs.release-type }}
           CHANNEL: ${{ inputs.channel }}
         run: |
@@ -104,7 +121,8 @@ jobs:
           version="$(<"${output_dir}/version.txt")"
           branch="$(<"${output_dir}/pr-branch.txt")"
 
-          bash ./.github/scripts/verify-deployment-engine-tag.sh "${version}"
+          GH_TOKEN="${DE_TOKEN}" \
+            bash ./.github/scripts/verify-deployment-engine-tag.sh "${version}"
 
           existing="$(
             gh pr list --repo "${GITHUB_REPOSITORY}" --state open \

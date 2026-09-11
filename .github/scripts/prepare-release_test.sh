@@ -244,18 +244,19 @@ test_first_rc() {
     ((++PASS))
 }
 
-test_first_rc_preserves_support_window() {
+test_first_rc_keeps_previous_stable_supported() {
     setup_repo "v0.60.0"
     yq -i '.supported += [{"channel": "0.59", "version": "v0.59.1"}]' \
         "${REPO}/versions.yaml"
     git -C "${REPO}" tag v0.60.0
     run_prepare rc 0.61
     assert_version "v0.61.0-rc.1" || return
-    assert_yq_value "${REPO}/versions.yaml" '.supported | length' '2' || return
-    assert_yq_value "${REPO}/versions.yaml" '.supported[1].channel' \
-        '0.60' || return
-    assert_yq_value "${REPO}/versions.yaml" '.deprecated[0].channel' \
-        '0.59' || return
+    assert_yq_value "${REPO}/versions.yaml" '.supported | length' '3' || return
+    assert_yq_value "${REPO}/versions.yaml" '.supported[1].version' \
+        'v0.60.0' || return
+    assert_yq_value "${REPO}/versions.yaml" '.supported[2].version' \
+        'v0.59.1' || return
+    assert_yq_value "${REPO}/versions.yaml" '.deprecated | length' '1' || return
     ((++PASS))
 }
 
@@ -316,6 +317,23 @@ test_subsequent_rc_rejects_divergent_branch() {
     ((++PASS))
 }
 
+test_subsequent_rc_rejects_historical_form() {
+    setup_repo "v0.60.0-rc2"
+    make_release_branch 0.60
+    git -C "${REPO}" tag v0.60.0-rc1
+    git -C "${REPO}" tag v0.60.0-rc2
+    run_prepare rc 0.60
+    if ((LAST_STATUS == 0)); then
+        fail_test "expected a historical RC series to reject a dotted successor"
+        return
+    fi
+    if [[ "${LAST_OUTPUT}" != *"historical RC form"* ]]; then
+        fail_test "historical RC failure was unclear: ${LAST_OUTPUT}"
+        return
+    fi
+    ((++PASS))
+}
+
 test_final() {
     setup_repo "v0.60.0-rc.3"
     make_release_branch 0.60
@@ -327,6 +345,24 @@ test_final() {
     assert_file_contains "${REPO}/out/requires-backport.txt" 'true' || return
     assert_file_contains "${REPO}/docs/release-notes/v0.60.0.md" \
         '## Upgrading to Radius v0.60.0' || return
+    ((++PASS))
+}
+
+test_final_deprecates_previous_supported() {
+    setup_repo "v0.60.0-rc.3"
+    yq -i '.supported += [{"channel": "0.59", "version": "v0.59.1"}]' \
+        "${REPO}/versions.yaml"
+    make_release_branch 0.60
+    git -C "${REPO}" tag v0.60.0-rc.3
+    run_prepare final 0.60
+    assert_version "v0.60.0" || return
+    assert_yq_value "${REPO}/versions.yaml" '.supported | length' '1' || return
+    assert_yq_value "${REPO}/versions.yaml" '.supported[0].version' \
+        'v0.60.0' || return
+    assert_yq_value "${REPO}/versions.yaml" '.deprecated[0].version' \
+        'v0.59.1' || return
+    assert_yq_value "${REPO}/versions.yaml" '.deprecated[1].version' \
+        'v0.59.0' || return
     ((++PASS))
 }
 
@@ -509,12 +545,14 @@ main() {
     TEST_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/prepare-release-test-XXXXXX")"
 
     test_first_rc
-    test_first_rc_preserves_support_window
+    test_first_rc_keeps_previous_stable_supported
     test_first_rc_requires_latest_stable
     test_subsequent_rc
     test_subsequent_rc_rejects_stale_metadata
     test_subsequent_rc_rejects_divergent_branch
+    test_subsequent_rc_rejects_historical_form
     test_final
+    test_final_deprecates_previous_supported
     test_final_rejects_unvalidated_branch_tip
     test_final_rejects_out_of_policy_rc_number
     test_version_only_does_not_mutate_files

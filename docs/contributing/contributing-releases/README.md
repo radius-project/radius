@@ -20,6 +20,7 @@ Before starting a release, ensure you have:
   ```
 
 - **Required release checks configured**: The `Validate release plan` check is required for generated release pull requests to `main`. The `release/*` ruleset requires `Validate release branch commits` with **Require branches to be up to date before merging** enabled; this makes the backport's recorded base SHA fail closed if the release branch advances. Backport pull requests use rebase merge; ordinary `main` pull requests continue to use squash merge.
+- **Publisher App access to Deployment Engine**: Prepare Release verifies the signed Deployment Engine tag with the publisher App (`RADIUS_PUBLISHER_BOT`). Its installation on `azure-octo` must include `deployment-engine` with Contents read, because neither `GITHUB_TOKEN` nor the release App can read that private repository.
 
 > **Important**: For the entire release process, create branches directly in repositories under the `radius-project` organization. Do not use personal forks.
 
@@ -106,7 +107,7 @@ Run the [Prepare Release](https://github.com/radius-project/radius/actions/workf
 | `channel`             | The target `X.Y` channel, such as `0.61`                        |
 | `backport-pr-numbers` | Optional comma-separated merged `main` pull requests to include |
 
-The workflow computes the version from the repository state; release engineers do not type or edit it. The generated draft pull request contains the `versions.yaml` and `CHANGELOG.md` updates, generated release notes, and a structured release plan with the approved product commit, expected outputs, included backports, and the rule for resolving the later metadata-bearing release commit. Review the plan, curate only Highlights and Upgrading in the generated release notes, then mark the pull request ready and squash-merge it to `main`.
+The workflow computes the version from the repository state; release engineers do not type or edit it. It also maintains `versions.yaml` the way past releases did: a first RC is added at the top of `supported` while the previous stable release stays supported, a final release moves every other supported entry to `deprecated`, and later RCs and patches replace the channel's version in place. The generated draft pull request contains the `versions.yaml` and `CHANGELOG.md` updates, generated release notes, and a structured release plan with the approved product commit, expected outputs, included backports, and the rule for resolving the later metadata-bearing release commit. Review the plan, curate only Highlights and Upgrading in the generated release notes, then mark the pull request ready and squash-merge it to `main`.
 
 If `main` advances while the generated release pull request is open, rerun Prepare Release with the same inputs. The workflow regenerates the plan and generated sections from the new base while preserving the existing Highlights and Upgrading text. Patch notes contain no curated sections and are regenerated completely.
 

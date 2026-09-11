@@ -127,6 +127,20 @@ highest_rc_number() {
     printf '%s\n' "${highest}"
 }
 
+# SemVer orders rc.N before rcN, so a dotted candidate never follows a
+# historical one within the same version: neither the current RC nor the
+# highest RC tag may use the historical form.
+channel_uses_historical_rc() {
+    local current="$1"
+    local rc_number="$2"
+
+    if is_legacy_rc_version "${current#v}"; then
+        return 0
+    fi
+    git rev-parse --verify --quiet \
+        "refs/tags/v${CHANNEL}.0-rc${rc_number}^{commit}" > /dev/null
+}
+
 newest_stable_tag() {
     local tag
 
@@ -181,6 +195,9 @@ calculate_version() {
             fi
             if ((10#${BASH_REMATCH[1]} != rc_number)); then
                 fail "versions.yaml RC does not match the highest tag"
+            fi
+            if channel_uses_historical_rc "${current}" "${rc_number}"; then
+                fail "${current} uses the historical RC form; a dotted RC cannot follow it within one version, so cut the final release from the validated RC or start a new version"
             fi
             if ! git merge-base --is-ancestor "refs/tags/${current}" \
                 "${branch_ref}"; then
@@ -313,25 +330,36 @@ render_changelog() {
     mv "${body_file}.tmp" "${body_file}"
 }
 
+# versions.yaml follows the recorded release history: a first RC joins the top
+# of the supported list while the previous stable release stays supported, a
+# final release supersedes every other supported entry, which moves to the
+# top of the deprecated list, and later RCs and patches replace the channel's
+# version in place. yq reads the values through strenv().
 update_versions() {
     local version="$1"
     local current="$2"
 
     if [[ -z "${current}" ]]; then
-        # yq reads these environment variables through strenv().
-        # shellcheck disable=SC2016
         CHANNEL="${CHANNEL}" VERSION="${version}" yq -i '
-            .supported as $supported |
             .supported = (
-                [{"channel": strenv(CHANNEL),
-                  "version": strenv(VERSION)}] + $supported[0:-1]
-            ) |
-            .deprecated = ([$supported[-1]] + .deprecated)
+                [{"channel": strenv(CHANNEL), "version": strenv(VERSION)}] +
+                .supported
+            )
         ' "${VERSIONS_FILE}"
-    else
-        CHANNEL="${CHANNEL}" VERSION="${version}" yq -i '
-            (.supported[] | select(.channel == strenv(CHANNEL)) | .version) =
-                strenv(VERSION)
+        return
+    fi
+
+    CHANNEL="${CHANNEL}" VERSION="${version}" yq -i '
+        (.supported[] | select(.channel == strenv(CHANNEL)) | .version) =
+            strenv(VERSION)
+    ' "${VERSIONS_FILE}"
+    if [[ "${RELEASE_TYPE}" == "final" ]]; then
+        CHANNEL="${CHANNEL}" yq -i '
+            .deprecated = (
+                [.supported[] | select(.channel != strenv(CHANNEL))] +
+                (.deprecated // [])
+            ) |
+            .supported = [.supported[] | select(.channel == strenv(CHANNEL))]
         ' "${VERSIONS_FILE}"
     fi
 }
@@ -480,8 +508,6 @@ write_release_plan() {
         if [[ "${requires_backport}" == "true" ]]; then
             echo "- [ ] Rebase-merge this PR's generated backport after merge."
         fi
-        echo
-        echo "Generated for #12814."
     } > "${body_file}"
 
     printf 'chore(release): prepare %s\n' "${version}" \
