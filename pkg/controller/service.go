@@ -38,7 +38,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 var (
@@ -58,9 +57,6 @@ var _ hosting.Service = (*Service)(nil)
 type Service struct {
 	// Options is the options for the controller.
 	Options hostoptions.HostOptions
-
-	// TLSConfigDir is the directory containing the TLS configuration.
-	TLSCertDir string
 }
 
 // Name returns the name of the service.
@@ -77,7 +73,6 @@ func (s *Service) Run(ctx context.Context) error {
 		metricsAddr = fmt.Sprintf(":%d", s.Options.Config.MetricsProvider.Prometheus.Port)
 	}
 
-	port := s.Options.Config.Server.Port
 	healthProbePort := *s.Options.Config.WorkerServer.Port
 	mgr, err := ctrl.NewManager(s.Options.K8sConfig, ctrl.Options{
 		Logger: logger,
@@ -88,36 +83,12 @@ func (s *Service) Run(ctx context.Context) error {
 		HealthProbeBindAddress: fmt.Sprintf(":%d", healthProbePort),
 		LeaderElection:         false,
 		LeaderElectionID:       "c85b2113.radapp.io",
-		WebhookServer: webhook.NewServer(webhook.Options{
-			Port:    port,
-			CertDir: s.TLSCertDir,
-		})})
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create controller manager: %w", err)
 	}
 
 	logger.Info("Registering controllers.")
-	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
-	err = (&reconciler.RecipeReconciler{
-		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("recipe-controller"),
-		Radius:        reconciler.NewRadiusClient(s.Options.UCPConnection),
-	}).SetupWithManager(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to setup %s controller: %w", "Recipe", err)
-	}
-	//nolint:staticcheck // SA1019: GetEventRecorderFor is deprecated but migration to new events API requires significant refactoring
-	err = (&reconciler.DeploymentReconciler{
-		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
-		EventRecorder: mgr.GetEventRecorderFor("radius-deployment-controller"),
-		Radius:        reconciler.NewRadiusClient(s.Options.UCPConnection),
-	}).SetupWithManager(mgr)
-	if err != nil {
-		return fmt.Errorf("failed to setup %s controller: %w", "Deployment", err)
-	}
-
 	resourceDeploymentsClient, err := sdkclients.NewResourceDeploymentsClient(&sdkclients.Options{
 		Cred:             &aztoken.AnonymousCredential{},
 		BaseURI:          s.Options.UCPConnection.Endpoint(),
@@ -159,15 +130,6 @@ func (s *Service) Run(ctx context.Context) error {
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("failed to setup %s controller: %w", "FluxController", err)
-	}
-
-	if s.TLSCertDir == "" {
-		logger.Info("Webhooks will be skipped. TLS certificates not present.")
-	} else {
-		logger.Info("Registering validating webhook.")
-		if err = (&reconciler.RecipeWebhook{}).SetupWebhookWithManager(mgr); err != nil {
-			return fmt.Errorf("failed to create recipe-webhook: %w", err)
-		}
 	}
 
 	logger.Info("Registering health checks.")

@@ -39,8 +39,6 @@ func TestAddToScheme(t *testing.T) {
 		obj  runtime.Object
 		kind string
 	}{
-		{&Recipe{}, "Recipe"},
-		{&RecipeList{}, "RecipeList"},
 		{&DeploymentTemplate{}, "DeploymentTemplate"},
 		{&DeploymentTemplateList{}, "DeploymentTemplateList"},
 		{&DeploymentResource{}, "DeploymentResource"},
@@ -54,6 +52,13 @@ func TestAddToScheme(t *testing.T) {
 			require.Len(t, gvks, 1)
 			require.Equal(t, GroupVersion, gvks[0].GroupVersion())
 			require.Equal(t, tc.kind, gvks[0].Kind)
+		})
+	}
+
+	for _, kind := range []string{"Recipe", "RecipeList"} {
+		t.Run(kind+"NotRegistered", func(t *testing.T) {
+			_, err := scheme.New(GroupVersion.WithKind(kind))
+			require.True(t, runtime.IsNotRegisteredError(err), "legacy %s must not be registered", kind)
 		})
 	}
 
