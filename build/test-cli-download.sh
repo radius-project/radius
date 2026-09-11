@@ -75,11 +75,15 @@ fi
 
 echo "GitHub API call successful"
 
-# Extract version from API response using grep, awk, and sed
-RAD_VERSION=$(echo "$api_response" | grep "tag_name" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/"\(.*\)",/\1/p')
+# Extract version from API response using grep, awk, and sed.
+# `|| true` stops a non-matching grep (e.g. an API error response with no
+# "tag_name") from tripping `set -e` here, before the empty-value check below
+# can report a useful error.
+RAD_VERSION=$(echo "$api_response" | grep "tag_name" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/"\(.*\)",/\1/p') || true
 
 if [ -z "$RAD_VERSION" ]; then
-    echo "Failed to extract RAD_VERSION from API response"
+    echo "Failed to extract RAD_VERSION from API response:"
+    echo "$api_response"
     exit 1
 fi
 
