@@ -107,21 +107,21 @@ test_publication_gate() {
         fail_test "failed verification or missing approval can reach publication"
         return
     fi
-        if ! yq -o=json '.jobs."build-and-push-helm-chart".steps' \
-                "${HELM_WORKFLOW}" | jq -e '
-                (map(.name) | index("Pin external chart images") as $pin |
-                    $pin != null and $pin < index("Package Helm chart") and
-                    $pin < index("Push helm chart to GHCR")) and
-                any(.[]; .name == "Pin external chart images" and
-                    (.if | contains("refs/tags/v")) and
-                    (.run | contains("--names dashboard")) and
-                    (.run | contains("--names deployment-engine")) and
-                    (.run | contains("--expected-digest")) and
-                    (.run | contains("--source-sha")))
-        ' > /dev/null; then
-                fail_test "chart publication can precede verified external version tags"
-                return
-        fi
+    if ! yq -o=json '.jobs."build-and-push-helm-chart".steps' \
+        "${HELM_WORKFLOW}" | jq -e '
+        (map(.name) | index("Pin external chart images") as $pin |
+            $pin != null and $pin < index("Package Helm chart") and
+            $pin < index("Push helm chart to GHCR")) and
+        any(.[]; .name == "Pin external chart images" and
+            (.if | contains("refs/tags/v")) and
+            (.run | contains("--names dashboard")) and
+            (.run | contains("--names deployment-engine")) and
+            (.run | contains("--expected-digest")) and
+            (.run | contains("--source-sha")))
+    ' > /dev/null; then
+        fail_test "chart publication can precede verified external version tags"
+        return
+    fi
     ((++PASS))
 }
 
