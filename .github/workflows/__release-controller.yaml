@@ -208,10 +208,25 @@ jobs:
             "${VERSION}" "${RELEASE_BRANCH}" \
             "${BICEP_TYPES_AWS_COMMIT}"
 
+      # The Deployment Engine repository is private and belongs to azure-octo,
+      # so neither GITHUB_TOKEN nor the release App can read its tags. The
+      # publisher App installation covers it with Contents read (token policy).
+      - name: Create Deployment Engine read token
+        if: steps.plan.outputs.ready == 'true'
+        id: de-read-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          owner: azure-octo
+          repositories: deployment-engine
+          permission-metadata: read
+          permission-contents: read
+
       - name: Verify signed Deployment Engine tag
         if: steps.plan.outputs.ready == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.de-read-token.outputs.token }}
           VERSION: ${{ steps.plan.outputs.version }}
         run: bash ./.github/scripts/verify-deployment-engine-tag.sh "${VERSION}"
 
@@ -281,10 +296,21 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
+      - name: Create Deployment Engine read token
+        id: de-read-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          owner: azure-octo
+          repositories: deployment-engine
+          permission-metadata: read
+          permission-contents: read
+
       - name: Reverify signed Deployment Engine tag
         id: de-tag
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.de-read-token.outputs.token }}
           VERSION: ${{ needs.validate.outputs.version }}
         run: bash ./.github/scripts/verify-deployment-engine-tag.sh "${VERSION}"
 

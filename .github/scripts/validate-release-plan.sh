@@ -30,15 +30,11 @@ TEMP_DIR=""
 GENERATED_WORKTREE=""
 PREPARE_RELEASE_SCRIPT="${PREPARE_RELEASE_SCRIPT:-}"
 COLLECT_BACKPORTS_SCRIPT="${COLLECT_BACKPORTS_SCRIPT:-}"
-CAPTURE_SIBLINGS_SCRIPT="${CAPTURE_SIBLINGS_SCRIPT:-}"
 if [[ -z "${PREPARE_RELEASE_SCRIPT}" ]]; then
     PREPARE_RELEASE_SCRIPT="${SCRIPT_DIR}/prepare-release.sh"
 fi
 if [[ -z "${COLLECT_BACKPORTS_SCRIPT}" ]]; then
     COLLECT_BACKPORTS_SCRIPT="${SCRIPT_DIR}/collect-release-backports.sh"
-fi
-if [[ -z "${CAPTURE_SIBLINGS_SCRIPT}" ]]; then
-    CAPTURE_SIBLINGS_SCRIPT="${SCRIPT_DIR}/capture-release-sibling-commits.sh"
 fi
 
 cleanup() {
@@ -154,17 +150,46 @@ collect_expected_backports() {
     printf '%s\n' "${output}"
 }
 
-collect_expected_siblings() {
-    local channel="$1"
-    local output="${TEMP_DIR}/expected-siblings.json"
+sibling_repository_url() {
+    local name="$1"
 
-    if [[ -n "${EXPECTED_SIBLING_REPOSITORIES_FILE:-}" ]]; then
-        cp "${EXPECTED_SIBLING_REPOSITORIES_FILE}" "${output}"
+    if [[ -n "${SIBLING_REPOSITORY_ROOT:-}" ]]; then
+        printf '%s/%s.git\n' "${SIBLING_REPOSITORY_ROOT%/}" "${name}"
     else
-        bash "${CAPTURE_SIBLINGS_SCRIPT}" --channel "${channel}" \
-            --output "${output}" >/dev/null
+        printf 'https://github.com/radius-project/%s.git\n' "${name}"
     fi
-    printf '%s\n' "${output}"
+}
+
+# The approved plan is authoritative for sibling commits. A sibling branch
+# that advanced after preparation is not drift; each frozen commit must only
+# still be reachable from the branch it was captured on, so the controller
+# can create the sibling release branch and tag at exactly that commit.
+verify_planned_siblings() {
+    local channel="$1"
+    local planned="$2"
+    local scratch="${TEMP_DIR}/sibling-scratch"
+    local name source_ref source_commit repository head
+
+    CHANNEL="${channel}" jq -e '
+        type == "array" and
+        map(.name) == ["recipes", "dashboard", "bicep-types-aws"] and
+        all(.[].sourceCommit; test("^[0-9a-f]{40}$")) and
+        all(.[].sourceRef; . == "main" or . == ("release/" + env.CHANNEL)) and
+        all(.[]; .repository == ("radius-project/" + .name))
+    ' "${planned}" >/dev/null || fail "sibling repository state is invalid"
+
+    git init -q "${scratch}"
+    while IFS=$'\t' read -r name source_ref source_commit; do
+        repository="$(sibling_repository_url "${name}")"
+        git -C "${scratch}" fetch -q --no-tags "${repository}" \
+            "refs/heads/${source_ref}" ||
+            fail "could not fetch ${source_ref} from ${repository}"
+        head="$(git -C "${scratch}" rev-parse FETCH_HEAD)"
+        git -C "${scratch}" merge-base --is-ancestor "${source_commit}" \
+            "${head}" 2>/dev/null ||
+            fail "planned ${name} commit ${source_commit} is not reachable from ${source_ref} at ${head}"
+    done < <(jq -r '.[] | [.name, .sourceRef, .sourceCommit] | @tsv' \
+        "${planned}")
 }
 
 regenerate_release() {
@@ -194,7 +219,7 @@ validate_generated_contents() {
     local channel="$3"
     local release_date="$4"
     local plan_path="$5"
-    local expected_backports expected_siblings expected_notes actual_notes
+    local expected_backports planned_siblings expected_notes actual_notes
 
     expected_backports="$(collect_expected_backports "${channel}")"
     canonical_json "${TEMP_DIR}/release-plan.yaml" '.includedBackports' \
@@ -205,17 +230,13 @@ validate_generated_contents() {
         fail "included backports no longer match repository state"
     fi
 
-    expected_siblings="$(collect_expected_siblings "${channel}")"
+    planned_siblings="${TEMP_DIR}/planned-siblings.json"
     canonical_json "${TEMP_DIR}/release-plan.yaml" \
-        '.siblingRepositories' "${TEMP_DIR}/planned-siblings.json"
-    jq -S -c . "${expected_siblings}" >"${TEMP_DIR}/live-siblings.json"
-    if ! diff -u "${TEMP_DIR}/live-siblings.json" \
-        "${TEMP_DIR}/planned-siblings.json"; then
-        fail "sibling repository commits no longer match live branches"
-    fi
+        '.siblingRepositories' "${planned_siblings}"
+    verify_planned_siblings "${channel}" "${planned_siblings}"
 
     regenerate_release "${release_type}" "${channel}" "${release_date}" \
-        "${expected_backports}" "${expected_siblings}"
+        "${expected_backports}" "${planned_siblings}"
 
     canonical_json "${TEMP_DIR}/release-plan.yaml" '.' \
         "${TEMP_DIR}/actual-plan.json"
