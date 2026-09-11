@@ -90,7 +90,9 @@ test_release_job_graph() {
 
 test_publication_gate() {
     if ! yq -o=json '.jobs' "${RELEASE_WORKFLOW}" | jq -e '
-        ."verify-release".permissions.contents == "read" and
+        # GitHub lists a draft release only for push access, so verification
+        # of the staged draft needs contents write; it must still not publish.
+        ."verify-release".permissions.contents == "write" and
         ."verify-release".permissions.packages == "read" and
         (."verify-release".steps | any(.run == "make verify-release-publication")) and
         ."approve-publication".environment == "release" and
