@@ -133,6 +133,14 @@ test_goreleaser_stages_prepared_draft() {
         fail_test "GoReleaser release settings bypass finalization"
         return
     fi
+    # A rerun with locked images runs GoReleaser with --skip=docker, so the
+    # verifier after the release must receive --skip-images like the snapshot.
+    # shellcheck disable=SC2016 # Literal Make expression under test.
+    if [[ "$(grep -Fc 'verify-goreleaser-snapshot.sh $(GORELEASER_VERIFY_ARGS)' \
+        "${ARTIFACTS_MAKEFILE}")" != "2" ]]; then
+        fail_test "the release target verifies images that --skip=docker never built"
+        return
+    fi
     ((++PASS))
 }
 
