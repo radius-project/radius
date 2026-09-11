@@ -1,0 +1,50 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: verify-commit-signatures
+
+on:
+  # This workflow uses the trusted base commit and never executes PR-head code.
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to verify
+        required: true
+        type: number
+
+concurrency:
+  group: verify-commit-signatures-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  verify-commit-signatures:
+    name: Verify Commit Signatures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout signature verifier
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.sha }}
+          sparse-checkout: |
+            .github/scripts/verify-commit-signatures.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Verify commit signatures
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr_number }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/verify-commit-signatures.mjs`
+            )
+            await script({ github, context, core })
