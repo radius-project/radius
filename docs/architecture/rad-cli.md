@@ -98,6 +98,8 @@ When `rad.exe` has no attached console, [pkg/process](../../pkg/process/) automa
 
 When `rad.exe` has an attached console, child terminal access and interactive CLI behavior are unchanged. Azure Identity credentials create their own Azure CLI process and do not use `pkg/process`; automation that must guarantee windowless descendants should use a non-CLI authentication method such as `ServicePrincipal`, `ManagedIdentity`, or `UCPCredential`.
 
+Tool adapters can query `process.IsWindowless()` for the same Windows no-console policy used by `Command` and `CommandContext`. The query uses `GetConsoleCP` when called, preserving classic console and Windows Terminal/ConPTY behavior; it does not probe during package initialization and returns false on non-Windows platforms. In windowless mode, command configuration supplies explicit EOF only when stdin is unset, preserves existing input readers, and allows callers to assign finite data to `Cmd.Stdin` after construction, as PostgreSQL restore does for SQL input. Go already connects nil stdin to the null device, so this clarifies the default rather than adding a universal anti-hang mechanism. It does not force arbitrary tools or SDK-owned credential helpers to be non-interactive; tool-specific prompt controls remain separate.
+
 ## Invariants And Constraints
 
 - Commands should stay thin and use the shared framework.

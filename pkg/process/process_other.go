@@ -20,6 +20,10 @@ package process
 
 import "os/exec"
 
+func isWindowless() bool {
+	return false
+}
+
 func configure(cmd *exec.Cmd) *exec.Cmd {
 	return cmd
 }
