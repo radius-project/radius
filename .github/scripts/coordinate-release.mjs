@@ -3,6 +3,18 @@ import { isDeepStrictEqual } from "node:util";
 
 const apiVersion = "2026-03-10";
 const versionPattern = /^v\d+\.\d+\.\d+(?:-rc\.[1-9]\d*)?$/;
+// Every receipt lives in one environment. The version and task name identify
+// a receipt, and the receipt is bound to the Radius source SHA, so releases do
+// not create environments of their own.
+const receiptEnvironment = "release-coordination";
+const receiptTask = (version, task) =>
+  `release-coordination:${version}:${task.id}`;
+// The docs and samples upmerge workflows open a pull request into edge in a
+// step with this name; its conclusion tells whether a pull request exists.
+const pullRequestStep = "Create pull request";
+const upmergeBase = "edge";
+const upmergeBranchPrefix = "upmerge/";
+const pullRequestSlack = 5000;
 
 export function coordinationTasks(releaseType, version) {
   const inputs = { version: version.replace(/^v/, "") };
@@ -67,20 +79,116 @@ async function tagCommit(github, context, version) {
 }
 
 async function deploymentFor(github, context, version, sourceSha, task) {
-  const environment = `release-${version}-${task.id}`;
   const deployments = await github.paginate(github.rest.repos.listDeployments, {
     ...context.repo,
-    environment,
-    task: "release_coordination",
+    environment: receiptEnvironment,
+    task: receiptTask(version, task),
     per_page: 100
   });
   if (
     deployments.length > 1 ||
     deployments.some((entry) => entry.sha !== sourceSha)
   ) {
-    throw new Error(`Conflicting coordination receipt for ${environment}`);
+    throw new Error(
+      `Conflicting coordination receipt for ${version} ${task.id}`
+    );
   }
-  return { environment, deployment: deployments[0] };
+  return deployments[0];
+}
+
+function pullRequestUrl(context, task, number) {
+  return `${context.serverUrl ?? "https://github.com"}/${context.repo.owner}/${task.repo}/pull/${number}`;
+}
+
+// Binds the pull request that a successful upmerge run opened. The workflow
+// exposes no identifier for it, so the pull request is the single upmerge
+// pull request into edge created while the run's pull-request step ran; the
+// binding is stored on the receipt and never searched for again. Returns null
+// when the run had nothing to merge and skipped the step.
+async function createdPullRequest(call, context, task, run) {
+  const { data: jobs } = await call(
+    "GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs",
+    { run_id: run.id, filter: "latest", per_page: 100 }
+  );
+  const step = jobs.jobs
+    .flatMap((job) => job.steps ?? [])
+    .find((entry) => entry.name === pullRequestStep);
+  if (!step) {
+    throw new Error(
+      `${run.html_url} has no '${pullRequestStep}' step; bind its pull request as the receipt's environment URL before resuming`
+    );
+  }
+  if (step.conclusion === "skipped") return null;
+  if (step.conclusion !== "success") {
+    throw new Error(
+      `${run.html_url} did not create its pull request; reconcile the receipt before resuming`
+    );
+  }
+  const earliest = Date.parse(step.started_at) - pullRequestSlack;
+  const latest = Date.parse(step.completed_at) + pullRequestSlack;
+  const { data: pulls } = await call("GET /repos/{owner}/{repo}/pulls", {
+    base: upmergeBase,
+    state: "all",
+    sort: "created",
+    direction: "desc",
+    per_page: 100
+  });
+  const candidates = pulls.filter(
+    (pull) =>
+      pull.head.ref.startsWith(upmergeBranchPrefix) &&
+      Date.parse(pull.created_at) >= earliest &&
+      Date.parse(pull.created_at) <= latest
+  );
+  if (candidates.length !== 1) {
+    throw new Error(
+      `${candidates.length} upmerge pull requests match ${run.html_url}; bind the right one as the receipt's environment URL before resuming`
+    );
+  }
+  return candidates[0].html_url;
+}
+
+// An upmerge is complete when the pull request its run opened has merged.
+// docs and samples squash-merge, so the source commits never become
+// reachable from edge and cannot serve as the completion signal.
+async function verifyUpmerge({ call, context, task, run, status, record }) {
+  const prefix = pullRequestUrl(context, task, "");
+  let url = status?.environment_url;
+  if (!url?.startsWith(prefix) || !/^\d+$/.test(url.slice(prefix.length))) {
+    url = await createdPullRequest(call, context, task, run);
+    if (!url) return null;
+  }
+  const number = Number(url.slice(prefix.length));
+  const { data: pull } = await call(
+    "GET /repos/{owner}/{repo}/pulls/{pull_number}",
+    { pull_number: number }
+  );
+  if (
+    pull.base.ref !== upmergeBase ||
+    !pull.head.ref.startsWith(upmergeBranchPrefix)
+  ) {
+    throw new Error(
+      `${url} is not an upmerge pull request into ${upmergeBase}`
+    );
+  }
+  if (pull.merged) return url;
+  if (pull.state === "closed") {
+    await record(
+      "failure",
+      run.html_url,
+      `Pull request #${number} closed without merging`,
+      url
+    );
+    throw new Error(
+      `${task.repo} upmerge pull request ${url} closed without merging; reconcile the receipt before resuming`
+    );
+  }
+  await record(
+    "in_progress",
+    run.html_url,
+    `Waiting for pull request #${number} to merge`,
+    url
+  );
+  throw new Error(`Merge the ${task.repo} upmerge PR ${url}, then resume`);
 }
 
 async function latestStatus(github, context, deployment) {
@@ -119,7 +227,7 @@ export async function checkReleaseCandidate({ github, context, plan }) {
   await publishedRelease(github, context, version);
   const sourceSha = await tagCommit(github, context, version);
   for (const task of coordinationTasks("rc", version)) {
-    const { deployment } = await deploymentFor(
+    const deployment = await deploymentFor(
       github,
       context,
       version,
@@ -164,7 +272,7 @@ export async function coordinateTask({
         timeout: Math.max(1, Math.min(30000, deadline - now()))
       }
     });
-  let { environment, deployment } = await deploymentFor(
+  let deployment = await deploymentFor(
     github,
     context,
     version,
@@ -177,11 +285,12 @@ export async function coordinateTask({
     const request = {
       ...context.repo,
       ref: sourceSha,
-      task: "release_coordination",
-      environment,
+      task: receiptTask(version, task),
+      environment: receiptEnvironment,
       auto_merge: false,
       required_contexts: [],
       production_environment: false,
+      transient_environment: false,
       payload: { version, sourceSha, task, ref },
       request: { retries: 0 }
     };
@@ -189,13 +298,13 @@ export async function coordinateTask({
       ({ data: deployment } =
         await github.rest.repos.createDeployment(request));
     } catch (error) {
-      ({ deployment } = await deploymentFor(
+      deployment = await deploymentFor(
         github,
         context,
         version,
         sourceSha,
         task
-      ));
+      );
       if (!deployment) throw error;
     }
   }
@@ -204,17 +313,20 @@ export async function coordinateTask({
     deployment.payload?.version !== version ||
     !isDeepStrictEqual(deployment.payload?.task, task)
   ) {
-    throw new Error(`Conflicting coordination payload for ${environment}`);
+    throw new Error(
+      `Conflicting coordination payload for ${version} ${task.id}`
+    );
   }
   const status = await latestStatus(github, context, deployment);
-  const record = async (state, logUrl, description) =>
+  const record = async (state, logUrl, description, environmentUrl) =>
     github.rest.repos.createDeploymentStatus({
       ...context.repo,
       deployment_id: deployment.id,
       state,
       auto_inactive: false,
       log_url: logUrl,
-      description
+      description,
+      ...(environmentUrl ? { environment_url: environmentUrl } : {})
     });
   const ref = deployment.payload.ref;
   const { data: workflow } = await call(
@@ -313,21 +425,16 @@ export async function coordinateTask({
     );
     throw new Error(`${task.id} failed: ${run.html_url}`);
   }
+  let pullRequest = null;
   if (task.workflow === "upmerge.yaml") {
-    const { data } = await call(
-      "GET /repos/{owner}/{repo}/compare/{basehead}",
-      { basehead: `edge...${run.head_sha}` }
-    );
-    if (data.ahead_by !== 0) {
-      await record(
-        "in_progress",
-        run.html_url,
-        "Waiting for the generated upmerge pull request to merge"
-      );
-      throw new Error(
-        `Merge the ${task.repo} upmerge PR, then resume; ${run.html_url}`
-      );
-    }
+    pullRequest = await verifyUpmerge({
+      call,
+      context,
+      task,
+      run,
+      status,
+      record
+    });
   }
   if (task.workflow === "release.yaml") {
     const channel = `v${version.slice(1).split(".").slice(0, 2).join(".")}`;
@@ -341,13 +448,15 @@ export async function coordinateTask({
   await record(
     "success",
     run.html_url,
-    "Workflow and required destination verified"
+    "Workflow and required destination verified",
+    pullRequest
   );
   return {
     name: task.id,
     state: "success",
     runId: runID,
     url: run.html_url,
+    ...(pullRequest ? { pullRequest } : {}),
     deploymentId: deployment.id
   };
 }

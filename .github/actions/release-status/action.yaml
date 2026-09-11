@@ -15,10 +15,10 @@ inputs:
     required: false
   results:
     description: Job or step results as JSON
-    default: '{}'
+    default: "{}"
   downstream:
     description: Downstream run results as JSON
-    default: '[]'
+    default: "[]"
   manifest:
     description: Path to verification evidence
     required: false
