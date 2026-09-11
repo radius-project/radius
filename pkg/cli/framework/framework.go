@@ -63,7 +63,7 @@ type Factory interface {
 	GetAzureClient() azure.Client
 
 	// GetGraphStore returns the persistence.Store used by the modeled graph
-	// command to commit graphs to the radius-graph orphan branch.
+	// command to persist graphs to the radius-graph archive.
 	GetGraphStore() persistence.Store
 }
 

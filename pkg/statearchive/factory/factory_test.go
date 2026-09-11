@@ -19,92 +19,62 @@ package factory
 import (
 	"testing"
 
+	"github.com/radius-project/radius/pkg/statearchive"
 	"github.com/radius-project/radius/pkg/statearchive/oci"
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewGraphArchive_DefaultsToGitWithoutRegistry(t *testing.T) {
-	t.Setenv(BackendEnvVar, "")
+func TestArchiveConfiguration(t *testing.T) {
+	for _, consumer := range []struct {
+		name        string
+		registryVar string
+		newArchive  func(string) statearchive.Archive
+	}{
+		{name: "state", registryVar: StateRegistryEnvVar, newArchive: NewStateArchive},
+		{name: "graph", registryVar: GraphRegistryEnvVar, newArchive: NewGraphArchive},
+	} {
+		t.Run(consumer.name, func(t *testing.T) {
+			for _, tc := range []struct {
+				name      string
+				backend   string
+				registry  string
+				wantError string
+			}{
+				{name: "default OCI", registry: "localhost:5000/archive"},
+				{name: "explicit OCI", backend: "oci", registry: "localhost:5000/archive"},
+				{name: "case insensitive OCI", backend: "OCI", registry: "localhost:5000/archive"},
+				{name: "default missing registry", wantError: "repository is not configured"},
+				{name: "explicit OCI missing registry", backend: "oci", wantError: "repository is not configured"},
+				{name: "removed git without registry", backend: "git", wantError: "Git state archive backend has been removed"},
+				{name: "removed git with registry", backend: "git", registry: "localhost:5000/archive", wantError: "Git state archive backend has been removed"},
+				{name: "case insensitive git", backend: "GIT", wantError: "Git state archive backend has been removed"},
+				{name: "unknown backend", backend: "filesystem", wantError: "invalid " + BackendEnvVar},
+				{name: "unknown backend with registry", backend: "filesystem", registry: "localhost:5000/archive", wantError: "invalid " + BackendEnvVar},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					t.Setenv(BackendEnvVar, tc.backend)
+					t.Setenv("DOCKER_CONFIG", t.TempDir())
+					archive := consumer.newArchive(tc.registry)
+					require.NotNil(t, archive, "configuration must not prevent CLI initialization")
+					if tc.wantError == "" {
+						require.IsType(t, &oci.OCIArchive{}, archive)
+						return
+					}
 
-	archive := NewGraphArchive("")
-	_, ok := archive.(*oci.OCIArchive)
-	require.False(t, ok)
-}
-
-func TestNewGraphArchive_UsesOCIWhenRegistryConfigured(t *testing.T) {
-	t.Setenv(BackendEnvVar, "")
-
-	archive := NewGraphArchive("localhost:5000/radius-graph")
-	require.IsType(t, &oci.OCIArchive{}, archive)
-}
-
-func TestNewGraphArchive_UsesOCIWhenExplicitlyConfigured(t *testing.T) {
-	t.Setenv(BackendEnvVar, "oci")
-
-	archive := NewGraphArchive("localhost:5000/radius-graph")
-	require.IsType(t, &oci.OCIArchive{}, archive)
-}
-
-func TestNewGraphArchive_ExplicitGitWins(t *testing.T) {
-	t.Setenv(BackendEnvVar, "git")
-
-	archive := NewGraphArchive("localhost:5000/radius-graph")
-	_, ok := archive.(*oci.OCIArchive)
-	require.False(t, ok)
-}
-
-func TestNewGraphArchive_InvalidBackendFailsOnOpen(t *testing.T) {
-	t.Setenv(BackendEnvVar, "filesystem")
-
-	archive := NewGraphArchive("")
-	_, err := archive.Open(t.Context(), "radius-graph")
-	require.ErrorContains(t, err, "invalid "+BackendEnvVar)
-}
-
-func TestNewStateArchive_DefaultsToOCIWithoutRegistry(t *testing.T) {
-	t.Setenv(BackendEnvVar, "")
-
-	archive := NewStateArchive("")
-	require.IsType(t, &oci.OCIArchive{}, archive)
-}
-
-func TestNewStateArchive_DefaultWithoutRegistryFailsOnOpen(t *testing.T) {
-	t.Setenv(BackendEnvVar, "")
-	t.Setenv("DOCKER_CONFIG", t.TempDir())
-
-	archive := NewStateArchive("")
-	_, err := archive.Open(t.Context(), "radius-state")
-	require.ErrorContains(t, err, "repository is not configured")
-}
-
-func TestNewStateArchive_UsesOCIWhenRegistryConfigured(t *testing.T) {
-	t.Setenv(BackendEnvVar, "")
-
-	archive := NewStateArchive("localhost:5000/radius-state")
-	require.IsType(t, &oci.OCIArchive{}, archive)
-}
-
-func TestNewStateArchive_ExplicitOCIWithoutRegistryFailsOnOpen(t *testing.T) {
-	t.Setenv(BackendEnvVar, "oci")
-	t.Setenv("DOCKER_CONFIG", t.TempDir())
-
-	archive := NewStateArchive("")
-	_, err := archive.Open(t.Context(), "radius-state")
-	require.ErrorContains(t, err, "repository is not configured")
-}
-
-func TestNewStateArchive_ExplicitGitWins(t *testing.T) {
-	t.Setenv(BackendEnvVar, "git")
-
-	archive := NewStateArchive("localhost:5000/radius-state")
-	_, ok := archive.(*oci.OCIArchive)
-	require.False(t, ok)
-}
-
-func TestNewStateArchive_InvalidBackendFailsOnOpen(t *testing.T) {
-	t.Setenv(BackendEnvVar, "filesystem")
-
-	archive := NewStateArchive("")
-	_, err := archive.Open(t.Context(), "radius-state")
-	require.ErrorContains(t, err, "invalid "+BackendEnvVar)
+					session, err := archive.Open(t.Context(), "radius-"+consumer.name)
+					require.Nil(t, session)
+					require.ErrorContains(t, err, tc.wantError)
+					if tc.backend == "filesystem" {
+						require.ErrorContains(t, err, "expected oci or an unset value")
+					} else {
+						require.ErrorContains(t, err, consumer.registryVar)
+					}
+					if tc.backend == "git" || tc.backend == "GIT" {
+						require.ErrorContains(t, err, "unset "+BackendEnvVar+" or set it to oci")
+						require.ErrorContains(t, err, "OCI repository")
+					}
+				})
+			}
+		})
+	}
 }

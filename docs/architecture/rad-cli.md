@@ -59,6 +59,8 @@ The root command constructs a `framework.Impl`, which provides the interfaces
 that commands use for their real work: Bicep, connections, deploy/delete,
 Kubernetes, Helm, output, prompts, and cloud clients.
 
+It also injects a [graph archive adapter](../../pkg/graph/persistence/archive/store.go) configured by `factory.NewGraphArchive`. OCI is the only durable state/graph archive backend. Missing registry configuration and invalid backend selections are reported when the archive is opened, not when the command tree is initialized. `rad startup` / `rad shutdown` require `RADIUS_STATE_REGISTRY`; modeled graph archival in GitHub Actions requires `RADIUS_GRAPH_REGISTRY`. Local `app-graph.json` output and unrelated commands do not require either. See [state-archive.md](state-archive.md) for configuration and authentication.
+
 This is the core architectural pattern for the CLI. Commands are not supposed to
 reach directly into global state; they are expected to depend on the framework
 factory.
@@ -92,9 +94,11 @@ own packages.
 
 Windows automation callers launch `rad.exe`. A Node.js caller should use `detached: false`, `windowsHide: true`, and piped stdout and stderr. The caller's `windowsHide` option suppresses the initial `rad.exe` console because Radius cannot change its own process creation flags after startup.
 
-When `rad.exe` has no attached console, [pkg/process](../../pkg/process/) automatically applies `SysProcAttr.HideWindow` and `CREATE_NO_WINDOW` to Radius-owned child processes such as Bicep, kubectl, Git, and the direct Azure CLI wrapper. It does not set `DETACHED_PROCESS` or `CREATE_BREAKAWAY_FROM_JOB`, so `rad.exe` and its descendants remain in the automation caller's Windows Job Object for process-tree cancellation. Standard input, output, error, exit codes, and context cancellation retain their existing behavior.
+When `rad.exe` has no attached console, [pkg/process](../../pkg/process/) automatically applies `SysProcAttr.HideWindow` and `CREATE_NO_WINDOW` to Radius-owned child processes such as Bicep and kubectl. It does not set `DETACHED_PROCESS` or `CREATE_BREAKAWAY_FROM_JOB`, so `rad.exe` and its descendants remain in the automation caller's Windows Job Object for process-tree cancellation. Standard input, output, error, exit codes, and context cancellation retain their existing behavior.
 
 When `rad.exe` has an attached console, child terminal access and interactive CLI behavior are unchanged. Azure Identity credentials create their own Azure CLI process and do not use `pkg/process`; automation that must guarantee windowless descendants should use a non-CLI authentication method such as `ServicePrincipal`, `ManagedIdentity`, or `UCPCredential`.
+
+Tool adapters can query `process.IsWindowless()` for the same Windows no-console policy used by `Command` and `CommandContext`. The query uses `GetConsoleCP` when called, preserving classic console and Windows Terminal/ConPTY behavior; it does not probe during package initialization and returns false on non-Windows platforms. In windowless mode, command configuration supplies explicit EOF only when stdin is unset, preserves existing input readers, and allows callers to assign finite data to `Cmd.Stdin` after construction, as PostgreSQL restore does for SQL input. Go already connects nil stdin to the null device, so this clarifies the default rather than adding a universal anti-hang mechanism. It does not force arbitrary tools or SDK-owned credential helpers to be non-interactive; tool-specific prompt controls remain separate.
 
 ## Invariants And Constraints
 
