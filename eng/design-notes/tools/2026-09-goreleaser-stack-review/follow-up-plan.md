@@ -2,6 +2,8 @@
 
 This plan ranks the findings that the eighteen review notes left as-is and keeps only the ones worth an engineering change. Each item names the value, the files, the verification, and the effort. The last section lists what was skipped and why. Nothing here is required for the stack to work; the dashboard provenance label recorded as cross-layer finding 11 remains the one external prerequisite for rollout.
 
+The first hardening bundle is implemented on `dp/release-snapshot-hardening`: item 3, item 6, and the CLI snapshot-isolation portion of item 5. The image scanner pin in item 5 remains deferred until after the first RC-plus-final cycle.
+
 ## Ranked items
 
 ### 1. Unify the Dockerfile pairs (cross-layer finding 7, PR 18 note)
