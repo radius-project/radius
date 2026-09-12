@@ -50,6 +50,8 @@ git commit -s -m 'This is my commit message'
 
 Visual Studio Code has a setting, `git.alwaysSignOff` to automatically add a Signed-off-by line to commit messages. Search for "sign-off" in VS Code settings to find it and enable it.
 
+Every commit must also be cryptographically signed so that GitHub displays a **Verified** badge. Cryptographic signing is separate from the DCO `Signed-off-by` line; both are required. See [Signing your commits](docs/contributing/contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) for setup and remediation guidance.
+
 ## Code of conduct
 
 This project has adopted the [Contributor Covenant](http://contributor-covenant.org/).
