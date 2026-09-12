@@ -43,6 +43,9 @@ if grep -Eq 'push|buildx|latest|testrp|magpiego' "${COMMAND_LOG}"; then exit 1; 
 : >"${COMMAND_LOG}"
 DOCKER_TAG_VERSION=edge bash "${SCRIPT_DIR}/goreleaser-snapshot-artifacts.sh" push-edge
 [[ "$(grep -c '^docker push ' "${COMMAND_LOG}")" == 15 ]]
+[[ "$(grep -c '^docker tag .* registry.example/radius/[a-z-]*:edge-linux-' "${COMMAND_LOG}")" == 15 ]]
+grep -Eq '^docker push registry.example/radius/ucpd:edge-linux-arm-v7$' "${COMMAND_LOG}"
+if grep -Eq '^docker push .*0.0.0-snapshot' "${COMMAND_LOG}"; then exit 1; fi
 [[ "$(grep -c '^docker buildx imagetools create ' "${COMMAND_LOG}")" == 5 ]]
 grep -Eq '^docker buildx imagetools create --tag registry.example/radius/ucpd:edge( registry.example/radius/ucpd@sha256:[a-f0-9]{64}){3}$' "${COMMAND_LOG}"
 if grep -Eq ':latest|:0\.[0-9]+ |testrp|magpiego' "${COMMAND_LOG}"; then exit 1; fi
