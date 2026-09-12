@@ -23,11 +23,21 @@ readonly SCRIPT_DIR
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 readonly REPO_ROOT
 
-TARGETS_FILE="${GORELEASER_PARITY_TARGETS:-${REPO_ROOT}/.github/release-parity/targets.json}"
+TARGETS_FILE="${GORELEASER_PARITY_TARGETS:-}"
+if [[ -z "${TARGETS_FILE}" ]]; then
+    TARGETS_FILE="${REPO_ROOT}/.github/release-parity/targets.json"
+fi
 REGISTRY=""
 TAG=""
 OUTPUT=""
+CATEGORIES="production"
+NAMES=""
+SOURCE_SHA="${RELEASE_SOURCE_SHA:-}"
+ALLOW_ABSENT=false
+STATE_OUTPUT=""
 TEMP_DIR=""
+readonly RETRY_ATTEMPTS="${RELEASE_RETRY_ATTEMPTS:-5}"
+readonly RETRY_MAX_DELAY_SECONDS="${RELEASE_RETRY_MAX_DELAY_SECONDS:-15}"
 
 cleanup() {
     if [[ -n "${TEMP_DIR}" && -d "${TEMP_DIR}" ]]; then
@@ -42,11 +52,76 @@ fail() {
 }
 
 require_command() {
-    command -v "$1" >/dev/null 2>&1 || fail "required command not found: $1"
+    if ! command -v "$1" > /dev/null 2>&1; then
+        fail "required command not found: $1"
+    fi
+}
+
+is_retryable_error() {
+    local error="${1,,}"
+
+    [[ "${error}" =~ (429|404|5[0-9][0-9]|timeout) ]] && return 0
+    [[ "${error}" =~ timed[[:space:]]out ]] && return 0
+    [[ "${error}" =~ connection[[:space:]](reset|refused) ]] && return 0
+    [[ "${error}" =~ (temporary|temporarily) ]] && return 0
+    [[ "${error}" =~ unexpected[[:space:]]eof ]] && return 0
+    [[ "${error}" =~ manifest[[:space:]]unknown ]] && return 0
+    [[ "${error}" =~ not[[:space:]]found ]] && return 0
+    return 1
+}
+
+inspect_image() {
+    local reference="$1"
+    local output="$2"
+    local attempt
+    local error
+    local status
+    local delay
+    local missing
+
+    for ((attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++)); do
+        if docker buildx imagetools inspect --format '{{json .}}' \
+            "${reference}" > "${output}" 2>&1; then
+            return
+        else
+            status=$?
+        fi
+        error="$(cat "${output}")"
+        # A single missing read is never trusted: the registry must report the
+        # tag missing on every attempt before it counts as absent.
+        case "${error,,}" in
+            *"manifest unknown"* | *"not found"* | *404*) missing=true ;;
+            *) missing=false ;;
+        esac
+        if ((attempt == RETRY_ATTEMPTS)); then
+            if [[ "${missing}" == "true" ]]; then
+                return 3
+            fi
+            echo "${error}" >&2
+            return "${status}"
+        fi
+        if ! is_retryable_error "${error}"; then
+            echo "${error}" >&2
+            return "${status}"
+        fi
+        delay=$((2 ** (attempt - 1)))
+        if ((delay > RETRY_MAX_DELAY_SECONDS)); then
+            delay="${RETRY_MAX_DELAY_SECONDS}"
+        fi
+        if [[ "${missing}" == "true" ]]; then
+            echo "${reference} is missing; confirming absence." >&2
+        else
+            echo "Transient lookup failure for ${reference}; retrying." >&2
+        fi
+        if [[ "${RELEASE_RETRY_NO_SLEEP:-}" != "true" ]]; then
+            sleep "${delay}.$(printf '%03d' "$((RANDOM % 1000))")"
+        fi
+    done
 }
 
 usage() {
-    echo "Usage: $0 --registry <registry> --tag <tag> --output <path>" >&2
+    echo "Usage: $0 --registry <registry> --tag <tag> --output <path>" \
+        "[--categories <category,...>] [--names <name,...>]" >&2
 }
 
 parse_args() {
@@ -62,6 +137,26 @@ parse_args() {
                 ;;
             --output)
                 OUTPUT="$2"
+                shift 2
+                ;;
+            --categories)
+                CATEGORIES="$2"
+                shift 2
+                ;;
+            --names)
+                NAMES="$2"
+                shift 2
+                ;;
+            --source-sha)
+                SOURCE_SHA="$2"
+                shift 2
+                ;;
+            --allow-absent)
+                ALLOW_ABSENT=true
+                shift
+                ;;
+            --state-output)
+                STATE_OUTPUT="$2"
                 shift 2
                 ;;
             -h | --help)
@@ -82,6 +177,12 @@ main() {
     local digest
     local expected_platforms
     local actual_platforms
+    local actual_revisions
+    local actual_versions
+    local inspect_status
+    local state
+    local selected=0
+    local captured=0
 
     parse_args "$@"
     require_command docker
@@ -89,19 +190,36 @@ main() {
     [[ -n "${REGISTRY}" ]] || fail "registry is required"
     [[ -n "${TAG}" ]] || fail "tag is required"
     [[ -n "${OUTPUT}" ]] || fail "output path is required"
-    [[ -f "${TARGETS_FILE}" ]] || fail "targets file not found: ${TARGETS_FILE}"
+    if [[ "${ALLOW_ABSENT}" == "true" && -z "${STATE_OUTPUT}" ]]; then
+        fail "--allow-absent requires --state-output"
+    fi
+    if [[ ! "${SOURCE_SHA}" =~ ^[0-9a-f]{40}$ ]]; then
+        fail "source SHA must be a full commit SHA"
+    fi
+    if [[ ! -f "${TARGETS_FILE}" ]]; then
+        fail "targets file not found: ${TARGETS_FILE}"
+    fi
 
     TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/image-digests-XXXXXX")"
     entries="${TEMP_DIR}/entries.jsonl"
-    : >"${entries}"
+    : > "${entries}"
 
     while IFS= read -r name; do
+        ((++selected))
         name="${name%$'\r'}"
         repository="${REGISTRY}/${name}"
         reference="${repository}:${TAG}"
         raw="${TEMP_DIR}/${name}.json"
-        docker buildx imagetools inspect --format '{{json .}}' \
-            "${reference}" >"${raw}"
+        if inspect_image "${reference}" "${raw}"; then
+            ((++captured))
+        else
+            inspect_status=$?
+            if [[ "${ALLOW_ABSENT}" == "true" &&
+                "${inspect_status}" == "3" ]]; then
+                continue
+            fi
+            fail "cannot inspect image: ${reference}"
+        fi
 
         digest="$(jq -er '
             .manifest.digest
@@ -125,32 +243,87 @@ main() {
                 | platform_name(.platform)]
             | sort
         ' "${raw}")"
-        [[ "${actual_platforms}" == "${expected_platforms}" ]] ||
+        if [[ "${actual_platforms}" != "${expected_platforms}" ]]; then
             fail "unexpected platform set for ${reference}"
+        fi
+        actual_revisions="$(jq -c '[
+            .image
+            | to_entries[]
+            | select(.key != "unknown/unknown")
+            | .value.config.Labels."org.opencontainers.image.revision"
+        ] | unique' "${raw}")"
+        if [[ "${actual_revisions}" != "[\"${SOURCE_SHA}\"]" ]]; then
+            fail "unexpected source revision for ${reference}"
+        fi
+        actual_versions="$(jq -c '[
+            .image
+            | to_entries[]
+            | select(.key != "unknown/unknown")
+            | .value.config.Labels."org.opencontainers.image.version"
+        ] | unique' "${raw}")"
+        if [[ "${actual_versions}" != "[\"${TAG}\"]" ]]; then
+            fail "unexpected image version label for ${reference}"
+        fi
 
         jq -n \
             --arg name "${name}" \
             --arg reference "${reference}" \
             --arg digest "${digest}" \
+            --arg sourceSha "${SOURCE_SHA}" \
             --arg immutableReference "${repository}@${digest}" \
             --argjson platforms "${actual_platforms}" '
             {
                 name: $name,
                 reference: $reference,
                 digest: $digest,
+                sourceSha: $sourceSha,
                 immutableReference: $immutableReference,
                 platforms: $platforms
             }
-        ' >>"${entries}"
-    done < <(jq -r '
+        ' >> "${entries}"
+    done < <(jq -r \
+        --arg categories "${CATEGORIES}" \
+        --arg names "${NAMES}" '
+        ($categories | split(",")) as $categories
+        | ($names | split(",") | map(select(length > 0))) as $names
+        |
         .images[]
-        | select(.category == "production")
+        | select(
+            .radiusBuild == true
+            and (
+                if ($names | length) > 0
+                then (.name as $name | $names | index($name))
+                else (.category as $category
+                    | $categories | index($category))
+                end
+            )
+        )
         | .name
     ' "${TARGETS_FILE}")
 
+    if ((selected == 0)); then
+        fail "no Radius-built images match the selection"
+    fi
+    if [[ "${ALLOW_ABSENT}" != "true" ]] && ((captured != selected)); then
+        fail "only ${captured} of ${selected} expected images exist"
+    fi
+
     mkdir -p "$(dirname "${OUTPUT}")"
-    jq -S -s 'sort_by(.name)' "${entries}" >"${OUTPUT}"
-    echo "Captured production image digests in ${OUTPUT}"
+    jq -S -s 'sort_by(.name)' "${entries}" > "${OUTPUT}"
+    if [[ -n "${STATE_OUTPUT}" ]]; then
+        if ((captured == selected)); then
+            state=complete
+        elif ((captured == 0)); then
+            state=absent
+        else
+            # No durable lock covers a partial set, so no consumer can have
+            # resolved these tags yet and staging may still overwrite them.
+            state=partial
+        fi
+        mkdir -p "$(dirname "${STATE_OUTPUT}")"
+        printf '%s\n' "${state}" > "${STATE_OUTPUT}"
+    fi
+    echo "Captured release image digests in ${OUTPUT}"
 }
 
 main "$@"
