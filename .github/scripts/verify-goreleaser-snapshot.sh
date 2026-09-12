@@ -104,11 +104,26 @@ verify_native_checksum_config() {
 }
 
 verify_release_config() {
+    local global_environment
+    local expected_disable='{{ .Env.GORELEASER_RELEASE_DISABLE }}'
+
     yq -e '
-        (((.release.ids | length) == 1)
-          and (.release.ids[0] == "rad"))
+        ((.release.ids | length) == 1)
+        and (.release.ids[0] == "rad")
     ' "${CONFIG_FILE}" >/dev/null ||
-        fail "GoReleaser release artifact selection is not rad-only"
+        fail "GoReleaser release settings do not match the parity contract"
+    [[ "$(yq -r '.release.disable' "${CONFIG_FILE}")" == "${expected_disable}" ]] ||
+        fail "GoReleaser release disable switch is not parameterized"
+
+    global_environment="$(yq -r '.env[]' "${CONFIG_FILE}")"
+    if ! grep -Fq 'GORELEASER_IMAGE_REGISTRY=' <<<"${global_environment}" ||
+        ! grep -Fq 'ghcr.io/radius-project' <<<"${global_environment}"; then
+        fail "GoReleaser image registry does not have a production default"
+    fi
+    if ! grep -Fq 'GORELEASER_RELEASE_DISABLE=' <<<"${global_environment}" ||
+        ! grep -Fq 'else }}false{{ end }}' <<<"${global_environment}"; then
+        fail "GoReleaser release disable switch does not default to false"
+    fi
 }
 
 verify_cli_assets() {
@@ -178,6 +193,7 @@ verify_cli_assets() {
 }
 
 verify_build_matrix() {
+    local mode="${1:-}"
     local expected_builds
     local actual_builds
     local expected_rad_targets
@@ -195,6 +211,10 @@ verify_build_matrix() {
         yq -o=json '.builds | map(.id) | sort' "${CONFIG_FILE}"
     )"
     assert_json_equal "${actual_builds}" "${expected_builds}" "build IDs"
+
+    if [[ "${mode}" == "--config-only" ]]; then
+        return
+    fi
 
     expected_rad_targets="$(jq -c '[
         .cliAssets[]
@@ -226,6 +246,9 @@ verify_image_definitions() {
     local expected_platforms
     local actual_platforms
     local dockerfile
+    local image_repository
+    local image_repository_count
+    local expected_repository
 
     expected_images="$(jq -c '[
         .images[]
@@ -255,13 +278,10 @@ verify_image_definitions() {
         assert_json_equal "${actual_platforms}" "${expected_platforms}" \
             "${image} image platforms"
 
-        IMAGE="${image}" \
-            IMAGE_REPOSITORY="ghcr.io/radius-project/${image}" yq -e '
+        IMAGE="${image}" yq -e '
             .dockers_v2[]
                         | select(.id == strenv(IMAGE))
-                        | (((.images | length) == 1)
-                            and (.images[0] == strenv(IMAGE_REPOSITORY))
-                            and ((.ids | length) == 1)
+                        | (((.ids | length) == 1)
                             and (.ids[0] == strenv(IMAGE))
                             and ((.tags | length) == 1)
                             and (.tags[0] == "{{ .Version }}")
@@ -274,6 +294,23 @@ verify_image_definitions() {
                             and ((.labels."org.opencontainers.image.revision" | length) > 0))
         ' "${CONFIG_FILE}" >/dev/null ||
             fail "${image} image metadata does not match the parity contract"
+
+        image_repository="$(IMAGE="${image}" yq -r '
+            .dockers_v2[]
+            | select(.id == strenv(IMAGE))
+            | .images[0]
+        ' "${CONFIG_FILE}")"
+        image_repository_count="$(IMAGE="${image}" yq -r '
+            .dockers_v2[]
+            | select(.id == strenv(IMAGE))
+            | .images
+            | length
+        ' "${CONFIG_FILE}")"
+        [[ "${image_repository_count}" == "1" ]] ||
+            fail "${image} must publish to exactly one image repository"
+        expected_repository="{{ .Env.GORELEASER_IMAGE_REGISTRY }}/${image}"
+        [[ "${image_repository}" == "${expected_repository}" ]] ||
+            fail "${image} image repository is not parameterized"
 
         dockerfile="$(IMAGE="${image}" yq -r '
             .dockers_v2[]
@@ -405,8 +442,11 @@ verify_built_images() {
 }
 
 main() {
+    local config_only=0
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
+            --config-only) config_only=1 ;;
             --skip-images) SKIP_IMAGES=1 ;;
             -*) fail "unknown argument: $1" ;;
             *) DIST_DIR="$1" ;;
@@ -416,16 +456,23 @@ main() {
 
     require_command jq
     require_command yq
+
+    verify_native_checksum_config
+    verify_release_config
+    verify_build_matrix --config-only
+    verify_image_definitions
+    verify_dockerfile_parity
+    if [[ "${config_only}" -eq 1 ]]; then
+        echo "GoReleaser configuration matches the release parity contract"
+        return
+    fi
+
     require_any_command sha256sum shasum openssl
 
     [[ -f "${DIST_DIR}/artifacts.json" ]] ||
         fail "missing GoReleaser artifacts metadata"
-    verify_native_checksum_config
-    verify_release_config
     verify_cli_assets "${DIST_DIR}/artifacts.json"
     verify_build_matrix
-    verify_image_definitions
-    verify_dockerfile_parity
     if [[ "${SKIP_IMAGES}" -eq 1 ]]; then
         echo "skipping built image verification: the snapshot ran without Docker"
     else
