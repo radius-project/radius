@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/process"
@@ -83,6 +84,34 @@ func StateArchiveName() string {
 // StateBranchName is deprecated. Use StateArchiveName.
 func StateBranchName() string {
 	return StateArchiveName()
+}
+
+// copyResourcesHeader matches the pg_dump COPY header for the "resources" table -- the table that
+// holds every UCP resource, including resource groups -- in plain-format output, e.g.:
+//
+//	COPY public.resources (id, original_id, resource_type, ...) FROM stdin;
+var copyResourcesHeader = regexp.MustCompile(`(?m)^COPY\s+(?:[\w"]+\.)?"?resources"?\s*\(.*\)\s+FROM\s+stdin;\s*$`)
+
+// IsControlPlaneEmpty reports whether the backed-up ucp database dump in stateDir contains no rows
+// in the "resources" table. A database in this state (e.g. after a postgres pod crash-loop, or
+// "rad install" re-run mid-session) is not safe to persist: committing it would overwrite the
+// durable archive with unrecoverable data loss, even though `rad startup` restored the previous
+// snapshot successfully at the start of the run.
+func IsControlPlaneEmpty(stateDir string) (bool, error) {
+	path := filepath.Join(stateDir, "ucp.sql")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return false, fmt.Errorf("failed to read backup file %q: %w", path, err)
+	}
+
+	loc := copyResourcesHeader.FindIndex(data)
+	if loc == nil {
+		// No "resources" table in the dump at all is at least as degenerate as an empty one.
+		return true, nil
+	}
+
+	rest := bytes.TrimLeft(data[loc[1]:], "\n")
+	return bytes.HasPrefix(rest, []byte(`\.`)), nil
 }
 
 // HasBackup reports whether a SQL dump exists for every database in the state directory.

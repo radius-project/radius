@@ -126,6 +126,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to back up control-plane databases: %w", err)
 	}
 
+	empty, err := pgbackup.IsControlPlaneEmpty(stateDir)
+	if err != nil {
+		return fmt.Errorf("failed to inspect control-plane backup: %w", err)
+	}
+	if empty {
+		return clierrors.Message("Refusing to persist state: the control-plane backup contains no resources. This can happen if the control plane degraded after 'rad startup' succeeded (for example a postgres pod crash-loop, or 'rad install' being re-run mid-session). The existing state archive was left unchanged; investigate the control plane before retrying 'rad shutdown'.")
+	}
+
 	r.Output.LogInfo("Backing up Terraform recipe state...")
 	if err := r.StateClient.BackupTerraform(ctx, kubeContext, pgbackup.DefaultNamespace, stateDir); err != nil {
 		return fmt.Errorf("failed to back up Terraform state: %w", err)
