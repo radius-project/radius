@@ -13,8 +13,16 @@ readonly MODE="${1:?Expected save or push-edge}"
 
 case "${MODE}" in
     save) ;;
-    push-edge) [[ "${TAG}" == edge ]] || exit 1 ;;
-    *) echo "Expected save or push-edge" >&2; exit 1 ;;
+    push-edge)
+        [[ "${TAG}" == edge ]] || {
+            echo "push-edge publishes only the edge tag" >&2
+            exit 1
+        }
+        ;;
+    *)
+        echo "Expected save or push-edge" >&2
+        exit 1
+        ;;
 esac
 
 version="$(jq -er '.version' "${DIST_DIR}/metadata.json")"
@@ -49,8 +57,15 @@ for image_id in "${image_ids[@]}"; do
     else
         sources=()
         for image in "${images[@]}"; do
-            docker push "${image}"
-            digest="$(oras resolve "${image}")"
+            platform="$(jq -er --arg path "${image}" '
+                .[] | select(.type == "Docker Image" and .path == $path) | .extra.Platforms[0]
+            ' "${DIST_DIR}/artifacts.json")"
+            # A moving per-platform tag replaces one set of snapshot-version tags
+            # per main build; the edge index references the manifests by digest.
+            reference="${REGISTRY}/${image_id}:edge-${platform//\//-}"
+            docker tag "${image}" "${reference}"
+            docker push "${reference}"
+            digest="$(oras resolve "${reference}")"
             [[ "${digest}" =~ ^sha256:[a-f0-9]{64}$ ]] || exit 1
             sources+=("${REGISTRY}/${image_id}@${digest}")
         done

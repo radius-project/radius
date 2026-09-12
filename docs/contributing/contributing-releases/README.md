@@ -49,7 +49,7 @@ Use [Approve Release](https://github.com/radius-project/radius/actions/workflows
     --format '{{ json (index .SBOM "linux/amd64").SPDX }}'
   ```
 
-- The GitHub Release is public only after verification succeeds. RCs advance no aliases. Finals and patches promote eligible `X.Y` and `latest` aliases from locked digests without rebuilding; an older release never replaces a newer alias. Main publishes only `edge` from snapshots and is outside the release transaction.
+- The GitHub Release is public only after verification succeeds. RCs advance no aliases. Finals and patches promote eligible `X.Y` and `latest` aliases from locked digests without rebuilding; an older release never replaces a newer alias. Main publishes only `edge` from snapshots, together with the moving `edge-<os>-<arch>` tags of the platform manifests the `edge` index is assembled from, and is outside the release transaction.
 - Complete a real release cycle with this runbook before enabling the final migration in production. Local fixtures and draft PRs do not satisfy that rollout gate.
 
 ## Troubleshooting
