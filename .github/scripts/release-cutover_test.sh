@@ -57,13 +57,16 @@ test_release_job_graph() {
 
     actual_jobs="$(yq -o=json '.jobs | keys | sort' "${RELEASE_WORKFLOW}")"
     expected_jobs='[
+        "approve-publication",
         "build-and-push-bicep-types",
         "build-and-push-helm-chart",
         "build-and-push-remaining-images",
         "build-summary",
+        "coordinate-release",
         "finalize-release",
         "goreleaser-release",
-        "release-preflight"
+        "release-preflight",
+        "verify-release"
     ]'
     assert_json_equal "${actual_jobs}" "${expected_jobs}" \
         "tag workflow contains superseded jobs" || return
@@ -72,14 +75,37 @@ test_release_job_graph() {
         .jobs."finalize-release".needs | sort
     ' "${RELEASE_WORKFLOW}")"
     expected_needs='[
+        "approve-publication",
         "build-and-push-bicep-types",
         "build-and-push-helm-chart",
         "build-and-push-remaining-images",
         "goreleaser-release",
-        "release-preflight"
+        "release-preflight",
+        "verify-release"
     ]'
     assert_json_equal "${actual_needs}" "${expected_needs}" \
         "finalization does not depend on every mandatory stage" || return
+    ((++PASS))
+}
+
+test_publication_gate() {
+    if ! yq -o=json '.jobs' "${RELEASE_WORKFLOW}" | jq -e '
+        # GitHub lists a draft release only for push access, so verification
+        # of the staged draft needs contents write; it must still not publish.
+        ."verify-release".permissions.contents == "write" and
+        ."verify-release".permissions.packages == "read" and
+        (."verify-release".steps | any(.run == "make verify-release-publication")) and
+        ."approve-publication".environment == "release" and
+        (."approve-publication".if | contains("!contains(github.ref_name")) and
+        (."finalize-release".if | contains("needs.verify-release.result == '\''success'\''")) and
+        (."finalize-release".if | contains("needs.approve-publication.result")) and
+        (."finalize-release".steps | map(.name) |
+          index("Recheck outputs after approval") < index("Select release aliases")) and
+        (."finalize-release".steps | any(.env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json"))
+    ' >/dev/null; then
+        fail_test "failed verification or missing approval can reach publication"
+        return
+    fi
     ((++PASS))
 }
 
@@ -232,7 +258,7 @@ test_release_resume_contract() {
     published_guards="$(grep -Fc \
         "needs.release-preflight.outputs.release-state != 'published'" \
         "${RELEASE_WORKFLOW}")"
-    if [[ "${published_guards}" != "5" ]]; then
+    if [[ "${published_guards}" != "6" ]]; then
         fail_test "published releases can re-enter mutating jobs"
         return
     fi
@@ -241,7 +267,7 @@ test_release_resume_contract() {
         fail_test "release API operations do not use bounded retries"
         return
     fi
-    if [[ "$(grep -Fc 'overwrite: true' "${RELEASE_WORKFLOW}")" != "3" ]]; then
+    if [[ "$(grep -Fc 'overwrite: true' "${RELEASE_WORKFLOW}")" != "4" ]]; then
         fail_test "same-run lock artifacts are not resumable"
         return
     fi
@@ -275,6 +301,7 @@ main() {
     command -v yq > /dev/null
 
     test_release_job_graph
+    test_publication_gate
     test_privileged_jobs_require_preflight
     test_rejects_malformed_release_tag
     test_goreleaser_stages_prepared_draft

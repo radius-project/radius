@@ -51,6 +51,8 @@ on:
         required: true
       RADIUS_PUBLISHER_BOT_PRIVATE_KEY:
         required: true
+      RELEASE_TEAMS_WEBHOOK:
+        required: false
 
 permissions: {}
 
@@ -258,24 +260,10 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-  approve:
-    name: Approve release reconciliation
-    needs: validate
-    if: needs.validate.outputs.ready == 'true'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    environment: release
-    permissions: {}
-    steps:
-      - name: Record approval
-        env:
-          VERSION: ${{ needs.validate.outputs.version }}
-          SOURCE_COMMIT: ${{ inputs.source-commit }}
-        run: echo "Approved ${VERSION} from ${SOURCE_COMMIT}."
-
   publish-deployment-engine:
     name: Publish Deployment Engine
-    needs: [validate, approve]
+    needs: [validate]
+    if: needs.validate.outputs.ready == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     permissions:
@@ -547,6 +535,7 @@ jobs:
     timeout-minutes: 8
     permissions:
       contents: read
+      actions: write
     steps:
       - name: Checkout trusted reconciliation script
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -619,26 +608,53 @@ jobs:
             echo "- Release build: build-release.yaml"
           } >> "${GITHUB_STEP_SUMMARY}"
 
+      - name: Reconcile tag-build and publication run
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_VERSION: ${{ needs.validate.outputs.version }}
+          INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
+        with:
+          retries: 5
+          script: |
+            const { resumeReleasePublication } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/dispatch-release-controller.mjs`)
+            await resumeReleasePublication({ github, context, core })
+
   summary:
     name: Release controller summary
     needs:
       - validate
-      - approve
       - publish-deployment-engine
       - reconcile-siblings
       - create-radius-tag
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    permissions: {}
+    permissions:
+      contents: read
+      actions: read
     steps:
+      - name: Checkout trusted summary
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          persist-credentials: false
+
+      - name: Report controller transition
+        continue-on-error: true
+        uses: ./.github/actions/release-status
+        with:
+          stage: prerequisites
+          version: ${{ inputs.version }}
+          source-sha: ${{ inputs.source-commit }}
+          results: ${{ toJSON(needs) }}
+          webhook: ${{ secrets.RELEASE_TEAMS_WEBHOOK }}
+
       - name: Summarize release state and recovery
         env:
           VERSION: ${{ needs.validate.outputs.version || inputs.version }}
           SOURCE_COMMIT: ${{ inputs.source-commit }}
           READY: ${{ needs.validate.outputs.ready }}
           VALIDATE_RESULT: ${{ needs.validate.result }}
-          APPROVE_RESULT: ${{ needs.approve.result }}
           DE_RESULT: ${{ needs.publish-deployment-engine.result }}
           DE_RUN_URL: ${{ needs.publish-deployment-engine.outputs.run-url }}
           DE_LOCK_BRANCH: >-
@@ -655,7 +671,6 @@ jobs:
             echo "| Stage | Result |"
             echo "|---|---|"
             echo "| Validate plan and preflight | ${VALIDATE_RESULT} |"
-            echo "| Release approval | ${APPROVE_RESULT} |"
             echo "| Deployment Engine | ${DE_RESULT} |"
             echo "| Sibling repositories | ${SIBLINGS_RESULT} |"
             echo "| Radius tag last | ${RADIUS_RESULT} |"
