@@ -25,7 +25,7 @@ This directory records the review of the 18-pull-request stack that implements t
 | 17 | `dp/helm-immutable-image-tags`          | [pr-17-helm-immutable-image-tags.md](./pr-17-helm-immutable-image-tags.md)           |
 | 18 | `dp/release-final-cleanup`              | [pr-18-release-final-cleanup.md](./pr-18-release-final-cleanup.md)                   |
 
-The review covers all eighteen layers; the cross-layer table below records where each finding that spans layers was resolved.
+The review covers all eighteen layers; the cross-layer table below records where each finding that spans layers was resolved. The findings left as-is across the notes are ranked in the [follow-up plan](./follow-up-plan.md).
 
 ## Cross-layer findings
 
