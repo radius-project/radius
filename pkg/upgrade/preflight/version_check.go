@@ -134,7 +134,7 @@ func (v *VersionCompatibilityCheck) isValidUpgradeVersion(currentVersion, target
 	}
 
 	// Allow upgrades within the same minor version (patch bumps, prerelease upgrades)
-	// e.g., 0.55.0-rc4 -> 0.55.0-rc5, 0.55.0-rc5 -> 0.55.0, 0.55.0 -> 0.55.1
+	// e.g., 0.61.0-rc.2 -> 0.61.0-rc.10, 0.61.0-rc.10 -> 0.61.0, 0.61.0 -> 0.61.1
 	// Same-version case (e.g., 0.55.0 -> 0.55.0) is already rejected by the Equal check above.
 	if target.Major() == current.Major() && target.Minor() == current.Minor() {
 		return true, "", nil

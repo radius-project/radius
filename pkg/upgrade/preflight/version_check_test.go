@@ -68,17 +68,24 @@ func TestVersionCompatibilityCheck_Run(t *testing.T) {
 		},
 		{
 			name:           "valid prerelease upgrade same version",
-			currentVersion: "0.55.0-rc4",
-			targetVersion:  "0.55.0-rc5",
+			currentVersion: "0.61.0-rc.2",
+			targetVersion:  "0.61.0-rc.10",
 			expectSuccess:  true,
-			expectMessage:  "Upgrade from 0.55.0-rc4 to 0.55.0-rc5 is valid",
+			expectMessage:  "Upgrade from 0.61.0-rc.2 to 0.61.0-rc.10 is valid",
 		},
 		{
 			name:           "valid prerelease to release upgrade",
-			currentVersion: "v0.55.0-rc5",
-			targetVersion:  "v0.55.0",
+			currentVersion: "v0.61.0-rc.10",
+			targetVersion:  "v0.61.0",
 			expectSuccess:  true,
-			expectMessage:  "Upgrade from v0.55.0-rc5 to v0.55.0 is valid",
+			expectMessage:  "Upgrade from v0.61.0-rc.10 to v0.61.0 is valid",
+		},
+		{
+			name:           "valid historical prerelease upgrade",
+			currentVersion: "0.60.0-rc4",
+			targetVersion:  "0.60.0-rc5",
+			expectSuccess:  true,
+			expectMessage:  "Upgrade from 0.60.0-rc4 to 0.60.0-rc5 is valid",
 		},
 		{
 			name:           "valid patch version upgrade",
@@ -139,15 +146,24 @@ func TestValidateVersionJump(t *testing.T) {
 		},
 		{
 			name:           "safe prerelease upgrade",
-			currentVersion: "0.55.0-rc4",
-			targetVersion:  "0.55.0-rc5",
+			currentVersion: "0.61.0-rc.2",
+			targetVersion:  "0.61.0-rc.10",
 			expectValid:    true,
 		},
 		{
 			name:           "safe prerelease to release",
-			currentVersion: "0.55.0-rc5",
-			targetVersion:  "0.55.0",
+			currentVersion: "0.61.0-rc.10",
+			targetVersion:  "0.61.0",
 			expectValid:    true,
+		},
+		{
+			// SemVer orders the dotted identifier before the legacy one, which is
+			// why the two forms are never mixed within one version.
+			name:           "dotted prerelease after legacy prerelease is a downgrade",
+			currentVersion: "0.61.0-rc1",
+			targetVersion:  "0.61.0-rc.2",
+			expectValid:    false,
+			expectMessage:  "Downgrading is not supported",
 		},
 		{
 			name:           "safe patch bump",
