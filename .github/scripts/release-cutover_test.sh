@@ -314,6 +314,19 @@ test_final_cleanup_contract() {
         fail_test "edge Bicep types dispatch lost its main-head guard"
         return
     fi
+    if ! yq -o=json '.jobs."build-and-push-images".steps' \
+        "${IMAGE_WORKFLOW}" | jq -e \
+        --arg name "bicep-image-\${{ steps.release-metadata.outputs.REL_VERSION }}" '
+        map(select((.uses // "") | startswith("actions/upload-artifact@")) | .with) |
+        any(.[]; .name == $name and
+            .path == "./dist/images/bicep.tar" and
+            ."retention-days" == 1 and
+            ."if-no-files-found" == "error" and .overwrite == true) and
+        all(.[]; .path == "./dist/images/bicep.tar" or .path == "dist/metrics/")
+    ' > /dev/null; then
+        fail_test "snapshot image exports must retain only the Bicep tar and metrics"
+        return
+    fi
     ((++PASS))
 }
 

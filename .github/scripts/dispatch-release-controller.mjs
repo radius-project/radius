@@ -35,7 +35,7 @@ export async function resumeReleasePublication({
   const sourceSha = core.getInput("SOURCE_SHA", { required: true });
   if (!versionPattern.test(version) || !commitPattern.test(sourceSha))
     throw new Error("Invalid publication resume identity");
-  const deadline = now() + 90000;
+  const deadline = now() + 300000;
   let run;
   while (!run) {
     const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
@@ -58,9 +58,9 @@ export async function resumeReleasePublication({
     if (!run) {
       if (now() >= deadline)
         throw new Error(
-          `No tag-build run found for ${version}; verify the App tag trigger, then resume`
+          `No tag-build run found for ${version} after five minutes; the tag exists. Start it with gh workflow run build-release.yaml --ref ${version}, then resume`
         );
-      await sleep(5000);
+      await sleep(10000);
     }
   }
   if (run.status === "completed" && run.conclusion !== "success") {

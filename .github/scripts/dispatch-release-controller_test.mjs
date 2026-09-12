@@ -101,20 +101,54 @@ test("resumes failed publication jobs without creating another tag or dispatch",
   assert.equal(reruns.length, 1);
 });
 
+for (const event of ["push", "workflow_dispatch"]) {
+  test(`publication resume discovers a delayed ${event} run`, async () => {
+    const state = fixture();
+    let clock = 0;
+    const intervals = [];
+    const run = {
+      id: 78,
+      head_sha: state.inputs.SOURCE_SHA,
+      head_branch: state.inputs.VERSION,
+      event,
+      status: "queued",
+      html_url: "https://example.test/run/78"
+    };
+    state.now = () => clock;
+    state.sleep = async (milliseconds) => {
+      intervals.push(milliseconds);
+      clock += milliseconds;
+    };
+    state.github.paginate = async () => (clock >= 120000 ? [run] : []);
+    state.github.rest.actions = { listWorkflowRuns() {} };
+
+    await resumeReleasePublication(state);
+
+    assert.equal(clock, 120000);
+    assert.deepEqual(intervals, Array(12).fill(10000));
+    assert.equal(state.outputs["run-url"], run.html_url);
+    assert.deepEqual(state.dispatches, []);
+  });
+}
+
 test("publication resume rejects other tags at the same commit", async () => {
   const state = fixture();
   let clock = 0;
+  const intervals = [];
   state.now = () => clock;
-  state.sleep = async () => {
-    clock += 90000;
+  state.sleep = async (milliseconds) => {
+    intervals.push(milliseconds);
+    clock += milliseconds;
   };
   state.github.paginate = async () => [
     { head_sha: state.inputs.SOURCE_SHA, head_branch: "v0.60.0", event: "push" }
   ];
   state.github.rest.actions = { listWorkflowRuns() {} };
-  await assert.rejects(
-    () => resumeReleasePublication(state),
-    /No tag-build run/
-  );
+  await assert.rejects(() => resumeReleasePublication(state), {
+    message: `No tag-build run found for ${state.inputs.VERSION} after five minutes; the tag exists. Start it with gh workflow run build-release.yaml --ref ${state.inputs.VERSION}, then resume`
+  });
+  assert.equal(clock, 300000);
+  assert.deepEqual(intervals, Array(30).fill(10000));
+  assert.equal(state.outputs["run-url"], undefined);
   assert.deepEqual(state.dispatches, []);
 });
