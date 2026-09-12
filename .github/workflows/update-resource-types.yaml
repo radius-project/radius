@@ -48,7 +48,7 @@ name: Update Resource Types
 # updates stay cumulative without the branch ever having to be rebased.
 #
 # Merging the resulting PR triggers the existing `build-and-push-bicep-types`
-# job in build.yaml, which dispatches to azure-octo/radius-publisher to
+# job in build-main.yaml, which dispatches to azure-octo/radius-publisher to
 # republish `radius:latest` with the refreshed contrib types.
 #
 # See the design notes:
@@ -378,4 +378,4 @@ jobs:
 
             Each affected entry is pinned to an immutable commit SHA in `deploy/manifest/defaults.yaml` (`resourceTypes[]` / `recipePacks[]`).
 
-            Merging this PR will republish `br:biceptypes.azurecr.io/radius:latest` via the existing `build-and-push-bicep-types` job in `build.yaml`.
+            Merging this PR will republish `br:biceptypes.azurecr.io/radius:latest` via the existing `build-and-push-bicep-types` job in `build-main.yaml`.
