@@ -729,6 +729,7 @@ gitmodules
 gitops
 gitsubmodule
 gnrc
+goarm
 godoc
 gofmt
 golang
@@ -820,6 +821,7 @@ kusto
 lastModifiedAt
 lastModifiedBy
 lastModifiedByType
+ldflags
 lfx
 lgtm
 lifecycle

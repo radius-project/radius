@@ -217,6 +217,32 @@ tools:
       fileTemplate: golangci-lint-{version_no_v}-checksums.txt
       format: standard
 
+  - name: goreleaser
+    makePrefix: GORELEASER
+    version: v2.18.1
+    source:
+      type: github-release
+      repository: goreleaser/goreleaser
+      latestURL: https://api.github.com/repos/goreleaser/goreleaser/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: goreleaser_Linux_x86_64.tar.gz
+        checksum: 0c6122af0ad8fd65638889bf7d3757148b2f80eeff9f079682f0655df66ec8e8
+      linux_arm64:
+        asset: goreleaser_Linux_arm64.tar.gz
+        checksum: 93dba7614308e167158bd26978e8275971fd4b9147e7f3c687a64f5939d42d27
+      darwin_amd64:
+        asset: goreleaser_Darwin_x86_64.tar.gz
+        checksum: 623e9ba517ace49c3d6b57bcfe8f5fe33ca45313ee93261c1854464cca94d861
+      darwin_arm64:
+        asset: goreleaser_Darwin_arm64.tar.gz
+        checksum: 8e912c5cc78896d791b7530e672d4a4ef9c00ebff7375de410fae1b459825ea3
+    checksumSource:
+      type: github-release-file
+      fileTemplate: checksums.txt
+      format: standard
+
   - name: terraform
     makePrefix: TERRAFORM
     version: 1.15.8

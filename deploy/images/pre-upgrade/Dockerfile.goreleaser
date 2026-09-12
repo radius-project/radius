@@ -1,0 +1,11 @@
+FROM gcr.io/distroless/static:nonroot
+
+ARG TARGETPLATFORM
+
+WORKDIR /
+
+COPY ${TARGETPLATFORM}/pre-upgrade /pre-upgrade
+
+USER 65532:65532
+
+ENTRYPOINT ["/pre-upgrade"]
