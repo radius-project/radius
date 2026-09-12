@@ -532,7 +532,7 @@ jobs:
     name: Create Radius tag last
     needs: [validate, publish-deployment-engine, reconcile-siblings]
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
+    timeout-minutes: 12
     permissions:
       contents: read
       actions: write

@@ -70,11 +70,11 @@ jobs:
         env:
           DOCKER_TAG_VERSION: ${{ steps.release-metadata.outputs.REL_VERSION }}
 
-      - name: Upload container image artifacts (PR)
+      - name: Upload Bicep image artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: container-images-${{ steps.release-metadata.outputs.REL_VERSION }}
-          path: ./dist/images/
+          name: bicep-image-${{ steps.release-metadata.outputs.REL_VERSION }}
+          path: ./dist/images/bicep.tar
           retention-days: 1
           if-no-files-found: error
           overwrite: true
