@@ -3,6 +3,10 @@ extension radius
 @description('Specifies the scope of azure resources.')
 param aciScope string = resourceGroup().id
 
+@description('The immutable Magpie image published for this test run.')
+@minLength(1)
+param magpieimage string
+
 resource env 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'aci-env'
   properties: {
@@ -77,7 +81,7 @@ resource magpie 'Applications.Core/containers@2023-10-01-preview' = {
   properties: {
     application: app.id
     container: {
-      image: 'ghcr.io/radius-project/magpiego:latest'
+      image: magpieimage
       env: {
         MAGPIE_PORT: {
           value: '8080'
