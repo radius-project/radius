@@ -1,0 +1,93 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: __dispatch-release-controller
+
+on:
+  workflow_call:
+    inputs:
+      event-type:
+        description: Approved release-controller event type
+        required: true
+        type: string
+      version:
+        description: Release version including the v prefix
+        required: true
+        type: string
+      source-commit:
+        description: Exact commit that the Radius tag must reference
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  dispatch:
+    name: Dispatch default-branch release controller
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout trusted dispatcher from main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Dispatch release controller
+        id: dispatch-controller
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_EVENT_TYPE: ${{ inputs.event-type }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_SOURCE_SHA: ${{ inputs.source-commit }}
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/dispatch-release-controller.mjs`)
+            await script({context, github, core})
+
+      - name: Summarize dispatch
+        if: always()
+        env:
+          EVENT_TYPE: ${{ inputs.event-type }}
+          VERSION: ${{ inputs.version }}
+          SOURCE_COMMIT: ${{ inputs.source-commit }}
+          DISPATCH_RESULT: ${{ steps.dispatch-controller.outcome }}
+        run: |
+          {
+            echo "## Release controller requested"
+            echo
+            echo "- Version: ${VERSION}"
+            echo "- Source commit: ${SOURCE_COMMIT}"
+            echo "- Dispatch: ${DISPATCH_RESULT:-not run}"
+            echo "- Controller: release-controller.yaml"
+            if [[ "${DISPATCH_RESULT}" != "success" ]]; then
+              workflow=resume-release.yaml
+              if [[ "${EVENT_TYPE}" == "release-controller.approve" ]]; then
+                workflow=approve-release.yaml
+              fi
+              echo
+              echo "Retry with:"
+              echo '```bash'
+              printf 'gh workflow run %s --ref main ' "${workflow}"
+              printf -- '-f version=%q -f source-commit=%q\n' \
+                "${VERSION}" "${SOURCE_COMMIT}"
+              echo '```'
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
