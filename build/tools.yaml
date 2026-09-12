@@ -243,6 +243,30 @@ tools:
       fileTemplate: checksums.txt
       format: standard
 
+  - name: git-cliff
+    makePrefix: GIT_CLIFF
+    version: v2.14.1
+    source:
+      type: github-release
+      repository: orhun/git-cliff
+      latestURL: https://api.github.com/repos/orhun/git-cliff/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: git-cliff-{version_no_v}-x86_64-unknown-linux-gnu.tar.gz
+        checksum: dfe9bef0c7a00d05fafe78e6e591a1a280d39dd495b8066764db0a559acde67f
+      linux_arm64:
+        asset: git-cliff-{version_no_v}-aarch64-unknown-linux-gnu.tar.gz
+        checksum: e99dc84135c6bc27aefc9d8226f7297119ed6750a32f45418f4587bc6cb260d8
+      darwin_amd64:
+        asset: git-cliff-{version_no_v}-x86_64-apple-darwin.tar.gz
+        checksum: d1ca51bfd8b8c2a09434532bdb85bab50179b7c0bde2378aa48f3c1a7dc2fd36
+      darwin_arm64:
+        asset: git-cliff-{version_no_v}-aarch64-apple-darwin.tar.gz
+        checksum: 2e2d1f60963aa6a201dbd21df14d7f44025328b8bb33437695f15a516598615a
+    checksumSource:
+      type: download
+
   - name: terraform
     makePrefix: TERRAFORM
     version: 1.15.8
