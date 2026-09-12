@@ -244,9 +244,9 @@ tests:
     set:
       controller.image: controller
     asserts:
-      - matchRegex:
+      - equal:
           path: spec.template.spec.containers[0].image
-          pattern: ^ghcr\.io/radius-project/controller:.*$
+          value: ghcr.io/radius-project/controller:edge
         template: controller/deployment.yaml
 
   - it: should work with custom registry and default tag
@@ -254,10 +254,48 @@ tests:
       global.imageRegistry: custom.registry.io
       controller.image: controller
     asserts:
-      - matchRegex:
+      - equal:
           path: spec.template.spec.containers[0].image
-          pattern: ^custom\.registry\.io/controller:.*$
+          value: custom.registry.io/controller:edge
         template: controller/deployment.yaml
+
+  - it: should retain latest for externally published images on edge charts
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:latest
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dashboard:latest
+        template: dashboard/deployment.yaml
+
+  - it: should honor explicit edge tags for externally published images
+    set:
+      de.tag: edge
+      dashboard.tag: edge
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:edge
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dashboard:edge
+        template: dashboard/deployment.yaml
+
+  - it: should honor a global edge tag for externally published images
+    set:
+      global.imageTag: edge
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/deployment-engine:edge
+        template: de/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/radius-project/dashboard:edge
+        template: dashboard/deployment.yaml
 
   - it: should apply to all deployments with custom registry
     set:
@@ -482,7 +520,7 @@ tests:
           path: spec.template.spec.initContainers
           content:
             name: append-root-ca
-            image: applications-rp:latest
+            image: applications-rp:edge
             command:
               - sh
               - -c
@@ -741,7 +779,7 @@ tests:
           path: spec.template.spec.initContainers
           content:
             name: append-root-ca
-            image: applications-rp:latest
+            image: applications-rp:edge
             command:
               - sh
               - -c
@@ -794,7 +832,7 @@ tests:
           path: spec.template.spec.initContainers
           content:
             name: append-root-ca
-            image: applications-rp:latest
+            image: applications-rp:edge
             command:
               - sh
               - -c
