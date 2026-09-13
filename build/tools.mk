@@ -18,29 +18,41 @@
 
 TOOL_MANIFEST := build/tools.yaml
 TOOL_MAKE_INCLUDE := build/tools.generated.mk
-TOOL_UPDATER_GOOS := $(shell go env GOHOSTOS)
-TOOL_UPDATER_GOARCH := $(shell go env GOHOSTARCH)
-TOOL_UPDATER_BINARY := bin/tool-updater$(if $(filter windows,$(TOOL_UPDATER_GOOS)),.exe,)
-TOOL_UPDATER_SOURCES := $(wildcard cmd/tool-updater/*.go) $(wildcard internal/tooling/*.go)
-TOOL_UPDATE_PR_BODY_OUTPUT ?=
-TOOL_UPDATE_ARGS := --manifest "$(TOOL_MANIFEST)"
-TOOL_UPDATE_ARGS += --makefile "$(TOOL_MAKE_INCLUDE)"
-ifneq ($(strip $(TOOL_UPDATE_PR_BODY_OUTPUT)),)
-TOOL_UPDATE_ARGS += --pr-body-output "$(TOOL_UPDATE_PR_BODY_OUTPUT)"
+UPDATECLI_VERSION := $(strip $(file <.updatecli-version))
+ifeq ($(OS),Windows_NT)
+# Windows ships an unrelated system32/updatecli.exe; use the project-local binary.
+UPDATECLI ?= bin/updatecli-$(UPDATECLI_VERSION)/updatecli.exe
+else
+UPDATECLI ?= updatecli
 endif
+UPDATECLI_OPTIONS := --disable-version-check --unique-tmp-dir
+TOOL_PIPELINE_ARGS := --config .updatecli/update-tools.yaml.tpl --values "$(TOOL_MANIFEST)"
+TOOL_PIPELINE_ARGS += --values-inline "manifestPath: '$(TOOL_MANIFEST)'"
+TOOL_PIPELINE_ARGS += --values-inline "makefilePath: '$(TOOL_MAKE_INCLUDE)'"
+TOOL_PIPELINE_ARGS += --disable-changelog --disable-udash-report
 
 include $(TOOL_MAKE_INCLUDE)
 
-$(TOOL_UPDATER_BINARY): $(TOOL_UPDATER_SOURCES) go.mod go.sum
-	@mkdir -p bin
-	@GOOS="$(TOOL_UPDATER_GOOS)" GOARCH="$(TOOL_UPDATER_GOARCH)" go build -o "$@" ./cmd/tool-updater
+.PHONY: check-tools
+check-tools: ## Preview external tool updates without changing pinned metadata.
+	@"$(UPDATECLI)" $(UPDATECLI_OPTIONS) pipeline diff $(TOOL_PIPELINE_ARGS)
 
-$(TOOL_MAKE_INCLUDE): $(TOOL_MANIFEST) $(TOOL_UPDATER_BINARY)
-	@"$(TOOL_UPDATER_BINARY)" generate-make --manifest "$(TOOL_MANIFEST)" --output "$@"
+.PHONY: generate-tools
+generate-tools: ## Synchronize tool consumers and Make metadata offline from the manifest.
+	@"$(UPDATECLI)" $(UPDATECLI_OPTIONS) pipeline apply $(TOOL_PIPELINE_ARGS) --values-inline "refresh: false" --commit=false --push=false
 
 .PHONY: update-tools
-update-tools: $(TOOL_UPDATER_BINARY) ## Check tool releases and refresh versions and checksums in the manifest.
-	@"$(TOOL_UPDATER_BINARY)" update $(TOOL_UPDATE_ARGS)
+update-tools: ## Check tool releases and refresh versions and checksums in the manifest.
+	@"$(UPDATECLI)" $(UPDATECLI_OPTIONS) pipeline apply $(TOOL_PIPELINE_ARGS) --commit=false --push=false
+
+.PHONY: publish-tools
+publish-tools: ## Publish one grouped tool-update PR using the configured GitHub App token.
+	@"$(UPDATECLI)" $(UPDATECLI_OPTIONS) pipeline apply --config .updatecli/publish-tools.yaml.tpl --values "$(TOOL_MANIFEST)" --disable-changelog --disable-udash-report
+
+.PHONY: test-update-tools
+test-update-tools: export UPDATECLI := $(UPDATECLI)
+test-update-tools: ## Exercise Updatecli pipelines against local release fixtures.
+	@go test ./test/tooling -count=1 -parallel=3
 
 .PHONY: install-yq
 install-yq: ## Install the pinned yq YAML processor into a user-owned bin dir (no sudo).

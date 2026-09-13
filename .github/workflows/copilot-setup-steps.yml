@@ -43,8 +43,9 @@ on:
       - .terraform-version
       - build/tools.yaml
       - build/tools.mk
-      - cmd/tool-updater/**
-      - internal/tooling/**
+      - build/tools.generated.mk
+      - .updatecli/**
+      - .updatecli-version
       - build/scripts/install-*.sh
   pull_request:
     paths:
@@ -54,8 +55,9 @@ on:
       - .terraform-version
       - build/tools.yaml
       - build/tools.mk
-      - cmd/tool-updater/**
-      - internal/tooling/**
+      - build/tools.generated.mk
+      - .updatecli/**
+      - .updatecli-version
       - build/scripts/install-*.sh
 
 permissions: {}
@@ -107,6 +109,11 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: .python-version
+
+      - name: Setup Updatecli
+        uses: updatecli/updatecli-action@41b9c8d707830a9daebaeaa84c1b62d60b779564 # v3.6.0
+        with:
+          version-file: .updatecli-version
 
       - name: Install helm
         # Version pinned in build/tools.yaml (HELM_VERSION).

@@ -1,11 +1,14 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: Update Tools
+name: update-tools
 
 on:
-  schedule:
-    - cron: "0 5 * * 1"
   workflow_dispatch:
+    inputs:
+      publish:
+        description: Create or update the draft PR (main branch of radius-project/radius only)
+        type: boolean
+        default: false
 
 concurrency:
   group: update-tools
@@ -14,39 +17,65 @@ concurrency:
 permissions: {}
 
 jobs:
-  update:
-    if: >-
-      github.repository == 'radius-project/radius' ||
-      github.event_name == 'workflow_dispatch'
-    name: Update
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
+  test:
+    name: Exercise pipelines (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     permissions:
       contents: read
-    env:
-      PR_BRANCH: automation/update-tools
-      PR_TITLE: "chore(tools): bump versions"
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-24.04
+          - windows-2025
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Setup Go
+      - name: Setup Go for the fixture tests
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-          cache-dependency-path: go.sum
-          cache: true
+          cache: false
 
-      - name: Check and update tool metadata
+      - name: Setup Updatecli
+        uses: updatecli/updatecli-action@41b9c8d707830a9daebaeaa84c1b62d60b779564 # v3.6.0
+        with:
+          version-file: .updatecli-version
+
+      - name: Exercise local release fixtures
         env:
-          GITHUB_TOKEN: ${{ github.token }}
-          TOOL_UPDATE_PR_BODY_OUTPUT: ${{ runner.temp }}/tool-update-pr-body.md
-        run: make update-tools
+          UPDATECLI: updatecli
+        run: go test ./test/tooling -count=1 -parallel=3
+
+  update:
+    needs: test
+    name: Update
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Updatecli
+        uses: updatecli/updatecli-action@41b9c8d707830a9daebaeaa84c1b62d60b779564 # v3.6.0
+        with:
+          version-file: .updatecli-version
+
+      - name: Preview tool updates
+        env:
+          UPDATECLI_GITHUB_TOKEN: ${{ github.token }}
+        run: make check-tools
 
       - name: Create App token
-        if: github.repository == 'radius-project/radius'
+        if: inputs.publish && github.repository == 'radius-project/radius' && github.ref == 'refs/heads/main'
         id: app-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
@@ -59,31 +88,21 @@ jobs:
           permission-pull-requests: write
 
       - name: Get bot details
-        if: github.repository == 'radius-project/radius'
+        if: inputs.publish && github.repository == 'radius-project/radius' && github.ref == 'refs/heads/main'
         id: bot-details
         uses: raven-actions/bot-details@ee8966a9ff6e7e42cbfc4a56b4ddb60a9d1b40a6 # v1.2.0
         with:
           bot-slug-name: ${{ steps.app-token.outputs.app-slug }}
 
-      - name: Commit updates and create or update pull request
-        id: create-pr
-        if: github.repository == 'radius-project/radius'
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-          branch: ${{ env.PR_BRANCH }}
-          base: main
-          commit-message: ${{ env.PR_TITLE }}
-          # Used for the local DCO trailer. The API-created commit itself is
-          # authored and signed by the App because sign-commits is enabled.
-          committer: ${{ steps.bot-details.outputs.name-email }}
-          signoff: true
-          sign-commits: true
-          title: ${{ env.PR_TITLE }}
-          body-path: ${{ runner.temp }}/tool-update-pr-body.md
+      - name: Publish one complete tool-update PR
+        if: inputs.publish && github.repository == 'radius-project/radius' && github.ref == 'refs/heads/main'
+        env:
+          UPDATECLI_GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          UPDATECLI_COMMITTER: ${{ steps.bot-details.outputs.name-email }}
+        run: make publish-tools
 
-      - name: Report fork limitation
-        if: github.repository != 'radius-project/radius'
+      - name: Report publishing limitation
+        if: inputs.publish && (github.repository != 'radius-project/radius' || github.ref != 'refs/heads/main')
         run: |
-          echo "PR creation is skipped outside radius-project/radius because"
-          echo "the Dependabot-manager App secrets are unavailable to forks."
+          echo "The preview completed, but PR publication is restricted to main"
+          echo "in radius-project/radius. Forks and feature branches are preview-only."
