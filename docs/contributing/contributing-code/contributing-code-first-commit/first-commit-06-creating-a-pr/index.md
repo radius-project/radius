@@ -4,7 +4,9 @@
 
 At this point you've experienced the basic dev flow for the `rad` CLI.
 
-It's time to pick an issue to work on! You can find a query [here](https://github.com/radius-project/radius/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22).
+It's time to pick an issue to work on! External contributors using an AI agent, coding bot, or other automation must choose an open issue that is labeled `triaged` and either [`help wanted`](https://github.com/radius-project/radius/issues?q=is%3Aopen+is%3Aissue+label%3Atriaged+label%3A%22help+wanted%22) or [`good first issue`](https://github.com/radius-project/radius/issues?q=is%3Aopen+is%3Aissue+label%3Atriaged+label%3A%22good+first+issue%22).
+
+The issue must not be assigned to another contributor or already have an open pull request. Re-check the issue's status, labels, assignment, and linked pull requests immediately before opening a pull request. See the [pull-request guide](../../../contributing-pull-requests/README.md#prerequisites) for the full eligibility requirements.
 
 ## Etiquette for issues
 
