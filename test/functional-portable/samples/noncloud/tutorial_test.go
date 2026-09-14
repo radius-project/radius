@@ -42,7 +42,6 @@ import (
 
 const (
 	remotePort   = 3000
-	retries      = 3
 	retryTimeout = 1 * time.Minute
 	retryBackoff = 1 * time.Second
 
@@ -106,20 +105,27 @@ func Test_FirstApplicationSample(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
-				// Set up pod port-forwarding for the pod
-				for i := 1; i <= retries; i++ {
-					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
+				// Set up pod port-forwarding for the pod. Kubernetes pod readiness does not
+				// guarantee the application is already listening on remotePort, so retry
+				// across a bounded window with a backoff between attempts instead of
+				// exhausting all attempts within milliseconds of each other.
+				// See https://github.com/radius-project/radius/issues/12935.
+				deadline := time.Now().Add(retryTimeout)
+				var lastErr error
+				for attempt := 1; time.Now().Before(deadline); attempt++ {
+					t.Logf("Setting up portforward (attempt %d)", attempt)
 					selector := fmt.Sprintf("%s=%s", kubernetes.LabelRadiusResource, appName)
-					err := testWithPortForward(t, ctx, ct, appNamespace, selector, remotePort)
-					if err != nil {
-						t.Logf("Failed to test pod via portforward with error: %s", err)
-					} else {
+					lastErr = testWithPortForward(t, ctx, ct, appNamespace, selector, remotePort)
+					if lastErr == nil {
 						// Successfully ran tests
 						return
 					}
+
+					t.Logf("Failed to test pod via portforward with error: %s", lastErr)
+					time.Sleep(retryBackoff)
 				}
 
-				require.Fail(t, fmt.Sprintf("tests failed after %d retries", retries))
+				require.Fail(t, fmt.Sprintf("tests failed after retrying for %s: %s", retryTimeout, lastErr))
 			},
 			// TODO: validation of k8s resources blocked by https://github.com/radius-project/radius/issues/4689
 			K8sOutputResources: []unstructured.Unstructured{},
