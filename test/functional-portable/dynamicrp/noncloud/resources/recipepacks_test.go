@@ -283,8 +283,13 @@ func Test_RecipePacks_MissingNamespace_Failure(t *testing.T) {
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
 	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
-		Code:            "BadRequest",
-		MessageContains: "Namespace 'recipepacks-ns' does not exist in the Kubernetes cluster. Please create it before proceeding.",
+		Code: "ResourceDeploymentFailure",
+		Details: []step.DeploymentErrorDetail{
+			{
+				Code:            "BadRequest",
+				MessageContains: "Namespace 'recipepacks-ns' does not exist in the Kubernetes cluster. Please create it before proceeding.",
+			},
+		},
 	})
 
 	test := rp.NewRPTest(t, appName, []rp.TestStep{
