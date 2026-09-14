@@ -14,18 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package git provides a persistence.Store backed by a durable state archive.
+// Package archive provides a persistence.Store backed by a durable state archive.
 //
 // It is a thin, graph-specific adapter over the shared pluggable storage
 // backend in pkg/statearchive: it maps persistence.Key values to JSON files in the
-// archive and delegates storage I/O to a statearchive.Archive (the git one by
-// default). Swapping in a different statearchive.Archive (for example an OCI or
-// filesystem implementation) requires no change here.
+// archive and delegates storage I/O to an explicitly supplied statearchive.Archive.
 //
 // Key -> path layout in the archive:
 //
 //	<namespace>/<name>.json
-package git
+package archive
 
 import (
 	"context"
@@ -40,7 +38,6 @@ import (
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/persistence"
 	"github.com/radius-project/radius/pkg/statearchive"
-	archivegit "github.com/radius-project/radius/pkg/statearchive/git"
 )
 
 const (
@@ -60,8 +57,7 @@ type Options struct {
 	// Branch is deprecated. Use ArchiveName.
 	Branch string
 
-	// Archive is the durable state archive. If nil, the git implementation is
-	// used. Tests may inject an alternative implementation.
+	// Archive is the durable state archive and must not be nil.
 	Archive statearchive.Archive
 }
 
@@ -75,7 +71,7 @@ type Store struct {
 	archive     statearchive.Archive
 }
 
-// NewStore returns an archive-backed Store. The default archive is git.
+// NewStore returns a Store backed by the supplied archive.
 func NewStore(opts Options) (*Store, error) {
 	if opts.ArchiveName != "" && opts.Branch != "" && opts.ArchiveName != opts.Branch {
 		return nil, fmt.Errorf("graph archive name %q conflicts with deprecated branch option %q", opts.ArchiveName, opts.Branch)
@@ -90,7 +86,7 @@ func NewStore(opts Options) (*Store, error) {
 
 	archive := opts.Archive
 	if archive == nil {
-		archive = archivegit.NewGitArchive()
+		return nil, errors.New("archive: graph store requires an Archive")
 	}
 	return &Store{archiveName: archiveName, archive: archive}, nil
 }
@@ -187,7 +183,7 @@ func (s *Store) List(ctx context.Context, namespace string) ([]persistence.Key, 
 			return err
 		}
 		if d.IsDir() {
-			// Skip the .git pointer file directory inside a worktree.
+			// Ignore repository metadata in archives created by older clients.
 			if d.Name() == ".git" {
 				return fs.SkipDir
 			}
@@ -233,7 +229,7 @@ func (s *Store) Delete(ctx context.Context, key persistence.Key) error {
 	return session.Commit(ctx, msg)
 }
 
-// constructPathForKey returns the in-repo relative path used to store a
+// constructPathForKey returns the archive-relative path used to store a
 // graph for key, after validating that Key.Namespace and Key.Name are safe
 // to embed in a path. The resulting path is always rooted under a single
 // namespace directory in the archive:

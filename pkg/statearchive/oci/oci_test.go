@@ -32,7 +32,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/persistence"
-	graphstore "github.com/radius-project/radius/pkg/graph/persistence/git"
+	graphstore "github.com/radius-project/radius/pkg/graph/persistence/archive"
 	"github.com/radius-project/radius/pkg/statearchive"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
@@ -73,7 +73,7 @@ func TestOCIArchive_UsesOCIStorageForGraphs(t *testing.T) {
 	store, err := graphstore.NewStore(graphstore.Options{Archive: archive})
 	require.NoError(t, err)
 
-	key := persistence.Key{Namespace: "main", Name: "app"}
+	key := persistence.Key{Namespace: "feature%2Ffoo", Name: "app-graph"}
 	graph := &corerpv20250801preview.ApplicationGraphResponse{
 		Resources: []*corerpv20250801preview.ApplicationGraphResource{
 			{
@@ -84,14 +84,25 @@ func TestOCIArchive_UsesOCIStorageForGraphs(t *testing.T) {
 	}
 	require.NoError(t, store.Save(t.Context(), key, graph, persistence.SaveOptions{}))
 
+	// Recreate the adapter so the round trip must read from the OCI archive.
+	store, err = graphstore.NewStore(graphstore.Options{Archive: archive})
+	require.NoError(t, err)
 	got, err := store.Load(t.Context(), key)
 	require.NoError(t, err)
 	require.Len(t, got.Resources, 1)
 	require.Equal(t, "frontend", *got.Resources[0].Name)
 
+	keys, err := store.List(t.Context(), key.Namespace)
+	require.NoError(t, err)
+	require.Equal(t, []persistence.Key{key}, keys)
+
 	require.NoError(t, store.Delete(t.Context(), key))
 	_, err = store.Load(t.Context(), key)
 	require.ErrorIs(t, err, persistence.ErrNotFound)
+	keys, err = store.List(t.Context(), "")
+	require.NoError(t, err)
+	require.Empty(t, keys)
+	require.ErrorIs(t, store.Delete(t.Context(), key), persistence.ErrNotFound)
 }
 
 func TestOCIArchive_OpenRejectsEmptyName(t *testing.T) {
