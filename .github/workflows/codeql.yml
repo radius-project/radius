@@ -104,7 +104,7 @@ jobs:
 
       - name: Initialize CodeQL
         if: ${{ !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/init@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           config-file: .github/configs/.codeql.yml
           languages: ${{ matrix.language }}
@@ -118,7 +118,7 @@ jobs:
 
       - name: Perform GoSec Analysis
         if: matrix.language == 'custom-gosec'
-        uses: securego/gosec@9e75c0576c9878035d4221392108d458abe10fc3 # v2.28.0
+        uses: securego/gosec@deb54465fea23d19a77f037e11e6589021f8501d # v2.29.0
         with:
           args: -no-fail -fmt sarif -out gosec-results.sarif ./...
         continue-on-error: true
@@ -129,7 +129,7 @@ jobs:
       # results are uploaded on `push`/`pull_request` against persistent refs.
       - name: Upload GoSec result
         if: ${{ always() && github.event_name != 'merge_group' && matrix.language == 'custom-gosec' }}
-        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           category: /language:go/tool:gosec
           sarif_file: gosec-results.sarif
@@ -137,7 +137,7 @@ jobs:
 
       - name: Perform CodeQL Analysis
         if: ${{ !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/analyze@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         id: codeql-analyze
         with:
           category: /language:${{matrix.language}}
@@ -150,7 +150,7 @@ jobs:
       # results are uploaded on `push`/`pull_request` against persistent refs.
       - name: Upload CodeQL result
         if: ${{ always() && github.event_name != 'merge_group' && !startsWith(matrix.language, 'custom-') }}
-        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: ${{ format('{0}/{1}.sarif', steps.codeql-analyze.outputs.sarif-output, matrix.language) }}
           wait-for-processing: true
@@ -162,7 +162,7 @@ jobs:
           ${{ always() && github.event_name != 'merge_group' &&
           !startsWith(matrix.language, 'custom-') &&
           hashFiles(format('.codeql-results/{0}.quality.sarif', matrix.language)) != '' }}
-        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4.37.8
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: ${{ format('{0}/{1}.quality.sarif', steps.codeql-analyze.outputs.sarif-output, matrix.language) }}
           wait-for-processing: true

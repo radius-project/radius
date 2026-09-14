@@ -421,7 +421,7 @@
     "name": "connectionsAdditionalProperties",
     "properties": {
       "disableDefaultEnvVars": {
-        "description": "(Optional) Disables the automatic injection of environment variables from connected resource properties.",
+        "description": "(Optional) Disables automatic injection of ordinary properties and secret-backed environment variables from this connection.",
         "flags": 0,
         "type": {
           "$ref": "#/9"
