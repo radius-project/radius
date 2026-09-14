@@ -94,13 +94,13 @@ This is 908 manifests and approximately 482 MB of aggregate manifest-reported im
 
 The ACR is the Terraform resource `azurerm_container_registry.this` in `radius-project/wellknown`. It is in the Test subscription and the shared `rg-radfunctestsrd-1b2s` resource group.
 
-| Area                       | Cleanup                                                                                                                                                                                                                  |
-|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `radius-project/radius`    | Replace `TEST_BICEP_TYPES_REGISTRY` in `functional-test-cloud.yaml` and `long-running-azure.yaml`; remove the repository variable after cutover.                                                                         |
-| `radius-project/wellknown` | Remove `azurerm_container_registry.this`, `azurecaf_name.test_acr`, `azurerm_role_assignment.test_principal_acr_push`, the `test_acr_*` outputs, and the `TEST_BICEP_TYPES_REGISTRY` GitHub variable output and example. |
-| Test service principal     | Remove the ACR-specific `AcrPush` assignment from `app-radfunctest-1b2s`; retain the principal and its subscription roles.                                                                                               |
-| AKS identity               | Remove the direct `AcrPull` assignment from `shruku-agentpool`; retain the managed identity and cluster.                                                                                                                 |
-| Shared resource group      | Retain the storage account, Cosmos DB account, OIDC material, Entra application, and unrelated role assignments.                                                                                                         |
+| Area                       | Cleanup                                                                                                                                                                                                                                 |
+|----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `radius-project/radius`    | Replace `TEST_BICEP_TYPES_REGISTRY` in `functional-test-cloud.yaml` and `long-running-azure.yaml`; update the active examples in `.github/instructions/github-workflows.instructions.md`; remove the repository variable after cutover. |
+| `radius-project/wellknown` | Remove `azurerm_container_registry.this`, `azurecaf_name.test_acr`, `azurerm_role_assignment.test_principal_acr_push`, the `test_acr_*` outputs, and the `TEST_BICEP_TYPES_REGISTRY` GitHub variable output and example.                |
+| Test service principal     | Remove the ACR-specific `AcrPush` assignment from `app-radfunctest-1b2s`; retain the principal and its subscription roles.                                                                                                              |
+| AKS identity               | Remove the direct `AcrPull` assignment from `shruku-agentpool`; retain the managed identity and cluster.                                                                                                                                |
+| Shared resource group      | Retain the storage account, Cosmos DB account, OIDC material, Entra application, and unrelated role assignments.                                                                                                                        |
 
 Apply the Terraform removal only after both workflows no longer reference or write to the ACR.
 
