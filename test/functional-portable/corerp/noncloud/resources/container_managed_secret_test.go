@@ -21,16 +21,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"testing"
+	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	backendsecret "github.com/radius-project/radius/pkg/dynamicrp/backend/secret"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -111,14 +117,23 @@ func Test_Container_ManagedSecretConnection(t *testing.T) {
 					require.FailNow(t, "producer state contains the secret output")
 				}
 
-				_, err = test.Options.ManagementClient.GetResource(ctx, "Radius.Security/secrets", managedSecretName)
+				managedSecret, err := test.Options.ManagementClient.GetResource(ctx, validation.SecuritySecretsResource, managedSecretName)
 				require.NoError(t, err, "managed Radius.Security/secrets resource should exist")
+				if _, leaked := managedSecret.Properties["url"]; leaked {
+					require.FailNow(t, "managed secret state contains the secret output")
+				}
 
 				kubernetesSecret, err := test.Options.K8sClient.CoreV1().Secrets(name).Get(ctx, managedSecretName, metav1.GetOptions{})
 				require.NoError(t, err)
 				secretValue, ok := kubernetesSecret.Data["url"]
 				require.True(t, ok, "managed Kubernetes Secret should contain the recipe's url output")
 				require.NotEmpty(t, secretValue)
+
+				managedSecretProperties, err := json.Marshal(managedSecret.Properties)
+				require.NoError(t, err)
+				if bytes.Contains(managedSecretProperties, secretValue) {
+					require.FailNow(t, "managed secret state contains the plaintext secret")
+				}
 
 				deployment := getContainerDeployment(ctx, t, test, name, name, containerName)
 				require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
@@ -136,30 +151,85 @@ func Test_Container_ManagedSecretConnection(t *testing.T) {
 				require.Equal(t, "6379", requireEnvValue(t, initContainer, "CONNECTION_REDIS_PORT"))
 				requireManagedSecretEnv(t, initContainer, "CONNECTION_REDIS_URL", managedSecretName, "url")
 
-				podSpec, err := json.Marshal(deployment.Spec.Template.Spec)
+				deploymentState, err := json.Marshal(deployment)
 				require.NoError(t, err)
-				if bytes.Contains(podSpec, secretValue) {
-					require.FailNow(t, "pod spec contains the plaintext secret")
+				if bytes.Contains(deploymentState, secretValue) {
+					require.FailNow(t, "deployment contains the plaintext secret")
 				}
 
-				pods, err := test.Options.K8sClient.CoreV1().Pods(name).List(ctx, metav1.ListOptions{
-					LabelSelector: metav1.FormatLabelSelector(deployment.Spec.Selector),
-				})
-				require.NoError(t, err)
-				require.Len(t, pods.Items, 1)
+				pod := requireReadyPod(ctx, t, test, name, deployment)
+				require.EventuallyWithT(t, func(collect *assert.CollectT) {
+					appLogs, err := testutil.GetPodLogs(ctx, test.Options.K8sClient, name, pod.Name, appContainer.Name)
+					assert.NoError(collect, err)
+					assert.Contains(collect, appLogs, "managed-secret-connection-ready")
 
-				appLogs, err := testutil.GetPodLogs(ctx, test.Options.K8sClient, name, pods.Items[0].Name, appContainer.Name)
-				require.NoError(t, err)
-				require.Contains(t, appLogs, "managed-secret-connection-ready")
-
-				initLogs, err := testutil.GetPodLogs(ctx, test.Options.K8sClient, name, pods.Items[0].Name, initContainer.Name)
-				require.NoError(t, err)
-				require.Contains(t, initLogs, "managed-secret-init-ready")
+					initLogs, err := testutil.GetPodLogs(ctx, test.Options.K8sClient, name, pod.Name, initContainer.Name)
+					assert.NoError(collect, err)
+					assert.Contains(collect, initLogs, "managed-secret-init-ready")
+				}, 30*time.Second, time.Second)
 			},
 		},
 	}
 
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, test rp.RPTest) {
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			_, err := test.Options.ManagementClient.GetResource(ctx, validation.SecuritySecretsResource, managedSecretName)
+			var responseError *azcore.ResponseError
+			if assert.ErrorAs(collect, err, &responseError, "managed Radius.Security/secrets resource should be deleted") {
+				assert.Equal(collect, http.StatusNotFound, responseError.StatusCode)
+			}
+
+			_, err = test.Options.K8sClient.CoreV1().Secrets(name).Get(ctx, managedSecretName, metav1.GetOptions{})
+			assert.True(collect, apierrors.IsNotFound(err), "managed Kubernetes Secret should be deleted, got: %v", err)
+		}, 30*time.Second, time.Second)
+	}
+
 	test.Test(t)
+}
+
+func requireReadyPod(ctx context.Context, t *testing.T, test rp.RPTest, namespace string, deployment appsv1.Deployment) corev1.Pod {
+	t.Helper()
+
+	deploymentSelector := metav1.FormatLabelSelector(deployment.Spec.Selector)
+	deploymentRevision := deployment.Annotations["deployment.kubernetes.io/revision"]
+	require.NotEmpty(t, deploymentRevision, "deployment should have a revision")
+
+	replicaSets, err := test.Options.K8sClient.AppsV1().ReplicaSets(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: deploymentSelector,
+	})
+	require.NoError(t, err)
+	var currentReplicaSet *appsv1.ReplicaSet
+	for i := range replicaSets.Items {
+		replicaSet := &replicaSets.Items[i]
+		if metav1.IsControlledBy(replicaSet, &deployment) &&
+			replicaSet.Annotations["deployment.kubernetes.io/revision"] == deploymentRevision {
+			currentReplicaSet = replicaSet
+			break
+		}
+	}
+	require.NotNil(t, currentReplicaSet, "current ReplicaSet not found for deployment %s", deployment.Name)
+
+	podSelector := metav1.FormatLabelSelector(currentReplicaSet.Spec.Selector)
+	pods, err := test.Options.K8sClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: podSelector,
+	})
+	require.NoError(t, err)
+
+	for _, pod := range pods.Items {
+		if !metav1.IsControlledBy(&pod, currentReplicaSet) ||
+			pod.Status.Phase != corev1.PodRunning ||
+			pod.DeletionTimestamp != nil {
+			continue
+		}
+		for _, condition := range pod.Status.Conditions {
+			if condition.Type == corev1.PodReady && condition.Status == corev1.ConditionTrue {
+				return pod
+			}
+		}
+	}
+
+	require.FailNowf(t, "container pod not ready", "no ready pods found for current ReplicaSet %s in namespace %s", currentReplicaSet.Name, namespace)
+	return corev1.Pod{}
 }
 
 func requireEnvValue(t *testing.T, container corev1.Container, name string) string {
