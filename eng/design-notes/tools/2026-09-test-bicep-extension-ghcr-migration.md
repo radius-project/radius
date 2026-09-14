@@ -34,22 +34,32 @@ Both GHCR packages are public. Test workflows require package credentials only w
 
 ## Design
 
-`functional-test-cloud.yaml` publishes run-specific Radius types and `long-running-azure.yaml` publishes the `testresources` extension. Each publishing job logs in to GHCR with its repository `GITHUB_TOKEN` and receives `packages: write` only after its existing contributor trust or environment approval gate passes.
+`functional-test-cloud.yaml` publishes run-specific Radius types. Its `pull_request_target` path classifies same-repository and organization-member changes as trusted, requires the `external-contributor-approval` environment for other contributors, and runs downstream jobs only after the shared authorization job succeeds. The publishing job logs in to GHCR with its repository `GITHUB_TOKEN` and receives `packages: write` after that authorization decision.
+
+`long-running-azure.yaml` publishes the `testresources` extension. It runs only on a schedule or manual dispatch, requires the canonical Radius repository, and checks out the canonical repository before installing an official Radius release. It has no contributor-approval environment because it has no pull-request trigger. Any future pull-request trigger must add an explicit trust gate before granting package write access or executing pull-request code.
 
 All test versions use a run-unique tag. Replacing `testresources:latest` prevents concurrent runs from overwriting each other. An `if: always()` step removes versions created by a completed run, and scheduled cleanup removes versions left by cancelled jobs.
 
 Generated test `bicepconfig.json` files include `ociEnabled` and reference the GHCR packages. Azure login remains where tests provision Azure resources, but Bicep publishing and restore no longer depend on Azure credentials.
 
+### Released-toolchain gate
+
+The long-running workflow installs the latest official Radius release, including a release candidate when available, and uses that release's `rad bicep download` and `rad bicep publish-extension`. Updating the Bicep pin on `main` does not update this toolchain.
+
+The long-running cutover waits until the selected released `rad` downloads Bicep v0.45.6 or later and successfully publishes and restores a GHCR extension with `ociEnabled`. `TEST_BICEP_TYPES_REGISTRY` and its ACR remain available until that released-toolchain validation passes. The workflow does not override the released Bicep binary because doing so would stop testing the released product.
+
 ## Phased rollout
 
-| Phase                   | Change                                                                                 | Exit criteria                                                          |
-|-------------------------|----------------------------------------------------------------------------------------|------------------------------------------------------------------------|
-| 1. Create packages      | Create and link the two public GHCR packages; define tag and retention policy.         | A trusted job can publish and anonymously restore a temporary version. |
-| 2. Cut over workflows   | Update cloud and long-running workflows, enable `ociEnabled`, and add version cleanup. | Concurrent runs use isolated tags and no workflow references the ACR.  |
-| 3. Remove configuration | Remove `TEST_BICEP_TYPES_REGISTRY` from Radius and `wellknown`.                        | GitHub configuration no longer exposes the test ACR.                   |
-| 4. Remove ACR           | Apply the `wellknown` Terraform change that deletes only the ACR and its direct roles. | The ACR is absent and the remaining test infrastructure is unchanged.  |
+| Phase                          | Change                                                                                                | Exit criteria                                                          |
+|--------------------------------|-------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------|
+| 1. Create packages             | Create and link the two public GHCR packages; define tag and retention policy.                        | A trusted job can publish and anonymously restore a temporary version. |
+| 2. Cut over cloud tests        | Update the cloud workflow, enable `ociEnabled`, and add version cleanup.                              | Concurrent cloud runs use isolated tags.                               |
+| 3. Validate released toolchain | Release Radius with Bicep v0.45.6 or later and validate GHCR publish and restore without an override. | The selected official release completes the GHCR validation.           |
+| 4. Cut over long-running tests | Update the long-running workflow and retain its schedule/manual repository guard.                     | The released-product run succeeds against GHCR.                        |
+| 5. Remove configuration        | Remove `TEST_BICEP_TYPES_REGISTRY` from Radius and `wellknown`.                                       | GitHub configuration no longer exposes the test ACR.                   |
+| 6. Remove ACR                  | Apply the `wellknown` Terraform change that deletes only the ACR and its direct roles.                | The ACR is absent and the remaining test infrastructure is unchanged.  |
 
-The package setup, workflow changes, and Terraform removal can be prepared in parallel. They merge in that order because Terraform removal is destructive.
+The package setup, cloud workflow changes, and Terraform removal can be prepared in parallel. The long-running change remains queued behind the released-toolchain gate, and Terraform removal remains last because it is destructive.
 
 ## Test plan
 
@@ -58,11 +68,14 @@ The package setup, workflow changes, and Terraform removal can be prepared in pa
 - Verify an untrusted pull-request job cannot publish or delete package versions.
 - Verify concurrent runs use distinct tags.
 - Verify normal and scheduled cleanup do not delete an active run.
+- Install the official Radius release selected by the long-running workflow, verify its downloaded Bicep version is at least v0.45.6, and publish and restore a temporary GHCR extension with `ociEnabled`.
 - Run cloud functional and long-running tests without `TEST_BICEP_TYPES_REGISTRY`.
 
 ## Security
 
-The extensions contain test schemas derived from public source and are intentionally public. Untrusted pull-request jobs can restore them but cannot publish or delete package versions. The workflow grants `packages: write` only to the gated job that owns the test run.
+The extensions contain test schemas derived from public source and are intentionally public. Untrusted pull-request jobs can restore them but cannot publish or delete package versions.
+
+The cloud workflow grants `packages: write` only after its contributor authorization decision. The long-running workflow relies on its schedule/manual triggers and canonical-repository guard and never checks out pull-request code. A future pull-request trigger must add an explicit authorization gate.
 
 ## Current ACR inventory
 

@@ -52,9 +52,13 @@ GHCR-backed configurations require an OCI-capable Bicep CLI and the experimental
 
 ### Publishing and consumption
 
-Each source repository publishes its extension to GHCR with its repository `GITHUB_TOKEN` and `packages: write`. Docker login supplies the credentials consumed by Bicep's OCI transport. This removes GHCR publishing from the private `azure-octo/radius-publisher` repository and links each package to its source repository.
+Production GHCR writes run in a dedicated release-only publisher repository under `radius-project`. It is the only repository granted Actions write access to the production packages. The packages do not inherit Actions access from `radius-project/radius` or `radius-project/bicep-types-aws`; they may be linked to those source repositories for discoverability only after inheritance is disabled.
 
-The existing publisher dispatch remains in place for ACR during the compatibility period. Both destinations receive extensions generated from the same source commit and release channel.
+The Radius and AWS release workflows dispatch an allowlisted source repository, immutable source SHA, and source ref to the publisher. The publisher accepts only `main` and `v*` tag refs, verifies that the ref resolves to the supplied SHA, derives the destination tag itself, and then checks out that SHA. It has no pull-request trigger and never consumes artifacts produced by a pull-request job.
+
+The publisher logs in to GHCR with its repository `GITHUB_TOKEN` and `packages: write`. Docker login supplies the credentials consumed by Bicep's OCI transport. Pull-request workflows in the source repositories may retain `packages: write` for test packages, but they receive no Actions access to the production packages.
+
+The existing `azure-octo/radius-publisher` dispatch remains in place for ACR during the compatibility period. Both destinations receive extensions generated from the same source commit and release channel. The release-only publisher replaces that cross-organization path after ACR writes stop.
 
 ### Bicep toolchain
 
@@ -62,7 +66,7 @@ Radius currently pins Bicep v0.42.1 in `build/tools.yaml` and `pkg/cli/bicep/too
 
 The newer Bicep trust model rejects unlisted local registries. Workflows that publish to `localhost` set `BICEP_TRUSTED_REGISTRIES` explicitly rather than disabling registry validation.
 
-`rad bicep publish-extension` must enable `ociEnabled` without changing a user's configuration. The command runs Bicep from its temporary generation directory with a temporary `bicepconfig.json`; GHCR credentials continue to come from the Docker credential store.
+`rad bicep publish-extension` must enable `ociEnabled` without changing a user's configuration. Before changing Bicep's working directory, the wrapper records the caller's directory and resolves local-file targets to absolute paths. Registry references remain unchanged. Bicep then runs from the temporary generation directory with a temporary `bicepconfig.json`; deleting that directory cannot remove a caller-relative output archive. GHCR credentials continue to come from the Docker credential store.
 
 ### Consumer configuration
 
@@ -76,34 +80,48 @@ Checked-in configs, tests, agent assets, documentation, and samples then consume
 
 ## Phased rollout
 
-| Phase                   | Change                                                                                                                       | Exit criteria                                                                   |
-|-------------------------|------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
-| 1. Define contract      | Confirm package names, tag mapping, backfill set, and ACR retention policy.                                                  | Package and compatibility contracts are approved.                               |
-| 2. Enable OCI toolchain | Upgrade Bicep, enable `ociEnabled`, support trusted local registries, and update `rad bicep publish-extension`.              | Radius can publish and restore from GHCR and local OCI registries.              |
-| 3. Establish GHCR       | Add direct GHCR publishing for Radius and AWS, make packages public, and backfill supported tags while retaining ACR writes. | Anonymous GHCR restore works and both destinations pass parity tests.           |
-| 4. Cut over Radius      | Change config generators, core CI, tests, and active Radius defaults.                                                        | A clean Radius install builds Radius and AWS templates using GHCR.              |
-| 5. Migrate consumers    | Update active satellite repositories, docs, samples, and release scripts.                                                    | No active default-branch consumer depends on the production ACR references.     |
-| 6. Retire ACR writes    | Stop ACR publishing, remove publisher-only Azure credentials, and add a legacy-reference check.                              | GHCR is the only production publisher; ACR remains read-only for compatibility. |
-| 7. Remove ACR           | Remove ACR, including prior-version packages, when the compatibility policy permits it.                                      | `biceptypes.azurecr.io` no longer exists.                                       |
+| Phase                   | Change                                                                                                                                               | Exit criteria                                                                   |
+|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| 1. Define contract      | Confirm package names, tag mapping, backfill set, and ACR retention policy.                                                                          | Package and compatibility contracts are approved.                               |
+| 2. Enable OCI toolchain | Upgrade Bicep, enable `ociEnabled`, support trusted local registries, and update `rad bicep publish-extension`.                                      | Radius can publish and restore from GHCR and local OCI registries.              |
+| 3. Establish GHCR       | Add the release-only publisher, restrict package Actions access to it, make packages public, and backfill supported tags while retaining ACR writes. | Anonymous restore, publisher isolation, and ACR/GHCR parity tests pass.         |
+| 4. Cut over Radius      | Change config generators, core CI, tests, and active Radius defaults.                                                                                | A clean Radius install builds Radius and AWS templates using GHCR.              |
+| 5. Migrate consumers    | Update active satellite repositories, docs, samples, and release scripts.                                                                            | No active default-branch consumer depends on the production ACR references.     |
+| 6. Retire ACR writes    | Stop ACR publishing, remove publisher-only Azure credentials, and add a legacy-reference check.                                                      | GHCR is the only production publisher; ACR remains read-only for compatibility. |
+| 7. Remove ACR           | Remove ACR, including prior-version packages, when the compatibility policy permits it.                                                              | `biceptypes.azurecr.io` no longer exists.                                       |
 
 ## Parallel execution and queueing
 
 Work should be split by repository and merged through explicit gates rather than one cross-repository change.
 
-| Workstream                                    | Can start                                                             | Merge gate                                                 |
-|-----------------------------------------------|-----------------------------------------------------------------------|------------------------------------------------------------|
-| Radius Bicep upgrade and local-registry fixes | Immediately                                                           | Existing local and cloud Bicep tests pass.                 |
-| Radius GHCR publisher                         | After the artifact contract is fixed                                  | Package is public and anonymous restore succeeds.          |
-| AWS GHCR publisher                            | After the artifact contract is fixed; parallel with Radius publishing | Package is public and anonymous restore succeeds.          |
-| GHCR tag backfill and visibility setup        | After each package is first published                                 | Required tags restore successfully.                        |
-| Radius canonical consumer changes             | Draft in parallel with publishing                                     | Toolchain upgrade and both public packages are ready.      |
-| Satellite repository changes                  | Draft in parallel by repository                                       | Canonical Radius cutover is validated.                     |
-| Documentation and samples                     | Draft in parallel                                                     | A released Radius version ships the OCI-capable Bicep CLI. |
-| ACR publisher retirement                      | Queue after all cutover work                                          | At least one stable release completes on GHCR.             |
+| Workstream                                    | Can start                                                   | Merge gate                                                   |
+|-----------------------------------------------|-------------------------------------------------------------|--------------------------------------------------------------|
+| Radius Bicep upgrade and local-registry fixes | Immediately                                                 | Existing local and cloud Bicep tests pass.                   |
+| Release-only publisher isolation              | After the artifact contract is fixed                        | Only the publisher repository can write production packages. |
+| Radius generation and dispatch                | After the publisher contract is fixed                       | Main and tag refs publish; PR execution is denied.           |
+| AWS generation and dispatch                   | After the publisher contract is fixed; parallel with Radius | Main and tag refs publish; PR execution is denied.           |
+| GHCR tag backfill and visibility setup        | After each package is first published                       | Required tags restore successfully.                          |
+| Radius canonical consumer changes             | Draft in parallel with publishing                           | Toolchain upgrade and both public packages are ready.        |
+| Satellite repository changes                  | Draft in parallel by repository                             | Canonical Radius cutover is validated.                       |
+| Documentation and samples                     | Draft in parallel                                           | A released Radius version ships the OCI-capable Bicep CLI.   |
+| ACR publisher retirement                      | Queue after all cutover work                                | At least one stable release completes on GHCR.               |
+
+## Test plan
+
+- Publish Radius and AWS extensions from allowlisted `main` and `v*` refs and verify the source SHA and destination tag.
+- Attempt to create or update a production package version with the token from a PR-executing Radius workflow and require authorization failure.
+- Restore each public package anonymously from a clean Bicep cache.
+- Compare ACR and GHCR manifests generated from the same source commit during dual publishing.
+- Publish to `--target ./output.tgz` while Bicep uses the temporary configuration directory and verify the archive remains in the caller's directory after cleanup.
+- Run non-cloud tests with explicit local-registry trust and run cloud and long-running tests against the new public packages.
 
 ## Security
 
-Extension packages contain public type metadata and are intentionally public. Publishing uses repository-scoped `GITHUB_TOKEN` credentials with `contents: read` and `packages: write`; no personal access token is required. Consumers restore anonymously.
+Extension packages contain public type metadata and are intentionally public. Consumers restore anonymously.
+
+Production packages use granular permissions with inherited repository access disabled. Only the release-only publisher has Actions write access. Source-repository jobs, including jobs that execute authorized PR code with `packages: write`, cannot create or update versions in those packages.
+
+The publisher workflow accepts only immutable, verified `main` or release-tag source SHAs. Its `GITHUB_TOKEN` has `contents: read` and `packages: write`; no personal access token is required.
 
 ## Compatibility and risks
 
