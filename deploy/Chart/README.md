@@ -242,9 +242,7 @@ When enabled, three policies are applied:
 - `radius-allow-internal` — re-permits east-west traffic between Radius
   components (intra-namespace), matched by the immutable
   `kubernetes.io/metadata.name` namespace label.
-- `radius-allow-control-plane` — allows the Kubernetes API server to reach UCP
-  (APIService aggregation) and the controller (admission webhook) on port `9443`,
-  from the CIDRs in `networkPolicies.controlPlaneCIDRs`.
+- `radius-allow-control-plane` — allows the Kubernetes API server to reach UCP (APIService aggregation) on port `9443`, from the CIDRs in `networkPolicies.controlPlaneCIDRs`.
 
 Only ingress is restricted; egress is left open so UCP can reach the Kubernetes
 API server and pods can resolve DNS.
@@ -256,14 +254,7 @@ API server and pods can resolve DNS.
 
 #### Setting `controlPlaneCIDRs`
 
-The kube-apiserver reaches UCP (APIService aggregation) and the controller
-(admission webhook) over the host network, so this traffic arrives with the
-**node's** IP rather than a pod IP and cannot be matched by a namespace/pod
-selector. You must supply the source CIDR(s) via
-`networkPolicies.controlPlaneCIDRs` — **this is required when
-`networkPolicies.enabled=true`; Helm rendering fails if it is empty** — otherwise
-the default-deny policy would block API aggregation and webhooks and break the
-control plane.
+The kube-apiserver reaches UCP (APIService aggregation) over the host network, so this traffic arrives with the **node's** IP rather than a pod IP and cannot be matched by a namespace/pod selector. You must supply the source CIDR(s) via `networkPolicies.controlPlaneCIDRs` — **this is required when `networkPolicies.enabled=true`; Helm rendering fails if it is empty** — otherwise the default-deny policy would block API aggregation and break the control plane.
 
 Use your cluster's node/control-plane subnet(s), **not** individual node IPs
 (a `/32` would exclude other control-plane addresses):
