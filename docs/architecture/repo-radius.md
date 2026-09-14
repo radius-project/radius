@@ -1,10 +1,10 @@
-# Frontend-Neutral Repo Radius Architecture
+# Frontend-Neutral GitHub Radius Architecture
 
 **Status: Proposed architecture.** The current-state section describes inspected code; subsequent sections propose a contract and migration, not APIs that are available today.
 
-Repo Radius should expose one application lifecycle through multiple GitHub frontends. This document uses the Copilot App and Copilot CLI as frontend examples. They should differ in how they collect input and display results, not in how they author an application's Radius definition, resolve its graph, or deploy it.
+GitHub Radius should expose one application lifecycle through multiple GitHub frontends. This document uses the Copilot App and Copilot CLI as frontend examples. They should differ in how they collect input and display results, not in how they author an application's Radius definition, resolve its graph, or deploy it.
 
-Here, **backend** means shared Repo Radius capabilities and orchestration, not an always-on server. **Frontend** means a user-facing adapter, not the HTTP handler packages named `frontend` inside Radius resource providers.
+Here, **backend** means shared GitHub Radius capabilities and orchestration, not an always-on server. **Frontend** means a user-facing adapter, not the HTTP handler packages named `frontend` inside Radius resource providers.
 
 ## Scope
 
@@ -67,7 +67,7 @@ This is already a partially separated system. [`packages/core`](https://github.c
 | Application-definition authoring request to agent | [`radius_generate_app`](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/runtime/create-radius-tools.ts) returns a [skill bootstrap](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/skill.ts), not a completed Radius application definition. The [promotion script](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/extensions/radius/skills/radius-app-bicep/scripts/promote-app-model.mjs) guards staged output and detects changes to the existing application definition before replacing it. |
 | Frontend to GitHub Actions                        | The [workflow templates](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/.github/extension/README.md) expose `workflow_dispatch` inputs including `environment`, `image`, and `rad_commands`; the command result is the `rad-commands-result` artifact.                                                                                                                                                                                                                                                                                                                                                                                                |
 | Deployment progress                               | The [artifact reader](https://github.com/radius-project/ai-extensions/blob/6f1fec8f282f96100e58f780987f6a697b65056f/packages/adapter-canvas/src/deploy-artifacts.ts) understands schema version 1 of `deploy-progress.json`, alongside `deploy-graph.json`. Live snapshots rotate through run-scoped artifacts; readers use payload identity and sequence, not listing order.                                                                                                                                                                                                                                                                                                                        |
-| Durable storage                                   | [`persistence.Store`](../../pkg/graph/persistence/store.go) stores graphs. [`statearchive.Archive`](../../pkg/statearchive/statearchive.go) abstracts whole-directory snapshots with git and OCI implementations. Neither is a public Repo Radius operation API.                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Durable storage                                   | [`persistence.Store`](../../pkg/graph/persistence/store.go) stores graphs. [`statearchive.Archive`](../../pkg/statearchive/statearchive.go) abstracts whole-directory snapshots with git and OCI implementations. Neither is a public GitHub Radius operation API.                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 Workflow templates and composite actions belong to `ai-extensions/.github/extension/`. Radius owns CLI/control-plane execution, resource schemas, graph construction, and state persistence. These responsibilities should remain consistent through multiple front ends.
 
@@ -83,13 +83,13 @@ Environment operations also contain shared business behavior inside the Canvas a
 
 ## Proposed Architecture
 
-Place a **versioned Repo Radius API contract** between frontend adapters and shared lifecycle services. Keep computations already in `core` there and reuse the execution adapter. Move workflow coordination out of Canvas request handlers into shared services with explicit interfaces for repository access, workflow execution, identity, and agent assistance.
+Place a **versioned GitHub Radius API contract** between frontend adapters and shared lifecycle services. Keep computations already in `core` there and reuse the execution adapter. Move workflow coordination out of Canvas request handlers into shared services with explicit interfaces for repository access, workflow execution, identity, and agent assistance.
 
 ```mermaid
 graph TD
     App["Copilot App adapter"]
     CLI["Copilot CLI adapter"]
-    Contract["Proposed Repo Radius API contract"]
+    Contract["Proposed GitHub Radius API contract"]
     Services["Shared lifecycle services"]
     Core["Existing core computations"]
     Interfaces["Execution interfaces"]
@@ -178,7 +178,7 @@ Backend policy may require additional approval for any mutation. A capability un
 
 Frontends need to discover applications without already knowing their names or a deployment operation ID. `application.list` supplies that discovery, while `application.inspect` answers "What do we know about this application now?" In contrast, `operation.get` answers "What happened to this particular deployment or deletion?" An operation result is not a substitute for application inspection.
 
-Radius already provides [`rad app list`](../../pkg/cli/cmd/app/list/list.go), [`rad app show`](../../pkg/cli/cmd/app/show/show.go), and [`rad app status`](../../pkg/cli/cmd/app/status/status.go) as execution building blocks. The Repo Radius adapter must account for the ephemeral control plane and potentially stale artifacts rather than assume a live control plane is always available. Discovery and inspection results must distinguish authored application definitions from deployed applications, identify their evidence source and freshness, and report unavailable or incomplete observations explicitly. A local definition is not proof of deployment, and a missing artifact is not proof that an application does not exist.
+Radius already provides [`rad app list`](../../pkg/cli/cmd/app/list/list.go), [`rad app show`](../../pkg/cli/cmd/app/show/show.go), and [`rad app status`](../../pkg/cli/cmd/app/status/status.go) as execution building blocks. The GitHub Radius adapter must account for the ephemeral control plane and potentially stale artifacts rather than assume a live control plane is always available. Discovery and inspection results must distinguish authored application definitions from deployed applications, identify their evidence source and freshness, and report unavailable or incomplete observations explicitly. A local definition is not proof of deployment, and a missing artifact is not proof that an application does not exist.
 
 Separate `application.create` and `application.update` operations are unnecessary for this contract: `definition.author` creates or edits the Radius application definition, and `deployment.start` applies it to create or update deployed resources. Additional mutation operations should be introduced only for distinct behavior, not to duplicate that path for CRUD symmetry.
 
@@ -196,7 +196,7 @@ Example: an authored graph read from a session worktree. Hash strings are placeh
 
 ```json
 {
-  "apiVersion": "repo-radius/v1",
+  "apiVersion": "github-radius/v1",
   "requestId": "req-graph-001",
   "operation": "graph.get",
   "target": {
@@ -226,7 +226,7 @@ Errors contain `code`, `message`, `retryable`, `requestId`, optional `operationI
 
 For workflow errors, details should identify the failed phase, affected target, and correlated run/attempt when available, with a workflow link and bounded, redacted diagnostics. `retryable` describes whether retrying the request that returned the error is safe; retrying a status read is not permission to repeat the deployment. See [Error Detection and Reporting](#error-detection-and-reporting) for how execution evidence becomes a user-facing result.
 
-Version the Repo Radius API separately from Radius resource API versions and workflow/artifact schema versions. Adapters can translate supported legacy formats, but must reject unknown versions rather than guess. Additive fields can evolve within a version; incompatible semantics require a new version and an explicit compatibility period.
+Version the GitHub Radius API separately from Radius resource API versions and workflow/artifact schema versions. Adapters can translate supported legacy formats, but must reject unknown versions rather than guess. Additive fields can evolve within a version; incompatible semantics require a new version and an explicit compatibility period.
 
 ### Long-Running Operations
 
@@ -247,7 +247,7 @@ Example: start a deployment. This typed request is translated to the existing ex
 
 ```json
 {
-  "apiVersion": "repo-radius/v1",
+  "apiVersion": "github-radius/v1",
   "requestId": "req-deploy-001",
   "operation": "deployment.start",
   "target": {
@@ -271,7 +271,7 @@ A later `operation.get` can return the following terminal result. Receipt of the
 
 ```json
 {
-  "apiVersion": "repo-radius/v1",
+  "apiVersion": "github-radius/v1",
   "requestId": "req-status-002",
   "operationId": "op-deploy-001",
   "state": "succeeded",
@@ -340,7 +340,7 @@ Example: authoring is waiting for an agent. The action kind `agent.author_defini
 
 ```json
 {
-  "apiVersion": "repo-radius/v1",
+  "apiVersion": "github-radius/v1",
   "requestId": "req-author-001",
   "operationId": "op-author-001",
   "state": "action_required",
