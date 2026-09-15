@@ -182,8 +182,9 @@ model ProvidersAzure {
   @doc("(Required) ID of the Azure subscription that resources are deployed into.")
   subscriptionId: string;
 
-  @doc("(Optional) Name of the Azure resource group that resources are deployed into. Most Bicep and Terraform Recipes expect a resource group in the deployment context, so set this whenever deploying Azure resources.")
-  resourceGroupName?: string;
+  @doc("(Required) Name of the Azure resource group that resources are deployed into. Most Bicep and Terraform Recipes expect a resource group in the deployment context.")
+  @minLength(1)
+  resourceGroupName: string;
 
   @doc("(Optional) Managed or workload identity Radius uses to authenticate to Azure when deploying resources.")
   identity?: IdentitySettings;

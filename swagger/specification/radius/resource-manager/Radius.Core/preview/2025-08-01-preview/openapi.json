@@ -1974,7 +1974,8 @@
         },
         "resourceGroupName": {
           "type": "string",
-          "description": "(Optional) Name of the Azure resource group that resources are deployed into. Most Bicep and Terraform Recipes expect a resource group in the deployment context, so set this whenever deploying Azure resources."
+          "description": "(Required) Name of the Azure resource group that resources are deployed into. Most Bicep and Terraform Recipes expect a resource group in the deployment context.",
+          "minLength": 1
         },
         "identity": {
           "$ref": "#/definitions/IdentitySettings",
@@ -1982,7 +1983,8 @@
         }
       },
       "required": [
-        "subscriptionId"
+        "subscriptionId",
+        "resourceGroupName"
       ]
     },
     "ProvidersKubernetes": {

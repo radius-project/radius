@@ -1375,8 +1375,8 @@
         "type": {
           "$ref": "#/0"
         },
-        "flags": 0,
-        "description": "(Optional) Name of the Azure resource group that resources are deployed into. Most Bicep and Terraform Recipes expect a resource group in the deployment context, so set this whenever deploying Azure resources."
+        "flags": 1,
+        "description": "(Required) Name of the Azure resource group that resources are deployed into. Most Bicep and Terraform Recipes expect a resource group in the deployment context."
       },
       "identity": {
         "type": {
