@@ -208,6 +208,30 @@ test_rc_branch_and_channel() {
     [[ "$(output_value release-channel)" == "0.62.0-rc.1" ]] || fail_test "RC release channel was parsed incorrectly"
 }
 
+test_legacy_rc_remains_accepted() {
+    local rc="v0.62.0-rc2"
+
+    run_selector "${rc}" "${REPOSITORIES[@]}"
+    [[ "${LAST_STATUS}" -eq 0 ]] || fail_test "legacy RC selection failed: ${LAST_OUTPUT}"
+    [[ "$(output_value release-branch-name)" == "release/0.62" ]] || fail_test "legacy RC release branch was parsed incorrectly"
+    [[ "$(output_value release-channel)" == "0.62.0-rc2" ]] || fail_test "legacy RC release channel was parsed incorrectly"
+    [[ "${LAST_OUTPUT}" == *"use v0.62.0-rc.2 for new releases"* ]] || fail_test "legacy RC selection did not recommend the dotted form"
+}
+
+test_rejects_unsupported_release_versions() {
+    run_selector "v0.62.0-rc.01" "${REPOSITORIES[@]}"
+    [[ "${LAST_STATUS}" -ne 0 ]] || fail_test "RC identifiers with leading zeroes should fail"
+    [[ "${LAST_OUTPUT}" == *"unsupported release version"* ]] || fail_test "invalid dotted RC failed for the wrong reason"
+
+    run_selector "v0.62.0-rc.0" "${REPOSITORIES[@]}"
+    [[ "${LAST_STATUS}" -ne 0 ]] || fail_test "RC zero should fail"
+    [[ "${LAST_OUTPUT}" == *"unsupported release version"* ]] || fail_test "RC zero failed for the wrong reason"
+
+    run_selector "v0.62.0-beta.1" "${REPOSITORIES[@]}"
+    [[ "${LAST_STATUS}" -ne 0 ]] || fail_test "unsupported prerelease identifiers should fail"
+    [[ "${LAST_OUTPUT}" == *"unsupported release version"* ]] || fail_test "unsupported prerelease failed for the wrong reason"
+}
+
 test_rejects_multiple_incomplete_versions() {
     run_selector "v0.63.0,v0.62.0" "${REPOSITORIES[@]}"
     [[ "${LAST_STATUS}" -ne 0 ]] || fail_test "multiple incomplete versions should fail"
@@ -239,13 +263,15 @@ main() {
     test_selects_version_missing_from_any_repository
     test_skips_version_complete_in_every_repository
     test_rc_branch_and_channel
+    test_legacy_rc_remains_accepted
+    test_rejects_unsupported_release_versions
     test_rejects_multiple_incomplete_versions
     test_requires_repository_and_output
     test_remote_query_errors_are_not_treated_as_missing_tags
     test_main_waits_until_trigger_commit_is_cherry_picked
     test_main_resumes_branch_created_before_tag
     test_release_branch_trigger_never_waits_for_cherry_pick
-    echo "release version selection and resume tests passed (9 tests)"
+    echo "release version selection and resume tests passed (11 tests)"
 }
 
 main "$@"

@@ -53,7 +53,7 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-goreleaser-shadow test-capture-release-image-digests test-release-get-version test-release-tag-and-branch test-monitor-remote-workflow ## Runs unit tests, excluding kubernetes controller tests
+test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-goreleaser-shadow test-capture-release-image-digests test-release-get-version test-release-tag-and-branch test-monitor-remote-workflow test-release-version-format ## Runs unit tests, excluding kubernetes controller tests
 	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
@@ -95,6 +95,10 @@ test-release-tag-and-branch: ## Tests release tag and branch reconciliation
 .PHONY: test-release-get-version
 test-release-get-version: ## Tests release version selection across repositories
 	@bash ./.github/scripts/release-get-version_test.sh
+
+.PHONY: test-release-version-format
+test-release-version-format: ## Tests release SemVer validation and tag parsing
+	@bash ./.github/scripts/release-version-format_test.sh
 
 .PHONY: test-monitor-remote-workflow
 test-monitor-remote-workflow: ## Tests exact remote workflow dispatch correlation
