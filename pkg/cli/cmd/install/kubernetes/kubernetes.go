@@ -163,7 +163,7 @@ func NewRunner(factory framework.Factory) *Runner {
 // Validate runs validation for the `rad install kubernetes` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if r.Timeout < 0 {
-		return clierrors.Message("--timeout must be a positive duration, got %q.", r.Timeout)
+		return clierrors.Message("--timeout must not be negative, got %q.", r.Timeout)
 	}
 
 	return nil
