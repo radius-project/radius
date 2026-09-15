@@ -1,4 +1,4 @@
-suite: test BuildKit concurrency configuration
+suite: test BuildKit configuration
 templates:
   - dynamic-rp/buildkit-config.yaml
   - dynamic-rp/deployment.yaml
@@ -51,6 +51,61 @@ tests:
             name: buildkit-config
             configMap:
               name: dynamic-rp-buildkit-config
+        template: dynamic-rp/deployment.yaml
+
+  - it: omits local build contexts when no claim is configured
+    set:
+      dynamicrp.buildkit.enabled: true
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: local-build-contexts
+        template: dynamic-rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: local-build-contexts
+        template: dynamic-rp/deployment.yaml
+
+  - it: mounts operator-provided local build contexts read-only
+    set:
+      dynamicrp.buildkit.enabled: true
+      dynamicrp.buildkit.localContexts.existingClaim: build-contexts
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: local-build-contexts
+            mountPath: /var/radius/build-contexts
+            readOnly: true
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: local-build-contexts
+            persistentVolumeClaim:
+              claimName: build-contexts
+        template: dynamic-rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.containers[1].volumeMounts
+          content:
+            name: local-build-contexts
+        template: dynamic-rp/deployment.yaml
+
+  - it: ignores the local context claim when BuildKit is disabled
+    set:
+      dynamicrp.buildkit.localContexts.existingClaim: build-contexts
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: local-build-contexts
+        template: dynamic-rp/deployment.yaml
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: local-build-contexts
         template: dynamic-rp/deployment.yaml
 
   - it: renders an operator-provided parallelism limit
