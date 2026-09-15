@@ -80,7 +80,7 @@ func SetDefault() (string, string) {
 		dockerRegistry = "ghcr.io/radius-project"
 	}
 	if imageTag == "" {
-		imageTag = "latest"
+		imageTag = "test-local"
 	}
 
 	return dockerRegistry, imageTag

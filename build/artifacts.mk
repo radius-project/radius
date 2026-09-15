@@ -80,6 +80,15 @@ goreleaser-snapshot: ## Build and verify a GoReleaser snapshot
 	@bash ./.github/scripts/normalize-release-checksums.sh
 	@bash ./.github/scripts/verify-goreleaser-snapshot.sh $(GORELEASER_VERIFY_ARGS)
 
+.PHONY: goreleaser-save-images goreleaser-push-edge
+goreleaser-save-images: ## Save native snapshot images for downstream CI jobs
+	@DOCKER_REGISTRY="$(DOCKER_REGISTRY)" DOCKER_TAG_VERSION="$(DOCKER_TAG_VERSION)" \
+		bash ./.github/scripts/goreleaser-snapshot-artifacts.sh save
+
+goreleaser-push-edge: ## Publish native snapshot images as multi-platform edge manifests
+	@DOCKER_REGISTRY="$(DOCKER_REGISTRY)" DOCKER_TAG_VERSION=edge \
+		bash ./.github/scripts/goreleaser-snapshot-artifacts.sh push-edge
+
 .PHONY: goreleaser-release
 goreleaser-release: ## Stage immutable release artifacts and a draft GitHub Release
 	@if [ ! -f "$(GORELEASER_RELEASE_NOTES)" ]; then \
