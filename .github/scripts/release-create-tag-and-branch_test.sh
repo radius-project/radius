@@ -89,6 +89,7 @@ run_script() {
     local planned_commit="${2:-}"
     local fail_branch_fetch="${3:-false}"
     local concurrent_branch_commit="${4:-}"
+    local check_only="${5:-false}"
     local script_path="${PATH}"
 
     if [[ "${fail_branch_fetch}" == "true" || -n "${concurrent_branch_commit}" ]]; then
@@ -102,10 +103,41 @@ run_script() {
                 CONCURRENT_BRANCH_COMMIT="${concurrent_branch_commit}" \
                 CONCURRENT_REMOTE="${TEST_ROOT}/${name}.git" \
                 CONCURRENT_MARKER="${TEST_ROOT}/${name}.branch-created" \
+                RELEASE_RECONCILE_CHECK_ONLY="${check_only}" \
                 bash "${SCRIPT}" "${name}" "${TAG}" "${BRANCH}" "${planned_commit}" 2>&1
     )"
     LAST_STATUS=$?
     set -e
+}
+
+test_check_only_detects_conflicts_without_mutation() {
+    local planned_commit conflicting_commit
+
+    setup_repo repo20
+    planned_commit="$(git -C "${TEST_ROOT}/repo20" rev-parse HEAD)"
+    run_script repo20 "${planned_commit}" false "" true
+    if ((LAST_STATUS != 0)); then
+        fail_test "check-only rejected creatable state: ${LAST_OUTPUT}"
+        return
+    fi
+    if git --git-dir="${TEST_ROOT}/repo20.git" show-ref --verify --quiet \
+        "refs/heads/${BRANCH}" ||
+        git --git-dir="${TEST_ROOT}/repo20.git" show-ref --verify --quiet \
+            "refs/tags/${TAG}"; then
+        fail_test "check-only created a branch or tag"
+        return
+    fi
+
+    commit_on repo20 conflict
+    conflicting_commit="$(git -C "${TEST_ROOT}/repo20" rev-parse HEAD)"
+    git -C "${TEST_ROOT}/repo20" push --quiet origin \
+        "${conflicting_commit}:refs/tags/${TAG}"
+    run_script repo20 "${planned_commit}" false "" true
+    if ((LAST_STATUS == 0)); then
+        fail_test "check-only accepted a conflicting tag"
+        return
+    fi
+    pass
 }
 
 install_git_wrapper() {
@@ -552,6 +584,7 @@ main() {
     test_matching_annotated_tag_is_accepted
     test_concurrent_exact_tag_creation_is_accepted
     test_concurrent_conflicting_tag_creation_fails
+    test_check_only_detects_conflicts_without_mutation
     test_concurrent_descendant_branch_creation_is_accepted
     test_concurrent_divergent_branch_creation_fails
     test_concurrent_ancestor_branch_is_not_fast_forwarded
