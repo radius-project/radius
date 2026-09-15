@@ -83,18 +83,24 @@ func (handler *armHandler) lookupARMAPIVersion(ctx context.Context, id resources
 		return "", err
 	}
 
-	// We need to match on the resource type name without the provider namespace.
-	shortType := strings.TrimPrefix(id.TypeSegments()[0].Type, id.ProviderNamespace()+"/")
+	// id.Type() is extension-aware and joins nested segments (see radius-project/radius#12694).
+	fullType := id.Type()
+	shortType := strings.TrimPrefix(fullType, id.ProviderNamespace()+"/")
 	for _, rt := range resp.ResourceTypes {
-		if !strings.EqualFold(shortType, *rt.ResourceType) {
+		if rt.ResourceType == nil {
 			continue
 		}
-		if rt.DefaultAPIVersion != nil {
+		if !strings.EqualFold(shortType, *rt.ResourceType) && !strings.EqualFold(fullType, *rt.ResourceType) {
+			continue
+		}
+		if rt.DefaultAPIVersion != nil && *rt.DefaultAPIVersion != "" {
 			return *rt.DefaultAPIVersion, nil
 		}
 
-		if len(rt.APIVersions) > 0 {
-			return *rt.APIVersions[0], nil
+		for _, version := range rt.APIVersions {
+			if version != nil && *version != "" {
+				return *version, nil
+			}
 		}
 
 		return "", fmt.Errorf("could not find API version for type %q, no supported API versions", id.Type())
