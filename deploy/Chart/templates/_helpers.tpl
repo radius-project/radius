@@ -1,12 +1,5 @@
-{{/* Parse version and extract major and manor version from Appversion for image tag. */}}
-{{- define "radius.versiontag" }}
-{{- $version := .Chart.AppVersion }}
-{{- /* Tag version will be 'major.minor' unless version is edge, latest, or rc release */}}
-{{- if and (ne $version "edge") (ne $version "latest") (not (contains "rc" $version)) }}
-  {{- $ver := split "." $version }}
-  {{- $version = printf "%s.%s" $ver._0 $ver._1 }}
-{{- end -}}
-{{- print $version }}
+{{- define "radius.versiontag" -}}
+{{- .Chart.AppVersion -}}
 {{- end -}}
 
 {{/* External images retain their independently published latest tag for edge charts. */}}
