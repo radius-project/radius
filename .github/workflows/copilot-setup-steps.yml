@@ -22,8 +22,9 @@
 # test Radius without relying on the dev container or its post-create script.
 #
 # The steps below intentionally mirror the tooling installed by the contributor
-# dev container (.devcontainer/) and by the CI workflows (build.yaml and
-# functional-test-noncloud.yaml). Language runtime versions are read from the
+# dev container (.devcontainer/) and by the CI workflows (build-validation.yaml,
+# build-main.yaml, build-release.yaml, and functional-test-noncloud.yaml).
+# Language runtime versions are read from the
 # repo's version files (go.mod, .node-version, .python-version, .terraform-version)
 # so a version bump flows here automatically; CLI tool versions and checksums are
 # pinned in build/tools.yaml and installed via the shared `make install-<tool>`
