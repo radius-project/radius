@@ -1974,7 +1974,8 @@
         },
         "resourceGroupName": {
           "type": "string",
-          "description": "Azure resource group hosting deployed resources."
+          "description": "Azure resource group hosting deployed resources.",
+          "minLength": 1
         },
         "identity": {
           "$ref": "#/definitions/IdentitySettings",

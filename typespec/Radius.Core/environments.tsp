@@ -81,6 +81,7 @@ model ProvidersAzure {
   subscriptionId: string;
 
   @doc("Azure resource group hosting deployed resources.")
+  @minLength(1)
   resourceGroupName: string;
 
   @doc("External identity settings (moved from compute).")
