@@ -110,7 +110,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
-	"github.com/radius-project/radius/pkg/graph/persistence/git"
+	"github.com/radius-project/radius/pkg/graph/persistence/archive"
 	"github.com/radius-project/radius/pkg/statearchive/factory"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -258,13 +258,13 @@ func init() {
 }
 
 func initSubCommands() {
-	graphStore, err := git.NewStore(git.Options{
+	graphStore, err := archive.NewStore(archive.Options{
 		Archive: factory.NewGraphArchive(os.Getenv(factory.GraphRegistryEnvVar)),
 	})
 	if err != nil {
-		// graphStore is required only when we are in repo radius
-		// it can be nil otherwise.
-		graphStore = nil
+		// These fixed options must be valid. Environment errors are deferred
+		// until Archive.Open, not handled by dropping graph persistence.
+		panic(fmt.Errorf("failed to initialize graph store: %w", err))
 	}
 	framework := &framework.Impl{
 		Bicep: &bicep.Impl{
@@ -302,6 +302,8 @@ func initSubCommands() {
 	resourceCmd.AddCommand(resourceShowCmd)
 
 	resourceListCmd, _ := resource_list.NewCommand(framework)
+	previewResourceListCmd, _ := resource_list.NewPreviewCommand(framework)
+	wirePreviewSubcommand(resourceListCmd, previewResourceListCmd)
 	resourceCmd.AddCommand(resourceListCmd)
 
 	resourceCreateCmd, _ := resource_create.NewCommand(framework)
@@ -372,15 +374,15 @@ func initSubCommands() {
 	shutdownCmd, _ := cmd_shutdown.NewCommand(framework)
 	RootCmd.AddCommand(shutdownCmd)
 
-	envCreateCmd, _ := env_create.NewCommand(framework)
+	legacyEnvCreateCmd, _ := env_create.NewCommand(framework)
 	previewCreateCmd, _ := env_create_preview.NewCommand(framework)
-	wirePreviewSubcommand(envCreateCmd, previewCreateCmd)
-	envCmd.AddCommand(envCreateCmd)
+	wirePreviewSubcommandPreviewBase(previewCreateCmd, legacyEnvCreateCmd.RunE, "Use the Radius.Core preview implementation for environment create", "recipe-packs")
+	envCmd.AddCommand(previewCreateCmd)
 
 	envDeleteCmd, _ := env_delete.NewCommand(framework)
 	previewDeleteCmd, _ := env_delete_preview.NewCommand(framework)
-	wirePreviewSubcommand(envDeleteCmd, previewDeleteCmd)
-	envCmd.AddCommand(envDeleteCmd)
+	wirePreviewSubcommandPreviewBase(previewDeleteCmd, envDeleteCmd.RunE, "Use the Radius.Core preview implementation for environment delete", "force")
+	envCmd.AddCommand(previewDeleteCmd)
 
 	envListCmd, _ := env_list.NewCommand(framework)
 	previewListCmd, _ := env_list_preview.NewCommand(framework)
@@ -394,7 +396,7 @@ func initSubCommands() {
 
 	legacyEnvUpdateCmd, _ := env_update.NewCommand(framework)
 	previewEnvUpdateCmd, _ := env_update_preview.NewCommand(framework)
-	wirePreviewSubcommandPreviewBase(previewEnvUpdateCmd, legacyEnvUpdateCmd.RunE, "Use the Radius.Core preview implementation for environment update")
+	wirePreviewSubcommandPreviewBase(previewEnvUpdateCmd, legacyEnvUpdateCmd.RunE, "Use the Radius.Core preview implementation for environment update", "recipe-packs", "clear-kubernetes")
 	envCmd.AddCommand(previewEnvUpdateCmd)
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
@@ -542,8 +544,21 @@ func wirePreviewSubcommand(cmd *cobra.Command, previewCmd *cobra.Command) {
 // preview command must be used as the base to expose those flags. The legacy runner is
 // invoked as a fallback. Like wirePreviewSubcommand, preview is activated by the --preview
 // flag or the RADIUS_PREVIEW environment variable, with the flag taking precedence.
-func wirePreviewSubcommandPreviewBase(previewCmd *cobra.Command, legacyRunE func(*cobra.Command, []string) error, previewFlagUsage string) {
+//
+// previewOnlyFlags names flags that only the preview implementation understands. When preview
+// mode is not active, setting any of them is rejected instead of silently routing to the legacy
+// runner (which would ignore them).
+func wirePreviewSubcommandPreviewBase(previewCmd *cobra.Command, legacyRunE func(*cobra.Command, []string) error, previewFlagUsage string, previewOnlyFlags ...string) {
 	previewCmd.Flags().Bool("preview", false, withPreviewEnvVarNote(previewFlagUsage))
+
+	// Fail loudly at wiring time if a preview-only flag name does not match a real flag.
+	// Otherwise Changed() would silently return false and the guard below would never fire,
+	// reintroducing the silent fall-through to the legacy runner this guard prevents.
+	for _, name := range previewOnlyFlags {
+		if previewCmd.Flags().Lookup(name) == nil {
+			panic(fmt.Sprintf("wirePreviewSubcommandPreviewBase: preview-only flag %q is not defined on command %q", name, previewCmd.Name()))
+		}
+	}
 
 	previewRun := previewCmd.RunE
 
@@ -554,6 +569,11 @@ func wirePreviewSubcommandPreviewBase(previewCmd *cobra.Command, legacyRunE func
 		}
 		if usePreview {
 			return previewRun(c, args)
+		}
+		for _, name := range previewOnlyFlags {
+			if c.Flags().Changed(name) {
+				return clierrors.Message("The --%s flag requires preview mode. Re-run with --preview or set RADIUS_PREVIEW=true.", name)
+			}
 		}
 		return legacyRunE(c, args)
 	}

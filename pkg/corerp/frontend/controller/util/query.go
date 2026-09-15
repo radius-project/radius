@@ -36,3 +36,23 @@ func FindResources(ctx context.Context, rootScope, resourceType, filterKey, filt
 	}
 	return databaseClient.Query(ctx, query)
 }
+
+// findResourcesRecursive behaves like FindResources but applies rootScope recursively, so a plane
+// scope such as "/planes/radius/local" matches resources in every resource group beneath it.
+//
+// No max item count is set, because this uniqueness check has to see every match: a limited query
+// returns only the first batch of resources, so a conflict beyond it would go unnoticed.
+func findResourcesRecursive(ctx context.Context, rootScope, resourceType, filterKey, filterValue string, databaseClient database.Client) (*database.ObjectQueryResult, error) {
+	query := database.Query{
+		RootScope:      rootScope,
+		ScopeRecursive: true,
+		ResourceType:   resourceType,
+		Filters: []database.QueryFilter{
+			{
+				Field: filterKey,
+				Value: filterValue,
+			},
+		},
+	}
+	return databaseClient.Query(ctx, query)
+}

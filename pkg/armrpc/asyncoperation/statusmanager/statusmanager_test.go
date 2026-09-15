@@ -17,13 +17,13 @@ limitations under the License.
 package statusmanager
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
@@ -60,7 +60,7 @@ func setup(tb testing.TB) (asyncOperationsManagerTest, *gomock.Controller) {
 
 var reqCtx = &v1.ARMRequestContext{
 	ResourceID:     resources.MustParse("/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/container/container0"),
-	OperationID:    uuid.Must(uuid.NewRandom()),
+	OperationID:    uuid.New(),
 	HomeTenantID:   "home-tenant-id",
 	ClientObjectID: "client-object-id",
 	OperationType:  rpctest.MustParseOperationType("APPLICATIONS.CORE/ENVIRONMENTS|PUT"),
@@ -71,12 +71,10 @@ var reqCtx = &v1.ARMRequestContext{
 var opID = uuid.New()
 
 var testAos = &Status{
-	AsyncOperationStatus: v1.AsyncOperationStatus{
-		ID:        opID.String(),
-		Name:      opID.String(),
-		Status:    v1.ProvisioningStateUpdating,
-		StartTime: time.Now().UTC(),
-	},
+	ID:               opID.String(),
+	Name:             opID.String(),
+	Status:           v1.ProvisioningStateUpdating,
+	StartTime:        time.Now().UTC(),
 	LinkedResourceID: uuid.New().String(),
 	Location:         "test-location",
 	RetryAfter:       opererationRetryAfterDuration,
@@ -167,7 +165,7 @@ func TestCreateAsyncOperationStatus(t *testing.T) {
 				OperationTimeout: operationTimeoutDuration,
 				RetryAfter:       opererationRetryAfterDuration,
 			}
-			err := aomTest.manager.QueueAsyncOperation(context.TODO(), reqCtx, options)
+			err := aomTest.manager.QueueAsyncOperation(t.Context(), reqCtx, options)
 
 			if tt.SaveErr == nil && tt.EnqueueErr == nil && tt.DeleteErr == nil {
 				require.NoError(t, err)
@@ -211,7 +209,7 @@ func TestDeleteAsyncOperationStatus(t *testing.T) {
 			aomTest.databaseClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.DeleteErr)
 			rid, err := resources.ParseResource(azureEnvResourceID)
 			require.NoError(t, err)
-			err = aomTest.manager.Delete(context.TODO(), rid, uuid.New())
+			err = aomTest.manager.Delete(t.Context(), rid, uuid.New())
 
 			if tt.DeleteErr != nil {
 				require.Error(t, err, deleteErr)
@@ -232,8 +230,8 @@ func TestGetAsyncOperationStatus(t *testing.T) {
 			Desc:   "get_success",
 			GetErr: nil,
 			Obj: &database.Object{
-				Metadata: database.Metadata{ID: opID.String(), ETag: "etag"},
-				Data:     testAos,
+				ID: opID.String(), ETag: "etag",
+				Data: testAos,
 			},
 		},
 		{
@@ -255,7 +253,7 @@ func TestGetAsyncOperationStatus(t *testing.T) {
 
 			rid, err := resources.ParseResource(azureEnvResourceID)
 			require.NoError(t, err)
-			aos, err := aomTest.manager.Get(context.TODO(), rid, uuid.New())
+			aos, err := aomTest.manager.Get(t.Context(), rid, uuid.New())
 
 			if tt.GetErr == nil {
 				require.NoError(t, err)
@@ -282,8 +280,8 @@ func TestUpdateAsyncOperationStatus(t *testing.T) {
 			Desc:   "update_success",
 			GetErr: nil,
 			Obj: &database.Object{
-				Metadata: database.Metadata{ID: opID.String(), ETag: "etag"},
-				Data:     testAos,
+				ID: opID.String(), ETag: "etag",
+				Data: testAos,
 			},
 			SaveErr: nil,
 		},
@@ -309,7 +307,7 @@ func TestUpdateAsyncOperationStatus(t *testing.T) {
 			testAos.Status = v1.ProvisioningStateSucceeded
 			rid, err := resources.ParseResource(azureEnvResourceID)
 			require.NoError(t, err)
-			err = aomTest.manager.Update(context.TODO(), rid, opID, v1.ProvisioningStateAccepted, nil, nil)
+			err = aomTest.manager.Update(t.Context(), rid, opID, v1.ProvisioningStateAccepted, nil, nil)
 
 			if tt.GetErr == nil && tt.SaveErr == nil {
 				require.NoError(t, err)

@@ -17,7 +17,6 @@ limitations under the License.
 package defaultoperation
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -49,13 +48,13 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 		expected := &v1.Subscription{}
 		_ = json.Unmarshal(rawReq, expected)
 
-		req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodPost, subscriptionHeaderfile, expected)
+		req, err := rpctest.NewHTTPRequestFromJSON(t.Context(), http.MethodPost, subscriptionHeaderfile, expected)
 		require.NoError(t, err)
 
 		// arrange
 		op, err := NewCreateOrUpdateSubscription(ctrl.Options{})
 		require.NoError(t, err)
-		ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
+		ctx := v1.WithARMRequestContext(t.Context(), &v1.ARMRequestContext{
 			APIVersion: v1.SubscriptionAPIVersion,
 		})
 		w := httptest.NewRecorder()
@@ -76,7 +75,7 @@ func TestSubscriptionsRunWithUnsupportedAPIVersion(t *testing.T) {
 	// arrange
 	op, err := NewCreateOrUpdateSubscription(ctrl.Options{})
 	require.NoError(t, err)
-	ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
+	ctx := v1.WithARMRequestContext(t.Context(), &v1.ARMRequestContext{
 		APIVersion: "unknownversion",
 	})
 	w := httptest.NewRecorder()

@@ -17,7 +17,6 @@ limitations under the License.
 package show
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -123,7 +122,7 @@ func Test_Show(t *testing.T) {
 			EnvironmentName:   "test-env",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -164,7 +163,7 @@ func Test_Show(t *testing.T) {
 			EnvironmentName:   "test-env",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Error(t, err)
 		require.Equal(t, clierrors.Message("The environment \"test-env\" was not found or has been deleted."), err)
 

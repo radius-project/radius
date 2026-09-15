@@ -17,7 +17,6 @@ limitations under the License.
 package inmemory
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -31,7 +30,7 @@ const (
 )
 
 func Test_Save(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	secretValue, err := json.Marshal("test_secret_value")
 	require.NoError(t, err)
@@ -84,7 +83,7 @@ func Test_Save(t *testing.T) {
 }
 
 func Test_Get(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	secretValue, err := json.Marshal("test_secret_value")
 	require.NoError(t, err)
@@ -126,7 +125,7 @@ func Test_Get(t *testing.T) {
 }
 
 func Test_Delete(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	secretValue, err := json.Marshal("test_secret_value")
 	require.NoError(t, err)

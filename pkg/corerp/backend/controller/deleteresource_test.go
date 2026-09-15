@@ -17,12 +17,12 @@ limitations under the License.
 package controller
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/components/database"
 	deployment "github.com/radius-project/radius/pkg/corerp/backend/deployment"
@@ -42,8 +42,8 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 			OperationID:   uuid.New(),
 			OperationType: "APPLICATIONS.CORE/CONTAINERS|DELETE",
 			ResourceID: fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s",
-				uuid.NewString()),
-			CorrelationID:    uuid.NewString(),
+				uuid.New().String()),
+			CorrelationID:    uuid.New().String(),
 			OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 		}
 
@@ -100,7 +100,7 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 			ctrl, err := NewDeleteResource(opts)
 			require.NoError(t, err)
 
-			_, err = ctrl.Run(context.Background(), req)
+			_, err = ctrl.Run(t.Context(), req)
 
 			if tt.getErr != nil || tt.dpDelErr != nil || tt.scDelErr != nil {
 				require.Error(t, err)

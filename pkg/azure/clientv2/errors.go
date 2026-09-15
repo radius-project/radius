@@ -44,8 +44,7 @@ func ExtractResponseError(err error) (*azcore.ResponseError, bool) {
 		return nil, false
 	}
 
-	var respErr *azcore.ResponseError
-	if errors.As(err, &respErr) {
+	if respErr, ok := errors.AsType[*azcore.ResponseError](err); ok {
 		return respErr, true
 	}
 

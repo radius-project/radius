@@ -116,10 +116,8 @@ func (r *GetRecipeMetadata) GetRecipeMetadataFromRegistry(ctx context.Context, r
 
 	recipeParameters = make(map[string]any)
 	recipeData, err := r.Engine.GetRecipeMetadata(ctx, engine.GetRecipeMetadataOptions{
-		BaseOptions: engine.BaseOptions{
-			Recipe: recipes.ResourceMetadata{
-				EnvironmentID: envID,
-			},
+		Recipe: recipes.ResourceMetadata{
+			EnvironmentID: envID,
 		},
 		RecipeDefinition: recipeDefinition,
 	})

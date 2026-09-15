@@ -58,14 +58,10 @@ func Test_ListPlanesByType(t *testing.T) {
 	testPlaneType := datamodel.RadiusPlaneResourceType
 
 	planeData := datamodel.RadiusPlane{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       testPlaneId,
-				Name:     testPlaneName,
-				Type:     testPlaneType,
-				Location: "global",
-			},
-		},
+		ID:       testPlaneId,
+		Name:     testPlaneName,
+		Type:     testPlaneType,
+		Location: "global",
 		Properties: datamodel.RadiusPlaneProperties{
 			ResourceProviders: map[string]string{
 				"Applications.Core": "https://applications-rp",

@@ -288,6 +288,7 @@ func (r *Runner) enterEnvironmentName() (string, error) {
 	return name, nil
 }
 
+// enterEnvironmentNamespace prompts for the Kubernetes namespace the new environment deploys into.
 func (r *Runner) enterEnvironmentNamespace() (string, error) {
 	if !r.Full {
 		return defaultEnvironmentNamespace, nil
@@ -296,7 +297,7 @@ func (r *Runner) enterEnvironmentNamespace() (string, error) {
 	namespace, err := r.Prompter.GetTextInput(enterNamespacePrompt, prompt.TextInputOptions{
 		Default:     defaultEnvironmentNamespace,
 		Placeholder: defaultEnvironmentNamespace,
-		Validate:    prompt.ValidateResourceNameOrDefault,
+		Validate:    prompt.ValidateKubernetesNamespaceOrDefault,
 	})
 	if err != nil {
 		return "", err

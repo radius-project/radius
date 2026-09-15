@@ -27,14 +27,13 @@ import (
 
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/rp"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_EnvDelete(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	options := rp.NewRPTestOptions(t)
@@ -50,8 +49,9 @@ func Test_EnvDelete(t *testing.T) {
 	// Ensure cleanup even if test fails
 	t.Cleanup(func() {
 		// Try to delete the test group if it still exists
-		// Ignore errors as the group might have been successfully deleted
-		_ = cli.GroupDelete(context.Background(), uniqueGroupName, radcli.DeleteOptions{Confirm: true})
+		// Ignore errors as the group might have been successfully deleted.
+		// Use a fresh context because t.Context() is cancelled before cleanup runs.
+		_ = cli.GroupDelete(context.Background(), uniqueGroupName, radcli.DeleteOptions{Confirm: true}) //nolint:usetesting
 	})
 
 	// Create the unique resource group

@@ -272,7 +272,7 @@ func Test_Postgres_EnvScoped_ExistingResource(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				// Verify that the environment namespace is created.
-				_, err := ct.Options.K8sClient.CoreV1().Namespaces().Get(context.Background(), name, metav1.GetOptions{})
+				_, err := ct.Options.K8sClient.CoreV1().Namespaces().Get(t.Context(), name, metav1.GetOptions{})
 				require.NoError(t, err)
 			},
 		},
@@ -515,7 +515,7 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 	existingTemplate := "testdata/udt2udt-connection-tf.bicep"
 	name := "dynamicrp-udt2udt-tf"
 	appNamespace := "dynamicrp-udt2udt-tf"
-	appName := "udttoudtapp"
+	appName := "udttoudtapptf"
 	expectedEnvName := "CONN_INJECTED"
 	childResourceTypeName := "Test.Resources/externalResource"
 	childResourceTypeParam := strings.Split(childResourceTypeName, "/")[1]
@@ -567,16 +567,16 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 						Type: validation.CoreApplicationsResource,
 					},
 					{
-						Name: "udttoudtparent",
+						Name: "udttoudtparenttf",
 						Type: "test.resources/usertypealpha",
 						App:  appName,
 					},
 					{
-						Name: "udttoudtchild",
+						Name: "udttoudtchildtf",
 						Type: "test.resources/externalresource",
 					},
 					{
-						Name: "udttoudtenv",
+						Name: "udttoudtenvtf",
 						Type: validation.CoreEnvironmentsResource,
 					},
 					{

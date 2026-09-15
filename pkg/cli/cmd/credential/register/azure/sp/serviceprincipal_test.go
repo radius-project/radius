@@ -17,7 +17,6 @@ limitations under the License.
 package sp
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -151,7 +150,7 @@ func Test_Run(t *testing.T) {
 				KubeContext:  "my-context",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{

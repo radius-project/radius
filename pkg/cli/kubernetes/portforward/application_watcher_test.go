@@ -19,7 +19,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,7 +35,7 @@ import (
 func Test_ApplicationWatcher_Run_CanShutDown(t *testing.T) {
 	client, _ := createDeploymentWatchFakes()
 
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	labelSelector, err := CreateLabelSelectorForApplication("test")
@@ -55,12 +54,12 @@ func Test_ApplicationWatcher_Updated_HandleNewDeployment(t *testing.T) {
 	aw := NewApplicationWatcher(Options{Client: client})
 	defer stopDeploymentWatchers(aw)
 
-	aw.updated(context.Background(), createDeployment("test", "1", "1"))
+	aw.updated(t.Context(), createDeployment("test", "1", "1"))
 	require.Contains(t, aw.deploymentWatchers, "test")
 }
 
 func Test_ApplicationWatcher_Updated_HandleUnchangedDeployment(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	client, _ := createDeploymentWatchFakes()
 
 	aw := NewApplicationWatcher(Options{Client: client})
@@ -81,7 +80,7 @@ func Test_ApplicationWatcher_Updated_HandleUnchangedDeployment(t *testing.T) {
 }
 
 func Test_ApplicationWatcher_Updated_HandleChangedDeployment_MatchLabels(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	client, _ := createDeploymentWatchFakes()
 
 	aw := NewApplicationWatcher(Options{Client: client})
@@ -106,7 +105,7 @@ func Test_ApplicationWatcher_Updated_HandleChangedDeployment_MatchLabels(t *test
 }
 
 func Test_ApplicationWatcher_Updated_HandleChangedDeployment_Revision(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	client, _ := createDeploymentWatchFakes()
 
 	aw := NewApplicationWatcher(Options{Client: client})
@@ -131,7 +130,7 @@ func Test_ApplicationWatcher_Updated_HandleChangedDeployment_Revision(t *testing
 }
 
 func Test_ApplicationWatcher_Deleted(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	client, _ := createDeploymentWatchFakes()
 
 	aw := NewApplicationWatcher(Options{Client: client})
@@ -159,11 +158,9 @@ func stopDeploymentWatchers(aw *applicationWatcher) {
 
 func createDeployment(name, value, revision string) *appsv1.Deployment {
 	return &appsv1.Deployment{
-		ObjectMeta: v1.ObjectMeta{
-			Name: name,
-			Annotations: map[string]string{
-				"deployment.kubernetes.io/revision": revision,
-			},
+		Name: name,
+		Annotations: map[string]string{
+			"deployment.kubernetes.io/revision": revision,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &v1.LabelSelector{

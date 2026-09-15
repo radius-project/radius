@@ -53,19 +53,13 @@ func (d *DynamicResource) ConvertTo() (v1.DataModelInterface, error) {
 	}
 
 	dm := &datamodel.DynamicResource{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(d.ID),
-				Name:     to.String(d.Name),
-				Type:     to.String(d.Type),
-				Location: to.String(d.Location),
-				Tags:     to.StringMap(d.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: apiVersion,
-			},
-		},
-		Properties: properties,
+		ID:                to.String(d.ID),
+		Name:              to.String(d.Name),
+		Type:              to.String(d.Type),
+		Location:          to.String(d.Location),
+		Tags:              to.StringMap(d.Tags),
+		UpdatedAPIVersion: apiVersion,
+		Properties:        properties,
 	}
 
 	return dm, nil
@@ -89,6 +83,9 @@ func (d *DynamicResource) ConvertFrom(src v1.DataModelInterface) error {
 	err = json.Unmarshal(bs, &properties)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal properties: %w", err)
+	}
+	if properties == nil {
+		properties = map[string]any{}
 	}
 
 	d.ID = &dm.ID

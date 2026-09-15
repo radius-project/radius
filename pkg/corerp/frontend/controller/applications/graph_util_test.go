@@ -17,7 +17,6 @@ limitations under the License.
 package applications
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -258,7 +257,7 @@ func Test_getAPIVersionForResourceType_Validation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// For validation tests, we just need to check the parsing logic
 			// We'll use a nil clientOptions since validation happens first
-			_, err := getAPIVersionForResourceType(context.Background(), tt.resourceType, nil)
+			_, err := getAPIVersionForResourceType(t.Context(), tt.resourceType, nil)
 
 			// Verify results
 			require.Error(t, err)
@@ -732,24 +731,22 @@ func Test_azureTenantID(t *testing.T) {
 			t.Cleanup(server.Close)
 
 			opts := &policy.ClientOptions{
-				ClientOptions: azpolicy.ClientOptions{
-					Transport: server.Client(),
-					Cloud: cloud.Configuration{
-						Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
-							cloud.ResourceManager: {
-								Endpoint: server.URL,
-								Audience: "https://management.core.windows.net",
-							},
+				Transport: server.Client(),
+				Cloud: cloud.Configuration{
+					Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
+						cloud.ResourceManager: {
+							Endpoint: server.URL,
+							Audience: "https://management.core.windows.net",
 						},
 					},
-					InsecureAllowCredentialWithHTTP: true,
-					Retry: azpolicy.RetryOptions{
-						MaxRetries: -1, // disable retries so 5xx responses don't slow the test
-					},
+				},
+				InsecureAllowCredentialWithHTTP: true,
+				Retry: azpolicy.RetryOptions{
+					MaxRetries: -1, // disable retries so 5xx responses don't slow the test
 				},
 			}
 
-			got := azureTenantID(context.Background(), opts)
+			got := azureTenantID(t.Context(), opts)
 			require.Equal(t, tt.want, got)
 		})
 	}

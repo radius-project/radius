@@ -37,6 +37,7 @@ import (
 	corerpv20231001preview "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/edges"
+	"github.com/radius-project/radius/pkg/graph/sanitization"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
 	ucpv20231001preview "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
@@ -378,7 +379,7 @@ func computeGraph(applicationResources []generated.GenericResource, environmentR
 
 		applicationGraphResource.Connections = connections
 		applicationGraphResource.OutputResources = outputResourcesFromAPIData(resource, tenantID)
-		applicationGraphResource.Properties = getResourceTypeSpecificProperties(resource.Properties)
+		applicationGraphResource.Properties = getResourceTypeSpecificProperties(to.String(resource.Type), resource.Properties)
 
 		applicationGraphResourcesByID[*resource.ID] = *applicationGraphResource
 	}
@@ -542,15 +543,10 @@ var existingKeys = map[string]struct{}{
 // top-level keys listed in existingKeys and returns nil when the projected map
 // would be empty so callers can leave the optional Properties field unset.
 //
-// This function does not perform secret redaction itself; it relies on the
-// upstream LIST handlers to have already redacted secrets from the input
-// properties. For user-defined types served by dynamic-rp this is done by
-// ListResourcesWithRedaction. For the core-RP resources that flow through the
-// application graph today (containers, gateways, environments, applications)
-// secrets are not inlined in the LIST response body — they are exposed via
-// dedicated /listSecrets endpoints — so the documented "secrets redacted"
-// contract holds.
-func getResourceTypeSpecificProperties(properties map[string]any) map[string]any {
+// Upstream LIST handlers redact schema-sensitive values. This projection adds
+// a defense-in-depth rule for container resources by omitting every container's
+// complete environment map regardless of how its values were authored.
+func getResourceTypeSpecificProperties(resourceType string, properties map[string]any) map[string]any {
 	if len(properties) == 0 {
 		return nil
 	}
@@ -566,7 +562,7 @@ func getResourceTypeSpecificProperties(properties map[string]any) map[string]any
 	if len(propertyBag) == 0 {
 		return nil
 	}
-	return propertyBag
+	return sanitization.OmitContainerEnvironment(resourceType, propertyBag)
 }
 
 // outputResourceEntryFromID creates a outputResourceEntry from a resource ID. When tenantID

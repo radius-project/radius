@@ -22,12 +22,13 @@ import (
 	"fmt"
 	"strings"
 
+	"uuid"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/google/uuid"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"

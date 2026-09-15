@@ -15,34 +15,47 @@
 # ------------------------------------------------------------
 
 # resource-types.mk provides targets for synchronizing default resource type
-# manifests from the resource-types-contrib repository.
+# manifests from the resource-types-contrib repository and for maintaining the
+# upstream pins recorded in deploy/manifest/defaults.yaml.
 #
-# resource-types-contrib is added to go.mod as a Go module dependency. It
-# contains no executable Go code. We depend on it purely to leverage Go's
-# module system for versioned downloads of YAML manifest files.
+# resource-types-contrib contains only YAML manifests and HCL/Bicep recipes -
+# no executable Go code. Rather than vendoring it as a Go module, the manifests
+# are fetched directly from pinned upstream git revisions recorded per namespace
+# in defaults.yaml (resourceTypes[].repo / resourceTypes[].ref).
 #
-# A blank import in pkg/resourcetypescontrib/import.go keeps go mod tidy from
-# removing the dependency.
+# defaults.yaml carries two pin sections that share the entry shape
+# {name, repo, ref, tag}:
+#   resourceTypes  per-namespace pins for the manifests listed under
+#                  `defaultRegistration`. build/scripts/sync-resource-types.sh
+#                  resolves each default type to its namespace's entry, fetches
+#                  each distinct (repo, ref) once, copies
+#                  <namespace>/<typeName>/<typeName>.yaml (with the "Radius."
+#                  prefix stripped) into every destination directory, and prunes
+#                  stale managed files.
+#   recipePacks    per-pack pins for the recipe packs published upstream. Recipe
+#                  packs are not vendored here. Extension workflows resolve
+#                  their immutable sources directly from this catalog.
 #
-# How it works:
-#   1. defaults.yaml lists which resource types to ship as defaults, using
-#      <namespace>/<typeName> names (e.g. Radius.Compute/containers).
-#   2. Each entry is resolved to a file path in the Go module cache:
-#        Radius.Compute/containers → Compute/containers/containers.yaml
-#      (strip "Radius." prefix, then <namespace>/<typeName>/<typeName>.yaml)
-#   3. The resolved file is copied into both dev/ and self-hosted/ directories
-#      under deploy/manifest/built-in-providers/.
-#   4. At startup, UCP's RegisterDirectory loads these files. Manifests without
-#      a "location" field are routed via DefaultDownstreamEndpoint (dynamic-rp).
+# At startup UCP's RegisterDirectory loads the committed files unchanged;
+# manifests without a "location" field are routed via DefaultDownstreamEndpoint
+# (dynamic-rp).
 #
 # Targets:
-#   update-resource-types  - Bump go.mod to the latest resource-types-contrib
-#                            version and copy the manifest files.
-#   sync-resource-types    - Copy manifest files from the version already pinned
-#                            in go.mod (no version bump). Used by CI to verify
-#                            that committed copies match the pinned version.
+#   update-resource-types-and-recipe-packs
+#                          - Atomically apply stable-first selection to both pin
+#                            sections, then copy the resource type manifests.
+#   update-resource-types  - Select a stable release for each resourceTypes
+#                            entry, falling back to its requested edge ref only
+#                            when no stable release exists, then pin the commit
+#                            SHA and copy the manifest files.
+#   update-recipe-packs    - Apply the same stable-first selection to each
+#                            recipePacks entry. Nothing is copied; only the pins
+#                            are rewritten.
+#   sync-resource-types    - Copy manifest files from the refs already pinned in
+#                            defaults.yaml (no ref bump). Used by CI to verify
+#                            manifest and pin drift.
 
-# Path to the file listing default resource types.
+# Path to the file listing default resource types and the upstream pins.
 DEFAULTS_YAML := deploy/manifest/defaults.yaml
 
 # Directories where manifest copies are placed. Both directories contain the
@@ -52,97 +65,65 @@ DEFAULTS_YAML := deploy/manifest/defaults.yaml
 # is only present in the manually maintained files (radius_core.yaml, etc.).
 MANIFEST_DEST_DIRS := deploy/manifest/built-in-providers/dev deploy/manifest/built-in-providers/self-hosted
 
-# The Go module path for resource-types-contrib.
-RESOURCE_TYPES_MODULE := github.com/radius-project/resource-types-contrib
-
 # Files in the manifest destination directories that are manually maintained
 # and should NOT be managed (created or deleted) by the sync target. These are
 # resource providers that require explicit location addresses and are not
 # sourced from resource-types-contrib.
 MANUAL_CORE_MANIFESTS := applications_core.yaml applications_dapr.yaml applications_datastores.yaml applications_messaging.yaml microsoft_resources.yaml radius_core.yaml
 
+# Candidate ref that update-resource-types uses only when a namespace has no
+# stable release. It must be "main" (the moving edge channel) or a full commit
+# SHA and defaults to "main". A stable Radius.<Namespace>/vX.Y.Z tag always wins;
+# prereleases are ignored. RESOURCE_TYPES_NAMESPACE optionally limits the
+# requested update to one namespace; empty requests every namespace.
+# RESOURCE_TYPES_PINS takes precedence and carries dispatch candidates for the
+# affected namespaces. Existing edge pins are promoted whenever stable tags
+# become available.
+# Examples:
+#   make update-resource-types
+#   make update-resource-types RESOURCE_TYPES_REF=Radius.Compute/v0.2.0 RESOURCE_TYPES_NAMESPACE=Radius.Compute
+RESOURCE_TYPES_REF ?= main
+RESOURCE_TYPES_NAMESPACE ?=
+RESOURCE_TYPES_PINS ?=
+export RESOURCE_TYPES_REF RESOURCE_TYPES_NAMESPACE RESOURCE_TYPES_PINS
+
+# Same stable-first contract as the RESOURCE_TYPES_* variables above, for the
+# recipePacks section. Recipe packs are released upstream on their own
+# recipe-pack/<pack>/vX.Y.Z tag series, so their pins advance independently.
+# Examples:
+#   make update-recipe-packs
+#   make update-recipe-packs RECIPE_PACKS_REF=recipe-pack/azure/v0.2.0 RECIPE_PACKS_NAME=azure
+RECIPE_PACKS_REF ?= main
+RECIPE_PACKS_NAME ?=
+RECIPE_PACKS_PINS ?=
+export RECIPE_PACKS_REF RECIPE_PACKS_NAME RECIPE_PACKS_PINS
+
+# Config consumed by build/scripts/sync-resource-types.sh (which does the fetch,
+# copy, and prune). The RESOURCE_TYPES_* / RECIPE_PACKS_* variables reach the
+# script through the environment via the exports above.
+SYNC_RESOURCE_TYPES_ENV := \
+	DEFAULTS_YAML="$(DEFAULTS_YAML)" \
+	MANIFEST_DEST_DIRS="$(MANIFEST_DEST_DIRS)" \
+	MANUAL_CORE_MANIFESTS="$(MANUAL_CORE_MANIFESTS)"
+
 ##@ Resource Types
 
+.PHONY: update-resource-types-and-recipe-packs
+update-resource-types-and-recipe-packs: ## Atomically pin stable resource types and recipe packs, then sync manifests
+	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh --update-all
+
 .PHONY: update-resource-types
-update-resource-types: ## Bump resource-types-contrib to latest and sync manifest files
-	@echo "Updating $(RESOURCE_TYPES_MODULE) to latest version..."
-	# Update only the resource-types-contrib dependency in go.mod to the latest
-	# version. Using @latest (without -u) avoids upgrading transitive dependencies.
-	go get $(RESOURCE_TYPES_MODULE)@latest
-	go mod tidy
-	# Copy the manifest files from the newly pinned version.
-	$(MAKE) sync-resource-types
+update-resource-types: ## Pin stable resource type releases (edge only when unreleased) and sync manifests
+	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh --update
+
+.PHONY: update-recipe-packs
+update-recipe-packs: ## Pin stable recipe pack releases (edge only when unreleased)
+	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh --update-recipe-packs
 
 .PHONY: sync-resource-types
-sync-resource-types: ## Copy manifest files listed in defaults.yaml from the pinned resource-types-contrib version
-	@# Verify required tools are available before making any changes.
-	@command -v yq >/dev/null 2>&1 || { echo "ERROR: yq is required but not found. Install via: make install-yq"; exit 1; }
-	@command -v jq >/dev/null 2>&1 || { echo "ERROR: jq is required but not found. Install via: make install-jq"; exit 1; }
-	@echo "Syncing default resource types from resource-types-contrib..."
-	@# Resolve the module's local cache directory from the version pinned in
-	@# go.mod. "go mod download -json" outputs JSON with a "Dir" field pointing
-	@# to the cached module source on disk. Then iterate over each entry in
-	@# defaults.yaml, convert the resource type name to a module-relative path
-	@# (e.g. Radius.Compute/containers -> Compute/containers/containers.yaml),
-	@# and copy the file into each destination directory (dev/ and self-hosted/).
-	@MODULE_DIR=$$(go mod download -json $(RESOURCE_TYPES_MODULE) | jq -r '.Dir') && \
-	if [ -z "$$MODULE_DIR" ] || [ "$$MODULE_DIR" = "null" ]; then \
-		echo "ERROR: Could not resolve module directory for $(RESOURCE_TYPES_MODULE)."; \
-		echo "       Is the dependency present in go.mod?"; \
-		exit 1; \
-	fi && \
-	echo "  Module directory: $$MODULE_DIR" && \
-	for entry in $$(yq '.defaultRegistration[]' $(DEFAULTS_YAML)); do \
-		rel_path=$$(echo "$$entry" | sed 's/^Radius\.//') && \
-		type_name=$$(echo "$$rel_path" | cut -d'/' -f2) && \
-		src_path="$$MODULE_DIR/$$rel_path/$$type_name.yaml" && \
-		src_icon="$$MODULE_DIR/$$rel_path/$$type_name.svg" && \
-		if [ ! -f "$$src_path" ]; then \
-			echo "ERROR: File not found: $$src_path (from entry '$$entry')"; \
-			echo "       Verify the entry in $(DEFAULTS_YAML) and the resource-types-contrib version."; \
-			exit 1; \
-		fi && \
-		for dest_dir in $(MANIFEST_DEST_DIRS); do \
-			cp "$$src_path" "$$dest_dir/$$type_name.yaml"; \
-			if [ -f "$$src_icon" ]; then \
-				cp "$$src_icon" "$$dest_dir/$$type_name.svg"; \
-			else \
-				rm -f "$$dest_dir/$$type_name.svg"; \
-			fi; \
-		done && \
-		if [ -f "$$src_icon" ]; then \
-			echo "  Copied $$entry (with icon)"; \
-		else \
-			echo "  Copied $$entry"; \
-		fi; \
-	done
-	@# Remove stale managed files: any YAML or SVG in the destination
-	@# directories that is NOT in MANUAL_CORE_MANIFESTS and NOT in the current
-	@# defaults.yaml list. This prevents previously-copied manifests or icons
-	@# from remaining after their entry is removed from defaults.yaml.
-	@EXPECTED_FILES="" && \
-	for entry in $$(yq '.defaultRegistration[]' $(DEFAULTS_YAML)); do \
-		rel_path=$$(echo "$$entry" | sed 's/^Radius\.//') && \
-		type_name=$$(echo "$$rel_path" | cut -d'/' -f2) && \
-		EXPECTED_FILES="$$EXPECTED_FILES $$type_name.yaml $$type_name.svg"; \
-	done && \
-	for dest_dir in $(MANIFEST_DEST_DIRS); do \
-		for file in "$$dest_dir"/*.yaml "$$dest_dir"/*.svg; do \
-			[ -e "$$file" ] || continue; \
-			basename=$$(basename "$$file") && \
-			is_manual=false && \
-			for mc in $(MANUAL_CORE_MANIFESTS); do \
-				if [ "$$basename" = "$$mc" ]; then is_manual=true; break; fi; \
-			done && \
-			if [ "$$is_manual" = "true" ]; then continue; fi && \
-			is_expected=false && \
-			for ef in $$EXPECTED_FILES; do \
-				if [ "$$basename" = "$$ef" ]; then is_expected=true; break; fi; \
-			done && \
-			if [ "$$is_expected" = "false" ]; then \
-				echo "  Removing stale file: $$file"; \
-				rm "$$file"; \
-			fi; \
-		done; \
-	done
-	@echo "Done. Review and commit the updated files."
+sync-resource-types: ## Copy manifest files from the per-namespace refs pinned in defaults.yaml
+	@$(SYNC_RESOURCE_TYPES_ENV) ./build/scripts/sync-resource-types.sh
+
+.PHONY: test-sync-resource-types
+test-sync-resource-types: ## Test stable-first resource type and recipe pack pin selection
+	@bash ./build/scripts/test-sync-resource-types.sh

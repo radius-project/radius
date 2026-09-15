@@ -17,7 +17,6 @@ limitations under the License.
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,7 +41,7 @@ func TestRecoverer(t *testing.T) {
 
 	testUrl := testPathBase + "/subscriptions/00001b53-0000-0000-0000-00006235a42c/resourcegroups/radius-test-rg/providers/Applications.Core/environments/env0"
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPut, testUrl, nil)
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodPut, testUrl, nil)
 	require.NoError(t, err)
 	handler.ServeHTTP(w, req)
 

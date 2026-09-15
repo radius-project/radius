@@ -23,10 +23,16 @@ CLI_DOWNLOAD_OS ?= linux
 CLI_DOWNLOAD_ARCH ?= amd64
 CLI_DOWNLOAD_FILE ?= rad
 CLI_DOWNLOAD_EXT ?=
+CLI_DOWNLOAD_MINIMUM_VERSION ?=
 
 .PHONY: test-cli-download
-test-cli-download: ## Test CLI download for specified OS and ARCH (defaults to linux/amd64). Usage: make test-cli-download [CLI_DOWNLOAD_OS=linux] [CLI_DOWNLOAD_ARCH=amd64] [CLI_DOWNLOAD_FILE=rad] [CLI_DOWNLOAD_EXT=]
-	@bash $(CLI_DOWNLOAD_TEST_SCRIPT) $(CLI_DOWNLOAD_OS) $(CLI_DOWNLOAD_ARCH) $(CLI_DOWNLOAD_FILE) $(CLI_DOWNLOAD_EXT)
+test-cli-download: ## Test CLI download for specified OS and ARCH (defaults to linux/amd64). Usage: make test-cli-download [CLI_DOWNLOAD_OS=linux] [CLI_DOWNLOAD_ARCH=amd64] [CLI_DOWNLOAD_FILE=rad] [CLI_DOWNLOAD_EXT=] [CLI_DOWNLOAD_MINIMUM_VERSION=]
+	@bash $(CLI_DOWNLOAD_TEST_SCRIPT) \
+		"$(CLI_DOWNLOAD_OS)" \
+		"$(CLI_DOWNLOAD_ARCH)" \
+		"$(CLI_DOWNLOAD_FILE)" \
+		"$(CLI_DOWNLOAD_EXT)" \
+		"$(CLI_DOWNLOAD_MINIMUM_VERSION)"
 
 # Will be set by our build workflow, this is just a default
 TEST_TIMEOUT ?=1h
@@ -48,7 +54,7 @@ GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
 test: test-get-envtools test-helm test-manage-radius-installation ## Runs unit tests, excluding kubernetes controller tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
@@ -108,8 +114,14 @@ test-functional-corerp-noncloud: ## Runs corerp functional tests that do not req
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/noncloud/... -timeout ${TEST_TIMEOUT} -v -json -parallel 10 $(GOTEST_OPTS)
 
 .PHONY: test-functional-corerp-cloud
+# Radius uses the Kubernetes API server as both its database (apiserverstore) and
+# its async queue, so every concurrent deployment multiplies API server load. At
+# -parallel 10 all of this suite's tests deployed at once and saturated the
+# single-node KinD control plane on a 4-vCPU CI runner: kube-apiserver went
+# NotReady without restarting and every `rad deploy` failed with EOF at the same
+# instant. Keep concurrency at or below the runner's CPU count.
 test-functional-corerp-cloud: ## Runs corerp functional tests that require cloud resources
-	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 10 $(GOTEST_OPTS)
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/corerp/cloud/... -timeout ${TEST_TIMEOUT} -v -parallel 4 $(GOTEST_OPTS)
 
 .PHONY: test-functional-msgrp
 test-functional-msgrp: test-functional-msgrp-noncloud ## Runs all Messaging RP functional tests (both cloud and non-cloud)
@@ -151,6 +163,13 @@ test-functional-multicluster-noncloud: ## Runs multi-cluster functional tests th
 	# recipe-created resources land there. Not part of test-functional-all-noncloud
 	# because of that extra setup.
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/multicluster/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
+
+.PHONY: test-functional-database-noncloud
+test-functional-database-noncloud: ## Runs the PostgreSQL-backed control plane (database.enabled=true) functional tests
+	# Requires a control plane installed with `rad install kubernetes --set database.enabled=true`.
+	# The tests fail against the default apiserver-backed install, so they are not part of
+	# test-functional-all-noncloud; CI runs them in the database-noncloud leg.
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/database/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
 .PHONY: test-functional-statestore-noncloud
 test-functional-statestore-noncloud: ## Runs the rad startup/shutdown state-storage lifecycle test

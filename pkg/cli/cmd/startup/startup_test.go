@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/pgbackup"
 	"github.com/radius-project/radius/pkg/cli/workspaces"
 	"github.com/radius-project/radius/pkg/statearchive"
+	archivefactory "github.com/radius-project/radius/pkg/statearchive/factory"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -171,7 +172,7 @@ func Test_Run_RestoresInOrderWaitDatabaseTerraform(t *testing.T) {
 	client := &fakeStateRestoreClient{}
 	r, scaler := newTestRunner(t, ctrl, client)
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.NoError(t, err)
 
 	require.True(t, client.waited)
@@ -191,7 +192,7 @@ func Test_Run_ScaleDownFailureStopsBeforeRestore(t *testing.T) {
 	r, scaler := newTestRunner(t, ctrl, client)
 	scaler.scaleDownErr = errors.New("scale down boom")
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.ErrorContains(t, err, "scale down boom")
 	require.False(t, client.waited, "no restore should run if scale down failed")
 	require.False(t, scaler.upCalled, "scale up should not run if scale down failed")
@@ -204,7 +205,7 @@ func Test_Run_WaitFailureStopsBeforeRestore(t *testing.T) {
 	client := &fakeStateRestoreClient{waitErr: errors.New("db never ready")}
 	r, scaler := newTestRunner(t, ctrl, client)
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.ErrorContains(t, err, "db never ready")
 	require.False(t, client.dbCalled)
 	require.False(t, client.tfCalled)
@@ -218,21 +219,21 @@ func Test_Run_DatabaseRestoreFailureScalesBackUp(t *testing.T) {
 	client := &fakeStateRestoreClient{restoreDBErr: errors.New("psql boom")}
 	r, scaler := newTestRunner(t, ctrl, client)
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.ErrorContains(t, err, "psql boom")
 	require.False(t, client.tfCalled, "terraform restore must not run after database restore failure")
 	require.True(t, scaler.upCalled, "control plane must be scaled back up after a failed restore")
 }
 
 // Test_Run_ArchiveOpenFailureIsReturned verifies that when the archive cannot be opened (for
-// example, running outside a git repository) Run returns the wrapped error before touching the
+// example, an unavailable registry) Run returns the wrapped error before touching the
 // control plane.
 func Test_Run_ArchiveOpenFailureIsReturned(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	archive := statearchive.NewMockArchive(ctrl)
-	archive.EXPECT().Open(gomock.Any(), pgbackup.StateBranchName()).Return(nil, errors.New("not a git repo")).Times(1)
+	archive.EXPECT().Open(gomock.Any(), pgbackup.StateArchiveName()).Return(nil, errors.New("registry unavailable")).Times(1)
 
 	client := &fakeStateRestoreClient{}
 	r := &Runner{
@@ -246,8 +247,25 @@ func Test_Run_ArchiveOpenFailureIsReturned(t *testing.T) {
 		},
 	}
 
-	err := r.Run(context.Background())
+	err := r.Run(t.Context())
 	require.ErrorContains(t, err, "failed to open state archive")
-	require.ErrorContains(t, err, "not a git repo")
+	require.ErrorContains(t, err, "registry unavailable")
 	require.False(t, client.waited, "no restore should run when the archive cannot be opened")
+}
+
+func Test_Run_MissingRegistryStopsBeforeRestore(t *testing.T) {
+	t.Setenv(archivefactory.BackendEnvVar, "")
+	t.Setenv(archivefactory.StateRegistryEnvVar, "")
+	r := NewRunner(&framework.Impl{})
+	client := &fakeStateRestoreClient{}
+	r.Workspace = kubernetesWorkspace()
+	r.StateClient = client
+	r.newScaler = func(string, string) (ControlPlaneScaler, error) {
+		t.Fatal("missing registry must not scale the control plane")
+		return nil, nil
+	}
+
+	err := r.Run(t.Context())
+	require.ErrorContains(t, err, archivefactory.StateRegistryEnvVar)
+	require.Empty(t, client.order)
 }

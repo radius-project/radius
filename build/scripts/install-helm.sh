@@ -9,7 +9,7 @@ set -euo pipefail
 #
 # Helm is published as a per-platform tarball on the Helm release CDN
 # (get.helm.sh), not GitHub. The pinned version and per-platform SHA-256 checksums
-# (of the tarball) are normally provided by build/tools.mk through the
+# (of the tarball) are normally provided by build/tools.yaml through the
 # environment. The script is generic, so when a value is not supplied it is
 # resolved at runtime:
 #   * empty HELM_VERSION            -> the latest published release

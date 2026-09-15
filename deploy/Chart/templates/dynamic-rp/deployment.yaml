@@ -25,12 +25,15 @@ spec:
         {{- if eq .Values.global.azureWorkloadIdentity.enabled true }}
         azure.workload.identity/use: "true"
         {{- end }}
-      {{- if or (eq .Values.global.prometheus.enabled true) (and .Values.dynamicrp.buildkit.enabled (not (semverCompare ">=1.30-0" .Capabilities.KubeVersion.Version))) }}
+      {{- if or (eq .Values.global.prometheus.enabled true) .Values.dynamicrp.buildkit.enabled }}
       annotations:
         {{- if eq .Values.global.prometheus.enabled true }}
         prometheus.io/path: "{{ .Values.global.prometheus.path }}"
         prometheus.io/port: "{{ .Values.global.prometheus.port }}"
         prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
+        {{- end }}
+        {{- if .Values.dynamicrp.buildkit.enabled }}
+        checksum/buildkit-config: {{ include (print $.Template.BasePath "/dynamic-rp/buildkit-config.yaml") . | sha256sum }}
         {{- end }}
         {{- if and .Values.dynamicrp.buildkit.enabled (not (semverCompare ">=1.30-0" .Capabilities.KubeVersion.Version)) }}
         # Pre-K8s 1.30 fallback: securityContext.appArmorProfile was added
@@ -80,11 +83,11 @@ spec:
           echo "Terraform init container starting..."
           echo "Running on architecture: $(uname -m)"
           echo "Alpine version: $(cat /etc/alpine-release)"
-          
+
           # Create terraform directory
           mkdir -p "{{ .Values.dynamicrp.terraform.path }}"
           echo "Created directory: {{ .Values.dynamicrp.terraform.path }}"
-          
+
           # Detect architecture for terraform download
           ARCH=$(uname -m)
           case $ARCH in
@@ -93,13 +96,13 @@ spec:
             *) echo "ERROR: Unsupported architecture: $ARCH"; exit 1 ;;
           esac
           echo "Terraform architecture: $TERRAFORM_ARCH"
-          
+
           # Install wget and unzip if not available (Alpine doesn't include them by default)
           if ! which wget >/dev/null 2>&1 || ! which unzip >/dev/null 2>&1; then
             echo "Installing wget and unzip..."
             apk add --no-cache wget unzip || { echo "ERROR: Failed to install wget/unzip"; exit 3; }
           fi
-          
+
           # Determine download URL
           TERRAFORM_URL="{{ .Values.global.terraform.downloadUrl }}"
 
@@ -117,9 +120,9 @@ spec:
             echo "Pinned Terraform version: $TERRAFORM_VERSION"
             TERRAFORM_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_${TERRAFORM_ARCH}.zip"
           fi
-          
+
           echo "Download URL: $TERRAFORM_URL"
-          
+
           # Basic connectivity and environment info
           echo "Environment debug info:"
           echo "- Date: $(date)"
@@ -130,10 +133,10 @@ spec:
           cd /tmp
           echo "Downloading terraform using wget..."
           wget "${TERRAFORM_URL}" -O terraform.zip || { echo "ERROR: Failed to download terraform"; exit 4; }
-          
+
           echo "Extracting terraform using unzip..."
           unzip terraform.zip || { echo "ERROR: Failed to extract terraform"; exit 5; }
-          
+
           echo "Installing terraform binary..."
           # Path/marker MUST match constants in
           # pkg/recipes/terraform/install.go (defaultGlobalTerraformBinary,
@@ -153,7 +156,7 @@ spec:
           cp terraform "{{ .Values.dynamicrp.terraform.path }}/terraform" || { echo "ERROR: Failed to copy terraform"; exit 6; }
           chmod +x "{{ .Values.dynamicrp.terraform.path }}/terraform" || { echo "ERROR: Failed to make terraform executable"; exit 7; }
           echo "pre-mounted" > "{{ .Values.dynamicrp.terraform.path }}/.terraform-source"
-          
+
           echo "Terraform binary successfully pre-downloaded and installed"
         volumeMounts:
         - name: terraform
@@ -307,6 +310,8 @@ spec:
       - name: buildkitd
         image: "{{ .Values.dynamicrp.buildkit.image }}"
         args:
+        - --config
+        - /etc/radius/buildkit/buildkitd.toml
         - --addr
         - tcp://127.0.0.1:1234
         - --oci-worker-no-process-sandbox
@@ -342,6 +347,9 @@ spec:
           # allowPrivilegeEscalation: false).
           allowPrivilegeEscalation: true
         volumeMounts:
+        - name: buildkit-config
+          mountPath: /etc/radius/buildkit
+          readOnly: true
         - name: buildkit-state
           mountPath: /home/user/.local/share/buildkit
         {{- with .Values.dynamicrp.buildkit.resources }}
@@ -369,6 +377,9 @@ spec:
             secretName: radius-encryption-key
             defaultMode: 0400
         {{- if .Values.dynamicrp.buildkit.enabled }}
+        - name: buildkit-config
+          configMap:
+            name: dynamic-rp-buildkit-config
         - name: buildctl-bin
           emptyDir: {}
         - name: buildkit-state

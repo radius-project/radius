@@ -17,7 +17,6 @@ limitations under the License.
 package unregister
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -126,7 +125,7 @@ func Test_Run(t *testing.T) {
 				GetEnvironment(gomock.Any(), gomock.Any()).
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
-				CreateOrUpdateEnvironment(context.Background(), "kind-kind", &v20231001preview.EnvironmentResource{
+				CreateOrUpdateEnvironment(t.Context(), "kind-kind", &v20231001preview.EnvironmentResource{
 					Location:   to.Ptr(v1.LocationGlobal),
 					Properties: testEnvProperties,
 				}).
@@ -152,7 +151,7 @@ func Test_Run(t *testing.T) {
 				},
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 			require.Equal(t, expectedOutput, outputSink.Writes)
 		})
@@ -194,7 +193,7 @@ func Test_Run(t *testing.T) {
 				Return(envResource, nil).
 				Times(1)
 			appManagementClient.EXPECT().
-				CreateOrUpdateEnvironment(context.Background(), "kind-kind", &v20231001preview.EnvironmentResource{
+				CreateOrUpdateEnvironment(t.Context(), "kind-kind", &v20231001preview.EnvironmentResource{
 					Location:   to.Ptr(v1.LocationGlobal),
 					Properties: testEnvProperties,
 				}).
@@ -211,7 +210,7 @@ func Test_Run(t *testing.T) {
 				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.Error(t, err)
 			require.Equal(t, expectedErrorMessage, err.Error())
 		})
@@ -243,7 +242,7 @@ func Test_Run(t *testing.T) {
 				GetEnvironment(gomock.Any(), gomock.Any()).
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
-				CreateOrUpdateEnvironment(context.Background(), "kind-kind", &v20231001preview.EnvironmentResource{
+				CreateOrUpdateEnvironment(t.Context(), "kind-kind", &v20231001preview.EnvironmentResource{
 					Location:   to.Ptr(v1.LocationGlobal),
 					Properties: testEnvProperties,
 				}).
@@ -269,7 +268,7 @@ func Test_Run(t *testing.T) {
 				},
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 			require.Equal(t, expectedOutput, outputSink.Writes)
 		})
@@ -309,7 +308,7 @@ func Test_Run(t *testing.T) {
 				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.Error(t, err)
 		})
 
@@ -347,7 +346,7 @@ func Test_Run(t *testing.T) {
 				ResourceType:      "Applications.Datastores/redisCaches",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.Error(t, err)
 		})
 
@@ -377,7 +376,7 @@ func Test_Run(t *testing.T) {
 				ResourceType:      "Applications.Datastores/mongoDatabases",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.Error(t, err)
 		})
 
@@ -417,7 +416,7 @@ func Test_Run(t *testing.T) {
 				GetEnvironment(gomock.Any(), gomock.Any()).
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
-				CreateOrUpdateEnvironment(context.Background(), "kind-kind", &v20231001preview.EnvironmentResource{
+				CreateOrUpdateEnvironment(t.Context(), "kind-kind", &v20231001preview.EnvironmentResource{
 					Location:   to.Ptr(v1.LocationGlobal),
 					Properties: testEnvProperties,
 				}).
@@ -443,7 +442,7 @@ func Test_Run(t *testing.T) {
 				},
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 			require.Equal(t, expectedOutput, outputSink.Writes)
 		})

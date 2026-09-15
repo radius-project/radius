@@ -17,13 +17,13 @@ limitations under the License.
 package proxy
 
 import (
+	"context"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/ucp/httpbaseline"
 
 	"github.com/stretchr/testify/assert"
@@ -41,7 +41,7 @@ func Test_ARM_Baselines(t *testing.T) {
 		t.Run(baseline.Name, func(t *testing.T) {
 			require.NoError(t, baseline.Error, "failed to read baseline")
 
-			ctx, cancel := testcontext.NewWithCancel(t)
+			ctx, cancel := context.WithCancel(t.Context())
 			t.Cleanup(cancel)
 
 			// Create a "downstream" that will respond according to the test

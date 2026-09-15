@@ -56,10 +56,8 @@ func Test_readAnnotations(t *testing.T) {
 		{
 			name: "radius-disabled-with-annotation",
 			deployment: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						AnnotationRadiusEnabled: "false",
-					},
+				Annotations: map[string]string{
+					AnnotationRadiusEnabled: "false",
 				},
 			},
 			annotations: deploymentAnnotations{
@@ -72,9 +70,7 @@ func Test_readAnnotations(t *testing.T) {
 		{
 			name: "radius-disabled-empty-annotation-map",
 			deployment: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{},
-				},
+				Annotations: map[string]string{},
 			},
 			annotations: deploymentAnnotations{
 				Configuration:     nil,
@@ -98,12 +94,10 @@ func Test_readAnnotations(t *testing.T) {
 		{
 			name: "radius-was-enabled-now-disabled-with-annotations",
 			deployment: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						AnnotationRadiusEnabled:           "false",
-						AnnotationRadiusConfigurationHash: "configuration-hash",
-						AnnotationRadiusStatus:            string(dsm),
-					},
+				Annotations: map[string]string{
+					AnnotationRadiusEnabled:           "false",
+					AnnotationRadiusConfigurationHash: "configuration-hash",
+					AnnotationRadiusStatus:            string(dsm),
 				},
 			},
 			annotations: deploymentAnnotations{
@@ -116,15 +110,13 @@ func Test_readAnnotations(t *testing.T) {
 		{
 			name: "radius-enabled-with-annotations",
 			deployment: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						AnnotationRadiusEnabled:                              "true",
-						AnnotationRadiusConfigurationHash:                    "configuration-hash",
-						AnnotationRadiusStatus:                               string(dsm),
-						AnnotationRadiusApplication:                          "test-application",
-						AnnotationRadiusEnvironment:                          "test-environment",
-						AnnotationRadiusConnectionPrefix + "test-connection": "test-connection-value",
-					},
+				Annotations: map[string]string{
+					AnnotationRadiusEnabled:                              "true",
+					AnnotationRadiusConfigurationHash:                    "configuration-hash",
+					AnnotationRadiusStatus:                               string(dsm),
+					AnnotationRadiusApplication:                          "test-application",
+					AnnotationRadiusEnvironment:                          "test-environment",
+					AnnotationRadiusConnectionPrefix + "test-connection": "test-connection-value",
 				},
 			},
 			annotations: deploymentAnnotations{
@@ -143,15 +135,13 @@ func Test_readAnnotations(t *testing.T) {
 		{
 			name: "status-unmarshal-error",
 			deployment: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						AnnotationRadiusEnabled:                              "true",
-						AnnotationRadiusConfigurationHash:                    "configuration-hash",
-						AnnotationRadiusStatus:                               string(invalidDeploymentStatus),
-						AnnotationRadiusApplication:                          "test-application",
-						AnnotationRadiusEnvironment:                          "test-environment",
-						AnnotationRadiusConnectionPrefix + "test-connection": "test-connection-value",
-					},
+				Annotations: map[string]string{
+					AnnotationRadiusEnabled:                              "true",
+					AnnotationRadiusConfigurationHash:                    "configuration-hash",
+					AnnotationRadiusStatus:                               string(invalidDeploymentStatus),
+					AnnotationRadiusApplication:                          "test-application",
+					AnnotationRadiusEnvironment:                          "test-environment",
+					AnnotationRadiusConnectionPrefix + "test-connection": "test-connection-value",
 				},
 			},
 			annotations: deploymentAnnotations{
@@ -163,10 +153,8 @@ func Test_readAnnotations(t *testing.T) {
 		{
 			name: "status-invalid-container-id",
 			deployment: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						AnnotationRadiusStatus: `{"scope":"/planes/radius/local/resourceGroups/controller-test","container":"not-a-resource-id"}`,
-					},
+				Annotations: map[string]string{
+					AnnotationRadiusStatus: `{"scope":"/planes/radius/local/resourceGroups/controller-test","container":"not-a-resource-id"}`,
 				},
 			},
 			annotations: deploymentAnnotations{ConfigurationHash: ""},
@@ -175,10 +163,8 @@ func Test_readAnnotations(t *testing.T) {
 		{
 			name: "status-scope-container-mismatch-allowed",
 			deployment: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						AnnotationRadiusStatus: `{"scope":"/planes/radius/local/resourceGroups/controller-test","container":"/planes/radius/local/resourceGroups/other/providers/Applications.Core/containers/test-container"}`,
-					},
+				Annotations: map[string]string{
+					AnnotationRadiusStatus: `{"scope":"/planes/radius/local/resourceGroups/controller-test","container":"/planes/radius/local/resourceGroups/other/providers/Applications.Core/containers/test-container"}`,
 				},
 			},
 			// The reconciler intentionally produces this transitional state when the environment or
@@ -196,10 +182,8 @@ func Test_readAnnotations(t *testing.T) {
 		{
 			name: "status-container-wrong-resource-type",
 			deployment: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						AnnotationRadiusStatus: `{"scope":"/planes/radius/local/resourceGroups/controller-test","container":"/planes/radius/local/resourceGroups/controller-test/providers/Applications.Core/applications/test-app"}`,
-					},
+				Annotations: map[string]string{
+					AnnotationRadiusStatus: `{"scope":"/planes/radius/local/resourceGroups/controller-test","container":"/planes/radius/local/resourceGroups/controller-test/providers/Applications.Core/applications/test-app"}`,
 				},
 			},
 			annotations: deploymentAnnotations{ConfigurationHash: ""},
@@ -208,10 +192,8 @@ func Test_readAnnotations(t *testing.T) {
 		{
 			name: "status-only-scope-set",
 			deployment: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						AnnotationRadiusStatus: `{"scope":"/planes/radius/local/resourceGroups/controller-test"}`,
-					},
+				Annotations: map[string]string{
+					AnnotationRadiusStatus: `{"scope":"/planes/radius/local/resourceGroups/controller-test"}`,
 				},
 			},
 			annotations: deploymentAnnotations{
@@ -225,10 +207,8 @@ func Test_readAnnotations(t *testing.T) {
 		{
 			name: "status-only-container-set",
 			deployment: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						AnnotationRadiusStatus: `{"container":"/planes/radius/local/resourceGroups/controller-test/providers/Applications.Core/containers/test-container"}`,
-					},
+				Annotations: map[string]string{
+					AnnotationRadiusStatus: `{"container":"/planes/radius/local/resourceGroups/controller-test/providers/Applications.Core/containers/test-container"}`,
 				},
 			},
 			annotations: deploymentAnnotations{ConfigurationHash: ""},
@@ -237,10 +217,8 @@ func Test_readAnnotations(t *testing.T) {
 		{
 			name: "status-invalid-scope-only",
 			deployment: &appsv1.Deployment{
-				ObjectMeta: metav1.ObjectMeta{
-					Annotations: map[string]string{
-						AnnotationRadiusStatus: `{"scope":"not-a-scope"}`,
-					},
+				Annotations: map[string]string{
+					AnnotationRadiusStatus: `{"scope":"not-a-scope"}`,
 				},
 			},
 			annotations: deploymentAnnotations{ConfigurationHash: ""},

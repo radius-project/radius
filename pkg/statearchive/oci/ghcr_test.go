@@ -82,7 +82,7 @@ func TestGHCRPackageClient_Visibility(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			visibility, err := client.Visibility(context.Background())
+			visibility, err := client.Visibility(t.Context())
 			require.NoError(t, err)
 			require.Equal(t, test.visibility, visibility)
 			require.Equal(t, 2, requests)
@@ -94,7 +94,7 @@ func TestGHCRPackageClient_VisibilityReturnsNotFound(t *testing.T) {
 	server := newGHCRTestServer(t, "Organization", http.StatusNotFound, "")
 	client := newTestGHCRPackageClient(t, server)
 
-	_, err := client.Visibility(context.Background())
+	_, err := client.Visibility(t.Context())
 	require.ErrorIs(t, err, errGHCRPackageNotFound)
 }
 
@@ -110,7 +110,7 @@ func TestGHCRPackageClient_VisibilityFailsClosed(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		_, err = client.Visibility(context.Background())
+		_, err = client.Visibility(t.Context())
 		require.ErrorContains(t, err, "credential unavailable")
 	})
 
@@ -123,7 +123,7 @@ func TestGHCRPackageClient_VisibilityFailsClosed(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		_, err = client.Visibility(context.Background())
+		_, err = client.Visibility(t.Context())
 		require.ErrorContains(t, err, "do not include a token")
 	})
 
@@ -166,7 +166,7 @@ func TestGHCRPackageClient_VisibilityFailsClosed(t *testing.T) {
 			server := newGHCRTestServer(t, test.accountType, test.packageStatus, test.packageBody)
 			client := newTestGHCRPackageClient(t, server)
 
-			_, err := client.Visibility(context.Background())
+			_, err := client.Visibility(t.Context())
 			require.ErrorContains(t, err, test.errorContains)
 		})
 	}
@@ -179,7 +179,7 @@ func TestGHCRPackageClient_VisibilityReturnsOwnerErrors(t *testing.T) {
 	t.Cleanup(server.Close)
 	client := newTestGHCRPackageClient(t, server)
 
-	_, err := client.Visibility(context.Background())
+	_, err := client.Visibility(t.Context())
 	require.ErrorContains(t, err, "returned Service Unavailable")
 }
 

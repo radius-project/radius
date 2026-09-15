@@ -58,9 +58,9 @@ spec:
 #   - kube-apiserver -> ucp:9443        (APIService aggregation for api.ucp.dev)
 #   - kube-apiserver -> controller:9443 (recipe admission webhook)
 # Both arrive on container port 9443, so the rule is scoped to that port to limit
-# what host-network sources in these CIDRs can reach. (The chart's only kubelet
-# probes are exec probes on dynamic-rp; they run via the container runtime and do
-# not traverse the network, so they need no allowance here.)
+# what host-network sources in these CIDRs can reach. The UCP HTTPS readiness
+# probe also originates from the node on port 9443 and is covered by this rule.
+# The dynamic-rp probes are exec probes and need no network allowance.
 # Without this policy the default-deny above blocks API aggregation and webhooks
 # and breaks the control plane. The CIDRs are cluster-specific (typically the node
 # subnet) and come from networkPolicies.controlPlaneCIDRs.

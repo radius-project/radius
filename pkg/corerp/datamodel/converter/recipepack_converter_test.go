@@ -39,22 +39,16 @@ func TestRecipePackDataModelToVersioned(t *testing.T) {
 		{
 			name: "valid conversion to 2025-08-01-preview",
 			dataModel: &datamodel.RecipePack{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/test-pack",
-						Name:     "test-pack",
-						Type:     "Radius.Core/recipePacks",
-						Location: "global",
-						Tags: map[string]string{
-							"env": "test",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2025-08-01-preview",
-						UpdatedAPIVersion:      "2025-08-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateSucceeded,
-					},
+				ID:       "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/test-pack",
+				Name:     "test-pack",
+				Type:     "Radius.Core/recipePacks",
+				Location: "global",
+				Tags: map[string]string{
+					"env": "test",
 				},
+				CreatedAPIVersion:      "2025-08-01-preview",
+				UpdatedAPIVersion:      "2025-08-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
 				Properties: datamodel.RecipePackProperties{
 					Recipes: map[string]*datamodel.RecipeDefinition{
 						"Applications.Core/containers": {
@@ -84,14 +78,10 @@ func TestRecipePackDataModelToVersioned(t *testing.T) {
 		{
 			name: "minimal recipe pack",
 			dataModel: &datamodel.RecipePack{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/minimal-pack",
-						Name:     "minimal-pack",
-						Type:     "Radius.Core/recipePacks",
-						Location: "global",
-					},
-				},
+				ID:         "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/minimal-pack",
+				Name:       "minimal-pack",
+				Type:       "Radius.Core/recipePacks",
+				Location:   "global",
 				Properties: datamodel.RecipePackProperties{},
 			},
 			version:      v20250801preview.Version,
@@ -184,22 +174,16 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 			version:     v20250801preview.Version,
 			expectError: false,
 			expected: &datamodel.RecipePack{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/test-pack",
-						Name:     "test-pack",
-						Type:     "Radius.Core/recipePacks",
-						Location: "global",
-						Tags: map[string]string{
-							"env": "test",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "2025-08-01-preview",
-						UpdatedAPIVersion:      "2025-08-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateSucceeded,
-					},
+				ID:       "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/test-pack",
+				Name:     "test-pack",
+				Type:     "Radius.Core/recipePacks",
+				Location: "global",
+				Tags: map[string]string{
+					"env": "test",
 				},
+				CreatedAPIVersion:      "2025-08-01-preview",
+				UpdatedAPIVersion:      "2025-08-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
 				Properties: datamodel.RecipePackProperties{
 					Recipes: map[string]*datamodel.RecipeDefinition{
 						"Applications.Core/containers": {
@@ -235,19 +219,13 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 			version:     v20250801preview.Version,
 			expectError: false,
 			expected: &datamodel.RecipePack{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/minimal-pack",
-						Name:     "minimal-pack",
-						Type:     "Radius.Core/recipePacks",
-						Location: "global",
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion: "2025-08-01-preview",
-						UpdatedAPIVersion: "2025-08-01-preview",
-					},
-				},
-				Properties: datamodel.RecipePackProperties{},
+				ID:                "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/minimal-pack",
+				Name:              "minimal-pack",
+				Type:              "Radius.Core/recipePacks",
+				Location:          "global",
+				CreatedAPIVersion: "2025-08-01-preview",
+				UpdatedAPIVersion: "2025-08-01-preview",
+				Properties:        datamodel.RecipePackProperties{},
 			},
 		},
 		{
@@ -269,18 +247,12 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 			version:     v20250801preview.Version,
 			expectError: false,
 			expected: &datamodel.RecipePack{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/default-plainhttp",
-						Name:     "default-plainhttp",
-						Type:     "Radius.Core/recipePacks",
-						Location: "global",
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion: "2025-08-01-preview",
-						UpdatedAPIVersion: "2025-08-01-preview",
-					},
-				},
+				ID:                "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/default-plainhttp",
+				Name:              "default-plainhttp",
+				Type:              "Radius.Core/recipePacks",
+				Location:          "global",
+				CreatedAPIVersion: "2025-08-01-preview",
+				UpdatedAPIVersion: "2025-08-01-preview",
 				Properties: datamodel.RecipePackProperties{
 					Recipes: map[string]*datamodel.RecipeDefinition{
 						"Applications.Core/containers": {
@@ -312,18 +284,12 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 			version:     v20250801preview.Version,
 			expectError: false,
 			expected: &datamodel.RecipePack{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/explicit-plainhttp",
-						Name:     "explicit-plainhttp",
-						Type:     "Radius.Core/recipePacks",
-						Location: "global",
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion: "2025-08-01-preview",
-						UpdatedAPIVersion: "2025-08-01-preview",
-					},
-				},
+				ID:                "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/explicit-plainhttp",
+				Name:              "explicit-plainhttp",
+				Type:              "Radius.Core/recipePacks",
+				Location:          "global",
+				CreatedAPIVersion: "2025-08-01-preview",
+				UpdatedAPIVersion: "2025-08-01-preview",
 				Properties: datamodel.RecipePackProperties{
 					Recipes: map[string]*datamodel.RecipeDefinition{
 						"Applications.Datastores/sqlDatabases": {
@@ -407,22 +373,16 @@ func TestRecipePackDataModelFromVersioned(t *testing.T) {
 func TestRecipePackRoundTripConversion(t *testing.T) {
 	// Test round-trip conversion: datamodel -> versioned -> JSON -> versioned -> datamodel
 	originalDataModel := &datamodel.RecipePack{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/round-trip-pack",
-				Name:     "round-trip-pack",
-				Type:     "Radius.Core/recipePacks",
-				Location: "global",
-				Tags: map[string]string{
-					"purpose": "testing",
-				},
-			},
-			InternalMetadata: v1.InternalMetadata{
-				CreatedAPIVersion:      "2025-08-01-preview",
-				UpdatedAPIVersion:      "2025-08-01-preview",
-				AsyncProvisioningState: v1.ProvisioningStateSucceeded,
-			},
+		ID:       "/subscriptions/test-sub/resourceGroups/test-rg/providers/Radius.Core/recipePacks/round-trip-pack",
+		Name:     "round-trip-pack",
+		Type:     "Radius.Core/recipePacks",
+		Location: "global",
+		Tags: map[string]string{
+			"purpose": "testing",
 		},
+		CreatedAPIVersion:      "2025-08-01-preview",
+		UpdatedAPIVersion:      "2025-08-01-preview",
+		AsyncProvisioningState: v1.ProvisioningStateSucceeded,
 		Properties: datamodel.RecipePackProperties{
 			Recipes: map[string]*datamodel.RecipeDefinition{
 				"Applications.Core/containers": {
@@ -484,14 +444,10 @@ func TestRecipePackEdgeCases(t *testing.T) {
 		{
 			name: "empty recipes map",
 			dataModel: &datamodel.RecipePack{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/test/empty-recipes",
-						Name:     "empty-recipes",
-						Type:     "Radius.Core/recipePacks",
-						Location: "global",
-					},
-				},
+				ID:       "/test/empty-recipes",
+				Name:     "empty-recipes",
+				Type:     "Radius.Core/recipePacks",
+				Location: "global",
 				Properties: datamodel.RecipePackProperties{
 					Recipes: map[string]*datamodel.RecipeDefinition{},
 				},
@@ -501,14 +457,10 @@ func TestRecipePackEdgeCases(t *testing.T) {
 		{
 			name: "nil recipes map",
 			dataModel: &datamodel.RecipePack{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/test/nil-recipes",
-						Name:     "nil-recipes",
-						Type:     "Radius.Core/recipePacks",
-						Location: "global",
-					},
-				},
+				ID:       "/test/nil-recipes",
+				Name:     "nil-recipes",
+				Type:     "Radius.Core/recipePacks",
+				Location: "global",
 				Properties: datamodel.RecipePackProperties{
 					Recipes: nil,
 				},
@@ -518,14 +470,10 @@ func TestRecipePackEdgeCases(t *testing.T) {
 		{
 			name: "empty referenced by list",
 			dataModel: &datamodel.RecipePack{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/test/empty-refs",
-						Name:     "empty-refs",
-						Type:     "Radius.Core/recipePacks",
-						Location: "global",
-					},
-				},
+				ID:       "/test/empty-refs",
+				Name:     "empty-refs",
+				Type:     "Radius.Core/recipePacks",
+				Location: "global",
 				Properties: datamodel.RecipePackProperties{
 					ReferencedBy: []string{},
 				},

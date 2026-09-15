@@ -69,7 +69,7 @@ func TestRegistry_RunChecks_EmptyRegistry(t *testing.T) {
 	mockOutput := &output.MockOutput{}
 	registry := NewRegistry(mockOutput)
 
-	results, err := registry.RunChecks(context.Background())
+	results, err := registry.RunChecks(t.Context())
 
 	require.NoError(t, err)
 	assert.Empty(t, results)
@@ -95,7 +95,7 @@ func TestRegistry_RunChecks_AllSuccess(t *testing.T) {
 	registry.AddCheck(check1)
 	registry.AddCheck(check2)
 
-	results, err := registry.RunChecks(context.Background())
+	results, err := registry.RunChecks(t.Context())
 
 	require.NoError(t, err)
 	assert.Len(t, results, 2)
@@ -142,7 +142,7 @@ func TestRegistry_RunChecks_ErrorSeverityFails(t *testing.T) {
 	registry.AddCheck(check2)
 	registry.AddCheck(check3)
 
-	results, err := registry.RunChecks(context.Background())
+	results, err := registry.RunChecks(t.Context())
 
 	// Should fail immediately on error severity check
 	require.Error(t, err)
@@ -174,7 +174,7 @@ func TestRegistry_RunChecks_WarningSeverityDoesNotFail(t *testing.T) {
 	registry.AddCheck(check1)
 	registry.AddCheck(check2)
 
-	results, err := registry.RunChecks(context.Background())
+	results, err := registry.RunChecks(t.Context())
 
 	// Should succeed even with failed warning check
 	require.NoError(t, err)
@@ -200,7 +200,7 @@ func TestRegistry_RunChecks_CheckReturnsError(t *testing.T) {
 
 	registry.AddCheck(check1)
 
-	results, err := registry.RunChecks(context.Background())
+	results, err := registry.RunChecks(t.Context())
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "pre-flight check 'Error Check' failed")

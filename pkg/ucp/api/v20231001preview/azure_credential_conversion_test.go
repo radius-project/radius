@@ -37,20 +37,14 @@ func TestAzureCredentialConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "credentialresource-azure-serviceprincipal.json",
 			expected: &datamodel.AzureCredential{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
-						Name:     "default",
-						Type:     "System.Azure/credentials",
-						Location: "west-us-2",
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
-					},
+				ID:       "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
+				Name:     "default",
+				Type:     "System.Azure/credentials",
+				Location: "west-us-2",
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				UpdatedAPIVersion: Version,
 				Properties: &datamodel.AzureCredentialResourceProperties{
 					Kind: "ServicePrincipal",
 					AzureCredential: &datamodel.AzureCredentialProperties{
@@ -71,20 +65,14 @@ func TestAzureCredentialConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "credentialresource-azure-workloadidentity.json",
 			expected: &datamodel.AzureCredential{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
-						Name:     "default",
-						Type:     "System.Azure/credentials",
-						Location: "west-us-2",
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
-					},
+				ID:       "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
+				Name:     "default",
+				Type:     "System.Azure/credentials",
+				Location: "west-us-2",
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				UpdatedAPIVersion: Version,
 				Properties: &datamodel.AzureCredentialResourceProperties{
 					Kind: "WorkloadIdentity",
 					AzureCredential: &datamodel.AzureCredentialProperties{

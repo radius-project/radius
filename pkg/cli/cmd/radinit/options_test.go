@@ -18,7 +18,6 @@ package radinit
 
 import (
 	"bytes"
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/framework"
@@ -44,7 +43,7 @@ func Test_enterInitOptions(t *testing.T) {
 		initHelmMockRadiusNotInstalled(helm)
 		setScaffoldApplicationPromptNo(prompter)
 
-		options, workspace, err := runner.enterInitOptions(context.Background())
+		options, workspace, err := runner.enterInitOptions(t.Context())
 		require.NoError(t, err)
 
 		expectedWorkspace := workspaces.Workspace{
@@ -92,7 +91,7 @@ func Test_enterInitOptions(t *testing.T) {
 		initAddCloudProviderPromptNo(prompter)
 		setScaffoldApplicationPromptNo(prompter)
 
-		options, workspace, err := runner.enterInitOptions(context.Background())
+		options, workspace, err := runner.enterInitOptions(t.Context())
 		require.NoError(t, err)
 
 		expectedWorkspace := workspaces.Workspace{
@@ -151,7 +150,7 @@ workspaces:
 		initAddCloudProviderPromptNo(prompter)
 		setScaffoldApplicationPromptNo(prompter)
 
-		options, workspace, err := runner.enterInitOptions(context.Background())
+		options, workspace, err := runner.enterInitOptions(t.Context())
 		require.NoError(t, err)
 
 		expectedWorkspace := workspaces.Workspace{
@@ -216,7 +215,7 @@ workspaces:
 		initAddCloudProviderPromptNo(prompter)
 		setScaffoldApplicationPromptNo(prompter)
 
-		options, workspace, err := runner.enterInitOptions(context.Background())
+		options, workspace, err := runner.enterInitOptions(t.Context())
 		require.NoError(t, err)
 
 		expectedWorkspace := workspaces.Workspace{

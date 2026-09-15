@@ -58,6 +58,8 @@ type Resource struct {
 	// The key is the connection name, and the value contains the connected resource's metadata and properties.
 	// We enrich the recipe context with this, allowing the recipe to access connected resource info using:
 	// context.resource.connections.[connection-name].properties.[property-name]
+	// context.resource.connections.[connection-name].secrets.[secret-name].source
+	// context.resource.connections.[connection-name].secrets.[secret-name].key
 	// context.resource.connections.[connection-name].id
 	// context.resource.connections.[connection-name].name
 	// context.resource.connections.[connection-name].type
@@ -78,6 +80,8 @@ type ProviderAzure struct {
 	ResourceGroup AzureResourceGroup `json:"resourceGroup"`
 	// Subscription represents the subscription information.
 	Subscription AzureSubscription `json:"subscription"`
+	// ResourceNameHash is a short, stable hash derived from the Azure provider scope and Radius resource ID.
+	ResourceNameHash string `json:"resourceNameHash,omitempty"`
 }
 
 // AzureResourceGroup contains Azure Resource Group provider information.

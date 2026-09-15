@@ -72,8 +72,7 @@ func (client *AwsPlanesClient) createOrUpdate(ctx context.Context, planeName str
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -133,8 +132,7 @@ func (client *AwsPlanesClient) deleteOperation(ctx context.Context, planeName st
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -171,12 +169,7 @@ func (client *AwsPlanesClient) Get(ctx context.Context, planeName string, option
 	if err != nil {
 		return AwsPlanesClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return AwsPlanesClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -198,8 +191,11 @@ func (client *AwsPlanesClient) getCreateRequest(ctx context.Context, planeName s
 }
 
 // getHandleResponse handles the Get response.
-func (client *AwsPlanesClient) getHandleResponse(resp *http.Response) (AwsPlanesClientGetResponse, error) {
+func (client *AwsPlanesClient) getHandleResponse(resp *http.Response, successCodes ...int) (AwsPlanesClientGetResponse, error) {
 	result := AwsPlanesClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.AwsPlaneResource); err != nil {
 		return AwsPlanesClientGetResponse{}, err
 	}
@@ -219,34 +215,48 @@ func (client *AwsPlanesClient) NewListPager(options *AwsPlanesClientListOptions)
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listCreateRequest(ctx, options)
-			}, nil)
+			req, err := client.listCreateRequest(ctx, nextLink, options)
 			if err != nil {
 				return AwsPlanesClientListResponse{}, err
 			}
-			return client.listHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return AwsPlanesClientListResponse{}, err
+			}
+			return client.listHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listCreateRequest creates the List request.
-func (client *AwsPlanesClient) listCreateRequest(ctx context.Context, _ *AwsPlanesClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/aws"
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+func (client *AwsPlanesClient) listCreateRequest(ctx context.Context, nextLink string, _ *AwsPlanesClientListOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/planes/aws"
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
+	}
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *AwsPlanesClient) listHandleResponse(resp *http.Response) (AwsPlanesClientListResponse, error) {
+func (client *AwsPlanesClient) listHandleResponse(resp *http.Response, successCodes ...int) (AwsPlanesClientListResponse, error) {
 	result := AwsPlanesClientListResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.AwsPlaneResourceListResult); err != nil {
 		return AwsPlanesClientListResponse{}, err
 	}
@@ -287,8 +297,7 @@ func (client *AwsPlanesClient) update(ctx context.Context, planeName string, pro
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }

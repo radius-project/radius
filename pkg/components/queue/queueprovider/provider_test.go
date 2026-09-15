@@ -17,7 +17,6 @@ limitations under the License.
 package queueprovider
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -30,10 +29,10 @@ func TestGetClient_ValidQueue(t *testing.T) {
 		InMemory: &InMemoryQueueOptions{},
 	})
 
-	oldcli, err := p.GetClient(context.TODO())
+	oldcli, err := p.GetClient(t.Context())
 	require.NoError(t, err)
 	require.NotNil(t, oldcli)
-	newcli, err := p.GetClient(context.TODO())
+	newcli, err := p.GetClient(t.Context())
 	require.NoError(t, err)
 	require.Equal(t, oldcli, newcli)
 }
@@ -44,6 +43,6 @@ func TestGetClient_InvalidQueue(t *testing.T) {
 		Provider: QueueProviderType("undefined"),
 	})
 
-	_, err := p.GetClient(context.TODO())
+	_, err := p.GetClient(t.Context())
 	require.ErrorIs(t, ErrUnsupportedQueueProvider, err)
 }

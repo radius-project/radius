@@ -32,7 +32,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/trackedresource"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -82,30 +81,18 @@ func Test_Run(t *testing.T) {
 		},
 	}
 	resourceGroup := &datamodel.ResourceGroup{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: id.RootScope(),
-			},
-		},
+		ID: id.RootScope(),
 	}
 
 	resourceTypeResource := &datamodel.ResourceType{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "testResources",
-				ID:   resourceTypeID.String(),
-			},
-		},
+		Name:       "testResources",
+		ID:         resourceTypeID.String(),
 		Properties: datamodel.ResourceTypeProperties{},
 	}
 
 	locationResource := &datamodel.Location{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "global",
-				ID:   locationID.String(),
-			},
-		},
+		Name: "global",
+		ID:   locationID.String(),
 		Properties: datamodel.LocationProperties{
 			Address: new("https://localhost:1234"),
 			ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
@@ -124,7 +111,7 @@ func Test_Run(t *testing.T) {
 		svcContext := &v1.ARMRequestContext{
 			APIVersion: apiVersion,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -149,7 +136,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -189,7 +176,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -232,7 +219,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -288,7 +275,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -315,11 +302,7 @@ func Test_Run(t *testing.T) {
 		// Tracking entry created
 		existingEntry := &database.Object{
 			Data: &datamodel.GenericResource{
-				BaseResource: v1.BaseResource{
-					InternalMetadata: v1.InternalMetadata{
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-				},
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
 			},
 		}
 		databaseClient.EXPECT().
@@ -350,7 +333,7 @@ func Test_Run(t *testing.T) {
 			APIVersion: apiVersion,
 			ResourceID: id,
 		}
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		ctx = v1.WithARMRequestContext(ctx, svcContext)
 
 		w := httptest.NewRecorder()
@@ -381,7 +364,7 @@ func Test_ProxyController_PrepareProxyRequest(t *testing.T) {
 			URL:    originalURL}
 
 		p, _, _, _, _ := createController(t)
-		proxyReq, err := p.PrepareProxyRequest(testcontext.New(t), originalReq, downstream, relativePath)
+		proxyReq, err := p.PrepareProxyRequest(t.Context(), originalReq, downstream, relativePath)
 		require.NoError(t, err)
 		require.NotNil(t, proxyReq)
 
@@ -401,7 +384,7 @@ func Test_ProxyController_PrepareProxyRequest(t *testing.T) {
 			URL:    originalURL}
 
 		p, _, _, _, _ := createController(t)
-		proxyReq, err := p.PrepareProxyRequest(testcontext.New(t), originalReq, downstream, relativePath)
+		proxyReq, err := p.PrepareProxyRequest(t.Context(), originalReq, downstream, relativePath)
 		require.NoError(t, err)
 		require.NotNil(t, proxyReq)
 
@@ -415,7 +398,7 @@ func Test_ProxyController_PrepareProxyRequest(t *testing.T) {
 		originalReq := &http.Request{Header: http.Header{}, URL: &url.URL{}}
 
 		p, _, _, _, _ := createController(t)
-		proxyReq, err := p.PrepareProxyRequest(testcontext.New(t), originalReq, "\ninvalid", relativePath)
+		proxyReq, err := p.PrepareProxyRequest(t.Context(), originalReq, "\ninvalid", relativePath)
 		require.Error(t, err)
 		require.Equal(t, "failed to parse downstream URL: parse \"\\ninvalid\": net/url: invalid control character in URL", err.Error())
 		require.Nil(t, proxyReq)

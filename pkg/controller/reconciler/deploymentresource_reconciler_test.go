@@ -17,6 +17,7 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -25,7 +26,6 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -56,15 +56,8 @@ var (
 func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *sdkclients.MockResourceDeploymentsClient, k8sClient.Client) {
 	SkipWithoutEnvironment(t)
 
-	// For debugging, you can set uncomment this to see logs from the controller. This will cause tests to fail
-	// because the logging will continue after the test completes.
-	//
-	// Add runtimelog "sigs.k8s.io/controller-runtime/pkg/log" to imports.
-	//
-	// runtimelog.SetLogger(ucplog.FromContextOrDiscard(testcontext.New(t)))
-
 	// Shut down the manager when the test exits.
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
@@ -100,11 +93,11 @@ func SetupDeploymentResourceTest(t *testing.T) (*mockRadiusClient, *sdkclients.M
 }
 
 func Test_DeploymentResourceReconciler_Basic(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	_, _, k8sClient := SetupDeploymentTemplateTest(t)
 
 	name := types.NamespacedName{Namespace: TestDeploymentResourceNamespace, Name: TestDeploymentResourceName}
-	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := k8sClient.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	deployment := makeDeploymentResource(name, TestDeploymentResourceID)
@@ -128,11 +121,11 @@ func Test_DeploymentResourceReconciler_DeleteRetryBackoff(t *testing.T) {
 	// rather than controller-runtime's exponential rate-limiter (which
 	// climbs to ~16 minutes).
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	_, mockDeploymentClient, k8sClient := SetupDeploymentResourceTest(t)
 
 	name := types.NamespacedName{Namespace: "deploymentresource-deleteretry", Name: TestDeploymentResourceName}
-	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := k8sClient.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	// A finalizer keeps the DR alive past Delete. The DeploymentResource must be controlled by a
@@ -147,19 +140,17 @@ func Test_DeploymentResourceReconciler_DeleteRetryBackoff(t *testing.T) {
 
 	resourceID := fmt.Sprintf("/planes/radius/local/resourcegroups/%s/providers/Applications.Core/containers/%s", name.Namespace, name.Name)
 	deployment := &radappiov1alpha3.DeploymentResource{
-		ObjectMeta: ctrl.ObjectMeta{
-			Namespace:  name.Namespace,
-			Name:       name.Name,
-			Finalizers: []string{DeploymentResourceFinalizer},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         radappiov1alpha3.GroupVersion.String(),
-					Kind:               deploymentTemplateKind,
-					Name:               owner.Name,
-					UID:                owner.UID,
-					Controller:         to.Ptr(true),
-					BlockOwnerDeletion: to.Ptr(true),
-				},
+		Namespace:  name.Namespace,
+		Name:       name.Name,
+		Finalizers: []string{DeploymentResourceFinalizer},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         radappiov1alpha3.GroupVersion.String(),
+				Kind:               deploymentTemplateKind,
+				Name:               owner.Name,
+				UID:                owner.UID,
+				Controller:         to.Ptr(true),
+				BlockOwnerDeletion: to.Ptr(true),
 			},
 		},
 		Spec: radappiov1alpha3.DeploymentResourceSpec{Id: resourceID},
@@ -198,11 +189,11 @@ func Test_DeploymentResourceReconciler_SkipsDeleteOutsideTemplateScope(t *testin
 	// scope must NOT trigger a UCP delete: the controller only deletes resources it provisioned
 	// within the owning template's scope.
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	_, mockDeploymentClient, k8sClient := SetupDeploymentResourceTest(t)
 
 	name := types.NamespacedName{Namespace: "deploymentresource-outofscope", Name: "out-of-scope"}
-	err := k8sClient.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := k8sClient.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	// An owning DeploymentTemplate scoped to its own resource group.
@@ -216,19 +207,17 @@ func Test_DeploymentResourceReconciler_SkipsDeleteOutsideTemplateScope(t *testin
 	// Spec.Id points at a resource in a DIFFERENT resource group than the owning template's scope.
 	outOfScopeID := "/planes/radius/local/resourcegroups/other-group/providers/Applications.Core/environments/default"
 	deployment := &radappiov1alpha3.DeploymentResource{
-		ObjectMeta: ctrl.ObjectMeta{
-			Namespace:  name.Namespace,
-			Name:       name.Name,
-			Finalizers: []string{DeploymentResourceFinalizer},
-			OwnerReferences: []metav1.OwnerReference{
-				{
-					APIVersion:         radappiov1alpha3.GroupVersion.String(),
-					Kind:               deploymentTemplateKind,
-					Name:               owner.Name,
-					UID:                owner.UID,
-					Controller:         to.Ptr(true),
-					BlockOwnerDeletion: to.Ptr(true),
-				},
+		Namespace:  name.Namespace,
+		Name:       name.Name,
+		Finalizers: []string{DeploymentResourceFinalizer},
+		OwnerReferences: []metav1.OwnerReference{
+			{
+				APIVersion:         radappiov1alpha3.GroupVersion.String(),
+				Kind:               deploymentTemplateKind,
+				Name:               owner.Name,
+				UID:                owner.UID,
+				Controller:         to.Ptr(true),
+				BlockOwnerDeletion: to.Ptr(true),
 			},
 		},
 		Spec: radappiov1alpha3.DeploymentResourceSpec{Id: outOfScopeID},
@@ -299,7 +288,7 @@ func Test_resourceWithinScope(t *testing.T) {
 }
 
 func waitForDeploymentResourceStateReady(t *testing.T, client k8sClient.Client, name types.NamespacedName) *radappiov1alpha3.DeploymentResourceStatus {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	status := &radappiov1alpha3.DeploymentResourceStatus{}
@@ -320,7 +309,7 @@ func waitForDeploymentResourceStateReady(t *testing.T, client k8sClient.Client, 
 }
 
 func waitForDeploymentResourceStateDeleting(t *testing.T, client k8sClient.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.DeploymentResourceStatus {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	status := &radappiov1alpha3.DeploymentResourceStatus{}
@@ -344,7 +333,7 @@ func waitForDeploymentResourceStateDeleting(t *testing.T, client k8sClient.Clien
 }
 
 func waitForDeploymentResourceDeleted(t *testing.T, client k8sClient.Client, name types.NamespacedName) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	require.Eventuallyf(t, func() bool {

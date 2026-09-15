@@ -17,7 +17,6 @@ limitations under the License.
 package rediscaches
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/datastoresrp/datamodel"
@@ -61,7 +60,7 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.NoError(t, err)
 
 		require.Equal(t, host, resource.Properties.Host)
@@ -113,7 +112,7 @@ func Test_Process(t *testing.T) {
 				},
 			},
 		}
-		err := processor.Process(context.Background(), resource, processors.Options{})
+		err := processor.Process(t.Context(), resource, processors.Options{})
 		require.NoError(t, err)
 
 		require.Equal(t, host, resource.Properties.Host)
@@ -187,7 +186,7 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.NoError(t, err)
 
 		require.Equal(t, host, resource.Properties.Host)
@@ -238,7 +237,7 @@ func Test_Process(t *testing.T) {
 		resource := &datamodel.RedisCache{}
 		options := processors.Options{RecipeOutput: &recipes.RecipeOutput{}}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.Error(t, err)
 		require.IsType(t, &processors.ValidationError{}, err)
 		require.Equal(t, `validation returned multiple errors:

@@ -10,6 +10,7 @@
 package bicep
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -83,18 +84,18 @@ func (c *MockInterfaceCallCall) DoAndReturn(f func(...string) ([]byte, error)) *
 }
 
 // PrepareTemplate mocks base method.
-func (m *MockInterface) PrepareTemplate(filePath string) (map[string]any, error) {
+func (m *MockInterface) PrepareTemplate(ctx context.Context, filePath string) (map[string]any, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PrepareTemplate", filePath)
+	ret := m.ctrl.Call(m, "PrepareTemplate", ctx, filePath)
 	ret0, _ := ret[0].(map[string]any)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // PrepareTemplate indicates an expected call of PrepareTemplate.
-func (mr *MockInterfaceMockRecorder) PrepareTemplate(filePath any) *MockInterfacePrepareTemplateCall {
+func (mr *MockInterfaceMockRecorder) PrepareTemplate(ctx, filePath any) *MockInterfacePrepareTemplateCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareTemplate", reflect.TypeOf((*MockInterface)(nil).PrepareTemplate), filePath)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PrepareTemplate", reflect.TypeOf((*MockInterface)(nil).PrepareTemplate), ctx, filePath)
 	return &MockInterfacePrepareTemplateCall{Call: call}
 }
 
@@ -110,13 +111,13 @@ func (c *MockInterfacePrepareTemplateCall) Return(arg0 map[string]any, arg1 erro
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockInterfacePrepareTemplateCall) Do(f func(string) (map[string]any, error)) *MockInterfacePrepareTemplateCall {
+func (c *MockInterfacePrepareTemplateCall) Do(f func(context.Context, string) (map[string]any, error)) *MockInterfacePrepareTemplateCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockInterfacePrepareTemplateCall) DoAndReturn(f func(string) (map[string]any, error)) *MockInterfacePrepareTemplateCall {
+func (c *MockInterfacePrepareTemplateCall) DoAndReturn(f func(context.Context, string) (map[string]any, error)) *MockInterfacePrepareTemplateCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

@@ -182,11 +182,7 @@ func TestBicepSettings_RoundTrip_Identity(t *testing.T) {
 // storage and one host's secret leaks into the other.
 func TestBicepSettings_ConvertFrom_TwoEntriesAreDistinct(t *testing.T) {
 	dm := &datamodel.BicepSettings{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: bicepSettingsID, Name: bicepSettingsName, Type: bicepSettingsType, Location: bicepSettingsLocation,
-			},
-		},
+		ID: bicepSettingsID, Name: bicepSettingsName, Type: bicepSettingsType, Location: bicepSettingsLocation,
 		Properties: datamodel.BicepSettingsResourceProperties{
 			RegistryAuthentications: map[string]datamodel.BicepRegistryAuthentication{
 				"hostA": {

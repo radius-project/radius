@@ -61,7 +61,7 @@ func TestNewRetryer(t *testing.T) {
 
 func TestRetryer_RetryFunc(t *testing.T) {
 	retryer := NewDefaultRetryer()
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Test successful function
 	err := retryer.RetryFunc(ctx, func(ctx context.Context) error {

@@ -17,7 +17,6 @@ limitations under the License.
 package groupswitch
 
 import (
-	"context"
 	"errors"
 	"path"
 	"testing"
@@ -161,7 +160,7 @@ func Test_Run(t *testing.T) {
 				Output:               outputSink,
 			}
 
-			err = runner.Run(context.Background())
+			err = runner.Run(t.Context())
 			require.NoError(t, err)
 
 			actualConfig, err := cli.ReadWorkspaceSection(config)
@@ -232,7 +231,7 @@ func Test_Run(t *testing.T) {
 			}
 
 			expected := clierrors.Message("The resource group %q does not exist. Run `rad group create` or `rad init` and try again.", runner.UCPResourceGroupName)
-			err = runner.Run(context.Background())
+			err = runner.Run(t.Context())
 			require.Equal(t, expected, err)
 		})
 	})

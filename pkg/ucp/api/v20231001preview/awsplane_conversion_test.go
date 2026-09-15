@@ -37,21 +37,15 @@ func Test_AWSPlane_ConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "awsplane-resource-empty.json",
 			expected: &datamodel.AWSPlane{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/planes/aws/aws",
-						Name:     "aws",
-						Type:     datamodel.AWSPlaneResourceType,
-						Location: "global",
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
-					},
+				ID:       "/planes/aws/aws",
+				Name:     "aws",
+				Type:     datamodel.AWSPlaneResourceType,
+				Location: "global",
+				Tags: map[string]string{
+					"env": "dev",
 				},
-				Properties: datamodel.AWSPlaneProperties{},
+				UpdatedAPIVersion: Version,
+				Properties:        datamodel.AWSPlaneProperties{},
 			},
 		},
 	}

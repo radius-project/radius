@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"slices"
 )
 
 // DirectorFunc is a function that modifies the request before it is sent to the downstream server.
@@ -120,8 +121,8 @@ func rewrite(target *url.URL, directors []DirectorFunc) func(*httputil.ProxyRequ
 
 func responder(directors []ResponderFunc) ResponderFunc {
 	return func(r *http.Response) error {
-		for i := len(directors) - 1; i >= 0; i-- {
-			err := directors[i](r)
+		for _, director := range slices.Backward(directors) {
+			err := director(r)
 			if err != nil {
 				return err
 			}

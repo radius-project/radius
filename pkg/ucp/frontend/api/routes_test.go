@@ -30,7 +30,6 @@ import (
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/ucp"
 	"github.com/radius-project/radius/pkg/ucp/frontend/modules"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -118,7 +117,7 @@ func Test_Route_ToModule(t *testing.T) {
 	}
 
 	r := chi.NewRouter()
-	err := Register(testcontext.New(t), r, []modules.Initializer{&testModule{}}, options)
+	err := Register(t.Context(), r, []modules.Initializer{&testModule{}}, options)
 	require.NoError(t, err)
 
 	tctx := chi.NewRouteContext()

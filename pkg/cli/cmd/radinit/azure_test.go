@@ -17,7 +17,6 @@ limitations under the License.
 package radinit
 
 import (
-	"context"
 	"sort"
 	"testing"
 
@@ -62,7 +61,7 @@ func Test_enterAzureCloudProvider_ServicePrincipal(t *testing.T) {
 
 	options := &initOptions{}
 
-	provider, err := runner.enterAzureCloudProvider(context.Background(), options)
+	provider, err := runner.enterAzureCloudProvider(t.Context(), options)
 	require.NoError(t, err)
 
 	expected := &azure.Provider{
@@ -117,7 +116,7 @@ func Test_enterAzureCloudProvider_WorkloadIdentity(t *testing.T) {
 
 	options := &initOptions{}
 
-	provider, err := runner.enterAzureCloudProvider(context.Background(), options)
+	provider, err := runner.enterAzureCloudProvider(t.Context(), options)
 	require.NoError(t, err)
 
 	expected := &azure.Provider{
@@ -177,7 +176,7 @@ func Test_selectAzureSubscription(t *testing.T) {
 		setAzureSubscriptions(client, &subscriptions)
 		setAzureSubscriptionConfirmPrompt(prompter, subscriptions.Default.Name, prompt.ConfirmYes)
 
-		selected, err := common.SelectAzureSubscription(context.Background(), prompter, client)
+		selected, err := common.SelectAzureSubscription(t.Context(), prompter, client)
 		require.NoError(t, err)
 		require.NotNil(t, selected)
 
@@ -196,7 +195,7 @@ func Test_selectAzureSubscription(t *testing.T) {
 		setAzureSubscriptionConfirmPrompt(prompter, subscriptions.Default.Name, prompt.ConfirmNo)
 		setAzureSubsubscriptionPrompt(prompter, subscriptionNames, subscriptions.Subscriptions[2].Name)
 
-		selected, err := common.SelectAzureSubscription(context.Background(), prompter, client)
+		selected, err := common.SelectAzureSubscription(t.Context(), prompter, client)
 		require.NoError(t, err)
 		require.NotNil(t, selected)
 
@@ -214,7 +213,7 @@ func Test_selectAzureSubscription(t *testing.T) {
 		setAzureSubscriptions(client, &subscriptions)
 		setAzureSubsubscriptionPrompt(prompter, subscriptionNames, subscriptions.Subscriptions[2].Name)
 
-		selected, err := common.SelectAzureSubscription(context.Background(), prompter, client)
+		selected, err := common.SelectAzureSubscription(t.Context(), prompter, client)
 		require.NoError(t, err)
 		require.NotNil(t, selected)
 
@@ -306,7 +305,7 @@ func Test_selectAzureResourceGroup(t *testing.T) {
 		setAzureResourceGroups(client, subscription.ID, resourceGroups)
 		setAzureResourceGroupPrompt(prompter, resourceGroupNames, *resourceGroups[1].Name)
 
-		name, err := common.SelectAzureResourceGroup(context.Background(), prompter, &outputSink, client, subscription)
+		name, err := common.SelectAzureResourceGroup(t.Context(), prompter, &outputSink, client, subscription)
 		require.NoError(t, err)
 
 		require.Equal(t, *resourceGroups[1].Name, name)
@@ -326,7 +325,7 @@ func Test_selectAzureResourceGroup(t *testing.T) {
 		setSelectAzureResourceGroupLocationPrompt(prompter, locationDisplayNames, *locations[1].DisplayName)
 		setAzureCreateOrUpdateResourceGroup(client, subscription.ID, "test-resource-group", *locations[1].Name)
 
-		name, err := common.SelectAzureResourceGroup(context.Background(), prompter, &outputSink, client, subscription)
+		name, err := common.SelectAzureResourceGroup(t.Context(), prompter, &outputSink, client, subscription)
 		require.NoError(t, err)
 
 		require.Equal(t, "test-resource-group", name)
@@ -350,7 +349,7 @@ func Test_selectAzureResourceGroup(t *testing.T) {
 		setAzureResourceGroupNamePrompt(prompter, "test-resource-group")
 		setAzureCheckResourceGroupExistence(client, subscription.ID, "test-resource-group", true)
 
-		name, err := common.SelectAzureResourceGroup(context.Background(), prompter, &outputSink, client, subscription)
+		name, err := common.SelectAzureResourceGroup(t.Context(), prompter, &outputSink, client, subscription)
 		require.NoError(t, err)
 
 		require.Equal(t, "test-resource-group", name)
@@ -391,7 +390,7 @@ func Test_selectExistingAzureResourceGroup(t *testing.T) {
 	setAzureResourceGroups(client, subscription.ID, resourceGroups)
 	setAzureResourceGroupPrompt(prompter, resourceGroupNames, *resourceGroups[1].Name)
 
-	name, err := common.SelectExistingAzureResourceGroup(context.Background(), prompter, client, subscription)
+	name, err := common.SelectExistingAzureResourceGroup(t.Context(), prompter, client, subscription)
 	require.NoError(t, err)
 
 	require.Equal(t, *resourceGroups[1].Name, name)
@@ -478,7 +477,7 @@ func Test_selectAzureResourceGroupLocation(t *testing.T) {
 	setAzureLocations(client, subscription.ID, locations)
 	setSelectAzureResourceGroupLocationPrompt(prompter, locationDisplayNames, *locations[1].DisplayName)
 
-	location, err := common.SelectAzureResourceGroupLocation(context.Background(), prompter, client, subscription)
+	location, err := common.SelectAzureResourceGroupLocation(t.Context(), prompter, client, subscription)
 	require.NoError(t, err)
 	require.Equal(t, locations[1], *location)
 }

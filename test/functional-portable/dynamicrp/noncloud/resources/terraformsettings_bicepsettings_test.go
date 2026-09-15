@@ -44,9 +44,7 @@ func Test_TerraformSettings_Redis(t *testing.T) {
 			// Create the Kubernetes namespace (Radius.Core requires pre-existing namespaces).
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
 				_, err := options.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: appNamespace,
-					},
+					Name: appNamespace,
 				}, metav1.CreateOptions{})
 				if err != nil && !strings.Contains(err.Error(), "already exists") {
 					require.NoError(t, err)
@@ -105,9 +103,7 @@ func Test_BicepSettings_CRUD(t *testing.T) {
 			// Create the Kubernetes namespace.
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
 				_, err := options.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: appNamespace,
-					},
+					Name: appNamespace,
 				}, metav1.CreateOptions{})
 				if err != nil && !strings.Contains(err.Error(), "already exists") {
 					require.NoError(t, err)
@@ -170,9 +166,7 @@ func Test_TerraformSettings_SecuritySecret_Credentials(t *testing.T) {
 			// Create the consumer environment's Kubernetes namespace (Radius.Core requires pre-existing namespaces).
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
 				_, err := options.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: appNamespace,
-					},
+					Name: appNamespace,
 				}, metav1.CreateOptions{})
 				if err != nil && !strings.Contains(err.Error(), "already exists") {
 					require.NoError(t, err)
@@ -252,9 +246,7 @@ func Test_TerraformSettings_BicepSettings_Combined(t *testing.T) {
 			// Create the Kubernetes namespace (Radius.Core requires pre-existing namespaces).
 			Executor: step.NewFuncExecutor(func(ctx context.Context, t *testing.T, options test.TestOptions) {
 				_, err := options.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: appNamespace,
-					},
+					Name: appNamespace,
 				}, metav1.CreateOptions{})
 				if err != nil && !strings.Contains(err.Error(), "already exists") {
 					require.NoError(t, err)

@@ -17,7 +17,6 @@ limitations under the License.
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -80,7 +79,7 @@ func TestNormalizePath(t *testing.T) {
 
 		handler := NormalizePath(r)
 
-		req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, tt.armid, nil)
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, tt.armid, nil)
 		require.NoError(t, err)
 		handler.ServeHTTP(w, req)
 

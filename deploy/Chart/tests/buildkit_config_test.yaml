@@ -1,0 +1,145 @@
+suite: test BuildKit concurrency configuration
+templates:
+  - dynamic-rp/buildkit-config.yaml
+  - dynamic-rp/deployment.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: omits BuildKit configuration when the sidecar is disabled
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: dynamic-rp/buildkit-config.yaml
+      - notExists:
+          path: spec.template.metadata.annotations["checksum/buildkit-config"]
+        template: dynamic-rp/deployment.yaml
+
+  - it: limits BuildKit to one parallel OCI worker step by default
+    set:
+      dynamicrp.buildkit.enabled: true
+    asserts:
+      - equal:
+          path: data["buildkitd.toml"]
+          value: |-
+            [worker.oci]
+              max-parallelism = 1
+        template: dynamic-rp/buildkit-config.yaml
+      - equal:
+          path: spec.template.metadata.annotations["checksum/buildkit-config"]
+          value: 95a0c8f8af5511090090ab0079d285e12a7761f634954f5303676996506b9ea4
+        template: dynamic-rp/deployment.yaml
+      - equal:
+          path: spec.template.spec.containers[1].args
+          value:
+            - --config
+            - /etc/radius/buildkit/buildkitd.toml
+            - --addr
+            - tcp://127.0.0.1:1234
+            - --oci-worker-no-process-sandbox
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[1].volumeMounts
+          content:
+            name: buildkit-config
+            mountPath: /etc/radius/buildkit
+            readOnly: true
+        template: dynamic-rp/deployment.yaml
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: buildkit-config
+            configMap:
+              name: dynamic-rp-buildkit-config
+        template: dynamic-rp/deployment.yaml
+
+  - it: renders an operator-provided parallelism limit
+    set:
+      dynamicrp.buildkit.enabled: true
+      dynamicrp.buildkit.maxParallelism: 3
+    asserts:
+      - equal:
+          path: data["buildkitd.toml"]
+          value: |-
+            [worker.oci]
+              max-parallelism = 3
+        template: dynamic-rp/buildkit-config.yaml
+      - equal:
+          path: spec.template.metadata.annotations["checksum/buildkit-config"]
+          value: 3dcf331b86546ad0afe422f0c3f70f514a4ef953e279a4b480e79015aaf7b5b0
+        template: dynamic-rp/deployment.yaml
+
+  - it: rejects zero parallelism because BuildKit treats zero as unlimited
+    set:
+      dynamicrp.buildkit.enabled: true
+      dynamicrp.buildkit.maxParallelism: 0
+    asserts:
+      - failedTemplate:
+          errorMessage: dynamicrp.buildkit.maxParallelism must be an integer between 1 and 2147483647
+        template: dynamic-rp/deployment.yaml
+
+  - it: rejects negative parallelism
+    set:
+      dynamicrp.buildkit.enabled: true
+      dynamicrp.buildkit.maxParallelism: -1
+    asserts:
+      - failedTemplate:
+          errorMessage: dynamicrp.buildkit.maxParallelism must be an integer between 1 and 2147483647
+        template: dynamic-rp/deployment.yaml
+
+  - it: rejects fractional parallelism
+    set:
+      dynamicrp.buildkit.enabled: true
+      dynamicrp.buildkit.maxParallelism: 1.5
+    asserts:
+      - failedTemplate:
+          errorMessage: dynamicrp.buildkit.maxParallelism must be an integer between 1 and 2147483647
+        template: dynamic-rp/deployment.yaml
+
+  - it: rejects string parallelism instead of coercing it
+    set:
+      dynamicrp.buildkit.enabled: true
+      dynamicrp.buildkit.maxParallelism: "1"
+    asserts:
+      - failedTemplate:
+          errorMessage: dynamicrp.buildkit.maxParallelism must be an integer between 1 and 2147483647
+        template: dynamic-rp/deployment.yaml
+
+  - it: accepts the maximum portable integer value
+    set:
+      dynamicrp.buildkit.enabled: true
+      dynamicrp.buildkit.maxParallelism: 2147483647
+    asserts:
+      - equal:
+          path: data["buildkitd.toml"]
+          value: |-
+            [worker.oci]
+              max-parallelism = 2147483647
+        template: dynamic-rp/buildkit-config.yaml
+
+  - it: rejects a value immediately above the portable integer range
+    set:
+      dynamicrp.buildkit.enabled: true
+      dynamicrp.buildkit.maxParallelism: 2147483648
+    asserts:
+      - failedTemplate:
+          errorMessage: dynamicrp.buildkit.maxParallelism must be an integer between 1 and 2147483647
+        template: dynamic-rp/deployment.yaml
+
+  - it: rejects values outside the portable integer range before conversion
+    set:
+      dynamicrp.buildkit.enabled: true
+      dynamicrp.buildkit.maxParallelism: 9223372036854775808
+    asserts:
+      - failedTemplate:
+          errorMessage: dynamicrp.buildkit.maxParallelism must be an integer between 1 and 2147483647
+        template: dynamic-rp/deployment.yaml
+
+  - it: rejects large fractional values before conversion
+    set:
+      dynamicrp.buildkit.enabled: true
+      dynamicrp.buildkit.maxParallelism: 2147483646.5
+    asserts:
+      - failedTemplate:
+          errorMessage: dynamicrp.buildkit.maxParallelism must be an integer between 1 and 2147483647
+        template: dynamic-rp/deployment.yaml

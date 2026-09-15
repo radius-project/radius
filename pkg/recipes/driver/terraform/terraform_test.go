@@ -17,14 +17,14 @@ limitations under the License.
 package terraform
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	tfjson "github.com/hashicorp/terraform-json"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -34,7 +34,7 @@ import (
 
 	"github.com/radius-project/radius/pkg/recipes/driver"
 	"github.com/radius-project/radius/pkg/recipes/terraform"
-	"github.com/radius-project/radius/test/testcontext"
+	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/stretchr/testify/require"
 )
 
@@ -91,7 +91,7 @@ func verifyDirectoryCleanup(t *testing.T, tfRootDirPath string, armOperationID s
 }
 
 func Test_Terraform_Execute_Success(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -132,11 +132,9 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
 
 	recipeOutput, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeOutput)
@@ -144,7 +142,7 @@ func Test_Terraform_Execute_Success(t *testing.T) {
 }
 
 func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -162,19 +160,79 @@ func Test_Terraform_Execute_DeploymentFailure(t *testing.T) {
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, errors.New("Failed to deploy terraform module"))
 
 	_, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
 	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 
+func Test_Terraform_Execute_InvalidOutputMapping(t *testing.T) {
+	invalidMappingErr := recipes_util.ValidateOutputsMapping(
+		"redis-azure",
+		"Applications.Datastores/redisCaches",
+		[]string{"endpoint"},
+		map[string]string{"host": "missing"},
+		nil)
+	require.Error(t, invalidMappingErr)
+
+	tests := []struct {
+		name           string
+		executionError error
+		expectedCode   string
+		expectedStatus recipes_util.RecipeDeploymentStatus
+	}{
+		{
+			name:           "classifies OutputMappingError as setup error",
+			executionError: invalidMappingErr,
+			expectedCode:   recipes.InvalidRecipeOutputs,
+			expectedStatus: recipes_util.RecipeSetupError,
+		},
+		{
+			name:           "does not classify plain error with same message as setup error",
+			executionError: errors.New(invalidMappingErr.Error()),
+			expectedCode:   recipes.RecipeDeploymentFailed,
+			expectedStatus: recipes_util.ExecutionError,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			armCtx := &v1.ARMRequestContext{
+				OperationID: uuid.New(),
+			}
+			ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+			tfExecutor, tfDriver := setup(t)
+			envConfig, recipeMetadata, envRecipe := buildTestInputs()
+			envRecipe.Outputs = map[string]string{"host": "missing"}
+
+			tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(nil, tt.executionError)
+
+			output, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+				Configuration: envConfig,
+				Recipe:        recipeMetadata,
+				Definition:    envRecipe,
+			})
+
+			require.Nil(t, output)
+			require.Equal(t, &recipes.RecipeError{
+				ErrorDetails: v1.ErrorDetails{
+					Code:    tt.expectedCode,
+					Message: invalidMappingErr.Error(),
+				},
+				DeploymentStatus: tt.expectedStatus,
+			}, err)
+			verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
+		})
+	}
+}
+
 func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -208,11 +266,9 @@ func Test_Terraform_Execute_OutputsFailure(t *testing.T) {
 	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(expectedTFState, nil)
 
 	_, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
@@ -231,19 +287,17 @@ func Test_Terraform_Execute_EmptyPath(t *testing.T) {
 		DeploymentStatus: "setupError",
 	}
 
-	_, err := tfDriver.Execute(testcontext.New(t), driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+	_, err := tfDriver.Execute(t.Context(), driver.ExecuteOptions{
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &expErr)
 }
 
 func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	ctx = v1.WithARMRequestContext(ctx, &v1.ARMRequestContext{})
 
 	tfExecutor, tfDriver := setup(t)
@@ -283,18 +337,16 @@ func Test_Terraform_Execute_EmptyOperationID_Success(t *testing.T) {
 		Return(expectedTFState, nil)
 
 	recipeOutput, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
 	})
 	require.NoError(t, err)
 	require.Equal(t, expectedOutput, recipeOutput)
 }
 
 func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	// Do not add ARMRequestContext to the context
 
 	_, tfDriver := setup(t)
@@ -302,17 +354,15 @@ func Test_Terraform_Execute_MissingARMRequestContext_Panics(t *testing.T) {
 
 	require.Panics(t, func() {
 		_, _ = tfDriver.Execute(ctx, driver.ExecuteOptions{
-			BaseOptions: driver.BaseOptions{
-				Configuration: envConfig,
-				Recipe:        recipeMetadata,
-				Definition:    envRecipe,
-			},
+			Configuration: envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    envRecipe,
 		})
 	})
 }
 
 func TestTerraformDriver_GetRecipeMetadata_Success(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -349,7 +399,7 @@ func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
 		},
 	}
 
-	_, err := tfDriver.GetRecipeMetadata(testcontext.New(t), driver.BaseOptions{
+	_, err := tfDriver.GetRecipeMetadata(t.Context(), driver.BaseOptions{
 		Recipe:     recipes.ResourceMetadata{},
 		Definition: envRecipe,
 	})
@@ -358,7 +408,7 @@ func Test_Terraform_GetRecipeMetadata_EmptyPath(t *testing.T) {
 }
 
 func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -385,7 +435,7 @@ func TestTerraformDriver_GetRecipeMetadata_Failure(t *testing.T) {
 }
 
 func Test_Terraform_Delete_Success(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -397,11 +447,9 @@ func Test_Terraform_Delete_Success(t *testing.T) {
 	tfExecutor.EXPECT().Delete(ctx, gomock.Any()).Times(1).Return(nil)
 
 	err := tfDriver.Delete(ctx, driver.DeleteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration:   envConfig,
+		Recipe:          recipeMetadata,
+		Definition:      envRecipe,
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.NoError(t, err)
@@ -420,12 +468,10 @@ func Test_Terraform_Delete_EmptyPath(t *testing.T) {
 		},
 	}
 
-	err := tfDriver.Delete(testcontext.New(t), driver.DeleteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+	err := tfDriver.Delete(t.Context(), driver.DeleteOptions{
+		Configuration:   envConfig,
+		Recipe:          recipeMetadata,
+		Definition:      envRecipe,
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.Error(t, err)
@@ -433,7 +479,7 @@ func Test_Terraform_Delete_EmptyPath(t *testing.T) {
 }
 
 func Test_Terraform_Delete_Failure(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	armCtx := &v1.ARMRequestContext{
 		OperationID: uuid.New(),
 	}
@@ -453,15 +499,51 @@ func Test_Terraform_Delete_Failure(t *testing.T) {
 	}
 
 	err := tfDriver.Delete(ctx, driver.DeleteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: envConfig,
-			Recipe:        recipeMetadata,
-			Definition:    envRecipe,
-		},
+		Configuration:   envConfig,
+		Recipe:          recipeMetadata,
+		Definition:      envRecipe,
 		OutputResources: []rpv1.OutputResource{},
 	})
 	require.Error(t, err)
 	require.Equal(t, &expErr, err)
+	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
+}
+
+func Test_Terraform_Execute_MissingSecretOutput(t *testing.T) {
+	ctx := t.Context()
+	armCtx := &v1.ARMRequestContext{
+		OperationID: uuid.New(),
+	}
+	ctx = v1.WithARMRequestContext(ctx, armCtx)
+
+	tfExecutor, tfDriver := setup(t)
+	envConfig, recipeMetadata, envRecipe := buildTestInputs()
+	envRecipe.SecretOutputs = map[string]string{"connectionString": "primaryConnectionString"}
+
+	tfExecutor.EXPECT().Deploy(ctx, gomock.Any()).Times(1).Return(&tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				"name":                    {Value: "myhub"},
+				"primaryConnectionString": {Value: nil},
+			},
+			RootModule: &tfjson.StateModule{},
+		},
+	}, nil)
+
+	output, err := tfDriver.Execute(ctx, driver.ExecuteOptions{
+		Configuration: envConfig,
+		Recipe:        recipeMetadata,
+		Definition:    envRecipe,
+	})
+
+	require.Nil(t, output)
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.InvalidRecipeOutputs,
+			Message: `recipe "redis-azure" for resource type "Applications.Datastores/redisCaches": invalid outputs mapping: missing deployment output values for secrets["connectionString"] -> "primaryConnectionString"; available deployment outputs: "name"`,
+		},
+		DeploymentStatus: recipes_util.ExecutionError,
+	}, err)
 	verifyDirectoryCleanup(t, tfDriver.options.Path, armCtx.OperationID.String())
 }
 
@@ -868,28 +950,26 @@ func Test_Terraform_PrepareRecipeResponse(t *testing.T) {
 	}
 
 	opts := driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Configuration: recipes.Configuration{
-				Providers: datamodel.Providers{
-					AWS: datamodel.ProvidersAWS{
-						Scope: "/planes/aws/aws/accounts/179022619019/regions/us-east-2",
-					},
+		Configuration: recipes.Configuration{
+			Providers: datamodel.Providers{
+				AWS: datamodel.ProvidersAWS{
+					Scope: "/planes/aws/aws/accounts/179022619019/regions/us-east-2",
 				},
 			},
-			Definition: recipes.EnvironmentDefinition{
-				Name:            "mongo-azure",
-				Driver:          recipes.TemplateKindTerraform,
-				TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
-				ResourceType:    "Applications.Datastores/mongoDatabases",
-				TemplateVersion: "1.0",
-			},
+		},
+		Definition: recipes.EnvironmentDefinition{
+			Name:            "mongo-azure",
+			Driver:          recipes.TemplateKindTerraform,
+			TemplatePath:    "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+			ResourceType:    "Applications.Datastores/mongoDatabases",
+			TemplateVersion: "1.0",
 		},
 		PrevState: []string{},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			recipeResponse, err := d.prepareRecipeResponse(context.Background(), opts.BaseOptions.Definition, opts.Configuration, tt.state)
+			recipeResponse, err := d.prepareRecipeResponse(t.Context(), opts.BaseOptions.Definition, opts.Configuration, tt.state)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})
@@ -1069,15 +1149,39 @@ func Test_Terraform_PrepareRecipeResponse_DirectModule(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			recipeResponse, err := d.prepareRecipeResponse(context.Background(), tt.definition, recipes.Configuration{}, tt.state)
+			recipeResponse, err := d.prepareRecipeResponse(t.Context(), tt.definition, recipes.Configuration{}, tt.state)
 			require.Equal(t, tt.expectedErr, err)
 			require.Equal(t, tt.expectedResponse, recipeResponse)
 		})
 	}
 }
 
+func Test_Terraform_PrepareRecipeResponse_MissingSecretOutput(t *testing.T) {
+	d := &terraformDriver{}
+	definition := recipes.EnvironmentDefinition{
+		Name:          "eventhub",
+		ResourceType:  "Demo.Messaging/kafka",
+		SecretOutputs: map[string]string{"connectionString": "primaryConnectionString"},
+	}
+	state := &tfjson.State{
+		Values: &tfjson.StateValues{
+			Outputs: map[string]*tfjson.StateOutput{
+				"name":                    {Value: "myhub"},
+				"primaryConnectionString": {Value: nil},
+			},
+		},
+	}
+
+	response, err := d.prepareRecipeResponse(t.Context(), definition, recipes.Configuration{}, state)
+	require.Equal(t, &recipes.RecipeOutput{}, response)
+	require.EqualError(t, err, `recipe "eventhub" for resource type "Demo.Messaging/kafka": invalid outputs mapping: missing deployment output values for secrets["connectionString"] -> "primaryConnectionString"; available deployment outputs: "name"`)
+
+	var missingOutputErr *recipes_util.MissingOutputValuesError
+	require.ErrorAs(t, err, &missingOutputErr)
+}
+
 func Test_FindSecretIDs(t *testing.T) {
-	ctx := context.TODO()
+	ctx := t.Context()
 	definition := recipes.EnvironmentDefinition{TemplatePath: "git::https://dev.azure.com/project/module"}
 	_, driver := setup(t)
 

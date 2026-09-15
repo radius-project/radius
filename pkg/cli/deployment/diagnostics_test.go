@@ -17,7 +17,6 @@ limitations under the License.
 package deployment
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -116,7 +115,7 @@ func Test_findNamespaceOfContainerPreview(t *testing.T) {
 				Return(tt.resource, tt.getErr)
 
 			dc := &ARMDiagnosticsClient{Preview: true, ManagementClient: managementClient}
-			namespace, err := dc.findNamespaceOfContainerPreview(context.Background(), resourceName)
+			namespace, err := dc.findNamespaceOfContainerPreview(t.Context(), resourceName)
 
 			if tt.expectErr {
 				require.Error(t, err)

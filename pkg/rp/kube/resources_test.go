@@ -17,7 +17,6 @@ limitations under the License.
 package kube
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -91,7 +90,7 @@ func TestFindNamespaceByEnvID(t *testing.T) {
 			mockSC := database.NewMockClient(mctrl)
 			mockSC.EXPECT().Get(gomock.Any(), tc.id, gomock.Any()).Return(fakeStoreObject(envdm), nil).Times(1)
 
-			ns, err := FindNamespaceByEnvID(context.Background(), mockSC, testAppCoreEnvID)
+			ns, err := FindNamespaceByEnvID(t.Context(), mockSC, testAppCoreEnvID)
 			require.NoError(t, err)
 			require.Equal(t, tc.out, ns)
 		})
@@ -211,7 +210,7 @@ func TestFindNamespaceByEnvID_V20250801Preview(t *testing.T) {
 			mockSC := database.NewMockClient(mctrl)
 			mockSC.EXPECT().Get(gomock.Any(), testRadiusCoreEnvID, gomock.Any()).Return(fakeStoreObject(tc.environment), nil).Times(1)
 
-			ns, err := FindNamespaceByEnvID(context.Background(), mockSC, testRadiusCoreEnvID)
+			ns, err := FindNamespaceByEnvID(t.Context(), mockSC, testRadiusCoreEnvID)
 			if tc.expectedError != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tc.expectedError)
@@ -229,7 +228,7 @@ func TestFindNamespaceByEnvID_InvalidResourceType(t *testing.T) {
 
 	invalidEnvID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Invalid.Type/environments/env"
 
-	_, err := FindNamespaceByEnvID(context.Background(), mockSC, invalidEnvID)
+	_, err := FindNamespaceByEnvID(t.Context(), mockSC, invalidEnvID)
 	require.Error(t, err)
 	require.Equal(t, "invalid environment resource id - must be Applications.Core/environments or Radius.Core/environments", err.Error())
 }
@@ -248,7 +247,7 @@ func TestFindNamespaceByEnvID_NonKubernetesEnvironment(t *testing.T) {
 	mockSC := database.NewMockClient(mctrl)
 	mockSC.EXPECT().Get(gomock.Any(), testAppCoreEnvID, gomock.Any()).Return(fakeStoreObject(envdm), nil).Times(1)
 
-	_, err := FindNamespaceByEnvID(context.Background(), mockSC, testAppCoreEnvID)
+	_, err := FindNamespaceByEnvID(t.Context(), mockSC, testAppCoreEnvID)
 	require.Error(t, err)
 	require.Equal(t, ErrNonKubernetesEnvironment, err)
 }

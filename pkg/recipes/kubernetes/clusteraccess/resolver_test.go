@@ -17,7 +17,6 @@ limitations under the License.
 package clusteraccess
 
 import (
-	"context"
 	"errors"
 	"os"
 	"testing"
@@ -44,7 +43,7 @@ func Test_Resolve_PrefersInjectedKubeconfig(t *testing.T) {
 		},
 	}
 
-	got, err := r.Resolve(context.Background(), &recipes.Configuration{})
+	got, err := r.Resolve(t.Context(), &recipes.Configuration{})
 	require.NoError(t, err)
 	require.Same(t, injectedCfg, got)
 }
@@ -63,7 +62,7 @@ func Test_Resolve_FallsBackToLocalWhenNoInjectedKubeconfig(t *testing.T) {
 		},
 	}
 
-	got, err := r.Resolve(context.Background(), &recipes.Configuration{})
+	got, err := r.Resolve(t.Context(), &recipes.Configuration{})
 	require.NoError(t, err)
 	require.Same(t, localCfg, got)
 }
@@ -84,7 +83,7 @@ func Test_LocalStrategy_UsesInClusterConfigWhenAvailable(t *testing.T) {
 		},
 	}
 
-	got, err := s.restConfig(context.Background(), &recipes.Configuration{})
+	got, err := s.restConfig(t.Context(), &recipes.Configuration{})
 	require.NoError(t, err)
 	require.Same(t, inClusterCfg, got)
 }
@@ -96,7 +95,7 @@ func Test_LocalStrategy_FallsBackToLocalKubeconfigWhenNotInCluster(t *testing.T)
 		localConfig:     func() (*rest.Config, error) { return localCfg, nil },
 	}
 
-	got, err := s.restConfig(context.Background(), &recipes.Configuration{})
+	got, err := s.restConfig(t.Context(), &recipes.Configuration{})
 	require.NoError(t, err)
 	require.Same(t, localCfg, got)
 }
@@ -111,7 +110,7 @@ func Test_LocalStrategy_PropagatesUnexpectedInClusterError(t *testing.T) {
 		},
 	}
 
-	_, err := s.restConfig(context.Background(), &recipes.Configuration{})
+	_, err := s.restConfig(t.Context(), &recipes.Configuration{})
 	require.ErrorIs(t, err, sentinel)
 }
 
@@ -134,7 +133,7 @@ func Test_InjectedKubeconfigStrategy_LoadsConfigFromPath(t *testing.T) {
 		},
 	}
 
-	got, err := s.restConfig(context.Background(), &recipes.Configuration{})
+	got, err := s.restConfig(t.Context(), &recipes.Configuration{})
 	require.NoError(t, err)
 	require.Same(t, want, got)
 	require.Equal(t, "/etc/radius/target-kubeconfig/config", loadedPath)
@@ -146,7 +145,7 @@ func Test_InjectedKubeconfigStrategy_ErrorsWhenKubeconfigUnreadable(t *testing.T
 		loadConfig: func(string) (*rest.Config, error) { return nil, errors.New("no such file") },
 	}
 
-	_, err := s.restConfig(context.Background(), &recipes.Configuration{})
+	_, err := s.restConfig(t.Context(), &recipes.Configuration{})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), TargetKubeconfigEnvVar)
 	require.Contains(t, err.Error(), "/missing/kubeconfig")
@@ -168,7 +167,7 @@ func Test_ResolveKubeconfigSource_PrefersInjectedKubeconfig(t *testing.T) {
 		},
 	}
 
-	got, err := r.ResolveKubeconfigSource(context.Background(), &recipes.Configuration{})
+	got, err := r.ResolveKubeconfigSource(t.Context(), &recipes.Configuration{})
 	require.NoError(t, err)
 	require.Equal(t, KubeconfigSource{Path: "/path/to/kubeconfig"}, got)
 }
@@ -183,7 +182,7 @@ func Test_ResolveKubeconfigSource_FallsBackToLocal(t *testing.T) {
 		},
 	}
 
-	got, err := r.ResolveKubeconfigSource(context.Background(), &recipes.Configuration{})
+	got, err := r.ResolveKubeconfigSource(t.Context(), &recipes.Configuration{})
 	require.NoError(t, err)
 	require.Equal(t, KubeconfigSource{Path: clientcmd.RecommendedHomeFile}, got)
 }
@@ -194,7 +193,7 @@ func Test_InjectedKubeconfigStrategy_KubeconfigSourceReturnsEnvPath(t *testing.T
 		statFile: func(string) (os.FileInfo, error) { return nil, nil },
 	}
 
-	got, err := s.kubeconfigSource(context.Background(), &recipes.Configuration{})
+	got, err := s.kubeconfigSource(t.Context(), &recipes.Configuration{})
 	require.NoError(t, err)
 	require.Equal(t, KubeconfigSource{Path: "/etc/radius/target-kubeconfig/config"}, got)
 }
@@ -205,7 +204,7 @@ func Test_InjectedKubeconfigStrategy_KubeconfigSourceErrorsWhenPathUnreadable(t 
 		statFile: func(string) (os.FileInfo, error) { return nil, errors.New("no such file") },
 	}
 
-	_, err := s.kubeconfigSource(context.Background(), &recipes.Configuration{})
+	_, err := s.kubeconfigSource(t.Context(), &recipes.Configuration{})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), TargetKubeconfigEnvVar)
 	require.Contains(t, err.Error(), "/missing/kubeconfig")
@@ -216,7 +215,7 @@ func Test_LocalStrategy_KubeconfigSourceInClusterReturnsEmptyPath(t *testing.T) 
 		inClusterConfig: func() (*rest.Config, error) { return &rest.Config{}, nil },
 	}
 
-	got, err := s.kubeconfigSource(context.Background(), &recipes.Configuration{})
+	got, err := s.kubeconfigSource(t.Context(), &recipes.Configuration{})
 	require.NoError(t, err)
 	require.Equal(t, KubeconfigSource{}, got)
 }
@@ -226,7 +225,7 @@ func Test_LocalStrategy_KubeconfigSourceNotInClusterReturnsLocalKubeconfig(t *te
 		inClusterConfig: func() (*rest.Config, error) { return nil, rest.ErrNotInCluster },
 	}
 
-	got, err := s.kubeconfigSource(context.Background(), &recipes.Configuration{})
+	got, err := s.kubeconfigSource(t.Context(), &recipes.Configuration{})
 	require.NoError(t, err)
 	require.Equal(t, KubeconfigSource{Path: clientcmd.RecommendedHomeFile}, got)
 }
@@ -237,6 +236,6 @@ func Test_LocalStrategy_KubeconfigSourcePropagatesUnexpectedError(t *testing.T) 
 		inClusterConfig: func() (*rest.Config, error) { return nil, sentinel },
 	}
 
-	_, err := s.kubeconfigSource(context.Background(), &recipes.Configuration{})
+	_, err := s.kubeconfigSource(t.Context(), &recipes.Configuration{})
 	require.ErrorIs(t, err, sentinel)
 }

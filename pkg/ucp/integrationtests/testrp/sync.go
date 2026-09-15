@@ -31,7 +31,6 @@ import (
 	"github.com/radius-project/radius/pkg/components/queue/queueprovider"
 	"github.com/radius-project/radius/pkg/middleware"
 	"github.com/radius-project/radius/pkg/ucp/testhost"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,7 +38,7 @@ import (
 func SyncResource(t *testing.T, ts *testhost.TestHost, rootScope string) func(w http.ResponseWriter, r *http.Request) {
 	rootScope = strings.ToLower(rootScope)
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	r := chi.NewRouter()
 	r.Use(servicecontext.ARMRequestCtx("", v1.LocationGlobal), middleware.LowercaseURLPath)
 

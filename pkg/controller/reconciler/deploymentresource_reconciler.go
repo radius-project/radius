@@ -144,7 +144,7 @@ func (r *DeploymentResourceReconciler) reconcileOperation(ctx context.Context, d
 		}
 
 		if !poller.Done() {
-			return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+			return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 		}
 
 		// If we get here, the operation is complete.
@@ -243,7 +243,7 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 	if dependentResource != "" {
 		logger.Info("Resource is an application or environment, being used by another resource. Waiting for dependent resource to be deleted.", "resourceId", deploymentResource.Spec.Id, "dependentResource", dependentResource)
 		// Requeue after a delay to check dependencies again
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 	}
 
 	// Since we're going to proceed with deletion, update the observed generation and status.
@@ -279,7 +279,7 @@ func (r *DeploymentResourceReconciler) reconcileDelete(ctx context.Context, depl
 			return ctrl.Result{}, err
 		}
 
-		return ctrl.Result{Requeue: true, RequeueAfter: r.requeueDelay()}, nil
+		return ctrl.Result{RequeueAfter: r.requeueDelay()}, nil
 	} else if deletePoller != nil && deletePoller.Done() {
 		// Synchronous delete completed, but we need to verify it succeeded
 		_, err = deletePoller.Result(ctx)

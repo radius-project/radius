@@ -23,8 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"uuid"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
@@ -32,7 +33,6 @@ import (
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	corerptest "github.com/radius-project/radius/test/rp"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,7 +44,7 @@ func Test_TrackedResources(t *testing.T) {
 		t.Logf("%s:\n\n%+v", message, string(j))
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	options := corerptest.NewRPTestOptions(t)
 	resourceGroupID := resources.MustParse("/planes/radius/local/resourcegroups/test-" + uuid.New().String())
 

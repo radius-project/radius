@@ -37,11 +37,10 @@ using OpenAPI;
 namespace Applications.Dapr;
 
 @doc("Dapr configuration store portable resource")
-model DaprConfigurationStoreResource
-  is TrackedResourceRequired<
-    DaprConfigurationStoreProperties,
-    "DaprConfigurationStores"
-  > {
+model DaprConfigurationStoreResource is TrackedResourceRequired<
+  DaprConfigurationStoreProperties,
+  "DaprConfigurationStores"
+> {
   @doc("Configuration Store name")
   @key("configurationStoreName")
   @path

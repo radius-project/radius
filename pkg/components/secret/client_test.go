@@ -17,7 +17,6 @@ limitations under the License.
 package secret
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"testing"
@@ -35,7 +34,6 @@ func Test_SaveSecret(t *testing.T) {
 	defer mctrl.Finish()
 
 	mockSecretClient := NewMockClient(mctrl)
-	ctx := context.Background()
 	azureSecret, err := newTestAzureSecret()
 	require.NoError(t, err)
 	saveError := errors.New("Failed to Save Secret")
@@ -50,13 +48,14 @@ func Test_SaveSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
+			ctx := t.Context()
 			if tt.isSuccess {
 				mockSecretClient.EXPECT().
-					Save(context.Background(), testSecretName, gomock.Any()).
+					Save(ctx, testSecretName, gomock.Any()).
 					Return(nil).Times(1)
 			} else {
 				mockSecretClient.EXPECT().
-					Save(context.Background(), testSecretName, gomock.Any()).
+					Save(ctx, testSecretName, gomock.Any()).
 					Return(saveError).Times(1)
 			}
 			err := SaveSecret(ctx, tt.secretClient, testSecretName, tt.secret)
@@ -74,7 +73,6 @@ func Test_GetSecret(t *testing.T) {
 	defer mctrl.Finish()
 
 	mockSecretClient := NewMockClient(mctrl)
-	ctx := context.Background()
 
 	testSecretResponse, err := newTestAzureSecretResponse()
 	getError := errors.New("Failed to Save Secret")
@@ -89,13 +87,14 @@ func Test_GetSecret(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
+			ctx := t.Context()
 			if tt.isSuccess {
 				mockSecretClient.EXPECT().
-					Get(context.Background(), testSecretName).
+					Get(ctx, testSecretName).
 					Return(testSecretResponse, nil).Times(1)
 			} else {
 				mockSecretClient.EXPECT().
-					Get(context.Background(), testSecretName).
+					Get(ctx, testSecretName).
 					Return(nil, getError).Times(1)
 			}
 			secretResponse, err := GetSecret[testSecretObject](ctx, tt.secretClient, testSecretName)

@@ -34,7 +34,7 @@ make generate
 `make generate` runs the full pipeline: it deletes stale generated code, compiles the resource-provider namespaces' TypeSpec to OpenAPI specs (`make generate-openapi-spec` — `UCP`, `Applications.Core`, `Applications.Dapr`, `Applications.Messaging`, `Applications.Datastores`, and `Radius.Core`), runs the TypeSpec Go emitter to produce each namespace's Go client, runs `go generate ./...` (mockgen), generates the Bicep extensibility types, and generates the CRDs. (Not every TypeSpec project emits OpenAPI — for example `typespec/GenericResource` produces only the generic CLI Go client via `make generate-genericcliclient`.) The two halves of the pipeline are:
 
 - **TypeSpec → Swagger.** The [`@azure-tools/typespec-autorest`](https://github.com/Azure/typespec-azure) emitter writes each API namespace's OpenAPI document to `swagger/specification/<service>/resource-manager/<service-name>/<status>/<version>/openapi.json`. The output directory is set per namespace by the `emitter-output-dir` option in that namespace's `tspconfig.yaml` (for example `typespec/Applications.Core/tspconfig.yaml` emits to `swagger/specification/applications`).
-- **TypeSpec → Go.** The [`@azure-tools/typespec-go`](https://github.com/Azure/typespec-azure) emitter writes generated client code to a temporary `.tsp-go-tmp` folder, which the per-namespace `make generate-rad-<namespace>-client` targets copy into the matching `pkg/<namespace>/api/<version>/` directory and run `go fmt` over. Generated files are prefixed `zz_generated_`.
+- **TypeSpec → Go.** The per-namespace `make generate-rad-<namespace>-client` targets create a fresh directory under `${TMPDIR:-/tmp}` for each [`@azure-tools/typespec-go`](https://github.com/Azure/typespec-azure) invocation. Generating outside the repository prevents the emitter from replacing the module configured in the namespace's `tspconfig.yaml` with the repository's root Go module. Each target copies the generated client into the matching `pkg/<namespace>/api/<version>/` directory, runs `go fmt`, and removes the temporary directory. Generated files are prefixed `zz_generated_`.
 
 #### Alternative: generate a single namespace manually
 
@@ -46,13 +46,13 @@ You normally only need `make generate`. To regenerate one namespace by hand, run
    cd typespec/Applications.Core && pnpm exec tsp compile .
    ```
 
-2. Generate the Go client for that namespace with the TypeSpec Go emitter:
+2. Generate and copy the Go client for that namespace with its Make target:
 
    ```bash
-   cd typespec/Applications.Core && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
+   make generate-rad-corerp-client
    ```
 
-   The emitter configuration lives in each namespace's `tspconfig.yaml` (under the `@azure-tools/typespec-go` options block). The generated files land in `.tsp-go-tmp` and must be copied into the matching `pkg/<namespace>/api/<version>/` directory; the per-namespace `make generate-rad-<namespace>-client` targets (for example `make generate-rad-corerp-client`) automate that copy-and-format step, so prefer them over copying by hand.
+   The emitter configuration lives in each namespace's `tspconfig.yaml` under the `@azure-tools/typespec-go` options block. Use the Make target instead of invoking the Go emitter directly because the target creates an external temporary output directory, copies the generated files into the configured package, formats them, and cleans up the temporary directory.
 
 ### 3. Wire up and test the change
 
@@ -71,7 +71,7 @@ To confirm your schema compiles in a Bicep template, publish the generated Bicep
    make generate-bicep-types
    ```
 
-   This writes the type files under `hack/bicep-types-radius/generated/` and rebuilds the unified index at `hack/bicep-types-radius/generated/index.json`.
+   This writes the type files under `hack/bicep-types-radius/generated/` and rebuilds the unified index at `hack/bicep-types-radius/generated/index.json`. It also writes one reference doc per resource type to `<namespace>/<apiVersion>/docs/`, for both the TypeSpec-generated and the manifest-generated (contrib) namespaces. Those docs are build artifacts, not checked in, and are published to the docs repo by the `publish-docs` workflow.
 3. Publish the unified `radius` extension to a target of your choice (a local file path or an OCI registry):
 
    ```bash
@@ -121,3 +121,4 @@ To confirm your schema compiles in a Bicep template, publish the generated Bicep
 - **Generated files keep reappearing as changes.** Generated `zz_generated_*.go` and `openapi.json` files are committed artifacts. Run `make generate`, then commit the regenerated output so it matches your TypeSpec.
 - **`make publish-bicep-extension` errors that the index does not exist.** Run `make generate-bicep-types` first; the target publishes `hack/bicep-types-radius/generated/index.json`, which that command creates.
 - **`make publish-bicep-extension` cannot find `bicep`.** Install the [Bicep CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/install) and ensure it is on your `PATH`, or use the binary at `~/.rad/bin/bicep` from a Radius CLI install.
+- **`Reference-doc generator not found`.** The contrib namespaces render their reference docs with the compiled TypeSpec emitter. Run `make generate-bicep-types-emitter` to build it, then re-run `make generate-bicep-types-contrib`.

@@ -17,7 +17,6 @@ limitations under the License.
 package list
 
 import (
-	"context"
 	"sort"
 	"testing"
 
@@ -147,7 +146,7 @@ func Test_Run(t *testing.T) {
 			Format:            "table",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{

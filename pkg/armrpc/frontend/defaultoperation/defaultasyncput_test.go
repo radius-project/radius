@@ -17,7 +17,6 @@ limitations under the License.
 package defaultoperation
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -83,7 +82,7 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 			reqModel, reqDataModel, _ := loadTestResurce()
 
 			w := httptest.NewRecorder()
-			req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodPut, resourceTestHeaderFile, reqModel)
+			req, err := rpctest.NewHTTPRequestFromJSON(t.Context(), http.MethodPut, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
 			ctx := rpctest.NewARMRequestContext(req)
@@ -259,15 +258,15 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			reqDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
-			req, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodPatch, resourceTestHeaderFile, reqModel)
+			req, err := rpctest.NewHTTPRequestFromJSON(t.Context(), http.MethodPatch, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
 			ctx := rpctest.NewARMRequestContext(req)
 			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			so := &database.Object{
-				Metadata: database.Metadata{ID: sCtx.ResourceID.String()},
-				Data:     reqDataModel,
+				ID:   sCtx.ResourceID.String(),
+				Data: reqDataModel,
 			}
 
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).

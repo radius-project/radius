@@ -9,7 +9,7 @@ set -euo pipefail
 #
 # Terraform is published as a per-platform zip on the HashiCorp release CDN
 # (releases.hashicorp.com), not GitHub. The pinned version and per-platform
-# SHA-256 checksums (of the zip) are normally provided by build/tools.mk through
+# SHA-256 checksums (of the zip) are normally provided by build/tools.yaml through
 # the environment. The script is generic, so when a value is not supplied it is
 # resolved at runtime:
 #   * empty TERRAFORM_VERSION       -> the latest published release

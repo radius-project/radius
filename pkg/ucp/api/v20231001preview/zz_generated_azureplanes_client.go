@@ -72,8 +72,7 @@ func (client *AzurePlanesClient) createOrUpdate(ctx context.Context, planeName s
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -133,8 +132,7 @@ func (client *AzurePlanesClient) deleteOperation(ctx context.Context, planeName 
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -171,12 +169,7 @@ func (client *AzurePlanesClient) Get(ctx context.Context, planeName string, opti
 	if err != nil {
 		return AzurePlanesClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return AzurePlanesClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -198,8 +191,11 @@ func (client *AzurePlanesClient) getCreateRequest(ctx context.Context, planeName
 }
 
 // getHandleResponse handles the Get response.
-func (client *AzurePlanesClient) getHandleResponse(resp *http.Response) (AzurePlanesClientGetResponse, error) {
+func (client *AzurePlanesClient) getHandleResponse(resp *http.Response, successCodes ...int) (AzurePlanesClientGetResponse, error) {
 	result := AzurePlanesClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.AzurePlaneResource); err != nil {
 		return AzurePlanesClientGetResponse{}, err
 	}
@@ -219,34 +215,48 @@ func (client *AzurePlanesClient) NewListPager(options *AzurePlanesClientListOpti
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listCreateRequest(ctx, options)
-			}, nil)
+			req, err := client.listCreateRequest(ctx, nextLink, options)
 			if err != nil {
 				return AzurePlanesClientListResponse{}, err
 			}
-			return client.listHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return AzurePlanesClientListResponse{}, err
+			}
+			return client.listHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listCreateRequest creates the List request.
-func (client *AzurePlanesClient) listCreateRequest(ctx context.Context, _ *AzurePlanesClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/azure"
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+func (client *AzurePlanesClient) listCreateRequest(ctx context.Context, nextLink string, _ *AzurePlanesClientListOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/planes/azure"
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
+	}
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *AzurePlanesClient) listHandleResponse(resp *http.Response) (AzurePlanesClientListResponse, error) {
+func (client *AzurePlanesClient) listHandleResponse(resp *http.Response, successCodes ...int) (AzurePlanesClientListResponse, error) {
 	result := AzurePlanesClientListResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.AzurePlaneResourceListResult); err != nil {
 		return AzurePlanesClientListResponse{}, err
 	}
@@ -287,8 +297,7 @@ func (client *AzurePlanesClient) update(ctx context.Context, planeName string, p
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }

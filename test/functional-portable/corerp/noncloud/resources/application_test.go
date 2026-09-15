@@ -18,18 +18,18 @@ package resource_test
 
 import (
 	"context"
-	"sort"
+	"fmt"
 	"strings"
 	"testing"
 
+	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
+	"github.com/radius-project/radius/pkg/cli/clients"
+	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 
-	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
-	"github.com/radius-project/radius/pkg/cli/clients"
-	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/stretchr/testify/require"
 )
 
@@ -59,25 +59,24 @@ func Test_ApplicationGraph(t *testing.T) {
 	// Deploy a simple app
 	template := "testdata/corerp-resources-application-graph.bicep"
 	name := "corerp-application-simple1"
-	appNamespace := "default-corerp-application-simple1"
+	appNamespace := name
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage()),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
 					{
 						Name: name,
-						Type: validation.ApplicationsResource,
+						Type: validation.CoreApplicationsResource,
 					},
 					{
 						Name: "http-front-ctnr-simple1",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 					{
 						Name: "http-back-ctnr-simple1",
-						Type: validation.ContainersResource,
+						Type: validation.ComputeContainersResource,
 						App:  name,
 					},
 				},
@@ -87,89 +86,84 @@ func Test_ApplicationGraph(t *testing.T) {
 					appNamespace: {
 						validation.NewK8sPodForResource(name, "http-front-ctnr-simple1"),
 						validation.NewK8sPodForResource(name, "http-back-ctnr-simple1"),
-						validation.NewK8sServiceForResource(name, "http-front-cntr-simple1").ValidateLabels(false),
-						validation.NewK8sServiceForResource(name, "http-back-cntr-simple1").ValidateLabels(false),
+						validation.NewK8sServiceForResource(name, "http-front-ctnr-simple1"),
+						validation.NewK8sServiceForResource(name, "http-back-ctnr-simple1"),
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
 				// Verify the application graph
-				options := rp.NewRPTestOptions(t)
-				client := options.ManagementClient
-				require.IsType(t, client, &clients.UCPApplicationsManagementClient{})
-
-				appManagementClient := client.(*clients.UCPApplicationsManagementClient)
-				appGraphClient, err := v20231001preview.NewApplicationsClient(&aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
+				appManagementClient, ok := ct.Options.ManagementClient.(*clients.UCPApplicationsManagementClient)
+				require.True(t, ok, "expected UCPApplicationsManagementClient")
+				appGraphClient, err := v20250801preview.NewApplicationsClient(&aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
 				require.NoError(t, err)
 
-				res, err := appGraphClient.GetGraph(ctx, appManagementClient.RootScope, "corerp-application-simple1", v20231001preview.GetGraphRequest{}, nil)
+				res, err := appGraphClient.GetGraph(ctx, appManagementClient.RootScope, name, v20250801preview.GetGraphRequest{}, nil)
 				require.NoError(t, err)
 
-				// assert that the graph is as expected
-				expected := []*v20231001preview.ApplicationGraphResource{}
-				testutil.MustUnmarshalFromFile("corerp-resources-application-graph-out.json", &expected)
+				// Validate the migrated graph shape dynamically so the assertion stays
+				// portable across clusters and resource groups. The two containers must
+				// be present on the new Radius.Compute/containers type, carry the
+				// expected application/environment references, and the front->back
+				// connection (whose source is a resource ID) must render as a graph edge
+				// in both directions.
+				expectedAppID := fmt.Sprintf("%s/providers/Radius.Core/applications/%s", appManagementClient.RootScope, name)
+				expectedEnvID := fmt.Sprintf("%s/providers/Radius.Core/environments/%s-env", appManagementClient.RootScope, name)
 
-				// For easier comparison, we sort the resources by name.
-				sort.Slice(res.Resources, func(i, j int) bool {
-					return *res.Resources[i].Name < *res.Resources[j].Name
-				})
-				sort.Slice(expected, func(i, j int) bool {
-					return *expected[i].Name < *expected[j].Name
-				})
-
-				// Verify the resource-type-specific Properties bag. We assert
-				// the top-level keys and compare the value of `application`
-				// (a stable, deterministic string).
-				//
-				// We build a name -> *expected lookup so the Properties graft
-				// below is robust to differences in ordering or length between
-				// `res.Resources` and the fixture (otherwise an index-based
-				// graft would silently attach properties to the wrong element
-				// when ElementsMatch is used as the fallback assertion).
-				expectedByName := make(map[string]*v20231001preview.ApplicationGraphResource, len(expected))
-				for i := range expected {
-					expectedByName[*expected[i].Name] = expected[i]
-				}
-
+				actualByName := make(map[string]*v20250801preview.ApplicationGraphResource, len(res.Resources))
 				for _, r := range res.Resources {
-					if *r.Type != "Applications.Core/containers" {
+					require.NotNil(t, r)
+					require.NotNil(t, r.Name)
+					require.NotNil(t, r.Type)
+					actualByName[*r.Name] = r
+
+					if *r.Type != "Radius.Compute/containers" {
 						continue
 					}
 					require.NotNil(t, r.Properties, "%s: Properties should not be nil", *r.Name)
-
-					// The application that owns this container lives in the
-					// same resource group; derive its expected ID from the
-					// container's own ID so the assertion is independent of
-					// the resource group name used by the test environment.
-					expectedAppID := strings.Replace(
-						*r.ID,
-						"/containers/"+*r.Name,
-						"/applications/"+name,
-						1,
-					)
-					require.Equal(t, expectedAppID, r.Properties["application"], "%s: application property mismatch", *r.Name)
-					require.Contains(t, r.Properties, "container", "%s: missing container property", *r.Name)
-
-					// Graft the actual Properties onto the matching expected
-					// resource so the struct-level equality check below
-					// succeeds for the rest of the fields without having to
-					// encode the environment-specific property bag in the
-					// fixture.
-					if e, ok := expectedByName[*r.Name]; ok {
-						e.Properties = r.Properties
-					}
+					// UCP normalizes the resourceGroups segment casing, so compare IDs case-insensitively.
+					require.Truef(t, strings.EqualFold(expectedAppID, fmt.Sprintf("%v", r.Properties["application"])),
+						"%s: application property mismatch: expected %q got %q", *r.Name, expectedAppID, r.Properties["application"])
+					require.Truef(t, strings.EqualFold(expectedEnvID, fmt.Sprintf("%v", r.Properties["environment"])),
+						"%s: environment property mismatch: expected %q got %q", *r.Name, expectedEnvID, r.Properties["environment"])
+					containers, ok := r.Properties["containers"].(map[string]any)
+					require.Truef(t, ok, "%s: containers property should be an object", *r.Name)
+					require.Containsf(t, containers, *r.Name, "%s: missing named container property", *r.Name)
 				}
 
-				if len(res.Resources) != len(expected) {
-					require.ElementsMatch(t, expected, res.Resources)
-				} else {
-					for i := range res.Resources {
-						require.Equal(t, expected[i], res.Resources[i], *expected[i].Name)
-					}
-				}
+				front := actualByName["http-front-ctnr-simple1"]
+				require.NotNil(t, front, "front container should be present in graph")
+				require.Equal(t, "Radius.Compute/containers", *front.Type)
+				back := actualByName["http-back-ctnr-simple1"]
+				require.NotNil(t, back, "back container should be present in graph")
+				require.Equal(t, "Radius.Compute/containers", *back.Type)
+
+				require.Len(t, front.Connections, 1, "front container should have one outbound connection")
+				require.NotNil(t, front.Connections[0])
+				require.NotNil(t, front.Connections[0].Direction)
+				require.NotNil(t, front.Connections[0].ID)
+				require.NotNil(t, back.ID)
+				require.Equal(t, v20250801preview.DirectionOutbound, *front.Connections[0].Direction)
+				require.Equal(t, *back.ID, *front.Connections[0].ID)
+				require.NotNil(t, front.Connections[0].Kind)
+				require.Equal(t, v20250801preview.ConnectionKindConnection, *front.Connections[0].Kind)
+
+				require.Len(t, back.Connections, 1, "back container should have one inbound connection")
+				require.NotNil(t, back.Connections[0])
+				require.NotNil(t, back.Connections[0].Direction)
+				require.NotNil(t, back.Connections[0].ID)
+				require.NotNil(t, front.ID)
+				require.Equal(t, v20250801preview.DirectionInbound, *back.Connections[0].Direction)
+				require.Equal(t, *front.ID, *back.Connections[0].ID)
+				require.NotNil(t, back.Connections[0].Kind)
+				require.Equal(t, v20250801preview.ConnectionKindConnection, *back.Connections[0].Kind)
 			},
 		},
 	})
+
+	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
+	test.PreSetup = preSetup
+	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
 
 	test.Test(t)
 }

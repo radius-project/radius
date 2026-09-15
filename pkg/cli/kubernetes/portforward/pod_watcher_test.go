@@ -23,18 +23,15 @@ import (
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_podWatcher_CanShutdownGracefully(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	pod := &corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
-			Name: "test-app-test-container-abcd-efghij",
-			Labels: map[string]string{
-				kubernetes.LabelRadiusResource: "test-container",
-			},
+		Name: "test-app-test-container-abcd-efghij",
+		Labels: map[string]string{
+			kubernetes.LabelRadiusResource: "test-container",
 		},
 		Status: corev1.PodStatus{
 			Phase: corev1.PodRunning,
@@ -87,14 +84,12 @@ func Test_podWatcher_CanShutdownGracefully(t *testing.T) {
 }
 
 func Test_podWatcher_CanStartWhenPodIsReady(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 
 	pod := &corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
-			Name: "test-app-test-container-abcd-efghij",
-			Labels: map[string]string{
-				kubernetes.LabelRadiusResource: "test-container",
-			},
+		Name: "test-app-test-container-abcd-efghij",
+		Labels: map[string]string{
+			kubernetes.LabelRadiusResource: "test-container",
 		},
 		Status: corev1.PodStatus{
 			Phase: corev1.PodUnknown,

@@ -27,10 +27,9 @@ import (
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/datamodel/converter"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/to"
-
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 var _ ctrl.Controller = (*GetGraphv20250801preview)(nil)
@@ -158,7 +157,7 @@ func buildIconsMap(resources []*corerpv20250801preview.ApplicationGraphResource,
 	if len(resources) == 0 {
 		return nil
 	}
-	defaultIcon := productmanifest.Default()
+	defaultIcon := defaults.DefaultIcon()
 	hasDefault := defaultIcon.Hash != "" && len(defaultIcon.Bytes) > 0
 	out := map[string]*string{}
 	for _, r := range resources {

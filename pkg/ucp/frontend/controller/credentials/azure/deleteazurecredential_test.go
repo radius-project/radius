@@ -112,7 +112,7 @@ func Test_Credential_Delete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.fn(*mockDatabaseClient, *mockSecretClient)
-			request, err := rpctest.NewHTTPRequestFromJSON(context.Background(), http.MethodDelete, tt.headerfile, nil)
+			request, err := rpctest.NewHTTPRequestFromJSON(t.Context(), http.MethodDelete, tt.headerfile, nil)
 			require.NoError(t, err)
 
 			ctx := rpctest.NewARMRequestContext(request)
@@ -139,9 +139,7 @@ func setupCredentialMocks(mockDatabaseClient database.MockClient) {
 	mockDatabaseClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, id string, options ...database.GetOptions) (*database.Object, error) {
 			return &database.Object{
-				Metadata: database.Metadata{
-					ID: datamodelCredential.TrackedResource.ID,
-				},
+				ID:   datamodelCredential.TrackedResource.ID,
 				Data: &datamodelCredential,
 			}, nil
 		}).Times(1)

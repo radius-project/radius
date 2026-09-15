@@ -64,7 +64,7 @@ func (aw *applicationWatcher) Run(ctx context.Context) error {
 	//
 	// RetryWatcher wraps the normal watch functionality to trigger retries when a watch expires or errors.
 	watcher, err := watchtools.NewRetryWatcherWithContext(ctx, "1", &cache.ListWatch{
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+		WatchFuncWithContext: func(ctx context.Context, _ metav1.ListOptions) (watch.Interface, error) {
 			return deployments.Watch(ctx, listOptions)
 		},
 	})

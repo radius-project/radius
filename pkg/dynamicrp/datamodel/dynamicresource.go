@@ -299,6 +299,7 @@ func (d *DynamicResource) GetSecrets() map[string]rpv1.SecretValueReference {
 	if !ok {
 		return secretsMap
 	}
+
 	for k, v := range secrets {
 		// Handle SecretValueReference structs
 		if secretRef, ok := v.(rpv1.SecretValueReference); ok {

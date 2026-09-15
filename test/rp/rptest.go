@@ -49,7 +49,6 @@ import (
 	"github.com/radius-project/radius/test"
 	"github.com/radius-project/radius/test/radcli"
 	"github.com/radius-project/radius/test/step"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 	"github.com/radius-project/radius/test/validation"
 )
@@ -183,7 +182,7 @@ func NewRPTestOptions(t *testing.T) RPTestOptions {
 	_, terraformRecipeModuleServerURL, _ := strings.Cut(testutil.GetTerraformRecipeModuleServerURL(), "=")
 	t.Logf("Using terraform recipe module server URL: %s - set TF_RECIPE_MODULE_SERVER_URL to override", terraformRecipeModuleServerURL)
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	config, err := cli.LoadConfig("")
 	require.NoError(t, err, "failed to read radius config")
@@ -265,7 +264,7 @@ func NewPreviewEnvPreSetup(testName string, workspaceScope string, kubernetesNam
 		// namespace named after the test (ct.Name) is auto-created by CreateInitialResources, so when
 		// the preview environment uses a different namespace we must create it here before the CLI
 		// call, otherwise env creation fails with "Namespace '<ns>' does not exist".
-		nsClient, err := test.deploymentTargetK8sClient()
+		nsClient, err := DeploymentTargetK8sClient(test.Options)
 		require.NoError(t, err, "failed to build deployment-target Kubernetes client")
 		require.NoError(t, kubernetes.EnsureNamespace(ctx, nsClient, kubernetesNamespace), "failed to ensure preview environment namespace exists")
 
@@ -332,7 +331,7 @@ func K8sSecretResource(namespace, name, secretType string, kv ...any) unstructur
 // CreateInitialResources creates a namespace and creates initial resources from the InitialResources field of the
 // RPTest struct. It returns an error if either of these operations fail.
 func (ct RPTest) CreateInitialResources(ctx context.Context) error {
-	nsClient, err := ct.deploymentTargetK8sClient()
+	nsClient, err := DeploymentTargetK8sClient(ct.Options)
 	if err != nil {
 		return fmt.Errorf("failed to build deployment-target Kubernetes client: %w", err)
 	}
@@ -342,8 +341,8 @@ func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 	}
 
 	for _, r := range ct.InitialResources {
-		if err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, r.GetNamespace()); err != nil {
-			return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
+		if err := kubernetes.EnsureNamespace(ctx, nsClient, r.GetNamespace()); err != nil {
+			return fmt.Errorf("failed to create namespace %s: %w", r.GetNamespace(), err)
 		}
 		if err := ct.Options.Client.Create(ctx, &r); err != nil {
 			return fmt.Errorf("failed to create resource %#v:  %w", r, err)
@@ -353,7 +352,7 @@ func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 	return nil
 }
 
-// deploymentTargetK8sClient returns the Kubernetes client for the cluster that an
+// DeploymentTargetK8sClient returns the Kubernetes client for the cluster that an
 // application's resources deploy to. In multi-cluster runs the test sets
 // RADIUS_TEST_EXTERNAL_KUBECONFIG to the external (workload) cluster's kubeconfig;
 // this mirrors the RADIUS_TARGET_KUBECONFIG contract Radius itself honors, so the
@@ -361,10 +360,10 @@ func (ct RPTest) CreateInitialResources(ctx context.Context) error {
 // to and the control-plane cluster is not populated with per-application
 // namespaces. When the variable is unset (single-cluster runs) the control-plane
 // client is returned unchanged.
-func (ct RPTest) deploymentTargetK8sClient() (k8sclient.Interface, error) {
+func DeploymentTargetK8sClient(options RPTestOptions) (k8sclient.Interface, error) {
 	kubeconfigPath := os.Getenv(externalKubeconfigEnvVar)
 	if kubeconfigPath == "" {
-		return ct.Options.K8sClient, nil
+		return options.K8sClient, nil
 	}
 
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfigPath)
@@ -376,9 +375,9 @@ func (ct RPTest) deploymentTargetK8sClient() (k8sclient.Interface, error) {
 }
 
 // Method CleanUpExtensionResources deletes all resources in the given slice of unstructured objects.
-func (ct RPTest) CleanUpExtensionResources(resources []unstructured.Unstructured) {
+func (ct RPTest) CleanUpExtensionResources(ctx context.Context, resources []unstructured.Unstructured) {
 	for i := len(resources) - 1; i >= 0; i-- {
-		_ = ct.Options.Client.Delete(context.TODO(), &resources[i])
+		_ = ct.Options.Client.Delete(ctx, &resources[i])
 	}
 }
 
@@ -429,7 +428,7 @@ func (ct RPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
 }
 
 func (ct RPTest) Test(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	ct.CheckRequiredFeatures(ctx, t)
@@ -482,7 +481,7 @@ func (ct RPTest) Test(t *testing.T) {
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
 	require.GreaterOrEqual(t, len(ct.Steps), 1, "at least one step is required")
-	defer ct.CleanUpExtensionResources(ct.InitialResources)
+	defer ct.CleanUpExtensionResources(ctx, ct.InitialResources)
 	err := ct.CreateInitialResources(ctx)
 	require.NoError(t, err, "failed to create initial resources")
 
@@ -493,7 +492,7 @@ func (ct RPTest) Test(t *testing.T) {
 	success := true
 	for i, step := range ct.Steps {
 		success = t.Run(step.Executor.GetDescription(), func(t *testing.T) {
-			defer ct.CleanUpExtensionResources(step.K8sOutputResources)
+			defer ct.CleanUpExtensionResources(ctx, step.K8sOutputResources)
 			if !success {
 				t.Skip("skipping due to previous step failure")
 				return
@@ -576,28 +575,36 @@ func (ct RPTest) Test(t *testing.T) {
 					// Ensure that the resource is deleted with retries
 					notFound := false
 					baseWaitTime := 15 * time.Second
+					var lastErr error
 
 					for attempt := 1; attempt <= AWSDeletionRetryLimit; attempt++ {
 						t.Logf("validating deletion of AWS resource for %s (attempt %d/%d)", ct.Description, attempt, AWSDeletionRetryLimit)
 
 						// Use AWS CloudControl.Get method to validate that the resource is deleted
-						notFound, err = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
+						notFound, lastErr = validation.IsAWSResourceNotFound(ctx, &resource, ct.Options.AWSClient)
 
 						if notFound {
 							t.Logf("AWS resource %s to be deleted was not found", resource.Identifier)
 							break
-						} else if err != nil {
-							t.Logf("checking existence of resource %s failed with err: %s", resource.Name, err)
-							break
-						} else {
-							// Wait with exponential backoff
-							waitTime := baseWaitTime * time.Duration(attempt)
-							t.Logf("waiting for %s before next attempt", waitTime)
-							time.Sleep(waitTime)
 						}
+
+						if lastErr != nil {
+							// A delete that is still in flight can surface as a transient error rather than
+							// ResourceNotFoundException, so keep retrying instead of failing immediately.
+							t.Logf("checking existence of resource %s failed with err: %s", resource.Name, lastErr)
+						}
+
+						if attempt == AWSDeletionRetryLimit {
+							break
+						}
+
+						// Wait with linear backoff
+						waitTime := baseWaitTime * time.Duration(attempt)
+						t.Logf("waiting for %s before next attempt", waitTime)
+						time.Sleep(waitTime)
 					}
 
-					require.Truef(t, notFound, "AWS resource %s was present, should be not found", resource.Identifier)
+					require.Truef(t, notFound, "AWS resource %s was present, should be not found (last error: %v)", resource.Identifier, lastErr)
 					t.Logf("finished validation of deletion of AWS resource %s for %s", resource.Name, ct.Description)
 				} else {
 					t.Logf("skipping deletion of %s", resource.Name)
@@ -609,7 +616,7 @@ func (ct RPTest) Test(t *testing.T) {
 			continue
 		}
 
-		for _, resource := range step.RPResources.Resources {
+		for _, resource := range validation.ResourcesInDeletionOrder(step.RPResources) {
 			t.Logf("deleting %s", resource.Name)
 
 			if ct.FastCleanup {
@@ -620,7 +627,7 @@ func (ct RPTest) Test(t *testing.T) {
 				go func(r validation.RPResource) {
 					// Use a background context that won't be canceled when the test finishes
 					// Use silent deletion to avoid "Log in goroutine after test has completed" panics
-					bgCtx := context.Background()
+					bgCtx := context.Background() //nolint:usetesting
 					_ = validation.DeleteRPResourceSilent(bgCtx, cli, ct.Options.ManagementClient, r)
 					// Errors are ignored in fast cleanup mode since it's best-effort
 				}(resource)

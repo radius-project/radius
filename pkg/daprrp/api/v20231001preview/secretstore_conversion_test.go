@@ -41,23 +41,17 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "secretstore manual resource",
 			file: "secretstore_manual_resource.json",
 			expected: &datamodel.DaprSecretStore{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/secretStores/test-dss",
-						Name:     "test-dss",
-						Type:     dapr_ctrl.DaprSecretStoresResourceType,
-						Location: v1.LocationGlobal,
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
+				ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/secretStores/test-dss",
+				Name:     "test-dss",
+				Type:     dapr_ctrl.DaprSecretStoresResourceType,
+				Location: v1.LocationGlobal,
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.DaprSecretStoreProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
@@ -78,23 +72,17 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "secretstore recipe resource",
 			file: "secretstore_recipe_resource.json",
 			expected: &datamodel.DaprSecretStore{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/secretStores/test-dss",
-						Name:     "test-dss",
-						Type:     dapr_ctrl.DaprSecretStoresResourceType,
-						Location: v1.LocationGlobal,
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
+				ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Dapr/secretStores/test-dss",
+				Name:     "test-dss",
+				Type:     dapr_ctrl.DaprSecretStoresResourceType,
+				Location: v1.LocationGlobal,
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.DaprSecretStoreProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",

@@ -73,8 +73,7 @@ func (client *PubSubBrokersClient) createOrUpdate(ctx context.Context, rootScope
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -140,8 +139,7 @@ func (client *PubSubBrokersClient) deleteOperation(ctx context.Context, rootScop
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusAccepted, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -183,12 +181,7 @@ func (client *PubSubBrokersClient) Get(ctx context.Context, rootScope string, pu
 	if err != nil {
 		return PubSubBrokersClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return PubSubBrokersClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -214,8 +207,11 @@ func (client *PubSubBrokersClient) getCreateRequest(ctx context.Context, rootSco
 }
 
 // getHandleResponse handles the Get response.
-func (client *PubSubBrokersClient) getHandleResponse(resp *http.Response) (PubSubBrokersClientGetResponse, error) {
+func (client *PubSubBrokersClient) getHandleResponse(resp *http.Response, successCodes ...int) (PubSubBrokersClientGetResponse, error) {
 	result := PubSubBrokersClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DaprPubSubBrokerResource); err != nil {
 		return PubSubBrokersClientGetResponse{}, err
 	}
@@ -237,38 +233,52 @@ func (client *PubSubBrokersClient) NewListByScopePager(rootScope string, options
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listByScopeCreateRequest(ctx, rootScope, options)
-			}, nil)
+			req, err := client.listByScopeCreateRequest(ctx, rootScope, nextLink, options)
 			if err != nil {
 				return PubSubBrokersClientListByScopeResponse{}, err
 			}
-			return client.listByScopeHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return PubSubBrokersClientListByScopeResponse{}, err
+			}
+			return client.listByScopeHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *PubSubBrokersClient) listByScopeCreateRequest(ctx context.Context, rootScope string, _ *PubSubBrokersClientListByScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Dapr/pubSubBrokers"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
+func (client *PubSubBrokersClient) listByScopeCreateRequest(ctx context.Context, rootScope string, nextLink string, _ *PubSubBrokersClientListByScopeOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/{rootScope}/providers/Applications.Dapr/pubSubBrokers"
+		if rootScope == "" {
+			return nil, errors.New("parameter rootScope cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listByScopeHandleResponse handles the ListByScope response.
-func (client *PubSubBrokersClient) listByScopeHandleResponse(resp *http.Response) (PubSubBrokersClientListByScopeResponse, error) {
+func (client *PubSubBrokersClient) listByScopeHandleResponse(resp *http.Response, successCodes ...int) (PubSubBrokersClientListByScopeResponse, error) {
 	result := PubSubBrokersClientListByScopeResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DaprPubSubBrokerResourceListResult); err != nil {
 		return PubSubBrokersClientListByScopeResponse{}, err
 	}
@@ -311,8 +321,7 @@ func (client *PubSubBrokersClient) update(ctx context.Context, rootScope string,
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }

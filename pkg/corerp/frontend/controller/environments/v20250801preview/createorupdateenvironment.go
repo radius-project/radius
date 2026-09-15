@@ -86,22 +86,8 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 			newResource.Properties.Providers.Kubernetes.Namespace = namespace
 		}
 
-		result, err := util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "properties.providers.kubernetes.namespace", namespace, e.DatabaseClient())
-		if err != nil {
-			return nil, err
-		}
-
-		if len(result.Items) > 0 {
-			env := &datamodel.Environment_v20250801preview{}
-			if err := result.Items[0].As(env); err != nil {
-				return nil, err
-			}
-
-			// If a different resource has the same namespace, return a conflict
-			// Otherwise, continue and update the resource
-			if old == nil || env.ID != old.ID {
-				return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace (%s) already exists", env.ID, namespace)), nil
-			}
+		if resp, err := e.validateNamespace(ctx, serviceCtx, namespace, old); resp != nil || err != nil {
+			return resp, err
 		}
 
 		// Validate the namespace exists on the cluster the application's resources
@@ -120,6 +106,12 @@ func (e *CreateOrUpdateEnvironmentv20250801preview) Run(ctx context.Context, w h
 				return rest.NewBadRequestResponse(fmt.Sprintf("Namespace '%s' does not exist in the Kubernetes cluster. Please create it before proceeding.", namespace)), nil
 			}
 			return nil, err
+		}
+	} else if old != nil {
+		// The environment is dropping its Kubernetes provider entirely. That releases a namespace
+		// claim, which is not permitted once one has been established -- see validateNamespace.
+		if existing := existingNamespace(old); existing != "" {
+			return rest.NewBadRequestResponseWithCode(v1.CodeNamespaceImmutable, util.NamespaceImmutableMessage(existing, "")), nil
 		}
 	}
 
@@ -279,4 +271,59 @@ func validateConfigRef(
 		return rest.NewBadRequestResponse(fmt.Sprintf("Referenced %s resource %q does not exist.", propertyName, resourceID))
 	}
 	return nil
+}
+
+// existingNamespace returns the Kubernetes namespace recorded on a stored environment, or the
+// empty string when the environment has no Kubernetes provider.
+func existingNamespace(old *datamodel.Environment_v20250801preview) string {
+	if old == nil || old.Properties.Providers == nil || old.Properties.Providers.Kubernetes == nil {
+		return ""
+	}
+
+	return old.Properties.Providers.Kubernetes.Namespace
+}
+
+// validateNamespace enforces the namespace rules for Radius.Core/environments. It returns a
+// non-nil response when the request must be rejected.
+//
+// The rules differ between create and update, which is what keeps the constraint from disrupting
+// unrelated writes:
+//
+//   - Create, or an update that claims a namespace for the first time: the namespace must not
+//     already be claimed by another environment anywhere in the plane.
+//   - Update where a namespace is already established: the namespace is immutable. Changing it
+//     would orphan everything already deployed into the old namespace, and clearing it would
+//     release a claim that other environments were validated against.
+//
+// Because the namespace cannot change once set, an update that leaves it alone cannot introduce a
+// conflict and therefore skips the uniqueness query entirely. That is deliberate: writes that
+// merely touch other properties -- registering a recipe, syncing recipe pack references -- must not
+// fail because of a namespace the caller never intended to modify.
+func (e *CreateOrUpdateEnvironmentv20250801preview) validateNamespace(
+	ctx context.Context,
+	serviceCtx *v1.ARMRequestContext,
+	namespace string,
+	old *datamodel.Environment_v20250801preview,
+) (rest.Response, error) {
+	if existing := existingNamespace(old); existing != "" {
+		if !strings.EqualFold(existing, namespace) {
+			return rest.NewBadRequestResponseWithCode(v1.CodeNamespaceImmutable, util.NamespaceImmutableMessage(existing, namespace)), nil
+		}
+
+		return nil, nil
+	}
+
+	// A namespace is cluster-scoped, so two environments sharing one would deploy into the same
+	// place and their recipe-created resources could collide. The search spans every resource
+	// group in the plane and both environment resource types.
+	conflictingID, err := util.FindEnvironmentNamespaceConflict(ctx, e.DatabaseClient(), serviceCtx.ResourceID.PlaneScope(), namespace, serviceCtx.ResourceID.String())
+	if err != nil {
+		return nil, err
+	}
+
+	if conflictingID != "" {
+		return rest.NewConflictResponseWithCode(v1.CodeNamespaceAlreadyInUse, util.NamespaceConflictMessage(namespace, conflictingID)), nil
+	}
+
+	return nil, nil
 }

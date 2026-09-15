@@ -23,15 +23,15 @@ import (
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"charm.land/lipgloss/v2/compat"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/radius-project/radius/pkg/cli/style"
 )
 
 var (
 	titleStyle        = lipgloss.NewStyle().PaddingLeft(2)
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	helpStyle         = lipgloss.NewStyle().Foreground(compat.AdaptiveColor{Light: lipgloss.Color("#555555"), Dark: lipgloss.Color("#AAAAAA")})
+	helpStyle         = lipgloss.NewStyle().Foreground(style.AdaptiveColor{Light: lipgloss.Color("#555555"), Dark: lipgloss.Color("#AAAAAA")})
 )
 
 type item string

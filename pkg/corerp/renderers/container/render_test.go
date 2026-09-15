@@ -24,7 +24,6 @@ import (
 	"testing"
 
 	apiv1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/corerp/handlers"
 	"github.com/radius-project/radius/pkg/corerp/renderers"
@@ -38,10 +37,10 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -104,13 +103,9 @@ var (
 
 func makeResource(properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
-		BaseResource: apiv1.BaseResource{
-			TrackedResource: apiv1.TrackedResource{
-				ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
-				Name: resourceName,
-				Type: "Applications.Core/containers",
-			},
-		},
+		ID:         "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
+		Name:       resourceName,
+		Type:       "Applications.Core/containers",
 		Properties: properties,
 	}
 	return &resource
@@ -150,15 +145,9 @@ func makeRadiusResourceID(t *testing.T, resourceType string, resourceName string
 
 func makeDynamicResource() *dynamicrp_dm.DynamicResource {
 	return &dynamicrp_dm.DynamicResource{
-		BaseResource: apiv1.BaseResource{
-			TrackedResource: apiv1.TrackedResource{
-				ID:   "/planes/radius/local/resourceGroups/test-resourcegroup/providers/Applications.Test/testType/test-resource",
-				Type: "Applications.Test/testType",
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: "2024-01-01",
-			},
-		},
+		ID:                "/planes/radius/local/resourceGroups/test-resourcegroup/providers/Applications.Test/testType/test-resource",
+		Type:              "Applications.Test/testType",
+		UpdatedAPIVersion: "2024-01-01",
 		Properties: map[string]any{
 			"property1": "value1",
 			"property2": 2,
@@ -172,9 +161,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	testStorageResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
 	testAzureResourceID := makeAzureResourceID(t, "Microsoft.ServiceBus/namespaces", "testAzureResource")
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source: makeRadiusResourceID(t, "Applications.Datastores/redisCaches", "A").String(),
@@ -240,10 +227,8 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 				"vol1": {
 					Kind: datamodel.Persistent,
 					Persistent: &datamodel.PersistentVolume{
-						VolumeBase: datamodel.VolumeBase{
-							MountPath: "/tmpfs",
-						},
-						Source: testStorageResourceID,
+						MountPath: "/tmpfs",
+						Source:    testStorageResourceID,
 					},
 				},
 			},
@@ -251,7 +236,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	}
 	resource := makeResource(properties)
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	renderer := Renderer{}
 	radiusResourceIDs, azureResourceIDs, err := renderer.GetDependencyIDs(ctx, resource)
@@ -289,7 +274,7 @@ func Test_GetDependencyIDs_InvalidId(t *testing.T) {
 	}
 	resource := makeResource(properties)
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	ids, azureIDs, err := renderer.GetDependencyIDs(ctx, resource)
 	require.Error(t, err)
@@ -298,7 +283,7 @@ func Test_GetDependencyIDs_InvalidId(t *testing.T) {
 }
 
 func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	properties := datamodel.ContainerProperties{
 		// Simulating error code path
@@ -332,9 +317,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 // If you add minor features, add them here.
 func Test_Render_Basic(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
@@ -375,21 +358,15 @@ func Test_Render_Basic(t *testing.T) {
 		envVarSource3: {
 			ResourceID: resources.MustParse(envVarSource3),
 			Resource: &datamodel.SecretStore{
-				BaseResource: apiv1.BaseResource{
-					TrackedResource: apiv1.TrackedResource{
-						ID: envVarSource3,
-					},
-				},
+				ID: envVarSource3,
 				Properties: &datamodel.SecretStoreProperties{
-					BasicResourceProperties: rpv1.BasicResourceProperties{
-						Application: applicationResourceID,
-					},
+					Application: applicationResourceID,
 				},
 			},
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -435,26 +412,20 @@ func Test_Render_Basic(t *testing.T) {
 			{Name: envVarName1, Value: envVarValue1},
 			{Name: envVarName2, ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: envVarSource2,
-					},
-					Key: envVarValue2,
+					Name: envVarSource2,
+					Key:  envVarValue2,
 				},
 			}},
 			{Name: envVarName3, ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: envVarSource3,
-					},
-					Key: envVarValue3,
+					Name: envVarSource3,
+					Key:  envVarValue3,
 				},
 			}},
 			{Name: envVarName4, ValueFrom: &corev1.EnvVarSource{
 				SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: envVarSource4,
-					},
-					Key: envVarValue4,
+					Name: envVarSource4,
+					Key:  envVarValue4,
 				},
 			}},
 		}
@@ -466,9 +437,7 @@ func Test_Render_Basic(t *testing.T) {
 
 func Test_Render_WithInvalidEnvironmentVariables(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
@@ -479,7 +448,7 @@ func Test_Render_WithInvalidEnvironmentVariables(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	_, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.Error(t, err)
@@ -488,9 +457,7 @@ func Test_Render_WithInvalidEnvironmentVariables(t *testing.T) {
 
 func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
@@ -509,7 +476,7 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -554,9 +521,7 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 
 func Test_Render_Manual(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image: "none",
 		},
@@ -570,7 +535,7 @@ func Test_Render_Manual(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -589,9 +554,7 @@ func Test_Render_Manual(t *testing.T) {
 
 func Test_Render_PortWithoutRoute(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Ports: map[string]datamodel.ContainerPort{
@@ -605,7 +568,7 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -638,9 +601,7 @@ func Test_Render_Connections(t *testing.T) {
 	containerConnectionPort := "80"
 
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source: makeRadiusResourceID(t, "SomeProvider/ResourceType", "A").String(),
@@ -682,7 +643,7 @@ func Test_Render_Connections(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
 	require.NoError(t, err)
@@ -707,10 +668,8 @@ func Test_Render_Connections(t *testing.T) {
 				Name: "CONNECTION_A_COMPUTEDKEY1",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: secretName,
-						},
-						Key: "CONNECTION_A_COMPUTEDKEY1",
+						Name: secretName,
+						Key:  "CONNECTION_A_COMPUTEDKEY1",
 					},
 				},
 			},
@@ -718,10 +677,8 @@ func Test_Render_Connections(t *testing.T) {
 				Name: "CONNECTION_A_COMPUTEDKEY2",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: secretName,
-						},
-						Key: "CONNECTION_A_COMPUTEDKEY2",
+						Name: secretName,
+						Key:  "CONNECTION_A_COMPUTEDKEY2",
 					},
 				},
 			},
@@ -741,10 +698,8 @@ func Test_Render_Connections(t *testing.T) {
 				Name: "CONNECTION_DYNAMICRESOURCE_PROPERTY1",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: secretName,
-						},
-						Key: "CONNECTION_DYNAMICRESOURCE_PROPERTY1",
+						Name: secretName,
+						Key:  "CONNECTION_DYNAMICRESOURCE_PROPERTY1",
 					},
 				},
 			},
@@ -752,10 +707,8 @@ func Test_Render_Connections(t *testing.T) {
 				Name: "CONNECTION_DYNAMICRESOURCE_PROPERTY2",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: secretName,
-						},
-						Key: "CONNECTION_DYNAMICRESOURCE_PROPERTY2",
+						Name: secretName,
+						Key:  "CONNECTION_DYNAMICRESOURCE_PROPERTY2",
 					},
 				},
 			},
@@ -763,10 +716,8 @@ func Test_Render_Connections(t *testing.T) {
 				Name: "CONNECTION_DYNAMICRESOURCE_PROPERTY3",
 				ValueFrom: &corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: secretName,
-						},
-						Key: "CONNECTION_DYNAMICRESOURCE_PROPERTY3",
+						Name: secretName,
+						Key:  "CONNECTION_DYNAMICRESOURCE_PROPERTY3",
 					},
 				},
 			},
@@ -801,9 +752,7 @@ func Test_Render_Connections(t *testing.T) {
 
 func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source:                makeRadiusResourceID(t, "SomeProvider/ResourceType", "A").String(),
@@ -828,7 +777,7 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
 	require.NoError(t, err)
@@ -850,9 +799,7 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 // of the hash, just that it can change when the data changes.
 func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source: makeRadiusResourceID(t, "SomeProvider/ResourceType", "A").String(),
@@ -884,7 +831,7 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
 	require.NoError(t, err)
@@ -913,9 +860,7 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 
 func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source: makeAzureResourceID(t, "SomeProvider/ResourceType", "A").String(),
@@ -951,7 +896,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			},
 		},
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 	require.NoError(t, err)
 	require.Len(t, output.ComputedValues, 2)
@@ -1054,9 +999,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 	testARMID := makeAzureResourceID(t, "SomeProvider/ResourceType", "test-azure-resource").String()
 	expectedRole := "administrator"
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Connections: map[string]datamodel.ConnectionProperties{
 			"testAzureResourceConnection": {
 				Source: testARMID,
@@ -1079,7 +1022,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 	require.NoError(t, err)
 
@@ -1125,9 +1068,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 func Test_Render_AzureConnectionEmptyRoleAllowed(t *testing.T) {
 	testARMID := makeAzureResourceID(t, "SomeProvider/ResourceType", "test-azure-resource").String()
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Connections: map[string]datamodel.ConnectionProperties{
 			"testAzureResourceConnection": {
 				Source: testARMID,
@@ -1148,7 +1089,7 @@ func Test_Render_AzureConnectionEmptyRoleAllowed(t *testing.T) {
 			datamodel.KindAzure: {},
 		},
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	_, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
 }
@@ -1157,9 +1098,7 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 	const tempVolName = "TempVolume"
 	const tempVolMountPath = "/tmpfs"
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
@@ -1174,9 +1113,7 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 				tempVolName: {
 					Kind: datamodel.Ephemeral,
 					Ephemeral: &datamodel.EphemeralVolume{
-						VolumeBase: datamodel.VolumeBase{
-							MountPath: tempVolMountPath,
-						},
+						MountPath:    tempVolMountPath,
 						ManagedStore: datamodel.ManagedStoreMemory,
 					},
 				},
@@ -1190,7 +1127,7 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 			ComputedValues: map[string]any{},
 		},
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1218,10 +1155,8 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 		expectedVolumes := []corev1.Volume{
 			{
 				Name: tempVolName,
-				VolumeSource: corev1.VolumeSource{
-					EmptyDir: &corev1.EmptyDirVolumeSource{
-						Medium: corev1.StorageMediumMemory,
-					},
+				EmptyDir: &corev1.EmptyDirVolumeSource{
+					Medium: corev1.StorageMediumMemory,
 				},
 			},
 		}
@@ -1240,19 +1175,15 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	testResourceID := fmt.Sprintf("/subscriptions/%s/resourceGroups/test/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/share/%s", uuid.New(), testShareName)
 
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Volumes: map[string]datamodel.VolumeProperties{
 				tempVolName: {
 					Kind: datamodel.Persistent,
 					Persistent: &datamodel.PersistentVolume{
-						VolumeBase: datamodel.VolumeBase{
-							MountPath: tempVolMountPath,
-						},
-						Source: testResourceID,
+						MountPath: tempVolMountPath,
+						Source:    testResourceID,
 					},
 				},
 			},
@@ -1270,7 +1201,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	renderOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.Lenf(t, renderOutput.Resources, 2, "expected 2 output resource, instead got %+v", len(renderOutput.Resources))
@@ -1306,9 +1237,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 
 func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 
 		Container: datamodel.Container{
 			Image: "someimage:latest",
@@ -1316,10 +1245,8 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 				tempVolName: {
 					Kind: datamodel.Persistent,
 					Persistent: &datamodel.PersistentVolume{
-						VolumeBase: datamodel.VolumeBase{
-							MountPath: tempVolMountPath,
-						},
-						Source: testResourceID,
+						MountPath: tempVolMountPath,
+						Source:    testResourceID,
 					},
 				},
 			},
@@ -1332,11 +1259,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 		testResourceID: {
 			ResourceID: resourceID,
 			Resource: &datamodel.VolumeResource{
-				BaseResource: apiv1.BaseResource{
-					TrackedResource: apiv1.TrackedResource{
-						Name: testVolName,
-					},
-				},
+				Name: testVolName,
 				Properties: datamodel.VolumeResourceProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: applicationResourceID,
@@ -1368,7 +1291,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	renderOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 
@@ -1419,9 +1342,7 @@ func outputResourcesToResourceTypeMap(resources []rpv1.OutputResource) map[strin
 
 func Test_Render_RestartPolicy(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 		},
@@ -1430,7 +1351,7 @@ func Test_Render_RestartPolicy(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1451,9 +1372,7 @@ func Test_Render_RestartPolicy(t *testing.T) {
 
 func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
@@ -1467,15 +1386,13 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 			ReadinessProbe: datamodel.HealthProbeProperties{
 				Kind: datamodel.HTTPGetHealthProbe,
 				HTTPGet: &datamodel.HTTPGetHealthProbeProperties{
-					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: new(float32(30)),
-						FailureThreshold:    new(float32(10)),
-						PeriodSeconds:       new(float32(2)),
-						TimeoutSeconds:      new(float32(5)),
-					},
-					Path:          "/healthz",
-					ContainerPort: 8080,
-					Headers:       map[string]string{"header1": "value1"},
+					InitialDelaySeconds: new(float32(30)),
+					FailureThreshold:    new(float32(10)),
+					PeriodSeconds:       new(float32(2)),
+					TimeoutSeconds:      new(float32(5)),
+					Path:                "/healthz",
+					ContainerPort:       8080,
+					Headers:             map[string]string{"header1": "value1"},
 				},
 			},
 		},
@@ -1491,7 +1408,7 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1512,20 +1429,18 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 			FailureThreshold:    10,
 			PeriodSeconds:       2,
 			TimeoutSeconds:      5,
-			ProbeHandler: corev1.ProbeHandler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path: "/healthz",
-					Port: intstr.FromInt(8080),
-					HTTPHeaders: []corev1.HTTPHeader{
-						{
-							Name:  "header1",
-							Value: "value1",
-						},
+			HTTPGet: &corev1.HTTPGetAction{
+				Path: "/healthz",
+				Port: intstr.FromInt(8080),
+				HTTPHeaders: []corev1.HTTPHeader{
+					{
+						Name:  "header1",
+						Value: "value1",
 					},
 				},
-				TCPSocket: nil,
-				Exec:      nil,
 			},
+			TCPSocket: nil,
+			Exec:      nil,
 		}
 
 		require.Equal(t, expectedReadinessProbe, container.ReadinessProbe)
@@ -1534,9 +1449,7 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 
 func Test_Render_ReadinessProbeTcp(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
@@ -1550,13 +1463,11 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 			ReadinessProbe: datamodel.HealthProbeProperties{
 				Kind: datamodel.TCPHealthProbe,
 				TCP: &datamodel.TCPHealthProbeProperties{
-					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: new(float32(30)),
-						FailureThreshold:    new(float32(10)),
-						PeriodSeconds:       new(float32(2)),
-						TimeoutSeconds:      new(float32(5)),
-					},
-					ContainerPort: 8080,
+					InitialDelaySeconds: new(float32(30)),
+					FailureThreshold:    new(float32(10)),
+					PeriodSeconds:       new(float32(2)),
+					TimeoutSeconds:      new(float32(5)),
+					ContainerPort:       8080,
 				},
 			},
 		},
@@ -1572,7 +1483,7 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1593,13 +1504,11 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 			FailureThreshold:    10,
 			PeriodSeconds:       2,
 			TimeoutSeconds:      5,
-			ProbeHandler: corev1.ProbeHandler{
-				HTTPGet: nil,
-				TCPSocket: &corev1.TCPSocketAction{
-					Port: intstr.FromInt(8080),
-				},
-				Exec: nil,
+			HTTPGet:             nil,
+			TCPSocket: &corev1.TCPSocketAction{
+				Port: intstr.FromInt(8080),
 			},
+			Exec: nil,
 		}
 
 		require.Equal(t, expectedReadinessProbe, container.ReadinessProbe)
@@ -1608,9 +1517,7 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 
 func Test_Render_LivenessProbeExec(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
@@ -1624,13 +1531,11 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 			LivenessProbe: datamodel.HealthProbeProperties{
 				Kind: datamodel.ExecHealthProbe,
 				Exec: &datamodel.ExecHealthProbeProperties{
-					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: new(float32(30)),
-						FailureThreshold:    new(float32(10)),
-						PeriodSeconds:       new(float32(2)),
-						TimeoutSeconds:      new(float32(5)),
-					},
-					Command: "a b c",
+					InitialDelaySeconds: new(float32(30)),
+					FailureThreshold:    new(float32(10)),
+					PeriodSeconds:       new(float32(2)),
+					TimeoutSeconds:      new(float32(5)),
+					Command:             "a b c",
 				},
 			},
 		},
@@ -1646,7 +1551,7 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1667,12 +1572,10 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 			FailureThreshold:    10,
 			PeriodSeconds:       2,
 			TimeoutSeconds:      5,
-			ProbeHandler: corev1.ProbeHandler{
-				HTTPGet:   nil,
-				TCPSocket: nil,
-				Exec: &corev1.ExecAction{
-					Command: []string{"a", "b", "c"},
-				},
+			HTTPGet:             nil,
+			TCPSocket:           nil,
+			Exec: &corev1.ExecAction{
+				Command: []string{"a", "b", "c"},
 			},
 		}
 
@@ -1682,9 +1585,7 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 
 func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			LivenessProbe: datamodel.HealthProbeProperties{
@@ -1706,7 +1607,7 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1728,12 +1629,10 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 			FailureThreshold:    DefaultFailureThreshold,
 			PeriodSeconds:       DefaultPeriodSeconds,
 			TimeoutSeconds:      DefaultTimeoutSeconds,
-			ProbeHandler: corev1.ProbeHandler{
-				HTTPGet:   nil,
-				TCPSocket: nil,
-				Exec: &corev1.ExecAction{
-					Command: []string{"a", "b", "c"},
-				},
+			HTTPGet:             nil,
+			TCPSocket:           nil,
+			Exec: &corev1.ExecAction{
+				Command: []string{"a", "b", "c"},
 			},
 		}
 
@@ -1746,9 +1645,7 @@ func Test_DNS_Service_Generation(t *testing.T) {
 	var servicePortNumber int32 = 80
 	t.Run("verify service generation", func(t *testing.T) {
 		properties := datamodel.ContainerProperties{
-			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Application: applicationResourceID,
-			},
+			Application: applicationResourceID,
 			Container: datamodel.Container{
 				Image: "someimage:latest",
 				Ports: map[string]datamodel.ContainerPort{
@@ -1761,7 +1658,7 @@ func Test_DNS_Service_Generation(t *testing.T) {
 		}
 
 		resource := makeResource(properties)
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		renderer := Renderer{}
 		output, err := renderer.Render(ctx, resource, renderOptionsEnvAndAppKubeMetadata())
 
@@ -1795,9 +1692,7 @@ func Test_DNS_Service_Generation(t *testing.T) {
 
 func Test_Render_ImagePullPolicySpecified(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image:           "someimage:latest",
 			ImagePullPolicy: "Never",
@@ -1814,7 +1709,7 @@ func Test_Render_ImagePullPolicySpecified(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1857,9 +1752,7 @@ func Test_Render_StrategicPatchMerge(t *testing.T) {
 }
 `
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rpv1.BasicResourceProperties{
-			Application: applicationResourceID,
-		},
+		Application: applicationResourceID,
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Env: map[string]datamodel.EnvironmentVariable{
@@ -1880,7 +1773,7 @@ func Test_Render_StrategicPatchMerge(t *testing.T) {
 	resource := makeResource(properties)
 	dependencies := map[string]renderers.RendererDependency{}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	renderer := Renderer{}
 	output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -1940,9 +1833,7 @@ func Test_Render_BaseManifest(t *testing.T) {
 						"ephemeralVolume": {
 							Kind: datamodel.Ephemeral,
 							Ephemeral: &datamodel.EphemeralVolume{
-								VolumeBase: datamodel.VolumeBase{
-									MountPath: "/mnt/ephemeral",
-								},
+								MountPath:    "/mnt/ephemeral",
 								ManagedStore: datamodel.ManagedStoreMemory,
 							},
 						},
@@ -1986,7 +1877,7 @@ func Test_Render_BaseManifest(t *testing.T) {
 			resource := makeResource(tc.container)
 			dependencies := map[string]renderers.RendererDependency{}
 
-			ctx := testcontext.New(t)
+			ctx := t.Context()
 			renderer := Renderer{}
 			output, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: dependencies})
 			require.NoError(t, err)
@@ -2009,14 +1900,14 @@ func Test_Render_BaseManifest(t *testing.T) {
 
 func renderOptionsEnvAndAppKubeMetadata() renderers.RenderOptions {
 	dependencies := map[string]renderers.RendererDependency{}
-	option := renderers.RenderOptions{Dependencies: dependencies}
+	option := renderers.RenderOptions{Dependencies: dependencies,
 
-	option.Application = renderers.ApplicationOptions{
-		KubernetesMetadata: &datamodel.KubeMetadataExtension{
-			Annotations: getAppSetup().appKubeMetadataExt.Annotations,
-			Labels:      getAppSetup().appKubeMetadataExt.Labels,
-		},
-	}
+		Application: renderers.ApplicationOptions{
+			KubernetesMetadata: &datamodel.KubeMetadataExtension{
+				Annotations: getAppSetup().appKubeMetadataExt.Annotations,
+				Labels:      getAppSetup().appKubeMetadataExt.Labels,
+			},
+		}}
 
 	return option
 }

@@ -18,7 +18,6 @@ package radcli
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -146,7 +145,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 
 			cmd, runner := factory(framework)
 			cmd.SetArgs(testcase.Input)
-			cmd.SetContext(context.Background())
+			cmd.SetContext(t.Context())
 
 			err := cmd.ParseFlags(testcase.Input)
 			require.NoError(t, err, "flag parsing failed")

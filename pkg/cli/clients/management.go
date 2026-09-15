@@ -85,6 +85,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfType(ctx context.Cont
 }
 
 // ListResourcesOfTypeInApplication lists all resources of a given type in a given application in the configured scope.
+// Names are qualified as Applications.Core applications; pass a full resource ID for other application types.
 func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInApplication(ctx context.Context, applicationNameOrID string, resourceType string) ([]generated.GenericResource, error) {
 	applicationID, err := amc.fullyQualifyID(applicationNameOrID, "Applications.Core/applications")
 	if err != nil {
@@ -107,6 +108,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInApplication(ctx
 }
 
 // ListResourcesOfTypeInEnvironment lists all resources of a given type in a given environment in the configured scope.
+// Names are qualified as Applications.Core environments; pass a full resource ID for other environment types.
 func (amc *UCPApplicationsManagementClient) ListResourcesOfTypeInEnvironment(ctx context.Context, environmentNameOrID string, resourceType string) ([]generated.GenericResource, error) {
 	environmentID, err := amc.fullyQualifyID(environmentNameOrID, "Applications.Core/environments")
 	if err != nil {
@@ -1109,6 +1111,7 @@ func (amc *UCPApplicationsManagementClient) ListAllResourceTypesNames(ctx contex
 }
 
 // ListResourcesInApplication lists all resources in a given application in the configured scope.
+// Names are qualified as Applications.Core applications; pass a full resource ID for other application types.
 func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx context.Context, applicationNameOrID string) ([]generated.GenericResource, error) {
 	applicationID, err := amc.fullyQualifyID(applicationNameOrID, "Applications.Core/applications")
 	if err != nil {
@@ -1134,6 +1137,7 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInApplication(ctx conte
 }
 
 // ListResourcesInEnvironment lists all resources in a given environment in the configured scope.
+// Names are qualified as Applications.Core environments; pass a full resource ID for other environment types.
 func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx context.Context, environmentNameOrID string) ([]generated.GenericResource, error) {
 	environmentID, err := amc.fullyQualifyID(environmentNameOrID, "Applications.Core/environments")
 	if err != nil {
@@ -1156,6 +1160,68 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironment(ctx conte
 	}
 
 	return results, nil
+}
+
+// ListResourcesInEnvironmentOrApplications lists the resources that belong to the given environment
+// or to any of the given applications, without duplicates.
+//
+// This produces the same set as merging ListResourcesInEnvironment with ListResourcesInApplication
+// for each application, but enumerates each resource type once rather than once per application.
+// The per-type listing returns every resource of that type in the scope and both membership checks
+// run client side, so repeating the listing per application re-fetches identical data.
+func (amc *UCPApplicationsManagementClient) ListResourcesInEnvironmentOrApplications(ctx context.Context, environmentNameOrID string, applicationNameOrIDs []string) ([]generated.GenericResource, error) {
+	environmentID, err := amc.fullyQualifyID(environmentNameOrID, "Applications.Core/environments")
+	if err != nil {
+		return nil, err
+	}
+
+	applicationIDs := make([]string, 0, len(applicationNameOrIDs))
+	for _, applicationNameOrID := range applicationNameOrIDs {
+		applicationID, err := amc.fullyQualifyID(applicationNameOrID, "Applications.Core/applications")
+		if err != nil {
+			return nil, err
+		}
+
+		applicationIDs = append(applicationIDs, applicationID)
+	}
+
+	resourceTypesList, err := amc.ListAllResourceTypesNames(ctx, "local")
+	if err != nil {
+		return nil, err
+	}
+
+	results := []generated.GenericResource{}
+	for _, resourceType := range resourceTypesList {
+		resources, err := amc.ListResourcesOfType(ctx, resourceType)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, resource := range resources {
+			if isResourceInEnvironmentOrApplications(resource, environmentID, applicationIDs) {
+				results = append(results, resource)
+			}
+		}
+	}
+
+	return results, nil
+}
+
+// isResourceInEnvironmentOrApplications reports whether the resource belongs to the given
+// environment or to any of the given applications. A resource is appended at most once by the
+// caller, so the two directions cannot produce duplicates.
+func isResourceInEnvironmentOrApplications(resource generated.GenericResource, environmentID string, applicationIDs []string) bool {
+	if isResourceInEnvironment(resource, environmentID) {
+		return true
+	}
+
+	for _, applicationID := range applicationIDs {
+		if isResourceInApplication(resource, applicationID) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // CreateOrUpdateResourceType creates or updates a resource type in the configured plane.
@@ -1435,7 +1501,7 @@ func (amc *UCPApplicationsManagementClient) captureResponse(ctx context.Context,
 
 // getApiVersionsForResourceType retrieves the API versions for a given resource type in the configured scope.
 func (amc *UCPApplicationsManagementClient) getApiVersionsForResourceType(ctx context.Context, resourceType string) ([]string, error) {
-	provider := strings.Split(resourceType, "/")[0]
+	provider, _, _ := strings.Cut(resourceType, "/")
 	summary, err := amc.GetResourceProviderSummary(ctx, "local", provider)
 	if err != nil {
 		if clientv2.Is404Error(err) {

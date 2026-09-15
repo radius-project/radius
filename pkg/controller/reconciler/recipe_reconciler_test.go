@@ -17,12 +17,12 @@ limitations under the License.
 package reconciler
 
 import (
+	"context"
 	"errors"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -36,15 +36,8 @@ import (
 func SetupRecipeTest(t *testing.T) (*mockRadiusClient, client.Client) {
 	SkipWithoutEnvironment(t)
 
-	// For debugging, you can set uncomment this to see logs from the controller. This will cause tests to fail
-	// because the logging will continue after the test completes.
-	//
-	// Add runtimelog "sigs.k8s.io/controller-runtime/pkg/log" to imports.
-	//
-	// runtimelog.SetLogger(ucplog.FromContextOrDiscard(testcontext.New(t)))
-
 	// Shut down the manager when the test exits.
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 
 	mgr, err := ctrl.NewManager(config, ctrl.Options{
 		Scheme: scheme,
@@ -76,11 +69,11 @@ func SetupRecipeTest(t *testing.T) (*mockRadiusClient, client.Client) {
 }
 
 func Test_RecipeReconciler_WithoutSecret(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	radius, client := SetupRecipeTest(t)
 
 	name := types.NamespacedName{Namespace: "recipe-without-secret", Name: "test-recipe-withoutsecret"}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	recipe := makeRecipe(name, "Applications.Core/extenders")
@@ -118,11 +111,11 @@ func Test_RecipeReconciler_WithoutSecret(t *testing.T) {
 }
 
 func Test_RecipeReconciler_ChangeEnvironmentAndApplication(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	radius, client := SetupRecipeTest(t)
 
 	name := types.NamespacedName{Namespace: "recipe-change-envapp", Name: "test-recipe-change-envapp"}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	recipe := makeRecipe(name, "Applications.Core/extenders")
@@ -195,11 +188,11 @@ func Test_RecipeReconciler_FailureRecovery(t *testing.T) {
 	// We use the mock client to simulate the failure of update and delete operations
 	// and verify that the controller will (eventually) retry these operations.
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	radius, client := SetupRecipeTest(t)
 
 	name := types.NamespacedName{Namespace: "recipe-failure-recovery", Name: "test-recipe-failure-recovery"}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	recipe := makeRecipe(name, "Applications.Core/extenders")
@@ -259,11 +252,11 @@ func Test_RecipeReconciler_FailureRecovery(t *testing.T) {
 }
 
 func Test_RecipeReconciler_WithSecret(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	radius, client := SetupRecipeTest(t)
 
 	name := types.NamespacedName{Namespace: "recipe-withsecret", Name: "test-recipe-withsecret"}
-	err := client.Create(ctx, &corev1.Namespace{ObjectMeta: ctrl.ObjectMeta{Name: name.Namespace}})
+	err := client.Create(ctx, &corev1.Namespace{Name: name.Namespace})
 	require.NoError(t, err)
 
 	recipe := makeRecipe(name, "Applications.Core/extenders")
@@ -293,16 +286,12 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 	// Recipe will update after operation completes
 	status = waitForRecipeStateReady(t, client, name)
 
-	secret := corev1.Secret{}
-	err = client.Get(ctx, name, &secret)
-	require.NoError(t, err)
-
 	expectedData := map[string][]byte{
 		"a-value":  []byte("a"),
 		"b-secret": []byte("b"),
 	}
 
-	require.Equal(t, expectedData, secret.Data)
+	waitForSecretData(t, client, name, expectedData)
 
 	extender, err := radius.Resources(status.Scope, "Applications.Core/extenders").Get(ctx, name.Name)
 	require.NoError(t, err)
@@ -327,10 +316,7 @@ func Test_RecipeReconciler_WithSecret(t *testing.T) {
 		return apierrors.IsNotFound(err)
 	}, recipeTestWaitDuration, recipeTestWaitInterval, "old secret should be deleted")
 
-	secret = corev1.Secret{}
-	err = client.Get(ctx, types.NamespacedName{Namespace: name.Namespace, Name: "new-secret-name"}, &secret)
-	require.NoError(t, err)
-	require.Equal(t, expectedData, secret.Data)
+	waitForSecretData(t, client, types.NamespacedName{Namespace: name.Namespace, Name: "new-secret-name"}, expectedData)
 
 	// Now we'll delete the recipe.
 	err = client.Delete(ctx, recipe)

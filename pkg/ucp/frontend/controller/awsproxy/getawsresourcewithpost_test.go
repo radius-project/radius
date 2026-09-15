@@ -25,13 +25,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"uuid"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
-	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
 
 	armrpc_v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -45,7 +46,7 @@ import (
 )
 
 func Test_GetAWSResourceWithPost(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -108,7 +109,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -150,7 +151,7 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -189,7 +190,7 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -241,7 +242,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
-	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
+	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.New().String())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
 	requestBody := map[string]any{
@@ -326,7 +327,7 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_RetryableError(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -396,7 +397,7 @@ func Test_GetAWSResourceWithPost_RetryableError(t *testing.T) {
 }
 
 func Test_GetAWSResourceWithPost_NonRetryableError(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),

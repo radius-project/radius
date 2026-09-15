@@ -39,8 +39,10 @@ namespace Applications.Core;
 model ExtenderListSecretResponse extends Record<unknown> {}
 
 @doc("ExtenderResource portable resource")
-model ExtenderResource
-  is TrackedResourceRequired<ExtenderProperties, "extenders"> {
+model ExtenderResource is TrackedResourceRequired<
+  ExtenderProperties,
+  "extenders"
+> {
   @path
   @doc("The name of the ExtenderResource portable resource")
   @key("extenderName")

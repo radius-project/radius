@@ -18,7 +18,6 @@ package validator
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -65,7 +64,7 @@ func Test_APIValidator_UCPID(t *testing.T) {
 
 func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, prefixes []string) {
 	// Load OpenAPI Spec for applications.core provider.
-	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, prefixes, "rootScope")
+	l, err := LoadSpec(t.Context(), "applications.core", swagger.SpecFiles, prefixes, "rootScope")
 
 	require.NoError(t, err)
 
@@ -507,7 +506,7 @@ func runTest(t *testing.T, resourceIDUrl, targetScope, planeRootScope string, pr
 				tc.url += "?api-version=" + tc.apiVersion
 			}
 
-			req, err := http.NewRequestWithContext(context.Background(), tc.method, tc.url, bytes.NewBuffer(body))
+			req, err := http.NewRequestWithContext(t.Context(), tc.method, tc.url, bytes.NewBuffer(body))
 			require.NoError(t, err)
 			r.ServeHTTP(w, req)
 

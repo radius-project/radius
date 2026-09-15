@@ -41,23 +41,17 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "sqldatabase manual resource",
 			file: "sqldatabase_manual_resource.json",
 			expected: &datamodel.SqlDatabase{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
-						Name:     "sql0",
-						Type:     ds_ctrl.SqlDatabasesResourceType,
-						Location: v1.LocationGlobal,
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
+				ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
+				Name:     "sql0",
+				Type:     ds_ctrl.SqlDatabasesResourceType,
+				Location: v1.LocationGlobal,
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.SqlDatabaseProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",
@@ -84,23 +78,17 @@ func TestSqlDatabase_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "sqldatabase recipe resource",
 			file: "sqldatabase_recipe_resource.json",
 			expected: &datamodel.SqlDatabase{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
-						Name:     "sql0",
-						Type:     ds_ctrl.SqlDatabasesResourceType,
-						Location: v1.LocationGlobal,
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
+				ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/sqlDatabases/sql0",
+				Name:     "sql0",
+				Type:     ds_ctrl.SqlDatabasesResourceType,
+				Location: v1.LocationGlobal,
+				Tags: map[string]string{
+					"env": "dev",
 				},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.SqlDatabaseProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/test-app",

@@ -17,7 +17,6 @@ limitations under the License.
 package secretstores
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -35,7 +34,6 @@ import (
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -76,7 +74,7 @@ func TestGetNamespace(t *testing.T) {
 		}, nil)
 
 		secret.Properties.Application = testAppID
-		ns, err := getNamespace(context.TODO(), secret, opt)
+		ns, err := getNamespace(t.Context(), secret, opt)
 		require.NoError(t, err)
 		require.Equal(t, "app0-ns", ns)
 	})
@@ -92,7 +90,7 @@ func TestGetNamespace(t *testing.T) {
 			Data: *envData,
 		}, nil)
 
-		ns, err := getNamespace(context.TODO(), secret, opt)
+		ns, err := getNamespace(t.Context(), secret, opt)
 		require.NoError(t, err)
 		require.Equal(t, "default", ns)
 	})
@@ -107,7 +105,7 @@ func TestGetNamespace(t *testing.T) {
 			Data: *envData,
 		}, nil)
 
-		_, err := getNamespace(context.TODO(), secret, opt)
+		_, err := getNamespace(t.Context(), secret, opt)
 		require.Error(t, err)
 	})
 }
@@ -351,7 +349,7 @@ func TestValidateAndMutateRequest(t *testing.T) {
 			if tt.modifyResource != nil {
 				tt.modifyResource(newResource, tt.oldResource)
 			}
-			resp, err := ValidateAndMutateRequest(context.TODO(), newResource, tt.oldResource, nil)
+			resp, err := ValidateAndMutateRequest(t.Context(), newResource, tt.oldResource, nil)
 			tt.assertions(t, resp, err, newResource, tt.oldResource)
 		})
 	}
@@ -362,17 +360,15 @@ func TestUpsertSecret(t *testing.T) {
 		newResource := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 
 		ksecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "letsencrypt-prod",
-				Namespace: "default",
-			},
-			Data: map[string][]byte{},
+			Name:      "letsencrypt-prod",
+			Namespace: "default",
+			Data:      map[string][]byte{},
 		}
 		opt := &controller.Options{
 			KubeClient: k8sutil.NewFakeKubeClient(nil, ksecret),
 		}
 
-		resp, err := UpsertSecret(context.TODO(), newResource, nil, opt)
+		resp, err := UpsertSecret(t.Context(), newResource, nil, opt)
 		require.NoError(t, err)
 
 		// assert
@@ -386,10 +382,8 @@ func TestUpsertSecret(t *testing.T) {
 		newResource.Properties.Resource = "default/secret"
 
 		ksecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "secret",
-				Namespace: "default",
-			},
+			Name:      "secret",
+			Namespace: "default",
 			Data: map[string][]byte{
 				"private.key": []byte("private key value"),
 			},
@@ -398,13 +392,13 @@ func TestUpsertSecret(t *testing.T) {
 			KubeClient: k8sutil.NewFakeKubeClient(nil, ksecret),
 		}
 
-		resp, err := UpsertSecret(context.TODO(), newResource, nil, opt)
+		resp, err := UpsertSecret(t.Context(), newResource, nil, opt)
 		require.NoError(t, err)
 		require.Nil(t, resp)
 
 		// assert
 		actual := &corev1.Secret{}
-		err = opt.KubeClient.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: "default", Name: "secret"}, actual)
+		err = opt.KubeClient.Get(t.Context(), runtimeclient.ObjectKey{Namespace: "default", Name: "secret"}, actual)
 		require.NoError(t, err)
 		require.Equal(t, "dGxzLmtleS1wcmlrZXkK", string(actual.Data["tls.crt"]))
 		require.Equal(t, "dGxzLmNlcnQK", string(actual.Data["tls.key"]))
@@ -420,7 +414,7 @@ func TestUpsertSecret(t *testing.T) {
 			KubeClient: k8sutil.NewFakeKubeClient(nil),
 		}
 
-		_, err := UpsertSecret(context.TODO(), newResource, oldResource, opt)
+		_, err := UpsertSecret(t.Context(), newResource, oldResource, opt)
 		require.NoError(t, err)
 
 		// assert
@@ -445,16 +439,16 @@ func TestUpsertSecret(t *testing.T) {
 			KubeClient:     k8sutil.NewFakeKubeClient(nil),
 		}
 
-		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
+		_, err := ValidateAndMutateRequest(t.Context(), newResource, nil, opt)
 		require.NoError(t, err)
-		_, err = UpsertSecret(context.TODO(), newResource, nil, opt)
+		_, err = UpsertSecret(t.Context(), newResource, nil, opt)
 		require.NoError(t, err)
 
 		// assert
 		require.Equal(t, "app0-ns/secret0", newResource.Properties.Resource)
 		ksecret := &corev1.Secret{}
 
-		err = opt.KubeClient.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: "app0-ns", Name: "secret0"}, ksecret)
+		err = opt.KubeClient.Get(t.Context(), runtimeclient.ObjectKey{Namespace: "app0-ns", Name: "secret0"}, ksecret)
 		require.NoError(t, err)
 
 		require.Equal(t, "dGxzLmNydA==", string(ksecret.Data["tls.crt"]))
@@ -491,9 +485,9 @@ func TestUpsertSecret(t *testing.T) {
 			KubeClient:     k8sutil.NewFakeKubeClient(nil),
 		}
 
-		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
+		_, err := ValidateAndMutateRequest(t.Context(), newResource, nil, opt)
 		require.NoError(t, err)
-		_, err = UpsertSecret(context.TODO(), newResource, oldResource, opt)
+		_, err = UpsertSecret(t.Context(), newResource, oldResource, opt)
 		require.NoError(t, err)
 
 		// assert
@@ -520,9 +514,9 @@ func TestUpsertSecret(t *testing.T) {
 			KubeClient:     k8sutil.NewFakeKubeClient(nil),
 		}
 
-		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
+		_, err := ValidateAndMutateRequest(t.Context(), newResource, nil, opt)
 		require.NoError(t, err)
-		resp, err := UpsertSecret(context.TODO(), newResource, oldResource, opt)
+		resp, err := UpsertSecret(t.Context(), newResource, oldResource, opt)
 		require.NoError(t, err)
 
 		// assert
@@ -541,16 +535,16 @@ func TestUpsertSecret(t *testing.T) {
 			KubeClient:     k8sutil.NewFakeKubeClient(nil),
 		}
 
-		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
+		_, err := ValidateAndMutateRequest(t.Context(), newResource, nil, opt)
 		require.NoError(t, err)
-		_, err = UpsertSecret(context.TODO(), newResource, nil, opt)
+		_, err = UpsertSecret(t.Context(), newResource, nil, opt)
 		require.NoError(t, err)
 
 		// assert
 		require.Equal(t, "test-namespace/secret0", newResource.Properties.Resource)
 		ksecret := &corev1.Secret{}
 
-		err = opt.KubeClient.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: "test-namespace", Name: "secret0"}, ksecret)
+		err = opt.KubeClient.Get(t.Context(), runtimeclient.ObjectKey{Namespace: "test-namespace", Name: "secret0"}, ksecret)
 		require.NoError(t, err)
 
 		require.Equal(t, "dGxzLmNydA==", string(ksecret.Data["tls.crt"]))
@@ -578,9 +572,9 @@ func TestUpsertSecret(t *testing.T) {
 			KubeClient:     k8sutil.NewFakeKubeClient(nil),
 		}
 
-		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
+		_, err := ValidateAndMutateRequest(t.Context(), newResource, nil, opt)
 		require.NoError(t, err)
-		_, err = UpsertSecret(context.TODO(), newResource, nil, opt)
+		_, err = UpsertSecret(t.Context(), newResource, nil, opt)
 		require.Error(t, err)
 		require.Equal(t, err.Error(), "no Kubernetes namespace")
 	})
@@ -596,9 +590,9 @@ func TestUpsertSecret(t *testing.T) {
 			KubeClient:     k8sutil.NewFakeKubeClient(nil),
 		}
 
-		_, err := ValidateAndMutateRequest(context.TODO(), newResource, nil, opt)
+		_, err := ValidateAndMutateRequest(t.Context(), newResource, nil, opt)
 		require.NoError(t, err)
-		resp, err := UpsertSecret(context.TODO(), newResource, nil, opt)
+		resp, err := UpsertSecret(t.Context(), newResource, nil, opt)
 		require.NoError(t, err)
 
 		// assert
@@ -614,7 +608,7 @@ func TestUpsertSecret(t *testing.T) {
 			KubeClient: k8sutil.NewFakeKubeClient(nil),
 		}
 
-		resp, _ := UpsertSecret(context.TODO(), newResource, nil, opt)
+		resp, _ := UpsertSecret(t.Context(), newResource, nil, opt)
 		r := resp.(*rest.BadRequestResponse)
 		require.Equal(t, "'default/secret' referenced resource does not exist.", r.Body.Error.Message)
 	})
@@ -627,7 +621,7 @@ func TestUpsertSecret(t *testing.T) {
 			KubeClient: k8sutil.NewFakeKubeClient(nil),
 		}
 
-		_, err := UpsertSecret(context.TODO(), newResource, oldResource, opt)
+		_, err := UpsertSecret(t.Context(), newResource, oldResource, opt)
 		require.NoError(t, err)
 
 		// assert
@@ -640,12 +634,10 @@ func TestDeleteSecret(t *testing.T) {
 		res := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 
 		ksecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "letsencrypt-prod",
-				Namespace: "default",
-				Labels: map[string]string{
-					kubernetes.LabelRadiusResourceType: "test",
-				},
+			Name:      "letsencrypt-prod",
+			Namespace: "default",
+			Labels: map[string]string{
+				kubernetes.LabelRadiusResourceType: "test",
 			},
 			Data: map[string][]byte{},
 		}
@@ -653,11 +645,11 @@ func TestDeleteSecret(t *testing.T) {
 			KubeClient: k8sutil.NewFakeKubeClient(nil, ksecret),
 		}
 
-		resp, err := DeleteRadiusSecret(context.TODO(), res, opt)
+		resp, err := DeleteRadiusSecret(t.Context(), res, opt)
 		require.NoError(t, err)
 		require.Nil(t, resp)
 
-		err = opt.KubeClient.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: "default", Name: "letsencrypt-prod"}, ksecret)
+		err = opt.KubeClient.Get(t.Context(), runtimeclient.ObjectKey{Namespace: "default", Name: "letsencrypt-prod"}, ksecret)
 		require.True(t, apierrors.IsNotFound(err))
 	})
 
@@ -665,21 +657,19 @@ func TestDeleteSecret(t *testing.T) {
 		res := testutil.MustGetTestData[datamodel.SecretStore](testFileCertValueFrom)
 
 		ksecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "letsencrypt-prod",
-				Namespace: "default",
-			},
-			Data: map[string][]byte{},
+			Name:      "letsencrypt-prod",
+			Namespace: "default",
+			Data:      map[string][]byte{},
 		}
 		opt := &controller.Options{
 			KubeClient: k8sutil.NewFakeKubeClient(nil, ksecret),
 		}
 
-		resp, err := DeleteRadiusSecret(context.TODO(), res, opt)
+		resp, err := DeleteRadiusSecret(t.Context(), res, opt)
 		require.NoError(t, err)
 		require.Nil(t, resp)
 
-		err = opt.KubeClient.Get(context.TODO(), runtimeclient.ObjectKey{Namespace: "default", Name: "letsencrypt-prod"}, ksecret)
+		err = opt.KubeClient.Get(t.Context(), runtimeclient.ObjectKey{Namespace: "default", Name: "letsencrypt-prod"}, ksecret)
 		require.False(t, apierrors.IsNotFound(err))
 	})
 }

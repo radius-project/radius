@@ -298,8 +298,7 @@ func (cfg *TerraformConfig) AddOutputs(localModuleName string) error {
 }
 
 // AddMappedOutputs generates an output block for each module output referenced by the outputs
-// mapping. This is used for direct modules that do not produce a wrapped "result" output but
-// declare individual outputs that should be mapped to resource properties.
+// mapping. Explicit mappings take precedence when a module also produces a wrapped "result" output.
 //
 // Each generated output is marked sensitive according to the module's own output declaration
 // (sensitivity), because Terraform requires a re-exported sensitive value to be marked sensitive.

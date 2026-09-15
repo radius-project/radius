@@ -17,7 +17,6 @@ limitations under the License.
 package accesskey
 
 import (
-	"context"
 	"testing"
 
 	"go.uber.org/mock/gomock"
@@ -135,7 +134,7 @@ func Test_Run(t *testing.T) {
 				SecretAccessKey: testSecretAccessKey,
 				KubeContext:     "my-context",
 			}
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{

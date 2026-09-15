@@ -28,7 +28,6 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	csiv1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
 
@@ -43,14 +42,12 @@ func MakeKeyVaultVolumeSpec(volumeName string, mountPath, spcName string) (corev
 	// Make Volume Spec which uses the SecretProvider created above
 	volumeSpec := corev1.Volume{
 		Name: volumeName,
-		VolumeSource: corev1.VolumeSource{
-			CSI: &corev1.CSIVolumeSource{
-				Driver: "secrets-store.csi.k8s.io",
-				// We will support only Read operations
-				ReadOnly: new(true),
-				VolumeAttributes: map[string]string{
-					"secretProviderClass": spcName,
-				},
+		CSI: &corev1.CSIVolumeSource{
+			Driver: "secrets-store.csi.k8s.io",
+			// We will support only Read operations
+			ReadOnly: new(true),
+			VolumeAttributes: map[string]string{
+				"secretProviderClass": spcName,
 			},
 		},
 	}
@@ -112,17 +109,13 @@ func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.Volume
 	}
 
 	secretProvider := &csiv1.SecretProviderClass{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "SecretProviderClass",
-			APIVersion: "secrets-store.csi.x-k8s.io/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.NormalizeResourceName(name),
-			Namespace: envOpt.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(appName, res.Name, res.Type),
-			Annotations: map[string]string{
-				kubernetes.AnnotationIdentityType: string(envOpt.Identity.Kind),
-			},
+		Kind:       "SecretProviderClass",
+		APIVersion: "secrets-store.csi.x-k8s.io/v1",
+		Name:       kubernetes.NormalizeResourceName(name),
+		Namespace:  envOpt.Namespace,
+		Labels:     kubernetes.MakeDescriptiveLabels(appName, res.Name, res.Type),
+		Annotations: map[string]string{
+			kubernetes.AnnotationIdentityType: string(envOpt.Identity.Kind),
 		},
 		Spec: csiv1.SecretProviderClassSpec{
 			Provider:   "azure",

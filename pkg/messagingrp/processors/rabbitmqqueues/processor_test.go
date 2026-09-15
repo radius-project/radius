@@ -15,7 +15,6 @@ limitations under the License.
 package rabbitmqqueues
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/messagingrp/datamodel"
@@ -59,7 +58,7 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.NoError(t, err)
 
 		require.Equal(t, queue, resource.Properties.Queue)
@@ -96,7 +95,7 @@ func Test_Process(t *testing.T) {
 				Username: username,
 			},
 		}
-		err := processor.Process(context.Background(), resource, processors.Options{})
+		err := processor.Process(t.Context(), resource, processors.Options{})
 		require.NoError(t, err)
 
 		require.Equal(t, queue, resource.Properties.Queue)
@@ -141,7 +140,7 @@ func Test_Process(t *testing.T) {
 			},
 		}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.NoError(t, err)
 
 		require.Equal(t, "new-queue", resource.Properties.Queue)
@@ -176,7 +175,7 @@ func Test_Process(t *testing.T) {
 		resource := &datamodel.RabbitMQQueue{}
 		options := processors.Options{RecipeOutput: &recipes.RecipeOutput{}}
 
-		err := processor.Process(context.Background(), resource, options)
+		err := processor.Process(t.Context(), resource, options)
 		require.Error(t, err)
 		require.IsType(t, &processors.ValidationError{}, err)
 		require.Equal(t, `validation returned multiple errors:

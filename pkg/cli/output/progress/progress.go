@@ -21,6 +21,7 @@ limitations under the License.
 package progress
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -65,23 +66,34 @@ type interactiveListener struct {
 	progressChan <-chan clients.ResourceProgress
 }
 
-// Run renders progress in place until the channel is closed. It deliberately
-// does not capture stdin or install a signal handler, preserving the previous
-// behavior where Ctrl+C terminates the process during a deployment or deletion.
+// Run renders progress in place until the channel is closed. It reads from the
+// real stdin so Bubble Tea consumes the terminal's replies to its own
+// capability-detection queries instead of leaking them to the shell, and so the
+// model can observe Ctrl+C. On Ctrl+C the process is aborted with status 130.
 func (l *interactiveListener) Run() {
-	program := tea.NewProgram(
-		newModel(l.progressChan),
-		tea.WithInput(strings.NewReader("")),
-		tea.WithoutSignalHandler(),
-	)
-	if _, err := program.Run(); err != nil {
+	program := tea.NewProgram(newModel(l.progressChan))
+	finalModel, err := program.Run()
+	m, _ := finalModel.(*model)
+	if (m != nil && m.interrupted) || errors.Is(err, tea.ErrInterrupted) {
+		// The user pressed Ctrl+C during the deployment or deletion. The work runs
+		// in another goroutine that may be blocked in a call that cannot be
+		// canceled cooperatively, so abort the process the way Ctrl+C did before
+		// the display ran in raw mode. Bubble Tea has already restored the terminal
+		// by the time Run returns.
+		os.Exit(130) //nolint:forbidigo // Intentional: abort on Ctrl+C, matching rad init.
+	}
+	if err != nil {
 		// Bubble Tea failed to start or exited before the channel was closed.
-		// The model is no longer reading from progressChan, so drain it here to
-		// keep producers (deploy/delete) from blocking until it is closed.
 		fmt.Fprintf(os.Stderr, "Warning: progress display stopped: %v\n", err)
-		for range l.progressChan {
-			// Drain remaining updates so writers do not block.
-		}
+	}
+
+	// The model is no longer reading from progressChan, so drain it here to keep
+	// producers (deploy/delete) from blocking until the channel is closed. Bubble
+	// Tea can exit without an error while the channel is still open (for example
+	// on SIGTERM), so this must run on every non-interrupt exit path, not just
+	// when Run returns an error.
+	for range l.progressChan {
+		// Drain remaining updates so writers do not block.
 	}
 }
 
@@ -107,6 +119,8 @@ type model struct {
 	// index maps a resource ID to its position in entries so repeated updates
 	// for the same resource reuse the same line.
 	index map[string]int
+	// interrupted is set when the user cancels the display with Ctrl+C.
+	interrupted bool
 }
 
 func newModel(updates <-chan clients.ResourceProgress) *model {
@@ -139,9 +153,15 @@ func waitForUpdate(updates <-chan clients.ResourceProgress) tea.Cmd {
 	}
 }
 
-// Update handles progress updates, channel closure, and spinner ticks.
+// Update handles progress updates, channel closure, Ctrl+C, and spinner ticks.
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		if msg.String() == "ctrl+c" {
+			m.interrupted = true
+			return m, tea.Quit
+		}
+		return m, nil
 	case progressMsg:
 		m.apply(clients.ResourceProgress(msg))
 		return m, waitForUpdate(m.updates)

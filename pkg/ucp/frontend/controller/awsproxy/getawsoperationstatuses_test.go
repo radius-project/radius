@@ -20,10 +20,11 @@ import (
 	"testing"
 	"time"
 
+	"uuid"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
-	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -35,7 +36,7 @@ import (
 )
 
 func Test_GetAWSOperationStatuses(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	eventTime := time.Now()
 	testOptions := setupTest(t)
@@ -71,7 +72,7 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 }
 
 func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	eventTime := time.Now()
 	errorCode := types.HandlerErrorCodeInternalFailure
@@ -116,7 +117,7 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 }
 
 func Test_GetAWSOperationStatuses_Delete_NotFound(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	eventTime := time.Now()
 	testOptions := setupTest(t)

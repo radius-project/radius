@@ -17,11 +17,12 @@ limitations under the License.
 package graph
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,15 +44,15 @@ func TestBuildModeledGraph_EmptyTemplate(t *testing.T) {
 //
 // The test uses `Applications.Core/containers` — a type that ships no
 // per-type SVG in the built-in-providers manifest — so its iconHash
-// must be the product default (see productmanifest.Lookup vs
-// productmanifest.DefaultHash in resolveIconHash). Asserting the exact
+// must be the product default (see defaults.LookupIcon vs
+// defaults.DefaultIconHash in resolveIconHash). Asserting the exact
 // default hash — rather than merely non-nil — locks in the fallback
 // path and would catch a regression that quietly stops populating
 // IconHash for types without their own SVG.
 func TestBuildModeledGraph_IncludeIconsControlsIconsMap(t *testing.T) {
 	t.Parallel()
 
-	defaultHash := productmanifest.DefaultHash()
+	defaultHash := defaults.DefaultIconHash()
 	require.NotNil(t, defaultHash, "product default icon must be embedded for this test to be meaningful")
 
 	template := map[string]any{
@@ -456,6 +457,59 @@ func TestBuildModeledGraph_NilPropertiesWhenAuthoredIsEmpty(t *testing.T) {
 	graph, err := BuildModeledGraph(template, false)
 	require.NoError(t, err)
 	require.Nil(t, graph.Resources[0].Properties)
+}
+
+func TestBuildModeledGraph_OmitsContainerEnvironment(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		environment any
+		credential  string
+	}{
+		{name: "plaintext", environment: map[string]any{"PASSWORD": "plaintext-credential"}, credential: "plaintext-credential"},
+		{name: "secure derived", environment: map[string]any{"PASSWORD": "[parameters('password')]"}, credential: "[parameters('password')]"},
+		{name: "null", environment: nil},
+		{name: "empty", environment: map[string]any{}},
+		{name: "unexpected shape", environment: "malformed-credential", credential: "malformed-credential"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			container := map[string]any{
+				"image": "frontend:latest",
+				"env":   tt.environment,
+			}
+			template := map[string]any{
+				"parameters": map[string]any{
+					"password": map[string]any{"type": "secureString"},
+				},
+				"resources": []any{
+					map[string]any{
+						"type": "Radius.Compute/containers",
+						"name": "frontend",
+						"properties": map[string]any{
+							"application": "app-id",
+							"containers":  map[string]any{"frontend": container},
+						},
+					},
+				},
+			}
+
+			graph, err := BuildModeledGraph(template, false)
+			require.NoError(t, err)
+			require.Len(t, graph.Resources, 1)
+			payload, err := json.Marshal(graph)
+			require.NoError(t, err)
+			require.NotContains(t, string(payload), `"env"`)
+			if tt.credential != "" {
+				require.NotContains(t, string(payload), tt.credential)
+			}
+			require.Contains(t, container, "env")
+		})
+	}
 }
 
 // TestBuildModeledGraph_SecureStringDirectReference is the base case

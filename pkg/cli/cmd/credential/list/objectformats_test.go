@@ -27,10 +27,8 @@ import (
 
 func Test_credentialFormat(t *testing.T) {
 	obj := credential.ProviderCredentialConfiguration{
-		CloudProviderStatus: credential.CloudProviderStatus{
-			Name:    "test",
-			Enabled: true,
-		},
+		Name:    "test",
+		Enabled: true,
 	}
 
 	buffer := &bytes.Buffer{}

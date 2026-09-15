@@ -57,7 +57,7 @@ func Test_ListAWSResources(t *testing.T) {
 		return &output, nil
 	})
 
-	listRequest, err := rpctest.NewHTTPRequestWithContent(context.Background(), http.MethodGet, ucp.BaseURL()+testProxyRequestAWSListPath, nil)
+	listRequest, err := rpctest.NewHTTPRequestWithContent(t.Context(), http.MethodGet, ucp.BaseURL()+testProxyRequestAWSListPath, nil)
 	require.NoError(t, err, "creating request failed")
 
 	ctx := rpctest.NewARMRequestContext(listRequest)

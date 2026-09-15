@@ -32,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	"github.com/radius-project/radius/pkg/recipes/terraform/config"
@@ -47,6 +48,14 @@ import (
 var (
 	// ErrRecipeNameEmpty is the error when the recipe name is empty.
 	ErrRecipeNameEmpty = errors.New("recipe name cannot be empty")
+)
+
+// outputMappingValidationMode controls declaration validation during configuration generation.
+type outputMappingValidationMode int
+
+const (
+	requireValidOutputMappings outputMappingValidationMode = iota
+	skipOutputMappingValidation
 )
 
 var _ TerraformExecutor = (*executor)(nil)
@@ -89,7 +98,7 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	}
 
 	// Create Terraform config in the working directory
-	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
+	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options, requireValidOutputMappings)
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +143,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Create Terraform config in the working directory
-	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options)
+	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options, skipOutputMappingValidation)
 	if err != nil {
 		return err
 	}
@@ -316,7 +325,7 @@ func splitEnvVar(envVars []string) map[string]string {
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
-func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options) (string, error) {
+func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options, validationMode outputMappingValidationMode) (string, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	workingDir := tf.WorkingDir()
 
@@ -328,6 +337,13 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	loadedModule, err := downloadAndInspect(ctx, tf, options)
 	if err != nil {
 		return "", err
+	}
+
+	useOutputMappings := usesOutputMappings(options.EnvRecipe, loadedModule, validationMode)
+	if useOutputMappings {
+		if err := validateOutputMappings(options.EnvRecipe, loadedModule, validationMode); err != nil {
+			return "", err
+		}
 	}
 
 	// Generate Terraform providers configuration for required providers and add it to the Terraform configuration.
@@ -402,13 +418,9 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 			tfConfig.Module[options.EnvRecipe.Name].SetParams(config.RecipeParams(resolvedParams))
 		}
 	}
-	if loadedModule.ResultOutputExists {
-		if err = tfConfig.AddOutputs(options.EnvRecipe.Name); err != nil {
-			return "", err
-		}
-	} else if len(options.EnvRecipe.Outputs) > 0 || len(options.EnvRecipe.SecretOutputs) > 0 {
-		// Direct module with an outputs and/or secretOutputs mapping: generate an output block for each
-		// referenced module output so the values are available in the Terraform state for output mapping.
+	if useOutputMappings {
+		// Explicit mappings take precedence over a wrapped result output during deployment, matching
+		// prepareRecipeResponse. Generate each referenced output so it is available in Terraform state.
 		if err = tfConfig.AddMappedOutputs(options.EnvRecipe.Name, options.EnvRecipe.Outputs, loadedModule.OutputSensitivity, false); err != nil {
 			return "", err
 		}
@@ -416,6 +428,10 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		// a module output the module did not itself mark sensitive (e.g. AVM primaryConnectionString) is
 		// still redacted in Terraform's stdout/stderr, which Radius streams into logs.
 		if err = tfConfig.AddMappedOutputs(options.EnvRecipe.Name, options.EnvRecipe.SecretOutputs, loadedModule.OutputSensitivity, true); err != nil {
+			return "", err
+		}
+	} else if loadedModule.ResultOutputExists {
+		if err = tfConfig.AddOutputs(options.EnvRecipe.Name); err != nil {
 			return "", err
 		}
 	} else {
@@ -435,6 +451,29 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	}
 
 	return secretSuffix, nil
+}
+
+func usesOutputMappings(definition *recipes.EnvironmentDefinition, module *moduleInspectResult, validationMode outputMappingValidationMode) bool {
+	hasMappings := len(definition.Outputs) > 0 || len(definition.SecretOutputs) > 0
+	return hasMappings && (validationMode == requireValidOutputMappings || !module.ResultOutputExists)
+}
+
+func validateOutputMappings(definition *recipes.EnvironmentDefinition, module *moduleInspectResult, validationMode outputMappingValidationMode) error {
+	if validationMode == skipOutputMappingValidation {
+		return nil
+	}
+
+	declaredOutputs := make([]string, 0, len(module.OutputSensitivity))
+	for outputName := range module.OutputSensitivity {
+		declaredOutputs = append(declaredOutputs, outputName)
+	}
+
+	return recipes_util.ValidateOutputsMapping(
+		definition.Name,
+		definition.ResourceType,
+		declaredOutputs,
+		definition.Outputs,
+		definition.SecretOutputs)
 }
 
 // getTerraformConfig initializes the Terraform json config with provided module source and saves it

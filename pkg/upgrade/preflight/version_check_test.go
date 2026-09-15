@@ -17,7 +17,6 @@ limitations under the License.
 package preflight
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -94,7 +93,7 @@ func TestVersionCompatibilityCheck_Run(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			check := NewVersionCompatibilityCheck(tt.currentVersion, tt.targetVersion)
 
-			success, message, err := check.Run(context.Background())
+			success, message, err := check.Run(t.Context())
 
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectSuccess, success)

@@ -49,14 +49,14 @@ jobs:
       contents: read
     steps:
       - name: Checkout radius repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: radius-project/radius
           path: radius
           persist-credentials: false
 
       - name: Setup Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version-file: radius/.python-version
 
@@ -72,7 +72,7 @@ jobs:
           fi
 
       - name: Checkout docs repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: radius-project/docs
           path: docs
@@ -81,16 +81,19 @@ jobs:
 
       # Setup dependencies
       - name: Setup Go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: radius/go.mod
           cache-dependency-path: radius/go.sum
-          cache: true
+          cache: false
 
       - name: Setup NodeJS
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: radius/.node-version
+          # This workflow publishes generated docs, so never restore a cache that a
+          # prior workflow run could have poisoned.
+          package-manager-cache: false
 
       - name: Install yq
         # Required by make generate-bicep-types-contrib to parse defaults.yaml.
@@ -174,7 +177,7 @@ jobs:
       # still generated and uploaded as artifacts above for inspection.
       - name: Sync reference docs to docs repository
         if: env.PUBLISH_DOCS == 'true'
-        uses: raven-actions/repo-files-sync@a4c9248f592fa5c5d19d70f630b7bd0d4772ab67 # v0.1.0-rc.12
+        uses: raven-actions/repo-files-sync@511c602835ac7dd8529673f91afe348db8d08185 # v0.1.0-rc.18
         with:
           # The App installation token authenticates as <app-slug>[bot]. Passing it as
           # GH_TOKEN makes repo-files-sync create verified commits through

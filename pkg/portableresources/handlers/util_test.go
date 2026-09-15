@@ -17,7 +17,6 @@ limitations under the License.
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
@@ -32,7 +31,7 @@ import (
 func Test_CheckDaprResourceNameUniqueness_NotFound(t *testing.T) {
 	client := k8sutil.NewFakeKubeClient(nil)
 
-	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
+	err := CheckDaprResourceNameUniqueness(t.Context(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
 	require.NoError(t, err)
 }
 
@@ -41,7 +40,7 @@ func Test_CheckDaprResourceNameUniqueness_SameRadiusResource(t *testing.T) {
 	existing := createUnstructuredComponent("test-component", "default", labels)
 	client := k8sutil.NewFakeKubeClient(nil, existing)
 
-	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
+	err := CheckDaprResourceNameUniqueness(t.Context(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
 	require.NoError(t, err)
 }
 
@@ -49,7 +48,7 @@ func Test_CheckDaprResourceNameUniqueness_NoLabels(t *testing.T) {
 	existing := createUnstructuredComponent("test-component", "default", nil)
 	client := k8sutil.NewFakeKubeClient(nil, existing)
 
-	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
+	err := CheckDaprResourceNameUniqueness(t.Context(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
 	require.Error(t, err)
 	require.Equal(t, fmt.Sprintf(daprConflictFmt, "test-component"), err.Error())
 }
@@ -59,7 +58,7 @@ func Test_CheckDaprResourceNameUniqueness_DifferentResourceNames(t *testing.T) {
 	existing := createUnstructuredComponent("test-component", "default", labels)
 	client := k8sutil.NewFakeKubeClient(nil, existing)
 
-	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
+	err := CheckDaprResourceNameUniqueness(t.Context(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
 	require.Error(t, err)
 	require.Equal(t, fmt.Sprintf(daprConflictFmt, "test-component"), err.Error())
 }
@@ -69,7 +68,7 @@ func Test_CheckDaprResourceNameUniqueness_DifferentResourceTypes(t *testing.T) {
 	existing := createUnstructuredComponent("test-component", "default", labels)
 	client := k8sutil.NewFakeKubeClient(nil, existing)
 
-	err := CheckDaprResourceNameUniqueness(context.Background(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
+	err := CheckDaprResourceNameUniqueness(t.Context(), client, "test-component", "default", "test-resource", dapr_ctrl.DaprStateStoresResourceType)
 	require.Error(t, err)
 	require.Equal(t, fmt.Sprintf(daprConflictFmt, "test-component"), err.Error())
 }

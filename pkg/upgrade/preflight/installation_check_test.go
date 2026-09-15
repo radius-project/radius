@@ -17,7 +17,6 @@ limitations under the License.
 package preflight
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -85,7 +84,7 @@ func TestRadiusInstallationCheck_Run(t *testing.T) {
 
 			check := NewRadiusInstallationCheck(mockHelm, "test-context")
 
-			success, message, err := check.Run(context.Background())
+			success, message, err := check.Run(t.Context())
 
 			if tt.expectError {
 				require.Error(t, err)

@@ -15,7 +15,6 @@
 package bicepsettings
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/armrpc/rest"
@@ -104,7 +103,7 @@ func TestValidateRequest(t *testing.T) {
 				},
 			}
 
-			resp, err := ValidateRequest(context.Background(), r, nil, nil)
+			resp, err := ValidateRequest(t.Context(), r, nil, nil)
 			require.NoError(t, err)
 
 			if !tc.wantReject {

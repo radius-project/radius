@@ -27,7 +27,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
@@ -177,14 +176,10 @@ func getTestModels() (*v20250801preview.RecipePackResource, *datamodel.RecipePac
 	}
 
 	recipePackDataModel := &datamodel.RecipePack{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       resourceID,
-				Name:     resourceName,
-				Type:     datamodel.RecipePackResourceType,
-				Location: location,
-			},
-		},
+		ID:       resourceID,
+		Name:     resourceName,
+		Type:     datamodel.RecipePackResourceType,
+		Location: location,
 		Properties: datamodel.RecipePackProperties{
 			Recipes: map[string]*datamodel.RecipeDefinition{
 				"Applications.Core/extenders": {

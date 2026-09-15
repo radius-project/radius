@@ -11,7 +11,7 @@ set -euo pipefail
 # GitHub Actions the Go bin dir is added to the job PATH so later steps can run
 # dlv.
 #
-# The pinned version is normally provided by build/tools.mk through the
+# The pinned version is normally provided by build/tools.yaml through the
 # environment. When it is not supplied it defaults to the latest release.
 #
 # Usage: install-dlv.sh [install_dir]

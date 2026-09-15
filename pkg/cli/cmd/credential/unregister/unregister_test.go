@@ -17,7 +17,6 @@ limitations under the License.
 package unregister
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/connections"
@@ -112,7 +111,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{
@@ -145,7 +144,7 @@ func Test_Run(t *testing.T) {
 				Format:            "table",
 			}
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 			require.NoError(t, err)
 
 			expected := []any{

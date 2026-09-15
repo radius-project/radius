@@ -17,7 +17,6 @@ limitations under the License.
 package list
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -120,7 +119,7 @@ func Test_Run(t *testing.T) {
 			ApplicationName:   "test-app",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -161,7 +160,7 @@ func Test_Run(t *testing.T) {
 			ApplicationName:   "test-app",
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Error(t, err)
 		require.Equal(t, clierrors.Message("The application \"test-app\" was not found or has been deleted."), err)
 

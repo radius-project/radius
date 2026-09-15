@@ -166,10 +166,8 @@ func Test_UpdateResourceProviderSummaryWithETag(t *testing.T) {
 
 				expectedETag = etag.New(bs)
 				obj := database.Object{
-					Metadata: database.Metadata{
-						ID:   tt.summaryID.String(),
-						ETag: expectedETag,
-					},
+					ID:   tt.summaryID.String(),
+					ETag: expectedETag,
 					Data: converted,
 				}
 				client.EXPECT().Get(gomock.Any(), tt.summaryID.String()).Return(&obj, nil)
@@ -192,7 +190,7 @@ func Test_UpdateResourceProviderSummaryWithETag(t *testing.T) {
 				})
 			}
 
-			err := updateResourceProviderSummaryWithETag(context.Background(), client, tt.summaryID, tt.policy, tt.updateFunc)
+			err := updateResourceProviderSummaryWithETag(t.Context(), client, tt.summaryID, tt.policy, tt.updateFunc)
 			if tt.expectedErr {
 				assert.Error(t, err)
 			} else {

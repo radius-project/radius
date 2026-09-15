@@ -4,7 +4,7 @@
       "$ref": "types.json#/19"
     },
     "Radius.Messaging/rabbitMQ@2025-08-01-preview": {
-      "$ref": "types.json#/38"
+      "$ref": "types.json#/41"
     }
   },
   "resourceFunctions": {},

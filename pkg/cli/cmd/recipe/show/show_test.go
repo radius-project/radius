@@ -17,7 +17,6 @@ limitations under the License.
 package show
 
 import (
-	"context"
 	"testing"
 
 	"go.uber.org/mock/gomock"
@@ -150,7 +149,7 @@ func Test_Run(t *testing.T) {
 			ResourceType:      datastoresrp.MongoDatabasesResourceType,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -229,7 +228,7 @@ func Test_Run(t *testing.T) {
 			ResourceType:      datastoresrp.MongoDatabasesResourceType,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -298,7 +297,7 @@ func Test_Run(t *testing.T) {
 			ResourceType:      datastoresrp.RedisCachesResourceType,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -377,7 +376,7 @@ func Test_Run(t *testing.T) {
 			ResourceType:      datastoresrp.MongoDatabasesResourceType,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{

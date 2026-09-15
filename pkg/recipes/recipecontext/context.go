@@ -18,8 +18,10 @@ package recipecontext
 
 import (
 	"fmt"
+	"strings"
 
 	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/hashutil"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
@@ -29,6 +31,9 @@ import (
 var (
 	ErrParseFormat = "failed to parse %s: %q while building the recipe context parameter %w"
 )
+
+// resourceNameHashLength keeps 16 hex chars (64 bits): short names, negligible collision risk.
+const resourceNameHashLength = 16
 
 // New creates the context parameter for the recipe with the portable resource, environment, and application info
 func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Context, error) {
@@ -95,6 +100,17 @@ func New(metadata *recipes.ResourceMetadata, config *recipes.Configuration) (*Co
 				SubscriptionID: subID,
 				ID:             "/subscriptions/" + subID,
 			},
+		}
+
+		azureScopeID := recipeContext.Azure.Subscription.ID
+		if rgName != "" {
+			azureScopeID = recipeContext.Azure.ResourceGroup.ID
+		}
+
+		// Use the configured Azure scope so subscription-scoped recipes also receive a stable hash.
+		if subID != "" && recipeContext.Resource.ID != "" {
+			seed := strings.ToLower(azureScopeID) + "\x00" + strings.ToLower(recipeContext.Resource.ID)
+			recipeContext.Azure.ResourceNameHash = hashutil.Hex([]byte(seed))[:resourceNameHashLength]
 		}
 	}
 

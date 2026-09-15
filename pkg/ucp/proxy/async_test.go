@@ -25,7 +25,6 @@ import (
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,7 +35,7 @@ func Test_ProcessAsyncOperationHeaders(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "http://localhost:9443/downstream-url", nil)
 		req.Header.Set(v1.RefererHeader, "http://localhost:9443/planes/test/local/downstream-url")
 
-		ctx := testcontext.New(t)
+		ctx := t.Context()
 		req = req.WithContext(ctx)
 		return req
 	}

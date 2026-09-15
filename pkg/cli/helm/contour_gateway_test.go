@@ -17,7 +17,6 @@ limitations under the License.
 package helm
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -36,16 +35,16 @@ func TestReconcileDefaultContourGatewayCreatesResources(t *testing.T) {
 
 	client := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
 
-	err := reconcileDefaultContourGateway(context.Background(), client)
+	err := reconcileDefaultContourGateway(t.Context(), client)
 	require.NoError(t, err)
 
-	gatewayClass, err := client.Resource(gatewayClassGVR).Get(context.Background(), ContourGatewayClassName, metav1.GetOptions{})
+	gatewayClass, err := client.Resource(gatewayClassGVR).Get(t.Context(), ContourGatewayClassName, metav1.GetOptions{})
 	require.NoError(t, err)
 	controllerName, _, _ := unstructured.NestedString(gatewayClass.Object, "spec", "controllerName")
 	require.Equal(t, ContourGatewayControllerName, controllerName)
 	require.True(t, isRadiusManaged(gatewayClass))
 
-	gateway, err := client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(context.Background(), DefaultContourGatewayName, metav1.GetOptions{})
+	gateway, err := client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(t.Context(), DefaultContourGatewayName, metav1.GetOptions{})
 	require.NoError(t, err)
 	gatewayClassName, _, _ := unstructured.NestedString(gateway.Object, "spec", "gatewayClassName")
 	require.Equal(t, ContourGatewayClassName, gatewayClassName)
@@ -91,13 +90,13 @@ func TestWaitForDefaultContourGatewayRetriesGatewayAPINotFound(t *testing.T) {
 		return false, nil, nil
 	})
 
-	err := waitForDefaultContourGateway(context.Background(), client, time.Millisecond, time.Second)
+	err := waitForDefaultContourGateway(t.Context(), client, time.Millisecond, time.Second)
 	require.NoError(t, err)
 	require.Equal(t, 2, createGatewayClassAttempts)
 
-	_, err = client.Resource(gatewayClassGVR).Get(context.Background(), ContourGatewayClassName, metav1.GetOptions{})
+	_, err = client.Resource(gatewayClassGVR).Get(t.Context(), ContourGatewayClassName, metav1.GetOptions{})
 	require.NoError(t, err)
-	_, err = client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(context.Background(), DefaultContourGatewayName, metav1.GetOptions{})
+	_, err = client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(t.Context(), DefaultContourGatewayName, metav1.GetOptions{})
 	require.NoError(t, err)
 }
 
@@ -116,7 +115,7 @@ func TestReconcileDefaultContourGatewayAllowsExistingMatchingGatewayClass(t *tes
 			},
 		},
 	})
-	err := reconcileDefaultContourGateway(context.Background(), client)
+	err := reconcileDefaultContourGateway(t.Context(), client)
 	require.NoError(t, err)
 }
 
@@ -142,13 +141,13 @@ func TestReconcileDefaultContourGatewayPreservesExistingGatewayMetadata(t *testi
 	}, "spec", "listeners"))
 
 	client := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(), newContourGatewayClass())
-	_, err := client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Create(context.Background(), existingGateway, metav1.CreateOptions{})
+	_, err := client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Create(t.Context(), existingGateway, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	err = reconcileDefaultContourGateway(context.Background(), client)
+	err = reconcileDefaultContourGateway(t.Context(), client)
 	require.NoError(t, err)
 
-	gateway, err := client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(context.Background(), DefaultContourGatewayName, metav1.GetOptions{})
+	gateway, err := client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(t.Context(), DefaultContourGatewayName, metav1.GetOptions{})
 	require.NoError(t, err)
 	require.Equal(t, "preserve", gateway.GetAnnotations()["example.com/annotation"])
 	require.Equal(t, []string{"example.com/finalizer"}, gateway.GetFinalizers())
@@ -176,7 +175,7 @@ func TestReconcileDefaultContourGatewayRejectsConflictingGatewayClass(t *testing
 			},
 		},
 	})
-	err := reconcileDefaultContourGateway(context.Background(), client)
+	err := reconcileDefaultContourGateway(t.Context(), client)
 	require.ErrorContains(t, err, "already exists with controllerName")
 }
 
@@ -188,12 +187,12 @@ func TestDeleteDefaultContourGatewayResourcesOnlyDeletesManagedResources(t *test
 	managedGateway := newContourGateway()
 	client := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(), unmanagedGatewayClass, managedGateway)
 
-	err := deleteDefaultContourGatewayResources(context.Background(), client)
+	err := deleteDefaultContourGatewayResources(t.Context(), client)
 	require.NoError(t, err)
 
-	_, err = client.Resource(gatewayClassGVR).Get(context.Background(), ContourGatewayClassName, metav1.GetOptions{})
+	_, err = client.Resource(gatewayClassGVR).Get(t.Context(), ContourGatewayClassName, metav1.GetOptions{})
 	require.NoError(t, err)
-	_, err = client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(context.Background(), DefaultContourGatewayName, metav1.GetOptions{})
+	_, err = client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(t.Context(), DefaultContourGatewayName, metav1.GetOptions{})
 	require.True(t, apierrors.IsNotFound(err))
 }
 
@@ -205,14 +204,14 @@ func TestDeleteDefaultContourGatewayResourcesPreservesGatewayClassForUnmanagedGa
 	unmanagedGateway.SetLabels(nil)
 	unmanagedGateway.SetNamespace(DefaultContourGatewayNamespace)
 	client := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(), managedGatewayClass)
-	_, err := client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Create(context.Background(), unmanagedGateway, metav1.CreateOptions{})
+	_, err := client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Create(t.Context(), unmanagedGateway, metav1.CreateOptions{})
 	require.NoError(t, err)
 
-	err = deleteDefaultContourGatewayResources(context.Background(), client)
+	err = deleteDefaultContourGatewayResources(t.Context(), client)
 	require.NoError(t, err)
 
-	_, err = client.Resource(gatewayClassGVR).Get(context.Background(), ContourGatewayClassName, metav1.GetOptions{})
+	_, err = client.Resource(gatewayClassGVR).Get(t.Context(), ContourGatewayClassName, metav1.GetOptions{})
 	require.NoError(t, err)
-	_, err = client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(context.Background(), DefaultContourGatewayName, metav1.GetOptions{})
+	_, err = client.Resource(gatewayGVR).Namespace(DefaultContourGatewayNamespace).Get(t.Context(), DefaultContourGatewayName, metav1.GetOptions{})
 	require.NoError(t, err)
 }

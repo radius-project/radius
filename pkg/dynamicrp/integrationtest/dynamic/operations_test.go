@@ -21,12 +21,12 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/dynamicrp/testhost"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,7 +34,7 @@ import (
 //
 // This test is synthetic because we don't have a real operation to test against.
 func Test_Dynamic_OperationResultAndStatus(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	dynamic, ucp := testhost.Start(t)
 
 	// Setup a plane & resource provider & location
@@ -60,14 +60,12 @@ func Test_Dynamic_OperationResultAndStatus(t *testing.T) {
 	require.NoError(t, err)
 
 	operation := &statusmanager.Status{
-		AsyncOperationStatus: v1.AsyncOperationStatus{
-			ID:     operationStatusID,
-			Name:   operationName,
-			Status: v1.ProvisioningStateUpdating,
-		},
+		ID:     operationStatusID,
+		Name:   operationName,
+		Status: v1.ProvisioningStateUpdating,
 	}
 
-	err = databaseClient.Save(ctx, &database.Object{Data: operation, Metadata: database.Metadata{ID: operationStatusID}})
+	err = databaseClient.Save(ctx, &database.Object{Data: operation, ID: operationStatusID})
 	require.NoError(t, err)
 
 	// Now let's query it again, we should find it.

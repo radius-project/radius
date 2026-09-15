@@ -1,0 +1,369 @@
+---
+schemaVersion: 1
+cooldownDays: 7
+platforms:
+  - linux_amd64
+  - linux_arm64
+  - darwin_amd64
+  - darwin_arm64
+
+tools:
+  - name: yq
+    makePrefix: YQ
+    version: v4.53.6
+    source:
+      type: github-release
+      repository: mikefarah/yq
+      latestURL: https://api.github.com/repos/mikefarah/yq/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: yq_linux_amd64
+        checksum: c5f056448f973ae7d39b5401949648a78f2dc1947d6a8eb65be60d5c504b9385
+      linux_arm64:
+        asset: yq_linux_arm64
+        checksum: 88a1016bc1d657375a35864e4f44b6f333df8ff97b559f51bba0adcb2169df09
+      darwin_amd64:
+        asset: yq_darwin_amd64
+        checksum: caa513cb04f3804b34d4752f0e0d7904fecb9e7cf1d34081289f83259319a7f6
+      darwin_arm64:
+        asset: yq_darwin_arm64
+        checksum: cceb0b8d71ea5294334121f8429f33f92b920e7217d904a2f9f35443968ac424
+    checksumSource:
+      type: github-release-file
+      fileTemplate: checksums
+      orderFileTemplate: checksums_hashes_order
+      format: yq
+
+  - name: bicep
+    makePrefix: BICEP
+    version: v0.42.1
+    update: false
+    notes: Bicep v0.43 and later reject the br:localhost registries used by local functional tests.
+    source:
+      type: github-release
+      repository: Azure/bicep
+      latestURL: https://api.github.com/repos/Azure/bicep/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: bicep-linux-x64
+        checksum: aed90eb2c69a6ee2bd70dc0d4354408ac4d04fd9911d3ec8e0cd74ad173e7139
+      linux_arm64:
+        asset: bicep-linux-arm64
+        checksum: b01ac3bb5259096dfbe548138a538d1c4e4a55e6f87f3827e2299fbc2d4e6796
+      darwin_amd64:
+        asset: bicep-osx-x64
+        checksum: 8219bfd0601a514cc0a814b4b194aed588f4efa68b7c7ac7c9b64f3d84713dd7
+      darwin_arm64:
+        asset: bicep-osx-arm64
+        checksum: 1c66533af4d4d47f875623d88074d28ca7fe7e9dc1f783a62570e8724700aca1
+    checksumSource:
+      type: download
+
+  - name: kind
+    makePrefix: KIND
+    version: v0.33.0
+    source:
+      type: github-release
+      repository: kubernetes-sigs/kind
+      latestURL: https://api.github.com/repos/kubernetes-sigs/kind/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: kind-linux-amd64
+        checksum: aee6151561422756b764a4ae28e7f44cda5af5a9eead3cc9985112b1de8d8e0d
+      linux_arm64:
+        asset: kind-linux-arm64
+        checksum: 20022bee6cfcd5086cb7234d218e3454e6090022f2a8f55d1fa7fcf42c3867a2
+      darwin_amd64:
+        asset: kind-darwin-amd64
+        checksum: 5a99f26f57246dc9319dd294803313197a0f34d33c525b3ea8b655db5916ece0
+      darwin_arm64:
+        asset: kind-darwin-arm64
+        checksum: 0c8c7dbe5e23594a198b786c4bc13dacc101fa6196b0cb0b23a1ca44e61f4b4f
+    checksumSource:
+      type: github-release-file
+      fileTemplate: "{asset}.sha256sum"
+      format: first
+
+  - name: kubectl
+    makePrefix: KUBECTL
+    version: v1.37.0
+    source:
+      type: stable-text
+      repository: kubernetes/kubernetes
+      latestURL: https://dl.k8s.io/release/stable.txt
+    downloadTemplate: https://dl.k8s.io/release/{version}/bin/{os}/{arch}/kubectl
+    platforms:
+      linux_amd64:
+        asset: kubectl
+        checksum: 6129359f4e1f3848a5572ccb0b26cf28b8ca08cef38c95a765b2f64a2c961a2f
+      linux_arm64:
+        asset: kubectl
+        checksum: 922df28df248cc00a9e025f947704f1d1482de64ece54cfe57e61f19eaf1eef3
+      darwin_amd64:
+        asset: kubectl
+        checksum: d5276c0f4fde77fc446070290f345944a7f1fda153df6b960e5fde93b7a9bccd
+      darwin_arm64:
+        asset: kubectl
+        checksum: 583beedaebe422e71d3f1a96acef8b1fef86ea2f09a45ad01aa6c9ce287c1380
+    checksumSource:
+      type: url-file
+      urlTemplate: https://dl.k8s.io/release/{version}/bin/{os}/{arch}/kubectl.sha256
+      format: first
+
+  - name: dapr
+    makePrefix: DAPR
+    version: v1.18.2
+    source:
+      type: github-release
+      repository: dapr/cli
+      latestURL: https://api.github.com/repos/dapr/cli/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: dapr_linux_amd64.tar.gz
+        checksum: ccfff008fd16f50096a9192ad56697ac7052e3add6fa0a07789d87b4c4df8c40
+      linux_arm64:
+        asset: dapr_linux_arm64.tar.gz
+        checksum: 356e40cffc3ee4ebaa0396edde31a6e33bc0351162a6a9ea98550baebb8d039f
+      darwin_amd64:
+        asset: dapr_darwin_amd64.tar.gz
+        checksum: 50f92e8fcaf6db561ac87c5d84d444e727de04a00004186cae3c97864814599f
+      darwin_arm64:
+        asset: dapr_darwin_arm64.tar.gz
+        checksum: 597454b453e2a9242ee8638ff24d0ecf274e4ed59d3dd34ac1cc789c22af1f12
+    checksumSource:
+      type: github-release-file
+      fileTemplate: "{asset}.sha256"
+      format: first
+
+  - name: helm
+    makePrefix: HELM
+    version: v4.2.4
+    source:
+      type: github-release
+      repository: helm/helm
+      latestURL: https://api.github.com/repos/helm/helm/releases/latest
+    downloadTemplate: https://get.helm.sh/helm-{version}-{os}-{arch}.tar.gz
+    platforms:
+      linux_amd64:
+        asset: helm-{version}-linux-amd64.tar.gz
+        checksum: c306b46f719b0a4da32d0f78ee21bf90ce8d602f15b22ab753f0674d1670a7f3
+      linux_arm64:
+        asset: helm-{version}-linux-arm64.tar.gz
+        checksum: 564de2191b881e9f71b5606b25345821ea1682f06ab90499d3ab22b530176da1
+      darwin_amd64:
+        asset: helm-{version}-darwin-amd64.tar.gz
+        checksum: 6c163d687ca03c3b5c01928e53bbbcf9518278f47ce7a2f249a5a08e8bdaa2bc
+      darwin_arm64:
+        asset: helm-{version}-darwin-arm64.tar.gz
+        checksum: d747eb4e28bd2727173d15b759fa0a17822291ec09db7ced3d55af290a3661a2
+    checksumSource:
+      type: url-file
+      urlTemplate: https://get.helm.sh/{asset}.sha256sum
+      format: first
+
+  - name: k3d
+    makePrefix: K3D
+    version: v5.9.0
+    source:
+      type: github-release
+      repository: k3d-io/k3d
+      latestURL: https://api.github.com/repos/k3d-io/k3d/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: k3d-linux-amd64
+        checksum: 06d8f25bc3a971c4eb29e0ff08429b180402db0f4dec838c9eac427e296800a0
+      linux_arm64:
+        asset: k3d-linux-arm64
+        checksum: 03cde5cf23e6e8e67de5a039ecf26e5b85aca82fba3e5d13dadf904cd218a250
+      darwin_amd64:
+        asset: k3d-darwin-amd64
+        checksum: b4aabc37534f95b9c764e7823f2df923f50d57600837aa60a06266cce47db732
+      darwin_arm64:
+        asset: k3d-darwin-arm64
+        checksum: fe106541d5d0a3f18debcd4d432a16f8c0ce3e6ddc06f8fbb6f696a122313e00
+    checksumSource:
+      type: github-release-file
+      fileTemplate: checksums.txt
+      format: basename
+
+  - name: golangci-lint
+    makePrefix: GOLANGCI_LINT
+    version: v2.13.2
+    source:
+      type: github-release
+      repository: golangci/golangci-lint
+      latestURL: https://api.github.com/repos/golangci/golangci-lint/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: golangci-lint-{version_no_v}-linux-amd64.tar.gz
+        checksum: 2277d43b98ec0054280f2ac26b53268bae97682444678a59a657dd565da021d6
+      linux_arm64:
+        asset: golangci-lint-{version_no_v}-linux-arm64.tar.gz
+        checksum: a2a4e0065aa41be71f7c5ac90f271b61751331e5d04314e62afe4027855f0893
+      darwin_amd64:
+        asset: golangci-lint-{version_no_v}-darwin-amd64.tar.gz
+        checksum: 8a13aaf9cbbb1dee52824e862cf0d0720e5bb97c1f4260d1e51623a09492b57b
+      darwin_arm64:
+        asset: golangci-lint-{version_no_v}-darwin-arm64.tar.gz
+        checksum: f4bf83f0b64f055c42b28fc9a38861839f69c096e61c788e72dfaae412011789
+    checksumSource:
+      type: github-release-file
+      fileTemplate: golangci-lint-{version_no_v}-checksums.txt
+      format: standard
+
+  - name: terraform
+    makePrefix: TERRAFORM
+    version: 1.15.8
+    source:
+      type: hashicorp-checkpoint
+      repository: hashicorp/terraform
+      latestURL: https://checkpoint-api.hashicorp.com/v1/check/terraform
+    downloadTemplate: https://releases.hashicorp.com/terraform/{version}/terraform_{version}_{os}_{arch}.zip
+    platforms:
+      linux_amd64:
+        asset: terraform_{version}_linux_amd64.zip
+        checksum: d25ce7b6902013ad905db3d2eab0be4cd905887fe88b81a6171b8d5503c31f3d
+      linux_arm64:
+        asset: terraform_{version}_linux_arm64.zip
+        checksum: 8891e9dcedc9e3b8950bc6af9d4d8af1f4cfade3062f53b9dc403a89f6ce8c9c
+      darwin_amd64:
+        asset: terraform_{version}_darwin_amd64.zip
+        checksum: e2e812e783771159bf758fd4e55d6dc9bb08f63e2af2c63d212721807a02c5dc
+      darwin_arm64:
+        asset: terraform_{version}_darwin_arm64.zip
+        checksum: f210110c5698b94d803a7a63cdb0251b5455c150841478808e2bbb343f95ed68
+    checksumSource:
+      type: url-file
+      urlTemplate: https://releases.hashicorp.com/terraform/{version}/terraform_{version}_SHA256SUMS
+      format: standard
+    versionFiles:
+      - path: .terraform-version
+        format: plain
+      - path: pkg/recipes/terraform/version.go
+        format: replace
+        prefix: 'var terraformVersion = "'
+        suffix: '"'
+      - path: deploy/Chart/values.yaml
+        format: replace
+        prefix: '    version: "'
+        suffix: '"'
+
+  - name: stern
+    makePrefix: STERN
+    version: v1.34.0
+    source:
+      type: github-release
+      repository: stern/stern
+      latestURL: https://api.github.com/repos/stern/stern/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: stern_{version_no_v}_linux_amd64.tar.gz
+        checksum: 7754adfa653939240f7d20fff4ada9b69cda40c9e70732301f67bb8045f1ef3e
+      linux_arm64:
+        asset: stern_{version_no_v}_linux_arm64.tar.gz
+        checksum: e215cfc5e42d71e93b77d3fac8f0df7d736271f44b2d92a5b417eaa588edff3a
+      darwin_amd64:
+        asset: stern_{version_no_v}_darwin_amd64.tar.gz
+        checksum: 153355317f21e565ea10bc710d4c2e3d98fd06f83cae5eb927e7031cc724a7a6
+      darwin_arm64:
+        asset: stern_{version_no_v}_darwin_arm64.tar.gz
+        checksum: 4014d84096e1e603ee115864e03a1e15fb9bae9876647bf7bb8031eee278dcd3
+    checksumSource:
+      type: github-release-file
+      fileTemplate: checksums.txt
+      format: standard
+
+  - name: oras
+    makePrefix: ORAS
+    version: v1.3.4
+    source:
+      type: github-release
+      repository: oras-project/oras
+      latestURL: https://api.github.com/repos/oras-project/oras/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: oras_{version_no_v}_linux_amd64.tar.gz
+        checksum: f27adb935022d94df8dc77719c322dda592c78a0d57a6f7dcdd8d900b248c454
+      linux_arm64:
+        asset: oras_{version_no_v}_linux_arm64.tar.gz
+        checksum: 15702c6e3a4a56a8bd8ac5c17efdbcab56d9bada661ccbcf017f5b10c1d89399
+      darwin_amd64:
+        asset: oras_{version_no_v}_darwin_amd64.tar.gz
+        checksum: 5e964f3d5a36eb9499a9d3e252a86b09e7adf3e6f6447eec56fd249c6702af7e
+      darwin_arm64:
+        asset: oras_{version_no_v}_darwin_arm64.tar.gz
+        checksum: 217761a9500242ff473de8656b5aca21136ff39e17e9e61fd8936bbfd902704c
+    checksumSource:
+      type: github-release-file
+      fileTemplate: oras_{version_no_v}_checksums.txt
+      format: standard
+
+  - name: shellcheck
+    makePrefix: SHELLCHECK
+    version: v0.11.0
+    source:
+      type: github-release
+      repository: koalaman/shellcheck
+      latestURL: https://api.github.com/repos/koalaman/shellcheck/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: shellcheck-{version}.linux.x86_64.tar.xz
+        checksum: 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
+      linux_arm64:
+        asset: shellcheck-{version}.linux.aarch64.tar.xz
+        checksum: 12b331c1d2db6b9eb13cfca64306b1b157a86eb69db83023e261eaa7e7c14588
+      darwin_amd64:
+        asset: shellcheck-{version}.darwin.x86_64.tar.xz
+        checksum: 3c89db4edcab7cf1c27bff178882e0f6f27f7afdf54e859fa041fca10febe4c6
+      darwin_arm64:
+        asset: shellcheck-{version}.darwin.aarch64.tar.xz
+        checksum: 56affdd8de5527894dca6dc3d7e0a99a873b0f004d7aabc30ae407d3f48b0a79
+    checksumSource:
+      type: download
+
+  - name: jq
+    makePrefix: JQ
+    version: 1.8.2
+    source:
+      type: github-release
+      repository: jqlang/jq
+      tagPrefix: jq-
+      latestURL: https://api.github.com/repos/jqlang/jq/releases/latest
+    downloadTemplate: https://github.com/{repository}/releases/download/{tag}/{asset}
+    platforms:
+      linux_amd64:
+        asset: jq-linux-amd64
+        checksum: b1c22172dd303f3be49e935aa56aa48a8b7a46e0bc838b4997d3bb451495870f
+      linux_arm64:
+        asset: jq-linux-arm64
+        checksum: 8b85c817833814ddca00a144c33705546355afccf0cf39b188f3cdb48b852309
+      darwin_amd64:
+        asset: jq-macos-amd64
+        checksum: e94b266e3c26690550006abe63152b782280f4e14374accdf04cbde844f00bc0
+      darwin_arm64:
+        asset: jq-macos-arm64
+        checksum: 2d75340ba57a4b4b4c8708a21c2dc8e958a48aaa8bba13b27f77f6e4c0eca07e
+    checksumSource:
+      type: github-release-file
+      fileTemplate: sha256sum.txt
+      format: standard
+
+  - name: dlv
+    makePrefix: DLV
+    version: v1.27.1
+    source:
+      type: github-release
+      repository: go-delve/delve
+      latestURL: https://api.github.com/repos/go-delve/delve/releases/latest
+    checksumSource:
+      type: none
+      integrity: go-sumdb

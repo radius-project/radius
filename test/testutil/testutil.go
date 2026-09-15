@@ -19,6 +19,7 @@ package testutil
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -28,7 +29,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -247,20 +249,79 @@ func ExposePod(t *testing.T, ctx context.Context, client *k8s.Clientset, config 
 		return
 	}
 
-	// Run the port-forward with the desired configuration
+	runPortForward(ctx, forwarder, stopChan, readyChan, portChan, errorChan)
+}
+
+type portForwardRunner interface {
+	ForwardPorts() error
+	GetPorts() ([]portforward.ForwardedPort, error)
+}
+
+var errPortForwardStopped = errors.New("port-forwarder stopped unexpectedly")
+
+func runPortForward(ctx context.Context, forwarder portForwardRunner, stopChan <-chan struct{}, readyChan <-chan struct{}, portChan chan<- int, errorChan chan<- error) {
+	forwardResultChan := make(chan error, 1)
 	go func() {
-		errorChan <- forwarder.ForwardPorts()
+		forwardResultChan <- forwarder.ForwardPorts()
 	}()
 
-	// Wait for the forwarder to be ready, then get the assigned port
-	<-readyChan
-	ports, err := forwarder.GetPorts()
-	if err != nil {
-		errorChan <- err
+	select {
+	case <-readyChan:
+	case err := <-forwardResultChan:
+		sendPortForwardError(stopChan, errorChan, err)
+		return
+	case <-ctx.Done():
+		sendPortForwardError(stopChan, errorChan, ctx.Err())
+		return
+	case <-stopChan:
+		return
 	}
 
-	// Send the assigned port to then portChan channel
-	portChan <- int(ports[0].Local)
+	ports, err := forwarder.GetPorts()
+	if err != nil {
+		sendPortForwardError(stopChan, errorChan, err)
+		return
+	}
+	if len(ports) == 0 {
+		sendPortForwardError(stopChan, errorChan, errors.New("port-forwarder returned no ports"))
+		return
+	}
+
+	select {
+	case portChan <- int(ports[0].Local):
+	case err := <-forwardResultChan:
+		sendPortForwardError(stopChan, errorChan, err)
+		return
+	case <-ctx.Done():
+		sendPortForwardError(stopChan, errorChan, ctx.Err())
+		return
+	case <-stopChan:
+		return
+	}
+
+	select {
+	case err := <-forwardResultChan:
+		sendPortForwardError(stopChan, errorChan, err)
+	case <-ctx.Done():
+	case <-stopChan:
+	}
+}
+
+func sendPortForwardError(stopChan <-chan struct{}, errorChan chan<- error, err error) {
+	if err == nil {
+		err = errPortForwardStopped
+	}
+
+	select {
+	case <-stopChan:
+		return
+	default:
+	}
+
+	select {
+	case errorChan <- err:
+	case <-stopChan:
+	}
 }
 
 // IsMapSubSet returns true if the expectedMap is a subset of the actualMap

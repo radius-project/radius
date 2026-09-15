@@ -27,7 +27,6 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	"github.com/radius-project/radius/pkg/corerp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/to"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -35,7 +34,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
@@ -105,10 +103,8 @@ func createEnvironment(radius *mockRadiusClient, resourceGroup, name string) {
 
 func makeRecipe(name types.NamespacedName, resourceType string) *radappiov1alpha3.Recipe {
 	return &radappiov1alpha3.Recipe{
-		ObjectMeta: ctrl.ObjectMeta{
-			Namespace: name.Namespace,
-			Name:      name.Name,
-		},
+		Namespace: name.Namespace,
+		Name:      name.Name,
 		Spec: radappiov1alpha3.RecipeSpec{
 			Type: resourceType,
 		},
@@ -116,7 +112,7 @@ func makeRecipe(name types.NamespacedName, resourceType string) *radappiov1alpha
 }
 
 func waitForRecipeStateUpdating(t *testing.T, client client.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.RecipeStatus {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	status := &radappiov1alpha3.RecipeStatus{}
@@ -141,7 +137,7 @@ func waitForRecipeStateUpdating(t *testing.T, client client.Client, name types.N
 }
 
 func waitForRecipeStateReady(t *testing.T, client client.Client, name types.NamespacedName) *radappiov1alpha3.RecipeStatus {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	status := &radappiov1alpha3.RecipeStatus{}
@@ -164,7 +160,7 @@ func waitForRecipeStateReady(t *testing.T, client client.Client, name types.Name
 }
 
 func waitForRecipeStateDeleting(t *testing.T, client client.Client, name types.NamespacedName, oldOperation *radappiov1alpha3.ResourceOperation) *radappiov1alpha3.RecipeStatus {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	status := &radappiov1alpha3.RecipeStatus{}
@@ -188,7 +184,7 @@ func waitForRecipeStateDeleting(t *testing.T, client client.Client, name types.N
 }
 
 func waitForRecipeDeleted(t *testing.T, client client.Client, name types.NamespacedName) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	logger := t
 	require.Eventuallyf(t, func() bool {
@@ -205,13 +201,29 @@ func waitForRecipeDeleted(t *testing.T, client client.Client, name types.Namespa
 	}, recipeTestWaitDuration, recipeTestWaitInterval, "recipe still exists")
 }
 
+// waitForSecretData waits until a secret contains the expected data. The test client reads from the
+// informer cache, and the recipe status and its secret are delivered by independent informers, so
+// observing the recipe as ready does not guarantee the secret's data is visible yet.
+func waitForSecretData(t *testing.T, client client.Client, name types.NamespacedName, expected map[string][]byte) {
+	ctx := t.Context()
+
+	logger := t
+	require.EventuallyWithTf(t, func(t *assert.CollectT) {
+		logger.Logf("Fetching Secret: %+v", name)
+		secret := corev1.Secret{}
+		if !assert.NoError(t, client.Get(ctx, name, &secret)) {
+			return
+		}
+
+		assert.Equal(t, expected, secret.Data)
+	}, recipeTestWaitDuration, recipeTestWaitInterval, "secret data does not match")
+}
+
 func makeDeployment(name types.NamespacedName) *appsv1.Deployment {
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:        name.Name,
-			Namespace:   name.Namespace,
-			Annotations: map[string]string{},
-		},
+		Name:        name.Name,
+		Namespace:   name.Namespace,
+		Annotations: map[string]string{},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
@@ -239,10 +251,8 @@ func makeDeployment(name types.NamespacedName) *appsv1.Deployment {
 
 func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig string, parameters map[string]string) *radappiov1alpha3.DeploymentTemplate {
 	return &radappiov1alpha3.DeploymentTemplate{
-		ObjectMeta: ctrl.ObjectMeta{
-			Namespace: name.Namespace,
-			Name:      name.Name,
-		},
+		Namespace: name.Namespace,
+		Name:      name.Name,
 		Spec: radappiov1alpha3.DeploymentTemplateSpec{
 			Template:       template,
 			ProviderConfig: providerConfig,
@@ -253,10 +263,8 @@ func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig 
 
 func makeDeploymentResource(name types.NamespacedName, id string) *radappiov1alpha3.DeploymentResource {
 	return &radappiov1alpha3.DeploymentResource{
-		ObjectMeta: ctrl.ObjectMeta{
-			Namespace: name.Namespace,
-			Name:      name.Name,
-		},
+		Namespace: name.Namespace,
+		Name:      name.Name,
 		Spec: radappiov1alpha3.DeploymentResourceSpec{
 			Id: id,
 		},

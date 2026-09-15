@@ -34,7 +34,6 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
 	"github.com/radius-project/radius/pkg/middleware"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -90,7 +89,7 @@ func Test_RegisterHandler_DeplicatedRoutes(t *testing.T) {
 		Middlewares:       chi.Middlewares{middleware.NormalizePath},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	err := RegisterHandler(ctx, opts, ctrlOpts)
 	require.NoError(t, err)
@@ -176,7 +175,7 @@ func Test_RegisterHandler(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			ctx := testcontext.New(t)
+			ctx := t.Context()
 
 			err := RegisterHandler(ctx, tc.opts, ctrlOpts)
 			if tc.err != nil {
@@ -209,7 +208,7 @@ func Test_HandlerErrModelConversion(t *testing.T) {
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
 	err := &v1.ErrModelConversion{PropertyName: "namespace", ValidValue: "63 characters or less"}
-	HandleError(context.Background(), responseWriter, req, err)
+	HandleError(t.Context(), responseWriter, req, err)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
@@ -231,7 +230,7 @@ func Test_HandlerErrInvalidModelConversion(t *testing.T) {
 
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
-	HandleError(context.Background(), responseWriter, req, v1.ErrInvalidModelConversion)
+	HandleError(t.Context(), responseWriter, req, v1.ErrInvalidModelConversion)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
@@ -254,7 +253,7 @@ func Test_HandlerErrInternal(t *testing.T) {
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
 	err := errors.New("Internal error")
-	HandleError(context.Background(), responseWriter, req, err)
+	HandleError(t.Context(), responseWriter, req, err)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
@@ -283,7 +282,7 @@ func Test_HandlerForController_OperationType(t *testing.T) {
 	require.NoError(t, err)
 
 	rCtx := &v1.ARMRequestContext{}
-	req = req.WithContext(v1.WithARMRequestContext(context.Background(), rCtx))
+	req = req.WithContext(v1.WithARMRequestContext(t.Context(), rCtx))
 
 	handler.ServeHTTP(w, req)
 

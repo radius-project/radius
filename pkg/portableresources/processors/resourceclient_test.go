@@ -17,7 +17,6 @@ limitations under the License.
 package processors
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -25,7 +24,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources/v3"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/azure/armauth"
@@ -48,11 +46,17 @@ const (
 	AWSResourceID                    = "/planes/aws/aws/accounts/0000/regions/us-east-1/providers/AWS.Kinesis/Streams/test-stream"
 	KubernetesCoreGroupResourceID    = "/planes/kubernetes/local/namespaces/test-namespace/providers/core/Secret/test-name"
 	KubernetesNonCoreGroupResourceID = "/planes/kubernetes/local/namespaces/test-namespace/providers/apps/Deployment/test-name"
+
+	// ARMExtensionResourceID is an Azure extension resource (a Microsoft.Authorization/locks resource
+	// attached to a Microsoft.DocumentDB/databaseAccounts resource), as described in
+	// https://github.com/radius-project/radius/issues/12694.
+	ARMExtensionResourceID   = "/subscriptions/0000/resourceGroups/test-rg/providers/Microsoft.DocumentDB/databaseAccounts/test-account/providers/Microsoft.Authorization/locks/test-lock"
+	ARMExtensionProviderPath = "/subscriptions/0000/providers/Microsoft.Authorization"
 )
 
 func Test_Delete_InvalidResourceID(t *testing.T) {
 	c := NewResourceClient(nil, nil, nil)
-	err := c.Delete(context.Background(), "invalid")
+	err := c.Delete(t.Context(), "invalid")
 	require.Error(t, err)
 }
 
@@ -71,7 +75,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 	})
@@ -99,7 +103,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.NoError(t, err)
 	})
 
@@ -122,7 +126,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.NoError(t, err)
 	})
 
@@ -149,7 +153,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.NoError(t, err)
 	})
 
@@ -163,7 +167,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 	})
@@ -181,7 +185,7 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 		require.Contains(t, err.Error(), "could not find API version for type \"Microsoft.Compute/virtualMachines\", type was not found")
@@ -205,10 +209,33 @@ func Test_Delete_ARM(t *testing.T) {
 		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
 		c.armClientOptions = newClientOptions(server.Client(), server.URL)
 
-		err := c.Delete(context.Background(), ARMResourceID)
+		err := c.Delete(t.Context(), ARMResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 		require.Contains(t, err.Error(), "could not find API version for type \"Microsoft.Compute/virtualMachines\", no supported API versions")
+	})
+
+	t.Run("success - lookup API Version - extension resource", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc(ARMExtensionResourceID, handleDeleteSuccess())
+		mux.HandleFunc(ARMExtensionProviderPath, handleJSONResponse(t, armresources.Provider{
+			Namespace: new("Microsoft.Authorization"),
+			ResourceTypes: []*armresources.ProviderResourceType{
+				{
+					ResourceType:      new("locks"),
+					DefaultAPIVersion: new(ARMAPIVersion),
+				},
+			},
+		}, 200))
+
+		server := httptest.NewServer(mux)
+		defer server.Close()
+
+		c := NewResourceClient(newArmOptions(server.URL), nil, nil)
+		c.armClientOptions = newClientOptions(server.Client(), server.URL)
+
+		err := c.Delete(t.Context(), ARMExtensionResourceID)
+		require.NoError(t, err)
 	})
 }
 
@@ -217,10 +244,8 @@ func Test_Delete_Kubernetes(t *testing.T) {
 
 	t.Run("success - lookup API Version (preferred namespaced resources)", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithObjects(&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-name",
-				Namespace: "test-namespace",
-			},
+			Name:      "test-name",
+			Namespace: "test-namespace",
 		}).Build()
 
 		dc := &k8sutil.DiscoveryClient{
@@ -244,15 +269,13 @@ func Test_Delete_Kubernetes(t *testing.T) {
 
 		c := NewResourceClient(nil, nil, kcp)
 
-		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID)
+		err := c.Delete(t.Context(), KubernetesCoreGroupResourceID)
 		require.NoError(t, err)
 	})
 
 	t.Run("success - lookup API Version (preferred empty namespace)", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithObjects(&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "test-name",
-			},
+			Name: "test-name",
 		}).Build()
 
 		dc := &k8sutil.DiscoveryClient{
@@ -276,16 +299,14 @@ func Test_Delete_Kubernetes(t *testing.T) {
 
 		c := NewResourceClient(nil, nil, kcp)
 
-		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID)
+		err := c.Delete(t.Context(), KubernetesCoreGroupResourceID)
 		require.NoError(t, err)
 	})
 
 	t.Run("failure - lookup API Version - resource list not found", func(t *testing.T) {
 		client := fake.NewClientBuilder().WithObjects(&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-name",
-				Namespace: "test-namespace",
-			},
+			Name:      "test-name",
+			Namespace: "test-namespace",
 		}).Build()
 
 		dc := &k8sutil.DiscoveryClient{
@@ -298,7 +319,7 @@ func Test_Delete_Kubernetes(t *testing.T) {
 
 		c := NewResourceClient(nil, nil, kcp)
 
-		err := c.Delete(context.Background(), KubernetesCoreGroupResourceID)
+		err := c.Delete(t.Context(), KubernetesCoreGroupResourceID)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "could not find API version for type \"core/Secret\", type was not found")
 	})
@@ -317,7 +338,7 @@ func Test_Delete_UCP(t *testing.T) {
 
 		c := NewResourceClient(nil, connection, nil)
 
-		err = c.Delete(context.Background(), AWSResourceID)
+		err = c.Delete(t.Context(), AWSResourceID)
 		require.NoError(t, err)
 	})
 
@@ -333,7 +354,7 @@ func Test_Delete_UCP(t *testing.T) {
 
 		c := NewResourceClient(nil, connection, nil)
 
-		err = c.Delete(context.Background(), AWSResourceID)
+		err = c.Delete(t.Context(), AWSResourceID)
 		require.NoError(t, err)
 	})
 
@@ -353,7 +374,7 @@ func Test_Delete_UCP(t *testing.T) {
 
 		c := NewResourceClient(nil, connection, nil)
 
-		err = c.Delete(context.Background(), AWSResourceID)
+		err = c.Delete(t.Context(), AWSResourceID)
 		require.Error(t, err)
 		require.IsType(t, &ResourceError{}, err)
 	})
@@ -370,23 +391,21 @@ func newArmOptions(url string) *armauth.ArmConfig {
 
 func newClientOptions(c *http.Client, url string) *arm.ClientOptions {
 	return &arm.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: &wrapper{Client: c},
-			Cloud: cloud.Configuration{
-				Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
-					cloud.ResourceManager: {
-						Endpoint: url,
-						Audience: "https://management.core.windows.net",
-					},
+		Transport: &wrapper{Client: c},
+		Cloud: cloud.Configuration{
+			Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
+				cloud.ResourceManager: {
+					Endpoint: url,
+					Audience: "https://management.core.windows.net",
 				},
 			},
-			// When updating azcore to 1.11.1 from 1.7.0, we saw that HTTPS check for Authentication was added.
-			// Link to the check: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/azcore/runtime/policy_bearer_token.go#L118
-			//
-			// This check was failing for ARM requests over HTTP. To fix this, we set InsecureAllowCredentialWithHTTP to true.
-			// The reason it was failing is because the ARM requests are made over HTTP and the bearer token is being sent in the header.
-			InsecureAllowCredentialWithHTTP: true,
 		},
+		// When updating azcore to 1.11.1 from 1.7.0, we saw that HTTPS check for Authentication was added.
+		// Link to the check: https://github.com/Azure/azure-sdk-for-go/blob/main/sdk/azcore/runtime/policy_bearer_token.go#L118
+		//
+		// This check was failing for ARM requests over HTTP. To fix this, we set InsecureAllowCredentialWithHTTP to true.
+		// The reason it was failing is because the ARM requests are made over HTTP and the bearer token is being sent in the header.
+		InsecureAllowCredentialWithHTTP: true,
 	}
 }
 

@@ -94,6 +94,7 @@ func TestNewContext(t *testing.T) {
 						SubscriptionID: "testSub",
 						ID:             "/subscriptions/testSub",
 					},
+					ResourceNameHash: "90af35ee55457d03",
 				},
 				AWS: &ProviderAWS{
 					Region:  "us-west-2",
@@ -186,6 +187,7 @@ func TestNewContext(t *testing.T) {
 						SubscriptionID: "testSub",
 						ID:             "/subscriptions/testSub",
 					},
+					ResourceNameHash: "90af35ee55457d03",
 				},
 			},
 		},
@@ -455,4 +457,81 @@ func TestNewContext_AzureProviderSubscriptionOnly(t *testing.T) {
 	require.Equal(t, "/subscriptions/test-subscription-id", recipeContext.Azure.Subscription.ID)
 	require.Equal(t, "", recipeContext.Azure.ResourceGroup.Name)
 	require.Equal(t, "/subscriptions/test-subscription-id/resourceGroups/", recipeContext.Azure.ResourceGroup.ID)
+
+	require.Equal(t, "bdba72b3ff162ff0", recipeContext.Azure.ResourceNameHash)
+}
+
+func TestNewContext_ResourceNameHash(t *testing.T) {
+	baseMetadata := &recipes.ResourceMetadata{
+		ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0",
+		EnvironmentID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+	}
+	azureConfig := func(scope string) *recipes.Configuration {
+		return &recipes.Configuration{
+			Providers: coredm.Providers{
+				Azure: coredm.ProvidersAzure{Scope: scope},
+			},
+		}
+	}
+
+	t.Run("computes a stable 16-character hash", func(t *testing.T) {
+		ctx, err := New(baseMetadata, azureConfig("/subscriptions/testSub/resourceGroups/testGroup"))
+		require.NoError(t, err)
+		require.NotNil(t, ctx.Azure)
+		require.Len(t, ctx.Azure.ResourceNameHash, resourceNameHashLength)
+		require.Equal(t, "90af35ee55457d03", ctx.Azure.ResourceNameHash)
+	})
+
+	t.Run("is case insensitive", func(t *testing.T) {
+		lower, err := New(baseMetadata, azureConfig("/subscriptions/testSub/resourceGroups/testGroup"))
+		require.NoError(t, err)
+
+		upper, err := New(&recipes.ResourceMetadata{
+			ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/MONGO0",
+			EnvironmentID: baseMetadata.EnvironmentID,
+		}, azureConfig("/subscriptions/testSub/resourceGroups/TESTGROUP"))
+		require.NoError(t, err)
+
+		require.Equal(t, lower.Azure.ResourceNameHash, upper.Azure.ResourceNameHash)
+	})
+
+	t.Run("changes with the resource ID", func(t *testing.T) {
+		base, err := New(baseMetadata, azureConfig("/subscriptions/testSub/resourceGroups/testGroup"))
+		require.NoError(t, err)
+
+		other, err := New(&recipes.ResourceMetadata{
+			ResourceID:    "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo1",
+			EnvironmentID: baseMetadata.EnvironmentID,
+		}, azureConfig("/subscriptions/testSub/resourceGroups/testGroup"))
+		require.NoError(t, err)
+
+		require.NotEqual(t, base.Azure.ResourceNameHash, other.Azure.ResourceNameHash)
+	})
+
+	t.Run("changes with the Azure scope", func(t *testing.T) {
+		base, err := New(baseMetadata, azureConfig("/subscriptions/testSub/resourceGroups/testGroup"))
+		require.NoError(t, err)
+
+		other, err := New(baseMetadata, azureConfig("/subscriptions/testSub/resourceGroups/otherGroup"))
+		require.NoError(t, err)
+
+		require.NotEqual(t, base.Azure.ResourceNameHash, other.Azure.ResourceNameHash)
+	})
+
+	t.Run("changes with the Azure subscription", func(t *testing.T) {
+		base, err := New(baseMetadata, azureConfig("/subscriptions/testSub/resourceGroups/testGroup"))
+		require.NoError(t, err)
+
+		other, err := New(baseMetadata, azureConfig("/subscriptions/otherSub/resourceGroups/testGroup"))
+		require.NoError(t, err)
+
+		require.NotEqual(t, base.Azure.ResourceNameHash, other.Azure.ResourceNameHash)
+	})
+
+	t.Run("uses the subscription scope when the resource group is absent", func(t *testing.T) {
+		ctx, err := New(baseMetadata, azureConfig("/subscriptions/testSub"))
+		require.NoError(t, err)
+		require.NotNil(t, ctx.Azure)
+		require.Equal(t, "2ee7ced618d5dd8e", ctx.Azure.ResourceNameHash)
+	})
 }

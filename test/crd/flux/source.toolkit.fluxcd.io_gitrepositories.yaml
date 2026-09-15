@@ -740,7 +740,7 @@ spec:
                 description: IncludedArtifacts represents the included artifacts from
                   the last successful repository sync.
                 items:
-                  description: Artifact represents the output of a source synchronisation.
+                  description: Artifact represents the output of a source synchronization.
                   properties:
                     checksum:
                       description: Checksum is the SHA256 checksum of the artifact.

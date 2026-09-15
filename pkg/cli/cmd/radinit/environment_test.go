@@ -17,7 +17,6 @@ limitations under the License.
 package radinit
 
 import (
-	"context"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -55,7 +54,7 @@ func Test_enterEnvironmentOptions(t *testing.T) {
 		initNamespacePrompt(prompter, "test-namespace")
 
 		options := initOptions{Cluster: clusterOptions{Install: true}}
-		err := runner.enterEnvironmentOptions(context.Background(), &workspaces.Workspace{}, &options)
+		err := runner.enterEnvironmentOptions(t.Context(), &workspaces.Workspace{}, &options)
 		require.NoError(t, err)
 
 		expected := environmentOptions{
@@ -81,7 +80,7 @@ func Test_enterEnvironmentOptions(t *testing.T) {
 		initNamespacePrompt(prompter, "test-namespace")
 
 		options := initOptions{}
-		err := runner.enterEnvironmentOptions(context.Background(), &workspaces.Workspace{}, &options)
+		err := runner.enterEnvironmentOptions(t.Context(), &workspaces.Workspace{}, &options)
 		require.NoError(t, err)
 
 		expected := environmentOptions{
@@ -105,7 +104,7 @@ func Test_enterEnvironmentOptions(t *testing.T) {
 		initExistingEnvironmentSelection(prompter, "test-env1")
 
 		options := initOptions{}
-		err := runner.enterEnvironmentOptions(context.Background(), &workspaces.Workspace{}, &options)
+		err := runner.enterEnvironmentOptions(t.Context(), &workspaces.Workspace{}, &options)
 		require.NoError(t, err)
 
 		expected := environmentOptions{
@@ -144,7 +143,7 @@ func Test_selectExistingEnvironment(t *testing.T) {
 
 		setExistingEnvironments(applicationsClient, environments)
 
-		name, err := runner.selectExistingEnvironment(context.Background(), &workspaces.Workspace{})
+		name, err := runner.selectExistingEnvironment(t.Context(), &workspaces.Workspace{})
 		require.NoError(t, err)
 		require.Equal(t, defaultEnvironmentName, *name)
 	})
@@ -162,7 +161,7 @@ func Test_selectExistingEnvironment(t *testing.T) {
 		setExistingEnvironments(applicationsClient, environments)
 		initExistingEnvironmentSelection(prompter, "test-env1")
 
-		name, err := runner.selectExistingEnvironment(context.Background(), &workspaces.Workspace{})
+		name, err := runner.selectExistingEnvironment(t.Context(), &workspaces.Workspace{})
 		require.NoError(t, err)
 		require.Equal(t, "test-env1", *name)
 	})
@@ -179,7 +178,7 @@ func Test_selectExistingEnvironment(t *testing.T) {
 		environments := []corerp.EnvironmentResource{}
 		setExistingEnvironments(applicationsClient, environments)
 
-		name, err := runner.selectExistingEnvironment(context.Background(), &workspaces.Workspace{})
+		name, err := runner.selectExistingEnvironment(t.Context(), &workspaces.Workspace{})
 		require.NoError(t, err)
 		require.Nil(t, name)
 	})
@@ -196,7 +195,7 @@ func Test_selectExistingEnvironment(t *testing.T) {
 		setExistingEnvironments(applicationsClient, environments)
 		initExistingEnvironmentSelection(prompter, "test-env1")
 
-		name, err := runner.selectExistingEnvironment(context.Background(), &workspaces.Workspace{})
+		name, err := runner.selectExistingEnvironment(t.Context(), &workspaces.Workspace{})
 		require.NoError(t, err)
 		require.Equal(t, "test-env1", *name)
 	})
@@ -213,7 +212,7 @@ func Test_selectExistingEnvironment(t *testing.T) {
 		setExistingEnvironments(applicationsClient, environments)
 		initExistingEnvironmentSelection(prompter, selectExistingEnvironmentCreateSentinel)
 
-		name, err := runner.selectExistingEnvironment(context.Background(), &workspaces.Workspace{})
+		name, err := runner.selectExistingEnvironment(t.Context(), &workspaces.Workspace{})
 		require.NoError(t, err)
 		require.Nil(t, name)
 	})

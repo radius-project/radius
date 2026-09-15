@@ -21,11 +21,9 @@ import (
 	"net/url"
 	"testing"
 
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/components/database"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -51,11 +49,7 @@ func Test_ValidateDownstream(t *testing.T) {
 	downstream := "http://localhost:7443"
 
 	plane := &datamodel.RadiusPlane{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: id.PlaneScope(),
-			},
-		},
+		ID: id.PlaneScope(),
 		Properties: datamodel.RadiusPlaneProperties{
 			ResourceProviders: map[string]string{
 				"System.TestRP": downstream,
@@ -64,22 +58,14 @@ func Test_ValidateDownstream(t *testing.T) {
 	}
 
 	resourceTypeResource := &datamodel.ResourceType{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "testResources",
-				ID:   resourceTypeID.String(),
-			},
-		},
+		Name:       "testResources",
+		ID:         resourceTypeID.String(),
 		Properties: datamodel.ResourceTypeProperties{},
 	}
 
 	locationResource := &datamodel.Location{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: location,
-				ID:   locationID.String(),
-			},
-		},
+		Name: location,
+		ID:   locationID.String(),
 		Properties: datamodel.LocationProperties{
 			Address: new("http://localhost:7443"),
 			ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
@@ -99,11 +85,7 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("success (resource group)", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		databaseClient := setup(t)
@@ -115,7 +97,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, id, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
@@ -129,7 +111,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, idWithoutResourceGroup, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, idWithoutResourceGroup, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
@@ -145,7 +127,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, operationStatusID, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, operationStatusID, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
@@ -161,7 +143,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, operationStatusID, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, operationStatusID, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
@@ -177,7 +159,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, operationResultID, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, operationResultID, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
@@ -193,7 +175,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		expectedURL, err := url.Parse(downstream)
 		require.NoError(t, err)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, operationResultID, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, operationResultID, location, apiVersion)
 		require.NoError(t, err)
 		require.Equal(t, expectedURL, downstreamURL)
 	})
@@ -202,7 +184,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		databaseClient := setup(t)
 		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(nil, &database.ErrNotFound{}).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &NotFoundError{Message: "plane \"/planes/radius/local\" not found"}, err)
 		require.Nil(t, downstreamURL)
@@ -214,7 +196,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		expected := fmt.Errorf("failed to fetch plane \"/planes/radius/local\": %w", errors.New("test error"))
 		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(nil, errors.New("test error")).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, expected, err)
 		require.Nil(t, downstreamURL)
@@ -225,7 +207,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
 		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(nil, &database.ErrNotFound{}).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &NotFoundError{Message: "resource group \"/planes/radius/local/resourceGroups/test-group\" not found"}, err)
 		require.Nil(t, downstreamURL)
@@ -237,7 +219,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		databaseClient.EXPECT().Get(gomock.Any(), id.PlaneScope()).Return(&database.Object{Data: plane}, nil).Times(1)
 		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(nil, errors.New("test error")).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, "failed to fetch resource group \"/planes/radius/local/resourceGroups/test-group\": test error", err.Error())
 		require.Nil(t, downstreamURL)
@@ -245,11 +227,7 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("resource type error", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		expected := fmt.Errorf("failed to fetch resource type %q: %w", "System.TestRP/testResources", errors.New("test error"))
@@ -259,7 +237,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
 		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(nil, errors.New("test error")).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, expected, err)
 		require.Nil(t, downstreamURL)
@@ -267,11 +245,7 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("resource type not registered", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		databaseClient := setup(t)
@@ -279,7 +253,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		databaseClient.EXPECT().Get(gomock.Any(), id.RootScope()).Return(&database.Object{Data: resourceGroup}, nil).Times(1)
 		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(nil, &database.ErrNotFound{}).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &InvalidError{Message: "resource type \"System.TestRP/testResources\" is not registered. register the resource type before deploying resources of this type"}, err)
 		require.Nil(t, downstreamURL)
@@ -287,11 +261,7 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("location error", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		expected := fmt.Errorf("failed to fetch location %q: %w", locationResource.ID, errors.New("test error"))
@@ -302,7 +272,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeID}, nil).Times(1)
 		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(nil, errors.New("test error")).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, expected, err)
 		require.Nil(t, downstreamURL)
@@ -310,20 +280,12 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("resource type not found in location", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		locationResource := &datamodel.Location{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					Name: location,
-					ID:   locationResource.ID,
-				},
-			},
+			Name: location,
+			ID:   locationResource.ID,
 			Properties: datamodel.LocationProperties{
 				Address: new("http://localhost:7443"),
 				ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
@@ -342,7 +304,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeID}, nil).Times(1)
 		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &InvalidError{Message: "resource type \"System.TestRP/testResources\" is not registered. register the resource type before deploying resources of this type"}, err)
 		require.Nil(t, downstreamURL)
@@ -350,20 +312,12 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("api-version not found in location", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		locationResource := &datamodel.Location{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					Name: location,
-					ID:   locationResource.ID,
-				},
-			},
+			Name: location,
+			ID:   locationResource.ID,
 			Properties: datamodel.LocationProperties{
 				Address: new("http://localhost:7443"),
 				ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
@@ -382,7 +336,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeID}, nil).Times(1)
 		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &InvalidError{Message: "api version \"2025-01-01\" is not supported for resource type \"System.TestRP/testResources\" by location \"east\""}, err)
 		require.Nil(t, downstreamURL)
@@ -390,20 +344,12 @@ func Test_ValidateDownstream(t *testing.T) {
 
 	t.Run("location invalid URL", func(t *testing.T) {
 		resourceGroup := &datamodel.ResourceGroup{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: id.RootScope(),
-				},
-			},
+			ID: id.RootScope(),
 		}
 
 		locationResource := &datamodel.Location{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					Name: location,
-					ID:   locationResource.ID,
-				},
-			},
+			Name: location,
+			ID:   locationResource.ID,
 			Properties: datamodel.LocationProperties{
 				Address: new("\ninvalid"),
 				ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{
@@ -422,7 +368,7 @@ func Test_ValidateDownstream(t *testing.T) {
 		databaseClient.EXPECT().Get(gomock.Any(), resourceTypeResource.ID).Return(&database.Object{Data: resourceTypeID}, nil).Times(1)
 		databaseClient.EXPECT().Get(gomock.Any(), locationResource.ID).Return(&database.Object{Data: locationResource}, nil).Times(1)
 
-		downstreamURL, err := ValidateDownstream(testcontext.New(t), databaseClient, id, location, apiVersion)
+		downstreamURL, err := ValidateDownstream(t.Context(), databaseClient, id, location, apiVersion)
 		require.Error(t, err)
 		require.Equal(t, &InvalidError{Message: "failed to parse location address: parse \"\\ninvalid\": net/url: invalid control character in URL"}, err)
 		require.Nil(t, downstreamURL)

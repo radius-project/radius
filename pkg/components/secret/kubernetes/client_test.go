@@ -17,7 +17,6 @@ limitations under the License.
 package kubernetes
 
 import (
-	"context"
 	"encoding/json"
 	"testing"
 
@@ -36,7 +35,7 @@ func Test_Save(t *testing.T) {
 	k8sFakeClient := Client{
 		K8sClient: k8sutil.NewFakeKubeClient(scheme.Scheme),
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	secretValue, err := json.Marshal("test_secret_value")
 	require.NoError(t, err)
 	updatedSecretValue, err := json.Marshal("updated_secret_value")
@@ -82,7 +81,7 @@ func Test_Get(t *testing.T) {
 	k8sFakeClient := Client{
 		K8sClient: k8sutil.NewFakeKubeClient(scheme.Scheme),
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	secretValue, err := json.Marshal("test_secret_value")
 	require.NoError(t, err)
 	tests := []struct {
@@ -121,7 +120,7 @@ func Test_Delete(t *testing.T) {
 	k8sFakeClient := Client{
 		K8sClient: k8sutil.NewFakeKubeClient(scheme.Scheme),
 	}
-	ctx := context.Background()
+	ctx := t.Context()
 	secretValue, err := json.Marshal("test_secret_value")
 	require.NoError(t, err)
 	tests := []struct {

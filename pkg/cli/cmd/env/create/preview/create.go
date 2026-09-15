@@ -18,6 +18,7 @@ package preview
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/spf13/cobra"
 
@@ -27,6 +28,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clierrors"
 	"github.com/radius-project/radius/pkg/cli/cmd"
 	"github.com/radius-project/radius/pkg/cli/cmd/commonflags"
+	"github.com/radius-project/radius/pkg/cli/cmd/group/common"
 	"github.com/radius-project/radius/pkg/cli/connections"
 	"github.com/radius-project/radius/pkg/cli/framework"
 	"github.com/radius-project/radius/pkg/cli/output"
@@ -67,6 +69,12 @@ rad env create myenv --aws-region <region> --aws-account-id <account-id>
 
 ## Create environment with a specific Kubernetes namespace
 rad env create myenv --kubernetes-namespace mynamespace
+
+## Create environment with recipe packs (--preview)
+rad env create myenv --preview --recipe-packs pack1,pack2
+
+## Create environment with recipe packs from a different resource group (--preview)
+rad env create myenv --preview --recipe-packs pack1 --recipe-pack-group other-group
 `,
 		RunE: framework.RunCommand(runner),
 	}
@@ -84,6 +92,8 @@ rad env create myenv --kubernetes-namespace mynamespace
 	commonflags.AddNamespaceFlag(cmd)
 	commonflags.MarkNamespaceFlagDeprecated(cmd)
 	cmd.MarkFlagsMutuallyExclusive(commonflags.KubernetesNamespaceFlag, commonflags.NamespaceFlag)
+	cmd.Flags().StringSliceP("recipe-packs", "", []string{}, "Specify recipe packs to assign to the environment (--preview). Accepts comma-separated values.")
+	cmd.Flags().StringP("recipe-pack-group", "", "", "Specify the resource group containing the recipe packs named in --recipe-packs, if different from the environment's resource group (--preview).")
 
 	return cmd, runner
 }
@@ -103,7 +113,19 @@ type Runner struct {
 	ConfigFileInterface       framework.ConfigFileInterface
 	ConnectionFactory         connections.Factory
 
-	providers *corerpv20250801.Providers
+	recipePacks     []string
+	recipePackGroup string
+	providers       *corerpv20250801.Providers
+}
+
+// kubernetesNamespace returns the Kubernetes namespace the environment will use, or an empty
+// string when the environment does not configure a Kubernetes provider.
+func (r *Runner) kubernetesNamespace() string {
+	if r.providers == nil || r.providers.Kubernetes == nil || r.providers.Kubernetes.Namespace == nil {
+		return ""
+	}
+
+	return *r.providers.Kubernetes.Namespace
 }
 
 // NewRunner creates a new instance of the `rad env create` runner.
@@ -220,12 +242,40 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	recipePacks, err := cmd.Flags().GetStringSlice("recipe-packs")
+	if err != nil {
+		return err
+	}
+	r.recipePacks = recipepack.NormalizeRecipePacks(recipePacks)
+
+	// Reject an explicitly provided but effectively empty --recipe-packs value
+	// (e.g. "," or "  ") rather than silently falling back to the default pack.
+	if cmd.Flags().Changed("recipe-packs") && len(r.recipePacks) == 0 {
+		return clierrors.Message("No valid recipe packs were provided. Specify one or more recipe pack names or IDs with --recipe-packs.")
+	}
+
+	r.recipePackGroup, err = cmd.Flags().GetString("recipe-pack-group")
+	if err != nil {
+		return err
+	}
+
+	if r.recipePackGroup != "" && !cmd.Flags().Changed("recipe-packs") {
+		return clierrors.Message("--recipe-pack-group can only be used together with --recipe-packs.")
+	}
+
+	if r.recipePackGroup != "" {
+		if err := common.ValidateResourceGroupName(r.recipePackGroup); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 // Run runs the `rad env create --preview` command.
 //
-// Run creates a new Radius.Core environment with the default recipe pack
+// Run creates a new Radius.Core environment with the recipe packs specified via
+// --recipe-packs, or the default recipe pack when none are specified.
 func (r *Runner) Run(ctx context.Context) error {
 	if r.RadiusCoreClientFactory == nil {
 		clientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
@@ -235,33 +285,16 @@ func (r *Runner) Run(ctx context.Context) error {
 		r.RadiusCoreClientFactory = clientFactory
 	}
 
-	// Ensure the default resource group exists before creating recipe pack in it.
-	mgmtClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
-	}
-	if err := recipepack.EnsureDefaultResourceGroup(ctx, mgmtClient.CreateOrUpdateResourceGroup); err != nil {
-		return err
-	}
-
-	// Create the default recipe pack in the default resource group.
-	// The default pack lives in the default scope regardless of the current workspace scope.
-	if r.DefaultScopeClientFactory == nil {
-		defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
-		if err != nil {
-			return err
-		}
-		r.DefaultScopeClientFactory = defaultClientFactory
-	}
-
-	recipePackClient := r.DefaultScopeClientFactory.NewRecipePacksClient()
-	_, err = recipepack.GetOrCreateDefaultRecipePack(ctx, recipePackClient)
+	// Resolve the recipe packs to assign to the environment. When the user
+	// specifies --recipe-packs, those packs are used; otherwise the default
+	// Radius recipe pack is created (if needed) and used.
+	recipePackIDs, err := r.resolveRecipePacks(ctx)
 	if err != nil {
 		return err
 	}
 
 	properties := &corerpv20250801.EnvironmentProperties{
-		RecipePacks: []*string{to.Ptr(recipepack.DefaultRecipePackID())},
+		RecipePacks: recipePackIDs,
 	}
 
 	// Set providers if any were configured.
@@ -291,9 +324,160 @@ func (r *Runner) Run(ctx context.Context) error {
 	envClient := r.RadiusCoreClientFactory.NewEnvironmentsClient()
 	_, err = envClient.CreateOrUpdate(ctx, r.Workspace.Scope, r.EnvironmentName, *resource, nil)
 	if err != nil {
+		if clients.IsNamespaceAlreadyInUseError(err) {
+			// Prefer the server's message: it names the environment that already owns the
+			// namespace, which the CLI cannot determine on its own.
+			if detail := clients.NamespaceAlreadyInUseMessage(err); detail != "" {
+				return clierrors.Message("%s Specify a different namespace using the --kubernetes-namespace flag.", detail)
+			}
+
+			return clierrors.Message("The Kubernetes namespace specified (%s) is already used by another Radius Environment. Specify a different namespace using the --kubernetes-namespace flag.", r.kubernetesNamespace())
+		}
+
 		return err
 	}
 
+	// Keep referencedBy in sync on any user-specified recipe packs so each pack
+	// records the environment that now references it. The default recipe pack
+	// path does not maintain referencedBy. The environment already exists at this
+	// point, so make clear that the failure is limited to the reference update.
+	if len(r.recipePacks) > 0 {
+		if err := r.addEnvironmentReferences(ctx, recipePackIDs); err != nil {
+			return clierrors.MessageWithCause(err, "Environment %q was created, but its recipe pack references could not be updated.", r.EnvironmentName)
+		}
+	}
+
 	r.Output.LogInfo("Radius.Core/environments/%s created", r.EnvironmentName)
+	return nil
+}
+
+// resolveRecipePacks returns the list of recipe pack resource IDs to assign to
+// the environment. When the user specifies recipe packs via --recipe-packs, each
+// is resolved to a full resource ID and verified to exist. Otherwise the default
+// Radius recipe pack is ensured and returned.
+func (r *Runner) resolveRecipePacks(ctx context.Context) ([]*string, error) {
+	if len(r.recipePacks) == 0 {
+		return r.defaultRecipePack(ctx)
+	}
+
+	recipePackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
+
+	recipePackScope := r.Workspace.Scope
+	if r.recipePackGroup != "" {
+		workspaceScopeID, err := resources.ParseScope(r.Workspace.Scope)
+		if err != nil {
+			return nil, err
+		}
+		recipePackScope = fmt.Sprintf("%s/resourceGroups/%s", workspaceScopeID.PlaneScope(), r.recipePackGroup)
+	}
+
+	recipePackIDs := make([]*string, 0, len(r.recipePacks))
+	for _, recipePack := range r.recipePacks {
+		recipePackID, isFullID, err := recipepack.ResolveID(recipePack, recipePackScope)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = recipePackClient.Get(ctx, recipePackID.RootScope(), recipePackID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+		if clients.Is404Error(err) {
+			return nil, recipepack.NotFoundError(recipePack, recipePackID, isFullID)
+		} else if err != nil {
+			return nil, err
+		}
+
+		recipePackIDs = append(recipePackIDs, to.Ptr(recipePackID.String()))
+	}
+
+	return recipePackIDs, nil
+}
+
+// defaultRecipePack ensures the default resource group and the default recipe
+// pack exist and returns the default recipe pack ID. The default pack lives in
+// the default scope regardless of the current workspace scope.
+func (r *Runner) defaultRecipePack(ctx context.Context) ([]*string, error) {
+	// Ensure the default resource group exists before creating recipe pack in it.
+	mgmtClient, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return nil, err
+	}
+	if err := recipepack.EnsureDefaultResourceGroup(ctx, mgmtClient.CreateOrUpdateResourceGroup); err != nil {
+		return nil, err
+	}
+
+	if r.DefaultScopeClientFactory == nil {
+		defaultClientFactory, err := cmd.InitializeRadiusCoreClientFactory(ctx, r.Workspace)
+		if err != nil {
+			return nil, err
+		}
+		r.DefaultScopeClientFactory = defaultClientFactory
+	}
+
+	recipePackClient := r.DefaultScopeClientFactory.NewRecipePacksClient()
+	id, err := recipepack.GetOrCreateDefaultRecipePack(ctx, recipePackClient)
+	if err != nil {
+		return nil, err
+	}
+
+	return []*string{to.Ptr(id)}, nil
+}
+
+// addEnvironmentReferences records this environment in the referencedBy list of
+// each specified recipe pack, keeping each pack's references in sync with the
+// new assignment.
+func (r *Runner) addEnvironmentReferences(ctx context.Context, recipePackIDs []*string) error {
+	scopeID, err := resources.ParseScope(r.Workspace.Scope)
+	if err != nil {
+		return err
+	}
+
+	envID := scopeID.Append(resources.TypeSegment{
+		Type: "Radius.Core/environments",
+		Name: r.EnvironmentName,
+	}).String()
+
+	recipePackClient := r.RadiusCoreClientFactory.NewRecipePacksClient()
+	for _, packID := range recipePackIDs {
+		if packID == nil {
+			continue
+		}
+		if err := addEnvReferenceToRecipePack(ctx, envID, *packID, recipePackClient); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// addEnvReferenceToRecipePack adds the environment ID to a recipe pack's
+// referencedBy list if it is not already present.
+func addEnvReferenceToRecipePack(ctx context.Context, envID string, packID string, client *corerpv20250801.RecipePacksClient) error {
+	resourceID, err := resources.Parse(packID)
+	if err != nil {
+		return err
+	}
+
+	packResp, err := client.Get(ctx, resourceID.RootScope(), resourceID.Name(), &corerpv20250801.RecipePacksClientGetOptions{})
+	if clients.Is404Error(err) {
+		return clierrors.Message("Recipe pack %q does not exist. Please provide a valid recipe pack to add to the environment.", resourceID.String())
+	}
+	if err != nil {
+		return err
+	}
+
+	pack := packResp.RecipePackResource
+	pack.SystemData = nil
+	if pack.Properties == nil {
+		pack.Properties = &corerpv20250801.RecipePackProperties{}
+	}
+
+	if !recipepack.RefExists(pack.Properties.ReferencedBy, envID) {
+		pack.Properties.ReferencedBy = append(pack.Properties.ReferencedBy, &envID)
+	}
+
+	_, err = client.CreateOrUpdate(ctx, resourceID.RootScope(), resourceID.Name(), pack, &corerpv20250801.RecipePacksClientCreateOrUpdateOptions{})
+	if err != nil {
+		return clierrors.MessageWithCause(err, "Failed to update recipe pack %q.", resourceID.Name())
+	}
+
 	return nil
 }

@@ -28,10 +28,9 @@ import (
 	"github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/radius-project/radius/pkg/armrpc/rest"
 	"github.com/radius-project/radius/pkg/components/database"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 var _ controller.Controller = (*GetIcon)(nil)
@@ -69,8 +68,7 @@ func (r *GetIcon) Run(ctx context.Context, w http.ResponseWriter, req *http.Requ
 
 	result, err := r.DatabaseClient().Get(ctx, id.String())
 	if err != nil {
-		var notFound *database.ErrNotFound
-		if errors.As(err, &notFound) {
+		if _, ok := errors.AsType[*database.ErrNotFound](err); ok {
 			return armrpc_rest.NewNotFoundResponse(id), nil
 		}
 		return nil, err
@@ -113,8 +111,8 @@ func (r *GetIcon) Run(ctx context.Context, w http.ResponseWriter, req *http.Requ
 		}
 		return &iconResponse{content: *rt.Properties.Icon}, nil
 	}
-	if productmanifest.IsDefault(hash) {
-		def := productmanifest.Default()
+	if defaults.IsDefaultIcon(hash) {
+		def := defaults.DefaultIcon()
 		if !hashesToPathHash(string(def.Bytes), hash) {
 			return armrpc_rest.NewNotFoundResponseWithCause(id, "icon integrity check failed"), nil
 		}

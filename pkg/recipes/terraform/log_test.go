@@ -22,12 +22,11 @@ import (
 
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
 func TestConfigureTerraformLogs_DefaultLevel(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	// Create a temporary directory for terraform
 	workingDir := t.TempDir()
@@ -47,7 +46,7 @@ func TestConfigureTerraformLogs_DefaultLevel(t *testing.T) {
 }
 
 func TestConfigureTerraformLogs_ParameterHandling(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	// Create a temporary directory for terraform
 	workingDir := t.TempDir()
@@ -85,7 +84,7 @@ func TestConfigureTerraformLogs_ParameterHandling(t *testing.T) {
 }
 
 func TestConfigureTerraformLogs_ErrorHandling(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	// Create a temporary directory for terraform
 	workingDir := t.TempDir()
@@ -105,7 +104,7 @@ func TestConfigureTerraformLogs_ErrorHandling(t *testing.T) {
 }
 
 func TestTfLogWrapper_Write(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	logger := ucplog.FromContextOrDiscard(ctx)
 
 	// Test stdout wrapper
@@ -126,7 +125,7 @@ func TestTfLogWrapper_Write(t *testing.T) {
 
 // TestConfigureTerraformLogs_LoggerSetup tests that log wrappers are properly configured
 func TestConfigureTerraformLogs_LoggerSetup(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	// Create a temporary directory for terraform
 	workingDir := t.TempDir()

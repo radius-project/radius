@@ -34,6 +34,8 @@ type ConnectedResource struct {
 	Type string `json:"type"`
 	// Properties represents the resource properties
 	Properties map[string]any `json:"properties,omitempty"`
+	// Secrets represents non-sensitive references to managed secret keys.
+	Secrets map[string]rpv1.ManagedSecretReference `json:"secrets,omitempty"`
 }
 
 // Configuration represents runtime and cloud provider configuration, which is used by the driver while deploying recipes.

@@ -17,6 +17,7 @@ limitations under the License.
 package apiserver
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -24,7 +25,6 @@ import (
 
 	v1alpha1 "github.com/radius-project/radius/pkg/components/database/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/radius-project/radius/pkg/components/queue"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/ucp/kubeenv"
 	sharedtest "github.com/radius-project/radius/test/ucp/queuetest"
 	"github.com/stretchr/testify/require"
@@ -55,17 +55,15 @@ func TestGetTimeFromString(t *testing.T) {
 
 func TestCopyMessage(t *testing.T) {
 	msg := &queue.Message{
-		Metadata: queue.Metadata{ID: "testid"},
+		ID: "testid",
 	}
 	now := time.Now()
 	queueM := &v1alpha1.QueueMessage{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "applications.core.10101010",
-			Namespace: "radius-test",
-			Labels: map[string]string{
-				LabelNextVisibleAt: int64toa(now.UnixNano()),
-				LabelQueueName:     "applications.core",
-			},
+		Name:      "applications.core.10101010",
+		Namespace: "radius-test",
+		Labels: map[string]string{
+			LabelNextVisibleAt: int64toa(now.UnixNano()),
+			LabelQueueName:     "applications.core",
 		},
 		Spec: v1alpha1.QueueMessageSpec{
 			DequeueCount: 2,
@@ -104,7 +102,7 @@ func TestClient(t *testing.T) {
 		_ = env.Stop()
 	}()
 
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	ns := "radius-test"

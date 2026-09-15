@@ -17,6 +17,7 @@ limitations under the License.
 package credential
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -27,7 +28,6 @@ import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/to"
 	ucp "github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
-	"github.com/radius-project/radius/test/testcontext"
 )
 
 const (
@@ -76,7 +76,7 @@ func Test_AzureCredential_Put(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.NewWithCancel(t)
+			ctx, cancel := context.WithCancel(t.Context())
 			t.Cleanup(cancel)
 
 			mockCtrl := gomock.NewController(t)
@@ -132,7 +132,7 @@ func Test_AWSCredential_Put(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.NewWithCancel(t)
+			ctx, cancel := context.WithCancel(t.Context())
 			t.Cleanup(cancel)
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
@@ -245,7 +245,7 @@ func Test_Credential_Get(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.NewWithCancel(t)
+			ctx, cancel := context.WithCancel(t.Context())
 			t.Cleanup(cancel)
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
@@ -271,7 +271,7 @@ func Test_Credential_Get(t *testing.T) {
 }
 
 func Test_Credential_List(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	mockCtrl := gomock.NewController(t)
@@ -311,7 +311,7 @@ func Test_Credential_List(t *testing.T) {
 }
 
 func Test_Credential_Azure_Show(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	mockCtrl := gomock.NewController(t)
@@ -320,10 +320,8 @@ func Test_Credential_Azure_Show(t *testing.T) {
 	azMockCredentialClient := NewMockAzureCredentialManagementClientInterface(mockCtrl)
 
 	expectedAzProvider := ProviderCredentialConfiguration{
-		CloudProviderStatus: CloudProviderStatus{
-			Name:    azureProviderName,
-			Enabled: true,
-		},
+		Name:    azureProviderName,
+		Enabled: true,
 	}
 
 	azMockCredentialClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(expectedAzProvider, nil).Times(1)
@@ -336,7 +334,7 @@ func Test_Credential_Azure_Show(t *testing.T) {
 }
 
 func Test_Credential_AWS_Show(t *testing.T) {
-	ctx, cancel := testcontext.NewWithCancel(t)
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	mockCtrl := gomock.NewController(t)
@@ -345,10 +343,8 @@ func Test_Credential_AWS_Show(t *testing.T) {
 	AWSMockCredentialClient := NewMockAWSCredentialManagementClientInterface(mockCtrl)
 
 	expectedAWSProvider := ProviderCredentialConfiguration{
-		CloudProviderStatus: CloudProviderStatus{
-			Name:    awsProviderName,
-			Enabled: true,
-		},
+		Name:    awsProviderName,
+		Enabled: true,
 	}
 
 	AWSMockCredentialClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(expectedAWSProvider, nil).Times(1)
@@ -425,7 +421,7 @@ func Test_Credential_Delete(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx, cancel := testcontext.NewWithCancel(t)
+			ctx, cancel := context.WithCancel(t.Context())
 			t.Cleanup(cancel)
 
 			mockCtrl := gomock.NewController(t)
@@ -463,10 +459,8 @@ func setupSuccessPutAWSMocks(mockAzure MockAzureCredentialManagementClientInterf
 
 func setupSuccessGetAzureMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	credential := ProviderCredentialConfiguration{
-		CloudProviderStatus: CloudProviderStatus{
-			Name:    azureProviderName,
-			Enabled: true,
-		},
+		Name:    azureProviderName,
+		Enabled: true,
 	}
 	mockAzure.EXPECT().
 		Get(gomock.Any(), gomock.Any()).
@@ -475,10 +469,8 @@ func setupSuccessGetAzureMocks(mockAzure MockAzureCredentialManagementClientInte
 
 func setupSuccessGetAWSMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	credential := ProviderCredentialConfiguration{
-		CloudProviderStatus: CloudProviderStatus{
-			Name:    awsProviderName,
-			Enabled: true,
-		},
+		Name:    awsProviderName,
+		Enabled: true,
 	}
 	mockAWS.EXPECT().
 		Get(gomock.Any(), gomock.Any()).

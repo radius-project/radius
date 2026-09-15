@@ -38,8 +38,10 @@ using OpenAPI;
 namespace Applications.Core;
 
 @doc("Radius Application resource")
-model ApplicationResource
-  is TrackedResourceRequired<ApplicationProperties, "applications"> {
+model ApplicationResource is TrackedResourceRequired<
+  ApplicationProperties,
+  "applications"
+> {
   @doc("The application name")
   @path
   @key("applicationName")

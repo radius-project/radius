@@ -23,10 +23,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -157,7 +155,7 @@ func Test_findKubernetesSecretOutputResource(t *testing.T) {
 
 func Test_LoadSecrets_UnsupportedType(t *testing.T) {
 	loader := &secretsLoader{}
-	_, err := loader.LoadSecrets(context.Background(), map[string][]string{
+	_, err := loader.LoadSecrets(t.Context(), map[string][]string{
 		"/planes/radius/local/resourceGroups/rg/providers/Applications.Core/gateways/not-a-secret": nil,
 	})
 	require.Error(t, err)
@@ -166,7 +164,7 @@ func Test_LoadSecrets_UnsupportedType(t *testing.T) {
 
 func Test_LoadSecrets_SecuritySecret_NoKubernetesClient(t *testing.T) {
 	loader := &secretsLoader{}
-	_, err := loader.LoadSecrets(context.Background(), map[string][]string{
+	_, err := loader.LoadSecrets(t.Context(), map[string][]string{
 		"/planes/radius/local/resourceGroups/rg/providers/Radius.Security/secrets/my-secret": nil,
 	})
 	require.Error(t, err)
@@ -252,7 +250,7 @@ func Test_loadSecuritySecret(t *testing.T) {
 			t.Parallel()
 
 			clientset := k8sfake.NewSimpleClientset(&corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: "my-secret", Namespace: "app-ns"},
+				Name: "my-secret", Namespace: "app-ns",
 				Data: map[string][]byte{
 					"username": []byte("admin"),
 					"password": []byte("p4ssw0rd"),
@@ -264,23 +262,19 @@ func Test_loadSecuritySecret(t *testing.T) {
 
 			loader := &secretsLoader{
 				ArmClientOptions: &arm.ClientOptions{
-					ClientOptions: policy.ClientOptions{
-						Transport: genfake.NewServerFactoryTransport(&genfake.ServerFactory{
-							GenericResourcesServer: genfake.GenericResourcesServer{
-								Get: func(ctx context.Context, resourceName string, options *generated.GenericResourcesClientGetOptions) (resp azfake.Responder[generated.GenericResourcesClientGetResponse], errResp azfake.ErrorResponder) {
-									require.Equal(t, "my-secret", resourceName)
-									resp.SetResponse(http.StatusOK, generated.GenericResourcesClientGetResponse{
-										GenericResource: generated.GenericResource{
-											ID:         to.Ptr(secretResourceID),
-											Name:       to.Ptr("my-secret"),
-											Properties: tt.properties,
-										},
-									}, nil)
-									return
-								},
+					Transport: genfake.NewServerFactoryTransport(&genfake.ServerFactory{
+						GenericResourcesServer: genfake.GenericResourcesServer{
+							Get: func(ctx context.Context, resourceName string, options *generated.GenericResourcesClientGetOptions) (resp azfake.Responder[generated.GenericResourcesClientGetResponse], errResp azfake.ErrorResponder) {
+								require.Equal(t, "my-secret", resourceName)
+								resp.SetResponse(http.StatusOK, generated.GenericResourcesClientGetResponse{
+									ID:         to.Ptr(secretResourceID),
+									Name:       to.Ptr("my-secret"),
+									Properties: tt.properties,
+								}, nil)
+								return
 							},
-						}),
-					},
+						},
+					}),
 				},
 				KubernetesProvider: provider,
 			}
@@ -288,7 +282,7 @@ func Test_loadSecuritySecret(t *testing.T) {
 			id, err := resources.ParseResource(secretResourceID)
 			require.NoError(t, err)
 
-			secretData, err := loader.loadSecuritySecret(context.Background(), id, tt.keysFilter)
+			secretData, err := loader.loadSecuritySecret(t.Context(), id, tt.keysFilter)
 			if tt.expectError {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.expectedErrMsg)

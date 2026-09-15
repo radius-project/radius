@@ -28,7 +28,6 @@ import (
 	"github.com/radius-project/radius/pkg/components/secret"
 	ucp_credentials "github.com/radius-project/radius/pkg/ucp/credentials"
 	ucp_datamodel "github.com/radius-project/radius/pkg/ucp/datamodel"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -111,7 +110,7 @@ func TestAWSProvider_BuildConfig_InvalidScope_Error(t *testing.T) {
 		},
 	}
 	p := &awsProvider{}
-	config, err := p.BuildConfig(testcontext.New(t), envConfig)
+	config, err := p.BuildConfig(t.Context(), envConfig)
 	require.Nil(t, config)
 	require.Error(t, err)
 	require.ErrorContains(t, err, "invalid AWS provider scope \"/planes/aws/aws/accounts/0000/test-region\" is configured on the Environment, region is required in the scope")
@@ -185,7 +184,7 @@ func TestAWSProvider_ParseScope(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
 			p := &awsProvider{}
-			region, err := p.parseScope(testcontext.New(t), tt.envConfig)
+			region, err := p.parseScope(t.Context(), tt.envConfig)
 			if tt.expectedErrMsg != "" {
 				require.Error(t, err)
 				require.ErrorContains(t, err, tt.expectedErrMsg)
@@ -296,7 +295,7 @@ func TestAWSProvider_FetchAcessKeyCredentials(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			c, err := fetchAWSCredentials(testcontext.New(t), tt.credentialsProvider)
+			c, err := fetchAWSCredentials(t.Context(), tt.credentialsProvider)
 			if tt.expectedErr {
 				require.Error(t, err)
 				require.Nil(t, c)

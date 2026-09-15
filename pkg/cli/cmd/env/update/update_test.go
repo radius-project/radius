@@ -17,7 +17,6 @@ limitations under the License.
 package update
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -138,7 +137,7 @@ func Test_Update(t *testing.T) {
 			noFlagsSet: true,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, nil, err)
 	})
@@ -188,7 +187,7 @@ func Test_Update(t *testing.T) {
 			providers:         testProviders,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Error(t, expectedError)
 		require.Equal(t, expectedError.Error(), err.Error())
 	})
@@ -240,7 +239,7 @@ func Test_Update(t *testing.T) {
 			providers:         testProviders,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Error(t, expectedError)
 		require.Equal(t, clierrors.Message(envNotFoundErrMessageFmt, "test-env"), err)
 	})
@@ -303,7 +302,7 @@ func Test_Update(t *testing.T) {
 			providers:         testProviders,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Error(t, expectedError)
 		require.Equal(t, expectedErrorMessage, err.Error())
 	})
@@ -373,7 +372,7 @@ func Test_Update(t *testing.T) {
 			providers:         testProviders,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		environment.Properties.Providers = testProviders
@@ -446,7 +445,7 @@ func Test_Update(t *testing.T) {
 			providers:         testProviders,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 
 		expected := []any{
@@ -505,7 +504,7 @@ func Test_Update(t *testing.T) {
 			providers:         &corerp.Providers{},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 	})
 
@@ -542,7 +541,7 @@ func Test_Update(t *testing.T) {
 			providers:         &corerp.Providers{},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "existing compute kind is not Kubernetes")
 	})
@@ -688,7 +687,7 @@ func Test_Update(t *testing.T) {
 					clearEnvAzure:     tc.clearEnvAzure,
 				}
 
-				err := runner.Run(context.Background())
+				err := runner.Run(t.Context())
 				require.NoError(t, err)
 
 				expected := []any{

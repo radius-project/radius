@@ -119,10 +119,8 @@ func (cpm *UCPCredentialManagementClient) Get(ctx context.Context, providerName 
 	// We get 404 when credential for the provider plane is not registered.
 	if clients.Is404Error(err) {
 		return ProviderCredentialConfiguration{
-			CloudProviderStatus: CloudProviderStatus{
-				Name:    providerName,
-				Enabled: false,
-			},
+			Name:    providerName,
+			Enabled: false,
 		}, nil
 	} else if err != nil {
 		return ProviderCredentialConfiguration{}, err

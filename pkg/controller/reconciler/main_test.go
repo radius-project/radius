@@ -26,7 +26,6 @@ import (
 	radappiov1alpha3 "github.com/radius-project/radius/pkg/controller/api/radapp.io/v1alpha3"
 	admissionv1 "k8s.io/api/admissionregistration/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -124,25 +123,19 @@ func initializeWebhookInEnvironment(env *envtest.Environment) {
 	env.WebhookInstallOptions = envtest.WebhookInstallOptions{
 		ValidatingWebhooks: []*admissionv1.ValidatingWebhookConfiguration{
 			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: "recipe-webhook-config",
-				},
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "ValidatingWebhookConfiguration",
-					APIVersion: "admissionregistration.k8s.io/v1",
-				},
+				Name:       "recipe-webhook-config",
+				Kind:       "ValidatingWebhookConfiguration",
+				APIVersion: "admissionregistration.k8s.io/v1",
 				Webhooks: []admissionv1.ValidatingWebhook{
 					{
 						Name: "recipe-webhook.radapp.io",
 						Rules: []admissionv1.RuleWithOperations{
 							{
-								Operations: []admissionv1.OperationType{"CREATE", "UPDATE"},
-								Rule: admissionv1.Rule{
-									APIGroups:   []string{"radapp.io"},
-									APIVersions: []string{"v1alpha3"},
-									Resources:   []string{"recipes"},
-									Scope:       &defaultScopeV1,
-								},
+								Operations:  []admissionv1.OperationType{"CREATE", "UPDATE"},
+								APIGroups:   []string{"radapp.io"},
+								APIVersions: []string{"v1alpha3"},
+								Resources:   []string{"recipes"},
+								Scope:       &defaultScopeV1,
 							},
 						},
 						FailurePolicy: &failedTypeV1,

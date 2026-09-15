@@ -15,377 +15,534 @@
 // ------------------------------------------------------------.
 import {
   ArrayType,
+  BicepType,
   BuiltInType,
+  BuiltInTypeKind,
   DiscriminatedObjectType,
-  getBuiltInTypeKindLabel,
-  getObjectTypePropertyFlagsLabels,
-  ObjectTypeProperty,
   ObjectType,
-  ResourceFunctionType,
+  ObjectTypeProperty,
+  ObjectTypePropertyFlags,
   ResourceType,
   StringLiteralType,
-  BicepType,
   TypeBaseKind,
   TypeReference,
-  UnionType,
-  IntegerType,
-  StringType
+  UnionType
 } from "bicep-types";
 
+/**
+ * ARM envelope properties that are not authored on the resource and are hidden
+ * from the reference docs so the output focuses on the resource-specific
+ * properties, matching `rad resource-type show`. The resource-specific
+ * properties live under the envelope's `properties` object, which this writer
+ * descends into for the top-level table.
+ */
+const ENVELOPE_PROPERTIES = new Set([
+  "id",
+  "name",
+  "type",
+  "apiversion",
+  "location",
+  "tags",
+  "systemdata"
+]);
+
+/** The set of properties displayed for an object, plus any map value type. */
+interface PropertyBag {
+  properties: Record<string, ObjectTypeProperty>;
+  additionalProperties?: TypeReference;
+  /**
+   * Discriminated-union metadata, present when the object selects its shape via
+   * a discriminator property. Each element is documented as its own variant
+   * section and the discriminator row links to them.
+   */
+  discriminator?: {
+    propertyName: string;
+    elements: Record<string, TypeReference>;
+  };
+}
+
+/** A pending object section to render, keyed by its dotted-path heading. */
+interface Section extends PropertyBag {
+  heading: string;
+  /**
+   * Type indices of the sections on the path from the root to this one
+   * (inclusive of this section's own type). Distinct paths that share a type
+   * are each expanded into their own section (matching the CLI), while this set
+   * guards against genuinely recursive types producing an unbounded traversal.
+   */
+  ancestors: Set<number>;
+}
+
+/**
+ * Renders one resource type as reference markdown that mirrors the layout of
+ * `rad resource-type show`: an optional description block, a `Top-Level
+ * Properties` table, and an `Object Properties` section with one dotted-path
+ * table per nested object.
+ *
+ * The document body starts at heading level 2. The docs pipeline
+ * (`generate_resource_references.py` in the docs repo) wraps this content with
+ * Hugo front matter, so this writer owns every heading below the page title.
+ *
+ * @param resourceTypes The resource types to render (the emitter passes one).
+ * @param types The full Bicep type graph the resource types index into.
+ * @param description The resource-level TypeSpec `@doc`, when authored.
+ */
 export function writeTableMarkdown(
   resourceTypes: ResourceType[],
-  types: BicepType[]
-) {
-  let output = "";
+  types: BicepType[],
+  description?: string
+): string {
+  const lines: string[] = [];
 
-  function getTypeName(
-    types: BicepType[],
-    typeReference: TypeReference
-  ): string {
-    const type = types[typeReference.index];
-    switch (type.type) {
-      case TypeBaseKind.BuiltInType:
-        return getBuiltInTypeKindLabel(
-          (type as BuiltInType).kind
-        ).toLowerCase();
-      case TypeBaseKind.ObjectType:
-        return generateAnchorLink((type as ObjectType).name);
-      case TypeBaseKind.ArrayType:
-        return getArrayTypeName(types, type as ArrayType);
-      case TypeBaseKind.ResourceType:
-        return (type as ResourceType).name;
-      case TypeBaseKind.ResourceFunctionType: {
-        const functionType = type as ResourceFunctionType;
-        return `${functionType.name} (${functionType.resourceType}@${functionType.apiVersion})`;
-      }
-      case TypeBaseKind.UnionType: {
-        const elements = (type as UnionType).elements.map((x) =>
-          getTypeName(types, x)
-        );
-        return elements.sort().join(" | ");
-      }
-      case TypeBaseKind.StringLiteralType:
-        return `'${(type as StringLiteralType).value}'`;
-      case TypeBaseKind.DiscriminatedObjectType:
-        return generateAnchorLink((type as DiscriminatedObjectType).name);
-      case TypeBaseKind.AnyType:
-        return "any";
-      case TypeBaseKind.NullType:
-        return "null";
-      case TypeBaseKind.BooleanType:
-        return "bool";
-      case TypeBaseKind.IntegerType:
-        return `int${getIntegerModifiers(type as IntegerType)}`;
-      case TypeBaseKind.StringType:
-        return `string${getStringModifiers(type as StringType)}`;
-      default:
-        throw new Error("Unrecognized type");
+  if (description && description.trim().length > 0) {
+    lines.push("## Description", "", description.trim(), "");
+  }
+
+  for (const resourceType of resourceTypes) {
+    const topLevel = getTopLevelProperties(types, resourceType);
+    writeResource(lines, types, topLevel);
+  }
+
+  return lines.join("\n").replace(/\n+$/, "\n");
+}
+
+/**
+ * Resolves the resource-specific properties shown as the top-level table. These
+ * live under the envelope's `properties` object; if that is absent, the envelope
+ * properties are used with the ARM envelope keys filtered out.
+ */
+function getTopLevelProperties(
+  types: BicepType[],
+  resourceType: ResourceType
+): PropertyBag {
+  const body = types[resourceType.body.index];
+  if (body.type !== TypeBaseKind.ObjectType) {
+    return { properties: {} };
+  }
+
+  const envelope = body as ObjectType;
+  const propertiesRef = envelope.properties["properties"];
+  if (propertiesRef) {
+    const bag = resolveSection(types, propertiesRef.type);
+    if (bag) {
+      return {
+        properties: bag.properties,
+        additionalProperties: bag.additionalProperties,
+        discriminator: bag.discriminator
+      };
     }
   }
 
-  function getArrayTypeName(types: BicepType[], type: ArrayType): string {
-    let itemTypeName = getTypeName(types, type.itemType);
-    if (itemTypeName.includes(" ")) {
-      itemTypeName = `(${itemTypeName})`;
-    }
-
-    return `${itemTypeName}[]${formatModifiers(type.minLength !== undefined ? `minLength: ${type.minLength}` : undefined, type.maxLength !== undefined ? `maxLength: ${type.maxLength}` : undefined)}`;
-  }
-
-  function generateAnchorLink(name: string) {
-    return `[${name}](#${name.replace(/[^a-zA-Z0-9-]/g, "").toLowerCase()})`;
-  }
-
-  function writeTypeProperty(
-    types: BicepType[],
-    name: string,
-    property: ObjectTypeProperty
-  ) {
-    const flagsString =
-      property.flags ?
-        `${getObjectTypePropertyFlagsLabels(property.flags).join(", ")}`
-      : "";
-    const descriptionString = property.description ? property.description : "";
-    writeTableEntry(
-      name,
-      getTypeName(types, property.type),
-      flagsString,
-      descriptionString
-    );
-  }
-
-  function writeTableHeading() {
-    output += `| Property | Type | Description |\n`;
-    output += `|----------|------|-------------|\n`;
-  }
-
-  function writeTableEntry(
-    name: string,
-    type: string,
-    flags: string,
-    description: string
-  ) {
-    const flagString = flags ? `<br />_(${flags})_ ` : "";
-    output += `| **${name}** | ${type} | ${description} ${flagString}|\n`;
-  }
-
-  function writeHeading(nesting: number, message: string) {
-    output += `${"#".repeat(nesting)} ${message}`;
-    writeNewLine();
-  }
-
-  function writeBullet(key: string, value: string) {
-    output += `* **${key}**`;
-    if (value !== "") {
-      output += `: ${value}`;
-    }
-    writeNewLine();
-  }
-
-  function writeNewLine() {
-    output += "\n";
-  }
-
-  function findTypesToWrite(
-    types: BicepType[],
-    typesToWrite: BicepType[],
-    typeReference: TypeReference
-  ) {
-    function processTypeLinks(
-      typeReference: TypeReference,
-      skipParent: boolean
-    ) {
-      // this is needed to avoid circular type references causing stack overflows
-      if (!typesToWrite.includes(types[typeReference.index])) {
-        if (!skipParent) {
-          typesToWrite.push(types[typeReference.index]);
-        }
-
-        findTypesToWrite(types, typesToWrite, typeReference);
-      }
-    }
-
-    const type = types[typeReference.index];
-    switch (type.type) {
-      case TypeBaseKind.ArrayType: {
-        const arrayType = type as ArrayType;
-        processTypeLinks(arrayType.itemType, false);
-
-        return;
-      }
-      case TypeBaseKind.ObjectType: {
-        const objectType = type as ObjectType;
-
-        for (const key of sortedKeys(objectType.properties)) {
-          processTypeLinks(objectType.properties[key].type, false);
-        }
-
-        if (objectType.additionalProperties) {
-          processTypeLinks(objectType.additionalProperties, false);
-        }
-
-        return;
-      }
-      case TypeBaseKind.DiscriminatedObjectType: {
-        const discriminatedObjectType = type as DiscriminatedObjectType;
-
-        for (const key of sortedKeys(discriminatedObjectType.baseProperties)) {
-          processTypeLinks(
-            discriminatedObjectType.baseProperties[key].type,
-            false
-          );
-        }
-
-        for (const key of sortedKeys(discriminatedObjectType.elements)) {
-          const element = discriminatedObjectType.elements[key];
-          // Don't display discriminated object elements as individual types
-          processTypeLinks(element, true);
-        }
-
-        return;
-      }
+  const filtered: Record<string, ObjectTypeProperty> = {};
+  for (const [name, property] of Object.entries(envelope.properties)) {
+    if (!ENVELOPE_PROPERTIES.has(name.toLowerCase())) {
+      filtered[name] = property;
     }
   }
+  return { properties: filtered };
+}
 
-  function sortedKeys<T>(dictionary: Record<string, T>) {
-    return orderBy(Object.keys(dictionary), (k) => k.toLowerCase());
-  }
+/**
+ * Walks the resource's properties breadth-first, emitting the top-level table
+ * followed by one table per nested object under dotted-path headings. This
+ * mirrors the traversal in the `rad resource-type show` display.
+ */
+function writeResource(
+  lines: string[],
+  types: BicepType[],
+  topLevel: PropertyBag
+): void {
+  const queue: Section[] = [
+    { heading: "", ancestors: new Set<number>(), ...topLevel }
+  ];
+  let state: "none" | "top-level" | "object" = "none";
 
-  function writeComplexType(
-    types: BicepType[],
-    type: BicepType,
-    nesting: number,
-    includeHeader: boolean
-  ) {
-    switch (type.type) {
-      case TypeBaseKind.ResourceType: {
-        const resourceType = type as ResourceType;
-        writeHeading(nesting, `Top-Level Resource`);
-        // temporarily removing scope as it's not applicable
-        // writeBullet("Valid Scope(s)", `${getScopeTypeLabels(resourceType.ScopeType).join(', ') || 'Unknown'}`);
-        writeComplexType(types, types[resourceType.body.index], nesting, false);
+  while (queue.length > 0) {
+    const section = queue.shift() as Section;
+    const names = sortedKeys(section.properties);
 
-        return;
+    // Expand each nested object into its own section keyed by dotted path, so a
+    // type shared across several paths is documented once per path (matching
+    // the CLI, which walks an inlined JSON schema). Child anchors are recorded
+    // per property name for this section's Type-cell links. The ancestors set
+    // guards against genuinely recursive types without collapsing distinct
+    // paths. Top-level object properties are keyed by name, deeper ones by path.
+    const childAnchors = new Map<string, string>();
+    const childHeading = (key: string): string =>
+      state === "none" ? key : `${section.heading}.${key}`;
+
+    for (const name of names) {
+      const target = resolveLinkTarget(types, section.properties[name].type);
+      if (!target || section.ancestors.has(target.section.index)) {
+        continue;
       }
-      case TypeBaseKind.ResourceFunctionType: {
-        const resourceFunctionType = type as ResourceFunctionType;
-        writeHeading(
-          nesting,
-          `Function ${resourceFunctionType.name} (${resourceFunctionType.resourceType}@${resourceFunctionType.apiVersion})`
-        );
-        writeNewLine();
-        writeBullet("Resource", resourceFunctionType.resourceType);
-        writeBullet("ApiVersion", resourceFunctionType.apiVersion);
-        if (resourceFunctionType.input) {
-          writeBullet("Input", getTypeName(types, resourceFunctionType.input));
+      const heading = childHeading(name);
+      childAnchors.set(name, anchor(heading));
+      queue.push({
+        heading,
+        ancestors: new Set(section.ancestors).add(target.section.index),
+        ...target.section
+      });
+    }
+
+    // Document each discriminated-union variant as its own section, dropping the
+    // discriminator literal from the variant table since it is already shown on
+    // the parent's discriminator row.
+    if (section.discriminator) {
+      const { propertyName, elements } = section.discriminator;
+      for (const value of sortedKeys(elements)) {
+        const ref = elements[value];
+        const elementType = types[ref.index];
+        if (
+          elementType.type !== TypeBaseKind.ObjectType ||
+          section.ancestors.has(ref.index)
+        ) {
+          continue;
         }
-        writeBullet("Output", getTypeName(types, resourceFunctionType.output));
-
-        writeNewLine();
-        return;
-      }
-      case TypeBaseKind.ObjectType: {
-        const objectType = type as ObjectType;
-        if (includeHeader) {
-          writeHeading(nesting, objectType.name);
-        }
-
-        writeNewLine();
-        writeHeading(nesting + 1, "Properties");
-        writeNewLine();
-
-        if (Object.keys(objectType.properties).length === 0) {
-          writeBullet("none", "");
-          writeNewLine();
-        } else {
-          writeTableHeading();
-          for (const key of sortedKeys(objectType.properties)) {
-            writeTypeProperty(types, key, objectType.properties[key]);
+        const properties: Record<string, ObjectTypeProperty> = {};
+        for (const [key, prop] of Object.entries(
+          (elementType as ObjectType).properties
+        )) {
+          if (key !== propertyName) {
+            properties[key] = prop;
           }
         }
-
-        if (objectType.additionalProperties) {
-          writeHeading(nesting + 1, "Additional Properties");
-          writeNewLine();
-          writeBullet(
-            "Additional Properties Type",
-            getTypeName(types, objectType.additionalProperties)
-          );
-        }
-
-        writeNewLine();
-        return;
-      }
-      case TypeBaseKind.DiscriminatedObjectType: {
-        const discriminatedObjectType = type as DiscriminatedObjectType;
-        if (includeHeader) {
-          writeHeading(nesting, discriminatedObjectType.name);
-          writeNewLine();
-        }
-
-        writeBullet("Discriminator", discriminatedObjectType.discriminator);
-        writeNewLine();
-
-        writeHeading(nesting + 1, "Base Properties");
-        writeNewLine();
-        if (Object.keys(discriminatedObjectType.baseProperties).length === 0) {
-          writeBullet("none", "");
-          writeNewLine();
-        } else {
-          writeTableHeading();
-          for (const propertyName of sortedKeys(
-            discriminatedObjectType.baseProperties
-          )) {
-            writeTypeProperty(
-              types,
-              propertyName,
-              discriminatedObjectType.baseProperties[propertyName]
-            );
-          }
-        }
-
-        writeNewLine();
-
-        for (const key of sortedKeys(discriminatedObjectType.elements)) {
-          const element = discriminatedObjectType.elements[key];
-          writeComplexType(types, types[element.index], nesting + 1, true);
-        }
-
-        writeNewLine();
-        return;
+        queue.push({
+          heading: childHeading(value),
+          ancestors: new Set(section.ancestors).add(ref.index),
+          properties,
+          additionalProperties: (elementType as ObjectType).additionalProperties
+        });
       }
     }
+
+    if (state === "none") {
+      state = "top-level";
+      lines.push("## Top-Level Properties", "");
+    } else {
+      if (state === "top-level") {
+        lines.push("## Object Properties", "");
+      }
+      state = "object";
+      if (section.heading) {
+        lines.push(
+          `### \`${section.heading}\` {#${anchor(section.heading)}}`,
+          ""
+        );
+      }
+    }
+
+    writeTable(lines, types, section, childAnchors);
+    lines.push("");
+  }
+}
+
+/** Emits a property table for a single object section. */
+function writeTable(
+  lines: string[],
+  types: BicepType[],
+  section: Section,
+  childAnchors: Map<string, string>
+): void {
+  const names = sortedKeys(section.properties);
+  if (
+    names.length === 0 &&
+    !section.additionalProperties &&
+    !section.discriminator
+  ) {
+    lines.push("_No properties._");
+    return;
   }
 
-  function generateMarkdown(types: BicepType[]) {
-    const resourceFunctionTypes = orderBy(
-      types.filter(
-        (t) => t.type === TypeBaseKind.ResourceFunctionType
-      ) as ResourceFunctionType[],
-      (x) => x.name.split("@")[0].toLowerCase()
-    );
-    const filteredFunctionTypes = resourceFunctionTypes.filter((x) =>
-      resourceTypes.some(
-        (y) =>
-          x.resourceType.toLowerCase() === y.name.split("@")[0].toLowerCase()
-      )
-    );
-    const typesToWrite: BicepType[] = [
-      ...resourceTypes,
-      ...filteredFunctionTypes
-    ];
+  lines.push("| Property | Type | Required | Read-Only | Description |");
+  lines.push("|----------|------|----------|-----------|-------------|");
 
-    for (const resourceType of resourceTypes) {
-      findTypesToWrite(types, typesToWrite, resourceType.body);
-    }
-
-    for (const resourceFunctionType of filteredFunctionTypes) {
-      if (resourceFunctionType.input) {
-        typesToWrite.push(types[resourceFunctionType.input.index]);
-        findTypesToWrite(types, typesToWrite, resourceFunctionType.input);
-      }
-      typesToWrite.push(types[resourceFunctionType.output.index]);
-      findTypesToWrite(types, typesToWrite, resourceFunctionType.output);
-    }
-
-    for (const type of typesToWrite) {
-      writeComplexType(types, type, 3, true);
-    }
-
-    return output;
+  if (section.discriminator) {
+    lines.push(writeDiscriminatorRow(section));
   }
 
-  return generateMarkdown(types);
+  for (const name of names) {
+    const property = section.properties[name];
+    const enumValues = getEnumValues(types, property.type);
+    const type =
+      enumValues ? "string" : (
+        getLinkedType(types, property.type, childAnchors.get(name))
+      );
+    const required = (property.flags & ObjectTypePropertyFlags.Required) !== 0;
+    const readOnly = (property.flags & ObjectTypePropertyFlags.ReadOnly) !== 0;
+    let description = sanitizeCell(property.description ?? "");
+    if (enumValues) {
+      const allowed = enumValues.map((value) => `\`${value}\``).join(", ");
+      const sentence = `Allowed values: ${allowed}.`;
+      description = description ? `${description}<br />${sentence}` : sentence;
+    }
+    lines.push(
+      `| \`${name}\` | ${type} | ${required} | ${readOnly} | ${description} |`
+    );
+  }
+
+  // Only surface the `*` additionalProperties row for pure maps (objects with
+  // no named properties). Objects that both declare named properties and allow
+  // arbitrary keys (models that `extends Record<T>`) omit it, matching `rad
+  // resource-type show`, which lists only named properties.
+  if (section.additionalProperties && names.length === 0) {
+    const type = getPropertyType(types, section.additionalProperties);
+    lines.push(
+      `| \`*\` | ${type} | false | false | Additional properties keyed by name. |`
+    );
+  }
 }
 
-function getIntegerModifiers(type: IntegerType): string {
-  return formatModifiers(
-    type.minValue !== undefined ? `minValue: ${type.minValue}` : undefined,
-    type.maxValue !== undefined ? `maxValue: ${type.maxValue}` : undefined
+/**
+ * Renders the discriminator property row for a discriminated-union section. The
+ * allowed values link to each variant's section so readers can jump to the
+ * shape selected by that value.
+ */
+function writeDiscriminatorRow(section: Section): string {
+  const { propertyName, elements } = section.discriminator!;
+  const allowed = sortedKeys(elements)
+    .map((value) => {
+      const path = section.heading ? `${section.heading}.${value}` : value;
+      return `[\`${value}\`](#${anchor(path)})`;
+    })
+    .join(", ");
+  const description = `Discriminator property that selects the variant. Allowed values: ${allowed}.`;
+  return `| \`${propertyName}\` | string | true | false | ${description} |`;
+}
+
+/** A resolved object section together with the index of its source type. */
+type ResolvedSection = PropertyBag & { index: number };
+
+/**
+ * Resolves the object section a property should document. Named objects and
+ * discriminated objects resolve to their own properties. A map/`Record` (an
+ * object with no named properties) unwraps to its value type, so a
+ * `map<RecipeDefinition>` documents the RecipeDefinition shape rather than an
+ * empty section. Scalar-valued maps and non-object types resolve to nothing and
+ * are surfaced inline on the parent row instead.
+ */
+function resolveSection(
+  types: BicepType[],
+  reference: TypeReference
+): ResolvedSection | undefined {
+  const type = types[reference.index];
+  if (type.type === TypeBaseKind.ObjectType) {
+    const objectType = type as ObjectType;
+    if (Object.keys(objectType.properties).length > 0) {
+      return {
+        index: reference.index,
+        properties: objectType.properties,
+        additionalProperties: objectType.additionalProperties
+      };
+    }
+    if (objectType.additionalProperties) {
+      const target = resolveLinkTarget(types, objectType.additionalProperties);
+      return target ? target.section : undefined;
+    }
+    return undefined;
+  }
+  if (type.type === TypeBaseKind.DiscriminatedObjectType) {
+    const discriminated = type as DiscriminatedObjectType;
+    return {
+      index: reference.index,
+      properties: discriminated.baseProperties,
+      discriminator: {
+        propertyName: discriminated.discriminator,
+        elements: discriminated.elements
+      }
+    };
+  }
+  return undefined;
+}
+
+/** A resolved section together with whether the property is an array of it. */
+interface LinkTarget {
+  section: ResolvedSection;
+  isArray: boolean;
+}
+
+/**
+ * Resolves the object section a property (or its array element / map value)
+ * expands to, so the Type column can link to it. Arrays set `isArray` so the
+ * Type renders `[object](#anchor)[]`. Returns undefined when nothing expands.
+ */
+function resolveLinkTarget(
+  types: BicepType[],
+  reference: TypeReference
+): LinkTarget | undefined {
+  const type = types[reference.index];
+  if (type.type === TypeBaseKind.ArrayType) {
+    const inner = resolveLinkTarget(types, (type as ArrayType).itemType);
+    return inner ? { section: inner.section, isArray: true } : undefined;
+  }
+  const section = resolveSection(types, reference);
+  return section ? { section, isArray: false } : undefined;
+}
+
+/**
+ * Builds a deterministic heading anchor from a dotted section path. Section
+ * paths are unique, so the slug is collision-free. Emitting an explicit `{#id}`
+ * on each heading avoids depending on Hugo's auto-slugger and its `-1`/`-2`
+ * dedup behavior, keeping the Type-column links stable.
+ */
+function anchor(headingPath: string): string {
+  return headingPath
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+/**
+ * Renders a property's Type cell. Object-valued properties (including maps and
+ * arrays of objects) link to the `### <path>` section that expands them, so
+ * `object` becomes a jump link and arrays render `[object](#anchor)[]`. Types
+ * without an expanded section fall back to their plain type name.
+ */
+function getLinkedType(
+  types: BicepType[],
+  reference: TypeReference,
+  anchorId: string | undefined
+): string {
+  if (anchorId) {
+    const target = resolveLinkTarget(types, reference);
+    if (target) {
+      const link = `[object](#${anchorId})`;
+      return target.isArray ? `${link}[]` : link;
+    }
+  }
+  return getPropertyType(types, reference);
+}
+
+/**
+ * Maps a Bicep type to a JSON-schema-style type name (`string`, `integer`,
+ * `boolean`, `object`, `array`, `any`) to match the CLI's property tables.
+ * Enums (unions of string literals) render their allowed values, for example
+ * `'terraform' \| 'bicep'`.
+ */
+function getPropertyType(types: BicepType[], reference: TypeReference): string {
+  const type = types[reference.index];
+  switch (type.type) {
+    case TypeBaseKind.ObjectType:
+    case TypeBaseKind.DiscriminatedObjectType:
+      return "object";
+    case TypeBaseKind.ArrayType:
+      return getArrayType(types, type as ArrayType);
+    case TypeBaseKind.BooleanType:
+      return "boolean";
+    case TypeBaseKind.IntegerType:
+      return "integer";
+    case TypeBaseKind.StringType:
+    case TypeBaseKind.StringLiteralType:
+      return "string";
+    case TypeBaseKind.AnyType:
+      return "any";
+    case TypeBaseKind.NullType:
+      return "null";
+    case TypeBaseKind.UnionType:
+      return getUnionType(types, type as UnionType);
+    case TypeBaseKind.BuiltInType:
+      return getBuiltInType((type as BuiltInType).kind);
+    default:
+      return "string";
+  }
+}
+
+/** Renders an array as `<scalar> array`, or `array` when the element is complex. */
+function getArrayType(types: BicepType[], type: ArrayType): string {
+  const element = getPropertyType(types, type.itemType);
+  const scalars = new Set(["string", "integer", "boolean", "null"]);
+  return scalars.has(element) ? `${element} array` : "array";
+}
+
+/**
+ * Returns the sorted allowed values of an enum (a union whose elements are all
+ * string literals), or undefined for any other type. Used to move enum values
+ * out of the Type column and into the Description.
+ */
+function getEnumValues(
+  types: BicepType[],
+  reference: TypeReference
+): string[] | undefined {
+  const type = types[reference.index];
+  if (type.type !== TypeBaseKind.UnionType) {
+    return undefined;
+  }
+  const values: string[] = [];
+  for (const element of (type as UnionType).elements) {
+    const elementType = types[element.index];
+    if (elementType.type !== TypeBaseKind.StringLiteralType) {
+      return undefined; // not a pure string-literal enum
+    }
+    values.push((elementType as StringLiteralType).value);
+  }
+  return values.length > 0 ? values.sort() : undefined;
+}
+
+/**
+ * Renders a union. Enums (unions of string literals) list their allowed values
+ * as `'a' \| 'b'`, with the pipe escaped so the value stays inside one table
+ * cell. Non-literal unions collapse to their underlying type(s).
+ */
+function getUnionType(types: BicepType[], type: UnionType): string {
+  const literals: string[] = [];
+  let allLiterals = true;
+  for (const element of type.elements) {
+    const elementType = types[element.index];
+    if (elementType.type === TypeBaseKind.StringLiteralType) {
+      literals.push(`'${(elementType as StringLiteralType).value}'`);
+    } else {
+      allLiterals = false;
+      break;
+    }
+  }
+  if (allLiterals && literals.length > 0) {
+    return literals.sort().join(" \\| ");
+  }
+
+  const kinds = new Set(
+    type.elements.map((element) => getPropertyType(types, element))
   );
+  if (kinds.size === 1) {
+    return [...kinds][0];
+  }
+  return [...kinds].sort().join(" or ");
 }
 
-function getStringModifiers(type: StringType): string {
-  return formatModifiers(
-    type.sensitive ? "sensitive" : undefined,
-    type.minLength !== undefined ? `minLength: ${type.minLength}` : undefined,
-    type.maxLength !== undefined ? `maxLength: ${type.maxLength}` : undefined,
-    type.pattern !== undefined ?
-      `pattern: ${JSON.stringify(type.pattern)}`
-    : undefined
-  );
+/** Maps a built-in type kind to its JSON-schema-style name. */
+function getBuiltInType(kind: BuiltInTypeKind): string {
+  switch (kind) {
+    case BuiltInTypeKind.Bool:
+      return "boolean";
+    case BuiltInTypeKind.Int:
+      return "integer";
+    case BuiltInTypeKind.String:
+      return "string";
+    case BuiltInTypeKind.Object:
+      return "object";
+    case BuiltInTypeKind.Array:
+      return "array";
+    case BuiltInTypeKind.Null:
+      return "null";
+    default:
+      return "any";
+  }
 }
 
-function formatModifiers(...modifiers: Array<string | undefined>): string {
-  const modifierString = modifiers.filter((modifier) => !!modifier).join(", ");
-  return modifierString.length > 0 ? ` {${modifierString}}` : modifierString;
+/** Flattens a property description to a single table-cell-safe line. */
+function sanitizeCell(text: string): string {
+  return text
+    .replace(/\r?\n/g, " ")
+    .replace(/\\/g, "\\\\")
+    .replace(/\|/g, "\\|")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-/** Stable ascending sort by a string selector (replaces lodash `orderBy`). */
-function orderBy<T>(items: readonly T[], selector: (item: T) => string): T[] {
-  return [...items].sort((a, b) => {
-    const ka = selector(a);
-    const kb = selector(b);
+/** Returns the keys of a record sorted case-insensitively and ascending. */
+function sortedKeys(record: Record<string, unknown>): string[] {
+  return Object.keys(record).sort((a, b) => {
+    const ka = a.toLowerCase();
+    const kb = b.toLowerCase();
     return (
       ka < kb ? -1
       : ka > kb ? 1

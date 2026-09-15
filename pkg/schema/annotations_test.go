@@ -23,7 +23,6 @@ import (
 
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview/fake"
@@ -434,7 +433,7 @@ func TestExtractSensitiveFieldPaths_WithPrefix(t *testing.T) {
 }
 
 func TestGetSensitiveFieldPaths(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("nil client returns nil", func(t *testing.T) {
 		result, err := GetSensitiveFieldPaths(ctx, nil, "/planes/radius/local/resourceGroups/test/providers/Foo.Bar/myResources/test", "Foo.Bar/myResources", "2024-01-01")
@@ -511,7 +510,7 @@ func TestGetSensitiveFieldPaths(t *testing.T) {
 }
 
 func TestGetSchema(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("nil client returns nil", func(t *testing.T) {
 		result, err := GetSchema(ctx, nil, "/planes/radius/local/resourceGroups/test/providers/Foo.Bar/myResources/test", "Foo.Bar/myResources", "2024-01-01")
@@ -551,10 +550,8 @@ func testUCPClientFactory(schema map[string]any) (*v20231001preview.ClientFactor
 		Get: func(ctx context.Context, planeName string, resourceProviderName string, resourceTypeName string, apiVersionName string, options *v20231001preview.APIVersionsClientGetOptions) (azfake.Responder[v20231001preview.APIVersionsClientGetResponse], azfake.ErrorResponder) {
 			resp := azfake.Responder[v20231001preview.APIVersionsClientGetResponse]{}
 			resp.SetResponse(http.StatusOK, v20231001preview.APIVersionsClientGetResponse{
-				APIVersionResource: v20231001preview.APIVersionResource{
-					Properties: &v20231001preview.APIVersionProperties{
-						Schema: schema,
-					},
+				Properties: &v20231001preview.APIVersionProperties{
+					Schema: schema,
 				},
 			}, nil)
 			return resp, azfake.ErrorResponder{}
@@ -562,11 +559,9 @@ func testUCPClientFactory(schema map[string]any) (*v20231001preview.ClientFactor
 	}
 
 	return v20231001preview.NewClientFactory(&aztoken.AnonymousCredential{}, &armpolicy.ClientOptions{
-		ClientOptions: policy.ClientOptions{
-			Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
-				APIVersionsServer: apiVersionsServer,
-			}),
-		},
+		Transport: fake.NewServerFactoryTransport(&fake.ServerFactory{
+			APIVersionsServer: apiVersionsServer,
+		}),
 	})
 }
 
@@ -575,7 +570,7 @@ func TestGetSensitiveFieldPaths_InvalidResourceID(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = GetSensitiveFieldPaths(
-		context.Background(),
+		t.Context(),
 		clientFactory,
 		"invalid-resource-id",
 		"Foo.Bar/myResources",

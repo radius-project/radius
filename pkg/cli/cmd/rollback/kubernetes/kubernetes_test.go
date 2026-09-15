@@ -17,7 +17,6 @@ limitations under the License.
 package kubernetes
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -244,7 +243,7 @@ func TestRunner_Run(t *testing.T) {
 
 			tt.mockSetup(helmMock, outputMock)
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 
 			if tt.expectedError == "" {
 				require.NoError(t, err)
@@ -364,7 +363,7 @@ func TestRunner_Run_ListRevisions(t *testing.T) {
 
 			tt.mockSetup(helmMock, outputMock)
 
-			err := runner.Run(context.Background())
+			err := runner.Run(t.Context())
 
 			if tt.expectedError == "" {
 				require.NoError(t, err)

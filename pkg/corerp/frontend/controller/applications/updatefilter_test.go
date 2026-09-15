@@ -320,11 +320,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 			Return(rpctest.FakeStoreObject(envdm), nil)
 
 		newResource := &datamodel.Application{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: testAppID,
-				},
-			},
+			ID: testAppID,
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,
@@ -374,11 +370,7 @@ func TestCreateAppScopedNamespace_invalid_property(t *testing.T) {
 		}
 
 		newResource := &datamodel.Application{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: testAppID,
-				},
-			},
+			ID: testAppID,
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: testEnvID,

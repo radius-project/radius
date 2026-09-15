@@ -29,7 +29,6 @@ import (
 	apictrl "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database/inmemory"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -241,7 +240,7 @@ func TestApplyAsyncHandler(t *testing.T) {
 	ns := newTestNamespace(t)
 	builder := ns.GenerateBuilder()
 	registry := worker.NewControllerRegistry()
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 
 	options := backendctrl.Options{
 		DatabaseClient: inmemory.NewClient(),

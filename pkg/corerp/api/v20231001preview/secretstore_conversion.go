@@ -19,33 +19,24 @@ package v20231001preview
 import (
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
-	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/to"
 )
 
 // ConvertTo converts from the versioned SecretStoreResource resource to version-agnostic datamodel.
 func (src *SecretStoreResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.SecretStore{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			},
-		},
+		ID:                     to.String(src.ID),
+		Name:                   to.String(src.Name),
+		Type:                   to.String(src.Type),
+		Location:               to.String(src.Location),
+		Tags:                   to.StringMap(src.Tags),
+		UpdatedAPIVersion:      Version,
+		AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 		Properties: &datamodel.SecretStoreProperties{
-			BasicResourceProperties: rpv1.BasicResourceProperties{
-				Application: to.String(src.Properties.Application),
-			},
-			Resource: to.String(src.Properties.Resource),
-			Type:     toSecretStoreDataTypeDataModel(src.Properties.Type),
-			Data:     toSecretValuePropertiesDataModel(src.Properties.Data),
+			Application: to.String(src.Properties.Application),
+			Resource:    to.String(src.Properties.Resource),
+			Type:        toSecretStoreDataTypeDataModel(src.Properties.Type),
+			Data:        toSecretValuePropertiesDataModel(src.Properties.Data),
 		},
 	}
 	return converted, nil

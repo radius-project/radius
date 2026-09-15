@@ -27,7 +27,6 @@ import (
 	recipedriver "github.com/radius-project/radius/pkg/recipes/driver"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/radius-project/radius/pkg/ucp/resources"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -102,7 +101,7 @@ func Test_Engine_Execute_Success(t *testing.T) {
 		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -115,20 +114,16 @@ func Test_Engine_Execute_Success(t *testing.T) {
 		Return(recipeDefinition, nil)
 	driver.EXPECT().
 		Execute(ctx, recipedriver.ExecuteOptions{
-			BaseOptions: recipedriver.BaseOptions{
-				Configuration: *envConfig,
-				Recipe:        recipeMetadata,
-				Definition:    *recipeDefinition,
-			},
-			PrevState: prevState,
+			Configuration: *envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    *recipeDefinition,
+			PrevState:     prevState,
 		}).
 		Times(1).
 		Return(recipeResult, nil)
 
 	result, err := engine.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:        recipeMetadata,
 		PreviousState: prevState,
 	})
 	require.NoError(t, err)
@@ -164,7 +159,7 @@ func Test_Engine_Execute_SimulatedEnv_Success(t *testing.T) {
 		Simulated: true,
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -175,9 +170,7 @@ func Test_Engine_Execute_SimulatedEnv_Success(t *testing.T) {
 	// Note: LoadRecipe is not called as the environment is simulated
 
 	result, err := engine.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:        recipeMetadata,
 		PreviousState: prevState,
 	})
 	require.NoError(t, err)
@@ -214,7 +207,7 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 		TemplatePath: "ghcr.io/radius-project/dev/recipes/functionaltest/basic/mongodatabases/azure:1.0",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -227,20 +220,16 @@ func Test_Engine_Execute_Failure(t *testing.T) {
 		Return(recipeDefinition, nil)
 	driver.EXPECT().
 		Execute(ctx, recipedriver.ExecuteOptions{
-			BaseOptions: recipedriver.BaseOptions{
-				Configuration: *envConfig,
-				Recipe:        recipeMetadata,
-				Definition:    *recipeDefinition,
-			},
-			PrevState: prevState,
+			Configuration: *envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    *recipeDefinition,
+			PrevState:     prevState,
 		}).
 		Times(1).
 		Return(nil, errors.New("failed to execute recipe"))
 
 	result, err := engine.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:        recipeMetadata,
 		PreviousState: prevState,
 	})
 	require.Nil(t, result)
@@ -289,7 +278,7 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 		TemplateVersion: "1.1.0",
 		ResourceType:    "Applications.Datastores/mongoDatabases",
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, driverWithSecrets, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -306,20 +295,16 @@ func Test_Engine_Terraform_Success(t *testing.T) {
 		Return(nil, nil)
 	driverWithSecrets.EXPECT().
 		Execute(ctx, recipedriver.ExecuteOptions{
-			BaseOptions: recipedriver.BaseOptions{
-				Configuration: *envConfig,
-				Recipe:        recipeMetadata,
-				Definition:    *recipeDefinition,
-			},
-			PrevState: prevState,
+			Configuration: *envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    *recipeDefinition,
+			PrevState:     prevState,
 		}).
 		Times(1).
 		Return(recipeResult, nil)
 
 	result, err := engine.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:        recipeMetadata,
 		PreviousState: prevState,
 	})
 	require.NoError(t, err)
@@ -409,7 +394,7 @@ func Test_Engine_Terraform_Failure(t *testing.T) {
 			prevState := []string{
 				"/subscriptions/test-sub/resourceGroups/test-rg/providers/System.Test/testResources/test1",
 			}
-			ctx := testcontext.New(t)
+			ctx := t.Context()
 			engine, configLoader, _, driverWithSecrets, secretsLoader := setup(t)
 			configLoader.EXPECT().
 				LoadConfiguration(ctx, recipeMetadata).
@@ -449,24 +434,20 @@ func Test_Engine_Terraform_Failure(t *testing.T) {
 					if tc.errExecute != nil {
 						driverWithSecrets.EXPECT().
 							Execute(ctx, recipedriver.ExecuteOptions{
-								BaseOptions: recipedriver.BaseOptions{
-									Configuration: *envConfig,
-									Recipe:        recipeMetadata,
-									Definition:    *recipeDefinition,
-								},
-								PrevState: prevState,
+								Configuration: *envConfig,
+								Recipe:        recipeMetadata,
+								Definition:    *recipeDefinition,
+								PrevState:     prevState,
 							}).
 							Times(1).
 							Return(nil, tc.errExecute)
 					} else {
 						driverWithSecrets.EXPECT().
 							Execute(ctx, recipedriver.ExecuteOptions{
-								BaseOptions: recipedriver.BaseOptions{
-									Configuration: *envConfig,
-									Recipe:        recipeMetadata,
-									Definition:    *recipeDefinition,
-								},
-								PrevState: prevState,
+								Configuration: *envConfig,
+								Recipe:        recipeMetadata,
+								Definition:    *recipeDefinition,
+								PrevState:     prevState,
 							}).
 							Times(1).
 							Return(recipeResult, nil)
@@ -475,9 +456,7 @@ func Test_Engine_Terraform_Failure(t *testing.T) {
 			}
 
 			result, err := engine.Execute(ctx, ExecuteOptions{
-				BaseOptions: BaseOptions{
-					Recipe: recipeMetadata,
-				},
+				Recipe:        recipeMetadata,
 				PreviousState: prevState,
 			})
 			if tc.errFindSecretRefs != nil || tc.errLoadSecrets != nil || tc.errExecute != nil || tc.errLoadSecretsNotFound != nil {
@@ -491,7 +470,7 @@ func Test_Engine_Terraform_Failure(t *testing.T) {
 }
 
 func Test_Engine_InvalidDriver(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 
 	envConfig := &recipes.Configuration{
@@ -536,9 +515,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 		Times(1).
 		Return(recipeDefinition, nil)
 	_, err := engine.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:        recipeMetadata,
 		PreviousState: prevState,
 	})
 	require.Error(t, err)
@@ -546,7 +523,7 @@ func Test_Engine_InvalidDriver(t *testing.T) {
 }
 
 func Test_Engine_Lookup_Error(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 
 	envConfig := &recipes.Configuration{
@@ -586,16 +563,14 @@ func Test_Engine_Lookup_Error(t *testing.T) {
 		Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
 
 	_, err := engine.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:        recipeMetadata,
 		PreviousState: prevState,
 	})
 	require.Error(t, err)
 }
 
 func Test_Engine_Load_Error(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 
 	recipeMetadata := recipes.ResourceMetadata{
@@ -617,9 +592,7 @@ func Test_Engine_Load_Error(t *testing.T) {
 		Return(nil, errors.New("unable to fetch namespace information"))
 
 	_, err := engine.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:        recipeMetadata,
 		PreviousState: prevState,
 	})
 	require.Error(t, err)
@@ -641,7 +614,7 @@ func Test_Engine_Delete_Success(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -656,20 +629,16 @@ func Test_Engine_Delete_Success(t *testing.T) {
 
 	driver.EXPECT().
 		Delete(ctx, recipedriver.DeleteOptions{
-			BaseOptions: recipedriver.BaseOptions{
-				Configuration: *envConfig,
-				Recipe:        recipeMetadata,
-				Definition:    recipeDefinition,
-			},
+			Configuration:   *envConfig,
+			Recipe:          recipeMetadata,
+			Definition:      recipeDefinition,
 			OutputResources: outputResources,
 		}).
 		Times(1).
 		Return(nil)
 
 	err := engine.Delete(ctx, DeleteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:          recipeMetadata,
 		OutputResources: outputResources,
 	})
 	require.NoError(t, err)
@@ -692,7 +661,7 @@ func Test_Engine_Delete_SimulatedEnv_Success(t *testing.T) {
 		Simulated: true,
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -701,9 +670,7 @@ func Test_Engine_Delete_SimulatedEnv_Success(t *testing.T) {
 		Return(envConfig, nil)
 
 	err := engine.Delete(ctx, DeleteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:          recipeMetadata,
 		OutputResources: outputResources,
 	})
 	require.NoError(t, err)
@@ -725,7 +692,7 @@ func Test_Engine_Delete_Error(t *testing.T) {
 		},
 	}
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -740,11 +707,9 @@ func Test_Engine_Delete_Error(t *testing.T) {
 
 	driver.EXPECT().
 		Delete(ctx, recipedriver.DeleteOptions{
-			BaseOptions: recipedriver.BaseOptions{
-				Configuration: *envConfig,
-				Recipe:        recipeMetadata,
-				Definition:    recipeDefinition,
-			},
+			Configuration:   *envConfig,
+			Recipe:          recipeMetadata,
+			Definition:      recipeDefinition,
 			OutputResources: outputResources,
 		}).
 		Times(1).
@@ -752,9 +717,7 @@ func Test_Engine_Delete_Error(t *testing.T) {
 			outputResources[0].ID))
 
 	err := engine.Delete(ctx, DeleteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:          recipeMetadata,
 		OutputResources: outputResources,
 	})
 	require.Error(t, err)
@@ -764,7 +727,7 @@ func Test_Delete_InvalidDriver(t *testing.T) {
 	recipeMetadata, recipeDefinition, outputResources := getRecipeInputs()
 	recipeDefinition.Driver = "invalid"
 
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 
 	envConfig := &recipes.Configuration{
@@ -790,9 +753,7 @@ func Test_Delete_InvalidDriver(t *testing.T) {
 		Times(1).
 		Return(&recipeDefinition, nil)
 	err := engine.Delete(ctx, DeleteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:          recipeMetadata,
 		OutputResources: outputResources,
 	})
 	require.Error(t, err)
@@ -800,7 +761,7 @@ func Test_Delete_InvalidDriver(t *testing.T) {
 }
 
 func Test_Delete_Lookup_Error(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 	recipeMetadata, _, outputResources := getRecipeInputs()
 
@@ -827,9 +788,7 @@ func Test_Delete_Lookup_Error(t *testing.T) {
 		Times(1).
 		Return(nil, errors.New("could not find recipe mongo-azure in environment env1"))
 	err := engine.Delete(ctx, DeleteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:          recipeMetadata,
 		OutputResources: outputResources,
 	})
 	require.Error(t, err)
@@ -849,7 +808,7 @@ func Test_Engine_GetRecipeMetadata_Success(t *testing.T) {
 			},
 		},
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, driver, _, _ := setup(t)
 	outputParams := map[string]any{"parameters": recipeDefinition.Parameters}
 
@@ -864,9 +823,7 @@ func Test_Engine_GetRecipeMetadata_Success(t *testing.T) {
 	}).Times(1).Return(outputParams, nil)
 
 	recipeData, err := engine.GetRecipeMetadata(ctx, GetRecipeMetadataOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:           recipeMetadata,
 		RecipeDefinition: recipeDefinition,
 	})
 	require.NoError(t, err)
@@ -912,7 +869,7 @@ func Test_Engine_GetRecipeMetadata_Private_Module_Success(t *testing.T) {
 			},
 		},
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, driverWithSecrets, secretsLoader := setup(t)
 	outputParams := map[string]any{"parameters": recipeDefinition.Parameters}
 
@@ -935,9 +892,7 @@ func Test_Engine_GetRecipeMetadata_Private_Module_Success(t *testing.T) {
 	}).Times(1).Return(outputParams, nil)
 
 	recipeData, err := engine.GetRecipeMetadata(ctx, GetRecipeMetadataOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:           recipeMetadata,
 		RecipeDefinition: *recipeDefinition,
 	})
 	require.NoError(t, err)
@@ -958,7 +913,7 @@ func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
 			},
 		},
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, driver, _, _ := setup(t)
 
 	configLoader.EXPECT().
@@ -972,9 +927,7 @@ func Test_GetRecipeMetadata_Driver_Error(t *testing.T) {
 	}).Times(1).Return(nil, errors.New("driver failure"))
 
 	_, err := engine.GetRecipeMetadata(ctx, GetRecipeMetadataOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:           recipeMetadata,
 		RecipeDefinition: recipeDefinition,
 	})
 	require.Error(t, err)
@@ -987,7 +940,7 @@ func Test_GetRecipeMetadata_Driver_InvalidDriver(t *testing.T) {
 	recipeMetadata := recipes.ResourceMetadata{
 		EnvironmentID: "/planes/radius/local/resourcegroups/test-rg/providers/applications.core/environments/env1",
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, _, _ := setup(t)
 	envConfig := &recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{
@@ -1006,9 +959,7 @@ func Test_GetRecipeMetadata_Driver_InvalidDriver(t *testing.T) {
 		Times(1).
 		Return(envConfig, nil)
 	_, err := engine.GetRecipeMetadata(ctx, GetRecipeMetadataOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:           recipeMetadata,
 		RecipeDefinition: recipeDefinition,
 	})
 	require.Error(t, err)
@@ -1093,7 +1044,7 @@ func Test_Engine_Execute_With_Secrets_Success(t *testing.T) {
 		TemplatePath: "git://https://dev.azure.com/mongo-recipe/recipe",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, driverWithSecrets, secretsLoader := setup(t)
 	configLoader.EXPECT().
 		LoadConfiguration(ctx, recipeMetadata).
@@ -1113,20 +1064,16 @@ func Test_Engine_Execute_With_Secrets_Success(t *testing.T) {
 		Return(nil, nil)
 	driverWithSecrets.EXPECT().
 		Execute(ctx, recipedriver.ExecuteOptions{
-			BaseOptions: recipedriver.BaseOptions{
-				Configuration: *envConfig,
-				Recipe:        recipeMetadata,
-				Definition:    *recipeDefinition,
-			},
-			PrevState: prevState,
+			Configuration: *envConfig,
+			Recipe:        recipeMetadata,
+			Definition:    *recipeDefinition,
+			PrevState:     prevState,
 		}).
 		Times(1).
 		Return(recipeResult, nil)
 
 	result, err := engine.Execute(ctx, ExecuteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:        recipeMetadata,
 		PreviousState: prevState,
 	})
 	require.NoError(t, err)
@@ -1174,7 +1121,7 @@ func Test_Engine_Delete_With_Secrets_Success(t *testing.T) {
 		TemplatePath: "git://https://dev.azure.com/mongo-recipe/recipe",
 		ResourceType: "Applications.Datastores/mongoDatabases",
 	}
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	engine, configLoader, _, driverWithSecrets, secretsLoader := setup(t)
 
 	configLoader.EXPECT().
@@ -1196,20 +1143,16 @@ func Test_Engine_Delete_With_Secrets_Success(t *testing.T) {
 		Return(nil, nil)
 	driverWithSecrets.EXPECT().
 		Delete(ctx, recipedriver.DeleteOptions{
-			BaseOptions: recipedriver.BaseOptions{
-				Configuration: *envConfig,
-				Recipe:        recipeMetadata,
-				Definition:    *recipeDefinition,
-			},
+			Configuration:   *envConfig,
+			Recipe:          recipeMetadata,
+			Definition:      *recipeDefinition,
 			OutputResources: outputResources,
 		}).
 		Times(1).
 		Return(nil)
 
 	err := engine.Delete(ctx, DeleteOptions{
-		BaseOptions: BaseOptions{
-			Recipe: recipeMetadata,
-		},
+		Recipe:          recipeMetadata,
 		OutputResources: outputResources,
 	})
 	require.NoError(t, err)

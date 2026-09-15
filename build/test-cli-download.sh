@@ -23,6 +23,40 @@ OS=${1:-"linux"}
 ARCH=${2:-"amd64"}
 FILE=${3:-"rad"}
 EXT=${4:-""}
+MINIMUM_VERSION=${5:-""}
+
+version_is_at_least() {
+    local -r actual="${1#v}"
+    local -r minimum="${2#v}"
+    local -r version_pattern='^[0-9]+\.[0-9]+\.[0-9]+$'
+    local -a actual_parts
+    local -a minimum_parts
+    local index
+
+    if [[ ! "${actual}" =~ ${version_pattern} ]]; then
+        echo "Invalid release version: ${1}" >&2
+        return 2
+    fi
+
+    if [[ ! "${minimum}" =~ ${version_pattern} ]]; then
+        echo "Invalid minimum version: ${2}" >&2
+        return 2
+    fi
+
+    IFS=. read -r -a actual_parts <<< "${actual}"
+    IFS=. read -r -a minimum_parts <<< "${minimum}"
+
+    for index in 0 1 2; do
+        if ((10#${actual_parts[$index]} > 10#${minimum_parts[$index]})); then
+            return 0
+        fi
+        if ((10#${actual_parts[$index]} < 10#${minimum_parts[$index]})); then
+            return 1
+        fi
+    done
+
+    return 0
+}
 
 echo "Starting CLI download test for $OS/$ARCH"
 
@@ -50,6 +84,21 @@ if [ -z "$RAD_VERSION" ]; then
 fi
 
 echo "Successfully retrieved RAD_VERSION: $RAD_VERSION"
+
+if [[ -n "${MINIMUM_VERSION}" ]]; then
+    if version_is_at_least "${RAD_VERSION}" "${MINIMUM_VERSION}"; then
+        :
+    else
+        compare_status=$?
+        if ((compare_status == 2)); then
+            exit 1
+        fi
+
+        echo "Skipping CLI download test for ${OS}/${ARCH}: latest stable" \
+            "release ${RAD_VERSION} predates ${MINIMUM_VERSION}"
+        exit 0
+    fi
+fi
 
 # Download the CLI binary from GitHub releases
 filename="${FILE}_${OS}_${ARCH}${EXT}"

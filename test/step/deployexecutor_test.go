@@ -33,9 +33,9 @@ import (
 func Test_ExecuteWithRetry_SucceedsOnFirstAttempt(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(error) bool { return true })
+	d := NewDeployExecutor("test.bicep").WithRetry(time.Second, 10*time.Millisecond, func(error) bool { return true })
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		calls.Add(1)
 		return nil
 	})
@@ -48,11 +48,11 @@ func Test_ExecuteWithRetry_RetriesOnTransientThenSucceeds(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
 	transientErr := errors.New("ManagedServiceIdentityNotFound")
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(err error) bool {
+	d := NewDeployExecutor("test.bicep").WithRetry(time.Second, 10*time.Millisecond, func(err error) bool {
 		return err.Error() == "ManagedServiceIdentityNotFound"
 	})
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		n := calls.Add(1)
 		if n == 1 {
 			return transientErr
@@ -67,11 +67,11 @@ func Test_ExecuteWithRetry_RetriesOnTransientThenSucceeds(t *testing.T) {
 func Test_ExecuteWithRetry_DoesNotRetryNonTransientError(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(err error) bool {
+	d := NewDeployExecutor("test.bicep").WithRetry(time.Second, 10*time.Millisecond, func(err error) bool {
 		return err.Error() == "transient"
 	})
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		calls.Add(1)
 		return errors.New("permanent failure")
 	})
@@ -81,19 +81,21 @@ func Test_ExecuteWithRetry_DoesNotRetryNonTransientError(t *testing.T) {
 	assert.Equal(t, int32(1), calls.Load())
 }
 
-func Test_ExecuteWithRetry_ExhaustsAllRetries(t *testing.T) {
+func Test_ExecuteWithRetry_StopsWhenBudgetIsExhausted(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 10*time.Millisecond, func(error) bool { return true })
+	d := NewDeployExecutor("test.bicep").WithRetry(50*time.Millisecond, 10*time.Millisecond, func(error) bool { return true })
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		calls.Add(1)
 		return errors.New("always fails")
 	})
 
 	require.Error(t, err)
 	assert.Equal(t, "always fails", err.Error())
-	assert.Equal(t, int32(3), calls.Load()) // 1 initial + 2 retries
+	// The initial attempt plus at least one retry, and the loop must have
+	// stopped once the budget elapsed rather than run forever.
+	assert.Greater(t, calls.Load(), int32(1))
 }
 
 func Test_ExecuteWithRetry_DefaultDoesNotRetryNonTransientError(t *testing.T) {
@@ -103,7 +105,7 @@ func Test_ExecuteWithRetry_DefaultDoesNotRetryNonTransientError(t *testing.T) {
 	// non-transient error must not be retried.
 	d := NewDeployExecutor("test.bicep")
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		calls.Add(1)
 		return errors.New("fails")
 	})
@@ -120,7 +122,7 @@ func Test_ExecuteWithRetry_DefaultRetriesTransientImagePullError(t *testing.T) {
 	d := NewDeployExecutor("test.bicep")
 	d.RetryDelay = 10 * time.Millisecond // shorten the delay for the test
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		n := calls.Add(1)
 		if n < 2 {
 			return errors.New("Reason: ErrImagePull, net/http: timeout awaiting response headers")
@@ -135,12 +137,13 @@ func Test_ExecuteWithRetry_DefaultRetriesTransientImagePullError(t *testing.T) {
 func Test_ExecuteWithRetry_DefaultRetriesTransientConnectionError(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	// NewDeployExecutor retries transient UCP connection resets by default, which
-	// occur when the kind control-plane restarts and drops the port-forward tunnel.
+	// NewDeployExecutor retries transient UCP connection resets by default,
+	// which occur when the kind control plane restarts and drops every
+	// in-flight connection to the API server.
 	d := NewDeployExecutor("test.bicep")
 	d.RetryDelay = 10 * time.Millisecond // shorten the delay for the test
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		n := calls.Add(1)
 		if n < 2 {
 			return errors.New(`command 'rad deploy' had non-zero exit code: exit status 1
@@ -153,11 +156,37 @@ Error: Get "https://127.0.0.1:37481/apis/api.ucp.dev/v1alpha3/.../operationStatu
 	assert.Equal(t, int32(2), calls.Load()) // failed once, succeeded on retry
 }
 
+func Test_ExecuteWithRetry_DefaultRetriesAPIServerRestartError(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	// NewDeployExecutor retries a kube-apiserver that is still restarting by
+	// default. This is the second phase of a control-plane restart: the socket is
+	// accepted again, but the apiserver answers 503 until its handlers are
+	// installed.
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = 10 * time.Millisecond // shorten the delay for the test
+
+	err := d.executeWithRetry(t.Context(), t, func() error {
+		n := calls.Add(1)
+		if n < 2 {
+			return errors.New(`command 'rad deploy' had non-zero exit code: exit status 1
+Error: An unknown error was returned while testing Radius API status:
+Status Code: 503
+Response Body:
+{"kind":"Status","message":"the request has been made before all known HTTP paths have been installed, please try again","reason":"ServiceUnavailable","code":503}`)
+		}
+		return nil
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), calls.Load()) // failed once, succeeded on retry
+}
+
 func Test_ExecuteWithRetry_ContextCancelledDuringDelay(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
-	ctx, cancel := context.WithCancel(context.Background())
-	d := NewDeployExecutor("test.bicep").WithRetry(2, 5*time.Second, func(error) bool { return true })
+	ctx, cancel := context.WithCancel(t.Context())
+	d := NewDeployExecutor("test.bicep").WithRetry(time.Minute, 5*time.Second, func(error) bool { return true })
 
 	// Cancel context immediately after first deploy attempt
 	err := d.executeWithRetry(ctx, t, func() error {
@@ -178,16 +207,174 @@ func Test_ExecuteWithRetry_NilShouldRetryDisablesRetries(t *testing.T) {
 	t.Parallel()
 	var calls atomic.Int32
 	d := NewDeployExecutor("test.bicep")
-	d.MaxRetries = 3
 	d.ShouldRetry = nil // nil predicate
 
-	err := d.executeWithRetry(context.Background(), t, func() error {
+	err := d.executeWithRetry(t.Context(), t, func() error {
 		calls.Add(1)
 		return errors.New("fails")
 	})
 
 	require.Error(t, err)
 	assert.Equal(t, int32(1), calls.Load())
+}
+
+func Test_ExecuteWithRetry_ZeroBudgetDisablesRetries(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = 0
+	d.RetryBudget = 0
+	d.ShouldRetry = func(error) bool { return true }
+
+	err := d.executeWithRetry(t.Context(), t, func() error {
+		calls.Add(1)
+		return errors.New("transient")
+	})
+
+	require.Error(t, err)
+	assert.Equal(t, int32(1), calls.Load())
+}
+
+func Test_ExecuteWithRetry_UnreadyControlPlaneStopsRetrying(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	var waits atomic.Int32
+
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = time.Millisecond
+	d.ShouldRetry = func(error) bool { return true }
+	// The gate stands in for a control plane that never came back within the
+	// budget. Retrying against it cannot succeed, so the loop must stop.
+	d.waitForReady = func(ctx context.Context) error {
+		waits.Add(1)
+		return errors.New("kube-apiserver is not ready")
+	}
+
+	err := d.executeWithRetry(t.Context(), t, func() error {
+		n := calls.Add(1)
+		if n == 1 {
+			return errors.New("connection reset by peer")
+		}
+		return nil
+	})
+
+	// The deployment error is surfaced rather than the gate's error, and no
+	// retry is attempted against an unavailable control plane.
+	require.Error(t, err)
+	assert.Equal(t, "connection reset by peer", err.Error())
+	assert.Equal(t, int32(1), calls.Load())
+	assert.Equal(t, int32(1), waits.Load())
+}
+
+func Test_ExecuteWithRetry_RetriesOnceControlPlaneIsReady(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+	var waits atomic.Int32
+
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = time.Millisecond
+	d.ShouldRetry = func(error) bool { return true }
+	d.waitForReady = func(ctx context.Context) error {
+		waits.Add(1)
+		return nil
+	}
+
+	err := d.executeWithRetry(t.Context(), t, func() error {
+		n := calls.Add(1)
+		if n == 1 {
+			return errors.New("connection reset by peer")
+		}
+		return nil
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), calls.Load())
+	assert.Equal(t, int32(1), waits.Load())
+}
+
+func Test_ExecuteWithRetry_BudgetBoundsTheReadinessWait(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = 0
+	d.RetryBudget = 50 * time.Millisecond
+	d.ShouldRetry = func(error) bool { return true }
+	// A control plane that never recovers must not block past the budget.
+	d.waitForReady = func(ctx context.Context) error {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+
+	start := time.Now()
+	err := d.executeWithRetry(t.Context(), t, func() error {
+		calls.Add(1)
+		return errors.New("connection reset by peer")
+	})
+
+	require.Error(t, err)
+	assert.Equal(t, "connection reset by peer", err.Error())
+	assert.Equal(t, int32(1), calls.Load())
+	assert.Less(t, time.Since(start), 5*time.Second)
+}
+
+func Test_EffectiveRetryBudget_CappedByTestDeadline(t *testing.T) {
+	t.Parallel()
+	deadline, ok := t.Deadline()
+	if !ok {
+		t.Skip("go test was run without -timeout, so there is no deadline to cap against")
+	}
+
+	// A budget far larger than the time the test binary has left must be cut
+	// down, so a broken cluster produces per-test failures rather than an
+	// opaque `go test -timeout` panic.
+	d := NewDeployExecutor("test.bicep")
+	d.RetryBudget = time.Hour
+
+	halfRemainingBefore := time.Until(deadline) / 2
+	budget := d.effectiveRetryBudget(t)
+	halfRemainingAfter := time.Until(deadline) / 2
+
+	assert.LessOrEqual(t, budget, halfRemainingBefore)
+	assert.GreaterOrEqual(t, budget, halfRemainingAfter)
+	assert.Positive(t, budget)
+}
+
+func Test_EffectiveRetryBudget_UnchangedWhenItFitsTheDeadline(t *testing.T) {
+	t.Parallel()
+	d := NewDeployExecutor("test.bicep")
+	d.RetryBudget = time.Millisecond
+
+	assert.Equal(t, time.Millisecond, d.effectiveRetryBudget(t))
+}
+
+func Test_ExecuteWithRetry_BudgetBoundsRetriesWithoutDelayOrReadinessGate(t *testing.T) {
+	t.Parallel()
+	var calls atomic.Int32
+
+	// With neither a retry delay nor a readiness gate, the budget is the only
+	// thing that can stop the loop, so waitBeforeRetry has to consult it on
+	// that path too. Without this the loop runs until the parent context or the
+	// test binary's timeout, not the budget.
+	d := NewDeployExecutor("test.bicep")
+	d.RetryDelay = 0
+	d.RetryBudget = 20 * time.Millisecond
+	d.ShouldRetry = func(error) bool { return true }
+	d.waitForReady = nil
+
+	start := time.Now()
+	err := d.executeWithRetry(t.Context(), t, func() error {
+		calls.Add(1)
+		// Keeps the attempt count (and the log volume) bounded while the
+		// budget elapses.
+		time.Sleep(5 * time.Millisecond)
+		return errors.New("connection reset by peer")
+	})
+
+	require.Error(t, err)
+	assert.Equal(t, "connection reset by peer", err.Error())
+	assert.Less(t, time.Since(start), 5*time.Second)
+	assert.Greater(t, calls.Load(), int32(1))
 }
 
 func Test_IsTransientImagePullError(t *testing.T) {
@@ -282,7 +469,7 @@ func Test_IsTransientConnectionError(t *testing.T) {
 	}{
 		{name: "nil error", err: nil, expected: false},
 		{
-			name:     "port-forward connection reset",
+			name:     "apiserver connection reset",
 			err:      errors.New(`Get "https://127.0.0.1:37481/.../operationStatuses/...": read tcp 127.0.0.1:38764->127.0.0.1:37481: read: connection reset by peer`),
 			expected: true,
 		},
@@ -305,6 +492,51 @@ func Test_IsTransientConnectionError(t *testing.T) {
 	}
 }
 
+func Test_IsTransientAPIServerRestartError(t *testing.T) {
+	// restartMarkerBearingStructuredError mirrors a genuine structured ARM
+	// deployment failure whose flattened message happens to contain a restart
+	// marker. The concrete-type guard must keep it from being retried.
+	restartMarkerBearingStructuredError := &radcli.CLIError{
+		ErrorResponse: apiv1.ErrorResponse{
+			Error: &apiv1.ErrorDetails{
+				Code:    "DeploymentFailed",
+				Message: `recipe validation failed: cannot get path "/apis/api.ucp.dev/v1alpha3"`,
+			},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{name: "nil error", err: nil, expected: false},
+		{
+			name:     "503 while HTTP paths are still installing",
+			err:      errors.New(`{"message":"the request has been made before all known HTTP paths have been installed, please try again","reason":"ServiceUnavailable","code":503}`),
+			expected: true,
+		},
+		{
+			name:     "403 before RBAC bootstrap finishes",
+			err:      errors.New(`{"message":"forbidden: User \"kubernetes-admin\" cannot get path \"/apis/api.ucp.dev/v1alpha3\"","reason":"Forbidden","code":403}`),
+			expected: true,
+		},
+		{
+			name:     "403 on an unrelated non-resource path",
+			err:      errors.New(`{"message":"forbidden: User \"tester\" cannot get path \"/metrics\"","reason":"Forbidden","code":403}`),
+			expected: false,
+		},
+		{name: "structured failure containing a marker", err: restartMarkerBearingStructuredError, expected: false},
+		{name: "unrelated error", err: errors.New("the resource type is not supported"), expected: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, IsTransientAPIServerRestartError(tc.err))
+		})
+	}
+}
+
 func Test_IsTransientDeployError(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -314,6 +546,8 @@ func Test_IsTransientDeployError(t *testing.T) {
 		{name: "nil error", err: nil, expected: false},
 		{name: "transient image pull", err: errors.New("pod is stuck in ImagePullBackOff"), expected: true},
 		{name: "transient connection reset", err: errors.New("read: connection reset by peer"), expected: true},
+		{name: "apiserver still installing HTTP paths", err: errors.New("the request has been made before all known HTTP paths have been installed, please try again"), expected: true},
+		{name: "apiserver RBAC not yet bootstrapped", err: errors.New(`forbidden: User \"kubernetes-admin\" cannot get path \"/apis/api.ucp.dev/v1alpha3\"`), expected: true},
 		{name: "non-transient failure", err: errors.New("the resource type is not supported"), expected: false},
 	}
 

@@ -1,0 +1,161 @@
+suite: test control plane readiness hook
+templates:
+  - control-plane-readiness/serviceaccount.yaml
+  - control-plane-readiness/clusterrole.yaml
+  - control-plane-readiness/clusterrolebinding.yaml
+  - control-plane-readiness/job.yaml
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: always renders the readiness hook when pre-upgrade checks are disabled
+    set:
+      preupgrade.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: control-plane-readiness/job.yaml
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: post-install,post-upgrade
+        template: control-plane-readiness/job.yaml
+
+  - it: creates hook prerequisites before the readiness job
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "-1"
+        template: control-plane-readiness/serviceaccount.yaml
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "-1"
+        template: control-plane-readiness/clusterrole.yaml
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "-1"
+        template: control-plane-readiness/clusterrolebinding.yaml
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "0"
+        template: control-plane-readiness/job.yaml
+
+  - it: grants only access to the Radius aggregated API discovery path
+    asserts:
+      - equal:
+          path: rules
+          value:
+            - nonResourceURLs:
+                - /apis/api.ucp.dev/v1alpha3
+              verbs:
+                - get
+        template: control-plane-readiness/clusterrole.yaml
+
+  - it: invokes the readiness subcommand with configured timeouts
+    set:
+      controlPlaneReadiness.timeoutSeconds: 75
+      controlPlaneReadiness.pollIntervalSeconds: 3
+      controlPlaneReadiness.requestTimeoutSeconds: 8
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value:
+            - wait-for-control-plane
+            - --timeout=75s
+            - --poll-interval=3s
+            - --request-timeout=8s
+        template: control-plane-readiness/job.yaml
+      - equal:
+          path: spec.activeDeadlineSeconds
+          value: 105
+        template: control-plane-readiness/job.yaml
+
+  - it: uses backward-compatible defaults when reused values omit readiness settings
+    set:
+      controlPlaneReadiness: null
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value:
+            - wait-for-control-plane
+            - --timeout=240s
+            - --poll-interval=2s
+            - --request-timeout=10s
+        template: control-plane-readiness/job.yaml
+      - equal:
+          path: spec.activeDeadlineSeconds
+          value: 270
+        template: control-plane-readiness/job.yaml
+      - equal:
+          path: spec.ttlSecondsAfterFinished
+          value: 300
+        template: control-plane-readiness/job.yaml
+
+  - it: retains failed jobs and exposes their logs
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook-delete-policy"]
+          value: before-hook-creation,hook-succeeded
+        template: control-plane-readiness/job.yaml
+      - equal:
+          path: metadata.annotations["helm.sh/hook-output-log-policy"]
+          value: hook-failed
+        template: control-plane-readiness/job.yaml
+
+  - it: derives the build-under-test pre-upgrade image from UCP
+    set:
+      ucp.image: test.registry/ucpd
+      ucp.tag: test-tag
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: test.registry/pre-upgrade:test-tag
+        template: control-plane-readiness/job.yaml
+
+  - it: preserves a tag embedded in a full UCP image path
+    set:
+      ucp.image: custom-registry.io/ucpd:custom-tag
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: custom-registry.io/pre-upgrade:custom-tag
+        template: control-plane-readiness/job.yaml
+
+  - it: honors an explicitly configured pre-upgrade image
+    set:
+      preupgrade.image: local.registry/pre-upgrade
+      preupgrade.tag: local-tag
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: local.registry/pre-upgrade:local-tag
+        template: control-plane-readiness/job.yaml
+
+  - it: supports an explicit readiness image override
+    set:
+      controlPlaneReadiness.image: custom.registry/readiness
+      controlPlaneReadiness.tag: custom-tag
+      ucp.image: ignored.registry/ucpd
+      ucp.tag: ignored-tag
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: custom.registry/readiness:custom-tag
+        template: control-plane-readiness/job.yaml
+
+  - it: renders image pull secrets and non-root security settings
+    set:
+      global.imagePullSecrets:
+        - name: registry-secret
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: registry-secret
+        template: control-plane-readiness/job.yaml
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsNonRoot
+          value: true
+        template: control-plane-readiness/job.yaml
+      - equal:
+          path: spec.template.spec.securityContext.runAsNonRoot
+          value: true
+        template: control-plane-readiness/job.yaml

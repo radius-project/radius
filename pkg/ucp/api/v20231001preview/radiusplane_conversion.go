@@ -26,18 +26,12 @@ import (
 // ConvertTo converts from the versioned Radius Plane resource to version-agnostic datamodel.
 func (src *RadiusPlaneResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RadiusPlane{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
-		},
+		ID:                to.String(src.ID),
+		Name:              to.String(src.Name),
+		Type:              to.String(src.Type),
+		Location:          to.String(src.Location),
+		Tags:              to.StringMap(src.Tags),
+		UpdatedAPIVersion: Version,
 
 		Properties: datamodel.RadiusPlaneProperties{
 			ResourceProviders: to.StringMap(src.Properties.ResourceProviders),

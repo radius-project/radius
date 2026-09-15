@@ -85,7 +85,7 @@ func Test_KubeMetadataContainer(t *testing.T) {
 				require.True(t, testutil.IsMapSubSet(expectedLabels, pod.Labels))
 
 				// Verify deployment labels and annotations
-				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(context.Background(), metav1.ListOptions{
+				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(t.Context(), metav1.ListOptions{
 					LabelSelector: label,
 				})
 				require.NoError(t, err)

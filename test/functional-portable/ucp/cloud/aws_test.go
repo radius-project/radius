@@ -28,10 +28,11 @@ import (
 	"testing"
 	"time"
 
+	"uuid"
+
 	awsgo "github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/google/uuid"
 	"github.com/radius-project/radius/pkg/ucp/api/v20231001preview"
 	"github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/frontend/controller/awsproxy"
@@ -168,7 +169,8 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 
 	t.Cleanup(func() {
 		// Use a fresh context because t.Context() is cancelled before cleanup runs.
-		cleanupCtx := context.Background()
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute) //nolint:usetesting
+		defer cancel()
 
 		// Check if resource exists before issuing a delete because the AWS SDK async delete operation
 		// seems to fail if the resource does not exist
@@ -204,7 +206,7 @@ func waitForSuccess(t *testing.T, ctx context.Context, awsClient aws.AWSCloudCon
 
 func generateLogGroupName(t *testing.T) string {
 	t.Helper()
-	return "ucpfunctionaltest-" + uuid.NewString()
+	return "ucpfunctionaltest-" + uuid.New().String()
 }
 
 func requireResponseStatus(t *testing.T, response *http.Response, expectedStatus int) {

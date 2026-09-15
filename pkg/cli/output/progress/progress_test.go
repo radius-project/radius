@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/exp/teatest/v2"
 	"github.com/radius-project/radius/pkg/cli/clients"
@@ -57,6 +58,22 @@ func Test_model_rendersSpinnerThenFinalState(t *testing.T) {
 	// Closing the channel makes the model quit.
 	close(updates)
 	tm.WaitFinished(t, teatest.WithFinalTimeout(waitTimeout))
+}
+
+func Test_model_ctrlCMarksInterruptedAndQuits(t *testing.T) {
+	updates := make(chan clients.ResourceProgress)
+	m := newModel(updates)
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'c', Mod: tea.ModCtrl})
+
+	// Ctrl+C marks the model as interrupted so the listener can abort the operation.
+	pm, ok := updated.(*model)
+	require.True(t, ok)
+	require.True(t, pm.interrupted)
+
+	// The returned command quits the Bubble Tea program.
+	require.NotNil(t, cmd)
+	require.IsType(t, tea.QuitMsg{}, cmd())
 }
 
 func Test_model_failedStateWithoutStart(t *testing.T) {

@@ -26,19 +26,13 @@ import (
 // ConvertTo converts from the versioned ApplicationResource to version-agnostic datamodel.
 func (src *ApplicationResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.Application_v20250801preview{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion:      Version,
-				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			},
-		},
+		ID:                     to.String(src.ID),
+		Name:                   to.String(src.Name),
+		Type:                   to.String(src.Type),
+		Location:               to.String(src.Location),
+		Tags:                   to.StringMap(src.Tags),
+		UpdatedAPIVersion:      Version,
+		AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 		Properties: datamodel.ApplicationProperties_v20250801preview{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),

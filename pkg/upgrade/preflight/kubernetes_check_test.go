@@ -17,14 +17,12 @@ limitations under the License.
 package preflight
 
 import (
-	"context"
 	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	clienttesting "k8s.io/client-go/testing"
@@ -45,13 +43,13 @@ func TestKubernetesConnectivityCheck_WithClientset(t *testing.T) {
 }
 
 func TestKubernetesConnectivityCheck_Run(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("successful connection with permissions", func(t *testing.T) {
 		// Setup: namespace exists, deployments can be listed
 		clientset := fake.NewClientset(
 			&corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{Name: RadiusSystemNamespace},
+				Name: RadiusSystemNamespace,
 			},
 		)
 
@@ -79,7 +77,7 @@ func TestKubernetesConnectivityCheck_Run(t *testing.T) {
 		// Setup: namespace exists but can't list deployments
 		clientset := fake.NewClientset(
 			&corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{Name: RadiusSystemNamespace},
+				Name: RadiusSystemNamespace,
 			},
 		)
 
@@ -119,7 +117,7 @@ func TestKubernetesConnectivityCheck_NoClientset(t *testing.T) {
 	// In a test environment, this should fail to create a client
 	check := NewKubernetesConnectivityCheck("nonexistent-context")
 
-	pass, _, err := check.Run(context.Background())
+	pass, _, err := check.Run(t.Context())
 
 	require.Error(t, err)
 	assert.False(t, pass)

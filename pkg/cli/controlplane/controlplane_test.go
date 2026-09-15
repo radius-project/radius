@@ -35,8 +35,8 @@ const testNamespace = "radius-system"
 
 func deployment(name string, replicas int32) *appsv1.Deployment {
 	return &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: testNamespace},
-		Spec:       appsv1.DeploymentSpec{Replicas: &replicas},
+		Name: name, Namespace: testNamespace,
+		Spec: appsv1.DeploymentSpec{Replicas: &replicas},
 		// The fake clientset does not run controllers, so seed status to match spec so the
 		// scale-down/up waits converge immediately.
 		Status: appsv1.DeploymentStatus{Replicas: replicas, AvailableReplicas: replicas},

@@ -20,6 +20,7 @@ import (
 	context "context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"helm.sh/helm/v4/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -497,11 +498,11 @@ func (i *Impl) RollbackRadius(ctx context.Context, kubeContext string) error {
 	var currentChartVersion string
 
 	// Find the current deployed revision
-	for i := len(history) - 1; i >= 0; i-- {
-		if history[i].Info.Status == "deployed" {
-			currentRevision = history[i].Version
-			if history[i].Chart != nil && history[i].Chart.Metadata != nil {
-				currentChartVersion = history[i].Chart.Metadata.Version
+	for _, h := range slices.Backward(history) {
+		if h.Info.Status == "deployed" {
+			currentRevision = h.Version
+			if h.Chart != nil && h.Chart.Metadata != nil {
+				currentChartVersion = h.Chart.Metadata.Version
 			}
 			break
 		}

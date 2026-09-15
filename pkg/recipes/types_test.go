@@ -17,11 +17,36 @@ limitations under the License.
 package recipes
 
 import (
+	"encoding/json"
 	"testing"
 
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	"github.com/stretchr/testify/require"
 )
+
+func TestConnectedResource_JSONIncludesManagedSecretReferences(t *testing.T) {
+	resource := ConnectedResource{
+		ID:   "resource-id",
+		Name: "resource-name",
+		Type: "Applications.Test/resources",
+		Properties: map[string]any{
+			"host": "example.com",
+		},
+		Secrets: map[string]rpv1.ManagedSecretReference{
+			"url": {Source: "secret-id", Key: "url"},
+		},
+	}
+
+	data, err := json.Marshal(resource)
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+		"id":"resource-id",
+		"name":"resource-name",
+		"type":"Applications.Test/resources",
+		"properties":{"host":"example.com"},
+		"secrets":{"url":{"source":"secret-id","key":"url"}}
+	}`, string(data))
+}
 
 func TestRecipeOutput_PrepareRecipeResponse(t *testing.T) {
 	tests := []struct {

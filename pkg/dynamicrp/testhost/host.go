@@ -17,14 +17,14 @@ limitations under the License.
 package testhost
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/hostoptions"
 	"github.com/radius-project/radius/pkg/components/database/databaseprovider"
@@ -42,7 +42,6 @@ import (
 	ucptesthost "github.com/radius-project/radius/pkg/ucp/testhost"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -101,7 +100,7 @@ func Start(t *testing.T, opts ...TestHostOption) (*TestHost, *ucptesthost.TestHo
 		},
 	}
 
-	options, err := dynamicrp.NewOptions(context.Background(), config)
+	options, err := dynamicrp.NewOptions(t.Context(), config)
 	require.NoError(t, err)
 
 	// Set up a fake Kubernetes client with an encryption key secret for testing
@@ -182,10 +181,8 @@ func setupFakeKubernetesClient(t *testing.T, options *dynamicrp.Options) {
 
 	// Create the encryption key secret
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      encryption.DefaultEncryptionKeySecretName,
-			Namespace: encryption.RadiusNamespace,
-		},
+		Name:      encryption.DefaultEncryptionKeySecretName,
+		Namespace: encryption.RadiusNamespace,
 		Data: map[string][]byte{
 			encryption.DefaultEncryptionKeySecretKey: keyStoreJSON,
 		},

@@ -40,11 +40,10 @@ using OpenAPI;
 namespace Ucp;
 
 @doc("The Radius plane resource.")
-model RadiusPlaneResource
-  is TrackedResourceRequired<
-    RadiusPlaneResourceProperties,
-    "System.Radius/planes"
-  > {
+model RadiusPlaneResource is TrackedResourceRequired<
+  RadiusPlaneResourceProperties,
+  "System.Radius/planes"
+> {
   @doc("The plane name.")
   @segment("radius")
   @path

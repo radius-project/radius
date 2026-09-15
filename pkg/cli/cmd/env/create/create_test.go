@@ -17,7 +17,6 @@ limitations under the License.
 package create
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -272,7 +271,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 		appManagementClient.EXPECT().
-			CreateOrUpdateEnvironment(context.Background(), "default", &corerp.EnvironmentResource{
+			CreateOrUpdateEnvironment(t.Context(), "default", &corerp.EnvironmentResource{
 				Location:   to.Ptr(v1.LocationGlobal),
 				Properties: testEnvProperties,
 			}).
@@ -310,7 +309,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, expectedOutput, outputSink.Writes)
 	})
@@ -336,7 +335,7 @@ func Test_Run(t *testing.T) {
 			Providers: testProviders,
 		}
 		appManagementClient.EXPECT().
-			CreateOrUpdateEnvironment(context.Background(), "default", &corerp.EnvironmentResource{
+			CreateOrUpdateEnvironment(t.Context(), "default", &corerp.EnvironmentResource{
 				Location:   to.Ptr(v1.LocationGlobal),
 				Properties: testEnvProperties,
 			}).
@@ -373,7 +372,7 @@ func Test_Run(t *testing.T) {
 			},
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Equal(t, expectedOutput, outputSink.Writes)
 	})
@@ -393,7 +392,7 @@ func Test_Run(t *testing.T) {
 		expectedError := errors.New("failed to create the environment")
 
 		appManagementClient.EXPECT().
-			CreateOrUpdateEnvironment(context.Background(), "default", &corerp.EnvironmentResource{
+			CreateOrUpdateEnvironment(t.Context(), "default", &corerp.EnvironmentResource{
 				Location:   to.Ptr(v1.LocationGlobal),
 				Properties: testEnvProperties,
 			}).
@@ -422,7 +421,7 @@ func Test_Run(t *testing.T) {
 			ConfigFileInterface: configFileInterface,
 		}
 
-		err := runner.Run(context.Background())
+		err := runner.Run(t.Context())
 		require.Error(t, err)
 		require.Equal(t, expectedError, err)
 		require.Empty(t, outputSink.Writes)

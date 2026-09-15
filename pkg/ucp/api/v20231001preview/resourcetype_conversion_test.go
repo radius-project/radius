@@ -23,12 +23,11 @@ import (
 	"testing"
 
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
+	"github.com/radius-project/radius/pkg/defaults"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
-
-	productmanifest "github.com/radius-project/radius/deploy/manifest"
 )
 
 func Test_ResourceType_VersionedToDataModel(t *testing.T) {
@@ -40,22 +39,16 @@ func Test_ResourceType_VersionedToDataModel(t *testing.T) {
 		{
 			filename: "resourcetype_resource.json",
 			expected: &datamodel.ResourceType{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources",
-						Name: "testResources",
-						Type: datamodel.ResourceTypeResourceType,
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
-					},
-				},
+				ID:                "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources",
+				Name:              "testResources",
+				Type:              datamodel.ResourceTypeResourceType,
+				UpdatedAPIVersion: Version,
 				Properties: datamodel.ResourceTypeProperties{
 					Capabilities:      []string{},
 					DefaultAPIVersion: new("2025-01-01"),
 					// The fixture has no icon; conversion substitutes the product
 					// default icon's hash.
-					IconHash: new(productmanifest.Default().Hash),
+					IconHash: new(defaults.DefaultIcon().Hash),
 				},
 			},
 		},
@@ -163,7 +156,7 @@ func Test_ResourceType_Icon_VersionedToDataModel(t *testing.T) {
 		rt := dm.(*datamodel.ResourceType)
 		require.Nil(t, rt.Properties.Icon)
 		require.NotNil(t, rt.Properties.IconHash)
-		require.Equal(t, productmanifest.Default().Hash, *rt.Properties.IconHash)
+		require.Equal(t, defaults.DefaultIcon().Hash, *rt.Properties.IconHash)
 	})
 }
 
@@ -207,13 +200,9 @@ func Test_ResourceType_ConvertTo_RejectsInvalidIcon(t *testing.T) {
 
 func Test_ResourceType_Icon_DataModelToVersioned(t *testing.T) {
 	dm := &datamodel.ResourceType{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources",
-				Name: "testResources",
-				Type: datamodel.ResourceTypeResourceType,
-			},
-		},
+		ID:   "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/resourceTypes/testResources",
+		Name: "testResources",
+		Type: datamodel.ResourceTypeResourceType,
 		Properties: datamodel.ResourceTypeProperties{
 			Capabilities: []string{},
 			Icon:         new(`<svg/>`),

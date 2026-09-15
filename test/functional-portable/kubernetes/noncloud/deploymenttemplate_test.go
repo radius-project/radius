@@ -33,7 +33,6 @@ import (
 	"github.com/radius-project/radius/pkg/sdk"
 	sdkclients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/test/rp"
-	"github.com/radius-project/radius/test/testcontext"
 	"github.com/radius-project/radius/test/testutil"
 
 	"github.com/stretchr/testify/require"
@@ -50,7 +49,7 @@ import (
 )
 
 func Test_DeploymentTemplate_Env(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	opts := rp.NewRPTestOptions(t)
 
 	name := "dt-env"
@@ -70,7 +69,7 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create the namespace, if it already exists we can ignore the error.
-	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
+	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{Name: namespace}, metav1.CreateOptions{})
 	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
 
 	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, parametersMap)
@@ -82,7 +81,7 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 	})
 
 	t.Run("Check DeploymentTemplate status", func(t *testing.T) {
-		ctx, cancel := testcontext.NewWithCancel(t)
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
 		// Get resource version
@@ -122,7 +121,7 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+			ns := &corev1.Namespace{Name: namespace}
 			err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
 			return apierrors.IsNotFound(err)
 		}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
@@ -130,7 +129,7 @@ func Test_DeploymentTemplate_Env(t *testing.T) {
 }
 
 func Test_DeploymentTemplate_Module(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	opts := rp.NewRPTestOptions(t)
 
 	name := "dt-module"
@@ -151,7 +150,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create the namespace, if it already exists we can ignore the error.
-	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
+	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{Name: namespace}, metav1.CreateOptions{})
 	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
 
 	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, parametersMap)
@@ -163,7 +162,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 	})
 
 	t.Run("Check DeploymentTemplate status", func(t *testing.T) {
-		ctx, cancel := testcontext.NewWithCancel(t)
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
 		// Get resource version
@@ -205,7 +204,7 @@ func Test_DeploymentTemplate_Module(t *testing.T) {
 }
 
 func Test_DeploymentTemplate_Recipe(t *testing.T) {
-	ctx := testcontext.New(t)
+	ctx := t.Context()
 	opts := rp.NewRPTestOptions(t)
 
 	name := "dt-recipe"
@@ -228,7 +227,7 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create the namespace, if it already exists we can ignore the error.
-	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}, metav1.CreateOptions{})
+	_, err = opts.K8sClient.CoreV1().Namespaces().Create(ctx, &corev1.Namespace{Name: namespace}, metav1.CreateOptions{})
 	require.NoError(t, controller_runtime.IgnoreAlreadyExists(err))
 
 	deploymentTemplate := makeDeploymentTemplate(types.NamespacedName{Name: name, Namespace: namespace}, string(template), providerConfig, parametersMap)
@@ -240,7 +239,7 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 	})
 
 	t.Run("Check DeploymentTemplate status", func(t *testing.T) {
-		ctx, cancel := testcontext.NewWithCancel(t)
+		ctx, cancel := context.WithCancel(t.Context())
 		defer cancel()
 
 		// Get resource version
@@ -285,10 +284,8 @@ func Test_DeploymentTemplate_Recipe(t *testing.T) {
 // makeDeploymentTemplate returns a DeploymentTemplate object with the given name, template, providerConfig, and parameters.
 func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig string, parameters map[string]string) *radappiov1alpha3.DeploymentTemplate {
 	deploymentTemplate := &radappiov1alpha3.DeploymentTemplate{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name.Name,
-			Namespace: name.Namespace,
-		},
+		Name:      name.Name,
+		Namespace: name.Namespace,
 		Spec: radappiov1alpha3.DeploymentTemplateSpec{
 			Template:       template,
 			Parameters:     parameters,
@@ -304,7 +301,7 @@ func makeDeploymentTemplate(name types.NamespacedName, template, providerConfig 
 func waitForDeploymentTemplateReady(t *testing.T, ctx context.Context, name types.NamespacedName, client controller_runtime.WithWatch, initialVersion string) (*radappiov1alpha3.DeploymentTemplate, error) {
 	// Based on https://gist.github.com/PrasadG193/52faed6499d2ec739f9630b9d044ffdc
 	lister := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+		ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
 			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
 			deploymentTemplates := &radappiov1alpha3.DeploymentTemplateList{}
 			err := client.List(ctx, deploymentTemplates, listOptions)
@@ -314,7 +311,7 @@ func waitForDeploymentTemplateReady(t *testing.T, ctx context.Context, name type
 
 			return deploymentTemplates, nil
 		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+		WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
 			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
 			deploymentTemplates := &radappiov1alpha3.DeploymentTemplateList{}
 			return client.Watch(ctx, deploymentTemplates, listOptions)
@@ -410,7 +407,7 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 	}
 
 	require.Eventually(t, func() bool {
-		ns := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}}
+		ns := &corev1.Namespace{Name: namespace}
 		err = opts.Client.Get(ctx, types.NamespacedName{Name: namespace}, ns)
 		return apierrors.IsNotFound(err)
 	}, time.Minute*10, time.Second*10, "waiting for environment namespace to be deleted")
@@ -422,7 +419,7 @@ func deleteNamespace(ctx context.Context, t *testing.T, namespace string, opts r
 // before the K8s namespace delete in functional tests.
 func deleteDeploymentTemplateAndWait(ctx context.Context, t *testing.T, nn types.NamespacedName, opts rp.RPTestOptions) {
 	dt := &radappiov1alpha3.DeploymentTemplate{
-		ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+		Name: nn.Name, Namespace: nn.Namespace,
 	}
 	err := opts.Client.Delete(ctx, dt)
 	if controller_runtime.IgnoreNotFound(err) != nil {

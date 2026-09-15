@@ -116,7 +116,7 @@ func Test_Run(t *testing.T) {
 			Output:                  outputSink,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Len(t, outputSink.Writes, 1)
 
@@ -141,15 +141,13 @@ func Test_Run(t *testing.T) {
 				containerType := "Applications.Core/containers"
 
 				resp.SetResponse(http.StatusOK, corerpv20250801.ApplicationsClientGetGraphResponse{
-					ApplicationGraphResponse: corerpv20250801.ApplicationGraphResponse{
-						Resources: []*corerpv20250801.ApplicationGraphResource{
-							{
-								ID:              &containerID,
-								Name:            &containerName,
-								Type:            &containerType,
-								Connections:     []*corerpv20250801.ApplicationGraphConnection{},
-								OutputResources: []*corerpv20250801.ApplicationGraphOutputResource{},
-							},
+					Resources: []*corerpv20250801.ApplicationGraphResource{
+						{
+							ID:              &containerID,
+							Name:            &containerName,
+							Type:            &containerType,
+							Connections:     []*corerpv20250801.ApplicationGraphConnection{},
+							OutputResources: []*corerpv20250801.ApplicationGraphOutputResource{},
 						},
 					},
 				}, nil)
@@ -170,7 +168,7 @@ func Test_Run(t *testing.T) {
 			Output:                  outputSink,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Len(t, outputSink.Writes, 1)
 
@@ -192,7 +190,7 @@ func Test_Run(t *testing.T) {
 			Output:                  outputSink,
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.NoError(t, err)
 		require.Len(t, outputSink.Writes, 1)
 
@@ -233,7 +231,7 @@ func Test_Run(t *testing.T) {
 			Output:                  &output.MockOutput{},
 		}
 
-		require.NoError(t, runner.Run(context.Background()))
+		require.NoError(t, runner.Run(t.Context()))
 		require.Nil(t, received.IncludeIcons, "IncludeIcons must be nil by default (opt-in only)")
 	})
 
@@ -267,7 +265,7 @@ func Test_Run(t *testing.T) {
 			Output:                  &output.MockOutput{},
 		}
 
-		require.NoError(t, runner.Run(context.Background()))
+		require.NoError(t, runner.Run(t.Context()))
 		require.NotNil(t, received.IncludeIcons)
 		require.True(t, *received.IncludeIcons)
 	})
@@ -299,7 +297,7 @@ func Test_Run(t *testing.T) {
 			Output:                  &output.MockOutput{},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 		require.Equal(t, clierrors.Message("Application %q does not exist or has been deleted.", "test-app"), err)
 	})
@@ -331,7 +329,7 @@ func Test_Run(t *testing.T) {
 			Output:                  &output.MockOutput{},
 		}
 
-		err = runner.Run(context.Background())
+		err = runner.Run(t.Context())
 		require.Error(t, err)
 	})
 }
@@ -376,7 +374,7 @@ func Test_Run_EnrichedMode(t *testing.T) {
 
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
-		PrepareTemplate("./app.bicep").
+		PrepareTemplate(gomock.Any(), "./app.bicep").
 		Return(template, nil).
 		Times(1)
 
@@ -410,7 +408,7 @@ func Test_Run_EnrichedMode(t *testing.T) {
 		Output:                  &output.MockOutput{},
 	}
 
-	require.NoError(t, runner.Run(context.Background()))
+	require.NoError(t, runner.Run(t.Context()))
 
 	require.NotNil(t, received.DependsOnEdges, "enriched mode must forward extracted edges")
 	entries, ok := received.DependsOnEdges[consumerID]
@@ -438,7 +436,7 @@ func Test_Run_EnrichedMode_CompileError_Wrapped(t *testing.T) {
 
 	bicepMock := bicep.NewMockInterface(ctrl)
 	bicepMock.EXPECT().
-		PrepareTemplate("./bad.bicep").
+		PrepareTemplate(gomock.Any(), "./bad.bicep").
 		Return(nil, clierrors.Message("syntax error"))
 
 	factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, nil, nil, test_client_factory.WithApplicationsServerNoError)
@@ -454,7 +452,7 @@ func Test_Run_EnrichedMode_CompileError_Wrapped(t *testing.T) {
 		Output:                  &output.MockOutput{},
 	}
 
-	err = runner.Run(context.Background())
+	err = runner.Run(t.Context())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "./bad.bicep")
 }

@@ -21,12 +21,13 @@ import (
 	"net/http"
 	"testing"
 
+	"uuid"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
-	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
 
 	armrpc_v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
@@ -39,7 +40,7 @@ import (
 )
 
 func Test_GetAWSResource(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	getResponseBody := map[string]any{
 		"RetentionPeriodHours": 178,
@@ -85,7 +86,7 @@ func Test_GetAWSResource(t *testing.T) {
 }
 
 func Test_GetAWSResource_NotFound(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
@@ -115,7 +116,7 @@ func Test_GetAWSResource_NotFound(t *testing.T) {
 }
 
 func Test_GetAWSResource_UnknownError(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
@@ -139,7 +140,7 @@ func Test_GetAWSResource_UnknownError(t *testing.T) {
 }
 
 func Test_GetAWSResource_SmithyError(t *testing.T) {
-	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+	testResource := CreateKinesisStreamTestResource(uuid.New().String())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{

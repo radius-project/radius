@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/radius-project/radius/pkg/cli/clierrors"
@@ -263,8 +264,8 @@ func (helmAction *HelmActionImpl) GetPreviousReleaseVersion(kubeContext, release
 
 	// Find the most recent deployed or superseded release
 	// We iterate from the end (newest) to find the last stable release
-	for i := len(releases) - 1; i >= 0; i-- {
-		rel := releases[i]
+	for _, rel := range slices.Backward(releases) {
+
 		if rel.Info != nil && (rel.Info.Status == releasecommon.StatusDeployed || rel.Info.Status == releasecommon.StatusSuperseded) {
 			if rel.Chart != nil && rel.Chart.Metadata != nil {
 				version := rel.Chart.Metadata.AppVersion
@@ -329,8 +330,7 @@ func locateChartFile(dirPath string) (string, error) {
 // Helm v4 performs OCI registry operations via oras-go, which surfaces HTTP failures as
 // *errcode.ErrorResponse.
 func isHelmGHCR403Error(err error) bool {
-	var respErr *errcode.ErrorResponse
-	if errors.As(err, &respErr) {
+	if respErr, ok := errors.AsType[*errcode.ErrorResponse](err); ok {
 		if respErr.StatusCode == http.StatusForbidden && respErr.URL != nil && strings.Contains(respErr.URL.Host, "ghcr.io") {
 			return true
 		}
