@@ -11,6 +11,7 @@ This directory records the review of the 18-pull-request stack that implements t
 | 3  | `dp/conventional-commit-title-check` | [pr-03-conventional-commit-title.md](./pr-03-conventional-commit-title.md) |
 | 4  | `dp/git-cliff-changelog-bootstrap`   | [pr-04-git-cliff-changelog.md](./pr-04-git-cliff-changelog.md)             |
 | 5  | `dp/split-build-workflows`           | [pr-05-split-build-workflows.md](./pr-05-split-build-workflows.md)         |
+| 6  | `dp/edge-tags-deprecation`           | [pr-06-edge-tags.md](./pr-06-edge-tags.md)                                 |
 
 Later notes are added as the review progresses up the stack.
 
