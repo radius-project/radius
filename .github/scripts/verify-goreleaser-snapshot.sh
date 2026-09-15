@@ -117,13 +117,14 @@ verify_sbom_config() {
         and (.sboms[0].documents | length) == 1
         and .sboms[0].documents[0]
             == "{{ .ArtifactName }}.sbom.json"
-        and .sboms[0].cmd == "syft"
-        and (.sboms[0].args | length) == 5
-        and .sboms[0].args[0] == strenv(EXPECTED_ARTIFACT)
-        and .sboms[0].args[1] == "--output"
-        and .sboms[0].args[2] == strenv(EXPECTED_DOCUMENT)
-        and .sboms[0].args[3] == "--enrich"
-        and .sboms[0].args[4] == "golang"
+        and .sboms[0].cmd == "bash"
+        and (.sboms[0].args | length) == 4
+        and .sboms[0].args[0] == "../../build/scripts/goreleaser-sbom.sh"
+        and .sboms[0].args[1] == strenv(EXPECTED_ARTIFACT)
+        and .sboms[0].args[2] == "--output"
+        and .sboms[0].args[3] == strenv(EXPECTED_DOCUMENT)
+        and (.sboms[0].env | length) == 1
+        and .sboms[0].env[0] == "GORELEASER_SNAPSHOT={{ .IsSnapshot }}"
         and ([.dockers_v2[] | select(.sbom != true)] | length) == 0
     ' "${CONFIG_FILE}" >/dev/null ||
         fail "GoReleaser SBOM settings do not match the release contract"
