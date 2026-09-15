@@ -20,6 +20,7 @@ package process
 
 import (
 	"os/exec"
+	"strings"
 	"syscall"
 
 	"golang.org/x/sys/windows"
@@ -33,11 +34,18 @@ var hasConsole = func() bool {
 	return err == nil
 }
 
+func isWindowless() bool {
+	return !hasConsole()
+}
+
 func configure(cmd *exec.Cmd) *exec.Cmd {
-	if hasConsole() {
+	if !IsWindowless() {
 		return cmd
 	}
 
+	if cmd.Stdin == nil {
+		cmd.Stdin = strings.NewReader("")
+	}
 	if cmd.SysProcAttr == nil {
 		cmd.SysProcAttr = &syscall.SysProcAttr{}
 	}

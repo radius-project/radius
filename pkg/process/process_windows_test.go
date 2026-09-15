@@ -19,7 +19,9 @@ limitations under the License.
 package process
 
 import (
-	"context"
+	"bytes"
+	"io"
+	"os"
 	"os/exec"
 	"syscall"
 	"testing"
@@ -28,43 +30,79 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-func TestCommand_ConsoleAttached(t *testing.T) {
-	setHasConsole(t, true)
+func TestCommands_ConsolePolicy(t *testing.T) {
+	// These subtests change the shared console hook and must remain sequential.
+	for _, tt := range []struct {
+		name     string
+		attached bool
+	}{
+		{name: "attached", attached: true},
+		{name: "windowless", attached: false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			setHasConsole(t, tt.attached)
+			require.Equal(t, !tt.attached, IsWindowless())
 
-	cmd := Command("test-command")
+			for _, constructor := range commandConstructors {
+				t.Run(constructor.name, func(t *testing.T) {
+					cmd := constructor.command("test-command", "argument")
+					require.Equal(t, []string{"test-command", "argument"}, cmd.Args)
+					if tt.attached {
+						require.Nil(t, cmd.SysProcAttr)
+						require.Nil(t, cmd.Stdin)
+					} else {
+						require.NotNil(t, cmd.SysProcAttr)
+						require.True(t, cmd.SysProcAttr.HideWindow)
+						require.Equal(t, uint32(windows.CREATE_NO_WINDOW), cmd.SysProcAttr.CreationFlags)
+						require.NotNil(t, cmd.Stdin)
+						n, err := cmd.Stdin.Read(make([]byte, 1))
+						require.Zero(t, n)
+						require.ErrorIs(t, err, io.EOF)
+					}
+				})
+			}
 
-	require.Nil(t, cmd.SysProcAttr)
-}
-
-func TestCommand_NoConsole(t *testing.T) {
-	setHasConsole(t, false)
-
-	cmd := Command("test-command")
-
-	require.True(t, cmd.SysProcAttr.HideWindow)
-	require.Equal(t, uint32(windows.CREATE_NO_WINDOW), cmd.SysProcAttr.CreationFlags)
-}
-
-func TestCommandContext_NoConsole(t *testing.T) {
-	setHasConsole(t, false)
-
-	cmd := CommandContext(context.Background(), "test-command")
-
-	require.True(t, cmd.SysProcAttr.HideWindow)
-	require.Equal(t, uint32(windows.CREATE_NO_WINDOW), cmd.SysProcAttr.CreationFlags)
-}
-
-func TestConfigure_PreservesCreationFlags(t *testing.T) {
-	setHasConsole(t, false)
-	cmd := exec.Command("test-command")
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		CreationFlags: windows.CREATE_NEW_PROCESS_GROUP,
+			testCommandInput(t)
+			t.Run("context cancellation", testCommandContextCancellation)
+		})
 	}
+}
 
-	configure(cmd)
+func TestConfigure_PreservesCallerSettings(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		attached bool
+	}{
+		{name: "attached", attached: true},
+		{name: "windowless", attached: false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			setHasConsole(t, tt.attached)
+			cmd := exec.Command(os.Args[0], "-test.run=^TestProcessHelper$")
+			input := bytes.NewReader([]byte("SELECT 1;\n"))
+			cmd.Stdin = input
+			attrs := &syscall.SysProcAttr{
+				CreationFlags:              windows.CREATE_NEW_PROCESS_GROUP,
+				CmdLine:                    "caller command line",
+				Token:                      syscall.Token(123),
+				NoInheritHandles:           true,
+				AdditionalInheritedHandles: []syscall.Handle{456},
+				ParentProcess:              syscall.Handle(789),
+			}
+			cmd.SysProcAttr = attrs
+			expected := *attrs
+			if !tt.attached {
+				expected.HideWindow = true
+				expected.CreationFlags |= windows.CREATE_NO_WINDOW
+			}
 
-	require.True(t, cmd.SysProcAttr.HideWindow)
-	require.Equal(t, uint32(windows.CREATE_NEW_PROCESS_GROUP|windows.CREATE_NO_WINDOW), cmd.SysProcAttr.CreationFlags)
+			require.Same(t, cmd, configure(cmd))
+			require.Same(t, attrs, cmd.SysProcAttr)
+			require.Equal(t, expected, *cmd.SysProcAttr)
+			require.Same(t, input, cmd.Stdin)
+			require.Zero(t, cmd.SysProcAttr.CreationFlags&uint32(windows.DETACHED_PROCESS|windows.CREATE_BREAKAWAY_FROM_JOB))
+		})
+	}
 }
 
 func setHasConsole(t *testing.T, attached bool) {
