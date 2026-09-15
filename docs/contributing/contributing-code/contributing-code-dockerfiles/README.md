@@ -15,6 +15,7 @@ Follow the [Docker instruction file](../../../../.github/instructions/docker.ins
 
 - **Multi-stage builds** — compile in a build stage and copy only the resulting binary into a minimal runtime stage.
 - **Minimal, non-root runtime** — prefer distroless/minimal base images and run as a non-root user.
+- **Pinned runtime bases** — keep the UCP Distroless reference on an explicit Debian release and pin the multi-platform image index digest, for example `gcr.io/distroless/static-debian13:nonroot@sha256:<index-digest>`. Refreshing the digest is required to consume future base-image security updates.
 - **Deterministic layers** — order instructions for cache reuse and copy only what each stage needs.
 
 ## Verification
