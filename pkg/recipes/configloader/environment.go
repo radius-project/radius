@@ -164,11 +164,15 @@ func getConfigurationV20250801(ctx context.Context, environment *v20250801previe
 	envDatamodel := env.(*datamodel.Environment_v20250801preview)
 	if envDatamodel.Properties.Providers != nil {
 		if envDatamodel.Properties.Providers.Azure != nil {
-			if strings.TrimSpace(envDatamodel.Properties.Providers.Azure.ResourceGroupName) == "" {
+			subscriptionID := strings.TrimSpace(envDatamodel.Properties.Providers.Azure.SubscriptionId)
+			if subscriptionID == "" {
+				return nil, fmt.Errorf("providers.azure.subscriptionId is required when the Azure provider is configured")
+			}
+			resourceGroupName := strings.TrimSpace(envDatamodel.Properties.Providers.Azure.ResourceGroupName)
+			if resourceGroupName == "" {
 				return nil, fmt.Errorf("providers.azure.resourceGroupName is required when the Azure provider is configured")
 			}
-			scope := "/subscriptions/" + envDatamodel.Properties.Providers.Azure.SubscriptionId +
-				"/resourceGroups/" + strings.TrimSpace(envDatamodel.Properties.Providers.Azure.ResourceGroupName)
+			scope := "/subscriptions/" + subscriptionID + "/resourceGroups/" + resourceGroupName
 			config.Providers.Azure = datamodel.ProvidersAzure{
 				Scope: scope,
 			}
