@@ -105,27 +105,33 @@ func Test_FirstApplicationSample(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct rp.RPTest) {
-				// Set up pod port-forwarding for the pod. Kubernetes pod readiness does not
-				// guarantee the application is already listening on remotePort, so retry
-				// across a bounded window with a backoff between attempts instead of
-				// exhausting all attempts within milliseconds of each other.
+				// Kubernetes pod readiness does not guarantee the application is already
+				// listening on remotePort, so retry a lightweight, idempotent readiness
+				// probe across a bounded window with a backoff between attempts instead
+				// of exhausting all attempts within milliseconds of each other.
 				// See https://github.com/radius-project/radius/issues/12935.
+				//
+				// testWithPortForward itself is not idempotent: it creates a todo item
+				// and only deletes it at the end, so retrying it directly can leave a
+				// leftover item that fails the next attempt's empty-list assertion.
+				// Run it once, only after the readiness probe confirms the pod is up.
+				selector := fmt.Sprintf("%s=%s", kubernetes.LabelRadiusResource, appName)
+
 				deadline := time.Now().Add(retryTimeout)
 				var lastErr error
 				for attempt := 1; time.Now().Before(deadline); attempt++ {
-					t.Logf("Setting up portforward (attempt %d)", attempt)
-					selector := fmt.Sprintf("%s=%s", kubernetes.LabelRadiusResource, appName)
-					lastErr = testWithPortForward(t, ctx, ct, appNamespace, selector, remotePort)
+					t.Logf("Waiting for pod readiness via portforward (attempt %d)", attempt)
+					lastErr = waitForPodReady(t, ctx, ct, appNamespace, selector, remotePort)
 					if lastErr == nil {
-						// Successfully ran tests
-						return
+						break
 					}
 
-					t.Logf("Failed to test pod via portforward with error: %s", lastErr)
+					t.Logf("Pod not ready yet: %s", lastErr)
 					time.Sleep(retryBackoff)
 				}
+				require.NoError(t, lastErr, "pod did not become ready via portforward after retrying for %s", retryTimeout)
 
-				require.Fail(t, fmt.Sprintf("tests failed after retrying for %s: %s", retryTimeout, lastErr))
+				require.NoError(t, testWithPortForward(t, ctx, ct, appNamespace, selector, remotePort))
 			},
 			// TODO: validation of k8s resources blocked by https://github.com/radius-project/radius/issues/4689
 			K8sOutputResources: []unstructured.Unstructured{},
@@ -150,6 +156,29 @@ func Test_FirstApplicationSample(t *testing.T) {
 	}
 
 	test.Test(t)
+}
+
+// waitForPodReady opens a port-forward session and issues a single idempotent GET
+// against the base URL to confirm the application is listening on remotePort. Unlike
+// testWithPortForward, it performs no writes, so it is safe to call repeatedly.
+func waitForPodReady(t *testing.T, ctx context.Context, at rp.RPTest, namespace string, container string, remotePort int) error {
+	stopChan := make(chan struct{})
+	portChan := make(chan int)
+	errorChan := make(chan error)
+
+	go testutil.ExposePod(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, namespace, container, remotePort, stopChan, portChan, errorChan)
+	defer close(stopChan)
+
+	select {
+	case err := <-errorChan:
+		return fmt.Errorf("portforward failed with error: %s", err)
+	case localPort := <-portChan:
+		baseURL := fmt.Sprintf("http://localhost:%d", localPort)
+		t.Logf("Portforward session active at %s", baseURL)
+
+		_, err := sendGetRequest("hostname", baseURL, "", 200)
+		return err
+	}
 }
 
 func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namespace string, container string, remotePort int) error {
