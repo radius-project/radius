@@ -165,33 +165,181 @@ func Test_Dynamic_Resource_Inert_Schema_Validation_Failure(t *testing.T) {
 
 	// Attempt to create the resource - this should fail due to schema validation
 	response := ucp.MakeTypedRequest(http.MethodPut, testInertResourceURL, invalidResource)
-	response.WaitForOperationComplete(nil)
+	response.EqualsErrorCode(400, v1.CodeInvalidRequestContent)
+	require.Empty(t, response.Raw.Header.Get("Azure-AsyncOperation"))
 
-	// Get the operation status to check for the error in the Result.Error field
-	operationStatusURL := response.Raw.Header.Get("Azure-AsyncOperation")
-	require.NotEmpty(t, operationStatusURL, "Expected Azure-AsyncOperation header")
+	response = ucp.MakeRequest(http.MethodGet, testInertResourceURL, nil)
+	response.EqualsErrorCode(404, v1.CodeNotFound)
+}
 
-	// Make a request to the operation status endpoint
-	statusResponse := ucp.MakeRequest(http.MethodGet, operationStatusURL, nil)
+func Test_Dynamic_Resource_InvalidUpdate_PreservesResource(t *testing.T) {
+	for _, tt := range []struct {
+		name         string
+		resourceType string
+		resourceID   string
+		resourceURL  string
+		recipe       bool
+	}{
+		{"manual", inertResourceTypeName, testInertResourceID, testInertResourceURL, false},
+		{"recipe", recipeResourceTypeName, testRecipeResourceID, testRecipeResourceURL, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := t.Context()
+			ctrl := gomock.NewController(t)
+			mockDriver := driver.NewMockDriver(ctrl)
+			mockConfigLoader := configloader.NewMockConfigurationLoader(ctrl)
+			dynamic, ucp := testhost.Start(t, testhost.TestHostOptionFunc(func(options *dynamicrp.Options) {
+				options.Recipes.Drivers = map[string]func(*dynamicrp.Options) (driver.Driver, error){
+					"test": func(*dynamicrp.Options) (driver.Driver, error) {
+						return mockDriver, nil
+					},
+				}
+				options.Recipes.ConfigurationLoader = mockConfigLoader
+			}))
 
-	// Parse the operation status response
-	var operationStatus map[string]any
-	err := json.Unmarshal(statusResponse.Body.Bytes(), &operationStatus)
-	require.NoError(t, err, "Failed to parse operation status response")
+			createRadiusPlane(ucp)
+			createResourceProvider(ucp)
+			if tt.recipe {
+				createRecipeResourceType(ucp)
+				mockConfigLoader.EXPECT().LoadRecipe(gomock.Any(), gomock.Any()).
+					Return(&recipes.EnvironmentDefinition{
+						Name:            "default",
+						Driver:          "test",
+						ResourceType:    resourceProviderNamespace + "/" + tt.resourceType,
+						TemplatePath:    "test-path",
+						TemplateVersion: "test-version",
+					}, nil).AnyTimes()
+				mockConfigLoader.EXPECT().LoadConfiguration(gomock.Any(), gomock.Any()).
+					Return(&recipes.Configuration{}, nil).AnyTimes()
+			} else {
+				createInertResourceType(ucp)
+			}
+			createAPIVersion(ucp, tt.resourceType, map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"tls": map[string]any{
+						"type": "string",
+						"enum": []string{"required", "optional"},
+					},
+				},
+				"required": []string{"tls"},
+			})
+			createLocation(ucp, tt.resourceType)
+			createResourceGroup(ucp)
 
-	// Check that the operation failed
-	require.Equal(t, "Failed", operationStatus["status"], "Expected operation to fail")
+			expectRecipeExecution := func(tls string) {
+				t.Helper()
+				if !tt.recipe {
+					return
+				}
+				mockDriver.EXPECT().
+					Execute(gomock.Any(), gomock.Cond(func(options driver.ExecuteOptions) bool {
+						return options.Recipe.Properties["tls"] == tls
+					})).
+					Return(&recipes.RecipeOutput{
+						Resources: []string{"/planes/example/testing/providers/Test.Namespace/testResource/example"},
+						Values: map[string]any{
+							"port":     8080,
+							"hostname": "example.com",
+						},
+						Status: &rpv1.RecipeStatus{
+							TemplateKind:    "test",
+							TemplatePath:    "test-path",
+							TemplateVersion: "test-version",
+						},
+					}, nil).Times(1)
+			}
+			resource := func(tls, costCenter string) map[string]any {
+				return map[string]any{
+					"properties": map[string]any{"tls": tls},
+					"tags":       map[string]string{"costcenter": costCenter},
+				}
+			}
+			decode := func(body []byte) map[string]any {
+				t.Helper()
+				var value map[string]any
+				require.NoError(t, json.Unmarshal(body, &value))
+				return value
+			}
 
-	// Check the error field - this should now contain the schema validation error
-	errorObj, exists := operationStatus["error"]
-	require.True(t, exists, "Expected error field in operation status")
+			expectRecipeExecution("required")
+			response := ucp.MakeTypedRequest(http.MethodPut, tt.resourceURL, resource("required", "original"))
+			response.EqualsStatusCode(http.StatusCreated)
+			require.NotEmpty(t, response.Raw.Header.Get("Azure-AsyncOperation"))
+			response.WaitForOperationComplete(nil)
 
-	errorMap, ok := errorObj.(map[string]any)
-	require.True(t, ok, "Expected error to be an object")
+			response = ucp.MakeRequest(http.MethodGet, tt.resourceURL, nil)
+			response.EqualsStatusCode(http.StatusOK)
+			originalResource := decode(response.Body.Bytes())
+			originalETag := response.Raw.Header.Get("ETag")
+			require.NotEmpty(t, originalETag)
+			properties := originalResource["properties"].(map[string]any)
+			require.Equal(t, "Succeeded", properties["provisioningState"])
+			require.Equal(t, "required", properties["tls"])
+			if tt.recipe {
+				status := properties["status"].(map[string]any)
+				require.Equal(t, map[string]any{"port": float64(8080), "hostname": "example.com"}, status["computedValues"])
+				require.NotEmpty(t, status["outputResources"])
+				require.NotEmpty(t, status["recipe"])
+			}
 
-	// Verify error details match what we expect from the controller Result.Error field
-	require.Equal(t, v1.CodeInvalidRequestContent, errorMap["code"], "Expected validation error code")
-	require.Contains(t, errorMap["message"].(string), "Schema validation failed", "Expected schema validation error message")
+			databaseClient, err := dynamic.Options().DatabaseProvider.GetClient(ctx)
+			require.NoError(t, err)
+			stored, err := databaseClient.Get(ctx, tt.resourceID)
+			require.NoError(t, err)
+			// Copy the stored data independently: GET redacts fields, and storage may share map references.
+			originalStored, err := stored.DeepCopy()
+			require.NoError(t, err)
+			require.NotEmpty(t, originalStored.ETag)
+
+			listURLs := []string{
+				testResourceGroupID + "/providers/" + resourceProviderNamespace + "/" + tt.resourceType + "?api-version=" + apiVersion,
+				testPlaneID + "/providers/" + resourceProviderNamespace + "/" + tt.resourceType + "?api-version=" + apiVersion,
+			}
+			originalLists := make([]map[string]any, len(listURLs))
+			for i, url := range listURLs {
+				response = ucp.MakeRequest(http.MethodGet, url, nil)
+				response.EqualsStatusCode(http.StatusOK)
+				originalLists[i] = decode(response.Body.Bytes())
+				require.Equal(t, []any{originalResource}, originalLists[i]["value"])
+			}
+
+			response = ucp.MakeTypedRequest(http.MethodPut, tt.resourceURL, resource("invalid", "rejected"))
+			response.EqualsErrorCode(400, v1.CodeInvalidRequestContent)
+			require.Empty(t, response.Raw.Header.Get("Azure-AsyncOperation"))
+
+			response = ucp.MakeRequest(http.MethodGet, tt.resourceURL, nil)
+			response.EqualsStatusCode(http.StatusOK)
+			require.Equal(t, originalETag, response.Raw.Header.Get("ETag"))
+			// Compare decoded JSON directly so systemData is included rather than stripped by EqualsValue.
+			require.Equal(t, originalResource, decode(response.Body.Bytes()))
+			for i, url := range listURLs {
+				response = ucp.MakeRequest(http.MethodGet, url, nil)
+				response.EqualsStatusCode(http.StatusOK)
+				require.Equal(t, originalLists[i], decode(response.Body.Bytes()))
+			}
+			stored, err = databaseClient.Get(ctx, tt.resourceID)
+			require.NoError(t, err)
+			currentStored, err := stored.DeepCopy()
+			require.NoError(t, err)
+			require.Equal(t, originalStored.ETag, currentStored.ETag)
+			require.Equal(t, originalStored.Data, currentStored.Data)
+
+			expectRecipeExecution("optional")
+			response = ucp.MakeTypedRequest(http.MethodPut, tt.resourceURL, resource("optional", "recovered"))
+			response.EqualsStatusCode(http.StatusCreated)
+			require.NotEmpty(t, response.Raw.Header.Get("Azure-AsyncOperation"))
+			response.WaitForOperationComplete(nil)
+
+			response = ucp.MakeRequest(http.MethodGet, tt.resourceURL, nil)
+			response.EqualsStatusCode(http.StatusOK)
+			recovered := decode(response.Body.Bytes())
+			require.Equal(t, "Succeeded", recovered["properties"].(map[string]any)["provisioningState"])
+			require.Equal(t, "optional", recovered["properties"].(map[string]any)["tls"])
+			require.Equal(t, map[string]any{"costcenter": "recovered"}, recovered["tags"])
+			require.NotEqual(t, originalETag, response.Raw.Header.Get("ETag"))
+		})
+	}
 }
 
 func Test_Dynamic_Resource_Recipe_Lifecycle(t *testing.T) {
