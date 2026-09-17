@@ -13,6 +13,8 @@ updates:
     directories:
       - "/"
       - "/.github/actions/*"
+      - "/.github/extension/*"
+      - "/.github/extension/actions/*"
     schedule:
       interval: weekly
     cooldown:
@@ -75,6 +77,30 @@ updates:
       - deps/npm
     groups:
       javascript-deps:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directories:
+      - "/"
+      - "/**/*"
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope
+    labels:
+      - dependencies
+      - deps/docker
+    groups:
+      docker:
         applies-to: version-updates
         patterns:
           - "*"
