@@ -109,7 +109,7 @@ func (b *BicepSettingsServerTransport) dispatchCreateOrUpdate(req *http.Request)
 	if b.srv.CreateOrUpdate == nil {
 		return nil, &nonRetriableError{errors.New("fake for method CreateOrUpdate not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -119,10 +119,7 @@ func (b *BicepSettingsServerTransport) dispatchCreateOrUpdate(req *http.Request)
 	if err != nil {
 		return nil, err
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	bicepSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingsName")])
 	if err != nil {
 		return nil, err
@@ -146,16 +143,13 @@ func (b *BicepSettingsServerTransport) dispatchDelete(req *http.Request) (*http.
 	if b.srv.Delete == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Delete not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	bicepSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingsName")])
 	if err != nil {
 		return nil, err
@@ -179,16 +173,13 @@ func (b *BicepSettingsServerTransport) dispatchGet(req *http.Request) (*http.Res
 	if b.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	bicepSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingsName")])
 	if err != nil {
 		return nil, err
@@ -214,16 +205,13 @@ func (b *BicepSettingsServerTransport) dispatchNewListByScopePager(req *http.Req
 	}
 	newListByScopePager := b.newListByScopePager.get(req)
 	if newListByScopePager == nil {
-		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings`
+		const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/bicepSettings`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 2 {
 			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 		}
-		rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-		if err != nil {
-			return nil, err
-		}
+		rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 		resp := b.srv.NewListByScopePager(rootScopeParam, nil)
 		newListByScopePager = &resp
 		b.newListByScopePager.add(req, newListByScopePager)
@@ -249,7 +237,7 @@ func (b *BicepSettingsServerTransport) dispatchUpdate(req *http.Request) (*http.
 	if b.srv.Update == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Update not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/bicepSettings/(?P<bicepSettingsName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -259,10 +247,7 @@ func (b *BicepSettingsServerTransport) dispatchUpdate(req *http.Request) (*http.
 	if err != nil {
 		return nil, err
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	bicepSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("bicepSettingsName")])
 	if err != nil {
 		return nil, err

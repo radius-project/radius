@@ -109,7 +109,7 @@ func (r *RecipePacksServerTransport) dispatchCreateOrUpdate(req *http.Request) (
 	if r.srv.CreateOrUpdate == nil {
 		return nil, &nonRetriableError{errors.New("fake for method CreateOrUpdate not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/recipePacks/(?P<recipePackName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/recipePacks/(?P<recipePackName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -119,10 +119,7 @@ func (r *RecipePacksServerTransport) dispatchCreateOrUpdate(req *http.Request) (
 	if err != nil {
 		return nil, err
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	recipePackNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("recipePackName")])
 	if err != nil {
 		return nil, err
@@ -146,16 +143,13 @@ func (r *RecipePacksServerTransport) dispatchDelete(req *http.Request) (*http.Re
 	if r.srv.Delete == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Delete not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/recipePacks/(?P<recipePackName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/recipePacks/(?P<recipePackName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	recipePackNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("recipePackName")])
 	if err != nil {
 		return nil, err
@@ -179,16 +173,13 @@ func (r *RecipePacksServerTransport) dispatchGet(req *http.Request) (*http.Respo
 	if r.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/recipePacks/(?P<recipePackName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/recipePacks/(?P<recipePackName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	recipePackNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("recipePackName")])
 	if err != nil {
 		return nil, err
@@ -214,16 +205,13 @@ func (r *RecipePacksServerTransport) dispatchNewListByScopePager(req *http.Reque
 	}
 	newListByScopePager := r.newListByScopePager.get(req)
 	if newListByScopePager == nil {
-		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/recipePacks`
+		const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/recipePacks`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 2 {
 			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 		}
-		rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-		if err != nil {
-			return nil, err
-		}
+		rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 		resp := r.srv.NewListByScopePager(rootScopeParam, nil)
 		newListByScopePager = &resp
 		r.newListByScopePager.add(req, newListByScopePager)
@@ -249,7 +237,7 @@ func (r *RecipePacksServerTransport) dispatchUpdate(req *http.Request) (*http.Re
 	if r.srv.Update == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Update not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/recipePacks/(?P<recipePackName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/recipePacks/(?P<recipePackName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -259,10 +247,7 @@ func (r *RecipePacksServerTransport) dispatchUpdate(req *http.Request) (*http.Re
 	if err != nil {
 		return nil, err
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	recipePackNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("recipePackName")])
 	if err != nil {
 		return nil, err

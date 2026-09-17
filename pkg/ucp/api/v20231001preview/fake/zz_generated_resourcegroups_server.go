@@ -109,7 +109,7 @@ func (r *ResourceGroupsServerTransport) dispatchCreateOrUpdate(req *http.Request
 	if r.srv.CreateOrUpdate == nil {
 		return nil, &nonRetriableError{errors.New("fake for method CreateOrUpdate not implemented")}
 	}
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcegroups/(?P<resourceGroupName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcegroups/(?P<resourceGroupName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -146,7 +146,7 @@ func (r *ResourceGroupsServerTransport) dispatchDelete(req *http.Request) (*http
 	if r.srv.Delete == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Delete not implemented")}
 	}
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcegroups/(?P<resourceGroupName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcegroups/(?P<resourceGroupName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -179,7 +179,7 @@ func (r *ResourceGroupsServerTransport) dispatchGet(req *http.Request) (*http.Re
 	if r.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcegroups/(?P<resourceGroupName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcegroups/(?P<resourceGroupName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -214,7 +214,7 @@ func (r *ResourceGroupsServerTransport) dispatchNewListPager(req *http.Request) 
 	}
 	newListPager := r.newListPager.get(req)
 	if newListPager == nil {
-		const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcegroups`
+		const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcegroups`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 2 {
@@ -249,7 +249,7 @@ func (r *ResourceGroupsServerTransport) dispatchUpdate(req *http.Request) (*http
 	if r.srv.Update == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Update not implemented")}
 	}
-	const regexStr = `/planes/radius/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/resourcegroups/(?P<resourceGroupName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/radius/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/resourcegroups/(?P<resourceGroupName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {

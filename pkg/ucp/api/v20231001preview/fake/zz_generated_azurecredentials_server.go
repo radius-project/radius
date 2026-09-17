@@ -109,7 +109,7 @@ func (a *AzureCredentialsServerTransport) dispatchCreateOrUpdate(req *http.Reque
 	if a.srv.CreateOrUpdate == nil {
 		return nil, &nonRetriableError{errors.New("fake for method CreateOrUpdate not implemented")}
 	}
-	const regexStr = `/planes/azure/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Azure/credentials/(?P<credentialName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/azure/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Azure/credentials/(?P<credentialName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -146,7 +146,7 @@ func (a *AzureCredentialsServerTransport) dispatchDelete(req *http.Request) (*ht
 	if a.srv.Delete == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Delete not implemented")}
 	}
-	const regexStr = `/planes/azure/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Azure/credentials/(?P<credentialName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/azure/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Azure/credentials/(?P<credentialName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -179,7 +179,7 @@ func (a *AzureCredentialsServerTransport) dispatchGet(req *http.Request) (*http.
 	if a.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/planes/azure/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Azure/credentials/(?P<credentialName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/azure/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Azure/credentials/(?P<credentialName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -214,7 +214,7 @@ func (a *AzureCredentialsServerTransport) dispatchNewListPager(req *http.Request
 	}
 	newListPager := a.newListPager.get(req)
 	if newListPager == nil {
-		const regexStr = `/planes/azure/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Azure/credentials`
+		const regexStr = `/planes/azure/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Azure/credentials`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 2 {
@@ -249,7 +249,7 @@ func (a *AzureCredentialsServerTransport) dispatchUpdate(req *http.Request) (*ht
 	if a.srv.Update == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Update not implemented")}
 	}
-	const regexStr = `/planes/azure/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.Azure/credentials/(?P<credentialName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/azure/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.Azure/credentials/(?P<credentialName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
