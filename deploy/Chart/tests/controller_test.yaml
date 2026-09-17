@@ -1,0 +1,136 @@
+suite: test controller without legacy Kubernetes onboarding
+templates:
+  - controller/*
+release:
+  name: radius
+  namespace: radius-system
+tests:
+  - it: renders only the deployment, configuration, service account, and RBAC
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: controller/deployment.yaml
+      - hasDocuments:
+          count: 1
+        template: controller/configmaps.yaml
+      - hasDocuments:
+          count: 1
+        template: controller/serviceaccount.yaml
+      - hasDocuments:
+          count: 2
+        template: controller/rbac.yaml
+      - notMatchRegex:
+          path: kind
+          pattern: ^(Service|Secret|ValidatingWebhookConfiguration)$
+
+  - it: retains Bicep and health without webhook ports or certificates
+    set:
+      global.prometheus.enabled: false
+    templates:
+      - controller/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value:
+            - --config-file
+            - /etc/config/controller-config.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env
+          value:
+            - name: BICEP
+              value: /usr/local/bin/bicep
+      - equal:
+          path: spec.template.spec.containers[0].ports
+          value:
+            - containerPort: 3000
+              name: healthz
+              protocol: TCP
+      - equal:
+          path: spec.template.spec.volumes
+          value:
+            - name: bicep
+              emptyDir: {}
+            - name: bicepconfig
+              emptyDir: {}
+            - name: config-volume
+              configMap:
+                name: controller-config
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts
+          value:
+            - name: bicep
+              mountPath: /usr/local/bin
+            - name: bicepconfig
+              mountPath: /bicepconfig.json
+              subPath: bicepconfig.json
+            - name: config-volume
+              mountPath: /etc/config
+
+  - it: retains the optional metrics port
+    set:
+      global.prometheus.enabled: true
+      global.prometheus.port: 9090
+    templates:
+      - controller/deployment.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].ports
+          value:
+            - containerPort: 9090
+              name: metrics
+              protocol: TCP
+            - containerPort: 3000
+              name: healthz
+              protocol: TCP
+
+  - it: removes webhook server configuration
+    templates:
+      - controller/configmaps.yaml
+    asserts:
+      - notMatchRegex:
+          path: data["controller-config.yaml"]
+          pattern: '(?m)^server:'
+      - matchRegex:
+          path: data["controller-config.yaml"]
+          pattern: 'workerServer:\s+port: 3000'
+
+  - it: retains deployment and Flux permissions without legacy resource permissions
+    templates:
+      - controller/rbac.yaml
+    documentIndex: 0
+    asserts:
+      - lengthEqual:
+          path: rules
+          count: 6
+      - equal:
+          path: rules[0].resources
+          value:
+            - namespaces
+            - events
+      - equal:
+          path: rules[1].apiGroups
+          value:
+            - radapp.io
+      - equal:
+          path: rules[1].resources
+          value:
+            - deploymenttemplates
+            - deploymenttemplates/status
+            - deploymentresources
+            - deploymentresources/status
+      - equal:
+          path: rules[2].apiGroups
+          value:
+            - api.ucp.dev
+      - equal:
+          path: rules[3].resources
+          value:
+            - gitrepositories
+      - equal:
+          path: rules[4].resources
+          value:
+            - gitrepositories/status
+      - equal:
+          path: rules[5].resources
+          value:
+            - customresourcedefinitions
