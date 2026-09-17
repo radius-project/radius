@@ -154,13 +154,14 @@ Preserve current execution references and cancellation boundaries during extract
 
 **Adapter conformance fixtures define test scenarios.** Each fixture supplies inputs, controlled dependency responses, and expected results and side effects. Run shared scenarios against Canvas and a non-Canvas caller to prove that extracting the logic preserves behavior.
 
-| Scenario                                  | Expected behavior in either caller                                                                                      |
-|-------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
-| Create a GitHub environment               | Use the same setup sequence and report the same result or failure.                                                      |
-| Start an authorized deployment            | Construct the same workflow request and expose the same available execution reference.                                  |
-| Request an unsupported agent interaction  | Report the limitation rather than claim authoring or repair completed.                                                  |
-| Read deployment status                    | Return the same interpretation; any repair follows an explicit shared policy, not an implicit consequence of rendering. |
-| Compare graphs with an unavailable source | Report an unavailable comparison, not an empty diff or success.                                                         |
+| Scenario                                            | Expected behavior in either caller                                                                                      |
+|-----------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
+| Create a GitHub environment                         | Use the same setup sequence and report the same result or failure.                                                      |
+| Start an authorized deployment                      | Construct the same workflow request and expose the same available execution reference.                                  |
+| Request an unsupported agent interaction            | Report the limitation rather than claim authoring or repair completed.                                                  |
+| Read deployment status                              | Return the same interpretation; any repair follows an explicit shared policy, not an implicit consequence of rendering. |
+| Compare graphs with a definition absent on one side | Preserve the added or removed application diff; confirmed absence contributes no resources.                             |
+| Compare graphs when a source cannot be read         | Report an unavailable comparison, not an added/removed application or an empty diff.                                    |
 
 The App can render a panel while a CLI prints text; their presentation differs, but the meaning and side effects of the library call must agree. These types, schemas, and fixtures become the implementation's source of truth for the contract. They do not replace authorization checks or integration tests.
 
@@ -205,16 +206,22 @@ sequenceDiagram
     F->>L: Compare explicit base and head sources
     loop Each source independently
         L->>S: Resolve workspace files or remote commit
-        S-->>L: Definition files and source identity, or unavailable
+        S-->>L: Definition files and source identity, confirmed absence, or unreadable
     end
-    alt Both sources available
-        L->>G: Build graphs and compare
+    alt A source cannot be read
+        L-->>F: Unavailable with affected source and reason
+    else At least one definition exists and both source reads succeeded
+        L->>G: Build graphs and compare, with no resources for an absent definition
         G-->>L: Typed graph diff
         L-->>F: Diff and source information
-    else A source unavailable
-        L-->>F: Unavailable with affected source and reason
+    else Neither source contains a definition
+        L-->>F: Definitions absent; authoring is a separate interaction
     end
 ```
+
+The existing graph entry points combine reads with application-definition authoring or freshness checks through the agent. When neither side has a definition, the diff route can request authoring; when only one side lacks a definition, it can render an added or removed application. Extract the authoring/freshness policy into explicit shared coordination alongside a separately callable graph read. Canvas should retain its intended composite flow without requiring every caller to trigger authoring just to read a graph. Test authoring triggers and refusals separately from reads.
+
+The diagram distinguishes confirmed absence from an unreadable source. At the inspected baseline, remote content reads can return `null` for both missing files and retrieval failures, so that distinction requires a separately tested error-handling correction; it is not a guarantee the refactor inherits. Preserve one-sided addition/removal diffs without interpreting permission errors or timeouts as absent applications. Preserve the existing staging order as well: both sides are staged before either is compiled.
 
 For the current session, preserve access to its actual worktree and branch, including uncommitted definition changes. Another repository or branch uses its remote source. A graph read must not commit or push source just to make it readable. Reuse the existing `runRadAppGraph` helper's temporary-directory and `GITHUB_ACTIONS` isolation rather than duplicate raw CLI execution in each adapter.
 
@@ -286,7 +293,7 @@ Keep GitHub identity and workspace authorization in trusted execution context ra
 
 The extraction is complete when Canvas uses the library for the migrated capability set, that library has no Canvas imports or instance requirements, and a non-Canvas caller can exercise the same logic. Import-boundary checks should cover both direct and transitive dependencies so a helper does not bring Canvas back into the library.
 
-Shared tests should assert dependency calls and side effects, not just matching UI messages. Cover environment creation, command construction, workflow dispatch, source selection, unsupported agent interactions, cancellation boundaries, and destructive-action authorization. Use controlled GitHub/process/agent dependencies for tests; demonstrate successful integration separately with the existing supported workflows.
+Shared tests should assert dependency calls and side effects, not just matching UI messages. Cover environment creation, command construction, workflow dispatch, source selection, unsupported agent interactions, cancellation boundaries, and destructive-action authorization. Graph fixtures should include first addition, last removal, neither side having a definition, retrieval failures, staging order, and explicit authoring/freshness handoffs. Use controlled GitHub/process/agent dependencies for tests; demonstrate successful integration separately with the existing supported workflows.
 
 Error fixtures should cover rejected and ambiguous dispatches, status API outages/rate limits, failed or cancelled runs without artifacts, mismatched artifact identity, conflicting phase evidence, deployment failure followed by cleanup failure, state-save failure, and secret-bearing diagnostics. Check that both callers preserve the primary failure and do not leak secrets or trigger duplicate mutations.
 
