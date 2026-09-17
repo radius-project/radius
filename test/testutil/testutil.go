@@ -417,13 +417,12 @@ func GetPodLogs(ctx context.Context, client k8s.Interface, namespace, podName, c
 	}
 	defer logs.Close()
 
-	buf := make([]byte, 1024*1024) // 1MB buffer
-	n, err := logs.Read(buf)
-	if err != nil && err != io.EOF {
+	contents, err := io.ReadAll(logs)
+	if err != nil {
 		return "", err
 	}
 
-	return string(buf[:n]), nil
+	return string(contents), nil
 }
 
 // GetK8sClient returns a Kubernetes client for testing.

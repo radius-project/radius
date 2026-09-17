@@ -849,6 +849,15 @@ func (v *Validator) checkReservedProperties(schema *openapi3.Schema) error {
 // It converts the schema data to OpenAPI format, creates a minimal OpenAPI document for validation,
 // and then validates the resource data against the schema using OpenAPI's built-in validation.
 func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]any, schemaData any) error {
+	return validateResourceAgainstSchema(ctx, resourceData, schemaData, true)
+}
+
+// ValidateResourceRequestAgainstSchema validates plaintext resource properties before encryption and persistence.
+func ValidateResourceRequestAgainstSchema(ctx context.Context, resourceData map[string]any, schemaData any) error {
+	return validateResourceAgainstSchema(ctx, resourceData, schemaData, false)
+}
+
+func validateResourceAgainstSchema(ctx context.Context, resourceData map[string]any, schemaData any, allowEncryptedFields bool) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	if schemaData == nil {
 		// Extract resource identifier for cleaner logging
@@ -875,8 +884,9 @@ func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]
 	// runtime validation can accept platformOptions.additionalProperties type:any.
 	normalizePlatformOptionsAny(openAPISchema)
 
-	// Normalize type constraints on sensitive string fields.
-	normalizeSensitiveFieldTypes(openAPISchema)
+	if allowEncryptedFields {
+		normalizeSensitiveFieldTypes(openAPISchema)
+	}
 
 	// Create a minimal OpenAPI document with the schema
 	doc := &openapi3.T{
@@ -905,8 +915,15 @@ func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]
 	if !ok {
 		return fmt.Errorf("resource data missing 'properties' field")
 	}
+	if properties, ok := propertiesData.(map[string]any); !allowEncryptedFields && ok && properties == nil {
+		// A nil datamodel map is persisted as JSON null, not an empty object.
+		propertiesData = nil
+	}
 
 	if err := schemaRef.Value.VisitJSON(propertiesData); err != nil {
+		if !allowEncryptedFields {
+			return formatResourceRequestValidationError(err, openAPISchema)
+		}
 		// Try to extract structured error information
 		if openAPIErr, ok := err.(*openapi3.SchemaError); ok {
 
@@ -923,4 +940,26 @@ func ValidateResourceAgainstSchema(ctx context.Context, resourceData map[string]
 	}
 
 	return nil
+}
+
+func formatResourceRequestValidationError(err error, schema *openapi3.Schema) error {
+	schemaError, ok := err.(*openapi3.SchemaError)
+	if !ok {
+		return fmt.Errorf("resource data validation failed: value does not match the schema")
+	}
+
+	// Reasons and nested paths can contain plaintext values or sensitive object keys.
+	// Only expose a top-level field name declared by the schema and the violated rule.
+	field := ""
+	if path := schemaError.JSONPointer(); len(path) > 0 {
+		if _, declared := schema.Properties[path[0]]; declared {
+			field = path[0]
+		}
+	}
+
+	reason := "value does not match the schema"
+	if schemaError.SchemaField != "" {
+		reason = fmt.Sprintf("value does not satisfy the %q constraint", schemaError.SchemaField)
+	}
+	return fmt.Errorf("resource data validation failed: Error at %q: %s", field, reason)
 }
