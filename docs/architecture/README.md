@@ -57,7 +57,7 @@ If you are new to the codebase, read these in order:
 
 ## Proposed Architecture
 
-- [repo-radius.md](repo-radius.md) proposes extracting GitHub Radius application and environment logic from Canvas into a reusable library. It explains the problem, scope, library API contract, and behavior-preserving migration so Canvas and other GitHub frontends can share one implementation.
+- [github-radius.md](github-radius.md) proposes extracting GitHub Radius application and environment logic from Canvas into a reusable library. It explains the problem, scope, library API contract, and behavior-preserving migration so Canvas and other GitHub frontends can share one implementation.
 
 ## Related Material
 
