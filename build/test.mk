@@ -60,6 +60,10 @@ test: test-get-envtools test-helm test-manage-radius-installation ## Runs unit t
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
 	@bash ./.github/scripts/manage-radius-installation_test.sh
 
+.PHONY: test-cluster-diagnostics
+test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
+	@bash ./.github/scripts/collect-cluster-diagnostics_test.sh
+
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
 	@echo "$(ARROW) Compiling unit tests..."
