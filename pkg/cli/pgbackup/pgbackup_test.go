@@ -54,6 +54,42 @@ func Test_HasBackup_MissingDirectory(t *testing.T) {
 	require.False(t, HasBackup(filepath.Join(t.TempDir(), "does-not-exist")))
 }
 
+func Test_IsControlPlaneEmpty_NoDataRows(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"),
+		[]byte("COPY public.resources (id, resource_type) FROM stdin;\n\\.\n"), 0o644))
+
+	empty, err := IsControlPlaneEmpty(dir)
+	require.NoError(t, err)
+	require.True(t, empty, "a COPY block with no data rows is an empty control plane")
+}
+
+func Test_IsControlPlaneEmpty_NoResourcesTableInDump(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte("-- empty dump, no tables\n"), 0o644))
+
+	empty, err := IsControlPlaneEmpty(dir)
+	require.NoError(t, err)
+	require.True(t, empty, "a dump with no resources table at all is at least as degenerate as an empty one")
+}
+
+func Test_IsControlPlaneEmpty_HasDataRows(t *testing.T) {
+	dir := t.TempDir()
+	dump := "COPY public.resources (id, resource_type) FROM stdin;\n" +
+		"/planes/radius/local/resourcegroups/default\tresourcegroups\n" +
+		"\\.\n"
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "ucp.sql"), []byte(dump), 0o644))
+
+	empty, err := IsControlPlaneEmpty(dir)
+	require.NoError(t, err)
+	require.False(t, empty, "a COPY block with at least one data row is not an empty control plane")
+}
+
+func Test_IsControlPlaneEmpty_MissingFile(t *testing.T) {
+	_, err := IsControlPlaneEmpty(t.TempDir())
+	require.ErrorContains(t, err, "failed to read backup file")
+}
+
 func Test_StateBranchName_DefaultsWhenUnset(t *testing.T) {
 	// t.Setenv unsets after the test; explicitly clear to isolate from the ambient environment.
 	t.Setenv(StateBranchEnvVar, "")
