@@ -1,0 +1,217 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+---
+version: 2
+
+project_name: radius
+dist: dist/goreleaser
+
+builds:
+  - id: rad
+    main: ./cmd/rad
+    binary: rad
+    env: &build_env
+      - CGO_ENABLED=0
+    ldflags: &release_ldflags
+      - >-
+        -s -w
+        -X github.com/radius-project/radius/pkg/version.channel={{ .Env.REL_CHANNEL }}
+        -X github.com/radius-project/radius/pkg/version.release={{ .Env.REL_VERSION }}
+        -X github.com/radius-project/radius/pkg/version.commit={{ .FullCommit }}
+        -X github.com/radius-project/radius/pkg/version.version={{ .Env.GIT_VERSION }}
+        -X github.com/radius-project/radius/pkg/version.chartVersion={{ .Env.CHART_VERSION }}
+        -X github.com/radius-project/radius/pkg/recipes/terraform.terraformVersion={{ .Env.TERRAFORM_VERSION }}
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm
+      - arm64
+    goarm:
+      - "7"
+    ignore:
+      - goos: darwin
+        goarch: arm
+      - goos: windows
+        goarch: arm
+
+  - id: ucpd
+    main: ./cmd/ucpd
+    binary: ucpd
+    env: *build_env
+    ldflags: *release_ldflags
+    goos: &server_goos
+      - linux
+    goarch: &server_goarch
+      - amd64
+      - arm
+      - arm64
+    goarm: &server_goarm
+      - "7"
+
+  - id: applications-rp
+    main: ./cmd/applications-rp
+    binary: applications-rp
+    env: *build_env
+    ldflags: *release_ldflags
+    goos: *server_goos
+    goarch: *server_goarch
+    goarm: *server_goarm
+
+  - id: dynamic-rp
+    main: ./cmd/dynamic-rp
+    binary: dynamic-rp
+    env: *build_env
+    ldflags: *release_ldflags
+    goos: *server_goos
+    goarch: *server_goarch
+    goarm: *server_goarm
+
+  - id: controller
+    main: ./cmd/controller
+    binary: controller
+    env: *build_env
+    ldflags: *release_ldflags
+    goos: *server_goos
+    goarch: *server_goarch
+    goarm: *server_goarm
+
+  - id: pre-upgrade
+    main: ./cmd/pre-upgrade
+    binary: pre-upgrade
+    env: *build_env
+    ldflags: *release_ldflags
+    goos: *server_goos
+    goarch: *server_goarch
+    goarm: *server_goarm
+
+archives:
+  - id: rad
+    ids:
+      - rad
+    formats:
+      - binary
+    name_template: "rad_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "{{ .ArtifactName }}.sha256"
+  algorithm: sha256
+  split: true
+  ids:
+    - rad
+
+dockers_v2:
+  - id: ucpd
+    ids:
+      - ucpd
+    dockerfile: deploy/images/ucpd/Dockerfile.goreleaser
+    images:
+      - ghcr.io/radius-project/ucpd
+    tags:
+      - "{{ .Version }}"
+    extra_files:
+      - deploy/manifest/built-in-providers/self-hosted
+    labels:
+      org.opencontainers.image.source: https://github.com/radius-project/radius
+      org.opencontainers.image.description: ucpd
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+    platforms: &image_platforms
+      - linux/amd64
+      - linux/arm64
+      - linux/arm/v7
+    sbom: false
+
+  - id: applications-rp
+    ids:
+      - applications-rp
+    dockerfile: deploy/images/applications-rp/Dockerfile.goreleaser
+    images:
+      - ghcr.io/radius-project/applications-rp
+    tags:
+      - "{{ .Version }}"
+    labels:
+      org.opencontainers.image.source: https://github.com/radius-project/radius
+      org.opencontainers.image.description: applications-rp
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+    platforms: *image_platforms
+    sbom: false
+
+  - id: dynamic-rp
+    ids:
+      - dynamic-rp
+    dockerfile: deploy/images/dynamic-rp/Dockerfile.goreleaser
+    images:
+      - ghcr.io/radius-project/dynamic-rp
+    tags:
+      - "{{ .Version }}"
+    labels:
+      org.opencontainers.image.source: https://github.com/radius-project/radius
+      org.opencontainers.image.description: dynamic-rp
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+    platforms: *image_platforms
+    sbom: false
+
+  - id: controller
+    ids:
+      - controller
+    dockerfile: deploy/images/controller/Dockerfile.goreleaser
+    images:
+      - ghcr.io/radius-project/controller
+    tags:
+      - "{{ .Version }}"
+    labels:
+      org.opencontainers.image.source: https://github.com/radius-project/radius
+      org.opencontainers.image.description: controller
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+    platforms: *image_platforms
+    sbom: false
+
+  - id: pre-upgrade
+    ids:
+      - pre-upgrade
+    dockerfile: deploy/images/pre-upgrade/Dockerfile.goreleaser
+    images:
+      - ghcr.io/radius-project/pre-upgrade
+    tags:
+      - "{{ .Version }}"
+    labels:
+      org.opencontainers.image.source: https://github.com/radius-project/radius
+      org.opencontainers.image.description: pre-upgrade
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+    platforms: *image_platforms
+    sbom: false
+
+release:
+  ids:
+    - rad
+  name_template: "Radius {{ .Tag }}"
+  draft: true
+  use_existing_draft: true
+  replace_existing_artifacts: true
+  prerelease: auto
+  mode: replace
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^docs(?:\\([^)]*\\))?:"
+      - "^test(?:\\([^)]*\\))?:"
+      - "^build(?:\\([^)]*\\))?:"
+      - "^ci(?:\\([^)]*\\))?:"
+      - "^chore(?:\\([^)]*\\))?:"
+
+snapshot:
+  version_template: "0.0.0-snapshot-{{ .ShortCommit }}"
+
+retry:
+  attempts: 5
+  delay: 10s
+  max_delay: 2m

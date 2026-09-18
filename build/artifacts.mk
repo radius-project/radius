@@ -19,6 +19,8 @@ IMAGES_DIR := $(DIST_DIR)/images
 METRICS_DIR := $(DIST_DIR)/metrics
 RELEASE_PARITY_VERSION ?=
 RELEASE_PARITY_OUTPUT ?= $(DIST_DIR)/release-parity/v$(RELEASE_PARITY_VERSION).json
+GORELEASER ?= goreleaser
+GORELEASER_ARGS ?=
 
 ##@ Artifacts
 
@@ -34,6 +36,29 @@ release-parity-manifest: ## Capture observable outputs for RELEASE_PARITY_VERSIO
 	@bash ./.github/scripts/release-parity-manifest.sh \
 		--version "$(RELEASE_PARITY_VERSION)" \
 		--output "$(RELEASE_PARITY_OUTPUT)"
+
+.PHONY: goreleaser-check
+goreleaser-check: ## Validate the GoReleaser configuration
+	@REL_CHANNEL="$(REL_CHANNEL)" \
+		REL_VERSION="$(REL_VERSION)" \
+		CHART_VERSION="$(CHART_VERSION)" \
+		GIT_VERSION="$(GIT_VERSION)" \
+		TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
+		$(GORELEASER) check
+
+# GoReleaser builds images only when it publishes, so skipping docker or publish
+# leaves no images for the verifier to inspect.
+GORELEASER_VERIFY_ARGS := $(if $(or $(findstring docker,$(GORELEASER_ARGS)),$(findstring publish,$(GORELEASER_ARGS))),--skip-images)
+
+.PHONY: goreleaser-snapshot
+goreleaser-snapshot: ## Build and verify a GoReleaser snapshot
+	@REL_CHANNEL="$(REL_CHANNEL)" \
+		REL_VERSION="$(REL_VERSION)" \
+		CHART_VERSION="$(CHART_VERSION)" \
+		GIT_VERSION="$(GIT_VERSION)" \
+		TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
+		$(GORELEASER) release --snapshot --clean $(GORELEASER_ARGS)
+	@bash ./.github/scripts/verify-goreleaser-snapshot.sh $(GORELEASER_VERIFY_ARGS)
 
 .PHONY: docker-save-images
 docker-save-images: ## Save Docker images to dist/images/*.tar
