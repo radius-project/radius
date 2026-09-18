@@ -264,6 +264,11 @@ spec:
         - name: encryption-secret
           mountPath: /var/secrets/encryption
           readOnly: true
+        {{- if and .Values.dynamicrp.buildkit.enabled .Values.dynamicrp.buildkit.localContexts.existingClaim }}
+        - name: local-build-contexts
+          mountPath: /var/radius/build-contexts
+          readOnly: true
+        {{- end }}
         {{- if .Values.dynamicrp.buildkit.enabled }}
         # Mount the single buildctl file (copied by buildctl-init into
         # the shared emptyDir) at a path already on the dynamic-rp
@@ -376,6 +381,11 @@ spec:
           secret:
             secretName: radius-encryption-key
             defaultMode: 0400
+        {{- if and .Values.dynamicrp.buildkit.enabled .Values.dynamicrp.buildkit.localContexts.existingClaim }}
+        - name: local-build-contexts
+          persistentVolumeClaim:
+            claimName: {{ .Values.dynamicrp.buildkit.localContexts.existingClaim | quote }}
+        {{- end }}
         {{- if .Values.dynamicrp.buildkit.enabled }}
         - name: buildkit-config
           configMap:

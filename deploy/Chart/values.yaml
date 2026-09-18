@@ -165,6 +165,11 @@ dynamicrp:
     # BuildKit sidecar. Increase only after profiling representative cold
     # builds and sizing the resources below with sufficient headroom.
     maxParallelism: 1
+    # Mount an existing PVC containing operator-approved local build contexts
+    # read-only at /var/radius/build-contexts in dynamic-rp. Leave empty to omit
+    # the chart-managed mount.
+    localContexts:
+      existingClaim: ""
     # Default limits suit small/medium image builds; raise for large
     # contexts or memory-heavy compilations.
     resources:

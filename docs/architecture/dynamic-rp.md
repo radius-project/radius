@@ -76,6 +76,8 @@ ARM/Bicep cannot call BuildKit directly, so `dynamic-rp` runs the script where t
 
 All `containerImages` operations in one `dynamic-rp` Pod share its BuildKit sidecar and memory cgroup. The chart configures BuildKit's native OCI worker scheduler through `dynamicrp.buildkit.maxParallelism`, which defaults to one concurrent build step across all active solves. A generated `buildkitd.toml` carries the setting, and its Pod-template checksum restarts `dynamic-rp` when the value changes because BuildKit reads daemon configuration only at startup.
 
+Git build sources need no local storage. For local sources, `dynamicrp.buildkit.localContexts.existingClaim` mounts an operator-managed PVC read-only into `dynamic-rp` at `/var/radius/build-contexts`; the chart does not create or populate the claim.
+
 Keep this limit independent from `workerServer.maxOperationConcurrency`. The worker setting bounds all Dynamic RP operations, while BuildKit's scheduler bounds the memory-intensive execution steps within and across image builds. Increasing BuildKit parallelism requires profiling representative cold builds and sizing the sidecar's memory request and limit with sufficient headroom. This is a concurrency boundary, not per-build isolation: one build can still exceed the configured memory limit.
 
 ### Packages That Usually Move Together
