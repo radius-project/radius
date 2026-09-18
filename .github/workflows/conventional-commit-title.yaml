@@ -42,6 +42,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       pull-requests: write # Required to post the advisory fix-it comment
+      statuses: write # Required to update the status of the pull request
     steps:
       - name: Validate Conventional Commit title
         id: validate
