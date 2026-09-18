@@ -369,9 +369,6 @@ publish_branch_artifacts() {
     cp "${SOURCE_APP_FILE}" "${APP_FILE}"
     cat >"${WORK_DIR}/bicepconfig.json" <<EOF
 {
-  "experimentalFeaturesEnabled": {
-    "extensibility": true
-  },
   "extensions": {
     "radius": "br:biceptypes.azurecr.io/radius:latest"
   }
