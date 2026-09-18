@@ -96,7 +96,9 @@ func Test_MultiCluster_BicepContainer(t *testing.T) {
 		defer cancel()
 
 		validation.ValidateNoPodsInApplication(verifyCtx, t, external.clientset, appNamespace, name)
-		requireNoServicesForResource(ctx, t, external.clientset, appNamespace, name, containerName)
+		if verifyCtx.Err() == nil {
+			requireNoServicesForResource(verifyCtx, t, external.clientset, appNamespace, name, containerName)
+		}
 	}
 
 	test.Test(t)

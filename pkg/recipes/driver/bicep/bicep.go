@@ -340,6 +340,10 @@ func (d *bicepDriver) resourceClientForDelete(ctx context.Context, opts driver.D
 			err = fmt.Errorf("failed to resolve target cluster for recipe output deletion: %w", err)
 			return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
 		}
+		if kubernetesConfig == nil {
+			err = errors.New("cluster access resolver returned a nil Kubernetes configuration")
+			return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+		}
 
 		ucplog.FromContextOrDiscard(ctx).Info("Resolved Kubernetes target for recipe output deletion", "host", kubernetesConfig.Host)
 	}

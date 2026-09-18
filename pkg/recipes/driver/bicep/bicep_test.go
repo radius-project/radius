@@ -558,6 +558,30 @@ func Test_Bicep_Delete_TargetClusterResolutionError(t *testing.T) {
 	require.Empty(t, *factoryConfigs)
 }
 
+func Test_Bicep_Delete_NilTargetClusterConfig(t *testing.T) {
+	ctx := t.Context()
+	driverBicep, _, resolver, factoryConfigs := setupDeleteInputs(t)
+	resolver.config = nil
+	outputResources := []rpv1.OutputResource{
+		{
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"apps",
+				"Deployment",
+				"recipe-app",
+				"redis"),
+			RadiusManaged: new(true),
+		},
+	}
+
+	err := driverBicep.Delete(ctx, driver.DeleteOptions{
+		OutputResources: outputResources,
+	})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "cluster access resolver returned a nil Kubernetes configuration")
+	require.Empty(t, *factoryConfigs)
+}
+
 func Test_Bicep_Delete_NonKubernetesOutputDoesNotResolveTargetCluster(t *testing.T) {
 	ctx := t.Context()
 	driverBicep, client, resolver, factoryConfigs := setupDeleteInputs(t)
