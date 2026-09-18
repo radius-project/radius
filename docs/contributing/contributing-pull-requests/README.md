@@ -54,7 +54,7 @@ Radius uses the pull request title as the squash commit subject. Format the titl
 | `fix`      | Bug fixes                                             | Fixed            |
 | `perf`     | Performance improvements                              | Changed          |
 | `refactor` | Internal changes that affect behavior or maintenance  | Changed          |
-| `deps`     | Dependency updates                                    | Dependencies     |
+| `style`    | Format and lint changes                               | Excluded         |
 | `revert`   | Reverted changes                                      | Reverted changes |
 | `docs`     | Documentation-only changes                            | Excluded         |
 | `test`     | Test-only changes                                     | Excluded         |
