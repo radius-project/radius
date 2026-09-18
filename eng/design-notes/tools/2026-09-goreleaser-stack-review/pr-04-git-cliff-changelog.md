@@ -26,7 +26,7 @@ The layer meets the PR 4 exit criteria. Rendering the real unreleased range (124
 
 ### 3. A committed render test for the configuration
 
-- **What changed**: `changelog-config_test.sh` renders `cliff.toml` against a fixture repository with every allowed type, a breaking `chore!`, the three dependency prefixes, a revert, and a legacy subject, then checks section order, placement, exclusions, single rendering of breaking commits, and the tagged heading and comparison link. `make test` runs it through `test-changelog-config`, which installs the pinned git-cliff first, the same shape as the OCI artifact test in PR 14.
+- **What changed**: `changelog-config_test.sh` renders `cliff.toml` against a fixture repository with the default Conventional Commit types, a breaking `chore!`, dependency updates using `chore(deps):` and `ci(deps):`, a revert, and a legacy subject, then checks section order, placement, exclusions, single rendering of breaking commits, and the tagged heading and comparison link. `make test` runs it through `test-changelog-config`, which installs the pinned git-cliff first, the same shape as the OCI artifact test in PR 14.
 - **Why**: the pull request describes these fixtures being run by hand. Nothing guards the template, and PR 8 and a later layer both edit it.
 - **Value**: a broken parser or template fails `make test` instead of the next release preparation.
 - **Impact**: about two seconds and one binary download in `make test`.
@@ -40,7 +40,6 @@ The layer meets the PR 4 exit criteria. Rendering the real unreleased range (124
 
 ## Findings left as-is
 
-- **`deps` parser**: still valid in this layer because `deps` is an allowed title type until PR 8 removes it; recorded as cross-layer finding 5.
 - **Non-standard headings**: `Dependencies`, `Reverted changes`, and `Other changes` are outside the Keep a Changelog set. The plan chose them deliberately for dependency and revert commits, and the last one is the only honest place for history written before the title policy.
 
 ## Verification
