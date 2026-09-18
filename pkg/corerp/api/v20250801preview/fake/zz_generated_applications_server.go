@@ -115,7 +115,7 @@ func (a *ApplicationsServerTransport) dispatchCreateOrUpdate(req *http.Request) 
 	if a.srv.CreateOrUpdate == nil {
 		return nil, &nonRetriableError{errors.New("fake for method CreateOrUpdate not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/applications/(?P<applicationName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/applications/(?P<applicationName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -125,10 +125,7 @@ func (a *ApplicationsServerTransport) dispatchCreateOrUpdate(req *http.Request) 
 	if err != nil {
 		return nil, err
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	applicationNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("applicationName")])
 	if err != nil {
 		return nil, err
@@ -152,16 +149,13 @@ func (a *ApplicationsServerTransport) dispatchDelete(req *http.Request) (*http.R
 	if a.srv.Delete == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Delete not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/applications/(?P<applicationName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/applications/(?P<applicationName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	applicationNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("applicationName")])
 	if err != nil {
 		return nil, err
@@ -185,16 +179,13 @@ func (a *ApplicationsServerTransport) dispatchGet(req *http.Request) (*http.Resp
 	if a.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/applications/(?P<applicationName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/applications/(?P<applicationName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	applicationNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("applicationName")])
 	if err != nil {
 		return nil, err
@@ -218,7 +209,7 @@ func (a *ApplicationsServerTransport) dispatchGetGraph(req *http.Request) (*http
 	if a.srv.GetGraph == nil {
 		return nil, &nonRetriableError{errors.New("fake for method GetGraph not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/applications/(?P<applicationName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/getGraph`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/applications/(?P<applicationName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/getGraph`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -228,10 +219,7 @@ func (a *ApplicationsServerTransport) dispatchGetGraph(req *http.Request) (*http
 	if err != nil {
 		return nil, err
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	applicationNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("applicationName")])
 	if err != nil {
 		return nil, err
@@ -257,16 +245,13 @@ func (a *ApplicationsServerTransport) dispatchNewListByScopePager(req *http.Requ
 	}
 	newListByScopePager := a.newListByScopePager.get(req)
 	if newListByScopePager == nil {
-		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/applications`
+		const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/applications`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 2 {
 			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 		}
-		rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-		if err != nil {
-			return nil, err
-		}
+		rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 		resp := a.srv.NewListByScopePager(rootScopeParam, nil)
 		newListByScopePager = &resp
 		a.newListByScopePager.add(req, newListByScopePager)
@@ -292,7 +277,7 @@ func (a *ApplicationsServerTransport) dispatchUpdate(req *http.Request) (*http.R
 	if a.srv.Update == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Update not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/applications/(?P<applicationName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/applications/(?P<applicationName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -302,10 +287,7 @@ func (a *ApplicationsServerTransport) dispatchUpdate(req *http.Request) (*http.R
 	if err != nil {
 		return nil, err
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	applicationNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("applicationName")])
 	if err != nil {
 		return nil, err
