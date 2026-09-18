@@ -31,7 +31,9 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -114,4 +116,26 @@ func requireNoServicesInNamespace(ctx context.Context, t *testing.T, clientset *
 	require.Emptyf(t, svcs.Items,
 		"expected no services in namespace %s on the control-plane cluster; the workload must land on the external cluster",
 		namespace)
+}
+
+// requireNoServicesForResource waits for Services carrying the application and resource labels to be deleted.
+func requireNoServicesForResource(ctx context.Context, t *testing.T, clientset *k8s.Clientset, namespace, application, resourceName string) {
+	t.Helper()
+
+	selector := metav1.FormatLabelSelector(&metav1.LabelSelector{
+		MatchLabels: kuberneteskeys.MakeSelectorLabels(application, resourceName),
+	})
+
+	require.EventuallyWithT(t, func(collect *assert.CollectT) {
+		svcs, err := clientset.CoreV1().Services(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector})
+		if apierrors.IsNotFound(err) {
+			return
+		}
+		if !assert.NoError(collect, err, "failed to list Services on external cluster") {
+			return
+		}
+		assert.Emptyf(collect, svcs.Items,
+			"expected no Services for %s/%s on the external cluster in namespace %s",
+			application, resourceName, namespace)
+	}, time.Minute, 5*time.Second)
 }

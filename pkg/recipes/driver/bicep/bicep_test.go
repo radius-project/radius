@@ -29,6 +29,7 @@ import (
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/kubernetes/clusteraccess"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/util/registrytest"
@@ -36,6 +37,7 @@ import (
 	clients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
+	"k8s.io/client-go/rest"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -44,6 +46,23 @@ import (
 type deploymentClientSpy struct {
 	clients.ResourceDeploymentsClient
 	createOrUpdateCalls int
+}
+
+type clusterAccessResolverStub struct {
+	config                *rest.Config
+	err                   error
+	receivedConfiguration *recipes.Configuration
+	resolveCalls          int
+}
+
+func (s *clusterAccessResolverStub) Resolve(_ context.Context, configuration *recipes.Configuration) (*rest.Config, error) {
+	s.resolveCalls++
+	s.receivedConfiguration = configuration
+	return s.config, s.err
+}
+
+func (s *clusterAccessResolverStub) ResolveKubeconfigSource(context.Context, *recipes.Configuration) (clusteraccess.KubeconfigSource, error) {
+	return clusteraccess.KubeconfigSource{}, errors.New("unexpected ResolveKubeconfigSource call")
 }
 
 func (s *deploymentClientSpy) CreateOrUpdate(_ context.Context, _ clients.Deployment, _, _ string) (clients.Poller[clients.ClientCreateOrUpdateResponse], error) {
@@ -388,24 +407,33 @@ func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
-func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClient) {
+func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClient, *clusterAccessResolverStub, *[]*rest.Config) {
 	ctrl := gomock.NewController(t)
 	client := processors.NewMockResourceClient(ctrl)
+	resolver := &clusterAccessResolverStub{
+		config: &rest.Config{Host: "https://target.example.com"},
+	}
+	factoryConfigs := &[]*rest.Config{}
 
 	driver := bicepDriver{
-		ResourceClient: client,
+		clusterAccessResolver: resolver,
+		resourceClientFactory: func(config *rest.Config) processors.ResourceClient {
+			*factoryConfigs = append(*factoryConfigs, config)
+			return client
+		},
 		options: BicepOptions{
 			DeleteRetryCount:        0,
 			DeleteRetryDelaySeconds: 1,
 		},
 	}
 
-	return driver, client
+	return driver, client, resolver, factoryConfigs
 }
 
 func Test_Bicep_Delete_Success(t *testing.T) {
 	ctx := t.Context()
-	driverBicep, client := setupDeleteInputs(t)
+	driverBicep, client, resolver, factoryConfigs := setupDeleteInputs(t)
+	azureResourceID := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/test-account"
 	outputResources := []rpv1.OutputResource{
 		{
 			LocalID: "RecipeResource0",
@@ -428,10 +456,46 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 			// We don't expect a call to delete to be made when RadiusManaged is false.
 			RadiusManaged: new(false),
 		},
+		{
+			LocalID:       "RecipeResource2",
+			ID:            resources.MustParse(azureResourceID),
+			RadiusManaged: new(true),
+		},
 	}
 	client.EXPECT().Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis").Times(1).Return(nil)
+	client.EXPECT().Delete(gomock.Any(), azureResourceID).Times(1).Return(nil)
+	configuration := recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{Namespace: "recipe-app"},
+		},
+	}
 
 	err := driverBicep.Delete(ctx, driver.DeleteOptions{
+		BaseOptions: driver.BaseOptions{
+			Configuration: configuration,
+		},
+		OutputResources: outputResources,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, resolver.resolveCalls)
+	require.Equal(t, &configuration, resolver.receivedConfiguration)
+	require.Equal(t, []*rest.Config{resolver.config}, *factoryConfigs)
+}
+
+func Test_Bicep_Delete_UnmanagedOutputsDoNotCreateResourceClient(t *testing.T) {
+	outputResources := []rpv1.OutputResource{
+		{
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"apps",
+				"Deployment",
+				"recipe-app",
+				"redis"),
+			RadiusManaged: new(false),
+		},
+	}
+
+	err := (&bicepDriver{}).Delete(t.Context(), driver.DeleteOptions{
 		OutputResources: outputResources,
 	})
 	require.NoError(t, err)
@@ -439,7 +503,7 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 
 func Test_Bicep_Delete_Error(t *testing.T) {
 	ctx := t.Context()
-	driverBicep, client := setupDeleteInputs(t)
+	driverBicep, client, _, _ := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{
 		{
 			ID: resources_kubernetes.IDFromParts(
@@ -467,6 +531,52 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
+}
+
+func Test_Bicep_Delete_TargetClusterResolutionError(t *testing.T) {
+	ctx := t.Context()
+	driverBicep, _, resolver, factoryConfigs := setupDeleteInputs(t)
+	resolver.err = errors.New("target kubeconfig is unavailable")
+	outputResources := []rpv1.OutputResource{
+		{
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"apps",
+				"Deployment",
+				"recipe-app",
+				"redis"),
+			RadiusManaged: new(true),
+		},
+	}
+
+	err := driverBicep.Delete(ctx, driver.DeleteOptions{
+		OutputResources: outputResources,
+	})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to resolve target cluster for recipe output deletion")
+	require.ErrorContains(t, err, "target kubeconfig is unavailable")
+	require.Empty(t, *factoryConfigs)
+}
+
+func Test_Bicep_Delete_NonKubernetesOutputDoesNotResolveTargetCluster(t *testing.T) {
+	ctx := t.Context()
+	driverBicep, client, resolver, factoryConfigs := setupDeleteInputs(t)
+	resolver.err = errors.New("target kubeconfig is unavailable")
+	resourceID := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/test-account"
+	outputResources := []rpv1.OutputResource{
+		{
+			ID:            resources.MustParse(resourceID),
+			RadiusManaged: new(true),
+		},
+	}
+	client.EXPECT().Delete(gomock.Any(), resourceID).Times(1).Return(nil)
+
+	err := driverBicep.Delete(ctx, driver.DeleteOptions{
+		OutputResources: outputResources,
+	})
+	require.NoError(t, err)
+	require.Zero(t, resolver.resolveCalls)
+	require.Equal(t, []*rest.Config{nil}, *factoryConfigs)
 }
 
 func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
@@ -675,7 +785,7 @@ func Test_GetGCOutputResources_NoDiff(t *testing.T) {
 
 func Test_Bicep_Delete_Success_AfterRetry(t *testing.T) {
 	ctx := t.Context()
-	driverBicep, client := setupDeleteInputs(t)
+	driverBicep, client, _, _ := setupDeleteInputs(t)
 	driverBicep.options.DeleteRetryCount = 1
 
 	outputResources := []rpv1.OutputResource{

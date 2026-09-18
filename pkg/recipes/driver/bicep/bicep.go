@@ -42,6 +42,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
+	"github.com/radius-project/radius/pkg/resourcemodel"
 	"github.com/radius-project/radius/pkg/rp/util"
 	"github.com/radius-project/radius/pkg/rp/util/authclient"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -49,6 +50,7 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -60,12 +62,12 @@ const (
 
 var _ driver.Driver = (*bicepDriver)(nil)
 
-// NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client, resource client, and options.
-func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient clients.ResourceDeploymentsClient, client processors.ResourceClient, options BicepOptions) driver.Driver {
+// NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client, resource client factory, and options.
+func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient clients.ResourceDeploymentsClient, resourceClientFactory processors.ResourceClientFactory, options BicepOptions) driver.Driver {
 	return &bicepDriver{
 		ArmClientOptions:      armOptions,
 		DeploymentClient:      deploymentClient,
-		ResourceClient:        client,
+		resourceClientFactory: resourceClientFactory,
 		options:               options,
 		clusterAccessResolver: clusteraccess.NewResolver(),
 	}
@@ -79,9 +81,9 @@ type BicepOptions struct {
 type bicepDriver struct {
 	ArmClientOptions      *arm.ClientOptions
 	DeploymentClient      clients.ResourceDeploymentsClient
-	ResourceClient        processors.ResourceClient
 	options               BicepOptions
 	clusterAccessResolver clusteraccess.ClusterAccessResolver
+	resourceClientFactory processors.ResourceClientFactory
 
 	// RegistryClient is the optional client used to interact with the container registry.
 	RegistryClient remote.Client
@@ -222,6 +224,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 
 	// Deleting obsolete output resources.
 	err = d.Delete(ctx, driver.DeleteOptions{
+		BaseOptions:     opts.BaseOptions,
 		OutputResources: diff,
 	})
 	if err != nil {
@@ -241,6 +244,14 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 // all in parallel. Since some resources may depend on others, we may need to retry.
 func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
+
+	resourceClient, err := d.resourceClientForDelete(ctx, opts)
+	if err != nil {
+		return err
+	}
+	if resourceClient == nil {
+		return nil
+	}
 
 	// Create a waitgroup to track the deletion of each output resource
 	g, groupCtx := errgroup.WithContext(ctx)
@@ -265,7 +276,7 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 				ctx := logr.NewContext(groupCtx, logger)
 				logger.V(ucplog.LevelDebug).Info("beginning attempt")
 
-				err = d.ResourceClient.Delete(ctx, id)
+				err = resourceClient.Delete(ctx, id)
 				if err != nil {
 					if attempt <= d.options.DeleteRetryCount {
 						logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
@@ -291,6 +302,55 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	}
 
 	return nil
+}
+
+func (d *bicepDriver) resourceClientForDelete(ctx context.Context, opts driver.DeleteOptions) (processors.ResourceClient, error) {
+	hasManagedOutput := false
+	hasManagedKubernetesOutput := false
+	for _, outputResource := range opts.OutputResources {
+		if !outputResource.IsRadiusManaged() {
+			continue
+		}
+
+		hasManagedOutput = true
+		if strings.EqualFold(outputResource.GetResourceType().Provider, resourcemodel.ProviderKubernetes) {
+			hasManagedKubernetesOutput = true
+		}
+	}
+
+	if !hasManagedOutput {
+		return nil, nil
+	}
+
+	if d.resourceClientFactory == nil {
+		err := errors.New("bicep driver has no resource client factory configured")
+		return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+	}
+
+	var kubernetesConfig *rest.Config
+	if hasManagedKubernetesOutput {
+		if d.clusterAccessResolver == nil {
+			err := errors.New("bicep driver has no cluster access resolver configured")
+			return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+		}
+
+		var err error
+		kubernetesConfig, err = d.clusterAccessResolver.Resolve(ctx, &opts.Configuration)
+		if err != nil {
+			err = fmt.Errorf("failed to resolve target cluster for recipe output deletion: %w", err)
+			return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+		}
+
+		ucplog.FromContextOrDiscard(ctx).Info("Resolved Kubernetes target for recipe output deletion", "host", kubernetesConfig.Host)
+	}
+
+	resourceClient := d.resourceClientFactory(kubernetesConfig)
+	if resourceClient == nil {
+		err := errors.New("bicep resource client factory returned nil")
+		return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+	}
+
+	return resourceClient, nil
 }
 
 // GetRecipeMetadata gets the Bicep recipe parameters information from the container registry
