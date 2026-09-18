@@ -121,6 +121,29 @@ write_cli_fixture() {
     fi
 }
 
+write_server_fixture() {
+    jq -c --arg dist "${DIST}" '
+        .images[]
+        | select(.category == "production")
+        | .name as $id
+        | .requiredPlatforms[]
+        | split("/") as $platform
+        | {
+            name: $id,
+            path: ($dist + "/" + $id + "_" + ($platform | join("_"))
+                + "/" + $id),
+            goos: $platform[0],
+            goarch: $platform[1],
+            type: "Binary",
+            extra: {Binary: $id, ID: $id}
+        }
+        | if .goarch == "arm"
+            then .goarm = ($platform[2] | ltrimstr("v"))
+            else .
+          end
+        ' "${TARGETS}" >> "${ENTRIES}"
+}
+
 write_image_fixture() {
     local image platform suffix name
 
@@ -157,6 +180,7 @@ write_fixture() {
     mkdir -p "${DIST}"
     : >"${ENTRIES}"
     write_cli_fixture
+    write_server_fixture
     write_image_fixture
     jq -s '.' "${ENTRIES}" >"${DIST}/artifacts.json"
 }
@@ -172,6 +196,17 @@ expect_failure() {
     if run_verifier "$@" 2>/dev/null; then
         fail "verifier accepted ${description}"
     fi
+}
+
+expect_build_target_failure() {
+    local description="$1"
+    local mutation="$2"
+
+    write_fixture
+    jq "${mutation}" "${DIST}/artifacts.json" > "${DIST}/invalid-builds.json"
+    mv "${DIST}/invalid-builds.json" "${DIST}/artifacts.json"
+    expect_failure "${description}"
+    expect_failure "${description}" --skip-images
 }
 
 # The verifier locates the Dockerfiles through its own repository root, so the
@@ -212,6 +247,31 @@ write_fixture
 run_verifier --skip-images
 expect_failure "a snapshot without built images"
 WITHOUT_IMAGES="false"
+
+expect_build_target_failure "a missing controller linux/arm64 build" '
+    map(select(.type != "Binary" or .extra.ID != "controller"
+        or .goarch != "arm64"))
+'
+expect_build_target_failure "an extra ucpd operating-system target" '
+    . + [.[] | select(.type == "Binary" and .extra.ID == "ucpd"
+        and .goarch == "amd64") | .goos = "windows"]
+'
+expect_build_target_failure "an incorrect applications-rp architecture" '
+    map(if .type == "Binary" and .extra.ID == "applications-rp"
+        and .goarch == "arm64" then .goarch = "riscv64" else . end)
+'
+expect_build_target_failure "an incorrect pre-upgrade ARM variant" '
+    map(if .type == "Binary" and .extra.ID == "pre-upgrade"
+        and .goarch == "arm" then .goarm = "6" else . end)
+'
+expect_build_target_failure "a duplicate dynamic-rp binary target" '
+    . + [.[] | select(.type == "Binary" and .extra.ID == "dynamic-rp"
+        and .goarch == "amd64")]
+'
+expect_build_target_failure "an unexpected binary build ID" '
+    map(if .type == "Binary" and .extra.ID == "controller"
+        and .goarch == "arm64" then .extra.ID = "unexpected" else . end)
+'
 
 OMIT_ASSET="rad_linux_arm"
 write_fixture

@@ -180,8 +180,8 @@ verify_cli_assets() {
 verify_build_matrix() {
     local expected_builds
     local actual_builds
-    local expected_rad_targets
-    local actual_rad_targets
+    local expected_targets
+    local actual_targets
 
     expected_builds='[
         "applications-rp",
@@ -196,27 +196,31 @@ verify_build_matrix() {
     )"
     assert_json_equal "${actual_builds}" "${expected_builds}" "build IDs"
 
-    expected_rad_targets="$(jq -c '[
-        .cliAssets[]
-        | if .arch == "arm"
-            then .os + "/" + .arch + "/v7"
-            else .os + "/" + .arch
-          end
+    expected_targets="$(jq -c '[
+        (.cliAssets[]
+            | ["rad", .os, .arch,
+                (if .arch == "arm" then "7" else "" end)]),
+        (.images[]
+            | select(.category == "production")
+            | .name as $id
+            | .requiredPlatforms[]
+            | split("/")
+            | [$id, .[0], .[1],
+                (if .[1] == "arm"
+                    then (.[2] | ltrimstr("v"))
+                    else ""
+                 end)])
     ] | sort' "${TARGETS_FILE}")"
-    actual_rad_targets="$(jq -c '[
+    actual_targets="$(jq -c '[
         .[]
         | select(
             .type == "Binary"
-            and .extra.ID == "rad"
-            and (.name | startswith("rad_"))
+            and (.extra.ID != "rad" or (.name | startswith("rad_")))
         )
-        | if .goarch == "arm"
-            then .goos + "/" + .goarch + "/v" + .goarm
-            else .goos + "/" + .goarch
-          end
+        | [.extra.ID, .goos, .goarch, (.goarm // "")]
     ] | sort' "${DIST_DIR}/artifacts.json")"
-    assert_json_equal "${actual_rad_targets}" "${expected_rad_targets}" \
-        "rad build targets"
+    assert_json_equal "${actual_targets}" "${expected_targets}" \
+        "binary build targets"
 }
 
 verify_image_definitions() {
