@@ -156,6 +156,39 @@ These tests run automatically for every PR via the `functional-test-noncloud.yam
 
 Separate scheduled jobs (`purge-azure-test-resources.yaml` and `purge-aws-test-resources.yaml`) delete cloud resources left behind when a run is cancelled or times out.
 
+### Diagnose long-running Azure test failures
+
+The scheduled `long-running-azure.yaml` workflow uses a published release for the CLI, control plane, and test source. Its diagnostics scripts run from the workflow checkout on `main`, so diagnostic improvements do not require a new Radius release.
+
+Download the `all_container_logs` artifact from a successful or failed run. Alongside the released test harness's logs, it contains:
+
+- `all-tests-pod-states.log`: final pod, node, and event descriptions.
+- `all-diagnostics/window-start.txt`: the UTC start of the test command, used to filter the final container log sweep.
+- `all-diagnostics/events-*.log`: timestamped event JSON and `radius-system` pod summaries sampled throughout the test command, with a 60-second delay between samples. These preserve events that may expire before the final snapshot.
+- `all-diagnostics/radius-system/containers.tsv`: pod UIDs, restart counts, images, and separate current/previous container identities and start/finish timestamps, without pod environment values. Missing fields are `-`; a running container has no current finish time. The column order is recorded in `collection.log`.
+- `all-diagnostics/radius-system/*.current.log` and `*.previous.log`: timestamped retained container logs from the test window. Previous logs are requested for containers reporting a restart.
+- `all-diagnostics/collection.log` and `sampler.log`: requested windows, collection times, command outcomes, capture failures, and limit notices.
+
+The sampler stops with the wrapped command, including on cancellation, without replacing its exit status. A 130-minute safety ceiling exceeds the workflow's existing 120-minute test-step timeout. Sampling is capped at 20 MiB. The final container log sweep has a 120-second budget, a 10 MiB cap per capture, and a 100 MiB combined cap; individual requests are bounded to 15 seconds plus a two-second termination grace period. Final diagnostic collection has a five-minute workflow timeout and runs before artifact upload and cluster cleanup.
+
+Container logs cannot recover deleted pods or rotated history, and `--previous` covers at most one restart of a surviving container. An old OOM termination is not evidence of an OOM during this run; compare its timestamp with `window-start.txt`. A quiet log interval alone does not prove rotation or a stalled collector. `FAILED` entries, output caps, cancellation, or a collection timeout can leave incomplete captures. Use the cluster's existing Azure monitoring for historical CPU, memory, throttling, and logs no longer retained by Kubernetes. Treat downloaded logs as potentially sensitive.
+
+To collect the same diagnostics locally, use Bash, `kubectl`, `jq`, and GNU coreutils (`timeout`) with your selected cluster. Use an absolute output path and a fresh directory for each run:
+
+```bash
+export RADIUS_CONTAINER_LOG_PATH="$PWD/dist/lrt-diagnostics-local"
+export DIAGNOSTICS_NAME=all
+bash .github/scripts/run-with-cluster-diagnostics.sh \
+  make test-functional-corerp-noncloud
+# Run this even if the test command fails.
+DIAGNOSTICS_LOG_NAMESPACES=radius-system \
+  bash .github/scripts/collect-cluster-diagnostics.sh
+```
+
+`DIAGNOSTICS_SAMPLE_INTERVAL` overrides the sampling delay in seconds. `DIAGNOSTICS_SINCE_TIME` overrides the saved window with a UTC timestamp such as `2026-09-17T10:00:00Z`; without either window, the collector records that container logs were skipped rather than fetching unbounded history. `DIAGNOSTICS_COLLECTION_SECONDS` overrides the container sweep's time budget. Other functional workflows retain their existing snapshot behavior unless they opt in with `DIAGNOSTICS_LOG_NAMESPACES`.
+
+Run `make test-cluster-diagnostics` to exercise collection, limits, failures, command status preservation, and sampler cancellation with a stubbed `kubectl`; it does not access a cluster. This optional target requires `jq` and GNU coreutils (`timeout`). The Ubuntu unit-test CI job invokes it separately; it is not a prerequisite of `make test`, so the standard local unit-test command does not acquire these additional tool requirements.
+
 ### Cloud credentials in CI (federated identity)
 
 The cloud CI workflows - `functional-test-cloud.yaml`, the long-running test `long-running-azure.yaml` ("LRT"), and the two scheduled purge jobs - authenticate to Azure and AWS with **federated identity only**. No static cloud secrets (service-principal passwords or AWS access keys) are stored in GitHub; every credential is a short-lived token minted from an OIDC trust. Two distinct trusts are in play:
