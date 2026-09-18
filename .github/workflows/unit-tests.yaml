@@ -71,6 +71,10 @@ jobs:
         # Version pinned in build/tools.yaml (HELM_VERSION).
         run: make install-helm
 
+      - name: Run cluster diagnostics tests
+        # Ubuntu provides jq and GNU timeout; keep these optional for make test.
+        run: make test-cluster-diagnostics
+
       - name: Run make test (unit tests)
         env:
           GOTESTSUM_OPTS: --junitfile ./dist/unit_test/results.xml

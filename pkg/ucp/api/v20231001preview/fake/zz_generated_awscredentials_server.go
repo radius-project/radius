@@ -109,7 +109,7 @@ func (a *AwsCredentialsServerTransport) dispatchCreateOrUpdate(req *http.Request
 	if a.srv.CreateOrUpdate == nil {
 		return nil, &nonRetriableError{errors.New("fake for method CreateOrUpdate not implemented")}
 	}
-	const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.AWS/credentials/(?P<credentialName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/aws/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.AWS/credentials/(?P<credentialName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -146,7 +146,7 @@ func (a *AwsCredentialsServerTransport) dispatchDelete(req *http.Request) (*http
 	if a.srv.Delete == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Delete not implemented")}
 	}
-	const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.AWS/credentials/(?P<credentialName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/aws/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.AWS/credentials/(?P<credentialName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -179,7 +179,7 @@ func (a *AwsCredentialsServerTransport) dispatchGet(req *http.Request) (*http.Re
 	if a.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.AWS/credentials/(?P<credentialName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/aws/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.AWS/credentials/(?P<credentialName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -214,7 +214,7 @@ func (a *AwsCredentialsServerTransport) dispatchNewListPager(req *http.Request) 
 	}
 	newListPager := a.newListPager.get(req)
 	if newListPager == nil {
-		const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.AWS/credentials`
+		const regexStr = `/planes/aws/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.AWS/credentials`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 2 {
@@ -249,7 +249,7 @@ func (a *AwsCredentialsServerTransport) dispatchUpdate(req *http.Request) (*http
 	if a.srv.Update == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Update not implemented")}
 	}
-	const regexStr = `/planes/aws/(?P<planeName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/System\.AWS/credentials/(?P<credentialName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/planes/aws/(?P<planeName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)/providers/System\.AWS/credentials/(?P<credentialName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {

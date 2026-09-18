@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/radius-project/radius/test/rp"
 	"github.com/radius-project/radius/test/step"
@@ -35,9 +36,10 @@ import (
 // the container's Kubernetes resources on the external (workload) cluster rather
 // than the control-plane cluster the Deployment Engine runs on.
 //
-// The test asserts the container pod exists on the external cluster and is absent
-// from the control-plane cluster. It is skipped when RADIUS_TEST_EXTERNAL_KUBECONFIG
-// is unset (single-cluster runs).
+// The test asserts the container pod and Service exist on the external cluster,
+// are absent from the control-plane cluster, and are removed from the external
+// cluster when the Radius resources are deleted. It is skipped when
+// RADIUS_TEST_EXTERNAL_KUBECONFIG is unset (single-cluster runs).
 func Test_MultiCluster_BicepContainer(t *testing.T) {
 	external := requireExternalCluster(t)
 
@@ -75,6 +77,7 @@ func Test_MultiCluster_BicepContainer(t *testing.T) {
 					Namespaces: map[string][]validation.K8sObject{
 						appNamespace: {
 							validation.NewK8sPodForResource(name, containerName),
+							validation.NewK8sServiceForResource(name, containerName),
 						},
 					},
 				})
@@ -88,6 +91,15 @@ func Test_MultiCluster_BicepContainer(t *testing.T) {
 	preSetup, previewEnvID := rp.NewPreviewEnvPreSetup(name, test.Options.Workspace.Scope, appNamespace)
 	test.PreSetup = preSetup
 	test.Steps[0].Executor = step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("environment=%s", previewEnvID))
+	test.PostDeleteVerify = func(ctx context.Context, t *testing.T, _ rp.RPTest) {
+		verifyCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+
+		validation.ValidateNoPodsInApplication(verifyCtx, t, external.clientset, appNamespace, name)
+		if verifyCtx.Err() == nil {
+			requireNoServicesForResource(verifyCtx, t, external.clientset, appNamespace, name, containerName)
+		}
+	}
 
 	test.Test(t)
 }
