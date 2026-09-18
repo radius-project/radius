@@ -25,8 +25,9 @@ import (
 	"net/url"
 	"time"
 
+	"uuid"
+
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/logging"
 

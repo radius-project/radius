@@ -45,8 +45,6 @@ on:
           .github/release.yml
           .github/runners/**
           .github/triage-bot/**
-          .github/workflows/c9k-failure-report.yml
-          .github/workflows/c9k-nightly.yml
           .github/workflows/close-stale-prs.yml
           .github/workflows/update-resource-types.yaml
           .github/workflows/dependabot-manager.yml

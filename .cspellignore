@@ -10,6 +10,7 @@ AWSCredential
 AWSCredentialProvider
 AcquireLock
 Amidst
+amannn
 AnonymousCredential
 Antrea
 ApiVersionName
@@ -729,6 +730,7 @@ gitmodules
 gitops
 gitsubmodule
 gnrc
+goarm
 godoc
 gofmt
 golang
@@ -820,6 +822,7 @@ kusto
 lastModifiedAt
 lastModifiedBy
 lastModifiedByType
+ldflags
 lfx
 lgtm
 lifecycle

@@ -104,20 +104,34 @@ jobs:
         # Pinned version + checksums live in build/tools.yaml (JQ_VERSION).
         run: make install-jq
 
-      - name: Modify bicepconfig.json
+      - name: Modify bicepconfig.json files
+        # Repoint every bicepconfig.json in the repo at the extensions built above so
+        # the .bicep sources are validated against the types generated in this PR
+        # instead of the published ones. Only entries that already exist are rewritten,
+        # so unrelated extensions (for example aws) and configs that declare no
+        # extensions at all are left untouched. This covers every config, including
+        # ones outside test/ such as .radius/bicepconfig.json; build/validate-bicep.sh
+        # compiles with --no-restore, so a config left pointing at a remote artifact
+        # fails with BCP190.
         run: |
-          # Update bicepconfig.json with paths for extensions
-          jq \
-            --arg rad "$GITHUB_WORKSPACE/tmp-radius-bicep-extension/radius.tgz" \
-            --arg test "$GITHUB_WORKSPACE/tmp-testresources-bicep-extension/testresources.tgz" \
-            '.extensions.radius = $rad | .extensions.testresources = $test' \
-            bicepconfig.json > tmp.json && mv tmp.json bicepconfig.json
+          set -euo pipefail
 
-           # Copy to the dynamicrp resources test directory so the .bicep files there can find it
-           cp -f bicepconfig.json ./test/functional-portable/dynamicrp/noncloud/resources/bicepconfig.json
+          while IFS= read -r config; do
+            jq \
+              --arg rad "$GITHUB_WORKSPACE/tmp-radius-bicep-extension/radius.tgz" \
+              --arg test "$GITHUB_WORKSPACE/tmp-testresources-bicep-extension/testresources.tgz" \
+              'if has("extensions") then
+                 .extensions |= (
+                   (if has("radius") then .radius = $rad else . end)
+                   | (if has("testresources") then .testresources = $test else . end)
+                 )
+               else . end' \
+              "$config" > "$config.tmp"
+            mv "$config.tmp" "$config"
 
-      - name: Print updated bicepconfig.json
-        run: cat bicepconfig.json
+            echo "== $config"
+            cat "$config"
+          done < <(find . -type f -name bicepconfig.json -not -path '*/node_modules/*')
 
       - name: Verify Bicep files
         run: ./build/validate-bicep.sh

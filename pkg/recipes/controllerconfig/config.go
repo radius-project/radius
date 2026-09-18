@@ -104,7 +104,7 @@ func New(options hostoptions.HostOptions) (*RecipeControllerConfig, error) {
 			recipes.TemplateKindBicep: bicep.NewBicepDriver(
 				clientOptions,
 				cfg.DeploymentEngineClient,
-				processors.NewResourceClient(options.Arm, options.UCPConnection, cfg.Kubernetes),
+				processors.NewResourceClientFactory(options.Arm, options.UCPConnection, cfg.Kubernetes),
 				bicep.BicepOptions{
 					DeleteRetryCount:        bicepDeleteRetryCount,
 					DeleteRetryDelaySeconds: bicepDeleteRetryDeleteSeconds,

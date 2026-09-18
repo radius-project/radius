@@ -168,7 +168,7 @@ jobs:
           cache: false
 
       - name: Login to Azure
-        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
@@ -352,7 +352,7 @@ jobs:
           echo "FUNCTEST_OIDC_ISSUER=${oidc_issuer}" >> "${GITHUB_OUTPUT}"
 
       - name: Re-login to Azure before functional tests
-        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
@@ -383,7 +383,7 @@ jobs:
         # federated OIDC to assume a role instead of static access keys; the
         # action exports short-lived AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY /
         # AWS_SESSION_TOKEN into the environment for the test step below.
-        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
         with:
           role-to-assume: ${{ secrets.AWS_GH_ACTIONS_ROLE }}
           role-session-name: ${{ github.run_id }}
@@ -484,7 +484,7 @@ jobs:
 
       - name: Login to Azure
         if: always()
-        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.1
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}

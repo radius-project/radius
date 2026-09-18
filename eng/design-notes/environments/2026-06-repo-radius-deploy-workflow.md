@@ -8,15 +8,17 @@
 
 ## Scope
 
+> **Update (2026-08):** These workflow templates, composite actions, and scripts have moved to [`radius-project/ai-extensions`](https://github.com/radius-project/ai-extensions/tree/main/.github/extension) under `.github/extension/`, which is now their single source of truth. The links below point at that repository. See [ai-extensions#420](https://github.com/radius-project/ai-extensions/issues/420).
+
 This document covers **Investment 3 of the Repo Radius feature spec: the Repo Radius workflow with standardized inputs and outputs** — the `deploy` workflow that runs Radius on demand inside a GitHub Actions runner — together with **Investment 4: cloud credential integration**.
 
 The workflow ships as a **unified dispatcher plus two thin provider workflows and shared composite actions**:
 
-- [`run-rad-commands.yml`](../../../.github/extension/run-rad-commands.yml) — the dispatcher and the only file that is dispatched. It owns the dispatch contract and, via a `detect` job bound to the GitHub Environment, routes to the matching provider workflow (`workflow_call`, `secrets: inherit`).
-- [`run-rad-commands-azure.yml`](../../../.github/extension/run-rad-commands-azure.yml) and [`run-rad-commands-aws.yml`](../../../.github/extension/run-rad-commands-aws.yml) — reusable workflows carrying only the cloud-specific steps (OIDC login, cluster connection, token projection, credential registration, and recipe pack).
-- [`.github/extension/actions/`](../../../.github/extension/actions/) — composite actions for the provider-agnostic phases (`setup-control-plane`, `restore-state`, `run-rad-commands`, `teardown`), referenced from `radius-project/radius` at a pinned ref.
+- [`run-rad-commands.yml`](https://github.com/radius-project/ai-extensions/blob/main/.github/extension/run-rad-commands.yml) — the dispatcher and the only file that is dispatched. It owns the dispatch contract and, via a `detect` job bound to the GitHub Environment, routes to the matching provider workflow (`workflow_call`, `secrets: inherit`).
+- [`run-rad-commands-azure.yml`](https://github.com/radius-project/ai-extensions/blob/main/.github/extension/run-rad-commands-azure.yml) and [`run-rad-commands-aws.yml`](https://github.com/radius-project/ai-extensions/blob/main/.github/extension/run-rad-commands-aws.yml) — reusable workflows carrying only the cloud-specific steps (OIDC login, cluster connection, token projection, credential registration, and recipe pack).
+- [`.github/extension/actions/`](https://github.com/radius-project/ai-extensions/tree/main/.github/extension/actions) — composite actions for the provider-agnostic phases (`setup-control-plane`, `restore-state`, `run-rad-commands`, `teardown`), referenced from `radius-project/ai-extensions` at a pinned ref.
 
-A frontend (the Copilot app, the CLI, etc.) writes the dispatcher and both provider workflows into a user's repository under `.github/workflows/` and dispatches `run-rad-commands.yml`. The provider workflows are not dispatched directly, and the composite actions are never copied into the user repo — they stay at [`.github/extension/`](../../../.github/extension/) so the shared logic has a canonical, reviewed home.
+A frontend (the Copilot app, the CLI, etc.) writes the dispatcher and both provider workflows into a user's repository under `.github/workflows/` and dispatches `run-rad-commands.yml`. The provider workflows are not dispatched directly, and the composite actions are never copied into the user repo — they stay at [`.github/extension/`](https://github.com/radius-project/ai-extensions/tree/main/.github/extension) so the shared logic has a canonical, reviewed home.
 
 The workflow was originally a single file that branched on which provider variables were present. It was first split into two self-contained per-provider files, which duplicated the ~80% of provider-agnostic steps between them; the current shape keeps the two provider surfaces separate while hoisting the shared steps into composite actions behind one dispatcher, so each duplicated phase is defined once.
 

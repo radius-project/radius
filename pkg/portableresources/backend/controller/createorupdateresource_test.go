@@ -25,10 +25,11 @@ import (
 	"net/http"
 	"testing"
 
+	"uuid"
+
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
 	"github.com/go-viper/mapstructure/v2"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	corev1 "k8s.io/api/core/v1"
@@ -381,7 +382,7 @@ func TestCreateOrUpdateResource_Run(t *testing.T) {
 				OperationID:      uuid.New(),
 				OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT", // Operation does not affect the behavior of the controller.
 				ResourceID:       TestResourceID,
-				CorrelationID:    uuid.NewString(),
+				CorrelationID:    uuid.New().String(),
 				OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 			}
 
@@ -648,7 +649,7 @@ func TestCreateOrUpdateResource_Run_RecipeErrorSurfacedWhenStatusSaveFails(t *te
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
-		CorrelationID:    uuid.NewString(),
+		CorrelationID:    uuid.New().String(),
 		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 	})
 
@@ -793,7 +794,7 @@ func TestCreateOrUpdateResource_Run_SensitiveRedaction(t *testing.T) {
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
-		CorrelationID:    uuid.NewString(),
+		CorrelationID:    uuid.New().String(),
 		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 	})
 	require.NoError(t, err)
@@ -867,7 +868,7 @@ func TestCreateOrUpdateResource_Run_SensitiveMissingKey(t *testing.T) {
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
-		CorrelationID:    uuid.NewString(),
+		CorrelationID:    uuid.New().String(),
 		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 	})
 	require.Error(t, err)
@@ -975,7 +976,7 @@ func TestCreateOrUpdateResource_Run_SensitiveNilKubeClient(t *testing.T) {
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
-		CorrelationID:    uuid.NewString(),
+		CorrelationID:    uuid.New().String(),
 		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 	})
 	require.Error(t, err)
@@ -1088,7 +1089,7 @@ func TestCreateOrUpdateResource_Run_SensitiveRedactionSaveFails(t *testing.T) {
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
-		CorrelationID:    uuid.NewString(),
+		CorrelationID:    uuid.New().String(),
 		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 	})
 	require.Error(t, err)
@@ -1251,7 +1252,7 @@ func TestCreateOrUpdateResource_Run_SensitiveMultipleFields(t *testing.T) {
 		OperationID:      uuid.New(),
 		OperationType:    "APPLICATIONS.TEST/TESTRESOURCES|PUT",
 		ResourceID:       TestResourceID,
-		CorrelationID:    uuid.NewString(),
+		CorrelationID:    uuid.New().String(),
 		OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 	})
 	require.NoError(t, err)

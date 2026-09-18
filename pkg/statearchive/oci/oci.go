@@ -203,8 +203,7 @@ func (s *session) Commit(ctx context.Context, _ string) error {
 	}
 	defer artifact.Close(ctx)
 
-	// A brand-new archive with nothing to store is a true no-op, matching the git
-	// backend (which does not create an empty-tree commit on first run). An empty
+	// A brand-new archive with nothing to store is a true no-op. An empty
 	// directory for an archive that already exists is not skipped here: it must be
 	// persisted as an empty archive so deletions are not silently dropped.
 	if !artifact.hasFiles && s.manifestDigest == "" {

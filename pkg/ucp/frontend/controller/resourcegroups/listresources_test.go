@@ -19,7 +19,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 

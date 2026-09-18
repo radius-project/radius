@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/radius-project/radius/pkg/cli/bicep/tools"
+	"github.com/radius-project/radius/pkg/process"
 )
 
 // Official regex for semver
@@ -47,7 +47,7 @@ func runBicepRaw(args ...string) ([]byte, error) {
 
 	// runs 'bicep'
 	fullCmd := binPath + " " + strings.Join(args, " ")
-	c := exec.Command(binPath, args...)
+	c := process.Command(binPath, args...)
 
 	stdout, err := c.StdoutPipe()
 	if err != nil {

@@ -21,9 +21,10 @@ import (
 	"net/http"
 	"sync"
 
+	"uuid"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armdeployments"
-	"github.com/google/uuid"
 )
 
 // This file contains mocks for the ResourceDeploymentsClient interface.

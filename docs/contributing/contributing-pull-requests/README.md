@@ -9,6 +9,7 @@ This guide explains how to open a pull request against [`radius-project/radius`]
 Before opening a pull request, make sure you have:
 
 - **Agreement on scope.** For anything beyond a trivial fix (like a typo), [choose an existing issue](https://github.com/radius-project/radius/issues) or [open a new one](https://github.com/radius-project/radius/issues/new/choose) and work with the maintainers to confirm the change is in scope *before* writing code. The maintainers have discretion over what they accept — see [this article](https://www.igvita.com/2011/12/19/dont-push-your-pull-requests/) for why. If you have any doubt whether a contribution is valuable, ask first.
+- **Eligibility for external automated contributions.** External contributors using an AI agent, coding bot, or other automation may only implement an open issue that has the `triaged` label and either the `help wanted` or `good first issue` label. The issue must not be assigned to someone else or already have an open pull request. Re-check these conditions immediately before opening your pull request. If any condition is not satisfied, do not implement the issue or open a pull request; automated contributions do not receive the trivial-fix exception above.
 - **A fork of the repository.** Submit pull requests from a forked repo against the `main` branch (the default) unless otherwise instructed.
 - **A working local build.** Run the basic validations (`make build test lint format-check`) successfully before you submit. See [building the repo](../contributing-code/contributing-code-building/) for setup.
 
@@ -43,11 +44,41 @@ Fixes: #<issue>
 
 We **squash** pull requests as part of the merge process, so intermediate commit messages are appended. We prefer a single commit in the git history for each PR.
 
-### 3. Sign your commits
+### 3. Use a Conventional Commit pull request title
 
-The Developer Certificate of Origin (DCO) check requires every commit to be signed off. See [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide for how to do this.
+Radius uses the pull request title as the squash commit subject. Format the title as `<type>[optional scope][!]: <description>`, using one of these types:
 
-### 4. Open the pull request and fill out the template
+| Type       | Use for                                               | Changelog group  |
+|------------|-------------------------------------------------------|------------------|
+| `feat`     | New user-facing functionality                         | Added            |
+| `fix`      | Bug fixes                                             | Fixed            |
+| `perf`     | Performance improvements                              | Changed          |
+| `refactor` | Internal changes that affect behavior or maintenance  | Changed          |
+| `style`    | Format and lint changes                               | Excluded         |
+| `revert`   | Reverted changes                                      | Reverted changes |
+| `docs`     | Documentation-only changes                            | Excluded         |
+| `test`     | Test-only changes                                     | Excluded         |
+| `build`    | Build-system changes                                  | Excluded         |
+| `ci`       | Continuous-integration changes                        | Excluded         |
+| `chore`    | Routine maintenance that fits no user-facing category | Excluded         |
+
+Scopes are optional. Add `!` before the colon for a breaking change. For example:
+
+```text
+feat(cli): add recipe validation
+fix(controller): preserve resource status
+refactor(api)!: remove the legacy response field
+```
+
+These signals determine changelog grouping only. They never select the Radius version: scheduled full releases bump the minor version while Radius is `0.x`, and patch releases bump the patch version of their release channel.
+
+### 4. Sign your commits
+
+The Developer Certificate of Origin (DCO) check requires every commit to include a `Signed-off-by` line. Every commit must also be cryptographically signed so that GitHub displays a **Verified** badge. These are separate requirements; see [Signing your commits](../contributing-code/contributing-code-first-commit/first-commit-06-creating-a-pr/index.md#signing-your-commits) in the first commit guide for setup and remediation guidance.
+
+The commit-signature verification workflow posts a non-blocking reminder when any commit does not show a **Verified** signature. It updates that reminder while commits remain unverified and leaves it on the pull request after all commits are verified.
+
+### 5. Open the pull request and fill out the template
 
 Open the pull request from your fork against `main`. The form is pre-populated with our [template](https://github.com/radius-project/radius/blob/main/.github/pull_request_template.md). Complete its summary, reason for change, test instructions, and per-file change summary so reviewers can understand both the intent and the verification.
 
@@ -58,7 +89,7 @@ Every non-Dependabot pull request must have exactly one release-impact label:
 
 The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
 
-### 5. (Optional) Self-review with the `radius-code-review` skill
+### 6. (Optional) Self-review with the `radius-code-review` skill
 
 If you use GitHub Copilot, you can run the [`radius-code-review`](../../../.github/skills/radius-code-review/SKILL.md) skill against your own pull request to generate an initial AI-assisted review *before* asking maintainers to look at it. This can help you catch obvious issues, missing tests, or unclear comments while you still own the change.
 
@@ -80,7 +111,7 @@ Suggested workflow:
 
 See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md#optional-ai-assisted-review-with-the-radius-code-review-skill) for the reviewer perspective on this skill.
 
-### 6. Respond to review feedback
+### 7. Respond to review feedback
 
 The maintainers or other contributors will add comments giving feedback, asking questions, and making suggestions. Respond to each comment to continue the discussion or explain whether you plan to address it. Accepting a pull request is ultimately at the maintainer's discretion.
 
@@ -93,6 +124,7 @@ The maintainers or other contributors will add comments giving feedback, asking 
 A pull request must pass these checkpoints to be accepted:
 
 - **Initial review** — a maintainer reviews your summary and confirms an appropriate issue is linked.
+- **External automation eligibility** — a pull request opened through external automation links to an eligible issue with the required labels.
 - **Automated tests** — GitHub Actions workflows run unit, integration, and functional tests against your changes. Automation adds comments with links to logs so you can diagnose failures.
 - **Required label** — exactly one of `pr:standard` or `pr:important` is applied.
 - **Code review** — you receive and address feedback from a maintainer or other contributors.

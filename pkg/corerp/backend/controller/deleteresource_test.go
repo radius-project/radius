@@ -21,7 +21,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	ctrl "github.com/radius-project/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/radius-project/radius/pkg/components/database"
 	deployment "github.com/radius-project/radius/pkg/corerp/backend/deployment"
@@ -41,8 +42,8 @@ func TestDeleteResourceRun_20231001Preview(t *testing.T) {
 			OperationID:   uuid.New(),
 			OperationType: "APPLICATIONS.CORE/CONTAINERS|DELETE",
 			ResourceID: fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/containers/%s",
-				uuid.NewString()),
-			CorrelationID:    uuid.NewString(),
+				uuid.New().String()),
+			CorrelationID:    uuid.New().String(),
 			OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 		}
 

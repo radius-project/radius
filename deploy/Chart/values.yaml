@@ -160,11 +160,16 @@ dynamicrp:
     # Default install (this disabled) is PSA-baseline-compatible.
     enabled: false
     # Pinned rootless BuildKit image.
-    image: "moby/buildkit:v0.13.2-rootless"
+    image: moby/buildkit:v0.13.2-rootless
     # Limit concurrent OCI worker steps across all builds sharing the
     # BuildKit sidecar. Increase only after profiling representative cold
     # builds and sizing the resources below with sufficient headroom.
     maxParallelism: 1
+    # Mount an existing PVC containing operator-approved local build contexts
+    # read-only at /var/radius/build-contexts in dynamic-rp. Leave empty to omit
+    # the chart-managed mount.
+    localContexts:
+      existingClaim: ""
     # Default limits suit small/medium image builds; raise for large
     # contexts or memory-heavy compilations.
     resources:
@@ -193,14 +198,6 @@ rp:
     deleteRetryDelaySeconds: 60
   terraform:
     path: "/terraform"
-  security:
-    annotationProtection:
-      # Enable ValidatingAdmissionPolicy to protect radapp.io/status from user tampering.
-      # Keep disabled by default for compatibility with clusters that do not support
-      # admissionregistration.k8s.io/v1 ValidatingAdmissionPolicy.
-      enabled: false
-      # Service account allowed to modify protected annotations.
-      allowedServiceAccountName: "applications-rp"
 
 dashboard:
   enabled: true
@@ -259,13 +256,12 @@ networkPolicies:
   # Source CIDRs the Kubernetes API server uses to reach the Radius control plane.
   # This traffic is host-network, so it arrives with the NODE's IP rather than a
   # pod IP and cannot be matched by a namespace/pod selector:
-  #   - kube-apiserver -> ucp:9443        (APIService aggregation for api.ucp.dev)
-  #   - kube-apiserver -> controller:9443 (recipe admission webhook)
-  # The allow policy is scoped to port 9443 (the only host-network destination).
+  #   - kube-apiserver -> ucp:9443 (APIService aggregation for api.ucp.dev)
+  # The allow policy is scoped to UCP port 9443 (the only host-network destination).
   # Set this to your cluster's node/control-plane source CIDR(s) -- e.g. the VPC or
   # subnet CIDR on a managed cluster, or the Docker network subnet for KinD. This
   # is REQUIRED when enabled (rendering fails if empty); without it the default-deny
-  # policy would block API aggregation and webhooks and break the control plane.
+  # policy would block API aggregation and break the control plane.
   # Example: ["10.0.0.0/16"]
   controlPlaneCIDRs: []
 

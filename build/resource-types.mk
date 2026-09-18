@@ -127,7 +127,3 @@ sync-resource-types: ## Copy manifest files from the per-namespace refs pinned i
 .PHONY: test-sync-resource-types
 test-sync-resource-types: ## Test stable-first resource type and recipe pack pin selection
 	@bash ./build/scripts/test-sync-resource-types.sh
-
-.PHONY: verify-contrib-consumers
-verify-contrib-consumers: ## Verify workflow Recipe sources resolved from defaults.yaml exist upstream
-	@bash ./build/scripts/verify-contrib-consumers.sh

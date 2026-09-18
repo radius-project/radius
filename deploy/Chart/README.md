@@ -26,6 +26,18 @@ rad install kubernetes \
   --set dynamicrp.buildkit.enabled=true
 ```
 
+Git build sources require no additional storage. To enable local filesystem build sources, create a PVC in the Radius release namespace containing the approved source directories, then configure the chart to mount it read-only:
+
+```console
+rad install kubernetes \
+  --set dynamicrp.buildkit.enabled=true \
+  --set dynamicrp.buildkit.localContexts.existingClaim=build-contexts
+```
+
+The chart does not create or populate the PVC. It mounts the claim only into `dynamic-rp` at `/var/radius/build-contexts`; local source paths must resolve beneath that directory.
+
+`dynamic-rp` reads the mount as user ID `65532` and the Pod sets no `fsGroup`, so every directory and file on the claim must be readable by that user or world-readable. The Deployment runs a single replica with the default rolling update, so a `ReadWriteOnce` claim can block a rollout when the replacement Pod is scheduled to another node. Prefer a `ReadOnlyMany` or `ReadWriteMany` claim where the storage class supports it.
+
 BuildKit defaults to one parallel OCI worker step across all image builds sharing the `dynamic-rp` Pod. This protects the sidecar's memory limit when multiple `containerImages` resources are deployed together. `dynamicrp.buildkit.maxParallelism` must be an integer between `1` and `2147483647`; BuildKit treats non-positive values as unlimited, so the chart rejects them before rendering the daemon configuration.
 
 Increase `dynamicrp.buildkit.maxParallelism` only after profiling representative cold builds. Size `dynamicrp.buildkit.resources.requests` for the sustained working set and `dynamicrp.buildkit.resources.limits` with enough headroom for the configured parallelism. The limit bounds concurrent build steps but cannot make an individual build fit within an undersized memory limit.
@@ -242,9 +254,7 @@ When enabled, three policies are applied:
 - `radius-allow-internal` — re-permits east-west traffic between Radius
   components (intra-namespace), matched by the immutable
   `kubernetes.io/metadata.name` namespace label.
-- `radius-allow-control-plane` — allows the Kubernetes API server to reach UCP
-  (APIService aggregation) and the controller (admission webhook) on port `9443`,
-  from the CIDRs in `networkPolicies.controlPlaneCIDRs`.
+- `radius-allow-control-plane` — allows the Kubernetes API server to reach UCP (APIService aggregation) on port `9443`, from the CIDRs in `networkPolicies.controlPlaneCIDRs`.
 
 Only ingress is restricted; egress is left open so UCP can reach the Kubernetes
 API server and pods can resolve DNS.
@@ -256,14 +266,7 @@ API server and pods can resolve DNS.
 
 #### Setting `controlPlaneCIDRs`
 
-The kube-apiserver reaches UCP (APIService aggregation) and the controller
-(admission webhook) over the host network, so this traffic arrives with the
-**node's** IP rather than a pod IP and cannot be matched by a namespace/pod
-selector. You must supply the source CIDR(s) via
-`networkPolicies.controlPlaneCIDRs` — **this is required when
-`networkPolicies.enabled=true`; Helm rendering fails if it is empty** — otherwise
-the default-deny policy would block API aggregation and webhooks and break the
-control plane.
+The kube-apiserver reaches UCP (APIService aggregation) over the host network, so this traffic arrives with the **node's** IP rather than a pod IP and cannot be matched by a namespace/pod selector. You must supply the source CIDR(s) via `networkPolicies.controlPlaneCIDRs` — **this is required when `networkPolicies.enabled=true`; Helm rendering fails if it is empty** — otherwise the default-deny policy would block API aggregation and break the control plane.
 
 Use your cluster's node/control-plane subnet(s), **not** individual node IPs
 (a `/32` would exclude other control-plane addresses):
