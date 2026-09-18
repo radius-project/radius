@@ -80,7 +80,7 @@ type ProviderAzure struct {
 	ResourceGroup AzureResourceGroup `json:"resourceGroup"`
 	// Subscription represents the subscription information.
 	Subscription AzureSubscription `json:"subscription"`
-	// ResourceNameHash is a short, stable hash used to generate globally unique cloud
+	// ResourceNameHash is a short, stable hash used to generate globally unique
 	// resource names. It is derived from the lowercased Azure provider scope, application ID,
 	// environment ID, and resource ID. A resource deployed without an application contributes
 	// an empty application segment, which is a distinct seed rather than a collision with any
