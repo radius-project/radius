@@ -181,7 +181,7 @@ func bicepDriver(options *Options) (driver.Driver, error) {
 		return nil, err
 	}
 
-	resourceClient := processors.NewResourceClient(armConfig, options.UCP, options.KubernetesProvider)
+	resourceClientFactory := processors.NewResourceClientFactory(armConfig, options.UCP, options.KubernetesProvider)
 
 	bicepDeleteRetryCount, err := strconv.Atoi(options.Config.Bicep.DeleteRetryCount)
 	if err != nil {
@@ -196,7 +196,7 @@ func bicepDriver(options *Options) (driver.Driver, error) {
 	return bicep.NewBicepDriver(
 		sdk.NewClientOptions(options.UCP),
 		deploymentEngineClient,
-		resourceClient,
+		resourceClientFactory,
 		bicep.BicepOptions{
 			DeleteRetryCount:        bicepDeleteRetryCount,
 			DeleteRetryDelaySeconds: bicepDeleteRetryDeleteSeconds,
