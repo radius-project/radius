@@ -320,9 +320,9 @@ printf '\nUSER 0\n' >>"${STAGED_REPO}/deploy/images/ucpd/Dockerfile.goreleaser"
 expect_staged_failure "a GoReleaser Dockerfile that changes the runtime user"
 
 stage_repo
-sed -i.bak 's/^FROM alpine:3.21.3$/FROM alpine:3.22/' \
+sed -i.bak 's/^FROM .*/FROM scratch/' \
     "${STAGED_REPO}/deploy/images/applications-rp/Dockerfile.goreleaser"
-grep -q '^FROM alpine:3.22$' \
+grep -q '^FROM scratch$' \
     "${STAGED_REPO}/deploy/images/applications-rp/Dockerfile.goreleaser" ||
     fail "fixture did not change the applications-rp base image"
 expect_staged_failure "a GoReleaser Dockerfile with a different base image"
