@@ -75,8 +75,10 @@ jobs:
 
             Use `<type>[optional scope][!]: <description>`, for example
             `feat(cli): add rad group switch`. Allowed types are `feat`, `fix`,
-            `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `deps`,
+            `perf`, `refactor`, `style`, `docs`, `test`, `build`, `ci`, `chore`,
             and `revert`.
+
+            See the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification for more details.
 
             The type only selects the changelog section; it never changes the
             released version. See the
