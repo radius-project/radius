@@ -626,15 +626,15 @@ type ProvidersAws struct {
 
 // ProvidersAzure - The Azure cloud provider definition.
 type ProvidersAzure struct {
+	// REQUIRED; (Required) Name of the Azure resource group that resources are deployed into. Most Bicep and Terraform Recipes
+	// expect a resource group in the deployment context.
+	ResourceGroupName *string
+
 	// REQUIRED; (Required) ID of the Azure subscription that resources are deployed into.
 	SubscriptionID *string
 
 	// (Optional) Managed or workload identity Radius uses to authenticate to Azure when deploying resources.
 	Identity *IdentitySettings
-
-	// (Optional) Name of the Azure resource group that resources are deployed into. Most Bicep and Terraform Recipes expect a
-	// resource group in the deployment context, so set this whenever deploying Azure resources.
-	ResourceGroupName *string
 }
 
 type ProvidersKubernetes struct {
