@@ -25,6 +25,7 @@ readonly REPO_ROOT
 readonly RELEASE_WORKFLOW="${REPO_ROOT}/.github/workflows/build-release.yaml"
 readonly CLI_WORKFLOW="${REPO_ROOT}/.github/workflows/__build-cli.yaml"
 readonly IMAGE_WORKFLOW="${REPO_ROOT}/.github/workflows/__build-images.yaml"
+readonly HELM_WORKFLOW="${REPO_ROOT}/.github/workflows/__build-helm-chart.yaml"
 readonly CONFIG="${REPO_ROOT}/.goreleaser.yaml"
 readonly ARTIFACTS_MAKEFILE="${REPO_ROOT}/build/artifacts.mk"
 PASS=0
@@ -104,6 +105,21 @@ test_publication_gate() {
         (."finalize-release".steps | any(.env.INPUT_MANIFEST_FILE == "dist/verification/release-manifest.json"))
     ' >/dev/null; then
         fail_test "failed verification or missing approval can reach publication"
+        return
+    fi
+    if ! yq -o=json '.jobs."build-and-push-helm-chart".steps' \
+        "${HELM_WORKFLOW}" | jq -e '
+        (map(.name) | index("Pin external chart images") as $pin |
+            $pin != null and $pin < index("Package Helm chart") and
+            $pin < index("Push helm chart to GHCR")) and
+        any(.[]; .name == "Pin external chart images" and
+            (.if | contains("refs/tags/v")) and
+            (.run | contains("--names dashboard")) and
+            (.run | contains("--names deployment-engine")) and
+            (.run | contains("--expected-digest")) and
+            (.run | contains("--source-sha")))
+    ' > /dev/null; then
+        fail_test "chart publication can precede verified external version tags"
         return
     fi
     ((++PASS))
