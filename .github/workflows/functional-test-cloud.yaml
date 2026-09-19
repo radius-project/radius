@@ -364,8 +364,10 @@ jobs:
       packages: write # Required for uploading the package
       pull-requests: write # Required for updating pull requests
       id-token: write # Required for azure/login
+    outputs:
+      REL_VERSION: ${{ steps.test-image-version.outputs.REL_VERSION }}
     env:
-      REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      REL_VERSION: test-${{ needs.setup.outputs.UNIQUE_ID }}-${{ github.run_id }}-${{ github.run_attempt }}
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
       PR_NUMBER: ${{ needs.setup.outputs.PR_NUMBER }}
       CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
@@ -376,6 +378,10 @@ jobs:
       DAPR_VER: 1.14.4
       ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
+      - name: Record immutable test image version
+        id: test-image-version
+        run: echo "REL_VERSION=${REL_VERSION}" >>"${GITHUB_OUTPUT}"
+
       - name: Get GitHub app token
         if: github.repository == vars.RADIUS_REPOSITORY
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
@@ -470,6 +476,7 @@ jobs:
           name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
           path: |
             ./dist/linux_amd64/release/rad
+          overwrite: true
 
       - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: success() && env.PR_NUMBER != ''
@@ -643,7 +650,7 @@ jobs:
       pull-requests: write # Required for posting a PR comment
     env:
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
-      REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
       PR_NUMBER: ${{ needs.setup.outputs.PR_NUMBER }}
@@ -657,7 +664,7 @@ jobs:
       # purge workflow still cleans up any orphaned groups.
       AZURE_TEST_RESOURCE_GROUP: radtest-${{ needs.setup.outputs.UNIQUE_ID }}-${{ matrix.name }}-${{ github.run_attempt }}
       RAD_CLI_ARTIFACT_NAME: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
-      BICEP_RECIPE_TAG_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
     steps:
