@@ -869,6 +869,125 @@ jobs:
     permissions:
       contents: read # Required for actions/checkout
 
+  verify-release:
+    name: Verify release manifest and staged installation
+    needs:
+      - release-preflight
+      - goreleaser-release
+      - build-and-push-remaining-images
+      - build-and-push-helm-chart
+      - build-and-push-bicep-types
+    if: >-
+      !cancelled() && needs.release-preflight.result == 'success' &&
+      (needs.release-preflight.outputs.release-state == 'published' ||
+       (needs.goreleaser-release.result == 'success' &&
+        needs.build-and-push-remaining-images.result == 'success' &&
+        needs.build-and-push-helm-chart.result == 'success' &&
+        needs.build-and-push-bicep-types.result == 'success'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    permissions:
+      contents: write # the staged draft release is listed only for push access
+      packages: read
+      actions: read
+      deployments: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+
+      - name: Parse release version
+        run: python ./.github/scripts/get_release_version.py
+
+      - name: Install verification tools
+        run: make install-jq install-yq install-oras install-helm install-kind install-kubectl
+
+      - name: Read release plan
+        run: |
+          mkdir -p dist/verification
+          yq -o=json '.' ".github/release-plans/${GITHUB_REF_NAME}.yaml" >dist/verification/plan.json
+
+      - name: Verify RC prerequisites for finals
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_MODE: check-rc
+          INPUT_PLAN_FILE: dist/verification/plan.json
+        with:
+          retries: 5
+          script: |
+            const { default: coordinate } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/coordinate-release.mjs`)
+            await coordinate({ github, context, core })
+
+      - name: Report staging complete
+        continue-on-error: true
+        uses: ./.github/actions/release-status
+        with:
+          stage: staging
+          results: ${{ toJSON(needs) }}
+          webhook: ${{ secrets.RELEASE_TEAMS_WEBHOOK }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Verify required outputs and installation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: make verify-release-publication
+
+      - name: Retain verification evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-verification-${{ github.sha }}
+          path: dist/verification/*.json
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 90
+
+      - name: Report verification state
+        if: always()
+        continue-on-error: true
+        uses: ./.github/actions/release-status
+        with:
+          stage: verification
+          state: ${{ job.status }}
+          results: ${{ toJSON(steps) }}
+          manifest: dist/verification/release-manifest.json
+          webhook: ${{ secrets.RELEASE_TEAMS_WEBHOOK }}
+
+  approve-publication:
+    name: Approve final or patch publication
+    needs: [release-preflight, verify-release]
+    if: >-
+      !contains(github.ref_name, '-') &&
+      needs.release-preflight.outputs.release-state != 'published'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: release
+    permissions: {}
+    steps:
+      - run: echo "Verified release approved for publication."
+
   finalize-release:
     name: Promote aliases and publish release
     concurrency:
@@ -881,20 +1000,33 @@ jobs:
       - build-and-push-remaining-images
       - build-and-push-helm-chart
       - build-and-push-bicep-types
+      - verify-release
+      - approve-publication
     if: >-
-      github.repository == 'radius-project/radius' &&
+      !cancelled() && github.repository == 'radius-project/radius' &&
       startsWith(github.ref, 'refs/tags/v') &&
-      needs.release-preflight.outputs.release-state != 'published'
+      needs.release-preflight.outputs.release-state != 'published' &&
+      needs.verify-release.result == 'success' &&
+      (needs.approve-publication.result == 'success' ||
+       (contains(github.ref_name, '-rc.') && needs.approve-publication.result == 'skipped'))
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       contents: write # Required for publishing the draft GitHub Release
       packages: write # Required for promoting image and CLI OCI aliases
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
 
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -917,7 +1049,19 @@ jobs:
         uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
 
       - name: Install promotion tools
-        run: make install-jq install-oras
+        run: make install-jq install-yq install-oras install-helm
+
+      - name: Download approved verification evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-verification-${{ github.sha }}
+          path: dist/approved
+
+      - name: Recheck outputs after approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERIFY_APPROVED_MANIFEST: dist/approved/release-manifest.json
+        run: make recheck-release-publication
 
       - name: Select release aliases
         id: alias-policy
@@ -927,6 +1071,8 @@ jobs:
           INPUT_REPO: radius
           INPUT_TAG: ${{ github.ref_name }}
           INPUT_MODE: select-aliases
+          INPUT_MANIFEST_FILE: dist/verification/release-manifest.json
+          INPUT_SOURCE_SHA: ${{ env.SOURCE_SHA }}
         with:
           retries: 5
           script: |
@@ -935,38 +1081,6 @@ jobs:
             )
             await script({ github, core })
 
-      - name: Download staged release metadata
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: core-release-locks-${{ github.sha }}
-          path: dist
-
-      - name: Download retained image metadata
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: remaining-image-digest-*-${{ github.sha }}
-          merge-multiple: true
-          path: dist/remaining
-
-      - name: Verify immutable release outputs
-        run: |
-          jq -s 'add | sort_by(.name)' \
-            dist/production-image-digests.json \
-            dist/remaining/*-image-digests.json \
-            >dist/release-image-digests.json
-          args=(
-            verify
-            --version "${REL_VERSION}"
-            --source-sha "${SOURCE_SHA}"
-            --image-lock dist/release-image-digests.json
-            --cli-lock dist/release-cli-oci.json
-            --sboms
-          )
-          if [[ "${UPDATE_RELEASE:-}" == "true" ]]; then
-            args+=(--channel "${REL_CHANNEL}")
-          fi
-          bash ./.github/scripts/release-oci-artifacts.sh "${args[@]}"
-
       - name: Persist the complete image lock
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
@@ -974,7 +1088,24 @@ jobs:
           INPUT_REPO: radius
           INPUT_TAG: ${{ github.ref_name }}
           INPUT_MODE: upload
-          INPUT_FILE: dist/release-image-digests.json
+          INPUT_FILE: dist/verification/release-image-digests.json
+          INPUT_IMMUTABLE: "true"
+        with:
+          retries: 5
+          script: |
+            const { default: script } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/release-assets.mjs`
+            )
+            await script({ github, core })
+
+      - name: Persist the verified release manifest
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_OWNER: ${{ github.repository_owner }}
+          INPUT_REPO: radius
+          INPUT_TAG: ${{ github.ref_name }}
+          INPUT_MODE: upload
+          INPUT_FILE: dist/verification/release-manifest.json
           INPUT_IMMUTABLE: "true"
         with:
           retries: 5
@@ -989,7 +1120,8 @@ jobs:
         env:
           RELEASE_PROMOTE_LATEST: ${{ steps.alias-policy.outputs.promote_latest }}
         run: |
-          GORELEASER_PRODUCTION_IMAGE_LOCK=dist/release-image-digests.json \
+          GORELEASER_PRODUCTION_IMAGE_LOCK=dist/verification/release-image-digests.json \
+            GORELEASER_CLI_LOCK=dist/verification/release-cli-oci.json \
             make promote-release-aliases
 
       - name: Publish and verify draft GitHub Release
@@ -1001,6 +1133,8 @@ jobs:
           INPUT_NOTES_FILE: docs/release-notes/${{ github.ref_name }}.md
           INPUT_PRERELEASE: ${{ contains(github.ref_name, '-') }}
           INPUT_MAKE_LATEST: ${{ steps.alias-policy.outputs.promote_latest }}
+          INPUT_MANIFEST_FILE: dist/verification/release-manifest.json
+          INPUT_SOURCE_SHA: ${{ env.SOURCE_SHA }}
         with:
           retries: 5
           script: |
@@ -1008,6 +1142,83 @@ jobs:
               `${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-draft-release.mjs`
             )
             await script({ github, core })
+
+      - name: Report publication state
+        if: always()
+        continue-on-error: true
+        uses: ./.github/actions/release-status
+        with:
+          stage: publication
+          state: ${{ job.status }}
+          results: ${{ toJSON(steps) }}
+          manifest: dist/verification/release-manifest.json
+          webhook: ${{ secrets.RELEASE_TEAMS_WEBHOOK }}
+
+  coordinate-release:
+    name: Coordinate docs and samples
+    needs: [release-preflight, verify-release, finalize-release]
+    if: >-
+      !cancelled() && needs.verify-release.result == 'success' &&
+      (needs.finalize-release.result == 'success' ||
+       needs.release-preflight.outputs.release-state == 'published')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      actions: read
+      deployments: write
+    outputs:
+      results: ${{ steps.coordinate.outputs.results }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install plan reader
+        run: make install-yq
+
+      - name: Read approved plan
+        run: yq -o=json '.' ".github/release-plans/${GITHUB_REF_NAME}.yaml" >"${RUNNER_TEMP}/plan.json"
+
+      - name: Get docs and samples dispatch token
+        id: coordination-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RADIUS_RELEASE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_RELEASE_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: docs,samples
+          permission-actions: write
+          permission-contents: read
+          permission-pull-requests: read
+
+      - name: Reconcile downstream workflows
+        id: coordinate
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          INPUT_PLAN_FILE: ${{ runner.temp }}/plan.json
+          INPUT_SOURCE_SHA: ${{ github.sha }}
+          COORDINATION_TOKEN: ${{ steps.coordination-token.outputs.token }}
+        with:
+          retries: 5
+          script: |
+            const remote = github.request.defaults({
+              headers: { authorization: `token ${process.env.COORDINATION_TOKEN}` }
+            })
+            const { default: coordinate } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/coordinate-release.mjs`)
+            await coordinate({ github, remote, context, core })
+
+      - name: Report coordination state
+        if: always()
+        continue-on-error: true
+        uses: ./.github/actions/release-status
+        with:
+          stage: coordination
+          state: ${{ job.status }}
+          results: ${{ toJSON(steps) }}
+          downstream: ${{ steps.coordinate.outputs.results || '[]' }}
+          webhook: ${{ secrets.RELEASE_TEAMS_WEBHOOK }}
 
   build-summary:
     name: Build Summary
@@ -1018,16 +1229,37 @@ jobs:
       - build-and-push-helm-chart
       - build-and-push-bicep-types
       - finalize-release
+      - verify-release
+      - approve-publication
+      - coordinate-release
     if: always() && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read # Required for actions/checkout
+      actions: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      - name: Download verification summary
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-verification-${{ github.sha }}
+          path: dist/verification
+
+      - name: Report final release summary
+        continue-on-error: true
+        uses: ./.github/actions/release-status
+        with:
+          stage: summary
+          results: ${{ toJSON(needs) }}
+          downstream: ${{ needs.coordinate-release.outputs.results || '[]' }}
+          manifest: dist/verification/release-manifest.json
+          webhook: ${{ secrets.RELEASE_TEAMS_WEBHOOK }}
 
       - name: Check all build jobs
         env:
@@ -1038,6 +1270,9 @@ jobs:
           HELM_RESULT: ${{ needs.build-and-push-helm-chart.result }}
           BICEP_RESULT: ${{ needs.build-and-push-bicep-types.result }}
           FINALIZE_RESULT: ${{ needs.finalize-release.result }}
+          VERIFY_RESULT: ${{ needs.verify-release.result }}
+          APPROVAL_RESULT: ${{ needs.approve-publication.result }}
+          COORDINATION_RESULT: ${{ needs.coordinate-release.result }}
         run: |
           ./.github/scripts/build-summary.sh \
             "release-preflight:${PREFLIGHT_RESULT}" \
@@ -1045,4 +1280,7 @@ jobs:
             "remaining-images:${REMAINING_IMAGES_RESULT}" \
             "build-and-push-helm-chart:${HELM_RESULT}" \
             "build-and-push-bicep-types:${BICEP_RESULT}" \
+            "verify-release:${VERIFY_RESULT}" \
+            "approve-publication:${APPROVAL_RESULT}" \
+            "coordinate-release:${COORDINATION_RESULT}" \
             "finalize-release:${FINALIZE_RESULT}"
