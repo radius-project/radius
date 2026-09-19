@@ -28,6 +28,11 @@ type ApplicationsClientListByScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
+// ApplicationsClientReconcileOptions contains the optional parameters for the ApplicationsClient.Reconcile method.
+type ApplicationsClientReconcileOptions struct {
+	// placeholder for future optional parameters
+}
+
 // ApplicationsClientUpdateOptions contains the optional parameters for the ApplicationsClient.Update method.
 type ApplicationsClientUpdateOptions struct {
 	// placeholder for future optional parameters

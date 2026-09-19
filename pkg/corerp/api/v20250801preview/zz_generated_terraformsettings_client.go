@@ -56,7 +56,12 @@ func (client *TerraformSettingsClient) CreateOrUpdate(ctx context.Context, rootS
 	if err != nil {
 		return TerraformSettingsClientCreateOrUpdateResponse{}, err
 	}
-	return client.createOrUpdateHandleResponse(httpResp, http.StatusOK, http.StatusCreated)
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
+		err = runtime.NewResponseError(httpResp)
+		return TerraformSettingsClientCreateOrUpdateResponse{}, err
+	}
+	resp, err := client.createOrUpdateHandleResponse(httpResp)
+	return resp, err
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
@@ -86,11 +91,8 @@ func (client *TerraformSettingsClient) createOrUpdateCreateRequest(ctx context.C
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *TerraformSettingsClient) createOrUpdateHandleResponse(resp *http.Response, successCodes ...int) (TerraformSettingsClientCreateOrUpdateResponse, error) {
+func (client *TerraformSettingsClient) createOrUpdateHandleResponse(resp *http.Response) (TerraformSettingsClientCreateOrUpdateResponse, error) {
 	result := TerraformSettingsClientCreateOrUpdateResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.TerraformSettingsResource); err != nil {
 		return TerraformSettingsClientCreateOrUpdateResponse{}, err
 	}
@@ -116,7 +118,8 @@ func (client *TerraformSettingsClient) Delete(ctx context.Context, rootScope str
 		return TerraformSettingsClientDeleteResponse{}, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusNoContent) {
-		return TerraformSettingsClientDeleteResponse{}, runtime.NewResponseError(httpResp)
+		err = runtime.NewResponseError(httpResp)
+		return TerraformSettingsClientDeleteResponse{}, err
 	}
 	return TerraformSettingsClientDeleteResponse{}, nil
 }
@@ -159,7 +162,12 @@ func (client *TerraformSettingsClient) Get(ctx context.Context, rootScope string
 	if err != nil {
 		return TerraformSettingsClientGetResponse{}, err
 	}
-	return client.getHandleResponse(httpResp, http.StatusOK)
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return TerraformSettingsClientGetResponse{}, err
+	}
+	resp, err := client.getHandleResponse(httpResp)
+	return resp, err
 }
 
 // getCreateRequest creates the Get request.
@@ -185,11 +193,8 @@ func (client *TerraformSettingsClient) getCreateRequest(ctx context.Context, roo
 }
 
 // getHandleResponse handles the Get response.
-func (client *TerraformSettingsClient) getHandleResponse(resp *http.Response, successCodes ...int) (TerraformSettingsClientGetResponse, error) {
+func (client *TerraformSettingsClient) getHandleResponse(resp *http.Response) (TerraformSettingsClientGetResponse, error) {
 	result := TerraformSettingsClientGetResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.TerraformSettingsResource); err != nil {
 		return TerraformSettingsClientGetResponse{}, err
 	}
@@ -212,52 +217,38 @@ func (client *TerraformSettingsClient) NewListByScopePager(rootScope string, opt
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			req, err := client.listByScopeCreateRequest(ctx, rootScope, nextLink, options)
+			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
+				return client.listByScopeCreateRequest(ctx, rootScope, options)
+			}, nil)
 			if err != nil {
 				return TerraformSettingsClientListByScopeResponse{}, err
 			}
-			resp, err := client.internal.Pipeline().Do(req)
-			if err != nil {
-				return TerraformSettingsClientListByScopeResponse{}, err
-			}
-			return client.listByScopeHandleResponse(resp, http.StatusOK)
+			return client.listByScopeHandleResponse(resp)
 		},
 	})
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *TerraformSettingsClient) listByScopeCreateRequest(ctx context.Context, rootScope string, nextLink string, _ *TerraformSettingsClientListByScopeOptions) (*policy.Request, error) {
-	firstPage := nextLink == ""
-	var req *policy.Request
-	var err error
-	if firstPage {
-		urlPath := "/{rootScope}/providers/Radius.Core/terraformSettings"
-		if rootScope == "" {
-			return nil, errors.New("parameter rootScope cannot be empty")
-		}
-		urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	} else {
-		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
+func (client *TerraformSettingsClient) listByScopeCreateRequest(ctx context.Context, rootScope string, _ *TerraformSettingsClientListByScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Radius.Core/terraformSettings"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
 	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	if firstPage {
-		reqQP := req.Raw().URL.Query()
-		reqQP.Set("api-version", version20250801Preview)
-		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-		req.Raw().Header["Accept"] = []string{"application/json"}
-	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20250801Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
 
 // listByScopeHandleResponse handles the ListByScope response.
-func (client *TerraformSettingsClient) listByScopeHandleResponse(resp *http.Response, successCodes ...int) (TerraformSettingsClientListByScopeResponse, error) {
+func (client *TerraformSettingsClient) listByScopeHandleResponse(resp *http.Response) (TerraformSettingsClientListByScopeResponse, error) {
 	result := TerraformSettingsClientListByScopeResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.TerraformSettingsResourceListResult); err != nil {
 		return TerraformSettingsClientListByScopeResponse{}, err
 	}
@@ -283,7 +274,12 @@ func (client *TerraformSettingsClient) Update(ctx context.Context, rootScope str
 	if err != nil {
 		return TerraformSettingsClientUpdateResponse{}, err
 	}
-	return client.updateHandleResponse(httpResp, http.StatusOK)
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return TerraformSettingsClientUpdateResponse{}, err
+	}
+	resp, err := client.updateHandleResponse(httpResp)
+	return resp, err
 }
 
 // updateCreateRequest creates the Update request.
@@ -313,11 +309,8 @@ func (client *TerraformSettingsClient) updateCreateRequest(ctx context.Context, 
 }
 
 // updateHandleResponse handles the Update response.
-func (client *TerraformSettingsClient) updateHandleResponse(resp *http.Response, successCodes ...int) (TerraformSettingsClientUpdateResponse, error) {
+func (client *TerraformSettingsClient) updateHandleResponse(resp *http.Response) (TerraformSettingsClientUpdateResponse, error) {
 	result := TerraformSettingsClientUpdateResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.TerraformSettingsResource); err != nil {
 		return TerraformSettingsClientUpdateResponse{}, err
 	}
