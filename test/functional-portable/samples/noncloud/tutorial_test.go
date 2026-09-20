@@ -45,6 +45,11 @@ const (
 	retryTimeout = 1 * time.Minute
 	retryBackoff = 1 * time.Second
 
+	// attemptTimeout bounds a single readiness attempt (port-forward setup plus the
+	// HTTP probe) so that a pod which accepts a connection but never responds cannot
+	// stall the retry loop past retryTimeout.
+	attemptTimeout = 10 * time.Second
+
 	// noDatabaseMessage is returned by the demo app's list endpoint when it runs
 	// without a configured database. The modernized sample (radius-project/samples#2645)
 	// removed the inline redis resource from app.bicep, so the app stores todo items in
@@ -119,15 +124,23 @@ func Test_FirstApplicationSample(t *testing.T) {
 
 				deadline := time.Now().Add(retryTimeout)
 				var lastErr error
+			retryLoop:
 				for attempt := 1; time.Now().Before(deadline); attempt++ {
 					t.Logf("Waiting for pod readiness via portforward (attempt %d)", attempt)
-					lastErr = waitForPodReady(t, ctx, ct, appNamespace, selector, remotePort)
+					attemptCtx, cancel := context.WithTimeout(ctx, attemptTimeout)
+					lastErr = waitForPodReady(t, attemptCtx, ct, appNamespace, selector, remotePort)
+					cancel()
 					if lastErr == nil {
 						break
 					}
 
 					t.Logf("Pod not ready yet: %s", lastErr)
-					time.Sleep(retryBackoff)
+					select {
+					case <-ctx.Done():
+						lastErr = ctx.Err()
+						break retryLoop
+					case <-time.After(retryBackoff):
+					}
 				}
 				require.NoError(t, lastErr, "pod did not become ready via portforward after retrying for %s", retryTimeout)
 
@@ -170,13 +183,15 @@ func waitForPodReady(t *testing.T, ctx context.Context, at rp.RPTest, namespace 
 	defer close(stopChan)
 
 	select {
+	case <-ctx.Done():
+		return ctx.Err()
 	case err := <-errorChan:
 		return fmt.Errorf("portforward failed with error: %s", err)
 	case localPort := <-portChan:
 		baseURL := fmt.Sprintf("http://localhost:%d", localPort)
 		t.Logf("Portforward session active at %s", baseURL)
 
-		_, err := sendGetRequest("hostname", baseURL, "", 200)
+		_, err := sendGetRequest(ctx, "hostname", baseURL, "", 200)
 		return err
 	}
 }
@@ -195,6 +210,8 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 	defer close(stopChan)
 
 	select {
+	case <-ctx.Done():
+		return ctx.Err()
 	case err := <-errorChan:
 		return fmt.Errorf("portforward failed with error: %s", err)
 	case localPort := <-portChan:
@@ -203,13 +220,13 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 		hostname := "localhost"
 
 		// Test base endpoint, i.e., base URL returns a 200
-		_, err := sendGetRequest("hostname", baseURL, "", 200)
+		_, err := sendGetRequest(ctx, "hostname", baseURL, "", 200)
 		if err != nil {
 			return err
 		}
 
 		// Test GET /api/todos (list)
-		listResponse, err := sendGetRequest(hostname, baseURL, "api/todos", 200)
+		listResponse, err := sendGetRequest(ctx, hostname, baseURL, "api/todos", 200)
 		if err != nil {
 			return err
 		}
@@ -241,7 +258,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 			return err
 		}
 
-		createResponse, err := sendPostRequest(hostname, baseURL, "api/todos", &createRequestBodyBytes, 200)
+		createResponse, err := sendPostRequest(ctx, hostname, baseURL, "api/todos", &createRequestBodyBytes, 200)
 		if err != nil {
 			return err
 		}
@@ -264,7 +281,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 		itemId := createdItem["id"]
 
 		// Test GET /api/todos (list)
-		listResponse, err = sendGetRequest(hostname, baseURL, "api/todos", 200)
+		listResponse, err = sendGetRequest(ctx, hostname, baseURL, "api/todos", 200)
 		if err != nil {
 			return err
 		}
@@ -289,7 +306,7 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 		require.Equal(t, expectedListResponseBody, actualListResponseBody)
 
 		// Test GET /api/todos/:id (get)
-		getResponse, err := sendGetRequest(hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), 200)
+		getResponse, err := sendGetRequest(ctx, hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), 200)
 		if err != nil {
 			return err
 		}
@@ -321,19 +338,19 @@ func testWithPortForward(t *testing.T, ctx context.Context, at rp.RPTest, namesp
 			return err
 		}
 
-		_, err = sendPutRequest(hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), &updateRequestBodyBytes, 200)
+		_, err = sendPutRequest(ctx, hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), &updateRequestBodyBytes, 200)
 		if err != nil {
 			return err
 		}
 
 		// Test DELETE /api/todos/:id (delete)
-		_, err = sendDeleteRequest(hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), 204)
+		_, err = sendDeleteRequest(ctx, hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), 204)
 		if err != nil {
 			return err
 		}
 
 		// Test GET /api/todos (list)
-		listResponse, err = sendGetRequest(hostname, baseURL, "api/todos", 200)
+		listResponse, err = sendGetRequest(ctx, hostname, baseURL, "api/todos", 200)
 		if err != nil {
 			return err
 		}
@@ -374,8 +391,8 @@ func sendRequest(req *http.Request, expectedStatusCode int) (*http.Response, err
 	return res, nil
 }
 
-func sendGetRequest(hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodGet, getURLPath(baseURL, path), nil)
+func sendGetRequest(ctx context.Context, hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, getURLPath(baseURL, path), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -384,13 +401,13 @@ func sendGetRequest(hostname, baseURL, path string, expectedStatusCode int) (*ht
 	return sendRequest(req, expectedStatusCode)
 }
 
-func sendPostRequest(hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
+func sendPostRequest(ctx context.Context, hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
 	if body == nil {
 		return nil, fmt.Errorf("body cannot be nil")
 	}
 
 	bodyReader := bytes.NewReader(*body)
-	req, err := http.NewRequest(http.MethodPost, getURLPath(baseURL, path), bodyReader)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, getURLPath(baseURL, path), bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -400,13 +417,13 @@ func sendPostRequest(hostname, baseURL, path string, body *[]byte, expectedStatu
 	return sendRequest(req, expectedStatusCode)
 }
 
-func sendPutRequest(hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
+func sendPutRequest(ctx context.Context, hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
 	if body == nil {
 		return nil, fmt.Errorf("body cannot be nil")
 	}
 
 	bodyReader := bytes.NewReader(*body)
-	req, err := http.NewRequest(http.MethodPut, getURLPath(baseURL, path), bodyReader)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, getURLPath(baseURL, path), bodyReader)
 	if err != nil {
 		return nil, err
 	}
@@ -416,8 +433,8 @@ func sendPutRequest(hostname, baseURL, path string, body *[]byte, expectedStatus
 	return sendRequest(req, expectedStatusCode)
 }
 
-func sendDeleteRequest(hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
-	req, err := http.NewRequest(http.MethodDelete, getURLPath(baseURL, path), nil)
+func sendDeleteRequest(ctx context.Context, hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, getURLPath(baseURL, path), nil)
 	if err != nil {
 		return nil, err
 	}
