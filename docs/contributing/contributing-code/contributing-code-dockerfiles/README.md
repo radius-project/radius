@@ -6,7 +6,7 @@ This is the primary doc for writing and modifying the Dockerfiles that package t
 
 ## Where these files live
 
-- `deploy/images/<service>/Dockerfile` — one directory per shipped image (`applications-rp`, `dynamic-rp`, `ucpd`, `controller`, `bicep`, and others). Some services also carry a `Dockerfile.mariner` variant.
+- `deploy/images/<service>/Dockerfile` — one directory per shipped image (`applications-rp`, `dynamic-rp`, `ucpd`, `controller`, `bicep`, and others).
 - The image builds are wired through [`build/docker.mk`](../../../../build/docker.mk) and invoked with `make docker-build` / `make docker-push` (see [building the repo](../contributing-code-building/README.md)).
 
 ## Conventions
