@@ -27,6 +27,21 @@ The tests live under `./test/functional-portable`. They use product functionalit
 >
 > ⚠️ If you set environment variables for functional tests you may need to restart VS Code or other editors for them to take effect.
 
+### Local Bicep registry trust
+
+Bicep v0.43 and later reject registry hosts outside their trusted allowlist. When using the secure local registry setup from `functional-test-noncloud.yaml`, explicitly trust its two hostnames: `localhost` for setup and extension restore, and `radius-registry` for the CLI recipe-publishing tests. Scope the variable to the commands that need it:
+
+```sh
+BICEP_TRUSTED_REGISTRIES=localhost,radius-registry \
+  BICEP_RECIPE_REGISTRY=localhost:5000 make publish-test-bicep-recipes
+BICEP_TRUSTED_REGISTRIES=localhost,radius-registry \
+  BICEP_RECIPE_REGISTRY=radius-registry:5000 make test-functional-cli-noncloud
+```
+
+Use bare hostnames, without `br:`, ports, or paths, and add only registries you own or trust. The non-cloud CI test job sets this variable for both direct Bicep commands and `rad` subprocesses; the installer does not set global registry trust. Keep the existing HTTPS, hostname resolution, and CA certificate setup: registry trust does not bypass TLS or certificate verification. ACR hosts remain trusted by default and continue using Azure credentials, including when `ociEnabled` is enabled.
+
+Keep `ociEnabled` unset or `false` for the existing HTTPS `localhost` registry. Bicep v0.46.1's generic OCI transport automatically uses plain HTTP for loopback hosts; adding hostname trust alone does not change the transport.
+
 ## Steps
 
 ### Run the tests locally
@@ -226,6 +241,7 @@ The GitHub Actions role allows 5400-second sessions, and the LRT workflow reques
 
 - **You changed a recipe.** Re-run the *publish test recipe* prerequisite step so the cluster uses your updated recipe.
 - **Tests cannot pull a package.** Confirm the packages published to your organization have their visibility set to `public`.
+- **Bicep reports that a local registry is not trusted.** Set `BICEP_TRUSTED_REGISTRIES` for the publishing and test commands as described in [Local Bicep registry trust](#local-bicep-registry-trust). A certificate error is separate; fix the local CA setup rather than disabling verification.
 - **You changed the `rad` CLI.** Copy the rebuilt `rad` to your path (or set `RAD_PATH` for Codelens) so the tests use your new binary.
 - **Environment variables seem ignored.** Restart VS Code or your editor so newly set variables take effect.
 - **Many tests fail immediately.** Confirm the Kubernetes namespace in use is `default`.
