@@ -17,9 +17,17 @@ limitations under the License.
 package publishextension
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/netip"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/radius-project/radius/bicep-tools/generator"
 	"github.com/radius-project/radius/pkg/cli/bicep"
@@ -31,6 +39,8 @@ import (
 	"github.com/radius-project/radius/pkg/process"
 	"github.com/spf13/cobra"
 )
+
+var numericRegistryHost = regexp.MustCompile(`^(0[xX][0-9a-fA-F]+|[0-9]+)(\.(0[xX][0-9a-fA-F]+|[0-9]+)){0,3}$`)
 
 // NewCommand creates a new instance of the `rad bicep publish-extension` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -47,13 +57,15 @@ Bicep extensions enable extensibility for the Bicep language. This command can b
 Once an extension is been generated, it can be used locally or published to a container registry for distribution depending on the target specified.
 
 When publishing to an OCI registry it is expected the user runs docker login (or similar command) and has the proper permission to push to the target OCI registry.
+
+Publishing to generic OCI registries requires Bicep v0.45.6 or later. This command enables OCI support for non-loopback registry targets without modifying the user's bicepconfig.json. Loopback and non-canonical numeric registry hosts retain the caller's OCI setting to preserve the existing transport: Bicep uses plain HTTP for loopback when OCI is explicitly enabled. Local file targets are resolved relative to the current directory.
 		`,
 		Example: `
 # Generate a Bicep extension to a local file
 rad bicep publish-extension --from-file ./Example.Provider.yaml --target ./output.tgz
 
 # Publish a Bicep extension to a container registry
-bicep publish-extension ./Example.Provider.yaml --target br:ghcr.io/myregistry/example-provider:v1
+rad bicep publish-extension --from-file ./Example.Provider.yaml --target br:ghcr.io/myregistry/example-provider:v1
 		`,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -136,9 +148,32 @@ func generateBicepExtensionIndex(ctx context.Context, inputFilePath string, outp
 }
 
 func publishExtension(ctx context.Context, inputDirectoryPath string, target string, force bool) error {
+	callerDirectory, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to determine the publishing directory: %w", err)
+	}
+
 	bicepFilePath, err := bicep.GetBicepFilePath()
 	if err != nil {
 		return err
+	}
+
+	bicepFilePath, err = filepath.Abs(bicepFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve the Bicep executable path: %w", err)
+	}
+	inputDirectoryPath, err = filepath.Abs(inputDirectoryPath)
+	if err != nil {
+		return fmt.Errorf("failed to resolve the extension directory: %w", err)
+	}
+
+	// Match Bicep's publish-extension target classification, including its handling of local paths.
+	registryTarget := strings.HasPrefix(target, "br:") || strings.HasPrefix(target, "ts:")
+	if !registryTarget {
+		target, err = filepath.Abs(target)
+		if err != nil {
+			return fmt.Errorf("failed to resolve the extension target: %w", err)
+		}
 	}
 
 	// bicep publish-extension <temp>/index.json --target <target>
@@ -153,6 +188,41 @@ func publishExtension(ctx context.Context, inputDirectoryPath string, target str
 	}
 
 	cmd := process.CommandContext(ctx, bicepFilePath, args...)
+	if registryTarget && !preserveRegistryTransport(target) {
+		if err := writePublishConfig(callerDirectory, inputDirectoryPath); err != nil {
+			return err
+		}
+
+		// Registry targets discover configuration from cwd, not from the generated index.
+		// Local and loopback targets keep their original configuration discovery and transport.
+		cmd.Dir = inputDirectoryPath
+		cmd.Env = cmd.Environ()
+		for _, name := range []string{"DOCKER_CONFIG", "AZURE_CONFIG_DIR", "AZURE_FEDERATED_TOKEN_FILE", "AZURE_CLIENT_CERTIFICATE_PATH", "SSL_CERT_FILE"} {
+			value := os.Getenv(name)
+			if strings.TrimSpace(value) == "" || filepath.IsAbs(value) {
+				continue
+			}
+			absolutePath, err := filepath.Abs(value)
+			if err != nil {
+				return fmt.Errorf("failed to resolve %s for Bicep: %w", name, err)
+			}
+			cmd.Env = append(cmd.Env, name+"="+absolutePath)
+		}
+		for _, name := range []string{"PATH", "SSL_CERT_DIR"} {
+			value, exists := os.LookupEnv(name)
+			if !exists {
+				continue
+			}
+			paths := filepath.SplitList(value)
+			for i, path := range paths {
+				paths[i], err = filepath.Abs(path)
+				if err != nil {
+					return fmt.Errorf("failed to resolve %s for Bicep: %w", name, err)
+				}
+			}
+			cmd.Env = append(cmd.Env, name+"="+strings.Join(paths, string(os.PathListSeparator)))
+		}
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -162,4 +232,136 @@ func publishExtension(ctx context.Context, inputDirectoryPath string, target str
 	}
 
 	return nil
+}
+
+// Bicep's OCI transport forces plain HTTP for loopback. Preserve the caller's
+// choice there, including numeric IPv4 spellings accepted by .NET but not netip.
+func preserveRegistryTransport(target string) bool {
+	reference, ok := strings.CutPrefix(target, "br:")
+	if !ok {
+		return false
+	}
+	registry, err := url.Parse("https://" + reference)
+	if err != nil {
+		// Leave malformed references for Bicep to diagnose.
+		return false
+	}
+	host := registry.Hostname()
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	if address, err := netip.ParseAddr(host); err == nil {
+		address = address.WithZone("")
+		if address.Is4In6() {
+			// .NET only treats the mapping of 127.0.0.1 as IPv6 loopback.
+			return address.Unmap() == netip.AddrFrom4([4]byte{127, 0, 0, 1})
+		}
+		return address.IsLoopback()
+	}
+	return numericRegistryHost.MatchString(host)
+}
+
+func writePublishConfig(callerDirectory, outputDirectory string) error {
+	config, err := readPublishConfig(callerDirectory)
+	if err != nil {
+		return err
+	}
+
+	features := map[string]json.RawMessage{}
+	if value, ok := config["experimentalFeaturesEnabled"]; ok {
+		if err := json.Unmarshal(value, &features); err != nil {
+			return fmt.Errorf("failed to read Bicep experimental features: %w", err)
+		}
+		if features == nil {
+			return errors.New("experimentalFeaturesEnabled in Bicep configuration must be a JSON object")
+		}
+	}
+	features["ociEnabled"] = json.RawMessage("true")
+	config["experimentalFeaturesEnabled"], err = json.Marshal(features)
+	if err != nil {
+		return fmt.Errorf("failed to encode Bicep experimental features: %w", err)
+	}
+
+	data, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("failed to encode the publishing configuration: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(outputDirectory, "bicepconfig.json"), data, 0600); err != nil {
+		return fmt.Errorf("failed to write the publishing configuration: %w", err)
+	}
+	return nil
+}
+
+func readPublishConfig(directory string) (map[string]json.RawMessage, error) {
+	for {
+		filename := filepath.Join(directory, "bicepconfig.json")
+		data, err := os.ReadFile(filename)
+		if err == nil {
+			data, err = stripJSONComments(data)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse Bicep configuration %q: %w", filename, err)
+			}
+			var config map[string]json.RawMessage
+			if err := json.Unmarshal(data, &config); err != nil {
+				return nil, fmt.Errorf("failed to parse Bicep configuration %q: %w", filename, err)
+			}
+			if config == nil {
+				return nil, fmt.Errorf("expected a JSON object in Bicep configuration %q", filename)
+			}
+			return config, nil
+		}
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("failed to read Bicep configuration %q: %w", filename, err)
+		}
+		parent := filepath.Dir(directory)
+		if parent == directory {
+			return map[string]json.RawMessage{}, nil
+		}
+		directory = parent
+	}
+}
+
+// Bicep accepts JSON comments and a leading UTF-8 BOM, but not trailing commas.
+// Replace comments with whitespace so encoding/json still rejects malformed input.
+func stripJSONComments(data []byte) ([]byte, error) {
+	data = bytes.Clone(bytes.TrimPrefix(data, []byte{0xef, 0xbb, 0xbf}))
+	inString := false
+	for i := 0; i < len(data); i++ {
+		if inString {
+			switch data[i] {
+			case '\\':
+				i++
+			case '"':
+				inString = false
+			}
+			continue
+		}
+		if data[i] == '"' {
+			inString = true
+			continue
+		}
+		if data[i] != '/' || i+1 == len(data) {
+			continue
+		}
+		switch data[i+1] {
+		case '/':
+			for ; i < len(data) && data[i] != '\n' && data[i] != '\r'; i++ {
+				data[i] = ' '
+			}
+		case '*':
+			data[i], data[i+1] = ' ', ' '
+			i += 2
+			for ; i+1 < len(data) && !(data[i] == '*' && data[i+1] == '/'); i++ {
+				if data[i] != '\n' && data[i] != '\r' {
+					data[i] = ' '
+				}
+			}
+			if i+1 >= len(data) {
+				return nil, errors.New("unterminated JSON comment")
+			}
+			data[i], data[i+1] = ' ', ' '
+			i++
+		}
+	}
+	return data, nil
 }
