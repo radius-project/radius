@@ -34,11 +34,11 @@ Both GHCR packages are public. Test workflows require package credentials only w
 
 ## Design
 
-`functional-test-cloud.yaml` publishes run-specific Radius types. Its `pull_request_target` path classifies same-repository and organization-member changes as trusted, requires the `external-contributor-approval` environment for other contributors, and runs downstream jobs only after the shared authorization job succeeds. The publishing job logs in to GHCR with its repository `GITHUB_TOKEN` and receives `packages: write` after that authorization decision.
+`functional-test-cloud.yaml` publishes run-specific Radius types. Its `pull_request_target` path classifies same-repository and organization-member changes as trusted, requires the `external-contributor-approval` environment for other contributors, and runs downstream jobs only after the shared authorization job succeeds. Retain that infrastructure authorization decision, but apply the production design's [credential isolation prerequisite](./2026-09-bicep-extension-ghcr-migration.md#credential-isolation-prerequisite): PR-controlled generation runs without package-write credentials, and a separate trusted job publishes its validated artifacts to fixed test destinations using `GITHUB_TOKEN`.
 
-`long-running-azure.yaml` publishes the `testresources` extension. It runs only on a schedule or manual dispatch, requires the canonical Radius repository, and checks out the canonical repository before installing an official Radius release. It has no contributor-approval environment because it has no pull-request trigger. Any future pull-request trigger must add an explicit trust gate before granting package write access or executing pull-request code.
+`long-running-azure.yaml` publishes the `testresources` extension. It runs only on a schedule or manual dispatch, requires the canonical Radius repository, and checks out the canonical repository before installing an official Radius release. It has no contributor-approval environment because it has no pull-request trigger. Any future pull-request trigger must add explicit authorization and separate PR-controlled execution from package-writing jobs.
 
-All test versions use a run-unique tag. Replacing `testresources:latest` prevents concurrent runs from overwriting each other. An `if: always()` step removes versions created by a completed run, and scheduled cleanup removes versions left by cancelled jobs.
+All test versions use a run-unique tag. Replacing `testresources:latest` prevents concurrent runs from overwriting each other. A trusted `if: always()` cleanup job removes only the recorded versions created by a completed run, and scheduled cleanup removes versions left by cancelled jobs.
 
 Generated test `bicepconfig.json` files include `ociEnabled` and reference the GHCR packages. Azure login remains where tests provision Azure resources, but Bicep publishing and restore no longer depend on Azure credentials.
 
@@ -65,7 +65,7 @@ The package setup, cloud workflow changes, and Terraform removal can be prepared
 
 - Publish both packages with only the trusted job's `GITHUB_TOKEN`.
 - Restore both packages anonymously from a clean Bicep cache.
-- Verify an untrusted pull-request job cannot publish or delete package versions.
+- Verify jobs executing pull-request code, even after contributor authorization, cannot publish or delete package versions.
 - Verify concurrent runs use distinct tags.
 - Verify normal and scheduled cleanup do not delete an active run.
 - Install the official Radius release selected by the long-running workflow, verify its downloaded Bicep version is at least v0.45.6, and publish and restore a temporary GHCR extension with `ociEnabled`.
@@ -75,7 +75,7 @@ The package setup, cloud workflow changes, and Terraform removal can be prepared
 
 The extensions contain test schemas derived from public source and are intentionally public. Untrusted pull-request jobs can restore them but cannot publish or delete package versions.
 
-The cloud workflow grants `packages: write` only after its contributor authorization decision. The long-running workflow relies on its schedule/manual triggers and canonical-repository guard and never checks out pull-request code. A future pull-request trigger must add an explicit authorization gate.
+After contributor authorization, the cloud workflow grants `packages: write` only to separate trusted publishing jobs, not jobs executing PR code. The `test/` namespace is not an authorization boundary because GHCR Actions access is repository-scoped. The long-running workflow relies on its schedule/manual triggers and canonical-repository guard and never checks out pull-request code. A future pull-request trigger must add the same authorization and job separation.
 
 ## Current ACR inventory
 
