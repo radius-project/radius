@@ -42,6 +42,13 @@ CHANNEL="${REL_CHANNEL:-}"
 CHART_VERSION_VALUE="${CHART_VERSION:-}"
 SOURCE_COMMIT="${GIT_COMMIT:-}"
 TEMP_DIR=""
+REPORT_READY=false
+REPORT_PHASE="inputs"
+BASELINE_VERSION=""
+CLI_VERIFIED=false
+IMAGES_VERIFIED=false
+FAILURE_EXPECTED=null
+FAILURE_ACTUAL=null
 declare -a CONTAINERS=()
 
 usage() {
@@ -63,6 +70,14 @@ EOF
 
 fail() {
     echo "Error: $*" >&2
+    if [[ "${REPORT_READY}" == true ]]; then
+        jq -n --arg phase "${REPORT_PHASE}" --arg message "$*" \
+            --argjson expected "${FAILURE_EXPECTED}" \
+            --argjson actual "${FAILURE_ACTUAL}" '
+            {phase: $phase, message: $message,
+             expected: $expected, actual: $actual}
+        ' >"${TEMP_DIR}/failure.json"
+    fi
     exit 1
 }
 
@@ -76,7 +91,23 @@ cleanup() {
         rm -rf "${TEMP_DIR}"
     fi
 }
-trap cleanup EXIT
+
+finish() {
+    local status=$?
+
+    trap - EXIT
+    if [[ "${REPORT_READY}" == true ]]; then
+        if ! write_report "${status}"; then
+            echo "Error: could not write parity report: ${REPORT_PATH}" >&2
+            if [[ "${status}" -eq 0 ]]; then
+                status=1
+            fi
+        fi
+    fi
+    cleanup
+    exit "${status}"
+}
+trap finish EXIT
 
 require_command() {
     command -v "$1" >/dev/null 2>&1 || fail "required command not found: $1"
@@ -103,6 +134,8 @@ assert_json_equal() {
         '$actual == $expected' >/dev/null && return 0
     echo "expected ${description}: ${expected}" >&2
     echo "actual ${description}: ${actual}" >&2
+    FAILURE_EXPECTED="${expected}"
+    FAILURE_ACTUAL="${actual}"
     fail "${description} do not match"
 }
 
@@ -561,8 +594,8 @@ inspect_image() {
 # its package installs. The production build restores those layers from the
 # BuildKit GitHub Actions cache while the shadow build resolves them fresh, so
 # comparing them would report upstream package drift rather than a GoReleaser
-# packaging difference. Base image and package parity is enforced statically
-# instead, by the Dockerfile contract check in verify-goreleaser-snapshot.sh.
+# packaging difference. The Dockerfile contract check in
+# verify-goreleaser-snapshot.sh compares build instructions, not resolved contents.
 payload_paths() {
     local name="$1"
 
@@ -693,6 +726,11 @@ verify_images() {
                 fail "production image digest does not match the lock for ${name}"
         fi
 
+        assert_json_equal \
+            "$(jq -c '.mediaType' "${shadow_normalized}")" \
+            "$(jq -c '.mediaType' "${production_normalized}")" \
+            "root manifest media type for ${name}"
+
         expected_platforms="$(jq -c '.requiredPlatforms | sort' <<<"${target}")"
         actual_platforms="$(jq -c '[.platforms[].platform] | sort' \
             "${shadow_normalized}")"
@@ -771,37 +809,62 @@ verify_images() {
 }
 
 write_report() {
-    local baseline="$1"
-    local cli_entries="$2"
-    local image_entries="$3"
+    local exit_status="$1"
 
-    mkdir -p "$(dirname "${REPORT_PATH}")"
+    mkdir -p "$(dirname "${REPORT_PATH}")" || return
     jq -S -n \
-        --arg baselineVersion "$(jq -r '.release.version' "${baseline}")" \
+        --arg baselineVersion "${BASELINE_VERSION}" \
         --arg version "${VERSION}" \
         --arg channel "${CHANNEL}" \
         --arg commit "${SOURCE_COMMIT}" \
         --arg shadowRegistry "${SHADOW_REGISTRY}" \
-        --slurpfile cli "${cli_entries}" \
-        --slurpfile images "${image_entries}" '
+        --arg phase "${REPORT_PHASE}" \
+        --argjson exitCode "${exit_status}" \
+        --argjson cliVerified "${CLI_VERIFIED}" \
+        --argjson imagesVerified "${IMAGES_VERIFIED}" \
+        --slurpfile failures "${TEMP_DIR}/failure.json" \
+        --slurpfile cli "${TEMP_DIR}/cli.jsonl" \
+        --slurpfile images "${TEMP_DIR}/images.jsonl" '
+        def result($verified; $started):
+            if $verified then "match"
+            elif $started then "not-verified"
+            else "not-run" end;
         {
-            schemaVersion: 1,
+            schemaVersion: 2,
+            status: (if $exitCode == 0 then "passed" else "failed" end),
+            failure: (if $exitCode == 0 then null else
+                ($failures[0] // {
+                    phase: $phase,
+                    message: "verification command failed; see the job log",
+                    expected: null,
+                    actual: null
+                }) + {exitCode: $exitCode}
+                end),
             baselineVersion: $baselineVersion,
             shadowVersion: $version,
             productionChannel: $channel,
             sourceCommit: $commit,
             shadowRegistry: $shadowRegistry,
             checks: {
-                cliAssetNames: "match",
-                cliBinaryDigests: "match",
-                binaryMetadata: "match",
-                imageNamesAndPlatforms: "match",
-                imageRuntimeConfiguration: "match",
-                baselineRuntimeContract: "match",
-                imageRuntimeFilesystem: "match",
-                embeddedServerBinaries: "match",
-                scmRelease: "disabled"
+                cliAssetNames: result($cliVerified; $phase == "cli"),
+                cliBinaryDigests: result($cliVerified; $phase == "cli"),
+                binaryMetadata: result($cliVerified; $phase == "cli"),
+                imageNamesAndPlatforms: result($imagesVerified; $phase == "images"),
+                imageManifestMediaType: result($imagesVerified; $phase == "images"),
+                imageRuntimeConfiguration: result($imagesVerified; $phase == "images"),
+                baselineRuntimeContract: result($imagesVerified; $phase == "images"),
+                imageRuntimePayload: result($imagesVerified; $phase == "images"),
+                embeddedServerBinaries: result($imagesVerified; $phase == "images"),
+                scmRelease: (if $exitCode == 0 then "disabled"
+                    else "not-verified" end)
             },
+            excludedChecks: [{
+                path: "images[].baseAndPackageFilesystem",
+                reason: "Only Radius-owned binaries and UCP manifests are compared. Dockerfile instruction parity does not verify resolved base-image or package contents."
+            }, {
+                path: "images[].auxiliaryManifestContents",
+                reason: "Only auxiliary descriptor shape is compared; attestation payloads and digest equality are not verified."
+            }],
             knownDifferences: [{
                 path: "cli.assets[].checksum.content",
                 production: "<sha256> *<asset>",
@@ -869,6 +932,16 @@ main() {
 
     parse_args "$@"
     require_command jq
+
+    TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/goreleaser-shadow-XXXXXX")"
+    baseline="${TEMP_DIR}/baseline.json"
+    cli_entries="${TEMP_DIR}/cli.jsonl"
+    image_entries="${TEMP_DIR}/images.jsonl"
+    : >"${cli_entries}"
+    : >"${image_entries}"
+    : >"${TEMP_DIR}/failure.json"
+    REPORT_READY=true
+
     if [[ -z "${BUILD_INFO_DIR}" ]]; then
         require_command go
     fi
@@ -894,18 +967,16 @@ main() {
     [[ -d "${PRODUCTION_DIR}" ]] ||
         fail "production artifact directory not found: ${PRODUCTION_DIR}"
 
-    TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/goreleaser-shadow-XXXXXX")"
-    baseline="${TEMP_DIR}/baseline.json"
-    cli_entries="${TEMP_DIR}/cli.jsonl"
-    image_entries="${TEMP_DIR}/images.jsonl"
-    : >"${cli_entries}"
-    : >"${image_entries}"
-
+    REPORT_PHASE="contract"
     select_baseline "${baseline}"
+    BASELINE_VERSION="$(jq -r '.release.version' "${baseline}")"
     verify_contract "${baseline}"
+    REPORT_PHASE="cli"
     verify_cli_artifacts "${cli_entries}" "${baseline}"
+    CLI_VERIFIED=true
+    REPORT_PHASE="images"
     verify_images "${image_entries}" "${baseline}"
-    write_report "${baseline}" "${cli_entries}" "${image_entries}"
+    IMAGES_VERIFIED=true
 
     echo "GoReleaser shadow output matches the production parity contract"
     echo "Parity report: ${REPORT_PATH}"

@@ -336,8 +336,15 @@ test_matching_outputs_pass() {
         return
     fi
     jq -e '
-        .checks.cliBinaryDigests == "match"
+        .schemaVersion == 2
+        and .status == "passed"
+        and .failure == null
+        and .checks.cliBinaryDigests == "match"
+        and .checks.imageManifestMediaType == "match"
         and .checks.imageRuntimeConfiguration == "match"
+        and .checks.imageRuntimePayload == "match"
+        and (.checks | has("imageRuntimeFilesystem") | not)
+        and .excludedChecks[0].path == "images[].baseAndPackageFilesystem"
         and (.knownDifferences | length) == 1
     ' "${TEST_ROOT}/report.json" >/dev/null || {
         fail_test "parity report is incomplete"
@@ -357,6 +364,17 @@ test_binary_mismatch_fails() {
         fail_test "binary mismatch should fail"
         return
     fi
+    jq -e '
+        .status == "failed"
+        and .failure.phase == "cli"
+        and .failure.exitCode == 1
+        and (.failure.message | contains("binary digest mismatch"))
+        and .checks.cliBinaryDigests == "not-verified"
+        and .checks.imageNamesAndPlatforms == "not-run"
+    ' "${TEST_ROOT}/report.json" >/dev/null || {
+        fail_test "binary mismatch should retain a failure report"
+        return
+    }
     pass
 }
 
@@ -372,6 +390,80 @@ test_image_config_mismatch_fails() {
     if [[ "${LAST_STATUS}" -eq 0 ||
         "${LAST_OUTPUT}" != *"runtime image configuration"* ]]; then
         fail_test "image configuration mismatch should fail"
+        return
+    fi
+    jq -e '
+        .status == "failed"
+        and .failure.phase == "images"
+        and .failure.expected != .failure.actual
+        and .failure.actual[1].config.ExposedPorts == {"9000/tcp": {}}
+        and .checks.cliBinaryDigests == "match"
+        and .checks.imageRuntimeConfiguration == "not-verified"
+        and (.cliAssets | length) == 1
+    ' "${TEST_ROOT}/report.json" >/dev/null || {
+        fail_test "image mismatch should retain details and completed CLI checks"
+        return
+    }
+    pass
+}
+
+test_subshell_failure_report() {
+    setup_fixture
+    jq '.[0].path = "unexpected/rad"' \
+        "${TEST_ROOT}/shadow/artifacts.json" >"${TEST_ROOT}/artifacts.tmp"
+    mv "${TEST_ROOT}/artifacts.tmp" "${TEST_ROOT}/shadow/artifacts.json"
+    run_verifier
+
+    if [[ "${LAST_STATUS}" -eq 0 ]] || ! jq -e '
+        .status == "failed"
+        and .failure.phase == "cli"
+        and (.failure.message | contains("unexpected GoReleaser artifact path"))
+    ' "${TEST_ROOT}/report.json" >/dev/null; then
+        fail_test "a failure inside command substitution should retain its reason"
+        return
+    fi
+    pass
+}
+
+test_command_failure_report() {
+    setup_fixture
+    run_verifier
+    if [[ "${LAST_STATUS}" -ne 0 ]]; then
+        fail_test "initial run should write a success report"
+        return
+    fi
+    printf '{"manifest":' >"${TEST_ROOT}/shadow-images/ucpd.json"
+    run_verifier
+
+    if [[ "${LAST_STATUS}" -eq 0 ]] || ! jq -e \
+        --argjson status "${LAST_STATUS}" '
+        .status == "failed"
+        and .failure.phase == "images"
+        and .failure.exitCode == $status
+        and (.failure.message | contains("verification command failed"))
+        and .checks.cliBinaryDigests == "match"
+    ' "${TEST_ROOT}/report.json" >/dev/null; then
+        fail_test "an unexpected command failure should retain the original exit status"
+        return
+    fi
+    pass
+}
+
+test_image_media_type_mismatch_fails() {
+    setup_fixture
+    jq '.manifest.mediaType = "application/vnd.docker.distribution.manifest.list.v2+json"' \
+        "${TEST_ROOT}/shadow-images/ucpd.json" >"${TEST_ROOT}/image.tmp"
+    mv "${TEST_ROOT}/image.tmp" "${TEST_ROOT}/shadow-images/ucpd.json"
+    run_verifier
+
+    if [[ "${LAST_STATUS}" -eq 0 ]] || ! jq -e '
+        .status == "failed"
+        and (.failure.message | contains("root manifest media type"))
+        and .failure.expected == "application/vnd.oci.image.index.v1+json"
+        and .failure.actual == "application/vnd.docker.distribution.manifest.list.v2+json"
+        and .checks.imageManifestMediaType == "not-verified"
+    ' "${TEST_ROOT}/report.json" >/dev/null; then
+        fail_test "different root manifest media types should fail with a report"
         return
     fi
     pass
@@ -473,6 +565,9 @@ main() {
     test_matching_outputs_pass
     test_binary_mismatch_fails
     test_image_config_mismatch_fails
+    test_subshell_failure_report
+    test_command_failure_report
+    test_image_media_type_mismatch_fails
     test_payload_mismatch_fails
     test_checksum_mismatch_fails
     test_server_binary_mismatch_fails
