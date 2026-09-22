@@ -1,0 +1,409 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: build-release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - v*
+
+permissions: {}
+
+env:
+  CONTAINER_REGISTRY: ghcr.io/radius-project
+  GORELEASER_SHADOW_REGISTRY: ghcr.io/radius-project/dev
+
+concurrency:
+  group: build-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Changes
+    uses: ./.github/workflows/__changes.yml
+    permissions:
+      contents: read # Required for actions/checkout
+      pull-requests: read # Required for change detection
+
+  build-and-push-cli:
+    needs: [changes]
+    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
+    uses: ./.github/workflows/__build-cli.yaml
+    with:
+      only_changed: ${{ needs.changes.outputs.only_changed }}
+    permissions:
+      packages: write # Required for uploading the package
+      contents: read # Required for actions/checkout
+      issues: read # Required for publishing test results
+      checks: write # Required for publishing test results
+      pull-requests: write # Required for publishing test results
+
+  build-check:
+    if: always()
+    name: Build Check
+    needs: [build-and-push-cli]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Check build matrix results
+        if: ${{ needs.build-and-push-cli.result != 'success' && needs.build-and-push-cli.result != 'skipped' }}
+        run: |
+          echo "::error::Build and push CLI jobs failed or were cancelled"
+          exit 1
+
+      - name: Build matrix succeeded
+        if: ${{ needs.build-and-push-cli.result == 'success' || needs.build-and-push-cli.result == 'skipped' }}
+        run: |
+          echo "All build matrix jobs completed successfully"
+          exit 0
+
+  build-and-push-images:
+    needs: [changes]
+    if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
+    uses: ./.github/workflows/__build-images.yaml
+    permissions:
+      packages: write # Required for uploading the package
+      contents: read # Required for actions/checkout
+
+  build-and-push-helm-chart:
+    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v') && needs.changes.outputs.only_changed != 'true'
+    needs: [build-and-push-images, changes]
+    uses: ./.github/workflows/__build-helm-chart.yaml
+    permissions:
+      packages: write # Required for uploading the package
+      contents: read # Required for actions/checkout
+
+  build-and-push-bicep-types:
+    needs: [changes]
+    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v') && needs.changes.outputs.only_changed != 'true'
+    uses: ./.github/workflows/__build-bicep-types.yaml
+    # The publisher bot credentials are read inside the called job, which is the
+    # only job that carries the publish-bicep environment. Environment secrets
+    # cannot be passed by name to a reusable workflow, so the whole secret set
+    # is inherited and the called job resolves them from its environment.
+    secrets: inherit
+    permissions:
+      contents: read # Required for actions/checkout
+
+  publish-release:
+    needs: [changes, build-and-push-cli]
+    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v') && needs.changes.outputs.only_changed != 'true'
+    uses: ./.github/workflows/__publish-release.yaml
+    permissions:
+      contents: write # Required for creating releases
+
+  goreleaser-shadow:
+    name: Shadow GoReleaser release
+    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v')
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    outputs:
+      published: ${{ steps.publish.outputs.published }}
+    permissions:
+      contents: read # Required for actions/checkout
+      packages: write # Required for shadow image publication
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: false
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        with:
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+
+      - name: Install GoReleaser and comparison tools
+        run: make install-goreleaser install-jq install-yq
+
+      - name: Check GoReleaser configuration
+        run: make goreleaser-check
+        env:
+          GORELEASER_IMAGE_REGISTRY: ${{ env.GORELEASER_SHADOW_REGISTRY }}
+          GORELEASER_RELEASE_DISABLE: true
+
+      - name: Publish shadow release
+        run: make goreleaser-shadow
+
+      - name: Upload shadow binaries and metadata
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: goreleaser-shadow-${{ github.sha }}
+          path: |
+            dist/goreleaser/artifacts.json
+            dist/goreleaser/metadata.json
+            dist/goreleaser/*.sha256
+            dist/goreleaser/rad_*/rad
+            dist/goreleaser/rad_*/rad.exe
+          if-no-files-found: error
+          retention-days: 30
+
+      # The parity job reads this output instead of the job result, because
+      # continue-on-error reports a failed job as successful to needs contexts.
+      - name: Record shadow publication
+        id: publish
+        run: echo "published=true" >>"$GITHUB_OUTPUT"
+
+      # continue-on-error keeps the run green, so the failure is reported here
+      # where the release engineer looks; the production release is unaffected.
+      - name: Report shadow publication failure
+        if: failure()
+        run: |
+          {
+            echo "## GoReleaser shadow release"
+            echo
+            echo "The shadow publication failed. Inspect the failed step above; the production release is unaffected."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  capture-production-image-digests:
+    name: Capture production image digests
+    needs: [build-and-push-images]
+    if: always() && needs.build-and-push-images.result == 'success' && github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v')
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      captured: ${{ steps.capture.outputs.captured }}
+    permissions:
+      contents: read # Required for actions/checkout
+      packages: read # Required for authenticated image inspection
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: false
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Install comparison tools
+        run: make install-jq
+
+      - name: Capture production image digests
+        run: make capture-release-image-digests
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_TAG_VERSION: ${{ env.REL_CHANNEL }}
+
+      - name: Upload production image digests
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: production-image-digests-${{ github.sha }}
+          path: dist/production-image-digests.json
+          if-no-files-found: error
+          retention-days: 30
+
+      # See the note on the shadow publication output above.
+      - name: Record digest capture
+        id: capture
+        run: echo "captured=true" >>"$GITHUB_OUTPUT"
+
+      - name: Report digest capture failure
+        if: failure()
+        run: |
+          {
+            echo "## GoReleaser shadow parity"
+            echo
+            echo "Capturing the production image digests failed, so the parity check did not run. Inspect the failed step above."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  verify-goreleaser-shadow:
+    name: Verify GoReleaser shadow parity
+    needs:
+      [build-and-push-cli, capture-production-image-digests, goreleaser-shadow]
+    if: |
+      always() && github.repository == 'radius-project/radius'
+      && startsWith(github.ref, 'refs/tags/v')
+      && needs.build-and-push-cli.result == 'success'
+      && needs.goreleaser-shadow.outputs.published == 'true'
+      && needs.capture-production-image-digests.outputs.captured == 'true'
+    continue-on-error: true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read # Required for actions/checkout
+      packages: read # Required for authenticated image inspection
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: false
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Install comparison tools
+        run: make install-jq install-yq
+
+      - name: Download shadow artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: goreleaser-shadow-${{ github.sha }}
+          path: dist/goreleaser-shadow
+
+      - name: Download production CLI artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: rad_cli_*
+          merge-multiple: true
+          path: release
+
+      - name: Download production image digests
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: production-image-digests-${{ github.sha }}
+          path: dist
+
+      - name: Verify shadow parity
+        run: make verify-goreleaser-shadow
+        env:
+          GORELEASER_SHADOW_DIR: dist/goreleaser-shadow
+          GORELEASER_PRODUCTION_DIR: release
+          GORELEASER_PRODUCTION_IMAGE_LOCK: dist/production-image-digests.json
+          GORELEASER_PRODUCTION_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+
+      - name: Report parity failure
+        if: failure()
+        run: |
+          {
+            echo "## GoReleaser shadow parity"
+            echo
+            echo "The shadow output does not match the production release. See the 'Verify shadow parity' step log for the expected and actual values; resolve the difference before the GoReleaser cutover."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Add parity report to workflow summary
+        if: always() && hashFiles('dist/goreleaser-shadow-parity.json') != ''
+        run: |
+          {
+            echo "## GoReleaser shadow parity"
+            echo
+            jq -r '
+              "Baseline: `v\(.baselineVersion)`  ",
+              "Shadow: `v\(.shadowVersion)`  ",
+              "Source: `\(.sourceCommit)`  ",
+              "Known differences: \(.knownDifferences | length)"
+            ' dist/goreleaser-shadow-parity.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload parity report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: goreleaser-shadow-parity-${{ github.sha }}
+          path: dist/goreleaser-shadow-parity.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  build-summary:
+    if: always()
+    name: Build Summary
+    needs: [build-check, build-and-push-images, build-and-push-bicep-types]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read # Required for actions/checkout
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check all build jobs
+        run: |
+          ./.github/scripts/build-summary.sh \
+            "build-check:${BUILD_CHECK_RESULT}" \
+            "build-and-push-images:${BUILD_AND_PUSH_IMAGES_RESULT}" \
+            "build-and-push-bicep-types:${BUILD_AND_PUSH_BICEP_TYPES_RESULT}"
+        env:
+          BUILD_CHECK_RESULT: ${{ needs.build-check.result }}
+          BUILD_AND_PUSH_IMAGES_RESULT: ${{ needs.build-and-push-images.result }}
+          BUILD_AND_PUSH_BICEP_TYPES_RESULT: ${{ needs.build-and-push-bicep-types.result }}

@@ -50,6 +50,8 @@ To run a single group directly, call its `make` target — for example `make tes
 
 You can also run or debug individual tests from VS Code.
 
+`Test_ConfigurationStore_Manual`, `Test_ConfigurationStore_Recipe`, and `Test_DaprPubSubBroker_Manual` deploy their Redis dependencies first, then wait up to three minutes for `redis-cli PING` through the Redis Service to return `PONG` before deploying the Dapr-enabled consumer. The check runs in the Redis container using Kubernetes pod exec; the test identity needs permission to list pods and create `pods/exec` requests in the test namespace. The recipe test uses the application namespace `dcs-recipe`, not the environment namespace `default-dcs-recipe`.
+
 ### Run a special test group
 
 The aggregate `make test-functional-all-noncloud` target intentionally excludes these isolated groups:
@@ -229,5 +231,6 @@ The GitHub Actions role allows 5400-second sessions, and the LRT workflow reques
 - **You changed the `rad` CLI.** Copy the rebuilt `rad` to your path (or set `RAD_PATH` for Codelens) so the tests use your new binary.
 - **Environment variables seem ignored.** Restart VS Code or your editor so newly set variables take effect.
 - **Many tests fail immediately.** Confirm the Kubernetes namespace in use is `default`.
+- **A staged Dapr test fails waiting for Redis.** Read the readiness error's last observation and the Redis pod logs. A running pod alone does not prove Redis accepts connections. Check the Redis Service endpoints and pod-exec permissions; the consumer is intentionally not deployed if this prerequisite fails.
 - **LRT AWS tests fail with `AccessDenied` on `AssumeRoleWithWebIdentity`.** Confirm the latest `modules/20-functional-tests`, `modules/21-functional-tests-aws`, and `modules/30-functional-tests-github` layers from `radius-project/wellknown` were applied in order. Verify the AKS issuer appears in the AWS layer's `oidc_issuers` output and the current `FUNC_TEST_RAD_IRSA_ROLE` secret matches its `irsa_role_arn` output.
 - **A special test group is skipped or fails during setup.** Confirm that you met the isolated-cluster requirements in [Run a special test group](#run-a-special-test-group).
