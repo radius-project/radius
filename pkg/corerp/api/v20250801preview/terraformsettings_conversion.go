@@ -17,6 +17,8 @@ limitations under the License.
 package v20250801preview
 
 import (
+	"fmt"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/to"
@@ -24,6 +26,10 @@ import (
 
 // ConvertTo converts from the versioned TerraformSettings resource to version-agnostic datamodel.
 func (src *TerraformSettingsResource) ConvertTo() (v1.DataModelInterface, error) {
+	properties := src.Properties
+	if properties == nil {
+		properties = &TerraformSettingsProperties{}
+	}
 	converted := &datamodel.TerraformSettings{
 		ID:                     to.String(src.ID),
 		Name:                   to.String(src.Name),
@@ -32,20 +38,26 @@ func (src *TerraformSettingsResource) ConvertTo() (v1.DataModelInterface, error)
 		Tags:                   to.StringMap(src.Tags),
 		CreatedAPIVersion:      Version,
 		UpdatedAPIVersion:      Version,
-		AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+		AsyncProvisioningState: toProvisioningStateDataModel(properties.ProvisioningState),
 		Properties:             datamodel.TerraformSettingsResourceProperties{},
 	}
 
-	if src.Properties.Terraformrc != nil {
-		converted.Properties.Terraformrc = toTerraformrcDataModel(src.Properties.Terraformrc)
+	if properties.Terraformrc != nil {
+		converted.Properties.Terraformrc = toTerraformrcDataModel(properties.Terraformrc)
 	}
 
-	if src.Properties.Env != nil {
-		converted.Properties.Env = to.StringMap(src.Properties.Env)
+	backend, err := toTerraformBackendDataModel(properties.Backend)
+	if err != nil {
+		return nil, v1.NewClientErrInvalidRequest(err.Error())
+	}
+	converted.Properties.Backend = backend
+
+	if properties.Env != nil {
+		converted.Properties.Env = to.StringMap(properties.Env)
 	}
 
-	if src.Properties.ReferencedBy != nil {
-		converted.Properties.ReferencedBy = to.StringArray(src.Properties.ReferencedBy)
+	if properties.ReferencedBy != nil {
+		converted.Properties.ReferencedBy = to.StringArray(properties.ReferencedBy)
 	}
 
 	return converted, nil
@@ -69,6 +81,7 @@ func (dst *TerraformSettingsResource) ConvertFrom(src v1.DataModelInterface) err
 	}
 
 	dst.Properties.Terraformrc = fromTerraformrcDataModel(tc.Properties.Terraformrc)
+	dst.Properties.Backend = fromTerraformBackendDataModel(tc.Properties.Backend)
 
 	if tc.Properties.Env != nil {
 		dst.Properties.Env = *to.StringMapPtr(tc.Properties.Env)
@@ -79,6 +92,44 @@ func (dst *TerraformSettingsResource) ConvertFrom(src v1.DataModelInterface) err
 	}
 
 	return nil
+}
+
+func toTerraformBackendDataModel(src TerraformBackendClassification) (*datamodel.TerraformBackend, error) {
+	if src == nil {
+		return nil, nil
+	}
+	var backend *datamodel.TerraformBackend
+	switch b := src.(type) {
+	case *TerraformS3Backend:
+		backend = &datamodel.TerraformBackend{
+			Type: "s3", Bucket: to.String(b.Bucket), Region: to.String(b.Region), KeyPrefix: b.KeyPrefix,
+		}
+	case *TerraformAzureRMBackend:
+		backend = &datamodel.TerraformBackend{
+			Type: "azurerm", StorageAccountName: to.String(b.StorageAccountName),
+			ContainerName: to.String(b.ContainerName), KeyPrefix: b.KeyPrefix,
+		}
+	default:
+		return nil, fmt.Errorf("backend.type must be s3 or azurerm")
+	}
+	if err := backend.Validate(); err != nil {
+		return nil, err
+	}
+	return backend, nil
+}
+
+func fromTerraformBackendDataModel(b *datamodel.TerraformBackend) TerraformBackendClassification {
+	if b == nil {
+		return nil
+	}
+	switch b.Type {
+	case "s3":
+		return &TerraformS3Backend{Type: &b.Type, Bucket: &b.Bucket, Region: &b.Region, KeyPrefix: b.KeyPrefix}
+	case "azurerm":
+		return &TerraformAzureRMBackend{Type: &b.Type, StorageAccountName: &b.StorageAccountName, ContainerName: &b.ContainerName, KeyPrefix: b.KeyPrefix}
+	default:
+		return &TerraformBackend{Type: &b.Type, KeyPrefix: b.KeyPrefix}
+	}
 }
 
 func toTerraformrcDataModel(src *TerraformrcConfig) datamodel.TerraformrcConfig {
