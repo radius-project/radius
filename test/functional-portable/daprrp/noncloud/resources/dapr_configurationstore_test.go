@@ -110,7 +110,7 @@ func Test_ConfigurationStore_Manual(t *testing.T) {
 				testutil.GetMagpieImage(),
 				fmt.Sprintf("namespace=%s", appNamespace),
 				fmt.Sprintf("baseName=%s", name),
-				"deployContainer=false",
+				"deployContainer=@testdata/deploy-container-false.json",
 			),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
@@ -198,7 +198,7 @@ func Test_ConfigurationStore_Recipe(t *testing.T) {
 				testutil.GetBicepRecipeVersion(),
 				fmt.Sprintf("namespace=default-%s", name),
 				fmt.Sprintf("baseName=%s", name),
-				"deployContainer=false",
+				"deployContainer=@testdata/deploy-container-false.json",
 			),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{

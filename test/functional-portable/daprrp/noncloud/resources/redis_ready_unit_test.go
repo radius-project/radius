@@ -80,15 +80,11 @@ func TestWaitForRedis(t *testing.T) {
 				tt.mutate(pod)
 			}
 			client := fake.NewClientset(pod)
-			ctx, cancel := context.WithTimeout(t.Context(), 100*time.Millisecond)
+			ctx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 			defer cancel()
-			calls := 0
-			err := waitForRedis(ctx, client, "test", "test-app", func(ctx context.Context, selected corev1.Pod) (string, error) {
-				calls++
-				require.Equal(t, pod.Name, selected.Name)
-				deadline, ok := ctx.Deadline()
-				require.True(t, ok)
-				require.LessOrEqual(t, time.Until(deadline), 5*time.Second)
+			var selectedPods []string
+			err := waitForRedis(ctx, client, "test", "test-app", func(_ context.Context, selected corev1.Pod) (string, error) {
+				selectedPods = append(selectedPods, selected.Name)
 				return tt.output, tt.pingErr
 			})
 			if tt.wantErr == "" {
@@ -99,9 +95,35 @@ func TestWaitForRedis(t *testing.T) {
 			if tt.wantTimeout {
 				require.ErrorIs(t, err, context.DeadlineExceeded)
 			}
-			require.Equal(t, tt.wantPing, calls > 0)
+			require.Equal(t, tt.wantPing, len(selectedPods) > 0)
+			for _, selected := range selectedPods {
+				require.Equal(t, pod.Name, selected)
+			}
 		})
 	}
+}
+
+func TestWaitForRedisPingDeadline(t *testing.T) {
+	t.Parallel()
+	client := fake.NewClientset(redisTestPod())
+	// The parent must outlive the attempt limit so it cannot mask a missing or longer timeout.
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	var deadline, observedAt time.Time
+	var hasDeadline bool
+	calls := 0
+	before := time.Now()
+	err := waitForRedis(ctx, client, "test", "test-app", func(attemptCtx context.Context, _ corev1.Pod) (string, error) {
+		calls++
+		deadline, hasDeadline = attemptCtx.Deadline()
+		observedAt = time.Now()
+		return "PONG", nil
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, calls)
+	require.True(t, hasDeadline)
+	require.False(t, deadline.Before(before.Add(5*time.Second)), "PING timeout must not be shorter than five seconds")
+	require.False(t, deadline.After(observedAt.Add(5*time.Second)), "PING timeout must not exceed five seconds")
 }
 
 func TestWaitForRedisRetriesUntilPong(t *testing.T) {
@@ -125,11 +147,13 @@ func TestWaitForRedisRejectsAmbiguousPods(t *testing.T) {
 	t.Parallel()
 	first, second := redisTestPod(), redisTestPod()
 	second.Name = "another-redis"
+	called := false
 	err := waitForRedis(t.Context(), fake.NewClientset(first, second), "test", "test-app", func(context.Context, corev1.Pod) (string, error) {
-		t.Fatal("must not select an arbitrary Redis pod")
-		return "", nil
+		called = true
+		return "", errors.New("must not select an arbitrary Redis pod")
 	})
 	require.ErrorContains(t, err, "expected one Redis pod, found 2")
+	require.False(t, called)
 }
 
 func TestWaitForRedisListError(t *testing.T) {

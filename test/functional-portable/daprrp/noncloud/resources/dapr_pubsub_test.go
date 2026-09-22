@@ -106,7 +106,7 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(
-				template, testutil.GetMagpieImage(), fmt.Sprintf("namespace=%s", appNamespace), "deployContainer=false",
+				template, testutil.GetMagpieImage(), fmt.Sprintf("namespace=%s", appNamespace), "deployContainer=@testdata/deploy-container-false.json",
 			),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
