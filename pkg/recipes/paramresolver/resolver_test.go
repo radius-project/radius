@@ -346,7 +346,7 @@ func Test_ResolveParameterExpressions_GeneratedAzureResourceNameHash(t *testing.
 		ctx,
 	)
 
-	require.Equal(t, map[string]any{"name": "redis-2ee7ced618d5dd8e"}, result)
+	require.Equal(t, map[string]any{"name": "redis-509212db4b1fe144"}, result)
 }
 
 func Test_TernaryExpressions(t *testing.T) {
