@@ -203,6 +203,7 @@ func getConfigurationV20250801(ctx context.Context, environment *v20250801previe
 		}
 
 		tfProps := tfDM.(*datamodel.TerraformSettings).Properties
+		config.TerraformBackend = tfProps.Backend
 
 		// Pass terraformrc.credentials through to the shared driver. The driver
 		// renders these as native `credentials "host" {}` blocks in the generated

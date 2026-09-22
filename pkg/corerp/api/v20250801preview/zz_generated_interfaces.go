@@ -11,3 +11,12 @@ type EnvironmentComputeClassification interface {
 	// GetEnvironmentCompute returns the EnvironmentCompute content of the underlying type.
 	GetEnvironmentCompute() *EnvironmentCompute
 }
+
+// TerraformBackendClassification provides polymorphic access to related types.
+// Call the interface's GetTerraformBackend() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *TerraformAzureRMBackend, *TerraformBackend, *TerraformS3Backend
+type TerraformBackendClassification interface {
+	// GetTerraformBackend returns the TerraformBackend content of the underlying type.
+	GetTerraformBackend() *TerraformBackend
+}

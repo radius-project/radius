@@ -40,6 +40,8 @@ type ConnectedResource struct {
 
 // Configuration represents runtime and cloud provider configuration, which is used by the driver while deploying recipes.
 type Configuration struct {
+	// TerraformBackend selects remote state storage; nil uses Kubernetes.
+	TerraformBackend *datamodel.TerraformBackend
 	// Kubernetes Runtime configuration for the environment.
 	Runtime RuntimeConfiguration
 	// Cloud providers configuration for the environment

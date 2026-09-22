@@ -2246,6 +2246,53 @@
         }
       }
     },
+    "TerraformAzureRMBackend": {
+      "type": "object",
+      "description": "An existing Azure Blob container. Uses Entra data-plane authentication and native blob lease locking.",
+      "properties": {
+        "storageAccountName": {
+          "type": "string",
+          "description": "The existing Azure storage account name.",
+          "minLength": 1
+        },
+        "containerName": {
+          "type": "string",
+          "description": "The existing blob container name.",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "storageAccountName",
+        "containerName"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/TerraformBackend"
+        }
+      ],
+      "x-ms-discriminator-value": "azurerm"
+    },
+    "TerraformBackend": {
+      "type": "object",
+      "description": "Terraform state storage location. Authentication uses the selected cloud's default credentials registered in Radius.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The built-in Terraform backend type."
+        },
+        "keyPrefix": {
+          "type": "string",
+          "description": "State key prefix. Defaults to radius. Both clouds allow at most 968 ASCII characters, reserving space for the state key and S3 .tflock suffix within 1024 bytes. Use distinct prefixes for installations sharing storage and resource IDs.",
+          "minLength": 1,
+          "maxLength": 968,
+          "pattern": "^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$"
+        }
+      },
+      "discriminator": "type",
+      "required": [
+        "type"
+      ]
+    },
     "TerraformCredentialConfig": {
       "type": "object",
       "description": "Credential configuration for a Terraform registry or module source host.",
@@ -2314,10 +2361,40 @@
         }
       }
     },
+    "TerraformS3Backend": {
+      "type": "object",
+      "description": "An existing S3 bucket with native S3 lockfile locking.",
+      "properties": {
+        "bucket": {
+          "type": "string",
+          "description": "The existing S3 bucket name.",
+          "minLength": 1
+        },
+        "region": {
+          "type": "string",
+          "description": "The AWS region containing the bucket.",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "bucket",
+        "region"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/TerraformBackend"
+        }
+      ],
+      "x-ms-discriminator-value": "s3"
+    },
     "TerraformSettingsProperties": {
       "type": "object",
       "description": "Terraform settings properties.",
       "properties": {
+        "backend": {
+          "$ref": "#/definitions/TerraformBackend",
+          "description": "(Optional) Remote Terraform state backend. Omission uses Kubernetes. Storage must already exist. Once configured, the backend location cannot be changed or removed."
+        },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "(Read Only) The status of the Terraform settings resource within the Radius control plane.",

@@ -155,6 +155,9 @@ model TerraformSettingsResource is TrackedResourceRequired<
 
 @doc("Terraform settings properties.")
 model TerraformSettingsProperties {
+  @doc("(Optional) Remote Terraform state backend. Omission uses Kubernetes. Storage must already exist. Once configured, the backend location cannot be changed or removed.")
+  backend?: TerraformBackend;
+
   @doc("(Read Only) The status of the Terraform settings resource within the Radius control plane.")
   @visibility(Lifecycle.Read)
   provisioningState?: ProvisioningState;
@@ -168,6 +171,45 @@ model TerraformSettingsProperties {
 
   @doc("(Optional) Environment variables injected into the Terraform process during Recipe execution.")
   env?: Record<string>;
+}
+
+@doc("Terraform state storage location. Authentication uses the selected cloud's default credentials registered in Radius.")
+@discriminator("type")
+model TerraformBackend {
+  @doc("The built-in Terraform backend type.")
+  type: string;
+
+  @doc("State key prefix. Defaults to radius. Both clouds allow at most 968 ASCII characters, reserving space for the state key and S3 .tflock suffix within 1024 bytes. Use distinct prefixes for installations sharing storage and resource IDs.")
+  @minLength(1)
+  @maxLength(968)
+  @pattern("^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$")
+  keyPrefix?: string;
+}
+
+@doc("An existing S3 bucket with native S3 lockfile locking.")
+model TerraformS3Backend extends TerraformBackend {
+  type: "s3";
+
+  @doc("The existing S3 bucket name.")
+  @minLength(1)
+  bucket: string;
+
+  @doc("The AWS region containing the bucket.")
+  @minLength(1)
+  region: string;
+}
+
+@doc("An existing Azure Blob container. Uses Entra data-plane authentication and native blob lease locking.")
+model TerraformAzureRMBackend extends TerraformBackend {
+  type: "azurerm";
+
+  @doc("The existing Azure storage account name.")
+  @minLength(1)
+  storageAccountName: string;
+
+  @doc("The existing blob container name.")
+  @minLength(1)
+  containerName: string;
 }
 
 @doc("Terraform CLI configuration file (.terraformrc) settings. See https://developer.hashicorp.com/terraform/cli/config for details.")
