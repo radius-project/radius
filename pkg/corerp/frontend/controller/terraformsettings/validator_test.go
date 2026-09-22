@@ -88,11 +88,15 @@ func TestValidateRequest(t *testing.T) {
 				require.NoError(t, err)
 				require.JSONEq(t, string(before), string(after))
 			}
-			for _, prior := range []*datamodel.TerraformSettings{nil, {}} {
-				resp, err := ValidateRequest(t.Context(), old, prior, nil)
-				require.NoError(t, err)
-				require.Nil(t, resp)
-			}
+			resp, err := ValidateRequest(t.Context(), old, nil, nil)
+			require.NoError(t, err)
+			require.Nil(t, resp, "new settings may select a cloud backend")
+
+			prior := &datamodel.TerraformSettings{}
+			resp, err = ValidateRequest(t.Context(), old, prior, nil)
+			require.NoError(t, err)
+			require.IsType(t, &rest.BadRequestResponse{}, resp, "existing settings must retain the Kubernetes default")
+			require.Nil(t, prior.Properties.Backend)
 		})
 	}
 	resp, err := ValidateRequest(t.Context(), &datamodel.TerraformSettings{
@@ -102,20 +106,41 @@ func TestValidateRequest(t *testing.T) {
 	require.IsType(t, &rest.BadRequestResponse{}, resp)
 }
 
+func TestValidateRequestPreservesKubernetesDefault(t *testing.T) {
+	for _, prior := range []*datamodel.TerraformSettings{nil, {}} {
+		next := &datamodel.TerraformSettings{
+			Properties: datamodel.TerraformSettingsResourceProperties{
+				Env: map[string]string{"HELLO": "world"},
+			},
+		}
+		resp, err := ValidateRequest(t.Context(), next, prior, nil)
+		require.NoError(t, err)
+		require.Nil(t, resp, "creation and unrelated updates may retain the Kubernetes default")
+		require.Nil(t, next.Properties.Backend)
+	}
+}
+
 func TestRejectedReplacementDoesNotSave(t *testing.T) {
+	cloud := &datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2"}
 	for _, method := range []string{http.MethodPut, http.MethodPatch} {
-		for _, body := range []string{
-			`{"tags":{"owner":"new"}}`,
-			`{"properties":null}`,
-			`{"properties":{"env":{"HELLO":"world"}}}`,
-			`{"properties":{"backend":null}}`,
-			`{"properties":{"backend":{"type":"s3","bucket":"other","region":"us-west-2"}}}`,
+		for _, tc := range []struct {
+			name    string
+			backend *datamodel.TerraformBackend
+			body    string
+		}{
+			{"tags only", cloud, `{"tags":{"owner":"new"}}`},
+			{"null properties", cloud, `{"properties":null}`},
+			{"omitted backend", cloud, `{"properties":{"env":{"HELLO":"world"}}}`},
+			{"removed backend", cloud, `{"properties":{"backend":null}}`},
+			{"different bucket", cloud, `{"properties":{"backend":{"type":"s3","bucket":"other","region":"us-west-2"}}}`},
+			{"Kubernetes to S3", nil, `{"properties":{"backend":{"type":"s3","bucket":"states","region":"us-west-2"}}}`},
+			{"Kubernetes to Azure", nil, `{"properties":{"backend":{"type":"azurerm","storageAccountName":"states","containerName":"radius"}}}`},
 		} {
-			t.Run(method+"/"+body, func(t *testing.T) {
+			t.Run(method+"/"+tc.name, func(t *testing.T) {
 				const id = "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/terraformSettings/states"
 				old := &datamodel.TerraformSettings{
 					Properties: datamodel.TerraformSettingsResourceProperties{
-						Backend: &datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2"},
+						Backend: tc.backend,
 						Env:     map[string]string{"ORIGINAL": "value"},
 					},
 				}
@@ -133,7 +158,7 @@ func TestRejectedReplacementDoesNotSave(t *testing.T) {
 						UpdateFilters:     []controller.UpdateFilter[datamodel.TerraformSettings]{ValidateRequest},
 					})
 				require.NoError(t, err)
-				req, err := rpctest.NewHTTPRequestWithContent(t.Context(), method, "http://localhost"+id+"?api-version=2025-08-01-preview", []byte(body))
+				req, err := rpctest.NewHTTPRequestWithContent(t.Context(), method, "http://localhost"+id+"?api-version=2025-08-01-preview", []byte(tc.body))
 				require.NoError(t, err)
 				ctx := rpctest.NewARMRequestContext(req)
 				recorder := httptest.NewRecorder()

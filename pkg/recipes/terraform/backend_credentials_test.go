@@ -19,6 +19,7 @@ package terraform
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"os"
 	"testing"
@@ -27,6 +28,11 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/stretchr/testify/require"
 )
+
+var awsBackendTestEndpointVariables = []string{
+	"AWS_ENDPOINT_URL", "AWS_ENDPOINT_URL_S3", "AWS_S3_ENDPOINT",
+	"AWS_ENDPOINT_URL_STS", "AWS_STS_ENDPOINT",
+}
 
 type backendCredentialStub[T any] struct {
 	value  *T
@@ -145,6 +151,7 @@ func TestBackendCredentialErrors(t *testing.T) {
 		require.NotContains(t, err.Error(), "secret-marker")
 		require.Equal(t, before, env)
 	}
+
 	for _, c := range []*credentials.AzureCredential{
 		nil, {}, {Kind: credentials.AzureServicePrincipalCredentialKind},
 		{Kind: credentials.AzureServicePrincipalCredentialKind, ServicePrincipal: &credentials.AzureServicePrincipalCredential{ClientSecret: "secret-marker"}},
@@ -170,5 +177,49 @@ func TestBackendCredentialErrors(t *testing.T) {
 		err := e.setBackendEnvironment(t.Context(), backend, map[string]string{})
 		require.ErrorIs(t, err, fetchErr)
 		require.Contains(t, err.Error(), backend.Type+" backend")
+	}
+}
+
+func TestAWSBackendRejectsEndpointOverrides(t *testing.T) {
+	for _, federated := range []bool{false, true} {
+		for _, key := range awsBackendTestEndpointVariables {
+			for _, value := range []string{"https://endpoint.example.com/private-value", " "} {
+				t.Run(fmt.Sprintf("%s/federated=%v/value=%q", key, federated, value), func(t *testing.T) {
+					env := map[string]string{
+						key: value, "AWS_IGNORE_CONFIGURED_ENDPOINT_URLS": "true",
+						"AWS_ACCESS_KEY_ID": "existing-access", "ARM_CLIENT_SECRET": "other-cloud",
+					}
+					before := maps.Clone(env)
+					err := setAWSBackendEnvironment(backendTestAWSCredential(federated), env)
+					require.ErrorContains(t, err, key)
+					require.Contains(t, err.Error(), "s3 backend does not support endpoint override")
+					require.NotContains(t, err.Error(), "private-value")
+					require.Equal(t, before, env, "rejection must not partially replace credentials")
+				})
+			}
+		}
+	}
+}
+
+func TestAWSBackendAllowsEmptyEndpointOverrides(t *testing.T) {
+	for _, federated := range []bool{false, true} {
+		t.Run(fmt.Sprintf("federated=%v", federated), func(t *testing.T) {
+			env := map[string]string{"AWS_ENDPOINT_URL_DYNAMODB": "https://provider.example.com", "KEEP": "value"}
+			for _, key := range awsBackendTestEndpointVariables {
+				env[key] = ""
+			}
+			require.NoError(t, setAWSBackendEnvironment(backendTestAWSCredential(federated), env))
+			for _, key := range awsBackendTestEndpointVariables {
+				require.Contains(t, env, key)
+				require.Empty(t, env[key])
+			}
+			require.Equal(t, "https://provider.example.com", env["AWS_ENDPOINT_URL_DYNAMODB"])
+			require.Equal(t, "value", env["KEEP"])
+			if federated {
+				require.Equal(t, awsBackendTokenFile, env["AWS_WEB_IDENTITY_TOKEN_FILE"])
+			} else {
+				require.Equal(t, "registered-access", env["AWS_ACCESS_KEY_ID"])
+			}
+		})
 	}
 }
