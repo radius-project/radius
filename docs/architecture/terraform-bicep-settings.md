@@ -145,9 +145,13 @@ Each deploy, update, and delete fetches the selected cloud's **default credentia
 
 Radius sets per-execution credentials, user environment variables, and generated `.terraformrc` together **before module download and `terraform init`**, for both deploy and delete. Backend secrets are never rendered into backend JSON or CLI arguments, and the parent process environment is not modified.
 
+The managed S3 backend supports AWS endpoints only, not custom S3-compatible endpoints. Deploy, update, and delete reject nonempty `AWS_ENDPOINT_URL`, `AWS_ENDPOINT_URL_S3`, `AWS_S3_ENDPOINT`, `AWS_ENDPOINT_URL_STS`, or `AWS_STS_ENDPOINT` in the final merged execution environment, including inherited pod variables, settings variables, and resolved environment secrets. This applies to both AccessKey and IRSA, even with `AWS_IGNORE_CONFIGURED_ENDPOINT_URLS=true`. Remove conflicting overrides before execution; empty values are allowed. Radius rejects rather than silently removes overrides because providers share the environment, and removing a provider's emulator endpoint could redirect its operations to real AWS. The error identifies the variable, never its value. This restriction does not apply to the Kubernetes or Azure backend.
+
 #### Update and PATCH policy
 
-Once configured, the backend cannot be removed or its identity/location changed: `type`, S3 `bucket` and `region`, Azure `storageAccountName` and `containerName`, and the effective `keyPrefix` are immutable. Identical effective configurations are accepted, including omitted versus explicit `"radius"` prefixes; unrelated settings can change. Adding a backend to backend-less settings is allowed without checking deployment usage.
+Backend selection is immutable from TerraformSettings creation, including the implicit Kubernetes default when `backend` is omitted. An existing backend-less settings resource cannot acquire an S3 or Azure backend, even if it has never been used. Create new TerraformSettings with the cloud backend configured initially for new deployments. No deployment-usage tracking or state migration is required for this check.
+
+For cloud backends, `type`, S3 `bucket` and `region`, Azure `storageAccountName` and `containerName`, and the effective `keyPrefix` cannot change, and the backend cannot be removed. Identical effective configurations are accepted, including omitted versus explicit `"radius"` prefixes; unrelated settings can change. Backend-less settings can still be updated while retaining the Kubernetes default.
 
 PUT and PATCH use the **same direct validation**. PATCH retains the synchronous API framework's replacement semantics; there is no new merge machinery. A PATCH that omits `backend`, or sends `"backend": null`, is rejected once a backend exists. Include the unchanged backend alongside any settings updates; errors explicitly explain this requirement. Rejected requests do not modify the stored settings.
 
@@ -155,7 +159,7 @@ PUT and PATCH use the **same direct validation**. PATCH retains the synchronous 
 
 Cloud executions use Terraform init/apply/show/destroy for state access, permission errors, locking, and outputs. Radius does not probe cloud storage through a separate SDK or invoke Kubernetes state-secret verification/cleanup for a cloud backend. A missing cloud state may produce a no-op Terraform destroy; other Terraform errors propagate. After destroy, **Terraform's resulting cloud state object is retained**. Radius never deletes the bucket, account, or container.
 
-There is **no state migration or adoption of external state**. Adding a cloud backend to settings already used by deployed resources redirects subsequent executions to a different state location and is unsupported. Settings deletion/recreation, switching an environment's settings reference, and identity-changing environment/application moves are not guarded by this feature; they must not be used to redirect existing deployments. There is no stored backend snapshot or deployment-usage tracking. Kubernetes backend customization, OpenTofu, new VM managed identity registration, and installer changes are outside this feature.
+There is **no state migration or adoption of external state**. Direct updates cannot switch existing settings from Kubernetes to a cloud backend. Settings deletion/recreation, switching an environment's settings reference, and identity-changing environment/application moves are not guarded by this feature; they must not be used to redirect existing deployments. There is no stored backend snapshot or deployment-usage tracking. Kubernetes backend customization, OpenTofu, new VM managed identity registration, and installer changes are outside this feature.
 
 ### Why generate, not consume
 

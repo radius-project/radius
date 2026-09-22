@@ -155,7 +155,7 @@ model TerraformSettingsResource is TrackedResourceRequired<
 
 @doc("Terraform settings properties.")
 model TerraformSettingsProperties {
-  @doc("(Optional) Remote Terraform state backend. Omission uses Kubernetes. Storage must already exist. Once configured, the backend location cannot be changed or removed.")
+  @doc("(Optional) Remote Terraform state backend. Omission uses Kubernetes. Storage must already exist. Backend selection is immutable after TerraformSettings creation, including the Kubernetes default. Configure a cloud backend when creating new settings.")
   backend?: TerraformBackend;
 
   @doc("(Read Only) The status of the Terraform settings resource within the Radius control plane.")
