@@ -86,7 +86,7 @@ test-build-summary: ## Tests the build job summary rendering shared by the build
 
 .PHONY: test-goreleaser-shadow
 test-goreleaser-shadow: ## Tests GoReleaser shadow output parity verification
-	@go test ./.github/scripts/image-payload-manifest $(GOTEST_OPTS)
+	@CGO_ENABLED=1 go test ./.github/scripts/image-payload-manifest $(GOTEST_OPTS)
 	@bash ./.github/scripts/verify-goreleaser-shadow_test.sh
 
 .PHONY: test-capture-release-image-digests
