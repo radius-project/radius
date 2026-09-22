@@ -940,8 +940,8 @@ func (t *TerraformS3Backend) GetTerraformBackend() *TerraformBackend {
 
 // TerraformSettingsProperties - Terraform settings properties.
 type TerraformSettingsProperties struct {
-	// (Optional) Remote Terraform state backend. Omission uses Kubernetes. Storage must already exist. Once configured, the backend
-	// location cannot be changed or removed.
+	// (Optional) Remote Terraform state backend. Omission uses Kubernetes. Storage must already exist. Backend selection is immutable
+	// after TerraformSettings creation, including the Kubernetes default. Configure a cloud backend when creating new settings.
 	Backend TerraformBackendClassification
 
 	// (Optional) Environment variables injected into the Terraform process during Recipe execution.

@@ -73,6 +73,16 @@ func (e executor) setBackendEnvironment(ctx context.Context, backend *datamodel.
 }
 
 func setAWSBackendEnvironment(c *credentials.AWSCredential, env map[string]string) error {
+	// Reject rather than remove endpoints: providers share this environment, and removing
+	// an emulator endpoint could silently redirect provider operations to real AWS.
+	for _, key := range []string{
+		"AWS_ENDPOINT_URL", "AWS_ENDPOINT_URL_S3", "AWS_S3_ENDPOINT",
+		"AWS_ENDPOINT_URL_STS", "AWS_STS_ENDPOINT",
+	} {
+		if env[key] != "" {
+			return fmt.Errorf("s3 backend does not support endpoint override %s; remove it from the execution environment before using Radius-managed S3 state storage", key)
+		}
+	}
 	if c == nil {
 		return fmt.Errorf("s3 backend requires registered default AWS credentials")
 	}

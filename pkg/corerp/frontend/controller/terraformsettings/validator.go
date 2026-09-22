@@ -27,9 +27,9 @@ import (
 
 // ValidateRequest applies equally to PUT and replacement-semantics PATCH requests.
 func ValidateRequest(ctx context.Context, newResource, oldResource *datamodel.TerraformSettings, options *controller.Options) (rest.Response, error) {
-	if oldResource != nil && oldResource.Properties.Backend != nil &&
+	if oldResource != nil &&
 		!oldResource.Properties.Backend.SameLocation(newResource.Properties.Backend) {
-		return rest.NewBadRequestResponse("backend location cannot change or be removed; include the unchanged backend in PUT and PATCH requests. Terraform state migration is not supported."), nil
+		return rest.NewBadRequestResponse("backend location cannot change after TerraformSettings creation, including the default Kubernetes backend. Keep backend omitted for Kubernetes, or include the unchanged backend in PUT and PATCH requests. Create new TerraformSettings for new cloud-backed deployments; Terraform state migration is not supported."), nil
 	}
 	if err := newResource.Properties.Backend.Validate(); err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil

@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/logr/funcr"
+	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
@@ -51,6 +53,7 @@ func recordBackendTestExecution() error {
 	record := backendExecutionSnapshot{Command: os.Args[1], Args: os.Args[2:], Environment: map[string]string{}}
 	for _, key := range []string{
 		"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_ROLE_ARN", "AWS_WEB_IDENTITY_TOKEN_FILE",
+		"AWS_ENDPOINT_URL", "AWS_ENDPOINT_URL_S3", "AWS_S3_ENDPOINT", "AWS_ENDPOINT_URL_STS", "AWS_STS_ENDPOINT",
 		"ARM_CLIENT_ID", "ARM_CLIENT_SECRET", "ARM_TENANT_ID", "ARM_USE_OIDC", "ARM_OIDC_TOKEN_FILE_PATH",
 		"ARM_CLIENT_ID_FILE_PATH", "ARM_CLIENT_SECRET_FILE_PATH", "ARM_CLIENT_CERTIFICATE_PATH",
 		"ARM_ACCESS_KEY", "ARM_SAS_TOKEN", "TEST_USER_ENV", "TEST_SECRET_ENV", envTFCLIConfigFile,
@@ -89,6 +92,9 @@ func installBackendTestTerraform(t *testing.T) string {
 	t.Helper()
 	// Snapshots must never capture credentials or CLI configuration from the developer's host.
 	t.Setenv(envTFCLIConfigFile, "")
+	for _, key := range awsBackendTestEndpointVariables {
+		t.Setenv(key, "")
+	}
 	for _, key := range []string{
 		"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN", "AWS_ROLE_ARN", "AWS_WEB_IDENTITY_TOKEN_FILE",
 		"ARM_CLIENT_ID", "ARM_CLIENT_SECRET", "ARM_TENANT_ID", "ARM_USE_OIDC", "ARM_OIDC_TOKEN_FILE_PATH",
@@ -316,6 +322,132 @@ func TestCloudAzureStaleFilePathSelectors(t *testing.T) {
 				require.Contains(t, commands, "get")
 				require.Contains(t, commands, "init")
 				require.Contains(t, commands, "apply")
+			})
+		}
+	}
+}
+
+func TestCloudS3RejectsEndpointOverridesBeforeExecution(t *testing.T) {
+	for _, federated := range []bool{false, true} {
+		for _, source := range []string{"inherited", "settings", "secret"} {
+			for _, key := range awsBackendTestEndpointVariables {
+				for _, operation := range []string{"deploy", "delete"} {
+					t.Run(fmt.Sprintf("%s/%s/%s/federated=%v", operation, source, key, federated), func(t *testing.T) {
+						path := installBackendTestTerraform(t)
+						options := cloudExecutionOptions(t, "s3")
+						const endpoint = "https://endpoint.example.com/private-value"
+						switch source {
+						case "inherited":
+							t.Setenv(key, endpoint)
+						case "settings":
+							options.EnvConfig.RecipeConfig.Env.AdditionalProperties[key] = endpoint
+						case "secret":
+							options.EnvConfig.RecipeConfig.EnvSecrets[key] = datamodel.SecretReference{Source: "secret-store", Key: "endpoint"}
+							options.Secrets["secret-store"].Data["endpoint"] = endpoint
+						}
+						before := maps.Clone(options.EnvConfig.RecipeConfig.Env.AdditionalProperties)
+						hostValue := os.Getenv(key)
+						e := executor{awsCredentials: &backendCredentialStub[credentials.AWSCredential]{value: backendTestAWSCredential(federated)}}
+						var err error
+						if operation == "deploy" {
+							_, err = e.Deploy(t.Context(), options)
+						} else {
+							err = e.Delete(t.Context(), options)
+						}
+						require.ErrorContains(t, err, key)
+						require.Contains(t, err.Error(), "s3 backend does not support endpoint override")
+						require.NotContains(t, err.Error(), "private-value")
+						require.NoFileExists(t, path, "must reject before any Terraform subprocess runs")
+						require.Equal(t, before, options.EnvConfig.RecipeConfig.Env.AdditionalProperties)
+						require.Equal(t, hostValue, os.Getenv(key))
+					})
+				}
+			}
+		}
+	}
+}
+
+func TestCloudS3EndpointOverridePrecedence(t *testing.T) {
+	for _, federated := range []bool{false, true} {
+		for _, settingsValue := range []string{"", "https://settings.example.com"} {
+			t.Run(fmt.Sprintf("federated=%v/settings=%q", federated, settingsValue), func(t *testing.T) {
+				path := installBackendTestTerraform(t)
+				options := cloudExecutionOptions(t, "s3")
+				for _, key := range awsBackendTestEndpointVariables {
+					t.Setenv(key, "https://inherited.example.com")
+					options.EnvConfig.RecipeConfig.Env.AdditionalProperties[key] = settingsValue
+				}
+				e := executor{awsCredentials: &backendCredentialStub[credentials.AWSCredential]{value: backendTestAWSCredential(federated)}}
+				_, err := e.Deploy(t.Context(), options)
+				if settingsValue != "" {
+					require.ErrorContains(t, err, "s3 backend does not support endpoint override")
+					require.NoFileExists(t, path)
+					return
+				}
+				require.NoError(t, err)
+				require.NoError(t, e.Delete(t.Context(), options))
+				var commands []string
+				for _, snapshot := range readBackendSnapshots(t, path) {
+					// terraform-exec's version probe uses the host environment, not the execution environment.
+					if snapshot.Command == "version" {
+						continue
+					}
+					commands = append(commands, snapshot.Command)
+					for _, key := range awsBackendTestEndpointVariables {
+						require.Contains(t, snapshot.Environment, key)
+						require.Empty(t, snapshot.Environment[key], snapshot.Command)
+					}
+					if federated {
+						require.Equal(t, awsBackendTokenFile, snapshot.Environment["AWS_WEB_IDENTITY_TOKEN_FILE"])
+					} else {
+						require.Equal(t, "registered-secret", snapshot.Environment["AWS_SECRET_ACCESS_KEY"])
+					}
+				}
+				for _, command := range []string{"get", "init", "apply", "destroy"} {
+					require.Contains(t, commands, command)
+				}
+				for _, key := range awsBackendTestEndpointVariables {
+					require.Equal(t, "https://inherited.example.com", os.Getenv(key))
+					require.Empty(t, options.EnvConfig.RecipeConfig.Env.AdditionalProperties[key])
+				}
+			})
+		}
+	}
+}
+
+func TestNonS3BackendPreservesAWSEndpointOverrides(t *testing.T) {
+	for _, cloud := range []string{"kubernetes", "azurerm"} {
+		for _, source := range []string{"inherited", "settings"} {
+			t.Run(cloud+"/"+source, func(t *testing.T) {
+				path := installBackendTestTerraform(t)
+				options := cloudExecutionOptions(t, cloud)
+				if cloud == "kubernetes" {
+					options.EnvConfig.TerraformBackend = nil
+				}
+				for _, key := range awsBackendTestEndpointVariables {
+					if source == "inherited" {
+						t.Setenv(key, "https://provider.example.com")
+					} else {
+						options.EnvConfig.RecipeConfig.Env.AdditionalProperties[key] = "https://provider.example.com"
+					}
+				}
+				aws := &backendCredentialStub[credentials.AWSCredential]{}
+				e := executor{
+					awsCredentials:   aws,
+					azureCredentials: &backendCredentialStub[credentials.AzureCredential]{value: backendTestAzureCredential(false)},
+				}
+				tf, err := tfexec.NewTerraform(options.RootDir, os.Args[0])
+				require.NoError(t, err)
+				require.NoError(t, os.WriteFile(filepath.Join(options.RootDir, "main.tf.json"), []byte("{}"), 0600))
+				require.NoError(t, e.prepareExecution(t.Context(), tf, options))
+				require.NoError(t, tf.Get(t.Context()))
+				require.Empty(t, aws.names)
+				snapshots := readBackendSnapshots(t, path)
+				require.Len(t, snapshots, 1)
+				require.Equal(t, "get", snapshots[0].Command)
+				for _, key := range awsBackendTestEndpointVariables {
+					require.Equal(t, "https://provider.example.com", snapshots[0].Environment[key])
+				}
 			})
 		}
 	}
