@@ -12,6 +12,7 @@ This directory records the review of the 18-pull-request stack that implements t
 | 4  | `dp/git-cliff-changelog-bootstrap`   | [pr-04-git-cliff-changelog.md](./pr-04-git-cliff-changelog.md)             |
 | 5  | `dp/split-build-workflows`           | [pr-05-split-build-workflows.md](./pr-05-split-build-workflows.md)         |
 | 6  | `dp/edge-tags-deprecation`           | [pr-06-edge-tags.md](./pr-06-edge-tags.md)                                 |
+| 7  | `dp/goreleaser-shadow-release`       | [pr-07-goreleaser-shadow.md](./pr-07-goreleaser-shadow.md)                 |
 
 Later notes are added as the review progresses up the stack.
 
