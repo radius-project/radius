@@ -105,6 +105,27 @@ func Test_DaprPubSubBroker_Manual(t *testing.T) {
 	appNamespace := "default-dpsb-manual-app"
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
+			Executor: step.NewDeployExecutor(
+				template, testutil.GetMagpieImage(), fmt.Sprintf("namespace=%s", appNamespace), "deployContainer=false",
+			),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{Name: name, Type: validation.ApplicationsResource},
+					{Name: "dpsb-manual", Type: validation.DaprPubSubBrokersResource, App: name},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sServiceForResource(name, "dpsb-manual-redis").ValidateLabels(false),
+						validation.NewDaprComponent(name, "dpsb-manual").ValidateLabels(false),
+					},
+				},
+			},
+			PostStepVerify:       verifyRedisReady(appNamespace, name),
+			SkipResourceDeletion: true,
+		},
+		{
 			Executor: step.NewDeployExecutor(template, testutil.GetMagpieImage(), fmt.Sprintf("namespace=%s", appNamespace)),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
