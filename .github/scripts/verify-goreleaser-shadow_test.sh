@@ -233,6 +233,44 @@ sha256_stdin() {
     fi
 }
 
+add_image_fixture() {
+    local name="$1"
+    local kind
+    local platform_slug
+
+    jq --arg name "${name}" '.images += [.images[0] | .name = $name]' \
+        "${TEST_ROOT}/targets.json" >"${TEST_ROOT}/targets.tmp"
+    mv "${TEST_ROOT}/targets.tmp" "${TEST_ROOT}/targets.json"
+    jq --arg name "${name}" '
+        .images += [.images[0] | .name = $name
+            | (.platforms[].config.entrypoint) = ["/" + $name]
+            | (.platforms[].config.labels["org.opencontainers.image.description"]) = $name]
+    ' "${TEST_ROOT}/baselines/v0.60.0.json" >"${TEST_ROOT}/baseline.tmp"
+    mv "${TEST_ROOT}/baseline.tmp" "${TEST_ROOT}/baselines/v0.60.0.json"
+    jq --arg name "${name}" '
+        . += [.[0] | .name = $name
+            | .reference |= sub("/ucpd:"; "/" + $name + ":")
+            | .immutableReference |= sub("/ucpd@"; "/" + $name + "@")]
+    ' "${TEST_ROOT}/production-image-digests.json" >"${TEST_ROOT}/lock.tmp"
+    mv "${TEST_ROOT}/lock.tmp" "${TEST_ROOT}/production-image-digests.json"
+
+    for kind in shadow production; do
+        jq --arg name "${name}" '
+            (.image[].config.Entrypoint) = ["/" + $name]
+            | (.image[].config.Labels["org.opencontainers.image.description"]) = $name
+        ' "${TEST_ROOT}/${kind}-images/ucpd.json" \
+            >"${TEST_ROOT}/${kind}-images/${name}.json"
+        for platform_slug in linux_amd64 linux_arm64; do
+            jq -c --arg name "${name}" '
+                select(.path == "ucpd") | .path = $name
+            ' "${TEST_ROOT}/${kind}-payload/ucpd-${platform_slug}.payload.jsonl" \
+                >"${TEST_ROOT}/${kind}-payload/${name}-${platform_slug}.payload.jsonl"
+            cp "${TEST_ROOT}/${kind}-payload/ucpd-${platform_slug}.binary.sha256" \
+                "${TEST_ROOT}/${kind}-payload/${name}-${platform_slug}.binary.sha256"
+        done
+    done
+}
+
 write_image_fixture() {
     local output="$1"
     local digest="$2"
@@ -336,8 +374,18 @@ test_matching_outputs_pass() {
         return
     fi
     jq -e '
-        .checks.cliBinaryDigests == "match"
+        .schemaVersion == 2
+        and .status == "passed"
+        and .failure == null
+        and .checks.cliBinaryDigests == "match"
+        and .checks.imageManifestMediaType == "match"
         and .checks.imageRuntimeConfiguration == "match"
+        and .checks.imageRuntimePayload == "match"
+        and .checks.scmRelease == "disabled"
+        and (.checkResults | length) > 0
+        and all(.checkResults[]; .status == "match")
+        and (.checks | has("imageRuntimeFilesystem") | not)
+        and .excludedChecks[0].path == "images[].baseAndPackageFilesystem"
         and (.knownDifferences | length) == 1
     ' "${TEST_ROOT}/report.json" >/dev/null || {
         fail_test "parity report is incomplete"
@@ -357,6 +405,23 @@ test_binary_mismatch_fails() {
         fail_test "binary mismatch should fail"
         return
     fi
+    jq -e '
+        .status == "failed"
+        and .failure.phase == "cli"
+        and .failure.exitCode == 1
+        and (.failure.message | contains("binary digest mismatch"))
+        and .checks.cliAssetNames == "match"
+        and .checks.cliBinaryDigests == "not-verified"
+        and .checks.imageNamesAndPlatforms == "not-run"
+        and .checks.scmRelease == "disabled"
+        and any(.checkResults[];
+            .check == "binaryMetadata"
+            and .target == "rad_linux_amd64/runtime"
+            and .status == "not-run")
+    ' "${TEST_ROOT}/report.json" >/dev/null || {
+        fail_test "binary mismatch should retain a failure report"
+        return
+    }
     pass
 }
 
@@ -374,6 +439,121 @@ test_image_config_mismatch_fails() {
         fail_test "image configuration mismatch should fail"
         return
     fi
+    jq -e '
+        .status == "failed"
+        and .failure.phase == "images"
+        and .failure.expected != .failure.actual
+        and .failure.actual[1].config.ExposedPorts == {"9000/tcp": {}}
+        and .checks.cliBinaryDigests == "match"
+        and .checks.imageManifestMediaType == "match"
+        and .checks.imageNamesAndPlatforms == "match"
+        and .checks.imageRuntimeConfiguration == "not-verified"
+        and .checks.baselineRuntimeContract == "not-run"
+        and .checks.imageRuntimePayload == "not-run"
+        and .checks.embeddedServerBinaries == "not-run"
+        and .checks.scmRelease == "disabled"
+        and (.cliAssets | length) == 1
+    ' "${TEST_ROOT}/report.json" >/dev/null || {
+        fail_test "image mismatch should retain details and completed CLI checks"
+        return
+    }
+    pass
+}
+
+test_subshell_failure_report() {
+    setup_fixture
+    jq '.[0].path = "unexpected/rad"' \
+        "${TEST_ROOT}/shadow/artifacts.json" >"${TEST_ROOT}/artifacts.tmp"
+    mv "${TEST_ROOT}/artifacts.tmp" "${TEST_ROOT}/shadow/artifacts.json"
+    run_verifier
+
+    if [[ "${LAST_STATUS}" -eq 0 ]] || ! jq -e '
+        .status == "failed"
+        and .failure.phase == "cli"
+        and (.failure.message | contains("unexpected GoReleaser artifact path"))
+    ' "${TEST_ROOT}/report.json" >/dev/null; then
+        fail_test "a failure inside command substitution should retain its reason"
+        return
+    fi
+    pass
+}
+
+test_later_image_failure_preserves_progress() {
+    setup_fixture
+    add_image_fixture controller
+    add_image_fixture applications-rp
+    jq '.image["linux/arm64"].config.ExposedPorts = {"9000/tcp": {}}' \
+        "${TEST_ROOT}/shadow-images/controller.json" >"${TEST_ROOT}/image.tmp"
+    mv "${TEST_ROOT}/image.tmp" "${TEST_ROOT}/shadow-images/controller.json"
+    run_verifier
+
+    if [[ "${LAST_STATUS}" -eq 0 ]] || ! jq -e '
+        .status == "failed"
+        and (.failure.message | contains("configuration for controller"))
+        and .checks.imageManifestMediaType == "not-verified"
+        and .checks.imageRuntimeConfiguration == "not-verified"
+        and .checks.imageRuntimePayload == "not-verified"
+        and [.images[].name] == ["ucpd"]
+        and ([.checkResults[] | select(.check == "imageManifestMediaType")]
+            == [
+                {check: "imageManifestMediaType", target: "applications-rp", status: "not-run"},
+                {check: "imageManifestMediaType", target: "controller", status: "match"},
+                {check: "imageManifestMediaType", target: "ucpd", status: "match"}
+            ])
+        and ([.checkResults[] | select(.check == "imageRuntimeConfiguration")]
+            == [
+                {check: "imageRuntimeConfiguration", target: "applications-rp", status: "not-run"},
+                {check: "imageRuntimeConfiguration", target: "controller", status: "not-verified"},
+                {check: "imageRuntimeConfiguration", target: "ucpd", status: "match"}
+            ])
+    ' "${TEST_ROOT}/report.json" >/dev/null; then
+        fail_test "a later image failure should preserve matches without marking unvisited images as matched"
+        return
+    fi
+    pass
+}
+
+test_command_failure_report() {
+    setup_fixture
+    run_verifier
+    if [[ "${LAST_STATUS}" -ne 0 ]]; then
+        fail_test "initial run should write a success report"
+        return
+    fi
+    printf '{"manifest":' >"${TEST_ROOT}/shadow-images/ucpd.json"
+    run_verifier
+
+    if [[ "${LAST_STATUS}" -eq 0 ]] || ! jq -e \
+        --argjson status "${LAST_STATUS}" '
+        .status == "failed"
+        and .failure.phase == "images"
+        and .failure.exitCode == $status
+        and (.failure.message | contains("verification command failed"))
+        and .checks.cliBinaryDigests == "match"
+    ' "${TEST_ROOT}/report.json" >/dev/null; then
+        fail_test "an unexpected command failure should retain the original exit status"
+        return
+    fi
+    pass
+}
+
+test_image_media_type_mismatch_fails() {
+    setup_fixture
+    jq '.manifest.mediaType = "application/vnd.docker.distribution.manifest.list.v2+json"' \
+        "${TEST_ROOT}/shadow-images/ucpd.json" >"${TEST_ROOT}/image.tmp"
+    mv "${TEST_ROOT}/image.tmp" "${TEST_ROOT}/shadow-images/ucpd.json"
+    run_verifier
+
+    if [[ "${LAST_STATUS}" -eq 0 ]] || ! jq -e '
+        .status == "failed"
+        and (.failure.message | contains("root manifest media type"))
+        and .failure.expected == "application/vnd.oci.image.index.v1+json"
+        and .failure.actual == "application/vnd.docker.distribution.manifest.list.v2+json"
+        and .checks.imageManifestMediaType == "not-verified"
+    ' "${TEST_ROOT}/report.json" >/dev/null; then
+        fail_test "different root manifest media types should fail with a report"
+        return
+    fi
     pass
 }
 
@@ -388,6 +568,26 @@ test_payload_mismatch_fails() {
         fail_test "payload mismatch should fail"
         return
     fi
+    jq -e '
+        .checks.imageManifestMediaType == "match"
+        and .checks.imageRuntimeConfiguration == "match"
+        and .checks.baselineRuntimeContract == "match"
+        and .checks.imageRuntimePayload == "not-verified"
+        and .checks.embeddedServerBinaries == "not-verified"
+        and ([.checkResults[] | select(.check == "imageRuntimePayload")]
+            == [
+                {check: "imageRuntimePayload", target: "ucpd/linux/amd64", status: "match"},
+                {check: "imageRuntimePayload", target: "ucpd/linux/arm64", status: "not-verified"}
+            ])
+        and ([.checkResults[] | select(.check == "embeddedServerBinaries")]
+            == [
+                {check: "embeddedServerBinaries", target: "ucpd/linux/amd64", status: "match"},
+                {check: "embeddedServerBinaries", target: "ucpd/linux/arm64", status: "not-run"}
+            ])
+    ' "${TEST_ROOT}/report.json" >/dev/null || {
+        fail_test "platform failure should retain earlier platform matches and unexecuted checks"
+        return
+    }
     pass
 }
 
@@ -473,6 +673,10 @@ main() {
     test_matching_outputs_pass
     test_binary_mismatch_fails
     test_image_config_mismatch_fails
+    test_subshell_failure_report
+    test_later_image_failure_preserves_progress
+    test_command_failure_report
+    test_image_media_type_mismatch_fails
     test_payload_mismatch_fails
     test_checksum_mismatch_fails
     test_server_binary_mismatch_fails
