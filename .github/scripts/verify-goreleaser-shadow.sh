@@ -882,8 +882,8 @@ write_report() {
                 and all($statuses[]; . == "match") then "match"
             elif any($statuses[]; . != "not-run") then "not-verified"
             else "not-run" end;
-        reduce $progress[] as $entry
-            ({}; .[$entry.check][$entry.target] = $entry.status) as $results
+        (reduce $progress[] as $entry
+            ({}; .[$entry.check][$entry.target] = $entry.status)) as $results
         | {
             schemaVersion: 2,
             status: (if $exitCode == 0 then "passed" else "failed" end),
