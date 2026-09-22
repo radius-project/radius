@@ -56,6 +56,11 @@ func TestMain(m *testing.M) {
 }
 
 func runTerraformTestHelper() error {
+	if os.Getenv(terraformBackendSnapshots) != "" {
+		if err := recordBackendTestExecution(); err != nil {
+			return err
+		}
+	}
 	if commandLog := os.Getenv(terraformCommandLog); commandLog != "" && len(os.Args) > 1 {
 		file, err := os.OpenFile(commandLog, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
@@ -79,6 +84,20 @@ func runTerraformTestHelper() error {
 		[]byte(`output "endpoint" { value = "declared" }`),
 		0644); err != nil {
 		return fmt.Errorf("writing test module outputs: %w", err)
+	}
+	if provider := os.Getenv("RADIUS_TERRAFORM_REQUIRED_PROVIDER"); provider != "" {
+		content := fmt.Sprintf("terraform {\n required_providers {\n %s = {\n source = \"hashicorp/%s\"\n }\n }\n}\n", provider, provider)
+		if err := os.WriteFile(filepath.Join(moduleDir, "providers.tf"), []byte(content), 0600); err != nil {
+			return err
+		}
+	}
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "version":
+			fmt.Fprint(os.Stdout, `{"terraform_version":"1.15.8","platform":"test","provider_selections":{}}`)
+		case "show":
+			fmt.Fprint(os.Stdout, `{"format_version":"1.0","terraform_version":"1.15.8","values":{"outputs":{"endpoint":{"value":"declared","type":"string","sensitive":false}}}}`)
+		}
 	}
 	return nil
 }
@@ -464,7 +483,7 @@ func TestSetEnvironmentVariables(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			err = e.setEnvironmentVariables(tf, tc.opts)
+			err = e.prepareExecution(t.Context(), tf, tc.opts)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -482,7 +501,7 @@ func TestSetEnvironmentVariables(t *testing.T) {
 	}
 }
 
-func TestApplyTerraformCLIConfig(t *testing.T) {
+func TestPrepareExecutionCLIConfig(t *testing.T) {
 	tests := []struct {
 		name      string
 		opts      Options
@@ -527,7 +546,7 @@ func TestApplyTerraformCLIConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			err = e.applyTerraformCLIConfig(tf, tc.opts)
+			err = e.prepareExecution(t.Context(), tf, tc.opts)
 			if tc.wantError {
 				require.Error(t, err)
 				return
