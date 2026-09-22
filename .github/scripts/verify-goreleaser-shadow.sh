@@ -45,8 +45,6 @@ TEMP_DIR=""
 REPORT_READY=false
 REPORT_PHASE="inputs"
 BASELINE_VERSION=""
-CLI_VERIFIED=false
-IMAGES_VERIFIED=false
 FAILURE_EXPECTED=null
 FAILURE_ACTUAL=null
 declare -a CONTAINERS=()
@@ -111,6 +109,36 @@ trap finish EXIT
 
 require_command() {
     command -v "$1" >/dev/null 2>&1 || fail "required command not found: $1"
+}
+
+initialize_checks() {
+    jq -c --arg lock "${PRODUCTION_IMAGE_LOCK}" '
+        (
+            {check: "cliAssetNames", target: "all"},
+            (.cliAssets[].name as $name
+                | ["cliBinaryDigests", "binaryMetadata"][]
+                | {check: ., target: $name}),
+            {check: "binaryMetadata", target: "rad_linux_amd64/runtime"},
+            (if $lock != "" then
+                {check: "imageNamesAndPlatforms", target: "production-image-lock"}
+                else empty end),
+            (.images[] | select(.category == "production") | . as $image
+                | ([
+                    "imageNamesAndPlatforms", "imageManifestMediaType",
+                    "imageRuntimeConfiguration", "imageAuxiliaryManifestShape",
+                    "baselineRuntimeContract"
+                  ][] | {check: ., target: $image.name}),
+                  ($image.requiredPlatforms[] as $platform
+                    | ["imageRuntimePayload", "embeddedServerBinaries"][]
+                    | {check: ., target: ($image.name + "/" + $platform)}))
+        ) | . + {status: "not-run"}
+    ' "${TARGETS_FILE}" >>"${TEMP_DIR}/checks.jsonl"
+}
+
+record_check() {
+    jq -cn --arg check "$1" --arg target "$2" --arg status "$3" '
+        {check: $check, target: $target, status: $status}
+    ' >>"${TEMP_DIR}/checks.jsonl"
 }
 
 sha256_file() {
@@ -291,6 +319,7 @@ verify_cli_artifacts() {
     local baseline_build_contract
     local shadow_build_contract
 
+    record_check cliAssetNames all not-verified
     expected_names="$(jq -c '[.cliAssets[].name] | sort' "${TARGETS_FILE}")"
     actual_names="$(jq -c '[
         .[]
@@ -303,6 +332,7 @@ verify_cli_artifacts() {
     ] | sort' "${SHADOW_DIR}/artifacts.json")"
     assert_json_equal "${actual_names}" "${expected_names}" \
         "shadow CLI asset names"
+    record_check cliAssetNames all match
 
     while IFS= read -r asset; do
         name="$(jq -r '.name' <<<"${asset}")"
@@ -320,6 +350,7 @@ verify_cli_artifacts() {
         # binaries differ, the metadata diff is what explains why.
         shadow_build_info="${TEMP_DIR}/shadow-${name}.json"
         production_build_info="${TEMP_DIR}/production-${name}.json"
+        record_check binaryMetadata "${name}" not-verified
         extract_build_info shadow "${name}" "${shadow_binary}" \
             "${shadow_build_info}"
         extract_build_info production "${name}" "${production_binary}" \
@@ -329,6 +360,7 @@ verify_cli_artifacts() {
             "$(jq -cS . "${production_build_info}")" \
             "embedded build metadata for ${name}"
 
+        record_check cliBinaryDigests "${name}" not-verified
         shadow_hash="$(sha256_file "${shadow_binary}")"
         production_hash="$(sha256_file "${production_binary}")"
         [[ "${shadow_hash}" == "${production_hash}" ]] ||
@@ -342,6 +374,7 @@ verify_cli_artifacts() {
             fail "unexpected native checksum format for ${name}.sha256"
         [[ "${declared_hash}" == "${shadow_hash}" ]] ||
             fail "shadow checksum mismatch for ${name}"
+        record_check cliBinaryDigests "${name}" match
 
         jq -e \
             --arg channel "${CHANNEL}" \
@@ -398,6 +431,7 @@ verify_cli_artifacts() {
                 "${baseline_build_contract}" \
                 "baseline build contract for ${name}"
         fi
+        record_check binaryMetadata "${name}" match
 
         jq -n \
             --arg name "${name}" \
@@ -405,6 +439,7 @@ verify_cli_artifacts() {
             '{name: $name, sha256: $sha256}' >>"${entries_file}"
     done < <(jq -c '.cliAssets[]' "${TARGETS_FILE}")
 
+    record_check binaryMetadata rad_linux_amd64/runtime not-verified
     shadow_binary="$(shadow_artifact_path "rad_linux_amd64")"
     production_binary="${PRODUCTION_DIR}/rad_linux_amd64"
     shadow_runtime="${TEMP_DIR}/shadow-runtime.json"
@@ -415,6 +450,7 @@ verify_cli_artifacts() {
         "$(jq -cS . "${shadow_runtime}")" \
         "$(jq -cS . "${production_runtime}")" \
         "runtime CLI version output"
+    record_check binaryMetadata rad_linux_amd64/runtime match
 }
 
 verify_image_baseline_contract() {
@@ -686,6 +722,7 @@ verify_images() {
     local locked_digest
 
     if [[ -n "${PRODUCTION_IMAGE_LOCK}" ]]; then
+        record_check imageNamesAndPlatforms production-image-lock not-verified
         [[ -f "${PRODUCTION_IMAGE_LOCK}" ]] ||
             fail "production image lock not found: ${PRODUCTION_IMAGE_LOCK}"
         assert_json_equal \
@@ -694,6 +731,7 @@ verify_images() {
                 .images[] | select(.category == "production") | .name
             ] | sort' "${TARGETS_FILE}")" \
             "production image lock names"
+        record_check imageNamesAndPlatforms production-image-lock match
     fi
 
     while IFS= read -r target; do
@@ -726,11 +764,14 @@ verify_images() {
                 fail "production image digest does not match the lock for ${name}"
         fi
 
+        record_check imageManifestMediaType "${name}" not-verified
         assert_json_equal \
             "$(jq -c '.mediaType' "${shadow_normalized}")" \
             "$(jq -c '.mediaType' "${production_normalized}")" \
             "root manifest media type for ${name}"
+        record_check imageManifestMediaType "${name}" match
 
+        record_check imageNamesAndPlatforms "${name}" not-verified
         expected_platforms="$(jq -c '.requiredPlatforms | sort' <<<"${target}")"
         actual_platforms="$(jq -c '[.platforms[].platform] | sort' \
             "${shadow_normalized}")"
@@ -741,23 +782,31 @@ verify_images() {
                 "${production_normalized}")" \
             "${expected_platforms}" \
             "production platforms for ${name}"
+        record_check imageNamesAndPlatforms "${name}" match
 
+        record_check imageRuntimeConfiguration "${name}" not-verified
         shadow_config="$(jq -cS '[.platforms[] | {platform, config}]' \
             "${shadow_normalized}")"
         production_config="$(jq -cS '[.platforms[] | {platform, config}]' \
             "${production_normalized}")"
         assert_json_equal "${shadow_config}" "${production_config}" \
             "runtime image configuration for ${name}"
+        record_check imageRuntimeConfiguration "${name}" match
 
+        record_check imageAuxiliaryManifestShape "${name}" not-verified
         shadow_auxiliary="$(jq -cS '.auxiliary' "${shadow_normalized}")"
         production_auxiliary="$(jq -cS '.auxiliary' \
             "${production_normalized}")"
         assert_json_equal "${shadow_auxiliary}" "${production_auxiliary}" \
             "auxiliary manifest shape for ${name}"
+        record_check imageAuxiliaryManifestShape "${name}" match
+        record_check baselineRuntimeContract "${name}" not-verified
         verify_image_baseline_contract "${baseline}" "${name}" \
             "${production_normalized}"
+        record_check baselineRuntimeContract "${name}" match
 
         while IFS= read -r platform; do
+            record_check imageRuntimePayload "${name}/${platform}" not-verified
             platform_slug="$(tr '/' '_' <<<"${platform}")"
             shadow_platform_digest="$(jq -r --arg platform "${platform}" '
                 .platforms[]
@@ -783,8 +832,11 @@ verify_images() {
                 "${production_payload}" "${production_binary_hash}"
             cmp -s "${shadow_payload}" "${production_payload}" ||
                 fail "runtime payload mismatch for ${name} ${platform}"
+            record_check imageRuntimePayload "${name}/${platform}" match
+            record_check embeddedServerBinaries "${name}/${platform}" not-verified
             cmp -s "${shadow_binary_hash}" "${production_binary_hash}" ||
                 fail "embedded server binary mismatch for ${name} ${platform}"
+            record_check embeddedServerBinaries "${name}/${platform}" match
         done < <(jq -r '.requiredPlatforms[]' <<<"${target}")
 
         jq -n \
@@ -820,16 +872,19 @@ write_report() {
         --arg shadowRegistry "${SHADOW_REGISTRY}" \
         --arg phase "${REPORT_PHASE}" \
         --argjson exitCode "${exit_status}" \
-        --argjson cliVerified "${CLI_VERIFIED}" \
-        --argjson imagesVerified "${IMAGES_VERIFIED}" \
+        --slurpfile progress "${TEMP_DIR}/checks.jsonl" \
         --slurpfile failures "${TEMP_DIR}/failure.json" \
         --slurpfile cli "${TEMP_DIR}/cli.jsonl" \
         --slurpfile images "${TEMP_DIR}/images.jsonl" '
-        def result($verified; $started):
-            if $verified then "match"
-            elif $started then "not-verified"
+        def result($targets):
+            [$targets[]] as $statuses
+            | if ($statuses | length) > 0
+                and all($statuses[]; . == "match") then "match"
+            elif any($statuses[]; . != "not-run") then "not-verified"
             else "not-run" end;
-        {
+        reduce $progress[] as $entry
+            ({}; .[$entry.check][$entry.target] = $entry.status) as $results
+        | {
             schemaVersion: 2,
             status: (if $exitCode == 0 then "passed" else "failed" end),
             failure: (if $exitCode == 0 then null else
@@ -846,18 +901,23 @@ write_report() {
             sourceCommit: $commit,
             shadowRegistry: $shadowRegistry,
             checks: {
-                cliAssetNames: result($cliVerified; $phase == "cli"),
-                cliBinaryDigests: result($cliVerified; $phase == "cli"),
-                binaryMetadata: result($cliVerified; $phase == "cli"),
-                imageNamesAndPlatforms: result($imagesVerified; $phase == "images"),
-                imageManifestMediaType: result($imagesVerified; $phase == "images"),
-                imageRuntimeConfiguration: result($imagesVerified; $phase == "images"),
-                baselineRuntimeContract: result($imagesVerified; $phase == "images"),
-                imageRuntimePayload: result($imagesVerified; $phase == "images"),
-                embeddedServerBinaries: result($imagesVerified; $phase == "images"),
-                scmRelease: (if $exitCode == 0 then "disabled"
-                    else "not-verified" end)
+                cliAssetNames: result($results.cliAssetNames // {}),
+                cliBinaryDigests: result($results.cliBinaryDigests // {}),
+                binaryMetadata: result($results.binaryMetadata // {}),
+                imageNamesAndPlatforms: result($results.imageNamesAndPlatforms // {}),
+                imageManifestMediaType: result($results.imageManifestMediaType // {}),
+                imageRuntimeConfiguration: result($results.imageRuntimeConfiguration // {}),
+                imageAuxiliaryManifestShape: result($results.imageAuxiliaryManifestShape // {}),
+                baselineRuntimeContract: result($results.baselineRuntimeContract // {}),
+                imageRuntimePayload: result($results.imageRuntimePayload // {}),
+                embeddedServerBinaries: result($results.embeddedServerBinaries // {}),
+                scmRelease: "disabled"
             },
+            checkResults: [
+                $results | to_entries[] | .key as $check
+                | .value | to_entries[]
+                | {check: $check, target: .key, status: .value}
+            ] | sort_by([.check, .target]),
             excludedChecks: [{
                 path: "images[].baseAndPackageFilesystem",
                 reason: "Only Radius-owned binaries and UCP manifests are compared. Dockerfile instruction parity does not verify resolved base-image or package contents."
@@ -940,6 +1000,7 @@ main() {
     : >"${cli_entries}"
     : >"${image_entries}"
     : >"${TEMP_DIR}/failure.json"
+    : >"${TEMP_DIR}/checks.jsonl"
     REPORT_READY=true
 
     if [[ -z "${BUILD_INFO_DIR}" ]]; then
@@ -968,15 +1029,14 @@ main() {
         fail "production artifact directory not found: ${PRODUCTION_DIR}"
 
     REPORT_PHASE="contract"
+    initialize_checks
     select_baseline "${baseline}"
     BASELINE_VERSION="$(jq -r '.release.version' "${baseline}")"
     verify_contract "${baseline}"
     REPORT_PHASE="cli"
     verify_cli_artifacts "${cli_entries}" "${baseline}"
-    CLI_VERIFIED=true
     REPORT_PHASE="images"
     verify_images "${image_entries}" "${baseline}"
-    IMAGES_VERIFIED=true
 
     echo "GoReleaser shadow output matches the production parity contract"
     echo "Parity report: ${REPORT_PATH}"
