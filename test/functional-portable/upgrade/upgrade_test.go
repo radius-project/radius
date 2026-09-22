@@ -95,7 +95,7 @@ const (
 // share a Helm release name and a Kubernetes namespace and so must not run in parallel.
 func Test_PreflightContainer(t *testing.T) {
 	ctx := t.Context()
-	image, tag := getPreUpgradeImage()
+	registry, tag := testutil.SetDefault()
 
 	k8sClient, err := newKubernetesClient()
 	require.NoError(t, err, "Failed to create Kubernetes client")
@@ -103,7 +103,7 @@ func Test_PreflightContainer(t *testing.T) {
 	cleanupAndWait(t, ctx, k8sClient)
 
 	t.Log("Installing Radius with preflight enabled and custom configuration")
-	require.NoError(t, helmInstall(ctx, image, tag, preflightEnabledValues()), "Failed to install Radius")
+	require.NoError(t, helmInstall(ctx, registry, tag, preflightEnabledValues()), "Failed to install Radius")
 
 	t.Cleanup(func() {
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cleanupCommandTimeout)
@@ -114,7 +114,7 @@ func Test_PreflightContainer(t *testing.T) {
 	// The chart's post-install hook verifies the aggregated API through
 	// kube-apiserver before Helm returns, so no test-specific readiness wait is
 	// needed here.
-	release := preflightRelease{options: rp.NewRPTestOptions(t), image: image, tag: tag}
+	release := preflightRelease{options: rp.NewRPTestOptions(t), registry: registry, tag: tag}
 
 	// The subtests are given the parent's context rather than their own so the shared
 	// release outlives any single subtest.
@@ -127,9 +127,9 @@ func Test_PreflightContainer(t *testing.T) {
 // preflightRelease is the state the preflight subtests share: the single Helm release
 // they upgrade in sequence and the clients used to observe it.
 type preflightRelease struct {
-	options rp.RPTestOptions
-	image   string
-	tag     string
+	options  rp.RPTestOptions
+	registry string
+	tag      string
 }
 
 // preflightEnabledValues returns the Helm values that enable the pre-upgrade hook with
@@ -150,7 +150,7 @@ func testPreflightEnabled(t *testing.T, ctx context.Context, release preflightRe
 	t.Log("Upgrading to trigger pre-upgrade hook")
 	// The upgrade itself is allowed to fail: the preflight checks may legitimately
 	// reject it. The assertion is that the hook created the job.
-	if err := helmUpgrade(ctx, release.image, release.tag, preflightEnabledValues()); err != nil {
+	if err := helmUpgrade(ctx, release.registry, release.tag, preflightEnabledValues()); err != nil {
 		t.Logf("Upgrade with preflight enabled failed, which is expected when the preflight checks reject it: %v", err)
 	}
 
@@ -177,7 +177,7 @@ func testPreflightDisabled(t *testing.T, ctx context.Context, release preflightR
 	t.Log("Upgrading with preflight disabled")
 	// With the hook disabled there is no job to reject the upgrade, so it must succeed.
 	// Otherwise the assertion below would pass simply because no upgrade ran.
-	err := helmUpgrade(ctx, release.image, release.tag, map[string]string{"preupgrade.enabled": "false"})
+	err := helmUpgrade(ctx, release.registry, release.tag, map[string]string{"preupgrade.enabled": "false"})
 	require.NoError(t, err, "Upgrade with preflight disabled should succeed")
 
 	t.Log("Verifying no preflight job was created")
@@ -267,49 +267,99 @@ func deletePreflightJob(t *testing.T, ctx context.Context, options rp.RPTestOpti
 
 // Helper functions
 
-// getPreUpgradeImage constructs the pre-upgrade container image name using the configured registry and tag.
-func getPreUpgradeImage() (image string, tag string) {
-	registry, tag := testutil.SetDefault()
-	return fmt.Sprintf("%s/pre-upgrade", registry), tag
+// helmInstall runs helm install with the given registry, tag, and additional values.
+func helmInstall(ctx context.Context, registry, tag string, values map[string]string) error {
+	return runCommand(ctx, helmReleaseArgs("install", registry, tag, values))
 }
 
-// helmInstall runs helm install with the given image, tag, and additional values.
-func helmInstall(ctx context.Context, image, tag string, values map[string]string) error {
-	args := []string{
-		"helm", "install", helmReleaseName, relativeChartPath,
-		"--namespace", radiusNamespace,
-		"--create-namespace",
-		"--set", fmt.Sprintf("preupgrade.image=%s", image),
-		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
-		"--wait",
-		"--timeout", helmTimeout,
-	}
-	for k, v := range values {
-		args = append(args, "--set", fmt.Sprintf("%s=%s", k, v))
-	}
-	return runCommand(ctx, args)
-}
-
-// helmUpgrade runs helm upgrade with the given image, tag, and additional values.
+// helmUpgrade runs helm upgrade with the given registry, tag, and additional values.
 //
 // --cleanup-on-fail is set because a caller may tolerate a failed upgrade and then
 // upgrade again: it removes resources the failed attempt created rather than leaving
 // them for the next attempt to reconcile. It does not remove the pre-upgrade job, which
 // Helm tracks as a hook rather than as a resource created from the release manifest.
-func helmUpgrade(ctx context.Context, image, tag string, values map[string]string) error {
+func helmUpgrade(ctx context.Context, registry, tag string, values map[string]string) error {
+	return runCommand(ctx, helmReleaseArgs("upgrade", registry, tag, values))
+}
+
+func helmReleaseArgs(operation, registry, tag string, values map[string]string) []string {
 	args := []string{
-		"helm", "upgrade", helmReleaseName, relativeChartPath,
+		"helm", operation, helmReleaseName, relativeChartPath,
 		"--namespace", radiusNamespace,
-		"--set", fmt.Sprintf("preupgrade.image=%s", image),
-		"--set", fmt.Sprintf("preupgrade.tag=%s", tag),
 		"--wait",
-		"--cleanup-on-fail",
 		"--timeout", helmTimeout,
 	}
-	for k, v := range values {
-		args = append(args, "--set", fmt.Sprintf("%s=%s", k, v))
+	switch operation {
+	case "install":
+		args = append(args, "--create-namespace")
+	case "upgrade":
+		args = append(args, "--cleanup-on-fail")
 	}
-	return runCommand(ctx, args)
+	for _, component := range []struct{ key, image string }{
+		{"controller", "controller"},
+		{"rp", "applications-rp"},
+		{"dynamicrp", "dynamic-rp"},
+		{"ucp", "ucpd"},
+		{"bicep", "bicep"},
+		{"preupgrade", "pre-upgrade"},
+	} {
+		args = append(args,
+			"--set-string", fmt.Sprintf("%s.image=%s/%s", component.key, registry, component.image),
+			"--set-string", fmt.Sprintf("%s.tag=%s", component.key, tag))
+	}
+	for key, value := range values {
+		args = append(args, "--set", fmt.Sprintf("%s=%s", key, value))
+	}
+	return args
+}
+
+func Test_helmReleaseArgs(t *testing.T) {
+	for _, settings := range []struct {
+		name         string
+		registry     string
+		tag          string
+		wantRegistry string
+		wantTag      string
+	}{
+		{name: "defaults", wantRegistry: "ghcr.io/radius-project", wantTag: "latest"},
+		{name: "ci", registry: "radius-registry:5000", tag: "pr-func2b7a279e78", wantRegistry: "radius-registry:5000", wantTag: "pr-func2b7a279e78"},
+	} {
+		t.Run(settings.name, func(t *testing.T) {
+			t.Setenv("DOCKER_REGISTRY", settings.registry)
+			t.Setenv("REL_VERSION", settings.tag)
+			registry, tag := testutil.SetDefault()
+
+			for _, operation := range []struct{ name, flag string }{
+				{"install", "--create-namespace"},
+				{"upgrade", "--cleanup-on-fail"},
+			} {
+				t.Run(operation.name, func(t *testing.T) {
+					for _, enabled := range []string{"true", "false"} {
+						t.Run("preflight="+enabled, func(t *testing.T) {
+							args := helmReleaseArgs(operation.name, registry, tag, map[string]string{"preupgrade.enabled": enabled})
+							require.Equal(t, []string{
+								"helm", operation.name, "radius", "../../../deploy/Chart",
+								"--namespace", "radius-system", "--wait", "--timeout", "5m", operation.flag,
+								"--set-string", "controller.image=" + settings.wantRegistry + "/controller",
+								"--set-string", "controller.tag=" + settings.wantTag,
+								"--set-string", "rp.image=" + settings.wantRegistry + "/applications-rp",
+								"--set-string", "rp.tag=" + settings.wantTag,
+								"--set-string", "dynamicrp.image=" + settings.wantRegistry + "/dynamic-rp",
+								"--set-string", "dynamicrp.tag=" + settings.wantTag,
+								"--set-string", "ucp.image=" + settings.wantRegistry + "/ucpd",
+								"--set-string", "ucp.tag=" + settings.wantTag,
+								"--set-string", "bicep.image=" + settings.wantRegistry + "/bicep",
+								"--set-string", "bicep.tag=" + settings.wantTag,
+								"--set-string", "preupgrade.image=" + settings.wantRegistry + "/pre-upgrade",
+								"--set-string", "preupgrade.tag=" + settings.wantTag,
+								"--set", "preupgrade.enabled=" + enabled,
+							}, args)
+						})
+					}
+				})
+			}
+		})
+	}
 }
 
 // helmUninstall removes the Radius helm release.
