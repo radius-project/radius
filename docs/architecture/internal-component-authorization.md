@@ -1,6 +1,6 @@
 # Radius Internal Component Authorization and Secure Communication
 
-- **Author**: TBD
+- **Author**: [@sk593](https://github.com/sk593)
 
 ## Overview
 
