@@ -80,9 +80,17 @@ To confirm your schema compiles in a Bicep template, publish the generated Bicep
 
    `<target>` is either a local path (for example `./bin/radius-types.tgz`) or an OCI reference (for example `br:biceptypes.azurecr.io/radius:latest`). The target requires the `bicep` CLI on your `PATH`.
 
-   For a resource provider manifest rather than the unified index, use `rad bicep publish-extension --from-file <manifest.yaml> --target <target>`; add `--force` to overwrite an existing extension. Generic OCI registries require Bicep v0.45.6 or later and registry authentication, such as `docker login`. For non-loopback registry targets, `rad` runs Bicep from a temporary directory containing a copy of the nearest caller `bicepconfig.json`, preserving its settings and enabling `experimentalFeaturesEnabled.ociEnabled` only for that invocation. Caller files are not modified. Local-file publishing keeps the caller's working directory and Bicep's output-directory configuration discovery, so relative settings keep their meaning and `--target ./output.tgz` remains in the caller's directory after cleanup.
+   For a resource provider manifest rather than the unified index, use `rad bicep publish-extension --from-file <manifest.yaml> --target <target>`; add `--force` to overwrite an existing registry extension. For generic OCI registries, use the pinned Bicep v0.46.1 (OCI requires v0.45.6 or later) and authenticate with `docker login` when required. Explicitly merge the following setting into the effective `bicepconfig.json` in your publishing working directory or its normal ancestor discovery path; preserve existing settings rather than replacing the file:
 
-   Loopback registries keep the caller's working directory and OCI setting because Bicep v0.46.1 forces plain HTTP for loopback when OCI is enabled. Leave OCI unset or disabled for existing HTTPS loopback registries; explicitly enable it in the caller's config for HTTP loopback registries. Non-canonical numeric host forms (such as `127.1` or `0x7f000001`) also retain the caller's setting rather than guessing how Bicep normalizes them. Set OCI explicitly when needed for those hosts.
+   ```json
+   {
+       "experimentalFeaturesEnabled": {
+           "ociEnabled": true
+       }
+   }
+   ```
+
+   `rad` inherits the caller's working directory and environment and leaves Bicep configuration unchanged. Bicep handles configuration discovery and registry transport; there is no `--oci-enabled` switch. Local targets such as `./output.tgz` remain relative to the caller and survive temporary generation-directory cleanup. For existing HTTPS loopback registries, keep OCI unset or false; Bicep uses HTTP for loopback when OCI is explicitly enabled.
 4. Update the root `bicepconfig.json` to reference your published extension:
 
    ```json
@@ -96,7 +104,7 @@ To confirm your schema compiles in a Bicep template, publish the generated Bicep
 
    Once Bicep restores the new extension, your schema changes are available in Bicep templates.
 
-   To restore an extension from a generic OCI registry in a separate Bicep invocation, also set `experimentalFeaturesEnabled.ociEnabled` to `true` in the consuming template's `bicepconfig.json`; the publishing command's temporary setting does not change consumer configuration.
+   Restore uses the consuming template's own effective configuration. To restore from a generic OCI registry, also merge `experimentalFeaturesEnabled.ociEnabled: true` into that configuration if it is not already enabled; publishing does not configure consumers.
 
 ### 5. Update docs and samples, then merge in order
 
