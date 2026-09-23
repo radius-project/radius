@@ -51,6 +51,7 @@ types:
       - CONNECTION_POSTGRESQL_DATABASE
       - CONNECTION_POSTGRESQL_HOST
       - CONNECTION_POSTGRESQL_PORT
+      - CONNECTION_POSTGRESQL_TLS
 
     apiVersions:
       '2025-08-01-preview':
@@ -82,6 +83,11 @@ types:
             initSql:
               type: string
               description: "(Optional) SQL script mounted into the PostgreSQL container's `/docker-entrypoint-initdb.d/` directory and executed whenever PGDATA is empty. With the default ephemeral storage this runs on every pod restart. If a PersistentVolumeClaim is used, the script runs only on the very first startup and subsequent changes to initSql are ignored on existing volumes. Limited to ~1 MiB. Useful for creating tables, indexes, and inserting seed data."
+            tls:
+              type: string
+              enum: ['required', 'optional']
+              default: 'required'
+              description: "(Optional) The requested transport policy for database connections. Configure your client using `CONNECTION_POSTGRESQL_TLS`. Defaults to `required`. Use `optional` only when the server is not publicly reachable; it permits connections without TLS."
             host:
               type: string
               description: "(Read Only) The host name used to connect to the database. Mapped from the recipe module's output."

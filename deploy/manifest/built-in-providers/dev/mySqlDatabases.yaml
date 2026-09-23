@@ -51,6 +51,7 @@ types:
       - CONNECTION_MYSQLDB_DATABASE
       - CONNECTION_MYSQLDB_HOST
       - CONNECTION_MYSQLDB_PORT
+      - CONNECTION_MYSQLDB_TLS
 
     apiVersions:
       '2025-08-01-preview':
@@ -79,6 +80,11 @@ types:
               enum: ['5.7', '8.0', '8.4']
               default: '8.4'
               description: "(Optional) The major MySQL server version in the X.Y format. Defaults to `8.4` if not provided."
+            tls:
+              type: string
+              enum: ['required', 'optional']
+              default: 'required'
+              description: "(Optional) The requested transport policy for database connections. Configure your client using `CONNECTION_MYSQLDB_TLS`. Defaults to `required`. Use `optional` only when the server is not publicly reachable; it permits connections without TLS."
             host:
               type: string
               description: "(Read Only) The host name used to connect to the database. Mapped from the recipe module's output."

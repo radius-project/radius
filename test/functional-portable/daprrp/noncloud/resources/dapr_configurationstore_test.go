@@ -110,6 +110,32 @@ func Test_ConfigurationStore_Manual(t *testing.T) {
 				testutil.GetMagpieImage(),
 				fmt.Sprintf("namespace=%s", appNamespace),
 				fmt.Sprintf("baseName=%s", name),
+				"deployContainer=@testdata/deploy-container-false.json",
+			),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{Name: name, Type: validation.ApplicationsResource},
+					{Name: name + "-dcs", Type: validation.DaprConfigurationStoresResource, App: name},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sServiceForResource(name, name+"-redis").ValidateLabels(false),
+						validation.NewDaprComponent(name, name+"-dcs").ValidateLabels(false),
+					},
+				},
+			},
+			PostStepVerify: verifyRedisReady(appNamespace, name),
+			// The final step owns cleanup, including when this prerequisite fails.
+			SkipResourceDeletion: true,
+		},
+		{
+			Executor: step.NewDeployExecutor(
+				template,
+				testutil.GetMagpieImage(),
+				fmt.Sprintf("namespace=%s", appNamespace),
+				fmt.Sprintf("baseName=%s", name),
 			),
 			RPResources: &validation.RPResourceSet{
 				Resources: []validation.RPResource{
@@ -160,7 +186,8 @@ func Test_ConfigurationStore_Manual(t *testing.T) {
 func Test_ConfigurationStore_Recipe(t *testing.T) {
 	template := "testdata/daprrp-resources-configurationstore-recipe.bicep"
 	name := "dcs-recipe"
-	appNamespace := fmt.Sprintf("default-%s", name)
+	// The application overrides the environment namespace with its own name.
+	appNamespace := name
 
 	test := rp.NewRPTest(t, name, []rp.TestStep{
 		{
@@ -169,7 +196,34 @@ func Test_ConfigurationStore_Recipe(t *testing.T) {
 				testutil.GetMagpieImage(),
 				testutil.GetBicepRecipeRegistry(),
 				testutil.GetBicepRecipeVersion(),
-				fmt.Sprintf("namespace=%s", appNamespace),
+				fmt.Sprintf("namespace=default-%s", name),
+				fmt.Sprintf("baseName=%s", name),
+				"deployContainer=@testdata/deploy-container-false.json",
+			),
+			RPResources: &validation.RPResourceSet{
+				Resources: []validation.RPResource{
+					{Name: name + "-env", Type: validation.EnvironmentsResource},
+					{Name: name, Type: validation.ApplicationsResource, App: name},
+					{Name: name + "-cpn", Type: validation.DaprConfigurationStoresResource, App: name},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewDaprComponent(name, name+"-cpn").ValidateLabels(false),
+					},
+				},
+			},
+			PostStepVerify:       verifyRedisReady(appNamespace, name),
+			SkipResourceDeletion: true,
+		},
+		{
+			Executor: step.NewDeployExecutor(
+				template,
+				testutil.GetMagpieImage(),
+				testutil.GetBicepRecipeRegistry(),
+				testutil.GetBicepRecipeVersion(),
+				fmt.Sprintf("namespace=default-%s", name),
 				fmt.Sprintf("baseName=%s", name),
 			),
 			RPResources: &validation.RPResourceSet{
