@@ -275,7 +275,7 @@ Define authorization for operations that read or mutate more than one resource:
 - Reading an application graph, logs, deployment status, secrets metadata, or output-resource links uses distinct documented permissions where disclosure or operational impact differs from ordinary resource reads.
 - Multi-resource deployments perform authorization preflight for the complete requested Radius mutation set before resource creation begins. Downstream deployment-engine requests retain the approved operation context and cannot acquire broader service permissions.
 
-The detailed permission matrix must cover legacy and preview API versions and all registered resource-specific actions.
+The detailed permission matrix must cover legacy and preview API versions and all registered resource-specific actions, including existing `listsecrets` actions that return raw secret values; it must explicitly define whether each is internal-only or protected by a separate permission.
 
 ### Feature 5: Consistent enforcement and client behavior
 
