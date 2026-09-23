@@ -63,7 +63,7 @@ The aggregate `make test-functional-all-noncloud` target intentionally excludes 
 | `make test-functional-statestore-noncloud`   | Destructive lifecycle test that installs, purges, and reinstalls Radius. Run it only on a dedicated cluster.                                       |
 | `make test-functional-upgrade-noncloud`      | Exercises the Radius upgrade path and performs its own install/upgrade lifecycle.                                                                  |
 
-The multicluster, database, and statestore groups run as isolated CI legs in `functional-test-noncloud.yaml`; do not run them against a shared development cluster.
+The multicluster, database, statestore, and upgrade groups run as isolated CI legs in `functional-test-noncloud.yaml`; do not run them against a shared development cluster. The upgrade tests uninstall the existing Radius release before installing and upgrading their own release.
 
 For database tests, install Radius with the PostgreSQL-backed control plane first:
 
@@ -90,12 +90,23 @@ Install Radius with `global.targetCluster.enabled=true`, then set `RADIUS_TEST_E
 
 The Make targets accept these environment variables:
 
-| Variable                          | Purpose                                                                |
-|-----------------------------------|------------------------------------------------------------------------|
-| `TEST_TIMEOUT`                    | Overrides the Go test timeout. The default in `build/test.mk` is `1h`. |
-| `RADIUS_TEST_EXTERNAL_KUBECONFIG` | Points multicluster tests at the external workload cluster.            |
-| `TF_RECIPE_MODULE_SERVER_URL`     | Overrides the Terraform recipe module server URL.                      |
-| `RADIUS_TEST_FAST_CLEANUP`        | Selects standard or fast cleanup as described below.                   |
+| Variable                          | Purpose                                                                                                                                                                |
+|-----------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `TEST_TIMEOUT`                    | Overrides the Go test timeout. The default in `build/test.mk` is `1h`.                                                                                                 |
+| `DE_IMAGE`, `DE_TAG`              | Select the Deployment Engine repository and tag for every test-owned upgrade-test install and upgrade. Set both together or leave both empty to retain chart defaults. |
+| `RADIUS_TEST_EXTERNAL_KUBECONFIG` | Points multicluster tests at the external workload cluster.                                                                                                            |
+| `TF_RECIPE_MODULE_SERVER_URL`     | Overrides the Terraform recipe module server URL.                                                                                                                      |
+| `RADIUS_TEST_FAST_CLEANUP`        | Selects standard or fast cleanup as described below.                                                                                                                   |
+
+The upgrade test's DE selection is independent of `DOCKER_REGISTRY` and `REL_VERSION`, which select the Radius component images. To test a candidate DE with separately built Radius images on a dedicated cluster, use reachable, already-published image references:
+
+```bash
+DOCKER_REGISTRY=ghcr.io/my-org/radius REL_VERSION=radius-candidate \
+DE_IMAGE=ghcr.io/my-org/deployment-engine DE_TAG=de-candidate \
+make test-functional-upgrade-noncloud
+```
+
+Supplying only `DE_IMAGE` or only `DE_TAG` fails before the test accesses Kubernetes or uninstalls Radius. Set the missing value or unset both variables. The test verifies the live DE image after installation, both upgrade attempts, and release recovery, and logs the runtime image and resolved `ImageID` when available. A candidate image falling back to the chart default fails verification; a preflight hook rejecting an upgrade remains an allowed outcome. Without candidate inputs, the test leaves chart defaults unchanged and checks that the running pods match the installed Deployment.
 
 ### Control test cleanup
 
