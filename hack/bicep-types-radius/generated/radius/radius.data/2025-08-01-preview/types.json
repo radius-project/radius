@@ -306,6 +306,25 @@
     "$type": "IntegerType"
   },
   {
+    "$type": "StringLiteralType",
+    "value": "required"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "optional"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/30"
+      },
+      {
+        "$ref": "#/31"
+      }
+    ]
+  },
+  {
     "$type": "StringType"
   },
   {
@@ -324,13 +343,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/31"
+        "$ref": "#/34"
       },
       {
-        "$ref": "#/32"
+        "$ref": "#/35"
       },
       {
-        "$ref": "#/33"
+        "$ref": "#/36"
       }
     ]
   },
@@ -394,18 +413,25 @@
           "$ref": "#/29"
         }
       },
+      "tls": {
+        "description": "(Optional) The requested transport policy for database connections. Configure your client using `CONNECTION_MYSQLDB_TLS`. Defaults to `required`. Use `optional` only when the server is not publicly reachable; it permits connections without TLS.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/32"
+        }
+      },
       "username": {
         "description": "(Required) The administrator username for the MySQL database. Provided directly on the resource and passed to the recipe as `{{context.resource.properties.username}}`.",
         "flags": 1,
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/33"
         }
       },
       "version": {
         "description": "(Optional) The major MySQL server version in the X.Y format. Defaults to `8.4` if not provided.",
         "flags": 0,
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/37"
         }
       }
     }
@@ -435,7 +461,7 @@
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/38"
+          "$ref": "#/41"
         }
       },
       "application": {
@@ -484,21 +510,21 @@
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/40"
+          "$ref": "#/43"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/37"
+          "$ref": "#/40"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/36"
+          "$ref": "#/39"
         }
       },
       "password": {
@@ -519,28 +545,35 @@
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/35"
+          "$ref": "#/38"
+        }
+      },
+      "tls": {
+        "description": "(Optional) The requested transport policy for database connections. Configure your client using `CONNECTION_MYSQLDB_TLS`. Defaults to `required`. Use `optional` only when the server is not publicly reachable; it permits connections without TLS.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/32"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/39"
+          "$ref": "#/42"
         }
       },
       "username": {
         "description": "(Required) The administrator username for the MySQL database. Provided directly on the resource and passed to the recipe as `{{context.resource.properties.username}}`.",
         "flags": 2,
         "type": {
-          "$ref": "#/30"
+          "$ref": "#/33"
         }
       },
       "version": {
         "description": "(Optional) The major MySQL server version in the X.Y format. Defaults to `8.4` if not provided.",
         "flags": 2,
         "type": {
-          "$ref": "#/34"
+          "$ref": "#/37"
         }
       }
     }
@@ -548,7 +581,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/41"
+      "$ref": "#/44"
     },
     "name": "Radius.Data/mySqlDatabases@2025-08-01-preview",
     "readableScopes": 0,
@@ -578,7 +611,7 @@
         "description": "Resource ID of the source resource for this connection.",
         "flags": 1,
         "type": {
-          "$ref": "#/45"
+          "$ref": "#/48"
         }
       }
     }
@@ -586,7 +619,7 @@
   {
     "$type": "ObjectType",
     "additionalProperties": {
-      "$ref": "#/46"
+      "$ref": "#/49"
     },
     "name": "connections",
     "properties": {}
@@ -626,13 +659,32 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/54"
+        "$ref": "#/57"
       },
       {
-        "$ref": "#/55"
+        "$ref": "#/58"
       },
       {
-        "$ref": "#/56"
+        "$ref": "#/59"
+      }
+    ]
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "required"
+  },
+  {
+    "$type": "StringLiteralType",
+    "value": "optional"
+  },
+  {
+    "$type": "UnionType",
+    "elements": [
+      {
+        "$ref": "#/61"
+      },
+      {
+        "$ref": "#/62"
       }
     ]
   },
@@ -647,77 +699,84 @@
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 0,
         "type": {
-          "$ref": "#/43"
+          "$ref": "#/46"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 0,
         "type": {
-          "$ref": "#/44"
+          "$ref": "#/47"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 0,
         "type": {
-          "$ref": "#/47"
+          "$ref": "#/50"
         }
       },
       "database": {
         "description": "(Optional) The name of the database. Defaults to `postgres_db` if not provided.",
         "flags": 0,
         "type": {
-          "$ref": "#/48"
+          "$ref": "#/51"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 1,
         "type": {
-          "$ref": "#/49"
+          "$ref": "#/52"
         }
       },
       "host": {
         "description": "(Read Only) The host name used to connect to the database. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/50"
+          "$ref": "#/53"
         }
       },
       "initSql": {
         "description": "(Optional) SQL script mounted into the PostgreSQL container's `/docker-entrypoint-initdb.d/` directory and executed whenever PGDATA is empty. With the default ephemeral storage this runs on every pod restart. If a PersistentVolumeClaim is used, the script runs only on the very first startup and subsequent changes to initSql are ignored on existing volumes. Limited to ~1 MiB. Useful for creating tables, indexes, and inserting seed data.",
         "flags": 0,
         "type": {
-          "$ref": "#/51"
+          "$ref": "#/54"
         }
       },
       "password": {
         "description": "(Required) The administrator password for the PostgreSQL database. Marked `x-radius-sensitive`: Radius encrypts it at rest, redacts it on reads, and exposes it decrypted only to the recipe as `{{context.resource.properties.password}}`.",
         "flags": 1,
         "type": {
-          "$ref": "#/52"
+          "$ref": "#/55"
         }
       },
       "port": {
         "description": "(Optional) The TCP port used to connect to the database. Defaults to `5432`, the standard PostgreSQL port that every Recipe in this repository provisions and the port PostgreSQL flexible server is fixed to. A Recipe that provisions the database on a different port reports the real port as an output, which overwrites this value once the deployment finishes. Setting it in an application definition changes only the value reported to connected containers, never the port the server listens on, so leave it unset.",
         "flags": 0,
         "type": {
-          "$ref": "#/53"
+          "$ref": "#/56"
         }
       },
       "size": {
         "description": "(Optional) The size of the PostgreSQL database. Defaults to `S` if not provided.",
         "flags": 0,
         "type": {
-          "$ref": "#/57"
+          "$ref": "#/60"
+        }
+      },
+      "tls": {
+        "description": "(Optional) The requested transport policy for database connections. Configure your client using `CONNECTION_POSTGRESQL_TLS`. Defaults to `required`. Use `optional` only when the server is not publicly reachable; it permits connections without TLS.",
+        "flags": 0,
+        "type": {
+          "$ref": "#/63"
         }
       },
       "username": {
         "description": "(Required) The administrator username for the PostgreSQL database. Provided directly on the resource and passed to the recipe as `{{context.resource.properties.username}}`.",
         "flags": 1,
         "type": {
-          "$ref": "#/58"
+          "$ref": "#/64"
         }
       }
     }
@@ -747,119 +806,126 @@
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/62"
+          "$ref": "#/68"
         }
       },
       "application": {
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 2,
         "type": {
-          "$ref": "#/43"
+          "$ref": "#/46"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 2,
         "type": {
-          "$ref": "#/44"
+          "$ref": "#/47"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 2,
         "type": {
-          "$ref": "#/47"
+          "$ref": "#/50"
         }
       },
       "database": {
         "description": "(Optional) The name of the database. Defaults to `postgres_db` if not provided.",
         "flags": 2,
         "type": {
-          "$ref": "#/48"
+          "$ref": "#/51"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 2,
         "type": {
-          "$ref": "#/49"
+          "$ref": "#/52"
         }
       },
       "host": {
         "description": "(Read Only) The host name used to connect to the database. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/50"
+          "$ref": "#/53"
         }
       },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/64"
+          "$ref": "#/70"
         }
       },
       "initSql": {
         "description": "(Optional) SQL script mounted into the PostgreSQL container's `/docker-entrypoint-initdb.d/` directory and executed whenever PGDATA is empty. With the default ephemeral storage this runs on every pod restart. If a PersistentVolumeClaim is used, the script runs only on the very first startup and subsequent changes to initSql are ignored on existing volumes. Limited to ~1 MiB. Useful for creating tables, indexes, and inserting seed data.",
         "flags": 2,
         "type": {
-          "$ref": "#/51"
+          "$ref": "#/54"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/61"
+          "$ref": "#/67"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/60"
+          "$ref": "#/66"
         }
       },
       "password": {
         "description": "(Required) The administrator password for the PostgreSQL database. Marked `x-radius-sensitive`: Radius encrypts it at rest, redacts it on reads, and exposes it decrypted only to the recipe as `{{context.resource.properties.password}}`.",
         "flags": 2,
         "type": {
-          "$ref": "#/52"
+          "$ref": "#/55"
         }
       },
       "port": {
         "description": "(Optional) The TCP port used to connect to the database. Defaults to `5432`, the standard PostgreSQL port that every Recipe in this repository provisions and the port PostgreSQL flexible server is fixed to. A Recipe that provisions the database on a different port reports the real port as an output, which overwrites this value once the deployment finishes. Setting it in an application definition changes only the value reported to connected containers, never the port the server listens on, so leave it unset.",
         "flags": 2,
         "type": {
-          "$ref": "#/53"
+          "$ref": "#/56"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/59"
+          "$ref": "#/65"
         }
       },
       "size": {
         "description": "(Optional) The size of the PostgreSQL database. Defaults to `S` if not provided.",
         "flags": 2,
         "type": {
-          "$ref": "#/57"
+          "$ref": "#/60"
+        }
+      },
+      "tls": {
+        "description": "(Optional) The requested transport policy for database connections. Configure your client using `CONNECTION_POSTGRESQL_TLS`. Defaults to `required`. Use `optional` only when the server is not publicly reachable; it permits connections without TLS.",
+        "flags": 2,
+        "type": {
+          "$ref": "#/63"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/63"
+          "$ref": "#/69"
         }
       },
       "username": {
         "description": "(Required) The administrator username for the PostgreSQL database. Provided directly on the resource and passed to the recipe as `{{context.resource.properties.username}}`.",
         "flags": 2,
         "type": {
-          "$ref": "#/58"
+          "$ref": "#/64"
         }
       }
     }
@@ -867,7 +933,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/65"
+      "$ref": "#/71"
     },
     "name": "Radius.Data/postgreSqlDatabases@2025-08-01-preview",
     "readableScopes": 0,
@@ -897,7 +963,7 @@
         "description": "Resource ID of the source resource for this connection.",
         "flags": 1,
         "type": {
-          "$ref": "#/69"
+          "$ref": "#/75"
         }
       }
     }
@@ -905,7 +971,7 @@
   {
     "$type": "ObjectType",
     "additionalProperties": {
-      "$ref": "#/70"
+      "$ref": "#/76"
     },
     "name": "connections",
     "properties": {}
@@ -936,21 +1002,21 @@
         "description": "(Read Only) The access key on its own, for clients that take host, port, and password separately instead of parsing a URL — it is the password such a client authenticates with. Mapped from the recipe module's `primaryAccessKey` output; delivered via the managed secret. Declared by recipes that provision an authenticated cache — a recipe provisioning a cache that needs no credential (such as the in-cluster Kubernetes recipe) does not map this key.",
         "flags": 2,
         "type": {
-          "$ref": "#/75"
+          "$ref": "#/81"
         }
       },
       "name": {
         "description": "(Reserved) Name of the managed Radius.Security/secrets resource. Use as `secretName` in a container `secretKeyRef`.",
         "flags": 2,
         "type": {
-          "$ref": "#/76"
+          "$ref": "#/82"
         }
       },
       "url": {
         "description": "(Read Only) The full TLS connection URL (`rediss://:\u003caccess-key\u003e@\u003chost\u003e:\u003cport\u003e`) used to connect to the cache, including the access key. Mapped from the recipe module's `primaryConnectionString` output; delivered via the managed secret.",
         "flags": 2,
         "type": {
-          "$ref": "#/77"
+          "$ref": "#/83"
         }
       }
     }
@@ -971,13 +1037,13 @@
     "$type": "UnionType",
     "elements": [
       {
-        "$ref": "#/79"
+        "$ref": "#/85"
       },
       {
-        "$ref": "#/80"
+        "$ref": "#/86"
       },
       {
-        "$ref": "#/81"
+        "$ref": "#/87"
       }
     ]
   },
@@ -989,56 +1055,56 @@
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 0,
         "type": {
-          "$ref": "#/67"
+          "$ref": "#/73"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 0,
         "type": {
-          "$ref": "#/68"
+          "$ref": "#/74"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 0,
         "type": {
-          "$ref": "#/71"
+          "$ref": "#/77"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 1,
         "type": {
-          "$ref": "#/72"
+          "$ref": "#/78"
         }
       },
       "host": {
         "description": "(Read Only) The host name used to connect to the cache. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/73"
+          "$ref": "#/79"
         }
       },
       "port": {
         "description": "(Read Only) The TLS port number used to connect to the cache. Mapped from the recipe module's `port` output (Azure Managed Redis uses 10000).",
         "flags": 2,
         "type": {
-          "$ref": "#/74"
+          "$ref": "#/80"
         }
       },
       "secrets": {
         "description": "(Read-only) Recipe secrets. The reserved `name` sub-property references the managed Radius.Security/secrets resource Radius materializes from the Recipe's `result.secrets`; the other sub-properties declare secret keys whose values are written only into that managed secret (never onto this resource). Consumers bind a key into a container env var via `secretKeyRef`, using `\u003cresource\u003e.properties.secrets.name` as `secretName`.",
         "flags": 0,
         "type": {
-          "$ref": "#/78"
+          "$ref": "#/84"
         }
       },
       "size": {
         "description": "(Optional) The size of the Redis cache. Defaults to `S` if not provided. The recipe maps the size onto a concrete cloud SKU.",
         "flags": 0,
         "type": {
-          "$ref": "#/82"
+          "$ref": "#/88"
         }
       }
     }
@@ -1068,98 +1134,98 @@
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/86"
+          "$ref": "#/92"
         }
       },
       "application": {
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 2,
         "type": {
-          "$ref": "#/67"
+          "$ref": "#/73"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 2,
         "type": {
-          "$ref": "#/68"
+          "$ref": "#/74"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 2,
         "type": {
-          "$ref": "#/71"
+          "$ref": "#/77"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 2,
         "type": {
-          "$ref": "#/72"
+          "$ref": "#/78"
         }
       },
       "host": {
         "description": "(Read Only) The host name used to connect to the cache. Mapped from the recipe module's output.",
         "flags": 2,
         "type": {
-          "$ref": "#/73"
+          "$ref": "#/79"
         }
       },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/88"
+          "$ref": "#/94"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/85"
+          "$ref": "#/91"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/84"
+          "$ref": "#/90"
         }
       },
       "port": {
         "description": "(Read Only) The TLS port number used to connect to the cache. Mapped from the recipe module's `port` output (Azure Managed Redis uses 10000).",
         "flags": 2,
         "type": {
-          "$ref": "#/74"
+          "$ref": "#/80"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/83"
+          "$ref": "#/89"
         }
       },
       "secrets": {
         "description": "(Read-only) Recipe secrets. The reserved `name` sub-property references the managed Radius.Security/secrets resource Radius materializes from the Recipe's `result.secrets`; the other sub-properties declare secret keys whose values are written only into that managed secret (never onto this resource). Consumers bind a key into a container env var via `secretKeyRef`, using `\u003cresource\u003e.properties.secrets.name` as `secretName`.",
         "flags": 2,
         "type": {
-          "$ref": "#/78"
+          "$ref": "#/84"
         }
       },
       "size": {
         "description": "(Optional) The size of the Redis cache. Defaults to `S` if not provided. The recipe maps the size onto a concrete cloud SKU.",
         "flags": 2,
         "type": {
-          "$ref": "#/82"
+          "$ref": "#/88"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/87"
+          "$ref": "#/93"
         }
       }
     }
@@ -1167,7 +1233,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/89"
+      "$ref": "#/95"
     },
     "name": "Radius.Data/redisCaches@2025-08-01-preview",
     "readableScopes": 0,
@@ -1197,7 +1263,7 @@
         "description": "Resource ID of the source resource for this connection.",
         "flags": 1,
         "type": {
-          "$ref": "#/93"
+          "$ref": "#/99"
         }
       }
     }
@@ -1205,7 +1271,7 @@
   {
     "$type": "ObjectType",
     "additionalProperties": {
-      "$ref": "#/94"
+      "$ref": "#/100"
     },
     "name": "connections",
     "properties": {}
@@ -1237,63 +1303,63 @@
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 0,
         "type": {
-          "$ref": "#/91"
+          "$ref": "#/97"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 0,
         "type": {
-          "$ref": "#/92"
+          "$ref": "#/98"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 0,
         "type": {
-          "$ref": "#/95"
+          "$ref": "#/101"
         }
       },
       "database": {
         "description": "(Required) The SQL database name to create on the server. Defaults to `appdb` in the sample application.",
         "flags": 1,
         "type": {
-          "$ref": "#/96"
+          "$ref": "#/102"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 1,
         "type": {
-          "$ref": "#/97"
+          "$ref": "#/103"
         }
       },
       "host": {
         "description": "(Read Only) The SQL Server fully qualified domain name. Mapped from the recipe module's `fullyQualifiedDomainName` output.",
         "flags": 2,
         "type": {
-          "$ref": "#/98"
+          "$ref": "#/104"
         }
       },
       "password": {
         "description": "(Required) The administrator password for the SQL database. Marked `x-radius-sensitive`: Radius encrypts it at rest, redacts it on reads, and exposes it decrypted only to the recipe as `{{context.resource.properties.password}}`.",
         "flags": 1,
         "type": {
-          "$ref": "#/99"
+          "$ref": "#/105"
         }
       },
       "port": {
         "description": "(Optional) The TCP port used to connect to the database. Defaults to `1433`, the standard SQL Server port that every Recipe in this repository provisions and the port Azure SQL Database is fixed to. A Recipe that provisions the database on a different port reports the real port as an output, which overwrites this value once the deployment finishes. Setting it in an application definition changes only the value reported to connected containers, never the port the server listens on, so leave it unset.",
         "flags": 0,
         "type": {
-          "$ref": "#/100"
+          "$ref": "#/106"
         }
       },
       "username": {
         "description": "(Required) The administrator username for the SQL database. Provided directly on the resource and passed to the recipe as `{{context.resource.properties.username}}`.",
         "flags": 1,
         "type": {
-          "$ref": "#/101"
+          "$ref": "#/107"
         }
       }
     }
@@ -1323,105 +1389,105 @@
         "description": "The API version.",
         "flags": 10,
         "type": {
-          "$ref": "#/105"
+          "$ref": "#/111"
         }
       },
       "application": {
         "description": "(Optional) The Radius Application ID. `myApplication.id` for example.",
         "flags": 2,
         "type": {
-          "$ref": "#/91"
+          "$ref": "#/97"
         }
       },
       "codeReference": {
         "description": "Optional URI to the source code of this resource type. ex: https://github.com/radius-project/radius/blob/4fab87e8127adf1db6f43b7029d5235fbe82c5c9/cmd/controller/main.go#L27",
         "flags": 2,
         "type": {
-          "$ref": "#/92"
+          "$ref": "#/98"
         }
       },
       "connections": {
         "description": "Map of connection name to connection data.",
         "flags": 2,
         "type": {
-          "$ref": "#/95"
+          "$ref": "#/101"
         }
       },
       "database": {
         "description": "(Required) The SQL database name to create on the server. Defaults to `appdb` in the sample application.",
         "flags": 2,
         "type": {
-          "$ref": "#/96"
+          "$ref": "#/102"
         }
       },
       "environment": {
         "description": "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`.",
         "flags": 2,
         "type": {
-          "$ref": "#/97"
+          "$ref": "#/103"
         }
       },
       "host": {
         "description": "(Read Only) The SQL Server fully qualified domain name. Mapped from the recipe module's `fullyQualifiedDomainName` output.",
         "flags": 2,
         "type": {
-          "$ref": "#/98"
+          "$ref": "#/104"
         }
       },
       "id": {
         "description": "The resource id.",
         "flags": 2,
         "type": {
-          "$ref": "#/107"
+          "$ref": "#/113"
         }
       },
       "location": {
         "description": "The resource location.",
         "flags": 0,
         "type": {
-          "$ref": "#/104"
+          "$ref": "#/110"
         }
       },
       "name": {
         "description": "The resource name.",
         "flags": 17,
         "type": {
-          "$ref": "#/103"
+          "$ref": "#/109"
         }
       },
       "password": {
         "description": "(Required) The administrator password for the SQL database. Marked `x-radius-sensitive`: Radius encrypts it at rest, redacts it on reads, and exposes it decrypted only to the recipe as `{{context.resource.properties.password}}`.",
         "flags": 2,
         "type": {
-          "$ref": "#/99"
+          "$ref": "#/105"
         }
       },
       "port": {
         "description": "(Optional) The TCP port used to connect to the database. Defaults to `1433`, the standard SQL Server port that every Recipe in this repository provisions and the port Azure SQL Database is fixed to. A Recipe that provisions the database on a different port reports the real port as an output, which overwrites this value once the deployment finishes. Setting it in an application definition changes only the value reported to connected containers, never the port the server listens on, so leave it unset.",
         "flags": 2,
         "type": {
-          "$ref": "#/100"
+          "$ref": "#/106"
         }
       },
       "properties": {
         "description": "The resource properties.",
         "flags": 1,
         "type": {
-          "$ref": "#/102"
+          "$ref": "#/108"
         }
       },
       "type": {
         "description": "The resource type.",
         "flags": 10,
         "type": {
-          "$ref": "#/106"
+          "$ref": "#/112"
         }
       },
       "username": {
         "description": "(Required) The administrator username for the SQL database. Provided directly on the resource and passed to the recipe as `{{context.resource.properties.username}}`.",
         "flags": 2,
         "type": {
-          "$ref": "#/101"
+          "$ref": "#/107"
         }
       }
     }
@@ -1429,7 +1495,7 @@
   {
     "$type": "ResourceType",
     "body": {
-      "$ref": "#/108"
+      "$ref": "#/114"
     },
     "name": "Radius.Data/sqlServerDatabases@2025-08-01-preview",
     "readableScopes": 0,
