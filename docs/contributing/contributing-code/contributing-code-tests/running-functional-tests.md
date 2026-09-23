@@ -27,6 +27,21 @@ The tests live under `./test/functional-portable`. They use product functionalit
 >
 > ⚠️ If you set environment variables for functional tests you may need to restart VS Code or other editors for them to take effect.
 
+### Local Bicep registry trust
+
+Bicep v0.43 and later reject registry hosts outside their trusted allowlist. When using the secure local registry setup from `functional-test-noncloud.yaml`, explicitly trust its two hostnames: `localhost` for setup and extension restore, and `radius-registry` for the CLI recipe-publishing tests. Scope the variable to the commands that need it:
+
+```sh
+BICEP_TRUSTED_REGISTRIES=localhost,radius-registry \
+  BICEP_RECIPE_REGISTRY=localhost:5000 make publish-test-bicep-recipes
+BICEP_TRUSTED_REGISTRIES=localhost,radius-registry \
+  BICEP_RECIPE_REGISTRY=radius-registry:5000 make test-functional-cli-noncloud
+```
+
+Use bare hostnames, without `br:`, ports, or paths, and add only registries you own or trust. The non-cloud CI test job sets this variable for both direct Bicep commands and `rad` subprocesses; the installer does not set global registry trust. Keep the existing HTTPS, hostname resolution, and CA certificate setup: registry trust does not bypass TLS or certificate verification. ACR hosts remain trusted by default and continue using Azure credentials, including when `ociEnabled` is enabled.
+
+Keep `ociEnabled` unset or `false` for the existing HTTPS `localhost` registry. Bicep v0.46.1's generic OCI transport automatically uses plain HTTP for loopback hosts; adding hostname trust alone does not change the transport.
+
 ## Steps
 
 ### Run the tests locally
@@ -63,7 +78,7 @@ The aggregate `make test-functional-all-noncloud` target intentionally excludes 
 | `make test-functional-statestore-noncloud`   | Destructive lifecycle test that installs, purges, and reinstalls Radius. Run it only on a dedicated cluster.                                       |
 | `make test-functional-upgrade-noncloud`      | Exercises the Radius upgrade path and performs its own install/upgrade lifecycle.                                                                  |
 
-The multicluster, database, and statestore groups run as isolated CI legs in `functional-test-noncloud.yaml`; do not run them against a shared development cluster.
+The multicluster, database, statestore, and upgrade groups run as isolated CI legs in `functional-test-noncloud.yaml`; do not run them against a shared development cluster. The upgrade tests uninstall the existing Radius release before installing and upgrading their own release.
 
 For database tests, install Radius with the PostgreSQL-backed control plane first:
 
@@ -90,12 +105,23 @@ Install Radius with `global.targetCluster.enabled=true`, then set `RADIUS_TEST_E
 
 The Make targets accept these environment variables:
 
-| Variable                          | Purpose                                                                |
-|-----------------------------------|------------------------------------------------------------------------|
-| `TEST_TIMEOUT`                    | Overrides the Go test timeout. The default in `build/test.mk` is `1h`. |
-| `RADIUS_TEST_EXTERNAL_KUBECONFIG` | Points multicluster tests at the external workload cluster.            |
-| `TF_RECIPE_MODULE_SERVER_URL`     | Overrides the Terraform recipe module server URL.                      |
-| `RADIUS_TEST_FAST_CLEANUP`        | Selects standard or fast cleanup as described below.                   |
+| Variable                          | Purpose                                                                                                                                                                |
+|-----------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `TEST_TIMEOUT`                    | Overrides the Go test timeout. The default in `build/test.mk` is `1h`.                                                                                                 |
+| `DE_IMAGE`, `DE_TAG`              | Select the Deployment Engine repository and tag for every test-owned upgrade-test install and upgrade. Set both together or leave both empty to retain chart defaults. |
+| `RADIUS_TEST_EXTERNAL_KUBECONFIG` | Points multicluster tests at the external workload cluster.                                                                                                            |
+| `TF_RECIPE_MODULE_SERVER_URL`     | Overrides the Terraform recipe module server URL.                                                                                                                      |
+| `RADIUS_TEST_FAST_CLEANUP`        | Selects standard or fast cleanup as described below.                                                                                                                   |
+
+The upgrade test's DE selection is independent of `DOCKER_REGISTRY` and `REL_VERSION`, which select the Radius component images. To test a candidate DE with separately built Radius images on a dedicated cluster, use reachable, already-published image references:
+
+```bash
+DOCKER_REGISTRY=ghcr.io/my-org/radius REL_VERSION=radius-candidate \
+DE_IMAGE=ghcr.io/my-org/deployment-engine DE_TAG=de-candidate \
+make test-functional-upgrade-noncloud
+```
+
+Supplying only `DE_IMAGE` or only `DE_TAG` fails before the test accesses Kubernetes or uninstalls Radius. Set the missing value or unset both variables. The test verifies the live DE image after installation, both upgrade attempts, and release recovery, and logs the runtime image and resolved `ImageID` when available. A candidate image falling back to the chart default fails verification; a preflight hook rejecting an upgrade remains an allowed outcome. Without candidate inputs, the test leaves chart defaults unchanged and checks that the running pods match the installed Deployment.
 
 ### Control test cleanup
 
@@ -228,6 +254,7 @@ The GitHub Actions role allows 5400-second sessions, and the LRT workflow reques
 
 - **You changed a recipe.** Re-run the *publish test recipe* prerequisite step so the cluster uses your updated recipe.
 - **Tests cannot pull a package.** Confirm the packages published to your organization have their visibility set to `public`.
+- **Bicep reports that a local registry is not trusted.** Set `BICEP_TRUSTED_REGISTRIES` for the publishing and test commands as described in [Local Bicep registry trust](#local-bicep-registry-trust). A certificate error is separate; fix the local CA setup rather than disabling verification.
 - **You changed the `rad` CLI.** Copy the rebuilt `rad` to your path (or set `RAD_PATH` for Codelens) so the tests use your new binary.
 - **Environment variables seem ignored.** Restart VS Code or your editor so newly set variables take effect.
 - **Many tests fail immediately.** Confirm the Kubernetes namespace in use is `default`.

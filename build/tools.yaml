@@ -37,9 +37,9 @@ tools:
 
   - name: bicep
     makePrefix: BICEP
-    version: v0.42.1
+    version: v0.46.1
     update: false
-    notes: Bicep v0.43 and later reject the br:localhost registries used by local functional tests.
+    notes: Bicep upgrades require manual ACR and local OCI compatibility testing; local registries must be explicitly trusted.
     source:
       type: github-release
       repository: Azure/bicep
@@ -48,18 +48,23 @@ tools:
     platforms:
       linux_amd64:
         asset: bicep-linux-x64
-        checksum: aed90eb2c69a6ee2bd70dc0d4354408ac4d04fd9911d3ec8e0cd74ad173e7139
+        checksum: 3e011d629ea4311b7a7dd8f0040ab2b1a072ea4ff5d02cb75e0e55a9a6703fb9
       linux_arm64:
         asset: bicep-linux-arm64
-        checksum: b01ac3bb5259096dfbe548138a538d1c4e4a55e6f87f3827e2299fbc2d4e6796
+        checksum: 9e1b4302ff15d6cb0f756c876d58e1dd19b63ba37929f9d004949d714b369348
       darwin_amd64:
         asset: bicep-osx-x64
-        checksum: 8219bfd0601a514cc0a814b4b194aed588f4efa68b7c7ac7c9b64f3d84713dd7
+        checksum: b7543d186a29bb0b3971a0b3fc2f6f805de316232fd56c3a880aa86dea9a9035
       darwin_arm64:
         asset: bicep-osx-arm64
-        checksum: 1c66533af4d4d47f875623d88074d28ca7fe7e9dc1f783a62570e8724700aca1
+        checksum: 7e1064cc780e1767822d7f112f25fdbe72c956e40f75c24254ce8530b41d649a
     checksumSource:
       type: download
+    versionFiles:
+      - path: pkg/cli/bicep/tools/download_tools.go
+        format: replace
+        prefix: 'bicepVersion = "'
+        suffix: '"'
 
   - name: kind
     makePrefix: KIND

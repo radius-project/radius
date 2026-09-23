@@ -4,16 +4,16 @@
       "$ref": "types.json#/19"
     },
     "Radius.Data/mySqlDatabases@2025-08-01-preview": {
-      "$ref": "types.json#/42"
+      "$ref": "types.json#/45"
     },
     "Radius.Data/postgreSqlDatabases@2025-08-01-preview": {
-      "$ref": "types.json#/66"
+      "$ref": "types.json#/72"
     },
     "Radius.Data/redisCaches@2025-08-01-preview": {
-      "$ref": "types.json#/90"
+      "$ref": "types.json#/96"
     },
     "Radius.Data/sqlServerDatabases@2025-08-01-preview": {
-      "$ref": "types.json#/109"
+      "$ref": "types.json#/115"
     }
   },
   "resourceFunctions": {},

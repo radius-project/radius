@@ -29,10 +29,8 @@ import (
 
 const (
 	// bicepVersion is the pinned version of the Bicep CLI to download.
-	// Pinned because Bicep v0.43+ tightened ContainerRegistryClientFactory.ThrowIfRegistryNotTrusted
-	// to reject br:localhost:5000/... targets, breaking publish-extension to local registries used
-	// by our CI and local dev workflows.
-	bicepVersion = "v0.42.1"
+	// Keep synchronized with build/tools.yaml; upgrades require registry compatibility testing.
+	bicepVersion = "v0.46.1"
 
 	// binaryRepo is the name of the remote bicep binary repository
 	binaryRepo = "https://github.com/Azure/bicep/releases/download/" + bicepVersion + "/"
