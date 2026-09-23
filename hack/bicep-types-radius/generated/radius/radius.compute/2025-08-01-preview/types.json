@@ -54,7 +54,7 @@
         }
       },
       "source": {
-        "description": "(Required) Source location for the build. Use a git URL of the form `git::https://...`, which BuildKit clones inside the cluster, or an operator-managed local directory. Radius does not upload workstation source. The default Bicep Recipe accepts local sources only beneath `/var/radius/build-contexts` and rejects symbolic links. The stock Radius Helm chart does not mount this directory; platform engineers using local sources must add a read-only mount by customizing or post-rendering the dynamic-rp Deployment. Git sources require no mount. The Terraform Recipe retains its existing local-path behavior. For git URLs, select a subdirectory with `//\u003csubdir\u003e` and a ref with `?ref=\u003cbranch-or-sha\u003e`, in that order. Example: `git::https://github.com/myorg/myapp.git//frontend?ref=v1.2.3`.",
+        "description": "(Required) Source location for the build. Use a git URL of the form `git::https://...`, which BuildKit clones inside the cluster, or an operator-managed local directory. Radius does not upload workstation source. The default Bicep and Terraform Recipes accept local sources only beneath `/var/radius/build-contexts` and reject symbolic links. For local sources, configure the Radius Helm chart with `dynamicrp.buildkit.localContexts.existingClaim` to mount an existing PVC read-only at that path; the chart does not create or populate the claim. Git sources require no mount. For git URLs, select a subdirectory with `//\u003csubdir\u003e` and a ref with `?ref=\u003cbranch-or-sha\u003e`, in that order. Example: `git::https://github.com/myorg/myapp.git//frontend?ref=v1.2.3`.",
         "flags": 1,
         "type": {
           "$ref": "#/6"

@@ -160,7 +160,7 @@ dynamicrp:
     # Default install (this disabled) is PSA-baseline-compatible.
     enabled: false
     # Pinned rootless BuildKit image.
-    image: moby/buildkit:v0.13.2-rootless
+    image: moby/buildkit:v0.33.0-rootless
     # Limit concurrent OCI worker steps across all builds sharing the
     # BuildKit sidecar. Increase only after profiling representative cold
     # builds and sizing the resources below with sufficient headroom.

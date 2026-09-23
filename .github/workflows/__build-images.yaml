@@ -63,10 +63,10 @@ jobs:
           password: ${{ github.token }}
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
       - name: Setup Docker Buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
           platforms: linux/amd64,linux/arm64,linux/arm/v7
 
@@ -100,6 +100,14 @@ jobs:
           DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
           DOCKER_TAG_VERSION: latest
           DOCKER_CACHE_GHA: 1
+
+      - name: Tag container images (edge)
+        if: (github.ref == 'refs/heads/main')
+        run: make docker-multi-arch-tag
+        env:
+          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
+          DOCKER_SOURCE_TAG_VERSION: latest
+          DOCKER_TAG_VERSION: edge
 
       - name: Push container images (release)
         if: startsWith(github.ref, 'refs/tags/v')
