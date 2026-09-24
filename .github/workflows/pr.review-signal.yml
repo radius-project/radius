@@ -1,6 +1,7 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: pr-review-signal
+name: PR Review Signal
+
 run-name: ${{ github.event.pull_request.number }}
 
 # Review workflows run from the PR's merge commit, so they cannot safely
