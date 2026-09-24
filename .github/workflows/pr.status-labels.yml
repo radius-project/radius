@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
 ---
-name: pr-status-labels
+name: PR Status Labels
 
 # Only trusted base-branch code is executed with write permissions. The
 # pull_request_review workflow is read-only; workflow_run relays its signal.
