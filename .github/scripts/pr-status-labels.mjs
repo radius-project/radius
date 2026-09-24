@@ -14,14 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-const managedLabels = Object.freeze([
-  "pr:needs-reviewer",
-  "pr:waiting-for-review",
-  "pr:waiting-for-author",
-  "pr:review-approved",
-  "pr:needs-rebase",
-  "pr:ready-for-queue"
-]);
+const STATUS_LABELS = Object.freeze({
+  needsReviewer: "pr:needs-reviewer",
+  waitingForReview: "pr:waiting-for-review",
+  waitingForAuthor: "pr:waiting-for-author",
+  reviewApproved: "pr:review-approved",
+  needsRebase: "pr:needs-rebase",
+  readyForQueue: "pr:ready-for-queue"
+});
+
+const MANUAL_LABELS = Object.freeze({
+  needsAuthorResponse: "pr:needs-author-response",
+  blocked: "blocked",
+  doNotMerge: "pr:do-not-merge"
+});
+
+const MANAGED_LABELS = Object.freeze(Object.values(STATUS_LABELS));
 
 const query = `
   query($owner: String!, $repo: String!, $number: Int!) {
@@ -82,15 +90,15 @@ function desiredLabels(pull, rereviewRequested = false) {
   if (
     pull.mergeable === "CONFLICTING" ||
     pull.mergeStateStatus === "DIRTY" ||
-    (mergeabilityUnknown && existing.has("pr:needs-rebase"))
+    (mergeabilityUnknown && existing.has(STATUS_LABELS.needsRebase))
   ) {
-    desired.add("pr:needs-rebase");
+    desired.add(STATUS_LABELS.needsRebase);
   }
 
   if (
     pull.isDraft ||
-    existing.has("blocked") ||
-    existing.has("pr:do-not-merge")
+    existing.has(MANUAL_LABELS.blocked) ||
+    existing.has(MANUAL_LABELS.doNotMerge)
   ) {
     return { desired, mergeabilityUnknown };
   }
@@ -104,28 +112,30 @@ function desiredLabels(pull, rereviewRequested = false) {
   }
 
   let handoff;
-  if (existing.has("pr:needs-author-response")) {
-    handoff = "pr:waiting-for-author";
+  if (existing.has(MANUAL_LABELS.needsAuthorResponse)) {
+    handoff = STATUS_LABELS.waitingForAuthor;
   } else if (pull.reviewDecision === "APPROVED") {
-    handoff = "pr:review-approved";
+    handoff = STATUS_LABELS.reviewApproved;
   } else if (pull.reviewDecision === "CHANGES_REQUESTED") {
     handoff =
-      rereviewRequested ? "pr:waiting-for-review" : "pr:waiting-for-author";
+      rereviewRequested ?
+        STATUS_LABELS.waitingForReview
+      : STATUS_LABELS.waitingForAuthor;
   } else {
     handoff =
       pull.reviewRequests.totalCount > 0 ?
-        "pr:waiting-for-review"
-      : "pr:needs-reviewer";
+        STATUS_LABELS.waitingForReview
+      : STATUS_LABELS.needsReviewer;
   }
   desired.add(handoff);
 
   if (
-    handoff === "pr:review-approved" &&
+    handoff === STATUS_LABELS.reviewApproved &&
     pull.mergeable === "MERGEABLE" &&
     pull.mergeStateStatus === "CLEAN" &&
     !pull.isInMergeQueue
   ) {
-    desired.add("pr:ready-for-queue");
+    desired.add(STATUS_LABELS.readyForQueue);
   }
 
   return { desired, mergeabilityUnknown };
@@ -239,9 +249,9 @@ async function syncPull(github, core, owner, repo, number) {
   if (
     pull.state === "OPEN" &&
     pull.isInMergeQueue &&
-    (existing.has("blocked") ||
-      existing.has("pr:do-not-merge") ||
-      existing.has("pr:needs-author-response"))
+    (existing.has(MANUAL_LABELS.blocked) ||
+      existing.has(MANUAL_LABELS.doNotMerge) ||
+      existing.has(MANUAL_LABELS.needsAuthorResponse))
   ) {
     await github.graphql(
       `mutation($id: ID!) {
@@ -293,7 +303,7 @@ async function syncPull(github, core, owner, repo, number) {
       `Mergeability for #${number} is unknown; queue and rebase labels will be reconciled on the next run`
     );
   }
-  for (const name of managedLabels) {
+  for (const name of MANAGED_LABELS) {
     if (!existing.has(name) || desired.has(name)) {
       continue;
     }
@@ -324,7 +334,8 @@ async function syncPull(github, core, owner, repo, number) {
   core.info(`#${number}: ${[...desired].join(", ") || "no automated labels"}`);
 }
 
-export default async function run({ github, context, core }) {
+/** @param {import('@actions/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
+export default async ({ github, context, core }) => {
   const { owner, repo } = context.repo;
 
   if (context.eventName === "pull_request_target") {
@@ -397,4 +408,4 @@ export default async function run({ github, context, core }) {
       `Failed to reconcile pull requests: ${failures.join(", ")}`
     );
   }
-}
+};
