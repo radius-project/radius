@@ -11,10 +11,12 @@ on:
     paths:
       - .github/labels.yml
       - .github/workflows/labels.yml
+      - .github/scripts/verify-labels.mjs
   pull_request:
     paths:
       - .github/labels.yml
       - .github/workflows/labels.yml
+      - .github/scripts/verify-labels.mjs
   label:
     types: [created, edited, deleted]
 
@@ -36,9 +38,20 @@ jobs:
       - name: Checkout proposed labels
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          sparse-checkout: .github/labels.yml
+          sparse-checkout: |
+            .github/labels.yml
+            .github/scripts/verify-labels.mjs
           sparse-checkout-cone-mode: false
           persist-credentials: false
+
+      - name: Validate label catalog format
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { readCatalog } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/verify-labels.mjs`
+            )
+            core.info(`Validated ${readCatalog().length} label definitions`)
 
       - name: Preview label changes
         uses: crazy-max/ghaction-github-labeler@548a7c3603594ec17c819e1239f281a3b801ab4d # v6.0.0
@@ -60,7 +73,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
-          sparse-checkout: .github/labels.yml
+          sparse-checkout: |
+            .github/labels.yml
+            .github/scripts/verify-labels.mjs
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
@@ -70,3 +85,12 @@ jobs:
           github-token: ${{ github.token }}
           yaml-file: .github/labels.yml
           skip-delete: true
+
+      - name: Verify synced label catalog
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { default: verify } = await import(
+              `${process.env.GITHUB_WORKSPACE}/.github/scripts/verify-labels.mjs`
+            )
+            await verify({ github, context, core })

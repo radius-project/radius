@@ -91,16 +91,16 @@ Every non-Dependabot pull request must have exactly one release-impact label:
 
 The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
 
-The [`pr-status-labels` workflow](../../../.github/workflows/pr-status-labels.yml) applies these **handoff labels** to open, non-draft pull requests. Exactly one applies unless the PR is on hold:
+The [PR Status Labels workflow](../../../.github/workflows/pr.status-labels.yml) applies these **handoff labels** to open, non-draft pull requests. Exactly one applies unless the PR is on hold:
 
 - **`pr:needs-reviewer`** — the PR needs a reviewer or team to be requested.
 - **`pr:waiting-for-review`** — a reviewer or team has a pending request. When a reviewer requests changes, the author must re-request a review after addressing them; pushing a commit alone does not hand the PR back.
 - **`pr:waiting-for-author`** — a formal changes-requested review or a manual author-response request needs action.
 - **`pr:review-approved`** — required reviews are approved; this does not mean checks have passed.
 
-The workflow also adds **`pr:needs-rebase`** when the PR has merge conflicts, and **`pr:ready-for-queue`** only when review is approved, GitHub reports the PR mergeable with requirements satisfied, and it is not already queued. These are additional signals, not substitutes for GitHub's merge rules or the merge queue. Being behind `main` alone is not a conflict: the merge queue handles that.
+The workflow also adds **`pr:needs-rebase`** when the PR has merge conflicts, and **`pr:ready-for-queue`** when review is approved, the PR is mergeable, required checks pass, and it is not already queued. A branch that is behind `main` can still be queue-ready once its required checks pass; the merge queue handles the branch update. These labels are signals, not substitutes for GitHub's merge rules or the merge queue.
 
-The status workflow assumes these labels already exist; it never creates repository labels. The independent [labels workflow](../../../.github/workflows/labels.yml) previews changes from the [PR-label catalog](../../../.github/labels.yml) on pull requests and syncs definitions after merge or a manual repository-label change. The catalog also includes the existing `pr:standard` and `pr:important` labels, which contributors still select manually. Unrelated repository labels are preserved.
+The status workflow assumes these labels already exist; it never creates repository labels. The independent [labels workflow](../../../.github/workflows/labels.yml) previews changes from the [PR-label catalog](../../../.github/labels.yml) on pull requests, then syncs and verifies every definition after merge or a manual repository-label change. The catalog also includes the existing `pr:standard` and `pr:important` labels, which contributors still select manually. Unrelated repository labels are preserved.
 
 Draft PRs have no handoff label. Maintainers can apply the existing **`pr:do-not-merge`** label to pause a PR; it removes the handoff and queue-ready labels. Use **`pr:needs-author-response`** for an actionable comment without a formal changes-requested review, then remove it after the author responds. Both manual labels fail the `PR Required Labels` check and remove a PR from the merge queue if it was already queued. Ordinary review comments are not interpreted as author action automatically.
 
@@ -165,5 +165,5 @@ The functional-tests workflow requires approval to run. One of our approvers is 
 
   cspell requires [Node.js](https://nodejs.org/); install it globally with `npm install -g cspell`.
 - **A CI failure you can't understand.** Our automation adds comments with links to logs. If you're still stuck, ask the maintainers for help.
-- **A handoff label is missing or outdated.** The status workflow reacts to PR and review activity, and checks open PRs every 15 minutes to pick up CI and base-branch changes. Fork review events signal a trusted labeling run without executing fork code. Maintainers can rerun `pr-status-labels` from the Actions tab with a PR number, or leave it blank to reconcile all open PRs. If fork PR labeling does not start, check whether the repository's Actions policy allows `pull_request_target`.
+- **A handoff label is missing or outdated.** The status workflow reacts to PR and review activity, and checks open PRs every 15 minutes to pick up CI and base-branch changes. Fork review events signal a trusted labeling run without executing fork code. Maintainers can rerun `PR Status Labels` from the Actions tab with a PR number, or leave it blank to reconcile all open PRs. If fork PR labeling does not start, check whether the repository's Actions policy allows `pull_request_target`.
 - **Your PR was marked stale.** Pull requests inactive for 28 days are marked with the `stale` label and closed after one further day of inactivity. Comment or push an update to keep your PR active.

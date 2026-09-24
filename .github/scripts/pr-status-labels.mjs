@@ -46,6 +46,18 @@ const query = `
         mergeStateStatus
         reviewDecision
         isInMergeQueue
+        baseRefName
+        baseRef {
+          branchProtectionRule {
+            requiredStatusChecks {
+              context
+              app {
+                databaseId
+              }
+            }
+            requiredStatusCheckContexts
+          }
+        }
         reviewRequests(first: 100) {
           totalCount
           nodes {
@@ -70,6 +82,48 @@ const query = `
   }
 `;
 
+const REQUIRED_CHECKS_QUERY = `
+  query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
+    repository(owner: $owner, name: $repo) {
+      pullRequest(number: $number) {
+        commits(last: 1) {
+          nodes {
+            commit {
+              statusCheckRollup {
+                contexts(first: 100, after: $cursor) {
+                  nodes {
+                    __typename
+                    ... on CheckRun {
+                      name
+                      status
+                      conclusion
+                      isRequired(pullRequestNumber: $number)
+                      checkSuite {
+                        app {
+                          databaseId
+                        }
+                      }
+                    }
+                    ... on StatusContext {
+                      context
+                      state
+                      isRequired(pullRequestNumber: $number)
+                    }
+                  }
+                  pageInfo {
+                    hasNextPage
+                    endCursor
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 function currentLabels(pull) {
   if (pull.labels.totalCount !== pull.labels.nodes.length) {
     throw new Error("Cannot classify a pull request with more than 100 labels");
@@ -77,7 +131,11 @@ function currentLabels(pull) {
   return new Set(pull.labels.nodes.map((label) => label.name));
 }
 
-function desiredLabels(pull, rereviewRequested = false) {
+function desiredLabels(
+  pull,
+  rereviewRequested = false,
+  requiredChecksPassed = false
+) {
   const existing = currentLabels(pull);
   const desired = new Set();
 
@@ -132,7 +190,8 @@ function desiredLabels(pull, rereviewRequested = false) {
   if (
     handoff === STATUS_LABELS.reviewApproved &&
     pull.mergeable === "MERGEABLE" &&
-    pull.mergeStateStatus === "CLEAN" &&
+    (pull.mergeStateStatus === "CLEAN" ||
+      (pull.mergeStateStatus === "BEHIND" && requiredChecksPassed)) &&
     !pull.isInMergeQueue
   ) {
     desired.add(STATUS_LABELS.readyForQueue);
@@ -238,6 +297,131 @@ function reviewSignal(run, pull) {
   return Number(match[1]);
 }
 
+function requiredCheck(context, appId) {
+  if (typeof context !== "string" || context.length === 0) {
+    throw new Error("A required status check has no context name");
+  }
+  if (
+    appId != null &&
+    appId !== -1 &&
+    (!Number.isSafeInteger(appId) || appId <= 0)
+  ) {
+    throw new Error(`Invalid integration ID for required check ${context}`);
+  }
+  return { context, appId: appId > 0 ? appId : null };
+}
+
+function observedRequiredCheck(node) {
+  if (node.__typename === "CheckRun") {
+    return {
+      ...requiredCheck(node.name, node.checkSuite?.app?.databaseId),
+      required: node.isRequired,
+      passed:
+        node.status === "COMPLETED" &&
+        ["SUCCESS", "NEUTRAL", "SKIPPED"].includes(node.conclusion)
+    };
+  }
+  if (node.__typename === "StatusContext") {
+    return {
+      ...requiredCheck(node.context, null),
+      required: node.isRequired,
+      passed: node.state === "SUCCESS"
+    };
+  }
+  throw new Error(`Unsupported status-check context: ${node.__typename}`);
+}
+
+async function hasPassingRequiredChecks(github, owner, repo, number, pull) {
+  if (!pull.baseRefName || !pull.baseRef) {
+    throw new Error(`Cannot determine the base branch for #${number}`);
+  }
+
+  const rules = await github.paginate(
+    "GET /repos/{owner}/{repo}/rules/branches/{branch}",
+    { owner, repo, branch: pull.baseRefName, per_page: 100 }
+  );
+  const required = [];
+  for (const rule of rules) {
+    if (rule.type !== "required_status_checks") {
+      continue;
+    }
+    const checks = rule.parameters?.required_status_checks;
+    if (!Array.isArray(checks)) {
+      throw new Error("A required-status-check rule has no check list");
+    }
+    required.push(
+      ...checks.map((check) =>
+        requiredCheck(check.context, check.integration_id)
+      )
+    );
+  }
+
+  const protection = pull.baseRef.branchProtectionRule;
+  const classicChecks = protection?.requiredStatusChecks ?? [];
+  if (classicChecks.length > 0) {
+    required.push(
+      ...classicChecks.map((check) =>
+        requiredCheck(check.context, check.app?.databaseId)
+      )
+    );
+  } else {
+    required.push(
+      ...(protection?.requiredStatusCheckContexts ?? []).map((context) =>
+        requiredCheck(context, null)
+      )
+    );
+  }
+
+  const observed = [];
+  let cursor = null;
+  do {
+    const result = await github.graphql(REQUIRED_CHECKS_QUERY, {
+      owner,
+      repo,
+      number,
+      cursor,
+      headers: MERGE_QUEUE_HEADERS
+    });
+    const commit = result.repository?.pullRequest?.commits?.nodes?.[0]?.commit;
+    if (!commit) {
+      throw new Error(`Cannot find the head commit for #${number}`);
+    }
+    if (!commit.statusCheckRollup) {
+      return required.length === 0;
+    }
+    const page = commit.statusCheckRollup.contexts;
+    if (!page || !Array.isArray(page.nodes) || !page.pageInfo) {
+      throw new Error(`Invalid status-check response for #${number}`);
+    }
+    observed.push(
+      ...page.nodes.map(observedRequiredCheck).filter((check) => check.required)
+    );
+    if (page.pageInfo.hasNextPage && !page.pageInfo.endCursor) {
+      throw new Error(`Missing status-check cursor for #${number}`);
+    }
+    cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+  } while (cursor);
+
+  return (
+    observed.every((check) => check.passed) &&
+    observed.every((check) =>
+      required.some(
+        (expected) =>
+          expected.context === check.context &&
+          (expected.appId == null || expected.appId === check.appId)
+      )
+    ) &&
+    required.every((expected) =>
+      observed.some(
+        (check) =>
+          check.passed &&
+          check.context === expected.context &&
+          (expected.appId == null || expected.appId === check.appId)
+      )
+    )
+  );
+}
+
 async function syncPull(github, core, owner, repo, number) {
   const result = await github.graphql(query, {
     owner,
@@ -299,9 +483,33 @@ async function syncPull(github, core, owner, repo, number) {
     }
   }
 
+  let requiredChecksPassed = false;
+  if (
+    pull.state === "OPEN" &&
+    !pull.isDraft &&
+    pull.reviewDecision === "APPROVED" &&
+    pull.mergeable === "MERGEABLE" &&
+    pull.mergeStateStatus === "BEHIND" &&
+    !pull.isInMergeQueue &&
+    !existing.has(MANUAL_LABELS.doNotMerge) &&
+    !existing.has(MANUAL_LABELS.needsAuthorResponse)
+  ) {
+    requiredChecksPassed = await hasPassingRequiredChecks(
+      github,
+      owner,
+      repo,
+      number,
+      pull
+    );
+    if (!requiredChecksPassed) {
+      core.info(`#${number}: waiting for required checks before queueing`);
+    }
+  }
+
   const { desired, mergeabilityUnknown } = desiredLabels(
     pull,
-    rereviewRequested
+    rereviewRequested,
+    requiredChecksPassed
   );
   if (mergeabilityUnknown) {
     core.warning(
