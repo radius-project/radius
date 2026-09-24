@@ -46,7 +46,7 @@ const labelDefinitions = {
   }
 };
 
-export const managedLabels = Object.freeze(
+const managedLabels = Object.freeze(
   Object.keys(labelDefinitions).filter(
     (name) => name !== "pr:needs-author-response"
   )
@@ -94,7 +94,7 @@ function currentLabels(pull) {
   return new Set(pull.labels.nodes.map((label) => label.name));
 }
 
-export function desiredLabels(pull, rereviewRequested = false) {
+function desiredLabels(pull, rereviewRequested = false) {
   const existing = currentLabels(pull);
   const desired = new Set();
 
@@ -170,7 +170,7 @@ function reviewerKey(reviewer) {
   return null;
 }
 
-export function hasRereviewRequest(pull, reviews, timeline) {
+function hasRereviewRequest(pull, reviews, timeline) {
   if (pull.reviewRequests.totalCount !== pull.reviewRequests.nodes.length) {
     throw new Error("Cannot classify more than 100 pending review requests");
   }
@@ -232,7 +232,7 @@ export function hasRereviewRequest(pull, reviews, timeline) {
   });
 }
 
-export function reviewSignal(run, pull) {
+function reviewSignal(run, pull) {
   // A fork can change the read-only signal workflow's run-name; bind it to the actual PR commit.
   const match = /^([1-9]\d*)$/.exec(run.display_title ?? "");
   if (
@@ -288,7 +288,7 @@ async function ensureLabels(github, core, owner, repo) {
   }
 }
 
-export async function syncPull(github, core, owner, repo, number) {
+async function syncPull(github, core, owner, repo, number) {
   const result = await github.graphql(query, { owner, repo, number });
   const pull = result.repository?.pullRequest;
   if (!pull) {
