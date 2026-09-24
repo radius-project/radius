@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: pr-review-signal
+run-name: ${{ github.event.pull_request.number }}
+
+# Review workflows run from the PR's merge commit, so they cannot safely
+# write labels for fork PRs. This read-only run signals pr-status-labels.
+on:
+  pull_request_review:
+    types: [submitted, dismissed]
+
+permissions: {}
+
+jobs:
+  signal:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Signal review change
+        run: echo "Pull request review changed"

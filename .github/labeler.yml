@@ -1,0 +1,21 @@
+cli:
+  - changed-files:
+      - any-glob-to-any-file:
+          - cmd/rad/**
+          - pkg/cli/**
+
+recipes:
+  - changed-files:
+      - any-glob-to-any-file:
+          - pkg/recipes/**
+          - pkg/cli/cmd/recipe/**
+          - pkg/cli/cmd/recipepack/**
+
+github_actions:
+  - changed-files:
+      - any-glob-to-any-file:
+          - .github/workflows/**
+          - .github/actions/**
+          - .github/scripts/**
+          - .github/configs/**
+          - .github/labeler.yml

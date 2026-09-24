@@ -91,6 +91,17 @@ Every non-Dependabot pull request must have exactly one release-impact label:
 
 The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
 
+The [`pr-status-labels` workflow](../../../.github/workflows/pr-status-labels.yml) creates and maintains these **handoff labels** for open, non-draft pull requests. Exactly one applies unless the PR is on hold:
+
+- **`pr:needs-reviewer`** — the PR needs a reviewer or team to be requested.
+- **`pr:waiting-for-review`** — a reviewer or team has a pending request. When a reviewer requests changes, the author must re-request a review after addressing them; pushing a commit alone does not hand the PR back.
+- **`pr:waiting-for-author`** — a formal changes-requested review or a manual author-response request needs action.
+- **`pr:review-approved`** — required reviews are approved; this does not mean checks have passed.
+
+The workflow also adds **`pr:needs-rebase`** when the PR has merge conflicts, and **`pr:ready-for-queue`** only when review is approved, GitHub reports the PR mergeable with requirements satisfied, and it is not already queued. These are additional signals, not substitutes for GitHub's merge rules or the merge queue. Being behind `main` alone is not a conflict: the merge queue handles that. A `!` in a valid Conventional Commit PR title automatically adds **`pr:breaking-change`**; it does not select the required `pr:important` release-impact label. The [GitHub labeler](../../../.github/labeler.yml) maintains the existing `cli`, `recipes`, and `github_actions` area labels from changed paths.
+
+Draft PRs have no handoff label. Maintainers can apply the existing **`blocked`** or **`pr:do-not-merge`** labels to pause a PR; either removes its handoff and queue-ready labels. Use **`pr:needs-author-response`** for an actionable comment without a formal changes-requested review, then remove it after the author responds. All three manual labels fail the `PR Required Labels` check and remove a PR from the merge queue if it was already queued. Ordinary review comments are not interpreted as author action automatically.
+
 ### 6. (Optional) Self-review with the `radius-code-review` skill
 
 If you use GitHub Copilot, you can run the [`radius-code-review`](../../../.github/skills/radius-code-review/SKILL.md) skill against your own pull request to generate an initial AI-assisted review *before* asking maintainers to look at it. This can help you catch obvious issues, missing tests, or unclear comments while you still own the change.
@@ -119,6 +130,7 @@ The maintainers or other contributors will add comments giving feedback, asking 
 
 - **Be proactive.** Comment on your own PR to point out relevant locations, decisions, opportunities for feedback, and tricky parts. This focuses reviewers' attention and saves them time.
 - **Resolve feedback.** Mark comments as resolved once you've addressed them through discussion or a code change. If you are the reviewer, follow up (politely) if you feel your feedback hasn't been addressed adequately.
+- **Hand review back explicitly.** After addressing requested changes, re-request review from a reviewer or team. When responding to a manually flagged comment, clear `pr:needs-author-response` if you can manage labels, or ask a maintainer to clear it.
 - **Anyone can participate.** We welcome any contributor or community member to engage with any pull request. Make suggestions and ask relevant questions; if a question is for your own learning, make it clear that it is "non-blocking." See the [code reviewing documentation](../contributing-code/contributing-code-reviewing/README.md) for full guidance.
 
 ## Verification
@@ -129,6 +141,7 @@ A pull request must pass these checkpoints to be accepted:
 - **External automation eligibility** — a pull request opened through external automation links to an eligible issue with the required labels.
 - **Automated tests** — GitHub Actions workflows run unit, integration, and functional tests against your changes. Automation adds comments with links to logs so you can diagnose failures.
 - **Required label** — exactly one of `pr:standard` or `pr:important` is applied.
+- **No merge hold** — none of `blocked`, `pr:do-not-merge`, or `pr:needs-author-response` is present.
 - **Code review** — you receive and address feedback from a maintainer or other contributors.
 
 The functional-tests workflow requires approval to run. One of our approvers is automatically notified when you submit the PR; once they approve the run, the functional tests start.
@@ -150,4 +163,5 @@ The functional-tests workflow requires approval to run. One of our approvers is 
 
   cspell requires [Node.js](https://nodejs.org/); install it globally with `npm install -g cspell`.
 - **A CI failure you can't understand.** Our automation adds comments with links to logs. If you're still stuck, ask the maintainers for help.
-- **Your PR was marked stale.** Pull requests inactive for 28 days are marked with the `stale` label and closed after one further day of inactivity. Comment or push an update to keep your PR active.
+- **A handoff label is missing or outdated.** The status workflow reacts to PR and review activity, and checks open PRs every 15 minutes to pick up CI and base-branch changes. Fork review events signal a trusted labeling run without executing fork code. Maintainers can rerun `pr-status-labels` from the Actions tab with a PR number, or leave it blank to reconcile all open PRs. If fork PR labeling does not start, check whether the repository's Actions policy allows `pull_request_target`.
+- **Your PR was marked stale.** Pull requests inactive for 28 days are marked with the `stale` label and closed after one further day of inactivity. PRs labeled `blocked` are exempt while blocked; `pr:do-not-merge` does not exempt a PR. Comment or push an update to keep other PRs active.
