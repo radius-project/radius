@@ -21,7 +21,7 @@ on:
       - enqueued
       - dequeued
   workflow_run:
-    workflows: [pr-review-signal]
+    workflows: [PR Review Signal]
     types: [completed]
   schedule:
     - cron: "7,22,37,52 * * * *"
@@ -35,8 +35,8 @@ on:
 permissions: {}
 
 concurrency:
-  # Scheduled and unscoped manual runs must not reconcile the same PR concurrently.
-  group: pr-status-labels-${{ github.event.pull_request.number || github.event.workflow_run.display_title || inputs.pr_number || 'all' }}
+  # Any all-PR run can update a PR-specific run's labels, so serialize every run.
+  group: pr-status-labels-${{ github.repository }}
   cancel-in-progress: false
 
 jobs:
