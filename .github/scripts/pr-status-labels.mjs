@@ -25,7 +25,6 @@ const STATUS_LABELS = Object.freeze({
 
 const MANUAL_LABELS = Object.freeze({
   needsAuthorResponse: "pr:needs-author-response",
-  blocked: "blocked",
   doNotMerge: "pr:do-not-merge"
 });
 
@@ -100,11 +99,7 @@ function desiredLabels(pull, rereviewRequested = false) {
     desired.add(STATUS_LABELS.needsRebase);
   }
 
-  if (
-    pull.isDraft ||
-    existing.has(MANUAL_LABELS.blocked) ||
-    existing.has(MANUAL_LABELS.doNotMerge)
-  ) {
+  if (pull.isDraft || existing.has(MANUAL_LABELS.doNotMerge)) {
     return { desired, mergeabilityUnknown };
   }
 
@@ -259,8 +254,7 @@ async function syncPull(github, core, owner, repo, number) {
   if (
     pull.state === "OPEN" &&
     pull.isInMergeQueue &&
-    (existing.has(MANUAL_LABELS.blocked) ||
-      existing.has(MANUAL_LABELS.doNotMerge) ||
+    (existing.has(MANUAL_LABELS.doNotMerge) ||
       existing.has(MANUAL_LABELS.needsAuthorResponse))
   ) {
     // DequeuePullRequestInput.id is the pull request node ID.

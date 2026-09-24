@@ -29,9 +29,6 @@
 - name: pr:needs-author-response
   color: 1D76DB
   description: A reviewer manually requested an author response
-- name: blocked
-  color: 1D76DB
-  description: We can't make progress due to external team/factor
 - name: pr:do-not-merge
   color: 1D76DB
   description: Don't merge this PR until open discussion items or issues are complete

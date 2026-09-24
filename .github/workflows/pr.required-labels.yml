@@ -28,11 +28,10 @@ jobs:
       - name: Reject merge holds and pending author responses
         if: >-
           github.event_name != 'merge_group' &&
-          (contains(github.event.pull_request.labels.*.name, 'blocked') ||
-           contains(github.event.pull_request.labels.*.name, 'pr:do-not-merge') ||
+          (contains(github.event.pull_request.labels.*.name, 'pr:do-not-merge') ||
            contains(github.event.pull_request.labels.*.name, 'pr:needs-author-response'))
         run: |
-          echo "::error::Remove blocked, pr:do-not-merge, or pr:needs-author-response before merging."
+          echo "::error::Remove pr:do-not-merge or pr:needs-author-response before merging."
           exit 1
 
       - name: Run PR Required Labels
