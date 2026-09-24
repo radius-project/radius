@@ -35,7 +35,8 @@ on:
 permissions: {}
 
 concurrency:
-  group: pr-status-labels-${{ github.event.pull_request.number || github.event.workflow_run.display_title || inputs.pr_number || github.run_id }}
+  # Scheduled and unscoped manual runs must not reconcile the same PR concurrently.
+  group: pr-status-labels-${{ github.event.pull_request.number || github.event.workflow_run.display_title || inputs.pr_number || 'all' }}
   cancel-in-progress: false
 
 jobs:
