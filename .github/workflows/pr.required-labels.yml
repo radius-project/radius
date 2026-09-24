@@ -50,7 +50,7 @@ jobs:
             Currently applied labels: {{ applied }}.
 
             **Label descriptions:**
-            - `pr:important` - Major features, breaking changes, deprecations, or other high-impact changes that need special attention during release.
+            - `pr:important` - Major features, breaking changes, deprecations, or other high-impact changes that need special attention during release and in release notes.
             - `pr:standard` - Ongoing maintenance, minor improvements, documentation updates, and routine development work.
 
             @${{ github.event.pull_request.user.login }}, please add the appropriate label to this PR before merging.

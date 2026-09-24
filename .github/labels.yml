@@ -3,10 +3,10 @@
 ---
 - name: pr:standard
   color: 86a16a
-  description: ""
+  description: Ongoing maintenance, minor improvements, documentation updates, and routine development work
 - name: pr:important
   color: 86a16a
-  description: ""
+  description: High-impact changes needing special attention during release and in release notes
 - name: pr:needs-reviewer
   color: BFD4F2
   description: Ready for review but no reviewer has been requested

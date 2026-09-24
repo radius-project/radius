@@ -87,7 +87,7 @@ Open the pull request from your fork against `main`. The form is pre-populated w
 Every non-Dependabot pull request must have exactly one release-impact label:
 
 - **`pr:standard`** — ongoing maintenance, minor improvements, documentation updates, and routine development work.
-- **`pr:important`** — major features, breaking changes, deprecations, or other high-impact changes that need special attention during release.
+- **`pr:important`** — major features, breaking changes, deprecations, or other high-impact changes that need special attention during release and in release notes.
 
 The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
 
