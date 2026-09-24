@@ -40,10 +40,6 @@ const labelDefinitions = {
     description:
       "Review, checks and mergeability permit adding this PR to the queue"
   },
-  "pr:breaking-change": {
-    color: "B60205",
-    description: "The pull request title declares a breaking change"
-  },
   "pr:needs-author-response": {
     color: "F9D0C4",
     description: "A reviewer manually requested an author response"
@@ -63,7 +59,6 @@ const query = `
         id
         state
         isDraft
-        title
         mergeable
         mergeStateStatus
         reviewDecision
@@ -102,12 +97,7 @@ function currentLabels(pull) {
 export function desiredLabels(pull, rereviewRequested = false) {
   const existing = currentLabels(pull);
   const desired = new Set();
-  const breakingTitle =
-    /^(?:feat|fix|perf|refactor|style|revert|docs|test|build|ci|chore)(?:\([^)]+\))?!: .+/;
 
-  if (breakingTitle.test(pull.title)) {
-    desired.add("pr:breaking-change");
-  }
   if (pull.state !== "OPEN") {
     return { desired, mergeabilityUnknown: false };
   }

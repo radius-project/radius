@@ -58,7 +58,6 @@ jobs:
           ref: ${{ github.sha }}
           sparse-checkout: |
             .github/scripts/pr-status-labels.mjs
-            .github/labeler.yml
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
@@ -70,10 +69,3 @@ jobs:
               `${process.env.GITHUB_WORKSPACE}/.github/scripts/pr-status-labels.mjs`
             )
             await run({ github, context, core })
-
-      - name: Sync changed-area labels
-        if: github.event_name == 'pull_request_target' && github.event.action != 'closed'
-        uses: actions/labeler@f1a63e87db0c6baf19c5713083f8d00d789ca184 # v6.0.0
-        with:
-          configuration-path: .github/labeler.yml
-          sync-labels: true
