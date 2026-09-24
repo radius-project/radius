@@ -219,6 +219,46 @@ Apply the layers in order whenever the LRT cluster is created or rotated:
 
 The GitHub Actions role allows 5400-second sessions, and the LRT workflow requests that duration to leave headroom over the 60-minute functional-test window. Its generated subject patterns include branch refs, so the scheduled `main` run uses `repo:radius-project/radius:ref:refs/heads/main` without a separate trust-policy edit.
 
+### Terraform cloud backend lifecycle tests
+
+`Test_TerraformCloudBackend_S3` and `Test_TerraformCloudBackend_AzureRM` live in `test/functional-portable/corerp/cloud/resources`. The existing `functional-test-cloud.yaml` → `corerp-cloud` matrix leg → `make test-functional-corerp-cloud` discovers both without build tags or an opt-in flag. Missing cloud credentials or configuration fail these tests rather than silently skipping them. They use the management API through `RPTest` to create `Radius.Core/terraformSettings`, a recipe pack, an environment and an application, then deploy real Terraform recipes through two `Applications.Core/extenders`.
+
+Each backend test creates two independent states, updates only the first resource's `revision` tag, and destroys the resources separately. It reads the actual S3 objects or Azure blobs at independently calculated 40-hex state keys, verifies distinct lineages, stable lineage and increasing serial across update/destroy, and checks the other state's bytes remain unchanged. SDK reads verify actual recipe-managed bucket/resource-group tags and disappearance before fallback cleanup runs. Empty Terraform states and their backing storage must remain after both destroys; no lock or extra state objects may remain. S3 exercises the default `radius/` prefix; Azure exercises a custom nested prefix. Full state contents and access tokens are never printed.
+
+These tests always perform synchronous destruction and retention checks, even when CI sets `RADIUS_TEST_FAST_CLEANUP=true`. Unique, test-owned backend storage is deleted only afterward by bounded cleanup callbacks; cleanup failures fail the test. The S3 test creates an unversioned private state bucket and two empty recipe-managed buckets. The Azure test creates a Standard LRS storage account in the CI-owned resource group, a private container with shared-key authentication disabled, and two empty recipe-managed resource groups. Do not run against production accounts or subscriptions. Process termination can interrupt cleanup; use the test's unique `tfbackend-` names and `radiustest=terraform-cloud-backend` cloud tags to investigate leftovers.
+
+Azure setup has independent **10-minute ARM provisioning** and **10-minute Blob permission-propagation** budgets; provisioning does not consume the propagation allowance. Only the new-container readiness probe retries expected authorization-propagation 403 responses, transient DNS/network failures, and SDK-retryable HTTP 408/429/500/502/503/504 responses. Permanent authentication, certificate and other HTTP failures stop immediately. Cancellation is preserved, and timeout diagnostics report the last error category/status without raw response bodies or tokens.
+
+Normal Radius PUT/DELETE operations have a separate **15-minute** limit to allow cold Terraform binary/provider downloads; S3 SDK setup and individual cleanup callbacks remain bounded at **5 minutes**. A timed-out PUT can still be `Updating` server-side, so Radius cleanup retries 409 conflicts within its cleanup budget instead of force-deleting metadata under an active Terraform operation. Persistent conflicts and SDK fallback cleanup failures remain test failures. CI's existing **30-minute Go suite** and **35-minute test-step** ceilings are unchanged: stage limits are ceilings, not guaranteed time reservations, and multiple cold stages can exceed that shared suite budget. The dedicated command below allows 60 minutes for cold-start diagnosis; measure authorized live CI timings before deciding whether a separately budgeted cloud-backend lane is needed. Do not expand unrelated suites or treat timeout/cleanup failures as successful coverage.
+
+**Authentication coverage:** CI tests the registered AWS **IRSA** and Azure **Workload Identity** credentials only. The runner uses its existing AWS assumed-role session and Azure SDK `DefaultAzureCredential` (the workflow's `azure/login` session). It does not register or replace credentials. AccessKey and ServicePrincipal backend authentication, cross-cloud recipe/backend combinations, migration, and backend immutability are not exercised by these E2E tests.
+
+Prerequisites, in addition to the normal cloud-suite setup:
+
+- Install the Radius build containing cloud backends and publish the checked-out `backend-s3` and `backend-azurerm` recipes with `make publish-test-terraform-recipes`. The existing publisher automatically includes these directories. The cluster must reach the Terraform provider registry.
+- Set `TF_RECIPE_MODULE_SERVER_URL`. For S3, set `AWS_REGION` and `AWS_ACCOUNT_ID`, with runner credentials for that account. Runner and registered IRSA roles need S3 bucket creation/deletion, tagging, listing and object read/write/delete permissions; the existing `wellknown/modules/21-functional-tests-aws` test policy provides these. Endpoint overrides are rejected, not redirected to emulators.
+- For Azure, set `AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION` and `INTEGRATION_TEST_RESOURCE_GROUP_NAME`. The runner and registered Workload Identity must use the **same Entra service principal**, as in cloud CI. The runner needs storage-account and resource-group management plus role-assignment create/delete permissions. The existing `wellknown/modules/20-functional-tests` setup grants Contributor and Role Based Access Control Administrator. The test temporarily assigns **Storage Blob Data Contributor only on its new container** to this principal, waits for data-plane access, and removes that assignment during cleanup. No account keys, new CI secrets, broad role grants or preprovisioned state storage are required. A runner logged in as a personal Azure user is not a supported substitute.
+
+After configuring a dedicated cloud test cluster, run the live checks:
+
+```bash
+make publish-test-terraform-recipes
+go test ./test/functional-portable/corerp/cloud/resources \
+  -run '^Test_TerraformCloudBackend_(S3|AzureRM)$' -count=1 -timeout 60m -v
+```
+
+For local validation **without cloud operations**, compile the E2E package and run only its pure helpers (there is no `TestMain` in this package):
+
+```bash
+mkdir -p dist/test
+go test -c -o dist/test/cloud-resources.test ./test/functional-portable/corerp/cloud/resources
+go test ./test/functional-portable/corerp/cloud/resources -run '^TestTerraformCloud' -count=1
+go test ./pkg/recipes/terraform/config/backends ./pkg/corerp/datamodel
+terraform fmt -check test/testrecipes/test-terraform-recipes/backend-s3 test/testrecipes/test-terraform-recipes/backend-azurerm
+```
+
+If setup fails with Azure authorization errors, verify the documented shared principal and CI role assignments rather than bypassing the failure with a skip or enabling account keys. If a recipe changes, republish its zip before rerunning. Local compilation and helper tests do not demonstrate working cloud authentication; only the live checks do.
+
 ## Verification
 
 - Each group prints `ok` (or the `gotestsum` summary) per package and `go test` exits non-zero on any failure.
