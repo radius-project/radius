@@ -1,6 +1,5 @@
 # PR lifecycle and release-impact labels are synced by .github/workflows/labels.yml.
 # Other repository labels are preserved by skip-delete.
-# Entries use one-line name, color and description fields for post-sync verification.
 ---
 - name: pr:standard
   color: 86a16a
