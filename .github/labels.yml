@@ -1,0 +1,30 @@
+# PR lifecycle labels are synced by .github/workflows/labels.yml.
+# Other repository labels are preserved by skip-delete.
+---
+- name: pr:needs-reviewer
+  color: BFD4F2
+  description: Ready for review but no reviewer has been requested
+- name: pr:waiting-for-review
+  color: 0E8A16
+  description: A requested reviewer owns the next action
+- name: pr:waiting-for-author
+  color: FBCA04
+  description: The author needs to address review feedback
+- name: pr:review-approved
+  color: 7FD3B1
+  description: Required reviews are approved; checks may still be pending
+- name: pr:needs-rebase
+  color: D93F0B
+  description: The pull request has merge conflicts
+- name: pr:ready-for-queue
+  color: 5319E7
+  description: Review, checks and mergeability permit adding this PR to the queue
+- name: pr:needs-author-response
+  color: F9D0C4
+  description: A reviewer manually requested an author response
+- name: blocked
+  color: D93F0B
+  description: We can't make progress due to external team/factor
+- name: pr:do-not-merge
+  color: 86a16a
+  description: Don't merge this PR until open discussion items or issues are complete

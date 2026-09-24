@@ -91,7 +91,7 @@ Every non-Dependabot pull request must have exactly one release-impact label:
 
 The `PR Required Labels` check explains which label is missing. Contributors who cannot apply labels should ask a maintainer to add the appropriate one.
 
-The [`pr-status-labels` workflow](../../../.github/workflows/pr-status-labels.yml) creates and maintains these **handoff labels** for open, non-draft pull requests. Exactly one applies unless the PR is on hold:
+The [`pr-status-labels` workflow](../../../.github/workflows/pr-status-labels.yml) applies these **handoff labels** to open, non-draft pull requests. Exactly one applies unless the PR is on hold:
 
 - **`pr:needs-reviewer`** — the PR needs a reviewer or team to be requested.
 - **`pr:waiting-for-review`** — a reviewer or team has a pending request. When a reviewer requests changes, the author must re-request a review after addressing them; pushing a commit alone does not hand the PR back.
@@ -99,6 +99,8 @@ The [`pr-status-labels` workflow](../../../.github/workflows/pr-status-labels.ym
 - **`pr:review-approved`** — required reviews are approved; this does not mean checks have passed.
 
 The workflow also adds **`pr:needs-rebase`** when the PR has merge conflicts, and **`pr:ready-for-queue`** only when review is approved, GitHub reports the PR mergeable with requirements satisfied, and it is not already queued. These are additional signals, not substitutes for GitHub's merge rules or the merge queue. Being behind `main` alone is not a conflict: the merge queue handles that.
+
+The status workflow assumes these labels already exist; it never creates repository labels. The independent [labels workflow](../../../.github/workflows/labels.yml) previews changes from the [lifecycle-label catalog](../../../.github/labels.yml) on pull requests and syncs definitions after merge or a manual repository-label change. It preserves unrelated repository labels.
 
 Draft PRs have no handoff label. Maintainers can apply the existing **`blocked`** or **`pr:do-not-merge`** labels to pause a PR; either removes its handoff and queue-ready labels. Use **`pr:needs-author-response`** for an actionable comment without a formal changes-requested review, then remove it after the author responds. All three manual labels fail the `PR Required Labels` check and remove a PR from the merge queue if it was already queued. Ordinary review comments are not interpreted as author action automatically.
 

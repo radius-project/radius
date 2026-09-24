@@ -14,43 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-const labelDefinitions = {
-  "pr:needs-reviewer": {
-    color: "BFD4F2",
-    description: "Ready for review but no reviewer has been requested"
-  },
-  "pr:waiting-for-review": {
-    color: "0E8A16",
-    description: "A requested reviewer owns the next action"
-  },
-  "pr:waiting-for-author": {
-    color: "FBCA04",
-    description: "The author needs to address review feedback"
-  },
-  "pr:review-approved": {
-    color: "7FD3B1",
-    description: "Required reviews are approved; checks may still be pending"
-  },
-  "pr:needs-rebase": {
-    color: "D93F0B",
-    description: "The pull request has merge conflicts"
-  },
-  "pr:ready-for-queue": {
-    color: "5319E7",
-    description:
-      "Review, checks and mergeability permit adding this PR to the queue"
-  },
-  "pr:needs-author-response": {
-    color: "F9D0C4",
-    description: "A reviewer manually requested an author response"
-  }
-};
-
-const managedLabels = Object.freeze(
-  Object.keys(labelDefinitions).filter(
-    (name) => name !== "pr:needs-author-response"
-  )
-);
+const managedLabels = Object.freeze([
+  "pr:needs-reviewer",
+  "pr:waiting-for-review",
+  "pr:waiting-for-author",
+  "pr:review-approved",
+  "pr:needs-rebase",
+  "pr:ready-for-queue"
+]);
 
 const query = `
   query($owner: String!, $repo: String!, $number: Int!) {
@@ -257,37 +228,6 @@ function reviewSignal(run, pull) {
   return Number(match[1]);
 }
 
-async function ensureLabels(github, core, owner, repo) {
-  const available = await github.paginate(
-    github.rest.issues.listLabelsForRepo,
-    {
-      owner,
-      repo,
-      per_page: 100
-    }
-  );
-  const names = new Set(available.map((label) => label.name));
-  for (const [name, definition] of Object.entries(labelDefinitions)) {
-    if (names.has(name)) {
-      continue;
-    }
-    try {
-      await github.rest.issues.createLabel({
-        owner,
-        repo,
-        name,
-        ...definition
-      });
-    } catch (error) {
-      if (error.status !== 422) {
-        throw error;
-      }
-      await github.rest.issues.getLabel({ owner, repo, name });
-      core.info(`Label ${name} was created by another workflow run`);
-    }
-  }
-}
-
 async function syncPull(github, core, owner, repo, number) {
   const result = await github.graphql(query, { owner, repo, number });
   const pull = result.repository?.pullRequest;
@@ -386,7 +326,6 @@ async function syncPull(github, core, owner, repo, number) {
 
 export default async function run({ github, context, core }) {
   const { owner, repo } = context.repo;
-  await ensureLabels(github, core, owner, repo);
 
   if (context.eventName === "pull_request_target") {
     await syncPull(
