@@ -20,19 +20,19 @@ const STATUS_LABELS = Object.freeze({
   waitingForAuthor: "pr:waiting-for-author",
   reviewApproved: "pr:review-approved",
   needsRebase: "pr:needs-rebase",
-  readyForQueue: "pr:ready-for-queue",
+  readyForQueue: "pr:ready-for-queue"
 });
 
 const MANUAL_LABELS = Object.freeze({
   needsAuthorResponse: "pr:needs-author-response",
-  doNotMerge: "pr:do-not-merge",
+  doNotMerge: "pr:do-not-merge"
 });
 
 const MANAGED_LABELS = Object.freeze(Object.values(STATUS_LABELS));
 
 // GitHub's merge-queue GraphQL fields require this feature header.
 const MERGE_QUEUE_HEADERS = Object.freeze({
-  "GraphQL-Features": "merge_queue",
+  "GraphQL-Features": "merge_queue"
 });
 
 const query = `
@@ -187,9 +187,9 @@ function sharedCodeOwnerTeams(contents, owner) {
       owners
         .map((name) => name.toLowerCase())
         .filter(
-          (name) => name.startsWith(prefix) && name.length > prefix.length,
+          (name) => name.startsWith(prefix) && name.length > prefix.length
         )
-        .map((name) => name.slice(prefix.length)),
+        .map((name) => name.slice(prefix.length))
     );
     // A team on every rule owns every changed path, regardless of rule precedence.
     shared =
@@ -218,7 +218,7 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
 
   const rules = await github.paginate(
     "GET /repos/{owner}/{repo}/rules/branches/{branch}",
-    { owner, repo, branch: pull.baseRefName, per_page: 100 },
+    { owner, repo, branch: pull.baseRefName, per_page: 100 }
   );
   const reviewRules = rules.filter((rule) => rule.type === "pull_request");
   if (reviewRules.length === 0) {
@@ -250,7 +250,7 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
     }
     requiredCount = Math.max(
       requiredCount,
-      parameters.required_approving_review_count,
+      parameters.required_approving_review_count
     );
     codeOwnerRequired ||= parameters.require_code_owner_review;
   }
@@ -262,7 +262,7 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
       owner,
       repo,
       number,
-      cursor,
+      cursor
     });
     const reviewedPull = result.repository?.pullRequest;
     if (
@@ -271,7 +271,7 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
       reviewedPull.headRefOid !== pull.headRefOid
     ) {
       throw new Error(
-        `The base or head commit changed while reviewing #${number}`,
+        `The base or head commit changed while reviewing #${number}`
       );
     }
     const page = reviewedPull.latestOpinionatedReviews;
@@ -288,8 +288,7 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
   if (
     reviews.some(
       (review) =>
-        review.state === "CHANGES_REQUESTED" &&
-        review.authorCanPushToRepository,
+        review.state === "CHANGES_REQUESTED" && review.authorCanPushToRepository
     )
   ) {
     return "CHANGES_REQUESTED";
@@ -301,7 +300,7 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
       review.author?.__typename === "User" &&
       review.authorCanPushToRepository &&
       review.author.login.toLowerCase() !== pull.author?.login?.toLowerCase() &&
-      review.commit?.oid === pull.headRefOid,
+      review.commit?.oid === pull.headRefOid
   );
   if (
     new Set(approvals.map((review) => review.author.login.toLowerCase())).size <
@@ -317,7 +316,7 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
         owner,
         repo,
         path: ".github/CODEOWNERS",
-        ref: pull.baseRefOid,
+        ref: pull.baseRefOid
       }));
     } catch (error) {
       if (error.status !== 404) {
@@ -336,7 +335,7 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
     }
     const teams = sharedCodeOwnerTeams(
       Buffer.from(file.content, "base64").toString("utf8"),
-      owner,
+      owner
     );
     if (
       teams.size === 0 ||
@@ -351,7 +350,7 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
         return represented.nodes.some(
           (team) =>
             team.organization?.login?.toLowerCase() === owner.toLowerCase() &&
-            teams.has(team.slug?.toLowerCase()),
+            teams.has(team.slug?.toLowerCase())
         );
       })
     ) {
@@ -368,7 +367,7 @@ function desiredLabels(
   pull,
   rereviewRequested = false,
   requiredChecksPassed = false,
-  reviewDecision = pull.reviewDecision,
+  reviewDecision = pull.reviewDecision
 ) {
   const existing = currentLabels(pull);
   const desired = new Set();
@@ -397,7 +396,7 @@ function desiredLabels(
 
   if (
     ![null, "APPROVED", "CHANGES_REQUESTED", "REVIEW_REQUIRED"].includes(
-      reviewDecision,
+      reviewDecision
     )
   ) {
     throw new Error(`Unexpected review decision: ${reviewDecision}`);
@@ -450,7 +449,7 @@ function hasRereviewRequest(pull, reviews, timeline) {
 
   const decisive = new Map();
   const decisions = reviews.filter((review) =>
-    ["CHANGES_REQUESTED", "APPROVED"].includes(review.state),
+    ["CHANGES_REQUESTED", "APPROVED"].includes(review.state)
   );
   for (const review of decisions) {
     if (
@@ -458,26 +457,26 @@ function hasRereviewRequest(pull, reviews, timeline) {
       !Number.isFinite(Date.parse(review.submitted_at))
     ) {
       throw new Error(
-        "A decisive review has no reviewer or valid submission time",
+        "A decisive review has no reviewer or valid submission time"
       );
     }
   }
   decisions.sort(
     (left, right) =>
       Date.parse(left.submitted_at) - Date.parse(right.submitted_at) ||
-      left.id - right.id,
+      left.id - right.id
   );
   for (const review of decisions) {
     decisive.set(review.user.login.toLowerCase(), review);
   }
   const changes = [...decisive.values()].filter(
-    (review) => review.state === "CHANGES_REQUESTED",
+    (review) => review.state === "CHANGES_REQUESTED"
   );
   if (changes.length === 0) {
     return false;
   }
   const lastChange = Math.max(
-    ...changes.map((review) => Date.parse(review.submitted_at)),
+    ...changes.map((review) => Date.parse(review.submitted_at))
   );
   if (!Number.isFinite(lastChange)) {
     throw new Error("An outstanding change request has an invalid timestamp");
@@ -485,8 +484,8 @@ function hasRereviewRequest(pull, reviews, timeline) {
 
   const pending = new Set(
     pull.reviewRequests.nodes.map((request) =>
-      reviewerKey(request.requestedReviewer),
-    ),
+      reviewerKey(request.requestedReviewer)
+    )
   );
   // An earlier request does not hand feedback back to reviewers after changes are requested.
   return timeline.some((event) => {
@@ -551,14 +550,14 @@ function observedRequiredCheck(node) {
       required: node.isRequired,
       passed:
         node.status === "COMPLETED" &&
-        ["SUCCESS", "NEUTRAL", "SKIPPED"].includes(node.conclusion),
+        ["SUCCESS", "NEUTRAL", "SKIPPED"].includes(node.conclusion)
     };
   }
   if (node.__typename === "StatusContext") {
     return {
       ...requiredCheck(node.context, null),
       required: node.isRequired,
-      passed: node.state === "SUCCESS",
+      passed: node.state === "SUCCESS"
     };
   }
   throw new Error(`Unsupported status-check context: ${node.__typename}`);
@@ -571,7 +570,7 @@ async function hasPassingRequiredChecks(github, owner, repo, number, pull) {
 
   const rules = await github.paginate(
     "GET /repos/{owner}/{repo}/rules/branches/{branch}",
-    { owner, repo, branch: pull.baseRefName, per_page: 100 },
+    { owner, repo, branch: pull.baseRefName, per_page: 100 }
   );
   const required = [];
   for (const rule of rules) {
@@ -584,8 +583,8 @@ async function hasPassingRequiredChecks(github, owner, repo, number, pull) {
     }
     required.push(
       ...checks.map((check) =>
-        requiredCheck(check.context, check.integration_id),
-      ),
+        requiredCheck(check.context, check.integration_id)
+      )
     );
   }
 
@@ -594,14 +593,14 @@ async function hasPassingRequiredChecks(github, owner, repo, number, pull) {
   if (classicChecks.length > 0) {
     required.push(
       ...classicChecks.map((check) =>
-        requiredCheck(check.context, check.app?.databaseId),
-      ),
+        requiredCheck(check.context, check.app?.databaseId)
+      )
     );
   } else {
     required.push(
       ...(protection?.requiredStatusCheckContexts ?? []).map((context) =>
-        requiredCheck(context, null),
-      ),
+        requiredCheck(context, null)
+      )
     );
   }
 
@@ -613,7 +612,7 @@ async function hasPassingRequiredChecks(github, owner, repo, number, pull) {
       repo,
       number,
       cursor,
-      headers: MERGE_QUEUE_HEADERS,
+      headers: MERGE_QUEUE_HEADERS
     });
     const commit = result.repository?.pullRequest?.commits?.nodes?.[0]?.commit;
     if (!commit) {
@@ -627,9 +626,7 @@ async function hasPassingRequiredChecks(github, owner, repo, number, pull) {
       throw new Error(`Invalid status-check response for #${number}`);
     }
     observed.push(
-      ...page.nodes
-        .map(observedRequiredCheck)
-        .filter((check) => check.required),
+      ...page.nodes.map(observedRequiredCheck).filter((check) => check.required)
     );
     if (page.pageInfo.hasNextPage && !page.pageInfo.endCursor) {
       throw new Error(`Missing status-check cursor for #${number}`);
@@ -643,16 +640,16 @@ async function hasPassingRequiredChecks(github, owner, repo, number, pull) {
       required.some(
         (expected) =>
           expected.context === check.context &&
-          (expected.appId == null || expected.appId === check.appId),
-      ),
+          (expected.appId == null || expected.appId === check.appId)
+      )
     ) &&
     required.every((expected) =>
       observed.some(
         (check) =>
           check.passed &&
           check.context === expected.context &&
-          (expected.appId == null || expected.appId === check.appId),
-      ),
+          (expected.appId == null || expected.appId === check.appId)
+      )
     )
   );
 }
@@ -662,7 +659,7 @@ async function syncPull(github, core, owner, repo, number) {
     owner,
     repo,
     number,
-    headers: MERGE_QUEUE_HEADERS,
+    headers: MERGE_QUEUE_HEADERS
   });
   const pull = result.repository?.pullRequest;
   if (!pull) {
@@ -685,7 +682,7 @@ async function syncPull(github, core, owner, repo, number) {
           }
         }
       }`,
-      { pullRequestId: pull.id, headers: MERGE_QUEUE_HEADERS },
+      { pullRequestId: pull.id, headers: MERGE_QUEUE_HEADERS }
     );
     core.info(`Removed held pull request #${number} from the merge queue`);
   }
@@ -710,19 +707,19 @@ async function syncPull(github, core, owner, repo, number) {
         owner,
         repo,
         pull_number: number,
-        per_page: 100,
+        per_page: 100
       }),
       github.paginate(github.rest.issues.listEventsForTimeline, {
         owner,
         repo,
         issue_number: number,
-        per_page: 100,
-      }),
+        per_page: 100
+      })
     ]);
     rereviewRequested = hasRereviewRequest(pull, reviews, timeline);
     if (!reviews.some((review) => review.state === "CHANGES_REQUESTED")) {
       core.warning(
-        `#${number} reports changes requested but has no active change-request review`,
+        `#${number} reports changes requested but has no active change-request review`
       );
     }
   }
@@ -743,7 +740,7 @@ async function syncPull(github, core, owner, repo, number) {
       owner,
       repo,
       number,
-      pull,
+      pull
     );
     if (!requiredChecksPassed) {
       core.info(`#${number}: waiting for required checks before queueing`);
@@ -754,11 +751,11 @@ async function syncPull(github, core, owner, repo, number) {
     pull,
     rereviewRequested,
     requiredChecksPassed,
-    reviewDecision,
+    reviewDecision
   );
   if (mergeabilityUnknown) {
     core.warning(
-      `Mergeability for #${number} is unknown; queue and rebase labels will be reconciled on the next run`,
+      `Mergeability for #${number} is unknown; queue and rebase labels will be reconciled on the next run`
     );
   }
   for (const name of MANAGED_LABELS) {
@@ -770,7 +767,7 @@ async function syncPull(github, core, owner, repo, number) {
         owner,
         repo,
         issue_number: number,
-        name,
+        name
       });
     } catch (error) {
       if (error.status !== 404) {
@@ -786,7 +783,7 @@ async function syncPull(github, core, owner, repo, number) {
       owner,
       repo,
       issue_number: number,
-      labels: missing,
+      labels: missing
     });
   }
   core.info(`#${number}: ${[...desired].join(", ") || "no automated labels"}`);
@@ -802,7 +799,7 @@ export default async ({ github, context, core }) => {
       core,
       owner,
       repo,
-      context.payload.pull_request.number,
+      context.payload.pull_request.number
     );
     return;
   }
@@ -818,11 +815,11 @@ export default async ({ github, context, core }) => {
     const { data: pull } = await github.rest.pulls.get({
       owner,
       repo,
-      pull_number: number,
+      pull_number: number
     });
     if (!reviewSignal(run, pull)) {
       core.warning(
-        `Ignoring an unverified or outdated review signal for #${number}; the scheduled run will reconcile it`,
+        `Ignoring an unverified or outdated review signal for #${number}; the scheduled run will reconcile it`
       );
       return;
     }
@@ -850,7 +847,7 @@ export default async ({ github, context, core }) => {
     owner,
     repo,
     state: "open",
-    per_page: 100,
+    per_page: 100
   });
   const failures = [];
   for (const pull of open) {
@@ -863,7 +860,7 @@ export default async ({ github, context, core }) => {
   }
   if (failures.length > 0) {
     throw new Error(
-      `Failed to reconcile pull requests: ${failures.join(", ")}`,
+      `Failed to reconcile pull requests: ${failures.join(", ")}`
     );
   }
 };
