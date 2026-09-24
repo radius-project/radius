@@ -31,6 +31,11 @@ const MANUAL_LABELS = Object.freeze({
 
 const MANAGED_LABELS = Object.freeze(Object.values(STATUS_LABELS));
 
+// GitHub's merge-queue GraphQL fields require this feature header.
+const MERGE_QUEUE_HEADERS = Object.freeze({
+  "GraphQL-Features": "merge_queue"
+});
+
 const query = `
   query($owner: String!, $repo: String!, $number: Int!) {
     repository(owner: $owner, name: $repo) {
@@ -239,7 +244,12 @@ function reviewSignal(run, pull) {
 }
 
 async function syncPull(github, core, owner, repo, number) {
-  const result = await github.graphql(query, { owner, repo, number });
+  const result = await github.graphql(query, {
+    owner,
+    repo,
+    number,
+    headers: MERGE_QUEUE_HEADERS
+  });
   const pull = result.repository?.pullRequest;
   if (!pull) {
     throw new Error(`Pull request #${number} was not found`);
@@ -253,15 +263,16 @@ async function syncPull(github, core, owner, repo, number) {
       existing.has(MANUAL_LABELS.doNotMerge) ||
       existing.has(MANUAL_LABELS.needsAuthorResponse))
   ) {
+    // DequeuePullRequestInput.id is the pull request node ID.
     await github.graphql(
-      `mutation($id: ID!) {
-        dequeuePullRequest(input: { id: $id }) {
+      `mutation($pullRequestId: ID!) {
+        dequeuePullRequest(input: { id: $pullRequestId }) {
           mergeQueueEntry {
             id
           }
         }
       }`,
-      { id: pull.id }
+      { pullRequestId: pull.id, headers: MERGE_QUEUE_HEADERS }
     );
     core.info(`Removed held pull request #${number} from the merge queue`);
   }
