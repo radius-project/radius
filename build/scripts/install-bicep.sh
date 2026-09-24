@@ -17,7 +17,7 @@ set -euo pipefail
 # Usage: install-bicep.sh [install_dir]
 #
 # Environment (all optional):
-#   BICEP_VERSION                Release tag, e.g. v0.42.1. Empty selects latest.
+#   BICEP_VERSION                Release tag, e.g. v0.46.1. Empty selects latest.
 #   BICEP_CHECKSUM_<OS>_<ARCH>   SHA-256 for that platform (e.g.
 #                                BICEP_CHECKSUM_LINUX_AMD64).
 #   BICEP_OS / BICEP_ARCH        Override the target platform (default: host).
@@ -138,7 +138,7 @@ main() {
     fi
 
     # Normalize the requested version: strip whitespace, treat empty as the latest
-    # release, and accept a bare number (0.42.1) as well as a tag (v0.42.1).
+    # release, and accept a bare number (0.46.1) as well as a tag (v0.46.1).
     version="${BICEP_VERSION:-}"
     version="${version//[[:space:]]/}"
     if [ -z "$version" ]; then
@@ -149,12 +149,15 @@ main() {
     fi
     [ -n "$version" ] || fail "could not determine the bicep version to install"
 
-    # Skip if already present in the target directory, verifying the version when
-    # the binary can run on this host.
+    # Check cross-platform artifacts by checksum because they cannot run on this
+    # host. Otherwise a version bump can leave an older staged binary.
     if [ -x "${install_dir}/bicep" ]; then
         if ! $runnable; then
-            log "bicep already present at ${install_dir}/bicep"
-            return 0
+            if [ -n "$checksum" ] && verify_checksum "$checksum" "${install_dir}/bicep"; then
+                log "bicep ${version} already installed: ${install_dir}/bicep"
+                return 0
+            fi
+            log "cannot verify existing cross-platform bicep; downloading ${version}"
         elif "${install_dir}/bicep" --version 2>/dev/null | grep -q "${version#v}"; then
             log "bicep ${version} already installed: ${install_dir}/bicep"
             return 0

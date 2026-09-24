@@ -94,7 +94,7 @@ func TestNewContext(t *testing.T) {
 						SubscriptionID: "testSub",
 						ID:             "/subscriptions/testSub",
 					},
-					ResourceNameHash: "90af35ee55457d03",
+					ResourceNameHash: "50d9425e85470ffd",
 				},
 				AWS: &ProviderAWS{
 					Region:  "us-west-2",
@@ -187,7 +187,7 @@ func TestNewContext(t *testing.T) {
 						SubscriptionID: "testSub",
 						ID:             "/subscriptions/testSub",
 					},
-					ResourceNameHash: "90af35ee55457d03",
+					ResourceNameHash: "50d9425e85470ffd",
 				},
 			},
 		},
@@ -458,7 +458,7 @@ func TestNewContext_AzureProviderSubscriptionOnly(t *testing.T) {
 	require.Equal(t, "", recipeContext.Azure.ResourceGroup.Name)
 	require.Equal(t, "/subscriptions/test-subscription-id/resourceGroups/", recipeContext.Azure.ResourceGroup.ID)
 
-	require.Equal(t, "bdba72b3ff162ff0", recipeContext.Azure.ResourceNameHash)
+	require.Equal(t, "bff74e743af66700", recipeContext.Azure.ResourceNameHash)
 }
 
 func TestNewContext_ResourceNameHash(t *testing.T) {
@@ -479,7 +479,7 @@ func TestNewContext_ResourceNameHash(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, ctx.Azure)
 		require.Len(t, ctx.Azure.ResourceNameHash, resourceNameHashLength)
-		require.Equal(t, "90af35ee55457d03", ctx.Azure.ResourceNameHash)
+		require.Equal(t, "b4594ce7cc97424f", ctx.Azure.ResourceNameHash)
 	})
 
 	t.Run("is case insensitive", func(t *testing.T) {
@@ -532,6 +532,59 @@ func TestNewContext_ResourceNameHash(t *testing.T) {
 		ctx, err := New(baseMetadata, azureConfig("/subscriptions/testSub"))
 		require.NoError(t, err)
 		require.NotNil(t, ctx.Azure)
-		require.Equal(t, "2ee7ced618d5dd8e", ctx.Azure.ResourceNameHash)
+		require.Equal(t, "509212db4b1fe144", ctx.Azure.ResourceNameHash)
+	})
+
+	// The resource ID is scoped to a UCP resource group and names the resource,
+	// not its owner, so without these two inputs every application that reuses a
+	// common resource name in one Azure scope resolves to the same cloud resource.
+	t.Run("changes with the application", func(t *testing.T) {
+		withApplication := func(applicationID string) string {
+			ctx, err := New(&recipes.ResourceMetadata{
+				ResourceID:    baseMetadata.ResourceID,
+				EnvironmentID: baseMetadata.EnvironmentID,
+				ApplicationID: applicationID,
+			}, azureConfig("/subscriptions/testSub/resourceGroups/testGroup"))
+			require.NoError(t, err)
+			return ctx.Azure.ResourceNameHash
+		}
+
+		const appPrefix = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/"
+		require.NotEqual(t, withApplication(appPrefix+"app0"), withApplication(appPrefix+"app1"))
+		// An application-less resource keeps a hash of its own rather than
+		// colliding with any named application.
+		require.NotEqual(t, withApplication(""), withApplication(appPrefix+"app0"))
+	})
+
+	t.Run("changes with the environment", func(t *testing.T) {
+		withEnvironment := func(environmentID string) string {
+			ctx, err := New(&recipes.ResourceMetadata{
+				ResourceID:    baseMetadata.ResourceID,
+				EnvironmentID: environmentID,
+				ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/app0",
+			}, azureConfig("/subscriptions/testSub/resourceGroups/testGroup"))
+			require.NoError(t, err)
+			return ctx.Azure.ResourceNameHash
+		}
+
+		const envPrefix = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/"
+		require.NotEqual(t, withEnvironment(envPrefix+"dev"), withEnvironment(envPrefix+"prod"))
+	})
+
+	// The same resource, application, and environment must keep its name across
+	// redeployments; otherwise every deploy would provision a replacement beside
+	// the resource it already owns.
+	t.Run("is stable for the same owner", func(t *testing.T) {
+		metadata := &recipes.ResourceMetadata{
+			ResourceID:    baseMetadata.ResourceID,
+			EnvironmentID: baseMetadata.EnvironmentID,
+			ApplicationID: "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/app0",
+		}
+		first, err := New(metadata, azureConfig("/subscriptions/testSub/resourceGroups/testGroup"))
+		require.NoError(t, err)
+		second, err := New(metadata, azureConfig("/subscriptions/testSub/resourceGroups/testGroup"))
+		require.NoError(t, err)
+
+		require.Equal(t, first.Azure.ResourceNameHash, second.Azure.ResourceNameHash)
 	})
 }

@@ -247,6 +247,8 @@ jobs:
     env:
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
+      # Trust only this job's local registry hostnames; TLS verification is unchanged.
+      BICEP_TRUSTED_REGISTRIES: localhost,radius-registry
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
     steps:
