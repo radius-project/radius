@@ -26,6 +26,10 @@ permissions: {}
 jobs:
   build-and-push-helm-chart:
     name: Helm chart build
+    if: >-
+      github.repository == 'radius-project/radius' && github.ref_protected &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

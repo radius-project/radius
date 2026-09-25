@@ -133,6 +133,10 @@ jobs:
           wait
 
   purge_bicep_types:
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      github.ref == 'refs/heads/main' && github.ref_protected &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

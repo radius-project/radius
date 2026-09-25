@@ -78,6 +78,9 @@ jobs:
         # Ubuntu provides jq and GNU timeout; keep these optional for make test.
         run: make test-cluster-diagnostics
 
+      - name: Test publishing credential isolation
+        run: make install-yq install-oras test-publishing-isolation
+
       - name: Run make test (unit tests)
         env:
           GOTESTSUM_OPTS: --junitfile ./dist/unit_test/results.xml
