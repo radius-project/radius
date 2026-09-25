@@ -227,12 +227,14 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
 
   let requiredCount = 0;
   let codeOwnerRequired = false;
+  let lastPushApprovalRequired = false;
   for (const rule of reviewRules) {
     const parameters = rule.parameters;
     if (
       !Number.isSafeInteger(parameters?.required_approving_review_count) ||
       parameters.required_approving_review_count < 0 ||
       typeof parameters.require_code_owner_review !== "boolean" ||
+      typeof parameters.require_last_push_approval !== "boolean" ||
       !Array.isArray(parameters.required_reviewers)
     ) {
       throw new Error(`Invalid review ruleset for #${number}`);
@@ -253,6 +255,7 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
       parameters.required_approving_review_count
     );
     codeOwnerRequired ||= parameters.require_code_owner_review;
+    lastPushApprovalRequired ||= parameters.require_last_push_approval;
   }
 
   const reviews = [];
@@ -292,6 +295,13 @@ async function inferredReviewDecision(github, core, owner, repo, number, pull) {
     )
   ) {
     return "CHANGES_REQUESTED";
+  }
+
+  if (lastPushApprovalRequired) {
+    core.info(
+      `#${number}: cannot verify approval by someone other than the last pusher`
+    );
+    return null;
   }
 
   const approvals = reviews.filter(
