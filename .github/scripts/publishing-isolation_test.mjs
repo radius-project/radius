@@ -363,7 +363,7 @@ test("TLS-local generation retains the existing secure registry configuration", 
   }
 });
 
-test("local registry certificates use validated hostnames without stdout configuration", () => {
+test("local registry certificates preserve properties with validated OpenSSL arguments", () => {
   const action = JSON.parse(
     execFileSync(
       "yq",
@@ -389,9 +389,6 @@ test("local registry certificates use validated hostnames without stdout configu
     });
     assert.equal(valid.status, 0, valid.stderr);
     assert.doesNotMatch(valid.stdout, /\[alt_names\]|DNS\.1|DNS\.2/);
-    const config = readFileSync(path.join(directory, "req.cnf"), "utf8");
-    assert.match(config, /DNS\.1 = radius-registry/);
-    assert.match(config, /DNS\.2 = localhost/);
     const certificate = execFileSync(
       "openssl",
       [
@@ -404,6 +401,34 @@ test("local registry certificates use validated hostnames without stdout configu
       { encoding: "utf8" }
     );
     assert.match(certificate, /DNS:radius-registry, DNS:localhost/);
+    assert.match(certificate, /Subject: CN\s*=\s*localhost/);
+    assert.match(certificate, /Public-Key: \(4096 bit\)/);
+    assert.match(certificate, /sha256WithRSAEncryption/);
+    assert.match(certificate, /X509v3 Basic Constraints: critical\s+CA:TRUE/);
+    assert.match(certificate, /X509v3 Subject Key Identifier/);
+    assert.match(certificate, /X509v3 Authority Key Identifier/);
+    assert.match(certificate, /DirName:\/CN\s*=\s*localhost/);
+    assert.match(
+      certificate,
+      /X509v3 Key Usage: critical\s+Digital Signature, Certificate Sign, CRL Sign/
+    );
+    assert.match(certificate, /OpenSSL Generated Certificate/);
+    const dates = execFileSync(
+      "openssl",
+      [
+        "x509",
+        "-in",
+        path.join(directory, "certs/localhost/client.crt"),
+        "-noout",
+        "-startdate",
+        "-enddate"
+      ],
+      { encoding: "utf8" }
+    )
+      .trim()
+      .split("\n")
+      .map((line) => Date.parse(line.split("=")[1]));
+    assert.equal(dates[1] - dates[0], 365 * 24 * 60 * 60 * 1000);
     for (const name of ["INPUT_REGISTRY_NAME", "INPUT_REGISTRY_SERVER"]) {
       const invalid = spawnSync("bash", ["-e", "-c", script], {
         env: {

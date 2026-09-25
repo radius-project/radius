@@ -51,36 +51,20 @@ runs:
         TEMP_CERT_DIR="${STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR}"
         mkdir -p "${TEMP_CERT_DIR}/certs/${INPUT_REGISTRY_SERVER}"
 
-        cat >"${TEMP_CERT_DIR}/req.cnf" <<EOF
-        [req]
-        distinguished_name = subject
-        x509_extensions    = x509_ext
-        prompt             = no
-
-        [subject]
-        CN = localhost
-
-        [x509_ext]
-        basicConstraints        = critical, CA:TRUE
-        subjectKeyIdentifier    = hash
-        authorityKeyIdentifier  = keyid:always, issuer:always
-        keyUsage                = critical, cRLSign, digitalSignature, keyCertSign
-        nsComment               = "OpenSSL Generated Certificate"
-        subjectAltName          = @alt_names
-
-        [alt_names]
-        DNS.1 = ${INPUT_REGISTRY_NAME}
-        DNS.2 = ${INPUT_REGISTRY_SERVER}
-        EOF
-
         echo "==== Create the self signed certificate certificate and client key files"
         openssl req -x509 \
           -nodes \
           -days 365 \
           -newkey rsa:4096 \
+          -subj "/CN=localhost" \
+          -addext "basicConstraints=critical,CA:TRUE" \
+          -addext "subjectKeyIdentifier=hash" \
+          -addext "authorityKeyIdentifier=keyid:always,issuer:always" \
+          -addext "keyUsage=critical,cRLSign,digitalSignature,keyCertSign" \
+          -addext "nsComment=OpenSSL Generated Certificate" \
+          -addext "subjectAltName=DNS:${INPUT_REGISTRY_NAME},DNS:${INPUT_REGISTRY_SERVER}" \
           -keyout "${TEMP_CERT_DIR}/certs/${INPUT_REGISTRY_SERVER}/client.key" \
           -out "${TEMP_CERT_DIR}/certs/${INPUT_REGISTRY_SERVER}/client.crt" \
-          -config "${TEMP_CERT_DIR}/req.cnf" \
           -sha256
       env:
         INPUT_REGISTRY_NAME: ${{ inputs.registry-name }}
