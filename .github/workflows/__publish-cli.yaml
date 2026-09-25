@@ -1,0 +1,99 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: __publish-cli
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  publish:
+    name: Publish ${{ matrix.os }}_${{ matrix.arch }} binary
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      github.ref == 'refs/heads/main' && github.ref_protected &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+          - os: linux
+            arch: arm64
+          - os: linux
+            arch: arm
+          - os: windows
+            arch: amd64
+          - os: windows
+            arch: arm64
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+    steps:
+      - name: Checkout trusted main revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install trusted ORAS
+        run: make install-oras
+
+      - name: Download binary from this run
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: rad_cli_${{ matrix.os }}_${{ matrix.arch }}
+          path: ${{ runner.temp }}/cli-artifact
+
+      - name: Validate binary data
+        env:
+          ARTIFACT_DIR: ${{ runner.temp }}/cli-artifact
+          TARGET_OS: ${{ matrix.os }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          suffix=""
+          if [[ "${TARGET_OS}" == windows ]]; then suffix=".exe"; fi
+          source="${ARTIFACT_DIR}/rad_${TARGET_OS}_${TARGET_ARCH}${suffix}"
+          [[ -f "${source}" && ! -L "${source}" ]]
+          [[ "$(find "${ARTIFACT_DIR}" -mindepth 1 | wc -l)" -eq 1 ]]
+          size="$(stat -c %s "${source}")"
+          [[ "${size}" -gt 0 && "${size}" -le 268435456 ]]
+          mkdir -p "${RUNNER_TEMP}/cli-upload"
+          cp "${source}" "${RUNNER_TEMP}/cli-upload/rad${suffix}"
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Publish binary without executing it
+        working-directory: ${{ runner.temp }}/cli-upload
+        env:
+          TARGET_OS: ${{ matrix.os }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          binary=rad
+          if [[ "${TARGET_OS}" == windows ]]; then binary=rad.exe; fi
+          target="ghcr.io/radius-project/rad/${TARGET_OS}-${TARGET_ARCH}"
+          oras push "${target}:latest" "./${binary}" \
+            --annotation org.opencontainers.image.source=https://github.com/radius-project/radius
+          oras tag "${target}:latest" edge

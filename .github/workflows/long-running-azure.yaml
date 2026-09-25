@@ -91,7 +91,10 @@ env:
 
 jobs:
   tests:
-    if: github.repository == vars.RADIUS_REPOSITORY
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      github.ref == 'refs/heads/main' && github.ref_protected &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     name: Run functional tests
     runs-on: ubuntu-24.04
     timeout-minutes: 210

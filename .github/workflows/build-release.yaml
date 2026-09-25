@@ -35,6 +35,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  publication-ref:
+    name: Validate publication ref
+    if: github.repository == 'radius-project/radius'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require approved release tag
+        run: |
+          if [[ ! "${GITHUB_REF}" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$ || "${GITHUB_REF_PROTECTED}" != true ]]; then
+            echo "::error::Publication requires a protected release tag, not an arbitrary branch or v-prefixed tag"
+            exit 1
+          fi
+
   changes:
     name: Changes
     uses: ./.github/workflows/__changes.yml
@@ -49,11 +63,7 @@ jobs:
     with:
       only_changed: ${{ needs.changes.outputs.only_changed }}
     permissions:
-      packages: write # Required for uploading the package
       contents: read # Required for actions/checkout
-      issues: read # Required for publishing test results
-      checks: write # Required for publishing test results
-      pull-requests: write # Required for publishing test results
 
   build-check:
     if: always()
@@ -76,7 +86,7 @@ jobs:
           exit 0
 
   build-and-push-images:
-    needs: [changes]
+    needs: [publication-ref, changes]
     if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
     uses: ./.github/workflows/__build-images.yaml
     permissions:
@@ -92,7 +102,7 @@ jobs:
       contents: read # Required for actions/checkout
 
   build-and-push-bicep-types:
-    needs: [changes]
+    needs: [publication-ref, changes]
     if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v') && needs.changes.outputs.only_changed != 'true'
     uses: ./.github/workflows/__build-bicep-types.yaml
     # The publisher bot credentials are read inside the called job, which is the
@@ -104,7 +114,7 @@ jobs:
       contents: read # Required for actions/checkout
 
   publish-release:
-    needs: [changes, build-and-push-cli]
+    needs: [publication-ref, changes, build-and-push-cli]
     if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v') && needs.changes.outputs.only_changed != 'true'
     uses: ./.github/workflows/__publish-release.yaml
     permissions:
@@ -112,7 +122,8 @@ jobs:
 
   goreleaser-shadow:
     name: Shadow GoReleaser release
-    if: github.repository == 'radius-project/radius' && startsWith(github.ref, 'refs/tags/v')
+    needs: [publication-ref]
+    if: github.repository == 'radius-project/radius' && github.ref_protected && startsWith(github.ref, 'refs/tags/v')
     continue-on-error: true
     runs-on: ubuntu-24.04
     timeout-minutes: 60
@@ -386,7 +397,14 @@ jobs:
   build-summary:
     if: always()
     name: Build Summary
-    needs: [build-check, build-and-push-images, build-and-push-bicep-types]
+    needs:
+      [
+        publication-ref,
+        changes,
+        build-check,
+        build-and-push-images,
+        build-and-push-bicep-types
+      ]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -400,10 +418,14 @@ jobs:
       - name: Check all build jobs
         run: |
           ./.github/scripts/build-summary.sh \
+            "publication-ref:${PUBLICATION_REF_RESULT}" \
+            "changes:${CHANGES_RESULT}" \
             "build-check:${BUILD_CHECK_RESULT}" \
             "build-and-push-images:${BUILD_AND_PUSH_IMAGES_RESULT}" \
             "build-and-push-bicep-types:${BUILD_AND_PUSH_BICEP_TYPES_RESULT}"
         env:
+          PUBLICATION_REF_RESULT: ${{ needs.publication-ref.result }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
           BUILD_CHECK_RESULT: ${{ needs.build-check.result }}
           BUILD_AND_PUSH_IMAGES_RESULT: ${{ needs.build-and-push-images.result }}
           BUILD_AND_PUSH_BICEP_TYPES_RESULT: ${{ needs.build-and-push-bicep-types.result }}

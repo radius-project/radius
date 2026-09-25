@@ -124,8 +124,15 @@ jobs:
             // For other events (schedule, repository_dispatch, workflow_dispatch without base_sha),
             // always return 'false' to ensure all jobs run without filtering.
 
-            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/changes.mjs`)
-            await script({context, core})
+            // Do not import code from the candidate checkout to decide whether
+            // trusted downstream jobs should run.
+            const filtered = core.getInput("ONLY_CHANGED");
+            if (filtered !== "true" && filtered !== "false") {
+              throw new Error("Change detection did not return a boolean decision");
+            }
+            const isPullRequest = ["pull_request", "pull_request_target"].includes(context.eventName);
+            core.setOutput("only_changed",
+              isPullRequest || core.getInput("BASE_SHA") ? filtered : "false");
         env:
           INPUT_ONLY_CHANGED: ${{ steps.filter.outputs.only_changed }}
           INPUT_BASE_SHA: ${{ inputs.base_sha }}

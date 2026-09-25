@@ -84,6 +84,10 @@ test-changelog-config: install-git-cliff ## Tests the git-cliff configuration ag
 test-build-summary: ## Tests the build job summary rendering shared by the build workflows
 	@bash ./.github/scripts/build-summary_test.sh
 
+.PHONY: test-publishing-isolation
+test-publishing-isolation: ## Tests publishing boundaries without credentials (requires Node.js, yq and OpenSSL)
+	@node --test .github/scripts/cloud-test-artifacts.test.mjs
+
 .PHONY: test-goreleaser-shadow
 test-goreleaser-shadow: ## Tests GoReleaser shadow output parity verification
 	@CGO_ENABLED=1 go test ./.github/scripts/image-payload-manifest $(GOTEST_OPTS)

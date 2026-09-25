@@ -116,7 +116,7 @@ jobs:
     name: Check Trust
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    if: github.event_name == 'pull_request_target'
+    if: github.repository == 'radius-project/radius' && github.event_name == 'pull_request_target'
     outputs:
       is-external: ${{ steps.check.outputs.is-external }}
     permissions: {}
@@ -189,19 +189,27 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && github.repository == 'radius-project/radius' }}
     steps:
       - name: Evaluate trust and approval
         env:
           CHECK_TRUST_RESULT: ${{ needs.check-trust.result }}
           APPROVAL_GATE_RESULT: ${{ needs.approval-gate.result }}
+          IS_EXTERNAL: ${{ needs.check-trust.outputs.is-external }}
         run: |
-          if [ "${CHECK_TRUST_RESULT}" != "success" ] && [ "${CHECK_TRUST_RESULT}" != "skipped" ]; then
-            echo "::error::Blocked - trust check did not pass (result=${CHECK_TRUST_RESULT})."
-            exit 1
-          fi
-          if [ "${APPROVAL_GATE_RESULT}" != "success" ] && [ "${APPROVAL_GATE_RESULT}" != "skipped" ]; then
-            echo "::error::Blocked - approval was not granted (result=${APPROVAL_GATE_RESULT})."
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == pull_request_target ]]; then
+            if [[ "${CHECK_TRUST_RESULT}" != success || ! "${IS_EXTERNAL}" =~ ^(true|false)$ ]]; then
+              echo "::error::Blocked - trust check did not produce a decision"
+              exit 1
+            fi
+            if [[ ("${IS_EXTERNAL}" == true && "${APPROVAL_GATE_RESULT}" != success) ||
+                  ("${IS_EXTERNAL}" == false && "${APPROVAL_GATE_RESULT}" != skipped) ]]; then
+              echo "::error::Blocked - contributor approval did not match the trust decision"
+              exit 1
+            fi
+          elif [[ "${CHECK_TRUST_RESULT}" != skipped || "${APPROVAL_GATE_RESULT}" != skipped ]]; then
+            echo "::error::Unexpected authorization state for a non-PR event"
             exit 1
           fi
           echo "Authorized to proceed."
@@ -214,15 +222,12 @@ jobs:
     # that propagates from the intentionally-skipped approval-gate on trusted
     # (same-repo) PRs does not also skip setup; the explicit authorize check still
     # enforces the gate.
-    if: always() && needs.authorize.result == 'success' && (github.event_name != 'schedule' || github.repository == vars.RADIUS_REPOSITORY)
+    if: always() && needs.authorize.result == 'success' && github.repository == 'radius-project/radius'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read # Required for listing the commits
       pull-requests: read # Required for fetching PR details
-    env:
-      DE_IMAGE: ghcr.io/radius-project/deployment-engine
-      DE_TAG: latest
     outputs:
       REL_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ steps.gen-id.outputs.UNIQUE_ID }}
@@ -233,110 +238,22 @@ jobs:
       DE_IMAGE: ${{ steps.gen-id.outputs.DE_IMAGE }}
       DE_TAG: ${{ steps.gen-id.outputs.DE_TAG }}
       BASE_SHA: ${{ steps.gen-id.outputs.BASE_SHA }}
+      TRUSTED_SHA: ${{ steps.gen-id.outputs.TRUSTED_SHA }}
     steps:
-      - name: Log Event Information
-        env:
-          PR_AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
-          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
-          PR_BASE_REPO: ${{ github.event.pull_request.base.repo.full_name }}
-          IS_FORK: ${{ github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name }}
-        run: |
-          echo "Event Name: ${GITHUB_EVENT_NAME}"
-          echo "Actor: ${GITHUB_ACTOR}"
-          echo "Author Association: ${PR_AUTHOR_ASSOCIATION}"
-          echo "PR Head Repo: ${PR_HEAD_REPO}"
-          echo "PR Base Repo: ${PR_BASE_REPO}"
-          echo "Is Fork: ${IS_FORK}"
-
-      - name: Set up checkout target (scheduled)
-        if: github.event_name == 'schedule'
-        run: |
-          echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}" >> $GITHUB_ENV
-          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
-
-      - name: Set up checkout target (repository_dispatch)
-        if: github.event_name == 'repository_dispatch'
-        run: |
-          echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}" >> $GITHUB_ENV
-          echo "CHECKOUT_REF=refs/heads/main" >> $GITHUB_ENV
-
-      - name: Set up checkout target (pull_request_target)
-        if: github.event_name == 'pull_request_target'
-        env:
-          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          {
-            echo "CHECKOUT_REPO=${PR_HEAD_REPO}"
-            echo "CHECKOUT_REF=${PR_HEAD_SHA}"
-            echo "PR_NUMBER=${PR_NUMBER}"
-            echo "BASE_SHA=${PR_BASE_SHA}"
-          } >> "${GITHUB_ENV}"
-
-      - name: Set up checkout target (workflow_dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          INPUT_BRANCH: ${{ github.event.inputs.branch }}
-        run: |
-          {
-            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
-            echo "CHECKOUT_REF=refs/heads/${INPUT_BRANCH}"
-          } >> "${GITHUB_ENV}"
-
-      - name: Set up checkout target (merge_group)
-        if: github.event_name == 'merge_group'
-        run: |
-          # GITHUB_SHA is the merge queue's combined commit (base + queued PRs).
-          # Using it as the checkout ref and the status-check sha ensures the
-          # required check is reported on the commit the merge queue validates.
-          {
-            echo "CHECKOUT_REPO=${GITHUB_REPOSITORY}"
-            echo "CHECKOUT_REF=${GITHUB_SHA}"
-          } >> "${GITHUB_ENV}"
-
-      - name: Checkout
+      - name: Checkout trusted controller
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          repository: radius-project/radius
+          ref: refs/heads/main
           persist-credentials: false
-          allow-unsafe-pr-checkout: true
 
-      - name: Set DE image and tag (repository_dispatch from deployment-engine.run-functional-tests)
-        if: github.event_name == 'repository_dispatch'
-        shell: bash
-        env:
-          DEST_IMAGE: ${{ github.event.client_payload.dest_image }}
-          TAG: ${{ github.event.client_payload.tag }}
-        run: |
-          {
-            echo "DE_IMAGE=${DEST_IMAGE}"
-            echo "DE_TAG=${TAG}"
-          } >> "$GITHUB_ENV"
-
-      - name: Generate ID for release
+      - name: Resolve immutable source and uploader revisions
         id: gen-id
-        run: |
-          BASE_STR="RADIUS|${GITHUB_SHA}|${GITHUB_SERVER_URL}|${GITHUB_REPOSITORY}|${GITHUB_RUN_ID}|${GITHUB_RUN_ATTEMPT}"
-          if [ "$GITHUB_EVENT_NAME" == "schedule" ]; then
-            # Add run number to randomize unique id for scheduled runs.
-            BASE_STR="${GITHUB_RUN_NUMBER}|${BASE_STR}"
-          fi
-          UNIQUE_ID=func$(echo $BASE_STR | sha1sum | head -c 10)
-          echo "REL_VERSION=pr-${UNIQUE_ID}" >> $GITHUB_ENV
-
-          # Set output variables to be used in the other jobs
-          {
-            echo "REL_VERSION=pr-${UNIQUE_ID}"
-            echo "UNIQUE_ID=${UNIQUE_ID}"
-            echo "CHECKOUT_REPO=${CHECKOUT_REPO}"
-            echo "CHECKOUT_REF=${CHECKOUT_REF}"
-            echo "RAD_CLI_ARTIFACT_NAME=rad_cli_linux_amd64"
-            echo "PR_NUMBER=${PR_NUMBER}"
-            echo "DE_IMAGE=${DE_IMAGE}"
-            echo "DE_TAG=${DE_TAG}"
-            echo "BASE_SHA=${BASE_SHA}"
-          } >> "${GITHUB_OUTPUT}"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { setup } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-context.mjs`);
+            await setup({ github, context, core });
 
   changes:
     name: Changes
@@ -351,31 +268,33 @@ jobs:
       contents: read
       pull-requests: read
 
-  build:
-    name: Build Radius for test
+  announce:
+    name: Check prerequisites and announce functional tests
     needs: [setup, changes]
-    # Require setup to have produced REL_VERSION/CHECKOUT_REF (otherwise the image
-    # tag would be empty); also skip if only docs/markdown changed.
-    if: always() && needs.setup.result == 'success' && needs.changes.outputs.only_changed != 'true'
+    if: always() && needs.setup.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.only_changed == 'false'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    permissions:
-      contents: read # Required for listing the commits
-      packages: write # Required for uploading the package
-      pull-requests: write # Required for updating pull requests
-      id-token: write # Required for azure/login
+    timeout-minutes: 5
+    permissions: {}
     env:
       REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
       PR_NUMBER: ${{ needs.setup.outputs.PR_NUMBER }}
       CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
-      RAD_CLI_ARTIFACT_NAME: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
       DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
       DAPR_VER: 1.14.4
       ACTION_LINK: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     steps:
+      - name: Require private-module read credential
+        env:
+          MODULE_TOKEN: ${{ secrets.FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN }}
+        run: |
+          if [[ -z "${MODULE_TOKEN}" ]]; then
+            echo "::error::Configure FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN with Contents:read for radius-project/terraform-private-modules only. Cloud tests cannot use the status App key."
+            exit 1
+          fi
+
       - name: Get GitHub app token
         if: github.repository == vars.RADIUS_REPOSITORY
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
@@ -384,22 +303,17 @@ jobs:
           client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           permission-pull-requests: write
+          permission-checks: write
 
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Mark functional tests in progress
+        uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         with:
-          repository: ${{ env.CHECKOUT_REPO }}
-          ref: ${{ env.CHECKOUT_REF }}
-          persist-credentials: false
-          allow-unsafe-pr-checkout: true
-
-      - name: Setup Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-          # Produces artifacts/images — don't restore a cache a prior run could have poisoned.
-          cache: false
+          token: ${{ steps.get_installation_token.outputs.token }}
+          name: Functional Test Run
+          status: in_progress
+          repo: ${{ github.repository }}
+          sha: ${{ env.CHECKOUT_REF }}
+          details_url: ${{ env.ACTION_LINK }}
 
       - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: env.PR_NUMBER != ''
@@ -439,121 +353,93 @@ jobs:
 
             ## Test Status
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        if: env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
             :hourglass: Building Radius and pushing container images for functional tests...
 
-      - name: Build and Push container images
-        run: |
-          make build && make docker-build && make docker-push
-        env:
-          DOCKER_REGISTRY: ${{ env.CONTAINER_REGISTRY }}
-          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
-
-      - name: Upload CLI binary
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+  build:
+    name: Build Radius for test
+    needs: [setup, changes, announce]
+    if: always() && needs.setup.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.only_changed == 'false' && needs.announce.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      ARTIFACT_ID: ${{ steps.inputs.outputs.artifact-id }}
+    env:
+      REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
+      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
+      BICEP_TRUSTED_REGISTRIES: localhost,radius-registry
+    steps:
+      - name: Checkout trusted local-registry setup
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          name: ${{ env.RAD_CLI_ARTIFACT_NAME }}
-          path: |
-            ./dist/linux_amd64/release/rad
+          repository: radius-project/radius
+          ref: refs/heads/main
+          persist-credentials: false
 
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        if: success() && env.PR_NUMBER != ''
-        continue-on-error: true
+      - name: Create a job-local registry
+        uses: ./.github/actions/create-local-registry
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :white_check_mark: Container images build succeeded
+          secure: "true"
 
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        if: failure() && env.PR_NUMBER != ''
-        continue-on-error: true
+      - name: Checkout candidate source without publishing credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :x: Container images build failed
+          repository: ${{ env.CHECKOUT_REPO }}
+          ref: ${{ env.CHECKOUT_REF }}
+          persist-credentials: false
+          allow-unsafe-pr-checkout: true
 
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        if: env.PR_NUMBER != ''
-        continue-on-error: true
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :hourglass: Publishing Bicep Recipes for functional tests...
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: false
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .node-version
 
-      - name: Install yq
-        # Required by make generate-bicep-types-contrib to parse defaults.yaml.
-        run: make install-yq
+      - name: Install build tools
+        run: make install-yq install-bicep install-oras
+
+      - name: Build and publish container images locally
+        run: make build && make docker-build && make docker-push
+        env:
+          DOCKER_REGISTRY: localhost:5000/images
+          DOCKER_TAG_VERSION: ${{ env.REL_VERSION }}
+
+      - name: Upload CLI binary
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ needs.setup.outputs.RAD_CLI_ARTIFACT_NAME }}
+          path: ./dist/linux_amd64/release/rad
+          if-no-files-found: error
+          overwrite: true
 
       - name: Generate Bicep extensibility types from OpenAPI specs
-        env:
-          BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
+        run: make generate-bicep-types VERSION="${REL_VERSION}"
+
+      - name: Publish Radius types locally
         run: |
-          make generate-bicep-types VERSION="${BICEP_TYPES_VERSION}"
-
-      - name: Install bicep CLI
-        # Pinned version + checksum live in build/tools.yaml (previously installed
-        # the unpinned 'latest', which could pull v0.43+).
-        run: make install-bicep
-
-      - name: Login to Azure (for private test bicep-types ACR)
-        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
-        with:
-          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
-          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
-
-      - name: Publish Radius test bicep types
-        env:
-          BICEP_TYPES_VERSION: ${{ env.REL_VERSION == 'edge' && 'latest' || env.REL_VERSION }}
-        run: |
-          bicep publish-extension ./hack/bicep-types-radius/generated/index.json --target "br:${TEST_BICEP_TYPES_REGISTRY}/test/radius:${BICEP_TYPES_VERSION}" --force
+          bicep publish-extension ./hack/bicep-types-radius/generated/index.json \
+            --target "br:localhost:5000/test/radius:${REL_VERSION}" --force
 
       - name: Generate test bicepconfig.json
         run: |
-          if [[ "${REL_VERSION}" == "edge" ]]; then
-            RADIUS_VERSION="latest"
-          else
-            RADIUS_VERSION="${REL_VERSION}"
-          fi
           cat <<EOF > ./test/bicepconfig.json
           {
             "extensions": {
-              "radius": "br:${TEST_BICEP_TYPES_REGISTRY}/test/radius:$RADIUS_VERSION",
+              "radius": "br:localhost:5000/test/radius:${REL_VERSION}",
               "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest"
             }
           }
           EOF
 
-      - name: Publish Bicep Test Recipes
+      - name: Publish Bicep test recipes locally
         run: |
           mkdir -p ./bin
           cp ./dist/linux_amd64/release/rad ./bin/rad
@@ -564,35 +450,212 @@ jobs:
           rad version
           make publish-test-bicep-recipes
         env:
-          BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
+          BICEP_RECIPE_REGISTRY: localhost:5000
           BICEP_RECIPE_TAG_VERSION: ${{ env.REL_VERSION }}
 
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        if: success() && env.PR_NUMBER != ''
-        continue-on-error: true
+      - name: Checkout current export format
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :white_check_mark: Recipe publishing succeeded
+          repository: radius-project/radius
+          ref: ${{ needs.setup.outputs.TRUSTED_SHA }}
+          path: .cloud-test-tools
+          sparse-checkout: .github/scripts/cloud-test-artifacts.mjs
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
 
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        if: failure() && env.PR_NUMBER != ''
-        continue-on-error: true
+      - name: Export OCI data
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :x: Test recipe publishing failed
+          script: |
+            const { capture } = await import(`${process.env.GITHUB_WORKSPACE}/.cloud-test-tools/.github/scripts/cloud-test-artifacts.mjs`);
+            await capture({ core, context });
+        env:
+          INPUT_DIRECTORY: ${{ runner.temp }}/cloud-test-inputs
+
+      - name: Upload immutable cloud-test inputs
+        id: inputs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: ${{ runner.temp }}/cloud-test-inputs/cloud-test-inputs-${{ github.run_id }}-${{ github.run_attempt }}.tar
+          archive: false
+          if-no-files-found: error
+          retention-days: 1
+
+  upload-ghcr:
+    name: Upload cloud-test images and recipes
+    needs: [setup, changes, build]
+    if: always() && github.repository == 'radius-project/radius' && needs.setup.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.only_changed == 'false' && needs.build.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    env:
+      CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
+      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
+      REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      INPUT_ARTIFACT_ID: ${{ needs.build.outputs.ARTIFACT_ID }}
+    steps:
+      - name: Checkout trusted uploader
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: radius-project/radius
+          ref: ${{ needs.setup.outputs.TRUSTED_SHA }}
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install trusted ORAS
+        run: make install-oras
+
+      - name: Select the exact producing artifact
+        id: select
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { select } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await select({ github, core, context });
+
+      - name: Download immutable OCI data
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ steps.select.outputs.artifact_id }}
+          path: ${{ runner.temp }}/cloud-test-inputs/download
+          github-token: ${{ github.token }}
+          repository: radius-project/radius
+          run-id: ${{ github.run_id }}
+          skip-decompress: true
+          digest-mismatch: error
+
+      - name: Validate source and import OCI data
+        id: prepare
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { prepare } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await prepare({ core });
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Copy validated images and recipes
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { publish } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await publish({ core, context });
+        env:
+          INPUT_DESTINATION: ghcr
+
+      - name: Upload publication receipt
+        if: always() && steps.prepare.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cloud-ghcr-receipt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cloud-test-inputs/receipt.json
+          if-no-files-found: error
+          retention-days: 7
+
+  upload-test-types:
+    name: Upload private Test-tenant Bicep types
+    needs: [setup, changes, build]
+    if: always() && github.repository == 'radius-project/radius' && needs.setup.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.only_changed == 'false' && needs.build.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
+      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
+      REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
+      INPUT_ARTIFACT_ID: ${{ needs.build.outputs.ARTIFACT_ID }}
+    steps:
+      - name: Checkout trusted uploader
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: radius-project/radius
+          ref: ${{ needs.setup.outputs.TRUSTED_SHA }}
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install trusted ORAS
+        run: make install-oras
+
+      - name: Select the exact producing artifact
+        id: select
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { select } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await select({ github, core, context });
+
+      - name: Download immutable OCI data
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ steps.select.outputs.artifact_id }}
+          path: ${{ runner.temp }}/cloud-test-inputs/download
+          github-token: ${{ github.token }}
+          repository: radius-project/radius
+          run-id: ${{ github.run_id }}
+          skip-decompress: true
+          digest-mismatch: error
+
+      - name: Validate source and import OCI data
+        id: prepare
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { prepare } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await prepare({ core });
+
+      - name: Login to Test-tenant Azure
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
+          tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
+
+      - name: Login only to the private test registry
+        run: az acr login --name crradfunctest1b2s
+
+      - name: Copy validated Radius test types
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { publish } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await publish({ core, context });
+        env:
+          INPUT_DESTINATION: acr
+
+      - name: Upload publication receipt
+        if: always() && steps.prepare.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cloud-types-receipt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cloud-test-inputs/receipt.json
+          if-no-files-found: error
+          retention-days: 7
 
   skip-tests:
     name: Skip Functional Tests
     needs: [setup, changes]
-    if: always() && needs.changes.outputs.only_changed == 'true'
+    if: always() && needs.setup.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.only_changed == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -620,8 +683,8 @@ jobs:
 
   tests:
     name: Run ${{ matrix.name }} functional tests
-    needs: [setup, build]
-    if: always() && needs.setup.result == 'success' && needs.build.result == 'success'
+    needs: [setup, build, upload-ghcr, upload-test-types]
+    if: always() && needs.setup.result == 'success' && needs.build.result == 'success' && needs.upload-ghcr.result == 'success' && needs.upload-test-types.result == 'success'
     # Approval gate (via environment protection) ensures external contributors are approved before reaching here
     strategy:
       # Keep matrix legs independent. With fail-fast: true, a single failing
@@ -638,9 +701,7 @@ jobs:
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for listing the commits
-      checks: write # Required for publishing test results
       packages: read # Required for pulling images from ghcr.io inside KinD
-      pull-requests: write # Required for posting a PR comment
     env:
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
@@ -661,30 +722,14 @@ jobs:
       DE_IMAGE: ${{ needs.setup.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.setup.outputs.DE_TAG }}
     steps:
-      - name: Get GitHub app token
-        if: github.repository == vars.RADIUS_REPOSITORY
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        id: get_installation_token
-        with:
-          client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
-          private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: |
-            radius
-            terraform-private-modules
-          permission-checks: write
-          permission-pull-requests: write
-          permission-contents: read
-
-      - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
-        if: always()
-        with:
-          token: ${{ steps.get_installation_token.outputs.token }}
-          name: Functional Test Run
-          status: in_progress
-          repo: ${{ github.repository }}
-          sha: ${{ env.CHECKOUT_REF }}
-          details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - name: Require private-module read credential
+        env:
+          MODULE_TOKEN: ${{ secrets.FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN }}
+        run: |
+          if [[ -z "${MODULE_TOKEN}" ]]; then
+            echo "::error::Configure FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN with Contents:read for radius-project/terraform-private-modules only. The status App key must not run with candidate code."
+            exit 1
+          fi
 
       - name: Checkout Radius repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -734,16 +779,6 @@ jobs:
           client-id: ${{ secrets.AZURE_SP_TESTS_APPID }}
           tenant-id: ${{ secrets.AZURE_SP_TESTS_TENANTID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
-
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        continue-on-error: true
-        with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :hourglass: Starting ${{ matrix.name }} functional tests...
 
       - name: Create azure resource group - ${{ env.AZURE_TEST_RESOURCE_GROUP }}
         run: |
@@ -856,16 +891,6 @@ jobs:
           rad bicep download
           rad version
 
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        if: failure() && env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :x: Test tool installation for ${{ matrix.name }} failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
       - name: Install Radius
         env:
           AZURE_SUBSCRIPTIONID_TESTS: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
@@ -955,17 +980,6 @@ jobs:
           rad credential register aws irsa \
             --iam-role "${FUNC_TEST_RAD_IRSA_ROLE}"
 
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        if: failure() && env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :x: Failed to install Radius for ${{ matrix.name }} functional test. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-
       - name: Publish Terraform test recipes
         run: |
           make publish-test-terraform-recipes
@@ -978,6 +992,7 @@ jobs:
           fi
           cat <<EOF > ./test/bicepconfig.json
           {
+            "experimentalFeaturesEnabled": {"ociEnabled": true},
             "extensions": {
               "radius": "br:${TEST_BICEP_TYPES_REGISTRY}/test/radius:$RADIUS_VERSION",
               "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest"
@@ -1043,7 +1058,7 @@ jobs:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTIONID_TESTS }}
           BICEP_RECIPE_REGISTRY: ${{ env.BICEP_RECIPE_REGISTRY }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
-          GH_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          GH_TOKEN: ${{ secrets.FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN }}
           GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
           # Initiate resource deletion without blocking on completion (matches the
           # non-cloud suite). Test assertions for deploy/create still run in full;
@@ -1054,20 +1069,24 @@ jobs:
           MATRIX_NAME: ${{ matrix.name }}
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
 
-      - name: Process Functional Test Results
-        uses: ./.github/actions/process-test-results
-        # Run on success and failure so a passing "Re-run failed jobs" refreshes the
-        # "Functional Tests - <name>" check published by EnricoMi. Gating this on
-        # failure() left that check stuck red after a green re-run, because the step
-        # was skipped and the previous attempt's failed check was never updated.
-        # comment_mode: failures keeps PR comments limited to actual failures, and
-        # the failure artifacts are still uploaded for post-mortem.
-        if: always() && github.repository == vars.RADIUS_REPOSITORY
+      - name: Transform test result data
+        if: always()
+        env:
+          SUITE: ${{ matrix.name }}
+        run: |
+          if [[ -f dist/functional_test/results.xml ]]; then
+            python3 .github/scripts/transform_test_results.py "${GITHUB_WORKSPACE}" \
+              dist/functional_test/results.xml "dist/functional_test/functional_test_results_${SUITE}.xml"
+          fi
+
+      - name: Upload test result data
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          test_group_name: Functional Tests - ${{ matrix.name }}
-          artifact_name: functional_test_results_${{ matrix.name }}
-          result_directory: dist/functional_test/
-          comment_mode: failures
+          path: dist/functional_test/functional_test_results_${{ matrix.name }}.xml
+          archive: false
+          if-no-files-found: error
+          overwrite: true
 
       - name: Collect cluster diagnostics
         if: always()
@@ -1115,39 +1134,6 @@ jobs:
           path: recipes/pod-logs
           if-no-files-found: error
 
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        if: success() && env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :white_check_mark: ${{ matrix.name }} functional tests succeeded
-
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        if: failure() && env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :x: ${{ matrix.name }} functional test failed. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-
-      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
-        if: cancelled() && env.PR_NUMBER != ''
-        continue-on-error: true
-        with:
-          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
-          header: teststatus
-          number: ${{ env.PR_NUMBER }}
-          append: true
-          message: |
-            :x: ${{ matrix.name }} functional test cancelled. Please check [the logs](${{ env.ACTION_LINK }}) for more details
-
       - name: Release ACI quota before async resource group delete
         if: always()
         env:
@@ -1170,18 +1156,107 @@ jobs:
             --verbose \
             --no-wait
 
+  report-suite-results:
+    name: Report ${{ matrix.name }} test results
+    needs: [setup, tests]
+    if: always() && needs.setup.result == 'success' && needs.tests.result != 'skipped'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [corerp-cloud, ucp-cloud]
+    env:
+      CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
+      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
+      INPUT_SUITE: ${{ matrix.name }}
+    steps:
+      - name: Checkout trusted reporter
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: radius-project/radius
+          ref: ${{ needs.setup.outputs.TRUSTED_SHA }}
+          persist-credentials: false
+
+      - name: Select same-run test results
+        id: select
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { select } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await select({ github, core, context });
+
+      - name: Download test result data
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ steps.select.outputs.artifact_id }}
+          path: ${{ runner.temp }}/cloud-test-inputs/download
+          github-token: ${{ github.token }}
+          repository: radius-project/radius
+          run-id: ${{ github.run_id }}
+          skip-decompress: true
+          digest-mismatch: error
+
+      - name: Stage bounded XML without entity declarations
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { results } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await results({ core });
+
+      - name: Get reporting App token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: report-token
+        with:
+          client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
+          private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
+          permission-checks: write
+          permission-pull-requests: write
+
+      - name: Publish suite result
+        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
+        with:
+          github_token: ${{ steps.report-token.outputs.token }}
+          check_name: Functional Tests - ${{ matrix.name }}
+          commit: ${{ needs.setup.outputs.CHECKOUT_REF }}
+          pull_request_build: commit
+          comment_mode: failures
+          files: trusted-test-results/results.xml
+          action_fail_on_inconclusive: true
+
   report-test-results:
     # Report final test status. Runs after all tests complete (or are skipped).
-    if: always() && github.repository == vars.RADIUS_REPOSITORY
+    if: always() && github.repository == 'radius-project/radius'
     name: Report test results
-    needs: [setup, build, tests]
+    needs:
+      [
+        authorize,
+        setup,
+        changes,
+        build,
+        upload-ghcr,
+        upload-test-types,
+        tests,
+        report-suite-results,
+        announce
+      ]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
     env:
-      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
+      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF || github.event.pull_request.head.sha || github.sha }}
     steps:
+      - name: Checkout trusted summary code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: radius-project/radius
+          ref: ${{ needs.setup.outputs.TRUSTED_SHA || 'refs/heads/main' }}
+          persist-credentials: false
+
       - name: Get GitHub app token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: get_installation_token
@@ -1189,31 +1264,22 @@ jobs:
           client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           permission-checks: write
+          permission-pull-requests: write
 
       - name: Aggregate functional test status
         id: get_test_status
-        run: |
-          # Derive the overall status from the needs context instead of querying the
-          # Actions API. `tests` is a matrix job, so needs.tests.result already collapses
-          # all legs (success only if every leg passed). A docs-only run skips build+tests
-          # with setup successful, which yields success and matches the skip-tests job.
-          # failure takes precedence over cancelled.
-          echo "setup=${SETUP_RESULT} build=${BUILD_RESULT} tests=${TESTS_RESULT}"
-          TEST_STATUS="success"
-          for result in "${SETUP_RESULT}" "${BUILD_RESULT}" "${TESTS_RESULT}"; do
-            if [[ "${result}" == "failure" ]]; then
-              TEST_STATUS="failure"
-              break
-            elif [[ "${result}" == "cancelled" ]]; then
-              TEST_STATUS="cancelled"
-            fi
-          done
-          echo "Functional Test Run status: ${TEST_STATUS}"
-          echo "test_status=${TEST_STATUS}" >> "${GITHUB_OUTPUT}"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { testStatus } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-context.mjs`);
+            const needs = JSON.parse(process.env.NEEDS_JSON);
+            const status = testStatus(needs);
+            core.setOutput('test_status', status);
+            await core.summary.addHeading('Functional test results')
+              .addTable([['Phase', 'Result'], ...Object.entries(needs).map(([name, job]) => [name, job.result])])
+              .write();
         env:
-          SETUP_RESULT: ${{ needs.setup.result }}
-          BUILD_RESULT: ${{ needs.build.result }}
-          TESTS_RESULT: ${{ needs.tests.result }}
+          NEEDS_JSON: ${{ toJSON(needs) }}
 
       - uses: LouisBrunner/checks-action@937cbbcde3259005b50746dc91cde29098aac2ff # v3.1.0
         if: always()
@@ -1223,14 +1289,47 @@ jobs:
           repo: ${{ github.repository }}
           sha: ${{ env.CHECKOUT_REF }}
           status: completed
-          conclusion: ${{ steps.get_test_status.outputs.test_status }}
+          conclusion: ${{ steps.get_test_status.outputs.test_status || 'failure' }}
           output: |
             {"summary":"Functional Test run completed. See links for more information.","title":"Functional Test Run"}
           details_url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
+      - name: Comment final status
+        if: always() && github.event_name == 'pull_request_target'
+        continue-on-error: true
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          GITHUB_TOKEN: ${{ steps.get_installation_token.outputs.token }}
+          header: teststatus
+          number: ${{ github.event.pull_request.number }}
+          append: true
+          message: |
+            Functional tests: **${{ steps.get_test_status.outputs.test_status || 'failure' }}**.
+            Build/export: ${{ needs.build.result }}; image/recipe upload: ${{ needs.upload-ghcr.result }}; private types upload: ${{ needs.upload-test-types.result }}; tests: ${{ needs.tests.result }}.
+            [View test results and diagnostics](${{ env.ACTION_LINK }}).
+
+      - name: Require successful final status
+        if: always()
+        env:
+          TEST_STATUS: ${{ steps.get_test_status.outputs.test_status }}
+        run: |
+          if [[ "${TEST_STATUS}" != success ]]; then
+            echo "::error::Functional tests did not complete successfully (${TEST_STATUS})"
+            exit 1
+          fi
+
   report-failure:
     name: Report test failure
-    needs: [build, tests]
+    needs:
+      [
+        setup,
+        changes,
+        build,
+        upload-ghcr,
+        upload-test-types,
+        tests,
+        report-test-results
+      ]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     if: failure() && github.event_name == 'schedule' && github.repository == vars.RADIUS_REPOSITORY

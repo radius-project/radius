@@ -17,6 +17,16 @@ Follow the [GitHub Workflows instruction file](../../../../.github/instructions/
 - **Least privilege** — set explicit `permissions:` blocks; default to read-only and grant write only where needed.
 - **Pin and cache** — pin action versions and cache dependencies to keep runs fast and reproducible.
 
+### Publishing credential isolation
+
+Validation builds have read-only tokens. Cloud builds generate images, recipes and types in a TLS-local registry, then hand off a raw OCI archive through native Actions artifacts. Fresh trusted jobs check the exact run/source/artifact identity and fixed test destinations, reject unsupported OCI content, and use ORAS to copy data without executing candidate code. Images/recipes retain `ghcr.io/radius-project/dev` paths; test types remain in `crradfunctest1b2s.azurecr.io/test/radius`. Main CLI uploads likewise never execute downloaded binaries.
+
+**Before merge:** configure `FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN` as a fine-grained token with only **Contents: read** and **Metadata: read** on `radius-project/terraform-private-modules`; verify its scope and read access. Missing configuration fails early. The broad functional-test App key stays on trusted reporting runners, never candidate tests. Cloud tests retain contributor approval and necessary Test-tenant identities. Verify the full new controller path **after merge from protected main**, or in an explicitly approved isolated environment, not by privileged dispatch from a PR ref.
+
+**Production activation remains gated externally.** GHCR grants are repository-scoped; read-only defaults, `dev/` prefixes and environment names are not package ACLs. Enforce restrictions on elevated workflow definitions, including new workflow files and maintained PR base branches; protect main/approved tags and restrict production secrets/OIDC exchanges to trusted publishers. Test identities must have no production rights. Main-only maintenance guards and legacy Bicep publication preflight do not replace these policies. Keep the companion publisher disabled until they are verified.
+
+Use `build-validation` for arbitrary branch builds. Canonical `long-running-azure` and `repo-radius-state-e2e` manual runs require protected main; fork-local state tests remain available.
+
 ## Steps
 
 1. Find the workflow under `.github/workflows/` and identify any reusable workflows, Make targets, or scripts it calls.
@@ -32,6 +42,7 @@ Follow the [GitHub Workflows instruction file](../../../../.github/instructions/
 - Any Make target or script called by the workflow runs successfully from the repository root.
 - A fork run reaches all steps that do not require organization credentials and skips credential-dependent work with an explicit condition.
 - The [github-workflows.instructions.md](../../../../.github/instructions/github-workflows.instructions.md) checklist is satisfied — especially the fork-testability and `permissions:` items.
+- With Node.js, `yq` and OpenSSL installed, run `make test-publishing-isolation test-build-summary` for offline trust-boundary, TLS configuration and required-summary checks. No registry credentials or cloud resources are used.
 
 ## Troubleshooting
 
@@ -39,6 +50,8 @@ Follow the [GitHub Workflows instruction file](../../../../.github/instructions/
 - **A fork run fails on a secret.** Move the secret-dependent operation behind a repository or event condition; do not replace the missing secret with a fallback value.
 - **Logic works in CI but cannot be reproduced locally.** Extract the logic into a Make target or script and keep only GitHub-specific orchestration in the YAML.
 - **A reusable workflow change has unexpected callers.** Search `.github/workflows/` and the [`radius-project/.github`](https://github.com/radius-project/.github) repository for every `uses:` reference before changing its inputs, secrets, or outputs.
+- **Cloud tests report a missing private-module credential.** Have a maintainer configure and verify the narrowly scoped read token above; do not restore the status App key to candidate jobs. Dispatch the cloud controller from main and supply the candidate branch through its `branch` input.
+- **An upload rejects an artifact.** Inspect the validation error; rerun the producer for missing/expired inputs rather than relaxing source, digest or destination checks. Downstream-only reruns reuse the same run's validated inputs.
 
 ## Related docs
 

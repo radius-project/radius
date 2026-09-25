@@ -53,20 +53,26 @@ jobs:
     with:
       only_changed: ${{ needs.changes.outputs.only_changed }}
     permissions:
-      packages: write # Required for uploading the package
       contents: read # Required for actions/checkout
-      issues: read # Required for publishing test results
-      checks: write # Required for publishing test results
-      pull-requests: write # Required for publishing test results
 
   build-check:
     if: always()
     name: Build Check
-    needs: [build-and-push-cli]
+    needs: [changes, build-and-push-cli]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
     steps:
+      - name: Require successful change detection
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          ONLY_CHANGED: ${{ needs.changes.outputs.only_changed }}
+        run: |
+          if [[ "${CHANGES_RESULT}" != success || ! "${ONLY_CHANGED}" =~ ^(true|false)$ ]]; then
+            echo "::error::Change detection failed or returned no decision"
+            exit 1
+          fi
+
       - name: Check build matrix results
         if: ${{ needs.build-and-push-cli.result != 'success' && needs.build-and-push-cli.result != 'skipped' }}
         run: |
@@ -82,15 +88,14 @@ jobs:
   build-and-push-images:
     needs: [changes]
     if: github.repository == 'radius-project/radius' && needs.changes.outputs.only_changed != 'true'
-    uses: ./.github/workflows/__build-images.yaml
+    uses: ./.github/workflows/__validate-build-images.yaml
     permissions:
-      packages: write # Required for uploading the package
       contents: read # Required for actions/checkout
 
   build-summary:
     if: always()
     name: Build Summary
-    needs: [build-check, build-and-push-images]
+    needs: [changes, build-check, build-and-push-images]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -104,8 +109,10 @@ jobs:
       - name: Check all build jobs
         run: |
           ./.github/scripts/build-summary.sh \
+            "changes:${CHANGES_RESULT}" \
             "build-check:${BUILD_CHECK_RESULT}" \
             "build-and-push-images:${BUILD_AND_PUSH_IMAGES_RESULT}"
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
           BUILD_CHECK_RESULT: ${{ needs.build-check.result }}
           BUILD_AND_PUSH_IMAGES_RESULT: ${{ needs.build-and-push-images.result }}
