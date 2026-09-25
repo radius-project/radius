@@ -1,0 +1,34 @@
+# PR lifecycle and release-impact labels are synced by .github/workflows/labels.yml.
+# Other repository labels are preserved by skip-delete.
+---
+- name: pr:standard
+  color: 86a16a
+  description: Ongoing maintenance, minor improvements, documentation updates, and routine development work
+- name: pr:important
+  color: 86a16a
+  description: High-impact changes needing special attention during release and in release notes
+# Lifecycle and hold labels share blue; release-impact labels remain green.
+- name: pr:needs-reviewer
+  color: 1D76DB
+  description: Ready for review but no reviewer has been requested
+- name: pr:waiting-for-review
+  color: 1D76DB
+  description: A requested reviewer owns the next action
+- name: pr:waiting-for-author
+  color: 1D76DB
+  description: The author needs to address review feedback
+- name: pr:review-approved
+  color: 1D76DB
+  description: Required reviews are approved; checks may still be pending
+- name: pr:needs-rebase
+  color: 1D76DB
+  description: The pull request has merge conflicts
+- name: pr:ready-for-queue
+  color: 1D76DB
+  description: Review, checks and mergeability permit adding this PR to the queue
+- name: pr:needs-author-response
+  color: 1D76DB
+  description: A reviewer manually requested an author response
+- name: pr:do-not-merge
+  color: 1D76DB
+  description: Don't merge this PR until open discussion items or issues are complete
