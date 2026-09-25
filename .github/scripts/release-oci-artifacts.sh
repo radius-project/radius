@@ -44,9 +44,14 @@ VERIFY_ALIASES=false
 VERIFY_SBOMS=false
 PROMOTE_LATEST="${RELEASE_PROMOTE_LATEST:-true}"
 SOURCE_SHA="${RELEASE_SOURCE_SHA:-}"
+EXPECTED_DIGEST=""
 TEMP_DIR=""
 readonly RETRY_ATTEMPTS="${RELEASE_RETRY_ATTEMPTS:-5}"
 readonly RETRY_MAX_DELAY_SECONDS="${RELEASE_RETRY_MAX_DELAY_SECONDS:-15}"
+# External images are published by their own repositories from the sibling
+# tags the controller creates, in parallel with the Radius tag build.
+readonly EXTERNAL_IMAGE_WAIT_SECONDS="${RELEASE_EXTERNAL_IMAGE_WAIT_SECONDS:-600}"
+readonly EXTERNAL_IMAGE_POLL_SECONDS="${RELEASE_EXTERNAL_IMAGE_POLL_SECONDS:-30}"
 readonly SOURCE_ANNOTATION="org.opencontainers.image.source="
 readonly SOURCE_URL="https://github.com/radius-project/radius"
 
@@ -141,6 +146,9 @@ retry_read() {
 usage() {
     cat >&2 << 'EOF'
 Usage:
+    release-oci-artifacts.sh pin-image --registry <registry> --names <name> \
+        --version <version> --channel <published-tag> --source-sha <sha> \
+        [--expected-digest <sha256:...>]
   release-oci-artifacts.sh stage-cli --registry <registry> \
     --version <version> --artifacts <artifacts.json> --output <lock.json>
     release-oci-artifacts.sh stage-cli --registry <registry> \
@@ -209,6 +217,10 @@ parse_args() {
                 ;;
             --source-sha)
                 SOURCE_SHA="${2:-}"
+                shift 2
+                ;;
+            --expected-digest)
+                EXPECTED_DIGEST="${2:-}"
                 shift 2
                 ;;
             --aliases)
@@ -605,6 +617,120 @@ image_reference_state() {
             fail "cannot reconcile ${reference}: ${output}"
         fi
         wait_before_retry "image preflight" "${attempt}"
+    done
+}
+
+external_image_matches() {
+    local raw="$1"
+    local expected_platforms="$2"
+
+    jq -e --arg source "${SOURCE_SHA}" \
+        --argjson platforms "${expected_platforms}" '
+        def platform_name:
+            .os + "/" + .architecture +
+            (if (.variant // "") == "" then "" else "/" + .variant end);
+        ([if .manifest.manifests then
+            .manifest.manifests[] | select(.platform.os != "unknown") | .platform
+          else .image end | platform_name] | sort) == $platforms and
+        ([if .manifest.manifests then
+            .image | to_entries[] | select(.key != "unknown/unknown") | .value
+          else .image end | .config.Labels."org.opencontainers.image.revision"] |
+         unique) == [$source]
+    ' <<< "${raw}" > /dev/null
+}
+
+# Prints the inspection of an external image reference once it exists and
+# carries the planned source and platform set. The publisher that produces the
+# reference runs in parallel with this build, so a missing reference or one
+# still serving an earlier source is awaited for a bounded time. An existing
+# immutable version tag is never awaited: a mismatch there is a conflict.
+await_external_image() {
+    local reference="$1"
+    local expected_platforms="$2"
+    local immutable="$3"
+    local deadline=$((SECONDS + EXTERNAL_IMAGE_WAIT_SECONDS))
+    local raw problem
+
+    while true; do
+        if [[ "$(image_reference_state "${reference}")" == "absent" ]]; then
+            problem="external image is not published: ${reference}"
+        else
+            raw="$(retry_read "external image inspection" \
+                docker buildx imagetools inspect --format '{{json .}}' \
+                "${reference}")"
+            if external_image_matches "${raw}" "${expected_platforms}"; then
+                printf '%s\n' "${raw}"
+                return
+            fi
+            problem="external image source or platforms differ from the plan: ${reference}"
+        fi
+        if [[ "${immutable}" == "true" ]] || ((SECONDS >= deadline)); then
+            fail "${problem}"
+        fi
+        echo "Waiting for ${reference} to carry the planned source; its publisher may still be running." >&2
+        if [[ "${RELEASE_RETRY_NO_SLEEP:-}" != "true" ]]; then
+            sleep "${EXTERNAL_IMAGE_POLL_SECONDS}"
+        fi
+    done
+}
+
+pin_image() {
+    local repository reference target raw digest expected_platforms state
+    local attempt output status immutable
+
+    require_command docker
+    require_command oras
+    require_command jq
+    validate_version
+    validate_source_sha
+    [[ -n "${REGISTRY}" ]] || fail "registry is required"
+    [[ "${CHANNEL}" =~ ^[0-9]+\.[0-9]+$ ]] ||
+        is_radius_release_version "${CHANNEL}" || fail "invalid published tag"
+    [[ -z "${EXPECTED_DIGEST}" ||
+        "${EXPECTED_DIGEST}" =~ ^sha256:[0-9a-f]{64}$ ]] ||
+        fail "invalid expected digest"
+    expected_platforms="$(jq -ce --arg name "${NAMES}" '
+        [.images[] | select(.name == $name and .radiusBuild == false)] |
+        if length == 1 then .[0].requiredPlatforms | sort
+        else error("select exactly one external image") end
+    ' "${TARGETS_FILE}")"
+    repository="${REGISTRY%/}/${NAMES}"
+    target="${repository}:${VERSION}"
+    reference="${repository}:${CHANNEL}"
+    state="$(image_reference_state "${target}")"
+    immutable=false
+    if [[ "${state}" == "exists" ]]; then
+        reference="${target}"
+        immutable=true
+    fi
+    raw="$(await_external_image "${reference}" "${expected_platforms}" \
+        "${immutable}")"
+    digest="$(jq -er '.manifest.digest |
+        select(test("^sha256:[0-9a-f]{64}$"))' <<< "${raw}")"
+    [[ -z "${EXPECTED_DIGEST}" || "${digest}" == "${EXPECTED_DIGEST}" ]] ||
+        fail "external image differs from its locked digest: ${reference}"
+    [[ "${state}" == "exists" ]] && return
+
+    for ((attempt = 1; attempt <= RETRY_ATTEMPTS; attempt++)); do
+        if [[ "$(image_reference_state "${target}")" == "exists" ]]; then
+            verify_image_alias "${target}" "${digest}"
+            return
+        fi
+        if output="$(oras tag "${repository}@${digest}" "${VERSION}" 2>&1)"; then
+            verify_image_alias "${target}" "${digest}"
+            return
+        else
+            status=$?
+        fi
+        if [[ "$(image_reference_state "${target}")" == "exists" ]]; then
+            verify_image_alias "${target}" "${digest}"
+            return
+        fi
+        if ((attempt == RETRY_ATTEMPTS)) || ! is_retryable_error "${output}"; then
+            echo "${output}" >&2
+            return "${status}"
+        fi
+        wait_before_retry "immutable external image tag" "${attempt}"
     done
 }
 
@@ -1045,6 +1171,7 @@ promote_aliases() {
 main() {
     parse_args "$@"
     case "${COMMAND}" in
+        pin-image) pin_image ;;
         stage-cli) stage_cli ;;
         promote) promote_aliases ;;
         verify) verify_locks ;;
