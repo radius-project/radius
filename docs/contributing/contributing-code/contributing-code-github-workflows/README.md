@@ -26,6 +26,35 @@ Follow the [GitHub Workflows instruction file](../../../../.github/instructions/
 5. Set the smallest explicit `permissions:` block at the workflow or job level.
 6. Open the pull request as a draft and run the workflow from your branch. Confirm its trigger, job graph, artifacts, and failure behavior before marking the pull request ready.
 
+### Main Bicep publishing
+
+[`build-main.yaml`](../../../../.github/workflows/build-main.yaml) selects direct Radius publishing through [`__publish-bicep-types.yaml`](../../../../.github/workflows/__publish-bicep-types.yaml) only when the repository variable `BICEP_GHCR_PUBLISH_ENABLED` is exactly `true`. **Disabled by default:** unset, `false`, and invalid values retain the external ACR publisher. The two main publishers are mutually exclusive; release-tag publishing and consumers remain unchanged.
+
+Direct publishing accepts protected canonical main pushes and approved manual main runs. Successful `only_changed=true` detection permits a skip; missing/failed detection, unexpected skips, and selected-publisher failures fail Build Summary.
+
+Read-only generation captures a native Bicep OCI tar and source metadata once, using pinned tools, isolated `ociEnabled=true` configuration, and a trusted `localhost` registry without credentials. The fresh publishing job downloads the same-run artifact by ID with `digest-mismatch: error`, verifies its source/run/digest and Bicep provider contract, and uses ORAS without extracting or executing archive content. Only standard OCI source/revision annotations are added.
+
+One serialized job writes `ghcr.io/radius-project/bicep-types-radius:edge` and copies **the same manifest digest** to `biceptypes.azurecr.io/radius:latest`. GHCR `latest`, full versions, and RCs are not written here. Once publication starts, the pair must finish and verify or fail visibly; a newer main commit does not silently interrupt mirroring.
+
+The `bicep-types-radius-<run-id>.tar` snapshot and per-attempt receipts have 30-day retention. Receipts record source, artifact ID/digest, final manifest digest, and verified destinations. Current-main retries reuse the snapshot without rebuilding. A stale first attempt skips before writing, but a **superseded retry fails closed** because previous writes may be partial. Inspect both destinations/receipts and recover from current main; missing/expired snapshots require a new approved run.
+
+#### Activation prerequisites
+
+Before enabling, verify these external prerequisites; this workflow does not provision them:
+
+1. Credential isolation and workflow-definition controls cover main **and maintained release/features branches**, including older `pull_request_target` and legacy App-backed tag publishing. Repository package grants are not per-workflow ACLs.
+2. The canonical GHCR package is public, intended Actions access is configured, and anonymous restore works. Unreadable/private package metadata fails publication.
+3. The shared `publish-bicep` environment has real approval, protected-main/approved-legacy-tag restrictions, and no bypass. Its name alone provides no protection; approved tag creation and App-key isolation remain required for the legacy publisher.
+4. Environment-only `BICEPTYPES_CLIENT_ID`, `BICEPTYPES_TENANT_ID`, and `BICEPTYPES_SUBSCRIPTION_ID` select a least-privilege ACR publisher whose OIDC trust binds the repository, protected main, trusted `__publish-bicep-types.yaml` `job_workflow_ref`, environment, and audience—not just an environment name.
+5. Disable/drain the old external **development** writer before handoff or rollback. Retain the legacy release-tag writer until release integration replaces it.
+
+Run the focused Node tests and workflow lint locally without credentials:
+
+```bash
+node --test .github/scripts/bicep-types.test.mjs
+actionlint .github/workflows/build-main.yaml .github/workflows/__publish-bicep-types.yaml
+```
+
 ## Verification
 
 - The workflow you changed runs green on your pull request (open it as a draft first if you want to iterate).

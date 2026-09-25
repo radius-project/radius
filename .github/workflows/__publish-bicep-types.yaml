@@ -1,0 +1,193 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: __publish-bicep-types
+
+on:
+  workflow_call:
+    outputs:
+      status:
+        value: ${{ jobs.publish.outputs.status }}
+      manifest_digest:
+        value: ${{ jobs.publish.outputs.manifest_digest }}
+
+permissions: {}
+
+jobs:
+  bundle:
+    name: Capture Radius Bicep types
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      github.ref == 'refs/heads/main' && github.ref_protected &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      artifact_id: ${{ steps.select.outputs.artifact_id || steps.upload.outputs.artifact-id }}
+    services:
+      registry:
+        image: registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+        ports:
+          - 5000/tcp
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Select immutable run bundle
+        id: select
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 2
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: select
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
+
+      - name: Setup Go for generation
+        if: steps.select.outputs.reuse == 'false'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Setup Node.js for generation
+        if: steps.select.outputs.reuse == 'false'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Install pinned generation tools
+        if: steps.select.outputs.reuse == 'false'
+        run: make install-bicep install-oras install-yq
+
+      - name: Generate types once
+        if: steps.select.outputs.reuse == 'false'
+        run: make generate-bicep-types VERSION=edge
+
+      - name: Capture native Bicep OCI bundle
+        if: steps.select.outputs.reuse == 'false'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: capture
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
+          INPUT_REGISTRY: localhost:${{ job.services.registry.ports['5000'] }}
+
+      - name: Retain immutable bundle
+        if: steps.select.outputs.reuse == 'false'
+        id: upload
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          path: ${{ runner.temp }}/bicep-types/bicep-types-radius-${{ github.run_id }}.tar
+          archive: false
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish Radius edge and mirror ACR
+    needs: [bundle]
+    if: >-
+      github.repository == 'radius-project/radius' &&
+      github.ref == 'refs/heads/main' && github.ref_protected &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    concurrency:
+      group: radius-bicep-types-main-publish
+      cancel-in-progress: false
+    environment: publish-bicep
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+      id-token: write
+    outputs:
+      status: ${{ steps.publish.outputs.status }}
+      manifest_digest: ${{ steps.publish.outputs.manifest_digest }}
+    steps:
+      - name: Checkout trusted publisher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install pinned copy tool
+        run: make install-oras
+
+      - name: Download the immutable run bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.bundle.outputs.artifact_id }}
+          path: ${{ runner.temp }}/bicep-types/download
+          github-token: ${{ github.token }}
+          repository: radius-project/radius
+          run-id: ${{ github.run_id }}
+          skip-decompress: true
+          digest-mismatch: error
+
+      - name: Validate bundle and stamp source manifest
+        id: prepare
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 2
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: prepare
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
+          INPUT_ARTIFACT_ID: ${{ needs.bundle.outputs.artifact_id }}
+
+      - name: Isolate registry credentials
+        run: |
+          mkdir -p "${RUNNER_TEMP}/bicep-registry-credentials"
+          echo "DOCKER_CONFIG=${RUNNER_TEMP}/bicep-registry-credentials" >> "${GITHUB_ENV}"
+
+      - name: Login to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Login to Azure for the compatibility mirror
+        uses: azure/login@f5d393ae46f8fde4be8b75f32e3fc50e654ad0ca # v3.0.0
+        with:
+          client-id: ${{ secrets.BICEPTYPES_CLIENT_ID }}
+          tenant-id: ${{ secrets.BICEPTYPES_TENANT_ID }}
+          subscription-id: ${{ secrets.BICEPTYPES_SUBSCRIPTION_ID }}
+
+      - name: Login to the fixed compatibility registry
+        run: az acr login --name biceptypes
+
+      - name: Publish and verify the complete pair
+        id: publish
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 2
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
+        env:
+          INPUT_OPERATION: publish
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
+
+      - name: Retain publication receipt
+        if: always() && steps.prepare.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bicep-types-radius-receipt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/bicep-types/receipt.json
+          if-no-files-found: error
+          retention-days: 30
