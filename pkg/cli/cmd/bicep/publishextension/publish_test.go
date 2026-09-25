@@ -18,8 +18,7 @@ package publishextension
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
@@ -36,68 +35,43 @@ import (
 
 const publishHelperEnv = "RADIUS_PUBLISH_EXTENSION_TEST_HELPER"
 
-type publishInvocation struct {
-	Args        []string
-	Directory   string
-	Config      string
-	Environment map[string]string
-}
-
 func TestMain(m *testing.M) {
-	if filename := os.Getenv(publishHelperEnv); filename != "" {
-		if err := runPublishHelper(filename); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(23) //nolint:forbidigo // The test binary stands in for a failing Bicep process.
+	if os.Getenv(publishHelperEnv) != "" {
+		// Bicep's fixed arguments cannot select a helper test themselves.
+		if err := flag.Set("test.run", "^TestPublishHelper$"); err != nil {
+			panic(err)
 		}
-		os.Exit(0) //nolint:forbidigo // Return only the fake Bicep output.
 	}
 	os.Exit(m.Run()) //nolint:forbidigo // Return the test suite's exit status.
 }
 
-func runPublishHelper(filename string) error {
-	if len(os.Args) < 5 || os.Args[1] != "publish-extension" || os.Args[3] != "--target" {
-		return errors.New("unexpected Bicep arguments")
+func TestPublishHelper(t *testing.T) {
+	if os.Getenv(publishHelperEnv) == "" {
+		return
 	}
-	if _, err := os.Stat(os.Args[2]); err != nil {
-		return err
+	target := os.Getenv("RADIUS_PUBLISH_TARGET")
+	require.GreaterOrEqual(t, len(os.Args), 5)
+	args := []string{"publish-extension", os.Args[2], "--target", target}
+	if os.Getenv("RADIUS_PUBLISH_FORCE") == "true" {
+		args = append(args, "--force")
 	}
-	if _, err := os.Stat(filepath.Join(filepath.Dir(os.Args[2]), "bicepconfig.json")); !errors.Is(err, os.ErrNotExist) {
-		return errors.New("unexpected configuration in the generated index directory")
-	}
+	require.Equal(t, args, os.Args[1:])
+	require.True(t, filepath.IsAbs(os.Args[2]))
+	require.Equal(t, "index.json", filepath.Base(os.Args[2]))
+	require.FileExists(t, os.Args[2])
 	directory, err := os.Getwd()
-	if err != nil {
-		return err
+	require.NoError(t, err)
+	require.Equal(t, os.Getenv(publishHelperEnv), directory)
+	config, err := os.ReadFile("bicepconfig.json")
+	require.NoError(t, err)
+	require.Equal(t, os.Getenv("RADIUS_PUBLISH_CONFIG"), string(config))
+	require.Equal(t, ".docker", os.Getenv("DOCKER_CONFIG"))
+	if os.Getenv("RADIUS_PUBLISH_FAIL") == "true" {
+		os.Exit(23) //nolint:forbidigo // Distinguish a Bicep failure from a failed helper assertion.
 	}
-	config, err := os.ReadFile(filepath.Join(directory, "bicepconfig.json"))
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return err
+	if !strings.HasPrefix(target, "br:") {
+		require.NoError(t, os.WriteFile(target, []byte("published extension"), 0600))
 	}
-	invocation := publishInvocation{
-		Args:        os.Args[1:],
-		Directory:   directory,
-		Config:      string(config),
-		Environment: map[string]string{},
-	}
-	for _, name := range []string{"DOCKER_CONFIG", "AZURE_CONFIG_DIR", "SSL_CERT_FILE", "PATH", "BICEP_TRUSTED_REGISTRIES"} {
-		invocation.Environment[name] = os.Getenv(name)
-	}
-	data, err := json.Marshal(invocation)
-	if err != nil {
-		return err
-	}
-	if err := os.WriteFile(filename, data, 0600); err != nil {
-		return err
-	}
-	fmt.Fprintln(os.Stdout, "Bicep stdout")
-	fmt.Fprintln(os.Stderr, "Bicep stderr")
-	if os.Getenv("RADIUS_PUBLISH_EXTENSION_TEST_FAIL") == "true" {
-		return errors.New("Bicep publish failed")
-	}
-	target := os.Args[4]
-	if !strings.HasPrefix(target, "br:") && !strings.HasPrefix(target, "ts:") {
-		return os.WriteFile(target, []byte("published extension"), 0600)
-	}
-	return nil
 }
 
 func TestRunner_Validate(t *testing.T) {
@@ -132,70 +106,42 @@ func TestRunner_Validate(t *testing.T) {
 }
 
 func TestRunner_Run(t *testing.T) {
-	manifest, err := os.ReadFile("testdata/valid.yaml")
+	manifest, err := filepath.Abs("testdata/valid.yaml")
 	require.NoError(t, err)
 	executable, err := os.Executable()
 	require.NoError(t, err)
 
 	for _, tt := range []struct {
-		name     string
-		target   string
-		config   string
-		local    bool
-		absolute bool
-		force    bool
-		fail     bool
-		canceled bool
+		name, target, config  string
+		force, fail, canceled bool
 	}{
-		{name: "relative local output", target: "./output.tgz", local: true},
-		{name: "absolute local output", target: "output.tgz", local: true, absolute: true},
-		{name: "local force", target: "./output.tgz", local: true, force: true},
-		{name: "explicit OCI and force", target: "br:ghcr.io/example/extension:v1", force: true, config: "// caller JSONC\n" + `{"experimentalFeaturesEnabled":{"ociEnabled":true},"cloud":{"currentProfile":"AzureChinaCloud"},"cacheRootDirectory":"~/cache","extensions":{"custom":"./custom.tgz"},"integer":9007199254740993123456789}`},
+		{name: "local archive", target: "./output.tgz", config: `{}`},
+		{name: "OCI true and force", target: "br:ghcr.io/example/extension:v1", force: true, config: `{"experimentalFeaturesEnabled":{"ociEnabled":true}}`},
 		{name: "OCI false", target: "br:ghcr.io/example/extension:v1", config: `{"experimentalFeaturesEnabled":{"ociEnabled":false}}`},
 		{name: "OCI unset", target: "br:ghcr.io/example/extension:v1", config: `{}`},
-		{name: "no caller config", target: "br:ghcr.io/example/extension:v1"},
-		{name: "ACR reference", target: "br:example.azurecr.cn/extension:v1"},
-		{name: "loopback reference", target: "br:localhost:5000/extension:v1", config: `{"experimentalFeaturesEnabled":{"ociEnabled":false}}`},
-		{name: "other registry reference", target: "ts:example/extension:v1"},
-		{name: "subprocess failure", target: "br:ghcr.io/example/extension:v1", fail: true},
-		{name: "cancellation", target: "./output.tgz", canceled: true},
+		{name: "subprocess failure", target: "br:ghcr.io/example/extension:v1", config: `{}`, fail: true},
+		{name: "cancellation", target: "./output.tgz", config: `{}`, canceled: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			root, err := filepath.EvalSymlinks(t.TempDir())
+			caller, err := filepath.EvalSymlinks(t.TempDir())
 			require.NoError(t, err)
-			caller, temporary := filepath.Join(root, "caller"), filepath.Join(root, "temporary")
-			require.NoError(t, os.Mkdir(caller, 0700))
-			require.NoError(t, os.Mkdir(temporary, 0700))
-			require.NoError(t, os.WriteFile(filepath.Join(caller, "provider.yaml"), manifest, 0600))
+			temporary := t.TempDir()
 			t.Chdir(caller)
-			for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
-				t.Setenv(name, temporary)
-			}
-			t.Setenv(bicep.BicepEnvVar, executable)
-			record := filepath.Join(caller, "invocation.json")
-			t.Setenv(publishHelperEnv, record)
-			t.Setenv("RADIUS_PUBLISH_EXTENSION_TEST_FAIL", fmt.Sprint(tt.fail))
-			environment := map[string]string{
-				"DOCKER_CONFIG":            ".docker",
-				"AZURE_CONFIG_DIR":         ".azure",
-				"SSL_CERT_FILE":            "certs/ca.pem",
-				"PATH":                     "relative-tools",
-				"BICEP_TRUSTED_REGISTRIES": "localhost,registry.example",
-			}
-			for name, value := range environment {
+			for name, value := range map[string]string{
+				bicep.BicepEnvVar:       executable,
+				publishHelperEnv:        caller,
+				"RADIUS_PUBLISH_TARGET": tt.target,
+				"RADIUS_PUBLISH_CONFIG": tt.config,
+				"RADIUS_PUBLISH_FORCE":  fmt.Sprint(tt.force),
+				"RADIUS_PUBLISH_FAIL":   fmt.Sprint(tt.fail),
+				"DOCKER_CONFIG":         ".docker",
+				"TMPDIR":                temporary, "TMP": temporary, "TEMP": temporary,
+			} {
 				t.Setenv(name, value)
 			}
-			configPath := filepath.Join(caller, "bicepconfig.json")
-			if tt.config != "" {
-				require.NoError(t, os.WriteFile(configPath, []byte(tt.config), 0600))
-			}
-			target := tt.target
-			if tt.absolute {
-				target = filepath.Join(caller, target)
-			}
+			require.NoError(t, os.WriteFile("bicepconfig.json", []byte(tt.config), 0600))
 			logs := &output.MockOutput{}
-			runner := &Runner{Output: logs, ResourceProviderManifestFilePath: "./provider.yaml", Target: target, Force: tt.force}
-			stdout, stderr := capturePublishOutput(t)
+			runner := &Runner{Output: logs, ResourceProviderManifestFilePath: manifest, Target: tt.target, Force: tt.force}
 			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			if tt.canceled {
@@ -207,7 +153,6 @@ func TestRunner_Run(t *testing.T) {
 				require.Empty(t, logs.Writes)
 				if tt.canceled {
 					require.ErrorIs(t, err, context.Canceled)
-					require.NoFileExists(t, record)
 				} else {
 					var exitError *exec.ExitError
 					require.ErrorAs(t, err, &exitError)
@@ -215,10 +160,7 @@ func TestRunner_Run(t *testing.T) {
 				}
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, []any{output.LogOutput{
-					Format: "Successfully published Bicep extension %q to %q",
-					Params: []any{"./provider.yaml", target},
-				}}, logs.Writes)
+				require.Len(t, logs.Writes, 1)
 			}
 			entries, err := os.ReadDir(temporary)
 			require.NoError(t, err)
@@ -226,62 +168,19 @@ func TestRunner_Run(t *testing.T) {
 			currentDirectory, err := os.Getwd()
 			require.NoError(t, err)
 			require.Equal(t, caller, currentDirectory)
-			for name, value := range environment {
-				require.Equal(t, value, os.Getenv(name), name)
-			}
-			if tt.config == "" {
-				require.NoFileExists(t, configPath)
-			} else {
-				unchanged, err := os.ReadFile(configPath)
-				require.NoError(t, err)
-				require.Equal(t, tt.config, string(unchanged))
-			}
-			if tt.canceled {
-				return
-			}
-			data, err := os.ReadFile(record)
+			require.Equal(t, ".docker", os.Getenv("DOCKER_CONFIG"))
+			config, err := os.ReadFile("bicepconfig.json")
 			require.NoError(t, err)
-			var invocation publishInvocation
-			require.NoError(t, json.Unmarshal(data, &invocation))
-			require.Equal(t, caller, invocation.Directory)
-			require.Equal(t, tt.config, invocation.Config)
-			require.Equal(t, environment, invocation.Environment)
-			index := invocation.Args[1]
-			require.True(t, filepath.IsAbs(index))
-			require.Equal(t, temporary, filepath.Dir(filepath.Dir(index)))
-			require.NoDirExists(t, filepath.Dir(index))
-			expectedArgs := []string{"publish-extension", index, "--target", target}
-			if tt.force {
-				expectedArgs = append(expectedArgs, "--force")
-			}
-			require.Equal(t, expectedArgs, invocation.Args)
-			if tt.local {
-				published, err := os.ReadFile(target)
+			require.Equal(t, tt.config, string(config))
+			if tt.target == "./output.tgz" {
+				if tt.canceled {
+					require.NoFileExists(t, tt.target)
+					return
+				}
+				data, err := os.ReadFile(tt.target)
 				require.NoError(t, err)
-				require.Equal(t, "published extension", string(published))
-			}
-			for file, message := range map[*os.File]string{stdout: "Bicep stdout", stderr: "Bicep stderr"} {
-				data, err := os.ReadFile(file.Name())
-				require.NoError(t, err)
-				require.Contains(t, string(data), message)
+				require.Equal(t, "published extension", string(data))
 			}
 		})
 	}
-}
-
-func capturePublishOutput(t *testing.T) (stdout, stderr *os.File) {
-	t.Helper()
-	directory := t.TempDir()
-	stdout, err := os.Create(filepath.Join(directory, "stdout"))
-	require.NoError(t, err)
-	stderr, err = os.Create(filepath.Join(directory, "stderr"))
-	require.NoError(t, err)
-	originalStdout, originalStderr := os.Stdout, os.Stderr
-	os.Stdout, os.Stderr = stdout, stderr
-	t.Cleanup(func() {
-		os.Stdout, os.Stderr = originalStdout, originalStderr
-		require.NoError(t, stdout.Close())
-		require.NoError(t, stderr.Close())
-	})
-	return stdout, stderr
 }

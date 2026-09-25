@@ -48,10 +48,8 @@ Once an extension is been generated, it can be used locally or published to a co
 
 When publishing to an OCI registry it is expected the user runs docker login (or similar command) and has the proper permission to push to the target OCI registry.
 
-Publishing to generic OCI registries requires Bicep v0.45.6 or later. Merge this setting into bicepconfig.json in the current directory or its normal ancestor discovery path, preserving any existing settings:
-  {"experimentalFeaturesEnabled": {"ociEnabled": true}}
-
-This command inherits the caller's working directory and environment without modifying configuration. Local file targets are relative to the current directory. Leave OCI unset or false for existing HTTPS loopback registries; Bicep uses HTTP for loopback when OCI is enabled. Restore uses the consuming template's effective Bicep configuration.
+Generic OCI registries require Bicep v0.45.6+ and experimentalFeaturesEnabled.ociEnabled=true in the caller's effective bicepconfig.json. This command leaves configuration unchanged. Keep OCI unset or false for HTTPS loopback registries; enabling it selects HTTP.
+Local targets are relative to the caller's directory. Restore uses the consuming template's own configuration.
 		`,
 		Example: `
 # Generate a Bicep extension to a local file
