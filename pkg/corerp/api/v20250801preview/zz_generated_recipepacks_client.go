@@ -56,7 +56,12 @@ func (client *RecipePacksClient) CreateOrUpdate(ctx context.Context, rootScope s
 	if err != nil {
 		return RecipePacksClientCreateOrUpdateResponse{}, err
 	}
-	return client.createOrUpdateHandleResponse(httpResp, http.StatusOK, http.StatusCreated)
+	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
+		err = runtime.NewResponseError(httpResp)
+		return RecipePacksClientCreateOrUpdateResponse{}, err
+	}
+	resp, err := client.createOrUpdateHandleResponse(httpResp)
+	return resp, err
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
@@ -86,11 +91,8 @@ func (client *RecipePacksClient) createOrUpdateCreateRequest(ctx context.Context
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *RecipePacksClient) createOrUpdateHandleResponse(resp *http.Response, successCodes ...int) (RecipePacksClientCreateOrUpdateResponse, error) {
+func (client *RecipePacksClient) createOrUpdateHandleResponse(resp *http.Response) (RecipePacksClientCreateOrUpdateResponse, error) {
 	result := RecipePacksClientCreateOrUpdateResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RecipePackResource); err != nil {
 		return RecipePacksClientCreateOrUpdateResponse{}, err
 	}
@@ -115,7 +117,8 @@ func (client *RecipePacksClient) Delete(ctx context.Context, rootScope string, r
 		return RecipePacksClientDeleteResponse{}, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusNoContent) {
-		return RecipePacksClientDeleteResponse{}, runtime.NewResponseError(httpResp)
+		err = runtime.NewResponseError(httpResp)
+		return RecipePacksClientDeleteResponse{}, err
 	}
 	return RecipePacksClientDeleteResponse{}, nil
 }
@@ -158,7 +161,12 @@ func (client *RecipePacksClient) Get(ctx context.Context, rootScope string, reci
 	if err != nil {
 		return RecipePacksClientGetResponse{}, err
 	}
-	return client.getHandleResponse(httpResp, http.StatusOK)
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return RecipePacksClientGetResponse{}, err
+	}
+	resp, err := client.getHandleResponse(httpResp)
+	return resp, err
 }
 
 // getCreateRequest creates the Get request.
@@ -184,11 +192,8 @@ func (client *RecipePacksClient) getCreateRequest(ctx context.Context, rootScope
 }
 
 // getHandleResponse handles the Get response.
-func (client *RecipePacksClient) getHandleResponse(resp *http.Response, successCodes ...int) (RecipePacksClientGetResponse, error) {
+func (client *RecipePacksClient) getHandleResponse(resp *http.Response) (RecipePacksClientGetResponse, error) {
 	result := RecipePacksClientGetResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RecipePackResource); err != nil {
 		return RecipePacksClientGetResponse{}, err
 	}
@@ -211,52 +216,38 @@ func (client *RecipePacksClient) NewListByScopePager(rootScope string, options *
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			req, err := client.listByScopeCreateRequest(ctx, rootScope, nextLink, options)
+			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
+				return client.listByScopeCreateRequest(ctx, rootScope, options)
+			}, nil)
 			if err != nil {
 				return RecipePacksClientListByScopeResponse{}, err
 			}
-			resp, err := client.internal.Pipeline().Do(req)
-			if err != nil {
-				return RecipePacksClientListByScopeResponse{}, err
-			}
-			return client.listByScopeHandleResponse(resp, http.StatusOK)
+			return client.listByScopeHandleResponse(resp)
 		},
 	})
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *RecipePacksClient) listByScopeCreateRequest(ctx context.Context, rootScope string, nextLink string, _ *RecipePacksClientListByScopeOptions) (*policy.Request, error) {
-	firstPage := nextLink == ""
-	var req *policy.Request
-	var err error
-	if firstPage {
-		urlPath := "/{rootScope}/providers/Radius.Core/recipePacks"
-		if rootScope == "" {
-			return nil, errors.New("parameter rootScope cannot be empty")
-		}
-		urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
-	} else {
-		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
+func (client *RecipePacksClient) listByScopeCreateRequest(ctx context.Context, rootScope string, _ *RecipePacksClientListByScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Radius.Core/recipePacks"
+	if rootScope == "" {
+		return nil, errors.New("parameter rootScope cannot be empty")
 	}
+	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	if firstPage {
-		reqQP := req.Raw().URL.Query()
-		reqQP.Set("api-version", version20250801Preview)
-		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-		req.Raw().Header["Accept"] = []string{"application/json"}
-	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", version20250801Preview)
+	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
 
 // listByScopeHandleResponse handles the ListByScope response.
-func (client *RecipePacksClient) listByScopeHandleResponse(resp *http.Response, successCodes ...int) (RecipePacksClientListByScopeResponse, error) {
+func (client *RecipePacksClient) listByScopeHandleResponse(resp *http.Response) (RecipePacksClientListByScopeResponse, error) {
 	result := RecipePacksClientListByScopeResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RecipePackResourceListResult); err != nil {
 		return RecipePacksClientListByScopeResponse{}, err
 	}
@@ -281,7 +272,12 @@ func (client *RecipePacksClient) Update(ctx context.Context, rootScope string, r
 	if err != nil {
 		return RecipePacksClientUpdateResponse{}, err
 	}
-	return client.updateHandleResponse(httpResp, http.StatusOK)
+	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
+		err = runtime.NewResponseError(httpResp)
+		return RecipePacksClientUpdateResponse{}, err
+	}
+	resp, err := client.updateHandleResponse(httpResp)
+	return resp, err
 }
 
 // updateCreateRequest creates the Update request.
@@ -311,11 +307,8 @@ func (client *RecipePacksClient) updateCreateRequest(ctx context.Context, rootSc
 }
 
 // updateHandleResponse handles the Update response.
-func (client *RecipePacksClient) updateHandleResponse(resp *http.Response, successCodes ...int) (RecipePacksClientUpdateResponse, error) {
+func (client *RecipePacksClient) updateHandleResponse(resp *http.Response) (RecipePacksClientUpdateResponse, error) {
 	result := RecipePacksClientUpdateResponse{}
-	if !runtime.HasStatusCode(resp, successCodes...) {
-		return result, runtime.NewResponseError(resp)
-	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RecipePackResource); err != nil {
 		return RecipePacksClientUpdateResponse{}, err
 	}
