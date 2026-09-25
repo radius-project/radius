@@ -79,6 +79,18 @@ To confirm your schema compiles in a Bicep template, publish the generated Bicep
    ```
 
    `<target>` is either a local path (for example `./bin/radius-types.tgz`) or an OCI reference (for example `br:biceptypes.azurecr.io/radius:latest`). The target requires the `bicep` CLI on your `PATH`.
+
+   For a resource provider manifest, use `rad bicep publish-extension --from-file <manifest.yaml> --target <target>`; add `--force` to overwrite a registry extension. Generic OCI registries require Bicep v0.45.6+ (Radius pins v0.46.1) and `docker login` when authentication is required. Merge this setting into the `bicepconfig.json` discovered from the publishing directory or its ancestors without replacing existing settings:
+
+   ```json
+   {
+       "experimentalFeaturesEnabled": {
+           "ociEnabled": true
+       }
+   }
+   ```
+
+   `rad` inherits the caller's directory and environment; Bicep handles configuration and transport. There is no `--oci-enabled` switch. Local archives such as `./output.tgz` stay in the caller's directory after cleanup. Keep OCI unset or false for HTTPS loopback registries; enabling it selects HTTP.
 4. Update the root `bicepconfig.json` to reference your published extension:
 
    ```json
@@ -91,6 +103,8 @@ To confirm your schema compiles in a Bicep template, publish the generated Bicep
    ```
 
    Once Bicep restores the new extension, your schema changes are available in Bicep templates.
+
+   Restore uses the consuming template's effective configuration; enable `experimentalFeaturesEnabled.ociEnabled` there too when using a generic OCI registry.
 
 ### 5. Update docs and samples, then merge in order
 

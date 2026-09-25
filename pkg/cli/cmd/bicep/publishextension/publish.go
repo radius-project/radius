@@ -47,13 +47,16 @@ Bicep extensions enable extensibility for the Bicep language. This command can b
 Once an extension is been generated, it can be used locally or published to a container registry for distribution depending on the target specified.
 
 When publishing to an OCI registry it is expected the user runs docker login (or similar command) and has the proper permission to push to the target OCI registry.
+
+Generic OCI registries require Bicep v0.45.6+ and experimentalFeaturesEnabled.ociEnabled=true in the caller's effective bicepconfig.json. This command leaves configuration unchanged. Keep OCI unset or false for HTTPS loopback registries; enabling it selects HTTP.
+Local targets are relative to the caller's directory. Restore uses the consuming template's own configuration.
 		`,
 		Example: `
 # Generate a Bicep extension to a local file
 rad bicep publish-extension --from-file ./Example.Provider.yaml --target ./output.tgz
 
 # Publish a Bicep extension to a container registry
-bicep publish-extension ./Example.Provider.yaml --target br:ghcr.io/myregistry/example-provider:v1
+rad bicep publish-extension --from-file ./Example.Provider.yaml --target br:ghcr.io/myregistry/example-provider:v1
 		`,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
