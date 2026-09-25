@@ -110,10 +110,10 @@ class CloudArtifactTests(unittest.TestCase):
             "id": 202, "name": "cloud-test-inputs-101-1",
             "expired": False, "size_in_bytes": 5000,
             "digest": "sha256:" + "c" * 64, "created_at": "2026-09-25T10:10:00Z",
-            "workflow_run": {"id": 101, "repository_id": 340522752, "head_sha": "a" * 40},
+            "workflow_run": {"id": 101, "repository_id": 340522752, "head_sha": "b" * 40},
         }
         self.run = {
-            "id": 101, "run_attempt": 1, "head_sha": "a" * 40,
+            "id": 101, "run_attempt": 1, "head_sha": "b" * 40,
             "event": "pull_request_target",
             "repository": {"full_name": artifacts.REPOSITORY},
             "path": ".github/workflows/functional-test-cloud.yaml",
@@ -272,6 +272,7 @@ class CloudArtifactTests(unittest.TestCase):
             ("workflow_run", {"id": 99, "repository_id": 340522752, "head_sha": "a" * 40}),
             ("workflow_run", {"id": 101, "repository_id": 99, "head_sha": "a" * 40}),
             ("workflow_run", {"id": 101, "repository_id": 340522752, "head_sha": "c" * 40}),
+            ("workflow_run", {"id": 101, "repository_id": 340522752, "head_sha": "a" * 40}),
         ]:
             with self.subTest(field=field, value=value), \
                     patch.object(artifacts, "api", return_value=self.run):
@@ -289,6 +290,29 @@ class CloudArtifactTests(unittest.TestCase):
                     patch.object(artifacts, "api", return_value={**self.run, field: value}):
                 with self.assertRaises(ValueError):
                     artifacts.verify_metadata(self.metadata)
+
+    def test_event_specific_run_heads_do_not_conflate_controller_and_source(self):
+        for event, source_sha, expected in [
+            ("pull_request_target", "b" * 40, "b" * 40),
+            ("workflow_dispatch", "b" * 40, "a" * 40),
+            ("schedule", "b" * 40, "a" * 40),
+            ("repository_dispatch", "b" * 40, "a" * 40),
+            ("merge_group", "a" * 40, "a" * 40),
+        ]:
+            with self.subTest(event=event), patch.dict(os.environ, {
+                    "GITHUB_EVENT_NAME": event, "CHECKOUT_REF": source_sha}):
+                source = artifacts.source_identity("1")
+                self.assertEqual(source["workflowSHA"], "a" * 40)
+                self.assertEqual(source["commit"], source_sha)
+                self.assertEqual(source["runHeadSHA"], expected)
+                metadata = copy.deepcopy(self.metadata)
+                metadata["workflow_run"]["head_sha"] = expected
+                run = {**self.run, "event": event, "head_sha": expected}
+                with patch.object(artifacts, "api", return_value=run):
+                    self.assertEqual(artifacts.verify_metadata(metadata), 1)
+                with patch.object(artifacts, "api", return_value={**run, "head_sha": "c" * 40}):
+                    with self.assertRaisesRegex(ValueError, "attempt mismatch"):
+                        artifacts.verify_metadata(metadata)
 
     def test_archive_paths_and_links_rejected_before_extraction(self):
         for name in ("../escape", "/absolute", "images/../escape", "images//ucpd/index.json",

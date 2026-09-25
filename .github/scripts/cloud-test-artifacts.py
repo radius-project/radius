@@ -103,9 +103,18 @@ def source_identity(attempt):
         "commit": commit,
         "workflowRepository": repository,
         "workflowSHA": workflow_sha,
+        "runHeadSHA": run_head_sha(),
         "runId": str(number(environment("GITHUB_RUN_ID"))),
         "generationAttempt": number(attempt),
     }
+
+
+def run_head_sha():
+    # Actions records the PR candidate, not the controller SHA, for PR-target runs.
+    name = "CHECKOUT_REF" if environment("GITHUB_EVENT_NAME") == "pull_request_target" else "GITHUB_SHA"
+    value = environment(name)
+    require(re.fullmatch(r"[0-9a-f]{40}", value), "invalid Actions run head SHA")
+    return value
 
 
 def tag():
@@ -323,7 +332,7 @@ def verify_metadata(metadata, result_name=None):
     run = metadata.get("workflow_run", {})
     require(run.get("id") == run_id and
             run.get("repository_id") == number(environment("GITHUB_REPOSITORY_ID")) and
-            run.get("head_sha") == environment("GITHUB_SHA"),
+            run.get("head_sha") == run_head_sha(),
             "artifact is not from this workflow run/repository/commit")
     require(metadata.get("expired") is False, "artifact has expired")
     size = metadata.get("size_in_bytes")
@@ -344,7 +353,7 @@ def verify_metadata(metadata, result_name=None):
     attempt_run = api(f"repos/{REPOSITORY}/actions/runs/{run_id}/attempts/{attempt}")
     require(attempt_run.get("id") == run_id and
             attempt_run.get("run_attempt") == attempt and
-            attempt_run.get("head_sha") == environment("GITHUB_SHA") and
+            attempt_run.get("head_sha") == run_head_sha() and
             attempt_run.get("event") == environment("GITHUB_EVENT_NAME") and
             attempt_run.get("repository", {}).get("full_name") == REPOSITORY and
             attempt_run.get("path", "").split("@")[0] ==

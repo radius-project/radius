@@ -42,9 +42,16 @@ runs:
       if: ${{ inputs.secure == 'true' }}
       shell: bash
       run: |
-        create_openssl_cfg() {
-          CFG=$(
-            cat <<EOF
+        set -euo pipefail
+        if [[ ! "${INPUT_REGISTRY_NAME}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ||
+              ! "${INPUT_REGISTRY_SERVER}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]]; then
+          echo "::error::Local registry names must be DNS hostnames"
+          exit 1
+        fi
+        TEMP_CERT_DIR="${STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR}"
+        mkdir -p "${TEMP_CERT_DIR}/certs/${INPUT_REGISTRY_SERVER}"
+
+        cat >"${TEMP_CERT_DIR}/req.cnf" <<EOF
         [req]
         distinguished_name = subject
         x509_extensions    = x509_ext
@@ -65,27 +72,15 @@ runs:
         DNS.1 = ${INPUT_REGISTRY_NAME}
         DNS.2 = ${INPUT_REGISTRY_SERVER}
         EOF
-          )
-          echo "$CFG"
-        }
-
-        TEMP_CERT_DIR="${STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR}"
-
-        pushd "${TEMP_CERT_DIR}"
-        # Create the directory for the certificates
-        mkdir -p "certs/${INPUT_REGISTRY_SERVER}"
-
-        echo "==== Generate the openssl config"
-        create_openssl_cfg >req.cnf
 
         echo "==== Create the self signed certificate certificate and client key files"
         openssl req -x509 \
           -nodes \
           -days 365 \
           -newkey rsa:4096 \
-          -keyout "certs/${INPUT_REGISTRY_SERVER}/client.key" \
-          -out "certs/${INPUT_REGISTRY_SERVER}/client.crt" \
-          -config req.cnf \
+          -keyout "${TEMP_CERT_DIR}/certs/${INPUT_REGISTRY_SERVER}/client.key" \
+          -out "${TEMP_CERT_DIR}/certs/${INPUT_REGISTRY_SERVER}/client.crt" \
+          -config "${TEMP_CERT_DIR}/req.cnf" \
           -sha256
       env:
         INPUT_REGISTRY_NAME: ${{ inputs.registry-name }}

@@ -425,7 +425,6 @@ jobs:
         run: |
           cat <<EOF > ./test/bicepconfig.json
           {
-            "experimentalFeaturesEnabled": {"ociEnabled": true},
             "extensions": {
               "radius": "br:localhost:5000/test/radius:${REL_VERSION}",
               "aws": "br:${BICEP_TYPES_REGISTRY}/aws:latest"

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, mkdtempSync, mkdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { runInNewContext } from "node:vm";
@@ -268,6 +269,100 @@ test("candidate cloud jobs have no publishing or status-App authority", () => {
     ),
     false
   );
+});
+
+test("TLS-local generation retains the existing secure registry configuration", () => {
+  assert.equal(
+    jobStep(cloud.jobs.build, "Create a job-local registry").with.secure,
+    "true"
+  );
+  const directory = mkdtempSync(path.join(tmpdir(), "cloud-bicep-config-"));
+  try {
+    mkdirSync(path.join(directory, "test"));
+    const generated = jobStep(
+      cloud.jobs.build,
+      "Generate test bicepconfig.json"
+    );
+    execFileSync("bash", ["-e", "-c", generated.run], {
+      cwd: directory,
+      env: {
+        ...process.env,
+        REL_VERSION: "pr-func0123456789",
+        BICEP_TYPES_REGISTRY: "biceptypes.azurecr.io"
+      }
+    });
+    const config = JSON.parse(
+      readFileSync(path.join(directory, "test/bicepconfig.json"), "utf8")
+    );
+    assert.equal(
+      config.extensions.radius,
+      "br:localhost:5000/test/radius:pr-func0123456789"
+    );
+    assert.notEqual(config.experimentalFeaturesEnabled?.ociEnabled, true);
+  } finally {
+    rmSync(directory, { recursive: true });
+  }
+});
+
+test("local registry certificates use validated hostnames without stdout configuration", () => {
+  const action = JSON.parse(
+    execFileSync(
+      "yq",
+      ["-o=json", ".", ".github/actions/create-local-registry/action.yaml"],
+      { encoding: "utf8" }
+    )
+  );
+  const script = jobStep(
+    { steps: action.runs.steps },
+    "Create certificates for local registry"
+  ).run;
+  const directory = mkdtempSync(path.join(tmpdir(), "cloud-registry-cert-"));
+  try {
+    const env = {
+      ...process.env,
+      INPUT_REGISTRY_NAME: "radius-registry",
+      INPUT_REGISTRY_SERVER: "localhost",
+      STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR: directory
+    };
+    const valid = spawnSync("bash", ["-e", "-c", script], {
+      env,
+      encoding: "utf8"
+    });
+    assert.equal(valid.status, 0, valid.stderr);
+    assert.doesNotMatch(valid.stdout, /\[alt_names\]|DNS\.1|DNS\.2/);
+    const config = readFileSync(path.join(directory, "req.cnf"), "utf8");
+    assert.match(config, /DNS\.1 = radius-registry/);
+    assert.match(config, /DNS\.2 = localhost/);
+    const certificate = execFileSync(
+      "openssl",
+      [
+        "x509",
+        "-in",
+        path.join(directory, "certs/localhost/client.crt"),
+        "-noout",
+        "-text"
+      ],
+      { encoding: "utf8" }
+    );
+    assert.match(certificate, /DNS:radius-registry, DNS:localhost/);
+    for (const name of ["INPUT_REGISTRY_NAME", "INPUT_REGISTRY_SERVER"]) {
+      const invalid = spawnSync("bash", ["-e", "-c", script], {
+        env: {
+          ...env,
+          [name]: "localhost\n::set-output name=TEMP_CERT_DIR::/tmp/forged"
+        },
+        encoding: "utf8"
+      });
+      assert.notEqual(invalid.status, 0);
+      assert.match(
+        invalid.stdout,
+        /::error::Local registry names must be DNS hostnames/
+      );
+      assert.doesNotMatch(invalid.stdout + invalid.stderr, /::set-output/);
+    }
+  } finally {
+    rmSync(directory, { recursive: true });
+  }
 });
 
 test("trusted cloud uploaders execute only reviewed data-copy helpers", () => {
