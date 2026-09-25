@@ -68,6 +68,17 @@ jobs:
         with:
           python-version-file: .python-version
 
+      - name: Setup Node.js for workflow tests
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          package-manager-cache: false
+
+      - name: Test Bicep publishing
+        run: |
+          python -B .github/scripts/bicep-types_test.py
+          node --test .github/scripts/bicep-types-workflows.test.mjs
+
       # Helm is required because `make test` depends on the `test-helm` target,
       # which installs the helm-unittest plugin and runs the chart unit tests.
       - name: Install helm

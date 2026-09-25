@@ -28,7 +28,7 @@ permissions: {}
 
 concurrency:
   group: build-${{ github.ref }}-${{ github.sha }}
-  cancel-in-progress: true
+  cancel-in-progress: false # Do not interrupt an in-flight Bicep publish/mirror pair.
 
 jobs:
   changes:
@@ -87,9 +87,50 @@ jobs:
       packages: write # Required for uploading the package
       contents: read # Required for actions/checkout
 
-  build-and-push-bicep-types:
+  bicep-publish-mode:
+    name: Select Bicep publisher
     needs: [changes]
-    if: github.repository == 'radius-project/radius' && github.ref == 'refs/heads/main' && needs.changes.outputs.only_changed != 'true'
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
+    steps:
+      - name: Select the eligible publisher
+        id: mode
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const eligible = context.repo.owner === "radius-project" &&
+              context.repo.repo === "radius" && context.ref === "refs/heads/main" &&
+              ["push", "workflow_dispatch"].includes(context.eventName);
+            if (!eligible) {
+              core.setOutput("mode", "skip");
+              return;
+            }
+            if (process.env.CHANGES_RESULT !== "success" ||
+                !["true", "false"].includes(process.env.ONLY_CHANGED)) {
+              core.setFailed("Bicep publishing requires successful, explicit change detection");
+              return;
+            }
+            if (process.env.ONLY_CHANGED === "true") {
+              core.setOutput("mode", "skip");
+              return;
+            }
+            const flag = process.env.PUBLISH_ENABLED;
+            if (!["", "false", "true"].includes(flag)) {
+              core.notice("Invalid BICEP_GHCR_PUBLISH_ENABLED value; direct publishing remains disabled");
+            }
+            core.setOutput("mode", flag === "true" ? "direct" : "legacy");
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          ONLY_CHANGED: ${{ needs.changes.outputs.only_changed }}
+          PUBLISH_ENABLED: ${{ vars.BICEP_GHCR_PUBLISH_ENABLED }}
+
+  build-and-push-bicep-types:
+    needs: [bicep-publish-mode]
+    if: needs.bicep-publish-mode.outputs.mode == 'legacy'
     uses: ./.github/workflows/__build-bicep-types.yaml
     # The publisher bot credentials are read inside the called job, which is the
     # only job that carries the publish-bicep environment. Environment secrets
@@ -99,10 +140,20 @@ jobs:
     permissions:
       contents: read # Required for actions/checkout
 
+  publish-bicep-types-ghcr:
+    needs: [bicep-publish-mode]
+    if: needs.bicep-publish-mode.outputs.mode == 'direct' && github.ref_protected
+    uses: ./.github/workflows/__publish-bicep-types.yaml
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+      id-token: write
+
   build-summary:
     if: always()
     name: Build Summary
-    needs: [build-check, build-and-push-images, build-and-push-bicep-types]
+    needs: [changes, build-check, build-and-push-images, bicep-publish-mode, build-and-push-bicep-types, publish-bicep-types-ghcr]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -113,13 +164,24 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Check the selected Bicep publisher
+        run: python3 .github/scripts/bicep-types.py summary
+        env:
+          BICEP_MODE: ${{ needs.bicep-publish-mode.outputs.mode }}
+          BICEP_MODE_RESULT: ${{ needs.bicep-publish-mode.result }}
+          BICEP_LEGACY_RESULT: ${{ needs.build-and-push-bicep-types.result }}
+          BICEP_DIRECT_RESULT: ${{ needs.publish-bicep-types-ghcr.result }}
+          BICEP_PUBLICATION_STATUS: ${{ needs.publish-bicep-types-ghcr.outputs.status }}
+
       - name: Check all build jobs
         run: |
           ./.github/scripts/build-summary.sh \
             "build-check:${BUILD_CHECK_RESULT}" \
             "build-and-push-images:${BUILD_AND_PUSH_IMAGES_RESULT}" \
-            "build-and-push-bicep-types:${BUILD_AND_PUSH_BICEP_TYPES_RESULT}"
+            "build-and-push-bicep-types:${BUILD_AND_PUSH_BICEP_TYPES_RESULT}" \
+            "publish-bicep-types-ghcr:${PUBLISH_BICEP_TYPES_GHCR_RESULT}"
         env:
           BUILD_CHECK_RESULT: ${{ needs.build-check.result }}
           BUILD_AND_PUSH_IMAGES_RESULT: ${{ needs.build-and-push-images.result }}
           BUILD_AND_PUSH_BICEP_TYPES_RESULT: ${{ needs.build-and-push-bicep-types.result }}
+          PUBLISH_BICEP_TYPES_GHCR_RESULT: ${{ needs.publish-bicep-types-ghcr.result }}
