@@ -35,6 +35,34 @@ function block(text, marker, indent) {
   return result.join("\n").trim();
 }
 
+function jobDependencies(text) {
+  const match = text.match(/^    needs:\s*\[([^\]]*)\]/m);
+  assert.ok(match, "Expected a literal needs array");
+  const dependencies = match[1]
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean);
+  assert.ok(
+    dependencies.every((name) => /^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(name))
+  );
+  return dependencies;
+}
+
+function assertBicepSummaryDependencies(summary) {
+  const dependencies = jobDependencies(summary);
+  for (const required of [
+    "changes",
+    "bicep-publish-mode",
+    "build-and-push-bicep-types",
+    "publish-bicep-types-ghcr"
+  ]) {
+    assert.ok(
+      dependencies.includes(required),
+      `Missing dependency: ${required}`
+    );
+  }
+}
+
 const routeScript = block(job(main, "bicep-publish-mode"), "script: |", 12);
 const legacyIf = job(main, "build-and-push-bicep-types").match(
   /^    if: (.+)$/m
@@ -229,15 +257,54 @@ test("credential separation, bundle reuse, and summary dependencies are wired", 
   assert.match(publish, /steps\.prepare\.outcome == 'success'/);
   assert.match(main, /cancel-in-progress: false/);
   const summary = job(main, "build-summary");
-  for (const dependency of [
-    "changes",
-    "bicep-publish-mode",
-    "build-and-push-bicep-types",
-    "publish-bicep-types-ghcr"
-  ]) {
-    assert.ok(summary.match(/^    needs: (.+)$/m)[1].includes(dependency));
-  }
+  assertBicepSummaryDependencies(summary);
   assert.match(summary, /python3 \.github\/scripts\/bicep-types\.py summary/);
+});
+
+const combinedDependencies = [
+  "publication-ref",
+  "changes",
+  "build-check",
+  "publish-cli",
+  "build-and-push-images",
+  "bicep-publish-mode",
+  "build-and-push-bicep-types",
+  "publish-bicep-types-ghcr"
+];
+
+for (const [format, needs] of [
+  ["inline", `    needs: [${combinedDependencies.join(", ")}]`],
+  [
+    "wrapped",
+    `    needs: [\n      ${combinedDependencies.join(",\n      ")},\n    ]`
+  ],
+  ["expanded", `    needs:\n      [${combinedDependencies.join(",\n       ")}]`]
+]) {
+  test(`Build Summary retains the combined dependencies in ${format} YAML`, () => {
+    const summary = job(
+      `jobs:\n  build-summary:\n${needs}\n    runs-on: ubuntu-24.04\n  next-job:\n    needs: [unrelated]`,
+      "build-summary"
+    );
+    assert.deepEqual(jobDependencies(summary), combinedDependencies);
+    assertBicepSummaryDependencies(summary);
+  });
+}
+
+test("Build Summary still rejects a missing exact dependency in multiline YAML", () => {
+  const dependencies = combinedDependencies.map((name) =>
+    name === "bicep-publish-mode" ? `${name}-unrelated` : name
+  );
+  assert.throws(
+    () =>
+      assertBicepSummaryDependencies(
+        `    needs:\n      [${dependencies.join(",\n       ")}]`
+      ),
+    /Missing dependency: bicep-publish-mode/
+  );
+  assert.throws(
+    () => jobDependencies("    runs-on: ubuntu-24.04"),
+    /Expected a literal needs array/
+  );
 });
 
 test("tag publishing and external legacy payload remain independent", () => {
