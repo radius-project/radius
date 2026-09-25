@@ -54,6 +54,16 @@ function allowed(job, values) {
   const expression = (
     job.if?.replace(/^\s*\${{\s*|\s*}}\s*$/g, "") ?? "true"
   ).replace(/\bneeds\.([A-Za-z_][A-Za-z0-9_-]*)/g, "needs['$1']");
+  const dependencies =
+    Array.isArray(job.needs) ? job.needs : [job.needs].filter(Boolean);
+  if (
+    !/\b(always|success|failure|cancelled)\(/.test(expression) &&
+    dependencies.some(
+      (name) => values.needs[name] && values.needs[name].result !== "success"
+    )
+  ) {
+    return false;
+  }
   return Boolean(runInNewContext(expression, values, { timeout: 1000 }));
 }
 
@@ -207,6 +217,41 @@ test("production preflight validates actual main and release ref shell checks", 
   }
 });
 
+test("legacy Bicep dispatch requires successful publication preflight", () => {
+  for (const [file, ref] of [
+    ["build-main.yaml", "refs/heads/main"],
+    ["build-release.yaml", "refs/tags/v0.60.0"]
+  ]) {
+    const job = workflow(file).jobs["build-and-push-bicep-types"];
+    assert.ok(job.needs.includes("publication-ref"));
+    assert.equal(job.uses, "./.github/workflows/__build-bicep-types.yaml");
+    assert.deepEqual(job.permissions, { contents: "read" });
+    assert.equal(job.secrets, "inherit");
+    for (const event_name of ["push", "workflow_dispatch"]) {
+      const needs = Object.fromEntries(
+        job.needs.map((name) => [
+          name,
+          {
+            result: "success",
+            outputs: { only_changed: "false", mode: "legacy" }
+          }
+        ])
+      );
+      assert.equal(
+        allowed(job, context({ github: { ref, event_name }, needs })),
+        true
+      );
+      for (const result of ["failure", "cancelled", "skipped"]) {
+        needs["publication-ref"].result = result;
+        assert.equal(
+          allowed(job, context({ github: { ref, event_name }, needs })),
+          false
+        );
+      }
+    }
+  }
+});
+
 test("candidate cloud jobs have no publishing or status-App authority", () => {
   const build = cloud.jobs.build;
   assert.deepEqual(build.permissions, { contents: "read" });
@@ -272,6 +317,20 @@ test("candidate cloud jobs have no publishing or status-App authority", () => {
 });
 
 test("TLS-local generation retains the existing secure registry configuration", () => {
+  const steps = cloud.jobs.build.steps;
+  const trusted = steps.findIndex(
+    (step) => step.name === "Checkout trusted local-registry setup"
+  );
+  const registry = steps.findIndex(
+    (step) => step.name === "Create a job-local registry"
+  );
+  const candidate = steps.findIndex(
+    (step) =>
+      step.name === "Checkout candidate source without publishing credentials"
+  );
+  assert.ok(trusted >= 0 && trusted < registry && registry < candidate);
+  assert.equal(steps[trusted].with.repository, repository);
+  assert.equal(steps[trusted].with.ref, "refs/heads/main");
   assert.equal(
     jobStep(cloud.jobs.build, "Create a job-local registry").with.secure,
     "true"
@@ -575,6 +634,7 @@ test("only trusted reporters can hold the status App key", () => {
 test("maintenance jobs reject canonical arbitrary refs while preserving safe fork testing", () => {
   const jobs = [
     workflow("long-running-azure.yaml").jobs.tests,
+    workflow("purge-azure-test-resources.yaml").jobs.purge_azure_resources,
     workflow("purge-azure-test-resources.yaml").jobs.purge_bicep_types,
     workflow("repo-radius-state-e2e.yaml").jobs["state-rehydration"],
     workflow("repo-radius-state-e2e.yaml").jobs["cleanup-state-version"],

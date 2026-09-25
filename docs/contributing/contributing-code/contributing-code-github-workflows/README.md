@@ -27,7 +27,7 @@ Cloud tests still require contributor authorization and retain their Test-tenant
 
 **Production publisher activation is a separate policy gate.** GHCR Actions package access is repository-scoped: read-only workflow defaults, `dev/` prefixes, CODEOWNERS alone, and unprotected environments are not package authorization boundaries. Before granting or enabling production extension publication, enforce restrictions that prevent non-publisher-trusted actors from creating or running elevated same-repository workflow definitions, including new workflow files. Protect main, approved release tags, and uploader code; restrict any bypass to publishing principals, using fork contributions for other actors. `github.ref_protected` records that a rule applies, not that its rules are sufficient. Verify production secret/environment and Azure OIDC trust policies reject candidate contexts, and that retained Test identities have no production ACR rights. These are live administrator prerequisites, not settings this workflow change applies; keep the companion publisher disabled until verified.
 
-Apply the isolation contract to every maintained branch that can execute PR workflows before activation: `pull_request_target` uses the PR base branch's workflow, so changing main does not repair an older release/feature branch. Legacy Bicep release dispatch through `__build-bicep-types.yaml` is unchanged here and must remain restricted to approved release refs until its separate integration.
+Apply the isolation contract to every maintained branch that can execute PR workflows before activation: `pull_request_target` uses the PR base branch's workflow, so changing main does not repair an older release/feature branch. Legacy Bicep dispatch through `__build-bicep-types.yaml` retains its implementation and credentials, but both main and release callers now require the publication-ref preflight. Keep its App credentials restricted to approved workflows/refs until its separate integration.
 
 ## Steps
 
@@ -44,7 +44,7 @@ Apply the isolation contract to every maintained branch that can execute PR work
 - Any Make target or script called by the workflow runs successfully from the repository root.
 - A fork run reaches all steps that do not require organization credentials and skips credential-dependent work with an explicit condition.
 - The [github-workflows.instructions.md](../../../../.github/instructions/github-workflows.instructions.md) checklist is satisfied — especially the fork-testability and `permissions:` items.
-- With Python 3, Node.js, `yq`, and `oras` installed, run `make test-publishing-isolation test-build-summary` for offline permission/guard, artifact-tampering, local OCI-copy, and required-summary coverage. This does not publish registry artifacts or deploy cloud resources. Cloud summaries treat failed change detection, rejected approval, missing inputs, failed uploads, and cancelled jobs as non-success; only a successful, explicit docs-only decision permits skipping the test phases.
+- With Python 3, Node.js, `yq`, `oras`, and OpenSSL installed, run `make test-publishing-isolation test-build-summary` for offline permission/guard, artifact-tampering, certificate/configuration, local OCI-copy, and required-summary coverage. This does not publish registry artifacts or deploy cloud resources. Cloud summaries treat failed change detection, rejected approval, missing inputs, failed uploads, and cancelled jobs as non-success; only a successful, explicit docs-only decision permits skipping the test phases.
 
 ## Troubleshooting
 

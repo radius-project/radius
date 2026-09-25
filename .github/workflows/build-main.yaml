@@ -106,7 +106,7 @@ jobs:
       contents: read # Required for actions/checkout
 
   build-and-push-bicep-types:
-    needs: [changes]
+    needs: [publication-ref, changes]
     if: github.repository == 'radius-project/radius' && github.ref == 'refs/heads/main' && needs.changes.outputs.only_changed != 'true'
     uses: ./.github/workflows/__build-bicep-types.yaml
     # The publisher bot credentials are read inside the called job, which is the

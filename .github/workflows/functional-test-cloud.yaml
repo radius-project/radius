@@ -371,6 +371,18 @@ jobs:
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
       BICEP_TRUSTED_REGISTRIES: localhost,radius-registry
     steps:
+      - name: Checkout trusted local-registry setup
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: radius-project/radius
+          ref: refs/heads/main
+          persist-credentials: false
+
+      - name: Create a job-local registry
+        uses: ./.github/actions/create-local-registry
+        with:
+          secure: "true"
+
       - name: Checkout candidate source without publishing credentials
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -393,11 +405,6 @@ jobs:
 
       - name: Install build tools
         run: make install-yq install-bicep install-oras
-
-      - name: Create a job-local registry
-        uses: ./.github/actions/create-local-registry
-        with:
-          secure: "true"
 
       - name: Build and publish container images locally
         run: make build && make docker-build && make docker-push
