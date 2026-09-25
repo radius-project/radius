@@ -544,12 +544,53 @@ Write-Output "$cliFileName installed into $resolvedInstallDir successfully"
 # Install bicep
 Write-Output ""
 Write-Output "Installing bicep..."
-& $cliFilePath bicep download
-if ($LASTEXITCODE -ne 0) {
-    Write-Warning "Failed to install bicep"
+
+# Bound the bicep download with a timeout. bicep is optional (a failure here is
+# non-fatal), and `rad bicep download` streams a large binary with no client-side
+# timeout, so a stalled network transfer can otherwise hang the installer
+# indefinitely. On timeout we stop the process, warn, and continue.
+$bicepTimeoutSeconds = 300
+$bicepFileName = if ($detectedOS -eq "windows") { "bicep.exe" } else { "bicep" }
+$bicepFilePath = Join-Path (Join-Path (Join-Path $HOME ".rad") "bin") $bicepFileName
+
+# `rad bicep download` writes to $env:BICEP when that variable is set. Clear it for
+# the child process so the download cannot clobber a user-managed bicep, and so the
+# file we clean up below is the one the download actually wrote.
+$savedBicepEnvVar = $env:BICEP
+$bicepInstalled = $false
+try {
+    Remove-Item Env:BICEP -ErrorAction SilentlyContinue
+    $bicepProcess = Start-Process -FilePath $cliFilePath -ArgumentList 'bicep', 'download' -NoNewWindow -PassThru -ErrorAction Stop
+    $bicepProcess | Wait-Process -Timeout $bicepTimeoutSeconds -ErrorAction SilentlyContinue
+    if (-not $bicepProcess.HasExited) {
+        $bicepProcess | Stop-Process -Force -ErrorAction SilentlyContinue
+        Write-Warning "Timed out installing bicep after $bicepTimeoutSeconds seconds"
+    }
+    elseif ($bicepProcess.ExitCode -ne 0) {
+        Write-Warning "Failed to install bicep"
+    }
+    else {
+        $bicepInstalled = $true
+    }
+}
+catch {
+    # Failing to even start the download must not abort the installer.
+    Write-Warning "Failed to install bicep: $($_.Exception.Message)"
+}
+finally {
+    if ($null -ne $savedBicepEnvVar) {
+        $env:BICEP = $savedBicepEnvVar
+    }
+}
+
+if ($bicepInstalled) {
+    Write-Output "bicep installed successfully"
 }
 else {
-    Write-Output "bicep installed successfully"
+    # `rad bicep download` creates and truncates the target file before starting the
+    # HTTP transfer, and rad treats any existing file as an installed bicep. Remove
+    # the partial download so later commands don't run a corrupt binary.
+    Remove-Item -LiteralPath $bicepFilePath -Force -ErrorAction SilentlyContinue
 }
 
 # Update PATH
