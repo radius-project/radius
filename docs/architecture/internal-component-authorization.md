@@ -264,11 +264,27 @@ Update SDK connections to send the required service credentials and deployment a
 
 ### Error Handling
 
+Error handling differs by trust boundary, because each boundary fails in a different way and has a different safe fallback. In all cases the rule is to fail closed: when Radius cannot confirm identity or authorization, it refuses the work rather than assuming it is allowed.
+
+#### User edge (Kubernetes to UCP)
+
+If UCP cannot verify the Kubernetes API server's client certificate, it must not trust the user and group names in the forwarded headers, because those headers are only meaningful once the proxy is authenticated. Reject the request rather than treating it as an anonymous or default-privileged user, and never read caller-supplied identity headers from an unverified connection.
+
+#### Component to component (mTLS and grant)
+
 An invalid TLS certificate can stop the connection before any HTTP response exists. Clients must never retry a failed authenticated connection using an unauthenticated endpoint.
 
 If a caller is authenticated but the requested work is not covered by a valid grant, reject it rather than performing it. If Radius cannot read the policy or grant needed to decide, return `503 Service Unavailable` rather than guessing that the request is allowed.
 
-For work already running, record the failed authorization step and stop starting new operations. Use the limited cleanup permission described earlier where needed; do not silently continue with an old or broader service permission.
+#### Asynchronous and in-flight work
+
+For work already running, record the failed authorization step and stop starting new operations. Use the limited cleanup permission described earlier where needed; do not silently continue with an old or broader service permission. A worker that cannot re-validate a queued operation against its execution record — because the record is missing, closed, or its inputs no longer match the approved hash — must not run the step; distinguish a legitimate retry of the same approved work from a replayed or altered message and reject only the latter.
+
+#### Backend state and credentials
+
+If a component is denied direct access to a store, queue, or cloud credential it is not scoped for, that denial must be enforced at the backend and surfaced as a failure, not worked around through a broader shared identity. A failure to mint a scoped credential stops the dependent deployment rather than falling back to a standing, more privileged credential.
+
+#### Certificate authority and rotation
 
 If a service certificate cannot be rotated before it expires, fail closed rather than continuing on an unverifiable identity. Because certificates are issued with a lifetime longer than the rotation interval, a rotation failure first enters a grace window in which the current certificate is still valid: during that window, retry issuance with backoff and raise an operator alert, but let in-flight deployments continue and begin refusing new ones so a transient CA problem does not immediately halt the system. Once the certificate actually expires with no valid replacement, mTLS connections to and from that component must fail and its deployments stop; a component must never fall back to an unauthenticated path or accept an expired peer certificate to make progress. Recovery is operator-driven — repair the CA or issuance path, let rotation succeed, and resume — and interrupted deployments rely on the retry and re-validation behavior described for asynchronous work rather than on a weakened identity check.
 
