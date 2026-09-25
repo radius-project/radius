@@ -26,7 +26,6 @@ jobs:
       actions: read
     outputs:
       artifact_id: ${{ steps.select.outputs.artifact_id || steps.upload.outputs.artifact-id }}
-      artifact_digest: ${{ steps.select.outputs.artifact_digest || steps.upload.outputs.artifact-digest }}
     services:
       registry:
         image: registry:2.8.3@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
@@ -39,17 +38,17 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      - name: Setup Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version-file: .python-version
-
       - name: Select immutable run bundle
         id: select
-        run: python .github/scripts/bicep-types.py select --directory "${RUNNER_TEMP}/bicep-source"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 2
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
         env:
-          GH_TOKEN: ${{ github.token }}
-          BICEP_SOURCE_REF_PROTECTED: ${{ github.ref_protected }}
+          INPUT_OPERATION: select
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
 
       - name: Setup Go for generation
         if: steps.select.outputs.reuse == 'false'
@@ -75,24 +74,24 @@ jobs:
 
       - name: Capture native Bicep OCI bundle
         if: steps.select.outputs.reuse == 'false'
-        run: |
-          python .github/scripts/bicep-types.py bundle \
-            --source "${RUNNER_TEMP}/bicep-source/source.json" \
-            --index hack/bicep-types-radius/generated/index.json \
-            --registry "localhost:${REGISTRY_PORT}" \
-            --directory "${RUNNER_TEMP}/bicep-bundle"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
         env:
-          REGISTRY_PORT: ${{ job.services.registry.ports['5000'] }}
+          INPUT_OPERATION: capture
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
+          INPUT_REGISTRY: localhost:${{ job.services.registry.ports['5000'] }}
 
       - name: Retain immutable bundle
         if: steps.select.outputs.reuse == 'false'
         id: upload
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: bicep-types-radius-${{ github.run_id }}
-          path: ${{ runner.temp }}/bicep-bundle
+          path: ${{ runner.temp }}/bicep-types/bicep-types-radius-${{ github.run_id }}.tar
+          archive: false
           if-no-files-found: error
-          compression-level: 0
           retention-days: 30
 
   publish:
@@ -116,8 +115,6 @@ jobs:
     outputs:
       status: ${{ steps.publish.outputs.status }}
       manifest_digest: ${{ steps.publish.outputs.manifest_digest }}
-    env:
-      BICEP_SOURCE_REF_PROTECTED: ${{ github.ref_protected }}
     steps:
       - name: Checkout trusted publisher
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -125,25 +122,32 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
-      - name: Setup Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version-file: .python-version
-
       - name: Install pinned copy tool
         run: make install-oras
 
+      - name: Download the immutable run bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ needs.bundle.outputs.artifact_id }}
+          path: ${{ runner.temp }}/bicep-types/download
+          github-token: ${{ github.token }}
+          repository: radius-project/radius
+          run-id: ${{ github.run_id }}
+          skip-decompress: true
+          digest-mismatch: error
+
       - name: Validate bundle and stamp source manifest
         id: prepare
-        run: |
-          python .github/scripts/bicep-types.py prepare \
-            --artifact-id "${ARTIFACT_ID}" \
-            --artifact-digest "${ARTIFACT_DIGEST}" \
-            --directory "${RUNNER_TEMP}/bicep-publication"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 2
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
         env:
-          GH_TOKEN: ${{ github.token }}
-          ARTIFACT_ID: ${{ needs.bundle.outputs.artifact_id }}
-          ARTIFACT_DIGEST: ${{ needs.bundle.outputs.artifact_digest }}
+          INPUT_OPERATION: prepare
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
+          INPUT_ARTIFACT_ID: ${{ needs.bundle.outputs.artifact_id }}
 
       - name: Isolate registry credentials
         run: |
@@ -169,19 +173,21 @@ jobs:
 
       - name: Publish and verify the complete pair
         id: publish
-        run: python .github/scripts/bicep-types.py publish --directory "${RUNNER_TEMP}/bicep-publication"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          retries: 2
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
         env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: Report publication status
-        if: always() && steps.prepare.outcome == 'success'
-        run: python .github/scripts/bicep-types.py report --directory "${RUNNER_TEMP}/bicep-publication"
+          INPUT_OPERATION: publish
+          INPUT_DIRECTORY: ${{ runner.temp }}/bicep-types
 
       - name: Retain publication receipt
         if: always() && steps.prepare.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: bicep-types-radius-receipt-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/bicep-publication/receipt.json
+          path: ${{ runner.temp }}/bicep-types/receipt.json
           if-no-files-found: error
           retention-days: 30

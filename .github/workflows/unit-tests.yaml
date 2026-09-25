@@ -75,9 +75,7 @@ jobs:
           package-manager-cache: false
 
       - name: Test Bicep publishing
-        run: |
-          python -B .github/scripts/bicep-types_test.py
-          node --test .github/scripts/bicep-types-workflows.test.mjs
+        run: node --test .github/scripts/bicep-types.test.mjs
 
       # Helm is required because `make test` depends on the `test-helm` target,
       # which installs the helm-unittest plugin and runs the chart unit tests.

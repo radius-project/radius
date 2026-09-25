@@ -93,37 +93,25 @@ jobs:
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
-    permissions: {}
+    permissions:
+      contents: read
     outputs:
       mode: ${{ steps.mode.outputs.mode }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Select the eligible publisher
         id: mode
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
-            const eligible = context.repo.owner === "radius-project" &&
-              context.repo.repo === "radius" && context.ref === "refs/heads/main" &&
-              ["push", "workflow_dispatch"].includes(context.eventName);
-            if (!eligible) {
-              core.setOutput("mode", "skip");
-              return;
-            }
-            if (process.env.CHANGES_RESULT !== "success" ||
-                !["true", "false"].includes(process.env.ONLY_CHANGED)) {
-              core.setFailed("Bicep publishing requires successful, explicit change detection");
-              return;
-            }
-            if (process.env.ONLY_CHANGED === "true") {
-              core.setOutput("mode", "skip");
-              return;
-            }
-            const flag = process.env.PUBLISH_ENABLED;
-            if (!["", "false", "true"].includes(flag)) {
-              core.notice("Invalid BICEP_GHCR_PUBLISH_ENABLED value; direct publishing remains disabled");
-            }
-            core.setOutput("mode", flag === "true" ? "direct" : "legacy");
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
         env:
+          INPUT_OPERATION: mode
           CHANGES_RESULT: ${{ needs.changes.result }}
           ONLY_CHANGED: ${{ needs.changes.outputs.only_changed }}
           PUBLISH_ENABLED: ${{ vars.BICEP_GHCR_PUBLISH_ENABLED }}
@@ -165,8 +153,13 @@ jobs:
           persist-credentials: false
 
       - name: Check the selected Bicep publisher
-        run: python3 .github/scripts/bicep-types.py summary
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/bicep-types.mjs`)
+            await script({github, core, context})
         env:
+          INPUT_OPERATION: summary
           BICEP_MODE: ${{ needs.bicep-publish-mode.outputs.mode }}
           BICEP_MODE_RESULT: ${{ needs.bicep-publish-mode.result }}
           BICEP_LEGACY_RESULT: ${{ needs.build-and-push-bicep-types.result }}
