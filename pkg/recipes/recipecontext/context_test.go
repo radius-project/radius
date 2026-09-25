@@ -17,6 +17,9 @@ limitations under the License.
 package recipecontext
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"strings"
 	"testing"
 
 	coredm "github.com/radius-project/radius/pkg/corerp/datamodel"
@@ -24,6 +27,47 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
+// The IDs the hash cases below are built from. Named so a call reads as the
+// owner it describes rather than as four long strings.
+const (
+	testResourceID      = "/planes/radius/local/resourceGroups/testGroup/providers/applications.datastores/mongodatabases/mongo0"
+	testEnvironmentID   = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/environments/env0"
+	testApplicationID   = "/planes/radius/local/resourceGroups/test-group/providers/Applications.Core/applications/testApplication"
+	testResourceGroupID = "/subscriptions/testSub/resourceGroups/testGroup"
+	testSubscriptionID  = "/subscriptions/testSub"
+)
+
+// expectedResourceNameHash computes the documented resourceNameHash rule: the
+// first resourceNameHashLength hex characters of SHA-256 over the lowercased
+// Azure scope, application, environment, and resource IDs, NUL-separated.
+//
+// This deliberately reimplements the rule rather than calling New or reusing
+// hashutil. A helper that called the production seed would compare the
+// implementation against itself, so every assertion would keep passing through
+// any seed change and would assert nothing. Two independent expressions of the
+// rule have to agree, which is what makes a seed change fail here.
+//
+// Pass the *effective* Azure scope, meaning the resource group ID when one is
+// configured and the subscription ID otherwise. Choosing between those two is
+// the production code's job and is asserted separately.
+func expectedResourceNameHash(t *testing.T, azureScopeID, applicationID, environmentID, resourceID string) string {
+	t.Helper()
+
+	seed := strings.Join([]string{
+		strings.ToLower(azureScopeID),
+		strings.ToLower(applicationID),
+		strings.ToLower(environmentID),
+		strings.ToLower(resourceID),
+	}, "\x00")
+
+	sum := sha256.Sum256([]byte(seed))
+
+	// 16 rather than resourceNameHashLength, for the same independence reason:
+	// the truncation length is part of the rule, so reusing the production
+	// constant would let a change to it pass unnoticed.
+	return hex.EncodeToString(sum[:])[:16]
+}
 
 func TestNewContext(t *testing.T) {
 	testMetadata := &recipes.ResourceMetadata{
@@ -94,7 +138,7 @@ func TestNewContext(t *testing.T) {
 						SubscriptionID: "testSub",
 						ID:             "/subscriptions/testSub",
 					},
-					ResourceNameHash: "50d9425e85470ffd",
+					ResourceNameHash: expectedResourceNameHash(t, testResourceGroupID, testApplicationID, testEnvironmentID, testResourceID),
 				},
 				AWS: &ProviderAWS{
 					Region:  "us-west-2",
@@ -187,7 +231,7 @@ func TestNewContext(t *testing.T) {
 						SubscriptionID: "testSub",
 						ID:             "/subscriptions/testSub",
 					},
-					ResourceNameHash: "50d9425e85470ffd",
+					ResourceNameHash: expectedResourceNameHash(t, testResourceGroupID, testApplicationID, testEnvironmentID, testResourceID),
 				},
 			},
 		},
@@ -458,7 +502,12 @@ func TestNewContext_AzureProviderSubscriptionOnly(t *testing.T) {
 	require.Equal(t, "", recipeContext.Azure.ResourceGroup.Name)
 	require.Equal(t, "/subscriptions/test-subscription-id/resourceGroups/", recipeContext.Azure.ResourceGroup.ID)
 
-	require.Equal(t, "bff74e743af66700", recipeContext.Azure.ResourceNameHash)
+	// The effective scope is the subscription, because no resource group is configured.
+	require.Equal(
+		t,
+		expectedResourceNameHash(t, "/subscriptions/test-subscription-id", testMetadata.ApplicationID, testMetadata.EnvironmentID, testMetadata.ResourceID),
+		recipeContext.Azure.ResourceNameHash,
+	)
 }
 
 func TestNewContext_ResourceNameHash(t *testing.T) {
@@ -479,7 +528,12 @@ func TestNewContext_ResourceNameHash(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, ctx.Azure)
 		require.Len(t, ctx.Azure.ResourceNameHash, resourceNameHashLength)
-		require.Equal(t, "b4594ce7cc97424f", ctx.Azure.ResourceNameHash)
+		// baseMetadata sets no application, so the application segment is empty.
+		require.Equal(
+			t,
+			expectedResourceNameHash(t, testResourceGroupID, baseMetadata.ApplicationID, baseMetadata.EnvironmentID, baseMetadata.ResourceID),
+			ctx.Azure.ResourceNameHash,
+		)
 	})
 
 	t.Run("is case insensitive", func(t *testing.T) {
@@ -532,7 +586,11 @@ func TestNewContext_ResourceNameHash(t *testing.T) {
 		ctx, err := New(baseMetadata, azureConfig("/subscriptions/testSub"))
 		require.NoError(t, err)
 		require.NotNil(t, ctx.Azure)
-		require.Equal(t, "509212db4b1fe144", ctx.Azure.ResourceNameHash)
+		require.Equal(
+			t,
+			expectedResourceNameHash(t, testSubscriptionID, baseMetadata.ApplicationID, baseMetadata.EnvironmentID, baseMetadata.ResourceID),
+			ctx.Azure.ResourceNameHash,
+		)
 	})
 
 	// The resource ID is scoped to a UCP resource group and names the resource,
