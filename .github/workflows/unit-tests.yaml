@@ -79,7 +79,7 @@ jobs:
         run: make test-cluster-diagnostics
 
       - name: Test publishing credential isolation
-        run: make install-yq install-oras test-publishing-isolation
+        run: make install-yq test-publishing-isolation
 
       - name: Run make test (unit tests)
         env:

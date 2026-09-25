@@ -85,9 +85,8 @@ test-build-summary: ## Tests the build job summary rendering shared by the build
 	@bash ./.github/scripts/build-summary_test.sh
 
 .PHONY: test-publishing-isolation
-test-publishing-isolation: ## Tests workflow permissions and cloud artifact handoffs without registry credentials (requires yq and oras)
-	@PYTHONDONTWRITEBYTECODE=1 python3 .github/scripts/cloud-test-artifacts_test.py
-	@node --test .github/scripts/publishing-isolation_test.mjs
+test-publishing-isolation: ## Tests publishing boundaries without credentials (requires Node.js, yq and OpenSSL)
+	@node --test .github/scripts/cloud-test-artifacts.test.mjs
 
 .PHONY: test-goreleaser-shadow
 test-goreleaser-shadow: ## Tests GoReleaser shadow output parity verification

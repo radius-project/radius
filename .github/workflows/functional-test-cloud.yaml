@@ -459,21 +459,26 @@ jobs:
           repository: radius-project/radius
           ref: ${{ needs.setup.outputs.TRUSTED_SHA }}
           path: .cloud-test-tools
-          sparse-checkout: .github/scripts/cloud-test-artifacts.py
+          sparse-checkout: .github/scripts/cloud-test-artifacts.mjs
           sparse-checkout-cone-mode: false
           persist-credentials: false
 
       - name: Export OCI data
-        run: python3 .cloud-test-tools/.github/scripts/cloud-test-artifacts.py export "${RUNNER_TEMP}/cloud-test-inputs"
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { capture } = await import(`${process.env.GITHUB_WORKSPACE}/.cloud-test-tools/.github/scripts/cloud-test-artifacts.mjs`);
+            await capture({ core, context });
+        env:
+          INPUT_DIRECTORY: ${{ runner.temp }}/cloud-test-inputs
 
       - name: Upload immutable cloud-test inputs
         id: inputs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: cloud-test-inputs-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/cloud-test-inputs/
+          path: ${{ runner.temp }}/cloud-test-inputs/cloud-test-inputs-${{ github.run_id }}-${{ github.run_attempt }}.tar
+          archive: false
           if-no-files-found: error
-          compression-level: 0
           retention-days: 1
 
   upload-ghcr:
@@ -490,7 +495,7 @@ jobs:
       CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
       REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
-      ARTIFACT_ID: ${{ needs.build.outputs.ARTIFACT_ID }}
+      INPUT_ARTIFACT_ID: ${{ needs.build.outputs.ARTIFACT_ID }}
     steps:
       - name: Checkout trusted uploader
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -508,10 +513,32 @@ jobs:
       - name: Install trusted ORAS
         run: make install-oras
 
-      - name: Download and validate producing run and OCI data
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 .github/scripts/cloud-test-artifacts.py download "${RUNNER_TEMP}/cloud-test-inputs"
+      - name: Select the exact producing artifact
+        id: select
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { select } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await select({ github, core, context });
+
+      - name: Download immutable OCI data
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ steps.select.outputs.artifact_id }}
+          path: ${{ runner.temp }}/cloud-test-inputs/download
+          github-token: ${{ github.token }}
+          repository: radius-project/radius
+          run-id: ${{ github.run_id }}
+          skip-decompress: true
+          digest-mismatch: error
+
+      - name: Validate source and import OCI data
+        id: prepare
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { prepare } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await prepare({ core });
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
@@ -521,13 +548,20 @@ jobs:
           password: ${{ github.token }}
 
       - name: Copy validated images and recipes
-        run: python3 .github/scripts/cloud-test-artifacts.py upload "${RUNNER_TEMP}/cloud-test-inputs" --destination ghcr
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { publish } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await publish({ core, context });
+        env:
+          INPUT_DESTINATION: ghcr
 
       - name: Upload publication receipt
+        if: always() && steps.prepare.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cloud-ghcr-receipt-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/cloud-test-inputs.ghcr-receipt.json
+          path: ${{ runner.temp }}/cloud-test-inputs/receipt.json
           if-no-files-found: error
           retention-days: 7
 
@@ -545,7 +579,7 @@ jobs:
       CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
       REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
-      ARTIFACT_ID: ${{ needs.build.outputs.ARTIFACT_ID }}
+      INPUT_ARTIFACT_ID: ${{ needs.build.outputs.ARTIFACT_ID }}
     steps:
       - name: Checkout trusted uploader
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -563,10 +597,32 @@ jobs:
       - name: Install trusted ORAS
         run: make install-oras
 
-      - name: Download and validate producing run and OCI data
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python3 .github/scripts/cloud-test-artifacts.py download "${RUNNER_TEMP}/cloud-test-inputs"
+      - name: Select the exact producing artifact
+        id: select
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { select } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await select({ github, core, context });
+
+      - name: Download immutable OCI data
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ steps.select.outputs.artifact_id }}
+          path: ${{ runner.temp }}/cloud-test-inputs/download
+          github-token: ${{ github.token }}
+          repository: radius-project/radius
+          run-id: ${{ github.run_id }}
+          skip-decompress: true
+          digest-mismatch: error
+
+      - name: Validate source and import OCI data
+        id: prepare
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { prepare } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await prepare({ core });
 
       - name: Login to Test-tenant Azure
         uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
@@ -579,13 +635,20 @@ jobs:
         run: az acr login --name crradfunctest1b2s
 
       - name: Copy validated Radius test types
-        run: python3 .github/scripts/cloud-test-artifacts.py upload "${RUNNER_TEMP}/cloud-test-inputs" --destination acr
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { publish } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await publish({ core, context });
+        env:
+          INPUT_DESTINATION: acr
 
       - name: Upload publication receipt
+        if: always() && steps.prepare.outcome == 'success'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: cloud-types-receipt-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/cloud-test-inputs.acr-receipt.json
+          path: ${{ runner.temp }}/cloud-test-inputs/receipt.json
           if-no-files-found: error
           retention-days: 7
 
@@ -1008,21 +1071,20 @@ jobs:
 
       - name: Transform test result data
         if: always()
+        env:
+          SUITE: ${{ matrix.name }}
         run: |
           if [[ -f dist/functional_test/results.xml ]]; then
-            mkdir -p dist/functional_test/processed
             python3 .github/scripts/transform_test_results.py "${GITHUB_WORKSPACE}" \
-              dist/functional_test/results.xml dist/functional_test/processed/results.xml
+              dist/functional_test/results.xml "dist/functional_test/functional_test_results_${SUITE}.xml"
           fi
 
       - name: Upload test result data
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: functional_test_results_${{ matrix.name }}
-          path: |
-            dist/functional_test/results.xml
-            dist/functional_test/processed/results.xml
+          path: dist/functional_test/functional_test_results_${{ matrix.name }}.xml
+          archive: false
           if-no-files-found: error
           overwrite: true
 
@@ -1110,6 +1172,7 @@ jobs:
     env:
       CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
       CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
+      INPUT_SUITE: ${{ matrix.name }}
     steps:
       - name: Checkout trusted reporter
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1118,12 +1181,31 @@ jobs:
           ref: ${{ needs.setup.outputs.TRUSTED_SHA }}
           persist-credentials: false
 
-      - name: Validate same-run XML data
-        id: results
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RESULT_ARTIFACT_NAME: functional_test_results_${{ matrix.name }}
-        run: python3 .github/scripts/cloud-test-artifacts.py results "${RUNNER_TEMP}/test-results"
+      - name: Select same-run test results
+        id: select
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { select } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await select({ github, core, context });
+
+      - name: Download test result data
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ steps.select.outputs.artifact_id }}
+          path: ${{ runner.temp }}/cloud-test-inputs/download
+          github-token: ${{ github.token }}
+          repository: radius-project/radius
+          run-id: ${{ github.run_id }}
+          skip-decompress: true
+          digest-mismatch: error
+
+      - name: Stage bounded XML without entity declarations
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { results } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
+            await results({ core });
 
       - name: Get reporting App token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
@@ -1133,11 +1215,6 @@ jobs:
           private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
           permission-checks: write
           permission-pull-requests: write
-
-      - name: Stage validated XML for reporting
-        run: |
-          mkdir -p trusted-test-results
-          cp "${RUNNER_TEMP}/test-results/processed/results.xml" trusted-test-results/results.xml
 
       - name: Publish suite result
         uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
