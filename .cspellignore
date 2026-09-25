@@ -1344,3 +1344,10 @@ repointed
 canonicality
 syft
 repoints
+APIM
+Milvus
+Mosquitto
+Ollama
+Qdrant
+Sidekiq
+pgvector
