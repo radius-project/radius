@@ -193,9 +193,9 @@ function sharedCodeOwnerTeams(contents, owner) {
     );
     // A team on every rule owns every changed path, regardless of rule precedence.
     shared =
-      shared === null
-        ? teams
-        : new Set([...shared].filter((team) => teams.has(team)));
+      shared === null ? teams : (
+        new Set([...shared].filter((team) => teams.has(team)))
+      );
     if (shared.size === 0) {
       break;
     }
@@ -408,14 +408,15 @@ function desiredLabels(
   } else if (reviewDecision === "APPROVED") {
     handoff = STATUS_LABELS.reviewApproved;
   } else if (reviewDecision === "CHANGES_REQUESTED") {
-    handoff = rereviewRequested
-      ? STATUS_LABELS.waitingForReview
+    handoff =
+      rereviewRequested ?
+        STATUS_LABELS.waitingForReview
       : STATUS_LABELS.waitingForAuthor;
   } else {
     handoff =
-      pull.reviewRequests.totalCount > 0
-        ? STATUS_LABELS.waitingForReview
-        : STATUS_LABELS.needsReviewer;
+      pull.reviewRequests.totalCount > 0 ?
+        STATUS_LABELS.waitingForReview
+      : STATUS_LABELS.needsReviewer;
   }
   desired.add(handoff);
 
@@ -688,13 +689,15 @@ async function syncPull(github, core, owner, repo, number) {
   }
 
   const reviewDecision =
-    pull.state === "OPEN" &&
-    !pull.isDraft &&
-    pull.reviewDecision === null &&
-    !existing.has(MANUAL_LABELS.doNotMerge) &&
-    !existing.has(MANUAL_LABELS.needsAuthorResponse)
-      ? await inferredReviewDecision(github, core, owner, repo, number, pull)
-      : pull.reviewDecision;
+    (
+      pull.state === "OPEN" &&
+      !pull.isDraft &&
+      pull.reviewDecision === null &&
+      !existing.has(MANUAL_LABELS.doNotMerge) &&
+      !existing.has(MANUAL_LABELS.needsAuthorResponse)
+    ) ?
+      await inferredReviewDecision(github, core, owner, repo, number, pull)
+    : pull.reviewDecision;
 
   let rereviewRequested = false;
   if (
