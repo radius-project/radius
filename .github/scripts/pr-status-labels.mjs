@@ -47,6 +47,12 @@ const query = `
         reviewDecision
         isInMergeQueue
         baseRefName
+        baseRefOid
+        headRefOid
+        author {
+          __typename
+          login
+        }
         baseRef {
           branchProtectionRule {
             requiredStatusChecks {
@@ -75,6 +81,43 @@ const query = `
           totalCount
           nodes {
             name
+          }
+        }
+      }
+    }
+  }
+`;
+
+const OPINIONATED_REVIEWS_QUERY = `
+  query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
+    repository(owner: $owner, name: $repo) {
+      pullRequest(number: $number) {
+        baseRefOid
+        headRefOid
+        latestOpinionatedReviews(first: 100, after: $cursor) {
+          nodes {
+            state
+            author {
+              __typename
+              login
+            }
+            authorCanPushToRepository
+            commit {
+              oid
+            }
+            onBehalfOf(first: 100) {
+              totalCount
+              nodes {
+                slug
+                organization {
+                  login
+                }
+              }
+            }
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
           }
         }
       }
@@ -131,10 +174,210 @@ function currentLabels(pull) {
   return new Set(pull.labels.nodes.map((label) => label.name));
 }
 
+function sharedCodeOwnerTeams(contents, owner) {
+  const prefix = `@${owner.toLowerCase()}/`;
+  let shared = null;
+  for (const rawLine of contents.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+    const [, ...owners] = line.split(/\s+/);
+    const teams = new Set(
+      owners
+        .map((name) => name.toLowerCase())
+        .filter(
+          (name) => name.startsWith(prefix) && name.length > prefix.length
+        )
+        .map((name) => name.slice(prefix.length))
+    );
+    // A team on every rule owns every changed path, regardless of rule precedence.
+    shared =
+      shared === null ? teams : (
+        new Set([...shared].filter((team) => teams.has(team)))
+      );
+    if (shared.size === 0) {
+      break;
+    }
+  }
+  return shared ?? new Set();
+}
+
+async function inferredReviewDecision(github, core, owner, repo, number, pull) {
+  if (
+    !pull.baseRefName ||
+    !pull.baseRefOid ||
+    !pull.headRefOid ||
+    !pull.baseRef
+  ) {
+    throw new Error(`Cannot determine the base or head commit for #${number}`);
+  }
+  if (pull.baseRef.branchProtectionRule) {
+    return null;
+  }
+
+  const rules = await github.paginate(
+    "GET /repos/{owner}/{repo}/rules/branches/{branch}",
+    { owner, repo, branch: pull.baseRefName, per_page: 100 }
+  );
+  const reviewRules = rules.filter((rule) => rule.type === "pull_request");
+  if (reviewRules.length === 0) {
+    return null;
+  }
+
+  let requiredCount = 0;
+  let codeOwnerRequired = false;
+  let lastPushApprovalRequired = false;
+  for (const rule of reviewRules) {
+    const parameters = rule.parameters;
+    if (
+      !Number.isSafeInteger(parameters?.required_approving_review_count) ||
+      parameters.required_approving_review_count < 0 ||
+      typeof parameters.require_code_owner_review !== "boolean" ||
+      typeof parameters.require_last_push_approval !== "boolean" ||
+      !Array.isArray(parameters.required_reviewers)
+    ) {
+      throw new Error(`Invalid review ruleset for #${number}`);
+    }
+    if (parameters.required_reviewers.length > 0) {
+      core.info(`#${number}: cannot infer specifically required team reviews`);
+      return null;
+    }
+    if (
+      parameters.require_extra_approval_for_unattributed_changes &&
+      pull.author?.__typename !== "User"
+    ) {
+      core.info(`#${number}: cannot infer approvals for an unattributed PR`);
+      return null;
+    }
+    requiredCount = Math.max(
+      requiredCount,
+      parameters.required_approving_review_count
+    );
+    codeOwnerRequired ||= parameters.require_code_owner_review;
+    lastPushApprovalRequired ||= parameters.require_last_push_approval;
+  }
+
+  const reviews = [];
+  let cursor = null;
+  do {
+    const result = await github.graphql(OPINIONATED_REVIEWS_QUERY, {
+      owner,
+      repo,
+      number,
+      cursor
+    });
+    const reviewedPull = result.repository?.pullRequest;
+    if (
+      !reviewedPull ||
+      reviewedPull.baseRefOid !== pull.baseRefOid ||
+      reviewedPull.headRefOid !== pull.headRefOid
+    ) {
+      throw new Error(
+        `The base or head commit changed while reviewing #${number}`
+      );
+    }
+    const page = reviewedPull.latestOpinionatedReviews;
+    if (!page || !Array.isArray(page.nodes) || !page.pageInfo) {
+      throw new Error(`Invalid review response for #${number}`);
+    }
+    reviews.push(...page.nodes);
+    if (page.pageInfo.hasNextPage && !page.pageInfo.endCursor) {
+      throw new Error(`Missing review cursor for #${number}`);
+    }
+    cursor = page.pageInfo.hasNextPage ? page.pageInfo.endCursor : null;
+  } while (cursor);
+
+  if (
+    reviews.some(
+      (review) =>
+        review.state === "CHANGES_REQUESTED" && review.authorCanPushToRepository
+    )
+  ) {
+    return "CHANGES_REQUESTED";
+  }
+
+  if (lastPushApprovalRequired) {
+    core.info(
+      `#${number}: cannot verify approval by someone other than the last pusher`
+    );
+    return null;
+  }
+
+  const approvals = reviews.filter(
+    (review) =>
+      review.state === "APPROVED" &&
+      review.author?.__typename === "User" &&
+      review.authorCanPushToRepository &&
+      review.author.login.toLowerCase() !== pull.author?.login?.toLowerCase() &&
+      review.commit?.oid === pull.headRefOid
+  );
+  if (
+    new Set(approvals.map((review) => review.author.login.toLowerCase())).size <
+    Math.max(requiredCount, Number(codeOwnerRequired), 1)
+  ) {
+    return null;
+  }
+
+  if (codeOwnerRequired) {
+    let file;
+    try {
+      ({ data: file } = await github.rest.repos.getContent({
+        owner,
+        repo,
+        path: ".github/CODEOWNERS",
+        ref: pull.baseRefOid
+      }));
+    } catch (error) {
+      if (error.status !== 404) {
+        throw error;
+      }
+      core.info(`#${number}: cannot verify CODEOWNERS on the base branch`);
+      return null;
+    }
+    if (
+      Array.isArray(file) ||
+      file?.type !== "file" ||
+      file.encoding !== "base64" ||
+      typeof file.content !== "string"
+    ) {
+      throw new Error(`Invalid CODEOWNERS response for #${number}`);
+    }
+    const teams = sharedCodeOwnerTeams(
+      Buffer.from(file.content, "base64").toString("utf8"),
+      owner
+    );
+    if (
+      teams.size === 0 ||
+      !approvals.some((review) => {
+        const represented = review.onBehalfOf;
+        if (
+          !represented ||
+          represented.totalCount !== represented.nodes?.length
+        ) {
+          throw new Error(`Incomplete review team attribution for #${number}`);
+        }
+        return represented.nodes.some(
+          (team) =>
+            team.organization?.login?.toLowerCase() === owner.toLowerCase() &&
+            teams.has(team.slug?.toLowerCase())
+        );
+      })
+    ) {
+      core.info(`#${number}: cannot verify a current CODEOWNER approval`);
+      return null;
+    }
+  }
+
+  core.info(`#${number}: inferred approval from current ruleset and reviews`);
+  return "APPROVED";
+}
+
 function desiredLabels(
   pull,
   rereviewRequested = false,
-  requiredChecksPassed = false
+  requiredChecksPassed = false,
+  reviewDecision = pull.reviewDecision
 ) {
   const existing = currentLabels(pull);
   const desired = new Set();
@@ -163,18 +406,18 @@ function desiredLabels(
 
   if (
     ![null, "APPROVED", "CHANGES_REQUESTED", "REVIEW_REQUIRED"].includes(
-      pull.reviewDecision
+      reviewDecision
     )
   ) {
-    throw new Error(`Unexpected review decision: ${pull.reviewDecision}`);
+    throw new Error(`Unexpected review decision: ${reviewDecision}`);
   }
 
   let handoff;
   if (existing.has(MANUAL_LABELS.needsAuthorResponse)) {
     handoff = STATUS_LABELS.waitingForAuthor;
-  } else if (pull.reviewDecision === "APPROVED") {
+  } else if (reviewDecision === "APPROVED") {
     handoff = STATUS_LABELS.reviewApproved;
-  } else if (pull.reviewDecision === "CHANGES_REQUESTED") {
+  } else if (reviewDecision === "CHANGES_REQUESTED") {
     handoff =
       rereviewRequested ?
         STATUS_LABELS.waitingForReview
@@ -455,10 +698,21 @@ async function syncPull(github, core, owner, repo, number) {
     core.info(`Removed held pull request #${number} from the merge queue`);
   }
 
+  const reviewDecision =
+    (
+      pull.state === "OPEN" &&
+      !pull.isDraft &&
+      pull.reviewDecision === null &&
+      !existing.has(MANUAL_LABELS.doNotMerge) &&
+      !existing.has(MANUAL_LABELS.needsAuthorResponse)
+    ) ?
+      await inferredReviewDecision(github, core, owner, repo, number, pull)
+    : pull.reviewDecision;
+
   let rereviewRequested = false;
   if (
     pull.state === "OPEN" &&
-    pull.reviewDecision === "CHANGES_REQUESTED" &&
+    reviewDecision === "CHANGES_REQUESTED" &&
     pull.reviewRequests.totalCount > 0
   ) {
     const [reviews, timeline] = await Promise.all([
@@ -487,7 +741,7 @@ async function syncPull(github, core, owner, repo, number) {
   if (
     pull.state === "OPEN" &&
     !pull.isDraft &&
-    pull.reviewDecision === "APPROVED" &&
+    reviewDecision === "APPROVED" &&
     pull.mergeable === "MERGEABLE" &&
     pull.mergeStateStatus === "BEHIND" &&
     !pull.isInMergeQueue &&
@@ -509,7 +763,8 @@ async function syncPull(github, core, owner, repo, number) {
   const { desired, mergeabilityUnknown } = desiredLabels(
     pull,
     rereviewRequested,
-    requiredChecksPassed
+    requiredChecksPassed,
+    reviewDecision
   );
   if (mergeabilityUnknown) {
     core.warning(
