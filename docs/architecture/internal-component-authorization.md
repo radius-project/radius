@@ -101,7 +101,7 @@ Calls between Radius services use mutual TLS: each service has its own auto-rene
 
 UCP makes the user-facing decision, so resource providers need only verify that an authorized caller sent the request and that the work was approved — not the user's original headers or role logic. Identity can travel with the approval for logging, but identity alone is not permission.
 
-Serve Kubernetes-forwarded and internal requests on separate UCP endpoints so each applies the right authentication. NetworkPolicies can further limit which pods reach these endpoints, but an allowed connection is not an allowed operation.
+Serve Kubernetes-forwarded and internal requests on separate UCP endpoints so each applies the right authentication.
 
 ##### Options for component identity
 
@@ -269,6 +269,8 @@ An invalid TLS certificate can stop the connection before any HTTP response exis
 If a caller is authenticated but the requested work is not covered by a valid grant, reject it rather than performing it. If Radius cannot read the policy or grant needed to decide, return `503 Service Unavailable` rather than guessing that the request is allowed.
 
 For work already running, record the failed authorization step and stop starting new operations. Use the limited cleanup permission described earlier where needed; do not silently continue with an old or broader service permission.
+
+If a service certificate cannot be rotated before it expires, fail closed rather than continuing on an unverifiable identity. Because certificates are issued with a lifetime longer than the rotation interval, a rotation failure first enters a grace window in which the current certificate is still valid: during that window, retry issuance with backoff and raise an operator alert, but let in-flight deployments continue and begin refusing new ones so a transient CA problem does not immediately halt the system. Once the certificate actually expires with no valid replacement, mTLS connections to and from that component must fail and its deployments stop; a component must never fall back to an unauthenticated path or accept an expired peer certificate to make progress. Recovery is operator-driven — repair the CA or issuance path, let rotation succeed, and resume — and interrupted deployments rely on the retry and re-validation behavior described for asynchronous work rather than on a weakened identity check.
 
 ## Test plan
 
