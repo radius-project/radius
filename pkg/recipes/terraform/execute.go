@@ -40,6 +40,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/sdk"
+	"github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 	"go.opentelemetry.io/otel/attribute"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -74,6 +75,14 @@ type executor struct {
 
 	// kubernetesClients provides access to the Kubernetes clients.
 	kubernetesClients kubernetesclientprovider.KubernetesClientProvider
+
+	awsCredentials   credentials.CredentialProvider[credentials.AWSCredential]
+	azureCredentials credentials.CredentialProvider[credentials.AzureCredential]
+}
+
+// backendResult carries only Kubernetes's extra lifecycle operations. Cloud state is owned by Terraform.
+type backendResult struct {
+	kubernetesSecretName string
 }
 
 // Deploy ensures Terraform is available, creates a working directory, generates a config, and runs Terraform init and
@@ -91,14 +100,12 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	// runs `terraform get` to download the module. Module downloads from
 	// authenticated registries need credentials and provider_installation
 	// rules in effect at fetch time, not just at apply time.
-	if options.EnvConfig != nil {
-		if err = e.setEnvironmentVariables(tf, options); err != nil {
-			return nil, err
-		}
+	if err = e.prepareExecution(ctx, tf, options); err != nil {
+		return nil, err
 	}
 
 	// Create Terraform config in the working directory
-	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options, requireValidOutputMappings)
+	backend, err := e.generateConfig(ctx, tf, options, requireValidOutputMappings)
 	if err != nil {
 		return nil, err
 	}
@@ -110,14 +117,17 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 		return nil, err
 	}
 
-	// Validate that the terraform state file backend source exists.
-	// Currently only Kubernetes secret backend is supported, which is created by Terraform as a part of Terraform apply.
+	if backend.kubernetesSecretName == "" {
+		return state, nil
+	}
+
+	// Kubernetes creates the state secret during apply. Cloud errors are handled by Terraform.
 	kubernetesClient, err := e.kubernetesClients.ClientGoClient()
 	if err != nil {
 		return nil, fmt.Errorf("error getting kubernetes client: %w", err)
 	}
 
-	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
+	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backend.kubernetesSecretName)
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving kubernetes secret for terraform state: %w", err)
 	} else if !backendExists {
@@ -142,16 +152,21 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		return err
 	}
 
-	// Create Terraform config in the working directory
-	kubernetesBackendSuffix, err := e.generateConfig(ctx, tf, options, skipOutputMappingValidation)
+	if err = e.prepareExecution(ctx, tf, options); err != nil {
+		return err
+	}
+
+	// Create Terraform config after setting registry and backend authentication.
+	backend, err := e.generateConfig(ctx, tf, options, skipOutputMappingValidation)
 	if err != nil {
 		return err
 	}
 
-	// Apply provider_installation rules from the Radius.Core terraformConfig (if any).
-	// Applications.Core leaves this nil, so this is a no-op for the legacy path.
-	if err = e.applyTerraformCLIConfig(tf, options); err != nil {
-		return err
+	stateLockTimeout := getStateLockTimeout(options.StateLockTimeout)
+	if backend.kubernetesSecretName == "" {
+		// Native cloud backends handle missing state, locking and permissions.
+		// Retain the resulting state object; never delete the user's storage.
+		return initAndDestroy(ctx, tf, stateLockTimeout)
 	}
 
 	// Before running terraform init and destroy, ensure that the Terraform state file storage source exists.
@@ -162,7 +177,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		return fmt.Errorf("error getting kubernetes client: %w", err)
 	}
 
-	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix)
+	backendExists, err := backends.NewKubernetesBackend(kubernetesClient).ValidateBackendExists(ctx, backend.kubernetesSecretName)
 	if err != nil {
 		// Continue with the delete flow for all errors other than backend not found.
 		// If it is an intermittent error then the delete flow will fail and should be retried from the client.
@@ -174,7 +189,6 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	}
 
 	// Run TF Destroy in the working directory to delete the resources deployed by the recipe
-	stateLockTimeout := getStateLockTimeout(options.StateLockTimeout)
 	err = initAndDestroy(ctx, tf, stateLockTimeout)
 	if err != nil {
 		return err
@@ -183,7 +197,7 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	// Delete the kubernetes secret created for terraform state file.
 	err = kubernetesClient.CoreV1().
 		Secrets(backends.RadiusNamespace).
-		Delete(ctx, backends.KubernetesBackendNamePrefix+kubernetesBackendSuffix, metav1.DeleteOptions{})
+		Delete(ctx, backend.kubernetesSecretName, metav1.DeleteOptions{})
 	if err != nil {
 		return fmt.Errorf("error deleting kubernetes secret for terraform state: %w", err)
 	}
@@ -214,9 +228,8 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 	}, nil
 }
 
-// setEnvironmentVariables sets environment variables for the Terraform process by reading values from the recipe configuration.
-// Terraform process will use environment variables as input for the recipe deployment.
-func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options) error {
+// prepareExecution merges all process configuration once, before module fetching and init.
+func (e executor) prepareExecution(ctx context.Context, tf *tfexec.Terraform, options Options) error {
 	if options.EnvConfig == nil {
 		return nil
 	}
@@ -267,47 +280,18 @@ func (e executor) setEnvironmentVariables(tf *tfexec.Terraform, options Options)
 	}
 
 	// Set the environment variables for the Terraform process
+	if options.EnvConfig.TerraformBackend != nil {
+		if err := e.setBackendEnvironment(ctx, options.EnvConfig.TerraformBackend, envVars); err != nil {
+			return err
+		}
+		envVarUpdate = true
+	}
 	if envVarUpdate {
 		if err := tf.SetEnv(envVars); err != nil {
 			return fmt.Errorf("failed to set environment variables: %w", err)
 		}
 	}
 
-	return nil
-}
-
-// applyTerraformCLIConfig writes a .terraformrc file derived from the
-// provider_installation rules and credentials in options.EnvConfig (if any) and
-// configures the Terraform CLI to use it via TF_CLI_CONFIG_FILE.
-//
-// This path is used by Delete (and indirectly by Deploy via setEnvironmentVariables)
-// to ensure terraform init can resolve providers from a network mirror and
-// authenticate to private registries. When neither input is populated, this is
-// a no-op.
-func (e executor) applyTerraformCLIConfig(tf *tfexec.Terraform, options Options) error {
-	if options.EnvConfig == nil {
-		return nil
-	}
-	pi := options.EnvConfig.RecipeConfig.Terraform.ProviderInstallation
-	creds := options.EnvConfig.RecipeConfig.Terraform.Credentials
-	if pi == nil && len(creds) == 0 {
-		return nil
-	}
-
-	rcPath, err := writeTerraformCLIConfig(tf.WorkingDir(), pi, creds, options.Secrets)
-	if err != nil {
-		return err
-	}
-	if rcPath == "" {
-		return nil
-	}
-
-	// tf.SetEnv replaces the entire env, so seed from the current process env first.
-	envVars := splitEnvVar(os.Environ())
-	envVars[envTFCLIConfigFile] = rcPath
-	if err := tf.SetEnv(envVars); err != nil {
-		return fmt.Errorf("failed to set environment variables: %w", err)
-	}
 	return nil
 }
 
@@ -325,24 +309,24 @@ func splitEnvVar(envVars []string) map[string]string {
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
-func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options, validationMode outputMappingValidationMode) (string, error) {
+func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options, validationMode outputMappingValidationMode) (*backendResult, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	workingDir := tf.WorkingDir()
 
 	tfConfig, err := getTerraformConfig(ctx, workingDir, options)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	loadedModule, err := downloadAndInspect(ctx, tf, options)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	useOutputMappings := usesOutputMappings(options.EnvRecipe, loadedModule, validationMode)
 	if useOutputMappings {
 		if err := validateOutputMappings(options.EnvRecipe, loadedModule, validationMode); err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
@@ -350,26 +334,30 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 	logger.Info(fmt.Sprintf("Adding provider config for required providers %+v", loadedModule.RequiredProviders))
 	if err := tfConfig.AddProviders(ctx, loadedModule.RequiredProviders, providers.GetUCPConfiguredTerraformProviders(e.ucpConn, e.secretProvider),
 		options.EnvConfig, options.Secrets); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	kubernetesClient, err := e.kubernetesClients.ClientGoClient()
+	var backendBuilder backends.Builder
+	if options.EnvConfig != nil && options.EnvConfig.TerraformBackend != nil {
+		backendBuilder = backends.CloudBackend{Settings: options.EnvConfig.TerraformBackend}
+	} else {
+		kubernetesClient, err := e.kubernetesClients.ClientGoClient()
+		if err != nil {
+			return nil, fmt.Errorf("error getting kubernetes client: %w", err)
+		}
+		backendBuilder = backends.NewKubernetesBackend(kubernetesClient)
+	}
+
+	backendConfig, err := tfConfig.AddTerraformBackend(options.ResourceRecipe, backendBuilder)
 	if err != nil {
-		return "", fmt.Errorf("error getting kubernetes client: %w", err)
+		return nil, err
 	}
 
-	backendConfig, err := tfConfig.AddTerraformBackend(options.ResourceRecipe, backends.NewKubernetesBackend(kubernetesClient))
-	if err != nil {
-		return "", err
-	}
-
-	// Retrieving the secret_suffix property from backend config to use it to verify secret creation during terraform init.
-	// This is only used for the backend of type kubernetes and should be moved inside an if block when we add more backends.
-	var secretSuffix string
+	result := &backendResult{}
 	if backendDetails, ok := backendConfig[backends.BackendKubernetes]; ok {
 		backendMap := backendDetails.(map[string]any)
 		if secret, ok := backendMap["secret_suffix"]; ok {
-			secretSuffix = secret.(string)
+			result.kubernetesSecretName = backends.KubernetesBackendNamePrefix + secret.(string)
 		}
 	}
 
@@ -381,7 +369,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		// Create the recipe context object to be passed to the recipe deployment
 		recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		//update the recipe context with connected resources properties
@@ -390,7 +378,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		}
 
 		if err = tfConfig.AddRecipeContext(ctx, options.EnvRecipe.Name, recipectx); err != nil {
-			return "", err
+			return nil, err
 		}
 	} else {
 		// Direct module path: the module does not declare a recipe context variable, so instead of
@@ -399,7 +387,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 
 		recipectx, err := recipecontext.New(options.ResourceRecipe, options.EnvConfig)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		if options.ResourceRecipe != nil {
@@ -422,24 +410,24 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		// Explicit mappings take precedence over a wrapped result output during deployment, matching
 		// prepareRecipeResponse. Generate each referenced output so it is available in Terraform state.
 		if err = tfConfig.AddMappedOutputs(options.EnvRecipe.Name, options.EnvRecipe.Outputs, loadedModule.OutputSensitivity, false); err != nil {
-			return "", err
+			return nil, err
 		}
 		// SecretOutputs are always treated as secrets — force their generated output blocks sensitive so
 		// a module output the module did not itself mark sensitive (e.g. AVM primaryConnectionString) is
 		// still redacted in Terraform's stdout/stderr, which Radius streams into logs.
 		if err = tfConfig.AddMappedOutputs(options.EnvRecipe.Name, options.EnvRecipe.SecretOutputs, loadedModule.OutputSensitivity, true); err != nil {
-			return "", err
+			return nil, err
 		}
 	} else if loadedModule.ResultOutputExists {
 		if err = tfConfig.AddOutputs(options.EnvRecipe.Name); err != nil {
-			return "", err
+			return nil, err
 		}
 	} else {
 		// Direct module without a mapping: re-export every module output so they are present in
 		// the Terraform state and pass through unchanged (mirrors prepareRecipeResponse). Terraform
 		// does not expose child module outputs as root outputs unless they are re-declared here.
 		if err = tfConfig.AddAllOutputs(options.EnvRecipe.Name, loadedModule.OutputSensitivity); err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
@@ -447,10 +435,10 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 
 	// Ensure that we need to save the configuration after adding providers and recipecontext.
 	if err := tfConfig.Save(ctx, workingDir); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return secretSuffix, nil
+	return result, nil
 }
 
 func usesOutputMappings(definition *recipes.EnvironmentDefinition, module *moduleInspectResult, validationMode outputMappingValidationMode) bool {

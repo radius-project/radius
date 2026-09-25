@@ -838,6 +838,45 @@ type SystemData struct {
 	LastModifiedByType *CreatedByType
 }
 
+// TerraformAzureRMBackend - An existing Azure Blob container. Uses Entra data-plane authentication and native blob lease
+// locking.
+type TerraformAzureRMBackend struct {
+	// REQUIRED; The existing blob container name.
+	ContainerName *string
+
+	// REQUIRED; The existing Azure storage account name.
+	StorageAccountName *string
+
+	// CONSTANT; Field has constant value "azurerm", any specified value is ignored.
+	Type *string
+
+	// State key prefix. Defaults to radius. Both clouds allow at most 968 ASCII characters, reserving space for the state key
+	// and S3 .tflock suffix within 1024 bytes. Use distinct prefixes for installations sharing storage and resource IDs.
+	KeyPrefix *string
+}
+
+// GetTerraformBackend implements the TerraformBackendClassification interface for type TerraformAzureRMBackend.
+func (t *TerraformAzureRMBackend) GetTerraformBackend() *TerraformBackend {
+	return &TerraformBackend{
+		KeyPrefix: t.KeyPrefix,
+		Type:      t.Type,
+	}
+}
+
+// TerraformBackend - Terraform state storage location. Authentication uses the selected cloud's default credentials registered
+// in Radius.
+type TerraformBackend struct {
+	// REQUIRED; The built-in Terraform backend type.
+	Type *string
+
+	// State key prefix. Defaults to radius. Both clouds allow at most 968 ASCII characters, reserving space for the state key
+	// and S3 .tflock suffix within 1024 bytes. Use distinct prefixes for installations sharing storage and resource IDs.
+	KeyPrefix *string
+}
+
+// GetTerraformBackend implements the TerraformBackendClassification interface for type TerraformBackend.
+func (t *TerraformBackend) GetTerraformBackend() *TerraformBackend { return t }
+
 // TerraformCredentialConfig - Credential configuration for a Terraform registry or module source host.
 type TerraformCredentialConfig struct {
 	// (Optional) The ID of a `Radius.Security/secrets` resource containing the authentication token. The secret must have a key
@@ -875,8 +914,36 @@ type TerraformProviderMirror struct {
 	URL *string
 }
 
+// TerraformS3Backend - An existing S3 bucket with native S3 lockfile locking.
+type TerraformS3Backend struct {
+	// REQUIRED; The existing S3 bucket name.
+	Bucket *string
+
+	// REQUIRED; The AWS region containing the bucket.
+	Region *string
+
+	// CONSTANT; Field has constant value "s3", any specified value is ignored.
+	Type *string
+
+	// State key prefix. Defaults to radius. Both clouds allow at most 968 ASCII characters, reserving space for the state key
+	// and S3 .tflock suffix within 1024 bytes. Use distinct prefixes for installations sharing storage and resource IDs.
+	KeyPrefix *string
+}
+
+// GetTerraformBackend implements the TerraformBackendClassification interface for type TerraformS3Backend.
+func (t *TerraformS3Backend) GetTerraformBackend() *TerraformBackend {
+	return &TerraformBackend{
+		KeyPrefix: t.KeyPrefix,
+		Type:      t.Type,
+	}
+}
+
 // TerraformSettingsProperties - Terraform settings properties.
 type TerraformSettingsProperties struct {
+	// (Optional) Remote Terraform state backend. Omission uses Kubernetes. Storage must already exist. Backend selection is immutable
+	// after TerraformSettings creation, including the Kubernetes default. Configure a cloud backend when creating new settings.
+	Backend TerraformBackendClassification
+
 	// (Optional) Environment variables injected into the Terraform process during Recipe execution.
 	Env map[string]*string
 

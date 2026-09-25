@@ -27,3 +27,26 @@ func unmarshalEnvironmentComputeClassification(rawMsg json.RawMessage) (Environm
 	}
 	return b, nil
 }
+
+func unmarshalTerraformBackendClassification(rawMsg json.RawMessage) (TerraformBackendClassification, error) {
+	if rawMsg == nil || string(rawMsg) == "null" {
+		return nil, nil
+	}
+	var m map[string]any
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b TerraformBackendClassification
+	switch m["type"] {
+	case "azurerm":
+		b = &TerraformAzureRMBackend{}
+	case "s3":
+		b = &TerraformS3Backend{}
+	default:
+		b = &TerraformBackend{}
+	}
+	if err := json.Unmarshal(rawMsg, b); err != nil {
+		return nil, err
+	}
+	return b, nil
+}
