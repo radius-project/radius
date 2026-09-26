@@ -76,9 +76,9 @@ As a Radius platform administrator, I can grant each person, team, or workload o
 
 A user installing Radius on a local development cluster becomes the initial Radius administrator without completing an additional authorization setup flow. A platform administrator installing Radius on a shared cluster explicitly bootstraps one or more administrator principals, while all other principals start with no Radius permissions.
 
-An automation workflow that creates an isolated, ephemeral control plane uses an explicit automation bootstrap profile. The workflow identity is administrator only within that control-plane instance, and any restored authorization state is integrity-checked and preflighted before it becomes authoritative.
+An automation workflow that creates an isolated, ephemeral control plane uses an explicit automation identity whose access is limited to that instance. Restored access policy cannot silently override trusted bootstrap access or leave the workflow locked out.
 
-An existing installation can preview the effect of enforcement, correct missing assignments, and roll back before making RBAC authoritative. Radius must detect and prevent a transition or state restore that would leave no recoverable administrator.
+An existing installation can preview the effect of enforcement, correct missing assignments, and roll back before making RBAC authoritative. Radius prevents a transition that would leave no recoverable administrator.
 
 ### Scenario 2: Delegate an application team to an approved environment
 
@@ -92,21 +92,21 @@ An environment administrator manages selected environments. A Recipe Pack admini
 
 When an environment administrator attaches a Recipe Pack or settings resource to an environment, Radius verifies both permission to update the environment and permission to use the referenced platform resource. Application developers who later deploy to that environment do not need direct read or use permission on its Recipe Packs or engine settings.
 
-Cloud credentials are not environment resources today. They are plane-scoped Radius resources used internally when an environment targets the corresponding provider. Deploy permission does not grant direct access to credential metadata or credential administration, but it does authorize Radius to use the configured plane credential for that environment's deployment. Cloud-side least privilege and the relationship between a shared plane credential and environment isolation must be explicit during setup.
+Deploy permission authorizes Radius to use the platform-managed cloud access configured for the selected environment. It does not grant the developer access to credential metadata or administration. Setup guidance makes clear that Radius RBAC and cloud-provider permissions are separate controls.
 
 ### Scenario 4: Authorize CI/CD, GitOps controllers, and agent workflows
 
 A team assigns a workload identity permission to deploy an application from CI/CD to one environment and to read the resulting application status. The workflow cannot manage roles, change platform resources, deploy other applications, or use another environment.
 
-GitOps controllers and Flux reconciliation use a named, scoped controller identity. Radius attributes the action to that workload identity and records the source repository and revision as context; it does not treat the Git author as an authenticated Radius principal. Git write access can trigger only the Radius actions and scopes granted to the controller identity.
+GitOps controllers and other automation use named, scoped workload identities. Radius attributes actions to the workload identity and records useful source context without treating a code author as the authenticated Radius user.
 
-Repo Radius workflows that create a fresh control plane on a runner use the automation bootstrap profile from Scenario 1. Authorization failures are returned as terminal access failures rather than retried or represented as an empty successful result. The decision is attributed to the workload identity in audit events.
+Authorization failures are presented as access failures rather than retried or represented as successful empty results, and the responsible workload identity appears in the audit trail.
 
 ### Scenario 5: Investigate, explain, and revoke access
 
 An administrator can inspect the built-in and custom roles, assignments, and effective permissions for a principal at a scope. A user can preflight whether they may perform an action. When an action is denied, the user receives the denied action and target scope plus a safe remediation path.
 
-After an assignment is removed, new requests and retries are denied within a defined propagation objective. An operation already accepted by Radius follows the documented in-flight operation policy and remains attributable to the initiating principal.
+After an assignment is removed, new requests and retries are denied within a documented period. The product clearly explains what happens to work that was already in progress and keeps it attributable to the initiating principal.
 
 ### Scenario 6: Add a custom resource type without accidental privilege expansion
 
@@ -147,31 +147,24 @@ Administrators can create a custom role for the new type, assign it at an allowe
 
 ### Verified Radius behavior
 
-- Radius inbound authentication and coarse authorization are delegated to the Kubernetes API server. The `rad` CLI uses the user's kubeconfig, and Radius does not issue user accounts, passwords, or tokens. See [Credentials in Radius](../../../docs/architecture/credentials.md#summary).
-- Current threat models state that Radius has no granular authorization controls and relies on Kubernetes to authorize access to the aggregated API. Applications RP relies on UCP for future granular authorization. See the [UCP](./2024-11-ucp-component-threat-model.md#trust-model-of-ucp-clients), [Applications RP](./2024-08-applications-rp-component-threat-model.md), and [controller](./2024-08-controller-component-threat-model.md) threat models.
-- UCP contains separate Radius, Azure, and AWS planes. Resource groups are first-class resources beneath the Radius plane. Applications, environments, Recipe Packs, configuration resources, and dynamic application resources are addressed beneath a Radius resource group and provider namespace. Resource type registrations are plane-scoped, and Azure and AWS credentials are resources beneath their corresponding provider planes.
-- Applications reference an environment by full resource ID. Resources join an application by setting their `application` property, so application membership is not an ID parent-child relationship. See [`typespec/Radius.Core/applications.tsp`](../../../typespec/Radius.Core/applications.tsp).
-- Recipe Packs are now first-class `Radius.Core/recipePacks` resources that can be shared across environments and resource groups. Environments reference Recipe Packs and optional Terraform and Bicep settings by resource ID. See [`typespec/Radius.Core/recipePacks.tsp`](../../../typespec/Radius.Core/recipePacks.tsp) and [`typespec/Radius.Core/environments.tsp`](../../../typespec/Radius.Core/environments.tsp).
-- Azure and AWS credentials are registered separately from environments and stored as plane-scoped UCP resources plus Kubernetes Secrets. An environment selects provider targets and may contain inline identity settings, but it does not reference a credential resource. See [Credentials in Radius](../../../docs/architecture/credentials.md) and [`typespec/Radius.Core/environments.tsp`](../../../typespec/Radius.Core/environments.tsp).
-- The `resource-types-contrib` repository publishes resource type definitions, Recipes, and Recipe Packs. Its artifacts are platform capabilities that Radius imports and uses; the repository does not provide Radius control-plane authorization.
-- The dashboard is a Backstage application and is being productized as a distributable plugin. Its current design explicitly defers entity-level Radius authorization and requires forbidden responses to remain distinct from empty results. The backend reaches UCP through the Backstage Kubernetes integration. See [Radius Dashboard as a distributable Backstage plugin](https://github.com/radius-project/dashboard/blob/main/docs/design/2026-09-radius-backstage-plugin.md).
-- The Radius Copilot and Canvas integration uses Repo Radius GitHub Actions workflows for operations. This introduces human and workload access paths that must receive the same server-side decisions as direct CLI and API callers. See [Radius Copilot app integration exception scenarios](https://github.com/radius-project/ai-extensions/blob/main/docs/design/2026-07-radius-copilot-app-exception-scenarios.md).
-- Repo Radius deploy workflows create an ephemeral control plane on the runner, register platform resources, and restore and save durable control-plane state through an OCI archive. Authorization state stored in the same data store would therefore participate in restore and backup unless deliberately separated. See [Repo Radius deployment workflow](../environments/2026-06-repo-radius-deploy-workflow.md).
-- The Kubernetes controller and Flux reconciliation call UCP using configured control-plane connectivity rather than an end user's live authenticated request. Their workload identity and source revision are therefore separate audit concepts.
-- The application graph can expose resource topology and provider links, subject to existing sensitive-data redaction. Graph retrieval therefore requires an explicit read permission and cannot be treated as harmless metadata.
+- Radius relies on the Kubernetes authentication boundary and does not provide Radius-specific roles or resource-level authorization today. See [Credentials in Radius](../../../docs/architecture/credentials.md#summary) and the [UCP threat model](./2024-11-ucp-component-threat-model.md#trust-model-of-ucp-clients).
+- Radius resources span installation, plane, resource-group, and individual-resource scopes. Applications also use environments and other platform capabilities that may be owned by a different team, so authorization cannot be based only on simple ownership.
+- Environments, Recipe Packs, resource types, provider configuration, and credentials are distinct platform capabilities that require different administrative responsibilities.
+- The API, `rad` CLI, dashboard and Backstage plugin, controllers, GitHub Actions, and agent experiences all need consistent authorization behavior. See the [dashboard design](https://github.com/radius-project/dashboard/blob/main/docs/design/2026-09-radius-backstage-plugin.md) and [Radius Copilot integration design](https://github.com/radius-project/ai-extensions/blob/main/docs/design/2026-07-radius-copilot-app-exception-scenarios.md).
+- Repo Radius and other automation can create short-lived control planes and restore prior state, so bootstrap and recovery behavior must account for both human and workload access. See the [Repo Radius deployment workflow](../environments/2026-06-repo-radius-deploy-workflow.md).
 
 ### Existing planning evidence
 
 - [radius-project/radius#13030](https://github.com/radius-project/radius/issues/13030) asks for a role model and permission matrix, server and CLI enforcement, audit logs, secure defaults, and migration guidance as part of the enterprise-grade Radius epic.
 - [radius-project/roadmap#27](https://github.com/radius-project/roadmap/issues/27) describes authorization controls for resource groups and built-in roles.
 - [radius-project/roadmap#55](https://github.com/radius-project/roadmap/issues/55) separates Rego resource policy from RBAC.
-- The [2024 authorization feature specification](https://github.com/radius-project/design-notes/blob/main/features/2024-11-authz-feature-spec.md) is useful evidence for persona separation, role definitions, assignments, and distinct application/deployment permissions. It is not the baseline for this specification because it assumes an unfinished tenant model, individual Recipes stored as environment properties, older resource namespaces, and unrelated CLI/resource-group changes.
+- The [2024 authorization feature specification](https://github.com/radius-project/design-notes/blob/main/features/2024-11-authz-feature-spec.md) provides useful prior thinking about personas, roles, assignments, and deployment permissions, but it predates the current Radius resource model.
 
 ### Comparative product evidence
 
-- [Argo CD](https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/) maps users and SSO groups to roles and expresses permissions as resource, action, object, and allow/deny effect. It demonstrates the value of application-specific actions and the risks of glob matching, default roles, explicit deny precedence, and inheritance compatibility.
-- [Grafana](https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/access-control/) separates fixed and custom roles and models each permission as an action plus scope. It demonstrates assignable team and service-account roles, a broad permission catalog, and the privilege-drift risk when default roles gain new permissions.
-- [Backstage](https://backstage.io/docs/permissions/overview/) separates centralized policy decisions from enforcement by the backend that owns a resource and supports conditional decisions. It demonstrates why UI checks are advisory, why each product surface must declare its actions, and why list filtering may require resource-aware enforcement.
+- [Argo CD](https://argo-cd.readthedocs.io/en/stable/operator-manual/rbac/) demonstrates application-focused roles and the usability tradeoffs of allow, deny, inheritance, and pattern matching.
+- [Grafana](https://grafana.com/docs/grafana/latest/administration/roles-and-permissions/access-control/) demonstrates fixed and custom roles, action-and-scope permissions, and assignments to teams and service accounts.
+- [Backstage](https://backstage.io/docs/permissions/overview/) demonstrates consistent permission decisions across user interfaces and the services that own protected resources.
 
 ### Evidence limitations
 
@@ -190,32 +183,27 @@ I can assign a built-in or custom Radius role to a user, group, or workload iden
 ### Detailed user experience
 
 1. During installation or upgrade, I choose a local, shared, or automation installation profile.
-   - A local profile binds the installing principal as Radius Administrator and requires no additional setup before the first deployment.
-   - A shared profile requires explicit administrator principals and starts all other principals with no Radius access.
-   - An automation profile binds an explicit workflow identity inside an isolated ephemeral control plane and defines how restored authorization state is validated and reconciled with bootstrap access.
-   - An upgrade initially preserves behavior until I complete a migration preflight and explicitly enable enforcement.
+   - Local installations remain easy to start.
+   - Shared installations require explicit administrators and deny access to everyone else by default.
+   - Automation receives access only within its intended Radius instance.
+   - Existing installations can preview and validate enforcement before enabling it.
 2. I list built-in roles and inspect their descriptions and permissions. Built-in role definitions are versioned and cannot be edited or deleted.
-3. I assign roles to a trusted principal identifier and scope. Radius validates the principal shape, role, scope, and my authority to grant that role.
-4. Before enabling enforcement or making a sensitive assignment, I preview the effective access and whether at least one recoverable administrator remains.
-5. Developers list only the resource groups and resources visible to them. A filtered list is distinguishable from a complete list when that distinction matters for administration and troubleshooting.
-6. A developer deploys an application. Radius preflights permission to write the target application resources and to deploy to the selected environment before starting the deployment.
-7. Radius uses the environment's attached Recipe Packs, settings, inline provider configuration, and the applicable plane-scoped cloud credential as platform-owned dependencies. The developer cannot inspect or directly use those dependencies unless separately authorized.
-8. If access is denied, the API returns a stable authorization error. The CLI and graphical clients show the denied action, the target, the identity used, and a safe next step such as selecting another environment or contacting an administrator. They do not retry the request or show an empty-success state.
-9. A client can ask whether the current principal may perform one or more actions so it can render accurate controls and perform preflight checks. The final action is still authorized by the server.
-10. I inspect effective access and audit events to learn which assignment and role allowed or denied an operation. Sensitive resource payloads, tokens, group claims not needed for the decision, and secret values are not recorded.
-11. I remove an assignment. New actions and retries reflect the change within the documented propagation objective. The behavior of already accepted asynchronous operations is documented and visible in the audit trail.
-12. If policy administration would remove the last recoverable administrator or enable enforcement without an administrator, Radius rejects the change and explains the recovery requirement.
-13. Before a multi-resource deployment begins, Radius evaluates the caller's complete requested Radius mutation set and environment use. If authorization changes after acceptance or a request cannot be fully preflighted, Radius follows a documented in-flight policy and reports any partial state plus a safe recovery action.
-14. When a controller reconciles a Git revision, the audit event identifies the controller workload identity and source revision. The controller can act only within its assigned scopes.
-15. When an automation run restores Radius state, it verifies the archive before applying authorization state, shows any bootstrap-policy conflict, and refuses an unsafe or incompatible restore.
+3. I assign a role to a user, group, or workload identity at an appropriate Radius scope.
+4. Before enabling enforcement or changing sensitive access, I preview the result and confirm that administrator recovery remains possible.
+5. Users see only the resources and actions available to them, and clients clearly distinguish restricted results from genuinely empty results.
+6. A developer can deploy an authorized application only to an approved environment. Radius may use the environment's platform-managed dependencies without exposing or granting direct access to them.
+7. A denied action produces a consistent explanation of the identity, action, target, and safe next step across the API, CLI, and graphical clients.
+8. I inspect effective access and audit events to understand why access was allowed or denied without exposing secrets or unrelated policy.
+9. When I revoke access, new actions reflect the change within a documented period, and the product explains the treatment of work already in progress.
+10. Automation and controllers act only within their assigned scopes and remain attributable to their workload identities.
 
 ## Key investments
 
 ### Feature 1: Radius permission and scope model
 
-Define a stable permission catalog for Radius resources and actions. Permissions pair an action with a resource target and are evaluated at supported scope anchors: the Radius installation, an individual UCP plane, a Radius resource group, or an individual resource. Assignments inherit only along the documented hierarchy. Resource-group creation is authorized at the Radius plane or installation scope, and resource creation is authorized at the resource's parent scope.
+Define a stable permission catalog for Radius resources and actions. Administrators can grant permissions at useful Radius scopes, including the installation, a plane, a resource group, or a supported individual resource. The product clearly explains how broader assignments apply to contained resources and where they do not.
 
-The first release uses additive allow grants with implicit deny. Explicit deny is out of scope unless customer or compliance validation finds a blocking use case. Custom roles do not gain new permissions when Radius adds an action or resource type unless the administrator explicitly chose a future-inclusive permission pattern.
+The first release uses additive allow grants with implicit deny. Explicit deny remains out of scope unless customer or compliance validation finds a blocking use case. Custom roles do not silently gain access when Radius adds actions or resource types.
 
 ### Feature 2: Built-in and custom roles
 
@@ -237,152 +225,138 @@ Administrators can compose custom roles from supported permissions when built-in
 
 ### Feature 3: Role assignments and effective-access inspection
 
-Support assignments for users, groups, and workload identities using stable identifiers from the trusted authentication boundary. An assignment binds one role to one principal at one scope. Multiple assignments are additive.
+Support assignments for users, groups, and workload identities. An assignment binds one role to one principal at one scope, and multiple assignments are additive.
 
-Administrators and principals with appropriate permission can list assignments, inspect a principal's effective roles and permissions, preview a policy change, and ask whether a principal may perform a specified action. Users can inspect their own effective access without gaining access to other principals' group membership or unrelated policy. The effective-access view identifies the plane and scope hierarchy so similarly named resources on different planes cannot be confused.
+Administrators can list assignments, inspect effective access, preview policy changes, and check whether a principal may perform an action. Users can inspect their own access without learning about unrelated principals or policy.
 
 ### Feature 4: Cross-scope and transitive-use authorization
 
 Define authorization for operations that read or mutate more than one resource:
 
-- Creating or updating application resources requires write permission in the target resource group.
-- Deploying requires permission to deploy to the selected environment in addition to application write permission.
-- Updating an environment to reference a Recipe Pack, Bicep settings, Terraform settings, or future referenced platform resource requires permission to update the environment and use the referenced resource.
-- Changing sensitive inline environment provider or identity settings requires a documented environment-administration permission.
-- Deploy permission delegates Radius's internal use of the environment's configured dependencies and applicable plane-scoped cloud credential. It does not grant the caller direct read, update, or administration permission on those dependencies or credentials.
-- Reading an application graph, logs, deployment status, secrets metadata, or output-resource links uses distinct documented permissions where disclosure or operational impact differs from ordinary resource reads.
-- Multi-resource deployments perform authorization preflight for the complete requested Radius mutation set before resource creation begins. Downstream deployment-engine requests retain the approved operation context and cannot acquire broader service permissions.
-
-The detailed permission matrix must cover legacy and preview API versions and all registered resource-specific actions, including existing `listsecrets` actions that return raw secret values; it must explicitly define whether each is internal-only or protected by a separate permission.
+- Application management and environment deployment are separate permissions.
+- Referencing a platform capability requires appropriate access to both the resource being changed and the referenced capability.
+- Deploying to an environment allows Radius to use its platform-managed dependencies but does not grant the caller direct access to them.
+- Sensitive views and operations, such as graphs, logs, and secret-related actions, may require permissions beyond ordinary resource read access.
+- Radius checks the required access before beginning a multi-resource operation and provides a clear recovery path if authorization changes while work is in progress.
 
 ### Feature 5: Consistent enforcement and client behavior
 
-Enforce authorization on the server for direct API, CLI, dashboard, Backstage, controller, GitHub Actions, agent, and other clients. Unknown or unmapped public operations fail closed. Controllers and reconcilers act as explicitly assigned workload identities, with source revision recorded as context rather than treated as user identity.
+Enforce authorization consistently for the API, CLI, dashboard, Backstage, controllers, GitHub Actions, agents, and other supported clients. New operations and resource types do not become accessible until their permissions are deliberately defined and granted. Automation acts through explicit workload identities.
 
-Clients use capability discovery to improve UX, but they preserve server authorization errors and never convert forbidden responses into empty resources, retries, cluster switching, or generic provider errors. Graphical clients hide or disable unavailable actions when they have a current capability decision and remain correct when that decision becomes stale.
+Clients can use capability checks to improve the experience, but the server remains authoritative. Clients preserve authorization errors instead of presenting them as empty results, retries, or unrelated failures.
 
 ### Feature 6: Auditability and safe administration
 
-Emit structured events for authorization decisions and changes to roles, assignments, enforcement mode, and break-glass use. Events identify the principal, principal type, action, target scope, result, matched role or assignment identifier, correlation identifier, and reason category without recording sensitive payloads.
+Record authorization decisions and administrative changes with enough information to identify who acted, what they attempted, the target, the result, and the policy that affected the decision without recording sensitive data.
 
-Role administration protects against self-escalation beyond delegated authority, circular or invalid definitions, deletion of referenced custom roles, and removal of the last recoverable administrator. A time-bounded, auditable break-glass procedure exists for cluster operators and is not part of normal access.
+Role administration prevents unauthorized escalation and loss of all administrator access. A time-bounded, auditable recovery procedure exists for exceptional lockout situations and is not part of normal access.
 
 ### Feature 7: Migration and compatibility
 
-Provide an inventory and shadow-evaluation mode that reports what enforcement would deny without changing request outcomes. Administrators can generate initial assignments from observed principals only as a reviewable proposal, never as an automatic permanent grant.
+Provide an inventory and preview mode that shows what enforcement would deny without changing request outcomes. Any suggested initial assignments require administrator review before becoming active.
 
-Existing installations explicitly transition from compatibility mode to enforcement after validation. New shared installations start with enforcement enabled after bootstrap. Local installations retain a one-user setup path.
+Existing installations explicitly enable enforcement after validation. New shared installations start with enforcement enabled after bootstrap, while local installations retain a simple one-user setup.
 
-Ephemeral automation installations use a distinct bootstrap profile. If role definitions and assignments are included in archived control-plane state, restore verifies archive integrity, validates policy compatibility, prevents silent replacement of trusted bootstrap access, and audits the imported authorization revision. All modes and deprecation plans are visible and documented.
+Automation installations use a dedicated bootstrap path, and restored access policy cannot silently replace trusted bootstrap access or create an unrecoverable lockout. All installation modes and compatibility timelines are documented.
 
 ## Acceptance criteria
 
 ### Model and administration
 
 1. A Radius administrator can list immutable built-in roles and create, update, and delete custom roles from documented permissions.
-2. Radius rejects a custom role containing an unknown permission, an action invalid for the selected resource kind, or a scope pattern unsupported by that permission.
+2. Radius rejects unsupported permission and scope combinations with an actionable explanation.
 3. A permitted administrator can assign a role to a user, group, or workload identity at installation, plane, resource-group, or supported individual-resource scope.
-4. Assignments at a broader scope apply only to documented descendants; assignments do not cross to sibling planes, resource groups, or resources.
+4. Broader assignments apply only to documented contained scopes and do not cross unrelated planes, resource groups, or resources.
 5. Radius rejects a policy change that would leave enforcement enabled without a recoverable administrator.
-6. A custom role does not automatically receive a newly introduced permission unless it contains an explicitly future-inclusive pattern whose effect was shown when authored.
+6. Custom roles do not silently receive newly introduced permissions.
 
 ### End-to-end enforcement
 
-1. For every public API operation and API version, tests demonstrate an allowed request and a denied request at the authoritative server boundary. An operation without a permission mapping is denied.
-2. The same principal, action, and target receive the same decision whether invoked through the direct API, `rad`, dashboard or Backstage plugin, supported controller path, GitHub Actions, or Radius agent integration.
-3. A user with Application Developer access to one resource group can manage applications and resources there and cannot read or mutate a sibling resource group.
-4. A user with deploy access to one environment can deploy an authorized application to it and cannot deploy to another environment.
-5. Deploying to an environment does not grant the caller direct read or mutation access to the environment's Recipe Packs or settings, the applicable plane-scoped credential, or inline provider identity settings.
-6. Updating an environment to attach a cross-scope Recipe Pack or settings resource is denied unless the caller can both update the environment and use the referenced resource.
-7. A deployment with insufficient permission for any requested Radius mutation or the selected environment is denied during whole-request preflight before Radius begins a resource or cloud mutation.
-8. A principal with resource read access but without graph or operational-data access cannot retrieve the protected application graph, logs, or equivalent action output.
-9. Dynamic resource types and newly registered actions are denied until represented in the permission catalog and granted by a role.
-10. A controller or Flux reconciliation request is evaluated as its configured workload identity, cannot exceed that identity's assignments, and records the source repository and revision without claiming the Git author as the authenticated Radius principal.
-11. Downstream deployment-engine and worker requests cannot substitute an unrestricted service identity for the authorization context approved at deployment acceptance.
-12. If authorization changes after a deployment is accepted, Radius applies the documented in-flight operation policy and reports any partial state and recovery action.
+1. The same identity, action, and target receive the same authorization result across every supported Radius client and automation path.
+2. An application team can manage resources in its assigned scope and cannot discover or change resources in an unrelated scope.
+3. A user can deploy an authorized application only to environments where they have deploy access.
+4. Deploying to an environment does not grant direct access to its platform-managed Recipes, settings, credentials, or provider identity.
+5. A user cannot attach or change a referenced platform capability without the required access to both the resource being changed and the referenced capability.
+6. Radius denies an unauthorized multi-resource operation before beginning changes.
+7. Resource read access does not automatically grant access to protected graphs, logs, secret-related actions, or other sensitive operational data.
+8. New resource types and actions remain inaccessible until an administrator deliberately grants their permissions.
+9. Automation cannot exceed its assigned access, and its actions remain attributable to its workload identity.
+10. Radius documents and reports what happens when access changes while an operation is already in progress.
 
 ### Lists, errors, and clients
 
- 1. List and search results contain only resources the caller may discover. Pagination does not leak hidden resource names, counts, or continuation behavior beyond the approved disclosure contract.
- 2. A denied direct request returns a stable machine-readable authorization error and no protected resource payload.
- 3. The CLI and graphical clients show the identity, denied action, target, and a safe recovery step without exposing unrelated assignments or secrets.
- 4. Dashboard, Backstage, and agent clients preserve forbidden and partial-result states rather than presenting them as empty success or retrying them as transient failures.
- 5. A client can check one or more capabilities for the current principal, and a stale positive capability check never bypasses authorization on the subsequent server request.
+1. Lists and searches reveal only resources the caller is allowed to discover and clearly communicate when results are access-filtered where appropriate.
+2. A denied request returns a consistent authorization error and no protected resource data.
+3. The CLI and graphical clients show the identity, denied action, target, and a safe next step without exposing unrelated assignments or secrets.
+4. Supported clients preserve forbidden and partial-result states instead of presenting them as empty success or retrying them as transient failures.
+5. Clients can check current capabilities to improve the experience, but a capability result never replaces authorization of the requested action.
 
 ### Revocation, audit, and migration
 
- 1. Removing an assignment prevents new requests within the defined propagation objective. The test suite verifies behavior across multiple control-plane replicas and documents when refreshed authentication claims are also required.
- 2. Authorization decisions and policy mutations emit structured audit events with correlation identifiers and no secret values or protected request payloads.
- 3. An administrator can trace an allow or deny decision to the effective role and assignment without receiving unauthorized group or resource data.
- 4. An existing installation can run shadow evaluation, identify would-be denials, validate administrator recovery, enable enforcement, and roll back according to the supported migration procedure.
- 5. New local and shared installations complete bootstrap without an unprotected window: the local installer is administrator, while a shared installation denies non-bootstrap principals by default.
- 6. An ephemeral automation installation uses an explicit workflow bootstrap identity whose authority is limited to that isolated control-plane instance.
- 7. A restored control-plane archive is integrity-verified and policy-preflighted before imported roles or assignments become authoritative. An unsafe, incompatible, or lockout-inducing restore is rejected and audited.
- 8. Break-glass access is time-bounded, explicitly invoked, separately authorized at the cluster boundary, and always audited.
+1. Removing an assignment prevents new requests within the documented revocation period.
+2. Authorization decisions and access-policy changes produce audit records without secret values or protected request data.
+3. An administrator can trace an allow or deny decision to the effective role and assignment without receiving unauthorized identity or resource information.
+4. An existing installation can preview enforcement, resolve access gaps, enable enforcement, and recover according to the supported migration procedure.
+5. Local, shared, and automation installations establish initial access appropriate to their use case without leaving an unprotected window.
+6. Restoring previous Radius state cannot silently replace trusted bootstrap access or create an unrecoverable lockout.
+7. Exceptional recovery access is time-bounded, explicitly invoked, and always audited.
 
 ## Success measures
 
 ### Outcome measures
 
-| Measure                                                                                                      | Baseline                           | Initial target                                                                                | Measurement plan and owner                                                                             |
-|--------------------------------------------------------------------------------------------------------------|------------------------------------|-----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
-| Shared-installation pilots that enforce RBAC without a standing broad Kubernetes grant for application teams | Unknown                            | TODO after pilot recruitment                                                                  | Product measures pilot configurations and interviews administrators after one release cycle.           |
-| Administrators who can complete the application-team delegation scenario without maintainer assistance       | Unknown                            | TODO after usability baseline                                                                 | Product design runs task-based validation for assignment, preflight, denial diagnosis, and revocation. |
-| Unauthorized operations blocked in end-to-end conformance tests                                              | No Radius-specific coverage        | 100% of cataloged public operations and supported API versions                                | Engineering owns an operation-to-test traceability report.                                             |
-| Authorization decisions attributable through audit events                                                    | No Radius-specific decision events | 100% of enforced requests carry principal, action, target, result, and correlation identifier | Security and engineering validate sampled events and automated schema checks.                          |
-| Existing-installation migrations completed without unrecoverable lockout                                     | No migration path                  | 100% of qualification environments recover through the documented procedure                   | Release engineering runs migration rehearsals before default-on rollout.                               |
+| Measure                                                                                                      | Baseline                    | Initial target                      | Measurement plan and owner                                                                             |
+|--------------------------------------------------------------------------------------------------------------|-----------------------------|-------------------------------------|--------------------------------------------------------------------------------------------------------|
+| Shared-installation pilots that enforce RBAC without broad Kubernetes access for application teams           | Unknown                     | TODO after pilot recruitment        | Product reviews pilot configuration and administrator feedback after one release cycle.                |
+| Administrators who complete the application-team delegation scenario without maintainer assistance           | Unknown                     | TODO after usability baseline       | Product design validates assignment, access explanation, denial diagnosis, and revocation tasks.       |
+| Administrators who can correctly explain and resolve a denied action                                         | Unknown                     | TODO after usability baseline       | Product design tests representative denials across applications, environments, and platform resources. |
+| Existing installations that migrate without unrecoverable lockout or an extended compatibility-mode fallback | No supported migration path | 100% of qualification installations | Release engineering validates the documented migration and recovery experience before default rollout. |
 
 ### Guardrail measures
 
-| Guardrail                                                 | Baseline                              | Target or stop condition                                                                                                  | Owner                        |
-|-----------------------------------------------------------|---------------------------------------|---------------------------------------------------------------------------------------------------------------------------|------------------------------|
-| Authorization bypasses                                    | Granular RBAC absent                  | Zero known bypasses; any confirmed bypass stops rollout and triggers security response.                                   | Security                     |
-| Incorrect allow decisions after revocation                | Unknown                               | Zero in conformance tests after the propagation objective; target duration is TODO after architecture benchmarking.       | Engineering                  |
-| Added request latency                                     | Unknown                               | TODO based on representative API, list, graph, and deployment benchmarks; rollout stops if the agreed budget is exceeded. | Architecture and performance |
-| False empty-success experiences after forbidden responses | Current clients vary                  | Zero in supported CLI, dashboard, Backstage, and agent authorization test cases.                                          | Client owners                |
-| Administrator lockouts                                    | Not measured                          | Zero unrecoverable lockouts in migration and upgrade qualification.                                                       | Release engineering          |
-| Sensitive data in audit or denial output                  | Existing redaction requirements apply | Zero secret values or protected payloads in automated fixtures and security review.                                       | Security                     |
+| Guardrail                                                 | Baseline                              | Target or stop condition                                                                                           | Owner               |
+|-----------------------------------------------------------|---------------------------------------|--------------------------------------------------------------------------------------------------------------------|---------------------|
+| Unauthorized access                                       | Granular RBAC absent                  | Zero known authorization bypasses; any confirmed bypass stops rollout.                                             | Security            |
+| Incorrect access after revocation                         | Unknown                               | Zero known cases beyond the documented revocation period.                                                          | Engineering         |
+| False empty-success experiences after forbidden responses | Current clients vary                  | Zero known cases in supported clients.                                                                             | Client owners       |
+| Administrator lockouts                                    | Not measured                          | Zero unrecoverable lockouts during installation, migration, or recovery.                                           | Release engineering |
+| Sensitive data in audit or denial output                  | Existing redaction requirements apply | Zero known disclosures of secret values or protected payloads.                                                     | Security            |
+| User-visible performance regression                       | Unknown                               | No material degradation to common read, deployment, or access-administration workflows; target set before preview. | Product             |
 
 ## Rollout and learning plan
 
-1. **Problem and identity validation**
-   - Conduct customer discovery with shared-cluster and enterprise evaluators.
-   - Verify principal and group propagation on supported Kubernetes distributions.
-   - Complete a threat model and operation inventory.
-   - Stop or rescope if customers do not need Radius-specific delegation or if supported authentication paths cannot provide a trustworthy stable principal.
-2. **Permission catalog and shadow evaluation**
+1. **Problem and role-model validation**
+   - Validate the need for Radius-specific delegation with shared-platform and enterprise evaluators.
+   - Test the proposed roles, scopes, and separation of application and platform responsibilities.
+   - Stop or rescope if customers do not need Radius-specific delegation or the model does not fit their operating structures.
+2. **Access preview**
    - Publish the draft permission matrix and built-in roles for review.
-   - Add decision logging and shadow evaluation without denying requests.
-   - Compare observed operations with the catalog and investigate every unmapped path.
-   - Do not proceed if any externally reachable operation bypasses evaluation.
+   - Let administrators preview how proposed enforcement affects current users and automation.
+   - Refine role coverage, explanations, and recovery guidance before enforcement.
 3. **Preview enforcement**
-   - Enable RBAC for test installations and selected pilots with explicit bootstrap and rollback.
-   - Qualify direct API, CLI, dashboard, Backstage, GitHub Actions, agent, dynamic-resource, graph, and asynchronous-operation paths.
-   - Gather denial quality, role-fit, list behavior, latency, and propagation feedback.
+   - Enable RBAC for selected pilots with explicit bootstrap, recovery, and rollback.
+   - Gather feedback on delegation, denial quality, troubleshooting, revocation, and client consistency.
 4. **New shared installations**
    - Enable enforcement by default after bootstrap for new shared installations.
    - Keep local development bootstrap frictionless.
-   - Existing installations remain in explicit compatibility mode until their administrator completes preflight.
+   - Keep existing installations in compatibility mode until an administrator completes access preview.
 5. **Existing-installation migration and general availability**
-   - Publish migration guidance, role-diff tooling, audit integration guidance, and a compatibility-mode deprecation policy.
+   - Publish migration, recovery, and audit-integration guidance with a compatibility-mode deprecation policy.
    - Revisit built-in roles and scope granularity using pilot evidence before declaring general availability.
 
-Feedback comes from structured pilot interviews, support and issue analysis, authorization telemetry that contains no resource payloads, and conformance results. Rollout stops for a confirmed bypass, unrecoverable administrator lockout, unbounded stale authorization, sensitive audit disclosure, or latency beyond the approved guardrail.
+Feedback comes from pilot interviews, usability studies, support and issue analysis, and privacy-preserving product telemetry. Rollout stops for unauthorized access, unrecoverable administrator lockout, unacceptable revocation delay, sensitive information disclosure, or material user-facing performance regression.
 
 ## Open decisions
 
-| Decision                                                          | Why it matters                                                                                                                        | Required evidence                                                                                                            | Owner                                   |
-|-------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------|
-| Final built-in role permission matrix                             | Names alone do not prove separation of duties or prevent escalation.                                                                  | Scenario walkthroughs, threat model, and customer role mapping.                                                              | Product and security                    |
-| Supported principal and group identifiers                         | Email-like names can change or collide; stable IDs and issuer context affect portability and UX.                                      | Authentication contract across local Kubernetes, AKS, EKS, dashboard, and automation.                                        | Architecture and security               |
-| Individual-resource scope and application aggregate behavior      | Application resources are siblings linked by a property, not children of the application resource ID.                                 | Prototype authorization for create, deploy, graph, logs, and delete across realistic application layouts.                    | Product and architecture                |
-| List filtering and existence-disclosure contract                  | Filtering improves usability but affects pagination, counts, errors, and security.                                                    | Security review and API performance prototype.                                                                               | API and security                        |
-| Permission naming and wildcard semantics                          | Extensibility needs patterns, but patterns can grant future privileges accidentally.                                                  | Resource-type lifecycle analysis and administrator usability testing.                                                        | Architecture and product                |
-| In-flight operation behavior after revocation                     | Cancelling may leave partial infrastructure; continuing may outlive access.                                                           | Threat model and recovery analysis for deploy, delete, and asynchronous operations.                                          | Product, security, and architecture     |
-| Authorization state storage and propagation objective             | Revocation correctness and control-plane availability depend on it.                                                                   | Architecture options, failure testing, and benchmarks.                                                                       | Architecture                            |
-| Plane-scoped credentials and environment isolation                | One Azure or AWS plane credential may serve multiple environments, so Radius RBAC and cloud least privilege must compose predictably. | Threat model and deployment tests across non-production and production environments that share or isolate cloud credentials. | Product, security, and architecture     |
-| Controller and GitOps principal model                             | Git authorship is not a trusted live Radius identity, while a broad controller identity can become a confused deputy.                 | Controller flow prototype, scoped-assignment tests, and audit review.                                                        | Controller, product, and security       |
-| Ephemeral control-plane bootstrap and authorization-state restore | Repo Radius creates control planes per run and restores durable state, which can import privileges or lock out the workflow.          | Archive integrity design, restore preflight prototype, and recovery rehearsal.                                               | Repo Radius, security, and architecture |
-| Audit retention, export, and administrator access                 | Enterprise evidence requirements differ and can create privacy obligations.                                                           | Customer compliance discovery and operational design.                                                                        | Product, security, and operations       |
-| Compatibility-mode duration and break-glass mechanism             | Too short risks lockout; too long preserves broad access.                                                                             | Migration rehearsals and security review.                                                                                    | Release engineering and security        |
-| Policy administration UI scope                                    | CLI and declarative management may be sufficient initially, but dashboard users need discoverability.                                 | Product-design validation with platform administrators.                                                                      | Product design                          |
+| Decision                                                     | Why it matters                                                                                                    | Required evidence                                                  | Owner                               |
+|--------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|-------------------------------------|
+| Final built-in role permission matrix                        | The roles must match real separation-of-duties needs without encouraging broad grants.                            | Customer role mapping, scenario walkthroughs, and security review. | Product and security                |
+| Supported identity types and administrator-facing names      | Administrators need stable identities they can recognize and manage across human and automation use cases.        | Authentication constraints and administrator usability testing.    | Product, architecture, and security |
+| Scope and inheritance model                                  | The model must fit team ownership while remaining understandable for applications and related resources.          | Customer organization models and access-management prototypes.     | Product and architecture            |
+| List filtering and resource-disclosure experience            | Users need useful results without learning about resources they cannot access.                                    | User testing and security review.                                  | Product design and security         |
+| Explicit deny and future-inclusive permissions               | These features may meet advanced governance needs but can make access difficult to predict.                       | Customer governance scenarios and usability testing.               | Product and security                |
+| Treatment of work already in progress after revocation       | Users need predictable security and recovery behavior when access changes during a long-running operation.        | Customer expectations, threat modeling, and recovery scenarios.    | Product and security                |
+| Automation bootstrap, attribution, and recovery experience   | CI/CD and GitOps need useful least-privilege access without becoming hidden administrators or getting locked out. | Automation workflow validation and administrator interviews.       | Product and security                |
+| Audit retention, export, and access                          | Organizations have different evidence, privacy, and operational requirements.                                     | Customer compliance discovery.                                     | Product and security                |
+| Compatibility-mode duration and exceptional recovery process | Existing installations need enough time to migrate without leaving broad access enabled indefinitely.             | Pilot migration and recovery feedback.                             | Product and release engineering     |
+| Policy administration UI scope                               | CLI and declarative management may be sufficient initially, but administrators still need discoverability.        | Product-design validation with platform administrators.            | Product design                      |
