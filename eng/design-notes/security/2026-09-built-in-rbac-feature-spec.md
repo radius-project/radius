@@ -182,7 +182,7 @@ I can assign a built-in or custom Radius role to a user, group, or workload iden
 
 ### Detailed user experience
 
-1. During installation or upgrade, I choose a local, shared, or automation installation profile.
+1. During installation, or when enabling RBAC on an existing installation, I establish initial administrator access appropriate for local development, a shared installation, or automation.
    - Local installations remain easy to start.
    - Shared installations require explicit administrators and deny access to everyone else by default.
    - Automation receives access only within its intended Radius instance.
