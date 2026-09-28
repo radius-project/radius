@@ -202,7 +202,7 @@ func Test_RecipePacks_ByName_Deployment(t *testing.T) {
 // 2. Resource Deployment Failure:
 //   - Attempts to deploy a Bicep template with a recipe pack but no providers configuration in the environment
 //   - The recipe does not have a default namespace
-//   - Validates that the deployment fails with "Namespace parameter required." error
+//   - Validates the exact wrapper chain ending in a structured BadRequest with "Namespace parameter required."
 func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 	template := "testdata/recipepacks-test-no-provider.bicep"
 	appName := "recipepacks-test-app-no-provider"
@@ -212,20 +212,25 @@ func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
-	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
-		Code: "ResourceDeploymentFailure",
+	validate := step.ValidateExactError(step.DeploymentErrorDetail{
+		Code: "DeploymentFailed",
 		Details: []step.DeploymentErrorDetail{
 			{
-				Code:            "RecipeDeploymentFailed",
-				MessageContains: "failed to deploy recipe default of type Test.Resources/userTypeAlpha",
+				Code: "ResourceDeploymentFailure",
 				Details: []step.DeploymentErrorDetail{
 					{
-						Code:            "DeploymentFailed",
-						MessageContains: "At least one resource deployment operation failed",
+						Code:            "RecipeDeploymentFailed",
+						MessageContains: "failed to deploy recipe default of type Test.Resources/userTypeAlpha",
 						Details: []step.DeploymentErrorDetail{
 							{
-								Code:            "",
-								MessageContains: "Namespace parameter required.",
+								Code:            "DeploymentFailed",
+								MessageContains: "At least one resource deployment operation failed",
+								Details: []step.DeploymentErrorDetail{
+									{
+										Code:            "BadRequest",
+										MessageContains: "Namespace parameter required.",
+									},
+								},
 							},
 						},
 					},

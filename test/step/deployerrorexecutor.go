@@ -18,6 +18,7 @@ package step
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -137,6 +138,35 @@ func (detail DeploymentErrorDetail) Matches(candidate *v1.ErrorDetails) bool {
 	}
 
 	return true
+}
+
+// MatchesExactly matches error codes and message substrings, requiring the exact
+// number and order of details at every level, including no details on a leaf.
+func (detail DeploymentErrorDetail) MatchesExactly(candidate *v1.ErrorDetails) bool {
+	if candidate == nil || candidate.Code == "OK" || candidate.Code != detail.Code {
+		return false
+	}
+
+	if detail.MessageContains != "" && !strings.Contains(candidate.Message, detail.MessageContains) {
+		return false
+	}
+
+	return slices.EqualFunc(detail.Details, candidate.Details, func(expected DeploymentErrorDetail, actual *v1.ErrorDetails) bool {
+		return expected.MatchesExactly(actual)
+	})
+}
+
+// ValidateExactError requires the whole error tree to match, rather than accepting
+// a matching branch alongside unexpected, duplicated, or incomplete details.
+func ValidateExactError(detail DeploymentErrorDetail) func(*testing.T, *radcli.CLIError) {
+	return func(t *testing.T, err *radcli.CLIError) {
+		t.Helper()
+		require.NotNil(t, err, "expected a deployment error")
+		actual, marshalErr := json.Marshal(err.ErrorResponse)
+		require.NoError(t, marshalErr)
+		require.Truef(t, detail.MatchesExactly(err.ErrorResponse.Error),
+			"expected exact deployment error tree %+v; got %s", detail, actual)
+	}
 }
 
 // ValidateSingleDetail reports success if the error code matches the expected code and the detail item is found in the error response..
