@@ -154,6 +154,104 @@ I can assign a built-in or custom Radius role to a user, group, or workload iden
 
 **As an automation identity owner,** I can give CI/CD, controllers, agents, and other automation only the access needed for a specific Radius instance, application, and environment. Automated actions remain attributable to the workload identity, and authorization failures appear as clear access failures rather than retries or successful empty results.
 
+### Proposed CLI experience
+
+The `rad` CLI provides a single `rad auth` command group for imperative RBAC administration. Declarative role definitions and assignments use Radius resources in Bicep and the existing `rad deploy` workflow, so users do not have to learn a separate policy file format or apply engine. The exact permission names, flags, and resource identifiers remain subject to technical design and usability validation.
+
+| Command family         | User purpose                                                                                                                                                                       |
+|------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `rad auth whoami`      | Show the stable identity, identity type, issuer, and group information Radius is using for the current request.                                                                    |
+| `rad auth status`      | Summarize whether authorization is in preview or enforcement mode, whether the current identity is an administrator, and any adoption or recovery warnings.                        |
+| `rad auth permission`  | List and explain the Radius permissions available when creating a custom role, including the resource types and scopes to which each permission applies.                           |
+| `rad auth role`        | List and inspect built-in and custom roles, and create, update, or delete custom roles. Built-in roles are immutable.                                                              |
+| `rad auth assignment`  | List and inspect direct or inherited role assignments, grant a role to a user, group, or workload identity at an explicit scope, and revoke an assignment.                         |
+| `rad auth access`      | List effective access, check whether an identity can perform an action at a scope, and explain which role or assignment allowed or denied a decision without exposing hidden data. |
+| `rad auth enforcement` | Inspect enforcement status, preview would-be denials, enable enforcement after reviewing access impact, and perform any supported migration-period rollback.                       |
+
+A platform administrator can grant access imperatively for bootstrap, investigation, or an immediate operational need:
+
+```console
+rad auth assignment create \
+  --principal group:<stable-group-id> \
+  --role "Application Developer" \
+  --scope <resource-group-id>
+```
+
+Before creating the assignment, the CLI resolves and displays the principal, role, exact scope, inheritance effect, and management origin. Broad administrator grants, self-assignment, enforcement changes, and destructive operations require confirmation. `--yes` can skip an interactive prompt for automation, but cannot bypass authorization, validation, or protection against removing the final recoverable administrator.
+
+An application developer can check access before starting an operation and investigate a denial:
+
+```console
+rad auth access check \
+  --action <permission> \
+  --scope <resource-id>
+
+rad auth access explain \
+  --action <permission> \
+  --scope <resource-id>
+```
+
+An administrator can inspect effective access and distinguish assignments made directly at a scope from those inherited from a broader scope:
+
+```console
+rad auth access list --principal group:<stable-group-id> --scope <resource-id>
+rad auth assignment list --scope <resource-id> --include-inherited
+```
+
+For repeatable management, a platform team defines roles and assignments as Radius resources and previews the access impact before deployment:
+
+```console
+rad deploy platform-access.bicep --scope <resource-id> --what-if
+rad deploy platform-access.bicep --scope <resource-id>
+```
+
+Declaratively managed authorization resources identify their management origin. Conflicting imperative changes fail with guidance to update the source of truth or, if supported, perform an explicit and audited ownership transfer. Initial administrator access remains part of installation or RBAC enablement rather than an ordinary assignment command, and exceptional recovery remains a separate, audited security-boundary workflow.
+
+Across these commands, reads support table and JSON output, writes show the resolved scope, ambiguous names fail rather than selecting a resource silently, and incomplete results are labeled rather than presented as complete. Authorization failures distinguish Radius access decisions from failures in Kubernetes, cloud providers, registries, or source-control systems.
+
+### Proposed Bicep experience
+
+Radius exposes custom roles and role assignments as `Radius.Core/roleDefinitions` and `Radius.Core/roleAssignments` resources. Platform teams manage them through Bicep and the existing `rad deploy` workflow rather than a separate policy format or apply command.
+
+> **Note**: the Bicep schemas below are proposals which may change during technical design and implementation.
+
+```bicep
+extension radius
+
+param identityIssuer string
+param developerGroupSubject string
+
+resource applicationOperator 'Radius.Core/roleDefinitions@<api-version>' = {
+  name: 'application-operator'
+  properties: {
+    displayName: 'Application Operator'
+    description: 'Operate applications without changing platform configuration.'
+    permissions: [
+      'Radius.Core/applications/read'
+      'Radius.Core/applications/write'
+      'Radius.Core/applications/deploy/action'
+      'Radius.Core/environments/use/action'
+    ]
+  }
+}
+
+resource developerAccess 'Radius.Core/roleAssignments@<api-version>' = {
+  name: guid(applicationOperator.id, identityIssuer, developerGroupSubject)
+  properties: {
+    roleDefinitionId: applicationOperator.id
+    principal: {
+      type: 'group'
+      issuer: identityIssuer
+      subject: developerGroupSubject
+    }
+  }
+}
+```
+
+The assignment applies at the Bicep resource's deployment scope; an assignment targeted to an individual Radius resource uses that resource as its Bicep scope. Built-in roles are immutable `Radius.Core/roleDefinitions` resources that templates reference as `existing`. Role assignments use stable identity identifiers rather than display names or email addresses.
+
+Before deployment, `rad deploy --what-if` shows the roles and assignments that will be added, changed, or revoked and warns about lockout or privilege-escalation risk. Redeploying reconciles the authorization resources previously managed by that declaration, so removing an assignment from Bicep revokes it instead of leaving access behind. Declaratively managed resources identify their management origin, and conflicting imperative changes fail with guidance to update or explicitly take ownership from the declarative source.
+
 ## Key investments
 
 ### Feature 1: Radius permission and scope model
