@@ -29,7 +29,7 @@ Radius runs several cooperating services, and a deployment fans out into many fo
 
 Extend authorization to internal calls, controllers, and asynchronous work, so the authorization decided at the front door cannot be bypassed or exceeded further inside the system.
 
-> **Issue Reference:** Not yet assigned.
+> **Issue Reference:** #8083
 
 ### Goals
 
@@ -95,7 +95,9 @@ sequenceDiagram
 
 #### Verify callers and restrict component permissions
 
-When a user deploys, Kubernetes identifies the user and forwards the request to UCP. UCP verifies the Kubernetes API server's client certificate before trusting the user and group names in the headers, so an application cannot impersonate the user. The trusted certificate authority and proxy names come from Kubernetes's aggregation configuration.
+**Today.** When a user deploys, the Kubernetes API server authenticates the user and forwards the request to UCP through API aggregation. UCP terminates TLS but does not request or verify a client certificate from the API server, so it cannot cryptographically confirm that the caller is the aggregation proxy. Rather than trusting forwarded identity headers, UCP strips the `x-remote-user`, `x-remote-group`, and `x-remote-extra-*` headers from incoming requests. Calls between Radius services are not mutually authenticated: a service treats a request that reaches it as coming from a trusted peer, and a resource provider does not verify which component called it or whether the work was approved for a specific user.
+
+**Proposed.** UCP verifies the Kubernetes API server's client certificate before trusting the user and group names in the forwarded headers, so an application cannot impersonate the user; the trusted certificate authority and proxy names come from Kubernetes's aggregation configuration. This is new behavior — it replaces today's header-stripping with authenticated proxy identity — and requires configuring client-certificate verification on the UCP endpoint that serves aggregated requests.
 
 Calls between Radius services use mutual TLS: each service has its own auto-renewing certificate, so UCP can tell the deployment engine from Dynamic RP, and no service can obtain another's certificate or service account. Identifying a component is not enough — the receiving service still checks what that component may do. The deployment engine, for example, can submit operations for an approved deployment but cannot assign itself an administrator role.
 
