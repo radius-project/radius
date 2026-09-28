@@ -64,7 +64,7 @@ Emerging, niche, or platform-specific technologies. Build as demand materializes
 | 24 | Keycloak | Identity and access management | Microservices, Enterprise | Self-hosted, AWS Cognito, Microsoft Entra External ID, GCP Identity Platform |
 | 25 | Spark | Distributed data processing engine | Data Pipeline | AWS EMR, Azure HDInsight/Synapse Spark, GCP Dataproc |
 | 26 | MLflow | ML experiment tracking and model registry | AI/ML | Self-hosted, Databricks MLflow, Azure ML (built-in MLflow) |
-| 27 | Memcached | Distributed in-memory cache (simple key-value) | Web App, Microservices, Real-time | AWS ElastiCache, Azure Cache (Memcached-compatible), GCP Memorystore |
+| 27 | Memcached | Distributed in-memory cache (simple key-value) | Web App, Microservices, Real-time | AWS ElastiCache for Memcached, self-hosted on Azure VMs or containers, GCP Memorystore for Memcached |
 
 ---
 
