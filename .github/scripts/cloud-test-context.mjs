@@ -136,8 +136,7 @@ export function testStatus(needs) {
     "build",
     "upload-ghcr",
     "upload-test-types",
-    "tests",
-    "report-suite-results"
+    "tests"
   ];
   const results = required.map((name) => needs[name]?.result);
   if (results.includes("failure")) {

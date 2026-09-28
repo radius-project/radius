@@ -37,10 +37,7 @@ env:
 jobs:
   purge_azure_resources:
     name: Clean up unused Azure resources
-    if: >-
-      github.repository == 'radius-project/radius' &&
-      github.ref == 'refs/heads/main' && github.ref_protected &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    if: github.repository == 'radius-project/radius'
     runs-on: ubuntu-24.04
     # Deleting ACI nGroups synchronously before each resource group (see the delete
     # step) is slower than the previous fire-and-forget 'az group delete --no-wait',

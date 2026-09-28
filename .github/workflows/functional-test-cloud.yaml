@@ -701,7 +701,9 @@ jobs:
     permissions:
       id-token: write # Required for requesting the JWT
       contents: read # Required for listing the commits
+      checks: write # Required for publishing test results
       packages: read # Required for pulling images from ghcr.io inside KinD
+      pull-requests: write # Required for posting test results
     env:
       UNIQUE_ID: ${{ needs.setup.outputs.UNIQUE_ID }}
       REL_VERSION: ${{ needs.setup.outputs.REL_VERSION }}
@@ -1069,24 +1071,14 @@ jobs:
           MATRIX_NAME: ${{ matrix.name }}
           FUNCTEST_PREPROVISIONED_RESOURCE_JSON: ${{ secrets.FUNCTEST_PREPROVISIONED_RESOURCE_JSON }}
 
-      - name: Transform test result data
-        if: always()
-        env:
-          SUITE: ${{ matrix.name }}
-        run: |
-          if [[ -f dist/functional_test/results.xml ]]; then
-            python3 .github/scripts/transform_test_results.py "${GITHUB_WORKSPACE}" \
-              dist/functional_test/results.xml "dist/functional_test/functional_test_results_${SUITE}.xml"
-          fi
-
-      - name: Upload test result data
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Process Functional Test Results
+        uses: ./.github/actions/process-test-results
+        if: always() && github.repository == vars.RADIUS_REPOSITORY
         with:
-          path: dist/functional_test/functional_test_results_${{ matrix.name }}.xml
-          archive: false
-          if-no-files-found: error
-          overwrite: true
+          test_group_name: Functional Tests - ${{ matrix.name }}
+          artifact_name: functional_test_results_${{ matrix.name }}
+          result_directory: dist/functional_test/
+          comment_mode: failures
 
       - name: Collect cluster diagnostics
         if: always()
@@ -1156,77 +1148,6 @@ jobs:
             --verbose \
             --no-wait
 
-  report-suite-results:
-    name: Report ${{ matrix.name }} test results
-    needs: [setup, tests]
-    if: always() && needs.setup.result == 'success' && needs.tests.result != 'skipped'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      actions: read
-    strategy:
-      fail-fast: false
-      matrix:
-        name: [corerp-cloud, ucp-cloud]
-    env:
-      CHECKOUT_REPO: ${{ needs.setup.outputs.CHECKOUT_REPO }}
-      CHECKOUT_REF: ${{ needs.setup.outputs.CHECKOUT_REF }}
-      INPUT_SUITE: ${{ matrix.name }}
-    steps:
-      - name: Checkout trusted reporter
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: radius-project/radius
-          ref: ${{ needs.setup.outputs.TRUSTED_SHA }}
-          persist-credentials: false
-
-      - name: Select same-run test results
-        id: select
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const { select } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
-            await select({ github, core, context });
-
-      - name: Download test result data
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          artifact-ids: ${{ steps.select.outputs.artifact_id }}
-          path: ${{ runner.temp }}/cloud-test-inputs/download
-          github-token: ${{ github.token }}
-          repository: radius-project/radius
-          run-id: ${{ github.run_id }}
-          skip-decompress: true
-          digest-mismatch: error
-
-      - name: Stage bounded XML without entity declarations
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const { results } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/cloud-test-artifacts.mjs`);
-            await results({ core });
-
-      - name: Get reporting App token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        id: report-token
-        with:
-          client-id: ${{ secrets.FUNCTIONAL_TEST_CLIENT_ID }}
-          private-key: ${{ secrets.FUNCTIONAL_TEST_APP_PRIVATE_KEY }}
-          permission-checks: write
-          permission-pull-requests: write
-
-      - name: Publish suite result
-        uses: EnricoMi/publish-unit-test-result-action@d0a4676d0e0b938bc201470d88276b7c74c712b3 # v2.24.0
-        with:
-          github_token: ${{ steps.report-token.outputs.token }}
-          check_name: Functional Tests - ${{ matrix.name }}
-          commit: ${{ needs.setup.outputs.CHECKOUT_REF }}
-          pull_request_build: commit
-          comment_mode: failures
-          files: trusted-test-results/results.xml
-          action_fail_on_inconclusive: true
-
   report-test-results:
     # Report final test status. Runs after all tests complete (or are skipped).
     if: always() && github.repository == 'radius-project/radius'
@@ -1240,7 +1161,6 @@ jobs:
         upload-ghcr,
         upload-test-types,
         tests,
-        report-suite-results,
         announce
       ]
     runs-on: ubuntu-24.04

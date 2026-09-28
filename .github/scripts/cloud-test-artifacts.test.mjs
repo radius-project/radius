@@ -145,11 +145,6 @@ test("selection authenticates attempts, reuses earlier successful inputs and sur
     throw new Error("HTTP 403");
   };
   await assert.rejects(bundle.select(args, env), /HTTP 403/);
-  args.core = core({ directory, suite: "corerp-cloud" });
-  actions.listWorkflowRunArtifacts = async () => ({
-    data: { total_count: 0, artifacts: [] }
-  });
-  await assert.rejects(bundle.select(args, env), /Missing or ambiguous/);
 });
 
 function payload() {
@@ -303,24 +298,7 @@ test("preparation rejects mismatched sources before writes and publication recor
   );
 });
 
-test("XML is data-only and summary fails closed on incomplete or cancelled work", async (t) => {
-  const directory = await temporary(t),
-    name = "functional_test_results_corerp-cloud.xml";
-  await mkdir(join(directory, "download"));
-  for (const xml of [
-    "<!DOCTYPE test><testsuites/>",
-    '<!ENTITY bad SYSTEM "file:/etc/passwd">',
-    "\0"
-  ]) {
-    await save(join(directory, "selected.json"), {
-      artifact: { ...artifact, name, size_in_bytes: xml.length }
-    });
-    await writeFile(join(directory, "download", name), xml);
-    await assert.rejects(
-      bundle.results({ core: core({ directory }) }),
-      /declarations/
-    );
-  }
+test("summary fails closed on incomplete or cancelled work", () => {
   const phases = [
     "authorize",
     "setup",
@@ -329,8 +307,7 @@ test("XML is data-only and summary fails closed on incomplete or cancelled work"
     "build",
     "upload-ghcr",
     "upload-test-types",
-    "tests",
-    "report-suite-results"
+    "tests"
   ];
   const needs = Object.fromEntries(
     phases.map((key) => [
@@ -366,20 +343,26 @@ test("real workflows preserve credential boundaries and require native digest ve
     JSON.stringify(cloud.build),
     /secrets\.|azure\/login|docker\/login/
   );
-  assert.equal(cloud.tests.permissions.packages, "read");
+  assert.deepEqual(cloud.tests.permissions, {
+    "id-token": "write",
+    contents: "read",
+    checks: "write",
+    packages: "read",
+    "pull-requests": "write"
+  });
   assert.doesNotMatch(
     JSON.stringify(cloud.tests),
-    /FUNCTIONAL_TEST_APP_PRIVATE_KEY/
+    /FUNCTIONAL_TEST_APP_PRIVATE_KEY|BICEPTYPES_CLIENT_ID/
+  );
+  assert.equal(
+    step(cloud.tests, "Process Functional Test Results").uses,
+    "./.github/actions/process-test-results"
   );
   assert.match(
     JSON.stringify(cloud.announce),
     /FUNCTIONAL_TEST_TERRAFORM_MODULES_READ_TOKEN/
   );
-  for (const name of [
-    "upload-ghcr",
-    "upload-test-types",
-    "report-suite-results"
-  ]) {
+  for (const name of ["upload-ghcr", "upload-test-types"]) {
     assert.equal(
       cloud[name].steps[0].with.ref,
       "${{ needs.setup.outputs.TRUSTED_SHA }}"

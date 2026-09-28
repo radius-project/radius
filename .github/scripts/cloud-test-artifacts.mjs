@@ -103,13 +103,12 @@ export function sourceIdentity(context, env, attempt = env.GITHUB_RUN_ATTEMPT) {
   };
 }
 
-export function verifyArtifact(artifact, source, repositoryId, suite) {
+export function verifyArtifact(artifact, source, repositoryId) {
   number(artifact.id);
   assert.equal(artifact.expired, false, "Artifact expired; rerun its producer");
   assert.match(artifact.digest, digestPattern, "Missing artifact digest");
-  const limit = suite ? 20 * 1024 ** 2 : 4 * 1024 ** 3;
   assert.ok(
-    artifact.size_in_bytes > 0 && artifact.size_in_bytes <= limit,
+    artifact.size_in_bytes > 0 && artifact.size_in_bytes <= 4 * 1024 ** 3,
     "Artifact exceeds size limit"
   );
   assert.equal(artifact.workflow_run.id, source.runId);
@@ -119,14 +118,6 @@ export function verifyArtifact(artifact, source, repositoryId, suite) {
     source.runHeadSHA,
     "Artifact run head mismatch"
   );
-  if (suite) {
-    assert.ok(
-      ["corerp-cloud", "ucp-cloud"].includes(suite),
-      "Unexpected result suite"
-    );
-    assert.equal(artifact.name, `functional_test_results_${suite}.xml`);
-    return source.generationAttempt;
-  }
   const match = /^cloud-test-inputs-([0-9]+)-([0-9]+)\.tar$/.exec(
     artifact.name
   );
@@ -145,33 +136,14 @@ export function verifyArtifact(artifact, source, repositoryId, suite) {
 /** Authenticate selection before the native action downloads any candidate bytes. */
 export async function select({ github, core, context }, env = process.env) {
   let source = sourceIdentity(context, env);
-  const suite = core.getInput("suite");
-  let id = core.getInput("artifact_id");
-  if (suite) {
-    assert.ok(["corerp-cloud", "ucp-cloud"].includes(suite));
-    const { data } = await github.rest.actions.listWorkflowRunArtifacts({
-      ...repo,
-      run_id: source.runId,
-      name: `functional_test_results_${suite}.xml`,
-      per_page: 100,
-      request: request()
-    });
-    assert.equal(data.total_count, 1, "Missing or ambiguous test results");
-    assert.equal(data.artifacts.length, 1);
-    id = data.artifacts[0].id;
-  }
+  const id = core.getInput("artifact_id", { required: true });
   const { data: artifact } = await github.rest.actions.getArtifact({
     ...repo,
     artifact_id: number(id),
     request: request()
   });
   assert.equal(artifact.id, number(id));
-  const attempt = verifyArtifact(
-    artifact,
-    source,
-    env.GITHUB_REPOSITORY_ID,
-    suite
-  );
+  const attempt = verifyArtifact(artifact, source, env.GITHUB_REPOSITORY_ID);
   const { data: run } = await github.rest.actions.getWorkflowRunAttempt({
     ...repo,
     run_id: source.runId,
@@ -187,29 +159,27 @@ export async function select({ github, core, context }, env = process.env) {
       run.path.split("@")[0] === workflow,
     "Producing workflow attempt mismatch"
   );
-  if (!suite) {
-    const created = Date.parse(artifact.created_at);
+  const created = Date.parse(artifact.created_at);
+  assert.ok(
+    created >= Date.parse(run.run_started_at),
+    "Artifact predates producer"
+  );
+  if (attempt < source.generationAttempt) {
+    const { data: next } = await github.rest.actions.getWorkflowRunAttempt({
+      ...repo,
+      run_id: source.runId,
+      attempt_number: attempt + 1,
+      request: request()
+    });
     assert.ok(
-      created >= Date.parse(run.run_started_at),
-      "Artifact predates producer"
+      created <= Date.parse(next.run_started_at),
+      "Artifact postdates producer"
     );
-    if (attempt < source.generationAttempt) {
-      const { data: next } = await github.rest.actions.getWorkflowRunAttempt({
-        ...repo,
-        run_id: source.runId,
-        attempt_number: attempt + 1,
-        request: request()
-      });
-      assert.ok(
-        created <= Date.parse(next.run_started_at),
-        "Artifact postdates producer"
-      );
-    }
-    source = { ...source, generationAttempt: attempt };
   }
+  source = { ...source, generationAttempt: attempt };
   const directory = workDirectory(core);
   await mkdir(directory, { recursive: true });
-  await save(join(directory, "selected.json"), { source, artifact, suite });
+  await save(join(directory, "selected.json"), { source, artifact });
   core.setOutput("artifact_id", artifact.id);
 }
 
@@ -487,18 +457,4 @@ export async function publish(
     await save(join(directory, "receipt.json"), receipt);
     await core.summary.addCodeBlock(JSON.stringify(receipt), "json").write();
   }
-}
-
-export async function results({ core }) {
-  const directory = workDirectory(core);
-  const { artifact } = await json(join(directory, "selected.json"));
-  const bytes = await readFile(await downloaded(directory, artifact));
-  const xml = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
-  assert.ok(
-    !/[\0]|<!DOCTYPE|<!ENTITY/i.test(xml),
-    "XML declarations/entities are forbidden"
-  );
-  // The pinned JUnit reporter owns parsing and fails on missing/inconclusive reports.
-  await mkdir("trusted-test-results");
-  await writeFile("trusted-test-results/results.xml", bytes);
 }
