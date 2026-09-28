@@ -265,6 +265,21 @@ No new user-facing CLI commands are introduced. The changes are internal to serv
 
 ### Implementation Details
 
+#### Enforcement entry points
+
+The permissions described in this design are not in the code yet. Each check is added at an existing point in the request path, so every request passes through it:
+
+| Entry point                                                                                                                          | Current role                                                                                              | Check to add                                                                                                                                     |
+|--------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| UCP server middleware chain (`pkg/ucp/frontend/api/server.go`)                                                                       | Wraps every UCP request with request context, logging, and path normalization.                            | Read the caller's identity from its verified certificate, then reject routes and operations outside that component's standing permissions.       |
+| UCP proxy controller (`pkg/ucp/frontend/controller/radius/proxy.go`)                                                                 | Forwards resource requests to the owning resource provider.                                               | Validate the grant's signature, audience, operation, and target scope before forwarding, then attach a narrower grant for the resource provider. |
+| ARM-RPC frontend server (`pkg/armrpc/frontend/server/server.go`)                                                                     | Builds the router for resource providers that use ARM-RPC, including an optional client-certificate hook. | Accept requests only from UCP's certificate, and require a valid grant before any handler changes state.                                         |
+| Async operation message and worker (`pkg/armrpc/asyncoperation/controller/request.go`, `pkg/armrpc/asyncoperation/worker/worker.go`) | Carries the operation ID, type, and resource ID, then dequeues and runs the operation with a retry limit. | Add the grant's `jti` and approved-input hash to the message. Before each step, re-validate the execution record and compare the input hash.     |
+| Controller reconcilers (`pkg/controller/reconciler`)                                                                                 | Turn Kubernetes object changes into UCP requests.                                                         | Check the source namespace's mapping to resource groups and environments before submitting a request.                                            |
+| Backend storage and queue clients (`pkg/components`)                                                                                 | Connect components to shared state and queues.                                                            | Use credentials scoped to each component, or route access through a data-access service.                                                         |
+
+Recipe output is not limited in Radius code. The credential broker's scoped token and the cloud role on the environment's credential set that limit.
+
 #### UCP (if applicable)
 
 Add caller authentication and grant issuance in `pkg/ucp/frontend` and `pkg/ucp/proxy`: verify the calling service's identity, issue an execution grant when it forwards an authorized deployment, and validate the grant, caller, and target scope on every subsequent resource request. Apply explicit permissions to startup registration as well.
