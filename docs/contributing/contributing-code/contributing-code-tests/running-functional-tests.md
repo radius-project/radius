@@ -188,6 +188,10 @@ Separate scheduled jobs (`purge-azure-test-resources.yaml` and `purge-aws-test-r
 
 The scheduled `long-running-azure.yaml` workflow uses a published release for the CLI, control plane, and test source. Its diagnostics scripts run from the workflow checkout on `main`, so diagnostic improvements do not require a new Radius release.
 
+The persistent LRT cluster uses a Bicep deployment engine memory request of `256Mi` and limit of `512Mi`. [`.github/scripts/manage-radius-installation.sh`](../../../../.github/scripts/manage-radius-installation.sh) supplies these as `de.resources.requests.memory` and `de.resources.limits.memory` Helm overrides on installation and upgrade, alongside the required cloud identity and database settings. When the Radius version already matches, the script checks these memory settings and the AWS IRSA token volumes and reconciles differences; matching settings do not trigger an upgrade. These overrides are specific to LRT, not the chart defaults for other installations.
+
+Change cluster-specific resource settings through Helm values rather than `kubectl set resources`. An out-of-band change can take ownership of fields and cause the next server-side Helm upgrade to fail with `conflicts with "kubectl-set"`. For the known `bicep-de` memory adjustment, applying the same values as the live Deployment lets Helm share ownership and store the overrides for later upgrades. A future change to shared fields still requires reconciling ownership; the script does not force conflicts or reinstall Radius when an upgrade fails. Check the live configuration and reported field owners before changing values. A failure in **Manage Radius control plane installation** means the functional tests have not started; verify the complete workflow after repairing the upgrade.
+
 Download the `all_container_logs` artifact from a successful or failed run. Alongside the released test harness's logs, it contains:
 
 - `all-tests-pod-states.log`: final pod, node, and event descriptions.

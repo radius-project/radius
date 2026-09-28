@@ -269,6 +269,19 @@ jobs:
           export PATH=$GITHUB_WORKSPACE/bin:$PATH
           ./.github/scripts/manage-radius-installation.sh
 
+      - name: Verify Radius Helm release
+        run: |
+          set -euo pipefail
+          helm status radius --namespace radius-system --output json |
+            jq -e 'if .info.status == "deployed" then
+              {name, revision: .version, status: .info.status}
+            else error("Radius Helm release is not deployed") end'
+          # Print only the memory overrides, never the complete release values.
+          helm get values radius --namespace radius-system --output json |
+            jq '{de: {resources: .de.resources}}'
+          kubectl get deployments --namespace radius-system \
+            -o 'custom-columns=NAME:.metadata.name,READY:.status.readyReplicas,DESIRED:.spec.replicas,IMAGES:.spec.template.spec.containers[*].image'
+
       - name: Save list of resources not to be deleted
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

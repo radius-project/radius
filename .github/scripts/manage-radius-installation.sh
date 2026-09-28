@@ -31,6 +31,17 @@ set -euo pipefail
 SCRIPT_NAME="$(basename "$0")"
 readonly SCRIPT_NAME
 
+readonly BICEP_DE_MEMORY_REQUEST="256Mi"
+readonly BICEP_DE_MEMORY_LIMIT="512Mi"
+# Keep LRT-specific tuning in Helm, including the previously manual DE override.
+readonly REQUIRED_CHART_VALUES=(
+    --set global.azureWorkloadIdentity.enabled=true
+    --set global.aws.irsa.enabled=true
+    --set database.enabled=false
+    --set "de.resources.requests.memory=${BICEP_DE_MEMORY_REQUEST}"
+    --set "de.resources.limits.memory=${BICEP_DE_MEMORY_LIMIT}"
+)
+
 usage() {
     echo "Usage: ${SCRIPT_NAME}"
     echo ""
@@ -179,38 +190,78 @@ aws_irsa_token_volumes_enabled() {
     return 0
 }
 
+bicep_de_memory_configured() {
+    local memory_values
+    local jsonpath='{range .spec.template.spec.containers[?(@.name=="de")]}'
+    jsonpath+='{.resources.requests.memory}{" "}{.resources.limits.memory}{end}'
+
+    if ! memory_values=$(
+        kubectl get deployment bicep-de -n radius-system \
+            -o "jsonpath=${jsonpath}"
+    ); then
+        echo "Error: Failed to inspect bicep-de memory configuration." >&2
+        return 2
+    fi
+
+    echo "bicep-de memory request/limit: ${memory_values}"
+    echo "Required request/limit: ${BICEP_DE_MEMORY_REQUEST} ${BICEP_DE_MEMORY_LIMIT}"
+    [[ "${memory_values}" == \
+        "${BICEP_DE_MEMORY_REQUEST} ${BICEP_DE_MEMORY_LIMIT}" ]]
+}
+
+required_chart_values_configured() {
+    local irsa_status=0 memory_status=0
+    aws_irsa_token_volumes_enabled || irsa_status=$?
+    if [[ ${irsa_status} -eq 2 ]]; then
+        return 2
+    fi
+
+    bicep_de_memory_configured || memory_status=$?
+    if [[ ${memory_status} -eq 2 ]]; then
+        return 2
+    fi
+
+    [[ ${irsa_status} -eq 0 && ${memory_status} -eq 0 ]]
+}
+
 upgrade_radius() {
-    rad upgrade kubernetes \
-        --set global.azureWorkloadIdentity.enabled=true \
-        --set global.aws.irsa.enabled=true \
-        --set database.enabled=false \
-        "$@"
+    local memory_status=0
+    bicep_de_memory_configured || memory_status=$?
+    if [[ ${memory_status} -eq 2 ]]; then
+        return 1
+    fi
+
+    if ! rad upgrade kubernetes "${REQUIRED_CHART_VALUES[@]}" "$@"; then
+        echo "Error: Upgrade failed; no forced overwrite or reinstall attempted." >&2
+        echo "For an apply conflict, inspect the reported field owner and reconcile its intended Helm values." >&2
+        return 1
+    fi
+
+    if ! required_chart_values_configured; then
+        echo "Error: Required chart values are missing after upgrade." >&2
+        return 1
+    fi
 }
 
 reconcile_required_chart_values() {
-    local irsa_status=0
-    aws_irsa_token_volumes_enabled || irsa_status=$?
+    local configuration_status=0
+    required_chart_values_configured || configuration_status=$?
 
-    if [[ ${irsa_status} -eq 0 ]]; then
+    if [[ ${configuration_status} -eq 0 ]]; then
         echo "Required Radius chart values are already configured."
         return 0
     fi
 
-    if [[ ${irsa_status} -ne 1 ]]; then
+    if [[ ${configuration_status} -ne 1 ]]; then
         return 1
     fi
 
-    echo "AWS IRSA is not enabled on the current Radius installation. Reconciling chart values..."
+    echo "Required Radius configuration differs. Reconciling chart values..."
     # The upgrade preflight rejects a same-version target. We already established
     # that this is an installed, matching-version control plane, so skip preflight
     # for this one-time Helm value reconciliation.
     if ! upgrade_radius --skip-preflight; then
         echo "Error: Failed to reconcile required Radius chart values." >&2
-        return 1
-    fi
-
-    if ! aws_irsa_token_volumes_enabled; then
-        echo "Error: AWS IRSA token volumes are still missing after reconciliation." >&2
         return 1
     fi
 
@@ -220,16 +271,17 @@ reconcile_required_chart_values() {
 # Install Radius on the cluster
 install_radius() {
     echo "Installing Radius..."
-    if ! rad install kubernetes \
-        --set global.azureWorkloadIdentity.enabled=true \
-        --set global.aws.irsa.enabled=true \
-        --set database.enabled=false; then
+    if ! rad install kubernetes "${REQUIRED_CHART_VALUES[@]}"; then
         echo ""
         echo "============================================================================"
         echo "ERROR: Radius installation failed"
         echo "============================================================================"
         echo "The installation could not be completed."
         echo "Please check the error message above for details."
+        exit 1
+    fi
+    if ! required_chart_values_configured; then
+        echo "Error: Required chart values are missing after installation." >&2
         exit 1
     fi
     echo "Radius installation complete."
@@ -336,11 +388,8 @@ main() {
         echo "Version mismatch detected. Attempting upgrade from ${cp_version} to ${cli_version}..."
         # There are scenarios when an upgrade may not be possible, and we are relying on the rad upgrade command to
         # detect and report an error, which will cause the workflow to fail. Manual intervention may be required in such cases.
-        # NOTE: Helm upgrades do not automatically reuse values from the previous release.
-        # We must re-apply critical chart values or they will reset to chart defaults.
-        # - global.azureWorkloadIdentity.enabled defaults to false and is required for Azure WI auth in this workflow.
-        # - global.aws.irsa.enabled defaults to false and is required for AWS IRSA auth in this workflow.
-        # https://github.com/radius-project/radius/issues/11218
+        # Radius preserves stored Helm overrides. Explicit required values also
+        # adopt the LRT's previous out-of-band memory tuning into Helm.
         if ! upgrade_radius; then
             echo ""
             echo "============================================================================"
