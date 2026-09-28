@@ -398,7 +398,7 @@ func TestGetConfigurationV20250801(t *testing.T) {
 		errString      string
 	}{
 		{
-			name: "azure provider with subscription only v20250801",
+			name: "azure provider without resource group v20250801",
 			envResource: &modelv20250801.EnvironmentResource{
 				Properties: &modelv20250801.EnvironmentProperties{
 					Providers: &modelv20250801.Providers{
@@ -413,20 +413,44 @@ func TestGetConfigurationV20250801(t *testing.T) {
 				},
 			},
 			appResource: nil,
-			expectedConfig: &recipes.Configuration{
-				Runtime: recipes.RuntimeConfiguration{
-					Kubernetes: &recipes.KubernetesRuntime{
-						Namespace:            envNamespace,
-						EnvironmentNamespace: envNamespace,
+			errString:   "providers.azure.resourceGroupName is required when the Azure provider is configured",
+		},
+		{
+			name: "azure provider without subscription id v20250801",
+			envResource: &modelv20250801.EnvironmentResource{
+				Properties: &modelv20250801.EnvironmentProperties{
+					Providers: &modelv20250801.Providers{
+						Azure: &modelv20250801.ProvidersAzure{
+							ResourceGroupName: new("my-resource-group"),
+						},
+						Kubernetes: &modelv20250801.ProvidersKubernetes{
+							Namespace: new(envNamespace),
+						},
 					},
+					Simulated: new(false),
 				},
-				Providers: datamodel.Providers{
-					Azure: datamodel.ProvidersAzure{
-						Scope: "/subscriptions/test-subscription-id",
-					},
-				},
-				Simulated: false,
 			},
+			appResource: nil,
+			errString:   "providers.azure.subscriptionId is required when the Azure provider is configured",
+		},
+		{
+			name: "azure provider with whitespace subscription id v20250801",
+			envResource: &modelv20250801.EnvironmentResource{
+				Properties: &modelv20250801.EnvironmentProperties{
+					Providers: &modelv20250801.Providers{
+						Azure: &modelv20250801.ProvidersAzure{
+							SubscriptionID:    new("   "),
+							ResourceGroupName: new("my-resource-group"),
+						},
+						Kubernetes: &modelv20250801.ProvidersKubernetes{
+							Namespace: new(envNamespace),
+						},
+					},
+					Simulated: new(false),
+				},
+			},
+			appResource: nil,
+			errString:   "providers.azure.subscriptionId is required when the Azure provider is configured",
 		},
 		{
 			name: "azure provider with subscription and resource group v20250801",

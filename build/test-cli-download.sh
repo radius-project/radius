@@ -65,21 +65,28 @@ echo "Fetching latest release version from GitHub API..."
 radReleaseUrl="https://api.github.com/repos/radius-project/radius/releases"
 
 # Make API call
-api_response=$(curl -s "$radReleaseUrl")
-curl_exit_code=$?
-
-if [ $curl_exit_code -ne 0 ]; then
-    echo "GitHub API call failed with exit code: $curl_exit_code"
+# `|| { ... }` rather than a following `$?` check: the script runs under `set -e`, so
+# a failing curl inside the assignment exits immediately and a separate check below it
+# is never reached. -sS keeps curl quiet on success but lets its own error through.
+# -w appends the HTTP status on its own line, so a parse failure below can tell a
+# rate limit (403) from a server error (5xx).
+api_response=$(curl -sS -w '\n%{http_code}' "$radReleaseUrl") || {
+    printf 'GitHub API call to %s failed (curl exit %d)\n' "$radReleaseUrl" "$?" >&2
     exit 1
-fi
+}
+http_status=${api_response##*$'\n'}
+api_response=${api_response%$'\n'*}
 
 echo "GitHub API call successful"
 
-# Extract version from API response using grep, awk, and sed
-RAD_VERSION=$(echo "$api_response" | grep "tag_name" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/"\(.*\)",/\1/p')
+# Extract version from API response using grep, awk, and sed.
+# `|| true` stops a non-matching grep (e.g. an API error response with no
+# "tag_name") from tripping `set -e` here, before the empty-value check below
+# can report a useful error.
+RAD_VERSION=$(echo "$api_response" | grep "tag_name" | grep -v rc | awk 'NR==1{print $2}' | sed -n 's/"\(.*\)",/\1/p') || true
 
 if [ -z "$RAD_VERSION" ]; then
-    echo "Failed to extract RAD_VERSION from API response"
+    printf 'Failed to extract RAD_VERSION from API response (HTTP %s):\n%s\n' "$http_status" "$api_response" >&2
     exit 1
 fi
 
