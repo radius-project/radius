@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string"
+    }
+  },
+  "imports": {
+    "Radius": {
+      "provider": "Radius",
+      "version": "latest"
+    }
+  },
+  "resources": {
+    "owner": {
+      "import": "Radius",
+      "type": "Radius.Data/redisCaches@2025-08-01-preview",
+      "properties": {
+        "name": "[parameters('name')]",
+        "location": "global",
+        "properties": {
+          "environment": "[parameters('environment')]"
+        }
+      }
+    }
+  }
+}
