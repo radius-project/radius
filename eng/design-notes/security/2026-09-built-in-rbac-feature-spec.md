@@ -178,8 +178,6 @@ Provide immutable, documented built-in roles for common separation-of-duties sce
 | Reader                      | Read authorized resource metadata and application graphs without mutation or secret access.                                                                                                                       |
 | Auditor                     | Read authorization configuration and audit events without resource mutation or secret access.                                                                                                                     |
 
-The final role names and permission matrix remain an open decision informed by customer role mapping and security review. Administrators can compose custom roles from supported permissions when built-in roles are too broad, and the product shows which permissions are grantable at which scopes.
-
 ### Feature 3: Role assignments and effective-access inspection
 
 Support assignments for users, groups, and workload identities. An assignment binds one role to one principal at one scope, and multiple assignments are additive.
@@ -215,93 +213,6 @@ Provide an inventory and preview mode that shows what enforcement would deny wit
 Existing installations explicitly enable enforcement after validation. New shared installations start with enforcement enabled after bootstrap, while local installations retain a simple one-user setup.
 
 Automation installations use a dedicated bootstrap path, and restored access policy cannot silently replace trusted bootstrap access or create an unrecoverable lockout. All installation modes and compatibility timelines are documented.
-
-## Acceptance criteria
-
-### Model and administration (Scenarios 1, 5, and 6; Features 1-3)
-
-1. A Radius administrator can list immutable built-in roles and create, update, and delete custom roles from documented permissions.
-2. Radius rejects unsupported permission and scope combinations with an actionable explanation.
-3. A permitted administrator can assign a role to a user, group, or workload identity at every scope in the approved scope model.
-4. Broader assignments follow the approved scope and inheritance model and do not cross unrelated scopes.
-5. Radius rejects a policy change that would leave enforcement enabled without a recoverable administrator.
-6. Custom roles do not silently receive newly introduced permissions.
-
-### End-to-end enforcement (Scenarios 2-4 and 6; Features 4-5)
-
-1. The same identity, action, and target receive the same authorization result across every supported Radius client and automation path.
-2. An application team can manage resources in its assigned scope and cannot discover or change resources in an unrelated scope.
-3. A user can deploy an authorized application only to environments where they have deploy access.
-4. Deploying to an environment does not grant administration permission over its platform-managed Recipes, settings, credentials, or provider identity, and does not reveal secret values.
-5. A user cannot attach or change a referenced platform capability without the required access to both the resource being changed and the referenced capability.
-6. Radius denies an unauthorized multi-resource operation before beginning changes.
-7. Resource read access does not automatically grant access to protected graphs, logs, secret-related actions, or other sensitive operational data.
-8. New resource types and actions remain inaccessible until an administrator deliberately grants their permissions.
-9. Automation cannot exceed its assigned access, and its actions remain attributable to its workload identity.
-10. Radius documents and reports what happens when access changes while an operation is already in progress.
-
-### Lists, errors, and clients (Scenarios 4-5; Features 3 and 5)
-
-1. Lists and searches follow the approved resource-disclosure contract; when that contract requires an access-filtered indicator, every supported client displays it without revealing hidden resources.
-2. A denied request returns a consistent authorization error and no protected resource data.
-3. The CLI and graphical clients show the identity, denied action, target, and a next step to request access or contact a Radius administrator without exposing unrelated assignments or secrets.
-4. Supported clients preserve forbidden and partial-result states instead of presenting them as empty success or retrying them as transient failures.
-5. Clients can check current capabilities to improve the experience, but a capability result never replaces authorization of the requested action.
-
-### Revocation, audit, and migration (Scenarios 1, 4, and 5; Features 6-7)
-
-1. Removing an assignment prevents new requests within the revocation target published before preview.
-2. Authorization decisions and access-policy changes produce audit records without secret values or protected request data.
-3. An administrator can trace an allow or deny decision to the effective role and assignment without receiving unauthorized identity or resource information.
-4. An existing installation can preview enforcement, resolve access gaps, enable enforcement, and recover according to the supported migration procedure.
-5. Local, shared, and automation installations establish initial access appropriate to their use case without leaving an unprotected window.
-6. Restoring previous Radius state cannot silently replace trusted bootstrap access or create an unrecoverable lockout.
-7. Exceptional recovery access is time-bounded, explicitly invoked, and always audited.
-
-## Success measures
-
-### Outcome measures
-
-| Measure                                                                                                      | Baseline                    | Initial target                      | Measurement plan and owner                                                                             |
-|--------------------------------------------------------------------------------------------------------------|-----------------------------|-------------------------------------|--------------------------------------------------------------------------------------------------------|
-| Shared-installation pilots that enforce RBAC without broad Kubernetes access for application teams           | Unknown                     | TODO after pilot recruitment        | Product reviews pilot configuration and administrator feedback after one release cycle.                |
-| Administrators who complete the application-team delegation scenario without maintainer assistance           | Unknown                     | TODO after usability baseline       | Product design validates assignment, access explanation, denial diagnosis, and revocation tasks.       |
-| Administrators who can correctly explain and resolve a denied action                                         | Unknown                     | TODO after usability baseline       | Product design tests representative denials across applications, environments, and platform resources. |
-| Existing installations that migrate without unrecoverable lockout or an extended compatibility-mode fallback | No supported migration path | 100% of qualification installations | Release engineering validates the documented migration and recovery experience before default rollout. |
-
-### Guardrail measures
-
-| Guardrail                                                 | Baseline                              | Target or stop condition                                                                                           | Owner               |
-|-----------------------------------------------------------|---------------------------------------|--------------------------------------------------------------------------------------------------------------------|---------------------|
-| Unauthorized access                                       | Granular RBAC absent                  | Zero known authorization bypasses; any confirmed bypass stops rollout.                                             | Security            |
-| Incorrect access after revocation                         | Unknown                               | Zero known cases beyond the revocation target published before preview.                                            | Engineering         |
-| False empty-success experiences after forbidden responses | Current clients vary                  | Zero known cases in supported clients.                                                                             | Client owners       |
-| Administrator lockouts                                    | Not measured                          | Zero unrecoverable lockouts during installation, migration, or recovery.                                           | Release engineering |
-| Sensitive data in audit or denial output                  | Existing redaction requirements apply | Zero known disclosures of secret values or protected payloads.                                                     | Security            |
-| User-visible performance regression                       | Unknown                               | No material degradation to common read, deployment, or access-administration workflows; target set before preview. | Product             |
-
-## Rollout and learning plan
-
-1. **Problem and role-model validation**
-   - Validate the need for Radius-specific delegation with shared-platform and enterprise evaluators.
-   - Test the proposed roles, scopes, and separation of application and platform responsibilities.
-   - Stop or rescope if customers do not need Radius-specific delegation or the model does not fit their operating structures.
-2. **Access preview**
-   - Publish the draft permission matrix and built-in roles for review.
-   - Let administrators preview how proposed enforcement affects current users and automation.
-   - Refine role coverage, explanations, and recovery guidance before enforcement.
-3. **Preview enforcement**
-   - Enable RBAC for selected pilots with explicit bootstrap, recovery, and rollback.
-   - Gather feedback on delegation, denial quality, troubleshooting, revocation, and client consistency.
-4. **New shared installations**
-   - Enable enforcement by default after bootstrap for new shared installations.
-   - Keep local development bootstrap frictionless.
-   - Keep existing installations in compatibility mode until an administrator completes access preview.
-5. **Existing-installation migration and general availability**
-   - Publish migration, recovery, and audit-integration guidance with a compatibility-mode deprecation policy.
-   - Revisit built-in roles and scope granularity using pilot evidence before declaring general availability.
-
-Feedback comes from pilot interviews, usability studies, support and issue analysis, and privacy-preserving product telemetry. Rollout stops for unauthorized access, unrecoverable administrator lockout, unacceptable revocation delay, sensitive information disclosure, or material user-facing performance regression.
 
 ## Open decisions
 
