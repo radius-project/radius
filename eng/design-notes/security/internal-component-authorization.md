@@ -147,6 +147,35 @@ The grant must let a receiver confirm approval without trusting an editable head
 
 For asynchronous work the self-contained JWT is a poor fit, because a queued operation may run long after the token would expire. Store the grant's `jti` and a hash of the approved inputs in the queue message, and keep the authoritative approval as a **renewable server-side execution record** keyed by that `jti`. A worker re-validates the record (not just the expired token) before executing, and renewal re-checks current policy so a revoked permission stops new steps.
 
+#### Permissions per component
+
+Each component gets two kinds of permission, and they are chosen differently:
+
+- **Standing permissions** are fixed per component and describe which parts of the Radius control plane it may call: which UCP routes, resource types, operations, and backends. They do not change between deployments, so they form a short list that can be reviewed with each release.
+- **Per-deployment permissions** come from the execution grant and describe what one deployment may create or change. They vary with every request and are never written into a component's standing list.
+
+A request succeeds only when both allow it: the caller's standing permissions allow the call, and the grant covers the target.
+
+| Component                                  | Standing permissions                                                                                                                             | Not permitted                                                                                   |
+|--------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| UCP                                        | Authorize user requests, issue and validate grants, route operations to resource providers, and manage its own plane and resource-group records. | Do resource provider work itself or use cloud credentials directly.                             |
+| Deployment engine                          | Submit resource operations to UCP that reference a grant, and read their results.                                                                | Call resource providers directly, assign roles, or access state stores or credentials directly. |
+| Applications RP                            | Handle operations on its own resource types when UCP forwards them with a grant, and read and write its own records.                             | Handle other providers' resource types or issue grants.                                         |
+| Dynamic RP and portable resource providers | Handle operations on the resource types registered to them, and run the approved recipe using a credential the broker issued.                    | Choose their own cloud credentials or create resources outside the grant's environment scope.   |
+| Controller                                 | Reconcile Radius objects in its mapped namespaces by submitting operations to UCP.                                                               | Target resource groups or environments outside its namespace mapping.                           |
+| Asynchronous workers                       | Run the queued operation types assigned to them after re-validating the execution record.                                                        | Run other operation types, or run a step whose execution record is missing or closed.           |
+| UCP initializer                            | Write built-in resource definitions at startup under a dedicated administrative permission.                                                      | Run after startup or serve requests.                                                            |
+
+##### Components that run recipes
+
+Dynamic RP and the portable resource providers are the hard case. The platform team chooses each recipe template, and a template can create almost any cloud or Kubernetes resource. A per-provider list of allowed resource types would either be too broad to mean anything or would break legitimate recipes. So the design does not limit what a recipe creates with a per-component list. It uses three limits the platform team already controls:
+
+1. **Which recipe runs.** The recipe pack registered to the environment decides which template fulfills a resource type. The grant fixes the approved recipe and inputs, so neither a user nor a compromised provider can swap in a different template.
+2. **Where resources can be created.** The grant names the target environment, and the environment defines the cloud scope (for example, an Azure resource group or an AWS account and region) and the Kubernetes namespace. UCP rejects requests outside that scope.
+3. **What the credential allows.** The credential broker issues a token scoped to that environment. The cloud RBAC or IAM role on that scope sets the upper limit on which resource types can be created. The platform team sets that limit when it configures the environment's credential, as it would for any automation identity.
+
+The provider's standing permission is "run the approved recipe for a granted deployment with a credential the broker issued." What that recipe can create depends on the environment's scope and its credential's cloud permissions. The platform team reviews those limits for each environment; Radius does not maintain a list for each service. Platform teams that want a tighter limit can restrict the environment credential's cloud role to specific resource types.
+
 #### Controllers and asynchronous work
 
 The Radius controller acts on Kubernetes object changes, not the user's authenticated request, so without a restriction a user could create an object that tells the controller to change another team's resources. An administrator therefore maps each namespace to the resource groups and environments it may target, and the controller enforces that mapping plus the source object's ID and ownership before acting — for example, a development namespace cannot select the production environment. Existing installations need these mappings before enforcement.
@@ -356,6 +385,10 @@ The Detailed Design proposes a specific option for each major decision; what rem
 **Q: Which storage and credential mechanism applies to each backend?**
 
 **A:** The design proposes per-component credentials where the store can scope access and a data-access service where it cannot, plus a credential broker for per-deployment cloud tokens. Remaining: classify each existing backend into one of these and decide who operates the broker.
+
+**Q: Should recipe packs declare the resource types their recipes may create?**
+
+**A:** Not in the initial design. The environment's cloud scope and the cloud role on its credential set the upper limit on what a recipe can create. A declared-types list on each recipe pack would let UCP reject a recipe whose planned output contains undeclared types. It depends on reliable plan or what-if output from both Bicep and Terraform, so this design keeps it as a possible later addition.
 
 ## Alternatives considered
 
