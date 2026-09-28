@@ -227,8 +227,14 @@ func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 								MessageContains: "At least one resource deployment operation failed",
 								Details: []step.DeploymentErrorDetail{
 									{
-										Code:            "BadRequest",
-										MessageContains: "Namespace parameter required.",
+										// The nested provider's failed-resource envelope contributes this wrapper.
+										Code: "ResourceDeploymentFailure",
+										Details: []step.DeploymentErrorDetail{
+											{
+												Code:            "BadRequest",
+												MessageContains: "Namespace parameter required.",
+											},
+										},
 									},
 								},
 							},

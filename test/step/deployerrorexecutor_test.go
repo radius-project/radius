@@ -38,8 +38,11 @@ func Test_DeploymentErrorDetail_MatchesExactly(t *testing.T) {
 					Code:            "DeploymentFailed",
 					MessageContains: "At least one resource deployment operation failed",
 					Details: []DeploymentErrorDetail{{
-						Code:            "BadRequest",
-						MessageContains: "Namespace parameter required.",
+						Code: "ResourceDeploymentFailure",
+						Details: []DeploymentErrorDetail{{
+							Code:            "BadRequest",
+							MessageContains: "Namespace parameter required.",
+						}},
 					}},
 				}},
 			}},
@@ -68,8 +71,25 @@ func Test_DeploymentErrorDetail_MatchesExactly(t *testing.T) {
 					Details: []*v1.ErrorDetails{{
 						Code:    "RecipeDeploymentFailed",
 						Message: nodes[2].Message,
+						Details: []*v1.ErrorDetails{{
+							Code:    "DeploymentFailed",
+							Message: nodes[3].Message,
+						}},
 					}},
 				})
+			},
+			subsetMatch: true,
+		},
+		{
+			name: "matching branch alongside divergent complete duplicate",
+			mutate: func(nodes []*v1.ErrorDetails) {
+				divergent := &v1.ErrorDetails{Code: "BadRequest", Message: "A different parameter is required."}
+				for i := len(nodes) - 2; i > 0; i-- {
+					branch := *nodes[i]
+					branch.Details = []*v1.ErrorDetails{divergent}
+					divergent = &branch
+				}
+				nodes[0].Details = append(nodes[0].Details, divergent)
 			},
 			subsetMatch: true,
 		},
@@ -88,24 +108,37 @@ func Test_DeploymentErrorDetail_MatchesExactly(t *testing.T) {
 			subsetMatch: true,
 		},
 		{
-			name: "duplicate provider leaf",
+			name: "duplicate inner resource wrapper",
 			mutate: func(nodes []*v1.ErrorDetails) {
 				nodes[3].Details = append(nodes[3].Details, nodes[4])
 			},
 			subsetMatch: true,
 		},
 		{
-			name: "extra resource failure wrapper before provider leaf",
+			name: "duplicate provider leaf",
 			mutate: func(nodes []*v1.ErrorDetails) {
-				nodes[3].Details = []*v1.ErrorDetails{{
-					Code: "ResourceDeploymentFailure", Details: []*v1.ErrorDetails{nodes[4]},
+				nodes[4].Details = append(nodes[4].Details, nodes[5])
+			},
+			subsetMatch: true,
+		},
+		{
+			name: "missing inner resource wrapper",
+			mutate: func(nodes []*v1.ErrorDetails) {
+				nodes[3].Details = nodes[4].Details
+			},
+		},
+		{
+			name: "extra resource failure wrapper beyond legitimate chain",
+			mutate: func(nodes []*v1.ErrorDetails) {
+				nodes[4].Details = []*v1.ErrorDetails{{
+					Code: "ResourceDeploymentFailure", Details: []*v1.ErrorDetails{nodes[5]},
 				}}
 			},
 		},
 		{
 			name: "matching leaf alongside divergent provider error",
 			mutate: func(nodes []*v1.ErrorDetails) {
-				nodes[3].Details = append(nodes[3].Details, &v1.ErrorDetails{
+				nodes[4].Details = append(nodes[4].Details, &v1.ErrorDetails{
 					Code:    "Conflict",
 					Message: "A different provider operation failed.",
 				})
@@ -115,7 +148,7 @@ func Test_DeploymentErrorDetail_MatchesExactly(t *testing.T) {
 		{
 			name: "structured leaf alongside opaque duplicate",
 			mutate: func(nodes []*v1.ErrorDetails) {
-				nodes[3].Details = append(nodes[3].Details, &v1.ErrorDetails{
+				nodes[4].Details = append(nodes[4].Details, &v1.ErrorDetails{
 					Message: `{"error":{"code":"BadRequest","message":"Namespace parameter required."}}`,
 				})
 			},
@@ -124,7 +157,7 @@ func Test_DeploymentErrorDetail_MatchesExactly(t *testing.T) {
 		{
 			name: "unexpected detail below provider leaf",
 			mutate: func(nodes []*v1.ErrorDetails) {
-				nodes[4].Details = []*v1.ErrorDetails{{Code: "BadRequest", Message: nodes[4].Message}}
+				nodes[5].Details = []*v1.ErrorDetails{{Code: "BadRequest", Message: nodes[5].Message}}
 			},
 			subsetMatch: true,
 		},
@@ -143,14 +176,14 @@ func Test_DeploymentErrorDetail_MatchesExactly(t *testing.T) {
 		{
 			name: "incomplete branch without provider leaf",
 			mutate: func(nodes []*v1.ErrorDetails) {
-				nodes[3].Details = nil
+				nodes[4].Details = nil
 			},
 		},
 		{
 			name: "historical opaque leaf",
 			mutate: func(nodes []*v1.ErrorDetails) {
-				nodes[4].Code = ""
-				nodes[4].Message = `{"error":{"code":"BadRequest","message":"Namespace parameter required."}}`
+				nodes[5].Code = ""
+				nodes[5].Message = `{"error":{"code":"BadRequest","message":"Namespace parameter required."}}`
 			},
 		},
 		{
@@ -162,7 +195,7 @@ func Test_DeploymentErrorDetail_MatchesExactly(t *testing.T) {
 		{
 			name: "wrong provider message",
 			mutate: func(nodes []*v1.ErrorDetails) {
-				nodes[4].Message = "A different parameter is required."
+				nodes[5].Message = "A different parameter is required."
 			},
 		},
 	} {
@@ -170,10 +203,11 @@ func Test_DeploymentErrorDetail_MatchesExactly(t *testing.T) {
 			t.Parallel()
 			nodes := []*v1.ErrorDetails{
 				{Code: "DeploymentFailed"},
-				{Code: "ResourceDeploymentFailure"},
+				{Code: "ResourceDeploymentFailure", Target: "/resources/rrtresource"},
 				{Code: "RecipeDeploymentFailed", Message: "failed to deploy recipe default of type Test.Resources/userTypeAlpha"},
 				{Code: "DeploymentFailed", Message: "At least one resource deployment operation failed. Inspect the deployment operations."},
-				{Code: "BadRequest", Message: "Invalid configuration: Namespace parameter required. Set the environment's Kubernetes namespace."},
+				{Code: "ResourceDeploymentFailure", Target: "/resources/usertypealpha"},
+				{Code: "BadRequest", Message: `{"kind":"Status","status":"Failure","message":"Namespace parameter required.","reason":"BadRequest"}`},
 			}
 			for i := 0; i < len(nodes)-1; i++ {
 				nodes[i].Details = []*v1.ErrorDetails{nodes[i+1]}
