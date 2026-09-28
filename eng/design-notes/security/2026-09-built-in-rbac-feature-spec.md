@@ -182,20 +182,15 @@ I can assign a built-in or custom Radius role to a user, group, or workload iden
 
 ### Detailed user experience
 
-1. During installation, or when enabling RBAC on an existing installation, I establish initial administrator access appropriate for local development, a shared installation, or automation.
-   - Local installations remain easy to start.
-   - Shared installations require explicit administrators and deny access to everyone else by default.
-   - Automation receives access only within its intended Radius instance.
-   - Existing installations can preview and validate enforcement before enabling it.
-2. I list built-in roles and inspect their descriptions and permissions. Built-in role definitions are versioned and cannot be edited or deleted.
-3. I assign a role to a user, group, or workload identity at an appropriate Radius scope.
-4. Before enabling enforcement or changing sensitive access, I preview the result and confirm that administrator recovery remains possible.
-5. Users see only the resources and actions available to them, and clients clearly distinguish restricted results from genuinely empty results.
-6. A developer can deploy an authorized application only to an approved environment. Radius may use the environment's platform-managed dependencies without exposing or granting direct access to them.
-7. A denied action produces a consistent explanation of the identity, action, target, and safe next step across the API, CLI, and graphical clients.
-8. I inspect effective access and audit events to understand why access was allowed or denied without exposing secrets or unrelated policy.
-9. When I revoke access, new actions reflect the change within a documented period, and the product explains the treatment of work already in progress.
-10. Automation and controllers act only within their assigned scopes and remain attributable to their workload identities.
+**As a Radius platform administrator,** I can establish initial administrator access appropriate for local development, a shared installation, or automation. I can understand the built-in roles, assign built-in or custom roles at appropriate Radius scopes, and preview the effect before enabling enforcement or making a sensitive change. Radius protects me from removing all recoverable administrator access. When I revoke access, new actions reflect the change within a documented period, and I can understand what happens to work already in progress.
+
+**As an application developer or operator,** I see only the resources and actions available to me. I can manage my team's applications and deploy them to approved environments without gaining access to the platform-managed Recipes, settings, credentials, or resource types behind those environments. When an action is denied, every supported client consistently explains which identity, action, and target were denied and gives me a safe next step rather than showing an empty or unrelated error.
+
+**As a platform capability owner,** I can manage the environments, Recipe Packs, resource types, or other platform capabilities delegated to me without becoming a Radius or Kubernetes administrator. Radius requires appropriate access when I connect capabilities across scopes and makes clear when I need help from another owner or administrator.
+
+**As an auditor or security operator,** I can inspect effective access and authorization activity to understand who could perform or attempted an action and which role or assignment affected the decision. I can investigate access without receiving write permissions, secret values, or unrelated identity and resource information.
+
+**As an automation identity owner,** I can give CI/CD, controllers, agents, and other automation only the access needed for a specific Radius instance, application, and environment. Automated actions remain attributable to the workload identity, and authorization failures appear as clear access failures rather than retries or successful empty results.
 
 ## Key investments
 
