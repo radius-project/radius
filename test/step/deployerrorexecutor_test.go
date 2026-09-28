@@ -95,6 +95,14 @@ func Test_DeploymentErrorDetail_MatchesExactly(t *testing.T) {
 			subsetMatch: true,
 		},
 		{
+			name: "extra resource failure wrapper before provider leaf",
+			mutate: func(nodes []*v1.ErrorDetails) {
+				nodes[3].Details = []*v1.ErrorDetails{{
+					Code: "ResourceDeploymentFailure", Details: []*v1.ErrorDetails{nodes[4]},
+				}}
+			},
+		},
+		{
 			name: "matching leaf alongside divergent provider error",
 			mutate: func(nodes []*v1.ErrorDetails) {
 				nodes[3].Details = append(nodes[3].Details, &v1.ErrorDetails{
