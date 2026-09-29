@@ -51,7 +51,11 @@ jobs:
     name: Persist and rehydrate Radius state
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    if: github.event_name == 'workflow_dispatch' || github.repository == vars.RADIUS_REPOSITORY
+    if: >-
+      (github.repository == 'radius-project/radius' &&
+       github.ref == 'refs/heads/main' && github.ref_protected &&
+       (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) ||
+      (github.repository != 'radius-project/radius' && github.event_name == 'workflow_dispatch')
     steps:
       - name: Checkout dispatched ref
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -146,7 +150,12 @@ jobs:
   cleanup-state-version:
     name: Ensure state version cleanup
     needs: state-rehydration
-    if: always() && (github.event_name == 'workflow_dispatch' || github.repository == vars.RADIUS_REPOSITORY)
+    if: >-
+      always() &&
+      ((github.repository == 'radius-project/radius' &&
+        github.ref == 'refs/heads/main' && github.ref_protected &&
+        (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) ||
+       (github.repository != 'radius-project/radius' && github.event_name == 'workflow_dispatch'))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
