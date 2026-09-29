@@ -256,8 +256,9 @@ type ApplicationsManagementClient interface {
 	CreateOrUpdateResourceGroup(ctx context.Context, planeName string, resourceGroupName string, resource *ucp_v20231001preview.ResourceGroupResource) error
 
 	// DeleteResourceGroupRecord deletes the resource group record itself. It does not delete the
-	// resources in the group, and the server rejects the delete if any remain. Callers are
-	// responsible for deleting the contents first, in dependency order.
+	// resources in the group, and the server does not reject the delete when resources remain:
+	// deleting the record while its contents survive orphans them. Callers must delete the
+	// contents first, in dependency order, and must not call this if that failed.
 	DeleteResourceGroupRecord(ctx context.Context, planeName string, resourceGroupName string) (bool, error)
 
 	// ListResourcesInResourceGroup lists all resources in a specific resource group, including

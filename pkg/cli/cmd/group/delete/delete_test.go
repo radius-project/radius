@@ -106,18 +106,19 @@ func Test_Run(t *testing.T) {
 	}
 
 	tests := []struct {
-		name            string
-		confirmation    bool // --yes flag
-		resources       []generated.GenericResource
-		listError       error
-		deleteResult    bool
-		deleteError     error
-		promptResponse  string
-		promptError     error
-		expectedPrompt  string
-		expectedOutputs []any
-		expectedError   error
-		skipPrompt      bool // for cases where prompt shouldn't be called
+		name                string
+		confirmation        bool // --yes flag
+		resources           []generated.GenericResource
+		listError           error
+		deleteResult        bool
+		deleteError         error
+		resourceDeleteError error
+		promptResponse      string
+		promptError         error
+		expectedPrompt      string
+		expectedOutputs     []any
+		expectedError       error
+		skipPrompt          bool // for cases where prompt shouldn't be called
 	}{
 		{
 			name:            "Success with --yes flag and empty group",
@@ -222,6 +223,25 @@ func Test_Run(t *testing.T) {
 			expectedOutputs: nil,
 		},
 		{
+			// The group record must outlive a failed resource delete. Deleting the record while a
+			// resource is still present orphans that resource: the record survives in the
+			// datastore but becomes unreachable, because UCP resolves the resource group before
+			// the resource beneath it. This is the defect that issue #12469 reports, so the case
+			// deliberately registers no DeleteResourceGroupRecord expectation -- gomock fails the
+			// test if the runner deletes the record anyway.
+			name:         "Resource delete fails - group record is not deleted",
+			confirmation: true,
+			resources: []generated.GenericResource{
+				testResource("Applications.Core/containers", "resource1"),
+			},
+			resourceDeleteError: fmt.Errorf("recipe delete failed"),
+			skipPrompt:          true,
+			expectedError:       fmt.Errorf("failed to delete resources in resource group testrg"),
+			expectedOutputs: []any{
+				deletingOutput("Applications.Core/containers", "resource1"),
+			},
+		},
+		{
 			// A missing group is reported without prompting: there is nothing to confirm, and
 			// asking whether to delete a group that does not exist is misleading.
 			name:            "List returns 404 - group doesn't exist",
@@ -295,17 +315,22 @@ func Test_Run(t *testing.T) {
 				for _, resource := range tt.resources {
 					appManagementClient.EXPECT().
 						DeleteResource(gomock.Any(), *resource.Type, *resource.ID, false).
-						Return(true, nil).Times(1)
+						Return(tt.resourceDeleteError == nil, tt.resourceDeleteError).Times(1)
 				}
 
-				if tt.deleteError != nil {
-					appManagementClient.EXPECT().
-						DeleteResourceGroupRecord(gomock.Any(), "local", "testrg").
-						Return(false, tt.deleteError).Times(1)
-				} else {
-					appManagementClient.EXPECT().
-						DeleteResourceGroupRecord(gomock.Any(), "local", "testrg").
-						Return(tt.deleteResult, nil).Times(1)
+				// A failed resource delete must stop the run before the group record is deleted,
+				// so no expectation is registered for it: gomock then fails the test if the
+				// runner calls it anyway.
+				if tt.resourceDeleteError == nil {
+					if tt.deleteError != nil {
+						appManagementClient.EXPECT().
+							DeleteResourceGroupRecord(gomock.Any(), "local", "testrg").
+							Return(false, tt.deleteError).Times(1)
+					} else {
+						appManagementClient.EXPECT().
+							DeleteResourceGroupRecord(gomock.Any(), "local", "testrg").
+							Return(tt.deleteResult, nil).Times(1)
+					}
 				}
 			}
 

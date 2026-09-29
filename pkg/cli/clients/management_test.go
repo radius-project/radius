@@ -2092,6 +2092,36 @@ func Test_ListResourcesInResourceGroup(t *testing.T) {
 		require.False(t, Is404Error(err), "a per-resource-type 404 must not be classified as a missing resource group")
 	})
 
+	t.Run("per-resource-type fake-server 404 is not reported as a missing group", func(t *testing.T) {
+		// Is404Error matches a fake server's 404 on message text, and rendering the cause into the
+		// message preserves that text. Returning a ResourceEnumerationError is what keeps this
+		// case from being read as a missing group, which would make `rad group delete` report
+		// success without deleting anything.
+		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
+
+		mockResourceGroupExists(mockRG, "local", "test-group", 1)
+		mockListProviders(mockRP, "local")
+		mockProviderSummaries(mockRP, "local", 1)
+
+		mockGeneric.EXPECT().
+			NewListByRootScopePager(gomock.Any()).
+			DoAndReturn(func(*generated.GenericResourcesClientListByRootScopeOptions) *runtime.Pager[generated.GenericResourcesClientListByRootScopeResponse] {
+				return runtime.NewPager(runtime.PagingHandler[generated.GenericResourcesClientListByRootScopeResponse]{
+					More: func(generated.GenericResourcesClientListByRootScopeResponse) bool { return true },
+					Fetcher: func(context.Context, *generated.GenericResourcesClientListByRootScopeResponse) (generated.GenericResourcesClientListByRootScopeResponse, error) {
+						return generated.GenericResourcesClientListByRootScopeResponse{}, errors.New(fakeServerNotFoundResponse)
+					},
+				})
+			}).AnyTimes()
+
+		resources, err := client.ListResourcesInResourceGroup(t.Context(), "local", "test-group")
+		require.Error(t, err)
+		require.Nil(t, resources)
+		require.Contains(t, err.Error(), fakeServerNotFoundResponse, "the underlying cause must still be visible to a human")
+		require.True(t, IsResourceEnumerationError(err))
+		require.False(t, Is404Error(err), "a fake-server 404 for one resource type must not be classified as a missing resource group")
+	})
+
 	t.Run("filter by environment", func(t *testing.T) {
 		client, mockRG, mockGeneric, mockRP := setupResourceGroupMocks(t)
 

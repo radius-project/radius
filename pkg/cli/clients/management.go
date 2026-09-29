@@ -769,7 +769,13 @@ func (amc *UCPApplicationsManagementClient) CreateOrUpdateResourceGroup(ctx cont
 }
 
 // DeleteResourceGroupRecord deletes the resource group record itself. It does not delete the
-// resources in the group, and the server rejects the delete if any remain.
+// resources in the group.
+//
+// The server does not reject this when the group still has contents: the UCP resource group route
+// performs a plain synchronous delete with no child-resource guard. Deleting the record while its
+// resources survive orphans them, and they stay unreachable until a group of the same name is
+// recreated at that scope. Callers must therefore delete the contents first and must not call this
+// if that failed.
 //
 // Deleting the contents is the caller's responsibility, because it has to happen in dependency
 // order: a recipe-driven resource loads its environment, recipe pack and settings while it is being
@@ -818,29 +824,29 @@ func (amc *UCPApplicationsManagementClient) ListResourcesInResourceGroup(ctx con
 		return nil, err
 	}
 
-	// Errors below are formatted with %v rather than %w on purpose. Callers classify a 404 from
-	// this method as "the resource group does not exist", which only the GetResourceGroup check
-	// above can establish. Wrapping a per-resource-type 404 would let it be mistaken for a missing
-	// group, turning an enumeration failure into a silent no-op that reports success while the
-	// group and its contents survive. getApiVersionsForResourceType converts a provider 404 for
-	// the same reason.
+	// Failures below are returned as ResourceEnumerationError rather than wrapped with %w. Callers
+	// classify a 404 from this method as "the resource group does not exist", which only the
+	// GetResourceGroup check above can establish. Letting a per-resource-type 404 reach the caller
+	// as a 404 would turn an enumeration failure into a silent no-op that reports success while
+	// the group and its contents survive. getApiVersionsForResourceType converts a provider 404
+	// for the same reason.
 	for _, resourceType := range resourceTypesList {
 		// Create a client scoped to this resource group
 		apiVersions, err := amc.getApiVersionsForResourceType(ctx, resourceType)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get API versions for resource type %q: %v", resourceType, err)
+			return nil, NewResourceEnumerationError(resourceType, "failed to get API versions for resource type %q: %v", resourceType, err)
 		}
 
 		client, err := amc.getGenericClient(groupScope, resourceType, apiVersions, false)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create client for resource type %q: %v", resourceType, err)
+			return nil, NewResourceEnumerationError(resourceType, "failed to create client for resource type %q: %v", resourceType, err)
 		}
 
 		pager := client.NewListByRootScopePager(&generated.GenericResourcesClientListByRootScopeOptions{})
 		for pager.More() {
 			page, err := pager.NextPage(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("failed to list resources of type %q: %v", resourceType, err)
+				return nil, NewResourceEnumerationError(resourceType, "failed to list resources of type %q: %v", resourceType, err)
 			}
 
 			for _, resource := range page.GenericResourcesList.Value {

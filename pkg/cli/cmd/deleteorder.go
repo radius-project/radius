@@ -76,16 +76,13 @@ const (
 	numDeleteTiers = int(DeleteTierEnvironment) + 1
 )
 
-// Resource types that are not already declared as constants elsewhere. The settings types have no
-// shared constant because nothing outside the recipe configuration loader refers to them by name.
-const (
-	securitySecretsResourceType = "Radius.Security/secrets"
-	secretStoresResourceType    = "Applications.Core/secretStores"
-	legacyApplicationsType      = "Applications.Core/applications"
-	legacyEnvironmentsType      = "Applications.Core/environments"
-	terraformSettingsType       = "Radius.Core/terraformSettings"
-	bicepSettingsType           = "Radius.Core/bicepSettings"
-)
+// securitySecretsResourceType is declared locally because the repository has no single canonical
+// constant for it: the type name is repeated in several packages, each with its own unexported
+// copy. Every other type in the tier table below uses the shared constant from pkg/corerp/datamodel
+// so that the table cannot silently drift from the datamodel's definition -- a stale literal here
+// would stop matching and fall through to DeleteTierWorkload, reinstating the ordering bug with no
+// compile error.
+const securitySecretsResourceType = "Radius.Security/secrets"
 
 // deleteTiersByResourceType maps a resource type to the tier it is deleted in. Types that are
 // absent are deleted in DeleteTierWorkload, which is the correct default: an unrecognized type is
@@ -100,19 +97,19 @@ const (
 // canonical casing.
 var deleteTiersByResourceType = map[string]DeleteTier{
 	// Credential sources, innermost first.
-	securitySecretsResourceType: DeleteTierSecuritySecret,
-	secretStoresResourceType:    DeleteTierSecretStore,
+	securitySecretsResourceType:       DeleteTierSecuritySecret,
+	datamodel.SecretStoreResourceType: DeleteTierSecretStore,
 
 	// Applications own the workloads in DeleteTierWorkload.
-	legacyApplicationsType:                             DeleteTierApplication,
+	datamodel.ApplicationResourceType:                  DeleteTierApplication,
 	datamodel.ApplicationResourceType_v20250801preview: DeleteTierApplication,
 
 	// Environments and the configuration a recipe delete resolves through them.
-	legacyEnvironmentsType:                             DeleteTierEnvironment,
+	datamodel.EnvironmentResourceType:                  DeleteTierEnvironment,
 	datamodel.EnvironmentResourceType_v20250801preview: DeleteTierEnvironment,
 	recipepack.ResourceType:                            DeleteTierEnvironment,
-	terraformSettingsType:                              DeleteTierEnvironment,
-	bicepSettingsType:                                  DeleteTierEnvironment,
+	datamodel.TerraformSettingsResourceType:            DeleteTierEnvironment,
+	datamodel.BicepSettingsResourceType:                DeleteTierEnvironment,
 }
 
 // deleteTierLookup is deleteTiersByResourceType keyed by lowercased resource type, so that lookups
@@ -237,12 +234,16 @@ func deleteResourceTier(ctx context.Context, client clients.ApplicationsManageme
 	semaphore := make(chan struct{}, maxParallelDeletes)
 
 	for i, resource := range deletable {
+		// The slot is taken before the goroutine is started, not inside it, so that a large tier
+		// does not allocate one goroutine per resource while only the API calls are bounded. This
+		// loop blocks here until a slot frees up, which caps goroutines and in-flight deletes
+		// together.
+		semaphore <- struct{}{}
+
 		wg.Add(1)
 
 		go func() {
 			defer wg.Done()
-
-			semaphore <- struct{}{}
 			defer func() { <-semaphore }()
 
 			// ctx is deliberately not derived from an errgroup: one failure must not cancel the
