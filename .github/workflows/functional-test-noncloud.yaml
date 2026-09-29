@@ -689,7 +689,7 @@ jobs:
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ github.token }}
           GOTESTSUM_OPTS: ${{ github.event_name == 'workflow_dispatch' && inputs.test_target == 'dynamicrp-no-provider' && '--junitfile ./dist/functional_test/results.xml --jsonfile ./dist/functional_test/no-provider-test-output.json' || '--junitfile ./dist/functional_test/results.xml' }}
-          GOTEST_OPTS: ${{ github.event_name == 'workflow_dispatch' && inputs.test_target == 'dynamicrp-no-provider' && '-run ^Test_RecipePacks_NoProvider_Failure$ -count=1' || '' }}
+          GOTEST_OPTS: ${{ github.event_name == 'workflow_dispatch' && inputs.test_target == 'dynamicrp-no-provider' && '-run ^Test_RecipePacks_NoProvider_Failure$$ -count=1' || '' }}
           NO_PROVIDER_EVIDENCE_PATH: ${{ github.event_name == 'workflow_dispatch' && inputs.test_target == 'dynamicrp-no-provider' && format('{0}/dist/functional_test/no-provider-response.json', github.workspace) || '' }}
           RADIUS_TEST_FAST_CLEANUP: true
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
@@ -712,6 +712,39 @@ jobs:
           artifact_name: functional_test_results_${{ matrix.name }}
           result_directory: dist/functional_test/
           comment_mode: failures
+
+      - name: Verify NoProvider parity evidence
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.test_target == 'dynamicrp-no-provider'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -s ./dist/functional_test/no-provider-response.json
+          test -s ./dist/functional_test/no-provider-test-output.json
+          test -s ./dist/functional_test/results.xml
+
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+
+          result = ET.parse("./dist/functional_test/results.xml").getroot()
+          cases = {case.get("name"): case for case in result.findall(".//testcase")}
+          required = (
+              "Test_RecipePacks_NoProvider_Failure",
+              "Test_RecipePacks_NoProvider_Failure/deploy_testdata/recipepacks-test-no-provider.bicep",
+              "Test_RecipePacks_NoProvider_Failure/deploy_testdata/recipepacks-test-no-provider.bicep/exact_five_node_error_tree",
+          )
+
+          if not cases:
+              raise SystemExit("NoProvider parity verification ran zero tests")
+
+          for name in required:
+              case = cases.get(name)
+              if case is None:
+                  raise SystemExit(f"missing required JUnit testcase: {name}")
+              for result_type in ("failure", "error", "skipped"):
+                  if case.find(result_type) is not None:
+                      raise SystemExit(f"JUnit testcase {name} has {result_type}")
+          PY
 
       - name: Upload NoProvider parity evidence
         if: always() && github.event_name == 'workflow_dispatch' && inputs.test_target == 'dynamicrp-no-provider'
