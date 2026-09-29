@@ -63,30 +63,18 @@ func Test_Run(t *testing.T) {
 		},
 	}
 	resourceGroup := &datamodel.ResourceGroup{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: id.RootScope(),
-			},
-		},
+		ID: id.RootScope(),
 	}
 
 	resourceTypeResource := &datamodel.ResourceType{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "testResources",
-				ID:   resourceTypeID.String(),
-			},
-		},
+		Name:       "testResources",
+		ID:         resourceTypeID.String(),
 		Properties: datamodel.ResourceTypeProperties{},
 	}
 
 	locationResource := &datamodel.Location{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				Name: "global",
-				ID:   locationID.String(),
-			},
-		},
+		Name: "global",
+		ID:   locationID.String(),
 		Properties: datamodel.LocationProperties{
 			Address: new("https://localhost:1234"),
 			ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{

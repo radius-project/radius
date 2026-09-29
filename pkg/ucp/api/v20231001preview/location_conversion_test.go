@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/ucp/datamodel"
 	"github.com/radius-project/radius/test/testutil"
 
@@ -37,16 +36,10 @@ func Test_Location_VersionedToDataModel(t *testing.T) {
 		{
 			filename: "location_resource.json",
 			expected: &datamodel.Location{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/locations/east",
-						Name: "east",
-						Type: datamodel.LocationResourceType,
-					},
-					InternalMetadata: v1.InternalMetadata{
-						UpdatedAPIVersion: Version,
-					},
-				},
+				ID:                "/planes/radius/local/providers/System.Resources/resourceProviders/Applications.Test/locations/east",
+				Name:              "east",
+				Type:              datamodel.LocationResourceType,
+				UpdatedAPIVersion: Version,
 				Properties: datamodel.LocationProperties{
 					Address: new("https://east.myrp.com"),
 					ResourceTypes: map[string]datamodel.LocationResourceTypeConfiguration{

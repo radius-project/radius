@@ -390,14 +390,12 @@ func stopPodWatchers(dw *deploymentWatcher) {
 
 func createPod(name string, replicaSetName string) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: v1.ObjectMeta{
-			Name: name,
-			OwnerReferences: []v1.OwnerReference{
-				{
-					APIVersion: "v1",
-					Kind:       "ReplicaSet",
-					Name:       replicaSetName,
-				},
+		Name: name,
+		OwnerReferences: []v1.OwnerReference{
+			{
+				APIVersion: "v1",
+				Kind:       "ReplicaSet",
+				Name:       replicaSetName,
 			},
 		},
 	}

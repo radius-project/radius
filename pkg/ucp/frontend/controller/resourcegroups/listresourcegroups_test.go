@@ -53,14 +53,10 @@ func Test_ListResourceGroups(t *testing.T) {
 	testResourceGroupName := "test-rg"
 
 	rg := datamodel.ResourceGroup{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       testResourceGroupID,
-				Name:     testResourceGroupName,
-				Type:     ResourceGroupType,
-				Location: v1.LocationGlobal,
-			},
-		},
+		ID:       testResourceGroupID,
+		Name:     testResourceGroupName,
+		Type:     ResourceGroupType,
+		Location: v1.LocationGlobal,
 	}
 
 	mockDatabaseClient.EXPECT().Query(gomock.Any(), query).DoAndReturn(func(ctx context.Context, query database.Query, options ...database.QueryOptions) (*database.ObjectQueryResult, error) {

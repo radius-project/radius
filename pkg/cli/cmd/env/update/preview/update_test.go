@@ -226,26 +226,24 @@ func Test_Run(t *testing.T) {
 				options *v20250801preview.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 				result := v20250801preview.EnvironmentsClientGetResponse{
-					EnvironmentResource: v20250801preview.EnvironmentResource{
-						ID:   to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
-						Name: to.Ptr(environmentName),
-						Properties: &v20250801preview.EnvironmentProperties{
-							Providers: &v20250801preview.Providers{
-								Azure: &v20250801preview.ProvidersAzure{
-									SubscriptionID:    to.Ptr("test-subscription-id"),
-									ResourceGroupName: to.Ptr("test-resource-group"),
-								},
-								Aws: &v20250801preview.ProvidersAws{
-									AccountID: to.Ptr("test-account-id"),
-									Region:    to.Ptr("test-region"),
-								},
-								Kubernetes: &v20250801preview.ProvidersKubernetes{
-									Namespace: to.Ptr("test-namespace"),
-								},
+					ID:   to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+					Name: to.Ptr(environmentName),
+					Properties: &v20250801preview.EnvironmentProperties{
+						Providers: &v20250801preview.Providers{
+							Azure: &v20250801preview.ProvidersAzure{
+								SubscriptionID:    to.Ptr("test-subscription-id"),
+								ResourceGroupName: to.Ptr("test-resource-group"),
 							},
-							RecipePacks: []*string{
-								to.Ptr(workspace.Scope + "/providers/Radius.Core/recipePacks/old-pack"),
+							Aws: &v20250801preview.ProvidersAws{
+								AccountID: to.Ptr("test-account-id"),
+								Region:    to.Ptr("test-region"),
 							},
+							Kubernetes: &v20250801preview.ProvidersKubernetes{
+								Namespace: to.Ptr("test-namespace"),
+							},
+						},
+						RecipePacks: []*string{
+							to.Ptr(workspace.Scope + "/providers/Radius.Core/recipePacks/old-pack"),
 						},
 					},
 				}
@@ -343,12 +341,10 @@ func Test_Run_RecipePacksReplaced(t *testing.T) {
 				_ *v20250801preview.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 				result := v20250801preview.EnvironmentsClientGetResponse{
-					EnvironmentResource: v20250801preview.EnvironmentResource{
-						ID:   to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
-						Name: to.Ptr(environmentName),
-						Properties: &v20250801preview.EnvironmentProperties{
-							RecipePacks: []*string{to.Ptr(existingPackID)},
-						},
+					ID:   to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+					Name: to.Ptr(environmentName),
+					Properties: &v20250801preview.EnvironmentProperties{
+						RecipePacks: []*string{to.Ptr(existingPackID)},
 					},
 				}
 				resp.SetResponse(http.StatusOK, result, nil)
@@ -428,12 +424,10 @@ func Test_Run_RecipePackNotFound(t *testing.T) {
 				_ *v20250801preview.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 				result := v20250801preview.EnvironmentsClientGetResponse{
-					EnvironmentResource: v20250801preview.EnvironmentResource{
-						ID:   to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
-						Name: to.Ptr(environmentName),
-						Properties: &v20250801preview.EnvironmentProperties{
-							RecipePacks: []*string{to.Ptr(existingPackID)},
-						},
+					ID:   to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+					Name: to.Ptr(environmentName),
+					Properties: &v20250801preview.EnvironmentProperties{
+						RecipePacks: []*string{to.Ptr(existingPackID)},
 					},
 				}
 				resp.SetResponse(http.StatusOK, result, nil)
@@ -513,12 +507,10 @@ func Test_Run_RecipePacksWithGroup(t *testing.T) {
 				_ *v20250801preview.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 				result := v20250801preview.EnvironmentsClientGetResponse{
-					EnvironmentResource: v20250801preview.EnvironmentResource{
-						ID:   to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
-						Name: to.Ptr(environmentName),
-						Properties: &v20250801preview.EnvironmentProperties{
-							RecipePacks: []*string{to.Ptr(expectedPackID)},
-						},
+					ID:   to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+					Name: to.Ptr(environmentName),
+					Properties: &v20250801preview.EnvironmentProperties{
+						RecipePacks: []*string{to.Ptr(expectedPackID)},
 					},
 				}
 				resp.SetResponse(http.StatusOK, result, nil)
@@ -587,11 +579,9 @@ func Test_Run_RecipePackFullResourceID(t *testing.T) {
 				_ *v20250801preview.EnvironmentsClientGetOptions,
 			) (resp azfake.Responder[v20250801preview.EnvironmentsClientGetResponse], errResp azfake.ErrorResponder) {
 				result := v20250801preview.EnvironmentsClientGetResponse{
-					EnvironmentResource: v20250801preview.EnvironmentResource{
-						ID:         to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
-						Name:       to.Ptr(environmentName),
-						Properties: &v20250801preview.EnvironmentProperties{},
-					},
+					ID:         to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+					Name:       to.Ptr(environmentName),
+					Properties: &v20250801preview.EnvironmentProperties{},
 				}
 				resp.SetResponse(http.StatusOK, result, nil)
 				return
@@ -670,11 +660,9 @@ func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
 						props.Providers = existingProviders
 					}
 					result := v20250801preview.EnvironmentsClientGetResponse{
-						EnvironmentResource: v20250801preview.EnvironmentResource{
-							ID:         to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
-							Name:       to.Ptr(environmentName),
-							Properties: props,
-						},
+						ID:         to.Ptr(workspace.Scope + "/providers/Radius.Core/environments/" + environmentName),
+						Name:       to.Ptr(environmentName),
+						Properties: props,
 					}
 					resp.SetResponse(http.StatusOK, result, nil)
 					return
@@ -787,7 +775,7 @@ func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
 		require.Equal(t, "user-ns", *captured.Properties.Providers.Kubernetes.Namespace)
 	})
 
-	t.Run("--clear-kubernetes is respected and default is not applied", func(t *testing.T) {
+	t.Run("--clear-kubernetes is rejected once a namespace is established", func(t *testing.T) {
 		var captured v20250801preview.EnvironmentResource
 		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
 			workspace.Scope,
@@ -807,10 +795,69 @@ func Test_Run_DefaultsKubernetesNamespace(t *testing.T) {
 		}
 
 		err = runner.Run(t.Context())
+
+		// Clearing the provider would release a namespace claim that other environments were
+		// validated against, and orphan anything already deployed into it.
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "existing-ns")
+		require.Nil(t, captured.Properties, "the environment must not be updated")
+	})
+
+	t.Run("changing an established namespace is rejected", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(kubernetesOnly("existing-ns"), &captured),
+			nil,
+		)
 		require.NoError(t, err)
 
-		require.NotNil(t, captured.Properties.Providers)
-		require.Nil(t, captured.Properties.Providers.Kubernetes, "clear-kubernetes must not be overridden by the default")
+		runner := &Runner{
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers: &v20250801preview.Providers{
+				Kubernetes: &v20250801preview.ProvidersKubernetes{
+					Namespace: to.Ptr("new-ns"),
+				},
+			},
+		}
+
+		err = runner.Run(t.Context())
+
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "existing-ns")
+		require.Contains(t, err.Error(), "new-ns")
+		require.Nil(t, captured.Properties, "the environment must not be updated")
+	})
+
+	t.Run("re-specifying the same namespace is allowed", func(t *testing.T) {
+		var captured v20250801preview.EnvironmentResource
+		factory, err := test_client_factory.NewRadiusCoreTestClientFactory(
+			workspace.Scope,
+			makeServer(kubernetesOnly("existing-ns"), &captured),
+			nil,
+		)
+		require.NoError(t, err)
+
+		runner := &Runner{
+			ConfigHolder:            &framework.ConfigHolder{},
+			Output:                  &output.MockOutput{},
+			Workspace:               workspace,
+			EnvironmentName:         "test-env",
+			RadiusCoreClientFactory: factory,
+			providers: &v20250801preview.Providers{
+				Kubernetes: &v20250801preview.ProvidersKubernetes{
+					Namespace: to.Ptr("existing-ns"),
+				},
+			},
+		}
+
+		err = runner.Run(t.Context())
+		require.NoError(t, err)
+		require.Equal(t, "existing-ns", *captured.Properties.Providers.Kubernetes.Namespace)
 	})
 
 	t.Run("env with Azure provider does not get default namespace", func(t *testing.T) {
@@ -897,12 +944,10 @@ func Test_syncRecipePackReferences(t *testing.T) {
 				) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
 					// Pack has both this env and another env in referencedBy.
 					result := v20250801preview.RecipePacksClientGetResponse{
-						RecipePackResource: v20250801preview.RecipePackResource{
-							Name: to.Ptr(name),
-							Properties: &v20250801preview.RecipePackProperties{
-								Recipes:      map[string]*v20250801preview.RecipeDefinition{},
-								ReferencedBy: []*string{to.Ptr("some-other-env"), to.Ptr(envID)},
-							},
+						Name: to.Ptr(name),
+						Properties: &v20250801preview.RecipePackProperties{
+							Recipes:      map[string]*v20250801preview.RecipeDefinition{},
+							ReferencedBy: []*string{to.Ptr("some-other-env"), to.Ptr(envID)},
 						},
 					}
 					resp.SetResponse(http.StatusOK, result, nil)
@@ -940,12 +985,10 @@ func Test_syncRecipePackReferences(t *testing.T) {
 					_ *v20250801preview.RecipePacksClientGetOptions,
 				) (resp azfake.Responder[v20250801preview.RecipePacksClientGetResponse], errResp azfake.ErrorResponder) {
 					result := v20250801preview.RecipePacksClientGetResponse{
-						RecipePackResource: v20250801preview.RecipePackResource{
-							Name: to.Ptr(name),
-							Properties: &v20250801preview.RecipePackProperties{
-								Recipes:      map[string]*v20250801preview.RecipeDefinition{},
-								ReferencedBy: []*string{to.Ptr(envID)},
-							},
+						Name: to.Ptr(name),
+						Properties: &v20250801preview.RecipePackProperties{
+							Recipes:      map[string]*v20250801preview.RecipeDefinition{},
+							ReferencedBy: []*string{to.Ptr(envID)},
 						},
 					}
 					resp.SetResponse(http.StatusOK, result, nil)

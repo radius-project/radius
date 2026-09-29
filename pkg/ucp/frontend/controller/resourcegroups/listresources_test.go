@@ -19,7 +19,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -40,13 +41,9 @@ func Test_ListResources(t *testing.T) {
 		Name: new("test-app"),
 	}
 	entryDatamodel := datamodel.GenericResource{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   "ignored",
-				Type: "ignored",
-				Name: "ignored",
-			},
-		},
+		ID:   "ignored",
+		Type: "ignored",
+		Name: "ignored",
 		Properties: datamodel.GenericResourceProperties{
 			ID:   *entryResource.ID,
 			Type: *entryResource.Type,

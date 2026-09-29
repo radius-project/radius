@@ -56,18 +56,12 @@ func newTestListController(t *testing.T, databaseClient database.Client, ucpClie
 
 func newTestDynamicResource(id string, name string, provisioningState v1.ProvisioningState, properties map[string]any) *datamodel.DynamicResource {
 	return &datamodel.DynamicResource{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   id,
-				Name: name,
-				Type: "Applications.Test/testResources",
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion:      testAPIVersion,
-				AsyncProvisioningState: provisioningState,
-			},
-		},
-		Properties: properties,
+		ID:                     id,
+		Name:                   name,
+		Type:                   "Applications.Test/testResources",
+		UpdatedAPIVersion:      testAPIVersion,
+		AsyncProvisioningState: provisioningState,
+		Properties:             properties,
 	}
 }
 

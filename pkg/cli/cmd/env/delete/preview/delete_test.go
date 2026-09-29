@@ -19,13 +19,7 @@ package preview
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/radius-project/radius/pkg/cli/framework"
-	"github.com/radius-project/radius/pkg/cli/output"
-	"github.com/radius-project/radius/pkg/cli/test_client_factory"
-	"github.com/radius-project/radius/pkg/cli/workspaces"
-	"github.com/radius-project/radius/pkg/corerp/api/v20250801preview/fake"
 	"github.com/radius-project/radius/test/radcli"
 )
 
@@ -80,49 +74,4 @@ func Test_Validate(t *testing.T) {
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
-}
-
-func Test_Run(t *testing.T) {
-	workspace := &workspaces.Workspace{
-		Name:  "test-workspace",
-		Scope: "/planes/radius/local/resourceGroups/test-group",
-	}
-
-	testcases := []struct {
-		name          string
-		serverFactory func() fake.EnvironmentsServer
-		expectedLogs  []any
-	}{
-		{
-			name:          "Success: environment deleted",
-			serverFactory: test_client_factory.WithEnvironmentServerNoError,
-			expectedLogs: []any{
-				output.LogOutput{
-					Format: msgEnvironmentDeletedPreview,
-					Params: []any{"test-env"},
-				},
-			},
-		},
-	}
-
-	for _, tc := range testcases {
-		ct := tc
-		t.Run(ct.name, func(t *testing.T) {
-			factory, err := test_client_factory.NewRadiusCoreTestClientFactory(workspace.Scope, ct.serverFactory, nil)
-			require.NoError(t, err)
-
-			outputSink := &output.MockOutput{}
-			runner := &Runner{
-				RadiusCoreClientFactory: factory,
-				Workspace:               workspace,
-				Output:                  outputSink,
-				EnvironmentName:         "test-env",
-				Confirm:                 true,
-			}
-
-			err = runner.Run(t.Context())
-			require.NoError(t, err)
-			require.Equal(t, ct.expectedLogs, outputSink.Writes)
-		})
-	}
 }

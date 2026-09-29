@@ -109,7 +109,7 @@ func (e *EnvironmentsServerTransport) dispatchCreateOrUpdate(req *http.Request) 
 	if e.srv.CreateOrUpdate == nil {
 		return nil, &nonRetriableError{errors.New("fake for method CreateOrUpdate not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/environments/(?P<environmentName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/environments/(?P<environmentName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -119,10 +119,7 @@ func (e *EnvironmentsServerTransport) dispatchCreateOrUpdate(req *http.Request) 
 	if err != nil {
 		return nil, err
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	environmentNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("environmentName")])
 	if err != nil {
 		return nil, err
@@ -146,16 +143,13 @@ func (e *EnvironmentsServerTransport) dispatchDelete(req *http.Request) (*http.R
 	if e.srv.Delete == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Delete not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/environments/(?P<environmentName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/environments/(?P<environmentName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	environmentNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("environmentName")])
 	if err != nil {
 		return nil, err
@@ -179,16 +173,13 @@ func (e *EnvironmentsServerTransport) dispatchGet(req *http.Request) (*http.Resp
 	if e.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/environments/(?P<environmentName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/environments/(?P<environmentName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	environmentNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("environmentName")])
 	if err != nil {
 		return nil, err
@@ -214,16 +205,13 @@ func (e *EnvironmentsServerTransport) dispatchNewListByScopePager(req *http.Requ
 	}
 	newListByScopePager := e.newListByScopePager.get(req)
 	if newListByScopePager == nil {
-		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/environments`
+		const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/environments`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 2 {
 			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 		}
-		rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-		if err != nil {
-			return nil, err
-		}
+		rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 		resp := e.srv.NewListByScopePager(rootScopeParam, nil)
 		newListByScopePager = &resp
 		e.newListByScopePager.add(req, newListByScopePager)
@@ -249,7 +237,7 @@ func (e *EnvironmentsServerTransport) dispatchUpdate(req *http.Request) (*http.R
 	if e.srv.Update == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Update not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/environments/(?P<environmentName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/environments/(?P<environmentName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -259,10 +247,7 @@ func (e *EnvironmentsServerTransport) dispatchUpdate(req *http.Request) (*http.R
 	if err != nil {
 		return nil, err
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	environmentNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("environmentName")])
 	if err != nil {
 		return nil, err

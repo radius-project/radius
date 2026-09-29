@@ -161,16 +161,28 @@ type ApplicationsManagementClient interface {
 	ListResourcesOfType(ctx context.Context, resourceType string) ([]generated.GenericResource, error)
 
 	// ListResourcesOfTypeInApplication lists all resources of a given type in a given application in the configured scope.
+	// Names target Applications.Core; use a full resource ID for other application types.
 	ListResourcesOfTypeInApplication(ctx context.Context, applicationNameOrID string, resourceType string) ([]generated.GenericResource, error)
 
 	// ListResourcesOfTypeInEnvironment lists all resources of a given type in a given environment in the configured scope.
+	// Names target Applications.Core; use a full resource ID for other environment types.
 	ListResourcesOfTypeInEnvironment(ctx context.Context, environmentNameOrID string, resourceType string) ([]generated.GenericResource, error)
 
 	// ListResourcesInApplication lists all resources in a given application in the configured scope.
+	// Names target Applications.Core; use a full resource ID for other application types.
 	ListResourcesInApplication(ctx context.Context, applicationNameOrID string) ([]generated.GenericResource, error)
 
 	// ListResourcesInEnvironment lists all resources in a given environment in the configured scope.
+	// Names target Applications.Core; use a full resource ID for other environment types.
 	ListResourcesInEnvironment(ctx context.Context, environmentNameOrID string) ([]generated.GenericResource, error)
+
+	// ListResourcesInEnvironmentOrApplications lists the resources that belong to the given
+	// environment or to any of the given applications, without duplicates.
+	//
+	// This is equivalent to merging ListResourcesInEnvironment with ListResourcesInApplication for
+	// each application, but enumerates each resource type once instead of once per application.
+	// Names target Applications.Core; use full resource IDs for other environment and application types.
+	ListResourcesInEnvironmentOrApplications(ctx context.Context, environmentNameOrID string, applicationNameOrIDs []string) ([]generated.GenericResource, error)
 
 	// GetResource retrieves a resource by its type and name (or id).
 	GetResource(ctx context.Context, resourceType string, resourceNameOrID string) (generated.GenericResource, error)

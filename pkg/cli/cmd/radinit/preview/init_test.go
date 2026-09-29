@@ -897,11 +897,9 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 					assert.Equal(t, v1.LocationGlobal, *resource.Location)
 					assert.Equal(t, "/planes/radius/local/resourceGroups/default/providers/Radius.Core/environments/default", *resource.Properties.Environment)
 					result := corerpv20250801.ApplicationsClientCreateOrUpdateResponse{
-						ApplicationResource: corerpv20250801.ApplicationResource{
-							Name:       to.Ptr(applicationName),
-							Location:   resource.Location,
-							Properties: resource.Properties,
-						},
+						Name:       to.Ptr(applicationName),
+						Location:   resource.Location,
+						Properties: resource.Properties,
 					}
 					resp.SetResponse(http.StatusOK, result, nil)
 					return
@@ -935,9 +933,7 @@ func Test_Run_WithApplicationScaffold(t *testing.T) {
 				) (resp azfake.Responder[corerpv20250801.ApplicationsClientGetResponse], errResp azfake.ErrorResponder) {
 					getCalled++
 					result := corerpv20250801.ApplicationsClientGetResponse{
-						ApplicationResource: corerpv20250801.ApplicationResource{
-							Name: to.Ptr(applicationName),
-						},
+						Name: to.Ptr(applicationName),
 					}
 					resp.SetResponse(http.StatusOK, result, nil)
 					return

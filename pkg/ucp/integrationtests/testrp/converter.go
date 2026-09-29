@@ -61,19 +61,13 @@ func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
 	converted := &TestResourceDatamodel{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				CreatedAPIVersion: Version,
-				UpdatedAPIVersion: Version,
-			},
-		},
+		ID:                to.String(src.ID),
+		Name:              to.String(src.Name),
+		Type:              to.String(src.Type),
+		Location:          to.String(src.Location),
+		Tags:              to.StringMap(src.Tags),
+		CreatedAPIVersion: Version,
+		UpdatedAPIVersion: Version,
 		Properties: TestResourceDatamodelProperties{
 			Message: src.Properties.Message,
 		},

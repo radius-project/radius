@@ -23,16 +23,15 @@ func Test_populateSecretData(t *testing.T) {
 			name:       "success - data for input secretKey1 returned",
 			secretKeys: []string{"secretKey1"},
 			secrets: &v20231001preview.SecretStoresClientListSecretsResponse{
-				SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{
-					Type: &secretStoreDataTypeGeneric,
-					Data: map[string]*v20231001preview.SecretValueProperties{
-						"secretKey1": {
-							Value: new("secretValue1"),
-						},
-						"secretKey2": {
-							Value: new("secretValue2"),
-						},
-					}},
+				Type: &secretStoreDataTypeGeneric,
+				Data: map[string]*v20231001preview.SecretValueProperties{
+					"secretKey1": {
+						Value: new("secretValue1"),
+					},
+					"secretKey2": {
+						Value: new("secretValue2"),
+					},
+				},
 			},
 			secretStoreID: "testSecretStore",
 			expectedSecrets: recipes.SecretData{
@@ -45,16 +44,15 @@ func Test_populateSecretData(t *testing.T) {
 			name:       "success - data for all keys returned with nil secretKeys input",
 			secretKeys: nil,
 			secrets: &v20231001preview.SecretStoresClientListSecretsResponse{
-				SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{
-					Type: &secretStoreDataTypeGeneric,
-					Data: map[string]*v20231001preview.SecretValueProperties{
-						"secretKey1": {
-							Value: new("secretValue1"),
-						},
-						"secretKey2": {
-							Value: new("secretValue2"),
-						},
-					}},
+				Type: &secretStoreDataTypeGeneric,
+				Data: map[string]*v20231001preview.SecretValueProperties{
+					"secretKey1": {
+						Value: new("secretValue1"),
+					},
+					"secretKey2": {
+						Value: new("secretValue2"),
+					},
+				},
 			},
 			secretStoreID: "testSecretStore",
 			expectedSecrets: recipes.SecretData{
@@ -70,9 +68,8 @@ func Test_populateSecretData(t *testing.T) {
 			name:       "success - returned with nil secretKeys input when no secret data exist",
 			secretKeys: nil,
 			secrets: &v20231001preview.SecretStoresClientListSecretsResponse{
-				SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{
-					Type: &secretStoreDataTypeGeneric,
-					Data: nil},
+				Type: &secretStoreDataTypeGeneric,
+				Data: nil,
 			},
 			secretStoreID: "testSecretStore",
 			expectedSecrets: recipes.SecretData{
@@ -94,9 +91,7 @@ func Test_populateSecretData(t *testing.T) {
 			name:       "fail - missing secret key",
 			secretKeys: []string{"missingKey"},
 			secrets: &v20231001preview.SecretStoresClientListSecretsResponse{
-				SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{
-					Type: &secretStoreDataTypeGeneric,
-				},
+				Type: &secretStoreDataTypeGeneric,
 			},
 			secretStoreID:   "testSecretStore",
 			expectedSecrets: recipes.SecretData{},
@@ -107,15 +102,14 @@ func Test_populateSecretData(t *testing.T) {
 			name:       "fail - missing secret type",
 			secretKeys: []string{"secretKey1"},
 			secrets: &v20231001preview.SecretStoresClientListSecretsResponse{
-				SecretStoreListSecretsResult: v20231001preview.SecretStoreListSecretsResult{
-					Data: map[string]*v20231001preview.SecretValueProperties{
-						"secretKey1": {
-							Value: new("secretValue1"),
-						},
-						"secretKey2": {
-							Value: new("secretValue2"),
-						},
-					}},
+				Data: map[string]*v20231001preview.SecretValueProperties{
+					"secretKey1": {
+						Value: new("secretValue1"),
+					},
+					"secretKey2": {
+						Value: new("secretValue2"),
+					},
+				},
 			},
 			secretStoreID:   "testSecretStore",
 			expectedSecrets: recipes.SecretData{},

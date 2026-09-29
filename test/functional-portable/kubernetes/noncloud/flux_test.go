@@ -203,11 +203,9 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 
 	// Create the secret for the Flux GitRepository.
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      gitRepoName,
-			Namespace: fluxSystemNamespace,
-		},
-		Type: corev1.SecretTypeBasicAuth,
+		Name:      gitRepoName,
+		Namespace: fluxSystemNamespace,
+		Type:      corev1.SecretTypeBasicAuth,
 		Data: map[string][]byte{
 			"username": []byte(gitUsername),
 			"password": []byte(gitPassword),
@@ -222,10 +220,8 @@ func testFluxIntegration(t *testing.T, testName string, steps []GitOpsTestStep, 
 
 	// Create the Flux GitRepository object.
 	fluxGitRepository := &sourcev1.GitRepository{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      gitRepoName,
-			Namespace: fluxSystemNamespace,
-		},
+		Name:      gitRepoName,
+		Namespace: fluxSystemNamespace,
 		Spec: sourcev1.GitRepositorySpec{
 			URL: fmt.Sprintf(gitServerInternalRepoURLFormat, gitRepoName),
 			SecretRef: &meta.LocalObjectReference{
@@ -405,7 +401,7 @@ func waitForDeploymentTemplateToBeReadyWithGeneration(t *testing.T, ctx context.
 func waitForGitRepositoryReady(t *testing.T, ctx context.Context, name types.NamespacedName, client controller_runtime.WithWatch, initialVersion string) (*sourcev1.GitRepository, error) {
 	// Based on https://gist.github.com/PrasadG193/52faed6499d2ec739f9630b9d044ffdc
 	lister := &cache.ListWatch{
-		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+		ListWithContextFunc: func(ctx context.Context, options metav1.ListOptions) (runtime.Object, error) {
 			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
 			gitRepositories := &sourcev1.GitRepositoryList{}
 			err := client.List(ctx, gitRepositories, listOptions)
@@ -415,7 +411,7 @@ func waitForGitRepositoryReady(t *testing.T, ctx context.Context, name types.Nam
 
 			return gitRepositories, nil
 		},
-		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+		WatchFuncWithContext: func(ctx context.Context, options metav1.ListOptions) (watch.Interface, error) {
 			listOptions := &controller_runtime.ListOptions{Raw: &options, Namespace: name.Namespace, FieldSelector: fields.ParseSelectorOrDie("metadata.name=" + name.Name)}
 			gitRepositories := &sourcev1.GitRepositoryList{}
 			return client.Watch(ctx, gitRepositories, listOptions)

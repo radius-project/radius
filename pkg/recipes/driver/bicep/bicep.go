@@ -18,6 +18,7 @@ package bicep
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	reflect "reflect"
 	"slices"
@@ -41,6 +42,7 @@ import (
 	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
 	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
+	"github.com/radius-project/radius/pkg/resourcemodel"
 	"github.com/radius-project/radius/pkg/rp/util"
 	"github.com/radius-project/radius/pkg/rp/util/authclient"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -48,22 +50,24 @@ import (
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_radius "github.com/radius-project/radius/pkg/ucp/resources/radius"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
+	"k8s.io/client-go/rest"
 )
 
 const (
 	deploymentPrefix = "recipe"
 	pollFrequency    = time.Second * 5
 	recipeParameters = "parameters"
+	recipeOutputs    = "outputs"
 )
 
 var _ driver.Driver = (*bicepDriver)(nil)
 
-// NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client, resource client, and options.
-func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient clients.ResourceDeploymentsClient, client processors.ResourceClient, options BicepOptions) driver.Driver {
+// NewBicepDriver creates a new bicep driver instance with the given ARM client options, deployment client, resource client factory, and options.
+func NewBicepDriver(armOptions *arm.ClientOptions, deploymentClient clients.ResourceDeploymentsClient, resourceClientFactory processors.ResourceClientFactory, options BicepOptions) driver.Driver {
 	return &bicepDriver{
 		ArmClientOptions:      armOptions,
 		DeploymentClient:      deploymentClient,
-		ResourceClient:        client,
+		resourceClientFactory: resourceClientFactory,
 		options:               options,
 		clusterAccessResolver: clusteraccess.NewResolver(),
 	}
@@ -77,9 +81,9 @@ type BicepOptions struct {
 type bicepDriver struct {
 	ArmClientOptions      *arm.ClientOptions
 	DeploymentClient      clients.ResourceDeploymentsClient
-	ResourceClient        processors.ResourceClient
 	options               BicepOptions
 	clusterAccessResolver clusteraccess.ClusterAccessResolver
+	resourceClientFactory processors.ResourceClientFactory
 
 	// RegistryClient is the optional client used to interact with the container registry.
 	RegistryClient remote.Client
@@ -118,6 +122,10 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 	}
 	metrics.DefaultRecipeEngineMetrics.RecordRecipeDownloadDuration(ctx, downloadStartTime,
 		metrics.NewRecipeAttributes(metrics.RecipeEngineOperationDownloadRecipe, opts.Recipe.Name, &opts.Definition, metrics.SuccessfulOperationState))
+
+	if err := validateOutputMappings(opts.Definition, recipeData); err != nil {
+		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
+	}
 
 	// create the context object to be passed to the recipe deployment
 	recipeContext, err := recipecontext.New(&opts.Recipe, &opts.Configuration)
@@ -186,6 +194,9 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 
 	recipeResponse, err := d.prepareRecipeResponse(opts.BaseOptions.Definition, resp.Properties.Outputs, resp.Properties.OutputResources)
 	if err != nil {
+		if _, ok := errors.AsType[*recipes_util.MissingOutputValuesError](err); ok {
+			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+		}
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
@@ -213,6 +224,7 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 
 	// Deleting obsolete output resources.
 	err = d.Delete(ctx, driver.DeleteOptions{
+		BaseOptions:     opts.BaseOptions,
 		OutputResources: diff,
 	})
 	if err != nil {
@@ -232,6 +244,14 @@ func (d *bicepDriver) Execute(ctx context.Context, opts driver.ExecuteOptions) (
 // all in parallel. Since some resources may depend on others, we may need to retry.
 func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) error {
 	logger := ucplog.FromContextOrDiscard(ctx)
+
+	resourceClient, err := d.resourceClientForDelete(ctx, opts)
+	if err != nil {
+		return err
+	}
+	if resourceClient == nil {
+		return nil
+	}
 
 	// Create a waitgroup to track the deletion of each output resource
 	g, groupCtx := errgroup.WithContext(ctx)
@@ -256,7 +276,7 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 				ctx := logr.NewContext(groupCtx, logger)
 				logger.V(ucplog.LevelDebug).Info("beginning attempt")
 
-				err = d.ResourceClient.Delete(ctx, id)
+				err = resourceClient.Delete(ctx, id)
 				if err != nil {
 					if attempt <= d.options.DeleteRetryCount {
 						logger.V(ucplog.LevelInfo).Error(err, "attempt failed", "delay", d.options.DeleteRetryDelaySeconds)
@@ -282,6 +302,59 @@ func (d *bicepDriver) Delete(ctx context.Context, opts driver.DeleteOptions) err
 	}
 
 	return nil
+}
+
+func (d *bicepDriver) resourceClientForDelete(ctx context.Context, opts driver.DeleteOptions) (processors.ResourceClient, error) {
+	hasManagedOutput := false
+	hasManagedKubernetesOutput := false
+	for _, outputResource := range opts.OutputResources {
+		if !outputResource.IsRadiusManaged() {
+			continue
+		}
+
+		hasManagedOutput = true
+		if strings.EqualFold(outputResource.GetResourceType().Provider, resourcemodel.ProviderKubernetes) {
+			hasManagedKubernetesOutput = true
+		}
+	}
+
+	if !hasManagedOutput {
+		return nil, nil
+	}
+
+	if d.resourceClientFactory == nil {
+		err := errors.New("bicep driver has no resource client factory configured")
+		return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+	}
+
+	var kubernetesConfig *rest.Config
+	if hasManagedKubernetesOutput {
+		if d.clusterAccessResolver == nil {
+			err := errors.New("bicep driver has no cluster access resolver configured")
+			return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+		}
+
+		var err error
+		kubernetesConfig, err = d.clusterAccessResolver.Resolve(ctx, &opts.Configuration)
+		if err != nil {
+			err = fmt.Errorf("failed to resolve target cluster for recipe output deletion: %w", err)
+			return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+		}
+		if kubernetesConfig == nil {
+			err = errors.New("cluster access resolver returned a nil Kubernetes configuration")
+			return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+		}
+
+		ucplog.FromContextOrDiscard(ctx).Info("Resolved Kubernetes target for recipe output deletion", "host", kubernetesConfig.Host)
+	}
+
+	resourceClient := d.resourceClientFactory(kubernetesConfig)
+	if resourceClient == nil {
+		err := errors.New("bicep resource client factory returned nil")
+		return nil, recipes.NewRecipeError(recipes.RecipeDeletionFailed, err.Error(), "", recipes.GetErrorDetails(err))
+	}
+
+	return resourceClient, nil
 }
 
 // GetRecipeMetadata gets the Bicep recipe parameters information from the container registry
@@ -326,6 +399,36 @@ func (d *bicepDriver) GetRecipeMetadata(ctx context.Context, opts driver.BaseOpt
 	}
 
 	return recipeData, nil
+}
+
+func validateOutputMappings(definition recipes.EnvironmentDefinition, recipeData map[string]any) error {
+	if len(definition.Outputs) == 0 && len(definition.SecretOutputs) == 0 {
+		return nil
+	}
+
+	var declaredOutputs []string
+	rawOutputs, ok := recipeData[recipeOutputs]
+	if ok && rawOutputs != nil {
+		outputs, ok := rawOutputs.(map[string]any)
+		if !ok {
+			return fmt.Errorf(
+				"recipe %q for resource type %q: recipe outputs must be an object",
+				definition.Name,
+				definition.ResourceType)
+		}
+
+		declaredOutputs = make([]string, 0, len(outputs))
+		for outputName := range outputs {
+			declaredOutputs = append(declaredOutputs, outputName)
+		}
+	}
+
+	return recipes_util.ValidateOutputsMapping(
+		definition.Name,
+		definition.ResourceType,
+		declaredOutputs,
+		definition.Outputs,
+		definition.SecretOutputs)
 }
 
 func hasContextParameter(recipeData map[string]any) bool {
@@ -417,32 +520,35 @@ func newProviderConfig(resourceGroup string, envProviders coredm.Providers) clie
 // collection. For us this mostly means Kubernetes resources - the user has to be explicit.
 func (d *bicepDriver) prepareRecipeResponse(definition recipes.EnvironmentDefinition, outputs any, resources []*armdeployments.ResourceReference) (*recipes.RecipeOutput, error) {
 	recipeResponse := &recipes.RecipeOutput{}
-	out, ok := outputs.(map[string]any)
-	if ok && len(out) > 0 {
-		hasOutputsMapping := len(definition.Outputs) > 0 || len(definition.SecretOutputs) > 0
-		_, hasResultOutput := out[recipes.ResultPropertyName]
+	out, _ := outputs.(map[string]any)
+	hasOutputsMapping := len(definition.Outputs) > 0 || len(definition.SecretOutputs) > 0
+	_, hasResultOutput := out[recipes.ResultPropertyName]
 
-		switch {
-		case hasOutputsMapping:
-			// Direct module with an outputs mapping — collect all ARM outputs flat (splitting
-			// secure-typed outputs into secrets), then apply the mapping.
-			values, secrets := collectARMOutputs(out)
-			recipeResponse.Values, recipeResponse.Secrets = recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs, definition.SecretOutputs)
-		case hasResultOutput:
-			// Wrapped recipe — use the existing 'result' output parsing.
-			if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {
-				if resultValue, ok := result["value"].(map[string]any); ok {
-					err := recipeResponse.PrepareRecipeResponse(resultValue)
-					if err != nil {
-						return &recipes.RecipeOutput{}, err
-					}
+	switch {
+	case hasOutputsMapping:
+		// Direct module with an outputs mapping — collect all ARM outputs flat (splitting
+		// secure-typed outputs into secrets), then apply the mapping.
+		values, secrets := collectARMOutputs(out)
+		mappedValues, mappedSecrets, err := recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs, definition.SecretOutputs)
+		if err != nil {
+			return &recipes.RecipeOutput{}, fmt.Errorf("recipe %q for resource type %q: %w", definition.Name, definition.ResourceType, err)
+		}
+		recipeResponse.Values = mappedValues
+		recipeResponse.Secrets = mappedSecrets
+	case len(out) > 0 && hasResultOutput:
+		// Wrapped recipe — use the existing 'result' output parsing.
+		if result, ok := out[recipes.ResultPropertyName].(map[string]any); ok {
+			if resultValue, ok := result["value"].(map[string]any); ok {
+				err := recipeResponse.PrepareRecipeResponse(resultValue)
+				if err != nil {
+					return &recipes.RecipeOutput{}, err
 				}
 			}
-		default:
-			// Direct module without a mapping — pass through all ARM outputs unchanged, routing
-			// secure-typed outputs to Secrets so they are not exposed as plain values.
-			recipeResponse.Values, recipeResponse.Secrets = collectARMOutputs(out)
 		}
+	case len(out) > 0:
+		// Direct module without a mapping — pass through all ARM outputs unchanged, routing
+		// secure-typed outputs to Secrets so they are not exposed as plain values.
+		recipeResponse.Values, recipeResponse.Secrets = collectARMOutputs(out)
 	}
 
 	recipeResponse.Status = &rpv1.RecipeStatus{

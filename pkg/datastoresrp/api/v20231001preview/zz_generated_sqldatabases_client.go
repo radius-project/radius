@@ -73,8 +73,7 @@ func (client *SQLDatabasesClient) createOrUpdate(ctx context.Context, rootScope 
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -140,8 +139,7 @@ func (client *SQLDatabasesClient) deleteOperation(ctx context.Context, rootScope
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusAccepted, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -183,12 +181,7 @@ func (client *SQLDatabasesClient) Get(ctx context.Context, rootScope string, sql
 	if err != nil {
 		return SQLDatabasesClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return SQLDatabasesClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -214,8 +207,11 @@ func (client *SQLDatabasesClient) getCreateRequest(ctx context.Context, rootScop
 }
 
 // getHandleResponse handles the Get response.
-func (client *SQLDatabasesClient) getHandleResponse(resp *http.Response) (SQLDatabasesClientGetResponse, error) {
+func (client *SQLDatabasesClient) getHandleResponse(resp *http.Response, successCodes ...int) (SQLDatabasesClientGetResponse, error) {
 	result := SQLDatabasesClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.SQLDatabaseResource); err != nil {
 		return SQLDatabasesClientGetResponse{}, err
 	}
@@ -237,38 +233,52 @@ func (client *SQLDatabasesClient) NewListByScopePager(rootScope string, options 
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listByScopeCreateRequest(ctx, rootScope, options)
-			}, nil)
+			req, err := client.listByScopeCreateRequest(ctx, rootScope, nextLink, options)
 			if err != nil {
 				return SQLDatabasesClientListByScopeResponse{}, err
 			}
-			return client.listByScopeHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return SQLDatabasesClientListByScopeResponse{}, err
+			}
+			return client.listByScopeHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listByScopeCreateRequest creates the ListByScope request.
-func (client *SQLDatabasesClient) listByScopeCreateRequest(ctx context.Context, rootScope string, _ *SQLDatabasesClientListByScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Datastores/sqlDatabases"
-	if rootScope == "" {
-		return nil, errors.New("parameter rootScope cannot be empty")
+func (client *SQLDatabasesClient) listByScopeCreateRequest(ctx context.Context, rootScope string, nextLink string, _ *SQLDatabasesClientListByScopeOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/{rootScope}/providers/Applications.Datastores/sqlDatabases"
+		if rootScope == "" {
+			return nil, errors.New("parameter rootScope cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", rootScope)
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listByScopeHandleResponse handles the ListByScope response.
-func (client *SQLDatabasesClient) listByScopeHandleResponse(resp *http.Response) (SQLDatabasesClientListByScopeResponse, error) {
+func (client *SQLDatabasesClient) listByScopeHandleResponse(resp *http.Response, successCodes ...int) (SQLDatabasesClientListByScopeResponse, error) {
 	result := SQLDatabasesClientListByScopeResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.SQLDatabaseResourceListResult); err != nil {
 		return SQLDatabasesClientListByScopeResponse{}, err
 	}
@@ -293,12 +303,7 @@ func (client *SQLDatabasesClient) ListSecrets(ctx context.Context, rootScope str
 	if err != nil {
 		return SQLDatabasesClientListSecretsResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return SQLDatabasesClientListSecretsResponse{}, err
-	}
-	resp, err := client.listSecretsHandleResponse(httpResp)
-	return resp, err
+	return client.listSecretsHandleResponse(httpResp, http.StatusOK)
 }
 
 // listSecretsCreateRequest creates the ListSecrets request.
@@ -328,8 +333,11 @@ func (client *SQLDatabasesClient) listSecretsCreateRequest(ctx context.Context, 
 }
 
 // listSecretsHandleResponse handles the ListSecrets response.
-func (client *SQLDatabasesClient) listSecretsHandleResponse(resp *http.Response) (SQLDatabasesClientListSecretsResponse, error) {
+func (client *SQLDatabasesClient) listSecretsHandleResponse(resp *http.Response, successCodes ...int) (SQLDatabasesClientListSecretsResponse, error) {
 	result := SQLDatabasesClientListSecretsResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.SQLDatabaseListSecretsResult); err != nil {
 		return SQLDatabasesClientListSecretsResponse{}, err
 	}
@@ -372,8 +380,7 @@ func (client *SQLDatabasesClient) update(ctx context.Context, rootScope string, 
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }

@@ -22,7 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	"github.com/radius-project/radius/pkg/components/database"
@@ -59,7 +60,7 @@ func setup(tb testing.TB) (asyncOperationsManagerTest, *gomock.Controller) {
 
 var reqCtx = &v1.ARMRequestContext{
 	ResourceID:     resources.MustParse("/planes/radius/local/resourceGroups/radius-test-rg/providers/Applications.Core/container/container0"),
-	OperationID:    uuid.Must(uuid.NewRandom()),
+	OperationID:    uuid.New(),
 	HomeTenantID:   "home-tenant-id",
 	ClientObjectID: "client-object-id",
 	OperationType:  rpctest.MustParseOperationType("APPLICATIONS.CORE/ENVIRONMENTS|PUT"),
@@ -70,12 +71,10 @@ var reqCtx = &v1.ARMRequestContext{
 var opID = uuid.New()
 
 var testAos = &Status{
-	AsyncOperationStatus: v1.AsyncOperationStatus{
-		ID:        opID.String(),
-		Name:      opID.String(),
-		Status:    v1.ProvisioningStateUpdating,
-		StartTime: time.Now().UTC(),
-	},
+	ID:               opID.String(),
+	Name:             opID.String(),
+	Status:           v1.ProvisioningStateUpdating,
+	StartTime:        time.Now().UTC(),
 	LinkedResourceID: uuid.New().String(),
 	Location:         "test-location",
 	RetryAfter:       opererationRetryAfterDuration,
@@ -231,8 +230,8 @@ func TestGetAsyncOperationStatus(t *testing.T) {
 			Desc:   "get_success",
 			GetErr: nil,
 			Obj: &database.Object{
-				Metadata: database.Metadata{ID: opID.String(), ETag: "etag"},
-				Data:     testAos,
+				ID: opID.String(), ETag: "etag",
+				Data: testAos,
 			},
 		},
 		{
@@ -281,8 +280,8 @@ func TestUpdateAsyncOperationStatus(t *testing.T) {
 			Desc:   "update_success",
 			GetErr: nil,
 			Obj: &database.Object{
-				Metadata: database.Metadata{ID: opID.String(), ETag: "etag"},
-				Data:     testAos,
+				ID: opID.String(), ETag: "etag",
+				Data: testAos,
 			},
 			SaveErr: nil,
 		},

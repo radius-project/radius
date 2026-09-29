@@ -4,7 +4,9 @@
 
 At this point you've experienced the basic dev flow for the `rad` CLI.
 
-It's time to pick an issue to work on! You can find a query [here](https://github.com/radius-project/radius/issues?q=is%3Aopen+is%3Aissue+label%3A%22help+wanted%22).
+It's time to pick an issue to work on! External contributors using an AI agent, coding bot, or other automation must choose an open issue that is labeled `triaged` and either [`help wanted`](https://github.com/radius-project/radius/issues?q=is%3Aopen+is%3Aissue+label%3Atriaged+label%3A%22help+wanted%22) or [`good first issue`](https://github.com/radius-project/radius/issues?q=is%3Aopen+is%3Aissue+label%3Atriaged+label%3A%22good+first+issue%22).
+
+The issue must not be assigned to another contributor or already have an open pull request. Re-check the issue's status, labels, assignment, and linked pull requests immediately before opening a pull request. See the [pull-request guide](../../../contributing-pull-requests/README.md#prerequisites) for the full eligibility requirements.
 
 ## Etiquette for issues
 
@@ -48,7 +50,7 @@ Visual Studio Code has a setting, `git.alwaysSignOff` to automatically add a Sig
 
 ## Signing your commits
 
-> 💡 Commit signing is **separate from** the DCO `Signed-off-by` line described above. The `Signed-off-by` line is a textual attestation, while commit signing proves that the commit was signed with the private key corresponding to your configured public key. Both are recommended.
+> 💡 Commit signing is **separate from** the DCO `Signed-off-by` line described above. The `Signed-off-by` line is a textual attestation, while commit signing proves that the commit was signed with the private key corresponding to your configured public key. Both are required.
 
 We require all contributors to **cryptographically sign their commits** so that they show as **Verified** on GitHub. On GitHub, **Verified** means GitHub could validate the signature and that the signing key is associated with the account. This gives reviewers and the community additional confidence in the integrity and provenance of commits, which is an important supply-chain safeguard.
 

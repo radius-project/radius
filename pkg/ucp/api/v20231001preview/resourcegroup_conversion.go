@@ -31,15 +31,11 @@ func (src *ResourceGroupResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
 	converted := &datamodel.ResourceGroup{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-		},
+		ID:       to.String(src.ID),
+		Name:     to.String(src.Name),
+		Type:     to.String(src.Type),
+		Location: to.String(src.Location),
+		Tags:     to.StringMap(src.Tags),
 	}
 
 	return converted, nil

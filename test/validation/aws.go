@@ -18,12 +18,15 @@ package validation
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	awsclient "github.com/radius-project/radius/pkg/ucp/aws"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_aws "github.com/radius-project/radius/pkg/ucp/resources/aws"
@@ -105,7 +108,7 @@ func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awscli
 		TypeName:   &resourceType,
 	})
 
-	notFound := awsclient.IsAWSResourceNotFoundError(err)
+	notFound := isAWSResourceMissing(resourceType, err)
 	if notFound {
 		// Resource does not need to be deleted
 		return nil
@@ -119,11 +122,15 @@ func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awscli
 		return err
 	}
 
-	// Wait till the delete is complete
+	// Wait till the delete is complete.
+	//
+	// Do not enable LogWaitAttempts. The SDK waiter implements it by inserting a "WaiterLogger"
+	// middleware relative to the "SetLogger" middleware, but cloudcontrol v1.32.5 removed
+	// "SetLogger" from the middleware stack in favor of a context value. The insert therefore
+	// fails and every Wait call returns "not found: WaiterLogger" immediately without ever
+	// waiting for the delete to finish.
 	maxWaitTime := 300 * time.Second
-	waiter := cloudcontrol.NewResourceRequestSuccessWaiter(client, func(options *cloudcontrol.ResourceRequestSuccessWaiterOptions) {
-		options.LogWaitAttempts = true
-	})
+	waiter := cloudcontrol.NewResourceRequestSuccessWaiter(client)
 	err = waiter.Wait(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: deleteOutput.ProgressEvent.RequestToken,
 	}, maxWaitTime)
@@ -134,7 +141,8 @@ func DeleteAWSResource(ctx context.Context, resource *AWSResource, client awscli
 	return nil
 }
 
-// IsAWSResourceNotFound checks if the given AWS resource is not found.
+// IsAWSResourceNotFound checks if the given AWS resource is not found. It returns a nil error when the
+// resource is confirmed missing so that callers can distinguish absence from a genuine lookup failure.
 func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client awsclient.AWSCloudControlClient) (bool, error) {
 	// Verify that the resource is indeed deleted
 	resourceType, err := GetResourceTypeName(ctx, resource)
@@ -147,8 +155,55 @@ func IsAWSResourceNotFound(ctx context.Context, resource *AWSResource, client aw
 		TypeName:   &resourceType,
 	})
 
-	return awsclient.IsAWSResourceNotFoundError(err), err
+	if isAWSResourceMissing(resourceType, err) {
+		return true, nil
+	}
 
+	return false, err
+}
+
+// awsLogGroupTypeName is the CloudControl type name for the resources created by AWS.Logs/LogGroup.
+const awsLogGroupTypeName = "AWS::Logs::LogGroup"
+
+// awsLogGroupMissingMessages are the CloudWatch Logs handler messages that CloudControl wraps in an
+// InvalidRequestException when an AWS::Logs::LogGroup is absent. The handler reports HandlerErrorCode
+// InvalidRequest instead of NotFound, so the typed ResourceNotFoundException is never returned. Both
+// phrasings have been observed in CI, so match on either.
+var awsLogGroupMissingMessages = []string{
+	"log group cannot be found",
+	"the specified log group does not exist",
+}
+
+// isAWSResourceMissing reports whether err indicates that a resource of the given CloudControl type name
+// is absent. It recognizes the typed ResourceNotFoundException for every resource type, plus the
+// InvalidRequestException that the AWS::Logs::LogGroup handler returns in place of it. Any other
+// InvalidRequestException is deliberately not treated as absence, so real failures still surface.
+func isAWSResourceMissing(resourceTypeName string, err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if awsclient.IsAWSResourceNotFoundError(err) {
+		return true
+	}
+
+	if resourceTypeName != awsLogGroupTypeName {
+		return false
+	}
+
+	invalidRequest := &types.InvalidRequestException{}
+	if !errors.As(err, &invalidRequest) {
+		return false
+	}
+
+	message := strings.ToLower(invalidRequest.ErrorMessage())
+	for _, missingMessage := range awsLogGroupMissingMessages {
+		if strings.Contains(message, missingMessage) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // GetResourceIdentifier retrieves the identifier of a resource from the environment variables and the context.

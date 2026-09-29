@@ -305,9 +305,7 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 		for ns := range namespacesToCleanup {
 			t.Logf("Cleaning up namespace: %s", ns)
 			namespace := &corev1.Namespace{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: ns,
-				},
+				Name: ns,
 			}
 			err := opts.client.Delete(cleanupCtx, namespace)
 			if err != nil && k8sclient.IgnoreNotFound(err) != nil {
@@ -339,9 +337,7 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 					require.NoError(t, err)
 				}
 				namespace := &corev1.Namespace{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: namespaceName,
-					},
+					Name: namespaceName,
 				}
 				err := opts.client.Create(ctx, namespace)
 				require.NoError(t, err)
@@ -416,14 +412,10 @@ func runFluxControllerTest(t *testing.T, opts runFluxControllerTestOptions, step
 
 func makeGitRepository(namespacedName types.NamespacedName, url string) sourcev1.GitRepository {
 	return sourcev1.GitRepository{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "GitRepository",
-			APIVersion: "source.toolkit.fluxcd.io/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      namespacedName.Name,
-			Namespace: namespacedName.Namespace,
-		},
+		Kind:       "GitRepository",
+		APIVersion: "source.toolkit.fluxcd.io/v1",
+		Name:       namespacedName.Name,
+		Namespace:  namespacedName.Namespace,
 		Spec: sourcev1.GitRepositorySpec{
 			URL: url,
 		},

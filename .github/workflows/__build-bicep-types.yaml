@@ -1,0 +1,106 @@
+# ------------------------------------------------------------
+# Copyright 2026 The Radius Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ------------------------------------------------------------
+
+# yaml-language-server: $schema=https://www.schemastore.org/github-workflow.json
+---
+name: __build-bicep-types
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  build-and-push-bicep-types:
+    name: Dispatch Bicep Types publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: publish-bicep
+    permissions:
+      contents: read # Required for actions/checkout
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+
+      - name: Get App Token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: get-token
+        with:
+          client-id: ${{ secrets.RADIUS_PUBLISHER_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.RADIUS_PUBLISHER_BOT_PRIVATE_KEY }}
+          permission-metadata: read
+          permission-actions: read
+          permission-contents: write
+          owner: azure-octo
+          repositories: |
+            radius-publisher
+
+      - name: Capture dispatch start time
+        id: dispatch-start
+        shell: bash
+        run: |
+          echo "started_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+      - name: Repository Dispatch
+        id: repository-dispatch
+        uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4.0.1
+        with:
+          token: ${{ steps.get-token.outputs.token }}
+          repository: azure-octo/radius-publisher
+          event-type: bicep-types
+          client-payload: |-
+            {
+              "source_repository": "${{ github.repository }}",
+              "source_ref": "${{ github.ref }}",
+              "source_sha": "${{ github.sha }}",
+              "rel_channel": "${{ env.REL_CHANNEL }}",
+              "registry_target": "radius"
+            }
+
+      - name: Monitor remote workflow
+        id: monitor-remote-workflow
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          github-token: ${{ steps.get-token.outputs.token }}
+          script: |
+            const { default: script } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/monitor-remote-workflow.mjs`)
+            await script({context, github, core})
+        env:
+          INPUT_OWNER: azure-octo
+          INPUT_REPO: radius-publisher
+          INPUT_WORKFLOW_FILE: publish-bicep-types.yml
+          INPUT_DISPATCH_STARTED_AT: ${{ steps.dispatch-start.outputs.started_at }}
+          INPUT_MAX_WAIT_SECONDS: "600"
+          INPUT_POLL_INTERVAL_SECONDS: "15"
+
+      - name: Show failed logs
+        if: failure() && steps.monitor-remote-workflow.outputs.run_id != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ steps.get-token.outputs.token }}
+          RUN_ID: ${{ steps.monitor-remote-workflow.outputs.run_id }}
+        run: |
+          gh run view "${RUN_ID}" --repo azure-octo/radius-publisher --log-failed || true

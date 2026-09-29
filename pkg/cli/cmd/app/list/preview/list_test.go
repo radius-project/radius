@@ -110,9 +110,7 @@ func Test_Run(t *testing.T) {
 				return fake.ApplicationsServer{
 					NewListByScopePager: func(rootScope string, _ *corerpv20250801.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[corerpv20250801.ApplicationsClientListByScopeResponse]) {
 						resp.AddPage(http.StatusOK, corerpv20250801.ApplicationsClientListByScopeResponse{
-							ApplicationResourceListResult: corerpv20250801.ApplicationResourceListResult{
-								Value: []*corerpv20250801.ApplicationResource{},
-							},
+							Value: []*corerpv20250801.ApplicationResource{},
 						}, nil)
 						return
 					},
@@ -132,14 +130,10 @@ func Test_Run(t *testing.T) {
 				return fake.ApplicationsServer{
 					NewListByScopePager: func(rootScope string, _ *corerpv20250801.ApplicationsClientListByScopeOptions) (resp azfake.PagerResponder[corerpv20250801.ApplicationsClientListByScopeResponse]) {
 						resp.AddPage(http.StatusOK, corerpv20250801.ApplicationsClientListByScopeResponse{
-							ApplicationResourceListResult: corerpv20250801.ApplicationResourceListResult{
-								Value: []*corerpv20250801.ApplicationResource{{Name: new("page1-a")}, {Name: new("page1-b")}},
-							},
+							Value: []*corerpv20250801.ApplicationResource{{Name: new("page1-a")}, {Name: new("page1-b")}},
 						}, nil)
 						resp.AddPage(http.StatusOK, corerpv20250801.ApplicationsClientListByScopeResponse{
-							ApplicationResourceListResult: corerpv20250801.ApplicationResourceListResult{
-								Value: []*corerpv20250801.ApplicationResource{{Name: new("page2-a")}},
-							},
+							Value: []*corerpv20250801.ApplicationResource{{Name: new("page2-a")}},
 						}, nil)
 						return
 					},

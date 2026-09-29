@@ -110,7 +110,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/kubernetes/portforward"
 	"github.com/radius-project/radius/pkg/cli/output"
 	"github.com/radius-project/radius/pkg/cli/prompt"
-	"github.com/radius-project/radius/pkg/graph/persistence/git"
+	"github.com/radius-project/radius/pkg/graph/persistence/archive"
 	"github.com/radius-project/radius/pkg/statearchive/factory"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -258,13 +258,13 @@ func init() {
 }
 
 func initSubCommands() {
-	graphStore, err := git.NewStore(git.Options{
+	graphStore, err := archive.NewStore(archive.Options{
 		Archive: factory.NewGraphArchive(os.Getenv(factory.GraphRegistryEnvVar)),
 	})
 	if err != nil {
-		// graphStore is required only when we are in repo radius
-		// it can be nil otherwise.
-		graphStore = nil
+		// These fixed options must be valid. Environment errors are deferred
+		// until Archive.Open, not handled by dropping graph persistence.
+		panic(fmt.Errorf("failed to initialize graph store: %w", err))
 	}
 	framework := &framework.Impl{
 		Bicep: &bicep.Impl{
@@ -302,6 +302,8 @@ func initSubCommands() {
 	resourceCmd.AddCommand(resourceShowCmd)
 
 	resourceListCmd, _ := resource_list.NewCommand(framework)
+	previewResourceListCmd, _ := resource_list.NewPreviewCommand(framework)
+	wirePreviewSubcommand(resourceListCmd, previewResourceListCmd)
 	resourceCmd.AddCommand(resourceListCmd)
 
 	resourceCreateCmd, _ := resource_create.NewCommand(framework)
@@ -379,8 +381,8 @@ func initSubCommands() {
 
 	envDeleteCmd, _ := env_delete.NewCommand(framework)
 	previewDeleteCmd, _ := env_delete_preview.NewCommand(framework)
-	wirePreviewSubcommand(envDeleteCmd, previewDeleteCmd)
-	envCmd.AddCommand(envDeleteCmd)
+	wirePreviewSubcommandPreviewBase(previewDeleteCmd, envDeleteCmd.RunE, "Use the Radius.Core preview implementation for environment delete", "force")
+	envCmd.AddCommand(previewDeleteCmd)
 
 	envListCmd, _ := env_list.NewCommand(framework)
 	previewListCmd, _ := env_list_preview.NewCommand(framework)

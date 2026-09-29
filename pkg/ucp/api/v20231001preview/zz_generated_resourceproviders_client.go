@@ -74,8 +74,7 @@ func (client *ResourceProvidersClient) createOrUpdate(ctx context.Context, plane
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -141,8 +140,7 @@ func (client *ResourceProvidersClient) deleteOperation(ctx context.Context, plan
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -184,12 +182,7 @@ func (client *ResourceProvidersClient) Get(ctx context.Context, planeName string
 	if err != nil {
 		return ResourceProvidersClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return ResourceProvidersClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -215,8 +208,11 @@ func (client *ResourceProvidersClient) getCreateRequest(ctx context.Context, pla
 }
 
 // getHandleResponse handles the Get response.
-func (client *ResourceProvidersClient) getHandleResponse(resp *http.Response) (ResourceProvidersClientGetResponse, error) {
+func (client *ResourceProvidersClient) getHandleResponse(resp *http.Response, successCodes ...int) (ResourceProvidersClientGetResponse, error) {
 	result := ResourceProvidersClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceProviderResource); err != nil {
 		return ResourceProvidersClientGetResponse{}, err
 	}
@@ -241,12 +237,7 @@ func (client *ResourceProvidersClient) GetProviderSummary(ctx context.Context, p
 	if err != nil {
 		return ResourceProvidersClientGetProviderSummaryResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return ResourceProvidersClientGetProviderSummaryResponse{}, err
-	}
-	resp, err := client.getProviderSummaryHandleResponse(httpResp)
-	return resp, err
+	return client.getProviderSummaryHandleResponse(httpResp, http.StatusOK)
 }
 
 // getProviderSummaryCreateRequest creates the GetProviderSummary request.
@@ -275,8 +266,11 @@ func (client *ResourceProvidersClient) getProviderSummaryCreateRequest(ctx conte
 }
 
 // getProviderSummaryHandleResponse handles the GetProviderSummary response.
-func (client *ResourceProvidersClient) getProviderSummaryHandleResponse(resp *http.Response) (ResourceProvidersClientGetProviderSummaryResponse, error) {
+func (client *ResourceProvidersClient) getProviderSummaryHandleResponse(resp *http.Response, successCodes ...int) (ResourceProvidersClientGetProviderSummaryResponse, error) {
 	result := ResourceProvidersClientGetProviderSummaryResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceProviderSummary); err != nil {
 		return ResourceProvidersClientGetProviderSummaryResponse{}, err
 	}
@@ -298,38 +292,52 @@ func (client *ResourceProvidersClient) NewListPager(planeName string, options *R
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listCreateRequest(ctx, planeName, options)
-			}, nil)
+			req, err := client.listCreateRequest(ctx, planeName, nextLink, options)
 			if err != nil {
 				return ResourceProvidersClientListResponse{}, err
 			}
-			return client.listHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return ResourceProvidersClientListResponse{}, err
+			}
+			return client.listHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listCreateRequest creates the List request.
-func (client *ResourceProvidersClient) listCreateRequest(ctx context.Context, planeName string, _ *ResourceProvidersClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders"
-	if planeName == "" {
-		return nil, errors.New("parameter planeName cannot be empty")
+func (client *ResourceProvidersClient) listCreateRequest(ctx context.Context, planeName string, nextLink string, _ *ResourceProvidersClientListOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/planes/radius/{planeName}/providers/System.Resources/resourceproviders"
+		if planeName == "" {
+			return nil, errors.New("parameter planeName cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *ResourceProvidersClient) listHandleResponse(resp *http.Response) (ResourceProvidersClientListResponse, error) {
+func (client *ResourceProvidersClient) listHandleResponse(resp *http.Response, successCodes ...int) (ResourceProvidersClientListResponse, error) {
 	result := ResourceProvidersClientListResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.ResourceProviderResourceListResult); err != nil {
 		return ResourceProvidersClientListResponse{}, err
 	}
@@ -352,38 +360,52 @@ func (client *ResourceProvidersClient) NewListProviderSummariesPager(planeName s
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listProviderSummariesCreateRequest(ctx, planeName, options)
-			}, nil)
+			req, err := client.listProviderSummariesCreateRequest(ctx, planeName, nextLink, options)
 			if err != nil {
 				return ResourceProvidersClientListProviderSummariesResponse{}, err
 			}
-			return client.listProviderSummariesHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return ResourceProvidersClientListProviderSummariesResponse{}, err
+			}
+			return client.listProviderSummariesHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listProviderSummariesCreateRequest creates the ListProviderSummaries request.
-func (client *ResourceProvidersClient) listProviderSummariesCreateRequest(ctx context.Context, planeName string, _ *ResourceProvidersClientListProviderSummariesOptions) (*policy.Request, error) {
-	urlPath := "/planes/radius/{planeName}/providers"
-	if planeName == "" {
-		return nil, errors.New("parameter planeName cannot be empty")
+func (client *ResourceProvidersClient) listProviderSummariesCreateRequest(ctx context.Context, planeName string, nextLink string, _ *ResourceProvidersClientListProviderSummariesOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/planes/radius/{planeName}/providers"
+		if planeName == "" {
+			return nil, errors.New("parameter planeName cannot be empty")
+		}
+		urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listProviderSummariesHandleResponse handles the ListProviderSummaries response.
-func (client *ResourceProvidersClient) listProviderSummariesHandleResponse(resp *http.Response) (ResourceProvidersClientListProviderSummariesResponse, error) {
+func (client *ResourceProvidersClient) listProviderSummariesHandleResponse(resp *http.Response, successCodes ...int) (ResourceProvidersClientListProviderSummariesResponse, error) {
 	result := ResourceProvidersClientListProviderSummariesResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.PagedResourceProviderSummary); err != nil {
 		return ResourceProvidersClientListProviderSummariesResponse{}, err
 	}

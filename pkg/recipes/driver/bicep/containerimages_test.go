@@ -34,7 +34,6 @@ import (
 	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
@@ -292,10 +291,10 @@ printf '{"imageReference":"%s/%s:built"}' "$registry" "$resource_name" > "$RADIU
 		map[string]any{"variables": map[string]any{containerImagesBuildScriptVariableName: script}},
 		imageBuildOutputs(value),
 		response,
-		driver.ExecuteOptions{BaseOptions: driver.BaseOptions{Definition: recipes.EnvironmentDefinition{
+		driver.ExecuteOptions{Definition: recipes.EnvironmentDefinition{
 			ResourceType: "radius.compute/containerimages",
 			Parameters:   map[string]any{registryParameterName: "ghcr.io/radius-project"},
-		}}},
+		}},
 	)
 	require.NoError(t, err)
 	require.Equal(t, "ghcr.io/radius-project/testimage:built", response.Values[imageReferenceValueName])
@@ -307,8 +306,8 @@ func Test_ExecuteImageBuildHook_UsesOnlyOperatorOwnedCredentials(t *testing.T) {
 	requireScriptShell(t)
 
 	secret := &corev1.Secret{
-		TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
-		ObjectMeta: metav1.ObjectMeta{Name: "operator-secret", Namespace: "testapp"},
+		APIVersion: "v1", Kind: "Secret",
+		Name: "operator-secret", Namespace: "testapp",
 		Data: map[string][]byte{
 			"username": []byte("operator"),
 			"password": []byte("s3cret"),
@@ -369,7 +368,7 @@ printf '{"imageReference":"operator.example/team/testimage:v1"}' > "$RADIUS_EXEC
 		map[string]any{"variables": map[string]any{containerImagesBuildScriptVariableName: script}},
 		imageBuildOutputs(value),
 		response,
-		driver.ExecuteOptions{BaseOptions: driver.BaseOptions{
+		driver.ExecuteOptions{
 			Configuration: recipes.Configuration{Runtime: recipes.RuntimeConfiguration{
 				Kubernetes: &recipes.KubernetesRuntime{Namespace: "testapp"},
 			}},
@@ -379,8 +378,7 @@ printf '{"imageReference":"operator.example/team/testimage:v1"}' > "$RADIUS_EXEC
 					registryParameterName:           "operator.example/team",
 					registrySecretNameParameterName: "operator-secret",
 				},
-			},
-		}},
+			}},
 	)
 	require.NoError(t, err)
 	require.Equal(t, "/api/v1/namespaces/testapp/secrets/operator-secret", <-requestPaths)
@@ -480,8 +478,8 @@ func Test_ExecuteImageBuild_UnauthenticatedBlanksDockerConfig(t *testing.T) {
 
 func Test_WriteDockerConfig_ReadsDecodedSecretFromTargetCluster(t *testing.T) {
 	secret := &corev1.Secret{
-		TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "Secret"},
-		ObjectMeta: metav1.ObjectMeta{Name: "ghcr-creds", Namespace: "testapp"},
+		APIVersion: "v1", Kind: "Secret",
+		Name: "ghcr-creds", Namespace: "testapp",
 		Data: map[string][]byte{
 			"username": []byte("octocat"),
 			"password": []byte("s3cret"),
@@ -519,9 +517,9 @@ users:
 
 	d := &bicepDriver{clusterAccessResolver: clusteraccess.NewResolver()}
 	dir := filepath.Join(t.TempDir(), "docker")
-	err = d.writeDockerConfig(t.Context(), "ghcr.io/radius-project", "ghcr-creds", dir, driver.ExecuteOptions{BaseOptions: driver.BaseOptions{Configuration: recipes.Configuration{
+	err = d.writeDockerConfig(t.Context(), "ghcr.io/radius-project", "ghcr-creds", dir, driver.ExecuteOptions{Configuration: recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{Kubernetes: &recipes.KubernetesRuntime{Namespace: "testapp"}},
-	}}})
+	}})
 	require.NoError(t, err)
 	require.Equal(t, "/api/v1/namespaces/testapp/secrets/ghcr-creds", <-requestPaths)
 
@@ -568,9 +566,9 @@ func Test_DockerConfigAuthKey(t *testing.T) {
 
 func Test_WriteDockerConfig_SecretFailures(t *testing.T) {
 	registry, registrySecretName := "ghcr.io/org", "missing"
-	opts := driver.ExecuteOptions{BaseOptions: driver.BaseOptions{Configuration: recipes.Configuration{
+	opts := driver.ExecuteOptions{Configuration: recipes.Configuration{
 		Runtime: recipes.RuntimeConfiguration{Kubernetes: &recipes.KubernetesRuntime{Namespace: "testapp"}},
-	}}}
+	}}
 
 	err := (&bicepDriver{}).writeDockerConfig(t.Context(), registry, registrySecretName, t.TempDir(), opts)
 	require.ErrorContains(t, err, "no cluster access resolver configured")

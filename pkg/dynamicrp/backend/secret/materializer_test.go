@@ -25,7 +25,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	azfake "github.com/Azure/azure-sdk-for-go/sdk/azcore/fake"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	genfake "github.com/radius-project/radius/pkg/cli/clients_new/generated/fake"
 	"github.com/radius-project/radius/pkg/ucp/resources"
@@ -95,7 +94,7 @@ func Test_Materialize(t *testing.T) {
 		},
 	})
 
-	m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
+	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
 
 	result, err := m.Materialize(t.Context(), Request{
 		OwnerResourceID: testOwnerID,
@@ -136,7 +135,7 @@ func Test_Materialize_OmitsEmptyApplication(t *testing.T) {
 		},
 	})
 
-	m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
+	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
 
 	_, err := m.Materialize(t.Context(), Request{
 		OwnerResourceID: testOwnerID,
@@ -192,7 +191,7 @@ func Test_Delete(t *testing.T) {
 		},
 	})
 
-	m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
+	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
 
 	require.NoError(t, m.Delete(t.Context(), testOwnerID))
 	ownerID, err := resources.ParseResource(testOwnerID)
@@ -210,7 +209,7 @@ func Test_Delete_NotFoundIsIgnored(t *testing.T) {
 		},
 	})
 
-	m := NewMaterializer(&arm.ClientOptions{ClientOptions: policy.ClientOptions{Transport: transport}})
+	m := NewMaterializer(&arm.ClientOptions{Transport: transport})
 
 	require.NoError(t, m.Delete(t.Context(), testOwnerID))
 }

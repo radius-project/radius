@@ -123,9 +123,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 	}
 
 	nr := &database.Object{
-		Metadata: database.Metadata{
-			ID: request.ResourceID,
-		},
+		ID:   request.ResourceID,
 		Data: deploymentDataModel,
 	}
 	err = c.DatabaseClient().Save(ctx, nr, database.WithETag(obj.ETag))

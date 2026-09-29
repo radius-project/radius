@@ -212,11 +212,7 @@ func TestTerraformSettings_CredentialsAreIndependentEntries(t *testing.T) {
 	// Guards against pointer-aliasing bugs in the credentials map: each host's
 	// Secret must point to its own value, not share storage across iterations.
 	dm := &datamodel.TerraformSettings{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: tfConfigID, Name: tfConfigName, Type: tfConfigType, Location: tfConfigLocation,
-			},
-		},
+		ID: tfConfigID, Name: tfConfigName, Type: tfConfigType, Location: tfConfigLocation,
 		Properties: datamodel.TerraformSettingsResourceProperties{
 			Terraformrc: datamodel.TerraformrcConfig{
 				Credentials: map[string]datamodel.TerraformCredentialConfig{

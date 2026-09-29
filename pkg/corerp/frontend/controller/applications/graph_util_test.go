@@ -731,20 +731,18 @@ func Test_azureTenantID(t *testing.T) {
 			t.Cleanup(server.Close)
 
 			opts := &policy.ClientOptions{
-				ClientOptions: azpolicy.ClientOptions{
-					Transport: server.Client(),
-					Cloud: cloud.Configuration{
-						Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
-							cloud.ResourceManager: {
-								Endpoint: server.URL,
-								Audience: "https://management.core.windows.net",
-							},
+				Transport: server.Client(),
+				Cloud: cloud.Configuration{
+					Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
+						cloud.ResourceManager: {
+							Endpoint: server.URL,
+							Audience: "https://management.core.windows.net",
 						},
 					},
-					InsecureAllowCredentialWithHTTP: true,
-					Retry: azpolicy.RetryOptions{
-						MaxRetries: -1, // disable retries so 5xx responses don't slow the test
-					},
+				},
+				InsecureAllowCredentialWithHTTP: true,
+				Retry: azpolicy.RetryOptions{
+					MaxRetries: -1, // disable retries so 5xx responses don't slow the test
 				},
 			}
 

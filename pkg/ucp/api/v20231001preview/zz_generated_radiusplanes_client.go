@@ -72,8 +72,7 @@ func (client *RadiusPlanesClient) createOrUpdate(ctx context.Context, planeName 
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusCreated) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -134,8 +133,7 @@ func (client *RadiusPlanesClient) deleteOperation(ctx context.Context, planeName
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }
@@ -172,12 +170,7 @@ func (client *RadiusPlanesClient) Get(ctx context.Context, planeName string, opt
 	if err != nil {
 		return RadiusPlanesClientGetResponse{}, err
 	}
-	if !runtime.HasStatusCode(httpResp, http.StatusOK) {
-		err = runtime.NewResponseError(httpResp)
-		return RadiusPlanesClientGetResponse{}, err
-	}
-	resp, err := client.getHandleResponse(httpResp)
-	return resp, err
+	return client.getHandleResponse(httpResp, http.StatusOK)
 }
 
 // getCreateRequest creates the Get request.
@@ -199,8 +192,11 @@ func (client *RadiusPlanesClient) getCreateRequest(ctx context.Context, planeNam
 }
 
 // getHandleResponse handles the Get response.
-func (client *RadiusPlanesClient) getHandleResponse(resp *http.Response) (RadiusPlanesClientGetResponse, error) {
+func (client *RadiusPlanesClient) getHandleResponse(resp *http.Response, successCodes ...int) (RadiusPlanesClientGetResponse, error) {
 	result := RadiusPlanesClientGetResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RadiusPlaneResource); err != nil {
 		return RadiusPlanesClientGetResponse{}, err
 	}
@@ -220,34 +216,48 @@ func (client *RadiusPlanesClient) NewListPager(options *RadiusPlanesClientListOp
 			if page != nil {
 				nextLink = *page.NextLink
 			}
-			resp, err := runtime.FetcherForNextLink(ctx, client.internal.Pipeline(), nextLink, func(ctx context.Context) (*policy.Request, error) {
-				return client.listCreateRequest(ctx, options)
-			}, nil)
+			req, err := client.listCreateRequest(ctx, nextLink, options)
 			if err != nil {
 				return RadiusPlanesClientListResponse{}, err
 			}
-			return client.listHandleResponse(resp)
+			resp, err := client.internal.Pipeline().Do(req)
+			if err != nil {
+				return RadiusPlanesClientListResponse{}, err
+			}
+			return client.listHandleResponse(resp, http.StatusOK)
 		},
 	})
 }
 
 // listCreateRequest creates the List request.
-func (client *RadiusPlanesClient) listCreateRequest(ctx context.Context, _ *RadiusPlanesClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/radius"
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+func (client *RadiusPlanesClient) listCreateRequest(ctx context.Context, nextLink string, _ *RadiusPlanesClientListOptions) (*policy.Request, error) {
+	firstPage := nextLink == ""
+	var req *policy.Request
+	var err error
+	if firstPage {
+		urlPath := "/planes/radius"
+		req, err = runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.internal.Endpoint(), urlPath))
+	} else {
+		req, err = runtime.NewRequestForNextLink(ctx, http.MethodGet, client.internal.Endpoint(), nextLink)
+	}
 	if err != nil {
 		return nil, err
 	}
-	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", version20231001Preview)
-	req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
-	req.Raw().Header["Accept"] = []string{"application/json"}
+	if firstPage {
+		reqQP := req.Raw().URL.Query()
+		reqQP.Set("api-version", version20231001Preview)
+		req.Raw().URL.RawQuery = strings.ReplaceAll(reqQP.Encode(), "+", "%20")
+		req.Raw().Header["Accept"] = []string{"application/json"}
+	}
 	return req, nil
 }
 
 // listHandleResponse handles the List response.
-func (client *RadiusPlanesClient) listHandleResponse(resp *http.Response) (RadiusPlanesClientListResponse, error) {
+func (client *RadiusPlanesClient) listHandleResponse(resp *http.Response, successCodes ...int) (RadiusPlanesClientListResponse, error) {
 	result := RadiusPlanesClientListResponse{}
+	if !runtime.HasStatusCode(resp, successCodes...) {
+		return result, runtime.NewResponseError(resp)
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RadiusPlaneResourceListResult); err != nil {
 		return RadiusPlanesClientListResponse{}, err
 	}
@@ -289,8 +299,7 @@ func (client *RadiusPlanesClient) update(ctx context.Context, planeName string, 
 		return nil, err
 	}
 	if !runtime.HasStatusCode(httpResp, http.StatusOK, http.StatusAccepted) {
-		err = runtime.NewResponseError(httpResp)
-		return nil, err
+		return nil, runtime.NewResponseError(httpResp)
 	}
 	return httpResp, nil
 }

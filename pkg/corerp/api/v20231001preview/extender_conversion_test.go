@@ -40,20 +40,14 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "extender resource provisioning manual",
 			file: "extender_manual.json",
 			expected: &datamodel.Extender{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/extenders/extender0",
-						Name: "extender0",
-						Type: datamodel.ExtenderResourceType,
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/extenders/extender0",
+				Name:                   "extender0",
+				Type:                   datamodel.ExtenderResourceType,
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.ExtenderProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
@@ -70,20 +64,14 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "extender resource provisioning manual (no secrets)",
 			file: "extender_manual_nosecrets.json",
 			expected: &datamodel.Extender{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/extenders/extender0",
-						Name: "extender0",
-						Type: datamodel.ExtenderResourceType,
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/extenders/extender0",
+				Name:                   "extender0",
+				Type:                   datamodel.ExtenderResourceType,
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.ExtenderProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
@@ -99,20 +87,14 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "extender resource recipe",
 			file: "extender_recipe.json",
 			expected: &datamodel.Extender{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/extenders/extender0",
-						Name: "extender0",
-						Type: datamodel.ExtenderResourceType,
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/extenders/extender0",
+				Name:                   "extender0",
+				Type:                   datamodel.ExtenderResourceType,
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.ExtenderProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",

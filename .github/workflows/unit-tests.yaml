@@ -60,6 +60,9 @@ jobs:
           # Compiles and executes Go code — don't restore a cache a prior run could have poisoned.
           cache: false
 
+      - name: Test tool metadata and installers
+        run: go test ./internal/tooling ./cmd/tool-updater
+
       - name: Setup Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
@@ -70,6 +73,10 @@ jobs:
       - name: Install helm
         # Version pinned in build/tools.yaml (HELM_VERSION).
         run: make install-helm
+
+      - name: Run cluster diagnostics tests
+        # Ubuntu provides jq and GNU timeout; keep these optional for make test.
+        run: make test-cluster-diagnostics
 
       - name: Run make test (unit tests)
         env:
@@ -87,7 +94,7 @@ jobs:
           make test-validate-cli
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           # This secret is unavailable for fork PRs; Codecov falls back to tokenless upload.
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -105,3 +112,38 @@ jobs:
           test_group_name: Unit Tests
           artifact_name: unit_test_results
           result_directory: dist/unit_test/
+
+  windows-cli-tests:
+    name: Windows CLI Tests (${{ matrix.arch }})
+    needs: [changes]
+    if: needs.changes.outputs.only_changed != 'true'
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: windows-2025
+          - arch: arm64
+            runner: windows-11-arm
+    steps:
+      - name: Checkout Radius repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+          cache: false
+
+      - name: Run Windows CLI process tests
+        env:
+          CGO_ENABLED: 0
+        run: go test ./pkg/process ./pkg/cli/style ./test/windowless -count=1 -timeout=2m

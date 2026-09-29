@@ -374,18 +374,14 @@ func TestRedisCacheSecrets_ConvertFromValidation(t *testing.T) {
 
 func createBaseResource() v1.BaseResource {
 	return v1.BaseResource{
-		TrackedResource: v1.TrackedResource{
-			ID:   RedisID,
-			Name: "redis0",
-			Type: ds_ctrl.RedisCachesResourceType,
-			Tags: map[string]string{},
-		},
-		InternalMetadata: v1.InternalMetadata{
-			CreatedAPIVersion:      "",
-			UpdatedAPIVersion:      "2023-10-01-preview",
-			AsyncProvisioningState: v1.ProvisioningStateAccepted,
-		},
-		SystemData: v1.SystemData{},
+		ID:                     RedisID,
+		Name:                   "redis0",
+		Type:                   ds_ctrl.RedisCachesResourceType,
+		Tags:                   map[string]string{},
+		CreatedAPIVersion:      "",
+		UpdatedAPIVersion:      "2023-10-01-preview",
+		AsyncProvisioningState: v1.ProvisioningStateAccepted,
+		SystemData:             v1.SystemData{},
 	}
 }
 

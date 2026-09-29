@@ -79,9 +79,7 @@ func updateResourceProviderSummaryWithETag(ctx context.Context, client database.
 		summary.Type = summaryID.Type()
 
 		obj = &database.Object{
-			Metadata: database.Metadata{
-				ID: summary.ID,
-			},
+			ID: summary.ID,
 		}
 	} else if errors.Is(err, &database.ErrNotFound{}) && policy == summaryNotFoundIgnore {
 		return nil

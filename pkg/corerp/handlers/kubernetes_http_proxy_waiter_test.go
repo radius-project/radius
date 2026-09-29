@@ -23,7 +23,6 @@ import (
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"github.com/radius-project/radius/pkg/kubernetes"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/dynamic/dynamicinformer"
@@ -136,10 +135,8 @@ func TestHTTPProxyWaiter_WaitUntilReadyTimeoutGetsNamespacedHTTPProxy(t *testing
 	httpProxy.Status = contourv1.HTTPProxyStatus{
 		Conditions: []contourv1.DetailedCondition{
 			{
-				Condition: metav1.Condition{
-					Message: "still reconciling",
-					Reason:  "Waiting",
-				},
+				Message: "still reconciling",
+				Reason:  "Waiting",
 			},
 		},
 	}
@@ -163,13 +160,11 @@ func TestHTTPProxyWaiter_WaitUntilReadyTimeoutGetsNamespacedHTTPProxy(t *testing
 func TestCheckHTTPProxyStatus_ValidStatus(t *testing.T) {
 
 	httpProxy := &contourv1.HTTPProxy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "example.com",
-			Labels: map[string]string{
-				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-				kubernetes.LabelName:      "example.com",
-			},
+		Namespace: "default",
+		Name:      "example.com",
+		Labels: map[string]string{
+			kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
+			kubernetes.LabelName:      "example.com",
 		},
 		Status: contourv1.HTTPProxyStatus{
 			CurrentStatus: HTTPProxyStatusValid,
@@ -188,10 +183,8 @@ func TestCheckHTTPProxyStatus_ValidStatus(t *testing.T) {
 
 	// create a mock object
 	obj := &contourv1.HTTPProxy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "example.com",
-		},
+		Namespace: "default",
+		Name:      "example.com",
 	}
 
 	// create a channel for the done signal
@@ -252,13 +245,11 @@ func TestCheckHTTPProxyStatus_ValidRootProxyWithOverriddenLabels(t *testing.T) {
 func TestCheckHTTPProxyStatus_InvalidStatusForRootProxy(t *testing.T) {
 
 	httpProxy := &contourv1.HTTPProxy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "example.com",
-			Labels: map[string]string{
-				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-				kubernetes.LabelName:      "example.com",
-			},
+		Namespace: "default",
+		Name:      "example.com",
+		Labels: map[string]string{
+			kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
+			kubernetes.LabelName:      "example.com",
 		},
 		Spec: contourv1.HTTPProxySpec{
 			VirtualHost: &contourv1.VirtualHost{
@@ -277,10 +268,8 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRootProxy(t *testing.T) {
 			Conditions: []contourv1.DetailedCondition{
 				{
 					// specify Condition of type json
-					Condition: metav1.Condition{
-						Type:   HTTPProxyConditionValid,
-						Status: contourv1.ConditionFalse,
-					},
+					Type:   HTTPProxyConditionValid,
+					Status: contourv1.ConditionFalse,
 					Errors: []contourv1.SubCondition{
 						{
 							Type:    HTTPProxyConditionValid,
@@ -306,10 +295,8 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRootProxy(t *testing.T) {
 
 	// create a mock object
 	obj := &contourv1.HTTPProxy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "example.com",
-		},
+		Namespace: "default",
+		Name:      "example.com",
 	}
 
 	// create a channel for the done signal
@@ -380,13 +367,11 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRootProxyWithRoutes(t *testing.T) 
 
 func TestCheckHTTPProxyStatus_InvalidStatusForRouteProxy(t *testing.T) {
 	httpProxyRoute := &contourv1.HTTPProxy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "example.com",
-			Labels: map[string]string{
-				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-				kubernetes.LabelName:      "example.com",
-			},
+		Namespace: "default",
+		Name:      "example.com",
+		Labels: map[string]string{
+			kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
+			kubernetes.LabelName:      "example.com",
 		},
 		Spec: contourv1.HTTPProxySpec{
 			Routes: []contourv1.Route{
@@ -411,10 +396,8 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRouteProxy(t *testing.T) {
 			Conditions: []contourv1.DetailedCondition{
 				{
 					// specify Condition of type json
-					Condition: metav1.Condition{
-						Type:   HTTPProxyConditionValid,
-						Status: contourv1.ConditionFalse,
-					},
+					Type:   HTTPProxyConditionValid,
+					Status: contourv1.ConditionFalse,
 					Errors: []contourv1.SubCondition{
 						{
 							Type:    HTTPProxyConditionValid,
@@ -440,10 +423,8 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRouteProxy(t *testing.T) {
 
 	// create a mock object
 	obj := &contourv1.HTTPProxy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "example.com",
-		},
+		Namespace: "default",
+		Name:      "example.com",
 	}
 
 	// create a channel for the done signal
@@ -466,13 +447,11 @@ func TestCheckHTTPProxyStatus_InvalidStatusForRouteProxy(t *testing.T) {
 func TestCheckHTTPProxyStatus_WrongName(t *testing.T) {
 
 	httpProxy := &contourv1.HTTPProxy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "abcd.com",
-			Labels: map[string]string{
-				kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
-				kubernetes.LabelName:      "abcd.com",
-			},
+		Namespace: "default",
+		Name:      "abcd.com",
+		Labels: map[string]string{
+			kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
+			kubernetes.LabelName:      "abcd.com",
 		},
 		Spec: contourv1.HTTPProxySpec{
 			VirtualHost: &contourv1.VirtualHost{
@@ -491,10 +470,8 @@ func TestCheckHTTPProxyStatus_WrongName(t *testing.T) {
 			Conditions: []contourv1.DetailedCondition{
 				{
 					// specify Condition of type json
-					Condition: metav1.Condition{
-						Type:   HTTPProxyConditionValid,
-						Status: contourv1.ConditionFalse,
-					},
+					Type:   HTTPProxyConditionValid,
+					Status: contourv1.ConditionFalse,
 					Errors: []contourv1.SubCondition{
 						{
 							Type:    HTTPProxyConditionValid,
@@ -521,10 +498,8 @@ func TestCheckHTTPProxyStatus_WrongName(t *testing.T) {
 
 	// create a mock object
 	obj := &contourv1.HTTPProxy{
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "example.com",
-		},
+		Namespace: "default",
+		Name:      "example.com",
 	}
 
 	// create a channel for the done signal
@@ -545,14 +520,10 @@ func TestCheckHTTPProxyStatus_WrongName(t *testing.T) {
 
 func newTestHTTPProxy(spec contourv1.HTTPProxySpec) *contourv1.HTTPProxy {
 	return &contourv1.HTTPProxy{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: contourv1.SchemeGroupVersion.String(),
-			Kind:       "HTTPProxy",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Namespace: "default",
-			Name:      "example.com",
-		},
-		Spec: spec,
+		APIVersion: contourv1.SchemeGroupVersion.String(),
+		Kind:       "HTTPProxy",
+		Namespace:  "default",
+		Name:       "example.com",
+		Spec:       spec,
 	}
 }

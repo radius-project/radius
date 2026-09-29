@@ -46,14 +46,10 @@ func Test_ListPlanes(t *testing.T) {
 	testPlaneType := datamodel.AWSPlaneResourceType
 
 	planeData := datamodel.AWSPlane{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       testPlaneId,
-				Name:     testPlaneName,
-				Type:     testPlaneType,
-				Location: "global",
-			},
-		},
+		ID:         testPlaneId,
+		Name:       testPlaneName,
+		Type:       testPlaneType,
+		Location:   "global",
 		Properties: datamodel.AWSPlaneProperties{},
 	}
 

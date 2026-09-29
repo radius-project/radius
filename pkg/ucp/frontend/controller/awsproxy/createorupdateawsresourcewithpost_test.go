@@ -23,11 +23,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"uuid"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/google/uuid"
 	armrpc_controller "github.com/radius-project/radius/pkg/armrpc/frontend/controller"
 	"github.com/radius-project/radius/pkg/armrpc/rpctest"
 	ucp_aws "github.com/radius-project/radius/pkg/ucp/aws"
@@ -38,7 +39,7 @@ import (
 
 func Test_CreateAWSResourceWithPost(t *testing.T) {
 	testOptions := setupTest(t)
-	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
+	testResource := CreateMemoryDBClusterTestResource(uuid.New().String())
 
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudformation.DescribeTypeOutput{
@@ -114,7 +115,7 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 }
 
 func Test_UpdateAWSResourceWithPost(t *testing.T) {
-	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
+	testResource := CreateMemoryDBClusterTestResource(uuid.New().String())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -212,7 +213,7 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 }
 
 func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
-	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
+	testResource := CreateMemoryDBClusterTestResource(uuid.New().String())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -301,7 +302,7 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 }
 
 func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
-	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
+	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.New().String())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
 	multiIdentifierResourceID := clusterIdentifierValue + "|" + accountValue
@@ -376,7 +377,7 @@ func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
 }
 
 func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
-	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
+	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.New().String())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
 	multiIdentifierResourceID := clusterIdentifierValue + "|" + accountValue
@@ -458,7 +459,7 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 }
 
 func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
-	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
+	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.New().String())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
 	multiIdentifierResourceID := clusterIdentifierValue + "|" + accountValue

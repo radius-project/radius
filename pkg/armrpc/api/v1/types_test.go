@@ -75,12 +75,10 @@ func TestOperationType_ParseOperationType(t *testing.T) {
 
 func TestBaseResource_UpdateMetadata(t *testing.T) {
 	oldResource := BaseResource{
-		TrackedResource: TrackedResource{
-			ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/EnVironMent0",
-			Name:     "EnVironMent0",
-			Type:     "Applications.Core/environment",
-			Location: "global",
-		},
+		ID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/EnVironMent0",
+		Name:     "EnVironMent0",
+		Type:     "Applications.Core/environment",
+		Location: "global",
 	}
 
 	newResourceID := "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/environment0"

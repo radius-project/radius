@@ -25,7 +25,6 @@ import (
 	"github.com/radius-project/radius/test/k8sutil"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/kubectl/pkg/scheme"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -71,10 +70,8 @@ func TestKubernetesKeyProvider_GetCurrentKey(t *testing.T) {
 			setupFunc: func(k8sClient controller_runtime.Client) {
 				keyStoreJSON := createTestKeyStore(t, map[int][]byte{1: validKey}, 1)
 				secret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      DefaultEncryptionKeySecretName,
-						Namespace: RadiusNamespace,
-					},
+					Name:      DefaultEncryptionKeySecretName,
+					Namespace: RadiusNamespace,
 					Data: map[string][]byte{
 						DefaultEncryptionKeySecretKey: keyStoreJSON,
 					},
@@ -97,10 +94,8 @@ func TestKubernetesKeyProvider_GetCurrentKey(t *testing.T) {
 				}
 				keyStoreJSON := createTestKeyStore(t, map[int][]byte{1: key1, 2: key2}, 2)
 				secret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      DefaultEncryptionKeySecretName,
-						Namespace: RadiusNamespace,
-					},
+					Name:      DefaultEncryptionKeySecretName,
+					Namespace: RadiusNamespace,
 					Data: map[string][]byte{
 						DefaultEncryptionKeySecretKey: keyStoreJSON,
 					},
@@ -123,10 +118,8 @@ func TestKubernetesKeyProvider_GetCurrentKey(t *testing.T) {
 			setupFunc: func(k8sClient controller_runtime.Client) {
 				keyStoreJSON := createTestKeyStore(t, map[int][]byte{1: validKey}, 1)
 				secret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "custom-secret",
-						Namespace: "custom-namespace",
-					},
+					Name:      "custom-secret",
+					Namespace: "custom-namespace",
 					Data: map[string][]byte{
 						"custom-key": keyStoreJSON,
 					},
@@ -153,10 +146,8 @@ func TestKubernetesKeyProvider_GetCurrentKey(t *testing.T) {
 			name: "error-key-not-in-secret",
 			setupFunc: func(k8sClient controller_runtime.Client) {
 				secret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      DefaultEncryptionKeySecretName,
-						Namespace: RadiusNamespace,
-					},
+					Name:      DefaultEncryptionKeySecretName,
+					Namespace: RadiusNamespace,
 					Data: map[string][]byte{
 						"wrong-key": []byte("{}"),
 					},
@@ -172,10 +163,8 @@ func TestKubernetesKeyProvider_GetCurrentKey(t *testing.T) {
 			name: "error-invalid-json",
 			setupFunc: func(k8sClient controller_runtime.Client) {
 				secret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      DefaultEncryptionKeySecretName,
-						Namespace: RadiusNamespace,
-					},
+					Name:      DefaultEncryptionKeySecretName,
+					Namespace: RadiusNamespace,
 					Data: map[string][]byte{
 						DefaultEncryptionKeySecretKey: []byte("not-valid-json"),
 					},
@@ -192,10 +181,8 @@ func TestKubernetesKeyProvider_GetCurrentKey(t *testing.T) {
 			setupFunc: func(k8sClient controller_runtime.Client) {
 				keyStoreJSON := createTestKeyStore(t, map[int][]byte{1: validKey}, 99)
 				secret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      DefaultEncryptionKeySecretName,
-						Namespace: RadiusNamespace,
-					},
+					Name:      DefaultEncryptionKeySecretName,
+					Namespace: RadiusNamespace,
 					Data: map[string][]byte{
 						DefaultEncryptionKeySecretKey: keyStoreJSON,
 					},
@@ -213,10 +200,8 @@ func TestKubernetesKeyProvider_GetCurrentKey(t *testing.T) {
 				shortKey := make([]byte, 16) // Too short
 				keyStoreJSON := createTestKeyStore(t, map[int][]byte{1: shortKey}, 1)
 				secret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      DefaultEncryptionKeySecretName,
-						Namespace: RadiusNamespace,
-					},
+					Name:      DefaultEncryptionKeySecretName,
+					Namespace: RadiusNamespace,
 					Data: map[string][]byte{
 						DefaultEncryptionKeySecretKey: keyStoreJSON,
 					},
@@ -275,10 +260,8 @@ func TestKubernetesKeyProvider_GetKeyByVersion(t *testing.T) {
 			setupFunc: func(k8sClient controller_runtime.Client) {
 				keyStoreJSON := createTestKeyStore(t, map[int][]byte{1: key1, 2: key2}, 2)
 				secret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      DefaultEncryptionKeySecretName,
-						Namespace: RadiusNamespace,
-					},
+					Name:      DefaultEncryptionKeySecretName,
+					Namespace: RadiusNamespace,
 					Data: map[string][]byte{
 						DefaultEncryptionKeySecretKey: keyStoreJSON,
 					},
@@ -294,10 +277,8 @@ func TestKubernetesKeyProvider_GetKeyByVersion(t *testing.T) {
 			setupFunc: func(k8sClient controller_runtime.Client) {
 				keyStoreJSON := createTestKeyStore(t, map[int][]byte{1: key1, 2: key2}, 2)
 				secret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      DefaultEncryptionKeySecretName,
-						Namespace: RadiusNamespace,
-					},
+					Name:      DefaultEncryptionKeySecretName,
+					Namespace: RadiusNamespace,
 					Data: map[string][]byte{
 						DefaultEncryptionKeySecretKey: keyStoreJSON,
 					},
@@ -313,10 +294,8 @@ func TestKubernetesKeyProvider_GetKeyByVersion(t *testing.T) {
 			setupFunc: func(k8sClient controller_runtime.Client) {
 				keyStoreJSON := createTestKeyStore(t, map[int][]byte{1: key1}, 1)
 				secret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      DefaultEncryptionKeySecretName,
-						Namespace: RadiusNamespace,
-					},
+					Name:      DefaultEncryptionKeySecretName,
+					Namespace: RadiusNamespace,
 					Data: map[string][]byte{
 						DefaultEncryptionKeySecretKey: keyStoreJSON,
 					},

@@ -38,16 +38,12 @@ func TestResourceGroupConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "resourcegroup.json",
 			expected: &datamodel.ResourceGroup{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:       "/planes/radius/local/resourceGroups/test-rg",
-						Name:     "test-rg",
-						Type:     resources.ResourceGroupType,
-						Location: v1.LocationGlobal,
-						Tags: map[string]string{
-							"env": "dev",
-						},
-					},
+				ID:       "/planes/radius/local/resourceGroups/test-rg",
+				Name:     "test-rg",
+				Type:     resources.ResourceGroupType,
+				Location: v1.LocationGlobal,
+				Tags: map[string]string{
+					"env": "dev",
 				},
 			},
 		},

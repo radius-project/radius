@@ -53,28 +53,45 @@ GOTEST_OPTS ?=
 GOTEST_TOOL ?= go tool gotestsum $(GOTESTSUM_OPTS) --
 
 .PHONY: test
-test: test-get-envtools test-helm test-manage-radius-installation test-update-tools-pr test-run-rad-commands-action test-build-platforms test-publish-deploy-status ## Runs unit tests, excluding kubernetes controller tests
-	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... $(GOTEST_OPTS)
+test: test-get-envtools test-helm test-manage-radius-installation test-release-parity-manifest test-verify-goreleaser-snapshot test-changelog-range test-changelog-config test-build-summary test-goreleaser-shadow test-capture-release-image-digests ## Runs unit tests, excluding kubernetes controller tests
+	KUBEBUILDER_ASSETS="$(shell $(ENV_SETUP) use -p path ${K8S_VERSION} --arch amd64)" CGO_ENABLED=1 $(GOTEST_TOOL) ./pkg/... ./test/validation/... $(GOTEST_OPTS)
 
 .PHONY: test-manage-radius-installation
 test-manage-radius-installation: ## Tests Radius installation lifecycle reconciliation
 	@bash ./.github/scripts/manage-radius-installation_test.sh
 
-.PHONY: test-update-tools-pr
-test-update-tools-pr: ## Tests the automated tool-update pull request workflow
-	@bash ./.github/scripts/update-tools-pr_test.sh
+.PHONY: test-cluster-diagnostics
+test-cluster-diagnostics: ## Tests workflow diagnostics without a Kubernetes cluster
+	@bash ./.github/scripts/collect-cluster-diagnostics_test.sh
 
-.PHONY: test-run-rad-commands-action
-test-run-rad-commands-action: ## Tests application deploy parameter filtering in the run-rad-commands action
-	@bash ./.github/extension/actions/run-rad-commands/deploy-parameters_test.sh
+.PHONY: test-release-parity-manifest
+test-release-parity-manifest: ## Tests release parity manifest collection
+	@bash ./.github/scripts/release-parity-manifest_test.sh
 
-.PHONY: test-build-platforms
-test-build-platforms: ## Tests container build platform resolution and workflow wiring in the run-rad-commands action
-	@bash ./.github/extension/actions/run-rad-commands/compute-build-platforms_test.sh
+.PHONY: test-verify-goreleaser-snapshot
+test-verify-goreleaser-snapshot: ## Tests the GoReleaser snapshot verifier
+	@bash ./.github/scripts/verify-goreleaser-snapshot_test.sh
 
-.PHONY: test-publish-deploy-status
-test-publish-deploy-status: ## Tests deploy status publishing in the publish-deploy-status action
-	@bash ./.github/extension/actions/publish-deploy-status/publish-deploy-status_test.sh
+.PHONY: test-changelog-range
+test-changelog-range: ## Tests changelog channel boundary resolution
+	@bash ./.github/scripts/changelog-range_test.sh
+
+.PHONY: test-changelog-config
+test-changelog-config: install-git-cliff ## Tests the git-cliff configuration against fixture commits
+	@bash ./.github/scripts/changelog-config_test.sh
+
+.PHONY: test-build-summary
+test-build-summary: ## Tests the build job summary rendering shared by the build workflows
+	@bash ./.github/scripts/build-summary_test.sh
+
+.PHONY: test-goreleaser-shadow
+test-goreleaser-shadow: ## Tests GoReleaser shadow output parity verification
+	@CGO_ENABLED=1 go test ./.github/scripts/image-payload-manifest $(GOTEST_OPTS)
+	@bash ./.github/scripts/verify-goreleaser-shadow_test.sh
+
+.PHONY: test-capture-release-image-digests
+test-capture-release-image-digests: ## Tests production release image digest capture
+	@bash ./.github/scripts/capture-release-image-digests_test.sh
 
 .PHONY: test-compile
 test-compile: test-get-envtools ## Compiles all tests without running them
@@ -179,6 +196,13 @@ test-functional-multicluster-noncloud: ## Runs multi-cluster functional tests th
 	# recipe-created resources land there. Not part of test-functional-all-noncloud
 	# because of that extra setup.
 	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/multicluster/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
+
+.PHONY: test-functional-database-noncloud
+test-functional-database-noncloud: ## Runs the PostgreSQL-backed control plane (database.enabled=true) functional tests
+	# Requires a control plane installed with `rad install kubernetes --set database.enabled=true`.
+	# The tests fail against the default apiserver-backed install, so they are not part of
+	# test-functional-all-noncloud; CI runs them in the database-noncloud leg.
+	CGO_ENABLED=1 $(GOTEST_TOOL) ./test/functional-portable/database/noncloud/... -timeout ${TEST_TIMEOUT} -v -parallel 1 $(GOTEST_OPTS)
 
 .PHONY: test-functional-statestore-noncloud
 test-functional-statestore-noncloud: ## Runs the rad startup/shutdown state-storage lifecycle test

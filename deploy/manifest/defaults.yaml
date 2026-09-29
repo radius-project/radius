@@ -48,28 +48,28 @@ resourceTypes:
     repo: github.com/radius-project/resource-types-contrib
     # The sync fetch accepts git refs, but update-resource-types always records
     # a full commit SHA under ref and the stable release tag under tag.
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.Compute/v0.1.0"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "Radius.Compute/v0.3.0"
   - name: Radius.Data
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.Data/v0.1.0"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "Radius.Data/v0.3.0"
   - name: Radius.Security
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.Security/v0.1.0"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "Radius.Security/v0.2.2"
   - name: Radius.Messaging
     repo: github.com/radius-project/resource-types-contrib
-    ref: ebdeec9509036f2b2f271e41661e6fcfe45eda89
-    tag: "Radius.Messaging/v0.1.1"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "Radius.Messaging/v0.2.2"
   - name: Radius.AI
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.AI/v0.1.0"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "Radius.AI/v0.2.2"
   - name: Radius.Storage
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "Radius.Storage/v0.1.0"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "Radius.Storage/v0.2.2"
 recipePacks:
   # TODO(resource-types-contrib#292): placeholder refs; re-pin azure-aks/azure-aci with `make update-recipe-packs` after #292 merges.
   - name: azure-aks
@@ -82,8 +82,8 @@ recipePacks:
     tag: ""
   - name: kubernetes
     repo: github.com/radius-project/resource-types-contrib
-    ref: 3143b4bb0aecdc1999a34a5f9563f19bd6b96dfb
-    tag: "recipe-pack/kubernetes/v0.1.0"
+    ref: 18142182e52e19a46b0ed172037357e8e142dcd2
+    tag: "recipe-pack/kubernetes/v0.2.0"
 defaultRegistration:
   - Radius.Compute/containers
   - Radius.Compute/containerImages

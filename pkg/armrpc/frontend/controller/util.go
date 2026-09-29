@@ -131,7 +131,19 @@ func GetURLFromReqWithQueryParameters(req *http.Request, qps url.Values) *url.UR
 	return &url
 }
 
-// GetNextLinkUrl function returns the URL string by building a URL from the request and the pagination token.
+// GetNextLinkURL returns the link to the next page of a paginated list response, or an empty
+// string when the current page is the last one.
+//
+// The link is deliberately a relative reference (path and query only) rather than an absolute URL.
+// A server has no reliable way to know the address the client actually dialed: the request may have
+// been proxied by UCP and, in Kubernetes, the API server aggregator replaces the original host with
+// the address of the service it forwards to (kubernetes/kubernetes#107435). Building the link from
+// the inbound host therefore leaks a cluster-internal address such as
+// http://dynamic-rp.radius-system:8082/... that no out-of-cluster client can reach.
+//
+// Emitting a relative reference lets the client resolve the link against the endpoint it already
+// reached, which is by definition routable for it. Clients generated against azcore do this
+// automatically in runtime.NewRequestForNextLink.
 func GetNextLinkURL(ctx context.Context, req *http.Request, paginationToken string) string {
 	if paginationToken == "" {
 		return ""
@@ -144,5 +156,14 @@ func GetNextLinkURL(ctx context.Context, req *http.Request, paginationToken stri
 	qps.Add("skipToken", paginationToken)
 	qps.Add("top", strconv.Itoa(serviceCtx.Top))
 
-	return GetURLFromReqWithQueryParameters(req, qps).String()
+	// Strip whatever the caller's routable base path is so the client can supply its own. UCP serves
+	// its own lists under a path base (/apis/api.ucp.dev/v1alpha3) which is already part of every
+	// client's endpoint, while a proxied resource provider sees a path that begins at /planes/ and
+	// so has nothing to trim.
+	relative := url.URL{
+		Path:     strings.TrimPrefix(req.URL.Path, v1.ParsePathBase(req.URL.Path)),
+		RawQuery: qps.Encode(),
+	}
+
+	return relative.String()
 }

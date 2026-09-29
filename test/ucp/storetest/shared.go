@@ -145,9 +145,7 @@ func parseOrPanic(id string) resources.ID {
 
 func createObject(id resources.ID, data any) database.Object {
 	return database.Object{
-		Metadata: database.Metadata{
-			ID: id.String(),
-		},
+		ID:   id.String(),
 		Data: data,
 	}
 }

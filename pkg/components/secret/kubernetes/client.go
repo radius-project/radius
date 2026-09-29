@@ -23,7 +23,6 @@ import (
 	"github.com/radius-project/radius/pkg/kubernetes"
 	corev1 "k8s.io/api/core/v1"
 	k8s_error "k8s.io/apimachinery/pkg/api/errors"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -63,11 +62,9 @@ func (c *Client) Save(ctx context.Context, name string, value []byte) error {
 	data := make(map[string][]byte)
 	data[SecretKey] = value
 	secret := &corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      name,
-			Namespace: RadiusNamespace,
-		},
-		Data: data,
+		Name:      name,
+		Namespace: RadiusNamespace,
+		Data:      data,
 	}
 	// check if secret already exists or not
 	res := &corev1.Secret{}
@@ -93,10 +90,8 @@ func (c *Client) Delete(ctx context.Context, name string) error {
 	}
 
 	secretObject := &corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      name,
-			Namespace: RadiusNamespace,
-		},
+		Name:      name,
+		Namespace: RadiusNamespace,
 	}
 	err := c.K8sClient.Delete(ctx, secretObject)
 	if err != nil {

@@ -82,80 +82,63 @@ generate-cleanup: ## Deletes all generated code.
 	find . -type f -name 'zz_*.go' ! -name 'zz_*.deepcopy.go' -delete
 	@echo "$(ARROW) Done."
 
+# typespec-go 0.16 infers the Go module from a parent go.mod when the emitter
+# output is inside the repository. Generate outside the repository so each
+# TypeSpec project's configured module and package name remain authoritative.
+define generate-typespec-go-client
+@set -e; \
+	output_dir=$$(mktemp -d "$${TMPDIR:-/tmp}/radius-typespec-go.XXXXXX"); \
+	trap 'rm -rf "$$output_dir"' EXIT; \
+	(cd "$(1)" && pnpm exec tsp compile . --emit=@azure-tools/typespec-go --option="@azure-tools/typespec-go.emitter-output-dir=$$output_dir"); \
+	rm -f "$(2)"/zz_generated_*.go; \
+	cp "$$output_dir"/zz_generated_*.go "$(2)/"; \
+	if [ "$(3)" = "true" ]; then \
+		rm -f "$(2)"/fake/zz_generated_*.go; \
+		cp "$$output_dir"/fake/zz_generated_*.go "$(2)/fake/"; \
+	fi; \
+	go fmt "./$(2)/..."
+endef
+
 .PHONY: generate-rad-corerp-client
 generate-rad-corerp-client: generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/corerp/api/v20231001preview'"
-	cd typespec/Applications.Core && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
-	rm -f pkg/corerp/api/v20231001preview/zz_generated_*.go
-	cp typespec/Applications.Core/.tsp-go-tmp/zz_generated_*.go pkg/corerp/api/v20231001preview/
-	rm -rf typespec/Applications.Core/.tsp-go-tmp
-	go fmt ./pkg/corerp/api/v20231001preview/...
+	$(call generate-typespec-go-client,typespec/Applications.Core,pkg/corerp/api/v20231001preview,false)
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-corerp-client-2025-08-01-preview
 generate-rad-corerp-client-2025-08-01-preview: generate-tsp-installed generate-openapi-spec ## Generates the corerp client SDK for 2025-08-01-preview (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/corerp/api/v20250801preview'"
-	cd typespec/Radius.Core && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
-	rm -f pkg/corerp/api/v20250801preview/zz_generated_*.go
-	rm -f pkg/corerp/api/v20250801preview/fake/zz_generated_*.go
-	cp typespec/Radius.Core/.tsp-go-tmp/zz_generated_*.go pkg/corerp/api/v20250801preview/
-	cp typespec/Radius.Core/.tsp-go-tmp/fake/zz_generated_*.go pkg/corerp/api/v20250801preview/fake/
-	rm -rf typespec/Radius.Core/.tsp-go-tmp
-	go fmt ./pkg/corerp/api/v20250801preview/...
+	$(call generate-typespec-go-client,typespec/Radius.Core,pkg/corerp/api/v20250801preview,true)
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-datastoresrp-client
 generate-rad-datastoresrp-client: generate-tsp-installed generate-openapi-spec ## Generates the datastoresrp client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/datastoresrp/api/v20231001preview'"
-	cd typespec/Applications.Datastores && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
-	rm -f pkg/datastoresrp/api/v20231001preview/zz_generated_*.go
-	cp typespec/Applications.Datastores/.tsp-go-tmp/zz_generated_*.go pkg/datastoresrp/api/v20231001preview/
-	rm -rf typespec/Applications.Datastores/.tsp-go-tmp
-	go fmt ./pkg/datastoresrp/api/v20231001preview/...
+	$(call generate-typespec-go-client,typespec/Applications.Datastores,pkg/datastoresrp/api/v20231001preview,false)
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-messagingrp-client
 generate-rad-messagingrp-client: generate-tsp-installed generate-openapi-spec ## Generates the messagingrp client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/messagingrp/api/v20231001preview'"
-	cd typespec/Applications.Messaging && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
-	rm -f pkg/messagingrp/api/v20231001preview/zz_generated_*.go
-	cp typespec/Applications.Messaging/.tsp-go-tmp/zz_generated_*.go pkg/messagingrp/api/v20231001preview/
-	rm -rf typespec/Applications.Messaging/.tsp-go-tmp
-	go fmt ./pkg/messagingrp/api/v20231001preview/...
+	$(call generate-typespec-go-client,typespec/Applications.Messaging,pkg/messagingrp/api/v20231001preview,false)
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-daprrp-client
 generate-rad-daprrp-client: generate-tsp-installed generate-openapi-spec ## Generates the daprrp client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/daprrp/api/v20231001preview'"
-	cd typespec/Applications.Dapr && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
-	rm -f pkg/daprrp/api/v20231001preview/zz_generated_*.go
-	cp typespec/Applications.Dapr/.tsp-go-tmp/zz_generated_*.go pkg/daprrp/api/v20231001preview/
-	rm -rf typespec/Applications.Dapr/.tsp-go-tmp
-	go fmt ./pkg/daprrp/api/v20231001preview/...
+	$(call generate-typespec-go-client,typespec/Applications.Dapr,pkg/daprrp/api/v20231001preview,false)
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-rad-ucp-client
 generate-rad-ucp-client: generate-tsp-installed test-ucp-spec-examples ## Generates the UCP client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/ucp/api/v20231001preview'"
-	cd typespec/UCP && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
-	rm -f pkg/ucp/api/v20231001preview/zz_generated_*.go
-	rm -f pkg/ucp/api/v20231001preview/fake/zz_generated_*.go
-	cp typespec/UCP/.tsp-go-tmp/zz_generated_*.go pkg/ucp/api/v20231001preview/
-	cp typespec/UCP/.tsp-go-tmp/fake/zz_generated_*.go pkg/ucp/api/v20231001preview/fake/
-	rm -rf typespec/UCP/.tsp-go-tmp
-	go fmt ./pkg/ucp/api/v20231001preview/...
+	$(call generate-typespec-go-client,typespec/UCP,pkg/ucp/api/v20231001preview,true)
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-genericcliclient
 generate-genericcliclient: generate-tsp-installed ## Generates the generic CLI client SDK (TypeSpec Go emitter).
 	@echo "$(ARROW) Generating 'pkg/cli/clients_new/generated'"
-	cd typespec/GenericResource && pnpm exec tsp compile . --emit=@azure-tools/typespec-go
-	rm -f pkg/cli/clients_new/generated/zz_generated_*.go
-	rm -f pkg/cli/clients_new/generated/fake/zz_generated_*.go
-	cp typespec/GenericResource/.tsp-go-tmp/zz_generated_*.go pkg/cli/clients_new/generated/
-	cp typespec/GenericResource/.tsp-go-tmp/fake/zz_generated_*.go pkg/cli/clients_new/generated/fake/
-	rm -rf typespec/GenericResource/.tsp-go-tmp
-	go fmt ./pkg/cli/clients_new/generated/...
+	$(call generate-typespec-go-client,typespec/GenericResource,pkg/cli/clients_new/generated,true)
 	@echo "$(ARROW) Done."
 
 .PHONY: generate-go

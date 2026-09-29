@@ -34,7 +34,6 @@ import (
 	dsrp_dm "github.com/radius-project/radius/pkg/datastoresrp/datamodel"
 	dynamicrp_dm "github.com/radius-project/radius/pkg/dynamicrp/datamodel"
 	"github.com/radius-project/radius/pkg/portableresources"
-	pr_dm "github.com/radius-project/radius/pkg/portableresources/datamodel"
 	pr_renderers "github.com/radius-project/radius/pkg/portableresources/renderers"
 	"github.com/radius-project/radius/pkg/resourcemodel"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
@@ -98,11 +97,7 @@ func setup(t *testing.T) SharedMocks {
 		})
 
 	app := datamodel.Application{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
-			},
-		},
+		ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 		Properties: datamodel.ApplicationProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
@@ -111,12 +106,8 @@ func setup(t *testing.T) SharedMocks {
 	}
 
 	env := datamodel.Environment{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
-				Name: "test-env",
-			},
-		},
+		ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
+		Name: "test-env",
 		Properties: datamodel.EnvironmentProperties{
 			Compute: rpv1.EnvironmentCompute{
 				Kind: "kubernetes",
@@ -196,11 +187,7 @@ func getTestResourceID(id string) resources.ID {
 
 func buildDynamicResourceWithRecipe() dynamicrp_dm.DynamicResource {
 	return dynamicrp_dm.DynamicResource{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: "/planes/radius/local/resourcegroups/default/providers/Test.Datastores/postgres/postgresudt",
-			},
-		},
+		ID: "/planes/radius/local/resourcegroups/default/providers/Test.Datastores/postgres/postgresudt",
 		Properties: map[string]any{
 			"application": "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			"environment": "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
@@ -223,33 +210,27 @@ func buildDynamicResourceWithRecipe() dynamicrp_dm.DynamicResource {
 
 func buildMongoDBWithRecipe() dsrp_dm.MongoDatabase {
 	return dsrp_dm.MongoDatabase{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Datastores/mongoDatabases/test-mongo",
-			},
-		},
+		ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Datastores/mongoDatabases/test-mongo",
 		Properties: dsrp_dm.MongoDatabaseProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 			},
 		},
-		PortableResourceMetadata: pr_dm.PortableResourceMetadata{
-			RecipeData: portableresources.RecipeData{
-				RecipeProperties: portableresources.RecipeProperties{
-					ResourceRecipe: portableresources.ResourceRecipe{
-						Name: "mongoDB",
-						Parameters: map[string]any{
-							"ResourceGroup": "testRG",
-							"Subscription":  "Radius-Test",
-						},
+		RecipeData: portableresources.RecipeData{
+			RecipeProperties: portableresources.RecipeProperties{
+				ResourceRecipe: portableresources.ResourceRecipe{
+					Name: "mongoDB",
+					Parameters: map[string]any{
+						"ResourceGroup": "testRG",
+						"Subscription":  "Radius-Test",
 					},
-					TemplatePath: "ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1",
 				},
-				APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
-				Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-					"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
+				TemplatePath: "ghcr.io/testpublicrecipe/bicep/modules/mongodatabases:v1",
 			},
+			APIVersion: clientv2.DocumentDBManagementClientAPIVersion,
+			Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+				"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
 		},
 	}
 }
@@ -310,11 +291,7 @@ func Test_Render(t *testing.T) {
 	ctx := t.Context()
 
 	env := datamodel.Environment{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-			},
-		},
+		ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 		Properties: datamodel.EnvironmentProperties{
 			Compute: rpv1.EnvironmentCompute{
 				Kind: rpv1.KubernetesComputeKind,
@@ -340,18 +317,12 @@ func Test_Render(t *testing.T) {
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
 
 		cr := database.Object{
-			Metadata: database.Metadata{
-				ID: testResource.ID,
-			},
+			ID:   testResource.ID,
 			Data: testResource,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
-				},
-			},
+			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
@@ -359,26 +330,18 @@ func Test_Render(t *testing.T) {
 			},
 		}
 		ar := database.Object{
-			Metadata: database.Metadata{
-				ID: application.ID,
-			},
+			ID:   application.ID,
 			Data: application,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		er := database.Object{
-			Metadata: database.Metadata{
-				ID: env.ID,
-			},
+			ID:   env.ID,
 			Data: env,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		mongoResource := dsrp_dm.MongoDatabase{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Datastores/mongoDatabases/test-mongo",
-				},
-			},
+			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Datastores/mongoDatabases/test-mongo",
 			Properties: dsrp_dm.MongoDatabaseProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
@@ -386,9 +349,7 @@ func Test_Render(t *testing.T) {
 			},
 		}
 		mr := database.Object{
-			Metadata: database.Metadata{
-				ID: mongoResource.ID,
-			},
+			ID:   mongoResource.ID,
 			Data: mongoResource,
 		}
 
@@ -411,18 +372,12 @@ func Test_Render(t *testing.T) {
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]resources.ID{}, nil, nil)
 
 		cr := database.Object{
-			Metadata: database.Metadata{
-				ID: testResource.ID,
-			},
+			ID:   testResource.ID,
 			Data: testResource,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
-				},
-			},
+			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
@@ -430,16 +385,12 @@ func Test_Render(t *testing.T) {
 			},
 		}
 		ar := database.Object{
-			Metadata: database.Metadata{
-				ID: application.ID,
-			},
+			ID:   application.ID,
 			Data: application,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		er := database.Object{
-			Metadata: database.Metadata{
-				ID: env.ID,
-			},
+			ID:   env.ID,
 			Data: env,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
@@ -461,18 +412,12 @@ func Test_Render(t *testing.T) {
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]resources.ID{}, nil, nil)
 
 		cr := database.Object{
-			Metadata: database.Metadata{
-				ID: testResource.ID,
-			},
+			ID:   testResource.ID,
 			Data: testResource,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
-				},
-			},
+			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
@@ -480,16 +425,12 @@ func Test_Render(t *testing.T) {
 			},
 		}
 		ar := database.Object{
-			Metadata: database.Metadata{
-				ID: application.ID,
-			},
+			ID:   application.ID,
 			Data: application,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		er := database.Object{
-			Metadata: database.Metadata{
-				ID: env.ID,
-			},
+			ID:   env.ID,
 			Data: env,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
@@ -510,18 +451,12 @@ func Test_Render(t *testing.T) {
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render the resource"))
 
 		cr := database.Object{
-			Metadata: database.Metadata{
-				ID: testResource.ID,
-			},
+			ID:   testResource.ID,
 			Data: testResource,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
-				},
-			},
+			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
@@ -529,16 +464,12 @@ func Test_Render(t *testing.T) {
 			},
 		}
 		ar := database.Object{
-			Metadata: database.Metadata{
-				ID: application.ID,
-			},
+			ID:   application.ID,
 			Data: application,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		er := database.Object{
-			Metadata: database.Metadata{
-				ID: env.ID,
-			},
+			ID:   env.ID,
 			Data: env,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
@@ -597,9 +528,7 @@ func Test_Render(t *testing.T) {
 		testResource.Properties.Application = "invalid-app-id"
 
 		cr := database.Object{
-			Metadata: database.Metadata{
-				ID: testResource.ID,
-			},
+			ID:   testResource.ID,
 			Data: testResource,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
@@ -619,9 +548,7 @@ func Test_Render(t *testing.T) {
 		testResource.Properties.Application = ""
 
 		cr := database.Object{
-			Metadata: database.Metadata{
-				ID: testResource.ID,
-			},
+			ID:   testResource.ID,
 			Data: testResource,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
@@ -640,9 +567,7 @@ func Test_Render(t *testing.T) {
 		testResource.Properties.Application = "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/app/test-application"
 
 		cr := database.Object{
-			Metadata: database.Metadata{
-				ID: testResource.ID,
-			},
+			ID:   testResource.ID,
 			Data: testResource,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
@@ -667,18 +592,12 @@ func Test_Render(t *testing.T) {
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]resources.ID{}, nil, nil)
 
 		cr := database.Object{
-			Metadata: database.Metadata{
-				ID: testResource.ID,
-			},
+			ID:   testResource.ID,
 			Data: testResource,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
-				},
-			},
+			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
@@ -686,16 +605,12 @@ func Test_Render(t *testing.T) {
 			},
 		}
 		ar := database.Object{
-			Metadata: database.Metadata{
-				ID: application.ID,
-			},
+			ID:   application.ID,
 			Data: application,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		er := database.Object{
-			Metadata: database.Metadata{
-				ID: env.ID,
-			},
+			ID:   env.ID,
 			Data: env,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
@@ -717,18 +632,12 @@ func Test_Render(t *testing.T) {
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return([]resources.ID{}, nil, nil)
 
 		cr := database.Object{
-			Metadata: database.Metadata{
-				ID: testResource.ID,
-			},
+			ID:   testResource.ID,
 			Data: testResource,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
-				},
-			},
+			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: rpv1.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
@@ -736,16 +645,12 @@ func Test_Render(t *testing.T) {
 			},
 		}
 		ar := database.Object{
-			Metadata: database.Metadata{
-				ID: application.ID,
-			},
+			ID:   application.ID,
 			Data: application,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		er := database.Object{
-			Metadata: database.Metadata{
-				ID: env.ID,
-			},
+			ID:   env.ID,
 			Data: env,
 		}
 		mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
@@ -760,19 +665,13 @@ func Test_Render(t *testing.T) {
 func setupDeployMocks(mocks SharedMocks, simulated bool) {
 	testResource := getTestResource()
 	cr := database.Object{
-		Metadata: database.Metadata{
-			ID: testResource.ID,
-		},
+		ID:   testResource.ID,
 		Data: testResource,
 	}
 	mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 
 	app := datamodel.Application{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
-			},
-		},
+		ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 		Properties: datamodel.ApplicationProperties{
 			BasicResourceProperties: rpv1.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
@@ -781,20 +680,14 @@ func setupDeployMocks(mocks SharedMocks, simulated bool) {
 	}
 
 	ar := database.Object{
-		Metadata: database.Metadata{
-			ID: mocks.testApp.ID,
-		},
+		ID:   mocks.testApp.ID,
 		Data: app,
 	}
 	mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 
 	env := datamodel.Environment{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
-				Name: "test-env",
-			},
-		},
+		ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
+		Name: "test-env",
 		Properties: datamodel.EnvironmentProperties{
 			Compute: rpv1.EnvironmentCompute{
 				Kind: "kubernetes",
@@ -811,9 +704,7 @@ func setupDeployMocks(mocks SharedMocks, simulated bool) {
 	}
 
 	er := database.Object{
-		Metadata: database.Metadata{
-			ID: mocks.testEnv.ID,
-		},
+		ID:   mocks.testEnv.ID,
 		Data: env,
 	}
 	mocks.databaseClient.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
@@ -1007,12 +898,8 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 	dp := deploymentProcessor{mocks.model, nil, nil, nil}
 
 	env := &datamodel.Environment{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
-				Name: "test-env",
-			},
-		},
+		ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/test-env",
+		Name: "test-env",
 		Properties: datamodel.EnvironmentProperties{
 			Compute: rpv1.EnvironmentCompute{
 				Kind: rpv1.KubernetesComputeKind,
@@ -1076,9 +963,7 @@ func Test_getResourceDataByID(t *testing.T) {
 		mongoResource := buildMongoDBWithRecipe()
 		mongoResource.PortableResourceMetadata.RecipeData = portableresources.RecipeData{}
 		mr := database.Object{
-			Metadata: database.Metadata{
-				ID: mongoResource.ID,
-			},
+			ID:   mongoResource.ID,
 			Data: mongoResource,
 		}
 
@@ -1094,9 +979,7 @@ func Test_getResourceDataByID(t *testing.T) {
 		postgresResource := buildDynamicResourceWithRecipe()
 
 		mr := database.Object{
-			Metadata: database.Metadata{
-				ID: postgresResource.ID,
-			},
+			ID:   postgresResource.ID,
 			Data: postgresResource,
 		}
 

@@ -17,6 +17,7 @@ limitations under the License.
 package v20250801preview
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
@@ -162,4 +163,53 @@ func Test_computeGraph_MergesDependsOnEdges(t *testing.T) {
 			assert.NotEqual(t, appID, *c.ID, "excluded-source Dependency edge should not be merged")
 		}
 	})
+}
+
+func Test_computeGraph_OmitsContainerEnvironment(t *testing.T) {
+	t.Parallel()
+
+	const (
+		containerID = "/planes/radius/local/resourceGroups/default/providers/Radius.Compute/containers/frontend"
+		appID       = "/planes/radius/local/resourceGroups/default/providers/Radius.Core/applications/myapp"
+	)
+	tests := []struct {
+		name        string
+		environment any
+		credential  string
+	}{
+		{name: "plaintext", environment: map[string]any{"PASSWORD": "plaintext-credential"}, credential: "plaintext-credential"},
+		{name: "secure derived", environment: map[string]any{"PASSWORD": "[parameters('password')]"}, credential: "[parameters('password')]"},
+		{name: "null", environment: nil},
+		{name: "empty", environment: map[string]any{}},
+		{name: "unexpected shape", environment: "malformed-credential", credential: "malformed-credential"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			container := map[string]any{
+				"image": "frontend:latest",
+				"env":   tt.environment,
+			}
+			graph := computeGraph([]generated.GenericResource{{
+				ID:   to.Ptr(containerID),
+				Name: to.Ptr("frontend"),
+				Type: to.Ptr("Radius.Compute/containers"),
+				Properties: map[string]any{
+					"application": appID,
+					"containers":  map[string]any{"frontend": container},
+				},
+			}}, nil, "", nil)
+
+			require.Len(t, graph.Resources, 1)
+			payload, err := json.Marshal(graph)
+			require.NoError(t, err)
+			require.NotContains(t, string(payload), `"env"`)
+			if tt.credential != "" {
+				require.NotContains(t, string(payload), tt.credential)
+			}
+			require.Contains(t, container, "env")
+		})
+	}
 }

@@ -30,12 +30,10 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/opencontainers/go-digest"
-	specs "github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -205,8 +203,7 @@ func (s *session) Commit(ctx context.Context, _ string) error {
 	}
 	defer artifact.Close(ctx)
 
-	// A brand-new archive with nothing to store is a true no-op, matching the git
-	// backend (which does not create an empty-tree commit on first run). An empty
+	// A brand-new archive with nothing to store is a true no-op. An empty
 	// directory for an archive that already exists is not skipped here: it must be
 	// persisted as an empty archive so deletions are not silently dropped.
 	if !artifact.hasFiles && s.manifestDigest == "" {
@@ -385,11 +382,11 @@ func createArtifact(ctx context.Context, name, root string) (*artifact, error) {
 	}
 
 	manifest := ocispec.Manifest{
-		Versioned:    specs.Versioned{SchemaVersion: 2},
-		MediaType:    ocispec.MediaTypeImageManifest,
-		ArtifactType: configMediaType,
-		Config:       configDesc,
-		Layers:       []ocispec.Descriptor{layerDesc},
+		SchemaVersion: 2,
+		MediaType:     ocispec.MediaTypeImageManifest,
+		ArtifactType:  configMediaType,
+		Config:        configDesc,
+		Layers:        []ocispec.Descriptor{layerDesc},
 	}
 	manifestBytes, err := json.Marshal(manifest)
 	if err != nil {
@@ -591,15 +588,10 @@ func unpackArchiveEntries(reader io.Reader, root string) error {
 
 func archivePath(root, name string) (string, error) {
 	cleanName := filepath.Clean(filepath.FromSlash(name))
-	if cleanName == "." || filepath.IsAbs(cleanName) || cleanName == ".." || strings.HasPrefix(cleanName, ".."+string(filepath.Separator)) {
+	if cleanName == "." || !filepath.IsLocal(cleanName) {
 		return "", fmt.Errorf("invalid archive path %q", name)
 	}
-	path := filepath.Join(root, cleanName)
-	rel, err := filepath.Rel(root, path)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", fmt.Errorf("invalid archive path %q", name)
-	}
-	return path, nil
+	return filepath.Join(root, cleanName), nil
 }
 
 var (

@@ -22,6 +22,12 @@ TOOL_UPDATER_GOOS := $(shell go env GOHOSTOS)
 TOOL_UPDATER_GOARCH := $(shell go env GOHOSTARCH)
 TOOL_UPDATER_BINARY := bin/tool-updater$(if $(filter windows,$(TOOL_UPDATER_GOOS)),.exe,)
 TOOL_UPDATER_SOURCES := $(wildcard cmd/tool-updater/*.go) $(wildcard internal/tooling/*.go)
+TOOL_UPDATE_PR_BODY_OUTPUT ?=
+TOOL_UPDATE_ARGS := --manifest "$(TOOL_MANIFEST)"
+TOOL_UPDATE_ARGS += --makefile "$(TOOL_MAKE_INCLUDE)"
+ifneq ($(strip $(TOOL_UPDATE_PR_BODY_OUTPUT)),)
+TOOL_UPDATE_ARGS += --pr-body-output "$(TOOL_UPDATE_PR_BODY_OUTPUT)"
+endif
 
 include $(TOOL_MAKE_INCLUDE)
 
@@ -34,7 +40,7 @@ $(TOOL_MAKE_INCLUDE): $(TOOL_MANIFEST) $(TOOL_UPDATER_BINARY)
 
 .PHONY: update-tools
 update-tools: $(TOOL_UPDATER_BINARY) ## Check tool releases and refresh versions and checksums in the manifest.
-	@"$(TOOL_UPDATER_BINARY)" update --manifest "$(TOOL_MANIFEST)" --makefile "$(TOOL_MAKE_INCLUDE)"
+	@"$(TOOL_UPDATER_BINARY)" update $(TOOL_UPDATE_ARGS)
 
 .PHONY: install-yq
 install-yq: ## Install the pinned yq YAML processor into a user-owned bin dir (no sudo).
@@ -115,6 +121,26 @@ install-golangci-lint: ## Install the pinned golangci-lint into a user-owned bin
 		GOLANGCI_LINT_CHECKSUM_DARWIN_ARM64="$(GOLANGCI_LINT_CHECKSUM_DARWIN_ARM64)" \
 		GOLANGCI_LINT_INSTALL_DIR="$(GOLANGCI_LINT_INSTALL_DIR)" \
 		./build/scripts/install-golangci-lint.sh
+
+.PHONY: install-goreleaser
+install-goreleaser: ## Install the pinned GoReleaser CLI into a user-owned bin dir (no sudo).
+	@GORELEASER_VERSION="$(GORELEASER_VERSION)" \
+		GORELEASER_CHECKSUM_LINUX_AMD64="$(GORELEASER_CHECKSUM_LINUX_AMD64)" \
+		GORELEASER_CHECKSUM_LINUX_ARM64="$(GORELEASER_CHECKSUM_LINUX_ARM64)" \
+		GORELEASER_CHECKSUM_DARWIN_AMD64="$(GORELEASER_CHECKSUM_DARWIN_AMD64)" \
+		GORELEASER_CHECKSUM_DARWIN_ARM64="$(GORELEASER_CHECKSUM_DARWIN_ARM64)" \
+		GORELEASER_INSTALL_DIR="$(GORELEASER_INSTALL_DIR)" \
+		./build/scripts/install-goreleaser.sh
+
+.PHONY: install-git-cliff
+install-git-cliff: ## Install the pinned git-cliff CLI into a user-owned bin dir (no sudo).
+	@GIT_CLIFF_VERSION="$(GIT_CLIFF_VERSION)" \
+		GIT_CLIFF_CHECKSUM_LINUX_AMD64="$(GIT_CLIFF_CHECKSUM_LINUX_AMD64)" \
+		GIT_CLIFF_CHECKSUM_LINUX_ARM64="$(GIT_CLIFF_CHECKSUM_LINUX_ARM64)" \
+		GIT_CLIFF_CHECKSUM_DARWIN_AMD64="$(GIT_CLIFF_CHECKSUM_DARWIN_AMD64)" \
+		GIT_CLIFF_CHECKSUM_DARWIN_ARM64="$(GIT_CLIFF_CHECKSUM_DARWIN_ARM64)" \
+		GIT_CLIFF_INSTALL_DIR="$(GIT_CLIFF_INSTALL_DIR)" \
+		./build/scripts/install-git-cliff.sh
 
 .PHONY: install-terraform
 install-terraform: ## Install the pinned Terraform CLI into a user-owned bin dir (no sudo).

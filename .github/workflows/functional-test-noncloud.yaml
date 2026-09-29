@@ -49,6 +49,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ format('{0}-{1}', github.workflow, (github.event_name == 'pull_request' && github.event.pull_request.number) || github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   # Dapr runtime version. Must stay on the same minor line as the Dapr CLI
   # pinned in build/tools.yaml (DAPR_VERSION), which installs it.
@@ -186,27 +190,23 @@ jobs:
           DOCKER_REGISTRY: ${{ env.LOCAL_REGISTRY_SERVER }}:${{ env.LOCAL_REGISTRY_PORT }}
           DOCKER_TAG_VERSION: ${{ steps.gen-id.outputs.REL_VERSION }}
 
-      # Keep JavaScript actions sequential. Parallel action startup rewrites the shared
-      # GITHUB_EVENT_PATH and can expose a partially written payload to another action.
-      - name: Upload rad CLI binary
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: radius_test_cli
-          path: ./dist/linux_amd64/release/rad
-          if-no-files-found: error
+      - name: Check functional test inputs
+        # A combined upload's if-no-files-found only fails when all inputs are missing.
+        run: |
+          ls ./dist/linux_amd64/release/rad \
+            ./dist/images/*.tar \
+            ./hack/bicep-types-radius/generated/index.json
 
-      - name: Upload container image artifacts
+      - name: Upload functional test inputs
+        # Multiple paths use the workspace as their common root, preserving the
+        # directory layout while avoiding three artifact lookups per matrix leg.
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: radius_test_images
-          path: ./dist/images
-          if-no-files-found: error
-
-      - name: Upload Radius Bicep types artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: radius_test_bicep_types
-          path: ./hack/bicep-types-radius/generated
+          name: radius_test_inputs
+          path: |
+            ./dist/linux_amd64/release/rad
+            ./dist/images
+            ./hack/bicep-types-radius/generated
           if-no-files-found: error
 
   tests:
@@ -231,6 +231,7 @@ jobs:
             cli-noncloud,
             corerp-noncloud,
             daprrp-noncloud,
+            database-noncloud,
             kubernetes-noncloud,
             msgrp-noncloud,
             multicluster-noncloud,
@@ -246,6 +247,8 @@ jobs:
     env:
       REL_VERSION: ${{ needs.build.outputs.REL_VERSION }}
       BICEP_RECIPE_TAG_VERSION: ${{ needs.build.outputs.REL_VERSION }}
+      # Trust only this job's local registry hostnames; TLS verification is unchanged.
+      BICEP_TRUSTED_REGISTRIES: localhost,radius-registry
       DE_IMAGE: ${{ needs.build.outputs.DE_IMAGE }}
       DE_TAG: ${{ needs.build.outputs.DE_TAG }}
     steps:
@@ -285,26 +288,13 @@ jobs:
       # The rad CLI, container images and Bicep types are built once in the
       # "build" job and shared with every matrix leg. Downloading them here avoids
       # recompiling the source and reinstalling the Node/yq toolchain in each leg.
-      # They land in the same paths a local build would produce, so the remaining
-      # steps are unchanged. Keep these JavaScript actions sequential for the same
-      # shared GITHUB_EVENT_PATH constraint as the upload steps above.
-      - name: Download rad CLI binary
+      # One run-scoped artifact restores the original paths on every fresh runner,
+      # including when only failed matrix jobs are re-run.
+      - name: Download functional test inputs
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: radius_test_cli
-          path: ./dist/linux_amd64/release
-
-      - name: Download container image artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: radius_test_images
-          path: ./dist/images
-
-      - name: Download Radius Bicep types artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: radius_test_bicep_types
-          path: ./hack/bicep-types-radius/generated
+          name: radius_test_inputs
+          path: .
 
       - name: Create a secure local registry
         id: create-local-registry
@@ -455,6 +445,12 @@ jobs:
             echo "RADIUS_TEST_EXTERNAL_KUBECONFIG=${HOST_KUBECONFIG}"
           } >> "${GITHUB_ENV}"
 
+      - name: Enable the PostgreSQL-backed control plane
+        # Installs the database-backed store for this leg so the functional tests below run against
+        # PostgreSQL rather than the default Kubernetes API server store. See issue #12227.
+        if: matrix.name == 'database-noncloud'
+        run: echo "DATABASE_INSTALL_ARGS=--set database.enabled=true" >> "${GITHUB_ENV}"
+
       - name: Install Radius
         # The statestore leg drives its own install/uninstall/reinstall lifecycle
         # inside the test (it must reinstall to simulate an ephemeral control
@@ -496,6 +492,10 @@ jobs:
           # install time (set by the "Set up external target cluster" step). Empty
           # for all other legs.
           RAD_COMMAND="$RAD_COMMAND ${TARGET_CLUSTER_INSTALL_ARGS:-}"
+
+          # For the database leg, install the PostgreSQL-backed control plane instead of the
+          # default Kubernetes API server store. Empty for all other legs.
+          RAD_COMMAND="$RAD_COMMAND ${DATABASE_INSTALL_ARGS:-}"
 
           echo "*** Installing Radius to Kubernetes ***"
           eval $RAD_COMMAND

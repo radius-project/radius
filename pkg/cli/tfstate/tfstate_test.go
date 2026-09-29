@@ -29,14 +29,12 @@ import (
 
 func tfstateSecret(name string, data map[string][]byte) *corev1.Secret {
 	return &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            name,
-			Namespace:       DefaultNamespace,
-			Labels:          map[string]string{"tfstate": "true"},
-			ResourceVersion: "12345",
-			UID:             "abcde-uid",
-		},
-		Data: data,
+		Name:            name,
+		Namespace:       DefaultNamespace,
+		Labels:          map[string]string{"tfstate": "true"},
+		ResourceVersion: "12345",
+		UID:             "abcde-uid",
+		Data:            data,
 	}
 }
 
@@ -46,8 +44,8 @@ func Test_Backup_WritesLabelledSecretsOnly(t *testing.T) {
 		tfstateSecret("tfstate-default-bbb", map[string][]byte{"tfstate": []byte("state-b")}),
 		// A secret without the tfstate label must be ignored.
 		&corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "database-secret", Namespace: DefaultNamespace},
-			Data:       map[string][]byte{"POSTGRES_PASSWORD": []byte("nope")},
+			Name: "database-secret", Namespace: DefaultNamespace,
+			Data: map[string][]byte{"POSTGRES_PASSWORD": []byte("nope")},
 		},
 	)
 

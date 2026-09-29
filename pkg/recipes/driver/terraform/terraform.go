@@ -26,7 +26,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/google/uuid"
+	"uuid"
+
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
@@ -118,11 +119,18 @@ func (d *terraformDriver) Execute(ctx context.Context, opts driver.ExecuteOption
 	}
 
 	if err != nil {
+		// OutputMappingError is raised before apply and must be reported as a setup failure.
+		if _, ok := errors.AsType[*recipes_util.OutputMappingError](err); ok {
+			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.RecipeSetupError, recipes.GetErrorDetails(err))
+		}
 		return nil, recipes.NewRecipeError(recipes.RecipeDeploymentFailed, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
 	recipeOutputs, err := d.prepareRecipeResponse(ctx, opts.BaseOptions.Definition, opts.Configuration, tfState)
 	if err != nil {
+		if _, ok := errors.AsType[*recipes_util.MissingOutputValuesError](err); ok {
+			return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, err.Error(), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
+		}
 		return nil, recipes.NewRecipeError(recipes.InvalidRecipeOutputs, fmt.Sprintf("failed to read the recipe output %q: %s", recipes.ResultPropertyName, err.Error()), recipes_util.ExecutionError, recipes.GetErrorDetails(err))
 	}
 
@@ -196,16 +204,25 @@ func (d *terraformDriver) prepareRecipeResponse(ctx context.Context, definition 
 	}
 
 	recipeResponse := &recipes.RecipeOutput{}
-	if tfState.Values != nil && tfState.Values.Outputs != nil {
-		moduleOutputs := tfState.Values.Outputs
-		hasOutputsMapping := len(definition.Outputs) > 0 || len(definition.SecretOutputs) > 0
-		_, hasResultOutput := moduleOutputs[recipes.ResultPropertyName]
+	var moduleOutputs map[string]*tfjson.StateOutput
+	if tfState.Values != nil {
+		moduleOutputs = tfState.Values.Outputs
+	}
 
-		if hasOutputsMapping {
-			// Direct module with outputs mapping — collect all outputs flat, then apply mapping.
-			values, secrets := collectFlatOutputs(moduleOutputs)
-			recipeResponse.Values, recipeResponse.Secrets = recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs, definition.SecretOutputs)
-		} else if hasResultOutput {
+	hasOutputsMapping := len(definition.Outputs) > 0 || len(definition.SecretOutputs) > 0
+	_, hasResultOutput := moduleOutputs[recipes.ResultPropertyName]
+
+	if hasOutputsMapping {
+		// Direct module with outputs mapping — collect all outputs flat, then apply mapping.
+		values, secrets := collectFlatOutputs(moduleOutputs)
+		mappedValues, mappedSecrets, err := recipes_util.ApplyOutputsMapping(values, secrets, definition.Outputs, definition.SecretOutputs)
+		if err != nil {
+			return &recipes.RecipeOutput{}, fmt.Errorf("recipe %q for resource type %q: %w", definition.Name, definition.ResourceType, err)
+		}
+		recipeResponse.Values = mappedValues
+		recipeResponse.Secrets = mappedSecrets
+	} else if moduleOutputs != nil {
+		if hasResultOutput {
 			// Wrapped recipe — use existing result output parsing.
 			if result, ok := moduleOutputs[recipes.ResultPropertyName].Value.(map[string]any); ok {
 				err := recipeResponse.PrepareRecipeResponse(result)
@@ -262,13 +279,13 @@ func (d *terraformDriver) createExecutionDirectory(ctx context.Context, recipe r
 	// but we can also trace them to the resource we were working on through operationID. UUID is added to the path to prevent overwrite across retries for same ARM request.
 	dirID := ""
 	armCtx := v1.ARMRequestContextFromContext(ctx)
-	if armCtx.OperationID != uuid.Nil {
-		dirID = armCtx.OperationID.String() + "-" + uuid.NewString()
+	if armCtx.OperationID != uuid.Nil() {
+		dirID = armCtx.OperationID.String() + "-" + uuid.New().String()
 	} else {
 		// If the operationID is nil, we generate a new UUID for unique directory name combined with resource id so that we can trace it to the resource.
 		// Ideally operationID should not be nil.
 		logger.Info("Empty operation ID provided in the request context, using uuid to generate a unique directory name")
-		dirID = util.NormalizeStringToLower(recipe.ResourceID) + "-" + uuid.NewString()
+		dirID = util.NormalizeStringToLower(recipe.ResourceID) + "-" + uuid.New().String()
 	}
 	requestDirPath := filepath.Join(d.options.Path, dirID)
 

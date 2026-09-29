@@ -36,7 +36,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateEnvironment)(nil)
@@ -81,6 +80,12 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
+	//
+	// This check is deliberately scoped to the current resource group and to this resource type
+	// only. Applications.Core/environments is on a deprecation path, so its enforcement behavior
+	// is frozen: widening it would start failing writes (rad recipe register, rad env update) for
+	// existing installs that already have duplicate namespaces across resource groups. Plane-wide
+	// uniqueness is enforced on Radius.Core/environments instead, which is where users migrate to.
 	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace
 	result, err := util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "properties.compute.kubernetes.namespace", namespace, e.DatabaseClient())
 	if err != nil {
@@ -96,7 +101,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		// If a different resource has the same namespace, return a conflict
 		// Otherwise, continue and update the resource
 		if (old == nil || env.ID != old.ID) && env.Properties.Compute.Kind != rpv1.ACIComputeKind {
-			return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace (%s) already exists", env.ID, namespace)), nil
+			return rest.NewConflictResponseWithCode(v1.CodeNamespaceAlreadyInUse, util.NamespaceConflictMessage(namespace, env.ID)), nil
 		}
 	}
 
@@ -106,7 +111,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		}
 	} else if newResource.Properties.Compute.Kind == rpv1.KubernetesComputeKind {
 		// Create environment namespace if it doesn't exist.
-		err = e.Options().KubeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: namespace}})
+		err = e.Options().KubeClient.Create(ctx, &corev1.Namespace{Name: namespace})
 		if apierrors.IsAlreadyExists(err) {
 			logger.Info("Using existing namespace", "namespace", namespace)
 		} else if err != nil {

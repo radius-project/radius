@@ -583,10 +583,8 @@ func readEntry(entry *ucpv1alpha1.ResourceEntry) (*database.Object, error) {
 	}
 
 	obj := database.Object{
-		Metadata: database.Metadata{
-			ID:   entry.ID,
-			ETag: entry.ETag,
-		},
+		ID:   entry.ID,
+		ETag: entry.ETag,
 		Data: data,
 	}
 

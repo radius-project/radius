@@ -109,7 +109,7 @@ func (t *TerraformSettingsServerTransport) dispatchCreateOrUpdate(req *http.Requ
 	if t.srv.CreateOrUpdate == nil {
 		return nil, &nonRetriableError{errors.New("fake for method CreateOrUpdate not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -119,10 +119,7 @@ func (t *TerraformSettingsServerTransport) dispatchCreateOrUpdate(req *http.Requ
 	if err != nil {
 		return nil, err
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	terraformSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingsName")])
 	if err != nil {
 		return nil, err
@@ -146,16 +143,13 @@ func (t *TerraformSettingsServerTransport) dispatchDelete(req *http.Request) (*h
 	if t.srv.Delete == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Delete not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	terraformSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingsName")])
 	if err != nil {
 		return nil, err
@@ -179,16 +173,13 @@ func (t *TerraformSettingsServerTransport) dispatchGet(req *http.Request) (*http
 	if t.srv.Get == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Get not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
 		return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	terraformSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingsName")])
 	if err != nil {
 		return nil, err
@@ -214,16 +205,13 @@ func (t *TerraformSettingsServerTransport) dispatchNewListByScopePager(req *http
 	}
 	newListByScopePager := t.newListByScopePager.get(req)
 	if newListByScopePager == nil {
-		const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings`
+		const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/terraformSettings`
 		regex := regexp.MustCompile(regexStr)
 		matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 		if len(matches) < 2 {
 			return nil, fmt.Errorf("failed to parse path %s", req.URL.Path)
 		}
-		rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-		if err != nil {
-			return nil, err
-		}
+		rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 		resp := t.srv.NewListByScopePager(rootScopeParam, nil)
 		newListByScopePager = &resp
 		t.newListByScopePager.add(req, newListByScopePager)
@@ -249,7 +237,7 @@ func (t *TerraformSettingsServerTransport) dispatchUpdate(req *http.Request) (*h
 	if t.srv.Update == nil {
 		return nil, &nonRetriableError{errors.New("fake for method Update not implemented")}
 	}
-	const regexStr = `/(?P<rootScope>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[!#&$-;=?-\[\]_a-zA-Z0-9~%@]+)`
+	const regexStr = `/(?P<rootScope>[a-zA-Z0-9._~%!$&'()*+,;=:@/-]+)/providers/Radius\.Core/terraformSettings/(?P<terraformSettingsName>[a-zA-Z0-9._~%!$&'()*+,;=:@-]+)`
 	regex := regexp.MustCompile(regexStr)
 	matches := regex.FindStringSubmatch(req.URL.EscapedPath())
 	if len(matches) < 3 {
@@ -259,10 +247,7 @@ func (t *TerraformSettingsServerTransport) dispatchUpdate(req *http.Request) (*h
 	if err != nil {
 		return nil, err
 	}
-	rootScopeParam, err := url.PathUnescape(matches[regex.SubexpIndex("rootScope")])
-	if err != nil {
-		return nil, err
-	}
+	rootScopeParam := matches[regex.SubexpIndex("rootScope")]
 	terraformSettingsNameParam, err := url.PathUnescape(matches[regex.SubexpIndex("terraformSettingsName")])
 	if err != nil {
 		return nil, err

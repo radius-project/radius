@@ -36,8 +36,11 @@ import (
 	"github.com/radius-project/radius/pkg/resourceutil"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	schemautil "github.com/radius-project/radius/pkg/schema"
+	"github.com/radius-project/radius/pkg/ucp/resources"
 	"github.com/radius-project/radius/pkg/ucp/ucplog"
 )
+
+const securitySecretsResourceType = "Radius.Security/secrets"
 
 // CreateOrUpdateResource is the async operation controller to create or update portable resources.
 type CreateOrUpdateResource[P interface {
@@ -139,8 +142,8 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 				}
 
 				update := &database.Object{
-					Metadata: database.Metadata{ID: req.ResourceID},
-					Data:     resource,
+					ID:   req.ResourceID,
+					Data: resource,
 				}
 				if err = c.DatabaseClient().Save(ctx, update, database.WithETag(currentETag)); err != nil {
 					logger.Error(err, "Failed to persist redacted resource", "resourceID", req.ResourceID)
@@ -202,9 +205,7 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 	}
 
 	update := &database.Object{
-		Metadata: database.Metadata{
-			ID: req.ResourceID,
-		},
+		ID:   req.ResourceID,
 		Data: recipeDataModel.(rpv1.RadiusResourceModel),
 	}
 	err = c.DatabaseClient().Save(ctx, update, database.WithETag(currentETag))
@@ -224,15 +225,14 @@ func (c *CreateOrUpdateResource[P, T]) Run(ctx context.Context, req *ctrl.Reques
 // when redactionCompleted is true the failure is made terminal (NewFailedResult) to prevent a retry that would fail
 // because sensitive data has already been nullified from the database.
 func (c *CreateOrUpdateResource[P, T]) handleRecipeError(ctx context.Context, err error, recipeDataModel datamodel.RecipeDataModel, resourceID string, etag string, logger logr.Logger, redactionCompleted bool) (ctrl.Result, error) {
-	var recipeErr *recipes.RecipeError
-	if errors.As(err, &recipeErr) {
+	if recipeErr, ok := errors.AsType[*recipes.RecipeError](err); ok {
 		logger.Error(recipeErr, fmt.Sprintf("failed to execute recipe. Encountered error while processing %s ", recipeErr.ErrorDetails.Target))
 
 		// Set the deployment status to the recipe error code
 		recipeDataModel.GetRecipe().DeploymentStatus = util.RecipeDeploymentStatus(recipeErr.DeploymentStatus)
 		update := &database.Object{
-			Metadata: database.Metadata{ID: resourceID},
-			Data:     recipeDataModel.(rpv1.RadiusResourceModel),
+			ID:   resourceID,
+			Data: recipeDataModel.(rpv1.RadiusResourceModel),
 		}
 
 		// Save portable resource with updated deployment status to track errors during deletion.
@@ -286,23 +286,18 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 	// If there are connected resources, we need to fetch their properties and add them to the recipe context.
 	for connName, connectedResourceID := range connectionsAndSourceIDs {
 		connectedResource, err := c.DatabaseClient().Get(ctx, connectedResourceID)
-		if errors.Is(&database.ErrNotFound{ID: connectedResourceID}, err) {
+		if errors.Is(err, &database.ErrNotFound{ID: connectedResourceID}) {
 			return nil, fmt.Errorf("connected resource %s not found: %w", connectedResourceID, err)
 		} else if err != nil {
 			return nil, fmt.Errorf("failed to get connected resource %s: %w", connectedResourceID, err)
 		}
 
-		connectedResourceMetadata, err := resourceutil.GetAllPropertiesFromResource(connectedResource.Data)
+		connectedResourceMetadata, err := buildConnectedResource(ctx, c.DatabaseClient(), connectedResource.Data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get metadata from connected resource %s: %w", connectedResourceID, err)
 		}
 
-		connectedResourcesMetadata[connName] = recipes.ConnectedResource{
-			ID:         connectedResourceMetadata.ID,
-			Name:       connectedResourceMetadata.Name,
-			Type:       connectedResourceMetadata.Type,
-			Properties: connectedResourceMetadata.Properties,
-		}
+		connectedResourcesMetadata[connName] = connectedResourceMetadata
 	}
 
 	metadata := recipes.ResourceMetadata{
@@ -316,12 +311,72 @@ func (c *CreateOrUpdateResource[P, T]) executeRecipeIfNeeded(ctx context.Context
 	}
 
 	return c.engine.Execute(ctx, engine.ExecuteOptions{
-		BaseOptions: engine.BaseOptions{
-			Recipe: metadata,
-		},
+		Recipe:        metadata,
 		PreviousState: prevState,
 		Simulated:     simulated,
 	})
+}
+
+func buildConnectedResource(ctx context.Context, databaseClient database.Client, resource any) (recipes.ConnectedResource, error) {
+	metadata, err := resourceutil.GetAllPropertiesFromResource(resource)
+	if err != nil {
+		return recipes.ConnectedResource{}, err
+	}
+
+	secretReferences, err := resolveManagedSecretReferences(ctx, databaseClient, metadata)
+	if err != nil {
+		return recipes.ConnectedResource{}, err
+	}
+
+	return recipes.ConnectedResource{
+		ID:         metadata.ID,
+		Name:       metadata.Name,
+		Type:       metadata.Type,
+		Properties: metadata.Properties,
+		Secrets:    secretReferences,
+	}, nil
+}
+
+func resolveManagedSecretReferences(ctx context.Context, databaseClient database.Client, owner *resourceutil.ResourceMetadata) (map[string]rpv1.ManagedSecretReference, error) {
+	secrets, ok := owner.Properties[schemautil.SecretsBlockPropertyName].(map[string]any)
+	if !ok {
+		return nil, nil
+	}
+
+	rawSecretName, exists := secrets[schemautil.SecretNameReferenceKey]
+	if !exists {
+		return nil, nil
+	}
+	secretName, ok := rawSecretName.(string)
+	if !ok || secretName == "" {
+		return nil, fmt.Errorf("connected resource %q has an invalid %s.%s reference", owner.ID, schemautil.SecretsBlockPropertyName, schemautil.SecretNameReferenceKey)
+	}
+
+	ownerID, err := resources.ParseResource(owner.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse connected resource ID %q: %w", owner.ID, err)
+	}
+	secretID := fmt.Sprintf("%s/providers/%s/%s", ownerID.RootScope(), securitySecretsResourceType, secretName)
+
+	managedSecret, err := databaseClient.Get(ctx, secretID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get managed secret %q for connected resource %q: %w", secretID, owner.ID, err)
+	}
+	properties, err := resourceutil.GetPropertiesFromResource(managedSecret.Data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read managed secret %q: %w", secretID, err)
+	}
+
+	data, ok := properties["data"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("managed secret %q has invalid data", secretID)
+	}
+
+	references := make(map[string]rpv1.ManagedSecretReference, len(data))
+	for key := range data {
+		references[key] = rpv1.ManagedSecretReference{Source: secretID, Key: key}
+	}
+	return references, nil
 }
 
 func getResourceAPIVersion[P rpv1.RadiusResourceModel](resource P) string {

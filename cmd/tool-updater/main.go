@@ -59,6 +59,7 @@ func update(args []string) error {
 	flags := flag.NewFlagSet("update", flag.ContinueOnError)
 	manifestPath := flags.String("manifest", "build/tools.yaml", "tool manifest path")
 	makePath := flags.String("makefile", "build/tools.generated.mk", "generated Make include path")
+	pullRequestBodyPath := flags.String("pr-body-output", "", "pull request body output path")
 	err := flags.Parse(args)
 	if err != nil {
 		return fmt.Errorf("parse flags: %w", err)
@@ -94,6 +95,19 @@ func update(args []string) error {
 	}
 	if _, err := tooling.WriteMakeFile(*makePath, manifest); err != nil {
 		return fmt.Errorf("write Make metadata: %w", err)
+	}
+	if err := writePullRequestBody(*pullRequestBodyPath, result); err != nil {
+		return err
+	}
+	return nil
+}
+
+func writePullRequestBody(path string, result tooling.UpdateResult) error {
+	if path == "" {
+		return nil
+	}
+	if err := os.WriteFile(path, []byte(result.PullRequestBodyMarkdown()), 0o644); err != nil {
+		return fmt.Errorf("write pull request body: %w", err)
 	}
 	return nil
 }

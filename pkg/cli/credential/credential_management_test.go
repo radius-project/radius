@@ -320,10 +320,8 @@ func Test_Credential_Azure_Show(t *testing.T) {
 	azMockCredentialClient := NewMockAzureCredentialManagementClientInterface(mockCtrl)
 
 	expectedAzProvider := ProviderCredentialConfiguration{
-		CloudProviderStatus: CloudProviderStatus{
-			Name:    azureProviderName,
-			Enabled: true,
-		},
+		Name:    azureProviderName,
+		Enabled: true,
 	}
 
 	azMockCredentialClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(expectedAzProvider, nil).Times(1)
@@ -345,10 +343,8 @@ func Test_Credential_AWS_Show(t *testing.T) {
 	AWSMockCredentialClient := NewMockAWSCredentialManagementClientInterface(mockCtrl)
 
 	expectedAWSProvider := ProviderCredentialConfiguration{
-		CloudProviderStatus: CloudProviderStatus{
-			Name:    awsProviderName,
-			Enabled: true,
-		},
+		Name:    awsProviderName,
+		Enabled: true,
 	}
 
 	AWSMockCredentialClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(expectedAWSProvider, nil).Times(1)
@@ -463,10 +459,8 @@ func setupSuccessPutAWSMocks(mockAzure MockAzureCredentialManagementClientInterf
 
 func setupSuccessGetAzureMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	credential := ProviderCredentialConfiguration{
-		CloudProviderStatus: CloudProviderStatus{
-			Name:    azureProviderName,
-			Enabled: true,
-		},
+		Name:    azureProviderName,
+		Enabled: true,
 	}
 	mockAzure.EXPECT().
 		Get(gomock.Any(), gomock.Any()).
@@ -475,10 +469,8 @@ func setupSuccessGetAzureMocks(mockAzure MockAzureCredentialManagementClientInte
 
 func setupSuccessGetAWSMocks(mockAzure MockAzureCredentialManagementClientInterface, mockAWS MockAWSCredentialManagementClientInterface, planeType string, planeName string) {
 	credential := ProviderCredentialConfiguration{
-		CloudProviderStatus: CloudProviderStatus{
-			Name:    awsProviderName,
-			Enabled: true,
-		},
+		Name:    awsProviderName,
+		Enabled: true,
 	}
 	mockAWS.EXPECT().
 		Get(gomock.Any(), gomock.Any()).

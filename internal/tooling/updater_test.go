@@ -43,11 +43,87 @@ func TestUpdateManifestRefreshesVersionAndChecksum(t *testing.T) {
 	if len(result.Changes) != 2 {
 		t.Fatalf("got %d changes, want version and checksum changes", len(result.Changes))
 	}
+	if len(result.VersionUpdates) != 1 {
+		t.Fatalf("got %d version updates, want 1", len(result.VersionUpdates))
+	}
+	versionUpdate := result.VersionUpdates[0]
+	if versionUpdate.ReleaseURL != "https://github.com/example/tool/releases/tag/v2.0.0" {
+		t.Errorf("release URL = %q, want GitHub release URL", versionUpdate.ReleaseURL)
+	}
 	if got := manifest.Tools[0].Version; got != "v2.0.0" {
 		t.Fatalf("version = %q, want v2.0.0", got)
 	}
 	if got := manifest.Tools[0].Platforms["linux_amd64"].Checksum; got != checksum {
 		t.Fatalf("checksum = %q, want %q", got, checksum)
+	}
+}
+
+func TestUpdateManifestKeepsDisabledToolPinned(t *testing.T) {
+	const checksum = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+	server := httptest.NewTLSServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/latest":
+			fmt.Fprint(response, `{"tag_name":"v2.0.0","published_at":"2020-01-01T00:00:00Z"}`)
+		case "/checksums/v1.0.0/tool-v1.0.0.tar.gz":
+			fmt.Fprintf(response, "%s  tool-v1.0.0.tar.gz\n", checksum)
+		default:
+			http.NotFound(response, request)
+		}
+	}))
+	defer server.Close()
+
+	manifest := githubToolManifest(server.URL, 7)
+	update := false
+	manifest.Tools[0].Update = &update
+	client := NewClient("")
+	client.HTTP = server.Client()
+
+	result, err := UpdateManifest(t.Context(), &manifest, client)
+	if err != nil {
+		t.Fatalf("UpdateManifest() error = %v", err)
+	}
+	if len(result.VersionUpdates) != 0 || len(result.Held) != 0 {
+		t.Fatalf("disabled tool was treated as an automatic update: %+v", result)
+	}
+	if got := manifest.Tools[0].Version; got != "v1.0.0" {
+		t.Fatalf("version = %q, want v1.0.0", got)
+	}
+	if got := manifest.Tools[0].Platforms["linux_amd64"].Checksum; got != checksum {
+		t.Fatalf("checksum = %q, want refreshed pinned-version checksum %q", got, checksum)
+	}
+}
+
+func TestUpdateResultPullRequestBodyMarkdown(t *testing.T) {
+	result := UpdateResult{VersionUpdates: []VersionUpdate{
+		{
+			Tool:            "linked-tool",
+			PreviousVersion: "v1.0.0",
+			NewVersion:      "v2.0.0",
+			ReleaseURL:      "https://github.com/example/tool/releases/tag/v2.0.0",
+		},
+		{
+			Tool:            "unlinked-tool",
+			PreviousVersion: "1.0.0",
+			NewVersion:      "2.0.0",
+		},
+	}}
+
+	want := "This automated PR refreshes the pinned command-line tool versions and SHA-256\n" +
+		"checksums from the release sources declared in `build/tools.yaml`.\n\n" +
+		"`build/tools.generated.mk` is generated from the manifest and committed with\n" +
+		"it. Bicep updates remain manual so ACR and trusted local-registry compatibility\n" +
+		"is verified before changing the distributed CLI.\n\n" +
+		"## Updated tool releases\n\n" +
+		"- `linked-tool`: `v1.0.0` -> [`v2.0.0` release notes](https://github.com/example/tool/releases/tag/v2.0.0)\n" +
+		"- `unlinked-tool`: `1.0.0` -> `2.0.0`\n"
+	if got := result.PullRequestBodyMarkdown(); got != want {
+		t.Fatalf("PullRequestBodyMarkdown() = %q, want %q", got, want)
+	}
+
+	withoutUpdates := (UpdateResult{}).PullRequestBodyMarkdown()
+	if !strings.Contains(withoutUpdates, "build/tools.yaml") {
+		t.Fatalf("body without version updates is incomplete: %q", withoutUpdates)
 	}
 }
 

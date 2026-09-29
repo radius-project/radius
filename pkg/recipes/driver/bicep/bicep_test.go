@@ -17,6 +17,8 @@ limitations under the License.
 package bicep
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -27,16 +29,46 @@ import (
 	"github.com/radius-project/radius/pkg/portableresources/processors"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/driver"
+	"github.com/radius-project/radius/pkg/recipes/kubernetes/clusteraccess"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
+	recipes_util "github.com/radius-project/radius/pkg/recipes/util"
 	"github.com/radius-project/radius/pkg/rp/util/registrytest"
 	rpv1 "github.com/radius-project/radius/pkg/rp/v1"
 	clients "github.com/radius-project/radius/pkg/sdk/clients"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_kubernetes "github.com/radius-project/radius/pkg/ucp/resources/kubernetes"
+	"k8s.io/client-go/rest"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+type deploymentClientSpy struct {
+	clients.ResourceDeploymentsClient
+	createOrUpdateCalls int
+}
+
+type clusterAccessResolverStub struct {
+	config                *rest.Config
+	err                   error
+	receivedConfiguration *recipes.Configuration
+	resolveCalls          int
+}
+
+func (s *clusterAccessResolverStub) Resolve(_ context.Context, configuration *recipes.Configuration) (*rest.Config, error) {
+	s.resolveCalls++
+	s.receivedConfiguration = configuration
+	return s.config, s.err
+}
+
+func (s *clusterAccessResolverStub) ResolveKubeconfigSource(context.Context, *recipes.Configuration) (clusteraccess.KubeconfigSource, error) {
+	return clusteraccess.KubeconfigSource{}, errors.New("unexpected ResolveKubeconfigSource call")
+}
+
+func (s *deploymentClientSpy) CreateOrUpdate(_ context.Context, _ clients.Deployment, _, _ string) (clients.Poller[clients.ClientCreateOrUpdateResponse], error) {
+	s.createOrUpdateCalls++
+	return nil, errors.New("unexpected deployment")
+}
 
 func Test_CreateRecipeParameters_NoContextParameter(t *testing.T) {
 	devParams := map[string]any{}
@@ -303,13 +335,11 @@ func Test_Bicep_PrepareRecipeResponse_Success(t *testing.T) {
 	}
 
 	opts := driver.ExecuteOptions{
-		BaseOptions: driver.BaseOptions{
-			Definition: recipes.EnvironmentDefinition{
-				Name:         "mongo-azure",
-				Driver:       recipes.TemplateKindBicep,
-				TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
-				ResourceType: "Applications.Datastores/mongoDatabases",
-			},
+		Definition: recipes.EnvironmentDefinition{
+			Name:         "mongo-azure",
+			Driver:       recipes.TemplateKindBicep,
+			TemplatePath: "radiusdev.azurecr.io/recipes/functionaltest/parameters/mongodatabases/azure:1.0",
+			ResourceType: "Applications.Datastores/mongoDatabases",
 		},
 		PrevState: []string{},
 	}
@@ -377,24 +407,33 @@ func Test_Bicep_PrepareRecipeResponse_EmptyResult(t *testing.T) {
 	require.Equal(t, expectedResponse, actualResponse)
 }
 
-func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClient) {
+func setupDeleteInputs(t *testing.T) (bicepDriver, *processors.MockResourceClient, *clusterAccessResolverStub, *[]*rest.Config) {
 	ctrl := gomock.NewController(t)
 	client := processors.NewMockResourceClient(ctrl)
+	resolver := &clusterAccessResolverStub{
+		config: &rest.Config{Host: "https://target.example.com"},
+	}
+	factoryConfigs := &[]*rest.Config{}
 
 	driver := bicepDriver{
-		ResourceClient: client,
+		clusterAccessResolver: resolver,
+		resourceClientFactory: func(config *rest.Config) processors.ResourceClient {
+			*factoryConfigs = append(*factoryConfigs, config)
+			return client
+		},
 		options: BicepOptions{
 			DeleteRetryCount:        0,
 			DeleteRetryDelaySeconds: 1,
 		},
 	}
 
-	return driver, client
+	return driver, client, resolver, factoryConfigs
 }
 
 func Test_Bicep_Delete_Success(t *testing.T) {
 	ctx := t.Context()
-	driverBicep, client := setupDeleteInputs(t)
+	driverBicep, client, resolver, factoryConfigs := setupDeleteInputs(t)
+	azureResourceID := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/test-account"
 	outputResources := []rpv1.OutputResource{
 		{
 			LocalID: "RecipeResource0",
@@ -417,10 +456,46 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 			// We don't expect a call to delete to be made when RadiusManaged is false.
 			RadiusManaged: new(false),
 		},
+		{
+			LocalID:       "RecipeResource2",
+			ID:            resources.MustParse(azureResourceID),
+			RadiusManaged: new(true),
+		},
 	}
 	client.EXPECT().Delete(gomock.Any(), "/planes/kubernetes/local/namespaces/recipe-app/providers/apps/Deployment/redis").Times(1).Return(nil)
+	client.EXPECT().Delete(gomock.Any(), azureResourceID).Times(1).Return(nil)
+	configuration := recipes.Configuration{
+		Runtime: recipes.RuntimeConfiguration{
+			Kubernetes: &recipes.KubernetesRuntime{Namespace: "recipe-app"},
+		},
+	}
 
 	err := driverBicep.Delete(ctx, driver.DeleteOptions{
+		BaseOptions: driver.BaseOptions{
+			Configuration: configuration,
+		},
+		OutputResources: outputResources,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, resolver.resolveCalls)
+	require.Equal(t, &configuration, resolver.receivedConfiguration)
+	require.Equal(t, []*rest.Config{resolver.config}, *factoryConfigs)
+}
+
+func Test_Bicep_Delete_UnmanagedOutputsDoNotCreateResourceClient(t *testing.T) {
+	outputResources := []rpv1.OutputResource{
+		{
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"apps",
+				"Deployment",
+				"recipe-app",
+				"redis"),
+			RadiusManaged: new(false),
+		},
+	}
+
+	err := (&bicepDriver{}).Delete(t.Context(), driver.DeleteOptions{
 		OutputResources: outputResources,
 	})
 	require.NoError(t, err)
@@ -428,7 +503,7 @@ func Test_Bicep_Delete_Success(t *testing.T) {
 
 func Test_Bicep_Delete_Error(t *testing.T) {
 	ctx := t.Context()
-	driverBicep, client := setupDeleteInputs(t)
+	driverBicep, client, _, _ := setupDeleteInputs(t)
 	outputResources := []rpv1.OutputResource{
 		{
 			ID: resources_kubernetes.IDFromParts(
@@ -456,6 +531,76 @@ func Test_Bicep_Delete_Error(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Equal(t, err, &recipeError)
+}
+
+func Test_Bicep_Delete_TargetClusterResolutionError(t *testing.T) {
+	ctx := t.Context()
+	driverBicep, _, resolver, factoryConfigs := setupDeleteInputs(t)
+	resolver.err = errors.New("target kubeconfig is unavailable")
+	outputResources := []rpv1.OutputResource{
+		{
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"apps",
+				"Deployment",
+				"recipe-app",
+				"redis"),
+			RadiusManaged: new(true),
+		},
+	}
+
+	err := driverBicep.Delete(ctx, driver.DeleteOptions{
+		OutputResources: outputResources,
+	})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "failed to resolve target cluster for recipe output deletion")
+	require.ErrorContains(t, err, "target kubeconfig is unavailable")
+	require.Empty(t, *factoryConfigs)
+}
+
+func Test_Bicep_Delete_NilTargetClusterConfig(t *testing.T) {
+	ctx := t.Context()
+	driverBicep, _, resolver, factoryConfigs := setupDeleteInputs(t)
+	resolver.config = nil
+	outputResources := []rpv1.OutputResource{
+		{
+			ID: resources_kubernetes.IDFromParts(
+				resources_kubernetes.PlaneNameTODO,
+				"apps",
+				"Deployment",
+				"recipe-app",
+				"redis"),
+			RadiusManaged: new(true),
+		},
+	}
+
+	err := driverBicep.Delete(ctx, driver.DeleteOptions{
+		OutputResources: outputResources,
+	})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "cluster access resolver returned a nil Kubernetes configuration")
+	require.Empty(t, *factoryConfigs)
+}
+
+func Test_Bicep_Delete_NonKubernetesOutputDoesNotResolveTargetCluster(t *testing.T) {
+	ctx := t.Context()
+	driverBicep, client, resolver, factoryConfigs := setupDeleteInputs(t)
+	resolver.err = errors.New("target kubeconfig is unavailable")
+	resourceID := "/subscriptions/test-sub/resourceGroups/test-rg/providers/Microsoft.Storage/storageAccounts/test-account"
+	outputResources := []rpv1.OutputResource{
+		{
+			ID:            resources.MustParse(resourceID),
+			RadiusManaged: new(true),
+		},
+	}
+	client.EXPECT().Delete(gomock.Any(), resourceID).Times(1).Return(nil)
+
+	err := driverBicep.Delete(ctx, driver.DeleteOptions{
+		OutputResources: outputResources,
+	})
+	require.NoError(t, err)
+	require.Zero(t, resolver.resolveCalls)
+	require.Equal(t, []*rest.Config{nil}, *factoryConfigs)
 }
 
 func Test_Bicep_GetRecipeMetadata_Success(t *testing.T) {
@@ -513,6 +658,114 @@ func Test_Bicep_GetRecipeMetadata_Error(t *testing.T) {
 	require.Equal(t, actualErr, &expErr)
 }
 
+func Test_Bicep_Execute_InvalidOutputMappingDoesNotDeploy(t *testing.T) {
+	ts := registrytest.NewFakeRegistryServer(t)
+	t.Cleanup(ts.CloseServer)
+
+	deploymentClient := &deploymentClientSpy{}
+	driverBicep := &bicepDriver{
+		DeploymentClient: deploymentClient,
+		RegistryClient:   ts.TestServer.Client(),
+	}
+
+	output, err := driverBicep.Execute(t.Context(), driver.ExecuteOptions{
+		Recipe: recipes.ResourceMetadata{
+			Name:          "mongo",
+			ResourceID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Datastores/mongoDatabases/mongo",
+			EnvironmentID: "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/environments/env",
+		},
+		Definition: recipes.EnvironmentDefinition{
+			Name:          "mongo-azure",
+			Driver:        recipes.TemplateKindBicep,
+			TemplatePath:  ts.TestImageURL,
+			ResourceType:  "Applications.Datastores/mongoDatabases",
+			SecretOutputs: map[string]string{"connectionString": "primaryConnectionString"},
+		},
+	})
+
+	require.Nil(t, output)
+	require.Equal(t, &recipes.RecipeError{
+		ErrorDetails: v1.ErrorDetails{
+			Code:    recipes.InvalidRecipeOutputs,
+			Message: `recipe "mongo-azure" for resource type "Applications.Datastores/mongoDatabases": invalid outputs mapping: no declared module output matches secrets["connectionString"] -> "primaryConnectionString"; available module outputs: none`,
+		},
+		DeploymentStatus: recipes_util.RecipeSetupError,
+	}, err)
+	require.Zero(t, deploymentClient.createOrUpdateCalls)
+}
+
+func Test_ValidateOutputMappings(t *testing.T) {
+	tests := []struct {
+		name          string
+		definition    recipes.EnvironmentDefinition
+		recipeData    map[string]any
+		expectedError string
+	}{
+		{
+			name: "accepts declared outputs",
+			definition: recipes.EnvironmentDefinition{
+				Outputs: map[string]string{"endpoint": "endpoint", "password": "password"},
+			},
+			recipeData: map[string]any{
+				recipeOutputs: map[string]any{
+					"endpoint": map[string]any{"type": "string"},
+					"password": map[string]any{"type": "securestring"},
+				},
+			},
+		},
+		{
+			name: "rejects undeclared output",
+			definition: recipes.EnvironmentDefinition{
+				Name:          "test-recipe",
+				ResourceType:  "Test.Resources/widgets",
+				SecretOutputs: map[string]string{"connectionString": "missing"},
+			},
+			recipeData: map[string]any{
+				recipeOutputs: map[string]any{
+					"endpoint": map[string]any{"type": "string"},
+				},
+			},
+			expectedError: `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches secrets["connectionString"] -> "missing"; available module outputs: "endpoint"`,
+		},
+		{
+			name: "rejects non-object outputs collection",
+			definition: recipes.EnvironmentDefinition{
+				Name:         "test-recipe",
+				ResourceType: "Test.Resources/widgets",
+				Outputs:      map[string]string{"host": "endpoint"},
+			},
+			recipeData:    map[string]any{recipeOutputs: "invalid"},
+			expectedError: `recipe "test-recipe" for resource type "Test.Resources/widgets": recipe outputs must be an object`,
+		},
+		{
+			name: "rejects mapping when template declares no outputs",
+			definition: recipes.EnvironmentDefinition{
+				Name:         "test-recipe",
+				ResourceType: "Test.Resources/widgets",
+				Outputs:      map[string]string{"host": "endpoint"},
+			},
+			recipeData:    map[string]any{},
+			expectedError: `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches outputs["host"] -> "endpoint"; available module outputs: none`,
+		},
+		{
+			name:       "skips template output parsing when no mappings are configured",
+			recipeData: map[string]any{recipeOutputs: "invalid"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateOutputMappings(tt.definition, tt.recipeData)
+			if tt.expectedError != "" {
+				require.EqualError(t, err, tt.expectedError)
+				return
+			}
+
+			require.NoError(t, err)
+		})
+	}
+}
+
 func Test_GetGCOutputResources(t *testing.T) {
 	d := &bicepDriver{}
 	before := []string{
@@ -556,7 +809,7 @@ func Test_GetGCOutputResources_NoDiff(t *testing.T) {
 
 func Test_Bicep_Delete_Success_AfterRetry(t *testing.T) {
 	ctx := t.Context()
-	driverBicep, client := setupDeleteInputs(t)
+	driverBicep, client, _, _ := setupDeleteInputs(t)
 	driverBicep.options.DeleteRetryCount = 1
 
 	outputResources := []rpv1.OutputResource{
@@ -765,6 +1018,26 @@ func Test_Bicep_PrepareRecipeResponse_DirectModule(t *testing.T) {
 			require.Equal(t, tt.expectedResponse, resp)
 		})
 	}
+}
+
+func Test_Bicep_PrepareRecipeResponse_MissingSecretOutput(t *testing.T) {
+	d := &bicepDriver{}
+	definition := recipes.EnvironmentDefinition{
+		Name:          "eventhub",
+		ResourceType:  "Demo.Messaging/kafka",
+		SecretOutputs: map[string]string{"connectionString": "primaryConnectionString"},
+	}
+	outputs := map[string]any{
+		"name":                    map[string]any{"type": "string", "value": "myhub"},
+		"primaryConnectionString": map[string]any{"type": "string", "value": nil},
+	}
+
+	response, err := d.prepareRecipeResponse(definition, outputs, nil)
+	require.Equal(t, &recipes.RecipeOutput{}, response)
+	require.EqualError(t, err, `recipe "eventhub" for resource type "Demo.Messaging/kafka": invalid outputs mapping: missing deployment output values for secrets["connectionString"] -> "primaryConnectionString"; available deployment outputs: "name"`)
+
+	var missingOutputErr *recipes_util.MissingOutputValuesError
+	require.ErrorAs(t, err, &missingOutputErr)
 }
 
 func Test_WrapARMParameters(t *testing.T) {

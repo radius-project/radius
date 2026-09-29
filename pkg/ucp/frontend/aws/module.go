@@ -34,8 +34,8 @@ const (
 
 // NewModule creates a new AWS module.
 func NewModule(options *ucp.Options) *Module {
-	m := Module{options: options}
-	m.router = chi.NewRouter()
+	m := Module{options: options,
+		router: chi.NewRouter()}
 	m.router.NotFound(validator.APINotFoundHandler())
 	m.router.MethodNotAllowed(validator.APIMethodNotAllowedHandler())
 

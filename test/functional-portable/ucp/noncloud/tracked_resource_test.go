@@ -23,8 +23,9 @@ import (
 	"testing"
 	"time"
 
+	"uuid"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/google/uuid"
 	v1 "github.com/radius-project/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/radius-project/radius/pkg/azure/tokencredentials"
 	corerp "github.com/radius-project/radius/pkg/corerp/api/v20231001preview"

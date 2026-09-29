@@ -15,7 +15,7 @@ tests:
       networkPolicies.enabled: true
     asserts:
       - failedTemplate:
-          errorMessage: "networkPolicies.enabled=true requires networkPolicies.controlPlaneCIDRs to be set to the cluster's node/control-plane CIDR(s) so the Kubernetes API server can reach UCP and the controller on :9443. Set networkPolicies.controlPlaneCIDRs, or set networkPolicies.enabled=false to install without these policies."
+          errorMessage: "networkPolicies.enabled=true requires networkPolicies.controlPlaneCIDRs to be set to the cluster's node/control-plane CIDR(s) so the Kubernetes API server can reach UCP on :9443. Set networkPolicies.controlPlaneCIDRs, or set networkPolicies.enabled=false to install without these policies."
 
   - it: renders default-deny and allow-internal as the first two policies when enabled
     set:
@@ -57,7 +57,7 @@ tests:
           value: radius-system
         documentIndex: 1
 
-  - it: renders the control-plane allow policy scoped to port 9443 with one ipBlock per CIDR
+  - it: renders the control-plane allow policy scoped to UCP port 9443 with one ipBlock per CIDR
     set:
       networkPolicies.enabled: true
       networkPolicies.controlPlaneCIDRs:
@@ -69,6 +69,11 @@ tests:
       - equal:
           path: metadata.name
           value: radius-allow-control-plane
+        documentIndex: 2
+      - equal:
+          path: spec.podSelector.matchLabels
+          value:
+            app.kubernetes.io/name: ucp
         documentIndex: 2
       - equal:
           path: spec.ingress[0].from[0].ipBlock.cidr

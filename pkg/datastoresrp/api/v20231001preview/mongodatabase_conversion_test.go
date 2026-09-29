@@ -42,20 +42,14 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 			file: "mongodatabaseresource2.json",
 			desc: "mongodb resource provisioning manual (with resources)",
 			expected: &datamodel.MongoDatabase{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
-						Name: "mongo0",
-						Type: ds_ctrl.MongoDatabasesResourceType,
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
+				Name:                   "mongo0",
+				Type:                   ds_ctrl.MongoDatabasesResourceType,
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.MongoDatabaseProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
@@ -73,20 +67,14 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "mongodb resource named recipe",
 			file: "mongodatabaseresource_recipe.json",
 			expected: &datamodel.MongoDatabase{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
-						Name: "mongo0",
-						Type: ds_ctrl.MongoDatabasesResourceType,
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
+				Name:                   "mongo0",
+				Type:                   ds_ctrl.MongoDatabasesResourceType,
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.MongoDatabaseProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
@@ -104,20 +92,14 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "mongodb resource default recipe with overridden values",
 			file: "mongodatabaseresource_recipe2.json",
 			expected: &datamodel.MongoDatabase{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
-						Name: "mongo0",
-						Type: ds_ctrl.MongoDatabasesResourceType,
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
+				Name:                   "mongo0",
+				Type:                   ds_ctrl.MongoDatabasesResourceType,
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.MongoDatabaseProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
@@ -134,20 +116,14 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 			desc: "mongodb resource provisioning manual (without resources)",
 			file: "mongodatabaseresource.json",
 			expected: &datamodel.MongoDatabase{
-				BaseResource: v1.BaseResource{
-					TrackedResource: v1.TrackedResource{
-						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
-						Name: "mongo0",
-						Type: ds_ctrl.MongoDatabasesResourceType,
-						Tags: map[string]string{},
-					},
-					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion:      "",
-						UpdatedAPIVersion:      "2023-10-01-preview",
-						AsyncProvisioningState: v1.ProvisioningStateAccepted,
-					},
-					SystemData: v1.SystemData{},
-				},
+				ID:                     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Datastores/mongoDatabases/mongo0",
+				Name:                   "mongo0",
+				Type:                   ds_ctrl.MongoDatabasesResourceType,
+				Tags:                   map[string]string{},
+				CreatedAPIVersion:      "",
+				UpdatedAPIVersion:      "2023-10-01-preview",
+				AsyncProvisioningState: v1.ProvisioningStateAccepted,
+				SystemData:             v1.SystemData{},
 				Properties: datamodel.MongoDatabaseProperties{
 					BasicResourceProperties: rpv1.BasicResourceProperties{
 						Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",

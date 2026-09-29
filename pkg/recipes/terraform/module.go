@@ -175,6 +175,7 @@ func inspectModule(workingDir string, recipe *recipes.EnvironmentDefinition) (*m
 		result.ResultOutputExists = true
 	}
 	for name, output := range mod.Outputs {
+		result.OutputSensitivity[name] = false
 		if output != nil {
 			result.OutputSensitivity[name] = output.Sensitive
 		}

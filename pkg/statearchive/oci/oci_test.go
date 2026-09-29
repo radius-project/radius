@@ -25,13 +25,14 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	corerpv20250801preview "github.com/radius-project/radius/pkg/corerp/api/v20250801preview"
 	"github.com/radius-project/radius/pkg/graph/persistence"
-	graphstore "github.com/radius-project/radius/pkg/graph/persistence/git"
+	graphstore "github.com/radius-project/radius/pkg/graph/persistence/archive"
 	"github.com/radius-project/radius/pkg/statearchive"
 	"github.com/radius-project/radius/pkg/to"
 	"github.com/stretchr/testify/require"
@@ -72,7 +73,7 @@ func TestOCIArchive_UsesOCIStorageForGraphs(t *testing.T) {
 	store, err := graphstore.NewStore(graphstore.Options{Archive: archive})
 	require.NoError(t, err)
 
-	key := persistence.Key{Namespace: "main", Name: "app"}
+	key := persistence.Key{Namespace: "feature%2Ffoo", Name: "app-graph"}
 	graph := &corerpv20250801preview.ApplicationGraphResponse{
 		Resources: []*corerpv20250801preview.ApplicationGraphResource{
 			{
@@ -83,14 +84,25 @@ func TestOCIArchive_UsesOCIStorageForGraphs(t *testing.T) {
 	}
 	require.NoError(t, store.Save(t.Context(), key, graph, persistence.SaveOptions{}))
 
+	// Recreate the adapter so the round trip must read from the OCI archive.
+	store, err = graphstore.NewStore(graphstore.Options{Archive: archive})
+	require.NoError(t, err)
 	got, err := store.Load(t.Context(), key)
 	require.NoError(t, err)
 	require.Len(t, got.Resources, 1)
 	require.Equal(t, "frontend", *got.Resources[0].Name)
 
+	keys, err := store.List(t.Context(), key.Namespace)
+	require.NoError(t, err)
+	require.Equal(t, []persistence.Key{key}, keys)
+
 	require.NoError(t, store.Delete(t.Context(), key))
 	_, err = store.Load(t.Context(), key)
 	require.ErrorIs(t, err, persistence.ErrNotFound)
+	keys, err = store.List(t.Context(), "")
+	require.NoError(t, err)
+	require.Empty(t, keys)
+	require.ErrorIs(t, store.Delete(t.Context(), key), persistence.ErrNotFound)
 }
 
 func TestOCIArchive_OpenRejectsEmptyName(t *testing.T) {
@@ -509,19 +521,52 @@ func TestCreateLayerPropagatesWriterErrors(t *testing.T) {
 }
 
 func TestArchivePathRejectsUnsafeNames(t *testing.T) {
-	for _, test := range []struct {
+	type testCase struct {
 		name string
 		path string
-	}{
+	}
+	tests := []testCase{
 		{name: "empty", path: ""},
 		{name: "current directory", path: "."},
 		{name: "parent directory", path: ".."},
 		{name: "parent directory file", path: "../state.txt"},
+		{name: "nested parent directory file", path: "nested/../../state.txt"},
+		{name: "native separator parent directory file", path: "nested" + string(filepath.Separator) + ".." + string(filepath.Separator) + ".." + string(filepath.Separator) + "state.txt"},
 		{name: "absolute", path: filepath.Join(t.TempDir(), "state.txt")},
-	} {
+	}
+	if runtime.GOOS == "windows" {
+		tests = append(tests,
+			testCase{name: "drive absolute", path: `C:\state.txt`},
+			testCase{name: "rooted", path: `\state.txt`},
+			testCase{name: "UNC", path: `\\server\share\state.txt`},
+			testCase{name: "reserved name", path: "CON"},
+		)
+	}
+
+	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			_, err := archivePath(t.TempDir(), test.path)
 			require.ErrorContains(t, err, "invalid archive path")
+		})
+	}
+}
+
+func TestArchivePathAcceptsLocalNames(t *testing.T) {
+	root := t.TempDir()
+	for _, test := range []struct {
+		name string
+		path string
+		want string
+	}{
+		{name: "file", path: "state.txt", want: filepath.Join(root, "state.txt")},
+		{name: "nested file", path: "nested/state.txt", want: filepath.Join(root, "nested", "state.txt")},
+		{name: "consecutive dots", path: "state..json", want: filepath.Join(root, "state..json")},
+		{name: "normalized file", path: "./nested/../state.txt", want: filepath.Join(root, "state.txt")},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := archivePath(root, test.path)
+			require.NoError(t, err)
+			require.Equal(t, test.want, got)
 		})
 	}
 }
@@ -541,6 +586,35 @@ func TestUnpackArchiveEntriesRejectsNonRegularEntries(t *testing.T) {
 			require.ErrorContains(t, err, "unsupported archive entry")
 		})
 	}
+}
+
+func TestUnpackArchiveEntriesRejectsOutsidePath(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "archive")
+	require.NoError(t, os.Mkdir(root, 0o755))
+
+	outsidePath := filepath.Join(parent, "state.txt")
+	require.NoError(t, os.WriteFile(outsidePath, []byte("original"), 0o644))
+
+	var archive bytes.Buffer
+	writer := tar.NewWriter(&archive)
+	content := []byte("replacement")
+	require.NoError(t, writer.WriteHeader(&tar.Header{
+		Name:     "../state.txt",
+		Mode:     0o644,
+		Size:     int64(len(content)),
+		Typeflag: tar.TypeReg,
+	}))
+	_, err := writer.Write(content)
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+
+	err = unpackArchiveEntries(&archive, root)
+	require.ErrorContains(t, err, "invalid archive path")
+	require.FileExists(t, outsidePath)
+	actual, err := os.ReadFile(outsidePath)
+	require.NoError(t, err)
+	require.Equal(t, []byte("original"), actual)
 }
 
 func TestUnpackArchiveRejectsInvalidArtifacts(t *testing.T) {

@@ -4,7 +4,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#    
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -17,11 +17,91 @@
 DIST_DIR ?= dist
 IMAGES_DIR := $(DIST_DIR)/images
 METRICS_DIR := $(DIST_DIR)/metrics
+RELEASE_PARITY_VERSION ?=
+RELEASE_PARITY_OUTPUT ?= $(DIST_DIR)/release-parity/v$(RELEASE_PARITY_VERSION).json
+GORELEASER ?= goreleaser
+GORELEASER_ARGS ?=
+GORELEASER_SHADOW_REGISTRY ?= ghcr.io/radius-project/dev
+GORELEASER_SHADOW_DIR ?= $(DIST_DIR)/goreleaser
+GORELEASER_PRODUCTION_DIR ?= release
+GORELEASER_PRODUCTION_REGISTRY ?= ghcr.io/radius-project
+GORELEASER_PRODUCTION_IMAGE_LOCK ?= $(DIST_DIR)/production-image-digests.json
+GORELEASER_PARITY_REPORT ?= $(DIST_DIR)/goreleaser-shadow-parity.json
 
 ##@ Artifacts
 
 .PHONY: artifacts
 artifacts: docker-build docker-save-images build-metrics ## Build all artifacts needed for testing/release
+
+.PHONY: release-parity-manifest
+release-parity-manifest: ## Capture observable outputs for RELEASE_PARITY_VERSION.
+	@if [ -z "$(RELEASE_PARITY_VERSION)" ]; then \
+		echo "Error: RELEASE_PARITY_VERSION is required"; \
+		exit 1; \
+	fi
+	@bash ./.github/scripts/release-parity-manifest.sh \
+		--version "$(RELEASE_PARITY_VERSION)" \
+		--output "$(RELEASE_PARITY_OUTPUT)"
+
+.PHONY: goreleaser-check
+goreleaser-check: ## Validate the GoReleaser configuration
+	@REL_CHANNEL="$(REL_CHANNEL)" \
+		REL_VERSION="$(REL_VERSION)" \
+		CHART_VERSION="$(CHART_VERSION)" \
+		GIT_VERSION="$(GIT_VERSION)" \
+		TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
+		$(GORELEASER) check
+
+# GoReleaser builds images only when it publishes, so skipping docker or publish
+# leaves no images for the verifier to inspect.
+GORELEASER_VERIFY_ARGS := $(if $(or $(findstring docker,$(GORELEASER_ARGS)),$(findstring publish,$(GORELEASER_ARGS))),--skip-images)
+
+.PHONY: goreleaser-snapshot
+goreleaser-snapshot: ## Build and verify a GoReleaser snapshot
+	@REL_CHANNEL="$(REL_CHANNEL)" \
+		REL_VERSION="$(REL_VERSION)" \
+		CHART_VERSION="$(CHART_VERSION)" \
+		GIT_VERSION="$(GIT_VERSION)" \
+		TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
+		$(GORELEASER) release --snapshot --clean $(GORELEASER_ARGS)
+	@bash ./.github/scripts/verify-goreleaser-snapshot.sh $(GORELEASER_VERIFY_ARGS)
+
+.PHONY: goreleaser-shadow
+goreleaser-shadow: ## Publish a tag-based GoReleaser shadow build without creating a GitHub Release
+	@GORELEASER_IMAGE_REGISTRY="$(GORELEASER_SHADOW_REGISTRY)" \
+		GORELEASER_RELEASE_DISABLE=true \
+		bash ./.github/scripts/verify-goreleaser-snapshot.sh --config-only
+	@GORELEASER_IMAGE_REGISTRY="$(GORELEASER_SHADOW_REGISTRY)" \
+		GORELEASER_RELEASE_DISABLE=true \
+		REL_CHANNEL="$(REL_CHANNEL)" \
+		REL_VERSION="$(REL_VERSION)" \
+		CHART_VERSION="$(CHART_VERSION)" \
+		GIT_VERSION="$(GIT_VERSION)" \
+		TERRAFORM_VERSION="$(TERRAFORM_VERSION)" \
+		$(GORELEASER) release --clean $(GORELEASER_ARGS)
+	@GORELEASER_IMAGE_REGISTRY="$(GORELEASER_SHADOW_REGISTRY)" \
+		bash ./.github/scripts/verify-goreleaser-snapshot.sh
+
+.PHONY: verify-goreleaser-shadow
+verify-goreleaser-shadow: ## Compare GoReleaser shadow outputs with production outputs from the same tag
+	@GORELEASER_SHADOW_DIR="$(GORELEASER_SHADOW_DIR)" \
+		GORELEASER_PRODUCTION_DIR="$(GORELEASER_PRODUCTION_DIR)" \
+		GORELEASER_SHADOW_REGISTRY="$(GORELEASER_SHADOW_REGISTRY)" \
+		GORELEASER_PRODUCTION_REGISTRY="$(GORELEASER_PRODUCTION_REGISTRY)" \
+		GORELEASER_PRODUCTION_IMAGE_LOCK="$(GORELEASER_PRODUCTION_IMAGE_LOCK)" \
+		GORELEASER_PARITY_REPORT="$(GORELEASER_PARITY_REPORT)" \
+		REL_CHANNEL="$(REL_CHANNEL)" \
+		REL_VERSION="$(REL_VERSION)" \
+		CHART_VERSION="$(CHART_VERSION)" \
+		GIT_COMMIT="$(GIT_COMMIT)" \
+		bash ./.github/scripts/verify-goreleaser-shadow.sh
+
+.PHONY: capture-release-image-digests
+capture-release-image-digests: ## Capture immutable digests for production images published under a release channel
+	@bash ./.github/scripts/capture-release-image-digests.sh \
+		--registry "$(DOCKER_REGISTRY)" \
+		--tag "$(DOCKER_TAG_VERSION)" \
+		--output "$(GORELEASER_PRODUCTION_IMAGE_LOCK)"
 
 .PHONY: docker-save-images
 docker-save-images: ## Save Docker images to dist/images/*.tar

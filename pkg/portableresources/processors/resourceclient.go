@@ -30,6 +30,7 @@ import (
 	"github.com/radius-project/radius/pkg/cli/clients_new/generated"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/trace"
+	"github.com/radius-project/radius/pkg/kubeutil"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/resources"
 	resources_azure "github.com/radius-project/radius/pkg/ucp/resources/azure"
@@ -39,8 +40,12 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/rest"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// ResourceClientFactory creates a resource client using the provided Kubernetes configuration.
+type ResourceClientFactory func(kubernetesConfig *rest.Config) ResourceClient
 
 type resourceClient struct {
 	arm *armauth.ArmConfig
@@ -58,6 +63,21 @@ type resourceClient struct {
 // NewResourceClient creates a new resourceClient instance with the given parameters.
 func NewResourceClient(arm *armauth.ArmConfig, connection sdk.Connection, kubernetesClient *kubernetesclientprovider.KubernetesClientProvider) *resourceClient {
 	return &resourceClient{arm: arm, connection: connection, kubernetesClient: kubernetesClient}
+}
+
+// NewResourceClientFactory creates resource clients that use the control-plane Kubernetes provider unless a target configuration is provided.
+func NewResourceClientFactory(arm *armauth.ArmConfig, connection sdk.Connection, controlPlaneProvider *kubernetesclientprovider.KubernetesClientProvider) ResourceClientFactory {
+	return func(kubernetesConfig *rest.Config) ResourceClient {
+		kubernetesProvider := controlPlaneProvider
+		if kubernetesConfig != nil {
+			config := rest.CopyConfig(kubernetesConfig)
+			config.QPS = kubeutil.DefaultServerQPS
+			config.Burst = kubeutil.DefaultServerBurst
+			kubernetesProvider = kubernetesclientprovider.FromConfig(config)
+		}
+
+		return NewResourceClient(arm, connection, kubernetesProvider)
+	}
 }
 
 // Delete attempts to delete a resource, either through UCP, Azure, or Kubernetes, depending on the resource type.
@@ -147,8 +167,14 @@ func (c *resourceClient) lookupARMAPIVersion(ctx context.Context, id resources.I
 		return "", err
 	}
 
-	// We need to match on the resource type name without the provider namespace.
-	shortType := strings.TrimPrefix(id.TypeSegments()[0].Type, id.ProviderNamespace()+"/")
+	// We need to match on the resource type name without the provider namespace. For an extension
+	// resource (eg: a Microsoft.Authorization/locks resource attached to another resource), the
+	// provider namespace and type come from the extension segments, not the primary type segments.
+	segments := id.TypeSegments()
+	if len(id.ExtensionSegments()) > 0 {
+		segments = id.ExtensionSegments()
+	}
+	shortType := strings.TrimPrefix(segments[0].Type, id.ProviderNamespace()+"/")
 	for _, rt := range resp.ResourceTypes {
 		if !strings.EqualFold(shortType, *rt.ResourceType) {
 			continue

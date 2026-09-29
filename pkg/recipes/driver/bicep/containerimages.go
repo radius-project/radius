@@ -319,7 +319,7 @@ func (d *bicepDriver) writeDockerConfig(ctx context.Context, registry, registryS
 }
 
 func dockerConfigAuthKey(registry string) (string, error) {
-	registryHost := strings.SplitN(registry, "/", 2)[0]
+	registryHost, _, _ := strings.Cut(registry, "/")
 	if registryHost == "" {
 		return "", fmt.Errorf("empty registry host")
 	}

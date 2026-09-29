@@ -113,10 +113,8 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, credentialNam
 		}
 
 		providerCredentialConfiguration := ProviderCredentialConfiguration{
-			CloudProviderStatus: CloudProviderStatus{
-				Name:    AWSCredential,
-				Enabled: true,
-			},
+			Name:    AWSCredential,
+			Enabled: true,
 			AWSCredentials: &AWSCredentialProperties{
 				Kind: (*string)(awsAccessKeyCredentials.Kind),
 				AccessKey: &AWSAccessKeyCredentialProperties{
@@ -132,10 +130,8 @@ func (cpm *AWSCredentialManagementClient) Get(ctx context.Context, credentialNam
 		}
 
 		providerCredentialConfiguration := ProviderCredentialConfiguration{
-			CloudProviderStatus: CloudProviderStatus{
-				Name:    AWSCredential,
-				Enabled: true,
-			},
+			Name:    AWSCredential,
+			Enabled: true,
 			AWSCredentials: &AWSCredentialProperties{
 				Kind: (*string)(awsIRSACredentials.Kind),
 				IRSA: &AWSIRSACredentialProperties{

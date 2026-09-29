@@ -26,18 +26,12 @@ import (
 // ConvertTo converts from the versioned Azure Plane resource to version-agnostic datamodel.
 func (src *AzurePlaneResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.AzurePlane{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:       to.String(src.ID),
-				Name:     to.String(src.Name),
-				Type:     to.String(src.Type),
-				Location: to.String(src.Location),
-				Tags:     to.StringMap(src.Tags),
-			},
-			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
-			},
-		},
+		ID:                to.String(src.ID),
+		Name:              to.String(src.Name),
+		Type:              to.String(src.Type),
+		Location:          to.String(src.Location),
+		Tags:              to.StringMap(src.Tags),
+		UpdatedAPIVersion: Version,
 		Properties: datamodel.AzurePlaneProperties{
 			URL: to.String(src.Properties.URL),
 		},

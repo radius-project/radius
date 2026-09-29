@@ -64,10 +64,6 @@ spec:
         - '--config-file'
         - '/etc/config/controller-config.yaml'
         env:
-        - name: TLS_CERT_DIR
-          value: '/var/tls/cert'
-        - name: PORT
-          value: '9443'
         - name: BICEP
           value: '/usr/local/bin/bicep'
         {{- if .Values.global.rootCA.cert }}
@@ -76,9 +72,6 @@ spec:
           value: {{ .Values.global.rootCA.mountPath }}
         {{- end}}
         ports:
-        - containerPort: 9443
-          name: controller
-          protocol: TCP
         {{- if eq .Values.global.prometheus.enabled true }}
         - containerPort: {{ .Values.global.prometheus.port }}
           name: metrics
@@ -100,9 +93,6 @@ spec:
           subPath: bicepconfig.json
         - name: config-volume
           mountPath: /etc/config
-        - name: cert
-          mountPath: '/var/tls/cert'
-          readOnly: true
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           mountPath: {{ .Values.global.rootCA.mountPath }}
@@ -121,9 +111,6 @@ spec:
         - name: config-volume
           configMap:
             name: controller-config
-        - name: cert
-          secret:
-            secretName: controller-cert
         {{- if .Values.global.rootCA.cert }}
         - name: {{ .Values.global.rootCA.volumeName }}
           secret:

@@ -515,7 +515,7 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 	existingTemplate := "testdata/udt2udt-connection-tf.bicep"
 	name := "dynamicrp-udt2udt-tf"
 	appNamespace := "dynamicrp-udt2udt-tf"
-	appName := "udttoudtapp"
+	appName := "udttoudtapptf"
 	expectedEnvName := "CONN_INJECTED"
 	childResourceTypeName := "Test.Resources/externalResource"
 	childResourceTypeParam := strings.Split(childResourceTypeName, "/")[1]
@@ -567,16 +567,16 @@ func Test_UDT_ConnectionTo_UDTTF(t *testing.T) {
 						Type: validation.CoreApplicationsResource,
 					},
 					{
-						Name: "udttoudtparent",
+						Name: "udttoudtparenttf",
 						Type: "test.resources/usertypealpha",
 						App:  appName,
 					},
 					{
-						Name: "udttoudtchild",
+						Name: "udttoudtchildtf",
 						Type: "test.resources/externalresource",
 					},
 					{
-						Name: "udttoudtenv",
+						Name: "udttoudtenvtf",
 						Type: validation.CoreEnvironmentsResource,
 					},
 					{
@@ -638,13 +638,8 @@ func Test_DynamicRP_SchemaValidation(t *testing.T) {
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
 	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
-		Code: "ResourceDeploymentFailure",
-		Details: []step.DeploymentErrorDetail{
-			{
-				Code:            "InvalidRequestContent",
-				MessageContains: "Schema validation failed",
-			},
-		},
+		Code:            "InvalidRequestContent",
+		MessageContains: "Schema validation failed",
 	})
 
 	test := rp.NewRPTest(t, appName, []rp.TestStep{
