@@ -33,16 +33,6 @@ func Environment() string {
 	return currentEnv
 }
 
-// IsDevelopment returns true if the current environment is development environment.
-func IsDevelopment() bool {
-	return strings.HasPrefix(Environment(), RadiusDevEnvironment)
-}
-
-// IsSelfHosted returns true if the current environment is self-hosted environment.
-func IsSelfHosted() bool {
-	return strings.HasPrefix(Environment(), RadiusSelfHostedEnvironment)
-}
-
 func init() {
 	currentEnv = strings.TrimSpace(strings.ToLower(os.Getenv("RADIUS_ENV")))
 	if currentEnv == "" {
