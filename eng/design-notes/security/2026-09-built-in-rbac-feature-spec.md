@@ -6,7 +6,7 @@
 
 Radius needs a built-in authorization model that lets organizations control who can view, create, change, deploy, and administer Radius resources. The model must support separation of duties between platform teams, application teams, operators, auditors, and automation without requiring every user to receive broad Kubernetes access to the Radius API.
 
-This specification defines the product behavior for role-based access control (RBAC) across the Radius API, `rad` CLI, dashboard and Backstage plugin, and Radius automation such as GitHub Actions and the Radius Copilot integration. It covers Radius resources including resource groups, applications, application resources, environments, Recipe Packs and their Recipes, resource type registrations, configuration resources, credentials, authorization resources, and resource-specific actions.
+This specification defines the product behavior for role-based access control (RBAC) across the Radius API, `rad` CLI, dashboard and Backstage plugin, and Radius automation such as GitHub Actions and the Radius Copilot integration. RBAC administration is available through the API and through imperative and declarative `rad` CLI workflows; graphical administration is out of scope. It covers Radius resources including resource groups, applications, application resources, environments, Recipe Packs and their Recipes, resource type registrations, configuration resources, credentials, authorization resources, and resource-specific actions.
 
 The specification enables product, design, security, and architecture stakeholders to decide the scope and user experience of the first enterprise RBAC release tracked by [radius-project/radius#13030](https://github.com/radius-project/radius/issues/13030) and [radius-project/roadmap#27](https://github.com/radius-project/roadmap/issues/27). Direct customer research, compliance requirements, and production usage baselines are not yet available. Statements about demand beyond those roadmap items are hypotheses that require validation.
 
@@ -28,6 +28,7 @@ The specification enables product, design, security, and architecture stakeholde
 - Administrator-defined property-level or field-level permissions within a Radius resource. Radius may still provide product-defined safe views and redact sensitive fields.
 - Granting access to raw secret values. Existing secret handling and redaction requirements continue to apply regardless of role.
 - Automatically deriving Radius access from Azure, AWS, Kubernetes namespace, GitHub repository, or Backstage catalog permissions.
+- Managing roles, assignments, or enforcement settings through the Radius dashboard, Backstage plugin, or another graphical interface. Graphical clients must honor RBAC and present safe authorization results, but RBAC administration is limited to the API, imperative `rad auth` commands, and declarative Bicep deployments through `rad deploy`.
 - Solving tenant isolation or billing. This specification uses the current Radius plane and resource group hierarchy and does not introduce a new tenant concept.
 - Authorizing direct access to internal Radius components as an alternative to the public control-plane API.
 
@@ -110,15 +111,12 @@ When a platform team adds a resource type or action, existing roles do not silen
 
 ## Key assumptions to test and questions to answer
 
-| Assumption or question                                                                                                                  | Current confidence                                                                                        | Validation plan                                                                                                                                                                                                                                     | Owner                           |
-|-----------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------|
-| Platform teams need Radius-specific separation of duties beyond Kubernetes API access.                                                  | Medium. Supported by open enterprise and roadmap issues, but no direct customer evidence is attached.     | Interview at least five shared-cluster or enterprise evaluators; ask about current access boundaries, not preferred RBAC features. Stop or rescope if teams consistently operate one trusted Radius admin identity and delegate only through CI/CD. | Product                         |
-| Supported authentication paths provide stable user, group, and workload identity attributes suitable for assignments.                   | Low until validated across supported installation contexts.                                               | Document the available identity attributes for local Kubernetes, managed Kubernetes, dashboard, and automation paths. Rescope group assignments if stable group identity is unavailable.                                                            | Architecture and security       |
-| The proposed built-in roles and scopes match how organizations divide platform and application ownership.                               | Low. Radius has no customer-validated role model today.                                                   | Map the proposed model to representative team structures and identify responsibilities that require custom roles or additional scopes.                                                                                                              | Product                         |
-| Users understand the distinction between managing an application, deploying to an environment, and administering platform capabilities. | Medium. The separation follows common platform patterns but is unvalidated in Radius.                     | Prototype role assignment, access explanation, and denied-operation flows with platform administrators and developers.                                                                                                                              | Product design                  |
-| Allow-only roles with implicit deny are sufficient for the first release.                                                               | Medium. This is simpler to understand, but some organizations may expect explicit deny rules.             | Validate the model against customer governance scenarios and identify requirements that cannot be represented.                                                                                                                                      | Product and security            |
-| Existing installations can adopt enforcement without unacceptable disruption or lockout risk.                                           | Unknown.                                                                                                  | Test migration and recovery guidance with single-user, shared-platform, and automated Radius installations.                                                                                                                                         | Product and release engineering |
-| Effective-access views, denial messages, and audit records provide enough information for administrators to troubleshoot access safely. | Medium. Comparable products provide these capabilities, but the right Radius detail level is unvalidated. | Test common access investigations with administrators and auditors, including cases involving environment deployment and external-provider denials.                                                                                                 | Product design and security     |
+| Assumption or question | Current confidence | Validation plan | Owner |
+| --- | --- | --- | --- |
+| Supported authentication paths provide stable user, group, and workload identity attributes suitable for assignments. | Low until validated across supported installation contexts. | Document the available identity attributes for local Kubernetes, managed Kubernetes, dashboard, and automation paths. Rescope group assignments if stable group identity is unavailable. | Architecture and security |
+| Allow-only roles with implicit deny are sufficient for the first release. | Medium. This is simpler to understand, but some organizations may expect explicit deny rules. | Validate the model against customer governance scenarios and identify requirements that cannot be represented. | Product and security |
+| Existing installations can adopt enforcement without unacceptable disruption or lockout risk. | Unknown. | Test migration and recovery guidance with single-user, shared-platform, and automated Radius installations. | Product and release engineering |
+| Effective-access views, denial messages, and audit records provide enough information for administrators to troubleshoot access safely. | Medium. Comparable products provide these capabilities, but the right Radius detail level is unvalidated. | Test common access investigations with administrators and auditors, including cases involving environment deployment and external-provider denials. | Product design and security |
 
 ## Current state
 
@@ -154,19 +152,29 @@ I can assign a built-in or custom Radius role to a user, group, or workload iden
 
 **As an automation identity owner,** I can give CI/CD, controllers, agents, and other automation only the access needed for a specific Radius instance, application, and environment. Automated actions remain attributable to the workload identity, and authorization failures appear as clear access failures rather than retries or successful empty results.
 
+### Identity and sign-in experience
+
+Users do not create a separate Radius account or password. They authenticate through the trusted identity system configured for their Radius installation and continue to use the sign-in experience their organization already provides. The first release uses identities established through the Kubernetes access path; support for other trusted identity providers may be added when Radius supports clients that connect through a different authentication boundary.
+
+Administrators assign roles to stable user, group, and workload identities supplied by that trusted system. Radius shows a recognizable name when available together with the identity type and source, so administrators can distinguish similarly named identities and avoid granting access to the wrong principal. Group-based access follows changes in the source identity system within a documented period rather than requiring administrators to duplicate group membership in Radius.
+
+Every supported client preserves the identity of the person or workload performing the action. Users can see which identity Radius recognizes and receive a clear authentication error when no supported identity is available. Authorization denials separately explain that the recognized identity lacks Radius access, while failures from Kubernetes, a cloud provider, a registry, or another external system remain distinguishable.
+
+Automation uses a dedicated workload identity rather than a shared human account. Actions performed through the dashboard, Backstage, agents, or other intermediaries remain attributable to the initiating user or workload even though graphical RBAC administration is out of scope.
+
 ### Proposed CLI experience
 
-The `rad` CLI provides a single `rad auth` command group for imperative RBAC administration. Declarative role definitions and assignments use Radius resources in Bicep and the existing `rad deploy` workflow, so users do not have to learn a separate policy file format or apply engine. The exact permission names, flags, and resource identifiers remain subject to technical design and usability validation.
+The API is the common management surface for RBAC. The `rad` CLI provides a single `rad auth` command group for imperative administration, while declarative role definitions and assignments use Radius resources in Bicep and the existing `rad deploy` workflow. Users do not have to learn a separate policy file format or apply engine, and no graphical RBAC management experience is included. The exact permission names, flags, and resource identifiers remain subject to technical design and usability validation.
 
-| Command family         | User purpose                                                                                                                                                                       |
-|------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `rad auth whoami`      | Show the stable identity, identity type, issuer, and group information Radius is using for the current request.                                                                    |
-| `rad auth status`      | Summarize whether authorization is in preview or enforcement mode, whether the current identity is an administrator, and any adoption or recovery warnings.                        |
-| `rad auth permission`  | List and explain the Radius permissions available when creating a custom role, including the resource types and scopes to which each permission applies.                           |
-| `rad auth role`        | List and inspect built-in and custom roles, and create, update, or delete custom roles. Built-in roles are immutable.                                                              |
-| `rad auth assignment`  | List and inspect direct or inherited role assignments, grant a role to a user, group, or workload identity at an explicit scope, and revoke an assignment.                         |
-| `rad auth access`      | List effective access, check whether an identity can perform an action at a scope, and explain which role or assignment allowed or denied a decision without exposing hidden data. |
-| `rad auth enforcement` | Inspect enforcement status, preview would-be denials, enable enforcement after reviewing access impact, and perform any supported migration-period rollback.                       |
+| Command family | User purpose |
+| --- | --- |
+| `rad auth whoami` | Show the stable identity, identity type, issuer, and group information Radius is using for the current request. |
+| `rad auth status` | Summarize whether authorization is in preview or enforcement mode, whether the current identity is an administrator, and any adoption or recovery warnings. |
+| `rad auth permission` | List and explain the Radius permissions available when creating a custom role, including the resource types and scopes to which each permission applies. |
+| `rad auth role` | List and inspect built-in and custom roles, and create, update, or delete custom roles. Built-in roles are immutable. |
+| `rad auth assignment` | List and inspect direct or inherited role assignments, grant a role to a user, group, or workload identity at an explicit scope, and revoke an assignment. |
+| `rad auth access` | List effective access, check whether an identity can perform an action at a scope, and explain which role or assignment allowed or denied a decision without exposing hidden data. |
+| `rad auth enforcement` | Inspect enforcement status, preview would-be denials, enable enforcement after reviewing access impact, and perform any supported migration-period rollback. |
 
 A platform administrator can grant access imperatively for bootstrap, investigation, or an immediate operational need:
 
@@ -262,19 +270,19 @@ The first release uses additive allow grants with implicit deny. Explicit deny r
 
 ### Feature 2: Built-in and custom roles
 
-Provide immutable, documented built-in roles for common separation-of-duties scenarios. The initial role set to validate is:
+Provide immutable, documented built-in roles for common separation-of-duties scenarios:
 
-| Built-in role               | Intended capability                                                                                                                                                                                               |
-|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Radius Administrator        | Manage all Radius resources and authorization for the assigned installation or plane scope.                                                                                                                       |
-| Access Administrator        | Manage role definitions and assignments at an installation or plane scope without automatically receiving application or platform-resource access.                                                                |
-| Platform Administrator      | Manage Radius resource groups, environments, provider configuration, and platform settings without automatically administering access. Separate plane assignments govern Azure and AWS credential administration. |
-| Application Developer       | Create, read, update, delete, and operate applications and application resources in the assigned scope, but not select arbitrary environments.                                                                    |
-| Environment Deployer        | Deploy applications to assigned environments without changing environment configuration or receiving access to secret values.                                                                                     |
-| Recipe Pack Administrator   | Create and manage Recipe Packs and their Recipe definitions in the assigned scope.                                                                                                                                |
-| Resource Type Administrator | Register and manage resource types and related schema metadata in the assigned scope.                                                                                                                             |
-| Reader                      | Read authorized resource metadata and application graphs without mutation or secret access.                                                                                                                       |
-| Auditor                     | Read authorization configuration and audit events without resource mutation or secret access.                                                                                                                     |
+| Built-in role | Intended capability |
+| --- | --- |
+| Radius Administrator | Manage all Radius resources and authorization for the assigned installation or plane scope. |
+| Access Administrator | Manage role definitions and assignments at an installation or plane scope without automatically receiving application or platform-resource access. |
+| Platform Administrator | Manage Radius resource groups, environments, provider configuration, and platform settings without automatically administering access. Separate plane assignments govern Azure and AWS credential administration. |
+| Application Developer | Create, read, update, delete, and operate applications and application resources in the assigned scope, but not select arbitrary environments. |
+| Environment Deployer | Deploy applications to assigned environments without changing environment configuration or receiving access to secret values. |
+| Recipe Pack Administrator | Create and manage Recipe Packs and their Recipe definitions in the assigned scope. |
+| Resource Type Administrator | Register and manage resource types and related schema metadata in the assigned scope. |
+| Reader | Read authorized resource metadata and application graphs without mutation or secret access. |
+| Auditor | Read authorization configuration and audit events without resource mutation or secret access. |
 
 ### Feature 3: Role assignments and effective-access inspection
 
@@ -296,7 +304,7 @@ Define authorization for operations that read or mutate more than one resource:
 
 Enforce authorization consistently for the API, CLI, dashboard, Backstage, controllers, GitHub Actions, agents, and other supported clients. New operations and resource types do not become accessible until their permissions are deliberately defined and granted. Automation acts through explicit workload identities.
 
-Clients can use capability checks to improve the experience, but the server remains authoritative. Clients preserve authorization errors instead of presenting them as empty results, retries, or unrelated failures.
+Users authenticate through the trusted identity system configured for the installation rather than through a separate Radius account. Every client preserves the initiating user or workload identity, and Radius clearly identifies the principal it recognizes. Clients can use capability checks to improve the experience, but the server remains authoritative. Clients preserve authentication and authorization errors instead of presenting them as empty results, retries, or unrelated failures.
 
 ### Feature 6: Auditability and safe administration
 
