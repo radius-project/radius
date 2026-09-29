@@ -67,6 +67,16 @@ func Test_GroupDelete_RecipeResources(t *testing.T) {
 	containerA := "group-delete-recipe-container-a"
 	containerB := "group-delete-recipe-container-b"
 
+	// t.Cleanup is LIFO, so this is registered before the group cleanup in order to run after it.
+	// The environment points at a namespace the test creates rather than one it owns, so nothing
+	// else removes it.
+	t.Cleanup(func() {
+		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), groupDeleteCleanupTimeout) //nolint:usetesting
+		defer cleanupCancel()
+
+		deleteKubernetesNamespace(cleanupCtx, t, options, namespace)
+	})
+
 	t.Cleanup(func() {
 		// Best-effort: the group is expected to be gone already. Errors are ignored because a
 		// successful test leaves nothing to delete.
@@ -101,13 +111,26 @@ func Test_GroupDelete_RecipeResources(t *testing.T) {
 		},
 	})
 
-	// Positive control. The post-delete assertions below are only meaningful if this same query
-	// can see the resources while they exist.
-	listed, err := cli.ResourceListInResourceGroup(ctx, groupName)
-	require.NoError(t, err, "failed to list resources in group %s", groupName)
-	for _, name := range []string{envName, appName, packName, containerA, containerB} {
-		require.Containsf(t, listed, name,
-			"expected %s to be listed in group %s before deletion, got: %s", name, groupName, listed)
+	// `rad resource list --group` lists the resources of the workspace environment, not of the
+	// group, so it cannot answer this. Each resource is shown by type and name instead.
+	deployed := []struct {
+		resourceType string
+		name         string
+	}{
+		{"Radius.Core/environments", envName},
+		{"Radius.Core/applications", appName},
+		{"Radius.Core/recipePacks", packName},
+		{"Radius.Compute/containers", containerA},
+		{"Radius.Compute/containers", containerB},
+	}
+
+	// Positive control. The post-delete assertions below are only meaningful if these same queries
+	// find the resources while they exist.
+	opts := radcli.ShowOptions{Group: groupName}
+	for _, resource := range deployed {
+		_, err := cli.ResourceShow(ctx, resource.resourceType, resource.name, opts)
+		require.NoErrorf(t, err, "expected %s %s to exist in group %s before deletion",
+			resource.resourceType, resource.name, groupName)
 	}
 
 	t.Logf("Deleting resource group %s", groupName)
@@ -120,18 +143,17 @@ func Test_GroupDelete_RecipeResources(t *testing.T) {
 	// The group record being gone is not sufficient: the defect this guards against deleted the
 	// record while leaving resources behind.
 	//
-	// Those leftovers cannot be observed by showing them directly, because UCP resolves the
-	// resource group before the resource and answers "not found" for anything under a group that
+	// Those leftovers cannot be observed while the group is missing, because UCP resolves the
+	// resource group before the resource and answers "not found" for anything beneath a group that
 	// does not exist -- so every such assertion would pass whether or not the resource survived.
-	// Recreating the group at the same scope makes any surviving record addressable again, which
-	// is the only way to tell an emptied group apart from a silently orphaned one.
+	// Recreating the group at the same scope makes any surviving record addressable again, which is
+	// what tells an emptied group apart from a silently orphaned one.
 	require.NoError(t, cli.GroupCreate(ctx, groupName), "failed to recreate resource group for the orphan check")
 
-	remaining, err := cli.ResourceListInResourceGroup(ctx, groupName)
-	require.NoError(t, err, "failed to list resources in recreated group %s", groupName)
-	for _, name := range []string{envName, appName, packName, containerA, containerB} {
-		require.NotContainsf(t, remaining, name,
-			"%s survived the deletion of group %s and was orphaned, got: %s", name, groupName, remaining)
+	for _, resource := range deployed {
+		output, err := cli.ResourceShow(ctx, resource.resourceType, resource.name, opts)
+		require.Errorf(t, err, "%s %s survived the deletion of group %s and was orphaned: %s",
+			resource.resourceType, resource.name, groupName, output)
 	}
 
 	validation.ValidateNoPodsInApplication(ctx, t, options.K8sClient, namespace, appName)
