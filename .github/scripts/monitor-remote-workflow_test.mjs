@@ -266,6 +266,46 @@ test("dispatches once and injects the release identifier into the payload", asyn
   });
 });
 
+test("dispatches and reuses identifiers with SemVer build metadata", async (context) => {
+  for (const version of ["1.2.3+meta", "v1.2.3+meta", "v1.2.3-rc.1+build.42"]) {
+    await context.test(version, async () => {
+      const identifier = `${version}-${"a".repeat(40)}`;
+      const inputs = {
+        RELEASE_IDENTIFIER: identifier,
+        CLIENT_PAYLOAD: JSON.stringify({ tag: version })
+      };
+      const core = createCore(inputs);
+      const github = createGithub();
+
+      await monitorRemoteWorkflow({ github, core, ...createClock() });
+
+      assert.deepEqual(core.failures, []);
+      assert.equal(github.dispatches.length, 1);
+      assert.deepEqual(github.dispatches[0].payload, {
+        tag: version,
+        release_identifier: identifier
+      });
+      assert.equal(core.outputs.get("release_identifier"), identifier);
+      assert.equal(core.outputs.get("conclusion"), "success");
+
+      const resumedCore = createCore(inputs);
+      await monitorRemoteWorkflow({
+        github,
+        core: resumedCore,
+        ...createClock()
+      });
+
+      assert.deepEqual(resumedCore.failures, []);
+      assert.equal(github.dispatches.length, 1);
+      assert.equal(
+        resumedCore.outputs.get("run_id"),
+        core.outputs.get("run_id")
+      );
+      assert.equal(resumedCore.outputs.get("conclusion"), "success");
+    });
+  }
+});
+
 test("retries transient run lookups with bounded backoff", async () => {
   const identifier = "0.61.0-bcbcbcbc";
   const core = createCore({ RELEASE_IDENTIFIER: identifier });
@@ -538,15 +578,18 @@ test("ignores concurrent runs with other identifiers", async () => {
 });
 
 test("rejects malformed identifiers and mismatched payloads before API calls", async () => {
-  const malformedCore = createCore({ RELEASE_IDENTIFIER: "bad identifier" });
-  const malformedGithub = createGithub();
-  await monitorRemoteWorkflow({
-    github: malformedGithub,
-    core: malformedCore,
-    ...createClock()
-  });
-  assert.match(malformedCore.failures[0], /Release identifier/);
-  assert.equal(malformedGithub.calls.list, 0);
+  for (const identifier of ["bad identifier", "+meta", "a".repeat(201)]) {
+    const malformedCore = createCore({ RELEASE_IDENTIFIER: identifier });
+    const malformedGithub = createGithub();
+    await monitorRemoteWorkflow({
+      github: malformedGithub,
+      core: malformedCore,
+      ...createClock()
+    });
+    assert.match(malformedCore.failures[0], /Release identifier/);
+    assert.equal(malformedGithub.calls.list, 0);
+    assert.equal(malformedGithub.dispatches.length, 0);
+  }
 
   const mismatchedCore = createCore({
     CLIENT_PAYLOAD: JSON.stringify({ release_identifier: "other" })
@@ -559,6 +602,20 @@ test("rejects malformed identifiers and mismatched payloads before API calls", a
   });
   assert.match(mismatchedCore.failures[0], /does not match/);
   assert.equal(mismatchedGithub.calls.list, 0);
+});
+
+test("rejects plus signs in event types before API calls", async () => {
+  const core = createCore({
+    EVENT_TYPE: "deployment+engine",
+    RELEASE_IDENTIFIER: "v1.2.3+meta"
+  });
+  const github = createGithub();
+
+  await monitorRemoteWorkflow({ github, core, ...createClock() });
+
+  assert.match(core.failures[0], /Invalid event type/);
+  assert.equal(github.calls.list, 0);
+  assert.equal(github.dispatches.length, 0);
 });
 
 test("uses one total timeout budget for discovery and completion", async () => {

@@ -1,6 +1,6 @@
 // @ts-nocheck
 
-const RELEASE_IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/;
+const RELEASE_IDENTIFIER_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._+-]{0,199}$/;
 const EVENT_TYPE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const API_RETRY_ATTEMPTS = 5;
 const API_RETRY_BASE_DELAY_MS = 1000;
@@ -89,7 +89,7 @@ export default async ({
     }
     if (!RELEASE_IDENTIFIER_PATTERN.test(releaseIdentifier)) {
       throw new Error(
-        "Release identifier must contain 1-200 letters, numbers, dots, underscores, or hyphens"
+        "Release identifier must contain 1-200 letters, numbers, dots, underscores, hyphens, or plus signs"
       );
     }
 
