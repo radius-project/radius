@@ -69,20 +69,37 @@ func TestMain(m *testing.M) {
 		os.Exit(runFakeBicep()) //nolint:forbidigo // Test helper subprocess must behave as the Bicep executable.
 	}
 
-	tempDir, err := os.MkdirTemp("", "radius-windowless-test-")
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1) //nolint:forbidigo // TestMain cannot continue without a temporary build directory.
-	}
-	radBinaryPath = filepath.Join(tempDir, "rad.exe")
-	if err := buildRad(radBinaryPath); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		_ = os.RemoveAll(tempDir)
-		os.Exit(1) //nolint:forbidigo // TestMain must report a failed integration-test build.
+	tempDir := ""
+	radBinaryPath = os.Getenv(testRadBinaryEnv)
+	if radBinaryPath == "" {
+		var err error
+		tempDir, err = os.MkdirTemp("", "radius-windowless-test-")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1) //nolint:forbidigo // TestMain cannot continue without a temporary build directory.
+		}
+		radBinaryPath = filepath.Join(tempDir, "rad.exe")
+		if err := buildRad(radBinaryPath); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			_ = os.RemoveAll(tempDir)
+			os.Exit(1) //nolint:forbidigo // TestMain must report a failed integration-test build.
+		}
+	} else {
+		info, err := os.Stat(radBinaryPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "prebuilt rad binary %q is unavailable: %v\n", radBinaryPath, err)
+			os.Exit(1) //nolint:forbidigo // TestMain cannot run without the configured rad binary.
+		}
+		if !info.Mode().IsRegular() {
+			fmt.Fprintf(os.Stderr, "prebuilt rad binary %q is not a regular file\n", radBinaryPath)
+			os.Exit(1) //nolint:forbidigo // TestMain cannot run without the configured rad binary.
+		}
 	}
 
 	code := m.Run()
-	_ = os.RemoveAll(tempDir)
+	if tempDir != "" {
+		_ = os.RemoveAll(tempDir)
+	}
 	os.Exit(code) //nolint:forbidigo // TestMain must return the test suite exit code.
 }
 
