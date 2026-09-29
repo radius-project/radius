@@ -254,6 +254,32 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 		},
+		{
+			Name:          "Create command with environment name that is not a valid default Kubernetes namespace",
+			Input:         []string{"testingEnv"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Create command with mixed-case environment name and explicit Kubernetes namespace",
+			Input:         []string{"testingEnv", "--kubernetes-namespace", "mynamespace"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				createMocksWithValidCommand(mocks.Namespace, mocks.ApplicationManagementClient, testResourceGroup)
+			},
+			ValidateCallback: func(t *testing.T, runner framework.Runner) {
+				r := runner.(*Runner)
+				require.Equal(t, "testingEnv", r.EnvironmentName)
+				require.Equal(t, "mynamespace", r.Namespace)
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
