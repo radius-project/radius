@@ -44,6 +44,7 @@ on:
         options:
           - all
           - kubernetes-noncloud
+          - ucp-noncloud
   schedule:
     # Run three times a day at 6 AM PDT (1 PM UTC), 12 PM PDT (7 PM UTC), and 6 PM PDT (1 AM UTC next day)
     - cron: 0 1,13,19 * * *
@@ -267,7 +268,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04]
-        name: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.test_target == 'kubernetes-noncloud' && '["kubernetes-noncloud"]' || '["cli-noncloud","corerp-noncloud","daprrp-noncloud","database-noncloud","kubernetes-noncloud","msgrp-noncloud","multicluster-noncloud","statestore-noncloud","samples-noncloud","ucp-noncloud","datastoresrp-noncloud","dynamicrp-noncloud","upgrade-noncloud"]') }}
+        name: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.test_target == 'kubernetes-noncloud' && '["kubernetes-noncloud"]' || github.event_name == 'workflow_dispatch' && inputs.test_target == 'ucp-noncloud' && '["ucp-noncloud"]' || '["cli-noncloud","corerp-noncloud","daprrp-noncloud","database-noncloud","kubernetes-noncloud","msgrp-noncloud","multicluster-noncloud","statestore-noncloud","samples-noncloud","ucp-noncloud","datastoresrp-noncloud","dynamicrp-noncloud","upgrade-noncloud"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     env:
