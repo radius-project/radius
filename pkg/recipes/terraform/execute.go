@@ -32,6 +32,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/components/metrics"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
+	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
 	"github.com/radius-project/radius/pkg/recipes/paramresolver"
 	"github.com/radius-project/radius/pkg/recipes/recipecontext"
@@ -78,11 +79,20 @@ type executor struct {
 
 	awsCredentials   credentials.CredentialProvider[credentials.AWSCredential]
 	azureCredentials credentials.CredentialProvider[credentials.AzureCredential]
+
+	// deleteStateObject removes a cloud backend's state object after destroy. It is overridden in
+	// tests so that they do not reach a real bucket or container.
+	deleteStateObject func(ctx context.Context, settings *datamodel.TerraformBackend, auth backends.CloudBackendAuth, key string) error
 }
 
-// backendResult carries only Kubernetes's extra lifecycle operations. Cloud state is owned by Terraform.
+// backendResult carries the extra lifecycle operations each backend needs after Terraform runs.
 type backendResult struct {
+	// kubernetesSecretName is set only for the Kubernetes backend, whose state secret Radius manages.
 	kubernetesSecretName string
+
+	// cloudBackendType and cloudStateKey identify the cloud state object Terraform wrote.
+	cloudBackendType string
+	cloudStateKey    string
 }
 
 // Deploy ensures Terraform is available, creates a working directory, generates a config, and runs Terraform init and
@@ -100,12 +110,13 @@ func (e *executor) Deploy(ctx context.Context, options Options) (*tfjson.State, 
 	// runs `terraform get` to download the module. Module downloads from
 	// authenticated registries need credentials and provider_installation
 	// rules in effect at fetch time, not just at apply time.
-	if err = e.prepareExecution(ctx, tf, options); err != nil {
+	auth, err := e.prepareExecution(ctx, tf, options)
+	if err != nil {
 		return nil, err
 	}
 
 	// Create Terraform config in the working directory
-	backend, err := e.generateConfig(ctx, tf, options, requireValidOutputMappings)
+	backend, err := e.generateConfig(ctx, tf, options, auth, requireValidOutputMappings)
 	if err != nil {
 		return nil, err
 	}
@@ -152,12 +163,13 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 		return err
 	}
 
-	if err = e.prepareExecution(ctx, tf, options); err != nil {
+	auth, err := e.prepareExecution(ctx, tf, options)
+	if err != nil {
 		return err
 	}
 
 	// Create Terraform config after setting registry and backend authentication.
-	backend, err := e.generateConfig(ctx, tf, options, skipOutputMappingValidation)
+	backend, err := e.generateConfig(ctx, tf, options, auth, skipOutputMappingValidation)
 	if err != nil {
 		return err
 	}
@@ -165,8 +177,16 @@ func (e *executor) Delete(ctx context.Context, options Options) error {
 	stateLockTimeout := getStateLockTimeout(options.StateLockTimeout)
 	if backend.kubernetesSecretName == "" {
 		// Native cloud backends handle missing state, locking and permissions.
-		// Retain the resulting state object; never delete the user's storage.
-		return initAndDestroy(ctx, tf, stateLockTimeout)
+		if err := initAndDestroy(ctx, tf, stateLockTimeout); err != nil {
+			return err
+		}
+
+		// Terraform leaves an empty state object behind after destroy. Remove it so deleting a
+		// Radius resource does not accumulate orphaned objects in the user's bucket or container.
+		// This is best effort: the resources are already destroyed, so a cleanup failure must not
+		// fail the delete. Operators can remove leftovers using the logged state key.
+		e.deleteCloudState(ctx, options.EnvConfig.TerraformBackend, auth, backend.cloudStateKey)
+		return nil
 	}
 
 	// Before running terraform init and destroy, ensure that the Terraform state file storage source exists.
@@ -228,10 +248,12 @@ func (e *executor) GetRecipeMetadata(ctx context.Context, options Options) (map[
 	}, nil
 }
 
-// prepareExecution merges all process configuration once, before module fetching and init.
-func (e executor) prepareExecution(ctx context.Context, tf *tfexec.Terraform, options Options) error {
+// prepareExecution merges all process configuration once, before module fetching and init. It returns
+// any non-secret backend authentication to be rendered into the generated backend configuration.
+func (e executor) prepareExecution(ctx context.Context, tf *tfexec.Terraform, options Options) (backends.CloudBackendAuth, error) {
+	var auth backends.CloudBackendAuth
 	if options.EnvConfig == nil {
-		return nil
+		return auth, nil
 	}
 
 	// Populate envVars with the environment variables from current process
@@ -252,10 +274,10 @@ func (e executor) prepareExecution(ctx context.Context, tf *tfexec.Terraform, op
 					envVarUpdate = true
 					envVars[secretName] = secretValue
 				} else {
-					return fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)
+					return auth, fmt.Errorf("missing secret key in secret store id: %s", secretReference.Source)
 				}
 			} else {
-				return fmt.Errorf("missing secret source: %s", secretReference.Source)
+				return auth, fmt.Errorf("missing secret source: %s", secretReference.Source)
 			}
 		}
 	}
@@ -271,7 +293,7 @@ func (e executor) prepareExecution(ctx context.Context, tf *tfexec.Terraform, op
 			options.Secrets,
 		)
 		if err != nil {
-			return err
+			return auth, err
 		}
 		if rcPath != "" {
 			envVarUpdate = true
@@ -281,18 +303,20 @@ func (e executor) prepareExecution(ctx context.Context, tf *tfexec.Terraform, op
 
 	// Set the environment variables for the Terraform process
 	if options.EnvConfig.TerraformBackend != nil {
-		if err := e.setBackendEnvironment(ctx, options.EnvConfig.TerraformBackend, envVars); err != nil {
-			return err
+		var err error
+		auth, err = e.resolveBackendAuth(ctx, options.EnvConfig.TerraformBackend, envVars)
+		if err != nil {
+			return auth, err
 		}
 		envVarUpdate = true
 	}
 	if envVarUpdate {
 		if err := tf.SetEnv(envVars); err != nil {
-			return fmt.Errorf("failed to set environment variables: %w", err)
+			return auth, fmt.Errorf("failed to set environment variables: %w", err)
 		}
 	}
 
-	return nil
+	return auth, nil
 }
 
 // splitEnvVar splits a slice of environment variables into a map of keys and values.
@@ -309,7 +333,7 @@ func splitEnvVar(envVars []string) map[string]string {
 }
 
 // generateConfig generates Terraform configuration with required inputs for the module, providers and backend to be initialized and applied.
-func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options, validationMode outputMappingValidationMode) (*backendResult, error) {
+func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, options Options, auth backends.CloudBackendAuth, validationMode outputMappingValidationMode) (*backendResult, error) {
 	logger := ucplog.FromContextOrDiscard(ctx)
 	workingDir := tf.WorkingDir()
 
@@ -339,7 +363,7 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 
 	var backendBuilder backends.Builder
 	if options.EnvConfig != nil && options.EnvConfig.TerraformBackend != nil {
-		backendBuilder = backends.CloudBackend{Settings: options.EnvConfig.TerraformBackend}
+		backendBuilder = backends.CloudBackend{Settings: options.EnvConfig.TerraformBackend, Auth: auth}
 	} else {
 		kubernetesClient, err := e.kubernetesClients.ClientGoClient()
 		if err != nil {
@@ -359,6 +383,13 @@ func (e *executor) generateConfig(ctx context.Context, tf *tfexec.Terraform, opt
 		if secret, ok := backendMap["secret_suffix"]; ok {
 			result.kubernetesSecretName = backends.KubernetesBackendNamePrefix + secret.(string)
 		}
+	}
+	// The state key is an opaque hash, so record it: it is the only way an operator can map an
+	// object in their bucket or container back to a Radius resource. It holds no credential.
+	if backendType, key := backends.StateKey(backendConfig); key != "" {
+		result.cloudBackendType = backendType
+		result.cloudStateKey = key
+		logger.Info(fmt.Sprintf("Using Terraform %s backend with state key %q", backendType, key))
 	}
 
 	// Add recipe context parameter to the generated Terraform config's module parameters.

@@ -102,12 +102,12 @@ func toTerraformBackendDataModel(src TerraformBackendClassification) (*datamodel
 	switch b := src.(type) {
 	case *TerraformS3Backend:
 		backend = &datamodel.TerraformBackend{
-			Type: "s3", Bucket: to.String(b.Bucket), Region: to.String(b.Region), KeyPrefix: b.KeyPrefix,
+			Type: "s3", Bucket: to.String(b.Bucket), Region: to.String(b.Region), KeyPrefix: to.String(b.KeyPrefix),
 		}
 	case *TerraformAzureRMBackend:
 		backend = &datamodel.TerraformBackend{
 			Type: "azurerm", StorageAccountName: to.String(b.StorageAccountName),
-			ContainerName: to.String(b.ContainerName), KeyPrefix: b.KeyPrefix,
+			ContainerName: to.String(b.ContainerName), KeyPrefix: to.String(b.KeyPrefix),
 		}
 	default:
 		return nil, fmt.Errorf("backend.type must be s3 or azurerm")
@@ -124,11 +124,11 @@ func fromTerraformBackendDataModel(b *datamodel.TerraformBackend) TerraformBacke
 	}
 	switch b.Type {
 	case "s3":
-		return &TerraformS3Backend{Type: &b.Type, Bucket: &b.Bucket, Region: &b.Region, KeyPrefix: b.KeyPrefix}
+		return &TerraformS3Backend{Type: &b.Type, Bucket: &b.Bucket, Region: &b.Region, KeyPrefix: &b.KeyPrefix}
 	case "azurerm":
-		return &TerraformAzureRMBackend{Type: &b.Type, StorageAccountName: &b.StorageAccountName, ContainerName: &b.ContainerName, KeyPrefix: b.KeyPrefix}
+		return &TerraformAzureRMBackend{Type: &b.Type, StorageAccountName: &b.StorageAccountName, ContainerName: &b.ContainerName, KeyPrefix: &b.KeyPrefix}
 	default:
-		return &TerraformBackend{Type: &b.Type, KeyPrefix: b.KeyPrefix}
+		return &TerraformBackend{Type: &b.Type, KeyPrefix: &b.KeyPrefix}
 	}
 }
 

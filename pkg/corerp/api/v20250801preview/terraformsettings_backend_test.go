@@ -27,9 +27,7 @@ import (
 func TestTerraformSettingsBackendConversion(t *testing.T) {
 	for _, backend := range []string{
 		`null`,
-		`{"type":"s3","bucket":"states","region":"us-west-2"}`,
 		`{"type":"s3","bucket":"states","region":"us-west-2","keyPrefix":"team/install"}`,
-		`{"type":"azurerm","storageAccountName":"states","containerName":"radius"}`,
 		`{"type":"azurerm","storageAccountName":"states","containerName":"radius","keyPrefix":"radius"}`,
 	} {
 		t.Run(backend, func(t *testing.T) {
@@ -42,9 +40,7 @@ func TestTerraformSettingsBackendConversion(t *testing.T) {
 				require.Nil(t, actual)
 			} else {
 				require.NoError(t, actual.Validate())
-				if actual.KeyPrefix == nil {
-					require.Equal(t, "radius", actual.EffectiveKeyPrefix())
-				}
+				require.NotEmpty(t, actual.KeyPrefix)
 			}
 			var roundtrip TerraformSettingsResource
 			require.NoError(t, roundtrip.ConvertFrom(dm))

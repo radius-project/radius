@@ -26,6 +26,7 @@ import (
 	"github.com/radius-project/radius/pkg/components/secret/inmemory"
 	"github.com/radius-project/radius/pkg/components/secret/secretprovider"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/sdk"
 	"github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/stretchr/testify/require"
@@ -37,27 +38,31 @@ func TestBackendUsesRegisteredUCPCredentials(t *testing.T) {
 		credentials.AzureServicePrincipalCredentialKind, credentials.AzureWorkloadIdentityCredentialKind,
 	} {
 		t.Run(kind, func(t *testing.T) {
-			backend := &datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2"}
+			backend := &datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2", KeyPrefix: "radius"}
 			path := "/planes/aws/aws/providers/System.AWS/credentials/default"
 			var registered any
 			var rotated any
-			var envKey, initialValue, rotatedValue string
+			var initialValue, rotatedValue string
+			// Secret-bearing kinds land in the environment; identity kinds land in the backend block.
+			var read func(map[string]string, backends.CloudBackendAuth) string
 			switch kind {
 			case credentials.AWSAccessKeyCredentialKind:
 				registered = backendTestAWSCredential(false)
 				changed := backendTestAWSCredential(false)
 				changed.AccessKeyCredential.AccessKeyID = "rotated-access"
 				rotated = changed
-				envKey, initialValue, rotatedValue = "AWS_ACCESS_KEY_ID", "registered-access", "rotated-access"
+				initialValue, rotatedValue = "registered-access", "rotated-access"
+				read = func(env map[string]string, _ backends.CloudBackendAuth) string { return env["AWS_ACCESS_KEY_ID"] }
 			case credentials.AWSIRSACredentialKind:
 				registered = backendTestAWSCredential(true)
 				changed := backendTestAWSCredential(true)
 				initialValue = changed.IRSACredential.RoleARN
 				changed.IRSACredential.RoleARN += "-rotated"
 				rotated = changed
-				envKey, rotatedValue = "AWS_ROLE_ARN", changed.IRSACredential.RoleARN
+				rotatedValue = changed.IRSACredential.RoleARN
+				read = func(_ map[string]string, auth backends.CloudBackendAuth) string { return auth.AWSRoleARN }
 			default:
-				backend = &datamodel.TerraformBackend{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius"}
+				backend = &datamodel.TerraformBackend{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius", KeyPrefix: "radius"}
 				path = "/planes/azure/azurecloud/providers/System.Azure/credentials/default"
 				wi := kind == credentials.AzureWorkloadIdentityCredentialKind
 				registered = backendTestAzureCredential(wi)
@@ -68,7 +73,12 @@ func TestBackendUsesRegisteredUCPCredentials(t *testing.T) {
 					changed.ServicePrincipal.ClientID = "rotated-client"
 				}
 				rotated = changed
-				envKey, initialValue, rotatedValue = "ARM_CLIENT_ID", "registered-client", "rotated-client"
+				initialValue, rotatedValue = "registered-client", "rotated-client"
+				if wi {
+					read = func(_ map[string]string, auth backends.CloudBackendAuth) string { return auth.AzureClientID }
+				} else {
+					read = func(env map[string]string, _ backends.CloudBackendAuth) string { return env["ARM_CLIENT_ID"] }
+				}
 			}
 			requests := make(chan string, 10)
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -88,17 +98,20 @@ func TestBackendUsesRegisteredUCPCredentials(t *testing.T) {
 				data, err := json.Marshal(value)
 				require.NoError(t, err)
 				require.NoError(t, store.Save(t.Context(), "backend-credentials", data))
-				require.NoError(t, e.setBackendEnvironment(t.Context(), backend, env))
+				auth, err := e.resolveBackendAuth(t.Context(), backend, env)
+				require.NoError(t, err)
 				require.Equal(t, path, <-requests)
-				require.Equal(t, []string{initialValue, rotatedValue}[i], env[envKey])
+				require.Equal(t, []string{initialValue, rotatedValue}[i], read(env, auth))
 			}
 			for _, malformed := range []string{`{`, `{}`} {
 				require.NoError(t, store.Save(t.Context(), "backend-credentials", []byte(malformed)))
-				require.Error(t, e.setBackendEnvironment(t.Context(), backend, env))
+				_, err := e.resolveBackendAuth(t.Context(), backend, env)
+				require.Error(t, err)
 				require.Equal(t, path, <-requests)
 			}
 			require.NoError(t, store.Delete(t.Context(), "backend-credentials"))
-			require.Error(t, e.setBackendEnvironment(t.Context(), backend, env))
+			_, err = e.resolveBackendAuth(t.Context(), backend, env)
+			require.Error(t, err)
 			require.Equal(t, path, <-requests)
 		})
 	}

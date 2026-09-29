@@ -56,23 +56,24 @@ type TerraformSettingsResourceProperties struct {
 
 // TerraformBackend is a cloud state location, without authentication material.
 type TerraformBackend struct {
-	Type               string  `json:"type"`
-	Bucket             string  `json:"bucket,omitempty"`
-	Region             string  `json:"region,omitempty"`
-	StorageAccountName string  `json:"storageAccountName,omitempty"`
-	ContainerName      string  `json:"containerName,omitempty"`
-	KeyPrefix          *string `json:"keyPrefix,omitempty"`
-}
+	Type               string `json:"type"`
+	Bucket             string `json:"bucket,omitempty"`
+	Region             string `json:"region,omitempty"`
+	StorageAccountName string `json:"storageAccountName,omitempty"`
+	ContainerName      string `json:"containerName,omitempty"`
 
-// EffectiveKeyPrefix returns the default prefix when no prefix was supplied.
-func (b *TerraformBackend) EffectiveKeyPrefix() string {
-	if b.KeyPrefix == nil {
-		return "radius"
-	}
-	return *b.KeyPrefix
+	// KeyPrefix namespaces state keys within the storage location. It is required: the state key is
+	// derived only from environment, application and resource names, so two Radius installations that
+	// share storage would otherwise write the same key for equally named resources.
+	KeyPrefix string `json:"keyPrefix"`
 }
 
 var backendKeyPrefixPattern = regexp.MustCompile(`^[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*$`)
+
+// Azure storage naming rules, applied because both names are interpolated into the blob endpoint
+// URL that post-destroy state cleanup targets.
+var azureStorageAccountNamePattern = regexp.MustCompile(`^[a-z0-9]{3,24}$`)
+var azureContainerNamePattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])$`)
 
 // Validate rejects unknown variants, cross-cloud fields and ambiguous state prefixes.
 func (b *TerraformBackend) Validate() error {
@@ -80,8 +81,8 @@ func (b *TerraformBackend) Validate() error {
 		return nil
 	}
 	// Both clouds use S3's stricter limit: 1024 bytes minus "/" + 40 hex digits + ".tfstate.tflock".
-	if len(b.EffectiveKeyPrefix()) > 968 || !backendKeyPrefixPattern.MatchString(b.EffectiveKeyPrefix()) {
-		return fmt.Errorf("backend.keyPrefix must be 1-968 characters with nonempty slash-separated segments of letters, digits, underscores or hyphens")
+	if len(b.KeyPrefix) > 968 || !backendKeyPrefixPattern.MatchString(b.KeyPrefix) {
+		return fmt.Errorf("backend.keyPrefix is required and must be 1-968 characters with nonempty slash-separated segments of letters, digits, underscores or hyphens")
 	}
 	switch b.Type {
 	case "s3":
@@ -100,20 +101,29 @@ func (b *TerraformBackend) Validate() error {
 		if b.Bucket != "" || b.Region != "" {
 			return fmt.Errorf("azurerm backend cannot specify bucket or region")
 		}
+		// These names are interpolated into the blob endpoint URL used for state cleanup, so
+		// constrain them to Azure's own naming rules rather than accepting anything non-empty.
+		// A stray "/" or "@" would otherwise change the authority or path of that URL.
+		if !azureStorageAccountNamePattern.MatchString(b.StorageAccountName) {
+			return fmt.Errorf("backend.storageAccountName must be 3-24 lowercase letters or digits")
+		}
+		if !azureContainerNamePattern.MatchString(b.ContainerName) {
+			return fmt.Errorf("backend.containerName must be 3-63 lowercase letters, digits or hyphens, and must start and end with a letter or digit")
+		}
 	default:
 		return fmt.Errorf("backend.type must be s3 or azurerm")
 	}
 	return nil
 }
 
-// SameLocation compares effective state locations, treating the default prefix identically.
+// SameLocation compares effective state locations.
 func (b *TerraformBackend) SameLocation(other *TerraformBackend) bool {
 	if b == nil || other == nil {
 		return b == other
 	}
 	return b.Type == other.Type && b.Bucket == other.Bucket && b.Region == other.Region &&
 		b.StorageAccountName == other.StorageAccountName && b.ContainerName == other.ContainerName &&
-		b.EffectiveKeyPrefix() == other.EffectiveKeyPrefix()
+		b.KeyPrefix == other.KeyPrefix
 }
 
 // TerraformrcConfig represents .terraformrc settings.
