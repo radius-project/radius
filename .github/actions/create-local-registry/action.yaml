@@ -42,50 +42,29 @@ runs:
       if: ${{ inputs.secure == 'true' }}
       shell: bash
       run: |
-        create_openssl_cfg() {
-          CFG=$(
-            cat <<EOF
-        [req]
-        distinguished_name = subject
-        x509_extensions    = x509_ext
-        prompt             = no
-
-        [subject]
-        CN = localhost
-
-        [x509_ext]
-        basicConstraints        = critical, CA:TRUE
-        subjectKeyIdentifier    = hash
-        authorityKeyIdentifier  = keyid:always, issuer:always
-        keyUsage                = critical, cRLSign, digitalSignature, keyCertSign
-        nsComment               = "OpenSSL Generated Certificate"
-        subjectAltName          = @alt_names
-
-        [alt_names]
-        DNS.1 = ${INPUT_REGISTRY_NAME}
-        DNS.2 = ${INPUT_REGISTRY_SERVER}
-        EOF
-          )
-          echo "$CFG"
-        }
-
+        set -euo pipefail
+        if [[ ! "${INPUT_REGISTRY_NAME}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ||
+              ! "${INPUT_REGISTRY_SERVER}" =~ ^[A-Za-z0-9][A-Za-z0-9.-]*$ ]]; then
+          echo "::error::Local registry names must be DNS hostnames"
+          exit 1
+        fi
         TEMP_CERT_DIR="${STEPS_CREATE_TEMP_CERT_DIR_OUTPUTS_TEMP_CERT_DIR}"
-
-        pushd "${TEMP_CERT_DIR}"
-        # Create the directory for the certificates
-        mkdir -p "certs/${INPUT_REGISTRY_SERVER}"
-
-        echo "==== Generate the openssl config"
-        create_openssl_cfg >req.cnf
+        mkdir -p "${TEMP_CERT_DIR}/certs/${INPUT_REGISTRY_SERVER}"
 
         echo "==== Create the self signed certificate certificate and client key files"
         openssl req -x509 \
           -nodes \
           -days 365 \
           -newkey rsa:4096 \
-          -keyout "certs/${INPUT_REGISTRY_SERVER}/client.key" \
-          -out "certs/${INPUT_REGISTRY_SERVER}/client.crt" \
-          -config req.cnf \
+          -subj "/CN=localhost" \
+          -addext "basicConstraints=critical,CA:TRUE" \
+          -addext "subjectKeyIdentifier=hash" \
+          -addext "authorityKeyIdentifier=keyid:always,issuer:always" \
+          -addext "keyUsage=critical,cRLSign,digitalSignature,keyCertSign" \
+          -addext "nsComment=OpenSSL Generated Certificate" \
+          -addext "subjectAltName=DNS:${INPUT_REGISTRY_NAME},DNS:${INPUT_REGISTRY_SERVER}" \
+          -keyout "${TEMP_CERT_DIR}/certs/${INPUT_REGISTRY_SERVER}/client.key" \
+          -out "${TEMP_CERT_DIR}/certs/${INPUT_REGISTRY_SERVER}/client.crt" \
           -sha256
       env:
         INPUT_REGISTRY_NAME: ${{ inputs.registry-name }}
