@@ -98,7 +98,7 @@ func TestBackendCredentialFetchAndEnvironment(t *testing.T) {
 				require.Equal(t, "user-value", env["KEEP"])
 				require.Equal(t, "private-registry", env[envTFCLIConfigFile])
 				// ARM_ENVIRONMENT selects the Azure cloud rather than an authentication mode, so
-				// clearing it would silently retarget the backend and providers at public Azure.
+				// clearing it would silently redirect the backend and providers to public Azure.
 				require.Equal(t, "usgovernment", env["ARM_ENVIRONMENT"])
 
 				if federated {
