@@ -17,6 +17,18 @@ assert_contains() {
     [[ "${actual}" == *"${expected}"* ]] || fail "expected '${actual}' to contain '${expected}'"
 }
 
+assert_required_values() {
+    local value
+    for value in \
+        global.azureWorkloadIdentity.enabled=true \
+        global.aws.irsa.enabled=true \
+        database.enabled=false \
+        de.resources.requests.memory=256Mi \
+        de.resources.limits.memory=512Mi; do
+        assert_contains " $1 " " --set ${value} "
+    done
+}
+
 run_matching_version_case() (
     local initial_irsa_state="$1"
     local expect_upgrade="$2"
@@ -76,9 +88,7 @@ run_matching_version_case() (
     if [[ "${expect_upgrade}" == "true" ]]; then
         [[ -n "${upgrade_args}" ]] || fail "expected matching-version reconciliation to run"
         assert_contains "${upgrade_args}" "--skip-preflight"
-        assert_contains "${upgrade_args}" "global.azureWorkloadIdentity.enabled=true"
-        assert_contains "${upgrade_args}" "global.aws.irsa.enabled=true"
-        assert_contains "${upgrade_args}" "database.enabled=false"
+        assert_required_values "${upgrade_args}"
     elif [[ -n "${upgrade_args}" ]]; then
         fail "did not expect an upgrade when IRSA was already enabled: ${upgrade_args}"
     fi
@@ -86,8 +96,39 @@ run_matching_version_case() (
     [[ -s skip-delete-resources-list.txt ]] || fail "expected the skip-resources list to be saved"
 )
 
+run_install_or_upgrade_case() (
+    local operation="$1" calls=0
+
+    # shellcheck source=/dev/null
+    source "${SCRIPT_DIR}/manage-radius-installation.sh"
+
+    # shellcheck disable=SC2329 # Invoked indirectly by the sourced script.
+    rad() {
+        [[ "$1 $2" == "${operation} kubernetes" ]] ||
+            fail "unexpected rad invocation: $*"
+        [[ $# -eq 12 ]] || fail "expected only the five required --set flags"
+        assert_required_values "$*"
+        calls=$((calls + 1))
+    }
+
+    # shellcheck disable=SC2329 # Invoked indirectly by the sourced script.
+    verify_manifests_registered() {
+        return 0
+    }
+
+    # shellcheck disable=SC2329 # Invoked indirectly by the sourced script.
+    save_skip_resources_list() {
+        return 0
+    }
+
+    "${operation}_radius"
+    [[ "${calls}" -eq 1 ]] || fail "expected exactly one ${operation}"
+)
+
 run_matching_version_case "false" "true"
 run_matching_version_case "true" "false"
 run_matching_version_case "error" "false"
+run_install_or_upgrade_case "install"
+run_install_or_upgrade_case "upgrade"
 
 echo "manage-radius-installation tests passed"
