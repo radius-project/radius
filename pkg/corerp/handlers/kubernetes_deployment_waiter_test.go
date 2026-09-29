@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
+	appsv1client "k8s.io/client-go/kubernetes/typed/apps/v1"
 )
 
 var testDeployment = &v1.Deployment{
@@ -58,6 +59,46 @@ var testDeployment = &v1.Deployment{
 			},
 		},
 	},
+}
+
+type contextCheckingClientset struct {
+	*fake.Clientset
+	appsV1 appsv1client.AppsV1Interface
+}
+
+func newContextCheckingClientset(clientset *fake.Clientset) *contextCheckingClientset {
+	return &contextCheckingClientset{
+		Clientset: clientset,
+		appsV1: &contextCheckingAppsV1{
+			AppsV1Interface: clientset.AppsV1(),
+		},
+	}
+}
+
+func (clientset *contextCheckingClientset) AppsV1() appsv1client.AppsV1Interface {
+	return clientset.appsV1
+}
+
+type contextCheckingAppsV1 struct {
+	appsv1client.AppsV1Interface
+}
+
+func (client *contextCheckingAppsV1) Deployments(namespace string) appsv1client.DeploymentInterface {
+	return &contextCheckingDeployments{
+		DeploymentInterface: client.AppsV1Interface.Deployments(namespace),
+	}
+}
+
+type contextCheckingDeployments struct {
+	appsv1client.DeploymentInterface
+}
+
+func (client *contextCheckingDeployments) Get(ctx context.Context, name string, options metav1.GetOptions) (*v1.Deployment, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	return client.DeploymentInterface.Get(ctx, name, options)
 }
 
 func addReplicaSetToDeployment(t *testing.T, ctx context.Context, clientset *fake.Clientset, deployment *v1.Deployment) *v1.ReplicaSet {
@@ -166,7 +207,7 @@ func TestWaitUntilReady_Timeout(t *testing.T) {
 		},
 	}
 
-	deploymentClient := fake.NewClientset(deployment)
+	deploymentClient := newContextCheckingClientset(fake.NewClientset(deployment))
 
 	handler := kubernetesHandler{
 		client: k8sutil.NewFakeKubeClient(nil),
