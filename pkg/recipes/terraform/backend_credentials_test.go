@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
 	"github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/stretchr/testify/require"
 )
@@ -72,9 +73,9 @@ func TestBackendCredentialFetchAndEnvironment(t *testing.T) {
 				aws := &backendCredentialStub[credentials.AWSCredential]{value: backendTestAWSCredential(federated)}
 				azure := &backendCredentialStub[credentials.AzureCredential]{value: backendTestAzureCredential(federated)}
 				e := executor{awsCredentials: aws, azureCredentials: azure}
-				backend := &datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2"}
+				backend := &datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2", KeyPrefix: "radius"}
 				if cloud == "azurerm" {
-					backend = &datamodel.TerraformBackend{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius"}
+					backend = &datamodel.TerraformBackend{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius", KeyPrefix: "radius"}
 				}
 				env := map[string]string{
 					"KEEP": "user-value", envTFCLIConfigFile: "private-registry",
@@ -83,13 +84,40 @@ func TestBackendCredentialFetchAndEnvironment(t *testing.T) {
 					"ARM_CLIENT_SECRET": "stale", "ARM_OIDC_TOKEN": "stale", "ARM_OIDC_TOKEN_FILE_PATH": "stale",
 					"ARM_ACCESS_KEY": "stale", "ARM_SAS_TOKEN": "stale", "ARM_USE_MSI": "true", "ARM_USE_CLI": "true",
 					"ARM_CLIENT_CERTIFICATE_PATH": "stale", "ARM_CLIENT_SECRET_FILE_PATH": "stale",
-					"ARM_CLIENT_ID_FILE_PATH": "stale",
+					"ARM_CLIENT_ID_FILE_PATH": "stale", "ARM_ENVIRONMENT": "usgovernment",
 				}
+				// Identity modes write nothing, so the provider environment must survive untouched.
+				unchanged := maps.Clone(env)
+
+				var auth backends.CloudBackendAuth
 				for range 2 {
-					require.NoError(t, e.setBackendEnvironment(t.Context(), backend, env))
+					var err error
+					auth, err = e.resolveBackendAuth(t.Context(), backend, env)
+					require.NoError(t, err)
 				}
 				require.Equal(t, "user-value", env["KEEP"])
 				require.Equal(t, "private-registry", env[envTFCLIConfigFile])
+				// ARM_ENVIRONMENT selects the Azure cloud rather than an authentication mode, so
+				// clearing it would silently retarget the backend and providers at public Azure.
+				require.Equal(t, "usgovernment", env["ARM_ENVIRONMENT"])
+
+				if federated {
+					require.Equal(t, unchanged, env, "identity credentials must not touch the shared provider environment")
+					if cloud == "s3" {
+						require.Equal(t, backends.CloudBackendAuth{AWSRoleARN: aws.value.IRSACredential.RoleARN}, auth)
+					} else {
+						require.Equal(t, backends.CloudBackendAuth{AzureClientID: "registered-client", AzureTenantID: "registered-tenant", AzureEnvironment: "usgovernment"}, auth)
+					}
+					return
+				}
+
+				// The environment carries the secret, but the resolved cloud still has to reach
+				// state cleanup so it deletes from the endpoint Terraform wrote to.
+				expected := backends.CloudBackendAuth{}
+				if cloud == "azurerm" {
+					expected.AzureEnvironment = "usgovernment"
+				}
+				require.Equal(t, expected, auth, "secret-bearing credentials are delivered through the environment")
 				if cloud == "s3" {
 					require.Equal(t, []string{credentials.AWSPublic, credentials.AWSPublic}, aws.planes)
 					require.Equal(t, []string{"default", "default"}, aws.names)
@@ -97,18 +125,11 @@ func TestBackendCredentialFetchAndEnvironment(t *testing.T) {
 					require.Equal(t, "stale", env["ARM_CLIENT_SECRET"], "other cloud must be unchanged")
 					require.NotContains(t, env, "AWS_SESSION_TOKEN")
 					require.NotContains(t, env, "AWS_PROFILE")
+					require.NotContains(t, env, "AWS_WEB_IDENTITY_TOKEN_FILE")
+					require.NotContains(t, env, "AWS_ROLE_ARN")
 					require.Equal(t, os.DevNull, env["AWS_CONFIG_FILE"])
-					if federated {
-						require.NotContains(t, env, "AWS_ACCESS_KEY_ID")
-						require.NotContains(t, env, "AWS_SECRET_ACCESS_KEY")
-						require.Equal(t, awsBackendTokenFile, env["AWS_WEB_IDENTITY_TOKEN_FILE"])
-						require.Equal(t, aws.value.IRSACredential.RoleARN, env["AWS_ROLE_ARN"])
-					} else {
-						require.Equal(t, "registered-access", env["AWS_ACCESS_KEY_ID"])
-						require.Equal(t, "registered-secret", env["AWS_SECRET_ACCESS_KEY"])
-						require.NotContains(t, env, "AWS_WEB_IDENTITY_TOKEN_FILE")
-						require.NotContains(t, env, "AWS_ROLE_ARN")
-					}
+					require.Equal(t, "registered-access", env["AWS_ACCESS_KEY_ID"])
+					require.Equal(t, "registered-secret", env["AWS_SECRET_ACCESS_KEY"])
 				} else {
 					require.Equal(t, []string{credentials.AzureCloud, credentials.AzureCloud}, azure.planes)
 					require.Equal(t, []string{"default", "default"}, azure.names)
@@ -116,20 +137,13 @@ func TestBackendCredentialFetchAndEnvironment(t *testing.T) {
 					require.Equal(t, "stale", env["AWS_SESSION_TOKEN"], "other cloud must be unchanged")
 					require.Equal(t, "registered-client", env["ARM_CLIENT_ID"])
 					require.Equal(t, "registered-tenant", env["ARM_TENANT_ID"])
+					require.Equal(t, "registered-secret", env["ARM_CLIENT_SECRET"])
 					require.Equal(t, "true", env["ARM_USE_AZUREAD"])
 					require.Equal(t, "false", env["ARM_USE_MSI"])
 					require.Equal(t, "false", env["ARM_USE_CLI"])
-					for _, key := range []string{"ARM_ACCESS_KEY", "ARM_SAS_TOKEN", "ARM_OIDC_TOKEN", "ARM_CLIENT_CERTIFICATE_PATH", "ARM_CLIENT_SECRET_FILE_PATH", "ARM_CLIENT_ID_FILE_PATH"} {
+					require.Equal(t, "false", env["ARM_USE_OIDC"])
+					for _, key := range []string{"ARM_ACCESS_KEY", "ARM_SAS_TOKEN", "ARM_OIDC_TOKEN", "ARM_OIDC_TOKEN_FILE_PATH", "ARM_CLIENT_CERTIFICATE_PATH", "ARM_CLIENT_SECRET_FILE_PATH", "ARM_CLIENT_ID_FILE_PATH"} {
 						require.NotContains(t, env, key)
-					}
-					if federated {
-						require.Equal(t, "true", env["ARM_USE_OIDC"])
-						require.Equal(t, azureBackendTokenFile, env["ARM_OIDC_TOKEN_FILE_PATH"])
-						require.NotContains(t, env, "ARM_CLIENT_SECRET")
-					} else {
-						require.Equal(t, "false", env["ARM_USE_OIDC"])
-						require.Equal(t, "registered-secret", env["ARM_CLIENT_SECRET"])
-						require.NotContains(t, env, "ARM_OIDC_TOKEN_FILE_PATH")
 					}
 				}
 			})
@@ -146,7 +160,7 @@ func TestBackendCredentialErrors(t *testing.T) {
 	} {
 		env := map[string]string{"UNCHANGED": "value"}
 		before := maps.Clone(env)
-		err := setAWSBackendEnvironment(c, env)
+		_, err := setAWSBackendAuth(c, env)
 		require.Error(t, err)
 		require.NotContains(t, err.Error(), "secret-marker")
 		require.Equal(t, before, env)
@@ -160,7 +174,7 @@ func TestBackendCredentialErrors(t *testing.T) {
 	} {
 		env := map[string]string{"UNCHANGED": "value"}
 		before := maps.Clone(env)
-		err := setAzureBackendEnvironment(c, env)
+		_, err := setAzureBackendAuth(c, env)
 		require.Error(t, err)
 		require.NotContains(t, err.Error(), "secret-marker")
 		require.Equal(t, before, env)
@@ -171,10 +185,10 @@ func TestBackendCredentialErrors(t *testing.T) {
 		azureCredentials: &backendCredentialStub[credentials.AzureCredential]{err: fetchErr},
 	}
 	for _, backend := range []*datamodel.TerraformBackend{
-		{Type: "s3", Bucket: "states", Region: "us-west-2"},
-		{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius"},
+		{Type: "s3", Bucket: "states", Region: "us-west-2", KeyPrefix: "radius"},
+		{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius", KeyPrefix: "radius"},
 	} {
-		err := e.setBackendEnvironment(t.Context(), backend, map[string]string{})
+		_, err := e.resolveBackendAuth(t.Context(), backend, map[string]string{})
 		require.ErrorIs(t, err, fetchErr)
 		require.Contains(t, err.Error(), backend.Type+" backend")
 	}
@@ -190,7 +204,7 @@ func TestAWSBackendRejectsEndpointOverrides(t *testing.T) {
 						"AWS_ACCESS_KEY_ID": "existing-access", "ARM_CLIENT_SECRET": "other-cloud",
 					}
 					before := maps.Clone(env)
-					err := setAWSBackendEnvironment(backendTestAWSCredential(federated), env)
+					_, err := setAWSBackendAuth(backendTestAWSCredential(federated), env)
 					require.ErrorContains(t, err, key)
 					require.Contains(t, err.Error(), "s3 backend does not support endpoint override")
 					require.NotContains(t, err.Error(), "private-value")
@@ -208,7 +222,8 @@ func TestAWSBackendAllowsEmptyEndpointOverrides(t *testing.T) {
 			for _, key := range awsBackendTestEndpointVariables {
 				env[key] = ""
 			}
-			require.NoError(t, setAWSBackendEnvironment(backendTestAWSCredential(federated), env))
+			auth, err := setAWSBackendAuth(backendTestAWSCredential(federated), env)
+			require.NoError(t, err)
 			for _, key := range awsBackendTestEndpointVariables {
 				require.Contains(t, env, key)
 				require.Empty(t, env[key])
@@ -216,10 +231,17 @@ func TestAWSBackendAllowsEmptyEndpointOverrides(t *testing.T) {
 			require.Equal(t, "https://provider.example.com", env["AWS_ENDPOINT_URL_DYNAMODB"])
 			require.Equal(t, "value", env["KEEP"])
 			if federated {
-				require.Equal(t, awsBackendTokenFile, env["AWS_WEB_IDENTITY_TOKEN_FILE"])
+				require.NotEmpty(t, auth.AWSRoleARN)
+				require.NotContains(t, env, "AWS_ACCESS_KEY_ID")
 			} else {
 				require.Equal(t, "registered-access", env["AWS_ACCESS_KEY_ID"])
 			}
 		})
 	}
+}
+
+func TestBackendAuthRejectsUnsupportedBackend(t *testing.T) {
+	e := executor{}
+	_, err := e.resolveBackendAuth(t.Context(), &datamodel.TerraformBackend{Type: "local", KeyPrefix: "radius"}, map[string]string{})
+	require.Error(t, err)
 }

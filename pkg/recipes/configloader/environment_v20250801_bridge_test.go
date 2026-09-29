@@ -128,7 +128,7 @@ func TestGetConfigurationV20250801_TerraformCredentialsAndEnvAndProviderInstalla
 
 func TestGetConfigurationV20250801_TerraformBackend(t *testing.T) {
 	for _, backend := range []v20250801.TerraformBackendClassification{
-		&v20250801.TerraformS3Backend{Bucket: new("states"), Region: new("us-west-2")},
+		&v20250801.TerraformS3Backend{Bucket: new("states"), Region: new("us-west-2"), KeyPrefix: new("radius")},
 		&v20250801.TerraformAzureRMBackend{StorageAccountName: new("states"), ContainerName: new("radius"), KeyPrefix: new("team/install")},
 	} {
 		t.Run(fmt.Sprintf("%T", backend), func(t *testing.T) {
@@ -151,12 +151,12 @@ func TestGetConfigurationV20250801_TerraformBackend(t *testing.T) {
 				require.Equal(t, "s3", cfg.TerraformBackend.Type)
 				require.Equal(t, "states", cfg.TerraformBackend.Bucket)
 				require.Equal(t, "us-west-2", cfg.TerraformBackend.Region)
-				require.Equal(t, "radius", cfg.TerraformBackend.EffectiveKeyPrefix())
+				require.Equal(t, "radius", cfg.TerraformBackend.KeyPrefix)
 			} else {
 				require.Equal(t, "azurerm", cfg.TerraformBackend.Type)
 				require.Equal(t, "states", cfg.TerraformBackend.StorageAccountName)
 				require.Equal(t, "radius", cfg.TerraformBackend.ContainerName)
-				require.Equal(t, "team/install", cfg.TerraformBackend.EffectiveKeyPrefix())
+				require.Equal(t, "team/install", cfg.TerraformBackend.KeyPrefix)
 			}
 		})
 	}

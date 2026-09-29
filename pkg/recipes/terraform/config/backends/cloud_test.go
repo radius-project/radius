@@ -36,9 +36,9 @@ func TestCloudBackendRendering(t *testing.T) {
 		settings datamodel.TerraformBackend
 		expected map[string]any
 	}{
-		{datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2"},
+		{datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2", KeyPrefix: "radius"},
 			map[string]any{"bucket": "states", "region": "us-west-2", "key": key, "use_lockfile": true}},
-		{datamodel.TerraformBackend{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius"},
+		{datamodel.TerraformBackend{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius", KeyPrefix: "radius"},
 			map[string]any{"storage_account_name": "states", "container_name": "radius", "key": key, "use_azuread_auth": true}},
 	} {
 		t.Run(tt.settings.Type, func(t *testing.T) {
@@ -51,7 +51,7 @@ func TestCloudBackendRendering(t *testing.T) {
 			for _, forbidden := range []string{"secret", "token", "access_key", "dynamodb", "kubernetes"} {
 				require.NotContains(t, string(encoded), forbidden)
 			}
-			tt.settings.KeyPrefix = new("installation/team")
+			tt.settings.KeyPrefix = "installation/team"
 			actual, err = b.BuildBackend(&resource)
 			require.NoError(t, err)
 			require.Equal(t, strings.Replace(key, "radius/", "installation/team/", 1), actual[tt.settings.Type].(map[string]any)["key"])
@@ -62,12 +62,12 @@ func TestCloudBackendRendering(t *testing.T) {
 func TestCloudBackendKeyLengthBoundary(t *testing.T) {
 	_, resource := getTestInputs()
 	for _, settings := range []datamodel.TerraformBackend{
-		{Type: "s3", Bucket: "states", Region: "us-west-2"},
-		{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius"},
+		{Type: "s3", Bucket: "states", Region: "us-west-2", KeyPrefix: "radius"},
+		{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius", KeyPrefix: "radius"},
 	} {
 		t.Run(settings.Type, func(t *testing.T) {
 			prefix := strings.Repeat("a", 968)
-			settings.KeyPrefix = &prefix
+			settings.KeyPrefix = prefix
 			b := CloudBackend{Settings: &settings}
 			actual, err := b.BuildBackend(&resource)
 			require.NoError(t, err)
@@ -81,6 +81,7 @@ func TestCloudBackendKeyLengthBoundary(t *testing.T) {
 			}
 
 			prefix += "a"
+			settings.KeyPrefix = prefix
 			require.ErrorContains(t, settings.Validate(), "backend.keyPrefix")
 			actual, err = b.BuildBackend(&resource)
 			require.ErrorContains(t, err, "backend.keyPrefix")
@@ -91,7 +92,7 @@ func TestCloudBackendKeyLengthBoundary(t *testing.T) {
 
 func TestCloudStateKeyStabilityAndIsolation(t *testing.T) {
 	_, resource := getTestInputs()
-	b := CloudBackend{Settings: &datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2"}}
+	b := CloudBackend{Settings: &datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2", KeyPrefix: "radius"}}
 	first, err := b.BuildBackend(&resource)
 	require.NoError(t, err)
 	key := first["s3"].(map[string]any)["key"]

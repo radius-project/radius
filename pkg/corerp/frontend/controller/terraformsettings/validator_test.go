@@ -36,8 +36,8 @@ import (
 
 func TestValidateRequest(t *testing.T) {
 	for _, backend := range []datamodel.TerraformBackend{
-		{Type: "s3", Bucket: "states", Region: "us-west-2"},
-		{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius"},
+		{Type: "s3", Bucket: "states", Region: "us-west-2", KeyPrefix: "radius"},
+		{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius", KeyPrefix: "radius"},
 	} {
 		t.Run(backend.Type, func(t *testing.T) {
 			old := &datamodel.TerraformSettings{Properties: datamodel.TerraformSettingsResourceProperties{Backend: &backend}}
@@ -49,9 +49,9 @@ func TestValidateRequest(t *testing.T) {
 				reject bool
 			}{
 				{"same", func(*datamodel.TerraformSettings) {}, false},
-				{"explicit default", func(r *datamodel.TerraformSettings) { r.Properties.Backend.KeyPrefix = new("radius") }, false},
+				{"same prefix", func(r *datamodel.TerraformSettings) { r.Properties.Backend.KeyPrefix = "radius" }, false},
 				{"unrelated env", func(r *datamodel.TerraformSettings) { r.Properties.Env = map[string]string{"HELLO": "world"} }, false},
-				{"prefix", func(r *datamodel.TerraformSettings) { r.Properties.Backend.KeyPrefix = new("other") }, true},
+				{"prefix", func(r *datamodel.TerraformSettings) { r.Properties.Backend.KeyPrefix = "other" }, true},
 				{"type", func(r *datamodel.TerraformSettings) { r.Properties.Backend.Type = "other" }, true},
 				{"bucket", func(r *datamodel.TerraformSettings) { r.Properties.Backend.Bucket = "other" }, true},
 				{"region", func(r *datamodel.TerraformSettings) { r.Properties.Backend.Region = "other" }, true},
@@ -121,7 +121,7 @@ func TestValidateRequestPreservesKubernetesDefault(t *testing.T) {
 }
 
 func TestRejectedReplacementDoesNotSave(t *testing.T) {
-	cloud := &datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2"}
+	cloud := &datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2", KeyPrefix: "radius"}
 	for _, method := range []string{http.MethodPut, http.MethodPatch} {
 		for _, tc := range []struct {
 			name    string
@@ -132,9 +132,9 @@ func TestRejectedReplacementDoesNotSave(t *testing.T) {
 			{"null properties", cloud, `{"properties":null}`},
 			{"omitted backend", cloud, `{"properties":{"env":{"HELLO":"world"}}}`},
 			{"removed backend", cloud, `{"properties":{"backend":null}}`},
-			{"different bucket", cloud, `{"properties":{"backend":{"type":"s3","bucket":"other","region":"us-west-2"}}}`},
-			{"Kubernetes to S3", nil, `{"properties":{"backend":{"type":"s3","bucket":"states","region":"us-west-2"}}}`},
-			{"Kubernetes to Azure", nil, `{"properties":{"backend":{"type":"azurerm","storageAccountName":"states","containerName":"radius"}}}`},
+			{"different bucket", cloud, `{"properties":{"backend":{"type":"s3","bucket":"other","region":"us-west-2","keyPrefix":"radius"}}}`},
+			{"Kubernetes to S3", nil, `{"properties":{"backend":{"type":"s3","bucket":"states","region":"us-west-2","keyPrefix":"radius"}}}`},
+			{"Kubernetes to Azure", nil, `{"properties":{"backend":{"type":"azurerm","storageAccountName":"states","containerName":"radius","keyPrefix":"radius"}}}`},
 		} {
 			t.Run(method+"/"+tc.name, func(t *testing.T) {
 				const id = "/planes/radius/local/resourceGroups/test-rg/providers/Radius.Core/terraformSettings/states"

@@ -2282,7 +2282,7 @@
         },
         "keyPrefix": {
           "type": "string",
-          "description": "State key prefix. Defaults to radius. Both clouds allow at most 968 ASCII characters, reserving space for the state key and S3 .tflock suffix within 1024 bytes. Use distinct prefixes for installations sharing storage and resource IDs.",
+          "description": "State key prefix, required. State keys are derived only from environment, application and resource names, so installations that share storage must use distinct prefixes to avoid writing the same key. Both clouds allow at most 968 ASCII characters, reserving space for the state key and S3 .tflock suffix within 1024 bytes.",
           "minLength": 1,
           "maxLength": 968,
           "pattern": "^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$"
@@ -2290,7 +2290,8 @@
       },
       "discriminator": "type",
       "required": [
-        "type"
+        "type",
+        "keyPrefix"
       ]
     },
     "TerraformCredentialConfig": {

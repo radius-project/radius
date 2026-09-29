@@ -179,11 +179,11 @@ model TerraformBackend {
   @doc("The built-in Terraform backend type.")
   type: string;
 
-  @doc("State key prefix. Defaults to radius. Both clouds allow at most 968 ASCII characters, reserving space for the state key and S3 .tflock suffix within 1024 bytes. Use distinct prefixes for installations sharing storage and resource IDs.")
+  @doc("State key prefix, required. State keys are derived only from environment, application and resource names, so installations that share storage must use distinct prefixes to avoid writing the same key. Both clouds allow at most 968 ASCII characters, reserving space for the state key and S3 .tflock suffix within 1024 bytes.")
   @minLength(1)
   @maxLength(968)
   @pattern("^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$")
-  keyPrefix?: string;
+  keyPrefix: string;
 }
 
 @doc("An existing S3 bucket with native S3 lockfile locking.")

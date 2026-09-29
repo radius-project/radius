@@ -844,15 +844,16 @@ type TerraformAzureRMBackend struct {
 	// REQUIRED; The existing blob container name.
 	ContainerName *string
 
+	// REQUIRED; State key prefix, required. State keys are derived only from environment, application and resource names, so
+	// installations that share storage must use distinct prefixes to avoid writing the same key. Both clouds allow at most 968
+	// ASCII characters, reserving space for the state key and S3 .tflock suffix within 1024 bytes.
+	KeyPrefix *string
+
 	// REQUIRED; The existing Azure storage account name.
 	StorageAccountName *string
 
 	// CONSTANT; Field has constant value "azurerm", any specified value is ignored.
 	Type *string
-
-	// State key prefix. Defaults to radius. Both clouds allow at most 968 ASCII characters, reserving space for the state key
-	// and S3 .tflock suffix within 1024 bytes. Use distinct prefixes for installations sharing storage and resource IDs.
-	KeyPrefix *string
 }
 
 // GetTerraformBackend implements the TerraformBackendClassification interface for type TerraformAzureRMBackend.
@@ -866,12 +867,13 @@ func (t *TerraformAzureRMBackend) GetTerraformBackend() *TerraformBackend {
 // TerraformBackend - Terraform state storage location. Authentication uses the selected cloud's default credentials registered
 // in Radius.
 type TerraformBackend struct {
+	// REQUIRED; State key prefix, required. State keys are derived only from environment, application and resource names, so
+	// installations that share storage must use distinct prefixes to avoid writing the same key. Both clouds allow at most 968
+	// ASCII characters, reserving space for the state key and S3 .tflock suffix within 1024 bytes.
+	KeyPrefix *string
+
 	// REQUIRED; The built-in Terraform backend type.
 	Type *string
-
-	// State key prefix. Defaults to radius. Both clouds allow at most 968 ASCII characters, reserving space for the state key
-	// and S3 .tflock suffix within 1024 bytes. Use distinct prefixes for installations sharing storage and resource IDs.
-	KeyPrefix *string
 }
 
 // GetTerraformBackend implements the TerraformBackendClassification interface for type TerraformBackend.
@@ -919,15 +921,16 @@ type TerraformS3Backend struct {
 	// REQUIRED; The existing S3 bucket name.
 	Bucket *string
 
+	// REQUIRED; State key prefix, required. State keys are derived only from environment, application and resource names, so
+	// installations that share storage must use distinct prefixes to avoid writing the same key. Both clouds allow at most 968
+	// ASCII characters, reserving space for the state key and S3 .tflock suffix within 1024 bytes.
+	KeyPrefix *string
+
 	// REQUIRED; The AWS region containing the bucket.
 	Region *string
 
 	// CONSTANT; Field has constant value "s3", any specified value is ignored.
 	Type *string
-
-	// State key prefix. Defaults to radius. Both clouds allow at most 968 ASCII characters, reserving space for the state key
-	// and S3 .tflock suffix within 1024 bytes. Use distinct prefixes for installations sharing storage and resource IDs.
-	KeyPrefix *string
 }
 
 // GetTerraformBackend implements the TerraformBackendClassification interface for type TerraformS3Backend.

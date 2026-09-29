@@ -200,7 +200,7 @@ func TestGenerateConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			_, err = e.generateConfig(ctx, tf, tc.opts, requireValidOutputMappings)
+			_, err = e.generateConfig(ctx, tf, tc.opts, backends.CloudBackendAuth{}, requireValidOutputMappings)
 			require.Error(t, err)
 			require.ErrorContains(t, err, tc.err)
 		})
@@ -224,7 +224,7 @@ func TestGenerateConfigRejectsInvalidOutputMappingBeforeProviderSetup(t *testing
 	}
 
 	e := executor{}
-	_, err = e.generateConfig(t.Context(), tf, options, requireValidOutputMappings)
+	_, err = e.generateConfig(t.Context(), tf, options, backends.CloudBackendAuth{}, requireValidOutputMappings)
 	require.EqualError(t, err, `recipe "test-recipe" for resource type "Test.Resources/widgets": invalid outputs mapping: no declared module output matches outputs["host"] -> "missing"; available module outputs: "endpoint"`)
 }
 
@@ -483,7 +483,7 @@ func TestSetEnvironmentVariables(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			err = e.prepareExecution(t.Context(), tf, tc.opts)
+			_, err = e.prepareExecution(t.Context(), tf, tc.opts)
 
 			if tc.wantErr {
 				require.Error(t, err)
@@ -546,7 +546,7 @@ func TestPrepareExecutionCLIConfig(t *testing.T) {
 			require.NoError(t, err)
 
 			e := executor{}
-			err = e.prepareExecution(t.Context(), tf, tc.opts)
+			_, err = e.prepareExecution(t.Context(), tf, tc.opts)
 			if tc.wantError {
 				require.Error(t, err)
 				return

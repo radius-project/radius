@@ -18,21 +18,27 @@ package terraform
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/logr/funcr"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/radius-project/radius/pkg/components/kubernetesclient/kubernetesclientprovider"
 	"github.com/radius-project/radius/pkg/corerp/datamodel"
 	"github.com/radius-project/radius/pkg/recipes"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/backends"
+	"github.com/radius-project/radius/pkg/recipes/terraform/config/providers"
 	"github.com/radius-project/radius/pkg/ucp/credentials"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/kubernetes/fake"
@@ -140,9 +146,9 @@ func readBackendSnapshots(t *testing.T, path string) []backendExecutionSnapshot 
 
 func cloudExecutionOptions(t *testing.T, cloud string) Options {
 	t.Helper()
-	backend := &datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2"}
+	backend := &datamodel.TerraformBackend{Type: "s3", Bucket: "states", Region: "us-west-2", KeyPrefix: "radius"}
 	if cloud == "azurerm" {
-		backend = &datamodel.TerraformBackend{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius"}
+		backend = &datamodel.TerraformBackend{Type: "azurerm", StorageAccountName: "states", ContainerName: "radius", KeyPrefix: "radius"}
 	}
 	return Options{
 		RootDir: t.TempDir(), StateLockTimeout: "37s",
@@ -168,6 +174,16 @@ func cloudExecutionOptions(t *testing.T, cloud string) Options {
 	}
 }
 
+// backendSessionName derives the expected AWS session name from a rendered state key, so that state
+// access in CloudTrail can be traced back to the Radius resource that caused it.
+func noStateCleanup(_ context.Context, _ *datamodel.TerraformBackend, _ backends.CloudBackendAuth, _ string) error {
+	return nil
+}
+
+func backendSessionName(stateKey string) string {
+	return "radius-tf-backend-" + strings.TrimSuffix(path.Base(stateKey), ".tfstate")
+}
+
 func TestCloudDeployUpdateDeleteProcessEnvironment(t *testing.T) {
 	for _, cloud := range []string{"s3", "azurerm"} {
 		for _, federated := range []bool{false, true} {
@@ -182,7 +198,12 @@ func TestCloudDeployUpdateDeleteProcessEnvironment(t *testing.T) {
 				kube := fake.NewSimpleClientset()
 				kubeProvider := kubernetesclientprovider.KubernetesClientProvider{}
 				kubeProvider.SetClientGoClient(kube)
-				e := executor{awsCredentials: aws, azureCredentials: azure, kubernetesClients: kubeProvider}
+				var cleaned []string
+				e := executor{awsCredentials: aws, azureCredentials: azure, kubernetesClients: kubeProvider,
+					deleteStateObject: func(_ context.Context, settings *datamodel.TerraformBackend, _ backends.CloudBackendAuth, key string) error {
+						cleaned = append(cleaned, settings.Type+":"+key)
+						return nil
+					}}
 				options := cloudExecutionOptions(t, cloud)
 				var logMu sync.Mutex
 				var logs strings.Builder
@@ -198,6 +219,8 @@ func TestCloudDeployUpdateDeleteProcessEnvironment(t *testing.T) {
 				}
 				require.NoError(t, e.Delete(ctx, options))
 				require.Empty(t, kube.Actions(), "cloud executions must not probe or delete Kubernetes state secrets")
+				// Destroy leaves an empty state object behind; deleting the resource must remove it.
+				require.Len(t, cleaned, 1)
 				if cloud == "s3" {
 					require.Len(t, aws.names, 3)
 					require.Empty(t, azure.names)
@@ -219,24 +242,23 @@ func TestCloudDeployUpdateDeleteProcessEnvironment(t *testing.T) {
 					require.Equal(t, "env-secret", env["TEST_SECRET_ENV"], snapshot.Command)
 					require.Contains(t, snapshot.CLIConfig, "registry-token", "registry config is present even during terraform get")
 					require.Contains(t, snapshot.CLIConfig, "https://mirror.example.com/")
-					if cloud == "s3" {
+					if federated {
+						// Identity credentials are rendered into the backend block, so the
+						// environment the recipe's providers see is left exactly as configured.
+						require.Equal(t, "user-access", env["AWS_ACCESS_KEY_ID"])
+						require.Equal(t, "host-session", env["AWS_SESSION_TOKEN"])
+						require.Equal(t, "user-secret", env["ARM_CLIENT_SECRET"])
+						require.Equal(t, "host-storage-key", env["ARM_ACCESS_KEY"])
+					} else if cloud == "s3" {
 						require.NotContains(t, env, "AWS_SESSION_TOKEN")
-						if federated {
-							require.NotContains(t, env, "AWS_ACCESS_KEY_ID")
-							require.Equal(t, awsBackendTokenFile, env["AWS_WEB_IDENTITY_TOKEN_FILE"])
-						} else {
-							require.Equal(t, "registered-access", env["AWS_ACCESS_KEY_ID"])
-							require.Equal(t, "registered-secret", env["AWS_SECRET_ACCESS_KEY"])
-						}
+						require.NotContains(t, env, "AWS_WEB_IDENTITY_TOKEN_FILE")
+						require.Equal(t, "registered-access", env["AWS_ACCESS_KEY_ID"])
+						require.Equal(t, "registered-secret", env["AWS_SECRET_ACCESS_KEY"])
 					} else {
 						require.Equal(t, "registered-client", env["ARM_CLIENT_ID"])
+						require.Equal(t, "registered-secret", env["ARM_CLIENT_SECRET"])
 						require.NotContains(t, env, "ARM_ACCESS_KEY")
-						if federated {
-							require.NotContains(t, env, "ARM_CLIENT_SECRET")
-							require.Equal(t, azureBackendTokenFile, env["ARM_OIDC_TOKEN_FILE_PATH"])
-						} else {
-							require.Equal(t, "registered-secret", env["ARM_CLIENT_SECRET"])
-						}
+						require.NotContains(t, env, "ARM_OIDC_TOKEN_FILE_PATH")
 					}
 					if snapshot.Command == "get" {
 						continue
@@ -250,6 +272,22 @@ func TestCloudDeployUpdateDeleteProcessEnvironment(t *testing.T) {
 						stateKey = backend["key"].(string)
 					}
 					require.Equal(t, stateKey, backend["key"])
+					if federated && cloud == "s3" {
+						assume := backend["assume_role_with_web_identity"].(map[string]any)
+						require.Equal(t, "arn:aws:iam::123456789012:role/radius-state", assume["role_arn"])
+						require.Equal(t, providers.AWSIRSATokenFilePath, assume["web_identity_token_file"])
+						// The session name must attribute state access to a Radius resource in CloudTrail.
+						require.Equal(t, backendSessionName(stateKey), assume["session_name"])
+						require.LessOrEqual(t, len(assume["session_name"].(string)), 64)
+					} else if federated {
+						require.Equal(t, true, backend["use_oidc"])
+						require.Equal(t, "registered-client", backend["client_id"])
+						require.Equal(t, "registered-tenant", backend["tenant_id"])
+						require.Equal(t, providers.AzureOIDCTokenFilePath, backend["oidc_token_file_path"])
+					} else {
+						require.NotContains(t, backend, "assume_role_with_web_identity")
+						require.NotContains(t, backend, "use_oidc")
+					}
 					require.NotContains(t, string(snapshot.Config), "registered-secret")
 					require.NotContains(t, string(snapshot.Config), "registry-token")
 					if snapshot.Command == "apply" || snapshot.Command == "destroy" {
@@ -272,58 +310,49 @@ func TestCloudDeployUpdateDeleteProcessEnvironment(t *testing.T) {
 	}
 }
 
+// Stale ARM file-path selectors must not survive into a ServicePrincipal backend execution, where
+// they would otherwise outrank the registered credential.
 func TestCloudAzureStaleFilePathSelectors(t *testing.T) {
-	for _, federated := range []bool{false, true} {
-		for _, source := range []string{"inherited", "settings"} {
-			t.Run(fmt.Sprintf("%s/federated=%v", source, federated), func(t *testing.T) {
-				snapshotsPath := installBackendTestTerraform(t)
-				options := cloudExecutionOptions(t, "azurerm")
-				stalePath := filepath.Join(t.TempDir(), "stale-credential")
-				require.NoError(t, os.WriteFile(stalePath, []byte("unregistered-value"), 0600))
-				selectors := []string{
-					"ARM_CLIENT_ID_FILE_PATH", "ARM_CLIENT_SECRET_FILE_PATH",
-					"ARM_CLIENT_CERTIFICATE_PATH", "ARM_OIDC_TOKEN_FILE_PATH",
+	for _, source := range []string{"inherited", "settings"} {
+		t.Run(source, func(t *testing.T) {
+			snapshotsPath := installBackendTestTerraform(t)
+			options := cloudExecutionOptions(t, "azurerm")
+			stalePath := filepath.Join(t.TempDir(), "stale-credential")
+			require.NoError(t, os.WriteFile(stalePath, []byte("unregistered-value"), 0600))
+			selectors := []string{
+				"ARM_CLIENT_ID_FILE_PATH", "ARM_CLIENT_SECRET_FILE_PATH",
+				"ARM_CLIENT_CERTIFICATE_PATH", "ARM_OIDC_TOKEN_FILE_PATH",
+			}
+			for _, key := range selectors {
+				t.Setenv(key, stalePath)
+				if source == "settings" {
+					options.EnvConfig.RecipeConfig.Env.AdditionalProperties[key] = stalePath
+					t.Setenv(key, "")
 				}
+			}
+			azure := &backendCredentialStub[credentials.AzureCredential]{value: backendTestAzureCredential(false)}
+			e := executor{azureCredentials: azure}
+			_, err := e.Deploy(t.Context(), options)
+			require.NoError(t, err)
+			var commands []string
+			for _, snapshot := range readBackendSnapshots(t, snapshotsPath) {
+				if snapshot.Command == "version" {
+					continue
+				}
+				commands = append(commands, snapshot.Command)
+				env := snapshot.Environment
+				require.Equal(t, "registered-client", env["ARM_CLIENT_ID"])
+				require.Equal(t, "registered-tenant", env["ARM_TENANT_ID"])
 				for _, key := range selectors {
-					t.Setenv(key, stalePath)
-					if source == "settings" {
-						options.EnvConfig.RecipeConfig.Env.AdditionalProperties[key] = stalePath
-						t.Setenv(key, "")
-					}
+					require.NotContains(t, env, key, snapshot.Command)
 				}
-				azure := &backendCredentialStub[credentials.AzureCredential]{value: backendTestAzureCredential(federated)}
-				e := executor{azureCredentials: azure}
-				_, err := e.Deploy(t.Context(), options)
-				require.NoError(t, err)
-				var commands []string
-				for _, snapshot := range readBackendSnapshots(t, snapshotsPath) {
-					if snapshot.Command == "version" {
-						continue
-					}
-					commands = append(commands, snapshot.Command)
-					env := snapshot.Environment
-					require.Equal(t, "registered-client", env["ARM_CLIENT_ID"])
-					require.Equal(t, "registered-tenant", env["ARM_TENANT_ID"])
-					for _, key := range selectors {
-						if key == "ARM_OIDC_TOKEN_FILE_PATH" && federated {
-							require.Equal(t, azureBackendTokenFile, env[key])
-						} else {
-							require.NotContains(t, env, key, snapshot.Command)
-						}
-					}
-					if federated {
-						require.Equal(t, "true", env["ARM_USE_OIDC"])
-						require.NotContains(t, env, "ARM_CLIENT_SECRET")
-					} else {
-						require.Equal(t, "false", env["ARM_USE_OIDC"])
-						require.Equal(t, "registered-secret", env["ARM_CLIENT_SECRET"])
-					}
-				}
-				require.Contains(t, commands, "get")
-				require.Contains(t, commands, "init")
-				require.Contains(t, commands, "apply")
-			})
-		}
+				require.Equal(t, "false", env["ARM_USE_OIDC"])
+				require.Equal(t, "registered-secret", env["ARM_CLIENT_SECRET"])
+			}
+			require.Contains(t, commands, "get")
+			require.Contains(t, commands, "init")
+			require.Contains(t, commands, "apply")
+		})
 	}
 }
 
@@ -347,7 +376,7 @@ func TestCloudS3RejectsEndpointOverridesBeforeExecution(t *testing.T) {
 						}
 						before := maps.Clone(options.EnvConfig.RecipeConfig.Env.AdditionalProperties)
 						hostValue := os.Getenv(key)
-						e := executor{awsCredentials: &backendCredentialStub[credentials.AWSCredential]{value: backendTestAWSCredential(federated)}}
+						e := executor{awsCredentials: &backendCredentialStub[credentials.AWSCredential]{value: backendTestAWSCredential(federated)}, deleteStateObject: noStateCleanup}
 						var err error
 						if operation == "deploy" {
 							_, err = e.Deploy(t.Context(), options)
@@ -377,7 +406,7 @@ func TestCloudS3EndpointOverridePrecedence(t *testing.T) {
 					t.Setenv(key, "https://inherited.example.com")
 					options.EnvConfig.RecipeConfig.Env.AdditionalProperties[key] = settingsValue
 				}
-				e := executor{awsCredentials: &backendCredentialStub[credentials.AWSCredential]{value: backendTestAWSCredential(federated)}}
+				e := executor{awsCredentials: &backendCredentialStub[credentials.AWSCredential]{value: backendTestAWSCredential(federated)}, deleteStateObject: noStateCleanup}
 				_, err := e.Deploy(t.Context(), options)
 				if settingsValue != "" {
 					require.ErrorContains(t, err, "s3 backend does not support endpoint override")
@@ -398,7 +427,14 @@ func TestCloudS3EndpointOverridePrecedence(t *testing.T) {
 						require.Empty(t, snapshot.Environment[key], snapshot.Command)
 					}
 					if federated {
-						require.Equal(t, awsBackendTokenFile, snapshot.Environment["AWS_WEB_IDENTITY_TOKEN_FILE"])
+						// IRSA delivers nothing through the environment; the role is rendered into
+						// the backend block instead. Asserting the host values survive verbatim is
+						// stronger than inequality, which would pass on an unset variable.
+						require.Equal(t, "host-stale", snapshot.Environment["AWS_WEB_IDENTITY_TOKEN_FILE"], snapshot.Command)
+						require.Equal(t, "host-stale", snapshot.Environment["AWS_ROLE_ARN"], snapshot.Command)
+						if snapshot.Command != "get" {
+							require.Contains(t, string(snapshot.Config), providers.AWSIRSATokenFilePath)
+						}
 					} else {
 						require.Equal(t, "registered-secret", snapshot.Environment["AWS_SECRET_ACCESS_KEY"])
 					}
@@ -439,7 +475,8 @@ func TestNonS3BackendPreservesAWSEndpointOverrides(t *testing.T) {
 				tf, err := tfexec.NewTerraform(options.RootDir, os.Args[0])
 				require.NoError(t, err)
 				require.NoError(t, os.WriteFile(filepath.Join(options.RootDir, "main.tf.json"), []byte("{}"), 0600))
-				require.NoError(t, e.prepareExecution(t.Context(), tf, options))
+				_, err = e.prepareExecution(t.Context(), tf, options)
+				require.NoError(t, err)
 				require.NoError(t, tf.Get(t.Context()))
 				require.Empty(t, aws.names)
 				snapshots := readBackendSnapshots(t, path)
@@ -486,7 +523,7 @@ func TestCloudExecutionFailureDoesNotFallback(t *testing.T) {
 				if failure == "credentials" {
 					aws.value = nil
 				}
-				e := executor{awsCredentials: aws}
+				e := executor{awsCredentials: aws, deleteStateObject: noStateCleanup}
 				options := cloudExecutionOptions(t, "s3")
 				var err error
 				if operation == "deploy" {
@@ -546,11 +583,15 @@ func TestCloudBackendPreservesExplicitProviderAuthentication(t *testing.T) {
 				backendJSON, err := json.Marshal(config["terraform"].(map[string]any)["backend"])
 				require.NoError(t, err)
 				require.NotContains(t, string(backendJSON), "provider-secret")
-				require.NotContains(t, string(backendJSON), "registered")
+				require.NotContains(t, string(backendJSON), "registered-secret")
+				// Identity-based backend authentication lives in the backend block, so the
+				// environment shared with the module's providers stays untouched.
+				require.NotEqual(t, providers.AWSIRSATokenFilePath, snapshot.Environment["AWS_WEB_IDENTITY_TOKEN_FILE"])
+				require.NotEqual(t, providers.AzureOIDCTokenFilePath, snapshot.Environment["ARM_OIDC_TOKEN_FILE_PATH"])
 				if cloud == "s3" {
-					require.Equal(t, awsBackendTokenFile, snapshot.Environment["AWS_WEB_IDENTITY_TOKEN_FILE"])
+					require.Contains(t, string(backendJSON), providers.AWSIRSATokenFilePath)
 				} else {
-					require.Equal(t, azureBackendTokenFile, snapshot.Environment["ARM_OIDC_TOKEN_FILE_PATH"])
+					require.Contains(t, string(backendJSON), providers.AzureOIDCTokenFilePath)
 				}
 			}
 			require.True(t, checked, "must reach Terraform init")
@@ -571,4 +612,85 @@ func TestCloudMetadataDoesNotFetchBackendCredentials(t *testing.T) {
 	snapshots := readBackendSnapshots(t, path)
 	require.Len(t, snapshots, 1)
 	require.Equal(t, "get", snapshots[0].Command)
+}
+
+// State cleanup runs after the resources are already destroyed, so a failure must be logged rather
+// than left to fail the Radius delete and make the resource undeletable.
+func TestCloudStateCleanupIsBestEffort(t *testing.T) {
+	for _, cleanupErr := range []error{nil, errors.New("access denied to state object")} {
+		t.Run(fmt.Sprintf("error=%v", cleanupErr != nil), func(t *testing.T) {
+			installBackendTestTerraform(t)
+			options := cloudExecutionOptions(t, "s3")
+			var gotType, gotKey string
+			e := executor{
+				awsCredentials: &backendCredentialStub[credentials.AWSCredential]{value: backendTestAWSCredential(true)},
+				deleteStateObject: func(_ context.Context, settings *datamodel.TerraformBackend, _ backends.CloudBackendAuth, key string) error {
+					gotType, gotKey = settings.Type, key
+					return cleanupErr
+				},
+			}
+			var logs strings.Builder
+			ctx := logr.NewContext(t.Context(), funcr.New(func(prefix, args string) {
+				logs.WriteString(prefix + args)
+			}, funcr.Options{}))
+
+			require.NoError(t, e.Delete(ctx, options))
+			require.Equal(t, "s3", gotType)
+			require.Regexp(t, `^radius/[0-9a-f]{40}\.tfstate$`, gotKey)
+			// The state key is the only way an operator can map a leftover object back to a resource.
+			require.Contains(t, logs.String(), gotKey)
+			if cleanupErr != nil {
+				require.Contains(t, logs.String(), "access denied to state object")
+			}
+		})
+	}
+}
+
+// TestAzureCloudForEnvironment pins the mapping cleanup uses to locate state. Terraform resolves the
+// azurerm backend endpoint from ARM_ENVIRONMENT, so a mismatch here would delete from the wrong cloud
+// and silently orphan state on sovereign installations.
+func TestAzureCloudForEnvironment(t *testing.T) {
+	for _, tc := range []struct {
+		environment string
+		suffix      string
+		audience    string
+	}{
+		{"", "blob.core.windows.net", cloud.AzurePublic.Services[cloud.ResourceManager].Audience},
+		{"public", "blob.core.windows.net", cloud.AzurePublic.Services[cloud.ResourceManager].Audience},
+		{"AzurePublicCloud", "blob.core.windows.net", cloud.AzurePublic.Services[cloud.ResourceManager].Audience},
+		{" usgovernment ", "blob.core.usgovcloudapi.net", cloud.AzureGovernment.Services[cloud.ResourceManager].Audience},
+		{"USGovernmentCloud", "blob.core.usgovcloudapi.net", cloud.AzureGovernment.Services[cloud.ResourceManager].Audience},
+		{"china", "blob.core.chinacloudapi.cn", cloud.AzureChina.Services[cloud.ResourceManager].Audience},
+	} {
+		t.Run(tc.environment, func(t *testing.T) {
+			config, suffix, err := azureCloudForEnvironment(tc.environment)
+			require.NoError(t, err)
+			require.Equal(t, tc.suffix, suffix)
+			require.Equal(t, tc.audience, config.Services[cloud.ResourceManager].Audience)
+		})
+	}
+
+	// An unknown value must not silently fall back to public Azure.
+	for _, environment := range []string{"german", "notacloud"} {
+		t.Run("unsupported/"+environment, func(t *testing.T) {
+			_, _, err := azureCloudForEnvironment(environment)
+			require.ErrorContains(t, err, "unsupported ARM_ENVIRONMENT")
+			require.ErrorContains(t, err, environment)
+		})
+	}
+}
+
+// TestAzureBackendAuthCarriesEnvironment verifies ARM_ENVIRONMENT reaches cleanup for both Azure
+// credential kinds, since it is read from the merged execution environment rather than os.Environ.
+func TestAzureBackendAuthCarriesEnvironment(t *testing.T) {
+	for _, federated := range []bool{false, true} {
+		t.Run(fmt.Sprintf("federated=%v", federated), func(t *testing.T) {
+			env := map[string]string{"ARM_ENVIRONMENT": "usgovernment"}
+			auth, err := setAzureBackendAuth(backendTestAzureCredential(federated), env)
+			require.NoError(t, err)
+			require.Equal(t, "usgovernment", auth.AzureEnvironment)
+			// The variable selects a cloud rather than a credential, so it must survive scrubbing.
+			require.Equal(t, "usgovernment", env["ARM_ENVIRONMENT"])
+		})
+	}
 }
