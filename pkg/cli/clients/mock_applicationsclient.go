@@ -547,41 +547,41 @@ func (c *MockApplicationsManagementClientDeleteResourceCall) DoAndReturn(f func(
 	return c
 }
 
-// DeleteResourceGroup mocks base method.
-func (m *MockApplicationsManagementClient) DeleteResourceGroup(ctx context.Context, planeName, resourceGroupName string) (bool, error) {
+// DeleteResourceGroupRecord mocks base method.
+func (m *MockApplicationsManagementClient) DeleteResourceGroupRecord(ctx context.Context, planeName, resourceGroupName string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteResourceGroup", ctx, planeName, resourceGroupName)
+	ret := m.ctrl.Call(m, "DeleteResourceGroupRecord", ctx, planeName, resourceGroupName)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// DeleteResourceGroup indicates an expected call of DeleteResourceGroup.
-func (mr *MockApplicationsManagementClientMockRecorder) DeleteResourceGroup(ctx, planeName, resourceGroupName any) *MockApplicationsManagementClientDeleteResourceGroupCall {
+// DeleteResourceGroupRecord indicates an expected call of DeleteResourceGroupRecord.
+func (mr *MockApplicationsManagementClientMockRecorder) DeleteResourceGroupRecord(ctx, planeName, resourceGroupName any) *MockApplicationsManagementClientDeleteResourceGroupRecordCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResourceGroup), ctx, planeName, resourceGroupName)
-	return &MockApplicationsManagementClientDeleteResourceGroupCall{Call: call}
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResourceGroupRecord", reflect.TypeOf((*MockApplicationsManagementClient)(nil).DeleteResourceGroupRecord), ctx, planeName, resourceGroupName)
+	return &MockApplicationsManagementClientDeleteResourceGroupRecordCall{Call: call}
 }
 
-// MockApplicationsManagementClientDeleteResourceGroupCall wrap *gomock.Call
-type MockApplicationsManagementClientDeleteResourceGroupCall struct {
+// MockApplicationsManagementClientDeleteResourceGroupRecordCall wrap *gomock.Call
+type MockApplicationsManagementClientDeleteResourceGroupRecordCall struct {
 	*gomock.Call
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockApplicationsManagementClientDeleteResourceGroupCall) Return(arg0 bool, arg1 error) *MockApplicationsManagementClientDeleteResourceGroupCall {
+func (c *MockApplicationsManagementClientDeleteResourceGroupRecordCall) Return(arg0 bool, arg1 error) *MockApplicationsManagementClientDeleteResourceGroupRecordCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockApplicationsManagementClientDeleteResourceGroupCall) Do(f func(context.Context, string, string) (bool, error)) *MockApplicationsManagementClientDeleteResourceGroupCall {
+func (c *MockApplicationsManagementClientDeleteResourceGroupRecordCall) Do(f func(context.Context, string, string) (bool, error)) *MockApplicationsManagementClientDeleteResourceGroupRecordCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockApplicationsManagementClientDeleteResourceGroupCall) DoAndReturn(f func(context.Context, string, string) (bool, error)) *MockApplicationsManagementClientDeleteResourceGroupCall {
+func (c *MockApplicationsManagementClientDeleteResourceGroupRecordCall) DoAndReturn(f func(context.Context, string, string) (bool, error)) *MockApplicationsManagementClientDeleteResourceGroupRecordCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
