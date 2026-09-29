@@ -44,6 +44,7 @@ on:
         options:
           - all
           - kubernetes-noncloud
+          - dynamicrp-no-provider
   schedule:
     # Run three times a day at 6 AM PDT (1 PM UTC), 12 PM PDT (7 PM UTC), and 6 PM PDT (1 AM UTC next day)
     - cron: 0 1,13,19 * * *
@@ -267,7 +268,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04]
-        name: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.test_target == 'kubernetes-noncloud' && '["kubernetes-noncloud"]' || '["cli-noncloud","corerp-noncloud","daprrp-noncloud","database-noncloud","kubernetes-noncloud","msgrp-noncloud","multicluster-noncloud","statestore-noncloud","samples-noncloud","ucp-noncloud","datastoresrp-noncloud","dynamicrp-noncloud","upgrade-noncloud"]') }}
+        name: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.test_target == 'kubernetes-noncloud' && '["kubernetes-noncloud"]' || github.event_name == 'workflow_dispatch' && inputs.test_target == 'dynamicrp-no-provider' && '["dynamicrp-noncloud"]' || '["cli-noncloud","corerp-noncloud","daprrp-noncloud","database-noncloud","kubernetes-noncloud","msgrp-noncloud","multicluster-noncloud","statestore-noncloud","samples-noncloud","ucp-noncloud","datastoresrp-noncloud","dynamicrp-noncloud","upgrade-noncloud"]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     env:
@@ -687,7 +688,9 @@ jobs:
           BICEP_RECIPE_REGISTRY: ${{ env.LOCAL_REGISTRY_NAME }}:${{ env.LOCAL_REGISTRY_PORT }}
           BICEP_RECIPE_TAG_VERSION: ${{ env.BICEP_RECIPE_TAG_VERSION }}
           GH_TOKEN: ${{ github.token }}
-          GOTESTSUM_OPTS: --junitfile ./dist/functional_test/results.xml
+          GOTESTSUM_OPTS: ${{ github.event_name == 'workflow_dispatch' && inputs.test_target == 'dynamicrp-no-provider' && '--junitfile ./dist/functional_test/results.xml --jsonfile ./dist/functional_test/no-provider-test-output.json' || '--junitfile ./dist/functional_test/results.xml' }}
+          GOTEST_OPTS: ${{ github.event_name == 'workflow_dispatch' && inputs.test_target == 'dynamicrp-no-provider' && '-run ^Test_RecipePacks_NoProvider_Failure$ -count=1' || '' }}
+          NO_PROVIDER_EVIDENCE_PATH: ${{ github.event_name == 'workflow_dispatch' && inputs.test_target == 'dynamicrp-no-provider' && format('{0}/dist/functional_test/no-provider-response.json', github.workspace) || '' }}
           RADIUS_TEST_FAST_CLEANUP: true
           GIT_HTTP_PASSWORD: ${{ env.GIT_HTTP_PASSWORD }}
           MATRIX_NAME: ${{ matrix.name }}
@@ -709,6 +712,16 @@ jobs:
           artifact_name: functional_test_results_${{ matrix.name }}
           result_directory: dist/functional_test/
           comment_mode: failures
+
+      - name: Upload NoProvider parity evidence
+        if: always() && github.event_name == 'workflow_dispatch' && inputs.test_target == 'dynamicrp-no-provider'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: no-provider-parity-evidence
+          path: |
+            ./dist/functional_test/no-provider-response.json
+            ./dist/functional_test/no-provider-test-output.json
+          if-no-files-found: error
 
       - name: Collect detailed Radius logs and events
         id: radius-logs-events

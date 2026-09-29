@@ -18,6 +18,9 @@ package resource_test
 
 import (
 	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -31,6 +34,51 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+func captureAndValidateNoProviderParityEvidence(t *testing.T, cliErr *radcli.CLIError) {
+	t.Helper()
+
+	require.NotNil(t, cliErr)
+	require.NotNil(t, cliErr.ErrorResponse.Error)
+
+	responseJSON, err := json.MarshalIndent(cliErr.ErrorResponse, "", "  ")
+	require.NoError(t, err)
+
+	evidencePath := os.Getenv("NO_PROVIDER_EVIDENCE_PATH")
+	require.NotEmpty(t, evidencePath)
+	require.NoError(t, os.MkdirAll(filepath.Dir(evidencePath), 0o755))
+	require.NoError(t, os.WriteFile(evidencePath, append(responseJSON, '\n'), 0o600))
+	t.Logf("NoProvider response JSON:\n%s", responseJSON)
+
+	t.Run("exact_five_node_error_tree", func(t *testing.T) {
+		root := cliErr.ErrorResponse.Error
+		require.Equal(t, "DeploymentFailed", root.Code)
+		require.Len(t, root.Details, 1)
+
+		resourceFailure := root.Details[0]
+		require.NotNil(t, resourceFailure)
+		require.Equal(t, "ResourceDeploymentFailure", resourceFailure.Code)
+		require.Len(t, resourceFailure.Details, 1)
+
+		recipeFailure := resourceFailure.Details[0]
+		require.NotNil(t, recipeFailure)
+		require.Equal(t, "RecipeDeploymentFailed", recipeFailure.Code)
+		require.Contains(t, recipeFailure.Message, "failed to deploy recipe default of type Test.Resources/userTypeAlpha")
+		require.Len(t, recipeFailure.Details, 1)
+
+		deploymentFailure := recipeFailure.Details[0]
+		require.NotNil(t, deploymentFailure)
+		require.Equal(t, "DeploymentFailed", deploymentFailure.Code)
+		require.Contains(t, deploymentFailure.Message, "At least one resource deployment operation failed")
+		require.Len(t, deploymentFailure.Details, 1)
+
+		namespaceFailure := deploymentFailure.Details[0]
+		require.NotNil(t, namespaceFailure)
+		require.Empty(t, namespaceFailure.Code)
+		require.Contains(t, namespaceFailure.Message, "Namespace parameter required.")
+		require.Empty(t, namespaceFailure.Details)
+	})
+}
 
 // runRecipePacksDeploymentTest runs the shared recipe pack deployment flow used by the
 // full-resource-ID and by-name reference tests. It creates the application namespace,
@@ -212,7 +260,7 @@ func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 	options := rp.NewRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
-	validate := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
+	validateOriginalContract := step.ValidateSingleDetail("DeploymentFailed", step.DeploymentErrorDetail{
 		Code: "ResourceDeploymentFailure",
 		Details: []step.DeploymentErrorDetail{
 			{
@@ -233,6 +281,13 @@ func Test_RecipePacks_NoProvider_Failure(t *testing.T) {
 			},
 		},
 	})
+	validate := validateOriginalContract
+	if os.Getenv("NO_PROVIDER_EVIDENCE_PATH") != "" {
+		validate = func(t *testing.T, cliErr *radcli.CLIError) {
+			captureAndValidateNoProviderParityEvidence(t, cliErr)
+			validateOriginalContract(t, cliErr)
+		}
+	}
 
 	test := rp.NewRPTest(t, appName, []rp.TestStep{
 		{
