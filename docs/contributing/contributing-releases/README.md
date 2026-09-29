@@ -320,11 +320,13 @@ Monitor and verify:
 2. The [release build](https://github.com/radius-project/radius/actions/workflows/build-release.yaml) workflow (triggered by the tag push) completes successfully. Allow up to ~20 minutes for release assets to be published.
 3. A final release (not pre-release) appears on [GitHub Releases](https://github.com/radius-project/radius/releases).
 
-### Step 7: Publish docs and samples
+### Step 7: Publish docs, samples, and recipes
 
 1. In `radius-project/docs`, run the [Release docs](https://github.com/radius-project/docs/actions/workflows/release.yaml) workflow from the `edge` branch. Enter the version number without the `v` prefix (e.g., `0.56.0`).
 
 2. In `radius-project/samples`, run the [Release samples](https://github.com/radius-project/samples/actions/workflows/release.yaml) workflow from the `edge` branch. Enter the version number without the `v` prefix (e.g., `0.56.0`).
+
+3. In `radius-project/resource-types-contrib`, run the [Publish Bicep Recipes](https://github.com/radius-project/resource-types-contrib/actions/workflows/publish-bicep-recipes.yaml) workflow from the `main` branch. Enter the version number without the `v` prefix as `release_version` (e.g., `0.56.0`). This tags the recipe images with the release version and moves their `latest` tag, which the recipe packs in `resource-types-contrib` reference.
 
 ### Step 8: Run validation workflows
 
