@@ -17,6 +17,12 @@ Follow the [GitHub Workflows instruction file](../../../../.github/instructions/
 - **Least privilege** — set explicit `permissions:` blocks; default to read-only and grant write only where needed.
 - **Pin and cache** — pin action versions and cache dependencies to keep runs fast and reproducible.
 
+### Manual tests with registry write access
+
+`long-running-azure` publishes Bicep test recipes to GHCR, and `repo-radius-state-e2e` writes and deletes GHCR state artifacts. Both require `packages: write`; a test package name does not limit the token to that package. In the canonical repository, scheduled and manual runs of these workflows require protected main so arbitrary dispatched branches do not execute with that authority. Fork-local manual state tests remain available against the fork's own package.
+
+These restrictions do not change the release pipelines, release tag requirements, snapshot artifacts, or main CLI `edge` publication. Cloud functional-test credential isolation is separate. Workflow conditions supplement, rather than replace, repository protections and registry authorization policies.
+
 ## Steps
 
 1. Find the workflow under `.github/workflows/` and identify any reusable workflows, Make targets, or scripts it calls.
