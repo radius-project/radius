@@ -71,14 +71,13 @@ resourceTypes:
     ref: 18142182e52e19a46b0ed172037357e8e142dcd2
     tag: "Radius.Storage/v0.2.2"
 recipePacks:
-  # TODO(resource-types-contrib#292): placeholder refs; re-pin azure-aks/azure-aci with `make update-recipe-packs` after #292 merges.
   - name: azure-aks
     repo: github.com/radius-project/resource-types-contrib
-    ref: pending-contrib-292
+    ref: b390a6f858a07e3392643625dcf3df1ecdfd1e2a
     tag: ""
   - name: azure-aci
     repo: github.com/radius-project/resource-types-contrib
-    ref: pending-contrib-292
+    ref: b390a6f858a07e3392643625dcf3df1ecdfd1e2a
     tag: ""
   - name: kubernetes
     repo: github.com/radius-project/resource-types-contrib
