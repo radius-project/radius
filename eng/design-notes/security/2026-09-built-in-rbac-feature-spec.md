@@ -264,7 +264,9 @@ Before deployment, `rad deploy --what-if` shows the roles and assignments that w
 
 ### Feature 1: Radius permission and scope model
 
-Define a stable permission catalog for Radius resources and actions. Candidate scope anchors to validate include the installation, a plane, a resource group, and supported individual resources. The approved scope model clearly explains how broader assignments apply to contained resources and where they do not.
+Define a stable permission catalog for Radius resources and actions. The scope hierarchy is an installation, its configured planes, the resource groups within each plane, and supported individual resources. Assignments inherit downward within that hierarchy but never sideways into a sibling plane or unrelated resource group. A plane-scoped assignment therefore does not grant access to resources or credentials in another plane, and referencing a resource in another scope does not transfer access to it.
+
+Installation-level assignments are reserved for roles explicitly intended to span the installation. Administration of Azure or AWS credentials requires access in the corresponding provider plane unless an installation-wide role explicitly includes that capability. The exact resource identifiers and supported individual-resource scopes remain subject to technical design and validation.
 
 The first release uses additive allow grants with implicit deny. Explicit deny remains out of scope unless customer or compliance validation finds a blocking use case. Custom roles do not silently gain access when Radius adds actions or resource types.
 
@@ -297,7 +299,7 @@ Define authorization for operations that read or mutate more than one resource:
 - Application management and environment deployment are separate permissions.
 - Referencing a platform capability requires appropriate access to both the resource being changed and the referenced capability.
 - Deploying to an environment allows Radius to use its platform-managed dependencies but does not grant the caller direct access to them.
-- Sensitive views and operations, such as graphs, logs, and secret-related actions, may require permissions beyond ordinary resource read access.
+- Sensitive Radius-provided views and operations, such as graphs and secret-related actions, may require permissions beyond ordinary resource read access.
 - Radius checks the required access before beginning a multi-resource operation and provides a clear recovery path if authorization changes while work is in progress.
 
 ### Feature 5: Consistent enforcement and client behavior
@@ -305,6 +307,8 @@ Define authorization for operations that read or mutate more than one resource:
 Enforce authorization consistently for the API, CLI, dashboard, Backstage, controllers, GitHub Actions, agents, and other supported clients. New operations and resource types do not become accessible until their permissions are deliberately defined and granted. Automation acts through explicit workload identities.
 
 Users authenticate through the trusted identity system configured for the installation rather than through a separate Radius account. Every client preserves the initiating user or workload identity, and Radius clearly identifies the principal it recognizes. Clients can use capability checks to improve the experience, but the server remains authoritative. Clients preserve authentication and authorization errors instead of presenting them as empty results, retries, or unrelated failures.
+
+Radius RBAC governs operations performed through the Radius API; it does not replace Kubernetes RBAC for clients that access Kubernetes objects directly. For example, `rad run` currently streams pod logs through the user's Kubernetes access, so log access remains governed by Kubernetes and may differ from the user's Radius permissions. The CLI makes this boundary clear. A future Radius log permission would govern logs only when they are provided through an authorized Radius endpoint.
 
 ### Feature 6: Auditability and safe administration
 
