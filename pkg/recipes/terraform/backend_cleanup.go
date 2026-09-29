@@ -157,7 +157,7 @@ func (e *executor) deleteAzureState(ctx context.Context, settings *datamodel.Ter
 // and blob storage DNS suffix. The accepted spellings mirror the azurerm backend's own environment
 // names so that cleanup and Terraform never disagree about which cloud is in use.
 //
-// An unrecognised value is an error rather than a fallback to public Azure: deleting from the wrong
+// An unrecognized value is an error rather than a fallback to public Azure: deleting from the wrong
 // cloud would either fail confusingly or, worse, target an unrelated account name in another cloud.
 func azureCloudForEnvironment(environment string) (cloud.Configuration, string, error) {
 	switch strings.ToLower(strings.TrimSpace(environment)) {

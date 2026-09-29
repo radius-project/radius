@@ -145,7 +145,7 @@ func setAzureBackendAuth(c *credentials.AzureCredential, env map[string]string) 
 
 	// ServicePrincipal holds a secret, which must not be written into on-disk backend configuration.
 	// ARM_ENVIRONMENT is deliberately preserved: it selects the Azure cloud rather than an
-	// authentication mode, and clearing it would silently retarget the backend and every
+	// authentication mode, and clearing it would silently redirect the backend and every
 	// environment-configured provider at public Azure.
 	for _, key := range []string{
 		"ARM_CLIENT_ID", "ARM_CLIENT_ID_FILE_PATH", "ARM_TENANT_ID", "ARM_CLIENT_SECRET", "ARM_CLIENT_SECRET_FILE_PATH",
