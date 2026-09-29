@@ -3,7 +3,7 @@
 name: PR Status Labels
 
 # Only trusted base-branch code is executed with write permissions. The
-# pull_request_review workflow is read-only; workflow_run relays its signal.
+# review and inline-comment workflow is read-only; workflow_run relays its signal.
 on:
   pull_request_target:
     types:
@@ -23,6 +23,7 @@ on:
   workflow_run:
     workflows: [PR Review Signal]
     types: [completed]
+  # GitHub Actions has no trigger for resolving or reopening review threads.
   schedule:
     - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
@@ -44,7 +45,8 @@ jobs:
     if: >-
       (github.event_name != 'schedule' || github.repository == 'radius-project/radius') &&
       (github.event_name != 'workflow_run' ||
-       (github.event.workflow_run.event == 'pull_request_review' &&
+       ((github.event.workflow_run.event == 'pull_request_review' ||
+         github.event.workflow_run.event == 'pull_request_review_comment') &&
         github.event.workflow_run.conclusion == 'success'))
     runs-on: ubuntu-24.04
     timeout-minutes: 20
