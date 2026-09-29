@@ -13,7 +13,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 import changes from "./changes.mjs";
@@ -592,7 +592,9 @@ test("every heavy workflow consumer uses the shared filter without overriding it
     assert.doesNotMatch(selection, /^\s+files:/m, file);
     assert.match(
       source,
-      /needs\.changes\.outputs\.only_changed != 'true'/,
+      file === "functional-test-cloud.yaml" ?
+        /needs\.changes\.outputs\.only_changed == 'false'/
+      : /needs\.changes\.outputs\.only_changed != 'true'/,
       file
     );
   }
@@ -706,10 +708,26 @@ test("cloud skips and final status require successful change detection", () => {
       /if: always\(\) && needs\.setup\.result == 'success' && needs\.changes\.result == 'success'/
     );
   }
-  assert.match(
-    report,
-    /^    needs: \[authorize, setup, changes, build, skip-tests, tests\]$/m
-  );
+  const dependencies = report
+    .match(/    needs:\s*\[([\s\S]*?)\]/)[1]
+    .split(",")
+    .map((name) => name.trim());
+  for (const name of [
+    "authorize",
+    "setup",
+    "changes",
+    "build",
+    "skip-tests",
+    "tests",
+    "announce",
+    "upload-ghcr",
+    "upload-test-types"
+  ]) {
+    assert.ok(
+      dependencies.includes(name),
+      `Missing status dependency: ${name}`
+    );
+  }
   assert.match(
     report,
     /CHECKOUT_REF: \$\{\{ needs\.setup\.outputs\.CHECKOUT_REF \|\| github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/
@@ -717,13 +735,13 @@ test("cloud skips and final status require successful change detection", () => {
   assert.match(report, /name: Functional Test Run/);
   assert.match(
     report,
-    /conclusion: \$\{\{ steps\.get_test_status\.outputs\.test_status \}\}/
+    /conclusion: \$\{\{ steps\.get_test_status\.outputs\.test_status \|\| 'failure' \}\}/
   );
 });
 
 const aggregate = step(report, "Aggregate functional test status")
-  .match(/        run: \|\n([\s\S]*?)        env:/)[1]
-  .replace(/^          /gm, "");
+  .match(/          script: \|\n([\s\S]*?)        env:/)[1]
+  .replace(/^            /gm, "");
 
 for (const [name, overrides, expected] of [
   ["source checks pass", {}, "success"],
@@ -762,32 +780,60 @@ for (const [name, overrides, expected] of [
     "failure"
   ]
 ]) {
-  test(`Functional Test Run: ${name}`, async (t) => {
-    const { workspace } = await createWorkspace(t);
-    const output = path.join(workspace, "output");
-    const result = spawnSync(
-      "bash",
-      ["--noprofile", "--norc", "-eo", "pipefail", "-c", aggregate],
+  test(`Functional Test Run: ${name}`, async () => {
+    const values = {
+      AUTHORIZE_RESULT: "success",
+      SETUP_RESULT: "success",
+      CHANGES_RESULT: "success",
+      ONLY_CHANGED: "false",
+      BUILD_RESULT: "success",
+      SKIP_RESULT: "skipped",
+      TESTS_RESULT: "success",
+      ...overrides
+    };
+    const needs = {
+      authorize: { result: values.AUTHORIZE_RESULT },
+      setup: { result: values.SETUP_RESULT },
+      changes: {
+        result: values.CHANGES_RESULT,
+        outputs: { only_changed: values.ONLY_CHANGED }
+      },
+      build: { result: values.BUILD_RESULT },
+      "skip-tests": { result: values.SKIP_RESULT },
+      tests: { result: values.TESTS_RESULT }
+    };
+    for (const phase of ["announce", "upload-ghcr", "upload-test-types"]) {
+      needs[phase] = {
+        result: values.ONLY_CHANGED === "true" ? "skipped" : "success"
+      };
+    }
+    const outputs = [];
+    const summary = {
+      addHeading() {
+        return this;
+      },
+      addRaw() {
+        return this;
+      },
+      addTable() {
+        return this;
+      },
+      async write() {}
+    };
+    const run = new (Object.getPrototypeOf(async () => {}).constructor)(
+      "core",
+      "process",
+      aggregate
+    );
+    await run(
+      { setOutput: (...args) => outputs.push(args), summary },
       {
-        encoding: "utf8",
         env: {
-          ...process.env,
-          GITHUB_OUTPUT: output,
-          AUTHORIZE_RESULT: "success",
-          SETUP_RESULT: "success",
-          CHANGES_RESULT: "success",
-          ONLY_CHANGED: "false",
-          BUILD_RESULT: "success",
-          SKIP_RESULT: "skipped",
-          TESTS_RESULT: "success",
-          ...overrides
+          GITHUB_WORKSPACE: fileURLToPath(new URL("../../", import.meta.url)),
+          NEEDS_JSON: JSON.stringify(needs)
         }
       }
     );
-    assert.equal(result.status, 0, result.error?.message || result.stderr);
-    assert.equal(
-      (await readFile(output, "utf8")).trim(),
-      `test_status=${expected}`
-    );
+    assert.deepEqual(outputs, [["test_status", expected]]);
   });
 }
